@@ -1,0 +1,27 @@
+{
+  "$schema_version": "1.0",
+  "query": "mock product sku100040 sample brand name pet food > dog food > dry food",
+  "results": [
+    {
+      "title": "Buy Mock Product SKU100040 Sample Brand Name Pet Food > Dog Food > Dry Food at Petco",
+      "url": "https://www.petco.com/shop/mock/3c485d8f2b0d90926d9e3e5896fd63a9acbee7bad85e1b0827dd5ae903b4ed56",
+      "description": "Shop the latest."
+    },
+    {
+      "title": "Amazon.com: Mock Product SKU100040 Sample Brand Name Pet Food > Dog Food > Dry Food",
+      "url": "https://www.amazon.com/dp/B0003c485d",
+      "description": "Free shipping on orders over $25."
+    },
+    {
+      "title": "Chewy - Mock Product SKU100040 Sample Brand Name Pet Food > Dog Food > Dry Food",
+      "url": "https://www.chewy.com/mock/3c485d",
+      "description": "Auto-ship and save 5%."
+    },
+    {
+      "title": "Official Mock Product SKU100040 Sample Brand Name Pet Food > Dog Food > Dry Food - Home",
+      "url": "https://www.sample-brand-100040.com/products/mock-product",
+      "description": "The official product page for this item."
+    }
+  ],
+  "timestamp": "2026-04-16T12:00:00Z"
+}

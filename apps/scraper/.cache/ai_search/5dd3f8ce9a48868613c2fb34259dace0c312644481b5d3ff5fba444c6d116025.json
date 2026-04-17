@@ -1,0 +1,27 @@
+{
+  "$schema_version": "1.0",
+  "query": "mock product sku100032 sample brand name garden supplies > potting mix",
+  "results": [
+    {
+      "title": "Buy Mock Product SKU100032 Sample Brand Name Garden Supplies > Potting Mix at Petco",
+      "url": "https://www.petco.com/shop/mock/5dd3f8ce9a48868613c2fb34259dace0c312644481b5d3ff5fba444c6d116025",
+      "description": "Shop the latest."
+    },
+    {
+      "title": "Official Mock Product SKU100032 Sample Brand Name Garden Supplies > Potting Mix - Home",
+      "url": "https://www.sample-brand-100032.com/products/mock-product",
+      "description": "The official product page for this item."
+    },
+    {
+      "title": "Amazon.com: Mock Product SKU100032 Sample Brand Name Garden Supplies > Potting Mix",
+      "url": "https://www.amazon.com/dp/B0005dd3f8",
+      "description": "Free shipping on orders over $25."
+    },
+    {
+      "title": "Chewy - Mock Product SKU100032 Sample Brand Name Garden Supplies > Potting Mix",
+      "url": "https://www.chewy.com/mock/5dd3f8",
+      "description": "Auto-ship and save 5%."
+    }
+  ],
+  "timestamp": "2026-04-16T12:00:00Z"
+}

@@ -1,0 +1,27 @@
+{
+  "$schema_version": "1.0",
+  "query": "mock product sku100021 sample brand name cat supplies",
+  "results": [
+    {
+      "title": "Buy Mock Product SKU100021 Sample Brand Name Cat Supplies at Petco",
+      "url": "https://www.petco.com/shop/mock/73123f6fa84bc67e34b4ab22cc6b03874a4527f10fb4dba1563c69dad541caae",
+      "description": "Shop the latest."
+    },
+    {
+      "title": "Official Mock Product SKU100021 Sample Brand Name Cat Supplies - Home",
+      "url": "https://www.sample-brand-100021.com/products/mock-product",
+      "description": "The official product page for this item."
+    },
+    {
+      "title": "Amazon.com: Mock Product SKU100021 Sample Brand Name Cat Supplies",
+      "url": "https://www.amazon.com/dp/B00073123f",
+      "description": "Free shipping on orders over $25."
+    },
+    {
+      "title": "Chewy - Mock Product SKU100021 Sample Brand Name Cat Supplies",
+      "url": "https://www.chewy.com/mock/73123f",
+      "description": "Auto-ship and save 5%."
+    }
+  ],
+  "timestamp": "2026-04-16T12:00:00Z"
+}
