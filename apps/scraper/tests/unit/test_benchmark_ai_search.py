@@ -477,6 +477,14 @@ def test_generate_markdown_report_renders_human_readable_tables() -> None:
             "total_selection_cost_usd": 0.0,
             "selection_breakdown": {"heuristic": 1},
             "error_count": 0,
+            "cost_breakdown": {
+                "total_serper_cost_usd": 0.0,
+                "total_llm_selection_cost_usd": 0.0,
+                "total_cost_usd": 0.0,
+                "cost_per_success_usd": 0.0,
+                "serper_calls": 0,
+                "successful_extractions": 1,
+            },
         },
         category_breakdown={
             "Tools": {

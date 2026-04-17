@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scrapers.ai_cost_tracker import AICostTracker
 from scrapers.ai_search.dataset_validator import DatasetValidator, ValidationResult
 from scrapers.ai_search.fixture_search_client import CacheMissError, FixtureSearchClient
 from scrapers.ai_search.scoring import SearchScorer
@@ -34,6 +35,10 @@ REPORT_VERSION = "2.0"
 UNDERPERFORMING_CATEGORY_THRESHOLD_PCT = 70.0
 CATEGORY_VISUALIZATION_WIDTH = 20
 CATEGORY_TREND_DELTA_ALERT_PCT = 5.0
+
+# Serper API cost per search call (when not using fixtures)
+# https://serper.dev/pricing - $0.001 per query for pay-as-you-go
+SERPER_COST_PER_CALL_USD = 0.001
 
 
 @dataclass(frozen=True)
@@ -161,6 +166,17 @@ class CategoryAnalysisSummary(TypedDict):
     categories: dict[str, CategoryAnalysisEntry]
 
 
+class CostBreakdown(TypedDict):
+    """Cost breakdown for the benchmark report."""
+
+    total_serper_cost_usd: float
+    total_llm_selection_cost_usd: float
+    total_cost_usd: float
+    cost_per_success_usd: float
+    serper_calls: int
+    successful_extractions: int
+
+
 class BenchmarkSummary(TypedDict):
     """Summary metrics for the benchmark run."""
 
@@ -176,6 +192,7 @@ class BenchmarkSummary(TypedDict):
     total_selection_cost_usd: float
     selection_breakdown: dict[str, int]
     error_count: int
+    cost_breakdown: CostBreakdown
 
 
 class ExecutionConfig(TypedDict):
@@ -270,7 +287,14 @@ class MetricsCalculator:
 
     _Z_SCORE: float = NormalDist().inv_cdf(0.975)
 
-    def calculate_metrics(self, results: Sequence[BenchmarkResultRow], *, execution_duration_ms: float | None = None) -> BenchmarkSummary:
+    def calculate_metrics(
+        self,
+        results: Sequence[BenchmarkResultRow],
+        *,
+        execution_duration_ms: float | None = None,
+        total_serper_cost_usd: float = 0.0,
+        serper_calls: int = 0,
+    ) -> BenchmarkSummary:
         """Calculate top-level summary metrics for benchmark results."""
         total_examples = len(results)
         matched_examples = sum(1 for result in results if result["exact_match"])
@@ -285,6 +309,17 @@ class MetricsCalculator:
         precision_at_1 = self._calculate_precision_at_1(results)
         recall_at_1 = self._calculate_recall_at_1(results)
 
+        total_cost_usd = total_serper_cost_usd + total_selection_cost_usd
+        cost_per_success_usd = total_cost_usd / matched_examples if matched_examples else 0.0
+        cost_breakdown = CostBreakdown(
+            total_serper_cost_usd=round(total_serper_cost_usd, 6),
+            total_llm_selection_cost_usd=round(total_selection_cost_usd, 6),
+            total_cost_usd=round(total_cost_usd, 6),
+            cost_per_success_usd=round(cost_per_success_usd, 6),
+            serper_calls=serper_calls,
+            successful_extractions=matched_examples,
+        )
+
         return BenchmarkSummary(
             total_examples=total_examples,
             matched_examples=matched_examples,
@@ -298,6 +333,7 @@ class MetricsCalculator:
             total_selection_cost_usd=round(total_selection_cost_usd, 6),
             selection_breakdown=dict(selection_breakdown),
             error_count=error_count,
+            cost_breakdown=cost_breakdown,
         )
 
     def calculate_breakdown(self, results: Sequence[BenchmarkResultRow], field: str) -> dict[str, BenchmarkBreakdown]:
@@ -609,6 +645,7 @@ class BenchmarkRunner:
         llm_provider: str = "openai",
         llm_base_url: str | None = None,
         llm_api_key: str | None = None,
+        cost_tracker: AICostTracker | None = None,
     ) -> None:
         self.dataset_path: Path = dataset_path
         self.mode: str = mode
@@ -624,6 +661,8 @@ class BenchmarkRunner:
         self._llm_base_url: str | None = llm_base_url
         self._llm_api_key: str | None = llm_api_key
         self._temp_cache_dir: TemporaryDirectory[str] | None = None
+        self._cost_tracker: AICostTracker = cost_tracker or AICostTracker()
+        self._using_fixtures: bool = True
 
     def validate_dataset(self) -> ValidationResult:
         """Validate the dataset file using the shared validator."""
@@ -661,6 +700,8 @@ class BenchmarkRunner:
         started_at = datetime.now(timezone.utc)
         started = time.perf_counter()
         results: list[BenchmarkResultRow] = []
+        serper_calls = 0
+        total_serper_cost_usd = 0.0
 
         for example in examples:
             example_started = time.perf_counter()
@@ -673,6 +714,10 @@ class BenchmarkRunner:
                 if search_error:
                     error = search_error
                 else:
+                    # Track Serper API cost if not using fixtures
+                    if not self._using_fixtures:
+                        serper_calls += 1
+                        total_serper_cost_usd += SERPER_COST_PER_CALL_USD
                     selection = await self._select_source(example, search_results)
             except CacheMissError as exc:
                 error = str(exc)
@@ -714,7 +759,12 @@ class BenchmarkRunner:
 
         total_duration_ms = (time.perf_counter() - started) * 1000.0
         completed_at = datetime.now(timezone.utc)
-        summary = self._metrics_calculator.calculate_metrics(results, execution_duration_ms=total_duration_ms)
+        summary = self._metrics_calculator.calculate_metrics(
+            results,
+            execution_duration_ms=total_duration_ms,
+            total_serper_cost_usd=total_serper_cost_usd,
+            serper_calls=serper_calls,
+        )
         category_breakdown = self._metrics_calculator.calculate_breakdown(results, field="category")
         baseline_path, baseline_payload = load_baseline_payload()
         category_analysis = self._category_analyzer.analyze_categories(
@@ -892,13 +942,16 @@ class BenchmarkRunner:
 
         if self.cache_dir is not None:
             self._search_client = FixtureSearchClient(cache_dir=self.cache_dir, allow_real_api=False)
+            self._using_fixtures = True
             return self._search_client
 
         companion_path = self.dataset_path.with_suffix(".search_results.json")
         if companion_path.exists():
             self._search_client = self._build_search_client_from_fixture_file(companion_path)
+            self._using_fixtures = True
             return self._search_client
 
+        self._using_fixtures = False
         self._search_client = FixtureSearchClient(cache_dir=DEFAULT_CACHE_DIR, allow_real_api=False)
         return self._search_client
 
@@ -1054,6 +1107,14 @@ def generate_markdown_report(report: BenchmarkReport) -> str:
         f"| Accuracy 95% CI | {confidence_interval['lower_bound_pct']:.3f}% - {confidence_interval['upper_bound_pct']:.3f}% |",
         f"| Average Duration (ms) | {summary['average_duration_ms']:.3f} |",
         f"| Error Count | {summary['error_count']} |",
+        "",
+        ## Cost Summary",
+        "",
+        f"- Total Serper Cost: ${summary['cost_breakdown']['total_serper_cost_usd']:.6f}",
+        f"- Total LLM Selection Cost: ${summary['cost_breakdown']['total_llm_selection_cost_usd']:.6f}",
+        f"- Total Cost: ${summary['cost_breakdown']['total_cost_usd']:.6f}",
+        f"- Cost per Success: ${summary['cost_breakdown']['cost_per_success_usd']:.6f}",
+        f"- Serper API Calls: {summary['cost_breakdown']['serper_calls']}",
         "",
     ]
 
