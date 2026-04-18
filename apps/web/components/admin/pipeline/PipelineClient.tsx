@@ -75,7 +75,7 @@ const LIVE_OPERATIONAL_TABS = new Set<PipelineStage>([
   "scraping",
   "consolidating",
 ]);
-const WORKSPACE_TABS = new Set<PipelineStage>(["scraped", "finalizing"]);
+const WORKSPACE_TABS = new Set<PipelineStage>(["scraped", "finalizing", "imported", "exporting"]);
 const EMPTY_SOURCES: string[] = [];
 
 function isLiveOperationalTab(stage: PipelineStage): boolean {
@@ -1103,11 +1103,37 @@ export function PipelineClient({
   const headerActions = (
     <div className="flex flex-wrap items-center gap-2">
       {shellControlsBelongToRoute ? (
-        <PipelineSearchField
-          value={search}
-          onChange={setSearch}
-          className="w-48 md:w-64"
-        />
+        <>
+          <label className="flex shrink-0 items-center justify-center h-8 w-8 border border-zinc-950 bg-white shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-zinc-50 cursor-pointer transition-colors">
+            <Checkbox
+              checked={
+                filteredProducts.length > 0 &&
+                filteredProducts.every((p) => selectedSkus.has(p.sku))
+                  ? true
+                  : filteredProducts.some((p) => selectedSkus.has(p.sku))
+                    ? "indeterminate"
+                    : false
+              }
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  const next = new Set(selectedSkus);
+                  filteredProducts.forEach((p) => next.add(p.sku));
+                  setSelectedSkus(next);
+                } else {
+                  const next = new Set(selectedSkus);
+                  filteredProducts.forEach((p) => next.delete(p.sku));
+                  setSelectedSkus(next);
+                }
+              }}
+              className="h-4 w-4 rounded-none border-2 border-zinc-950 accent-zinc-950 data-[state=checked]:bg-zinc-950 data-[state=checked]:text-white data-[state=indeterminate]:bg-zinc-950 data-[state=indeterminate]:text-white"
+            />
+          </label>
+          <PipelineSearchField
+            value={search}
+            onChange={setSearch}
+            className="w-48 md:w-64"
+          />
+        </>
       ) : null}
 
       {shellControlsBelongToRoute ? (
@@ -1195,26 +1221,7 @@ export function PipelineClient({
 
       {currentStage === "imported" && (
         <>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsIntegraImportOpen(true)}
-            disabled={isLoading}
-            className="h-8 border-2 border-zinc-950 text-zinc-950 hover:bg-zinc-100 text-xs font-black uppercase tracking-tighter shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
-          >
-            <Database className="mr-1.5 h-3.5 w-3.5" />
-            Import CSV
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsManualAddOpen(true)}
-            disabled={isLoading}
-            className="h-8 border-2 border-zinc-950 text-zinc-950 hover:bg-zinc-100 text-xs font-black uppercase tracking-tighter shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
-          >
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            Add Product
-          </Button>
+          {/* Buttons moved to ImportedResultsView sidebar */}
         </>
       )}
     </div>
@@ -1422,6 +1429,9 @@ export function PipelineClient({
                   : undefined
               }
               isSearching={isSearching}
+              onImportCsv={currentStage === "imported" ? () => setIsIntegraImportOpen(true) : undefined}
+              onManualAdd={currentStage === "imported" ? () => setIsManualAddOpen(true) : undefined}
+              isLoading={isLoading}
             />
           ) : (
             <div className="flex flex-col h-full min-h-0">

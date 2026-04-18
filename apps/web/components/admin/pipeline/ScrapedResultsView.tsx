@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
@@ -213,8 +214,28 @@ export function ScrapedResultsView({
   return (
     <div className="flex h-full min-h-0 border-4 border-zinc-950 rounded-none overflow-hidden bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)] max-w-full m-1 mr-4 mb-4">
       {/* Left Column: Product List */}
-      <div className="w-80 min-w-[320px] max-w-[320px] border-r border-zinc-950 flex flex-col shrink-0 bg-zinc-50 overflow-x-hidden">
+      <div className="w-96 min-w-[384px] max-w-[384px] border-r border-zinc-950 flex flex-col shrink-0 bg-zinc-50 overflow-x-hidden">
         <div className="flex items-center gap-2 border-b border-zinc-950 bg-white p-2">
+          <label className="flex shrink-0 items-center justify-center h-9 w-9 border border-zinc-950 bg-white shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-zinc-50 cursor-pointer transition-colors">
+            <Checkbox
+              checked={
+                sortedProducts.length > 0 &&
+                sortedProducts.every((p) => selectedSkus.has(p.sku))
+                  ? true
+                  : sortedProducts.some((p) => selectedSkus.has(p.sku))
+                    ? "indeterminate"
+                    : false
+              }
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  onSelectAll?.(sortedProducts.map((p) => p.sku));
+                } else {
+                  onDeselectAll?.(sortedProducts.map((p) => p.sku));
+                }
+              }}
+              className="h-4 w-4 rounded-none border-2 border-zinc-950 accent-zinc-950 data-[state=checked]:bg-zinc-950 data-[state=checked]:text-white data-[state=indeterminate]:bg-zinc-950 data-[state=indeterminate]:text-white"
+            />
+          </label>
           <PipelineSearchField
             value={search || ""}
             onChange={(value) => onSearchChange?.(value)}

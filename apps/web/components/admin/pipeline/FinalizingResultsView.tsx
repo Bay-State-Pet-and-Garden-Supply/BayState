@@ -965,28 +965,14 @@ export function FinalizingResultsView({
 
       if (isInput || sortedProducts.length === 0) return;
 
-      const currentIndex = sortedProducts.findIndex(
-        (p) => p.sku === preferredSku,
-      );
-
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        const nextIndex = Math.min(currentIndex + 1, sortedProducts.length - 1);
-        void handleSelectProduct(sortedProducts[nextIndex].sku);
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        const nextIndex = Math.max(currentIndex - 1, 0);
-        void handleSelectProduct(sortedProducts[nextIndex].sku);
-      }
+      // Arrow navigation is now handled by PipelineSidebarTable in the sidebar
+      // to ensure consistency with cohort grouping and expansion.
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
     persistCurrentDraft,
-    preferredSku,
-    sortedProducts,
-    handleSelectProduct,
     notifyPendingCopilotReview,
   ]);
 
