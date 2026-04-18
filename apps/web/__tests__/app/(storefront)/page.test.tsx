@@ -60,8 +60,15 @@ describe('Home Page', () => {
   it('renders category cards', async () => {
     const page = await HomePage();
     render(page);
-    expect(screen.getByText('Pet Supplies')).toBeInTheDocument();
-    expect(screen.getByText('Lawn & Garden')).toBeInTheDocument();
-    expect(screen.getByText('Home & Fuel')).toBeInTheDocument();
+    
+    // Cards now use separate elements for words
+    expect(screen.getAllByText(/Pet/)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/Supplies/)[0]).toBeInTheDocument();
+    
+    expect(screen.getAllByText(/Garden/)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/Seed Starting/)[0]).toBeInTheDocument();
+
+    expect(screen.getAllByText(/Heating/)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/WOOD PELLETS/)[0]).toBeInTheDocument();
   });
 });

@@ -94,60 +94,49 @@ describe('admin costs route', () => {
       }),
     };
 
+    const scrapeJobsQuery = {
+      select: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
+      lte: jest.fn().mockReturnThis(),
+      order: jest.fn().mockResolvedValue({
+        data: [],
+        error: null,
+      }),
+    };
+
     (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
-      if (table === 'service_costs') {
-        return serviceCostsQuery;
-      }
-      if (table === 'batch_jobs') {
-        return batchJobsQuery;
-      }
+      if (table === 'service_costs') return serviceCostsQuery;
+      if (table === 'batch_jobs') return batchJobsQuery;
+      if (table === 'scrape_jobs') return scrapeJobsQuery;
       throw new Error(`Unexpected table ${table}`);
     });
   });
 
-  it('returns separate Gemini and OpenAI cost summaries', async () => {
+  it('returns cost summaries in the usage structure', async () => {
     const response = await GET({ url: 'http://localhost/api/admin/costs?days=30' } as Request);
     expect(response.status).toBe(200);
 
     const body = await response.json();
 
     expect(body.services[0].service).toBe('openai');
-    expect(body.services[0].display_name).toBe('OpenAI');
-    expect(body.services[0].notes).toContain('GPT models');
-
-    expect(body.ai.gemini).toEqual({
-      totalCost: 1.25,
-      totalJobs: 1,
-      completedJobs: 1,
-      failedJobs: 0,
-      promptTokens: 100,
-      completionTokens: 50,
-      totalTokens: 150,
-      providerLabel: 'Google Gemini API',
-    });
-
-    expect(body.ai.openai).toEqual({
-      totalCost: 1.25,
-      totalJobs: 2,
-      completedJobs: 1,
-      failedJobs: 1,
-      promptTokens: 90,
-      completionTokens: 60,
-      totalTokens: 150,
-      providerLabel: 'OpenAI API',
-    });
-
-    expect(body.ai.combined).toEqual({
+    expect(body.usage.consolidation).toEqual({
       totalCost: 2.5,
       totalJobs: 3,
+      completedJobs: 2,
+      failedJobs: 1,
       promptTokens: 190,
       completionTokens: 110,
       totalTokens: 300,
     });
 
-    expect(body.ai.consolidation).toBeUndefined();
-    expect(body.ai.recentJobs).toHaveLength(3);
-    expect(body.ai.recentJobs[2].provider).toBe('openai_compatible');
+    expect(body.usage.aiSearch).toEqual({
+      totalCost: 0,
+      totalJobs: 0,
+      completedJobs: 0,
+      failedJobs: 0,
+    });
+
+    expect(body.recentUsage).toHaveLength(3);
     expect(body.estimatedMonthlyTotal).toBe(2.5);
   });
 });

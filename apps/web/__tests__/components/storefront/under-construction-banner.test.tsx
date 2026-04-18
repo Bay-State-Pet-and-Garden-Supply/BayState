@@ -12,7 +12,7 @@ describe('UnderConstructionBanner', () => {
     render(<UnderConstructionBanner />);
     const link = screen.getByRole('link', { name: /Official Site/i });
     expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute('href', 'https://baystatepetgarden.com');
+    expect(link).toHaveAttribute('href', 'https://www.baystatepet.com/');
     expect(link).toHaveAttribute('target', '_blank');
   });
 });

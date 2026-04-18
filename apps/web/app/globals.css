@@ -273,6 +273,13 @@
   }
 }
 
+@layer components {
+  /* Modern Farm Utilitarian Table Styling */
+  .farm-table {
+    @apply border-4 border-zinc-950 shadow-[8px_8px_0px_rgba(0,0,0,1)] bg-white uppercase font-black tracking-tighter;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

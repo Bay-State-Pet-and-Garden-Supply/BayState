@@ -4,8 +4,6 @@ import { TransformStream as WebTransformStream } from 'stream/web';
 
 Object.assign(global, { TextEncoder, TextDecoder });
 
-
-
 // Polyfill for TransformStream (required by Playwright MCP tests)
 if (typeof global.TransformStream === 'undefined') {
   global.TransformStream = WebTransformStream;

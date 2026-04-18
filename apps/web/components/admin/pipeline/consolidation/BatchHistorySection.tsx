@@ -49,8 +49,8 @@ function BatchHistoryCard({
   const canApply = job.status === "completed" && !isApplied;
 
   return (
-    <div className="rounded-none border border-zinc-950 bg-card p-4 shadow-[1px_1px_0px_rgba(0,0,0,1)] transition-colors hover:bg-accent/5">
-      <div className="flex items-center justify-between gap-4">
+    <div className="rounded-none border-4 border-zinc-950 bg-card p-4 shadow-[8px_8px_0px_rgba(0,0,0,1)] transition-colors hover:bg-accent/5">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex flex-col min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={job.status} />

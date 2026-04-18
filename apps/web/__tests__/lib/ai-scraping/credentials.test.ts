@@ -19,6 +19,7 @@ describe('AI scraping credentials compatibility', () => {
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
     process.env.AI_CREDENTIALS_ENCRYPTION_KEY = '12345678901234567890123456789012';
     delete process.env.GEMINI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
   });
 
   afterEach(() => {
@@ -26,6 +27,7 @@ describe('AI scraping credentials compatibility', () => {
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
     delete process.env.AI_CREDENTIALS_ENCRYPTION_KEY;
     delete process.env.GEMINI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
   });
 
   it('stores Gemini credentials in site_settings compatibility storage when the provider constraint is stale', async () => {

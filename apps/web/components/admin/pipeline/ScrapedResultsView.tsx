@@ -211,7 +211,7 @@ export function ScrapedResultsView({
 
   // 5. Effects
   return (
-    <div className="flex h-full min-h-0 border border-zinc-950 rounded-none overflow-hidden bg-white shadow-[1px_1px_0px_rgba(0,0,0,1)] max-w-full">
+    <div className="flex h-full min-h-0 border-4 border-zinc-950 rounded-none overflow-hidden bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)] max-w-full m-1 mr-4 mb-4">
       {/* Left Column: Product List */}
       <div className="w-80 min-w-[320px] max-w-[320px] border-r border-zinc-950 flex flex-col shrink-0 bg-zinc-50 overflow-x-hidden">
         <div className="flex items-center gap-2 border-b border-zinc-950 bg-white p-2">

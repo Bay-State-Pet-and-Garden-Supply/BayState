@@ -10,37 +10,13 @@ describe('validateConsolidationTaxonomy', () => {
         const result = validateConsolidationTaxonomy(
             {
                 category: ['Dog > Food > Dry Food', 'Dog > Food > Dry Food', 'Cat > Food > Dry Food'],
-                search_keywords: 'kibble, salmon',
+                some_other_field: 'value',
             },
             ['Dog > Food > Dry Food', 'Cat > Food > Dry Food']
         );
 
         expect(result.category).toBe('Dog > Food > Dry Food|Cat > Food > Dry Food');
-        expect(result.search_keywords).toBe('kibble, salmon');
-    });
-
-    it('throws when category is missing after validation', () => {
-        expect(() =>
-            validateConsolidationTaxonomy(
-                {
-                    search_keywords: 'kibble',
-                },
-                ['Dog > Food > Dry Food']
-            )
-        ).toThrow('category is required');
-    });
-
-    it('buildResponseSchema includes search_keywords as a required field', () => {
-        const schema = buildResponseSchema(['Dog > Food > Dry Food'], ['Food']) as {
-            properties?: Record<string, unknown>;
-            required?: string[];
-        };
-
-        const properties = schema.properties || {};
-        const required = schema.required || [];
-
-        expect(properties).toHaveProperty('search_keywords');
-        expect(required).toContain('search_keywords');
+        expect(result.some_other_field).toBe('value');
     });
 
     it('buildOpenAIResponseFormat wraps the raw response schema', () => {
@@ -83,21 +59,25 @@ describe('validateConsolidationTaxonomy', () => {
     it('validateRequiredConsolidationFields rejects blank required strings', () => {
         expect(() =>
             validateRequiredConsolidationFields({
-                name: 'Valid Name',
+                name: '   ',
                 brand: 'Valid Brand',
-                description: 'Valid description.',
-                long_description: 'Valid long description.',
-                search_keywords: '   ',
                 confidence_score: 0.8,
             })
-        ).toThrow('search_keywords is required');
+        ).toThrow('Invalid consolidation output: name is required');
+        
+        expect(() =>
+            validateRequiredConsolidationFields({
+                name: 'Valid Name',
+                brand: '',
+                confidence_score: 0.8,
+            })
+        ).toThrow('Invalid consolidation output: brand is required');
     });
 
     it('normalizes taxonomy breadcrumbs without spaces around separators', () => {
         const result = validateConsolidationTaxonomy(
             {
                 category: ['Dog>Food>Dry Food'],
-                search_keywords: 'kibble',
             },
             ['Dog > Food > Dry Food']
         );

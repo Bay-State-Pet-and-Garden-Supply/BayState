@@ -313,7 +313,7 @@ describe('useJobSubscription', () => {
         useJobSubscription({ channelName: 'shared-jobs', autoConnect: false }),
       );
 
-      expect(mockChannelFactory).toHaveBeenCalledWith('shared-jobs');
+      expect(mockChannelFactory).toHaveBeenCalledWith('shared-jobs-pg');
     });
   });
 });

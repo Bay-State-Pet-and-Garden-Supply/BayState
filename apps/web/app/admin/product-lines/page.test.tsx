@@ -2,6 +2,19 @@ import { render, screen } from '@testing-library/react';
 import { AdminProductLinesClient } from '@/components/admin/product-lines/AdminProductLinesClient';
 import type { ProductLine } from '@/components/admin/product-lines/ProductLineModal';
 
+jest.mock('next/navigation', () => ({
+	useRouter: () => ({
+		push: jest.fn(),
+		replace: jest.fn(),
+		prefetch: jest.fn(),
+	}),
+	useSearchParams: () => ({
+		get: jest.fn(),
+		toString: jest.fn(),
+	}),
+	usePathname: () => '/admin/product-lines',
+}));
+
 const mockProductLines: ProductLine[] = [
 	{
 		id: '1',

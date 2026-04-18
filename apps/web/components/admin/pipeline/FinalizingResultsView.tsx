@@ -1745,7 +1745,7 @@ export function FinalizingResultsView({
 
   return (
     <>
-      <div className="flex h-full min-h-0 border border-zinc-950 rounded-none bg-white shadow-[1px_1px_0px_rgba(0,0,0,1)] overflow-hidden max-w-full">
+      <div className="flex h-full min-h-0 border-4 border-zinc-950 rounded-none bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)] overflow-hidden max-w-full m-1 mr-4 mb-4">
         {/* Left Column: Product List */}
         <ProductListSidebar
           products={sortedProducts}

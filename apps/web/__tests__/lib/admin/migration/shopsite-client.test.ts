@@ -320,11 +320,14 @@ describe('ShopSiteClient', () => {
 
             expect(mockFetch).toHaveBeenNthCalledWith(
                 2,
-                'https://example.shopsite.com/dbmake.cgi?clientApp=1&token=abc123',
+                'https://example.shopsite.com/dbmake.cgi',
                 expect.objectContaining({
-                    method: 'GET',
+                    method: 'POST',
+                    body: 'clientApp=1&token=abc123',
                     headers: expect.objectContaining({
                         'Authorization': expect.stringContaining('Basic'),
+                        'Content-Length': String(Buffer.byteLength('clientApp=1&token=abc123', 'utf8')),
+                        'Content-Type': 'application/x-www-form-urlencoded',
                         'Cookie': 'session=shopsite123',
                         'Referer': 'https://example.shopsite.com',
                     }),
@@ -337,6 +340,76 @@ describe('ShopSiteClient', () => {
                     method: 'GET',
                 }),
             );
+        });
+
+        it('replays long dbmake parameter strings via POST instead of rejecting them', async () => {
+            const longDbmakeQuery = 'clientApp=1&dbname=products&filename=upload.dat&xml=1&upload_type=2&UniqueId=-1&NewRecords=Add&0=0&1=1&2=2&3=3&4=-2&totalfields=5';
+
+            mockFetch
+                .mockResolvedValueOnce({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    text: () => Promise.resolve(longDbmakeQuery),
+                    headers: new Headers({ 'set-cookie': 'session=shopsite123; Path=/; HttpOnly' }),
+                })
+                .mockResolvedValueOnce({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    text: () => Promise.resolve('dbmake complete'),
+                    headers: new Headers(),
+                })
+                .mockResolvedValueOnce({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    text: () => Promise.resolve('publish complete'),
+                    headers: new Headers(),
+                });
+
+            const client = new ShopSiteClient(validConfig);
+            const result = await client.uploadProductsXml('<ShopSiteProducts />');
+
+            expect(result.dbmakeQuery).toBe(longDbmakeQuery);
+            expect(mockFetch).toHaveBeenNthCalledWith(
+                2,
+                'https://example.shopsite.com/dbmake.cgi',
+                expect.objectContaining({
+                    method: 'POST',
+                    body: longDbmakeQuery,
+                    headers: expect.objectContaining({
+                        'Content-Length': String(Buffer.byteLength(longDbmakeQuery, 'utf8')),
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Cookie': 'session=shopsite123',
+                    }),
+                }),
+            );
+        });
+
+        it('returns the publish cookie header for background publish scheduling', async () => {
+            mockFetch
+                .mockResolvedValueOnce({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    text: () => Promise.resolve('clientApp=1&token=abc123'),
+                    headers: new Headers({ 'set-cookie': 'session=upload123; Path=/; HttpOnly' }),
+                })
+                .mockResolvedValueOnce({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    text: () => Promise.resolve('dbmake complete'),
+                    headers: new Headers({ 'set-cookie': 'session=dbmake456; Path=/; HttpOnly' }),
+                });
+
+            const client = new ShopSiteClient(validConfig);
+            const result = await client.uploadProductsXml('<ShopSiteProducts />', {
+                publish: false,
+            });
+
+            expect(result.publishCookieHeader).toBe('session=dbmake456');
         });
 
         it('throws when the upload response does not contain a dbmake query', async () => {
@@ -387,6 +460,56 @@ describe('ShopSiteClient', () => {
             // &nbsp; -> &#160;
             const expected = '<Item>M&amp;Ms &amp; &#160;Skittles</Item>';
             expect(ShopSiteClient.sanitizeXml(input)).toBe(expected);
+        });
+    });
+
+    describe('publishStore', () => {
+        it('retries once on Cloudflare 524 before succeeding', async () => {
+            mockFetch
+                .mockResolvedValueOnce({
+                    ok: false,
+                    status: 524,
+                    statusText: 'A timeout occurred',
+                    text: () => Promise.resolve('<title>524: A timeout occurred</title>'),
+                    headers: new Headers(),
+                })
+                .mockResolvedValueOnce({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    text: () => Promise.resolve('publish complete'),
+                    headers: new Headers(),
+                });
+
+            const client = new ShopSiteClient(validConfig);
+            const result = await client.publishStore({ htmlpages: true, index: true }, 'session=shopsite123');
+
+            expect(result).toBe('publish complete');
+            expect(mockFetch).toHaveBeenCalledTimes(2);
+        });
+
+        it('throws a concise timeout error when Cloudflare 524 persists', async () => {
+            mockFetch
+                .mockResolvedValueOnce({
+                    ok: false,
+                    status: 524,
+                    statusText: 'A timeout occurred',
+                    text: () => Promise.resolve('<title>524: A timeout occurred</title>'),
+                    headers: new Headers(),
+                })
+                .mockResolvedValueOnce({
+                    ok: false,
+                    status: 524,
+                    statusText: 'A timeout occurred',
+                    text: () => Promise.resolve('<title>524: A timeout occurred</title>'),
+                    headers: new Headers(),
+                });
+
+            const client = new ShopSiteClient(validConfig);
+
+            await expect(
+                client.publishStore({ htmlpages: true, index: true }, 'session=shopsite123'),
+            ).rejects.toThrow('ShopSite publish timed out behind Cloudflare (524). The product import completed, but storefront generation may still be running. Retry the publish if the storefront does not update in a few minutes.');
         });
     });
 });

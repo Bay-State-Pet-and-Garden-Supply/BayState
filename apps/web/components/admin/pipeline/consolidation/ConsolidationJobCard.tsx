@@ -49,7 +49,7 @@ export function ConsolidationJobCard({
   const llmProvider = job.metadata?.llm_provider as string | undefined;
 
   return (
-    <div className="rounded-none border border-zinc-950 bg-card p-5 shadow-[1px_1px_0px_rgba(0,0,0,1)] transition-colors hover:bg-accent/5">
+    <div className="rounded-none border-4 border-zinc-950 bg-white p-5 shadow-[8px_8px_0px_rgba(0,0,0,1)] transition-colors hover:bg-accent/5">
       <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
         <div className="flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">

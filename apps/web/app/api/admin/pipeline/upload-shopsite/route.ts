@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { after, NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { ShopSiteClient } from '@/lib/admin/migration/shopsite-client';
 import { getStoredShopSiteConfig } from '@/lib/admin/shopsite-settings';
@@ -66,13 +66,15 @@ export async function POST(request: NextRequest) {
         const xml = generateShopSiteXml(products, { newProductTag: marker });
         const client = new ShopSiteClient(config);
 
-        await client.uploadProductsXml(xml, {
+        const uploadResult = await client.uploadProductsXml(xml, {
             uniqueName: 'SKU (Products)',
-            publish: {
-                htmlpages: true,
-                index: true,
-            },
+            publish: false,
         });
+
+        const publishOptions = {
+            htmlpages: true,
+            index: true,
+        };
 
         const exportedAt = new Date().toISOString();
         const supabase = await createClient();
@@ -90,11 +92,22 @@ export async function POST(request: NextRequest) {
             throw new Error(`ShopSite upload succeeded, but failed to retire exported products from the active pipeline: ${statusError.message}`);
         }
 
+        after(async () => {
+            try {
+                await client.publishStore(publishOptions, uploadResult.publishCookieHeader);
+            } catch (publishError) {
+                console.error('[UploadShopSite] Background publish failed:', publishError);
+            }
+        });
+
+        const publishWarning = 'ShopSite import completed. Storefront generation is running in the background and may take a few minutes to finish.';
+
         return NextResponse.json({
             success: true,
             uploadedCount: products.length,
             uploadedSkus,
             marker,
+            publishWarning,
         });
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to upload products to ShopSite';

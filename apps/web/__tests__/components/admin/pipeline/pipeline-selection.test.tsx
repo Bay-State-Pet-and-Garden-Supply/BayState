@@ -96,10 +96,14 @@ describe("PipelineClient shift range selection", () => {
       />,
     );
 
-    const row1 = await screen.findByText("SKU001");
-    const row2 = screen.getByText("SKU002").closest("tr");
-    const row3 = screen.getByText("SKU003").closest("tr");
+    const rows = await screen.findAllByText("SKU001");
+    const row1 = rows[0];
+    const row2Cell = (await screen.findAllByText("SKU002"))[0];
+    const row3Cell = (await screen.findAllByText("SKU003"))[0];
+    
     const row1Element = row1.closest("tr");
+    const row2 = row2Cell.closest("tr");
+    const row3 = row3Cell.closest("tr");
 
     expect(row1Element).toBeTruthy();
     expect(row2).toBeTruthy();
