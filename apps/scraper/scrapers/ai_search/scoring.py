@@ -3,7 +3,7 @@
 import re
 import httpx
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from threading import Lock
 from typing import Any, Optional
 from urllib.parse import urlparse
@@ -40,7 +40,7 @@ def record_domain_attempt(domain: str, success: bool) -> None:
         stats.attempts += 1
         if success:
             stats.successes += 1
-        stats.last_updated = datetime.utcnow().isoformat()
+        stats.last_updated = datetime.now(UTC).isoformat()
 
 
 from scrapers.ai_search.matching import MatchingUtils
@@ -48,6 +48,25 @@ from scrapers.ai_search.matching import MatchingUtils
 
 class SearchScorer:
     """Handles scoring and filtering of search results."""
+
+    BRAND_DOMAIN_ALIASES = {
+        "scotts": {"scotts.com", "scottsmiraclegro.com"},
+        "scottsmiraclegro": {"scotts.com", "scottsmiraclegro.com", "miraclegro.com"},
+        "miraclegro": {"miraclegro.com", "scottsmiraclegro.com"},
+    }
+
+    NOISY_QUERY_PARAMS = {
+        "bvstate",
+        "bvrrp",
+        "utm_source",
+        "utm_medium",
+        "utm_campaign",
+        "utm_term",
+        "utm_content",
+        "srsltid",
+        "fbclid",
+        "gclid",
+    }
 
     # High-quality large retailers that are generally safe fallback PDP sources.
     MAJOR_RETAILERS = {
@@ -334,6 +353,9 @@ class SearchScorer:
         domain_normalized = self._matching.normalize_token_text(domain)
         if not brand_normalized or not domain_normalized:
             return False
+        alias_domains = self.BRAND_DOMAIN_ALIASES.get(brand_normalized, set())
+        if alias_domains and self._domain_matches_candidates(domain, alias_domains):
+            return True
         if brand_normalized in domain_normalized:
             return True
 
@@ -352,7 +374,10 @@ class SearchScorer:
 
     @staticmethod
     def _path_segments(url: str) -> list[str]:
-        return [segment for segment in urlparse(url).path.lower().split("/") if segment]
+        segments = [segment for segment in urlparse(url).path.lower().split("/") if segment]
+        if segments[:1] and re.fullmatch(r"[a-z]{2}-[a-z]{2}", segments[0]):
+            return segments[1:]
+        return segments
 
     def _path_tokens(self, url: str) -> set[str]:
         return self._matching.tokenize_keywords(" ".join(self._path_segments(url)).replace("-", " ").replace("_", " "))
@@ -521,11 +546,6 @@ class SearchScorer:
             return True
         if len(segments) >= 2 and segments[0] in {"products", "collections"} and segments[1] in self.LISTING_PATH_SEGMENTS:
             return True
-        # Detect brand-site product-line pages: /products/{category}/{slug}
-        # These have 3+ path segments under /products/ and typically list
-        # multiple items rather than a single buyable product.
-        if self.is_product_line_page(url):
-            return True
         return False
 
     def is_product_line_page(self, url: str) -> bool:
@@ -547,7 +567,7 @@ class SearchScorer:
                 return False
 
             path = parsed.path.rstrip("/").lower()
-            segments = [s for s in path.split("/") if s]
+            segments = self._path_segments(url)
             if not segments:
                 return False
 
@@ -566,6 +586,91 @@ class SearchScorer:
         except Exception:
             pass
         return False
+
+    @staticmethod
+    def _query_param_penalty(url: str) -> float:
+        parsed = urlparse(url)
+        if not parsed.query:
+            return 0.0
+
+        lowered_query = parsed.query.lower()
+        penalty = 0.0
+        for param in SearchScorer.NOISY_QUERY_PARAMS:
+            if f"{param.lower()}=" in lowered_query:
+                penalty -= 2.0 if param == "bvstate" else 1.0
+        return penalty
+
+    def _result_has_resolvable_family_signals(
+        self,
+        result: dict[str, Any],
+        product_name: Optional[str],
+        brand: Optional[str],
+    ) -> bool:
+        url = str(result.get("url") or "")
+        if not self.is_product_line_page(url):
+            return False
+
+        combined = " ".join(
+            [
+                str(result.get("title") or ""),
+                str(result.get("description") or ""),
+                url,
+            ]
+        )
+        if self._matching.has_variant_token_overlap(product_name, combined):
+            return True
+
+        expected_tokens = self._matching.tokenize_keywords(product_name)
+        if brand:
+            expected_tokens = expected_tokens.difference(self._matching.tokenize_keywords(brand))
+        actual_tokens = self._matching.tokenize_keywords(combined)
+        overlap = len(expected_tokens.intersection(actual_tokens))
+        return overlap >= 2
+
+    def classify_result_source(
+        self,
+        result: dict[str, Any],
+        sku: str,
+        brand: Optional[str],
+        product_name: Optional[str],
+    ) -> str:
+        """Classify a specific result URL for ranking policy."""
+        url = str(result.get("url") or "")
+        domain = self.domain_from_url(url)
+        effective_brand = brand or self.infer_brand_from_result(result, product_name)
+        source_tier = self.classify_source_domain(domain, effective_brand)
+
+        combined = " ".join(
+            [
+                url,
+                str(result.get("title") or ""),
+                str(result.get("description") or ""),
+            ]
+        )
+        has_identifier = bool(sku) and sku.lower() in combined.lower()
+        variant_match = self._matching.has_variant_token_overlap(product_name, combined)
+        specific_token_overlap = self._matching.has_specific_token_overlap(product_name, combined, effective_brand)
+        is_category_like = self.is_category_like_url(url)
+
+        if source_tier == "official":
+            if self._is_root_path(url):
+                return "official_root"
+            if self.is_product_line_page(url):
+                if has_identifier or self._result_has_resolvable_family_signals(result, product_name, effective_brand):
+                    return "official_family"
+                return "official_generic"
+            return "official_exact" if has_identifier or variant_match else "official_exact"
+
+        if source_tier == "major_retailer":
+            return "major_retailer_exact" if not is_category_like and (has_identifier or variant_match or specific_token_overlap) else "major_retailer"
+
+        if source_tier == "secondary_retailer":
+            return "secondary_retailer_exact" if not is_category_like and (has_identifier or variant_match or specific_token_overlap) else "secondary_retailer"
+
+        if source_tier == "marketplace":
+            return "marketplace_exact" if has_identifier else "marketplace"
+
+        return "unknown"
 
     def _has_multi_product_indicators(self, text: str) -> bool:
         """Check if text contains phrases suggesting a multi-product listing."""
@@ -593,6 +698,9 @@ class SearchScorer:
 
         if self.is_category_like_url(url):
             return True
+
+        if self.is_product_line_page(url):
+            return False
 
         provider = str(result.get("provider") or "").lower()
         result_type = str(result.get("result_type") or "").lower()
@@ -628,6 +736,8 @@ class SearchScorer:
         expected_tokens = self._matching.tokenize_keywords(product_name)
         brand_tokens = self._matching.tokenize_keywords(brand)
         path_tokens = self._path_tokens(url)
+        source_class = self.classify_result_source(result, sku, brand, product_name)
+        combined_tokens = self._matching.tokenize_keywords(combined)
 
         score = 0.0
 
@@ -645,11 +755,13 @@ class SearchScorer:
             overlap = len(expected_tokens.intersection(self._matching.tokenize_keywords(combined)))
             score += min(4.0, float(overlap) * 0.8)
             specific_expected_tokens = expected_tokens.difference(brand_tokens)
+            specific_overlap_count = len(specific_expected_tokens.intersection(combined_tokens))
             if specific_expected_tokens and path_tokens:
                 path_overlap = len(specific_expected_tokens.intersection(path_tokens))
                 score += min(2.5, float(path_overlap) * 0.9)
         else:
             specific_expected_tokens = set()
+            specific_overlap_count = 0
 
         expected_variant_tokens = self._matching.extract_variant_tokens(product_name)
         variant_overlap = 0
@@ -658,9 +770,9 @@ class SearchScorer:
             variant_overlap = len(expected_variant_tokens.intersection(actual_variant_tokens))
             if variant_overlap:
                 score += min(3.0, float(variant_overlap) * 1.5)
-            else:
+            elif source_class != "official_family":
                 score -= 2.0
-            if self._matching.has_conflicting_variant_tokens(product_name, combined):
+            if source_class != "official_family" and self._matching.has_conflicting_variant_tokens(product_name, combined):
                 score -= 4.5
 
         score += self._lexical_variant_adjustment(product_name, combined)
@@ -676,7 +788,7 @@ class SearchScorer:
 
         effective_brand = brand or self.infer_brand_from_result(result, product_name)
         source_tier = self.classify_source_domain(domain, effective_brand)
-        if source_tier == "official":
+        if source_class == "official_exact":
             # Official manufacturer PDPs are the gold-standard source.
             # The bonus must comfortably exceed major_retailer (2.5) to
             # prevent retailers with SKU-in-URL or e-commerce signals
@@ -695,12 +807,24 @@ class SearchScorer:
                 and not self._matching.has_conflicting_variant_tokens(product_name, combined)
             ):
                 score += 4.5
+        elif source_class == "official_family":
+            score += 7.0 if prefer_manufacturer else 5.5
+            specific_overlap_tokens = len(specific_expected_tokens.intersection(path_tokens.union(self._matching.tokenize_keywords(title))))
+            if self._matching.has_variant_token_overlap(product_name, combined):
+                score += 2.5
+            if specific_overlap_tokens >= 2 and not self._matching.has_conflicting_variant_tokens(product_name, combined):
+                score += 2.5
         elif source_tier == "major_retailer":
             score += 2.5
         elif source_tier == "secondary_retailer":
             score += 1.0
         elif source_tier == "marketplace":
             score -= 3.5
+
+        if source_class in {"official_generic", "official_root"}:
+            score -= 4.0
+
+        score += self._query_param_penalty(url)
 
         # Domain success history bonus/penalty
         if domain:
@@ -728,7 +852,8 @@ class SearchScorer:
                     break
 
         if domain:
-            score += self._category_domain_bonus(domain, category)
+            if sku and sku.lower() in combined or specific_overlap_count > 0 or self._matching.is_name_match(product_name, title):
+                score += self._category_domain_bonus(domain, category)
             score -= self._category_mass_retailer_penalty(domain, category)
 
         if source_tier == "official" and self._is_root_path(url) and expected_variant_tokens and variant_overlap == 0:
@@ -739,6 +864,8 @@ class SearchScorer:
         # Category page penalty
         if self.is_category_like_url(url):
             score -= 2.0
+        elif self.is_product_line_page(url) and source_class != "official_family":
+            score -= 1.5
 
         # E-commerce signals
         if not self.is_category_like_url(url) and any(marker in combined for marker in ["price", "$", "in stock", "add to cart", "buy now"]):

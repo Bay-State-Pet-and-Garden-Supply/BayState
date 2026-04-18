@@ -55,6 +55,14 @@ class MatchingUtils:
         "pack": "ct",
         "packs": "ct",
         "pk": "ct",
+        "qt": "qt",
+        "quart": "qt",
+        "quarts": "qt",
+        "gal": "gal",
+        "gallon": "gal",
+        "gallons": "gal",
+        "cf": "cf",
+        "cuft": "cf",
         "inch": "in",
         "inches": "in",
         "in": "in",
@@ -93,6 +101,9 @@ class MatchingUtils:
             return set()
 
         normalized = re.sub(r"\b(inches?|inch)\b", "in", text)
+        normalized = re.sub(r"\bcu\.?\s*ft\b", "cf", normalized)
+        normalized = re.sub(r"\bcubic\s+feet?\b", "cf", normalized)
+        normalized = re.sub(r"\bcubic\s+foot\b", "cf", normalized)
         normalized = re.sub(r'(?<=\d)\s*["″”]\s*', " in ", normalized)
         tokens: set[str] = set()
         dimension_pattern = re.compile(r"(?<!\d)(\d{1,4})\s*(?:in)?\s*[x×]\s*(\d{1,4})(?:\s*in)?(?!\d)")
@@ -104,7 +115,7 @@ class MatchingUtils:
             normalized_without_dimensions = normalized_without_dimensions.replace(match.group(0), " ")
 
         for number, unit in re.findall(
-            r"(?<!\d)(\d{1,4})\s*(ct|count|pack|packs|pk|lb|lbs|oz|inch|inches|in)\b",
+            r"(?<!\d)(\d+(?:\.\d+)?)\s*(ct|count|pack|packs|pk|lb|lbs|oz|qt|quart|quarts|gal|gallon|gallons|cf|cuft|inch|inches|in)\b",
             normalized_without_dimensions,
         ):
             normalized_unit = self.VARIANT_UNIT_ALIASES.get(unit, unit)
@@ -131,6 +142,12 @@ class MatchingUtils:
             return "weight"
         if token.endswith("lb"):
             return "weight"
+        if token.endswith("qt"):
+            return "volume"
+        if token.endswith("gal"):
+            return "volume"
+        if token.endswith("cf"):
+            return "volume"
         if token.endswith("in"):
             return "length"
         return "other"
@@ -141,10 +158,7 @@ class MatchingUtils:
         if not expected_variant_tokens:
             return False
 
-        expected_by_kind = {
-            self._variant_token_kind(token): token
-            for token in expected_variant_tokens
-        }
+        expected_by_kind = {self._variant_token_kind(token): token for token in expected_variant_tokens}
         actual_variant_tokens = self.extract_variant_tokens(actual_text)
         for token in actual_variant_tokens:
             token_kind = self._variant_token_kind(token)
@@ -256,11 +270,7 @@ class MatchingUtils:
         *,
         allow_url_fallback: bool = True,
     ) -> Optional[str]:
-        expected_tokens = {
-            token
-            for token in re.findall(r"[a-z0-9]+", (expected_name or "").lower())
-            if token and not token.isdigit()
-        }
+        expected_tokens = {token for token in re.findall(r"[a-z0-9]+", (expected_name or "").lower()) if token and not token.isdigit()}
         if not expected_tokens:
             return None
 

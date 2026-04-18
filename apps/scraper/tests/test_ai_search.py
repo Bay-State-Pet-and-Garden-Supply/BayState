@@ -220,6 +220,36 @@ def test_prepare_search_results_demotes_marketplaces_below_official_brand_pages(
     assert prepared[0]["url"] == "https://nutrisourcepetfoods.com/our-food/ocean-select-entree/"
 
 
+def test_prepare_search_results_prefers_official_family_page_with_variant_signals_over_small_retailer() -> None:
+    scraper = AISearchScraper(prefer_manufacturer=True)
+    results = [
+        {
+            "url": "https://www.wiltonhardware.com/p/nature-scapes-color-enhanced-mulch-sierra-red-032247884594",
+            "title": "Nature Scapes Color Enhanced Mulch Sierra Red 032247884594",
+            "description": "Independent retailer PDP for Scotts Sierra Red mulch 1.5 cu ft.",
+        },
+        {
+            "url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
+            "title": "Scotts Nature Scapes Color Enhanced Mulch 1.5 cu. ft.",
+            "description": "Official Scotts family page with Red, Brown, and Black color variants plus 1.5 CF and 2 CF size options.",
+        },
+    ]
+
+    prepared = scraper._scoring.prepare_search_results(
+        search_results=results,
+        sku="032247884594",
+        brand="Scotts",
+        product_name="Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+        category="Mulch",
+        prefer_manufacturer=True,
+    )
+
+    assert (
+        prepared[0]["url"]
+        == "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html"
+    )
+
+
 def test_prepare_search_results_prefers_official_brand_segment_when_brand_missing() -> None:
     scraper = AISearchScraper(prefer_manufacturer=True)
     results = [
@@ -296,11 +326,13 @@ def test_scraper_passes_runtime_api_key_to_search_client(monkeypatch) -> None:
             provider: str | None = None,
             cache_max: int = 500,
             api_key: str | None = None,
+            provider_max_results: int | None = None,
         ) -> None:
             captured["max_results"] = max_results
             captured["provider"] = provider
             captured["cache_max"] = cache_max
             captured["api_key"] = api_key
+            captured["provider_max_results"] = provider_max_results
 
     monkeypatch.setattr("scrapers.ai_search.scraper.SearchClient", SearchClientStub)
 
@@ -313,6 +345,7 @@ def test_scraper_passes_runtime_api_key_to_search_client(monkeypatch) -> None:
     assert captured["max_results"] == 9
     assert captured["provider"] == "auto"
     assert captured["api_key"] == "gemini-runtime-key"
+    assert captured["provider_max_results"] is not None
 
 
 def test_scrape_product_uses_consolidated_name_follow_up_search() -> None:

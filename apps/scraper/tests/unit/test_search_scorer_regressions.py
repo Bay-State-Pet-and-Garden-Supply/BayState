@@ -331,6 +331,72 @@ def test_scoring_prefers_exact_deere_pdp_over_deere_collection_page() -> None:
     assert pdp_score > collection_score
 
 
+def test_scoring_prefers_official_family_page_with_variant_signals_over_small_retailer() -> None:
+    scorer = SearchScorer()
+    official_family_result = _result(
+        "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
+        "Scotts Nature Scapes Color Enhanced Mulch 1.5 cu. ft.",
+        "Official Scotts family page with Red, Brown, and Black color variants plus 1.5 CF and 2 CF size options.",
+    )
+    retailer_result = _result(
+        "https://www.wiltonhardware.com/p/nature-scapes-color-enhanced-mulch-sierra-red-032247884594",
+        "Nature Scapes Color Enhanced Mulch Sierra Red 032247884594",
+        "Independent retailer PDP for Scotts Sierra Red mulch 1.5 cu ft.",
+    )
+
+    official_score = scorer.score_search_result(
+        official_family_result,
+        sku="032247884594",
+        brand="Scotts",
+        product_name="Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+        category="Mulch",
+        prefer_manufacturer=True,
+    )
+    retailer_score = scorer.score_search_result(
+        retailer_result,
+        sku="032247884594",
+        brand="Scotts",
+        product_name="Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+        category="Mulch",
+        prefer_manufacturer=True,
+    )
+
+    assert official_score > retailer_score
+
+
+def test_scoring_demotes_noisy_official_review_state_url_below_clean_official_url() -> None:
+    scorer = SearchScorer()
+    clean_result = _result(
+        "https://scottsmiraclegro.com/en-us/scotts-nature-scapes-color-enhanced-mulch.html",
+        "Scotts Nature Scapes Color Enhanced Mulch 1.5 cu. ft.",
+        "Official Scotts product page.",
+    )
+    noisy_result = _result(
+        "https://scottsmiraclegro.com/en-us/scotts-nature-scapes-color-enhanced-mulch.html?bvstate=pg:7/ct:r",
+        "Scotts Nature Scapes Color Enhanced Mulch 1.5 cu. ft.",
+        "Official Scotts product page with review state query parameters.",
+    )
+
+    clean_score = scorer.score_search_result(
+        clean_result,
+        sku="032247884594",
+        brand="Scotts",
+        product_name="Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+        category="Mulch",
+        prefer_manufacturer=True,
+    )
+    noisy_score = scorer.score_search_result(
+        noisy_result,
+        sku="032247884594",
+        brand="Scotts",
+        product_name="Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+        category="Mulch",
+        prefer_manufacturer=True,
+    )
+
+    assert clean_score > noisy_score
+
+
 def test_scoring_prefers_category_fit_hardware_retailer_over_amazon() -> None:
     scorer = SearchScorer()
     ace_result = _result(

@@ -49,7 +49,7 @@ class TestSKUValidation:
             brand="Purina",
             source_url="https://www.example.com/products/pro-plan-chicken",
         )
-        assert result[0]  is True
+        assert result[0] is True
 
     def test_rejects_without_sku_when_low_confidence(self, scraper):
         scraper_low = AISearchScraper(confidence_threshold=0.5)
@@ -66,7 +66,7 @@ class TestSKUValidation:
             brand="SomeBrand",
             source_url="https://example.com/product",
         )
-        assert result[0]  is False
+        assert result[0] is False
         assert "weak match signals" in result[1] or "confidence too low" in result[1].lower()
 
     def test_rejects_without_sku_brand_mismatch_high_confidence(self, scraper):
@@ -83,7 +83,7 @@ class TestSKUValidation:
             brand="BrandB",
             source_url="https://example.com/product",
         )
-        assert result[0]  is False
+        assert result[0] is False
         assert "Brand mismatch" in result[1]
 
     def test_rejects_untrusted_domain_below_elevated_confidence_threshold(self, scraper):
@@ -147,7 +147,9 @@ class TestSKUValidation:
                 "description": "WEE-WEE CAT PADS | GENTLE FRESH SCENT | 10 PK | 436325",
                 "size_metrics": "10 PK",
                 "confidence": 0.98,
-                "images": ["https://cdn11.bigcommerce.com/s-rncilydun5/images/stencil/3840w/products/16202/19479/436325__83576.1763035420.jpg?compression=lossy"],
+                "images": [
+                    "https://cdn11.bigcommerce.com/s-rncilydun5/images/stencil/3840w/products/16202/19479/436325__83576.1763035420.jpg?compression=lossy"
+                ],
             },
             sku="045663976903",
             product_name="Wee-wee Cat Pads 28 X 30 in. 10 ct.",
@@ -180,9 +182,7 @@ class TestSKUValidation:
             "product_name": "WEE-WEE LITTER BOX SYSTEM CAT PADS",
             "brand": "FOUR PAWS",
             "confidence": 0.9,
-            "images": [
-                "https://cdn11.bigcommerce.com/s-rncilydun5/images/stencil/{:size}/products/16199/19476/436322__58796.jpg"
-            ],
+            "images": ["https://cdn11.bigcommerce.com/s-rncilydun5/images/stencil/{:size}/products/16199/19476/436322__58796.jpg"],
         }
         result = scraper._validator.validate_extraction_match(
             extraction_result=extraction_result,
@@ -192,9 +192,7 @@ class TestSKUValidation:
             source_url="https://www.bradleycaldwell.com/wee-wee-litter-box-system-cat-pads-10-pk-436322",
         )
         assert result == (True, "ok")
-        assert extraction_result["images"] == [
-            "https://cdn11.bigcommerce.com/s-rncilydun5/images/stencil/3840w/products/16199/19476/436322__58796.jpg"
-        ]
+        assert extraction_result["images"] == ["https://cdn11.bigcommerce.com/s-rncilydun5/images/stencil/3840w/products/16199/19476/436322__58796.jpg"]
 
     def test_rejects_images_with_unknown_template_placeholders(self, scraper):
         result = scraper._validator.validate_extraction_match(
@@ -203,9 +201,7 @@ class TestSKUValidation:
                 "product_name": "Test Product",
                 "brand": "TestBrand",
                 "confidence": 0.9,
-                "images": [
-                    "https://cdn.example.com/images/{unknown_token}/product.jpg"
-                ],
+                "images": ["https://cdn.example.com/images/{unknown_token}/product.jpg"],
             },
             sku="12345",
             product_name="Test Product",
@@ -214,6 +210,28 @@ class TestSKUValidation:
         )
         assert result[0] is False
         assert "logos or placeholders" in result[1].lower()
+
+    def test_accepts_resolved_official_family_page_when_variant_resolution_matches(self, scraper):
+        result = scraper._validator.validate_extraction_match(
+            extraction_result={
+                "success": True,
+                "product_name": "Scotts Nature Scapes Color Enhanced Mulch 1.5 cu. ft.",
+                "brand": "Scotts",
+                "description": "Rich, red color mulch for trees, shrubs, flowers or vegetables.",
+                "size_metrics": "1.5cf",
+                "confidence": 0.9,
+                "images": ["https://smg.widen.net/content/q6rayjk4jt/webp/88459440_0_F.webp?&w=800&h=800"],
+                "resolved_variant": {
+                    "resolver": "demandware_product_variation",
+                    "variant_id": "032247884594",
+                },
+            },
+            sku="032247884594",
+            product_name="Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+            brand="Scotts",
+            source_url="https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/88459442.html",
+        )
+        assert result == (True, "ok")
 
 
 class TestQueryVariants:
