@@ -498,6 +498,7 @@ export class ShopSiteClient {
                 'Content-Length': uploadRequest.contentLength,
                 'Content-Type': uploadRequest.contentType,
             },
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             body: uploadRequest.body as any,
             cache: 'no-store',
         });

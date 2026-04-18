@@ -325,6 +325,7 @@ export function useRealtimeChannel(options: UseRealtimeChannelOptions): UseRealt
     mountedRef.current = true;
 
     if (autoConnect) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       connectInternal(true);
     }
 

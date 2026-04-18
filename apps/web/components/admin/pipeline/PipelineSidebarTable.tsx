@@ -224,7 +224,9 @@ export function PipelineSidebarTable({
     onPreferredSkuChange,
     onEditCohort,
     groupedProducts,
-    cohortBrands
+    cohortBrands,
+    expandedCohortIds,
+    toggleCohortExpansion
   ]);
 
   return (
