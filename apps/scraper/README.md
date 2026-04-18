@@ -29,6 +29,7 @@ curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/Bay
 ```
 
 Setup flow:
+
 1. Open **Admin → Scrapers → Network** in BayStateApp
 2. Generate a runner key in **Runner Accounts**
 3. Run the one-liner above on the new machine
@@ -41,6 +42,7 @@ That's it! The runner starts automatically and runs in the background.
 v0.3.0 introduces the crawl4ai engine with hybrid extraction modes for optimal performance and cost.
 
 ### Key Features
+
 - **Hybrid Extraction**: Automatically chooses between LLM-free and LLM modes
 - **LLM-Free Mode**: Fast DOM parsing with zero AI costs (3-5x faster)
 - **LLM Mode**: AI extraction for complex pages requiring semantic understanding
@@ -50,11 +52,11 @@ v0.3.0 introduces the crawl4ai engine with hybrid extraction modes for optimal p
 
 ### Extraction Modes
 
-| Mode | Speed | Cost | Best For |
-|------|-------|------|----------|
-| **LLM-Free** | 2-4s | Free | Structured pages, e-commerce products |
-| **LLM** | 8-15s | $0.01-0.05 | Complex comparisons, unstructured data |
-| **Auto** (Recommended) | 2-8s | Varies | Automatic selection based on page complexity |
+| Mode                   | Speed | Cost       | Best For                                     |
+| ---------------------- | ----- | ---------- | -------------------------------------------- |
+| **LLM-Free**           | 2-4s  | Free       | Structured pages, e-commerce products        |
+| **LLM**                | 8-15s | $0.01-0.05 | Complex comparisons, unstructured data       |
+| **Auto** (Recommended) | 2-8s  | Varies     | Automatic selection based on page complexity |
 
 ### Quick Start
 
@@ -65,9 +67,9 @@ name: "my-crawl4ai-scraper"
 scraper_type: "crawl4ai"
 
 crawl4ai_config:
-  extraction_mode: "auto"           # auto | llm-free | llm
-  llm_model: "gpt-4o-mini"          # Only for LLM mode
-  
+  extraction_mode: "auto" # auto | llm-free | llm
+  llm_model: "gpt-4o-mini" # Only for LLM mode
+
   anti_detection:
     enabled: true
     simulate_user: true
@@ -135,14 +137,14 @@ The BayStateScraper uses a coordinator-runner pattern with the new crawl4ai engi
 
 ### crawl4ai Engine Components
 
-| Component | Purpose | Location |
-|-----------|---------|----------|
-| **Engine** | Main orchestrator | `src/crawl4ai_engine/engine.py` |
-| **Retry** | Intelligent retry with exponential backoff | `src/crawl4ai_engine/retry.py` |
-| **Anti-Bot** | Stealth and fingerprinting | `src/crawl4ai_engine/anti_bot.py` |
-| **Callback** | Result submission to coordinator | `src/crawl4ai_engine/callback.py` |
-| **Config** | Configuration management | `src/crawl4ai_engine/config.py` |
-| **Metrics** | Performance and cost tracking | `src/crawl4ai_engine/metrics.py` |
+| Component    | Purpose                                    | Location                          |
+| ------------ | ------------------------------------------ | --------------------------------- |
+| **Engine**   | Main orchestrator                          | `src/crawl4ai_engine/engine.py`   |
+| **Retry**    | Intelligent retry with exponential backoff | `src/crawl4ai_engine/retry.py`    |
+| **Anti-Bot** | Stealth and fingerprinting                 | `src/crawl4ai_engine/anti_bot.py` |
+| **Callback** | Result submission to coordinator           | `src/crawl4ai_engine/callback.py` |
+| **Config**   | Configuration management                   | `src/crawl4ai_engine/config.py`   |
+| **Metrics**  | Performance and cost tracking              | `src/crawl4ai_engine/metrics.py`  |
 
 ### Extraction Flow
 
@@ -176,10 +178,10 @@ The BayStateScraper uses a coordinator-runner pattern with the new crawl4ai engi
 
 The runner supports two environments:
 
-| Environment | API URL | Use Case |
-|-------------|---------|----------|
-| **Development** | `http://localhost:3000` | Active development, testing new scrapers |
-| **Production** | `https://bay-state-app.vercel.app` | Live data collection |
+| Environment     | API URL                            | Use Case                                 |
+| --------------- | ---------------------------------- | ---------------------------------------- |
+| **Development** | `http://localhost:3000`            | Active development, testing new scrapers |
+| **Production**  | `https://bay-state-app.vercel.app` | Live data collection                     |
 
 ### Local CLI Mode (New!)
 
@@ -197,6 +199,7 @@ python runner.py --local --config scrapers/configs/phillips.yaml --output result
 ```
 
 For scrapers requiring login, set environment variables:
+
 ```bash
 PHILLIPS_USERNAME=myuser PHILLIPS_PASSWORD=mypass \
   python runner.py --local --config scrapers/configs/phillips.yaml
@@ -233,12 +236,14 @@ curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/Bay
 The runner supports two modes:
 
 ### Polling Mode (Default)
+
 1. **Polls** the coordinator every 30 seconds for new jobs
 2. **Fetches credentials** on-demand (never stored locally)
 3. **Executes** scraping jobs using Playwright
 4. **Reports** results back via API callback
 
 ### Realtime Mode (v0.2.0+)
+
 1. **Connects** to Supabase Realtime for instant job dispatch
 2. **Tracks presence** so coordinators see active runners
 3. **Receives** jobs via websocket broadcast
@@ -257,7 +262,7 @@ cd BayStateScraper
 
 # Create .env file
 cat > .env << EOF
-SCRAPER_API_URL=https://app.baystatepet.com
+SCRAPER_API_URL=https://bay-state-app.vercel.app/
 SCRAPER_API_KEY=bsr_your_key_here
 RUNNER_NAME=$(hostname)
 EOF
@@ -273,18 +278,18 @@ Browser session data will be persisted in `apps/scraper/.browser_storage_states/
 
 ## Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `SCRAPER_API_URL` | Yes | - | BayStateApp base URL |
-| `SCRAPER_API_KEY` | Yes | - | Runner API key (starts with `bsr_`) |
-| `RUNNER_NAME` | No | hostname | Identifier for this runner |
-| `POLL_INTERVAL` | No | 30 | Seconds between job polls |
-| `MAX_JOBS_BEFORE_RESTART` | No | 100 | Restart for memory hygiene |
-| `BSR_SUPABASE_REALTIME_KEY` | No | - | Service role key for realtime mode (optional) |
-| `HEADLESS` | No | `true` | Set to `false` to run browser in visible mode for debugging |
-| `EXTRACTION_MODE` | No | `auto` | Default extraction mode: `auto`, `llm-free`, or `llm` |
-| `LLM_API_KEY` | No | - | OpenAI API key (only needed for LLM mode) |
-| `CRAWL4AI_CACHE_ENABLED` | No | `true` | Enable content caching |
+| Variable                    | Required | Default  | Description                                                 |
+| --------------------------- | -------- | -------- | ----------------------------------------------------------- |
+| `SCRAPER_API_URL`           | Yes      | -        | BayStateApp base URL                                        |
+| `SCRAPER_API_KEY`           | Yes      | -        | Runner API key (starts with `bsr_`)                         |
+| `RUNNER_NAME`               | No       | hostname | Identifier for this runner                                  |
+| `POLL_INTERVAL`             | No       | 30       | Seconds between job polls                                   |
+| `MAX_JOBS_BEFORE_RESTART`   | No       | 100      | Restart for memory hygiene                                  |
+| `BSR_SUPABASE_REALTIME_KEY` | No       | -        | Service role key for realtime mode (optional)               |
+| `HEADLESS`                  | No       | `true`   | Set to `false` to run browser in visible mode for debugging |
+| `EXTRACTION_MODE`           | No       | `auto`   | Default extraction mode: `auto`, `llm-free`, or `llm`       |
+| `LLM_API_KEY`               | No       | -        | OpenAI API key (only needed for LLM mode)                   |
+| `CRAWL4AI_CACHE_ENABLED`    | No       | `true`   | Enable content caching                                      |
 
 ### Supabase Realtime (Optional)
 
@@ -315,6 +320,7 @@ CRAWL4AI_CACHE_ENABLED=true
 # Anti-detection level (basic, standard, aggressive)
 ANTI_DETECTION_LEVEL=standard
 ```
+
 ## Monitoring
 
 The scraper provides built-in monitoring via Prometheus metrics and optional Sentry error tracking.
@@ -323,17 +329,17 @@ The scraper provides built-in monitoring via Prometheus metrics and optional Sen
 
 Metrics are exposed at `http://localhost:8000/metrics` (configurable via `METRICS_PORT`):
 
-| Metric | Type | Description |
-|--------|------|-------------|
-| `crawl4ai_extractions_total` | Counter | Total extractions by mode (llm, llm_free, auto) |
-| `crawl4ai_success_rate` | Gauge | Overall extraction success rate (0-1) |
-| `crawl4ai_duration_ms` | Gauge | Average extraction duration |
-| `crawl4ai_cache_hit_rate` | Gauge | Cache hit rate (0-1) |
-| `crawl4ai_errors_total` | Counter | Errors by type |
-| `crawl4ai_antibot_attempts_total` | Counter | Anti-bot bypass attempts |
-| `crawl4ai_antibot_success_rate` | Gauge | Anti-bot success rate |
-| `crawl4ai_cost_usd_total` | Counter | Total cost in USD |
-| `crawl4ai_cost_average_usd` | Gauge | Average cost per extraction |
+| Metric                            | Type    | Description                                     |
+| --------------------------------- | ------- | ----------------------------------------------- |
+| `crawl4ai_extractions_total`      | Counter | Total extractions by mode (llm, llm_free, auto) |
+| `crawl4ai_success_rate`           | Gauge   | Overall extraction success rate (0-1)           |
+| `crawl4ai_duration_ms`            | Gauge   | Average extraction duration                     |
+| `crawl4ai_cache_hit_rate`         | Gauge   | Cache hit rate (0-1)                            |
+| `crawl4ai_errors_total`           | Counter | Errors by type                                  |
+| `crawl4ai_antibot_attempts_total` | Counter | Anti-bot bypass attempts                        |
+| `crawl4ai_antibot_success_rate`   | Gauge   | Anti-bot success rate                           |
+| `crawl4ai_cost_usd_total`         | Counter | Total cost in USD                               |
+| `crawl4ai_cost_average_usd`       | Gauge   | Average cost per extraction                     |
 
 ### Sentry Error Tracking
 
@@ -344,6 +350,7 @@ SENTRY_DSN=https://public_key@o0.ingest.sentry.io/project_id
 ```
 
 See the full [Monitoring Guide](docs/monitoring.md) for:
+
 - Complete Prometheus configuration
 - Sentry setup instructions
 - Troubleshooting common issues
