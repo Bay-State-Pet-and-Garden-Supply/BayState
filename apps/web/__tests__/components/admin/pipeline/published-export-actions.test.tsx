@@ -130,11 +130,11 @@ describe('export tab actions', () => {
 
         await waitFor(() => {
             expect(
-                screen.getByRole('button', { name: 'Upload to ShopSite' }),
+                screen.getByRole('button', { name: 'Upload' }),
             ).toBeEnabled();
         });
 
-        fireEvent.click(screen.getByRole('button', { name: 'Upload to ShopSite' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Upload' }));
 
         await waitFor(() => {
             expect(mockFetch).toHaveBeenCalledWith(
@@ -212,7 +212,7 @@ describe('export tab actions', () => {
             />,
         );
 
-        fireEvent.click(screen.getByRole('button', { name: 'Upload to ShopSite' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Upload' }));
         fireEvent.click(screen.getByRole('button', { name: 'Download ZIP' }));
 
         expect(onUploadShopSite).toHaveBeenCalledTimes(1);

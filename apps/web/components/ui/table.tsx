@@ -8,12 +8,12 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+      className="relative w-full overflow-x-auto shadow-[8px_8px_0px_rgba(0,0,0,1)]"
     >
       <table
         data-slot="table"
         className={cn(
-          "w-full caption-bottom text-sm border-2 border-zinc-950 border-separate border-spacing-0 bg-white",
+          "w-full caption-bottom text-sm border-4 border-zinc-950 border-separate border-spacing-0 bg-white",
           className
         )}
         {...props}

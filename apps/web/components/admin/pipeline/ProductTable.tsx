@@ -205,7 +205,11 @@ export function ProductTable({
           <DataTableColumnHeader column={column} title="SKU" />
         ),
         cell: ({ row }) => (
-          <div className="font-mono text-[10px] text-zinc-950 font-black uppercase tracking-tight">
+          <div 
+            className="font-mono text-[10px] text-zinc-950 font-black uppercase tracking-tight"
+            role="gridcell"
+            aria-label={String(row.getValue("sku"))}
+          >
             {row.getValue("sku")}
           </div>
         ),
@@ -447,7 +451,7 @@ export function ProductTable({
 
   return (
     <div
-      className="max-h-[600px] min-h-0 overflow-x-hidden overflow-y-auto rounded-none border border-zinc-950 bg-card outline-none focus-within:ring-1 focus-within:ring-zinc-950"
+      className="max-h-[600px] min-h-0 overflow-auto rounded-none outline-none focus-within:ring-1 focus-within:ring-zinc-950 p-1 pr-8 pb-8 [&_[data-slot=table-container]]:overflow-visible"
       ref={containerRef}
       onKeyDown={handleKeyDown}
       tabIndex={0}

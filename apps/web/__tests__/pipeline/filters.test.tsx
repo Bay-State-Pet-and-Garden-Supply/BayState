@@ -142,7 +142,7 @@ describe('PipelineClient Integration', () => {
             />
         );
 
-        await userEvent.click(screen.getByRole('tab', { name: /Finalizing/i }));
+        fireEvent.click(screen.getByRole('tab', { name: /Finalizing/i }));
 
         await waitFor(() => {
             expect(mockReplace).toHaveBeenCalledWith('/admin/pipeline?stage=finalizing');

@@ -52,6 +52,7 @@ export interface ShopSiteUploadResult {
     uploadResponse: string;
     dbmakeResponse: string;
     publishResponse?: string;
+    publishCookieHeader?: string;
 }
 
 const PRODUCT_XML_VERSION = '15.0';
@@ -526,22 +527,24 @@ export class ShopSiteClient {
             throw new Error('ShopSite upload did not return a dbmake query string or success indicator');
         }
 
-        // Detection: If dbmakeQuery contains many mapping params (e.g. 0=0&1=1), it means
-        // ShopSite failed to recognize the XML and triggered manual mapping mode.
-        // This causes long URLs that trigger Cloudflare 403.
-        const mappingParams = dbmakeQuery.match(/\d+=\d+/g);
-        if (mappingParams && mappingParams.length > 5) {
-            console.error(`[ShopSite] Manual mapping mode detected. Query too long: ${dbmakeQuery}`);
-            throw new Error('ShopSite failed to recognize the automated XML upload and triggered manual mapping mode. Please verify the MIME upload wrapper and XML document shape.');
+        if (/\b\d+=-?\d+\b/.test(dbmakeQuery)) {
+            console.log('[ShopSite] Upload returned field-mapped dbmake parameters; replaying them via POST.');
         }
 
-        console.log(`[ShopSite] Proceeding to dbmake.cgi with query: ${dbmakeQuery}`);
+        console.log('[ShopSite] Proceeding to dbmake.cgi with returned parameters.');
         
         const uploadCookieHeader = this.extractCookieHeader(uploadHttpResponse);
 
-        const dbmakeHttpResponse = await fetch(this.buildUrl(dbmakeQuery, 'dbmake.cgi'), {
-            method: 'GET',
-            headers: this.buildRequestHeaders(uploadCookieHeader, this.config.storeUrl),
+        const dbmakeRequestBody = dbmakeQuery;
+        const dbmakeHttpResponse = await fetch(this.buildScriptUrl('dbmake.cgi'), {
+            method: 'POST',
+            headers: {
+                ...this.buildRequestHeaders(uploadCookieHeader, this.config.storeUrl),
+                'Content-Length': String(Buffer.byteLength(dbmakeRequestBody, 'utf8')),
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            body: dbmakeRequestBody as any,
             cache: 'no-store',
         });
 
@@ -550,9 +553,10 @@ export class ShopSiteClient {
             throw new Error(`ShopSite dbmake failed (${dbmakeHttpResponse.status}): ${dbmakeResponse || dbmakeHttpResponse.statusText}`);
         }
 
+        const publishCookieHeader = this.extractCookieHeader(dbmakeHttpResponse) ?? uploadCookieHeader;
+
         let publishResponse: string | undefined;
         if (options.publish !== false) {
-            const publishCookieHeader = this.extractCookieHeader(dbmakeHttpResponse) ?? uploadCookieHeader;
             publishResponse = await this.publishStore(options.publish, publishCookieHeader);
         }
 
@@ -561,6 +565,7 @@ export class ShopSiteClient {
             uploadResponse,
             dbmakeResponse,
             publishResponse,
+            publishCookieHeader,
         };
     }
 
@@ -583,18 +588,32 @@ export class ShopSiteClient {
         if (mergedOptions.regen) params.append('regen', '1');
         if (mergedOptions.sitemap) params.append('sitemap', '1');
 
-        const response = await fetch(this.buildUrl(params.toString(), 'generate.cgi'), {
-            method: 'GET',
-            headers: this.buildRequestHeaders(cookieHeader),
-            cache: 'no-store',
-        });
+        for (let attempt = 1; attempt <= 2; attempt += 1) {
+            const response = await fetch(this.buildUrl(params.toString(), 'generate.cgi'), {
+                method: 'GET',
+                headers: this.buildRequestHeaders(cookieHeader),
+                cache: 'no-store',
+            });
 
-        const responseText = await response.text();
-        if (!response.ok) {
+            const responseText = await response.text();
+            if (response.ok) {
+                return responseText;
+            }
+
+            const publishTimedOut = response.status === 524 || /error code 524|a timeout occurred/i.test(responseText);
+            if (publishTimedOut && attempt < 2) {
+                console.warn(`[ShopSite] Publish timed out (524). Retrying generate.cgi (attempt ${attempt + 1}/2).`);
+                continue;
+            }
+
+            if (publishTimedOut) {
+                throw new Error('ShopSite publish timed out behind Cloudflare (524). The product import completed, but storefront generation may still be running. Retry the publish if the storefront does not update in a few minutes.');
+            }
+
             throw new Error(`ShopSite publish failed (${response.status}): ${responseText || response.statusText}`);
         }
 
-        return responseText;
+        throw new Error('ShopSite publish failed after retrying generate.cgi');
     }
 
     // ============================================================================

@@ -220,9 +220,9 @@ describe("finalization copilot workspace helpers", () => {
       "name",
       "long description",
       "price",
+      "special order",
       "minimum quantity",
       "GTIN",
-      "special order",
     ]);
     expect(result.draft).toMatchObject({
       name: "Updated Feed Name",

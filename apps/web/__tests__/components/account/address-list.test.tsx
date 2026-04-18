@@ -69,10 +69,9 @@ describe('AddressList', () => {
         (deleteAddressAction as jest.Mock).mockResolvedValue({ success: true })
         render(<AddressList initialAddresses={mockAddresses} />)
 
-        // Find delete button for second address (non-default)
-        // Since first is default, it might have delete button? logic says yes.
+        // Find all delete buttons.
         const deleteButtons = screen.getAllByRole('button', { name: /delete/i })
-        fireEvent.click(deleteButtons[1])
+        fireEvent.click(deleteButtons[1]) // Second address (Jane Doe) delete button
 
         await waitFor(() => {
             expect(deleteAddressAction).toHaveBeenCalledWith('2')
@@ -83,7 +82,8 @@ describe('AddressList', () => {
         (setDefaultAddressAction as jest.Mock).mockResolvedValue({ success: true })
         render(<AddressList initialAddresses={mockAddresses} />)
 
-        fireEvent.click(screen.getByRole('button', { name: /set default/i }))
+        const setDefaultButtons = screen.getAllByRole('button', { name: /set as default/i })
+        fireEvent.click(setDefaultButtons[0])
 
         await waitFor(() => {
             expect(setDefaultAddressAction).toHaveBeenCalledWith('2')
@@ -92,7 +92,8 @@ describe('AddressList', () => {
 
     it('shows add form on click', () => {
         render(<AddressList initialAddresses={[]} />)
-        fireEvent.click(screen.getByText(/add new address/i))
+        const addButtons = screen.getAllByText(/add new address/i)
+        fireEvent.click(addButtons[0])
         expect(screen.getByText(/save address/i)).toBeInTheDocument() // Button in form
     })
 })

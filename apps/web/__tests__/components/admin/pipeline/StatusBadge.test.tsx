@@ -11,7 +11,8 @@ describe("StatusBadge", () => {
 
       const badge = screen.getByText("Imported").closest("[data-slot='badge']");
       expect(badge).toBeInTheDocument();
-      expect(badge).toHaveClass("border-transparent");
+      expect(badge).toHaveClass("border-zinc-950");
+      expect(badge).toHaveClass("shadow-[1px_1px_0px_rgba(0,0,0,1)]");
     });
   });
 

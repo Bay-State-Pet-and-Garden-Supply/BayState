@@ -175,13 +175,11 @@ describe('useLogSubscription', () => {
 
   describe('channel sharing', () => {
     it('should create shared channel for same jobId', () => {
-      const channelName = 'runner-logs:job-123';
-
       renderHook(() =>
         useLogSubscription({ jobId: 'job-123', autoConnect: false }),
       );
 
-      expect(mockChannelFactory).toHaveBeenCalledWith(channelName);
+      expect(mockChannelFactory).toHaveBeenCalledWith('runner-logs:job-123-pg');
     });
 
     it('should create different channels for different jobIds', () => {
@@ -193,8 +191,8 @@ describe('useLogSubscription', () => {
       );
 
       expect(mockChannelFactory).toHaveBeenCalledTimes(2);
-      expect(mockChannelFactory).toHaveBeenCalledWith('runner-logs:job-1');
-      expect(mockChannelFactory).toHaveBeenCalledWith('runner-logs:job-2');
+      expect(mockChannelFactory).toHaveBeenCalledWith('runner-logs:job-1-pg');
+      expect(mockChannelFactory).toHaveBeenCalledWith('runner-logs:job-2-pg');
     });
 
     it('should create all-logs channel when no jobId specified', () => {
@@ -202,7 +200,7 @@ describe('useLogSubscription', () => {
         useLogSubscription({ autoConnect: false }),
       );
 
-      expect(mockChannelFactory).toHaveBeenCalledWith('runner-logs:all');
+      expect(mockChannelFactory).toHaveBeenCalledWith('runner-logs:all-pg');
     });
   });
 

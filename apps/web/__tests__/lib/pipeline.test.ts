@@ -34,6 +34,7 @@ describe("getProductsByStatus source filter", () => {
     queryBuilder.contains = jest.fn().mockReturnValue(queryBuilder);
     queryBuilder.order = jest.fn().mockReturnValue(queryBuilder);
     queryBuilder.is = jest.fn().mockReturnValue(queryBuilder);
+    queryBuilder.not = jest.fn().mockReturnValue(queryBuilder);
     queryBuilder.limit = jest.fn().mockReturnValue(queryBuilder);
     queryBuilder.range = jest.fn().mockReturnValue(queryBuilder);
 
@@ -49,29 +50,31 @@ describe("getProductsByStatus source filter", () => {
     (createClient as jest.Mock).mockResolvedValue(mockSupabase);
   });
 
-  it("uses has for source key existence", async () => {
+  it("uses not for source key existence", async () => {
     await getProductsByStatus("imported", { source: "amazon" });
 
-    expect(mockSupabase._queryBuilder.has).toHaveBeenCalledWith(
-      "sources",
-      "amazon",
+    expect(mockSupabase._queryBuilder.not).toHaveBeenCalledWith(
+      "sources->amazon",
+      "is",
+      null,
     );
   });
 
-  it("uses has for source when source is provided", async () => {
+  it("uses not for source when source is provided", async () => {
     await getProductsByStatus("scraped", { source: "ebay" });
 
-    expect(mockSupabase._queryBuilder.has).toHaveBeenCalledTimes(1);
-    expect(mockSupabase._queryBuilder.has).toHaveBeenCalledWith(
-      "sources",
-      "ebay",
+    expect(mockSupabase._queryBuilder.not).toHaveBeenCalledTimes(1);
+    expect(mockSupabase._queryBuilder.not).toHaveBeenCalledWith(
+      "sources->ebay",
+      "is",
+      null,
     );
   });
 
   it("does not use source filter when source is not provided", async () => {
     await getProductsByStatus("imported", {});
 
-    expect(mockSupabase._queryBuilder.has).not.toHaveBeenCalled();
+    expect(mockSupabase._queryBuilder.not).not.toHaveBeenCalled();
   });
 
   it("handles source filter with various source names", async () => {
@@ -81,7 +84,7 @@ describe("getProductsByStatus source filter", () => {
       const mock = makeSupabaseMock();
       (createClient as jest.Mock).mockResolvedValue(mock);
       await getProductsByStatus("imported", { source });
-      expect(mock._queryBuilder.has).toHaveBeenCalledWith("sources", source);
+      expect(mock._queryBuilder.not).toHaveBeenCalledWith(`sources->${source}`, "is", null);
     }
   });
 
@@ -93,9 +96,10 @@ describe("getProductsByStatus source filter", () => {
       limit: 10,
     });
 
-    expect(mockSupabase._queryBuilder.has).toHaveBeenCalledWith(
-      "sources",
-      "amazon",
+    expect(mockSupabase._queryBuilder.not).toHaveBeenCalledWith(
+      "sources->amazon",
+      "is",
+      null,
     );
     expect(mockSupabase._queryBuilder.gte).toHaveBeenCalledWith(
       "confidence_score",
@@ -119,9 +123,10 @@ describe("getProductsByStatus source filter", () => {
       "pipeline_status",
       "finalizing",
     );
-    expect(mockSupabase._queryBuilder.has).toHaveBeenCalledWith(
-      "sources",
-      "scraper-v2",
+    expect(mockSupabase._queryBuilder.not).toHaveBeenCalledWith(
+      "sources->scraper-v2",
+      "is",
+      null,
     );
     expect(mockSupabase._queryBuilder.gte).toHaveBeenCalledWith(
       "updated_at",

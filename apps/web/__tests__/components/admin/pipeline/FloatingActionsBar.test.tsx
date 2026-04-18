@@ -22,9 +22,9 @@ describe("FloatingActionsBar", () => {
     );
 
     expect(screen.getByText("4")).toBeInTheDocument();
-    expect(screen.getByText("Products Selected")).toBeInTheDocument();
+    expect(screen.getByText("Products")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Clear Selection" }),
+      screen.getByRole("button", { name: "Clear" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Scrape Selected" }),
@@ -51,7 +51,7 @@ describe("FloatingActionsBar", () => {
     );
 
     expect(
-      screen.getByRole("button", { name: "Upload to ShopSite" }),
+      screen.getByRole("button", { name: "Upload" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Download ZIP" }),

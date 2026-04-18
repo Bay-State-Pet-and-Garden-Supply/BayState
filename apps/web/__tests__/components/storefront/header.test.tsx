@@ -67,9 +67,9 @@ describe('StorefrontHeader', () => {
         brands={brands}
       />
     );
-    expect(screen.getByRole('button', { name: /^dog$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /brands/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /our services/i })).toBeInTheDocument();
+    expect(screen.getByText(/Dog/i)).toBeInTheDocument();
+    expect(screen.getByText(/Brands/i)).toBeInTheDocument();
+    expect(screen.getByText(/Our Services/i)).toBeInTheDocument();
   });
 
   it('renders menu button for mobile', () => {

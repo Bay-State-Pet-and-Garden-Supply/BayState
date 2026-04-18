@@ -30,61 +30,44 @@ const mockCostResponse = {
       },
     ],
   },
-  ai: {
-    gemini: {
-      totalCost: 3.75,
-      totalJobs: 4,
-      completedJobs: 4,
-      failedJobs: 0,
-      promptTokens: 1000,
-      completionTokens: 500,
-      totalTokens: 1500,
-      providerLabel: 'Google Gemini API',
-    },
-    openai: {
-      totalCost: 1.25,
+  usage: {
+    aiSearch: {
+      totalCost: 1.5,
       totalJobs: 2,
+      completedJobs: 2,
+      failedJobs: 0,
+    },
+    crawl4ai: {
+      totalCost: 0.5,
+      totalJobs: 1,
       completedJobs: 1,
+      failedJobs: 0,
+    },
+    consolidation: {
+      totalCost: 3,
+      totalJobs: 3,
+      completedJobs: 2,
       failedJobs: 1,
-      promptTokens: 400,
-      completionTokens: 200,
-      totalTokens: 600,
-      providerLabel: 'OpenAI API',
+      totalTokens: 1500,
     },
     combined: {
       totalCost: 5,
       totalJobs: 6,
-      promptTokens: 1400,
-      completionTokens: 700,
-      totalTokens: 2100,
     },
-    recentJobs: [
-      {
-        id: 'job-1',
-        status: 'completed',
-        provider: 'gemini',
-        estimated_cost: 3.75,
-        prompt_tokens: 1000,
-        completion_tokens: 500,
-        total_tokens: 1500,
-        created_at: '2026-04-10T10:00:00Z',
-        completed_at: '2026-04-10T10:10:00Z',
-        description: 'Gemini catalog consolidation',
-      },
-      {
-        id: 'job-2',
-        status: 'failed',
-        provider: 'openai_compatible',
-        estimated_cost: 1.25,
-        prompt_tokens: 400,
-        completion_tokens: 200,
-        total_tokens: 600,
-        created_at: '2026-04-09T09:00:00Z',
-        completed_at: null,
-        description: 'Legacy OpenAI-compatible enrichment',
-      },
-    ],
   },
+  recentUsage: [
+    {
+      id: 'job-1',
+      feature: 'Consolidation',
+      status: 'completed',
+      provider: 'openai',
+      estimated_cost: 1.5,
+      total_tokens: 1000,
+      created_at: '2026-04-10T10:00:00Z',
+      completed_at: '2026-04-10T10:10:00Z',
+      description: 'Consolidation batch',
+    },
+  ],
   estimatedMonthlyTotal: 17.5,
 };
 
@@ -100,28 +83,18 @@ describe('CostTrackingDashboard', () => {
     jest.resetAllMocks();
   });
 
-  it('renders separate Gemini and OpenAI cost tracking details', async () => {
+  it('renders feature-based cost tracking details', async () => {
     render(<CostTrackingDashboard />);
 
     await waitFor(() => {
-      expect(screen.getByText('Gemini Costs (30d)')).toBeInTheDocument();
+      expect(screen.getByText(/Total Live Spend/i)).toBeInTheDocument();
     });
 
-    expect(screen.getByText('OpenAI Costs (30d)')).toBeInTheDocument();
-    expect(screen.getByText('Combined AI Costs (30d)')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        /Monitor and manage monthly costs across fixed services plus separate Google Gemini API and OpenAI API usage/i
-      )
-    ).toBeInTheDocument();
-    expect(screen.getByText('Recent Gemini + OpenAI Batch Jobs')).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Provider' })).toBeInTheDocument();
-    expect(screen.getByText('Gemini')).toBeInTheDocument();
-    expect(screen.getByText('OpenAI Compatible')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        /Gemini and OpenAI costs are tracked automatically from Google Gemini API and OpenAI API batch jobs/i
-      )
-    ).toBeInTheDocument();
+    expect(screen.getByText('AI Search (30d)')).toBeInTheDocument();
+    expect(screen.getByText('Crawl4AI (30d)')).toBeInTheDocument();
+    expect(screen.getByText('Consolidation (30d)')).toBeInTheDocument();
+    expect(screen.getByText('Recent Feature Usage')).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Feature' })).toBeInTheDocument();
+    expect(screen.getByText('Consolidation')).toBeInTheDocument();
   });
 });

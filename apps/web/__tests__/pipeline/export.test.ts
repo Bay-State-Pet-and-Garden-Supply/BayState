@@ -66,6 +66,7 @@ describe('CSV Export API', () => {
             from: jest.fn().mockReturnThis(),
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
+            is: jest.fn().mockReturnThis(),
             order: jest.fn().mockReturnThis(),
             or: jest.fn().mockReturnThis(),
             range: jest.fn(),

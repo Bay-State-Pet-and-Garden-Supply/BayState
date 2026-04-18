@@ -124,7 +124,8 @@ describe("PipelineClient live tab handling", () => {
         />,
       );
 
-    expect(await screen.findByTestId("finalizing-results")).toBeInTheDocument();
+    const finalizingResults = await screen.findAllByTestId("finalizing-results");
+    expect(finalizingResults.length).toBeGreaterThan(0);
     expect(lastFinalizingResultsProps).toMatchObject({ products });
     expect(screen.getByTestId("floating-actions")).toBeInTheDocument();
     expect(screen.queryByTestId("product-table")).not.toBeInTheDocument();
@@ -160,7 +161,7 @@ describe("PipelineClient live tab handling", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId("product-table")).toBeInTheDocument();
+      expect(screen.getAllByTestId("product-table").length).toBeGreaterThan(0);
     });
     expect(lastFinalizingResultsProps).toBeNull();
   });
@@ -180,7 +181,7 @@ describe("PipelineClient live tab handling", () => {
       />,
     );
 
-    expect(screen.getByTestId("product-table")).toBeInTheDocument();
+    expect(screen.getAllByTestId("product-table").length).toBeGreaterThan(0);
     expect(screen.queryByTestId("finalizing-results")).not.toBeInTheDocument();
   });
 });

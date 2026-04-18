@@ -45,11 +45,13 @@ const mockChannelFactory = jest.fn((_channelName: string) => {
   return channel;
 });
 const mockRemoveChannel = jest.fn(async (_channel: MockRealtimeChannel) => 'ok');
-const mockCreateClient = jest.fn();
-
 jest.mock('@/lib/supabase/client', () => ({
-  createClient: mockCreateClient,
+  createClient: jest.fn(),
 }));
+
+import { createClient } from '@/lib/supabase/client';
+
+const mockCreateClient = createClient as jest.Mock;
 
 function getLastChannel(): MockRealtimeChannel {
   const channel = mockChannels.at(-1);

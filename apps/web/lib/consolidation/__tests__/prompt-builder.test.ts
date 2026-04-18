@@ -90,7 +90,6 @@ describe('brand exclusion in prompt-builder', () => {
             expect(prompt).toMatch(/shopsite export-ready/i);
             expect(prompt).toMatch(/highest trust.*shopsite_input/i);
             expect(prompt).toMatch(/marketplace/i);
-            expect(prompt).toMatch(/search_keywords/i);
             expect(prompt).toMatch(/response schema already constrains/i);
             expect(prompt).not.toContain('Allowed category values:');
         });

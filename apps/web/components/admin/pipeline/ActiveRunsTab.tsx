@@ -254,8 +254,8 @@ function JobCard({
   const isActive = job.status === "pending" || job.status === "running";
 
   return (
-    <div className="rounded-none border border-zinc-950 bg-white shadow-[1px_1px_0px_rgba(0,0,0,1)] overflow-hidden">
-      <div className="p-2 sm:p-3">
+    <div className="rounded-none border-4 border-zinc-950 bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)] overflow-hidden">
+      <div className="p-4 sm:p-5">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2">

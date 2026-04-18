@@ -10,6 +10,7 @@ const COMPARISON_FIELDS = [
     'description',
     'long_description',
     'search_keywords',
+    'category',
     'product_on_pages',
     'confidence_score',
 ] as const;
@@ -21,6 +22,7 @@ const COMPLETENESS_FIELDS = [
     'description',
     'long_description',
     'search_keywords',
+    'category',
     'product_on_pages',
 ] as const;
 

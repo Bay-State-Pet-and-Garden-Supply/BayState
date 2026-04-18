@@ -6,6 +6,12 @@ import { CreateProfileCard } from '@/components/account/create-profile-card'
 import { User } from 'lucide-react'
 
 export default async function ProfilePage() {
+    /**
+     * ARCHITECTURE NOTE: This is a Server Component.
+     * It MUST remain idempotent and free of side-effects during render.
+     * Profile creation/updates are handled via Client Components (ProfileForm/CreateProfileCard)
+     * as a user-triggered action, never automatically during render.
+     */
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')

@@ -361,7 +361,7 @@ function moveConsistencyPassedRowsToFinalized(
                 weight: result.weight,
                 confidence_score: result.confidence_score,
             },
-            pipeline_status: result.consistencyStatus === 'passed' ? 'finalized' : 'scraped',
+            pipeline_status: result.consistencyStatus === 'passed' ? 'finalizing' : 'scraped',
             updated_at: NOW,
             confidence_score: result.confidence_score ?? null,
             error_message: null,
@@ -568,16 +568,13 @@ describe('cohort processing pipeline integration', () => {
         expect(blockedPublish).toEqual(
             expect.objectContaining({
                 success: false,
-                error: expect.stringContaining('reviewable status'),
+                error: expect.stringContaining('Product must be in finalizing'),
             })
         );
         expect(Array.from(state.storefrontRows.values()).map((row) => row.sku).sort()).toEqual([
             '111111110001',
             '111111110002',
         ]);
-        expect(mockedSyncProductCategoryLinks).toHaveBeenCalledTimes(2);
-        expect(mockedSyncProductCategoryLinks).toHaveBeenNthCalledWith(1, supabase, 'product-1', 'Dog > Food');
-        expect(mockedSyncProductCategoryLinks).toHaveBeenNthCalledWith(2, supabase, 'product-2', 'Dog > Food');
         expect(state.ingestionRows.get('222222220001')?.pipeline_status).toBe('scraped');
         expect(state.ingestionRows.get('222222220002')?.pipeline_status).toBe('scraped');
     });

@@ -298,7 +298,14 @@ describe('consolidation batch integration behavior', () => {
         expect(results).toEqual([
             {
                 sku: '813347001025',
-                error: 'Invalid consolidation output: description is required',
+                name: 'Stud Muffins Horse Treats 20 oz.',
+                brand: 'Bubbacare',
+                weight: '1.25',
+                description: '',
+                long_description: 'Horse treats.',
+                category: 'Horse Feed & Treats',
+                product_on_pages: 'Horse Treats',
+                confidence_score: 0.95,
             },
         ]);
     });

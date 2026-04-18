@@ -116,7 +116,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="border-t border-zinc-950">
+      <div className="border-4 border-zinc-950 shadow-[8px_8px_0px_rgba(0,0,0,1)] bg-white overflow-hidden my-4 mx-1">
         {/* Header */}
         <div className="grid grid-cols-[3.5rem_4rem_8rem_6.5rem_1fr_6rem_6rem_7rem] gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-tighter text-zinc-950 bg-zinc-100 border-b border-zinc-950">
           <span>Chunk</span>
