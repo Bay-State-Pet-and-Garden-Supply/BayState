@@ -1,21 +1,12 @@
 "use client";
 
 import { ExternalLink, AlertTriangle } from "lucide-react";
-import { useState, useEffect } from "react";
 
 /**
  * UnderConstructionBanner - A persistent banner to notify users that the site
  * is currently under construction and is not the official storefront yet.
  */
 export function UnderConstructionBanner() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) return null;
-
   return (
     <div className="bg-accent text-accent-foreground border-b-4 border-zinc-900 py-3 px-4 relative z-50">
       <div className="container mx-auto flex flex-col md:flex-row items-center justify-center gap-3 text-center">

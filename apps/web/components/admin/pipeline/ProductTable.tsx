@@ -31,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { PipelineProduct, PipelineStage } from "@/lib/pipeline/types";
+import { type PipelineFiltersState } from "./PipelineFilters";
 
 interface ProductTableProps {
   products: PipelineProduct[];
@@ -45,6 +46,13 @@ interface ProductTableProps {
   onSelectAll: () => void;
   onDeselectAll: () => void;
   currentStage: PipelineStage;
+  search?: string;
+  onSearchChange?: (value: string) => void;
+  filters?: PipelineFiltersState;
+  onFilterChange?: (filters: PipelineFiltersState) => void;
+  availableSources?: string[];
+  totalCount?: number;
+  onSelectAllTotal?: () => void | Promise<void>;
 }
 
 function formatDate(iso: string): string {
@@ -109,6 +117,13 @@ export function ProductTable({
   onSelectAll,
   onDeselectAll,
   currentStage,
+  search,
+  onSearchChange,
+  filters,
+  onFilterChange,
+  availableSources,
+  totalCount,
+  onSelectAllTotal,
 }: ProductTableProps) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "sku", desc: false },
