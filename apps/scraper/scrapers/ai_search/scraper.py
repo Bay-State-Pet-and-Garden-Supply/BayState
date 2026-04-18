@@ -1602,6 +1602,39 @@ class AISearchScraper:
             cost_usd=total_cost_usd,
         )
 
+    async def extract_from_url(
+        self,
+        *,
+        url: str,
+        sku: str,
+        product_name: Optional[str] = None,
+        brand: Optional[str] = None,
+    ) -> AISearchResult:
+        """Extract product data from a known source URL.
+
+        This bypasses search/source selection and is intended for evaluation and
+        benchmark flows that already trust the source URL.
+        """
+        extraction_result = await self._extract_product_data(url, sku, product_name, brand)
+        normalized_result = dict(extraction_result)
+        normalized_result.setdefault("url", url)
+
+        if not normalized_result.get("success"):
+            return AISearchResult(
+                success=False,
+                sku=sku,
+                error=str(normalized_result.get("error") or "Extraction failed"),
+                cost_usd=float(self._cost_tracker.get_cost_summary().get("total_cost_usd", 0) or 0.0),
+            )
+
+        return self._build_discovery_result(
+            normalized_result,
+            sku,
+            product_name,
+            brand,
+            normalized_result.get("url") or url,
+        )
+
     async def _extract_candidates_parallel(self, urls: list[str], sku: str, product_name: Optional[str], brand: Optional[str]) -> list[dict[str, Any]]:
         """Extract product data from multiple URLs in parallel."""
         # Note: Crawl4AIEngine.crawl_many is still directly used here
