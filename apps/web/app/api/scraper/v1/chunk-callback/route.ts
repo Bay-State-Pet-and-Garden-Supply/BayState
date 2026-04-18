@@ -189,6 +189,8 @@ export async function POST(request: NextRequest) {
             updateData.skus_processed = results.skus_processed || 0;
             updateData.skus_successful = results.skus_successful || 0;
             updateData.skus_failed = results.skus_failed || 0;
+            updateData.planned_work_units = results.work_units_total ?? chunk.planned_work_units ?? 0;
+            updateData.work_units_processed = results.work_units_processed || 0;
         }
 
         if (error_message || persistenceErrorMessage) {
@@ -234,7 +236,7 @@ export async function POST(request: NextRequest) {
         // Check if all chunks for this job are complete
         const { data: allChunksForJob, error: statsError } = await supabase
             .from('scrape_job_chunks')
-            .select('status, skus, skus_processed, skus_successful, skus_failed, results')
+            .select('status, skus, skus_processed, skus_successful, skus_failed, planned_work_units, work_units_processed, results')
             .eq('job_id', jobId);
 
         if (statsError) {
@@ -257,6 +259,18 @@ export async function POST(request: NextRequest) {
 
             if (pendingOrRunning === 0) {
                 const jobStatus = failedChunks > 0 ? 'failed' : 'completed';
+                const uniqueJobSkus = Array.from(
+                    new Set(
+                        (allChunksForJob || []).flatMap((chunkRow) =>
+                            Array.isArray(chunkRow.skus)
+                                ? chunkRow.skus.filter(
+                                      (sku): sku is string =>
+                                          typeof sku === 'string' && sku.trim().length > 0
+                                  )
+                                : []
+                        )
+                    )
+                );
 
                 const aggregatedResults = {
                     chunks_total: totalChunks,
@@ -265,8 +279,13 @@ export async function POST(request: NextRequest) {
                     skus_processed: allChunksForJob?.reduce((sum, c) => sum + (c.skus_processed || 0), 0) || 0,
                     skus_successful: allChunksForJob?.reduce((sum, c) => sum + (c.skus_successful || 0), 0) || 0,
                     skus_failed: allChunksForJob?.reduce((sum, c) => sum + (c.skus_failed || 0), 0) || 0,
-                    skus_total: allChunksForJob?.reduce(
-                        (sum, c) => sum + (Array.isArray(c.skus) ? c.skus.length : 0),
+                    skus_total: uniqueJobSkus.length,
+                    work_units_processed: allChunksForJob?.reduce(
+                        (sum, c) => sum + (typeof c.work_units_processed === 'number' ? c.work_units_processed : 0),
+                        0
+                    ) || 0,
+                    work_units_total: allChunksForJob?.reduce(
+                        (sum, c) => sum + (typeof c.planned_work_units === 'number' ? c.planned_work_units : 0),
                         0
                     ) || 0,
                 };
@@ -275,8 +294,8 @@ export async function POST(request: NextRequest) {
                 const terminalMessage = jobStatus === 'completed'
                     ? 'Chunk processing completed'
                     : (persistenceErrorMessage || error_message || `${failedChunks} chunk(s) failed`);
-                const terminalProgressPercent = aggregatedResults.skus_total > 0
-                    ? Math.round((aggregatedResults.skus_processed / aggregatedResults.skus_total) * 100)
+                const terminalProgressPercent = aggregatedResults.work_units_total > 0
+                    ? Math.round((aggregatedResults.work_units_processed / aggregatedResults.work_units_total) * 100)
                     : (jobStatus === 'completed' ? 100 : 0);
 
                 const { data: updatedJob, error: jobUpdateError } = await supabase
@@ -294,10 +313,12 @@ export async function POST(request: NextRequest) {
                             chunks_total: aggregatedResults.chunks_total,
                             chunks_completed: aggregatedResults.chunks_completed,
                             chunks_failed: aggregatedResults.chunks_failed,
+                            skus_total_unique: aggregatedResults.skus_total,
+                            work_units_total: aggregatedResults.work_units_total,
                         },
                         current_sku: null,
-                        items_processed: aggregatedResults.skus_processed,
-                        items_total: aggregatedResults.skus_total,
+                        items_processed: aggregatedResults.work_units_processed,
+                        items_total: aggregatedResults.work_units_total,
                         last_event_at: completedAt,
                     })
                     .eq('id', jobId)

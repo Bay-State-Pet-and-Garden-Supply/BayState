@@ -123,6 +123,8 @@ const ChunkResultsSchema = z.object({
     skus_processed: z.number().int().min(0).optional(),
     skus_successful: z.number().int().min(0).optional(),
     skus_failed: z.number().int().min(0).optional(),
+    work_units_processed: z.number().int().min(0).optional(),
+    work_units_total: z.number().int().min(0).optional(),
     data: z.record(z.string().min(1, 'sku is required'), z.unknown()).optional(),
     logs: z
         .array(

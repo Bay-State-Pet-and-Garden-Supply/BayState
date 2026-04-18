@@ -143,11 +143,16 @@ export function ReviewSubmit({
                             </Badge>
                         </div>
                         <div className="flex justify-between items-center p-3 rounded-lg bg-background border border-border/40">
-                            <span className="text-muted-foreground font-medium">Est. Batches</span>
+                            <span className="text-muted-foreground font-medium">SKU Slice Estimate</span>
                             <span className="font-mono font-medium">
                                 {Math.ceil(selectedSkus.length / chunkConfig.chunkSize).toLocaleString()}
                             </span>
                         </div>
+                        {method === 'scrapers' && (
+                            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-sm">
+                                Static scraper jobs may expand into additional chunks per site group. The final chunk count is calculated when the job is created.
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 

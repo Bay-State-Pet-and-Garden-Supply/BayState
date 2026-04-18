@@ -35,6 +35,7 @@ interface EnrichmentJobRequest {
     };
     chunkSize?: number;
     maxWorkers?: number;
+    maxRunners?: number;
 }
 
 function normalizeAISearchConfig(request: EnrichmentJobRequest): ScrapeOptions['aiSearchConfig'] | undefined {
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
             enrichment_method: normalizedMethod,
             chunkSize: body.chunkSize,
             maxWorkers: body.maxWorkers,
+            maxRunners: body.maxRunners,
         };
 
         if (body.method === 'scrapers' && body.config?.scrapers) {
@@ -106,8 +108,10 @@ export async function POST(request: NextRequest) {
         }
 
         const jobId = result.jobIds[0];
-        const chunkSize = body.chunkSize ?? 50;
-        const chunkCount = Math.ceil(body.skus.length / chunkSize);
+        const chunkCount =
+            typeof result.plannedChunkCount === 'number'
+                ? result.plannedChunkCount
+                : Math.ceil(body.skus.length / (body.chunkSize ?? 50));
 
         return NextResponse.json({
             jobId,

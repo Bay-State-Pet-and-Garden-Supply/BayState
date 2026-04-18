@@ -44,6 +44,7 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
         chunk_index = chunk.chunk_index
         skus = chunk.skus
         scrapers_filter = chunk.scrapers
+        planned_work_units = chunk.planned_work_units or (len(skus) * max(1, len(scrapers_filter or base_job_config.scrapers)))
 
         if chunk.job_id != job_id:
             logger.info(
@@ -189,6 +190,8 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
                 "skus_processed": skus_processed,
                 "skus_successful": skus_successful,
                 "skus_failed": skus_failed,
+                "work_units_processed": planned_work_units,
+                "work_units_total": planned_work_units,
                 "data": partial_results,
                 "logs": results.get("logs", []),
             }
@@ -239,20 +242,22 @@ def run_chunk_worker_mode(client: ScraperAPIClient, job_id: str, runner_name: st
                     "skus_processed": len(skus),
                     "skus_successful": skus_successful,
                     "skus_failed": len(skus) - skus_successful,
+                    "work_units_processed": planned_work_units,
+                    "work_units_total": planned_work_units,
                     "data": partial_results,
                 }
                 if not client.submit_chunk_results(chunk_id, "failed", results=partial_chunk_results, error_message=str(e)):
-                     logger.error(
-                         f"CRITICAL: Failed to submit failure results for chunk {chunk_id}",
-                         extra={"job_id": job_id, "runner_name": runner_name, "phase": "failed"},
-                     )
+                    logger.error(
+                        f"CRITICAL: Failed to submit failure results for chunk {chunk_id}",
+                        extra={"job_id": job_id, "runner_name": runner_name, "phase": "failed"},
+                    )
             else:
                 if not client.submit_chunk_results(chunk_id, "failed", error_message=str(e)):
                     logger.error(
                         f"CRITICAL: Failed to submit failure status for chunk {chunk_id}",
                         extra={"job_id": job_id, "runner_name": runner_name, "phase": "failed"},
                     )
-            
+
             # Re-raise to stop the worker from claiming more chunks if we can't report status
             raise
 

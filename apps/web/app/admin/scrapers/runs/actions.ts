@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { ScraperRunRecord } from '@/lib/admin/scrapers/runs-types';
 import { normalizeScrapeLogEntry, type ScrapeJobLogEntry } from '@/lib/scraper-logs';
+import { cloneScrapeJobForRetry } from '@/lib/pipeline-scraping';
 
 export async function getScraperRuns(options?: {
   limit?: number;
@@ -241,43 +242,25 @@ export async function retryScraperRun(jobId: string) {
     return { error: 'Original job not found' };
   }
 
-  const { data: newJob, error: createError } = await supabase
-    .from('scrape_jobs')
-    .insert({
-      skus: originalJob.skus,
-      scrapers: originalJob.scrapers,
-      test_mode: originalJob.test_mode,
-      max_workers: originalJob.max_workers,
-      status: 'pending',
-    })
-    .select()
-    .single();
+  const retryResult = await cloneScrapeJobForRetry(supabase, {
+    skus: Array.isArray(originalJob.skus) ? originalJob.skus : [],
+    scrapers: Array.isArray(originalJob.scrapers) ? originalJob.scrapers : [],
+    test_mode: originalJob.test_mode,
+    max_workers: originalJob.max_workers,
+    max_attempts: originalJob.max_attempts,
+    type: originalJob.type,
+    config: originalJob.config,
+    metadata: originalJob.metadata,
+  });
 
-  if (createError || !newJob) {
-    console.error('Error retrying scraper run:', createError);
-    return { error: 'Failed to retry scraper run' };
-  }
-
-  const scrapers = originalJob.scrapers || [];
-  if (scrapers.length > 0) {
-    const chunks = scrapers.map((scraperName: string, index: number) => ({
-      job_id: newJob.id,
-      chunk_index: index,
-      skus: originalJob.skus || [],
-      scrapers: [scraperName],
-      status: 'pending' as const,
-      test_mode: originalJob.test_mode || false,
-      max_workers: originalJob.max_workers || 3,
-    }));
-
-    const { error: chunkError } = await supabase.from('scrape_job_chunks').insert(chunks);
-    if (chunkError) {
-      console.error('Error creating chunks for retried job:', chunkError);
-    }
+  if (!retryResult.success) {
+    console.error('Error retrying scraper run:', retryResult.error);
+    return { error: retryResult.error };
   }
 
   revalidatePath('/admin/scrapers/runs');
-  return { success: true, newJobId: newJob.id };
+  revalidatePath(`/admin/scrapers/runs/${retryResult.jobId}`);
+  return { success: true, newJobId: retryResult.jobId };
 }
 
 export type ScrapeJobLog = ScrapeJobLogEntry;
