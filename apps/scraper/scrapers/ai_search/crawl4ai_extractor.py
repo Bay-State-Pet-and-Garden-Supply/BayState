@@ -8,6 +8,8 @@ import time
 from typing import Any, Optional
 from urllib.parse import quote, urljoin, urlparse
 
+import httpx
+
 from scrapers.ai_search.extraction import ExtractionUtils
 from scrapers.ai_search.google_redirects import (
     GroundingRedirectResolver,
@@ -226,13 +228,12 @@ class Crawl4AIExtractor:
             return True
 
         content_text = str(payload.get("content") or "").lower()
-        has_candidate_fields = any(
-            str(payload.get(field) or "").strip()
-            for field in ("product_name", "description", "size_metrics")
-        ) or bool(payload.get("images")) or bool(payload.get("categories"))
-        if not has_candidate_fields and any(
-            marker in content_text for marker in ("traceback", "exception", "authentication", "api", "failed", "error")
-        ):
+        has_candidate_fields = (
+            any(str(payload.get(field) or "").strip() for field in ("product_name", "description", "size_metrics"))
+            or bool(payload.get("images"))
+            or bool(payload.get("categories"))
+        )
+        if not has_candidate_fields and any(marker in content_text for marker in ("traceback", "exception", "authentication", "api", "failed", "error")):
             return True
 
         return False
@@ -316,6 +317,63 @@ class Crawl4AIExtractor:
         normalized["categories"] = categories
         return normalized
 
+    async def _resolve_official_family_variant(
+        self,
+        *,
+        url: str,
+        sku: str,
+        product_name: Optional[str],
+        brand: Optional[str],
+        html: str,
+    ) -> tuple[str, str, str]:
+        """Resolve official family pages to a variant-specific Demandware payload when possible."""
+        if not self._scoring.is_product_line_page(url):
+            return url, html, ""
+
+        domain = self._scoring.domain_from_url(url)
+        if self._scoring.classify_source_domain(domain, brand) != "official":
+            return url, html, ""
+
+        variant_candidates = self._extraction.extract_demandware_variant_candidates(
+            html_text=html,
+            source_url=url,
+            expected_name=product_name,
+        )
+        if not variant_candidates:
+            return url, html, ""
+
+        async with httpx.AsyncClient(follow_redirects=True, timeout=20.0) as client:
+            for candidate in variant_candidates[:4]:
+                candidate_url = str(candidate.get("url") or "").strip()
+                if not candidate_url:
+                    continue
+
+                try:
+                    response = await client.get(candidate_url, headers=FallbackExtractor._http_headers())
+                    response.raise_for_status()
+                    payload = response.json()
+                except Exception as exc:
+                    logger.info("[AI Search] Demandware variant lookup failed for %s: %s", candidate_url, self._summarize_error(exc))
+                    continue
+
+                selected_variant_identifier = self._extraction.selected_demandware_variant_id(payload)
+                if sku and sku not in selected_variant_identifier and sku not in json.dumps(payload).lower():
+                    variant_text = str(candidate.get("variant_text") or "")
+                    if self._matching.has_conflicting_variant_tokens(product_name, variant_text):
+                        continue
+                    if not self._matching.has_variant_token_overlap(product_name, variant_text):
+                        continue
+
+                payload_text = json.dumps(payload)
+                selected_product_url = ""
+                if isinstance(payload, dict):
+                    selected_product_url = str((payload.get("product") or {}).get("selectedProductUrl") or "").strip()
+                resolved_url = urljoin(url, selected_product_url) if selected_product_url else url
+                logger.info("[AI Search] Resolved official family page variant via Demandware endpoint: %s -> %s", url, resolved_url)
+                return resolved_url, payload_text, payload_text
+
+        return url, html, ""
+
     async def extract(
         self,
         url: str,
@@ -333,6 +391,7 @@ class Crawl4AIExtractor:
         method = "llm" if self.extraction_strategy != "json_css" else self.extraction_strategy
 
         try:
+
             async def _fallback_wrapper(failed_url: str):
                 # html and markdown may be populated by the first pass before failure
                 return await self._extract_with_fallback(failed_url, sku, product_name, brand, html, markdown)
@@ -370,7 +429,7 @@ class Crawl4AIExtractor:
                     logger.info("[AI Search] Retrying Crawl4AI fetch with domcontentloaded after networkidle navigation failure")
                     engine.config.setdefault("crawler", {})["wait_until"] = "domcontentloaded"
                     result = await engine.crawl(url)
-                
+
                 # Strict validation: ensure html and markdown are strings
                 html_raw = result.get("html")
                 fit_markdown_raw = result.get("fit_markdown")
@@ -381,28 +440,35 @@ class Crawl4AIExtractor:
                 raw_markdown = raw_markdown_raw if isinstance(raw_markdown_raw, str) else ""
                 markdown_value = markdown_raw if isinstance(markdown_raw, str) else ""
                 markdown = fit_markdown or raw_markdown or markdown_value
-                
+
                 if html_raw is not None and not isinstance(html_raw, str):
                     logger.warning(f"[AI Search] Crawl4AI returned non-string html (type={type(html_raw).__name__}), using empty string")
                 if fit_markdown_raw is not None and not isinstance(fit_markdown_raw, str):
-                    logger.warning(
-                        f"[AI Search] Crawl4AI returned non-string fit_markdown (type={type(fit_markdown_raw).__name__}), using empty string"
-                    )
+                    logger.warning(f"[AI Search] Crawl4AI returned non-string fit_markdown (type={type(fit_markdown_raw).__name__}), using empty string")
                 if raw_markdown_raw is not None and not isinstance(raw_markdown_raw, str):
-                    logger.warning(
-                        f"[AI Search] Crawl4AI returned non-string raw_markdown (type={type(raw_markdown_raw).__name__}), using empty string"
-                    )
+                    logger.warning(f"[AI Search] Crawl4AI returned non-string raw_markdown (type={type(raw_markdown_raw).__name__}), using empty string")
                 if markdown_raw is not None and not isinstance(markdown_raw, str):
                     logger.warning(f"[AI Search] Crawl4AI returned non-string markdown (type={type(markdown_raw).__name__}), using empty string")
-                
+
                 fetch_time_ms = int((time.perf_counter() - fetch_start) * 1000)
 
                 if result.get("success"):
                     raw_html_len = len(html)
                     raw_markdown_len = len(markdown)
-                    logger.debug(
-                        f"[AI Search] Crawl4AI result: html_length={raw_html_len}, markdown_length={raw_markdown_len}"
+                    logger.debug(f"[AI Search] Crawl4AI result: html_length={raw_html_len}, markdown_length={raw_markdown_len}")
+
+                    resolved_url, resolved_html, resolved_markdown = await self._resolve_official_family_variant(
+                        url=url,
+                        sku=sku,
+                        product_name=product_name,
+                        brand=brand,
+                        html=html,
                     )
+                    if resolved_url != url or resolved_html != html:
+                        url = resolved_url
+                        html = resolved_html or html
+                        if resolved_markdown:
+                            markdown = resolved_markdown
 
                     if html or markdown:
                         if self._looks_like_not_found_page(html, markdown):
@@ -423,8 +489,7 @@ class Crawl4AIExtractor:
                         if jsonld_result:
                             jsonld_result["url"] = url
                             jsonld_result["images"] = await _resolve_grounding_images(
-                                self._grounding_redirect_resolver,
-                                self._extraction.coerce_string_list(jsonld_result.get("images"))
+                                self._grounding_redirect_resolver, self._extraction.coerce_string_list(jsonld_result.get("images"))
                             )
                             jsonld_result["confidence"] = max(float(jsonld_result.get("confidence", 0.0)), 0.8)
                             logger.info("[AI Search] Extraction method used: json-ld")
@@ -440,7 +505,7 @@ class Crawl4AIExtractor:
                                 float(jsonld_result["confidence"]),
                                 pruning_enabled=True,
                                 fit_markdown_used=False,
-                                fallback_triggered=result.get("fallback_triggered", False)
+                                fallback_triggered=result.get("fallback_triggered", False),
                             )
                             return jsonld_result
 
@@ -456,8 +521,7 @@ class Crawl4AIExtractor:
                         parse_time_ms = int((time.perf_counter() - parse_start) * 1000)
                         if meta_result:
                             meta_result["images"] = await _resolve_grounding_images(
-                                self._grounding_redirect_resolver,
-                                self._extraction.coerce_string_list(meta_result.get("images"))
+                                self._grounding_redirect_resolver, self._extraction.coerce_string_list(meta_result.get("images"))
                             )
                             logger.info("[AI Search] Extraction method used: meta-tags")
                             self._log_telemetry(
@@ -472,7 +536,7 @@ class Crawl4AIExtractor:
                                 float(meta_result["confidence"]),
                                 pruning_enabled=True,
                                 fit_markdown_used=False,
-                                fallback_triggered=result.get("fallback_triggered", False)
+                                fallback_triggered=result.get("fallback_triggered", False),
                             )
                             return meta_result
 
@@ -489,6 +553,7 @@ class Crawl4AIExtractor:
                 # SECOND PASS: If lightweight extraction failed, use LLM/CSS strategy
                 if self.extraction_strategy == "json_css":
                     from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
+
                     strategy = JsonCssExtractionStrategy(schema=self._product_schema)
                     method = "json-css"
                 else:
@@ -533,7 +598,7 @@ class Crawl4AIExtractor:
                 if not result.get("success") and self._should_retry_with_relaxed_wait(result):
                     engine.config["crawler"]["wait_until"] = "domcontentloaded"
                     result = await engine.crawl(url)
-                
+
                 # Strict validation for second crawl results
                 result_html = result.get("html")
                 result_markdown = result.get("markdown")
@@ -541,7 +606,7 @@ class Crawl4AIExtractor:
                     html = result_html
                 if isinstance(result_markdown, str):
                     markdown = result_markdown
-                
+
                 llm_time_ms = int((time.perf_counter() - llm_start) * 1000)
 
                 if result.get("success") and result.get("extracted_content"):
@@ -583,8 +648,7 @@ class Crawl4AIExtractor:
                                 expected_brand=brand,
                             )
                             product_data["images"] = await _resolve_grounding_images(
-                                self._grounding_redirect_resolver,
-                                self._extraction.coerce_string_list(product_data.get("images"))
+                                self._grounding_redirect_resolver, self._extraction.coerce_string_list(product_data.get("images"))
                             )
                             product_data["success"] = True
                             product_data["url"] = url
@@ -606,7 +670,7 @@ class Crawl4AIExtractor:
                                 product_data["confidence"],
                                 pruning_enabled=True,
                                 fit_markdown_used=(method == "llm"),
-                                fallback_triggered=result.get("fallback_triggered", False)
+                                fallback_triggered=result.get("fallback_triggered", False),
                             )
                             logger.info(f"[AI Search] Extraction method used: {method}")
 
@@ -635,11 +699,11 @@ class Crawl4AIExtractor:
             fetch_time_ms = int((time.perf_counter() - fetch_start) * 1000)
 
             logger.warning("[AI Search] Crawl4AI exception: %s", error_message)
-             
+
             # Check for NoneType/empty content errors
-            is_none_error = ("expected string or bytes-like object" in error_message and "NoneType" in error_message)
+            is_none_error = "expected string or bytes-like object" in error_message and "NoneType" in error_message
             is_type_error = "can only concatenate str" in error_message or "unsupported operand type" in error_message
-            
+
             if is_none_error or is_type_error:
                 logger.warning("[AI Search] Crawl4AI content handling error detected, using fallback extractor")
                 self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, llm_time_ms, "content type error")
@@ -956,8 +1020,7 @@ class FallbackExtractor:
             if jsonld_result:
                 jsonld_result["url"] = response_url
                 jsonld_result["images"] = await _resolve_grounding_images(
-                    self._grounding_redirect_resolver,
-                    self._extraction.coerce_string_list(jsonld_result.get("images"))
+                    self._grounding_redirect_resolver, self._extraction.coerce_string_list(jsonld_result.get("images"))
                 )
                 # Log JSON-LD extraction success
                 self._log_telemetry(response_url, sku, "jsonld", True, fetch_time_ms, parse_time_ms, None, jsonld_result.get("confidence", 0.0))
@@ -968,12 +1031,8 @@ class FallbackExtractor:
 
             title_match = re.search(r"<title[^>]*>(.*?)</title>", html_text, flags=re.IGNORECASE | re.DOTALL)
             title_text = self._extraction.normalize_product_title(title_match.group(1)) if title_match else ""
-            og_title = self._extraction.normalize_product_title(
-                self._extraction.extract_meta_content(html_text, "og:title", property_attr=True) or ""
-            )
-            og_description = self._extraction.clean_text(
-                self._extraction.extract_meta_content(html_text, "og:description", property_attr=True) or ""
-            )
+            og_title = self._extraction.normalize_product_title(self._extraction.extract_meta_content(html_text, "og:title", property_attr=True) or "")
+            og_description = self._extraction.clean_text(self._extraction.extract_meta_content(html_text, "og:description", property_attr=True) or "")
             og_image = self._extraction.extract_meta_content(html_text, "og:image", property_attr=True) or ""
             meta_brand = self._extraction.extract_meta_content(html_text, "product:brand", property_attr=True) or ""
             # Check for JSON-LD structured data presence (even if extraction failed)
@@ -1026,9 +1085,7 @@ class FallbackExtractor:
                 expected_name=product_name,
                 explicit_brand=inferred_brand or brand,
             )
-            fallback_size = self._extraction.extract_size_metrics(
-                f"{candidate_name} {self._extraction.strip_instructional_copy(fallback_description)}"
-            )
+            fallback_size = self._extraction.extract_size_metrics(f"{candidate_name} {self._extraction.strip_instructional_copy(fallback_description)}")
             # Confidence formula (FallbackExtractor):
             # Base: 0.65 (increased from 0.58 for Crawl4AI HTML reuse)
             # +0.15 if JSON-LD or structured data present

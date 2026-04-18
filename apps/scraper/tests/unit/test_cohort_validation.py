@@ -79,6 +79,11 @@ class MockScorer:
         return domain in candidates
 
     @staticmethod
+    def classify_source_domain(domain: str, brand: str | None) -> str:
+        del brand
+        return "official" if domain == "chewy.com" else "unknown"
+
+    @staticmethod
     def is_category_like_url(url: str) -> bool:
         return "/category/" in url or "/collections/" in url
 

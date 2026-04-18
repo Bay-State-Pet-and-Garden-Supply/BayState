@@ -1052,6 +1052,16 @@ def write_markdown_report(markdown: str, output_path: Path) -> None:
     _ = output_path.write_text(markdown.rstrip() + "\n", encoding="utf-8")
 
 
+def _print_console_text(text: str) -> None:
+    """Print text without crashing on non-Unicode Windows consoles."""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        stdout_encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+        sanitized_text = text.encode(stdout_encoding, errors="replace").decode(stdout_encoding, errors="replace")
+        print(sanitized_text)
+
+
 def resolve_report_paths(output_path: Path | None = None) -> tuple[Path, Path]:
     """Resolve JSON and Markdown output paths for a benchmark run."""
     if output_path is None:
@@ -1353,7 +1363,7 @@ def run_cli(argv: list[str] | None = None) -> int:
     write_report(report, json_output_path)
     write_markdown_report(markdown_report, markdown_output_path)
 
-    print(markdown_report)
+    _print_console_text(markdown_report)
     print(f"JSON report: {json_output_path}")
     print(f"Markdown report: {markdown_output_path}")
     return 0

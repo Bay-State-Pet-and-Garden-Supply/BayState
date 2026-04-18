@@ -126,6 +126,9 @@ class ExtractionValidator:
         conflicting_variant_matches = self._matching.has_conflicting_variant_tokens(product_name, combined_variant_text)
         specific_token_overlap = self._matching.has_specific_token_overlap(product_name, combined_variant_text, brand)
         source_tier = self._scoring.classify_source_domain(source_domain, brand)
+        resolved_variant = extraction_result.get("resolved_variant") if isinstance(extraction_result.get("resolved_variant"), dict) else None
+        variant_resolver = str((resolved_variant or {}).get("resolver") or "").strip()
+        is_resolved_official_family = source_tier == "official" and variant_resolver == "demandware_product_variation"
 
         validation_context = {
             "url": source_url,
@@ -136,6 +139,7 @@ class ExtractionValidator:
             "extracted_brand": extracted_brand,
             "extracted_name": extracted_name,
             "source_tier": source_tier,
+            "variant_resolver": variant_resolver or None,
         }
 
         logger.info(f"[AI Search Validation] Validating extraction from {source_url}")
@@ -177,7 +181,10 @@ class ExtractionValidator:
             return self._log_rejection(validation_context, "Brand mismatch with expected product context")
 
         if product_name and not name_matches:
-            return self._log_rejection(validation_context, "Product name mismatch with expected product context")
+            if is_resolved_official_family and (variant_matches or specific_token_overlap):
+                validation_context["name_match_relaxed_for_official_family"] = True
+            else:
+                return self._log_rejection(validation_context, "Product name mismatch with expected product context")
 
         if product_name and not variant_matches and source_tier not in {"official", "major_retailer"}:
             return self._log_rejection(validation_context, "Product page missing expected variant tokens")
@@ -185,19 +192,10 @@ class ExtractionValidator:
         if product_name and conflicting_variant_matches:
             return self._log_rejection(validation_context, "Product page contains conflicting variant tokens")
 
-        if (
-            product_name
-            and brand
-            and not specific_token_overlap
-            and source_tier not in {"official", "major_retailer"}
-            and confidence < 0.9
-        ):
+        if product_name and brand and not specific_token_overlap and source_tier not in {"official", "major_retailer"} and confidence < 0.9:
             return self._log_rejection(validation_context, "Product title missing specific expected variant tokens")
 
-        combined = (
-            f"{source_url} {extracted_name} {extracted_brand} "
-            f"{description} {size_metrics}"
-        ).lower()
+        combined = (f"{source_url} {extracted_name} {extracted_brand} {description} {size_metrics}").lower()
         has_exact_identifier = bool(sku) and sku.lower() in combined
 
         if source_tier == "marketplace" and not has_exact_identifier:
@@ -209,25 +207,18 @@ class ExtractionValidator:
         if sku:
             if not has_exact_identifier:
                 has_brand_evidence = brand_matches if brand else bool(extracted_brand) or source_tier == "official"
-                has_variant_evidence = (not product_name) or variant_matches or specific_token_overlap
+                has_variant_evidence = (not product_name) or variant_matches or specific_token_overlap or is_resolved_official_family
                 minimum_signal_confidence = max(0.83, self.confidence_threshold)
                 if source_tier == "secondary_retailer":
                     minimum_signal_confidence = max(0.78, self.confidence_threshold)
                 elif source_tier in {"official", "major_retailer"}:
                     minimum_signal_confidence = max(0.75, self.confidence_threshold)
-                has_strong_signals = (
-                    confidence >= minimum_signal_confidence
-                    and has_brand_evidence
-                    and has_variant_evidence
-                    and source_tier != "marketplace"
-                )
+                has_strong_signals = confidence >= minimum_signal_confidence and has_brand_evidence and has_variant_evidence and source_tier != "marketplace"
                 if not has_strong_signals:
                     return self._log_rejection(validation_context, "SKU not found and weak match signals")
 
         validation_context["accepted"] = True
         validation_context["rejection_reason"] = None
-        logger.info(
-            f"[AI Search Validation] ACCEPTED: confidence={confidence:.2f}, brand={extracted_brand}, source={source_url}"
-        )
+        logger.info(f"[AI Search Validation] ACCEPTED: confidence={confidence:.2f}, brand={extracted_brand}, source={source_url}")
         logger.info(f"[AI Search Validation] Validation telemetry: {validation_context}")
         return True, "ok"

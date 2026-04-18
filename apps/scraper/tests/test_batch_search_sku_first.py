@@ -203,7 +203,7 @@ def test_search_cohort_uses_sku_first_to_find_official_bentley_result_when_brand
     assert result.results["051588178896"][0].result.url == official_url
     assert search_client.search_calls == ["051588178896", "Bentley Seeds Tomato Jubilee 1943"]
     assert consolidator.calls == [("051588178896", "BENTLEY SEED TOMATO JUBILEE")]
-    assert any(call == (official_url, "BENTLEY SEED TOMATO JUBILEE", None) for call in extractor.calls)
+    assert any(call == (official_url, "BENTLEY SEED TOMATO JUBILEE", "Bentley Seeds") for call in extractor.calls)
 
 
 def test_search_sku_first_batches_each_phase_when_search_client_supports_it() -> None:

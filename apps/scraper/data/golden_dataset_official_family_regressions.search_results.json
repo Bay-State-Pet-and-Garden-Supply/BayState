@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "query": "032247884594 Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+      "results": [
+        {
+          "url": "https://www.wiltonhardware.com/p/nature-scapes-color-enhanced-mulch-sierra-red-032247884594",
+          "title": "Nature Scapes Color Enhanced Mulch Sierra Red 032247884594",
+          "description": "Independent retailer PDP for Scotts Sierra Red mulch 1.5 cu ft.",
+          "provider": "serper",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html?bvstate=pg:2/ct:r",
+          "title": "Scotts Nature Scapes Color Enhanced Mulch Reviews",
+          "description": "Official Scotts family page in review state for Sierra Red, Deep Forest Brown, and Black mulch variants.",
+          "provider": "serper",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
+          "title": "Scotts Nature Scapes Color Enhanced Mulch 1.5 cu. ft.",
+          "description": "Official Scotts family page with Sierra Red, Deep Forest Brown, and Black color variants plus 1.5 CF and 2 CF size options.",
+          "provider": "serper",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "032247884594 Scotts Miracle-Gro NatureScapes Sierra Red 1.5 CF",
+      "results": [
+        {
+          "url": "https://www.wiltonhardware.com/p/nature-scapes-color-enhanced-mulch-sierra-red-032247884594",
+          "title": "Nature Scapes Color Enhanced Mulch Sierra Red 032247884594",
+          "description": "Independent retailer PDP for Scotts Sierra Red mulch 1.5 cu ft.",
+          "provider": "serper",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
+          "title": "Scotts Nature Scapes Color Enhanced Mulch",
+          "description": "Official ScottsMiracleGro family page for Scotts NatureScapes Sierra Red and other mulch color variants in 1.5 CF and 2 CF sizes.",
+          "provider": "serper",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://www.acehardware.com/departments/lawn-and-garden/landscaping/mulch/7006648",
+          "title": "Scotts Nature Scapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+          "description": "Large retailer product listing for Scotts mulch.",
+          "provider": "serper",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "032247884594 Scotts Nature Scapes Sierra Red 1.5 CF mulch",
+      "results": [
+        {
+          "url": "https://www.wiltonhardware.com/p/nature-scapes-color-enhanced-mulch-sierra-red-032247884594",
+          "title": "Nature Scapes Color Enhanced Mulch Sierra Red 032247884594",
+          "description": "Independent retailer PDP for Scotts Sierra Red mulch 1.5 cu ft.",
+          "provider": "serper",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
+          "title": "Scotts Nature Scapes Color Enhanced Mulch",
+          "description": "Official Scotts family page with Sierra Red mulch plus additional color variants and 1.5 CF or 2 CF package sizes.",
+          "provider": "serper",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://www.truevalue.com/product/scotts-nature-scapes-color-enhanced-mulch-sierra-red-1-5-cu-ft/",
+          "title": "Scotts Nature Scapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+          "description": "Retailer listing for Sierra Red 1.5 cu ft mulch.",
+          "provider": "serper",
+          "result_type": "organic"
+        }
+      ]
+    }
+  ]
+}

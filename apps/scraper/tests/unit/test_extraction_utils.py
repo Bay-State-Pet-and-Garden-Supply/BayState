@@ -133,9 +133,7 @@ def test_normalize_images_preserves_absolute_products_url() -> None:
         "https://bentleyseeds.com/products/all-sorts-mix-sunflower-seed",
     )
 
-    assert images == [
-        "https://cdn.shopify.com/s/files/1/0023/BentleySeed_AllSorts.jpg"
-    ]
+    assert images == ["https://cdn.shopify.com/s/files/1/0023/BentleySeed_AllSorts.jpg"]
 
 
 def test_normalize_images_preserves_valid_shopify_cdn_file_url() -> None:
@@ -146,9 +144,7 @@ def test_normalize_images_preserves_valid_shopify_cdn_file_url() -> None:
         "https://bentleyseeds.com/products/turnip-purple-white-globe",
     )
 
-    assert images == [
-        "https://bentleyseeds.com/cdn/shop/files/HTG-017_front.jpg?v=1739186744"
-    ]
+    assert images == ["https://bentleyseeds.com/cdn/shop/files/HTG-017_front.jpg?v=1739186744"]
 
 
 def test_infer_brand_from_candidate_title_prefix() -> None:
@@ -163,3 +159,54 @@ def test_infer_brand_from_candidate_title_prefix() -> None:
     )
 
     assert inferred_brand == "Four Paws"
+
+
+def test_extract_demandware_variant_candidates_prefers_matching_color_and_size() -> None:
+    utils = _build_utils()
+    html = """
+    <button class="btn-size" value="https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0031&amp;dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&amp;pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1" data-attr-value="1.5cf" data-attr-id="size">1.5 CF</button>
+    <button class="btn-size" value="https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0031&amp;dwvar_scotts-nature-scapes-color-enhanced-mulch_size=2cf&amp;pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1" data-attr-value="2cf" data-attr-id="size">2 CF</button>
+    <button aria-label="Select Color Black" data-url="https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0031&amp;dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&amp;pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1"><span data-attr-value="0031"></span></button>
+    <button aria-label="Select Color Red" data-url="https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0039&amp;dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&amp;pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1"><span data-attr-value="0039"></span></button>
+    <button aria-label="Select Color Brown" data-url="https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0041&amp;dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&amp;pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1"><span data-attr-value="0041"></span></button>
+    """
+
+    candidates = utils.extract_demandware_variant_candidates(
+        html_text=html,
+        source_url="https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
+        expected_name="Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+    )
+
+    assert candidates
+    assert "color=0039" in candidates[0]["url"]
+    assert "size=1.5cf" in candidates[0]["url"]
+    assert candidates[0]["score"] > candidates[-1]["score"]
+
+
+def test_extract_product_from_html_jsonld_supports_demandware_variation_payload() -> None:
+    utils = _build_utils()
+    payload = {
+        "product": {
+            "productName": "Scotts Nature Scapes Color Enhanced Mulch 1.5 cu. ft.",
+            "brand": "Scotts",
+            "upc": "032247884594",
+            "id": "88459442",
+            "selectedProductUrl": "/en-us/brands/scotts/products/browse-all-scotts-products/88459442.html",
+            "shortDescription": "Scotts Nature Scapes color enhanced mulch enhances landscaping with rich, red color.",
+            "images": {"large": [{"url": "https://smg.widen.net/content/q6rayjk4jt/webp/88459440_0_F.webp?&w=800&h=800"}]},
+        }
+    }
+
+    result = utils.extract_product_from_html_jsonld(
+        html_text=__import__("json").dumps(payload),
+        source_url="https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
+        sku="032247884594",
+        product_name="Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+        brand="Scotts",
+        matching_utils=utils._matching,
+    )
+
+    assert result is not None
+    assert result["resolved_variant"]["resolver"] == "demandware_product_variation"
+    assert result["brand"] == "Scotts"
+    assert result["url"].endswith("/88459442.html")

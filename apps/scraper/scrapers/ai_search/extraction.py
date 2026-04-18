@@ -4,7 +4,7 @@ import html as html_module
 import json
 import re
 from typing import Any, Optional
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
 from scrapers.ai_search.matching import MatchingUtils
 
@@ -137,6 +137,17 @@ class ExtractionUtils:
     _PRICE_SUFFIX_PATTERN = re.compile(r"\s*[-–|]\s*\$?\d[\d,]*(?:\.\d{2})\s*$")
     _SITE_SUFFIX_PATTERN = re.compile(r"\s*[|–]\s*[^|–]+$")
     _MULTISPACE_PATTERN = re.compile(r"\s+")
+    _DEMANDWARE_VARIATION_URL_PATTERN = re.compile(
+        r"(?:data-url|value)=[\"']([^\"']*Product-Variation[^\"']+)[\"']",
+        flags=re.IGNORECASE,
+    )
+    _DEMANDWARE_VARIATION_ATTR_PATTERN = re.compile(
+        r"data-attr-value=[\"']([^\"']+)[\"'][^>]*data-attr-id=[\"']([^\"']+)[\"']"
+        r"|data-attr-id=[\"']([^\"']+)[\"'][^>]*data-attr-value=[\"']([^\"']+)[\"']",
+        flags=re.IGNORECASE,
+    )
+    _DISPLAY_VALUE_PATTERN = re.compile(r"aria-label=[\"']Select\s+([^\"']+)[\"']", flags=re.IGNORECASE)
+    _DEMANDWARE_VARIATION_ID_PATTERN = re.compile(r'"variant"\s*:\s*"([^"]+)"', flags=re.IGNORECASE)
 
     def __init__(self, scoring_module):
         """Initialize with scoring module for domain utilities."""
@@ -220,9 +231,7 @@ class ExtractionUtils:
                 if any(marker in context for marker in self._NEGATIVE_SIZE_CONTEXT_MARKERS):
                     continue
 
-                if re.search(r"\b(?:in|inch|inches|cm|mm)\b", value_lower) and not any(
-                    marker in context for marker in self._DIMENSION_CONTEXT_MARKERS
-                ):
+                if re.search(r"\b(?:in|inch|inches|cm|mm)\b", value_lower) and not any(marker in context for marker in self._DIMENSION_CONTEXT_MARKERS):
                     continue
 
                 score = 0
@@ -255,9 +264,7 @@ class ExtractionUtils:
             return url
 
         if self._BIGCOMMERCE_SIZE_PLACEHOLDER.search(url):
-            return self._BIGCOMMERCE_SIZE_PLACEHOLDER.sub(
-                self._BIGCOMMERCE_SIZE_DEFAULT, url
-            )
+            return self._BIGCOMMERCE_SIZE_PLACEHOLDER.sub(self._BIGCOMMERCE_SIZE_DEFAULT, url)
 
         # Reject URLs with unknown/unresolved template placeholders
         if re.search(r"\{[^}]+\}", url):
@@ -376,6 +383,153 @@ class ExtractionUtils:
             return None
         return html_module.unescape(match.group(1)).strip()
 
+    def normalized_variant_keywords(self, value: Optional[str]) -> set[str]:
+        """Extract human-readable variant tokens such as colors and flavors."""
+        tokens = self._matching.tokenize_keywords(value)
+        variant_measure_tokens = self._matching.extract_variant_tokens(value)
+        normalized_measure_roots = {re.sub(r"[^a-z]", "", token.lower()) for token in variant_measure_tokens if token}
+        return {token for token in tokens if token not in self._matching.STOP_WORDS and token not in normalized_measure_roots}
+
+    @staticmethod
+    def canonicalize_url(url: Optional[str]) -> str:
+        raw_url = str(url or "").strip()
+        if not raw_url:
+            return ""
+
+        parsed = urlparse(raw_url)
+        filtered_query = [
+            (key, value)
+            for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+            if not key.lower().startswith("utm_") and key.lower() not in {"bvstate", "bvrrp", "srsltid", "gclid", "fbclid"}
+        ]
+        normalized_path = parsed.path.rstrip("/") or "/"
+        normalized_query = urlencode(sorted(filtered_query))
+        return urlunparse((parsed.scheme.lower() or "https", parsed.netloc.lower(), normalized_path, "", normalized_query, ""))
+
+    def _merge_variant_url(self, variation_url: str, attr_values: dict[str, str]) -> str:
+        parsed = urlparse(variation_url)
+        query_pairs = parse_qsl(parsed.query, keep_blank_values=True)
+        updated_pairs: list[tuple[str, str]] = []
+        for key, value in query_pairs:
+            updated_value = value
+            key_lower = key.lower()
+            if "_color" in key_lower and attr_values.get("color"):
+                updated_value = attr_values["color"]
+            elif "_size" in key_lower and attr_values.get("size"):
+                updated_value = attr_values["size"]
+            updated_pairs.append((key, updated_value))
+
+        normalized_query = urlencode(updated_pairs)
+        return urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, normalized_query, parsed.fragment))
+
+    def _demandware_attr_display_values(self, html_text: str) -> dict[str, dict[str, str]]:
+        attr_display_values: dict[str, dict[str, str]] = {"color": {}, "size": {}}
+
+        color_buttons = re.findall(
+            r"<button[^>]+aria-label=[\"']Select Color ([^\"']+)[\"'][^>]*>(.*?)</button>",
+            html_text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        for display_value, button_html in color_buttons:
+            attr_value_match = re.search(r"data-attr-value=[\"']([^\"']+)[\"']", button_html, flags=re.IGNORECASE)
+            if attr_value_match:
+                attr_display_values["color"][attr_value_match.group(1)] = self.clean_text(display_value)
+
+        size_buttons = re.findall(
+            r"<button[^>]+data-attr-id=[\"']size[\"'][^>]*data-attr-value=[\"']([^\"']+)[\"'][^>]*>(.*?)</button>",
+            html_text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        for attr_value, button_html in size_buttons:
+            display_value = self.clean_text(re.sub(r"<[^>]+>", " ", button_html))
+            if display_value:
+                attr_display_values["size"][attr_value] = display_value
+
+        return attr_display_values
+
+    def extract_demandware_variant_candidates(
+        self,
+        html_text: str,
+        source_url: str,
+        expected_name: Optional[str],
+    ) -> list[dict[str, Any]]:
+        """Extract Demandware variation endpoint candidates from a family page."""
+        if not isinstance(html_text, str) or "Product-Variation" not in html_text:
+            return []
+
+        expected_variant_keywords = self.normalized_variant_keywords(expected_name)
+        expected_measure_tokens = self._matching.extract_variant_tokens(expected_name)
+        display_values = self._demandware_attr_display_values(html_text)
+
+        candidates: list[dict[str, Any]] = []
+        seen_urls: set[str] = set()
+        for raw_variation_url in self._DEMANDWARE_VARIATION_URL_PATTERN.findall(html_text):
+            resolved_url = html_module.unescape(raw_variation_url)
+            if resolved_url.startswith("/"):
+                resolved_url = urljoin(source_url, resolved_url)
+
+            parsed = urlparse(resolved_url)
+            params = dict(parse_qsl(parsed.query, keep_blank_values=True))
+            attr_values: dict[str, str] = {}
+            for key, value in params.items():
+                key_lower = key.lower()
+                if "_color" in key_lower and value:
+                    attr_values["color"] = value
+                elif "_size" in key_lower and value:
+                    attr_values["size"] = value
+
+            if not attr_values:
+                continue
+
+            candidate_url = self._merge_variant_url(resolved_url, attr_values)
+            canonical_candidate_url = self.canonicalize_url(candidate_url)
+            if not canonical_candidate_url or canonical_candidate_url in seen_urls:
+                continue
+            seen_urls.add(canonical_candidate_url)
+
+            color_value = display_values["color"].get(attr_values.get("color", ""), "")
+            size_value = display_values["size"].get(attr_values.get("size", ""), attr_values.get("size", ""))
+            variant_text = " ".join(value for value in [color_value, size_value] if value)
+            variant_keywords = self.normalized_variant_keywords(variant_text)
+            measure_tokens = self._matching.extract_variant_tokens(variant_text)
+
+            score = 0.0
+            if variant_keywords and expected_variant_keywords:
+                score += float(len(expected_variant_keywords.intersection(variant_keywords))) * 5.0
+            if expected_measure_tokens and measure_tokens:
+                score += float(len(expected_measure_tokens.intersection(measure_tokens))) * 4.0
+            if self._matching.has_conflicting_variant_tokens(expected_name, variant_text):
+                score -= 8.0
+
+            candidates.append(
+                {
+                    "url": candidate_url,
+                    "variant_text": variant_text,
+                    "score": score,
+                    "attr_values": attr_values,
+                }
+            )
+
+        candidates.sort(key=lambda candidate: float(candidate.get("score", 0.0)), reverse=True)
+        return candidates
+
+    def selected_demandware_variant_id(self, payload: dict[str, Any]) -> str:
+        product = payload.get("product") if isinstance(payload, dict) else None
+        if not isinstance(product, dict):
+            return ""
+
+        for candidate in [
+            product.get("upc"),
+            product.get("id"),
+            product.get("productForUrl"),
+            product.get("gtmData", {}).get("variant") if isinstance(product.get("gtmData"), dict) else None,
+            product.get("gtmGA4Data", {}).get("item_variant") if isinstance(product.get("gtmGA4Data"), dict) else None,
+        ]:
+            normalized = self.clean_text(candidate)
+            if normalized:
+                return normalized
+        return ""
+
     def _iter_jsonld_nodes(self, html_text: str) -> list[dict[str, Any]]:
         """Parse JSON-LD blocks into a flat list of dict nodes."""
         if not isinstance(html_text, str):
@@ -415,9 +569,7 @@ class ExtractionUtils:
         """Extract category-like breadcrumb names from JSON-LD breadcrumb lists."""
         categories: list[str] = []
         product_name_normalized = (
-            self._scoring._matching.normalize_token_text(product_name)
-            if hasattr(self._scoring, "_matching")
-            else self._normalize_lookup_token(product_name)
+            self._scoring._matching.normalize_token_text(product_name) if hasattr(self._scoring, "_matching") else self._normalize_lookup_token(product_name)
         )
 
         for node in self._iter_jsonld_nodes(html_text):
@@ -473,9 +625,7 @@ class ExtractionUtils:
         if normalized_explicit:
             return normalized_explicit
 
-        combined = " ".join(
-            part for part in [candidate_name or "", description or "", expected_name or "", source_url or ""] if part
-        ).lower()
+        combined = " ".join(part for part in [candidate_name or "", description or "", expected_name or "", source_url or ""] if part).lower()
         if "lake valley" in combined or "lkvll" in combined:
             return "Lake Valley Seed"
         if "lv seed" in combined:
@@ -555,6 +705,116 @@ class ExtractionUtils:
         """Extract product data from JSON-LD structured data."""
         if not isinstance(html_text, str):
             return None
+
+        stripped = html_text.strip()
+        if stripped.startswith("{") and '"product"' in stripped:
+            try:
+                demandware_payload = json.loads(stripped)
+            except json.JSONDecodeError:
+                demandware_payload = None
+            if isinstance(demandware_payload, dict):
+                demandware_product = demandware_payload.get("product")
+                if isinstance(demandware_product, dict):
+                    product_name_value = self.normalize_product_title(demandware_product.get("productName") or demandware_product.get("productDisplayName"))
+                    short_description = self.clean_text(demandware_product.get("shortDescription"))
+                    if not short_description:
+                        short_description = self.clean_text(demandware_product.get("pageDescription"))
+
+                    resolved_brand = self.infer_brand(
+                        explicit_brand=demandware_product.get("brand") or brand,
+                        candidate_name=product_name_value,
+                        description=short_description,
+                        source_url=source_url,
+                        expected_name=product_name,
+                    )
+                    image_values = []
+                    images_payload = demandware_product.get("images")
+                    if isinstance(images_payload, dict):
+                        for bucket in ("large", "small"):
+                            image_values.extend(self.extract_image_urls(images_payload.get(bucket)))
+                    normalized_images = self.normalize_images(image_values, source_url)
+
+                    variation_attributes = demandware_product.get("variationAttributes")
+                    explicit_categories = None
+                    if isinstance(variation_attributes, list):
+                        explicit_categories = []
+
+                    size_source = " ".join(
+                        part
+                        for part in [
+                            product_name_value,
+                            short_description,
+                            self.clean_text(demandware_product.get("selectedProductUrl")),
+                        ]
+                        if part
+                    )
+                    size_metrics = self.extract_size_metrics(size_source)
+
+                    categories = self.infer_categories(
+                        html_text="",
+                        source_url=source_url,
+                        candidate_name=product_name_value,
+                        expected_name=product_name,
+                        explicit_categories=explicit_categories,
+                        explicit_brand=resolved_brand or brand,
+                    )
+
+                    sku_value = self.clean_text(
+                        demandware_product.get("upc")
+                        or demandware_product.get("id")
+                        or demandware_product.get("productForUrl")
+                        or demandware_product.get("gtmData", {}).get("variant")
+                        if isinstance(demandware_product.get("gtmData"), dict)
+                        else ""
+                    )
+
+                    score = 0.0
+                    combined = " ".join(
+                        [
+                            product_name_value,
+                            short_description,
+                            sku_value,
+                            self.clean_text(demandware_product.get("selectedProductUrl")),
+                        ]
+                    )
+                    if sku and sku.lower() in combined.lower():
+                        score += 5.0
+                    if brand and matching_utils.is_brand_match(brand, resolved_brand, source_url):
+                        score += 3.0
+                    if product_name and matching_utils.is_name_match(product_name, product_name_value):
+                        score += 3.0
+                    if product_name and matching_utils.has_variant_token_overlap(product_name, combined):
+                        score += 3.0
+
+                    filled_fields = sum(
+                        1
+                        for value in [
+                            product_name_value,
+                            resolved_brand,
+                            short_description,
+                            size_metrics,
+                            normalized_images,
+                            categories,
+                        ]
+                        if value
+                    )
+                    confidence = max(0.7, min(0.99, (filled_fields / 6.0) + (score / 14.0)))
+
+                    return {
+                        "success": True,
+                        "product_name": product_name_value,
+                        "brand": resolved_brand,
+                        "description": short_description,
+                        "size_metrics": size_metrics,
+                        "images": normalized_images,
+                        "categories": categories,
+                        "confidence": confidence,
+                        "url": urljoin(source_url, str(demandware_product.get("selectedProductUrl") or "").strip()) or source_url,
+                        "resolved_variant": {
+                            "resolver": "demandware_product_variation",
+                            "variant_id": sku_value,
+                        },
+                    }
 
         candidates: list[dict[str, Any]] = []
         for current in self._iter_jsonld_nodes(html_text):

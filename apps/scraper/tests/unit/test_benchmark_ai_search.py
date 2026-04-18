@@ -434,6 +434,60 @@ async def test_benchmark_runner_uses_companion_search_fixtures(tmp_path: Path) -
 
 
 @pytest.mark.asyncio
+async def test_benchmark_runner_prefers_official_family_page_over_smaller_retailer_exact_match(tmp_path: Path) -> None:
+    entries = [
+        {
+            "query": "032247884594 Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+            "expected_source_url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
+            "category": "Mulch",
+            "difficulty": "medium",
+            "rationale": "Official Scotts family page should outrank small retailer PDPs when it exposes resolvable color and size variants.",
+            "brand": "Scotts",
+            "sku": "032247884594",
+            "product_name": "Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+        }
+    ]
+    dataset_path = _write_dataset(tmp_path, entries, filename="golden_dataset_v1.json")
+    fixture_manifest_path = tmp_path / "golden_dataset_v1.search_results.json"
+    _ = fixture_manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "entries": [
+                    {
+                        "query": "032247884594 Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+                        "results": [
+                            _result(
+                                "https://www.wiltonhardware.com/p/nature-scapes-color-enhanced-mulch-sierra-red-032247884594",
+                                "Nature Scapes Color Enhanced Mulch Sierra Red 032247884594",
+                                "Independent retailer PDP for Scotts Sierra Red mulch 1.5 cu ft.",
+                            ),
+                            _result(
+                                "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
+                                "Scotts Nature Scapes Color Enhanced Mulch 1.5 cu. ft.",
+                                "Official Scotts family page with Red, Brown, and Black color variants plus 1.5 CF and 2 CF size options.",
+                            ),
+                        ],
+                    }
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    runner = BenchmarkRunner(dataset_path=dataset_path)
+    report = await runner.run()
+
+    assert report["summary"]["matched_examples"] == 1
+    assert (
+        report["results"][0]["predicted_source_url"]
+        == "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html"
+    )
+    assert report["results"][0]["correct_rank"] == 1
+
+
+@pytest.mark.asyncio
 async def test_benchmark_runner_supports_llm_mode_with_selector_fallback(tmp_path: Path) -> None:
     entries = [
         {
@@ -626,6 +680,23 @@ def test_generate_markdown_report_renders_human_readable_tables() -> None:
     assert "## Per-Example Results" in markdown
     assert "Maintain the current ranking strategy for Tools" in markdown
     assert "| Tools | 1 | 100.000 |" in markdown
+
+
+def test_print_console_text_falls_back_for_non_utf8_console(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    def fake_print(value: object = "", *args: object, **kwargs: object) -> None:
+        text = str(value)
+        calls.append(text)
+        if len(calls) == 1:
+            raise UnicodeEncodeError("cp1252", text, 0, 1, "character maps to <undefined>")
+
+    monkeypatch.setattr("builtins.print", fake_print)
+    monkeypatch.setattr(benchmark_ai_search.sys, "stdout", type("Stdout", (), {"encoding": "cp1252"})())
+
+    benchmark_ai_search._print_console_text("✅ Tools")
+
+    assert calls == ["✅ Tools", "? Tools"]
 
 
 def test_main_writes_reports_and_returns_zero(

@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "created_at": "2026-04-18T00:00:00Z",
+  "provenance": {
+    "annotator": "OpenCode",
+    "source": "fixture_regression",
+    "mode": "heuristic",
+    "product_count": 3,
+    "workflow": "official-family-page-regression"
+  },
+  "entries": [
+    {
+      "query": "032247884594 Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+      "expected_source_url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
+      "category": "Mulch",
+      "difficulty": "medium",
+      "rationale": "The clean official Scotts family page should beat both an exact-match retailer PDP and a noisy review-state official URL.",
+      "sku": "032247884594",
+      "product_name": "Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+      "brand": "Scotts"
+    },
+    {
+      "query": "032247884594 Scotts Miracle-Gro NatureScapes Sierra Red 1.5 CF",
+      "expected_source_url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
+      "category": "Mulch",
+      "difficulty": "medium",
+      "rationale": "Brand alias normalization should still classify scottsmiraclegro.com as official for Scotts family pages.",
+      "sku": "032247884594",
+      "product_name": "Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 CF",
+      "brand": "Scotts Miracle-Gro"
+    },
+    {
+      "query": "032247884594 Scotts Nature Scapes Sierra Red 1.5 CF mulch",
+      "expected_source_url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
+      "category": "Mulch",
+      "difficulty": "hard",
+      "rationale": "Variant token normalization should still favor the official family page when the query uses CF shorthand instead of cu ft.",
+      "sku": "032247884594",
+      "product_name": "Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 CF",
+      "brand": "Scotts"
+    }
+  ]
+}
