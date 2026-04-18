@@ -18,32 +18,18 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { deleteRunner } from '@/app/admin/scrapers/network/[id]/actions';
+import { deleteRunner } from '@/app/admin/scrapers/network/actions';
 import { RunnerManagementPanel } from './runner-management-panel';
 import { RunnerMetadataEditor } from './runner-metadata-editor';
 import { RunnerRunHistory } from './runner-run-history';
 import { RunnerStatistics } from './runner-statistics';
-
-export type RunnerStatus = 'online' | 'offline' | 'busy' | 'idle' | 'polling' | 'paused';
-
-export interface RunnerDetail {
-  id: string;
-  name: string;
-  status: RunnerStatus;
-  enabled: boolean;
-  last_seen_at: string | null;
-  active_jobs: number;
-  region: string | null;
-  version: string | null;
-  build_check_reason: string | null;
-  latest_build_sha?: string | null;
-  latest_build_id?: string | null;
-  metadata: Record<string, unknown> | null;
-}
+import type { RunnerStatus, RunnerDetail } from './types';
+import { cn } from '@/lib/utils';
 
 interface RunnerDetailClientProps {
   runner: RunnerDetail;
-  backHref: string;
+  backHref?: string;
+  isEmbedded?: boolean;
 }
 
 const statusVariants: Record<RunnerStatus, 'default' | 'secondary' | 'success' | 'warning' | 'destructive'> = {
@@ -70,7 +56,7 @@ function formatLastSeen(isoString: string | null): string {
   return date.toLocaleString();
 }
 
-export function RunnerDetailClient({ runner, backHref }: RunnerDetailClientProps) {
+export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: RunnerDetailClientProps) {
   const router = useRouter();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
@@ -88,7 +74,11 @@ export function RunnerDetailClient({ runner, backHref }: RunnerDetailClientProps
       const result = await deleteRunner(runner.id);
       if (result.success) {
         toast.success('Runner deleted successfully');
-        router.push('/admin/scrapers/network');
+        if (!isEmbedded) {
+          router.push('/admin/scrapers/network');
+        } else {
+          router.refresh();
+        }
       } else {
         toast.error(result.error || 'Failed to delete runner');
         setIsDeleting(false);
@@ -100,26 +90,53 @@ export function RunnerDetailClient({ runner, backHref }: RunnerDetailClientProps
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header with back button */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href={backHref}>
-            <ArrowLeft className="h-4 w-4" />
-            <span className="sr-only">Back to runners</span>
-          </Link>
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground">{runner.name}</h1>
-          <p className="text-sm text-muted-foreground">Runner ID: {runner.id}</p>
+    <div className={cn("space-y-6", isEmbedded && "space-y-4")}>
+      {/* Header with back button - only if not embedded */}
+      {!isEmbedded && (
+        <div className="flex items-center gap-4">
+          {backHref && (
+            <Button variant="ghost" size="icon" asChild>
+              <Link href={backHref}>
+                <ArrowLeft className="h-4 w-4" />
+                <span className="sr-only">Back to runners</span>
+              </Link>
+            </Button>
+          )}
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold text-foreground">{runner.name}</h1>
+            <p className="text-sm text-muted-foreground">Runner ID: {runner.id}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant={statusVariants[runner.status]}>
+              {statusLabels[runner.status]}
+            </Badge>
+            <Badge variant={accessBadgeVariant}>
+              {runner.enabled ? 'Enabled' : 'Disabled'}
+            </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDeleteDialog(true)}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Delete
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={statusVariants[runner.status]}>
-            {statusLabels[runner.status]}
-          </Badge>
-          <Badge variant={accessBadgeVariant}>
-            {runner.enabled ? 'Enabled' : 'Disabled'}
-          </Badge>
+      )}
+
+      {/* Embedded Header - just badges and delete button */}
+      {isEmbedded && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Badge variant={statusVariants[runner.status]}>
+              {statusLabels[runner.status]}
+            </Badge>
+            <Badge variant={accessBadgeVariant}>
+              {runner.enabled ? 'Enabled' : 'Disabled'}
+            </Badge>
+          </div>
           <Button
             variant="outline"
             size="sm"
@@ -130,14 +147,19 @@ export function RunnerDetailClient({ runner, backHref }: RunnerDetailClientProps
             Delete
           </Button>
         </div>
-      </div>
+      )}
 
       {/* Quick Stats */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className={cn(
+        "grid gap-6 md:grid-cols-2 lg:grid-cols-4",
+        isEmbedded && "grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4"
+      )}>
         {/* Status Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Status</CardTitle>
+        <Card className={cn(isEmbedded && "border-2 border-zinc-900 shadow-[4px_4px_0px_rgba(0,0,0,1)] rounded-none")}>
+          <CardHeader className={cn(isEmbedded && "pb-2")}>
+            <CardTitle className={cn("text-sm font-medium", isEmbedded && "text-xs font-black uppercase tracking-tighter")}>
+              Status
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -148,35 +170,45 @@ export function RunnerDetailClient({ runner, backHref }: RunnerDetailClientProps
             <p className="mt-2 text-sm text-muted-foreground">
               {runner.enabled
                 ? `${runner.active_jobs} active job${runner.active_jobs !== 1 ? 's' : ''}`
-                : 'Job pickup disabled from the admin panel'}
+                : 'Job pickup disabled'}
             </p>
           </CardContent>
         </Card>
 
         {/* Last Seen Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Last Seen</CardTitle>
+        <Card className={cn(isEmbedded && "border-2 border-zinc-900 shadow-[4px_4px_0px_rgba(0,0,0,1)] rounded-none")}>
+          <CardHeader className={cn(isEmbedded && "pb-2")}>
+            <CardTitle className={cn("text-sm font-medium", isEmbedded && "text-xs font-black uppercase tracking-tighter")}>
+              Last Seen
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm">{formatLastSeen(runner.last_seen_at)}</p>
+            <p className="text-sm font-mono">{formatLastSeen(runner.last_seen_at)}</p>
           </CardContent>
         </Card>
 
         {/* Region Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Region</CardTitle>
+        <Card className={cn(isEmbedded && "border-2 border-zinc-900 shadow-[4px_4px_0px_rgba(0,0,0,1)] rounded-none")}>
+          <CardHeader className={cn(isEmbedded && "pb-2")}>
+            <CardTitle className={cn("text-sm font-medium", isEmbedded && "text-xs font-black uppercase tracking-tighter")}>
+              Region
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm">{runner.region ?? 'Unknown'}</p>
+            <p className="text-sm font-mono">{runner.region ?? 'Unknown'}</p>
           </CardContent>
         </Card>
 
         {/* Version Card */}
-        <Card className={runner.build_check_reason === 'outdated' || runner.build_check_reason === 'missing' ? 'border-destructive/50 bg-destructive/5' : ''}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center justify-between">
+        <Card className={cn(
+          isEmbedded && "border-2 border-zinc-900 shadow-[4px_4px_0px_rgba(0,0,0,1)] rounded-none",
+          (runner.build_check_reason === 'outdated' || runner.build_check_reason === 'missing') ? 'border-destructive/50 bg-destructive/5' : ''
+        )}>
+          <CardHeader className={cn("pb-2", isEmbedded && "pb-2")}>
+            <CardTitle className={cn(
+              "text-sm font-medium flex items-center justify-between",
+              isEmbedded && "text-xs font-black uppercase tracking-tighter"
+            )}>
               Version
               {runner.build_check_reason === 'current' ? (
                 <CheckCircle2 className="h-4 w-4 text-success" />
@@ -209,7 +241,7 @@ export function RunnerDetailClient({ runner, backHref }: RunnerDetailClientProps
 
       {/* Tabs for detailed sections */}
       <Tabs defaultValue="runs" className="space-y-4">
-        <TabsList>
+        <TabsList variant="line" className={cn(isEmbedded && "w-full justify-start border-b border-zinc-200 rounded-none")}>
           <TabsTrigger value="runs">Run History</TabsTrigger>
           <TabsTrigger value="statistics">Statistics</TabsTrigger>
           <TabsTrigger value="manage">Manage</TabsTrigger>

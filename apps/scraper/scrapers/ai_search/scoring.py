@@ -3,7 +3,7 @@
 import re
 import httpx
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from threading import Lock
 from typing import Any, Optional
 from urllib.parse import urlparse
@@ -40,7 +40,7 @@ def record_domain_attempt(domain: str, success: bool) -> None:
         stats.attempts += 1
         if success:
             stats.successes += 1
-        stats.last_updated = datetime.now(UTC).isoformat()
+        stats.last_updated = datetime.now(timezone.utc).isoformat()
 
 
 from scrapers.ai_search.matching import MatchingUtils

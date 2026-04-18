@@ -9,7 +9,7 @@ import os
 import random
 import sys
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from time import perf_counter
 from typing import Protocol, cast
@@ -249,7 +249,7 @@ def sample_products(products: list[CatalogProduct], sample_size: int) -> list[Ca
 
 
 def _timestamp_slug() -> str:
-    return datetime.now(UTC).strftime("%Y-%m-%d_%H-%M-%S")
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
 
 
 def _create_artifact_paths(output_dir: Path) -> ValidationArtifacts:
@@ -404,7 +404,7 @@ async def run_validation(config: ValidationConfig) -> int:
     if config.dry_run:
         summary = _build_summary(config, sampled_products, [])
         payload = {
-            "run_started_at": datetime.now(UTC).isoformat(),
+            "run_started_at": datetime.now(timezone.utc).isoformat(),
             "summary": summary,
             "sampled_products": [asdict(product) for product in sampled_products],
             "results": [],
@@ -441,7 +441,7 @@ async def run_validation(config: ValidationConfig) -> int:
 
     summary = _build_summary(config, sampled_products, serialized_results)
     payload = {
-        "run_started_at": datetime.now(UTC).isoformat(),
+        "run_started_at": datetime.now(timezone.utc).isoformat(),
         "summary": summary,
         "sampled_products": [asdict(product) for product in sampled_products],
         "results": serialized_results,

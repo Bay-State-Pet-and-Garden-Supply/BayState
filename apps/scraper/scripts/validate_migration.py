@@ -10,7 +10,7 @@ import sys
 from collections import Counter, defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from time import perf_counter
 from typing import Protocol, cast
@@ -163,7 +163,7 @@ def _build_config(args: argparse.Namespace) -> ValidationConfig:
 
 
 def _default_report_file() -> Path:
-    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     return DEFAULT_OUTPUT_DIR / f"report_{timestamp}.json"
 
 
@@ -342,7 +342,7 @@ def _sample_product(product: ProductRow) -> dict[str, object]:
 
 
 def _build_validation_report(config: ValidationConfig) -> dict[str, object]:
-    started_at = datetime.now(UTC)
+    started_at = datetime.now(timezone.utc)
     total_started = perf_counter()
 
     load_started = perf_counter()

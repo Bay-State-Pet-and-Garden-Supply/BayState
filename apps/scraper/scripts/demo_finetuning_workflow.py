@@ -5,7 +5,7 @@ import json
 import hashlib
 import sys
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import cast
 
@@ -433,7 +433,7 @@ def main() -> int:
     improved_fields = [field for field, delta in sorted(field_deltas.items(), key=lambda item: item[1], reverse=True) if delta > 0]
 
     report_json = {
-        "generated_at": datetime.now(UTC).isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "ground_truth_skus": [{"sku": product.sku, "brand": product.brand, "name": product.name} for product in products],
         "prompt_diff": asdict(prompt_diff),
         "simulated_results": {

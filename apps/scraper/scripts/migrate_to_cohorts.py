@@ -8,7 +8,7 @@ import os
 import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol, TypeVar, cast
 
@@ -287,7 +287,7 @@ class CohortMigration:
                 "brands": sorted({brand for brand in (member.brand for member in members) if brand}),
                 "categories": sorted({category for category in (member.category for member in members) if category}),
                 "historical": True,
-                "generated_at": datetime.now(UTC).isoformat(),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
             }
             candidates.append(
                 CohortCandidate(
@@ -414,7 +414,7 @@ class CohortMigration:
         ]
         return {
             "mode": "dry-run" if self.config.dry_run else "execute",
-            "generated_at": datetime.now(UTC).isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "configuration": {
                 "prefix_length": self.config.prefix_length,
                 "min_cohort_size": self.config.min_cohort_size,

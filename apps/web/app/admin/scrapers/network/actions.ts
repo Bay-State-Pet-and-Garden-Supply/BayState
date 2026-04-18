@@ -96,7 +96,6 @@ export async function renameRunner(id: string, newName: string): Promise<{ succe
     }
 
     revalidatePath('/admin/scrapers/network');
-    revalidatePath(`/admin/scrapers/network/${id}`);
     return { success: true };
 }
 
@@ -136,7 +135,6 @@ export async function disableRunner(id: string): Promise<{ success: boolean; err
     }
 
     revalidatePath('/admin/scrapers/network');
-    revalidatePath(`/admin/scrapers/network/${id}`);
     return { success: true };
 }
 
@@ -176,7 +174,6 @@ export async function enableRunner(id: string): Promise<{ success: boolean; erro
     }
 
     revalidatePath('/admin/scrapers/network');
-    revalidatePath(`/admin/scrapers/network/${id}`);
     return { success: true };
 }
 
@@ -219,7 +216,6 @@ export async function pauseRunner(id: string): Promise<{ success: boolean; error
     }
 
     revalidatePath('/admin/scrapers/network');
-    revalidatePath(`/admin/scrapers/network/${id}`);
     return { success: true };
 }
 
@@ -263,7 +259,6 @@ export async function resumeRunner(id: string): Promise<{ success: boolean; erro
     }
 
     revalidatePath('/admin/scrapers/network');
-    revalidatePath(`/admin/scrapers/network/${id}`);
     return { success: true };
 }
 
@@ -358,7 +353,6 @@ export async function updateRunnerMetadata(
     }
 
     revalidatePath('/admin/scrapers/network');
-    revalidatePath(`/admin/scrapers/network/${id}`);
     return { success: true };
 }
 
@@ -439,11 +433,9 @@ export async function rotateRunnerKey(id: string): Promise<{ success: boolean; k
     }
 
     revalidatePath('/admin/scrapers/network');
-    revalidatePath(`/admin/scrapers/network/${id}`);
     
     return { 
         success: true, 
         key // Return the plain text key so it can be shown once
     };
 }
-

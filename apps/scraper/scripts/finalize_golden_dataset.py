@@ -16,7 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -102,13 +102,13 @@ def main(argv: list[str] | None = None) -> int:
 
     # Build final dataset
     provenance = draft.get("provenance", {})
-    provenance["finalized_at"] = datetime.now(UTC).isoformat()
+    provenance["finalized_at"] = datetime.now(timezone.utc).isoformat()
     provenance["annotated_count"] = len(final_entries)
     provenance["skipped_count"] = skipped
 
     final_dataset = {
         "version": "2.0",
-        "created_at": datetime.now(UTC).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "provenance": provenance,
         "entries": final_entries,
     }

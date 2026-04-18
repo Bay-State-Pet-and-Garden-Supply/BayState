@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TypedDict, cast
 
@@ -209,7 +209,7 @@ def _build_comparison_report(
         speedup_ratio = browser_avg_time / crawl_avg_time
 
     report: ComparisonReport = {
-        "generated_at": datetime.now(tz=UTC).isoformat(),
+        "generated_at": datetime.now(tz=timezone.utc).isoformat(),
         "sku_scope": {
             "count": len(test_skus),
             "skus": [sku["sku"] for sku in test_skus],

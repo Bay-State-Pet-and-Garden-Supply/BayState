@@ -39,7 +39,7 @@ import random
 import sys
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
 
@@ -500,7 +500,7 @@ def build_draft_dataset(
 
     return {
         "version": "2.0-draft",
-        "created_at": datetime.now(UTC).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "provenance": {
             "annotator": "harvest_benchmark_data.py",
             "source": "serper.dev",
@@ -700,7 +700,7 @@ async def run_harvest(args: argparse.Namespace) -> int:
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_data = {
         "description": "Products used for AI search benchmark dataset",
-        "created_at": datetime.now(UTC).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "product_count": len(products),
         "products": [asdict(p) for p in products],
     }

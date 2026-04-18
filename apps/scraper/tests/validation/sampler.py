@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import random
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import TypedDict, TypeAlias, cast
 
@@ -136,7 +136,7 @@ class ProductSampler:
             return
 
         payload = self._read_history_payload()
-        now = datetime.now(UTC)
+        now = datetime.now(timezone.utc)
         iso_year, iso_week, _ = now.isocalendar()
         sampled_date = now.isoformat().replace("+00:00", "Z")
 
@@ -188,7 +188,7 @@ class ProductSampler:
         if exclude_recent_weeks <= 0:
             return set()
 
-        cutoff = datetime.now(UTC) - timedelta(weeks=exclude_recent_weeks)
+        cutoff = datetime.now(timezone.utc) - timedelta(weeks=exclude_recent_weeks)
         recent_skus: set[str] = set()
 
         for entry in self.get_sample_history():
@@ -334,7 +334,7 @@ class ProductSampler:
             parsed = datetime.fromisoformat(normalized_value)
         except ValueError:
             return None
-        return parsed.astimezone(UTC) if parsed.tzinfo is not None else parsed.replace(tzinfo=UTC)
+        return parsed.astimezone(timezone.utc) if parsed.tzinfo is not None else parsed.replace(tzinfo=timezone.utc)
 
 
 def sample_skus(

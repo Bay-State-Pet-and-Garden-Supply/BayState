@@ -20,7 +20,7 @@ import argparse
 import json
 import sys
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -461,7 +461,7 @@ def build_dashboard_data(
     alerts = check_for_regressions(accuracy_trend, success_trend, thresholds)
 
     return DashboardData(
-        generated_at=datetime.now(UTC).isoformat(),
+        generated_at=datetime.now(timezone.utc).isoformat(),
         metrics=metrics,
         field_accuracy=field_accuracy,
         experiments=experiment_summaries,

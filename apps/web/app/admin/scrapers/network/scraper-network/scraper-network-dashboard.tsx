@@ -1,19 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { toast } from "sonner";
 import { useRunnerPresence } from "@/lib/realtime/useRunnerPresence";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -28,17 +19,23 @@ import {
   Activity,
   Server,
   Clock,
-  CheckCircle2,
   AlertCircle,
-  XCircle,
-  Settings,
   Plus,
   Copy,
   Key,
   ShieldAlert,
-  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
-import { SetupGuide } from "@/components/admin/scraper-network/setup-guide";
+import { RunnerCard } from "@/components/admin/scraper-network/runner-card";
+import { RunnerDetailDrawer } from "@/components/admin/scraper-network/runner-detail-drawer";
+import type { RunnerDetail, RunnerStatus } from "@/components/admin/scraper-network/types";
+import { 
+  enableRunner, 
+  disableRunner, 
+  rotateRunnerKey, 
+  renameRunner, 
+  deleteRunner 
+} from "@/app/admin/scrapers/network/actions";
 
 interface NetworkStats {
   totalRunners: number;
@@ -67,6 +64,10 @@ export function ScraperNetworkDashboard() {
     disabled: 0,
   });
 
+  // Drawer State
+  const [selectedRunnerId, setSelectedRunnerId] = useState<string | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
   // Add Runner Modal State
   const [showAddRunnerModal, setShowAddRunnerModal] = useState(false);
   const [newRunnerName, setNewRunnerName] = useState("");
@@ -76,6 +77,66 @@ export function ScraperNetworkDashboard() {
   const [createdRunnerName, setCreatedRunnerName] = useState<string | null>(null);
   const installCommand =
     "curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash";
+
+  const handleOpenDrawer = (runnerId: string) => {
+    setSelectedRunnerId(runnerId);
+    setIsDrawerOpen(true);
+  };
+
+  const handleToggleEnabled = async (id: string, enabled: boolean) => {
+    const action = enabled ? enableRunner : disableRunner;
+    const result = await action(id);
+    if (!result.success) {
+      toast.error(result.error || `Failed to ${enabled ? 'enable' : 'disable'} runner`);
+      throw new Error(result.error);
+    }
+    toast.success(`Runner ${enabled ? 'enabled' : 'disabled'}`);
+  };
+
+  const handleRotateApiKey = async (id: string) => {
+    if (!confirm("Are you sure you want to rotate the API key? The old key will stop working immediately.")) {
+      return;
+    }
+    const result = await rotateRunnerKey(id);
+    if (result.success && result.key) {
+      // Show the new key in a toast or modal
+      // For now, we'll use a toast but a modal would be better for security
+      navigator.clipboard.writeText(result.key);
+      toast.success("API key rotated and copied to clipboard");
+    } else {
+      toast.error(result.error || "Failed to rotate API key");
+    }
+  };
+
+  const handleRename = async (id: string) => {
+    const newName = prompt("Enter new name for the runner:", id);
+    if (!newName || newName === id) return;
+    
+    const result = await renameRunner(id, newName);
+    if (result.success) {
+      toast.success("Runner renamed successfully");
+    } else {
+      toast.error(result.error || "Failed to rename runner");
+    }
+  };
+
+  const handleUpdate = (id: string) => {
+    // Open drawer to show update options/status
+    handleOpenDrawer(id);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm(`Are you sure you want to delete runner "${id}"? This action cannot be undone.`)) {
+      return;
+    }
+    
+    const result = await deleteRunner(id);
+    if (result.success) {
+      toast.success("Runner deleted successfully");
+    } else {
+      toast.error(result.error || "Failed to delete runner");
+    }
+  };
 
   const handleCreateRunner = async () => {
     if (!newRunnerName.trim()) {
@@ -152,265 +213,236 @@ export function ScraperNetworkDashboard() {
     });
   }, [runners]);
 
-  const runnersArray = Object.values(runners);
+  const runnersArray = Object.values(runners).map((r): RunnerDetail => ({
+    id: r.runner_id,
+    name: r.runner_name,
+    status: r.status as RunnerStatus,
+    enabled: r.enabled ?? true,
+    last_seen_at: r.last_seen,
+    active_jobs: r.active_jobs,
+    region: (r.metadata?.region as string) || null,
+    version: r.version || null,
+    build_check_reason: r.build_check_reason || null,
+    metadata: r.metadata || null,
+  }));
 
   return (
-    <div className="space-y-6">
-      {/* Connection Status Banner */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">Realtime Connection:</span>
-          {isRealtimeConnected ? (
-            <Badge variant="default" className="gap-1">
-              <CheckCircle2 className="h-3 w-3" />
-              Connected
-            </Badge>
-          ) : (
-            <Badge variant="destructive" className="gap-1">
-              <XCircle className="h-3 w-3" />
-              Disconnected
-            </Badge>
-          )}
+    <div className="space-y-10 pb-20">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b-4 border-zinc-900 pb-6">
+        <div>
+          <h1 className="text-4xl font-black uppercase tracking-tighter leading-none mb-2">
+            Scraper Network
+          </h1>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-zinc-100 border-2 border-zinc-900 px-2 py-1 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+              <span className="text-[10px] font-black uppercase tracking-tight text-zinc-500">Realtime:</span>
+              {isRealtimeConnected ? (
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2 w-2 rounded-full bg-brand-forest-green border border-zinc-900" />
+                  <span className="text-[10px] font-black uppercase tracking-tight text-brand-forest-green">Connected</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2 w-2 rounded-full bg-brand-burgundy border border-zinc-900 animate-pulse" />
+                  <span className="text-[10px] font-black uppercase tracking-tight text-brand-burgundy">Disconnected</span>
+                </div>
+              )}
+            </div>
+            {!isRealtimeConnected && (
+              <Button 
+                variant="outline" 
+                size="icon-sm" 
+                onClick={connect}
+                className="h-7 w-7 border-2 border-zinc-900 shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-brand-gold"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setShowAddRunnerModal(true)} size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Runner
-          </Button>
-          {!isRealtimeConnected && (
-            <Button variant="outline" size="sm" onClick={connect}>
-              Reconnect
-            </Button>
-          )}
-        </div>
+        <Button 
+          onClick={() => setShowAddRunnerModal(true)} 
+          className="bg-brand-burgundy text-white border-4 border-zinc-900 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_rgba(0,0,0,1)] transition-all rounded-none font-black uppercase tracking-tighter h-12 px-6"
+        >
+          <Plus className="mr-2 h-5 w-5" />
+          Add Runner
+        </Button>
       </div>
 
       {/* Network Overview Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <Card className="border border-zinc-950 rounded-none">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Runners</CardTitle>
-            <Server className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalRunners}</div>
-          </CardContent>
-        </Card>
-        <Card className="border border-zinc-950 rounded-none">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Online</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.online}</div>
-          </CardContent>
-        </Card>
-        <Card className="border border-zinc-950 rounded-none">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Busy</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.busy}</div>
-          </CardContent>
-        </Card>
-        <Card className="border border-zinc-950 rounded-none">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Disabled</CardTitle>
+        <div className="bg-white border-4 border-zinc-900 p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-black uppercase tracking-tight text-zinc-500">Total Runners</p>
+            <Server className="h-4 w-4 text-zinc-400" />
+          </div>
+          <p className="text-3xl font-black leading-none">{stats.totalRunners}</p>
+        </div>
+        <div className="bg-white border-4 border-zinc-900 p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-black uppercase tracking-tight text-zinc-500">Online</p>
+            <Activity className="h-4 w-4 text-brand-forest-green" />
+          </div>
+          <p className="text-3xl font-black leading-none text-brand-forest-green">{stats.online}</p>
+        </div>
+        <div className="bg-white border-4 border-zinc-900 p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-black uppercase tracking-tight text-zinc-500">Busy</p>
+            <Clock className="h-4 w-4 text-brand-gold" />
+          </div>
+          <p className="text-3xl font-black leading-none text-brand-gold">{stats.busy}</p>
+        </div>
+        <div className="bg-white border-4 border-zinc-900 p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-black uppercase tracking-tight text-zinc-500">Disabled</p>
             <ShieldAlert className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.disabled}</div>
-          </CardContent>
-        </Card>
-        <Card className="border border-zinc-950 rounded-none">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Offline</CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-muted-foreground">{stats.offline}</div>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="text-3xl font-black leading-none text-orange-600">{stats.disabled}</p>
+        </div>
+        <div className="bg-white border-4 border-zinc-900 p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-black uppercase tracking-tight text-zinc-500">Offline</p>
+            <AlertCircle className="h-4 w-4 text-brand-burgundy" />
+          </div>
+          <p className="text-3xl font-black leading-none text-brand-burgundy">{stats.offline}</p>
+        </div>
       </div>
 
-      <SetupGuide />
-
-      {/* Runner Status Distribution */}
-      <Card className="border border-zinc-950 rounded-none">
-        <CardHeader>
-          <CardTitle>Network Status</CardTitle>
-          <CardDescription>
+      {/* Network Health (Distribution) */}
+      <div className="bg-white border-4 border-zinc-900 shadow-[8px_8px_0px_rgba(0,0,0,1)]">
+        <div className="p-4 border-b-4 border-zinc-900 bg-zinc-50">
+          <h3 className="text-lg font-black uppercase tracking-tighter">Network Health</h3>
+          <p className="text-[10px] font-black uppercase tracking-tight text-zinc-500">
             Distribution of runners by current status
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </p>
+        </div>
+        <div className="p-6 space-y-6">
           {stats.totalRunners > 0 ? (
-            <>
+            <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-none bg-green-500" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-tight flex items-center gap-2">
+                    <div className="h-2 w-2 bg-brand-forest-green border border-zinc-900" />
                     Online
                   </span>
-                  <span>
+                  <span className="text-[10px] font-black uppercase tracking-tight">
                     {stats.online} / {stats.totalRunners}
                   </span>
                 </div>
-                <Progress
-                  value={(stats.online / stats.totalRunners) * 100}
-                  className="h-2"
-                />
+                <div className="h-4 border-2 border-zinc-900 bg-zinc-100 p-0.5">
+                  <div 
+                    className="h-full bg-brand-forest-green transition-all" 
+                    style={{ width: `${(stats.online / stats.totalRunners) * 100}%` }}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-none bg-yellow-500" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-tight flex items-center gap-2">
+                    <div className="h-2 w-2 bg-brand-gold border border-zinc-900" />
                     Busy
                   </span>
-                  <span>
+                  <span className="text-[10px] font-black uppercase tracking-tight">
                     {stats.busy} / {stats.totalRunners}
                   </span>
                 </div>
-                <Progress
-                  value={(stats.busy / stats.totalRunners) * 100}
-                  className="h-2"
-                />
+                <div className="h-4 border-2 border-zinc-900 bg-zinc-100 p-0.5">
+                  <div 
+                    className="h-full bg-brand-gold transition-all" 
+                    style={{ width: `${(stats.busy / stats.totalRunners) * 100}%` }}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-none bg-orange-400" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-tight flex items-center gap-2">
+                    <div className="h-2 w-2 bg-orange-500 border border-zinc-900" />
                     Disabled
                   </span>
-                  <span>
+                  <span className="text-[10px] font-black uppercase tracking-tight">
                     {stats.disabled} / {stats.totalRunners}
                   </span>
                 </div>
-                <Progress
-                  value={(stats.disabled / stats.totalRunners) * 100}
-                  className="h-2"
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-none bg-muted" />
-                    Idle
-                  </span>
-                  <span>
-                    {stats.idle} / {stats.totalRunners}
-                  </span>
+                <div className="h-4 border-2 border-zinc-900 bg-zinc-100 p-0.5">
+                  <div 
+                    className="h-full bg-orange-500 transition-all" 
+                    style={{ width: `${(stats.disabled / stats.totalRunners) * 100}%` }}
+                  />
                 </div>
-                <Progress
-                  value={(stats.idle / stats.totalRunners) * 100}
-                  className="h-2"
-                />
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-none bg-red-400" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-tight flex items-center gap-2">
+                    <div className="h-2 w-2 bg-brand-burgundy border border-zinc-900" />
                     Offline
                   </span>
-                  <span>
+                  <span className="text-[10px] font-black uppercase tracking-tight">
                     {stats.offline} / {stats.totalRunners}
                   </span>
                 </div>
-                <Progress
-                  value={(stats.offline / stats.totalRunners) * 100}
-                  className="h-2"
-                />
+                <div className="h-4 border-2 border-zinc-900 bg-zinc-100 p-0.5">
+                  <div 
+                    className="h-full bg-brand-burgundy transition-all" 
+                    style={{ width: `${(stats.offline / stats.totalRunners) * 100}%` }}
+                  />
+                </div>
               </div>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No runners registered. Start scraper runner instances to see network
-              status.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Runner List */}
-      <Card className="border border-zinc-950 rounded-none">
-        <CardHeader>
-          <CardTitle>Active Runners</CardTitle>
-          <CardDescription>
-            Real-time status of all connected scraper runners
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {runnersArray.length > 0 ? (
-            <div className="space-y-4">
-              {runnersArray.map((runner) => (
-                <Link className={`flex items-center justify-between rounded-none border p-4 hover:bg-muted/50 transition-colors cursor-pointer ${ runner.enabled === false ? "opacity-60 bg-muted/30" : "" }`} key={runner.runner_id} href={`/admin/scrapers/network/${runner.runner_id}`}>
-                  <div className="flex items-center gap-4">
-                    <div className={`h-3 w-3 rounded-none ${ runner.status === "online" ? "bg-green-500" : runner.status === "busy" ? "bg-yellow-500" : runner.status === "idle" ? "bg-muted" : "bg-red-400" }`} />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{runner.runner_name}</p>
-                        {runner.enabled === false && (
-                          <Badge variant="outline" className="text-[10px] h-4 px-1 uppercase tracking-wider border-orange-200 text-orange-700 bg-orange-50/50">
-                            Disabled
-                          </Badge>
-                        )}
-                        {(runner.build_check_reason === 'outdated' || runner.build_check_reason === 'missing') && (
-                          <Badge variant="destructive" className="text-[10px] h-4 px-1 uppercase tracking-wider gap-1">
-                            <AlertTriangle className="h-2.5 w-2.5" />
-                            Update Required
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground font-mono">
-                        {runner.runner_id}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Badge
-                      variant={
-                        runner.status === "online"
-                          ? "default"
-                          : runner.status === "busy"
-                            ? "secondary"
-                            : "outline"
-                      }
-                    >
-                      {runner.status}
-                    </Badge>
-                    <span className="text-sm text-muted-foreground">
-                      {runner.active_jobs} active jobs
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      Last seen:{" "}
-                      {new Date(runner.last_seen).toLocaleTimeString()}
-                    </span>
-                    <Button variant="ghost" size="sm">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </Link>
-              ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              No runners currently connected. Start scraper runner instances to
-              see them here.
+            <p className="text-sm text-zinc-500 italic">
+              No runners registered. Start scraper runner instances to see network status.
             </p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      {/* Runner Grid */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-black uppercase tracking-tighter">Active Runners</h2>
+          <Badge variant="outline" className="border-2 border-zinc-900 font-black uppercase tracking-tight">
+            {runnersArray.length} Total
+          </Badge>
+        </div>
+        
+        {runnersArray.length > 0 ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {runnersArray.map((runner) => (
+              <div 
+                key={runner.id} 
+                onClick={() => handleOpenDrawer(runner.id)}
+                className="cursor-pointer transition-transform hover:scale-[1.02]"
+              >
+                <RunnerCard
+                  runner={runner}
+                  onToggleEnabled={handleToggleEnabled}
+                  onUpdate={handleUpdate}
+                  onRotateApiKey={handleRotateApiKey}
+                  onRename={handleRename}
+                  onDelete={handleDelete}
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-zinc-50 border-4 border-dashed border-zinc-200 p-12 text-center">
+            <p className="font-black uppercase tracking-tighter text-zinc-400">
+              No runners currently connected. Start scraper runner instances to see them here.
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Add Runner Modal */}
       <Dialog open={showAddRunnerModal} onOpenChange={handleCloseModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5" />
+        <DialogContent className="sm:max-w-lg border-4 border-zinc-900 shadow-[8px_8px_0px_rgba(0,0,0,1)] rounded-none p-8">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="flex items-center gap-2 text-2xl font-black uppercase tracking-tighter">
+              <Key className="h-6 w-6" />
               {createdApiKey ? "Runner Created" : "Add New Runner"}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="font-bold text-zinc-500 uppercase tracking-tight text-xs">
               {createdApiKey
                 ? "Save this API key now. Then run the installer and paste this key into the setup wizard."
                 : "Create a new scraper runner and generate an API key."}
@@ -419,33 +451,43 @@ export function ScraperNetworkDashboard() {
 
           {createdApiKey ? (
             <div className="space-y-4">
-              <div className="rounded-none bg-muted p-4 space-y-3">
+              <div className="border-2 border-zinc-900 bg-zinc-50 p-4 space-y-3 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
                 <div>
-                  <Label className="text-xs text-muted-foreground">Runner Name</Label>
-                  <p className="font-medium">{createdRunnerName}</p>
+                  <Label className="text-[10px] font-black uppercase tracking-tight text-zinc-500">Runner Name</Label>
+                  <p className="font-black uppercase tracking-tight">{createdRunnerName}</p>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">API Key</Label>
+                  <Label className="text-[10px] font-black uppercase tracking-tight text-zinc-500">API Key</Label>
                   <div className="flex items-center gap-2 mt-1">
-                    <code className="flex-1 rounded-none bg-background px-2 py-1 text-xs font-mono break-all">
+                    <code className="flex-1 border-2 border-zinc-900 bg-white px-2 py-1 text-xs font-mono break-all">
                       {createdApiKey}
                     </code>
-                    <Button size="sm" variant="outline" onClick={copyApiKey}>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={copyApiKey}
+                      className="border-2 border-zinc-900 shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-brand-gold"
+                    >
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs font-bold text-brand-burgundy uppercase tracking-tight">
                 Use this API key to authenticate your runner. Store it securely.
               </p>
-              <div className="rounded-none bg-muted p-4 space-y-2">
-                <Label className="text-xs text-muted-foreground">One-line installer</Label>
+              <div className="border-2 border-zinc-900 bg-zinc-50 p-4 space-y-2 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                <Label className="text-[10px] font-black uppercase tracking-tight text-zinc-500">One-line installer</Label>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 rounded-none bg-background px-2 py-1 text-xs font-mono break-all">
+                  <code className="flex-1 border-2 border-zinc-900 bg-white px-2 py-1 text-xs font-mono break-all">
                     {installCommand}
                   </code>
-                  <Button size="sm" variant="outline" onClick={copyInstallCommand}>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={copyInstallCommand}
+                    className="border-2 border-zinc-900 shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-brand-gold"
+                  >
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
@@ -454,40 +496,56 @@ export function ScraperNetworkDashboard() {
           ) : (
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="runner-name">Runner Name</Label>
+                <Label htmlFor="runner-name" className="font-black uppercase text-xs">Runner Name</Label>
                 <Input
                   id="runner-name"
                   placeholder="e.g., macbook-air, server-us-east"
                   value={newRunnerName}
                   onChange={(e) => setNewRunnerName(e.target.value)}
                   disabled={isCreatingRunner}
+                  className="border-2 border-zinc-900 rounded-none focus-visible:ring-0 focus-visible:border-brand-gold"
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-tight">
                   3-50 characters, lowercase letters, numbers, and hyphens only
                 </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="runner-description">Description (Optional)</Label>
+                <Label htmlFor="runner-description" className="font-black uppercase text-xs">Description (Optional)</Label>
                 <Input
                   id="runner-description"
                   placeholder="e.g., Production runner on MacBook Air"
                   value={newRunnerDescription}
                   onChange={(e) => setNewRunnerDescription(e.target.value)}
                   disabled={isCreatingRunner}
+                  className="border-2 border-zinc-900 rounded-none focus-visible:ring-0 focus-visible:border-brand-gold"
                 />
               </div>
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             {createdApiKey ? (
-              <Button onClick={handleCloseModal}>Done</Button>
+              <Button 
+                onClick={handleCloseModal}
+                className="bg-zinc-900 text-white border-2 border-zinc-900 shadow-[4px_4px_0px_rgba(0,0,0,1)] rounded-none font-black uppercase tracking-tight"
+              >
+                Done
+              </Button>
             ) : (
               <>
-                <Button variant="outline" onClick={handleCloseModal} disabled={isCreatingRunner}>
+                <Button 
+                  variant="outline" 
+                  onClick={handleCloseModal} 
+                  disabled={isCreatingRunner}
+                  className="border-2 border-zinc-900 shadow-[4px_4px_0px_rgba(0,0,0,1)] rounded-none font-black uppercase tracking-tight"
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleCreateRunner} disabled={isCreatingRunner || !newRunnerName.trim()}>
+                <Button 
+                  onClick={handleCreateRunner} 
+                  disabled={isCreatingRunner || !newRunnerName.trim()}
+                  className="bg-brand-forest-green text-white border-2 border-zinc-900 shadow-[4px_4px_0px_rgba(0,0,0,1)] rounded-none font-black uppercase tracking-tight"
+                >
                   {isCreatingRunner ? "Creating..." : "Create Runner"}
                 </Button>
               </>
@@ -495,6 +553,15 @@ export function ScraperNetworkDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Runner Detail Drawer */}
+      <RunnerDetailDrawer
+        runner={selectedRunnerId ? runnersArray.find(r => r.id === selectedRunnerId) : null}
+        runnerId={selectedRunnerId}
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+      />
     </div>
   );
 }
+
