@@ -70,6 +70,40 @@ export function PipelineSidebarTable({
     });
   }, []);
 
+  // Logical product order for keyboard navigation, regardless of expansion state
+  const allProductItems = React.useMemo(() => {
+    const isUngroupedOnly = !groupedProducts || 
+      groupedProducts.cohortIds.length === 0 || 
+      (groupedProducts.cohortIds.length === 1 && groupedProducts.cohortIds[0] === "ungrouped");
+
+    if (isUngroupedOnly) {
+      return products;
+    }
+
+    const ordered: PipelineProduct[] = [];
+    groupedProducts.cohortIds.forEach((cohortId) => {
+      const groupProducts = groupedProducts.groups[cohortId] || [];
+      ordered.push(...groupProducts);
+    });
+    return ordered;
+  }, [groupedProducts, products]);
+
+  // Ensure preferredSku's cohort is expanded so it's visible in the virtualized list
+  React.useEffect(() => {
+    if (preferredSku && groupedProducts) {
+      const cohortId = groupedProducts.cohortIds.find(cid => 
+        groupedProducts.groups[cid]?.some(p => p.sku === preferredSku)
+      );
+      if (cohortId && !expandedCohortIds.has(cohortId)) {
+        setExpandedCohortIds(prev => {
+          const next = new Set(prev);
+          next.add(cohortId);
+          return next;
+        });
+      }
+    }
+  }, [preferredSku, groupedProducts]);
+
   // Data flattening logic: handles cohort grouping and "ungrouped" fallback
   const flatItems = React.useMemo(() => {
     const isUngroupedOnly = !groupedProducts || 
@@ -131,27 +165,26 @@ export function PipelineSidebarTable({
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
         
-        const productItems = flatItems.filter(item => item.type === 'product') as Extract<FlatItem, { type: 'product' }>[];
-        if (productItems.length === 0) return;
+        if (allProductItems.length === 0) return;
 
-        const currentIndex = productItems.findIndex(item => item.product.sku === preferredSku);
+        const currentIndex = allProductItems.findIndex(p => p.sku === preferredSku);
         let nextIndex = currentIndex;
 
         if (e.key === "ArrowDown") {
           if (currentIndex === -1) {
             nextIndex = 0;
           } else {
-            nextIndex = currentIndex < productItems.length - 1 ? currentIndex + 1 : 0;
+            nextIndex = currentIndex < allProductItems.length - 1 ? currentIndex + 1 : 0;
           }
         } else if (e.key === "ArrowUp") {
           if (currentIndex === -1) {
-            nextIndex = productItems.length - 1;
+            nextIndex = allProductItems.length - 1;
           } else {
-            nextIndex = currentIndex > 0 ? currentIndex - 1 : productItems.length - 1;
+            nextIndex = currentIndex > 0 ? currentIndex - 1 : allProductItems.length - 1;
           }
         }
 
-        const nextProduct = productItems[nextIndex].product;
+        const nextProduct = allProductItems[nextIndex];
         onPreferredSkuChange(nextProduct.sku);
       }
 
@@ -159,10 +192,29 @@ export function PipelineSidebarTable({
         e.preventDefault();
         if (preferredSku) {
           const isSelected = selectedSkus.has(preferredSku);
+          
+          // Try to find in flatItems first (best for visible products)
           const item = flatItems.find(item => item.type === 'product' && item.product.sku === preferredSku) as Extract<FlatItem, { type: 'product' }> | undefined;
           
           if (item) {
             onSelectSku(preferredSku, !isSelected, item.index, false, item.visibleProducts);
+          } else {
+            // Fallback for products whose cohorts are still expanding
+            if (groupedProducts) {
+              const cohortId = groupedProducts.cohortIds.find(cid => 
+                groupedProducts.groups[cid]?.some(p => p.sku === preferredSku)
+              );
+              if (cohortId) {
+                const groupProducts = groupedProducts.groups[cohortId];
+                const globalIndex = products.findIndex(p => p.sku === preferredSku);
+                onSelectSku(preferredSku, !isSelected, globalIndex === -1 ? 0 : globalIndex, false, groupProducts);
+              }
+            } else {
+              const globalIndex = products.findIndex(p => p.sku === preferredSku);
+              if (globalIndex !== -1) {
+                onSelectSku(preferredSku, !isSelected, globalIndex, false, products);
+              }
+            }
           }
         }
       }
@@ -170,7 +222,7 @@ export function PipelineSidebarTable({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [flatItems, preferredSku, selectedSkus, onPreferredSkuChange, onSelectSku]);
+  }, [allProductItems, flatItems, preferredSku, selectedSkus, onPreferredSkuChange, onSelectSku]);
 
   // Programmatic scrolling: Scroll to preferred SKU when it changes
   React.useLayoutEffect(() => {

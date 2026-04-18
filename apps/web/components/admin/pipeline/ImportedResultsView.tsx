@@ -3,9 +3,13 @@
 import { useMemo, useState } from "react";
 import {
   Package,
+  Plus,
+  Database,
 } from "lucide-react";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PipelineFilters } from "./PipelineFilters";
 import { PipelineSearchField } from "./PipelineSearchField";
 import { PipelineSidebarTable } from "./PipelineSidebarTable";
@@ -46,6 +50,9 @@ interface ImportedResultsViewProps {
   };
   cohortBrands?: Record<string, string>;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
+  onImportCsv?: () => void;
+  onManualAdd?: () => void;
+  isLoading?: boolean;
 }
 
 export function ImportedResultsView({
@@ -63,6 +70,9 @@ export function ImportedResultsView({
   groupedProducts,
   cohortBrands = {},
   onEditCohort,
+  onImportCsv,
+  onManualAdd,
+  isLoading = false,
 }: ImportedResultsViewProps) {
   // 1. Data Transformation & Memoized State
   const sortedProducts = useMemo(() => {
@@ -82,23 +92,74 @@ export function ImportedResultsView({
   return (
     <div data-testid="product-table" className="flex h-full min-h-0 border-4 border-zinc-950 rounded-none overflow-hidden bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)] max-w-full m-1 mr-4 mb-4">
       {/* Left Column: Product List */}
-      <div className="w-80 min-w-[320px] max-w-[320px] border-r border-zinc-950 flex flex-col shrink-0 bg-zinc-50 overflow-x-hidden">
-        <div className="flex items-center gap-2 border-b border-zinc-950 bg-white p-2">
-          <PipelineSearchField
-            value={search || ""}
-            onChange={(value) => onSearchChange?.(value)}
-            className="flex-1"
-            isLoading={isSearching}
-          />
-          {filters && onFilterChange ? (
-            <PipelineFilters
-              filters={filters}
-              onFilterChange={onFilterChange}
-              availableSources={availableSources}
-              showSourceFilter={false}
-              className="h-9 w-9 shrink-0 p-0 border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+      <div className="w-96 min-w-[384px] max-w-[384px] border-r border-zinc-950 flex flex-col shrink-0 bg-zinc-50 overflow-x-hidden">
+        <div className="flex flex-col border-b border-zinc-950 bg-white">
+          <div className="flex items-center gap-2 p-2">
+            <label className="flex shrink-0 items-center justify-center h-9 w-9 border border-zinc-950 bg-white shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-zinc-50 cursor-pointer transition-colors">
+              <Checkbox
+                checked={
+                  sortedProducts.length > 0 &&
+                  sortedProducts.every((p) => selectedSkus.has(p.sku))
+                    ? true
+                    : sortedProducts.some((p) => selectedSkus.has(p.sku))
+                      ? "indeterminate"
+                      : false
+                }
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    onSelectAll?.(sortedProducts.map((p) => p.sku));
+                  } else {
+                    onDeselectAll?.(sortedProducts.map((p) => p.sku));
+                  }
+                }}
+                className="h-4 w-4 rounded-none border-2 border-zinc-950 accent-zinc-950 data-[state=checked]:bg-zinc-950 data-[state=checked]:text-white data-[state=indeterminate]:bg-zinc-950 data-[state=indeterminate]:text-white"
+              />
+            </label>
+            <PipelineSearchField
+              value={search || ""}
+              onChange={(value) => onSearchChange?.(value)}
+              className="flex-1"
+              isLoading={isSearching}
             />
-          ) : null}
+            {filters && onFilterChange ? (
+              <PipelineFilters
+                filters={filters}
+                onFilterChange={onFilterChange}
+                availableSources={availableSources}
+                showSourceFilter={false}
+                className="h-9 w-9 shrink-0 p-0 border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+              />
+            ) : null}
+          </div>
+
+          {(onImportCsv || onManualAdd) && (
+             <div className="flex items-center gap-2 px-2 pb-2">
+                {onImportCsv && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onImportCsv}
+                    disabled={isLoading}
+                    className="flex-1 h-8 border-2 border-zinc-950 text-zinc-950 hover:bg-zinc-100 text-[10px] font-black uppercase tracking-tighter shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
+                  >
+                    <Database className="mr-1.5 h-3.5 w-3.5" />
+                    Import CSV
+                  </Button>
+                )}
+                {onManualAdd && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onManualAdd}
+                    disabled={isLoading}
+                    className="flex-1 h-8 border-2 border-zinc-950 text-zinc-950 hover:bg-zinc-100 text-[10px] font-black uppercase tracking-tighter shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
+                  >
+                    <Plus className="mr-1.5 h-3.5 w-3.5" />
+                    Add Product
+                  </Button>
+                )}
+             </div>
+          )}
         </div>
         
         <PipelineSidebarTable
