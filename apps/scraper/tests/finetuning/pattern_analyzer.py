@@ -6,7 +6,7 @@ import json
 import time
 from collections import Counter
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -78,7 +78,7 @@ class FailurePatternAnalyzer:
         self._recent_failures: list[FailureRecord] = []
 
     def analyze_failures(self, days: int = 7) -> FailurePatternReport:
-        cutoff = datetime.now(UTC) - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         failures = self._load_failures(cutoff=cutoff)
 
         if len(failures) < self.minimum_samples:
@@ -91,7 +91,7 @@ class FailurePatternAnalyzer:
         recommendations = self._build_recommendations(failure_types, patterns, priority_list)
 
         return FailurePatternReport(
-            generated_at=datetime.now(UTC),
+            generated_at=datetime.now(timezone.utc),
             days_analyzed=days,
             sample_count=len(failures),
             top_failure_types=failure_types,
@@ -530,8 +530,8 @@ class FailurePatternAnalyzer:
         except ValueError:
             return None
         if parsed.tzinfo is None:
-            return parsed.replace(tzinfo=UTC)
-        return parsed.astimezone(UTC)
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
 
     @staticmethod
     def _detect_missing_fields(field_comparisons: Any) -> tuple[str, ...]:

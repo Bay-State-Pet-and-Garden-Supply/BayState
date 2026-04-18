@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, datetime, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -29,7 +29,7 @@ class SelectorData:
     ) -> None:
         self.selector = selector
         self.confidence = confidence
-        self.last_updated = last_updated or datetime.now(UTC).isoformat()
+        self.last_updated = last_updated or datetime.now(timezone.utc).isoformat()
         self.fallbacks = fallbacks or []
 
     def to_dict(self) -> dict[str, Any]:
@@ -60,7 +60,7 @@ class SelectorData:
             # Decrease confidence towards 0.0
             self.confidence = max(0.0, self.confidence - learning_rate)
 
-        self.last_updated = datetime.now(UTC).isoformat()
+        self.last_updated = datetime.now(timezone.utc).isoformat()
 
 
 class SelectorStorage:
@@ -72,8 +72,8 @@ class SelectorStorage:
         self.data: dict[str, dict[str, SelectorData]] = {}
         self.metadata = {
             "version": "1.0",
-            "created_at": datetime.now(UTC).isoformat(),
-            "last_modified": datetime.now(UTC).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "last_modified": datetime.now(timezone.utc).isoformat(),
         }
         self.load()
 
@@ -101,7 +101,7 @@ class SelectorStorage:
 
     def save(self):
         """Save selector data to JSON file."""
-        self.metadata["last_modified"] = datetime.now(UTC).isoformat()
+        self.metadata["last_modified"] = datetime.now(timezone.utc).isoformat()
 
         selectors_dict: dict[str, dict[str, Any]] = {}
         for domain, fields in self.data.items():
@@ -157,7 +157,7 @@ class SelectorStorage:
         selector_data = self.get_selector(domain, field_name)
         if selector_data and fallback_selector not in selector_data.fallbacks:
             selector_data.fallbacks.append(fallback_selector)
-            selector_data.last_updated = datetime.now(UTC).isoformat()
+            selector_data.last_updated = datetime.now(timezone.utc).isoformat()
             self.save()
 
     def get_all_domains(self) -> list[str]:

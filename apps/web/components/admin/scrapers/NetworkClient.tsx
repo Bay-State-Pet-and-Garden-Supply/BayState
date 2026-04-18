@@ -318,7 +318,7 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
                                 : 'border-green-200 bg-green-50 hover:border-green-300'
                             : 'border-border bg-muted hover:border-border'
                         }`}
-                        onClick={() => router.push(`/admin/scrapers/network/${runner.id || runner.name}`)}
+                        onClick={() => router.push(`/admin/scrapers/network?runner=${runner.id || runner.name}`)}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3">

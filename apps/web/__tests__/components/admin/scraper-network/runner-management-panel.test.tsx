@@ -23,7 +23,7 @@ jest.mock('sonner', () => ({
   },
 }));
 
-jest.mock('@/app/admin/scrapers/network/[id]/actions', () => ({
+jest.mock('@/app/admin/scrapers/network/actions', () => ({
   renameRunner: (...args: unknown[]) => mockRenameRunner(...args),
   disableRunner: (...args: unknown[]) => mockDisableRunner(...args),
   enableRunner: (...args: unknown[]) => mockEnableRunner(...args),

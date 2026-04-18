@@ -4,7 +4,7 @@ import json
 import math
 import statistics
 from collections.abc import Callable, Mapping
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TypeAlias
 
@@ -90,7 +90,7 @@ def benchmark_report_path() -> Path:
 def benchmark_report_writer(benchmark_report_path: Path) -> Callable[[JsonMapping], Path]:
     def _write(payload: JsonMapping) -> Path:
         benchmark_report_path.parent.mkdir(parents=True, exist_ok=True)
-        output: JsonObject = {"generated_at": datetime.now(tz=UTC).isoformat()}
+        output: JsonObject = {"generated_at": datetime.now(tz=timezone.utc).isoformat()}
         for key, value in payload.items():
             output[key] = value
         _ = benchmark_report_path.write_text(

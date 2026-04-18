@@ -11,7 +11,7 @@ import {
   deleteRunner,
   updateRunnerMetadata,
   rotateRunnerKey,
-} from '@/app/admin/scrapers/network/[id]/actions';
+} from '@/app/admin/scrapers/network/actions';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,7 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertBanner } from '@/components/admin/pipeline/AlertBanner';
 
-import type { RunnerDetail } from './runner-detail-client';
+import type { RunnerDetail } from './types';
 
 interface RunnerManagementPanelProps {
   runner: RunnerDetail;

@@ -277,7 +277,12 @@ export function PipelineClient({
   );
 
   const isFirstMount = useRef(true);
-  const lastFetchedSearch = useRef(searchParams.get("search") || "");
+  const lastFetchedParams = useRef({
+    search: searchParams.get("search") || "",
+    source: searchParams.get("source") || "",
+    product_line: searchParams.get("product_line") || "",
+    cohort_id: searchParams.get("cohort_id") || "",
+  });
 
   // Sync state with props from Server Component
   useEffect(() => {
@@ -289,7 +294,12 @@ export function PipelineClient({
     setIsLoading(false);
 
     // Update tracking ref on sync so we don't re-fetch immediately if initialProducts is already filtered
-    lastFetchedSearch.current = searchParams.get("search") || "";
+    lastFetchedParams.current = {
+      search: searchParams.get("search") || "",
+      source: searchParams.get("source") || "",
+      product_line: searchParams.get("product_line") || "",
+      cohort_id: searchParams.get("cohort_id") || "",
+    };
   }, [
     initialProducts,
     initialCounts,
@@ -298,21 +308,27 @@ export function PipelineClient({
     searchParams,
   ]);
 
-  // Fetch products when search changes
+  // Fetch products when search or filters change
   useEffect(() => {
     if (isFirstMount.current) {
       isFirstMount.current = false;
       return;
     }
 
-    // Skip if search matches what we already have from props or last fetch
-    if (search === lastFetchedSearch.current) {
+    const hasChanged = 
+      search !== lastFetchedParams.current.search ||
+      sourceFilter !== lastFetchedParams.current.source ||
+      productLineFilter !== lastFetchedParams.current.product_line ||
+      cohortIdFilter !== lastFetchedParams.current.cohort_id;
+
+    // Skip if nothing changed since last fetch or sync
+    if (!hasChanged) {
       return;
     }
 
     let isMounted = true;
 
-    // Debounce search fetch to prevent focus loss and excessive API calls
+    // Debounce fetch to prevent focus loss and excessive API calls
     const timer = setTimeout(async () => {
       if (!isMounted) return;
 
@@ -323,7 +339,7 @@ export function PipelineClient({
         return;
       }
 
-      // Use silent fetch for search to avoid triggering global isLoading (which unmounts UI)
+      // Use silent fetch for search/filter to avoid triggering global isLoading (which unmounts UI)
       setIsSearching(true);
       try {
         await fetchProducts(currentStage, search, true);
@@ -333,7 +349,12 @@ export function PipelineClient({
 
       if (isMounted) {
         setSelectedSkus(new Set());
-        lastFetchedSearch.current = search;
+        lastFetchedParams.current = {
+          search,
+          source: sourceFilter,
+          product_line: productLineFilter,
+          cohort_id: cohortIdFilter,
+        };
       }
     }, 300);
 
@@ -341,7 +362,7 @@ export function PipelineClient({
       isMounted = false;
       clearTimeout(timer);
     };
-  }, [search, fetchProducts, currentStage]);
+  }, [search, sourceFilter, productLineFilter, cohortIdFilter, fetchProducts, currentStage]);
 
   // Sync state from URL (e.g. on navigation or back button)
   useEffect(() => {
@@ -350,17 +371,25 @@ export function PipelineClient({
     const productLineParam = searchParams.get("product_line") || "";
     const cohortIdParam = searchParams.get("cohort_id") || "";
 
-    if (searchParam !== search) setSearch(searchParam);
-    if (sourceParam !== sourceFilter) setSourceFilter(sourceParam);
-    if (productLineParam !== productLineFilter) {
+    // IMPORTANT: Only update if the URL actually changed from what we last FETCHED or SYNCED.
+    // This prevents the "typed a character, URL hasn't updated yet, so reset state to empty" bug.
+    if (searchParam !== lastFetchedParams.current.search) setSearch(searchParam);
+    if (sourceParam !== lastFetchedParams.current.source) setSourceFilter(sourceParam);
+    if (productLineParam !== lastFetchedParams.current.product_line) {
       setProductLineFilter(productLineParam);
     }
-    if (cohortIdParam !== cohortIdFilter) {
+    if (cohortIdParam !== lastFetchedParams.current.cohort_id) {
       setCohortIdFilter(cohortIdParam);
     }
-    // We only depend on searchParams to detect external changes (like back button)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cohortIdFilter, productLineFilter, search, searchParams, sourceFilter]);
+    
+    // We update our ref to match the URL state after syncing
+    lastFetchedParams.current = {
+      search: searchParam,
+      source: sourceParam,
+      product_line: productLineParam,
+      cohort_id: cohortIdParam,
+    };
+  }, [searchParams]);
 
   // Update URL when filters change (debounced)
   useEffect(() => {

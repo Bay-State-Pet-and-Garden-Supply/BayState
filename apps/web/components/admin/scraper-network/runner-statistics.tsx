@@ -3,23 +3,12 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import type { RunnerStatisticsData } from './types';
 
 interface RunnerStatisticsProps {
   runnerId: string;
   runnerName: string;
-  stats: {
-    totalRuns: number;
-    successRate: number;
-    avgDuration: number;
-    lastSeen: string;
-    lastSeenRelative: string;
-    uptimePercentage?: number;
-    scraperBreakdown?: Array<{
-      scraperName: string;
-      runCount: number;
-      successRate: number;
-    }>;
-  };
+  stats: RunnerStatisticsData;
 }
 
 export function RunnerStatistics({ runnerId, runnerName, stats }: RunnerStatisticsProps) {

@@ -9,7 +9,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from urllib.response import addinfourl
 from pathlib import Path
 from statistics import mean
@@ -984,7 +984,7 @@ def _build_report(
 ) -> str:
     results_by_provider = {provider_name: {result.case_id: result for result in results} for provider_name, results in provider_results.items()}
     recommendation, reasons = _decide_recommendation(summary)
-    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     gemini_latency = float(summary["gemini"]["avg_latency_ms"])
     openai_latency = float(summary["openai"]["avg_latency_ms"])
     gemini_cost = float(summary["gemini"]["cost_per_1000_queries_usd"])
