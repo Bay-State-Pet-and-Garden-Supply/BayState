@@ -274,6 +274,12 @@ function JobCard({
                 <> • Finished {new Date(job.completedAt).toLocaleString()}</>
               )}
             </p>
+            {typeof job.itemsTotal === "number" ? (
+              <p className="text-[10px] font-black uppercase tracking-tighter text-zinc-400 mt-0.5">
+                {job.itemsTotal} Work Units
+                {job.chunkSummary.total > 0 ? ` • ${job.chunkSummary.total} Chunks` : ""}
+              </p>
+            ) : null}
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {job.runnerName ? (
                 <span className="rounded-none border border-zinc-950 bg-zinc-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)]">

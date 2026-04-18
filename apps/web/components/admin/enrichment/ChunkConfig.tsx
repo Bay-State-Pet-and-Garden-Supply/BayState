@@ -136,14 +136,12 @@ export function ChunkConfig({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/50 p-3 rounded-md border border-border/50">
-              <Info className="h-4 w-4 shrink-0" />
-              <p>
-                This will create approximately{" "}
-                <strong>{Math.ceil(skuCount / chunkSize)}</strong> chunks for{" "}
-                {skuCount} selected SKUs.
-              </p>
-            </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/50 p-3 rounded-md border border-border/50">
+                <Info className="h-4 w-4 shrink-0" />
+                <p>
+                  SKU slices start at <strong>{Math.ceil(skuCount / chunkSize)}</strong>, and scraper jobs may create additional chunks per site group.
+                </p>
+              </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border/50">

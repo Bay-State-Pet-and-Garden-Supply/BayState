@@ -54,7 +54,8 @@ const { requireAdminAuth } = require("@/lib/admin/api-auth");
 
 describe("Active Runs API", () => {
   let mockSupabase: any;
-  let jobsQuery: any;
+  let activeJobsQuery: any;
+  let recentJobsQuery: any;
   let chunksQuery: any;
 
   beforeEach(() => {
@@ -65,26 +66,43 @@ describe("Active Runs API", () => {
       response: { status: 401 },
     });
 
-    jobsQuery = {
+    activeJobsQuery = {
       select: jest.fn(),
       in: jest.fn(),
       order: jest.fn(),
       limit: jest.fn(),
     };
-    jobsQuery.select.mockReturnValue(jobsQuery);
-    jobsQuery.in.mockReturnValue(jobsQuery);
-    jobsQuery.order.mockReturnValue(jobsQuery);
+    activeJobsQuery.select.mockReturnValue(activeJobsQuery);
+    activeJobsQuery.in.mockReturnValue(activeJobsQuery);
+    activeJobsQuery.order.mockReturnValue(activeJobsQuery);
+
+    recentJobsQuery = {
+      select: jest.fn(),
+      in: jest.fn(),
+      gte: jest.fn(),
+      order: jest.fn(),
+      limit: jest.fn(),
+    };
+    recentJobsQuery.select.mockReturnValue(recentJobsQuery);
+    recentJobsQuery.in.mockReturnValue(recentJobsQuery);
+    recentJobsQuery.gte.mockReturnValue(recentJobsQuery);
+    recentJobsQuery.order.mockReturnValue(recentJobsQuery);
 
     chunksQuery = {
       select: jest.fn(),
       in: jest.fn(),
+      order: jest.fn(),
     };
     chunksQuery.select.mockReturnValue(chunksQuery);
+    chunksQuery.in.mockReturnValue(chunksQuery);
+    chunksQuery.order.mockResolvedValue({ data: [], error: null });
 
     mockSupabase = {
+      _jobQueryCallCount: 0,
       from: jest.fn((table: string) => {
         if (table === "scrape_jobs") {
-          return jobsQuery;
+          mockSupabase._jobQueryCallCount += 1;
+          return mockSupabase._jobQueryCallCount === 1 ? activeJobsQuery : recentJobsQuery;
         }
 
         if (table === "scrape_job_chunks") {
@@ -164,15 +182,16 @@ describe("Active Runs API", () => {
     ];
 
     const mockChunks = [
-      { job_id: "job-1", status: "completed", chunk_index: 0 },
-      { job_id: "job-1", status: "completed", chunk_index: 1 },
-      { job_id: "job-1", status: "running", chunk_index: 2 },
-      { job_id: "job-1", status: "pending", chunk_index: 3 },
-      { job_id: "job-2", status: "pending", chunk_index: 0 },
+      { job_id: "job-1", id: "chunk-1", status: "completed", chunk_index: 0, skus: ["SKU-001"], claimed_by: null, claimed_at: null, started_at: null, completed_at: null, skus_processed: 1, skus_successful: 1, skus_failed: 0, error_message: null, planned_work_units: 2, sku_slice_index: 0, site_group_key: "amazon.com", site_group_label: "amazon.com", site_domain: "amazon.com" },
+      { job_id: "job-1", id: "chunk-2", status: "completed", chunk_index: 1, skus: ["SKU-001"], claimed_by: null, claimed_at: null, started_at: null, completed_at: null, skus_processed: 1, skus_successful: 1, skus_failed: 0, error_message: null, planned_work_units: 2, sku_slice_index: 0, site_group_key: "walmart.com", site_group_label: "walmart.com", site_domain: "walmart.com" },
+      { job_id: "job-1", id: "chunk-3", status: "running", chunk_index: 2, skus: ["SKU-002"], claimed_by: "runner-a", claimed_at: "2024-01-15T10:01:00Z", started_at: "2024-01-15T10:01:00Z", completed_at: null, skus_processed: 0, skus_successful: 0, skus_failed: 0, error_message: null, planned_work_units: 2, sku_slice_index: 1, site_group_key: "amazon.com", site_group_label: "amazon.com", site_domain: "amazon.com" },
+      { job_id: "job-1", id: "chunk-4", status: "pending", chunk_index: 3, skus: ["SKU-002"], claimed_by: null, claimed_at: null, started_at: null, completed_at: null, skus_processed: 0, skus_successful: 0, skus_failed: 0, error_message: null, planned_work_units: 2, sku_slice_index: 1, site_group_key: "walmart.com", site_group_label: "walmart.com", site_domain: "walmart.com" },
+      { job_id: "job-2", id: "chunk-5", status: "pending", chunk_index: 0, skus: ["SKU-004", "SKU-005"], claimed_by: null, claimed_at: null, started_at: null, completed_at: null, skus_processed: 0, skus_successful: 0, skus_failed: 0, error_message: null, planned_work_units: 2, sku_slice_index: 0, site_group_key: "target.com", site_group_label: "target.com", site_domain: "target.com" },
     ];
 
-    jobsQuery.limit.mockResolvedValueOnce({ data: mockJobs, error: null });
-    chunksQuery.in.mockResolvedValueOnce({ data: mockChunks, error: null });
+    activeJobsQuery.limit.mockResolvedValueOnce({ data: mockJobs, error: null });
+    recentJobsQuery.limit.mockResolvedValueOnce({ data: [], error: null });
+    chunksQuery.order.mockResolvedValueOnce({ data: mockChunks, error: null });
 
     const req = new NextRequest(
       "http://localhost/api/admin/pipeline/active-runs",
@@ -188,6 +207,7 @@ describe("Active Runs API", () => {
       id: "job-1",
       status: "running",
       createdAt: "2024-01-15T10:00:00Z",
+      completedAt: null,
       scrapers: ["amazon", "walmart"],
       skuCount: 3,
       progress: 67,
@@ -202,12 +222,102 @@ describe("Active Runs API", () => {
       lastLogAt: "2024-01-15T10:01:00Z",
       lastUpdateAt: "2024-01-15T10:01:00Z",
       heartbeatAt: "2024-01-15T10:01:00Z",
+      chunks: [
+        {
+          id: "chunk-1",
+          jobId: "job-1",
+          chunkIndex: 0,
+          skuCount: 1,
+          plannedWorkUnits: 2,
+          skuSliceIndex: 0,
+          siteGroupKey: "amazon.com",
+          siteGroupLabel: "amazon.com",
+          siteDomain: "amazon.com",
+          status: "completed",
+          claimedBy: null,
+          claimedAt: null,
+          startedAt: null,
+          completedAt: null,
+          skusProcessed: 1,
+          skusSuccessful: 1,
+          skusFailed: 0,
+          errorMessage: null,
+        },
+        {
+          id: "chunk-2",
+          jobId: "job-1",
+          chunkIndex: 1,
+          skuCount: 1,
+          plannedWorkUnits: 2,
+          skuSliceIndex: 0,
+          siteGroupKey: "walmart.com",
+          siteGroupLabel: "walmart.com",
+          siteDomain: "walmart.com",
+          status: "completed",
+          claimedBy: null,
+          claimedAt: null,
+          startedAt: null,
+          completedAt: null,
+          skusProcessed: 1,
+          skusSuccessful: 1,
+          skusFailed: 0,
+          errorMessage: null,
+        },
+        {
+          id: "chunk-3",
+          jobId: "job-1",
+          chunkIndex: 2,
+          skuCount: 1,
+          plannedWorkUnits: 2,
+          skuSliceIndex: 1,
+          siteGroupKey: "amazon.com",
+          siteGroupLabel: "amazon.com",
+          siteDomain: "amazon.com",
+          status: "running",
+          claimedBy: "runner-a",
+          claimedAt: "2024-01-15T10:01:00Z",
+          startedAt: "2024-01-15T10:01:00Z",
+          completedAt: null,
+          skusProcessed: 0,
+          skusSuccessful: 0,
+          skusFailed: 0,
+          errorMessage: null,
+        },
+        {
+          id: "chunk-4",
+          jobId: "job-1",
+          chunkIndex: 3,
+          skuCount: 1,
+          plannedWorkUnits: 2,
+          skuSliceIndex: 1,
+          siteGroupKey: "walmart.com",
+          siteGroupLabel: "walmart.com",
+          siteDomain: "walmart.com",
+          status: "pending",
+          claimedBy: null,
+          claimedAt: null,
+          startedAt: null,
+          completedAt: null,
+          skusProcessed: 0,
+          skusSuccessful: 0,
+          skusFailed: 0,
+          errorMessage: null,
+        },
+      ],
+      chunkSummary: {
+        total: 4,
+        pending: 1,
+        running: 1,
+        completed: 2,
+        failed: 0,
+      },
     });
 
     expect(json.jobs[1]).toEqual({
       id: "job-2",
       status: "pending",
       createdAt: "2024-01-15T09:00:00Z",
+      completedAt: null,
       scrapers: ["target"],
       skuCount: 2,
       progress: 0,
@@ -222,6 +332,35 @@ describe("Active Runs API", () => {
       lastLogAt: null,
       lastUpdateAt: "2024-01-15T09:00:00Z",
       heartbeatAt: null,
+      chunks: [
+        {
+          id: "chunk-5",
+          jobId: "job-2",
+          chunkIndex: 0,
+          skuCount: 2,
+          plannedWorkUnits: 2,
+          skuSliceIndex: 0,
+          siteGroupKey: "target.com",
+          siteGroupLabel: "target.com",
+          siteDomain: "target.com",
+          status: "pending",
+          claimedBy: null,
+          claimedAt: null,
+          startedAt: null,
+          completedAt: null,
+          skusProcessed: 0,
+          skusSuccessful: 0,
+          skusFailed: 0,
+          errorMessage: null,
+        },
+      ],
+      chunkSummary: {
+        total: 1,
+        pending: 1,
+        running: 0,
+        completed: 0,
+        failed: 0,
+      },
     });
   });
 
@@ -232,14 +371,15 @@ describe("Active Runs API", () => {
       role: "admin",
     });
 
-    jobsQuery.limit.mockResolvedValueOnce({ data: [], error: null });
+    activeJobsQuery.limit.mockResolvedValueOnce({ data: [], error: null });
+    recentJobsQuery.limit.mockResolvedValueOnce({ data: [], error: null });
 
     const req = new NextRequest(
       "http://localhost/api/admin/pipeline/active-runs",
     );
     await GET(req);
 
-    expect(jobsQuery.in).toHaveBeenCalledWith("status", [
+    expect(activeJobsQuery.in).toHaveBeenCalledWith("status", [
       "pending",
       "claimed",
       "running",
@@ -253,14 +393,15 @@ describe("Active Runs API", () => {
       role: "admin",
     });
 
-    jobsQuery.limit.mockResolvedValueOnce({ data: [], error: null });
+    activeJobsQuery.limit.mockResolvedValueOnce({ data: [], error: null });
+    recentJobsQuery.limit.mockResolvedValueOnce({ data: [], error: null });
 
     const req = new NextRequest(
       "http://localhost/api/admin/pipeline/active-runs",
     );
     await GET(req);
 
-    expect(jobsQuery.order).toHaveBeenCalledWith("created_at", {
+    expect(activeJobsQuery.order).toHaveBeenCalledWith("created_at", {
       ascending: false,
     });
   });
@@ -272,7 +413,8 @@ describe("Active Runs API", () => {
       role: "admin",
     });
 
-    jobsQuery.limit.mockResolvedValueOnce({ data: [], error: null });
+    activeJobsQuery.limit.mockResolvedValueOnce({ data: [], error: null });
+    recentJobsQuery.limit.mockResolvedValueOnce({ data: [], error: null });
 
     const req = new NextRequest(
       "http://localhost/api/admin/pipeline/active-runs",
@@ -291,7 +433,7 @@ describe("Active Runs API", () => {
       role: "admin",
     });
 
-    jobsQuery.limit.mockResolvedValueOnce({
+    activeJobsQuery.limit.mockResolvedValueOnce({
       data: null,
       error: { message: "Database error" },
     });

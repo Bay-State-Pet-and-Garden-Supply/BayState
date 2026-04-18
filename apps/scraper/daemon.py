@@ -206,6 +206,7 @@ def run_claimed_chunk(chunk, client, log_buffer=None, job_logging=None) -> dict[
         job_logging=job_logging,
     )
 
+
 async def process_chunk(chunk, client, rm):
     """Process a claimed chunk of SKUs."""
     from utils.logging_handlers import JobLoggingSession
@@ -234,6 +235,7 @@ async def process_chunk(chunk, client, rm):
                     "flush_immediately": True,
                 },
             )
+            planned_work_units = chunk.planned_work_units or (len(chunk.skus) * max(1, len(chunk.scrapers)))
             job_logging.emit_progress(
                 status="running",
                 progress=0,
@@ -243,8 +245,10 @@ async def process_chunk(chunk, client, rm):
                     "chunk_id": chunk.chunk_id,
                     "chunk_index": chunk.chunk_index,
                     "sku_count": len(chunk.skus),
+                    "planned_work_units": planned_work_units,
+                    "site_group_label": chunk.site_group_label,
                 },
-                items_total=len(chunk.skus),
+                items_total=planned_work_units,
             )
 
             start_time = time.time()
@@ -270,6 +274,8 @@ async def process_chunk(chunk, client, rm):
                 "skus_processed": results.get("skus_processed", 0),
                 "skus_successful": len(results.get("data", {})),
                 "skus_failed": results.get("skus_processed", 0) - len(results.get("data", {})),
+                "work_units_processed": planned_work_units,
+                "work_units_total": planned_work_units,
                 "data": results.get("data", {}),
                 "telemetry": results.get("telemetry", {}),
                 "logs": results.get("logs", []) or job_logging.snapshot(),
@@ -445,6 +451,7 @@ async def process_cohort(cohort, client, rm):
             error_message=str(e),
         )
 
+
 def validate_runtime_dependencies() -> None:
     """Fail fast when the container has an incompatible scraper runtime."""
     metrics_module = __import__("scrapers.ai_metrics", fromlist=["record_ai_extraction", "record_ai_fallback"])
@@ -567,6 +574,7 @@ async def main_async():
                     logger.debug("Heartbeat sent")
 
                 import random
+
                 max_interval = MAX_POLL_INTERVAL
                 base_interval = POLL_INTERVAL
                 backoff = base_interval * (1.5 ** (consecutive_idle_polls - 1))
@@ -585,7 +593,6 @@ async def main_async():
             else:
                 await process_chunk(work_unit, client, rm)
             work_units_completed += 1
-
 
         except RunnerBuildMismatchError as e:
             latest_build_id = getattr(e, "latest_build_id", None)

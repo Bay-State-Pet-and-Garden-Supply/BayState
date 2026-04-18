@@ -7,6 +7,11 @@ export interface ChunkDetail {
   jobId: string;
   chunkIndex: number;
   skuCount: number;
+  plannedWorkUnits: number;
+  skuSliceIndex: number | null;
+  siteGroupKey: string | null;
+  siteGroupLabel: string | null;
+  siteDomain: string | null;
   status: "pending" | "running" | "completed" | "failed";
   claimedBy: string | null;
   claimedAt: string | null;
@@ -104,7 +109,7 @@ export async function GET() {
   const { data: chunks, error: chunksError } = await supabase
     .from("scrape_job_chunks")
     .select(
-      "id, job_id, chunk_index, skus, status, claimed_by, claimed_at, started_at, completed_at, skus_processed, skus_successful, skus_failed, error_message",
+      "id, job_id, chunk_index, skus, status, claimed_by, claimed_at, started_at, completed_at, skus_processed, skus_successful, skus_failed, error_message, planned_work_units, sku_slice_index, site_group_key, site_group_label, site_domain",
     )
     .in("job_id", jobIds)
     .order("chunk_index", { ascending: true });
@@ -125,6 +130,11 @@ export async function GET() {
       jobId: chunk.job_id,
       chunkIndex: chunk.chunk_index,
       skuCount: Array.isArray(chunk.skus) ? chunk.skus.length : 0,
+      plannedWorkUnits: typeof chunk.planned_work_units === "number" ? chunk.planned_work_units : 0,
+      skuSliceIndex: typeof chunk.sku_slice_index === "number" ? chunk.sku_slice_index : null,
+      siteGroupKey: typeof chunk.site_group_key === "string" ? chunk.site_group_key : null,
+      siteGroupLabel: typeof chunk.site_group_label === "string" ? chunk.site_group_label : null,
+      siteDomain: typeof chunk.site_domain === "string" ? chunk.site_domain : null,
       status: chunk.status,
       claimedBy: chunk.claimed_by || null,
       claimedAt: chunk.claimed_at || null,

@@ -41,6 +41,11 @@ interface ChunkResponse {
     chunk_index: number;
     skus: string[];
     scrapers: string[];
+    sku_slice_index?: number;
+    site_group_key?: string;
+    site_group_label?: string;
+    site_domain?: string | null;
+    planned_work_units?: number;
     test_mode: boolean;
     max_workers: number;
     job_type?: string;
@@ -88,7 +93,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body: ClaimChunkRequest = await request.json();
-        const { runner_name } = body;
+        const { runner_name, job_id } = body;
 
         // Use provided runner_name or fall back to authenticated runner name
         const claimingRunner = runner_name || runner.runnerName;
@@ -167,6 +172,7 @@ export async function POST(request: NextRequest) {
         // Call the atomic claim function
         const { data: claimedChunks, error: claimError } = await supabase.rpc('claim_next_pending_chunk', {
             p_runner_name: claimingRunner,
+            p_job_id: job_id ?? null,
         });
 
         if (claimError) {
@@ -180,10 +186,13 @@ export async function POST(request: NextRequest) {
         // Check if we got a chunk
         if (!claimedChunks || claimedChunks.length === 0) {
             // No pending chunks - check how many remain in other states
-            const { count } = await supabase
+            const pendingCountBuilder = supabase
                 .from('scrape_job_chunks')
-                .select('*', { count: 'exact', head: true })
-                .in('status', ['pending', 'running']);
+                .select('*', { count: 'exact', head: true });
+
+            const { count } = job_id
+                ? await pendingCountBuilder.eq('job_id', job_id).in('status', ['pending', 'running'])
+                : await pendingCountBuilder.in('status', ['pending', 'running']);
 
             console.log(`[Claim Chunk] No pending chunks available. ${count || 0} chunks pending/running.`);
 
@@ -228,6 +237,11 @@ export async function POST(request: NextRequest) {
                 chunk_index: chunk.chunk_index,
                 skus: chunk.skus || [],
                 scrapers: chunk.scrapers || [],
+                sku_slice_index: typeof chunk.sku_slice_index === 'number' ? chunk.sku_slice_index : undefined,
+                site_group_key: typeof chunk.site_group_key === 'string' ? chunk.site_group_key : undefined,
+                site_group_label: typeof chunk.site_group_label === 'string' ? chunk.site_group_label : undefined,
+                site_domain: typeof chunk.site_domain === 'string' ? chunk.site_domain : null,
+                planned_work_units: typeof chunk.planned_work_units === 'number' ? chunk.planned_work_units : undefined,
                 test_mode: chunk.test_mode || false,
                 max_workers: chunk.max_workers || 3,
                 job_type: chunk.type || 'standard',

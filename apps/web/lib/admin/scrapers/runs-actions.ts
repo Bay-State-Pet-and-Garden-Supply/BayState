@@ -148,7 +148,32 @@ export async function cancelScraperRun(jobId: string) {
     console.warn(`Warning: Failed to update chunks for cancelled job ${jobId}:`, chunkError);
   }
 
+  // 3. Revert product pipeline status for products in this job
+  // Fetch the job to get the SKUs
+  const { data: jobData, error: fetchError } = await supabase
+    .from('scrape_jobs')
+    .select('skus')
+    .eq('id', jobId)
+    .single();
+
+  if (!fetchError && jobData?.skus) {
+    const { error: productError } = await supabase
+      .from('products_ingestion')
+      .update({
+        pipeline_status: 'imported',
+        updated_at: nowIso,
+        error_message: 'Job was cancelled'
+      })
+      .in('sku', jobData.skus)
+      .eq('pipeline_status', 'scraping');
+
+    if (productError) {
+      console.warn(`Warning: Failed to revert product status for cancelled job ${jobId}:`, productError);
+    }
+  }
+
   revalidatePath('/admin/scrapers/runs');
+  revalidatePath('/admin/pipeline');
   return { success: true };
 }
 

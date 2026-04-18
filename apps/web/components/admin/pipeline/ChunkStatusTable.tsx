@@ -22,6 +22,11 @@ export interface ChunkDetail {
   jobId: string;
   chunkIndex: number;
   skuCount: number;
+  plannedWorkUnits: number;
+  skuSliceIndex: number | null;
+  siteGroupKey: string | null;
+  siteGroupLabel: string | null;
+  siteDomain: string | null;
   status: "pending" | "running" | "completed" | "failed";
   claimedBy: string | null;
   claimedAt: string | null;
@@ -113,9 +118,10 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
     <TooltipProvider delayDuration={300}>
       <div className="border-t border-zinc-950">
         {/* Header */}
-        <div className="grid grid-cols-[3.5rem_4rem_6.5rem_1fr_6rem_6rem_7rem] gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-tighter text-zinc-950 bg-zinc-100 border-b border-zinc-950">
+        <div className="grid grid-cols-[3.5rem_4rem_8rem_6.5rem_1fr_6rem_6rem_7rem] gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-tighter text-zinc-950 bg-zinc-100 border-b border-zinc-950">
           <span>Chunk</span>
           <span>SKUs</span>
+          <span>Site Group</span>
           <span>Status</span>
           <span>Runner</span>
           <span>Claimed</span>
@@ -134,7 +140,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
             return (
               <div key={chunk.id}>
                 <div
-                  className={`grid grid-cols-[3.5rem_4rem_6.5rem_1fr_6rem_6rem_7rem] gap-2 px-4 py-2.5 text-xs items-center transition-colors hover:bg-zinc-50 ${config.rowClass} ${isFailed ? "border-l border-l-brand-burgundy" : ""}`}
+                  className={`grid grid-cols-[3.5rem_4rem_8rem_6.5rem_1fr_6rem_6rem_7rem] gap-2 px-4 py-2.5 text-xs items-center transition-colors hover:bg-zinc-50 ${config.rowClass} ${isFailed ? "border-l border-l-brand-burgundy" : ""}`}
                 >
                   {/* Chunk Index */}
                   <span className="font-mono font-bold text-zinc-950">
@@ -145,6 +151,15 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
                   <span className="tabular-nums font-black uppercase tracking-tighter text-zinc-500">
                     {chunk.skuCount}
                   </span>
+
+                  <div className="min-w-0">
+                    <div className="truncate font-black uppercase tracking-tighter text-zinc-900">
+                      {chunk.siteGroupLabel ?? "Default"}
+                    </div>
+                    <div className="truncate text-[10px] font-black uppercase tracking-tighter text-zinc-500">
+                      {chunk.plannedWorkUnits} work units
+                    </div>
+                  </div>
 
                   {/* Status Badge */}
                   <Badge

@@ -81,6 +81,11 @@ class ClaimedChunk:
     chunk_index: int
     skus: list[str]
     scrapers: list[str]
+    sku_slice_index: int | None = None
+    site_group_key: str | None = None
+    site_group_label: str | None = None
+    site_domain: str | None = None
+    planned_work_units: int | None = None
     test_mode: bool = False
     max_workers: int = 3
     job_type: str = "standard"
@@ -106,6 +111,7 @@ class ClaimedCohort:
     ai_credentials: dict[str, Any] | None = None
     lease_token: str | None = None
     lease_expires_at: str | None = None
+
 
 class AuthenticationError(Exception):
     """Raised when authentication fails."""
@@ -316,24 +322,10 @@ class ScraperAPIClient:
                         except Exception:
                             error_payload = {}
 
-                        latest_build_id = (
-                            error_payload.get("latest_build_id")
-                            or response.headers.get(LATEST_RUNNER_BUILD_ID_HEADER)
-                        )
-                        runner_build_id = (
-                            error_payload.get("runner_build_id")
-                            or response.headers.get(RUNNER_BUILD_ID_HEADER)
-                            or get_runner_build_id()
-                        )
-                        latest_build_sha = (
-                            error_payload.get("latest_build_sha")
-                            or response.headers.get(LATEST_RUNNER_BUILD_SHA_HEADER)
-                        )
-                        message = (
-                            error_payload.get("message")
-                            or error_payload.get("error")
-                            or "Runner image update required"
-                        )
+                        latest_build_id = error_payload.get("latest_build_id") or response.headers.get(LATEST_RUNNER_BUILD_ID_HEADER)
+                        runner_build_id = error_payload.get("runner_build_id") or response.headers.get(RUNNER_BUILD_ID_HEADER) or get_runner_build_id()
+                        latest_build_sha = error_payload.get("latest_build_sha") or response.headers.get(LATEST_RUNNER_BUILD_SHA_HEADER)
+                        message = error_payload.get("message") or error_payload.get("error") or "Runner image update required"
                         if latest_build_sha:
                             message = f"{message} Latest build SHA: {latest_build_sha}."
 
@@ -526,6 +518,11 @@ class ScraperAPIClient:
                 chunk_index=chunk.get("chunk_index", 0),
                 skus=chunk.get("skus", []),
                 scrapers=chunk.get("scrapers", []),
+                sku_slice_index=chunk.get("sku_slice_index"),
+                site_group_key=chunk.get("site_group_key"),
+                site_group_label=chunk.get("site_group_label"),
+                site_domain=chunk.get("site_domain"),
+                planned_work_units=chunk.get("planned_work_units"),
                 test_mode=chunk.get("test_mode", False),
                 max_workers=chunk.get("max_workers", 3),
                 job_type=chunk.get("job_type", "standard"),
@@ -585,10 +582,11 @@ class ScraperAPIClient:
         except httpx.HTTPStatusError as e:
             logger.error(f"Failed to submit chunk results: {e.response.status_code} - {e.response.text}")
             return False
+
     def claim_cohort(self, runner_name: str | None = None) -> ClaimedCohort | None:
         """
         Claim a cohort batch for processing.
-        
+
         Returns cohort data with keys: cohort_id, cohort_index, products, scrapers.
         Returns None if no cohorts are available.
         """
@@ -1079,12 +1077,7 @@ class ScraperAPIClient:
 
         try:
             client = create_client(url, key)
-            response = (
-                client.table("scraper_credentials")
-                .select("encrypted_value,iv,auth_tag,credential_type")
-                .eq("scraper_slug", scraper_slug)
-                .execute()
-            )
+            response = client.table("scraper_credentials").select("encrypted_value,iv,auth_tag,credential_type").eq("scraper_slug", scraper_slug).execute()
         except Exception as exc:
             logger.warning(f"Failed to fetch credentials for {scraper_slug} from Supabase: {exc}")
             return None

@@ -2224,16 +2224,22 @@ export type Database = {
           error_message: string | null
           id: string
           job_id: string
+          planned_work_units: number
           results: Json | null
           scrapers: string[] | null
           skus: string[]
           skus_failed: number | null
           skus_processed: number | null
           skus_successful: number | null
+          site_domain: string | null
+          site_group_key: string | null
+          site_group_label: string | null
+          sku_slice_index: number | null
           started_at: string | null
           status: string | null
           telemetry: Json | null
           updated_at: string | null
+          work_units_processed: number
         }
         Insert: {
           chunk_index: number
@@ -2244,16 +2250,22 @@ export type Database = {
           error_message?: string | null
           id?: string
           job_id: string
+          planned_work_units?: number
           results?: Json | null
           scrapers?: string[] | null
           skus: string[]
           skus_failed?: number | null
           skus_processed?: number | null
           skus_successful?: number | null
+          site_domain?: string | null
+          site_group_key?: string | null
+          site_group_label?: string | null
+          sku_slice_index?: number | null
           started_at?: string | null
           status?: string | null
           telemetry?: Json | null
           updated_at?: string | null
+          work_units_processed?: number
         }
         Update: {
           chunk_index?: number
@@ -2264,16 +2276,22 @@ export type Database = {
           error_message?: string | null
           id?: string
           job_id?: string
+          planned_work_units?: number
           results?: Json | null
           scrapers?: string[] | null
           skus?: string[]
           skus_failed?: number | null
           skus_processed?: number | null
           skus_successful?: number | null
+          site_domain?: string | null
+          site_group_key?: string | null
+          site_group_label?: string | null
+          sku_slice_index?: number | null
           started_at?: string | null
           status?: string | null
           telemetry?: Json | null
           updated_at?: string | null
+          work_units_processed?: number
         }
         Relationships: [
           {
@@ -3377,7 +3395,7 @@ export type Database = {
         }[]
       }
       claim_next_pending_chunk: {
-        Args: { p_runner_name: string }
+        Args: { p_job_id?: string; p_runner_name: string }
         Returns: {
           chunk_id: string
           chunk_index: number
@@ -3386,8 +3404,13 @@ export type Database = {
           lease_expires_at: string
           lease_token: string
           max_workers: number
+          planned_work_units: number
           scrapers: string[]
+          site_domain: string
+          site_group_key: string
+          site_group_label: string
           skus: string[]
+          sku_slice_index: number
           test_mode: boolean
           type: string
         }[]

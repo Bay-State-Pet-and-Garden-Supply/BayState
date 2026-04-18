@@ -172,6 +172,11 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
                 chunk_index: 0,
                 skus: ['SKU-1'],
                 scrapers: ['bradley'],
+                sku_slice_index: 0,
+                site_group_key: 'bradley.example.com',
+                site_group_label: 'bradley.example.com',
+                site_domain: 'bradley.example.com',
+                planned_work_units: 1,
                 test_mode: false,
                 max_workers: 3,
                 type: 'standard',
@@ -192,6 +197,11 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
             chunk_index: 0,
             skus: ['SKU-1'],
             scrapers: ['bradley'],
+            sku_slice_index: 0,
+            site_group_key: 'bradley.example.com',
+            site_group_label: 'bradley.example.com',
+            site_domain: 'bradley.example.com',
+            planned_work_units: 1,
             ai_credentials: {
                 openai_api_key: 'openai-test-key',
                 serper_api_key: 'serper-test-key',
@@ -201,6 +211,22 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
             status: 'busy',
             current_job_id: 'job-1',
         }));
+    });
+
+    it('forwards a scoped job_id to the claim RPC', async () => {
+        (validateRunnerAuth as jest.Mock).mockResolvedValue({
+            runnerName: 'test-runner',
+            allowedScrapers: null,
+        });
+        mockSupabase.rpc.mockResolvedValue({ data: [], error: null });
+
+        const res = await POST(createRequest({ runner_name: 'test-runner', job_id: 'job-123' }));
+
+        expect(res.status).toBe(200);
+        expect(mockSupabase.rpc).toHaveBeenCalledWith('claim_next_pending_chunk', {
+            p_runner_name: 'test-runner',
+            p_job_id: 'job-123',
+        });
     });
 
     it('injects discovery LLM defaults for claimed discovery chunks', async () => {
