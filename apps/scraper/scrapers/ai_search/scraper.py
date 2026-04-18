@@ -173,6 +173,7 @@ class AISearchScraper:
         self.prefer_manufacturer = prefer_manufacturer
         self.use_ai_source_selection = os.getenv("AI_SEARCH_USE_LLM_SOURCE_RANKING", "false").lower() == "true"
         self.max_follow_up_queries = min(1, _read_int_env("AI_SEARCH_MAX_FOLLOW_UP_QUERIES", default=1))
+        self.search_provider_max_results = _read_int_env("AI_SEARCH_SERPER_MAX_RESULTS", default=max_search_results, minimum=max_search_results)
         requested_two_step_refiner = os.getenv("AI_SEARCH_ENABLE_TWO_STEP", "false").lower() == "true"
         # The legacy refiner is opt-in. Preserve the caller's original provider
         # preference so aliases like "gemini" still enable the extra refinement
@@ -216,6 +217,7 @@ class AISearchScraper:
             max_results=max_search_results,
             provider=self.search_provider,
             api_key=(self.search_api_key or self.llm_api_key) if effective_search_provider == "serper" else self.llm_api_key,
+            provider_max_results=self.search_provider_max_results,
         )
         self._query_builder = QueryBuilder()
         self._validator = ExtractionValidator(confidence_threshold)
@@ -524,11 +526,7 @@ class AISearchScraper:
             return ""
 
         category_tokens = self._matching.tokenize_keywords(str(item.get("category") or ""))
-        product_tokens = [
-            token
-            for token in re.findall(r"[a-z0-9]+", str(item.get("product_name") or "").lower())
-            if token and not token.isdigit()
-        ]
+        product_tokens = [token for token in re.findall(r"[a-z0-9]+", str(item.get("product_name") or "").lower()) if token and not token.isdigit()]
 
         prefix_tokens: list[str] = []
         for token in product_tokens:
@@ -917,22 +915,14 @@ class AISearchScraper:
                 self._save_cohort_state(cohort_state)
                 return cohort_results
 
-        gathered_results = await asyncio.gather(
-            *[
-                _run_cohort(cohort_key, cohort_batch)
-                for cohort_key, cohort_batch in cohort_items.items()
-            ]
-        )
+        gathered_results = await asyncio.gather(*[_run_cohort(cohort_key, cohort_batch) for cohort_key, cohort_batch in cohort_items.items()])
 
         ordered_results: list[AISearchResult | None] = [None] * len(products)
         for cohort_result_set in gathered_results:
             for index, result in cohort_result_set:
                 ordered_results[index] = result
 
-        return [
-            result if result is not None else AISearchResult(success=False, sku="", error="Missing batch result")
-            for result in ordered_results
-        ]
+        return [result if result is not None else AISearchResult(success=False, sku="", error="Missing batch result") for result in ordered_results]
 
     async def _extract_sku_first_batch_result(
         self,
@@ -1351,10 +1341,7 @@ class AISearchScraper:
                 preferred_domains=preferred_domains,
             )
             if not effective_brand:
-                effective_brand = (
-                    self._infer_domain_brand_hint(search_results, product_name)
-                    or self._infer_search_brand_hint(search_results, product_name)
-                )
+                effective_brand = self._infer_domain_brand_hint(search_results, product_name) or self._infer_search_brand_hint(search_results, product_name)
 
             if not search_results:
                 error_msg = search_error or "No search results found"

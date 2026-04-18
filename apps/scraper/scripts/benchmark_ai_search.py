@@ -17,6 +17,7 @@ from pathlib import Path
 from statistics import NormalDist
 from tempfile import TemporaryDirectory
 from typing import Protocol, TypedDict, cast
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -28,7 +29,7 @@ from scrapers.ai_search.fixture_search_client import CacheMissError, FixtureSear
 from scrapers.ai_search.scoring import SearchScorer
 from scrapers.ai_search.source_selector import LLMSourceSelector
 
-DEFAULT_CACHE_DIR = ROOT / ".cache" / "ai_search"
+DEFAULT_CACHE_DIR = ROOT / "data" / "benchmark_cache"
 REPORTS_DIR = ROOT / "reports"
 BASELINE_REPORT_PATH = REPORTS_DIR / "baseline.json"
 REPORT_VERSION = "2.0"
@@ -39,6 +40,28 @@ CATEGORY_TREND_DELTA_ALERT_PCT = 5.0
 # Serper API cost per search call (when not using fixtures)
 # https://serper.dev/pricing - $0.001 per query for pay-as-you-go
 SERPER_COST_PER_CALL_USD = 0.001
+IGNORED_BENCHMARK_QUERY_PARAMS = {"srsltid", "fbclid", "gclid", "dclid", "mc_cid", "mc_eid"}
+
+
+def canonicalize_benchmark_url(url: str | None) -> str:
+    """Normalize URLs for benchmark equality and rank comparisons."""
+    raw_url = str(url or "").strip()
+    if not raw_url:
+        return ""
+
+    split = urlsplit(raw_url)
+    filtered_query = [
+        (key, value)
+        for key, value in parse_qsl(split.query, keep_blank_values=True)
+        if key and key.lower() not in IGNORED_BENCHMARK_QUERY_PARAMS and not key.lower().startswith("utm_")
+    ]
+
+    normalized_scheme = split.scheme.lower() or "https"
+    normalized_netloc = split.netloc.lower()
+    normalized_path = split.path.rstrip("/") or "/"
+    normalized_query = urlencode(sorted(filtered_query))
+
+    return urlunsplit((normalized_scheme, normalized_netloc, normalized_path, normalized_query, ""))
 
 
 @dataclass(frozen=True)
@@ -271,6 +294,9 @@ class BenchmarkExample:
     category: str
     difficulty: str
     rationale: str
+    brand: str | None = None
+    sku: str | None = None
+    product_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -604,10 +630,22 @@ class CategoryAnalyzer:
 def parse_args(argv: list[str] | None = None) -> BenchmarkArgs:
     """Parse CLI arguments."""
     parser = argparse.ArgumentParser(description="Benchmark AI Search source selection against a golden dataset")
-    _ = parser.add_argument("--dataset", type=Path, required=True, help="Path to the golden dataset JSON file")
+    default_dataset = ROOT / "data" / "golden_dataset_v2.json"
+    _ = parser.add_argument(
+        "--dataset", type=Path, default=default_dataset, help=f"Path to the golden dataset JSON file (default: {default_dataset.relative_to(ROOT)})"
+    )
     _ = parser.add_argument("--output", type=Path, default=None, help="Optional path to write the JSON report")
     _ = parser.add_argument("--mode", choices=("heuristic", "llm"), default="heuristic", help="Source selection mode to benchmark")
-    _ = parser.add_argument("--cache-dir", type=Path, default=None, help="Optional FixtureSearchClient cache directory")
+    _ = parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Optional FixtureSearchClient cache directory. When omitted, the benchmark first "
+            "looks for a companion '.search_results.json' file next to --dataset and then falls "
+            f"back to {DEFAULT_CACHE_DIR.relative_to(ROOT)}."
+        ),
+    )
     _ = parser.add_argument("--llm-model", default="gpt-4o-mini", help="LLM model to use for --mode llm")
     _ = parser.add_argument("--llm-provider", default="openai", help="LLM provider to use for --mode llm")
     _ = parser.add_argument("--llm-base-url", default=None, help="Optional LLM base URL override")
@@ -687,6 +725,9 @@ class BenchmarkRunner:
                 category=entry["category"],
                 difficulty=entry["difficulty"],
                 rationale=entry["rationale"],
+                brand=entry.get("brand"),
+                sku=entry.get("sku"),
+                product_name=entry.get("product_name"),
             )
             for index, entry in enumerate(entries)
         ]
@@ -726,7 +767,7 @@ class BenchmarkRunner:
 
             ranked_candidates = self._build_ranked_candidates(example, search_results, selection)
             duration_ms = (time.perf_counter() - example_started) * 1000.0
-            exact_match = selection.url == example.expected_source_url
+            exact_match = canonicalize_benchmark_url(selection.url) == canonicalize_benchmark_url(example.expected_source_url)
             correct_rank = self._find_rank(example.expected_source_url, ranked_candidates)
             reciprocal_rank = 1.0 / correct_rank if correct_rank else 0.0
             score = self._score_prediction(example, selection.url, search_results)
@@ -815,9 +856,9 @@ class BenchmarkRunner:
         selector = self._resolve_selector()
         llm_url, llm_cost = await selector.select_best_url(
             results=search_results,
-            sku=self._infer_sku(example.query),
-            product_name=example.query,
-            brand=None,
+            sku=example.sku or self._infer_sku(example.query),
+            product_name=example.product_name or example.query,
+            brand=example.brand,
             preferred_domains=None,
         )
         if llm_url:
@@ -829,12 +870,14 @@ class BenchmarkRunner:
         if not search_results:
             return None
 
-        sku = self._infer_sku(example.query)
+        sku = example.sku or self._infer_sku(example.query)
+        brand = example.brand
+        product_name = example.product_name or example.query
         strong_url = self._scorer.pick_strong_candidate_url(
             search_results=search_results,
             sku=sku,
-            brand=None,
-            product_name=example.query,
+            brand=brand,
+            product_name=product_name,
             category=example.category,
             prefer_manufacturer=True,
             preferred_domains=None,
@@ -845,8 +888,8 @@ class BenchmarkRunner:
         ranked_results = self._scorer.prepare_search_results(
             search_results=search_results,
             sku=sku,
-            brand=None,
-            product_name=example.query,
+            brand=brand,
+            product_name=product_name,
             category=example.category,
             prefer_manufacturer=True,
             preferred_domains=None,
@@ -868,9 +911,9 @@ class BenchmarkRunner:
         if self.mode == "heuristic" or selection.selection_method == "heuristic_fallback":
             ranked = self._scorer.prepare_search_results(
                 search_results=search_results,
-                sku=self._infer_sku(example.query),
-                brand=None,
-                product_name=example.query,
+                sku=example.sku or self._infer_sku(example.query),
+                brand=example.brand,
+                product_name=example.product_name or example.query,
                 category=example.category,
                 prefer_manufacturer=True,
                 preferred_domains=None,
@@ -891,9 +934,9 @@ class BenchmarkRunner:
             return float(
                 self._scorer.score_search_result(
                     result=result,
-                    sku=self._infer_sku(example.query),
-                    brand=None,
-                    product_name=example.query,
+                    sku=example.sku or self._infer_sku(example.query),
+                    brand=example.brand,
+                    product_name=example.product_name or example.query,
                     category=example.category,
                     prefer_manufacturer=True,
                     preferred_domains=None,
@@ -904,8 +947,9 @@ class BenchmarkRunner:
     @staticmethod
     def _find_rank(expected_url: str, ranked_candidates: Sequence[Mapping[str, object]]) -> int | None:
         """Find the 1-based rank of the expected URL in a ranked result list."""
+        normalized_expected_url = canonicalize_benchmark_url(expected_url)
         for index, result in enumerate(ranked_candidates, start=1):
-            if str(result.get("url") or "") == expected_url:
+            if canonicalize_benchmark_url(str(result.get("url") or "")) == normalized_expected_url:
                 return index
         return None
 
@@ -941,6 +985,7 @@ class BenchmarkRunner:
             return self._search_client
 
         if self.cache_dir is not None:
+            # An explicit cache directory should win over adjacent fixture manifests.
             self._search_client = FixtureSearchClient(cache_dir=self.cache_dir, allow_real_api=False)
             self._using_fixtures = True
             return self._search_client

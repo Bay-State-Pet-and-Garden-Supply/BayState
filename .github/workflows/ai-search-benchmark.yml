@@ -6,7 +6,8 @@ on:
       - "apps/scraper/scrapers/ai_search/**"
       - "apps/scraper/scripts/benchmark_ai_search.py"
       - "apps/scraper/scripts/compare_benchmarks.py"
-      - "apps/scraper/data/golden_dataset_v1.json"
+      - "apps/scraper/data/golden_dataset_v3.json"
+      - "apps/scraper/data/golden_dataset_v3.search_results.json"
       - ".github/workflows/ai-search-benchmark.yml"
   workflow_dispatch:
 
@@ -49,7 +50,7 @@ jobs:
         run: |
           mkdir -p "$GITHUB_WORKSPACE/artifacts/current"
           python scripts/benchmark_ai_search.py \
-            --dataset data/golden_dataset_v1.json \
+            --dataset data/golden_dataset_v3.json \
             --output "$GITHUB_WORKSPACE/artifacts/current/report.json" \
             --mode heuristic
           echo "status=$?" >> "$GITHUB_OUTPUT"
@@ -73,7 +74,7 @@ jobs:
           pip install -r requirements.txt || true
           mkdir -p "$GITHUB_WORKSPACE/artifacts/base"
           python scripts/benchmark_ai_search.py \
-            --dataset data/golden_dataset_v1.json \
+            --dataset data/golden_dataset_v3.json \
             --output "$GITHUB_WORKSPACE/artifacts/base/report.json" \
             --mode heuristic
           echo "status=$?" >> "$GITHUB_OUTPUT"

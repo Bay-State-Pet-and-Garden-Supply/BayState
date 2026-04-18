@@ -1,7 +1,7 @@
 {
   "$defs": {
     "DatasetEntry": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "A single golden dataset annotation.",
       "properties": {
         "query": {
@@ -33,6 +33,18 @@
           "minLength": 1,
           "title": "Rationale",
           "type": "string"
+        },
+        "sku": {
+          "title": "SKU",
+          "type": "string"
+        },
+        "product_name": {
+          "title": "Product Name",
+          "type": "string"
+        },
+        "brand": {
+          "title": "Brand",
+          "type": "string"
         }
       },
       "required": [
@@ -46,7 +58,7 @@
       "type": "object"
     },
     "DatasetProvenance": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Metadata describing how the dataset was generated.",
       "properties": {
         "annotator": {
@@ -60,10 +72,6 @@
           "type": "string"
         },
         "mode": {
-          "enum": [
-            "batch",
-            "interactive"
-          ],
           "title": "Mode",
           "type": "string"
         },
@@ -72,26 +80,15 @@
           "title": "Product Count",
           "type": "integer"
         },
-        "max_calls": {
-          "maximum": 100,
-          "minimum": 1,
-          "title": "Max Calls",
-          "type": "integer"
-        },
-        "serper_calls_used": {
-          "maximum": 100,
-          "minimum": 0,
-          "title": "Serper Calls Used",
-          "type": "integer"
+        "workflow": {
+          "title": "Workflow",
+          "type": "string"
         }
       },
       "required": [
         "annotator",
         "source",
-        "mode",
-        "product_count",
-        "max_calls",
-        "serper_calls_used"
+        "product_count"
       ],
       "title": "DatasetProvenance",
       "type": "object"
@@ -99,7 +96,7 @@
   },
   "$id": "https://baystate.internal/schemas/golden_dataset_schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Validated golden dataset payload.",
   "properties": {
     "version": {

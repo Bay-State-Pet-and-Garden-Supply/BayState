@@ -57,6 +57,25 @@ class MockScorer:
 
         return score
 
+    def domain_from_url(self, value: str) -> str:
+        from urllib.parse import urlparse
+        domain = str(urlparse(value).netloc or "").lower().strip()
+        if domain.startswith("www."):
+            domain = domain[4:]
+        return domain
+
+    def classify_source_domain(self, domain: str, brand: str | None) -> str:
+        return "unknown"
+
+    def infer_brand_from_result(self, result: dict[str, Any], product_name: str | None) -> str | None:
+        return None
+
+    def is_brand_domain(self, domain: str, brand: str | None) -> bool:
+        return False
+
+    def is_marketplace(self, domain: str) -> bool:
+        return False
+
 
 class MockExtractor:
     """Mock extractor for testing."""
