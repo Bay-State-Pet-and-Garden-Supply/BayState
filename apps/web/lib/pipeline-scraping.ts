@@ -477,11 +477,11 @@ export async function cloneScrapeJobForRetry(
     };
 }
 
-export function buildLinearChunkPlan(
+export async function buildLinearChunkPlan(
     skus: string[],
     scrapers: string[],
     chunkSize: number,
-): PlannedScrapeJob {
+): Promise<PlannedScrapeJob> {
     const normalizedChunkSize = Math.max(1, chunkSize);
     const chunks = Array.from({ length: Math.ceil(skus.length / normalizedChunkSize) }, (_, sliceIndex) => {
         const sliceSkus = skus.slice(sliceIndex * normalizedChunkSize, (sliceIndex + 1) * normalizedChunkSize);
@@ -747,14 +747,14 @@ export async function scrapeProducts(
     const plannedChunks = plannedStandardJob?.plannedChunkCount ?? Math.ceil(skus.length / chunkSize);
 
     const linearChunkPlan = isAISearch
-        ? buildLinearChunkPlan(skus, effectiveScrapers, chunkSize)
+        ? await buildLinearChunkPlan(skus, effectiveScrapers, chunkSize)
         : null;
 
     const chunkResult = isAISearch
         ? await createScrapeJobChunks(
             supabase,
             job.id,
-            linearChunkPlan ?? buildLinearChunkPlan(skus, effectiveScrapers, chunkSize),
+            linearChunkPlan ?? await buildLinearChunkPlan(skus, effectiveScrapers, chunkSize),
             nowIso,
         )
         : await createScrapeJobChunks(

@@ -292,8 +292,8 @@ describe('scrapeProducts', () => {
         });
     });
 
-    it('should build linear chunk plans for ai search style jobs', () => {
-        const plan = buildLinearChunkPlan(['SKU-1', 'SKU-2', 'SKU-3'], ['ai_search'], 2);
+    it('should build linear chunk plans for ai search style jobs', async () => {
+        const plan = await buildLinearChunkPlan(['SKU-1', 'SKU-2', 'SKU-3'], ['ai_search'], 2);
 
         expect(plan.plannedChunkCount).toBe(2);
         expect(plan.plannedWorkUnits).toBe(3);
