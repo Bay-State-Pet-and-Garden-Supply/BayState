@@ -1,0 +1,41 @@
+# VCS
+.git
+.gitignore
+
+# Local caches and virtualenvs
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Test and benchmark assets
+tests/
+reports/
+data/benchmark_*.json
+data/golden_dataset_*.json
+data/annotation_guide*.md
+data/benchmark_expansion/
+
+# Local/dev docs and agent metadata
+.agents/
+AGENTS.md
+**/AGENTS.md
+walkthrough.md
+
+# Local runtime artifacts
+.browser_storage_states/
+*.log
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/
+
+# Compose and local-only tooling
+docker-compose.yml
+run-dev.sh
+run-prod.sh
