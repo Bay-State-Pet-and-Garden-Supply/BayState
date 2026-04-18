@@ -24,8 +24,9 @@ export default async function AdminLayout({
         <AdminSidebar userRole={role as 'admin' | 'staff'} />
       </MobileSidebarDrawer>
       <main id="main-content" className="flex-1 min-w-0 h-full flex flex-col overflow-hidden p-4 pb-0 md:p-8 md:pb-0">
-        <div className="max-w-[1600px] w-full mx-auto h-full flex flex-col min-h-0">
+        <div className="max-w-[1600px] w-full mx-auto h-full flex flex-col min-h-0 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-zinc-200">
           {children}
+          <div className="h-10 shrink-0" aria-hidden="true" /> {/* Bottom spacing */}
         </div>
       </main>
     </div>
