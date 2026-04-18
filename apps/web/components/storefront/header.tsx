@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef, useLayoutEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -8,10 +8,12 @@ import {
   Facebook,
   Instagram,
   Twitter,
+  ChevronDownIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InlineSearch } from "@/components/storefront/inline-search";
 import { useCartStore } from "@/lib/cart-store";
+import { cn } from "@/lib/utils";
 import { CartDrawer } from "@/components/storefront/cart-drawer";
 import { MobileNavDrawer } from "@/components/storefront/mobile-nav-drawer";
 import {
@@ -129,6 +131,75 @@ export function StorefrontHeader({
 
   const primaryNavCategories = topLevel.filter((category) => category.is_featured);
 
+  // --- More Menu Logic ---
+  const allNavItems = useMemo(() => [
+    ...primaryNavCategories.map(c => ({ ...c, type: 'category' as const })),
+    { id: 'brands', name: 'Brands', type: 'brands' as const }
+  ], [primaryNavCategories]);
+
+  const [visibleCount, setVisibleCount] = useState(allNavItems.length);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const itemWidthsRef = useRef<number[]>([]);
+  const moreButtonWidthRef = useRef(100); // Approximate width of "More" button
+
+  useLayoutEffect(() => {
+    if (!containerRef.current) return;
+    
+    // Measure items from the hidden measurement container
+    const items = containerRef.current.querySelectorAll('.nav-item-measure');
+    const widths: number[] = [];
+    items.forEach((item) => {
+      widths.push((item as HTMLElement).offsetWidth);
+    });
+    if (widths.length > 0) {
+      itemWidthsRef.current = widths;
+    }
+  }, [allNavItems]);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0].contentRect.width;
+      const utilityWidth = 250; // Space for "Our Services" and spacer
+      const availableWidth = width - utilityWidth;
+      
+      let currentWidth = 0;
+      let count = 0;
+      
+      for (let i = 0; i < itemWidthsRef.current.length; i++) {
+        const itemWidth = itemWidthsRef.current[i];
+        const isLastItem = i === itemWidthsRef.current.length - 1;
+        
+        if (isLastItem) {
+          if (currentWidth + itemWidth <= availableWidth) {
+            count = i + 1;
+          } else {
+            count = i;
+          }
+        } else {
+          // If we're not on the last item, we need to check if adding this item 
+          // PLUS the "More" button would exceed available width.
+          if (currentWidth + itemWidth + moreButtonWidthRef.current <= availableWidth) {
+            currentWidth += itemWidth;
+            count = i + 1;
+          } else {
+            count = i;
+            break;
+          }
+        }
+      }
+      
+      setVisibleCount(count);
+    });
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [allNavItems]);
+
+  const visibleItems = allNavItems.slice(0, visibleCount);
+  const moreItems = allNavItems.slice(visibleCount);
+
   return (
     <>
       <header className="max-md:hidden sticky top-0 z-50 w-full flex flex-col border-b-2 border-zinc-900">
@@ -223,104 +294,141 @@ export function StorefrontHeader({
 
         {/* Tier 3: Navigation Bar (Mega Menu) */}
         <div className="bg-zinc-900 text-white border-b-2 border-zinc-900 relative">
-          <div className="container mx-auto flex h-14 items-center px-4">
-            <NavigationMenu className="flex" aria-label="Main Navigation" viewport={false}>
+          <div className="container mx-auto flex h-11 items-center px-4" ref={containerRef}>
+            <NavigationMenu className="flex w-full max-w-none" aria-label="Main Navigation" viewport={false}>
+              
+              {/* Hidden container for measurement */}
+              <div className="absolute opacity-0 pointer-events-none flex whitespace-nowrap" aria-hidden="true">
+                 {allNavItems.map(item => (
+                   <div key={item.id} className="nav-item-measure px-6 font-display font-black text-[13px] tracking-tighter h-11 flex items-center border-r-2 border-white/10">
+                     {item.name}
+                     <ChevronDownIcon className="ml-1 size-3" />
+                   </div>
+                 ))}
+              </div>
 
-              <NavigationMenuList className="gap-2">
-
-                
-                {/* Dynamic Mega Menu for each primary department */}
-                {primaryNavCategories.map(parent => {
-                  const children = childrenMap.get(parent.id) || [];
-                  if (children.length === 0) return null;
-
-                  const displayName = parent.name;
-
-                  // Split into columns of 8
-                  const chunkSize = 8;
-                  const columns = [];
-                  for (let i = 0; i < children.length; i += chunkSize) {
-                    columns.push(children.slice(i, i + chunkSize));
-                  }
-
-                  return (
-                    <NavigationMenuItem key={parent.id} className="static">
-                      <NavigationMenuTrigger className="bg-transparent text-white font-black uppercase tracking-widest text-[11px] h-14 rounded-none hover:bg-white/10 data-[state=open]:bg-accent data-[state=open]:text-secondary transition-all font-display border-x-2 border-transparent hover:border-white/20">
-                        {displayName}
-                      </NavigationMenuTrigger>
-                      <NavigationMenuContent className="left-0 top-full w-full p-0 z-[100] shadow-none">
-                        <div className="mt-0 flex gap-8 p-10 w-screen max-w-[calc(100vw-2rem)] md:w-max min-w-[500px] text-zinc-900 bg-zinc-50 border-4 border-zinc-900 rounded-none shadow-none">
-
-
-                          {columns.map((col, idx) => (
-                            <div key={idx} className="flex flex-col gap-3 min-w-[220px]">
-                                {/* Show header only on first column, mock others to align grid */}
-                                {idx === 0 ? (
-                                <h4 className="font-black text-2xl mb-4 border-b-8 border-primary pb-2 text-zinc-900 tracking-tighter uppercase font-display">
-                                  {displayName}
-                                </h4>
-                              ) : (
-                                <div className="h-[44px] mb-4 border-b-8 border-transparent" />
-                              )}
-                              
-                              <div className="flex flex-col gap-1">
-                                {col.map(child => {
-                                  return (
-                                    <NavigationMenuLink key={child.id} asChild>
-                                      <Link
-                                        href={`/products?category=${child.slug}`}
-                                        className="text-xs font-black text-zinc-500 hover:text-primary hover:bg-white p-2 border-2 border-transparent hover:border-zinc-900 transition-all uppercase tracking-tight flex items-center gap-2 group"
-                                      >
-                                        <span className="h-1 w-0 bg-primary group-hover:w-3 transition-all" />
-                                        {child.name}
-                                      </Link>
-                                    </NavigationMenuLink>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </NavigationMenuContent>
-                    </NavigationMenuItem>
+              <NavigationMenuList className="w-full justify-start gap-0">
+                {visibleItems.map((item, index) => {
+                  const isRightAligned = index >= visibleItems.length / 2;
+                  const contentClassName = cn(
+                    "top-full p-0 z-[100] shadow-none mt-0 border-0 rounded-none",
+                    isRightAligned ? "md:left-auto md:right-0" : "left-0"
                   );
+
+                  if (item.type === 'category') {
+                    const parent = item;
+                    const children = childrenMap.get(parent.id) || [];
+                    if (children.length === 0) return null;
+
+                    const displayName = parent.name;
+
+                    // Split into columns of 8
+                    const chunkSize = 8;
+                    const columns = [];
+                    for (let i = 0; i < children.length; i += chunkSize) {
+                      columns.push(children.slice(i, i + chunkSize));
+                    }
+
+                    return (
+                      <NavigationMenuItem key={parent.id}>
+                        <NavigationMenuTrigger className="bg-transparent text-white font-black uppercase tracking-tighter text-[13px] h-11 px-6 rounded-none hover:bg-white/10 data-[state=open]:bg-accent data-[state=open]:text-zinc-900 transition-all font-display border-r-2 border-white/10">
+                          {displayName}
+                        </NavigationMenuTrigger>
+                        <NavigationMenuContent className={contentClassName}>
+                          <div className="mt-0 flex gap-8 p-10 w-max max-w-[calc(100vw-2rem)] min-w-[500px] text-zinc-900 bg-zinc-50 border-4 border-zinc-900 rounded-none shadow-[8px_8px_0px_rgba(0,0,0,1)]">
+                            {columns.map((col, idx) => (
+                              <div key={idx} className="flex flex-col gap-3 min-w-[220px]">
+                                  {/* Show header only on first column, mock others to align grid */}
+                                  {idx === 0 ? (
+                                  <h4 className="font-black text-2xl mb-4 border-b-8 border-primary pb-2 text-zinc-900 tracking-tighter uppercase font-display">
+                                    {displayName}
+                                  </h4>
+                                ) : (
+                                  <div className="h-[44px] mb-4 border-b-8 border-transparent" />
+                                )}
+                                
+                                <div className="flex flex-col gap-1">
+                                  {col.map(child => {
+                                    return (
+                                      <NavigationMenuLink key={child.id} asChild>
+                                        <Link
+                                          href={`/products?category=${child.slug}`}
+                                          className="text-xs font-black text-zinc-500 hover:text-primary hover:bg-white p-2 border-2 border-transparent hover:border-zinc-900 transition-all uppercase tracking-tight flex items-center gap-2 group"
+                                        >
+                                          <span className="h-1 w-0 bg-primary group-hover:w-3 transition-all" />
+                                          {child.name}
+                                        </Link>
+                                      </NavigationMenuLink>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </NavigationMenuContent>
+                      </NavigationMenuItem>
+                    );
+                  } else {
+                    // Brands Dropdown
+                    return (
+                      <NavigationMenuItem key="brands">
+                        <NavigationMenuTrigger className="bg-transparent text-white font-black uppercase tracking-tighter text-[13px] h-11 px-6 rounded-none hover:bg-white/10 data-[state=open]:bg-accent data-[state=open]:text-zinc-900 transition-all font-display border-r-2 border-white/10">
+                          Brands
+                        </NavigationMenuTrigger>
+                        <NavigationMenuContent className={contentClassName}>
+                          <div className="mt-0 w-max max-w-[calc(100vw-2rem)] md:w-[700px] p-10 text-zinc-900 bg-zinc-50 border-4 border-zinc-900 rounded-none shadow-[8px_8px_0px_rgba(0,0,0,1)]">
+                            <h4 className="font-black text-2xl mb-6 border-b-8 border-primary pb-2 text-zinc-900 tracking-tighter uppercase font-display">
+                              Featured Brands
+                            </h4>
+                            <div className="grid grid-cols-3 gap-x-10 gap-y-2">
+                              {brands.slice(0, 15).map((brand) => (
+                                <NavigationMenuLink key={brand.id} asChild>
+                                  <Link
+                                    href={`/products?brand=${brand.slug}`}
+                                    className="text-xs font-black text-zinc-500 hover:text-primary hover:bg-white p-2 border-2 border-transparent hover:border-zinc-900 transition-all uppercase tracking-tight truncate"
+                                  >
+                                    {brand.name}
+                                  </Link>
+                                </NavigationMenuLink>
+                              ))}
+                            </div>
+                            <div className="mt-10 pt-8 border-t-4 border-zinc-200 flex justify-end">
+                              <NavigationMenuLink asChild>
+                                <Link href="/brands" className="text-xs font-black text-white uppercase tracking-[0.25em] bg-zinc-900 py-4 px-8 border-b-4 border-black/30 hover:bg-primary transition-colors shadow-lg active:translate-y-1 active:border-b-0">
+                                  View All Brands →
+                                </Link>
+                              </NavigationMenuLink>
+                            </div>
+                          </div>
+                        </NavigationMenuContent>
+                      </NavigationMenuItem>
+                    );
+                  }
                 })}
 
-                {/* Brands Dropdown */}
-                <NavigationMenuItem className="static">
-                  <NavigationMenuTrigger className="bg-transparent text-white font-black uppercase tracking-widest text-[11px] h-14 rounded-none hover:bg-white/10 data-[state=open]:bg-accent data-[state=open]:text-secondary transition-all border-x-2 border-transparent hover:border-white/20">
-                    Brands
-                  </NavigationMenuTrigger>
-                  <NavigationMenuContent className="left-0 top-full w-full p-0 z-[100] shadow-none">
-                    <div className="mt-0 w-screen max-w-[calc(100vw-2rem)] md:w-[700px] p-10 text-zinc-900 bg-zinc-50 border-4 border-zinc-900 rounded-none shadow-none">
-
-
-                      <h4 className="font-black text-2xl mb-6 border-b-8 border-primary pb-2 text-zinc-900 tracking-tighter uppercase font-display">
-                        Featured Brands
-                      </h4>
-                      <div className="grid grid-cols-3 gap-x-10 gap-y-2">
-                        {brands.slice(0, 15).map((brand) => (
-                          <NavigationMenuLink key={brand.id} asChild>
+                {/* More Menu */}
+                {moreItems.length > 0 && (
+                  <NavigationMenuItem>
+                    <NavigationMenuTrigger className="bg-transparent text-white font-black uppercase tracking-tighter text-[13px] h-11 px-6 rounded-none hover:bg-white/10 data-[state=open]:bg-accent data-[state=open]:text-zinc-900 transition-all font-display border-r-2 border-white/10">
+                      More
+                    </NavigationMenuTrigger>
+                    <NavigationMenuContent className="md:left-auto md:right-0 top-full p-0 z-[100] shadow-none mt-0 border-0 rounded-none">
+                      <div className="mt-0 w-64 p-6 text-zinc-900 bg-zinc-50 border-4 border-zinc-900 rounded-none shadow-[8px_8px_0px_rgba(0,0,0,1)] flex flex-col gap-2">
+                        {moreItems.map(item => (
+                          <NavigationMenuLink key={item.id} asChild>
                             <Link
-                              href={`/products?brand=${brand.slug}`}
-                              className="text-xs font-black text-zinc-500 hover:text-primary hover:bg-white p-2 border-2 border-transparent hover:border-zinc-900 transition-all uppercase tracking-tight truncate"
+                              href={item.type === 'category' ? `/products?category=${item.slug}` : '/brands'}
+                              className="text-xs font-black text-zinc-500 hover:text-primary hover:bg-white p-2 border-2 border-transparent hover:border-zinc-900 transition-all uppercase tracking-tight flex items-center gap-2 group"
                             >
-                              {brand.name}
+                              <span className="h-1 w-0 bg-primary group-hover:w-3 transition-all" />
+                              {item.name}
                             </Link>
                           </NavigationMenuLink>
                         ))}
                       </div>
-                      <div className="mt-10 pt-8 border-t-4 border-zinc-200 flex justify-end">
-                        <NavigationMenuLink asChild>
-                          <Link href="/brands" className="text-xs font-black text-white uppercase tracking-[0.25em] bg-zinc-900 py-4 px-8 border-b-4 border-black/30 hover:bg-primary transition-colors shadow-lg active:translate-y-1 active:border-b-0">
-                            View All Brands →
-                          </Link>
-                        </NavigationMenuLink>
-                      </div>
-                    </div>
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
-
+                    </NavigationMenuContent>
+                  </NavigationMenuItem>
+                )}
 
                 <div className="flex-1" />
 
@@ -329,7 +437,7 @@ export function StorefrontHeader({
                   <NavigationMenuLink asChild>
                     <Link
                       href="/services"
-                      className="group inline-flex h-14 w-max items-center justify-center rounded-none bg-transparent px-8 py-2 text-[11px] uppercase tracking-[0.25em] font-black text-white/40 transition-colors hover:text-white focus:text-white"
+                      className="group inline-flex h-11 w-max items-center justify-center rounded-none bg-transparent px-8 py-2 text-[11px] uppercase tracking-[0.25em] font-black text-white/40 transition-colors hover:text-white focus:text-white"
                     >
                       Our Services
                     </Link>

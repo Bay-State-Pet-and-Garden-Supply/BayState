@@ -1,16 +1,17 @@
-import { notFound } from 'next/navigation';
-import { Clock, MapPin, Phone, Calendar, Home } from 'lucide-react';
-import { getServiceBySlug } from '@/lib/services';
-import { Badge } from '@/components/ui/badge';
+import { notFound } from "next/navigation";
+import { Clock, MapPin, Phone, Calendar, Home } from "lucide-react";
+import { getServiceBySlug } from "@/lib/services";
+import { Badge } from "@/components/ui/badge";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
+  BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
-import { AddServiceToCartButton } from '@/components/storefront/add-service-to-cart-button';
-import { formatCurrency } from '@/lib/utils';
+} from "@/components/ui/breadcrumb";
+import { AddServiceToCartButton } from "@/components/storefront/add-service-to-cart-button";
+import { formatCurrency } from "@/lib/utils";
 
 interface ServiceDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -19,7 +20,9 @@ interface ServiceDetailPageProps {
 /**
  * Service detail page with reservation functionality.
  */
-export default async function ServiceDetailPage({ params }: ServiceDetailPageProps) {
+export default async function ServiceDetailPage({
+  params,
+}: ServiceDetailPageProps) {
   const { slug } = await params;
   const service = await getServiceBySlug(slug);
 
@@ -27,26 +30,28 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
     notFound();
   }
 
-  const formattedPrice = service.price
-    ? formatCurrency(service.price)
-    : null;
+  const formattedPrice = service.price ? formatCurrency(service.price) : null;
 
   return (
     <div className="container mx-auto px-4 pt-4 pb-8">
       {/* Breadcrumb Navigation */}
       <Breadcrumb className="mb-6">
-        <BreadcrumbItem>
-          <BreadcrumbLink href="/">
-            <Home className="h-4 w-4" />
-            <span className="sr-only">Home</span>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
-          <BreadcrumbLink href="/services">Services</BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbPage className="font-medium">{service.name}</BreadcrumbPage>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/">
+              <Home className="h-4 w-4" />
+              <span className="sr-only">Home</span>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/services">Services</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbPage className="font-medium">
+            {service.name}
+          </BreadcrumbPage>
+        </BreadcrumbList>
       </Breadcrumb>
 
       <div className="grid gap-8 lg:grid-cols-2">

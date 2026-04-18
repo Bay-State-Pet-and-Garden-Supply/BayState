@@ -1,19 +1,20 @@
-import Link from 'next/link';
-import { ArrowRight, Wrench, DollarSign } from 'lucide-react';
-import { getAllActiveServices } from '@/lib/services';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/ui/empty-state';
-import { formatCurrency } from '@/lib/utils';
-import { Home } from 'lucide-react';
+import Link from "next/link";
+import { ArrowRight, Wrench, DollarSign } from "lucide-react";
+import { getAllActiveServices } from "@/lib/services";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { formatCurrency } from "@/lib/utils";
+import { Home } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
+  BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
+} from "@/components/ui/breadcrumb";
 
 /**
  * Services listing page for customers.
@@ -25,16 +26,18 @@ export default async function ServicesPage() {
     <div className="container mx-auto px-4 pt-4 pb-8">
       {/* Breadcrumb Navigation */}
       <Breadcrumb className="mb-6">
-        <BreadcrumbItem>
-          <BreadcrumbLink href="/">
-            <Home className="h-4 w-4" />
-            <span className="sr-only">Home</span>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
-          <BreadcrumbPage className="font-medium">Services</BreadcrumbPage>
-        </BreadcrumbItem>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/">
+              <Home className="h-4 w-4" />
+              <span className="sr-only">Home</span>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage className="font-medium">Services</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
       </Breadcrumb>
 
       {/* Hero Section */}
@@ -46,8 +49,8 @@ export default async function ServicesPage() {
           Local Services
         </h1>
         <p className="mx-auto max-w-2xl text-lg text-zinc-700">
-          From propane refills to equipment rentals, we offer a range of services
-          to help you get the job done. Stop by or reserve online.
+          From propane refills to equipment rentals, we offer a range of
+          services to help you get the job done. Stop by or reserve online.
         </p>
       </section>
 
@@ -131,8 +134,8 @@ export default async function ServicesPage() {
       <section className="mt-12 rounded-xl bg-blue-600 p-8 text-center text-white">
         <h2 className="mb-4 text-2xl font-semibold">Need Something Custom?</h2>
         <p className="mx-auto mb-6 max-w-xl text-white">
-          Don&apos;t see what you&apos;re looking for? Give us a call and we&apos;ll see how
-          we can help.
+          Don&apos;t see what you&apos;re looking for? Give us a call and
+          we&apos;ll see how we can help.
         </p>
         <Button size="lg" variant="secondary" className="h-12 px-8" asChild>
           <a href="tel:+15551234567">Call Us: (555) 123-4567</a>
