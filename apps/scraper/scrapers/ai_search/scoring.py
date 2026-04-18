@@ -62,6 +62,13 @@ class SearchScorer:
         "lowes.com",
         "acehardware.com",
         "costco.com",
+        "summitracing.com",
+    }
+
+    GENERAL_MASS_RETAILERS = {
+        "amazon.com",
+        "walmart.com",
+        "target.com",
     }
 
     # Smaller or specialty retailers/distributors that can still be useful, but
@@ -185,7 +192,6 @@ class SearchScorer:
         "/collections/",
         "/category/",
         "/categories/",
-        "/shop/",
         "/search",
         "/products?",
         "/collections?",
@@ -200,6 +206,79 @@ class SearchScorer:
         "/find-a-retailer",
     ]
 
+    LISTING_PATH_SEGMENTS = {
+        "all",
+        "all-products",
+        "bestseller",
+        "bestsellers",
+        "browse",
+        "categories",
+        "category",
+        "collections",
+        "new-products",
+        "our-products",
+        "products",
+        "search",
+        "shop-all",
+        "where-to-buy",
+    }
+
+    CATEGORY_DOMAIN_PREFERENCES = (
+        (
+            {"dog", "cat", "pet", "pets", "flea", "tick", "aquarium", "aquariums"},
+            {
+                "chewy.com": 6.5,
+                "petco.com": 6.0,
+                "petsmart.com": 5.5,
+                "petfood.express": 5.0,
+                "petsuppliesplus.com": 4.5,
+                "thepetbeastro.com": 5.5,
+                "hollywoodfeed.com": 4.5,
+            },
+        ),
+        (
+            {"garden", "outdoor", "mulch", "fountain", "decor", "hardware", "farm", "pest"},
+            {
+                "acehardware.com": 6.0,
+                "tractorsupply.com": 5.5,
+                "homedepot.com": 5.0,
+                "lowes.com": 4.5,
+            },
+        ),
+        (
+            {"horse", "equine"},
+            {
+                "bigdweb.com": 6.0,
+                "doversaddlery.com": 5.5,
+                "sstack.com": 5.5,
+                "statelinetack.com": 5.0,
+                "cheshirehorse.com": 5.0,
+            },
+        ),
+        (
+            {"fuel", "engine", "motorsport", "utility", "container", "containers", "jug", "jugs"},
+            {
+                "summitracing.com": 6.5,
+                "jegs.com": 6.0,
+                "plasticproductformers.com": 5.5,
+                "acehardware.com": 4.5,
+            },
+        ),
+    )
+
+    LEXICAL_VARIANT_GROUPS = (
+        {"bulk", "packet", "packets"},
+        {"dog", "cat"},
+    )
+
+    LEXICAL_VARIANT_EQUIVALENTS = {
+        "packet": "packet",
+        "packets": "packet",
+        "bulk": "bulk",
+        "dog": "dog",
+        "cat": "cat",
+    }
+
     # Title/snippet phrases that suggest a multi-product listing page
     # rather than a single product detail page.
     MULTI_PRODUCT_INDICATORS = [
@@ -207,6 +286,8 @@ class SearchScorer:
         r"\bbrowse\b",
         r"\bcollection\b",
         r"\ball products\b",
+        r"\bbestsellers?\b",
+        r"\bnew products\b",
         r"\bour range\b",
         r"\bvarieties\b",
         r"\bview all\b",
@@ -253,14 +334,92 @@ class SearchScorer:
         domain_normalized = self._matching.normalize_token_text(domain)
         if not brand_normalized or not domain_normalized:
             return False
-        return brand_normalized in domain_normalized
+        if brand_normalized in domain_normalized:
+            return True
+
+        brand_tokens = [token for token in re.findall(r"[a-z0-9]+", str(brand or "").lower()) if len(token) >= 3 and token not in self._matching.STOP_WORDS]
+        if not brand_tokens:
+            return False
+
+        matched_tokens = [token for token in brand_tokens if token in domain_normalized]
+        if not matched_tokens:
+            return False
+        if len(matched_tokens) == len(brand_tokens):
+            return True
+
+        longest_token = max(brand_tokens, key=len)
+        return longest_token in domain_normalized and (len(matched_tokens) / len(brand_tokens)) >= 0.5
+
+    @staticmethod
+    def _path_segments(url: str) -> list[str]:
+        return [segment for segment in urlparse(url).path.lower().split("/") if segment]
+
+    def _path_tokens(self, url: str) -> set[str]:
+        return self._matching.tokenize_keywords(" ".join(self._path_segments(url)).replace("-", " ").replace("_", " "))
+
+    @staticmethod
+    def _is_root_path(url: str) -> bool:
+        return (urlparse(url).path or "/").rstrip("/") == ""
+
+    def _category_preferred_domains(self, category: Optional[str]) -> list[str]:
+        category_tokens = self._matching.tokenize_keywords(category)
+        if not category_tokens:
+            return []
+
+        preferred: list[str] = []
+        for trigger_tokens, domains in self.CATEGORY_DOMAIN_PREFERENCES:
+            if category_tokens.intersection(trigger_tokens):
+                for domain in domains:
+                    if domain not in preferred:
+                        preferred.append(domain)
+        return preferred
+
+    def _category_domain_bonus(self, domain: str, category: Optional[str]) -> float:
+        category_tokens = self._matching.tokenize_keywords(category)
+        if not category_tokens or not domain:
+            return 0.0
+
+        for trigger_tokens, domain_weights in self.CATEGORY_DOMAIN_PREFERENCES:
+            if not category_tokens.intersection(trigger_tokens):
+                continue
+            for preferred_domain, bonus in domain_weights.items():
+                if self._domain_matches_candidates(domain, {preferred_domain}):
+                    return bonus
+        return 0.0
+
+    def _category_mass_retailer_penalty(self, domain: str, category: Optional[str]) -> float:
+        category_tokens = self._matching.tokenize_keywords(category)
+        if not category_tokens or not domain or not self._domain_matches_candidates(domain, self.GENERAL_MASS_RETAILERS):
+            return 0.0
+
+        for trigger_tokens, _domain_weights in self.CATEGORY_DOMAIN_PREFERENCES:
+            if category_tokens.intersection(trigger_tokens):
+                return 2.5
+        return 0.0
+
+    def _lexical_variant_adjustment(self, expected_text: Optional[str], actual_text: str) -> float:
+        expected_tokens = self._matching.tokenize_keywords(expected_text)
+        actual_tokens = self._matching.tokenize_keywords(actual_text)
+        if not expected_tokens or not actual_tokens:
+            return 0.0
+
+        adjustment = 0.0
+        for group in self.LEXICAL_VARIANT_GROUPS:
+            expected_group_tokens = expected_tokens.intersection(group)
+            if not expected_group_tokens:
+                continue
+
+            actual_group_tokens = actual_tokens.intersection(group)
+            normalized_expected = {self.LEXICAL_VARIANT_EQUIVALENTS.get(token, token) for token in expected_group_tokens}
+            normalized_actual = {self.LEXICAL_VARIANT_EQUIVALENTS.get(token, token) for token in actual_group_tokens}
+            if normalized_actual.intersection(normalized_expected):
+                adjustment += 1.0
+            elif normalized_actual.difference(normalized_expected):
+                adjustment -= 3.0
+        return adjustment
 
     def _iter_product_name_brand_candidates(self, product_name: Optional[str]) -> list[str]:
-        tokens = [
-            token
-            for token in re.findall(r"[a-z0-9]+", str(product_name or "").lower())
-            if token and not token.isdigit()
-        ]
+        tokens = [token for token in re.findall(r"[a-z0-9]+", str(product_name or "").lower()) if token and not token.isdigit()]
         candidates: list[str] = []
         for prefix_length in range(min(3, len(tokens)), 0, -1):
             prefix_tokens = tokens[:prefix_length]
@@ -348,6 +507,19 @@ class SearchScorer:
         """Check if URL looks like a category page."""
         lowered = url.lower()
         if any(pattern in lowered for pattern in self.CATEGORY_PATTERNS):
+            return True
+        parsed = urlparse(url)
+        path = parsed.path.rstrip("/").lower() or "/"
+        segments = self._path_segments(url)
+        if path in {"/s", "/search"}:
+            return True
+        if "c" in segments and len(segments) >= 4:
+            return True
+        if segments and segments[0] == "pages" and len(segments) <= 2:
+            return True
+        if segments and segments[-1] in self.LISTING_PATH_SEGMENTS:
+            return True
+        if len(segments) >= 2 and segments[0] in {"products", "collections"} and segments[1] in self.LISTING_PATH_SEGMENTS:
             return True
         # Detect brand-site product-line pages: /products/{category}/{slug}
         # These have 3+ path segments under /products/ and typically list
@@ -453,6 +625,9 @@ class SearchScorer:
         extra_snippets = " ".join(str(value) for value in (result.get("extra_snippets") or []))
         combined = f"{url} {title} {description} {extra_snippets}".lower()
         domain = self.domain_from_url(url)
+        expected_tokens = self._matching.tokenize_keywords(product_name)
+        brand_tokens = self._matching.tokenize_keywords(brand)
+        path_tokens = self._path_tokens(url)
 
         score = 0.0
 
@@ -466,21 +641,29 @@ class SearchScorer:
             score += min(3.0, float(sum(1 for token in brand_tokens if token in combined)))
 
         # Product name token overlap
-        expected_tokens = self._matching.tokenize_keywords(product_name)
         if expected_tokens:
             overlap = len(expected_tokens.intersection(self._matching.tokenize_keywords(combined)))
             score += min(4.0, float(overlap) * 0.8)
+            specific_expected_tokens = expected_tokens.difference(brand_tokens)
+            if specific_expected_tokens and path_tokens:
+                path_overlap = len(specific_expected_tokens.intersection(path_tokens))
+                score += min(2.5, float(path_overlap) * 0.9)
+        else:
+            specific_expected_tokens = set()
 
         expected_variant_tokens = self._matching.extract_variant_tokens(product_name)
+        variant_overlap = 0
         if expected_variant_tokens:
             actual_variant_tokens = self._matching.extract_variant_tokens(combined)
             variant_overlap = len(expected_variant_tokens.intersection(actual_variant_tokens))
             if variant_overlap:
                 score += min(3.0, float(variant_overlap) * 1.5)
             else:
-                score -= 1.5
+                score -= 2.0
             if self._matching.has_conflicting_variant_tokens(product_name, combined):
-                score -= 3.0
+                score -= 4.5
+
+        score += self._lexical_variant_adjustment(product_name, combined)
 
         # Category match
         category_tokens = self._matching.tokenize_keywords(category)
@@ -494,7 +677,24 @@ class SearchScorer:
         effective_brand = brand or self.infer_brand_from_result(result, product_name)
         source_tier = self.classify_source_domain(domain, effective_brand)
         if source_tier == "official":
-            score += 6.0 if prefer_manufacturer else 4.5
+            # Official manufacturer PDPs are the gold-standard source.
+            # The bonus must comfortably exceed major_retailer (2.5) to
+            # prevent retailers with SKU-in-URL or e-commerce signals
+            # from overtaking the official site.
+            score += 8.0 if prefer_manufacturer else 6.0
+            specific_overlap_tokens = len(specific_expected_tokens.intersection(path_tokens.union(self._matching.tokenize_keywords(title))))
+            if (
+                not self.is_category_like_url(url)
+                and specific_overlap_tokens >= 3
+                and not self._matching.has_conflicting_variant_tokens(product_name, combined)
+            ):
+                score += 3.5
+            elif (
+                not self.is_category_like_url(url)
+                and specific_overlap_tokens >= 2
+                and not self._matching.has_conflicting_variant_tokens(product_name, combined)
+            ):
+                score += 4.5
         elif source_tier == "major_retailer":
             score += 2.5
         elif source_tier == "secondary_retailer":
@@ -511,12 +711,30 @@ class SearchScorer:
                 score -= 3.0
 
         if preferred_domains and domain:
-            for index, preferred_domain in enumerate(preferred_domains):
+            effective_preferred_domains = list(preferred_domains)
+        else:
+            effective_preferred_domains = []
+
+        for category_domain in self._category_preferred_domains(category):
+            if category_domain not in effective_preferred_domains:
+                effective_preferred_domains.append(category_domain)
+
+        if effective_preferred_domains and domain:
+            for index, preferred_domain in enumerate(effective_preferred_domains):
                 if not preferred_domain:
                     continue
                 if domain == preferred_domain or domain.endswith(f".{preferred_domain}"):
                     score += max(0.5, 2.5 - float(index) * 0.5)
                     break
+
+        if domain:
+            score += self._category_domain_bonus(domain, category)
+            score -= self._category_mass_retailer_penalty(domain, category)
+
+        if source_tier == "official" and self._is_root_path(url) and expected_variant_tokens and variant_overlap == 0:
+            # Brand homepages often mention the product family but are poor extraction
+            # targets when the exact variant is absent from the path/snippet.
+            score -= 4.0
 
         # Category page penalty
         if self.is_category_like_url(url):
@@ -631,9 +849,7 @@ class SearchScorer:
                     return None
 
                 # Fetch first 8KB
-                response = await client.get(url, headers={
-                    "Range": "bytes=0-8191"
-                })
+                response = await client.get(url, headers={"Range": "bytes=0-8191"})
 
                 if response.status_code not in (200, 206):
                     return None
@@ -641,9 +857,9 @@ class SearchScorer:
                 html = response.text.lower()
 
                 # Check for structured data indicators
-                has_jsonld = 'application/ld+json' in html
-                has_schema = 'schema.org' in html
-                has_og = 'og:title' in html and 'og:description' in html
+                has_jsonld = "application/ld+json" in html
+                has_schema = "schema.org" in html
+                has_og = "og:title" in html and "og:description" in html
 
                 return has_jsonld or has_schema or has_og
 

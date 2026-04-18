@@ -146,6 +146,11 @@ class ScenarioScorer:
     def is_marketplace(self, domain: str) -> bool:
         return domain in {"aggregator.example", "marketplace.example"}
 
+    def classify_source_domain(self, domain: str, brand: str | None) -> str:
+        if self.is_marketplace(domain):
+            return "marketplace"
+        return "unknown"
+
 
 class ScenarioNameConsolidator:
     def __init__(self, scenarios: tuple[RecordedScenario, ...]):

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from collections import OrderedDict
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -65,8 +66,6 @@ def canonicalize_result_url(url: str) -> str:
     )
 
 
-
-
 def _dedupe_results(results: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
     deduped: list[dict[str, Any]] = []
     seen_urls: set[str] = set()
@@ -94,6 +93,7 @@ class SearchClient:
         provider: str | None = None,
         cache_max: int = 500,
         api_key: str | None = None,
+        provider_max_results: int | None = None,
     ):
         self.max_results = max_results
         requested_provider = normalize_search_provider(provider)
@@ -101,7 +101,19 @@ class SearchClient:
         self._cache: OrderedDict[str, list[dict[str, Any]]] = OrderedDict()
         self._cache_max = cache_max
         self._inflight_queries: dict[str, asyncio.Future[tuple[list[dict[str, Any]], str | None]]] = {}
-        self.serper_client: SerperSearchClient | None = SerperSearchClient(max_results=max_results, api_key=api_key)
+        requested_provider_max_results = provider_max_results
+        if requested_provider_max_results is None:
+            raw_env_value = os.getenv("AI_SEARCH_SERPER_MAX_RESULTS")
+            if raw_env_value is not None:
+                try:
+                    requested_provider_max_results = int(raw_env_value)
+                except ValueError:
+                    logger.warning("[AI Search] Invalid AI_SEARCH_SERPER_MAX_RESULTS=%r, using %s", raw_env_value, max_results)
+                    requested_provider_max_results = max_results
+
+        effective_provider_max_results = max(max_results, int(requested_provider_max_results or max_results))
+        self.provider_max_results = effective_provider_max_results
+        self.serper_client: SerperSearchClient | None = SerperSearchClient(max_results=effective_provider_max_results, api_key=api_key)
 
     def _normalize_query_key(self, query: str) -> str:
         return " ".join(str(query or "").split()).lower()

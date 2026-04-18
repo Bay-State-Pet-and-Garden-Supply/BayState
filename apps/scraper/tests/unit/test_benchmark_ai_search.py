@@ -15,6 +15,7 @@ from scripts.benchmark_ai_search import (
     BenchmarkRunner,
     CategoryAnalyzer,
     MetricsCalculator,
+    canonicalize_benchmark_url,
     generate_markdown_report,
     main,
     parse_args,
@@ -126,6 +127,57 @@ def test_parse_args_supports_required_flags() -> None:
     assert args.dataset == Path("data/golden_dataset_v1.json")
     assert args.output == Path("report.json")
     assert args.mode == "llm"
+    assert args.cache_dir is None
+
+
+def test_parse_args_supports_explicit_cache_dir() -> None:
+    args = parse_args(["--dataset", "data/golden_dataset_v1.json", "--cache-dir", "tmp/cache"])
+
+    assert args.cache_dir == Path("tmp/cache")
+
+
+def test_canonicalize_benchmark_url_strips_tracking_query_params() -> None:
+    assert canonicalize_benchmark_url(
+        "https://www.weruva.com/products/puddy-pops-chicken-lickable-treats?srsltid=one&utm_source=test"
+    ) == canonicalize_benchmark_url("https://www.weruva.com/products/puddy-pops-chicken-lickable-treats?srsltid=two")
+
+
+@pytest.mark.asyncio
+async def test_benchmark_runner_normalizes_urls_for_exact_match_and_rank(tmp_path: Path) -> None:
+    entries = [
+        {
+            "query": "12345 Weruva Puddy Pops Chicken",
+            "expected_source_url": "https://www.weruva.com/products/puddy-pops-chicken-lickable-treats?srsltid=expected",
+            "category": "Cat Treats",
+            "difficulty": "easy",
+            "rationale": "Tracking parameters should not affect benchmark equality.",
+        }
+    ]
+    dataset_path = _write_dataset(tmp_path, entries)
+
+    fixture_client = FixtureSearchClient(cache_dir=tmp_path / "cache", allow_real_api=False)
+    _ = fixture_client.write_cache_entry(
+        "12345 Weruva Puddy Pops Chicken",
+        [
+            _result(
+                "https://www.amazon.com/weruva-puddy-pops",
+                "Weruva Puddy Pops",
+                "Marketplace listing",
+            ),
+            _result(
+                "https://www.weruva.com/products/puddy-pops-chicken-lickable-treats?srsltid=predicted&utm_source=search",
+                "Weruva Puddy Pops Chicken Lickable Treats",
+                "Official Weruva product page",
+            ),
+        ],
+    )
+
+    runner = BenchmarkRunner(dataset_path=dataset_path, search_client=fixture_client)
+    report = await runner.run()
+
+    assert report["summary"]["matched_examples"] == 1
+    assert report["results"][0]["exact_match"] is True
+    assert report["results"][0]["correct_rank"] == 1
 
 
 def test_metrics_calculator_computes_core_metrics_and_breakdowns() -> None:
@@ -667,6 +719,67 @@ def test_main_writes_reports_and_returns_zero(
     assert "## Baseline Comparison" in markdown
     assert "## Category Analysis" in markdown
     assert "## Per-Example Results" in markdown
+
+
+def test_main_prefers_explicit_cache_dir_over_companion_fixture(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    entries = [
+        {
+            "query": "12345 Acme Widget Acme Tools",
+            "expected_source_url": "https://amazon.com/product/acme-widget",
+            "category": "Tools",
+            "difficulty": "easy",
+            "rationale": "The explicit cache should override the companion fixture.",
+        }
+    ]
+    dataset_path = _write_dataset(tmp_path, entries, filename="golden_dataset_v1.json")
+    fixture_manifest_path = tmp_path / "golden_dataset_v1.search_results.json"
+    _ = fixture_manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "entries": [
+                    {
+                        "query": "12345 Acme Widget Acme Tools",
+                        "results": [
+                            _result("https://acme.com/product/acme-widget", "Acme Widget | Official Product Page", "Official Acme product page"),
+                        ],
+                    }
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    explicit_cache_dir = tmp_path / "explicit-cache"
+    fixture_client = FixtureSearchClient(cache_dir=explicit_cache_dir, allow_real_api=False)
+    _ = fixture_client.write_cache_entry(
+        "12345 Acme Widget Acme Tools",
+        [
+            _result("https://amazon.com/product/acme-widget", "Acme Widget", "Amazon retailer listing with 12345 in stock"),
+        ],
+    )
+
+    reports_dir = tmp_path / "reports"
+    reports_dir.mkdir()
+    monkeypatch.setattr(benchmark_ai_search, "REPORTS_DIR", reports_dir)
+    monkeypatch.setattr(benchmark_ai_search, "BASELINE_REPORT_PATH", reports_dir / "baseline.json")
+
+    exit_code = main(["--dataset", str(dataset_path), "--cache-dir", str(explicit_cache_dir)])
+    _ = capsys.readouterr()
+
+    json_reports = sorted(reports_dir.glob("benchmark_*.json"))
+    assert len(json_reports) == 1
+
+    saved = cast(BenchmarkReport, json.loads(json_reports[0].read_text(encoding="utf-8")))
+
+    assert exit_code == 0
+    assert saved["summary"]["matched_examples"] == 1
+    assert saved["results"][0]["predicted_source_url"] == "https://amazon.com/product/acme-widget"
 
 
 def test_main_returns_nonzero_for_invalid_dataset(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
