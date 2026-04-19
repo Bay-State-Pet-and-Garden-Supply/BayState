@@ -4,12 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { ProductVariant, ProductOption, ProductOptionValue } from '@/lib/types';
 
-export interface VariantWithOptions extends ProductVariant {
-  product?: {
-    id: string;
-    name: string;
-  };
-}
+import { VariantWithOptions } from './variant-types';
 
 export async function getProductVariants(productId: string): Promise<ProductVariant[]> {
   const supabase = await createClient();

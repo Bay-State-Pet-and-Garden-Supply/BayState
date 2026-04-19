@@ -3,15 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import type { Product, RelationType } from '@/lib/types';
 
-export interface RelatedProductWithDetails {
-  id: string;
-  name: string;
-  slug: string;
-  price: number;
-  images: string[];
-  stock_status: 'in_stock' | 'out_of_stock' | 'pre_order';
-  relation_type: RelationType;
-}
+import { RelatedProductWithDetails } from './types';
 
 export async function getRelatedProducts(
   productId: string,

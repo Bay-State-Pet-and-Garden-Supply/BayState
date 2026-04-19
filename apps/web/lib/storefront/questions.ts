@@ -3,19 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
-export interface QuestionWithAnswers {
-  id: string;
-  question: string;
-  user: { full_name: string | null } | null;
-  created_at: string;
-  answers: Array<{
-    id: string;
-    answer: string;
-    is_seller_answer: boolean;
-    user: { full_name: string | null } | null;
-    created_at: string;
-  }>;
-}
+import { QuestionWithAnswers } from './types';
 
 export async function getProductQuestions(
   productId: string

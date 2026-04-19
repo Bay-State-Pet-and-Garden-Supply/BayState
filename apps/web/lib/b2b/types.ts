@@ -108,3 +108,12 @@ export interface B2BSyncJob {
   created_at: string;
   created_by: string | null;
 }
+
+export interface SyncResult {
+  success: boolean;
+  jobId?: string;
+  productsFetched?: number;
+  productsCreated?: number;
+  productsUpdated?: number;
+  error?: string;
+}

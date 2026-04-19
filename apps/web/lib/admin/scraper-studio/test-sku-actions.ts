@@ -4,24 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
-export type ActionState = {
-  success: boolean;
-  error?: string;
-  details?: unknown;
-  data?: unknown;
-};
+import { ActionState, TestSkuType, TestSku } from './types';
 
-// Test SKU types
-export type TestSkuType = 'test' | 'fake' | 'edge_case';
-
-export interface TestSku {
-  id: string;
-  config_id: string;
-  sku: string;
-  sku_type: TestSkuType;
-  added_by: string | null;
-  created_at: string;
-}
 
 // Validation schema for test SKU
 const testSkuSchema = z.object({

@@ -4,13 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { ProductReview, ReviewStatus } from '@/lib/types';
 
-export interface ReviewWithProduct extends ProductReview {
-  product: {
-    id: string;
-    name: string;
-    slug: string;
-  } | null;
-}
+import { ReviewWithProduct } from './review-types';
 
 export async function getReviews(options?: {
   status?: ReviewStatus;

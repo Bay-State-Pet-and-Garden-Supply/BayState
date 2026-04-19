@@ -205,3 +205,20 @@ export interface ActionNodeData extends Record<string, unknown> {
   actionType: string;
   index: number;
 }
+
+export interface Scraper {
+  id: string;
+  name: string;
+  display_name: string | null;
+  base_url: string;
+  url_template: string | null;
+  requires_auth: boolean;
+  status: 'healthy' | 'degraded' | 'broken' | 'unknown';
+  disabled: boolean;
+  last_tested: string | null;
+  test_results: unknown | null;
+  selectors: unknown | null;
+  workflows: unknown | null;
+  created_at: string;
+  updated_at: string;
+}

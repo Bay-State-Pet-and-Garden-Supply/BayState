@@ -4,12 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
-export type ActionState = {
-  success: boolean;
-  error?: string;
-  details?: unknown;
-  data?: unknown;
-};
+import { ActionState } from './types';
 
 const createVersionSchema = z.object({
   configId: z.string().uuid(),

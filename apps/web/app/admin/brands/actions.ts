@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import * as z from 'zod';
+import { ActionState } from '@/lib/types';
 
 const brandSchema = z.object({
     name: z.string().min(1, 'Name is required'),
@@ -11,10 +12,6 @@ const brandSchema = z.object({
     description: z.string().optional().nullable(),
 });
 
-export type ActionState = {
-    success: boolean;
-    error?: string;
-};
 
 export async function createBrand(formData: FormData): Promise<ActionState> {
     const supabase = await createClient();

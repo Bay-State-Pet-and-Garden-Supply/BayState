@@ -3,10 +3,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { ProductReview } from '@/lib/types';
+import { ReviewWithUser, SubmitReviewInput } from './types';
 
-export type ReviewWithUser = Omit<ProductReview, 'user'> & {
-  user: { full_name: string | null } | null;
-};
 
 export async function getApprovedReviews(productId: string): Promise<ReviewWithUser[]> {
   const supabase = await createClient();
@@ -73,15 +71,6 @@ export async function getProductReviewStats(productId: string): Promise<{
   };
 }
 
-export interface SubmitReviewInput {
-  productId: string;
-  productSlug: string;
-  rating: 1 | 2 | 3 | 4 | 5;
-  title?: string;
-  content?: string;
-  pros?: string[];
-  cons?: string[];
-}
 
 export async function submitReview(
   input: SubmitReviewInput

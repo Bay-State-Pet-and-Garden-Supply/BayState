@@ -3,11 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { updateOrderStatus } from '@/lib/orders';
 import { createClient } from '@/lib/supabase/server';
+import { ActionState } from '@/lib/types';
 
-export type ActionState = {
-    success: boolean;
-    error?: string;
-};
 
 export async function updateOrderStatusAction(
     id: string,
