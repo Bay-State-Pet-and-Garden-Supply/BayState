@@ -9,16 +9,9 @@ import {
   B2BProduct,
   DistributorCode,
   SyncJobType,
+  SyncResult,
 } from './types';
 
-export interface SyncResult {
-  success: boolean;
-  jobId?: string;
-  productsFetched?: number;
-  productsCreated?: number;
-  productsUpdated?: number;
-  error?: string;
-}
 
 export async function getB2BFeeds(): Promise<B2BFeed[]> {
   const supabase = await createClient();

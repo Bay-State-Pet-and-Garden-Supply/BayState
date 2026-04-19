@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import * as z from 'zod';
+import { ActionState } from '@/lib/types';
 
 const serviceSchema = z.object({
     name: z.string().min(1, 'Name is required'),
@@ -13,10 +14,6 @@ const serviceSchema = z.object({
     is_active: z.coerce.boolean().default(true),
 });
 
-export type ActionState = {
-    success: boolean;
-    error?: string;
-};
 
 export async function createService(formData: FormData): Promise<ActionState> {
     const supabase = await createClient();

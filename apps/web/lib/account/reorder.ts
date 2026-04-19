@@ -2,14 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 
-export interface FrequentProduct {
-    id: string;
-    name: string;
-    slug: string;
-    price: number;
-    images: string[];
-    order_count: number;
-}
+import { FrequentProduct } from './types';
 
 /**
  * Get products that the current user has ordered multiple times.

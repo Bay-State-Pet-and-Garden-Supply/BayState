@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { syncProductCategoryIds } from '@/lib/product-category-sync';
 import { revalidatePath } from 'next/cache';
 import * as z from 'zod';
+import { ActionState } from '@/lib/types';
 
 const productSchema = z.object({
     name: z.string().min(1),
@@ -27,10 +28,6 @@ const productSchema = z.object({
     published_at: z.string().optional().nullable(),
 });
 
-export type ActionState = {
-    success: boolean;
-    error?: string;
-};
 
 export async function updateProduct(id: string, formData: FormData): Promise<ActionState> {
     const supabase = await createClient();

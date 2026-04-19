@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import * as z from 'zod';
+import { ActionState } from '@/lib/types';
 
 const categorySchema = z.object({
     name: z.string().min(1, 'Name is required'),
@@ -14,10 +15,6 @@ const categorySchema = z.object({
     is_featured: z.coerce.boolean().default(false),
 });
 
-export type ActionState = {
-    success: boolean;
-    error?: string;
-};
 
 export async function createCategory(formData: FormData): Promise<ActionState> {
     const supabase = await createClient();

@@ -3,12 +3,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { ScraperConfig } from '@/lib/admin/scrapers/types';
+import { ActionState } from '@/lib/types';
 
-export type ActionState = {
-  success: boolean;
-  error?: string;
-  data?: unknown;
-};
 
 /**
  * DEPRECATED: Use YAML-based config instead.

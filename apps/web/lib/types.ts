@@ -462,3 +462,10 @@ export interface CheckoutUserData {
 }
 
 export const TAX_RATE = 0.0625;
+
+export type ActionState = {
+  success: boolean;
+  error?: string;
+  details?: unknown;
+  data?: unknown;
+};

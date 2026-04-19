@@ -2,15 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 
-export interface RecentlyViewedProduct {
-  id: string;
-  name: string;
-  slug: string;
-  price: number;
-  images: string[];
-  stock_status: 'in_stock' | 'out_of_stock' | 'pre_order';
-  viewed_at: string;
-}
+import { RecentlyViewedProduct } from './types';
 
 export async function trackProductView(productId: string): Promise<void> {
   const supabase = await createClient();

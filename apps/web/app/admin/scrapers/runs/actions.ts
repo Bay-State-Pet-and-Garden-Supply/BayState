@@ -263,9 +263,7 @@ export async function retryScraperRun(jobId: string) {
   return { success: true, newJobId: retryResult.jobId };
 }
 
-export type ScrapeJobLog = ScrapeJobLogEntry;
-
-export async function getScraperRunLogs(jobId: string): Promise<ScrapeJobLog[]> {
+export async function getScraperRunLogs(jobId: string): Promise<ScrapeJobLogEntry[]> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
