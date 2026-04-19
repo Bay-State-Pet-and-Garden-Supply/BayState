@@ -579,6 +579,86 @@ class AISearchScraper:
         if effective_brand:
             cohort_state.remember_brand(effective_brand)
 
+    def _cohort_normalization_domain(self, cohort_state: _BatchCohortState | None) -> str | None:
+        if cohort_state is None:
+            return None
+
+        official_domain = cohort_state.dominant_official_domain(minimum_count=2)
+        if official_domain:
+            return official_domain
+
+        return cohort_state.dominant_domain()
+
+    def _build_locked_cohort_state(
+        self,
+        cohort_key: str,
+        cohort_state: _BatchCohortState,
+        domain: str,
+    ) -> _BatchCohortState:
+        locked_official_counts: dict[str, int] = {}
+        if domain in cohort_state.official_domain_counts:
+            locked_official_counts[domain] = max(1, cohort_state.official_domain_counts.get(domain, 0))
+
+        return _BatchCohortState(
+            key=cohort_key,
+            preferred_domain_counts={
+                domain: max(1, cohort_state.preferred_domain_counts.get(domain, 0)),
+            },
+            preferred_brand_counts=dict(cohort_state.preferred_brand_counts),
+            official_domain_counts=locked_official_counts,
+        )
+
+    async def _normalize_cohort_results(
+        self,
+        cohort_key: str,
+        cohort_results: list[tuple[int, AISearchResult]],
+        cohort_state: _BatchCohortState,
+        item_by_index: dict[int, dict[str, Any]],
+    ) -> list[tuple[int, AISearchResult]]:
+        target_domain = self._cohort_normalization_domain(cohort_state)
+        if not target_domain:
+            return cohort_results
+
+        # When the cohort repeatedly surfaces one official domain, retry off-domain
+        # results with that domain locked in so sibling variants converge.
+        locked_state = self._build_locked_cohort_state(cohort_key, cohort_state, target_domain)
+        normalized_results: list[tuple[int, AISearchResult]] = []
+
+        for original_index, existing_result in cohort_results:
+            existing_domain = self._scoring.domain_from_url(existing_result.url or "")
+            product = item_by_index.get(original_index, {})
+            product_sku = str(product.get("sku", "")).strip()
+            fallback_brand = str(product.get("brand") or "").strip() or None
+            if not product_sku:
+                normalized_results.append((original_index, existing_result))
+                continue
+
+            should_retry = (not existing_result.success) or existing_domain != target_domain
+            if not should_retry:
+                normalized_results.append((original_index, existing_result))
+                continue
+
+            retry_result = await self.scrape_product(
+                sku=product_sku,
+                product_name=product.get("product_name"),
+                brand=product.get("brand"),
+                category=product.get("category"),
+                cohort_state=locked_state,
+            )
+            retry_domain = self._scoring.domain_from_url(retry_result.url or "")
+            if retry_result.success and retry_domain == target_domain:
+                normalized_results.append((original_index, retry_result))
+                self._remember_cohort_success(
+                    cohort_state,
+                    retry_result,
+                    fallback_brand=fallback_brand,
+                )
+                continue
+
+            normalized_results.append((original_index, existing_result))
+
+        return normalized_results
+
     def _has_preferred_domain_candidate(self, search_results: list[dict[str, Any]], preferred_domains: Optional[list[str]]) -> bool:
         if not search_results or not preferred_domains:
             return False
@@ -849,6 +929,12 @@ class AISearchScraper:
                         cohort_state,
                         max_concurrency,
                     )
+                    cohort_results = await self._normalize_cohort_results(
+                        cohort_key,
+                        cohort_results,
+                        cohort_state,
+                        item_by_index,
+                    )
                     self._save_cohort_state(cohort_state)
                     return cohort_results
 
@@ -872,45 +958,12 @@ class AISearchScraper:
                         fallback_brand=str(product.get("brand") or "").strip() or None,
                     )
 
-                dominant_domain = cohort_state.dominant_domain()
-                if dominant_domain:
-                    locked_state = _BatchCohortState(
-                        key=cohort_key,
-                        preferred_domain_counts={
-                            dominant_domain: cohort_state.preferred_domain_counts.get(dominant_domain, 0),
-                        },
-                        preferred_brand_counts=dict(cohort_state.preferred_brand_counts),
-                    )
-                    normalized_results: list[tuple[int, AISearchResult]] = []
-
-                    for original_index, existing_result in cohort_results:
-                        existing_domain = self._scoring.domain_from_url(existing_result.url or "")
-                        product = item_by_index.get(original_index, {})
-                        product_sku = str(product.get("sku", "")).strip()
-                        if not product_sku:
-                            normalized_results.append((original_index, existing_result))
-                            continue
-
-                        should_retry = (not existing_result.success) or existing_domain != dominant_domain
-                        if not should_retry:
-                            normalized_results.append((original_index, existing_result))
-                            continue
-
-                        retry_result = await self.scrape_product(
-                            sku=product_sku,
-                            product_name=product.get("product_name"),
-                            brand=product.get("brand"),
-                            category=product.get("category"),
-                            cohort_state=locked_state,
-                        )
-                        retry_domain = self._scoring.domain_from_url(retry_result.url or "")
-                        if retry_result.success and retry_domain == dominant_domain:
-                            normalized_results.append((original_index, retry_result))
-                            continue
-
-                        normalized_results.append((original_index, existing_result))
-
-                    cohort_results = normalized_results
+                cohort_results = await self._normalize_cohort_results(
+                    cohort_key,
+                    cohort_results,
+                    cohort_state,
+                    item_by_index,
+                )
 
                 self._save_cohort_state(cohort_state)
                 return cohort_results

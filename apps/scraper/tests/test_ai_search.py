@@ -740,6 +740,123 @@ def test_scrape_products_batch_uses_batch_search_orchestrator_for_base_scraper()
     ]
 
 
+def test_scrape_products_batch_normalizes_orchestrated_scotts_cohort_to_official_domain() -> None:
+    retry_calls: list[dict[str, Any]] = []
+
+    class FakeBatchSearchResult:
+        def __init__(self, results: list[AISearchResult]) -> None:
+            self._results = results
+
+        def to_search_results(self) -> list[AISearchResult]:
+            return list(self._results)
+
+    class FakeOrchestrator:
+        def __init__(self, **kwargs: Any) -> None:
+            self._cohort_state = kwargs["cohort_state"]
+
+        async def search_cohort(
+            self,
+            products: list[Any],
+            *,
+            max_search_concurrent: int = 5,
+            max_extract_concurrent: int = 3,
+        ) -> FakeBatchSearchResult:
+            _ = max_search_concurrent, max_extract_concurrent
+            self._cohort_state.remember_brand("Scotts")
+            self._cohort_state.remember_official_domain("scottsmiraclegro.com")
+            self._cohort_state.remember_official_domain("scottsmiraclegro.com")
+            self._cohort_state.remember_official_domain("scottsmiraclegro.com")
+            self._cohort_state.remember_domain("lowes.com")
+            self._cohort_state.remember_domain("homedepot.com")
+
+            return FakeBatchSearchResult(
+                [
+                    AISearchResult(
+                        success=True,
+                        sku=product.sku,
+                        product_name=product.name,
+                        brand="Scotts",
+                        url={
+                            "SKU-RED": "https://scottsmiraclegro.com/en-us/scotts-naturescapes-sierra-red.html",
+                            "SKU-BROWN": "https://www.lowes.com/pd/scotts-deep-forest-brown-mulch/1001364002",
+                            "SKU-BLACK": "https://www.homedepot.com/p/scotts-classic-black-mulch/205546050",
+                        }[product.sku],
+                        source_website={
+                            "SKU-RED": "scottsmiraclegro.com",
+                            "SKU-BROWN": "lowes.com",
+                            "SKU-BLACK": "homedepot.com",
+                        }[product.sku],
+                        confidence=0.9,
+                        images=[f"https://images.example.com/{product.sku.lower()}.jpg"],
+                    )
+                    for product in products
+                ]
+            )
+
+    scraper = AISearchScraper(confidence_threshold=0.7)
+
+    async def retry_to_official(
+        *,
+        sku: str,
+        product_name: Optional[str] = None,
+        brand: Optional[str] = None,
+        category: Optional[str] = None,
+        cohort_state=None,
+    ) -> AISearchResult:
+        _ = category
+        retry_calls.append(
+            {
+                "sku": sku,
+                "preferred_domains": scraper._preferred_cohort_domains(cohort_state) or [],
+            }
+        )
+        slug = sku.lower().replace("sku-", "")
+        return AISearchResult(
+            success=True,
+            sku=sku,
+            product_name=product_name,
+            brand=brand or "Scotts",
+            url=f"https://scottsmiraclegro.com/en-us/scotts-mulch-{slug}.html",
+            source_website="scottsmiraclegro.com",
+            confidence=0.95,
+            images=[f"https://images.example.com/{slug}.jpg"],
+        )
+
+    scraper.scrape_product = AsyncMock(side_effect=retry_to_official)
+
+    with patch("scrapers.ai_search.scraper.BatchSearchOrchestrator", FakeOrchestrator):
+        results = asyncio.run(
+            scraper.scrape_products_batch(
+                [
+                    {
+                        "sku": "SKU-RED",
+                        "product_name": "Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+                        "brand": "Scotts",
+                        "category": "Mulch",
+                    },
+                    {
+                        "sku": "SKU-BROWN",
+                        "product_name": "Scotts NatureScapes Color Enhanced Mulch Deep Forest Brown 1.5 cu ft",
+                        "brand": "Scotts",
+                        "category": "Mulch",
+                    },
+                    {
+                        "sku": "SKU-BLACK",
+                        "product_name": "Scotts NatureScapes Color Enhanced Mulch Classic Black 1.5 cu ft",
+                        "brand": "Scotts",
+                        "category": "Mulch",
+                    },
+                ],
+                max_concurrency=2,
+            )
+        )
+
+    assert all(result.success for result in results)
+    assert all(result.source_website == "scottsmiraclegro.com" for result in results)
+    assert {call["sku"] for call in retry_calls} == {"SKU-BROWN", "SKU-BLACK"}
+    assert all(call["preferred_domains"] == ["scottsmiraclegro.com"] for call in retry_calls)
+
+
 def test_scrape_product_rejects_unrelated_result() -> None:
     class StubCrawl4AIExtractor:
         async def extract(
