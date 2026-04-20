@@ -127,6 +127,11 @@ export function AdminBrandsClient({ initialBrands, totalCount }: AdminBrandsClie
                     {row.description && (
                         <p className="text-xs text-muted-foreground line-clamp-1">{row.description}</p>
                     )}
+                    {(row.official_domains.length > 0 || row.preferred_domains.length > 0) && (
+                        <p className="text-[10px] text-muted-foreground line-clamp-1">
+                            {row.official_domains.length} official, {row.preferred_domains.length} preferred domains
+                        </p>
+                    )}
                 </div>
             ),
         },

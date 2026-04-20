@@ -6,7 +6,11 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from scrapers.ai_search.extraction_benchmark import load_extraction_benchmark_dataset
+from scrapers.ai_search.extraction_benchmark import (
+    load_extraction_benchmark_dataset,
+    load_extraction_fixture_manifest,
+    load_extraction_fixture_page,
+)
 from scrapers.ai_search.models import AISearchResult
 from scrapers.ai_search.scraper import AISearchScraper
 
@@ -74,6 +78,50 @@ async def test_extract_from_url_returns_failure_result_on_extraction_error() -> 
     assert result.cost_usd == 0.0123
 
 
+@pytest.mark.asyncio
+async def test_extract_from_fixture_uses_captured_content() -> None:
+    scraper = _build_scraper()
+    scraper._crawl4ai_extractor = MagicMock()
+    scraper._crawl4ai_extractor.extract_from_fixture = AsyncMock(
+        return_value={
+            "success": True,
+            "product_name": "Ultra Kibble",
+            "brand": "Acme",
+            "url": "https://brand.example/products/sku-123",
+        }
+    )
+    scraper._build_discovery_result.return_value = AISearchResult(
+        success=True,
+        sku="SKU-123",
+        product_name="Ultra Kibble",
+        brand="Acme",
+        url="https://brand.example/products/sku-123",
+    )
+
+    result = await scraper.extract_from_fixture(
+        url="https://brand.example/products/sku-123",
+        sku="SKU-123",
+        product_name="Ultra Kibble",
+        brand="Acme",
+        html="<html><body>fixture</body></html>",
+        markdown="fixture",
+        final_url="https://brand.example/products/sku-123",
+        status_code=200,
+    )
+
+    assert result.success is True
+    scraper._crawl4ai_extractor.extract_from_fixture.assert_awaited_once_with(
+        url="https://brand.example/products/sku-123",
+        sku="SKU-123",
+        product_name="Ultra Kibble",
+        brand="Acme",
+        html="<html><body>fixture</body></html>",
+        markdown="fixture",
+        final_url="https://brand.example/products/sku-123",
+        status_code=200,
+    )
+
+
 def test_load_extraction_benchmark_dataset_parses_ground_truth(tmp_path: Path) -> None:
     dataset_path = tmp_path / "dataset.json"
     dataset_path.write_text(
@@ -112,3 +160,51 @@ def test_load_extraction_benchmark_dataset_parses_ground_truth(tmp_path: Path) -
     assert len(dataset.entries) == 1
     assert dataset.entries[0].ground_truth.name == "Acme Ultra Kibble"
     assert dataset.entries[0].source_type == "official"
+
+
+def test_load_extraction_fixture_manifest_and_page(tmp_path: Path) -> None:
+    fixture_path = tmp_path / "fixture.json"
+    fixture_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "url": "https://brand.example/products/sku-123",
+                "final_url": "https://brand.example/products/sku-123",
+                "html": "<html><head><title>Acme Ultra Kibble</title></head></html>",
+                "markdown": "Acme Ultra Kibble",
+                "status_code": 200,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    manifest_path = tmp_path / "fixtures.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "entries": [
+                    {
+                        "expected_source_url": "https://brand.example/products/sku-123",
+                        "fixture_key": "sku-123",
+                        "fixture_path": str(fixture_path),
+                        "captured_at": "2026-04-19T00:00:00+00:00",
+                        "capture_mode": "fixture",
+                        "final_url": "https://brand.example/products/sku-123",
+                        "status_code": 200,
+                    }
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    manifest = load_extraction_fixture_manifest(manifest_path)
+    fixture_page = load_extraction_fixture_page(fixture_path)
+
+    assert manifest.schema_version == 1
+    assert manifest.entries[0].fixture_key == "sku-123"
+    assert manifest.entries[0].fixture_path == fixture_path
+    assert fixture_page.final_url == "https://brand.example/products/sku-123"
+    assert "Acme Ultra Kibble" in fixture_page.html

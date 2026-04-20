@@ -26,6 +26,9 @@ export interface Brand {
     slug: string;
     logo_url: string | null;
     description: string | null;
+    website_url: string | null;
+    official_domains: string[];
+    preferred_domains: string[];
     created_at: string;
 }
 
@@ -35,6 +38,9 @@ const brandSchema = z.object({
         .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must be lowercase letters, numbers, and hyphens'),
     logo_url: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
     description: z.string().max(500, 'Description is too long').optional(),
+    website_url: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
+    official_domains: z.string().optional(),
+    preferred_domains: z.string().optional(),
 });
 
 type BrandFormValues = z.infer<typeof brandSchema>;
@@ -66,6 +72,9 @@ export function BrandModal({
             slug: brand?.slug ?? '',
             logo_url: brand?.logo_url ?? '',
             description: brand?.description ?? '',
+            website_url: brand?.website_url ?? '',
+            official_domains: (brand?.official_domains ?? []).join(', '),
+            preferred_domains: (brand?.preferred_domains ?? []).join(', '),
         },
     });
 
@@ -80,7 +89,7 @@ export function BrandModal({
         }
     }, [nameValue, brand, setValue]);
 
-    const onSubmit = async (data: BrandFormValues) => {
+    const onSubmit = useCallback(async (data: BrandFormValues) => {
         setServerError(null);
 
         try {
@@ -89,6 +98,9 @@ export function BrandModal({
             formData.append('slug', data.slug.trim());
             formData.append('logo_url', (data.logo_url ?? '').trim());
             formData.append('description', (data.description ?? '').trim());
+            formData.append('website_url', (data.website_url ?? '').trim());
+            formData.append('official_domains', (data.official_domains ?? '').trim());
+            formData.append('preferred_domains', (data.preferred_domains ?? '').trim());
 
             const result = brand
                 ? await updateBrand(brand.id, formData)
@@ -106,7 +118,7 @@ export function BrandModal({
             setServerError(message);
             toast.error(message);
         }
-    };
+    }, [brand, onClose, onSave]);
 
     // Ctrl+S keyboard shortcut
     const handleKeyDown = useCallback(
@@ -203,6 +215,40 @@ export function BrandModal({
                         {errors.description && (
                             <p id="desc-error" className="text-sm text-destructive">{errors.description.message}</p>
                         )}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="website_url">Website URL</Label>
+                        <Input
+                            id="website_url"
+                            {...register('website_url')}
+                            placeholder="https://brand.example"
+                            aria-invalid={!!errors.website_url}
+                            aria-describedby={errors.website_url ? 'website-error' : undefined}
+                        />
+                        {errors.website_url && (
+                            <p id="website-error" className="text-sm text-destructive">{errors.website_url.message}</p>
+                        )}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="official_domains">Official Domains</Label>
+                        <Textarea
+                            id="official_domains"
+                            {...register('official_domains')}
+                            placeholder="scottsmiraclegro.com, mannapro.com"
+                            rows={2}
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="preferred_domains">Preferred Domains</Label>
+                        <Textarea
+                            id="preferred_domains"
+                            {...register('preferred_domains')}
+                            placeholder="homedepot.com, chewy.com"
+                            rows={2}
+                        />
                     </div>
 
                     <DialogFooter className="flex-col sm:flex-row gap-2">

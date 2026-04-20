@@ -26,6 +26,9 @@ interface Brand {
   slug: string;
   logo_url: string | null;
   description: string | null;
+  website_url: string | null;
+  official_domains: string[];
+  preferred_domains: string[];
   created_at: string;
 }
 
@@ -111,6 +114,11 @@ export function BrandsDataTable({ brands }: BrandsDataTableProps) {
           <p className="font-black uppercase text-foreground">{row.name}</p>
           {row.description && (
             <p className="text-xs font-bold text-muted-foreground line-clamp-1 uppercase">{row.description}</p>
+          )}
+          {(row.official_domains.length > 0 || row.preferred_domains.length > 0) && (
+            <p className="text-[10px] font-bold uppercase text-muted-foreground line-clamp-1">
+              {row.official_domains.length} official, {row.preferred_domains.length} preferred domains
+            </p>
           )}
         </div>
       ),

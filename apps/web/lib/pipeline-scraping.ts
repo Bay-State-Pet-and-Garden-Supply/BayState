@@ -27,9 +27,15 @@ interface ProductCatalogRow {
     brand?:
         | {
             name?: unknown;
+            website_url?: unknown;
+            official_domains?: unknown;
+            preferred_domains?: unknown;
         }
         | Array<{
             name?: unknown;
+            website_url?: unknown;
+            official_domains?: unknown;
+            preferred_domains?: unknown;
         }>
         | null;
     product_categories?: Array<{
@@ -107,6 +113,40 @@ interface ScrapeContextItem {
     price?: number;
     brand?: string;
     category?: string;
+    preferred_domains?: string[];
+}
+
+function toStringArray(value: unknown): string[] | undefined {
+    if (!Array.isArray(value)) {
+        return undefined;
+    }
+
+    const normalized = value
+        .map((item) => toOptionalString(item))
+        .filter((item): item is string => Boolean(item));
+
+    return normalized.length > 0 ? normalized : undefined;
+}
+
+function normalizeDomainCandidate(value: string): string | undefined {
+    const trimmed = value.trim().toLowerCase();
+    if (!trimmed) {
+        return undefined;
+    }
+
+    const withProtocol = trimmed.includes('://') ? trimmed : `https://${trimmed}`;
+
+    try {
+        const hostname = new URL(withProtocol).hostname.toLowerCase();
+        return hostname.startsWith('www.') ? hostname.slice(4) : hostname;
+    } catch {
+        const fallback = trimmed
+            .replace(/^https?:\/\//, '')
+            .replace(/^www\./, '')
+            .split('/')[0]
+            ?.trim();
+        return fallback || undefined;
+    }
 }
 
 interface ScraperSiteGroup {
@@ -129,6 +169,38 @@ function getCatalogBrandName(
 ): string | undefined {
     const brand = Array.isArray(brandRelation) ? brandRelation[0] ?? null : brandRelation;
     return toOptionalString(brand?.name);
+}
+
+function getCatalogBrandDomainPreferences(
+    brandRelation: ProductCatalogRow['brand']
+): string[] | undefined {
+    const brand = Array.isArray(brandRelation) ? brandRelation[0] ?? null : brandRelation;
+    if (!brand) {
+        return undefined;
+    }
+
+    const ordered: string[] = [];
+    const seen = new Set<string>();
+
+    const pushDomain = (candidate: unknown) => {
+        if (typeof candidate !== 'string') {
+            return;
+        }
+
+        const normalized = normalizeDomainCandidate(candidate);
+        if (!normalized || seen.has(normalized)) {
+            return;
+        }
+
+        seen.add(normalized);
+        ordered.push(normalized);
+    };
+
+    toStringArray(brand.official_domains)?.forEach(pushDomain);
+    pushDomain(brand.website_url);
+    toStringArray(brand.preferred_domains)?.forEach(pushDomain);
+
+    return ordered.length > 0 ? ordered : undefined;
 }
 
 function getCatalogCategoryName(
@@ -469,7 +541,7 @@ async function loadScrapeContextItems(
             .in('sku', skus),
         supabase
             .from('products')
-            .select('sku, name, brand:brands(name), product_categories(category:categories(name))')
+            .select('sku, name, brand:brands(name, website_url, official_domains, preferred_domains), product_categories(category:categories(name))')
             .in('sku', skus),
     ]);
 
@@ -501,6 +573,7 @@ async function loadScrapeContextItems(
         const catalogName = toOptionalString(product?.name);
         const ingestionBrand = toOptionalString(input?.brand);
         const catalogBrand = getCatalogBrandName(product?.brand);
+        const catalogPreferredDomains = getCatalogBrandDomainPreferences(product?.brand);
         const ingestionCategory = toOptionalString(input?.category);
         const catalogCategory = getCatalogCategoryName(product?.product_categories);
 
@@ -516,6 +589,7 @@ async function loadScrapeContextItems(
             category: preferCatalogContext
                 ? catalogCategory ?? ingestionCategory
                 : ingestionCategory ?? catalogCategory,
+            preferred_domains: catalogPreferredDomains,
         };
     });
 }
