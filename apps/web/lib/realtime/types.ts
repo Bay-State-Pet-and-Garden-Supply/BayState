@@ -6,6 +6,7 @@
  */
 
 import { z } from 'zod';
+import type { RunnerDurableStatus, RunnerPresenceStatus } from '@/lib/scraper-runners';
 
 /**
  * Runner presence state with metadata for tracking runner status.
@@ -16,7 +17,9 @@ export interface RunnerPresence {
   /** Human-readable name of the runner */
   runner_name: string;
   /** Current operational status of the runner */
-  status: 'online' | 'busy' | 'idle' | 'offline';
+  status: RunnerPresenceStatus;
+  /** Durable runner status from scraper_runners */
+  raw_status?: RunnerDurableStatus | null;
   /** Number of active jobs currently being processed */
   active_jobs: number;
   /** ISO 8601 timestamp of last activity */
@@ -38,6 +41,7 @@ export const runnerPresenceSchema = z.object({
   runner_id: z.string(),
   runner_name: z.string(),
   status: z.enum(['online', 'busy', 'idle', 'offline']),
+  raw_status: z.enum(['online', 'offline', 'busy', 'idle', 'polling', 'paused']).nullable().optional(),
   active_jobs: z.number().int().min(0),
   last_seen: z.string(),
   enabled: z.boolean().optional(),

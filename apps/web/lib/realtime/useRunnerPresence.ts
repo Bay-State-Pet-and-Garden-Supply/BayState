@@ -1,156 +1,289 @@
-/**
- * useRunnerPresence - Supabase Presence API hook for tracking runner online/offline status
- *
- * This hook manages real-time presence tracking for scraper runners using Supabase Realtime.
- * Runners "track" their presence state, and the admin panel subscribes to presence sync events
- * to maintain a live view of which runners are online, busy, or offline.
- */
-
-import { useEffect, useMemo, useCallback, useState, useRef } from "react";
-import type { RealtimeChannel } from "@supabase/supabase-js";
-import type { RunnerPresence } from "./types";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/client';
+import type { Database } from '@/types/supabase';
+import type { RunnerPresence } from './types';
 import {
-  useRealtimeChannel,
-  type RealtimePresenceState,
-} from "./useRealtimeChannel";
+  coerceRunnerMetadata,
+  getRunnerBuildCheckReason,
+  getRunnerLabels,
+  getRunnerLastSeen,
+  getRunnerOs,
+  getRunnerPresenceStatus,
+  getRunnerVersion,
+  getStoredRunnerStatus,
+  isRunnerStale,
+  type RunnerDurableStatus,
+} from '@/lib/scraper-runners';
 
-const CHANNEL_RUNNER_PRESENCE = "runner-presence";
+const CHANNEL_RUNNER_PRESENCE = 'scraper-runners';
+const RUNNER_STALENESS_CHECK_INTERVAL_MS = 30_000;
 
-/**
- * Runner presence state managed by the hook
- */
-export interface RunnerPresenceState {
-  /** Map of runner_id -> RunnerPresence data */
-  runners: Record<string, RunnerPresence>;
-  /** Set of currently online runner IDs */
-  onlineIds: Set<string>;
-  /** Whether the presence channel is currently subscribed */
-  isConnected: boolean;
-  /** Connection error if any */
-  error: Error | null;
+type RunnerRealtimeStatus = 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CLOSED' | 'TIMED_OUT';
+type ScraperRunnerRow = Database['public']['Tables']['scraper_runners']['Row'];
+type RunnerRealtimePayload = RealtimePostgresChangesPayload<ScraperRunnerRow>;
+
+type RunnerRowSnapshot = Pick<
+  ScraperRunnerRow,
+  | 'name'
+  | 'last_seen_at'
+  | 'created_at'
+  | 'status'
+  | 'current_job_id'
+  | 'enabled'
+  | 'metadata'
+  | 'jobs_completed'
+  | 'memory_usage_mb'
+>;
+
+interface SharedRunnerChannelEntry {
+  channel: RealtimeChannel;
+  listeners: Set<(payload: RunnerRealtimePayload) => void>;
+  statusListeners: Set<(status: RunnerRealtimeStatus) => void>;
+  lastStatus: RunnerRealtimeStatus | null;
 }
 
-/**
- * Configuration options for the presence hook
- */
-export interface UseRunnerPresenceOptions {
-  /** Optional custom channel name for presence */
-  channelName?: string;
-  /** Whether to automatically connect on mount (default: true) */
-  autoConnect?: boolean;
-  /** Whether to fetch initial runners from API (default: true) */
-  fetchInitial?: boolean;
-  /** Callback when a runner comes online */
-  onJoin?: (runnerId: string, presence: RunnerPresence) => void;
-  /** Callback when a runner goes offline */
-  onLeave?: (runnerId: string) => void;
-  /** Callback when presence sync completes */
-  onSync?: (runners: Record<string, RunnerPresence>) => void;
-}
-
-/**
- * Default configuration values
- */
-const DEFAULT_OPTIONS: Partial<UseRunnerPresenceOptions> = {
-  autoConnect: true,
-};
-
-/**
- * Runner data from API endpoint
- */
 interface ApiRunnerData {
   id: string;
   name: string;
   os: string;
-  status: "online" | "offline" | "busy" | "idle";
+  status: 'online' | 'offline';
+  raw_status?: RunnerDurableStatus | null;
   busy: boolean;
-  labels: string[];
+  labels: Array<string | { name: string }>;
   last_seen?: string;
   active_jobs?: number;
   enabled: boolean;
   version?: string | null;
   build_check_reason?: string | null;
+  metadata?: Record<string, unknown> | null;
 }
 
-function isRunnerStatus(value: unknown): value is RunnerPresence["status"] {
-  return value === "online" || value === "busy" || value === "idle" || value === "offline";
+const sharedRunnerChannels = new Map<string, SharedRunnerChannelEntry>();
+
+function ensureSharedRunnerChannel(baseChannelName: string): SharedRunnerChannelEntry {
+  const pgChannelName = `${baseChannelName}-pg`;
+  const existingEntry = sharedRunnerChannels.get(pgChannelName);
+
+  if (existingEntry) {
+    return existingEntry;
+  }
+
+  const channel = createClient().channel(pgChannelName);
+  const entry: SharedRunnerChannelEntry = {
+    channel,
+    listeners: new Set(),
+    statusListeners: new Set(),
+    lastStatus: null,
+  };
+
+  channel
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'scraper_runners',
+      },
+      (payload) => {
+        for (const listener of Array.from(entry.listeners)) {
+          listener(payload as RunnerRealtimePayload);
+        }
+      },
+    )
+    .subscribe((status) => {
+      entry.lastStatus = status;
+
+      for (const listener of Array.from(entry.statusListeners)) {
+        listener(status);
+      }
+    });
+
+  sharedRunnerChannels.set(pgChannelName, entry);
+  return entry;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+function cleanupSharedRunnerChannel(baseChannelName: string, entry: SharedRunnerChannelEntry) {
+  const pgChannelName = `${baseChannelName}-pg`;
+
+  if (entry.listeners.size > 0 || entry.statusListeners.size > 0) {
+    return;
+  }
+
+  if (sharedRunnerChannels.get(pgChannelName) !== entry) {
+    return;
+  }
+
+  createClient().removeChannel(entry.channel);
+  sharedRunnerChannels.delete(pgChannelName);
 }
 
-function isRunnerPresence(value: unknown): value is RunnerPresence {
-  return (
-    isRecord(value) &&
-    typeof value.runner_id === "string" &&
-    typeof value.runner_name === "string" &&
-    isRunnerStatus(value.status) &&
-    typeof value.active_jobs === "number" &&
-    typeof value.last_seen === "string"
+function createOnlineIds(runners: Record<string, RunnerPresence>): Set<string> {
+  return new Set(
+    Object.values(runners)
+      .filter((runner) => runner.status !== 'offline')
+      .map((runner) => runner.runner_id),
   );
 }
 
-function extractRunnersFromPresenceState(
-  presenceState: RealtimePresenceState,
-): Record<string, RunnerPresence> {
-  const runners: Record<string, RunnerPresence> = {};
+function runnerPresenceEquals(left: RunnerPresence | undefined, right: RunnerPresence | undefined): boolean {
+  if (!left || !right) {
+    return left === right;
+  }
 
-  Object.values(presenceState).forEach((presences) => {
-    if (!Array.isArray(presences) || presences.length === 0) {
-      return;
-    }
-
-    const presence = presences[0];
-
-    if (isRunnerPresence(presence)) {
-      runners[presence.runner_id] = presence;
-    }
-  });
-
-  return runners;
+  return (
+    left.runner_id === right.runner_id &&
+    left.runner_name === right.runner_name &&
+    left.status === right.status &&
+    left.raw_status === right.raw_status &&
+    left.active_jobs === right.active_jobs &&
+    left.last_seen === right.last_seen &&
+    left.enabled === right.enabled &&
+    left.version === right.version &&
+    left.build_check_reason === right.build_check_reason &&
+    left.metadata === right.metadata
+  );
 }
 
-/**
- * Hook return type
- */
+function runnerMapsEqual(
+  left: Record<string, RunnerPresence>,
+  right: Record<string, RunnerPresence>,
+): boolean {
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+
+  if (leftKeys.length !== rightKeys.length) {
+    return false;
+  }
+
+  return leftKeys.every((key) => runnerPresenceEquals(left[key], right[key]));
+}
+
+function isRunnerRowSnapshot(value: unknown): value is RunnerRowSnapshot {
+  return typeof value === 'object' && value !== null && typeof (value as { name?: unknown }).name === 'string';
+}
+
+function buildRunnerMetadata(
+  metadata: Record<string, unknown> | null,
+  extras: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+  const mergedEntries = Object.entries({ ...(metadata ?? {}), ...extras }).filter(
+    ([, value]) => value !== undefined,
+  );
+
+  if (mergedEntries.length === 0) {
+    return undefined;
+  }
+
+  return Object.fromEntries(mergedEntries);
+}
+
+function getDisplayStatus(rawStatus: RunnerDurableStatus, lastSeen: string): RunnerPresence['status'] {
+  if (rawStatus === 'offline' || isRunnerStale(lastSeen)) {
+    return 'offline';
+  }
+
+  return getRunnerPresenceStatus(rawStatus);
+}
+
+function normalizeRunnerPresence(runner: RunnerPresence): RunnerPresence {
+  const rawStatus = runner.raw_status ?? runner.status;
+  const status = getDisplayStatus(rawStatus, runner.last_seen);
+
+  if (runner.raw_status === rawStatus && runner.status === status) {
+    return runner;
+  }
+
+  return {
+    ...runner,
+    raw_status: rawStatus,
+    status,
+  };
+}
+
+function normalizeRunnerRow(row: RunnerRowSnapshot): RunnerPresence {
+  const metadata = coerceRunnerMetadata(row.metadata);
+  const lastSeen = getRunnerLastSeen(row);
+  const rawStatus = getStoredRunnerStatus(row);
+
+  return {
+    runner_id: row.name,
+    runner_name: row.name,
+    status: getDisplayStatus(rawStatus, lastSeen),
+    raw_status: rawStatus,
+    active_jobs: row.current_job_id ? 1 : 0,
+    last_seen: lastSeen,
+    enabled: row.enabled,
+    version: getRunnerVersion(metadata),
+    build_check_reason: getRunnerBuildCheckReason(metadata),
+    metadata: buildRunnerMetadata(metadata, {
+      jobs_completed: row.jobs_completed ?? undefined,
+      memory_usage_mb: row.memory_usage_mb ?? undefined,
+      current_job_id: row.current_job_id ?? undefined,
+      raw_status: rawStatus,
+      os: getRunnerOs(metadata),
+      labels: getRunnerLabels(metadata),
+    }),
+  };
+}
+
+function normalizeApiRunner(runner: ApiRunnerData): RunnerPresence {
+  const metadata = runner.metadata ?? null;
+  const lastSeen = runner.last_seen ?? new Date(0).toISOString();
+  const rawStatus = runner.raw_status ?? (runner.busy ? 'busy' : runner.status === 'offline' ? 'offline' : 'online');
+  const labels = runner.labels
+    .map((label) => (typeof label === 'string' ? label : label?.name))
+    .filter((label): label is string => typeof label === 'string' && label.trim().length > 0);
+
+  return {
+    runner_id: runner.id,
+    runner_name: runner.name,
+    status: getDisplayStatus(rawStatus, lastSeen),
+    raw_status: rawStatus,
+    active_jobs: runner.active_jobs ?? (runner.busy ? 1 : 0),
+    last_seen: lastSeen,
+    enabled: runner.enabled,
+    version: runner.version ?? null,
+    build_check_reason: runner.build_check_reason ?? null,
+    metadata: buildRunnerMetadata(metadata, {
+      os: runner.os,
+      labels,
+      raw_status: rawStatus,
+    }),
+  };
+}
+
+export interface RunnerPresenceState {
+  runners: Record<string, RunnerPresence>;
+  onlineIds: Set<string>;
+  isConnected: boolean;
+  error: Error | null;
+}
+
+export interface UseRunnerPresenceOptions {
+  channelName?: string;
+  autoConnect?: boolean;
+  fetchInitial?: boolean;
+  onJoin?: (runnerId: string, presence: RunnerPresence) => void;
+  onLeave?: (runnerId: string) => void;
+  onSync?: (runners: Record<string, RunnerPresence>) => void;
+}
+
+const DEFAULT_OPTIONS: Partial<UseRunnerPresenceOptions> = {
+  autoConnect: true,
+};
+
 export interface UseRunnerPresenceReturn extends RunnerPresenceState {
-  /** Connect to the presence channel */
   connect: () => void;
-  /** Disconnect from the presence channel */
   disconnect: () => void;
-  /** Manually trigger a presence sync */
   sync: () => void;
-  /** Get a specific runner's presence data */
   getRunner: (runnerId: string) => RunnerPresence | undefined;
-  /** Get count of online runners */
   getOnlineCount: () => number;
-  /** Get count of busy runners */
   getBusyCount: () => number;
-  /** Check if a specific runner is online */
   isOnline: (runnerId: string) => boolean;
-  /** Whether initial runners are being fetched */
   isLoading: boolean;
 }
 
-/**
- * useRunnerPresence - Hook for tracking runner presence in real-time
- *
- * @example
- * ```typescript
- * const {
- *   runners,
- *   onlineIds,
- *   isConnected,
- *   isOnline,
- *   connect,
- *   disconnect,
- * } = useRunnerPresence({
- *   onJoin: (id, presence) => console.log(`${id} joined`),
- *   onLeave: (id) => console.log(`${id} left`),
- * });
- * ```
- */
 export function useRunnerPresence(
   options: UseRunnerPresenceOptions = {},
 ): UseRunnerPresenceReturn {
@@ -174,214 +307,300 @@ export function useRunnerPresence(
     isConnected: false,
     error: null,
   });
-
   const [isLoading, setIsLoading] = useState(false);
 
+  const mountedRef = useRef(false);
+  const activeRef = useRef(autoConnect);
+  const runnersRef = useRef<Record<string, RunnerPresence>>({});
+  const sharedChannelRef = useRef<SharedRunnerChannelEntry | null>(null);
+  const payloadListenerRef = useRef<((payload: RunnerRealtimePayload) => void) | null>(null);
+  const statusListenerRef = useRef<((status: RunnerRealtimeStatus) => void) | null>(null);
   const callbacksRef = useRef({ onJoin, onLeave, onSync });
-  const trackedChannelRef = useRef<RealtimeChannel | null>(null);
-  callbacksRef.current.onJoin = onJoin;
-  callbacksRef.current.onLeave = onLeave;
-  callbacksRef.current.onSync = onSync;
 
-  /**
-   * Fetch initial runners from the API endpoint
-   */
-  const fetchInitialRunners = useCallback(async () => {
+  callbacksRef.current = { onJoin, onLeave, onSync };
+
+  const setRunnerState = useCallback(
+    (updater: (previous: RunnerPresenceState) => RunnerPresenceState) => {
+      if (!mountedRef.current) {
+        return;
+      }
+
+      setState(updater);
+    },
+    [],
+  );
+
+  const applyRunners = useCallback(
+    (
+      nextRunners: Record<string, RunnerPresence>,
+      options: { notify?: boolean; clearError?: boolean } = {},
+    ) => {
+      const normalizedRunners = Object.fromEntries(
+        Object.entries(nextRunners).map(([runnerId, runner]) => [runnerId, normalizeRunnerPresence(runner)]),
+      );
+      const previousRunners = runnersRef.current;
+      const previousOnlineIds = createOnlineIds(previousRunners);
+      const nextOnlineIds = createOnlineIds(normalizedRunners);
+
+      if (runnerMapsEqual(previousRunners, normalizedRunners)) {
+        if (options.clearError) {
+          setRunnerState((previousState) => ({ ...previousState, error: null }));
+        }
+        return;
+      }
+
+      runnersRef.current = normalizedRunners;
+
+      setRunnerState((previousState) => ({
+        ...previousState,
+        runners: normalizedRunners,
+        onlineIds: nextOnlineIds,
+        error: options.clearError ? null : previousState.error,
+      }));
+
+      if (options.notify === false) {
+        return;
+      }
+
+      const { onJoin: handleJoin, onLeave: handleLeave, onSync: handleSync } = callbacksRef.current;
+
+      for (const [runnerId, runner] of Object.entries(normalizedRunners)) {
+        if (!previousOnlineIds.has(runnerId) && nextOnlineIds.has(runnerId)) {
+          handleJoin?.(runnerId, runner);
+        }
+      }
+
+      for (const runnerId of previousOnlineIds) {
+        if (!nextOnlineIds.has(runnerId)) {
+          handleLeave?.(runnerId);
+        }
+      }
+
+      handleSync?.(normalizedRunners);
+    },
+    [setRunnerState],
+  );
+
+  const refetchRunners = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/admin/scraper-network/runners");
+      const response = await fetch('/api/admin/scraper-network/runners');
 
       if (!response.ok) {
-        throw new Error("Failed to fetch runners");
+        throw new Error('Failed to fetch runners');
       }
 
       const data = (await response.json()) as { runners: ApiRunnerData[] };
+      const nextRunners = Object.fromEntries(
+        (data.runners ?? []).map((runner) => [runner.id, normalizeApiRunner(runner)]),
+      );
 
-      // Convert API data to RunnerPresence format
-      const initialRunners: Record<string, RunnerPresence> = {};
-
-      data.runners.forEach((runner) => {
-        initialRunners[runner.id] = {
-          runner_id: runner.id,
-          runner_name: runner.name,
-          status: runner.status === "offline" ? "offline" : "online",
-          active_jobs: runner.active_jobs ?? (runner.busy ? 1 : 0),
-          last_seen: runner.last_seen ?? new Date(0).toISOString(),
-          enabled: runner.enabled,
-          version: runner.version,
-          build_check_reason: runner.build_check_reason,
-          metadata: {
-            os: runner.os,
-            labels: runner.labels,
-          },
-        };
-      });
-
-      setState((prev) => ({
-        ...prev,
-        runners: initialRunners,
-      }));
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error("Failed to fetch initial runners");
-      setState((prev) => ({ ...prev, error }));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  /**
-   * Process presence sync events from the unified realtime channel
-   */
-  const handlePresenceSync = useCallback((presenceState: RealtimePresenceState) => {
-    setState((prev) => {
-      const syncedRunners = extractRunnersFromPresenceState(presenceState);
-      const nextOnlineIds = new Set(Object.keys(syncedRunners));
-      const nextRunners = { ...prev.runners };
-      const joined: Array<{ runnerId: string; presence: RunnerPresence }> = [];
-      const leftIds: string[] = [];
-      const { onJoin, onLeave, onSync } = callbacksRef.current;
-
-      Object.entries(syncedRunners).forEach(([runnerId, presence]) => {
-        nextRunners[runnerId] = presence;
-
-        if (!prev.onlineIds.has(runnerId)) {
-          joined.push({ runnerId, presence });
-        }
-      });
-
-      prev.onlineIds.forEach((runnerId) => {
-        if (nextOnlineIds.has(runnerId)) {
-          return;
-        }
-
-        leftIds.push(runnerId);
-
-        const previousRunner = nextRunners[runnerId];
-
-        if (!previousRunner) {
-          return;
-        }
-
-        nextRunners[runnerId] = {
-          ...previousRunner,
-          status: "offline",
-          active_jobs: 0,
-          last_seen: new Date().toISOString(),
-        };
-      });
-
-      joined.forEach(({ runnerId, presence }) => {
-        onJoin?.(runnerId, presence);
-      });
-
-      leftIds.forEach((runnerId) => {
-        onLeave?.(runnerId);
-      });
-
-      onSync?.(syncedRunners);
-
-      return {
-        ...prev,
+      runnersRef.current = nextRunners;
+      setRunnerState((previousState) => ({
+        ...previousState,
         runners: nextRunners,
-        onlineIds: nextOnlineIds,
+        onlineIds: createOnlineIds(nextRunners),
         error: null,
-      };
-    });
-  }, []);
-
-  const {
-    connectionState,
-    lastError,
-    connect: connectToChannel,
-    disconnect: disconnectFromChannel,
-    getChannel,
-  } = useRealtimeChannel({
-    channelName,
-    autoConnect: false,
-    onMessage: () => undefined,
-    onPresenceSync: handlePresenceSync,
-  });
-
-  /**
-   * Connect to the presence channel through the unified realtime hook
-   */
-  const connect = useCallback(() => {
-    connectToChannel();
-    setState((prev) =>
-      prev.isConnected ? prev : { ...prev, isConnected: true, error: null },
-    );
-  }, [connectToChannel]);
-
-  /**
-   * Disconnect from the presence channel through the unified realtime hook
-   */
-  const disconnect = useCallback(() => {
-    trackedChannelRef.current = null;
-    disconnectFromChannel();
-    setState((prev) =>
-      prev.isConnected ? { ...prev, isConnected: false } : prev,
-    );
-  }, [disconnectFromChannel]);
-
-  /**
-   * Manually trigger a presence sync
-   */
-  const sync = useCallback(() => {
-    const channel = getChannel();
-
-    if (channel) {
-      void channel.track({
-        user: "admin-dashboard",
-        synced_at: new Date().toISOString(),
-      });
+      }));
+    } catch (error) {
+      const nextError = error instanceof Error ? error : new Error('Failed to fetch runners');
+      setRunnerState((previousState) => ({ ...previousState, error: nextError }));
+    } finally {
+      if (mountedRef.current) {
+        setIsLoading(false);
+      }
     }
-  }, [getChannel]);
+  }, [setRunnerState]);
 
-  const fetchInitialRunnersRef = useRef(fetchInitialRunners);
-  const connectRef = useRef(connect);
-
-  fetchInitialRunnersRef.current = fetchInitialRunners;
-  connectRef.current = connect;
-
-  useEffect(() => {
-    const isConnected = connectionState === "connecting" || connectionState === "connected";
-
-    setState((prev) => {
-      if (prev.isConnected === isConnected && prev.error === lastError) {
-        return prev;
+  const handleRunnerPayload = useCallback(
+    (payload: RunnerRealtimePayload) => {
+      if (!activeRef.current) {
+        return;
       }
 
-      return {
-        ...prev,
-        isConnected,
-        error: lastError,
-      };
-    });
-  }, [connectionState, lastError]);
+      const nextRunners = { ...runnersRef.current };
+
+      if (payload.eventType === 'DELETE') {
+        const oldRow = payload.old;
+
+        if (isRunnerRowSnapshot(oldRow)) {
+          delete nextRunners[oldRow.name];
+          applyRunners(nextRunners, { clearError: true });
+        }
+        return;
+      }
+
+      const newRow = payload.new;
+      if (!isRunnerRowSnapshot(newRow)) {
+        return;
+      }
+
+      nextRunners[newRow.name] = normalizeRunnerRow(newRow);
+      applyRunners(nextRunners, { clearError: true });
+    },
+    [applyRunners],
+  );
+
+  const handleStatusChange = useCallback(
+    (status: RunnerRealtimeStatus) => {
+      if (!activeRef.current) {
+        return;
+      }
+
+      if (status === 'SUBSCRIBED') {
+        setRunnerState((previousState) => ({
+          ...previousState,
+          isConnected: true,
+          error: null,
+        }));
+        return;
+      }
+
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        const error = new Error(
+          status === 'TIMED_OUT'
+            ? 'Runner subscription timed out.'
+            : 'Runner subscription error.',
+        );
+
+        setRunnerState((previousState) => ({
+          ...previousState,
+          isConnected: false,
+          error,
+        }));
+        return;
+      }
+
+      setRunnerState((previousState) => ({
+        ...previousState,
+        isConnected: false,
+      }));
+    },
+    [setRunnerState],
+  );
+
+  const attachSharedChannel = useCallback(() => {
+    if (sharedChannelRef.current) {
+      return;
+    }
+
+    const entry = ensureSharedRunnerChannel(channelName);
+    const payloadListener = (payload: RunnerRealtimePayload) => {
+      handleRunnerPayload(payload);
+    };
+    const statusListener = (status: RunnerRealtimeStatus) => {
+      handleStatusChange(status);
+    };
+
+    entry.listeners.add(payloadListener);
+    entry.statusListeners.add(statusListener);
+    sharedChannelRef.current = entry;
+    payloadListenerRef.current = payloadListener;
+    statusListenerRef.current = statusListener;
+
+    if (entry.lastStatus === 'SUBSCRIBED') {
+      handleStatusChange('SUBSCRIBED');
+    }
+  }, [channelName, handleRunnerPayload, handleStatusChange]);
+
+  const detachSharedChannel = useCallback(() => {
+    const entry = sharedChannelRef.current;
+    const payloadListener = payloadListenerRef.current;
+    const statusListener = statusListenerRef.current;
+
+    if (!entry) {
+      return;
+    }
+
+    if (payloadListener) {
+      entry.listeners.delete(payloadListener);
+    }
+
+    if (statusListener) {
+      entry.statusListeners.delete(statusListener);
+    }
+
+    cleanupSharedRunnerChannel(channelName, entry);
+
+    sharedChannelRef.current = null;
+    payloadListenerRef.current = null;
+    statusListenerRef.current = null;
+  }, [channelName]);
+
+  const refreshStaleStatuses = useCallback(() => {
+    if (!activeRef.current) {
+      return;
+    }
+
+    const nextRunners = Object.fromEntries(
+      Object.entries(runnersRef.current).map(([runnerId, runner]) => [runnerId, normalizeRunnerPresence(runner)]),
+    );
+
+    applyRunners(nextRunners);
+  }, [applyRunners]);
+
+  const connect = useCallback(() => {
+    activeRef.current = true;
+    attachSharedChannel();
+  }, [attachSharedChannel]);
+
+  const disconnect = useCallback(() => {
+    activeRef.current = false;
+    detachSharedChannel();
+    setRunnerState((previousState) => ({
+      ...previousState,
+      isConnected: false,
+    }));
+  }, [detachSharedChannel, setRunnerState]);
+
+  const sync = useCallback(() => {
+    void refetchRunners();
+  }, [refetchRunners]);
 
   useEffect(() => {
-    if (connectionState !== "connected") {
-      trackedChannelRef.current = null;
-      return;
-    }
+    mountedRef.current = true;
 
-    const channel = getChannel();
+    return () => {
+      mountedRef.current = false;
+      activeRef.current = false;
+      detachSharedChannel();
+    };
+  }, [detachSharedChannel]);
 
-    if (!channel || trackedChannelRef.current === channel) {
-      return;
-    }
+  useEffect(() => {
+    activeRef.current = autoConnect;
+  }, [autoConnect]);
 
-    trackedChannelRef.current = channel;
+  useEffect(() => {
+    let cancelled = false;
 
-    void channel.track({
-      user: "admin-dashboard",
-      online_at: new Date().toISOString(),
-    });
-  }, [connectionState, getChannel]);
+    const init = async () => {
+      if (fetchInitial) {
+        await refetchRunners();
+      }
 
-  /**
-   * Get a specific runner's presence data
-   */
+      if (!cancelled && autoConnect) {
+        connect();
+      }
+    };
+
+    void init();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [autoConnect, connect, fetchInitial, refetchRunners]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      refreshStaleStatuses();
+    }, RUNNER_STALENESS_CHECK_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [refreshStaleStatuses]);
+
   const getRunner = useCallback(
     (runnerId: string): RunnerPresence | undefined => {
       return state.runners[runnerId];
@@ -389,59 +608,20 @@ export function useRunnerPresence(
     [state.runners],
   );
 
-  /**
-   * Get count of online runners
-   */
   const getOnlineCount = useCallback((): number => {
     return state.onlineIds.size;
   }, [state.onlineIds]);
 
-  /**
-   * Get count of busy runners
-   */
   const getBusyCount = useCallback((): number => {
-    return Object.values(state.runners).filter((r) => r.status === "busy")
-      .length;
+    return Object.values(state.runners).filter((runner) => runner.status === 'busy').length;
   }, [state.runners]);
 
-  /**
-   * Check if a specific runner is online
-   */
   const isOnline = useCallback(
     (runnerId: string): boolean => {
       return state.onlineIds.has(runnerId);
     },
     [state.onlineIds],
   );
-
-  /**
-   * Auto-connect on mount if enabled
-   */
-  useEffect(() => {
-    let isActive = true;
-
-    const init = async () => {
-      // Fetch initial runners from API first
-      if (fetchInitial) {
-        await fetchInitialRunnersRef.current();
-      }
-
-      if (!isActive) {
-        return;
-      }
-
-      // Then connect to presence channel
-      if (autoConnect) {
-        connectRef.current();
-      }
-    };
-
-    void init();
-
-    return () => {
-      isActive = false;
-    };
-  }, [autoConnect, fetchInitial]);
 
   return {
     ...state,

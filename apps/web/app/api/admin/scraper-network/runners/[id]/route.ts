@@ -3,6 +3,13 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase/config';
+import {
+    coerceRunnerMetadata,
+    getEffectiveRunnerStatus,
+    getRunnerBuildCheckReason,
+    getRunnerLastSeen,
+    getRunnerVersion,
+} from '@/lib/scraper-runners';
 
 function getSupabaseAdmin(): SupabaseClient {
     const url = SUPABASE_URL;
@@ -41,10 +48,14 @@ interface RunnerStats {
 interface RunnerResponse {
     id: string;
     name: string;
-    status: 'online' | 'offline' | 'busy' | 'idle' | 'polling';
+    status: 'online' | 'offline' | 'busy' | 'idle' | 'polling' | 'paused';
     last_seen_at: string;
     last_seen_relative: string;
     current_job_id: string | null;
+    enabled: boolean;
+    active_jobs: number;
+    version: string | null;
+    build_check_reason: string | null;
     metadata: Record<string, unknown>;
     stats: RunnerStats;
 }
@@ -79,15 +90,12 @@ export async function GET(
             return NextResponse.json({ error: 'Runner not found' }, { status: 404 });
         }
 
-        // Calculate status based on last_seen_at
         const now = new Date();
-        const lastSeen = new Date(runner.last_seen_at);
+        const status = getEffectiveRunnerStatus(runner);
+        const lastSeenAt = getRunnerLastSeen(runner);
+        const lastSeen = new Date(lastSeenAt);
         const minutesSinceSeen = (now.getTime() - lastSeen.getTime()) / 1000 / 60;
-
-        let status: RunnerResponse['status'] = runner.status;
-        if (minutesSinceSeen > 5) {
-            status = 'offline';
-        }
+        const metadata = coerceRunnerMetadata(runner.metadata) ?? {};
 
         // Calculate relative time string
         const relativeTime = getRelativeTimeString(minutesSinceSeen);
@@ -106,7 +114,6 @@ export async function GET(
 
         if (!statsError && statsData && statsData.length > 0) {
             const completed = statsData.filter(j => j.status === 'completed');
-            const failed = statsData.filter(j => j.status === 'failed');
             const successful = statsData.filter(j => j.status === 'success');
 
             const totalDuration = statsData.reduce((sum, j) => sum + (j.duration_ms || 0), 0);
@@ -126,10 +133,14 @@ export async function GET(
             id: runner.name,
             name: runner.name,
             status,
-            last_seen_at: runner.last_seen_at,
+            last_seen_at: lastSeenAt,
             last_seen_relative: relativeTime,
             current_job_id: runner.current_job_id,
-            metadata: runner.metadata || {},
+            enabled: runner.enabled,
+            active_jobs: runner.current_job_id ? 1 : 0,
+            version: getRunnerVersion(metadata),
+            build_check_reason: getRunnerBuildCheckReason(metadata),
+            metadata,
             stats
         };
 

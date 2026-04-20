@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { useState } from "react";
 import { RunnerDetail, RunnerStatus } from "./types";
 import { Card } from "@/components/ui/card";
@@ -21,7 +20,6 @@ import {
   Edit2, 
   Trash2, 
   AlertCircle, 
-  MapPin, 
   Cpu 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -91,7 +89,7 @@ export function RunnerCard({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2 shrink-0">
           <Badge variant={currentStatus.badgeVariant}>
             {currentStatus.label}
           </Badge>
@@ -149,7 +147,7 @@ export function RunnerCard({
 
       {/* Footer Actions */}
       <div className="flex justify-between items-center mt-auto pt-3 border-t-2 border-zinc-900/10">
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2">
           <Switch 
             id={`runner-enabled-${runner.id}`} 
             checked={isEnabled} 
@@ -165,7 +163,7 @@ export function RunnerCard({
           </Label>
         </div>
         
-        {runner.build_check_reason && (
+        {(runner.build_check_reason === "outdated" || runner.build_check_reason === "missing") && (
           <Badge variant="warning" className="animate-pulse border-2 border-zinc-900 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
             <AlertCircle className="mr-1 h-3 w-3" /> Update Required
           </Badge>

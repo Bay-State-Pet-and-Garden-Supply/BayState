@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import atexit
 import asyncio
+import contextvars
 import logging
 import threading
 import time
@@ -28,6 +29,11 @@ from core.api_client import ConnectionError as ApiConnectionError
 from core.realtime_manager import RealtimeError
 
 logger = logging.getLogger(__name__)
+
+_ACTIVE_JOB_LOG_CONTEXT: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
+    "active_job_log_context",
+    default=None,
+)
 
 IGNORED_LOGGER_PREFIXES = ("httpx", "httpcore", "urllib3")
 LOG_RECORD_RESERVED_KEYS = set(logging.makeLogRecord({}).__dict__.keys()) | {"message", "asctime"}
@@ -58,6 +64,62 @@ DETAIL_CONTEXT_FIELDS = {
     "chunk_index",
     "lease_token",
 }
+
+
+def _is_empty_context_value(value: Any) -> bool:
+    return value is None or value == "" or value == {} or value == []
+
+
+def _bind_job_log_context(**context: Any) -> contextvars.Token[dict[str, Any] | None]:
+    current_context = dict(_ACTIVE_JOB_LOG_CONTEXT.get() or {})
+    current_context.update({key: value for key, value in context.items() if not _is_empty_context_value(value)})
+    return _ACTIVE_JOB_LOG_CONTEXT.set(current_context or None)
+
+
+def _reset_job_log_context(token: contextvars.Token[dict[str, Any] | None]) -> None:
+    _ACTIVE_JOB_LOG_CONTEXT.reset(token)
+
+
+class JobLogContextFilter(logging.Filter):
+    """Inject active job context into plain log records before handlers see them."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if getattr(record, "_job_logging_internal", False):
+            return True
+
+        context = _ACTIVE_JOB_LOG_CONTEXT.get()
+        if not context:
+            return True
+
+        for key, value in context.items():
+            if key == "details":
+                existing_details = getattr(record, "details", None)
+                merged_details: dict[str, Any] = {}
+
+                if isinstance(value, Mapping):
+                    merged_details.update(_serialize_json(value) or {})
+                if isinstance(existing_details, Mapping):
+                    merged_details.update(_serialize_json(existing_details) or {})
+
+                if merged_details:
+                    setattr(record, "details", merged_details)
+                continue
+
+            if _is_empty_context_value(getattr(record, key, None)):
+                setattr(record, key, value)
+
+        return True
+
+
+_JOB_LOG_CONTEXT_FILTER = JobLogContextFilter()
+
+
+def _ensure_job_log_context_filter(handler: logging.Handler) -> None:
+    if getattr(handler, "_baystate_job_log_context_filter_attached", False):
+        return
+
+    handler.addFilter(_JOB_LOG_CONTEXT_FILTER)
+    setattr(handler, "_baystate_job_log_context_filter_attached", True)
 
 
 def _to_iso_timestamp(value: Any = None) -> str:
@@ -869,6 +931,7 @@ class RunnerLogHandler(logging.Handler):
     def __init__(self, transport: JobLogTransport):
         super().__init__(level=logging.INFO)
         self.transport = transport
+        _ensure_job_log_context_filter(self)
 
     def emit(self, record: logging.LogRecord) -> None:
         entry = self.transport.capture(record)
@@ -909,6 +972,7 @@ class JobLoggingSession:
         flush_interval: float = 0.75,
     ) -> None:
         self.logger = logger_instance or logging.getLogger()
+        self._context_token: contextvars.Token[dict[str, Any] | None] | None = None
         self.transport = JobLogTransport(
             job_id=job_id,
             runner_name=runner_name,
@@ -924,6 +988,15 @@ class JobLoggingSession:
 
     def attach(self) -> JobLoggingSession:
         if not self._attached:
+            for handler in self.logger.handlers:
+                _ensure_job_log_context_filter(handler)
+
+            self._context_token = _bind_job_log_context(
+                job_id=self.transport.job_id,
+                runner_id=self.transport.runner_id,
+                runner_name=self.transport.runner_name,
+                details={"lease_token": self.transport.lease_token} if self.transport.lease_token else None,
+            )
             self.logger.addHandler(self.handler)
             self._attached = True
         return self
@@ -932,6 +1005,9 @@ class JobLoggingSession:
         if self._attached:
             self.logger.removeHandler(self.handler)
             self._attached = False
+        if self._context_token is not None:
+            _reset_job_log_context(self._context_token)
+            self._context_token = None
         self.handler.close()
 
     def emit_progress(

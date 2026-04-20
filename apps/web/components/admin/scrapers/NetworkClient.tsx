@@ -51,7 +51,7 @@ interface Runner {
   os: string;
   status: 'online' | 'offline';
   busy: boolean;
-  labels: Array<{ name: string }>;
+  labels: Array<{ name: string } | string>;
 }
 
 interface RunnerAccount {
@@ -311,14 +311,13 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
                     return (
                       <div
                         key={runnerKey}
-                        className={`rounded-lg border p-4 cursor-pointer transition-colors ${
+                        className={`rounded-lg border p-4 transition-colors ${
                           isOnline
                             ? isBusy
                                 ? 'border-yellow-200 bg-yellow-50 hover:border-yellow-300'
                                 : 'border-green-200 bg-green-50 hover:border-green-300'
                             : 'border-border bg-muted hover:border-border'
                         }`}
-                        onClick={() => router.push(`/admin/scrapers/network?runner=${runner.id || runner.name}`)}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3">
@@ -341,20 +340,33 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
 
                         {runner.labels && runner.labels.length > 0 && (
                           <div className="mt-3 flex flex-wrap gap-1">
-                            {runner.labels.map((label, lidx) => (
-                              <Badge key={`label-${lidx}`} variant="secondary" className="text-xs">
-                                {label.name}
-                              </Badge>
-                            ))}
+                            {runner.labels.map((label) => {
+                              const labelName = typeof label === 'string' ? label : label.name;
+                              return (
+                                <Badge key={`${runner.id}-${labelName}`} variant="secondary" className="text-xs">
+                                  {labelName}
+                                </Badge>
+                              );
+                            })}
                           </div>
                         )}
 
                         <div className="mt-4 flex gap-2">
                           <Button
+                            variant="secondary"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => router.push(`/admin/scrapers/network?runner=${runner.id || runner.name}`)}
+                          >
+                            <Server className="mr-1 h-3 w-3" />
+                            Details
+                          </Button>
+                          <Button
                             variant="outline"
                             size="sm"
                             className="flex-1"
-                            onClick={() => {
+                            onClick={(event) => {
+                              event.stopPropagation();
                               setSelectedRunner(runner);
                               setShowJobDialog(true);
                             }}
@@ -588,8 +600,8 @@ export function NetworkClient({ initialRunners = [], initialJobs = [] }: Network
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Runner Name</label>
-                <Input placeholder="e.g., server-1, runner-us-east" />
+                <label htmlFor="runner-account-name" className="text-sm font-medium">Runner Name</label>
+                <Input id="runner-account-name" placeholder="e.g., server-1, runner-us-east" />
               </div>
             </div>
             <DialogFooter>
