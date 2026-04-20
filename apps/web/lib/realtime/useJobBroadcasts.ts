@@ -1,9 +1,10 @@
 /**
- * useJobBroadcasts - Supabase Broadcast API hook for receiving transient events from runners
+ * useJobBroadcasts - Supabase Broadcast API hook for transient runner diagnostics
  *
  * This hook subscribes to broadcast events sent by scraper runners. Broadcasts are
- * transient messages that don't persist to the database - perfect for logs, progress
- * updates, and heartbeat events.
+ * transient messages that don't persist to the database. They are useful for
+ * debugging and diagnostics, but should not be treated as the source of truth for
+ * runner status, job progress, or job logs.
  */
 
 import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
@@ -158,7 +159,7 @@ function resolveBroadcastEnvelope(
 }
 
 /**
- * Broadcast subscription state
+ * Broadcast subscription state for transient diagnostic events.
  */
 export interface JobBroadcastState {
   /** All received broadcasts organized by event type */
@@ -176,7 +177,7 @@ export interface JobBroadcastState {
 }
 
 /**
- * Configuration options for the broadcast hook
+ * Configuration options for the transient diagnostic hook.
  */
 export interface UseJobBroadcastOptions {
   /** Optional custom channel name for broadcasts */
@@ -237,7 +238,7 @@ export interface UseJobBroadcastsReturn extends JobBroadcastState {
 }
 
 /**
- * useJobBroadcasts - Hook for receiving broadcast events from runners
+ * useJobBroadcasts - Hook for receiving transient broadcast diagnostics
  *
  * @example
  * ```typescript
@@ -251,6 +252,8 @@ export interface UseJobBroadcastsReturn extends JobBroadcastState {
  *   onLog: (log) => console.log(`[${log.level}] ${log.message}`),
  *   onProgress: (jobId, progress) => updateProgressBar(jobId, progress),
  * });
+ *
+ * // Prefer useJobSubscription/useLogSubscription for durable UI state.
  * ```
  */
 export function useJobBroadcasts(
@@ -373,15 +376,10 @@ export function useJobBroadcasts(
     [processBroadcast]
   );
 
-  const handleRealtimeError = useCallback((error: Error) => {
-    // Error is already tracked via useRealtimeChannel's lastError
-  }, []);
-
   const { connectionState, lastError, connect, disconnect } = useRealtimeChannel({
     channelName,
     autoConnect,
     onMessage: handleRealtimeMessage,
-    onError: handleRealtimeError,
   });
 
   /**

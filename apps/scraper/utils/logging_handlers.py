@@ -3,7 +3,7 @@ Job-scoped logging transport for Bay State Scraper.
 
 This module provides a single structured logging pipeline for scraper jobs:
 - persist logs to the coordinator API with low-latency batching
-- broadcast the same log entries to Realtime for optimistic UI updates
+- optionally mirror the same log entries to Realtime for transient diagnostics
 - keep an in-memory history so completed jobs can return a stable log timeline
 
 The key rule is that only log records explicitly tagged with a matching job_id

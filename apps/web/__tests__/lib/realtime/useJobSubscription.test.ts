@@ -1,5 +1,4 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { useState, useEffect } from 'react';
 import { useJobSubscription } from '@/lib/realtime/useJobSubscription';
 
 type RealtimeStatus = 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CLOSED' | 'TIMED_OUT';
@@ -64,49 +63,6 @@ jest.mock('@/lib/supabase/client', () => {
         }),
       }),
     })),
-  };
-});
-
-jest.mock('@/lib/realtime/useRealtimeChannel', () => {
-  const { useState, useEffect } = jest.requireActual('react') as typeof import('react');
-  return {
-    useRealtimeChannel: jest.fn((options: {
-      channelName: string;
-      autoConnect: boolean;
-      onMessage: (payload: unknown) => void;
-      onError?: (error: Error) => void;
-    }) => {
-      const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
-      const [lastError] = useState<Error | null>(null);
-
-      const channel = new MockRealtimeChannel();
-      mockChannels.push(channel);
-
-      const connect = () => {
-        setConnectionState('connecting');
-        setTimeout(() => {
-          setConnectionState('connected');
-        }, 0);
-      };
-
-      const disconnect = () => {
-        setConnectionState('disconnected');
-      };
-
-      useEffect(() => {
-        if (options.autoConnect) {
-          connect();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, []);
-
-      return {
-        connectionState,
-        lastError,
-        connect,
-        disconnect,
-      };
-    }),
   };
 });
 
@@ -292,6 +248,10 @@ describe('useJobSubscription', () => {
       const { result } = renderHook(() =>
         useJobSubscription({ autoConnect: true }),
       );
+
+      act(() => {
+        mockChannels[0]?.emitStatus('SUBSCRIBED');
+      });
 
       await waitFor(() => {
         expect(result.current.isConnected).toBe(true);

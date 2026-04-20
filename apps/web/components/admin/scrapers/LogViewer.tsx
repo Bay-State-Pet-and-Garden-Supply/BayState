@@ -17,7 +17,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { useJobBroadcasts } from '@/lib/realtime/useJobBroadcasts';
 import { useJobSubscription } from '@/lib/realtime/useJobSubscription';
 import { useLogSubscription } from '@/lib/realtime/useLogSubscription';
 import {
@@ -147,14 +146,6 @@ export function LogViewer({
     maxEntries: 2000,
   });
 
-  const { logs: broadcastLogs, isConnected: broadcastConnected } = useJobBroadcasts(
-    {
-      autoConnect: true,
-      maxLogs: 2000,
-    },
-    { includeProgress: false },
-  );
-
   const {
     isConnected: jobConnected,
     getJob,
@@ -167,25 +158,22 @@ export function LogViewer({
   const mergedLogs = useMemo(() => {
     return mergeScrapeJobLogs(
       initialLogs,
-      [
-        ...persistedRealtimeLogs,
-        ...broadcastLogs.filter((log) => log.job_id === jobId),
-      ],
+      persistedRealtimeLogs,
       2000,
     );
-  }, [broadcastLogs, initialLogs, jobId, persistedRealtimeLogs]);
+  }, [initialLogs, persistedRealtimeLogs]);
 
   const currentJob = getJob(jobId);
   const liveProgress = currentJob
     ? progressUpdateFromJobRecord(currentJob)
     : initialProgress;
-  const isConnected = dbConnected || broadcastConnected || jobConnected;
+  const isConnected = dbConnected || jobConnected;
 
   useEffect(() => {
-    if (isExpanded && logContainerRef.current) {
+    if (isExpanded && logContainerRef.current && mergedLogs.length > 0) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
-  }, [mergedLogs, isExpanded]);
+  }, [isExpanded, mergedLogs.length]);
 
   const filteredLogs = useMemo(() => {
     return mergedLogs.filter((log) => {

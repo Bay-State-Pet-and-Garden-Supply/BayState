@@ -4,7 +4,7 @@ Supabase Realtime subscription manager for scrape job notifications.
 Features:
 - Subscribe to scrape_jobs INSERT events
 - Track runner presence (online/offline status)
-- Broadcast job progress, logs, and heartbeats to admin dashboard
+- Optionally broadcast transient progress, log, and runner-status diagnostics
 """
 
 from __future__ import annotations
@@ -25,8 +25,6 @@ MAX_RECONNECT_ATTEMPTS = len(RECONNECT_DELAYS)
 # Broadcast channel names
 CHANNEL_RUNNER_PRESENCE = "runner-presence"
 CHANNEL_JOB_BROADCAST = "job-broadcast"
-CHANNEL_RUNNER_LOGS = "runner-logs"
-
 BROADCAST_CIRCUIT_BREAKER_THRESHOLD = 5
 BROADCAST_CIRCUIT_BREAKER_TIMEOUT_SECONDS = 60.0
 TRANSIENT_REALTIME_ERROR_MARKERS = (
@@ -94,7 +92,7 @@ class RealtimeManager:
     - Thread-safe job queuing via asyncio.Queue
     - Graceful shutdown via asyncio.Event
     - Presence tracking for runner online/offline status
-    - Broadcast capabilities for job progress, logs, and heartbeats
+    - Optional transient broadcast capabilities for diagnostics only
     """
 
     RECONNECT_DELAYS: list[int] = RECONNECT_DELAYS
