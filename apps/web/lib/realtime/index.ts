@@ -2,16 +2,17 @@
  * BayState Realtime - Real-time hooks for scraper runner management
  *
  * This module provides Supabase Realtime hooks for:
- * - Runner presence tracking (online/offline status)
- * - Job broadcast events (logs, progress updates)
- * - Job subscription (Postgres Changes on scrape_jobs)
+ * - DB-backed runner state from scraper_runners
+ * - DB-backed job state from scrape_jobs
+ * - DB-backed persisted logs from scrape_job_logs
+ * - Optional transient broadcast diagnostics when explicitly needed
  *
  * @example
  * ```typescript
  * import {
  *   useRunnerPresence,
- *   useJobBroadcasts,
  *   useJobSubscription,
+ *   useLogSubscription,
  * } from '@/lib/realtime';
  * ```
  */

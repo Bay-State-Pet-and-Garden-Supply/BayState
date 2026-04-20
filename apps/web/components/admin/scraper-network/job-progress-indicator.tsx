@@ -1,8 +1,8 @@
 /**
  * JobProgressIndicator - Real-time job progress display
  *
- * Shows progress bars for running jobs based on broadcast
- * progress updates from runners.
+ * Shows progress bars for running jobs based on durable
+ * progress fields stored on scrape_jobs.
  */
 
 'use client';
@@ -11,8 +11,8 @@ import { useMemo, useState, useCallback } from 'react';
 import { cva } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import type { JobAssignment } from '@/lib/realtime/types';
-import { useJobSubscription, useJobBroadcasts } from '@/lib/realtime';
-import type { ScrapeJobProgressUpdate } from '@/lib/scraper-logs';
+import { useJobSubscription } from '@/lib/realtime';
+import { progressUpdateFromJobRecord, type ScrapeJobProgressUpdate } from '@/lib/scraper-logs';
 import { Progress } from '@/components/ui/progress';
 import {
   Clock,
@@ -42,7 +42,7 @@ const statusVariants = cva('flex items-center gap-1.5', {
 
 interface JobProgressItemProps {
   job: JobAssignment;
-  progress: ScrapeJobProgressUpdate | undefined;
+  progress: ScrapeJobProgressUpdate | null | undefined;
   showProgress?: boolean;
   showDetails?: boolean;
   showElapsed?: boolean;
@@ -94,6 +94,7 @@ function JobProgressItem({
   onClick,
 }: JobProgressItemProps) {
   const [expanded, setExpanded] = useState(false);
+  const isClickable = typeof onClick === 'function';
 
   const elapsed = useMemo(() => {
     return formatElapsed(job.created_at);
@@ -101,32 +102,49 @@ function JobProgressItem({
 
   return (
     <div
-      onClick={onClick}
       className={cn(
         'p-4 rounded-xl border border-slate-200 dark:border-slate-700',
-        'hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors',
-        onClick ? 'cursor-pointer' : undefined
+        isClickable ? 'hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors' : undefined,
       )}
     >
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className={cn(statusVariants({ status: job.status }))}>
-            {getStatusIcon(job.status)}
+        {isClickable ? (
+          <button
+            type="button"
+            onClick={onClick}
+            className="flex items-center gap-3 rounded text-left"
+          >
+            <div className={cn(statusVariants({ status: job.status }))}>
+              {getStatusIcon(job.status)}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                {job.scrapers?.join(', ') || 'Unknown Scraper'}
+              </p>
+              <p className="text-xs text-slate-500 font-mono">{(job.job_id || job.id).slice(0, 8)}</p>
+            </div>
+          </button>
+        ) : (
+          <div className="flex items-center gap-3">
+            <div className={cn(statusVariants({ status: job.status }))}>
+              {getStatusIcon(job.status)}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                {job.scrapers?.join(', ') || 'Unknown Scraper'}
+              </p>
+              <p className="text-xs text-slate-500 font-mono">{(job.job_id || job.id).slice(0, 8)}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-              {job.scrapers?.join(', ') || 'Unknown Scraper'}
-            </p>
-            <p className="text-xs text-slate-500 font-mono">{(job.job_id || job.id).slice(0, 8)}</p>
-          </div>
-        </div>
+        )}
 
         <div className="flex items-center gap-3">
           {showElapsed && job.status === 'running' && (
             <span className="text-xs text-slate-500">{elapsed}</span>
           )}
           <button
+            type="button"
             onClick={(event) => {
               event.stopPropagation();
               setExpanded(!expanded);
@@ -222,10 +240,7 @@ export function JobProgressIndicator({
 }: JobProgressIndicatorProps) {
   const { jobs, isConnected } = useJobSubscription({
     autoConnect: true,
-  });
-
-  const { progress } = useJobBroadcasts({
-    autoConnect: true,
+    jobIds,
   });
 
   // Get running jobs
@@ -240,10 +255,10 @@ export function JobProgressIndicator({
 
   // Get progress for each job
   const getProgressForJob = useCallback(
-    (jobId: string): ScrapeJobProgressUpdate | undefined => {
-      return progress[jobId];
+    (job: JobAssignment): ScrapeJobProgressUpdate | null => {
+      return progressUpdateFromJobRecord(job);
     },
-    [progress]
+    []
   );
 
   // Sort by newest first
@@ -290,7 +305,7 @@ export function JobProgressIndicator({
             <JobProgressItem
               key={job.id}
               job={job}
-              progress={getProgressForJob(job.id)}
+              progress={getProgressForJob(job)}
               showProgress={showProgress}
               showElapsed={showElapsed}
               onClick={() => onJobClick?.(job)}

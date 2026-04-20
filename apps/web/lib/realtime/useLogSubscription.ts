@@ -9,7 +9,6 @@ import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
 import type { RealtimeChannel, RealtimePostgresInsertPayload } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { normalizeScrapeLogEntry, mergeScrapeJobLogs, type ScrapeJobLogEntry } from '@/lib/scraper-logs';
-import { useRealtimeChannel } from './useRealtimeChannel';
 
 export type LogEntry = ScrapeJobLogEntry;
 
@@ -41,10 +40,13 @@ export interface UseLogSubscriptionReturn {
 
 type LogRecord = Record<string, unknown>;
 type LogInsertPayload = RealtimePostgresInsertPayload<LogRecord>;
+type RealtimeStatus = 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CLOSED' | 'TIMED_OUT';
 
 interface SharedLogChannelEntry {
     channel: RealtimeChannel;
     listeners: Set<(payload: LogInsertPayload) => void>;
+    statusListeners: Set<(status: RealtimeStatus) => void>;
+    lastStatus: RealtimeStatus | null;
 }
 
 const sharedLogChannels = new Map<string, SharedLogChannelEntry>();
@@ -61,6 +63,8 @@ function ensureSharedLogChannel(baseChannelName: string, jobId?: string): Shared
     const entry: SharedLogChannelEntry = {
         channel,
         listeners: new Set(),
+        statusListeners: new Set(),
+        lastStatus: null,
     };
 
     channel.on(
@@ -77,13 +81,30 @@ function ensureSharedLogChannel(baseChannelName: string, jobId?: string): Shared
             }
         }
     ).subscribe((status) => {
-        if (status === 'CHANNEL_ERROR') {
-            console.error(`[Log Subscription] Postgres Changes channel error: ${pgChannelName}`);
+        entry.lastStatus = status;
+
+        for (const listener of Array.from(entry.statusListeners)) {
+            listener(status);
         }
     });
 
     sharedLogChannels.set(pgChannelName, entry);
     return entry;
+}
+
+function cleanupSharedLogChannel(baseChannelName: string, entry: SharedLogChannelEntry) {
+    const pgChannelName = `${baseChannelName}-pg`;
+
+    if (entry.listeners.size > 0 || entry.statusListeners.size > 0) {
+        return;
+    }
+
+    if (sharedLogChannels.get(pgChannelName) !== entry) {
+        return;
+    }
+
+    createClient().removeChannel(entry.channel);
+    sharedLogChannels.delete(pgChannelName);
 }
 
 export function useLogSubscription(
@@ -97,8 +118,9 @@ export function useLogSubscription(
     } = options;
 
     const channelName = useMemo(() => `runner-logs:${jobId ?? 'all'}`, [jobId]);
-    const pgChannelName = useMemo(() => `${channelName}-pg`, [channelName]);
     const [logs, setLogs] = useState<LogEntry[]>([]);
+    const [isConnected, setIsConnected] = useState(false);
+    const [error, setError] = useState<Error | null>(null);
     const activeRef = useRef(autoConnect);
     const onLogRef = useRef(onLog);
     const optionsRef = useRef({ jobId, maxEntries });
@@ -137,55 +159,75 @@ export function useLogSubscription(
         [handleLogMessage]
     );
 
+    const handleStatusChange = useCallback((status: RealtimeStatus) => {
+        if (!activeRef.current) {
+            return;
+        }
+
+        if (status === 'SUBSCRIBED') {
+            setIsConnected(true);
+            setError(null);
+            return;
+        }
+
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            setIsConnected(false);
+            setError(
+                new Error(
+                    status === 'TIMED_OUT'
+                        ? 'Log subscription timed out.'
+                        : 'Log subscription error.'
+                )
+            );
+            return;
+        }
+
+        setIsConnected(false);
+    }, []);
+
     useEffect(() => {
         const sharedChannel = ensureSharedLogChannel(channelName, jobId);
         sharedChannel.listeners.add(handlePersistedLog);
+        const statusListener = (status: RealtimeStatus) => {
+            handleStatusChange(status);
+        };
+        sharedChannel.statusListeners.add(statusListener);
+        let cancelled = false;
+
+        if (activeRef.current && sharedChannel.lastStatus) {
+            queueMicrotask(() => {
+                if (!cancelled) {
+                    handleStatusChange(sharedChannel.lastStatus as RealtimeStatus);
+                }
+            });
+        }
 
         return () => {
+            cancelled = true;
             sharedChannel.listeners.delete(handlePersistedLog);
-
-            if (sharedChannel.listeners.size === 0 && sharedLogChannels.get(pgChannelName) === sharedChannel) {
-                createClient().removeChannel(sharedChannel.channel);
-                sharedLogChannels.delete(pgChannelName);
-            }
+            sharedChannel.statusListeners.delete(statusListener);
+            cleanupSharedLogChannel(channelName, sharedChannel);
         };
-    }, [channelName, pgChannelName, jobId, handlePersistedLog]);
-
-    const {
-        connectionState,
-        lastError,
-        connect: connectRealtimeChannel,
-        disconnect: disconnectRealtimeChannel,
-    } = useRealtimeChannel({
-        channelName,
-        autoConnect,
-        onMessage: (payload) => {
-            if (typeof payload === 'object' && payload !== null) {
-                handleLogMessage(payload as LogRecord, false);
-            }
-        },
-        onError: () => {
-            // Error handling delegated to useRealtimeChannel state
-        },
-    });
+    }, [channelName, jobId, handlePersistedLog, handleStatusChange]);
 
     const connect = useCallback(() => {
-        ensureSharedLogChannel(channelName, jobId);
+        const sharedChannel = ensureSharedLogChannel(channelName, jobId);
         activeRef.current = true;
-        connectRealtimeChannel();
-    }, [channelName, jobId, connectRealtimeChannel]);
+        setError(null);
+
+        if (sharedChannel.lastStatus) {
+            handleStatusChange(sharedChannel.lastStatus);
+        }
+    }, [channelName, jobId, handleStatusChange]);
 
     const disconnect = useCallback(() => {
         activeRef.current = false;
-        disconnectRealtimeChannel();
-    }, [disconnectRealtimeChannel]);
+        setIsConnected(false);
+    }, []);
 
     const clearLogs = useCallback(() => {
         setLogs([]);
     }, []);
-
-    const isConnected = connectionState === 'connected';
-    const error = lastError;
 
     return useMemo(
         () => ({

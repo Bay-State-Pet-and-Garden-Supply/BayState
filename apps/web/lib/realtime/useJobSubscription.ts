@@ -8,7 +8,6 @@
 import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
-import { useRealtimeChannel } from './useRealtimeChannel';
 import type { JobAssignment } from './types';
 
 /**
@@ -105,10 +104,13 @@ type JobRealtimePayload = RealtimePostgresChangesPayload<JobAssignment>;
 type JobBuckets = JobSubscriptionState['jobs'];
 type JobCounts = JobSubscriptionState['counts'];
 type JobSubscriptionData = Omit<JobSubscriptionState, 'isConnected' | 'error'>;
+type RealtimeStatus = 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CLOSED' | 'TIMED_OUT';
 
 interface SharedJobChannelEntry {
   channel: RealtimeChannel;
   listeners: Set<(payload: JobRealtimePayload) => void>;
+  statusListeners: Set<(status: RealtimeStatus) => void>;
+  lastStatus: RealtimeStatus | null;
 }
 
 const sharedJobChannels = new Map<string, SharedJobChannelEntry>();
@@ -179,6 +181,8 @@ function ensureSharedJobChannel(baseChannelName: string): SharedJobChannelEntry 
   const entry: SharedJobChannelEntry = {
     channel,
     listeners: new Set(),
+    statusListeners: new Set(),
+    lastStatus: null,
   };
 
   channel.on(
@@ -194,13 +198,30 @@ function ensureSharedJobChannel(baseChannelName: string): SharedJobChannelEntry 
       }
     }
   ).subscribe((status) => {
-    if (status === 'CHANNEL_ERROR') {
-      console.error(`[Job Subscription] Postgres Changes channel error: ${pgChannelName}`);
+    entry.lastStatus = status;
+
+    for (const listener of Array.from(entry.statusListeners)) {
+      listener(status);
     }
   });
 
   sharedJobChannels.set(pgChannelName, entry);
   return entry;
+}
+
+function cleanupSharedJobChannel(baseChannelName: string, entry: SharedJobChannelEntry) {
+  const pgChannelName = `${baseChannelName}-pg`;
+
+  if (entry.listeners.size > 0 || entry.statusListeners.size > 0) {
+    return;
+  }
+
+  if (sharedJobChannels.get(pgChannelName) !== entry) {
+    return;
+  }
+
+  createClient().removeChannel(entry.channel);
+  sharedJobChannels.delete(pgChannelName);
 }
 
 /**
@@ -244,8 +265,9 @@ export function useJobSubscription(
   } = filters;
 
   const channelName = useMemo(() => providedChannelName ?? 'scrape-jobs', [providedChannelName]);
-  const pgChannelName = useMemo(() => `${channelName}-pg`, [channelName]);
   const [dataState, setDataState] = useState<JobSubscriptionData>(() => createInitialDataState());
+  const [isConnected, setIsConnected] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
   const activeRef = useRef(autoConnect);
   const callbacksRef = useRef({ onJobCreated, onJobUpdated, onJobDeleted });
   const subscriptionConfigRef = useRef({
@@ -411,54 +433,71 @@ export function useJobSubscription(
     [processJobChange]
   );
 
+  const handleStatusChange = useCallback((status: RealtimeStatus) => {
+    if (!activeRef.current) {
+      return;
+    }
+
+    if (status === 'SUBSCRIBED') {
+      setIsConnected(true);
+      setError(null);
+      return;
+    }
+
+    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+      setIsConnected(false);
+      setError(
+        new Error(
+          status === 'TIMED_OUT'
+            ? 'Job subscription timed out.'
+            : 'Job subscription error.'
+        )
+      );
+      return;
+    }
+
+    setIsConnected(false);
+  }, []);
+
   useEffect(() => {
     const sharedChannel = ensureSharedJobChannel(channelName);
     sharedChannel.listeners.add(handleRealtimePayload);
+    const statusListener = (status: RealtimeStatus) => {
+      handleStatusChange(status);
+    };
+    sharedChannel.statusListeners.add(statusListener);
+    let cancelled = false;
+
+    if (activeRef.current && sharedChannel.lastStatus) {
+      queueMicrotask(() => {
+        if (!cancelled) {
+          handleStatusChange(sharedChannel.lastStatus as RealtimeStatus);
+        }
+      });
+    }
 
     return () => {
+      cancelled = true;
       sharedChannel.listeners.delete(handleRealtimePayload);
-
-      if (sharedChannel.listeners.size === 0 && sharedJobChannels.get(pgChannelName) === sharedChannel) {
-        createClient().removeChannel(sharedChannel.channel);
-        sharedJobChannels.delete(pgChannelName);
-      }
+      sharedChannel.statusListeners.delete(statusListener);
+      cleanupSharedJobChannel(channelName, sharedChannel);
     };
-  }, [channelName, pgChannelName, handleRealtimePayload]);
-
-  const {
-    connectionState,
-    lastError,
-    connect: connectRealtimeChannel,
-    disconnect: disconnectRealtimeChannel,
-  } = useRealtimeChannel({
-    channelName,
-    autoConnect,
-    onMessage: (payload) => {
-      if (
-        typeof payload === 'object' &&
-        payload !== null &&
-        'eventType' in payload &&
-        'new' in payload &&
-        'old' in payload
-      ) {
-        handleRealtimePayload(payload as JobRealtimePayload);
-      }
-    },
-    onError: () => {
-      // Error handling delegated to useRealtimeChannel state
-    },
-  });
+  }, [channelName, handleRealtimePayload, handleStatusChange]);
 
   const connect = useCallback(() => {
-    ensureSharedJobChannel(channelName);
+    const sharedChannel = ensureSharedJobChannel(channelName);
     activeRef.current = true;
-    connectRealtimeChannel();
-  }, [channelName, connectRealtimeChannel]);
+    setError(null);
+
+    if (sharedChannel.lastStatus) {
+      handleStatusChange(sharedChannel.lastStatus);
+    }
+  }, [channelName, handleStatusChange]);
 
   const disconnect = useCallback(() => {
     activeRef.current = false;
-    disconnectRealtimeChannel();
-  }, [disconnectRealtimeChannel]);
+    setIsConnected(false);
+  }, []);
 
   /**
    * Refetch jobs from the database
@@ -546,9 +585,6 @@ export function useJobSubscription(
       void refetch();
     }
   }, [autoConnect, refetch]);
-
-  const isConnected = connectionState === 'connected';
-  const error = lastError;
 
   return useMemo(
     () => ({

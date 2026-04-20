@@ -1,5 +1,5 @@
 /**
- * LogBroadcastPanel - real-time log display from runner broadcasts
+ * LogBroadcastPanel - transient runner broadcast diagnostics
  */
 
 'use client';
@@ -67,29 +67,52 @@ function LogItem({
   compact?: boolean;
   onClick?: () => void;
 }) {
+  const isClickable = typeof onClick === 'function';
+
   return (
     <div
-      onClick={onClick}
       className={cn(
-        'cursor-pointer rounded py-1.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50',
+        'rounded py-1.5',
         compact && 'py-1',
       )}
     >
-      <div className="flex items-start gap-2">
-        <span className="shrink-0 font-mono text-xs text-slate-400">{formatTime(log.timestamp)}</span>
-        <span className={cn(logLevelVariants({ level: log.level }))}>{getLevelIcon(log.level)}</span>
-        {!compact ? (
-          <span className="shrink-0 font-mono text-xs text-slate-400">[{log.job_id.slice(0, 8)}]</span>
-        ) : null}
-        {!compact ? (
-          <span className="shrink-0 font-mono text-xs text-slate-400">
-            {(log.runner_name || log.runner_id || 'runner').slice(0, 8)}
+      {isClickable ? (
+        <button
+          type="button"
+          onClick={onClick}
+          className="flex w-full items-start gap-2 rounded text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
+        >
+          <span className="shrink-0 font-mono text-xs text-slate-400">{formatTime(log.timestamp)}</span>
+          <span className={cn(logLevelVariants({ level: log.level }))}>{getLevelIcon(log.level)}</span>
+          {!compact ? (
+            <span className="shrink-0 font-mono text-xs text-slate-400">[{log.job_id.slice(0, 8)}]</span>
+          ) : null}
+          {!compact ? (
+            <span className="shrink-0 font-mono text-xs text-slate-400">
+              {(log.runner_name || log.runner_id || 'runner').slice(0, 8)}
+            </span>
+          ) : null}
+          <span className="flex-1 break-all font-mono text-sm text-slate-700 dark:text-slate-300">
+            {log.message}
           </span>
-        ) : null}
-        <span className="flex-1 break-all font-mono text-sm text-slate-700 dark:text-slate-300">
-          {log.message}
-        </span>
-      </div>
+        </button>
+      ) : (
+        <div className="flex items-start gap-2">
+          <span className="shrink-0 font-mono text-xs text-slate-400">{formatTime(log.timestamp)}</span>
+          <span className={cn(logLevelVariants({ level: log.level }))}>{getLevelIcon(log.level)}</span>
+          {!compact ? (
+            <span className="shrink-0 font-mono text-xs text-slate-400">[{log.job_id.slice(0, 8)}]</span>
+          ) : null}
+          {!compact ? (
+            <span className="shrink-0 font-mono text-xs text-slate-400">
+              {(log.runner_name || log.runner_id || 'runner').slice(0, 8)}
+            </span>
+          ) : null}
+          <span className="flex-1 break-all font-mono text-sm text-slate-700 dark:text-slate-300">
+            {log.message}
+          </span>
+        </div>
+      )}
 
       {(log.scraper_name || log.sku || log.phase) && !compact ? (
         <div className="ml-[7.5rem] mt-1 flex flex-wrap gap-2 text-[11px] text-slate-500">
@@ -142,10 +165,10 @@ export function LogBroadcastPanel({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (autoScroll && scrollRef.current) {
+    if (autoScroll && scrollRef.current && filteredLogs.length > 0) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [autoScroll, filteredLogs]);
+  }, [autoScroll, filteredLogs.length]);
 
   const handleClear = useCallback(() => {
     clearLogs();
@@ -157,13 +180,14 @@ export function LogBroadcastPanel({
       <div className="flex items-center justify-between border-b border-slate-200 pb-3 dark:border-slate-700">
         <div className="flex items-center gap-2">
           <Terminal className="h-5 w-5 text-slate-500" />
-          <h3 className="font-semibold text-slate-900 dark:text-slate-100">Live Logs</h3>
+          <h3 className="font-semibold text-slate-900 dark:text-slate-100">Broadcast Diagnostics</h3>
           <span className="text-xs text-slate-500">({counts.total})</span>
         </div>
 
         <div className="flex items-center gap-2">
           {(['debug', 'info', 'warning', 'error'] as const).map((level) => (
             <button
+              type="button"
               key={level}
               className={cn('rounded px-2 py-0.5 text-xs font-medium transition-colors hover:opacity-80', logLevelVariants({ level }))}
             >
@@ -175,7 +199,7 @@ export function LogBroadcastPanel({
 
       <div className="flex items-center gap-4 py-2 text-xs">
         <span className="text-slate-500">
-          {counts.total} log{counts.total !== 1 ? 's' : ''}
+          {counts.total} transient event{counts.total !== 1 ? 's' : ''}
         </span>
         {counts.error > 0 ? (
           <span className="font-medium text-red-600">
@@ -196,8 +220,10 @@ export function LogBroadcastPanel({
         ) : (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Terminal className="mb-4 h-12 w-12 text-slate-300 dark:text-slate-600" />
-            <p className="text-slate-500">No logs yet</p>
-            <p className="mt-1 text-xs text-slate-400">Logs will appear when runners broadcast events</p>
+            <p className="text-slate-500">No broadcast diagnostics yet</p>
+            <p className="mt-1 text-xs text-slate-400">
+              These events are transient and optional. Use persisted job logs for authoritative history.
+            </p>
           </div>
         )}
       </div>
@@ -205,10 +231,11 @@ export function LogBroadcastPanel({
       <div className="flex items-center justify-between border-t border-slate-200 pt-3 dark:border-slate-700">
         <div className="flex items-center gap-2">
           <span className={cn('inline-block h-2 w-2 rounded-full', isConnected ? 'bg-emerald-500' : 'bg-amber-500')} />
-          <span className="text-xs text-slate-500">{isConnected ? 'Connected' : 'Connecting...'}</span>
+          <span className="text-xs text-slate-500">{isConnected ? 'Broadcast Connected' : 'Broadcast Connecting...'}</span>
         </div>
 
         <button
+          type="button"
           onClick={handleClear}
           className="flex items-center gap-1 px-3 py-1 text-xs text-slate-500 transition-colors hover:text-slate-700 dark:hover:text-slate-300"
         >
