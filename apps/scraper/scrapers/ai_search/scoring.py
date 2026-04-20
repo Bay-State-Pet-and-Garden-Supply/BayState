@@ -43,6 +43,12 @@ def record_domain_attempt(domain: str, success: bool) -> None:
         stats.last_updated = datetime.now(timezone.utc).isoformat()
 
 
+def reset_domain_history() -> None:
+    """Clear in-memory domain history used by ranking heuristics."""
+    with _DOMAIN_HISTORY_LOCK:
+        _DOMAIN_HISTORY.clear()
+
+
 from scrapers.ai_search.matching import MatchingUtils
 
 

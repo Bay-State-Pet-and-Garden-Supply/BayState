@@ -138,6 +138,84 @@ class Crawl4AIExtractor:
             html=fallback_content,
         )
 
+    async def extract_from_fixture(
+        self,
+        *,
+        url: str,
+        sku: str,
+        product_name: Optional[str],
+        brand: Optional[str],
+        html: str,
+        markdown: str = "",
+        final_url: str | None = None,
+        status_code: int | None = None,
+    ) -> dict[str, Any]:
+        """Replay extraction against captured page content without crawling."""
+        response_url = str(final_url or url)
+        html_text = html if isinstance(html, str) else ""
+        markdown_text = markdown if isinstance(markdown, str) else ""
+        parse_start = time.perf_counter()
+
+        if not html_text and markdown_text:
+            html_text = markdown_text
+
+        if Crawl4AIExtractor._looks_like_not_found_page(html_text, markdown_text or html_text):
+            return {
+                "success": False,
+                "error": "Fixture content landed on a not-found page",
+            }
+
+        jsonld_result = self._extraction.extract_product_from_html_jsonld(
+            html_text=html_text or markdown_text,
+            source_url=response_url,
+            sku=sku,
+            product_name=product_name,
+            brand=brand,
+            matching_utils=self._matching,
+        )
+        parse_time_ms = int((time.perf_counter() - parse_start) * 1000)
+        if jsonld_result:
+            jsonld_result["url"] = response_url
+            jsonld_result["images"] = await _resolve_grounding_images(
+                self._grounding_redirect_resolver, self._extraction.coerce_string_list(jsonld_result.get("images"))
+            )
+            self._log_telemetry(response_url, sku, "fixture-json-ld", True, 0, parse_time_ms, 0, None, float(jsonld_result.get("confidence", 0.0)))
+            return jsonld_result
+
+        meta_result = extract_product_from_meta_tags(
+            extraction_utils=self._extraction,
+            matching_utils=self._matching,
+            html_text=html_text or markdown_text,
+            source_url=response_url,
+            product_name=product_name,
+            brand=brand,
+        )
+        parse_time_ms = int((time.perf_counter() - parse_start) * 1000)
+        if meta_result:
+            meta_result["images"] = await _resolve_grounding_images(
+                self._grounding_redirect_resolver, self._extraction.coerce_string_list(meta_result.get("images"))
+            )
+            self._log_telemetry(response_url, sku, "fixture-meta-tags", True, 0, parse_time_ms, 0, None, float(meta_result.get("confidence", 0.0)))
+            return meta_result
+
+        fallback_result = await self._fallback_extractor.extract(
+            response_url,
+            sku,
+            product_name,
+            brand,
+            html=html_text or markdown_text,
+        )
+        if fallback_result.get("success"):
+            return fallback_result
+
+        if status_code is not None and status_code >= 400:
+            return {
+                "success": False,
+                "error": f"Fixture extraction received HTTP {status_code} with no usable product data",
+            }
+
+        return fallback_result
+
     def _log_telemetry(
         self,
         url: str,

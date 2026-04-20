@@ -27,6 +27,7 @@ class ProductInput:
     name: str
     brand: str | None = None
     category: str | None = None
+    preferred_domains: list[str] | None = None
 
 
 @dataclass
@@ -223,6 +224,7 @@ class BatchSearchOrchestrator:
                     brand=product.brand,
                     product_name=self._consolidated_names.get(product.sku) or product.name,
                     category=product.category,
+                    preferred_domains=product.preferred_domains,
                 )
                 ranked_results[sku] = ranked
 
@@ -260,9 +262,7 @@ class BatchSearchOrchestrator:
         sku_results = await self._search_by_sku_only(products, max_concurrent)
         consolidated_names = await self._consolidate_names(products, sku_results, max_concurrent)
         self._consolidated_names = {
-            sku: consolidated_name
-            for sku, (consolidated_name, _) in consolidated_names.items()
-            if str(consolidated_name or "").strip()
+            sku: consolidated_name for sku, (consolidated_name, _) in consolidated_names.items() if str(consolidated_name or "").strip()
         }
         name_results = await self._search_with_names(products, consolidated_names, max_concurrent)
         return self._merge_search_results(sku_results, name_results)
@@ -450,6 +450,21 @@ class BatchSearchOrchestrator:
             ordered.append(domain)
         return ordered
 
+    @classmethod
+    def _merge_preferred_domains(cls, *domain_lists: list[str] | None) -> list[str]:
+        ordered: list[str] = []
+        seen: set[str] = set()
+
+        for domain_list in domain_lists:
+            for domain in domain_list or []:
+                normalized = cls._normalize_domain(domain)
+                if not normalized or normalized in seen:
+                    continue
+                seen.add(normalized)
+                ordered.append(normalized)
+
+        return ordered
+
     def _infer_brand_hint(
         self,
         product: ProductInput,
@@ -496,27 +511,6 @@ class BatchSearchOrchestrator:
             inferred_brand = self._infer_brand_hint(product, results)
             if inferred_brand and not product.brand:
                 product.brand = inferred_brand
-            effective_brand = product.brand or inferred_brand
-
-            if self._cohort_state and effective_brand:
-                self._cohort_state.remember_brand(effective_brand)
-
-            if not self._cohort_state:
-                continue
-
-            for result in results[:5]:
-                result_dict = {
-                    "url": result.url,
-                    "title": result.title or "",
-                    "description": result.description or "",
-                }
-                if self._scorer.is_low_quality_result(result_dict):
-                    continue
-                domain = self._extract_domain(result.url)
-                if not domain or self._scorer.is_marketplace(domain):
-                    continue
-                if self._scorer.classify_source_domain(domain, effective_brand) == "official":
-                    self._cohort_state.remember_official_domain(domain)
 
     def _should_use_sku_first(self, products: list[ProductInput]) -> bool:
         """Use SKU-first discovery when product context is too thin for direct ranking."""
@@ -604,7 +598,7 @@ class BatchSearchOrchestrator:
         domain: str,
         product: ProductInput | None,
     ) -> list[RankedResult]:
-        """Run a targeted site search for the dominant cohort domain."""
+        """Run a targeted site search for a preferred official cohort domain."""
         if not product:
             return []
 
@@ -656,6 +650,7 @@ class BatchSearchOrchestrator:
             brand=product.brand,
             product_name=search_name,
             category=product.category,
+            preferred_domains=product.preferred_domains,
         )
 
     def rank_urls_for_sku(
@@ -666,11 +661,14 @@ class BatchSearchOrchestrator:
         brand: str | None = None,
         product_name: str | None = None,
         category: str | None = None,
+        preferred_domains: list[str] | None = None,
     ) -> list[RankedResult]:
-        """Rank URLs considering cohort-wide signals."""
+        """Rank URLs with light cohort context and official-first bias."""
         ranked: list[RankedResult] = []
-        preferred_domains = self._preferred_ranking_domains()
-        official_domains = self._cohort_state.ranked_official_domains() if self._cohort_state else []
+        preferred_domains = self._merge_preferred_domains(
+            preferred_domains,
+            self._preferred_ranking_domains(),
+        )
 
         for result in search_results:
             domain = self._extract_domain(result.url)
@@ -693,31 +691,10 @@ class BatchSearchOrchestrator:
             source_tier = self._scorer.classify_source_domain(domain, effective_brand)
 
             freq = domain_frequency.get(domain)
-            if freq and freq.sku_count > 1:
-                if source_tier == "official":
-                    base_score += min(5.0, float(freq.sku_count) * 1.5)
-                elif source_tier in {"major_retailer", "secondary_retailer"}:
-                    base_score += min(2.0, float(freq.sku_count - 1))
-                else:
-                    base_score += min(1.0, float(freq.sku_count - 1) * 0.5)
-
-            if official_domains and domain in official_domains:
-                official_rank = official_domains.index(domain)
-                base_score += max(5.0 - float(official_rank), 3.0)
-
-            # Boost score for domains preferred by cohort
-            if self._cohort_state:
-                ranked_domains = self._cohort_state.ranked_domains()
-                if domain in ranked_domains:
-                    # Higher boost for more preferred domains
-                    domain_rank = ranked_domains.index(domain)
-                    base_score += max(3.0 - domain_rank * 0.5, 0.5)
-
-            # Boost for dominant domain
-            if self._cohort_state:
-                dominant = self._cohort_state.dominant_domain(minimum_count=2)
-                if dominant and domain == dominant:
-                    base_score += 2.0
+            if freq and freq.sku_count > 1 and source_tier == "official":
+                # Keep cross-SKU consensus small and official-only so retailer
+                # frequency does not become a self-reinforcing ranking shortcut.
+                base_score += min(3.0, float(freq.sku_count - 1))
 
             ranked.append(RankedResult(result=result, score=base_score))
 
@@ -777,13 +754,10 @@ class BatchSearchOrchestrator:
                 attempted_urls: set[str] = set()
                 candidate_urls = list(urls)
 
-                rescue_domains: list[str] = []
-                if self._cohort_state:
-                    rescue_domains.extend(self._cohort_state.ranked_official_domains()[:2])
-                    if not rescue_domains:
-                        dominant_domain = self._cohort_state.dominant_domain(minimum_count=2)
-                        if dominant_domain:
-                            rescue_domains.append(dominant_domain)
+                rescue_domains = self._merge_preferred_domains(
+                    product.preferred_domains if product else None,
+                    self._cohort_state.ranked_official_domains()[:2] if self._cohort_state else None,
+                )
 
                 top_domain = self._extract_domain(candidate_urls[0].result.url) if candidate_urls else ""
                 if product and rescue_domains and top_domain not in rescue_domains:

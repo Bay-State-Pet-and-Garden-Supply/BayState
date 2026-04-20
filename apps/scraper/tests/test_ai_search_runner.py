@@ -22,6 +22,7 @@ def test_run_ai_search_job_wires_serper_credentials_and_restores_env(monkeypatch
                     "product_name": "Squeaky Ball",
                     "brand": "Acme",
                     "category": "Dog Toys",
+                    "preferred_domains": ["acmepets.com"],
                 }
             ]
             assert max_concurrency == 2
@@ -61,6 +62,7 @@ def test_run_ai_search_job_wires_serper_credentials_and_restores_env(monkeypatch
                 "product_name": "Squeaky Ball",
                 "brand": "Acme",
                 "category": "Dog Toys",
+                "preferred_domains": ["acmepets.com"],
                 "max_concurrency": 2,
                 "search_provider": "serper",
             },

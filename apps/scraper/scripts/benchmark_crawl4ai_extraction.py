@@ -19,12 +19,20 @@ for import_root in (ROOT, SRC_ROOT):
     if str(import_root) not in sys.path:
         sys.path.insert(0, str(import_root))
 
-from scrapers.ai_search.extraction_benchmark import ExtractionBenchmarkDataset, ExtractionBenchmarkEntry, load_extraction_benchmark_dataset
+from scrapers.ai_search.extraction_benchmark import (
+    ExtractionBenchmarkDataset,
+    ExtractionBenchmarkEntry,
+    ExtractionFixtureManifest,
+    load_extraction_benchmark_dataset,
+    load_extraction_fixture_manifest,
+    load_extraction_fixture_page,
+)
 from scrapers.ai_search.scraper import AISearchScraper
-from tests.evaluation.metrics_calculator import SKUMetrics, calculate_aggregate_metrics, calculate_per_sku_metrics, get_per_field_accuracy
+from tests.evaluation.metrics_calculator import SKUMetrics, calculate_per_sku_metrics, get_per_field_accuracy
 
 DEFAULT_DATASET_PATH = ROOT / "data" / "golden_dataset_v3_extraction_pilot.json"
 DEFAULT_OUTPUT_DIR = ROOT / ".sisyphus" / "evidence" / "extraction-benchmark"
+DEFAULT_FIXTURE_MANIFEST_PATH = ROOT / "data" / "golden_dataset_v3_extraction_pilot.fixtures.json"
 
 
 @dataclass(frozen=True)
@@ -41,6 +49,7 @@ class ExtractionBenchmarkRow:
     missing_required_fields: list[str]
     extraction_time_ms: float | None
     error_message: str | None
+    benchmark_mode: str
 
 
 def parse_args() -> argparse.Namespace:
@@ -49,6 +58,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--prompt-version", default="v1")
     parser.add_argument("--skus", help="Optional comma-separated SKU list")
+    parser.add_argument(
+        "--fixture-manifest",
+        type=Path,
+        default=DEFAULT_FIXTURE_MANIFEST_PATH,
+        help="Optional extraction fixture manifest used for deterministic replay when entries are available",
+    )
     return parser.parse_args()
 
 
@@ -60,14 +75,47 @@ def _select_entries(dataset: ExtractionBenchmarkDataset, raw_skus: str | None) -
 
 
 async def _evaluate_entry(entry: ExtractionBenchmarkEntry, *, prompt_version: str) -> tuple[ExtractionBenchmarkRow, SKUMetrics | None]:
+    return await _evaluate_entry_with_manifest(entry, prompt_version=prompt_version, fixture_manifest=None)
+
+
+def _build_fixture_entry_lookup(fixture_manifest: ExtractionFixtureManifest | None) -> dict[str, Path]:
+    if fixture_manifest is None:
+        return {}
+
+    return {fixture_entry.expected_source_url: fixture_entry.fixture_path for fixture_entry in fixture_manifest.entries}
+
+
+async def _evaluate_entry_with_manifest(
+    entry: ExtractionBenchmarkEntry,
+    *,
+    prompt_version: str,
+    fixture_manifest: ExtractionFixtureManifest | None,
+) -> tuple[ExtractionBenchmarkRow, SKUMetrics | None]:
     scraper = AISearchScraper(prompt_version=prompt_version)
+    fixture_lookup = _build_fixture_entry_lookup(fixture_manifest)
     start = perf_counter()
-    extraction = await scraper.extract_from_url(
-        url=entry.expected_source_url,
-        sku=entry.sku,
-        product_name=entry.ground_truth.name,
-        brand=entry.ground_truth.brand,
-    )
+    fixture_path = fixture_lookup.get(entry.expected_source_url)
+    if fixture_path is not None:
+        fixture = load_extraction_fixture_page(fixture_path)
+        extraction = await scraper.extract_from_fixture(
+            url=entry.expected_source_url,
+            sku=entry.sku,
+            product_name=entry.ground_truth.name,
+            brand=entry.ground_truth.brand,
+            html=fixture.html,
+            markdown=fixture.markdown,
+            final_url=fixture.final_url,
+            status_code=fixture.status_code,
+        )
+        benchmark_mode = "fixture"
+    else:
+        extraction = await scraper.extract_from_url(
+            url=entry.expected_source_url,
+            sku=entry.sku,
+            product_name=entry.ground_truth.name,
+            brand=entry.ground_truth.brand,
+        )
+        benchmark_mode = "live"
     elapsed_ms = (perf_counter() - start) * 1000
 
     metrics: SKUMetrics | None = None
@@ -93,6 +141,7 @@ async def _evaluate_entry(entry: ExtractionBenchmarkEntry, *, prompt_version: st
         missing_required_fields=missing_required_fields,
         extraction_time_ms=round(elapsed_ms, 2),
         error_message=extraction.error,
+        benchmark_mode=benchmark_mode,
     )
     return row, metrics
 
@@ -116,11 +165,21 @@ def _breakdown(rows: list[ExtractionBenchmarkRow], key: str) -> dict[str, dict[s
     return payload
 
 
-def _write_report(dataset_path: Path, output_dir: Path, rows: list[ExtractionBenchmarkRow], sku_metrics: list[SKUMetrics]) -> tuple[Path, Path]:
+def _write_report(
+    dataset_path: Path,
+    output_dir: Path,
+    rows: list[ExtractionBenchmarkRow],
+    sku_metrics: list[SKUMetrics],
+    *,
+    fixture_manifest_path: Path | None = None,
+) -> tuple[Path, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
-    aggregate = calculate_aggregate_metrics(sku_metrics)
     field_breakdown = get_per_field_accuracy(sku_metrics)
     extraction_times = [row.extraction_time_ms for row in rows if row.extraction_time_ms is not None]
+    total_examples = len(rows)
+    success_count = sum(1 for row in rows if row.success)
+    average_field_accuracy = sum(row.accuracy for row in rows) / total_examples if total_examples else 0.0
+    average_required_fields_success_rate = sum(row.required_fields_success_rate for row in rows) / total_examples if total_examples else 0.0
     p95_time_ms = None
     if extraction_times:
         ordered = sorted(cast(list[float], extraction_times))
@@ -131,16 +190,20 @@ def _write_report(dataset_path: Path, output_dir: Path, rows: list[ExtractionBen
 
     payload = {
         "dataset_path": str(dataset_path),
+        "fixture_manifest_path": str(fixture_manifest_path) if fixture_manifest_path is not None else None,
         "summary": {
-            "total_examples": len(rows),
-            "success_rate": round(aggregate.overall_success_rate, 4),
-            "average_field_accuracy": round(aggregate.average_field_accuracy, 4),
-            "average_required_fields_success_rate": round(aggregate.average_required_fields_success_rate, 4),
+            "total_examples": total_examples,
+            "success_rate": round(success_count / total_examples, 4) if total_examples else 0.0,
+            "average_field_accuracy": round(average_field_accuracy, 4),
+            "average_required_fields_success_rate": round(average_required_fields_success_rate, 4),
             "p95_extraction_time_ms": round(float(p95_time_ms), 2) if p95_time_ms is not None else None,
+            "fixture_examples": sum(1 for row in rows if row.benchmark_mode == "fixture"),
+            "live_examples": sum(1 for row in rows if row.benchmark_mode == "live"),
         },
         "field_breakdown": {field: round(score, 4) for field, score in sorted(field_breakdown.items())},
         "category_breakdown": _breakdown(rows, "category"),
         "source_type_breakdown": _breakdown(rows, "source_type"),
+        "benchmark_mode_breakdown": _breakdown(rows, "benchmark_mode"),
         "per_sku_results": [row.__dict__ for row in rows],
     }
 
@@ -152,10 +215,13 @@ def _write_report(dataset_path: Path, output_dir: Path, rows: list[ExtractionBen
         "# Crawl4AI Extraction Benchmark",
         "",
         f"Dataset: `{dataset_path}`",
+        f"Fixture manifest: `{fixture_manifest_path}`" if fixture_manifest_path is not None else "Fixture manifest: none",
         "",
         "## Summary",
         "",
         f"- Total examples: {payload['summary']['total_examples']}",
+        f"- Fixture examples: {payload['summary']['fixture_examples']}",
+        f"- Live examples: {payload['summary']['live_examples']}",
         f"- Success rate: {payload['summary']['success_rate']:.1%}",
         f"- Average field accuracy: {payload['summary']['average_field_accuracy']:.1%}",
         f"- Average required fields success rate: {payload['summary']['average_required_fields_success_rate']:.1%}",
@@ -163,32 +229,53 @@ def _write_report(dataset_path: Path, output_dir: Path, rows: list[ExtractionBen
         "",
         "## Per-SKU Results",
         "",
-        "| SKU | Source Type | Category | Success | Accuracy | Required Fields | Error |",
-        "|-----|-------------|----------|---------|----------|-----------------|-------|",
+        "| SKU | Mode | Source Type | Category | Success | Accuracy | Required Fields | Error |",
+        "|-----|------|-------------|----------|---------|----------|-----------------|-------|",
     ]
     for row in rows:
         lines.append(
-            f"| {row.sku} | {row.source_type} | {row.category} | {row.success} | {row.accuracy:.4f} | {row.required_fields_success_rate:.4f} | {row.error_message or ''} |"
+            f"| {row.sku} | {row.benchmark_mode} | {row.source_type} | {row.category} | {row.success} | {row.accuracy:.4f} | {row.required_fields_success_rate:.4f} | {row.error_message or ''} |"
         )
     markdown_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return json_path, markdown_path
 
 
-async def run_benchmark(dataset_path: Path, output_dir: Path, *, prompt_version: str, raw_skus: str | None) -> int:
+async def run_benchmark(
+    dataset_path: Path,
+    output_dir: Path,
+    *,
+    prompt_version: str,
+    raw_skus: str | None,
+    fixture_manifest_path: Path | None,
+) -> int:
     dataset = load_extraction_benchmark_dataset(dataset_path)
     entries = _select_entries(dataset, raw_skus)
     if not entries:
         raise ValueError("No extraction benchmark entries selected")
 
+    fixture_manifest = None
+    if fixture_manifest_path is not None and fixture_manifest_path.exists():
+        fixture_manifest = load_extraction_fixture_manifest(fixture_manifest_path)
+
     rows: list[ExtractionBenchmarkRow] = []
     sku_metrics: list[SKUMetrics] = []
     for entry in entries:
-        row, metrics = await _evaluate_entry(entry, prompt_version=prompt_version)
+        row, metrics = await _evaluate_entry_with_manifest(
+            entry,
+            prompt_version=prompt_version,
+            fixture_manifest=fixture_manifest,
+        )
         rows.append(row)
         if metrics is not None:
             sku_metrics.append(metrics)
 
-    json_path, markdown_path = _write_report(dataset_path, output_dir, rows, sku_metrics)
+    json_path, markdown_path = _write_report(
+        dataset_path,
+        output_dir,
+        rows,
+        sku_metrics,
+        fixture_manifest_path=fixture_manifest_path if fixture_manifest is not None else None,
+    )
     print(f"Wrote extraction benchmark report to {json_path}")
     print(f"Wrote extraction benchmark markdown to {markdown_path}")
     return 0
@@ -196,7 +283,15 @@ async def run_benchmark(dataset_path: Path, output_dir: Path, *, prompt_version:
 
 def main() -> int:
     args = parse_args()
-    return asyncio.run(run_benchmark(args.dataset, args.output_dir, prompt_version=args.prompt_version, raw_skus=args.skus))
+    return asyncio.run(
+        run_benchmark(
+            args.dataset,
+            args.output_dir,
+            prompt_version=args.prompt_version,
+            raw_skus=args.skus,
+            fixture_manifest_path=args.fixture_manifest,
+        )
+    )
 
 
 if __name__ == "__main__":

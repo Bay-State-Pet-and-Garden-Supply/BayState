@@ -619,7 +619,7 @@ def test_scrape_products_batch_carries_forward_inferred_brand_and_domain_hints()
     assert scraper.collect_calls[1]["preferred_domains"] == ["petswarehouse.com"]
 
 
-def test_scrape_products_batch_normalizes_failed_items_to_dominant_domain() -> None:
+def test_scrape_products_batch_does_not_normalize_failed_items_to_retailer_dominant_domain() -> None:
     class CohortNormalizationScraper(AISearchScraper):
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
@@ -631,8 +631,10 @@ def test_scrape_products_batch_normalizes_failed_items_to_dominant_domain() -> N
             product_name: Optional[str] = None,
             brand: Optional[str] = None,
             category: Optional[str] = None,
+            preferred_domains: list[str] | None = None,
             cohort_state=None,
         ):
+            _ = preferred_domains
             attempts = self._attempts.get(sku, 0)
             self._attempts[sku] = attempts + 1
 
@@ -663,9 +665,12 @@ def test_scrape_products_batch_normalizes_failed_items_to_dominant_domain() -> N
         )
     )
 
-    assert all(result.success for result in results)
-    assert all(result.source_website == "petswarehouse.com" for result in results)
-    assert scraper._attempts["SKU-1"] == 2
+    assert results[0].success is False
+    assert results[0].error == "Initial failure"
+    assert all(result.success for result in results[1:])
+    assert results[1].source_website == "petswarehouse.com"
+    assert results[2].source_website == "petswarehouse.com"
+    assert scraper._attempts["SKU-1"] == 1
 
 
 def test_scrape_products_batch_uses_batch_search_orchestrator_for_base_scraper() -> None:
@@ -718,6 +723,7 @@ def test_scrape_products_batch_uses_batch_search_orchestrator_for_base_scraper()
                         "product_name": "Acme Pads Small 10 Count",
                         "brand": "Acme",
                         "category": "Cat Supplies",
+                        "preferred_domains": ["https://www.acmepets.com", "acmepets.com"],
                     },
                     {
                         "sku": "SKU-2",
@@ -734,6 +740,8 @@ def test_scrape_products_batch_uses_batch_search_orchestrator_for_base_scraper()
     assert observed["max_search_concurrent"] == 2
     assert observed["max_extract_concurrent"] == 2
     assert [product.sku for product in observed["products"]] == ["SKU-1", "SKU-2"]
+    assert observed["products"][0].preferred_domains == ["acmepets.com"]
+    assert observed["products"][1].preferred_domains is None
     assert [result.url for result in results] == [
         "https://petswarehouse.com/products/sku-1",
         "https://petswarehouse.com/products/sku-2",
@@ -801,13 +809,14 @@ def test_scrape_products_batch_normalizes_orchestrated_scotts_cohort_to_official
         product_name: Optional[str] = None,
         brand: Optional[str] = None,
         category: Optional[str] = None,
+        preferred_domains: list[str] | None = None,
         cohort_state=None,
     ) -> AISearchResult:
         _ = category
         retry_calls.append(
             {
                 "sku": sku,
-                "preferred_domains": scraper._preferred_cohort_domains(cohort_state) or [],
+                "preferred_domains": preferred_domains or scraper._preferred_cohort_domains(cohort_state) or [],
             }
         )
         slug = sku.lower().replace("sku-", "")

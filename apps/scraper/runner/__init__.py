@@ -1078,9 +1078,7 @@ def _run_ai_search_job(
         )
     requested_llm_model = str(search_cfg.get("llm_model") or runtime_credentials.get("llm_model") or "").strip()
     llm_model = _normalize_openai_model(requested_llm_model)
-    search_provider = normalize_search_provider(
-        str(search_cfg.get("search_provider", os.environ.get("AI_SEARCH_PROVIDER", "auto")) or "auto").strip().lower()
-    )
+    search_provider = normalize_search_provider(str(search_cfg.get("search_provider", os.environ.get("AI_SEARCH_PROVIDER", "auto")) or "auto").strip().lower())
     if search_provider == "auto":
         search_provider = "serper"
     cache_enabled = bool(search_cfg.get("cache_enabled", True))
@@ -1145,6 +1143,7 @@ def _run_ai_search_job(
                 "product_name": item_context.get("product_name", search_cfg.get("product_name")),
                 "brand": item_context.get("brand", search_cfg.get("brand")),
                 "category": item_context.get("category", search_cfg.get("category")),
+                "preferred_domains": item_context.get("preferred_domains", search_cfg.get("preferred_domains")),
             }
         )
 
@@ -1340,6 +1339,8 @@ def _run_ai_search_job(
     results["total_cost"] = total_cost
     results["ai_search_errors"] = list(error_counts.values())
     return results
+
+
 __all__ = [
     "ConfigurationError",
     "create_emitter",

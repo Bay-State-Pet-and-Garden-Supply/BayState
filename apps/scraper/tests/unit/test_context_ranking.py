@@ -37,6 +37,7 @@ class MockScorer:
         category: str | None = None,
         **kwargs,
     ) -> float:
+        _ = sku, category
         self.last_brand = brand
         self.last_product_name = product_name
 
@@ -55,10 +56,18 @@ class MockScorer:
             matching_tokens = sum(1 for token in name_tokens if token in combined)
             score += min(self.name_boost, matching_tokens * 1.0)
 
+        preferred_domains = list(kwargs.get("preferred_domains") or [])
+        domain = self.domain_from_url(str(result.get("url") or ""))
+        for index, preferred_domain in enumerate(preferred_domains):
+            if domain == preferred_domain or domain.endswith(f".{preferred_domain}"):
+                score += max(0.5, 2.5 - float(index) * 0.5)
+                break
+
         return score
 
     def domain_from_url(self, value: str) -> str:
         from urllib.parse import urlparse
+
         domain = str(urlparse(value).netloc or "").lower().strip()
         if domain.startswith("www."):
             domain = domain[4:]
@@ -334,45 +343,69 @@ class TestContextAwareRanking:
         assert scorer.last_product_name == "Test Product Name"
 
     def test_domain_frequency_affects_ranking(self) -> None:
-        """Test that domain frequency (cohort-wide signal) affects ranking."""
+        """Test that official-domain frequency still helps rank true brand sites."""
         orchestrator = BatchSearchOrchestrator(
             search_client=None,
             extractor=MockExtractor(),
-            scorer=MockScorer(base_score=5.0),
+            scorer=SearchScorer(),
         )
 
         search_results = [
             make_search_result(
-                url="https://rare-site.com/product",
-                title="Product",
-                description="Description",
+                url="https://acme.com/products/widget-small",
+                title="Acme Widget Small",
+                description="Official product page",
             ),
             make_search_result(
-                url="https://popular-site.com/product",
-                title="Product",
-                description="Description",
+                url="https://chewy.com/acme-widget-small",
+                title="Acme Widget Small",
+                description="Retailer listing",
             ),
         ]
 
-        # popular-site.com appears for 4 SKUs (>3 threshold), gets +5.0 boost
         domain_frequency = {
-            "rare-site.com": DomainFrequency(domain="rare-site.com", sku_count=1, skus={"sku1"}),
-            "popular-site.com": DomainFrequency(domain="popular-site.com", sku_count=4, skus={"sku1", "sku2", "sku3", "sku4"}),
+            "acme.com": DomainFrequency(domain="acme.com", sku_count=4, skus={"sku1", "sku2", "sku3", "sku4"}),
+            "chewy.com": DomainFrequency(domain="chewy.com", sku_count=4, skus={"sku1", "sku2", "sku3", "sku4"}),
         }
 
         ranked = orchestrator.rank_urls_for_sku(
             sku="12345",
             search_results=search_results,
             domain_frequency=domain_frequency,
-            brand=None,
-            product_name=None,
+            brand="Acme",
+            product_name="Acme Widget Small",
             category=None,
         )
 
         assert len(ranked) == 2
-        popular_result = next(r for r in ranked if "popular-site.com" in r.result.url)
-        rare_result = next(r for r in ranked if "rare-site.com" in r.result.url)
-        assert popular_result.score > rare_result.score
+        assert ranked[0].result.url == "https://acme.com/products/widget-small"
+
+    def test_item_preferred_domains_rank_ahead_of_cohort_memory(self) -> None:
+        orchestrator = BatchSearchOrchestrator(
+            search_client=None,
+            extractor=MockExtractor(),
+            scorer=MockScorer(base_score=5.0),
+            cohort_state=_BatchCohortState(
+                key="test-cohort",
+                preferred_domain_counts={"cohort.com": 5},
+                preferred_brand_counts={},
+            ),
+        )
+
+        ranked = orchestrator.rank_urls_for_sku(
+            sku="12345",
+            search_results=[
+                make_search_result("https://cohort.com/product", title="Cohort Product"),
+                make_search_result("https://item.com/product", title="Item Product"),
+            ],
+            domain_frequency={},
+            brand=None,
+            product_name=None,
+            category=None,
+            preferred_domains=["https://item.com", "item.com"],
+        )
+
+        assert ranked[0].result.url == "https://item.com/product"
 
     def test_cohort_state_domain_ranking(self) -> None:
         """Test that cohort state preferred domains affect ranking."""
@@ -414,7 +447,7 @@ class TestContextAwareRanking:
         assert ranked[0].result.url == "https://chewy.com/product"
 
     def test_dominant_domain_gets_boost(self) -> None:
-        """Test that the dominant domain (most frequent) gets additional boost."""
+        """Preferred-domain ordering should guide ranking without extra dominant-domain forcing."""
         orchestrator = BatchSearchOrchestrator(
             search_client=None,
             extractor=MockExtractor(),
@@ -448,7 +481,7 @@ class TestContextAwareRanking:
             category=None,
         )
 
-        # dominant.com should be first due to both cohort ranking and dominant boost
+        # dominant.com should be first due to preferred-domain ordering alone.
         assert ranked[0].result.url == "https://dominant.com/product"
 
     def test_empty_search_results_returns_empty_list(self) -> None:
@@ -484,11 +517,17 @@ class TestContextAwareRanking:
             make_search_result(url="https://medium-score.com", title="Medium", description=""),
         ]
 
-        # Manually inject different scores via domain frequency
+        # Manually inject different scores via preferred-domain ordering.
+        orchestrator._cohort_state = _BatchCohortState(
+            key="test-cohort",
+            preferred_domain_counts={"high-score.com": 5, "medium-score.com": 2},
+            preferred_brand_counts={},
+        )
+
         domain_frequency = {
             "low-score.com": DomainFrequency(domain="low-score.com", sku_count=1, skus={"sku1"}),
             "medium-score.com": DomainFrequency(domain="medium-score.com", sku_count=2, skus={"sku1", "sku2"}),
-            "high-score.com": DomainFrequency(domain="high-score.com", sku_count=5, skus={"sku1", "sku2", "sku3", "sku4", "sku5"}),
+            "high-score.com": DomainFrequency(domain="high-score.com", sku_count=1, skus={"sku1"}),
         }
 
         ranked = orchestrator.rank_urls_for_sku(

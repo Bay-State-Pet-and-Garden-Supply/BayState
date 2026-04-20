@@ -1,0 +1,873 @@
+{
+  "generated_at": "2026-04-19T19:28:51.791160+00:00",
+  "manifest_path": "/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/data/benchmark_manifest.json",
+  "cache_dir": "/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/data/benchmark_cache",
+  "scenarios": {
+    "full_context": {
+      "independent": {
+        "summary": {
+          "mode": "independent",
+          "total_products": 10,
+          "official_candidate_present": 10,
+          "successes": 10,
+          "success_rate": 1.0,
+          "first_attempt_official_rate": 0.7,
+          "average_attempts": 2.1
+        },
+        "results": [
+          {
+            "sku": "032247886598",
+            "product_name": "Scotts NatureScapes Color Enhanced Mulch Deep Forest Brown 1.5 cu ft",
+            "expected_brand": "Scotts",
+            "input_brand": "Scotts",
+            "category": "Garden > Mulch",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/scotts-nature-scapes-color-enhanced-mulch.html",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "scottsmiraclegro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "095668300593",
+            "product_name": "Manna Pro Duckling & Gosling Starter Grower Crumbles 8 lb",
+            "expected_brand": "Manna Pro",
+            "input_brand": "Manna Pro",
+            "category": "Poultry Feed",
+            "success": true,
+            "selected_url": "https://mannapro.com/products/duck-starter-grower-crumble",
+            "selected_domain": "mannapro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "mannapro.com"
+            ],
+            "first_attempt_domain": "mannapro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "032247761215",
+            "product_name": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
+            "expected_brand": "Scotts",
+            "input_brand": "Scotts",
+            "category": "Lawn Care > Spreaders",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/spreaders/76121B.html",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "scottsmiraclegro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "032247885591",
+            "product_name": "Scotts NatureScapes Classic Black Color Enhanced Mulch 1.5 cu ft",
+            "expected_brand": "Scotts",
+            "input_brand": "Scotts",
+            "category": "Garden > Mulch",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/scotts-nature-scapes-color-enhanced-mulch.html",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "scottsmiraclegro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "095668001032",
+            "product_name": "Manna Pro Farmhouse Favorites Mini Horse & Donkey Treats",
+            "expected_brand": "Manna Pro",
+            "input_brand": "Manna Pro",
+            "category": "Horse Supplies > Treats",
+            "success": true,
+            "selected_url": "https://mannapro.com/products/farmhouse-favorites-mini-horse-donkey-treats",
+            "selected_domain": "mannapro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "mannapro.com"
+            ],
+            "first_attempt_domain": "mannapro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "095668225308",
+            "product_name": "Manna Pro 16% All Flock Crumbles with Probiotics 8 lb",
+            "expected_brand": "Manna Pro",
+            "input_brand": "Manna Pro",
+            "category": "Poultry Feed",
+            "success": true,
+            "selected_url": "https://mannapro.com/products/all-flock-with-probiotic-crumble",
+            "selected_domain": "mannapro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "mannapro.com"
+            ],
+            "first_attempt_domain": "mannapro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "032247278140",
+            "product_name": "Miracle-Gro Potting Mix 25 Quart",
+            "expected_brand": "Miracle-Gro",
+            "input_brand": "Miracle-Gro",
+            "category": "Garden > Potting Mix",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/brands/miracle-gro/products/potting-mix/miracle-gro-potting-mix.html",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 6,
+            "attempted_domains": [
+              "tractorsupply.com",
+              "homedepot.com",
+              "homedepot.com",
+              "homedepot.com",
+              "acehardware.com",
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "tractorsupply.com",
+            "first_attempt_official": false,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "032247279048",
+            "product_name": "Miracle-Gro Potting Mix 50 Quart",
+            "expected_brand": "Miracle-Gro",
+            "input_brand": "Miracle-Gro",
+            "category": "Garden > Potting Mix",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/brands/miracle-gro/products/potting-mix/miracle-gro-potting-mix.html",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 6,
+            "attempted_domains": [
+              "homedepot.com",
+              "homedepot.com",
+              "acehardware.com",
+              "lowes.com",
+              "scottsmiraclegro.com",
+              "brickseek.com"
+            ],
+            "first_attempt_domain": "homedepot.com",
+            "first_attempt_official": false,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "032247884594",
+            "product_name": "Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+            "expected_brand": "Scotts",
+            "input_brand": "Scotts",
+            "category": "Garden > Mulch",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/scotts-nature-scapes-color-enhanced-mulch.html?bvstate=pg:7/ct:r",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "scottsmiraclegro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "095668302580",
+            "product_name": "Manna Pro Bite-Size Nuggets Alfalfa & Molasses 4 lb",
+            "expected_brand": "Manna Pro",
+            "input_brand": "Manna Pro",
+            "category": "Horse Supplies > Treats",
+            "success": true,
+            "selected_url": "https://mannapro.com/products/bite-size-nuggets-horse-treats",
+            "selected_domain": "mannapro.com",
+            "attempt_count": 2,
+            "attempted_domains": [
+              "bigdweb.com",
+              "mannapro.com"
+            ],
+            "first_attempt_domain": "bigdweb.com",
+            "first_attempt_official": false,
+            "official_candidate_present": true,
+            "error": null
+          }
+        ]
+      },
+      "batch": {
+        "summary": {
+          "mode": "batch",
+          "total_products": 10,
+          "official_candidate_present": 10,
+          "successes": 10,
+          "success_rate": 1.0,
+          "first_attempt_official_rate": 0.9,
+          "average_attempts": 1.1
+        },
+        "results": [
+          {
+            "sku": "032247886598",
+            "product_name": "Scotts NatureScapes Color Enhanced Mulch Deep Forest Brown 1.5 cu ft",
+            "expected_brand": "Scotts",
+            "input_brand": "Scotts",
+            "category": "Garden > Mulch",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/scotts-nature-scapes-color-enhanced-mulch.html",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "scottsmiraclegro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "095668300593",
+            "product_name": "Manna Pro Duckling & Gosling Starter Grower Crumbles 8 lb",
+            "expected_brand": "Manna Pro",
+            "input_brand": "Manna Pro",
+            "category": "Poultry Feed",
+            "success": true,
+            "selected_url": "https://mannapro.com/products/duck-starter-grower-crumble",
+            "selected_domain": "mannapro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "mannapro.com"
+            ],
+            "first_attempt_domain": "mannapro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "032247761215",
+            "product_name": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
+            "expected_brand": "Scotts",
+            "input_brand": "Scotts",
+            "category": "Lawn Care > Spreaders",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/spreaders/76121B.html",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "scottsmiraclegro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "032247885591",
+            "product_name": "Scotts NatureScapes Classic Black Color Enhanced Mulch 1.5 cu ft",
+            "expected_brand": "Scotts",
+            "input_brand": "Scotts",
+            "category": "Garden > Mulch",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/scotts-nature-scapes-color-enhanced-mulch.html",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "scottsmiraclegro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "095668001032",
+            "product_name": "Manna Pro Farmhouse Favorites Mini Horse & Donkey Treats",
+            "expected_brand": "Manna Pro",
+            "input_brand": "Manna Pro",
+            "category": "Horse Supplies > Treats",
+            "success": true,
+            "selected_url": "https://mannapro.com/products/farmhouse-favorites-mini-horse-donkey-treats",
+            "selected_domain": "mannapro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "mannapro.com"
+            ],
+            "first_attempt_domain": "mannapro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "095668225308",
+            "product_name": "Manna Pro 16% All Flock Crumbles with Probiotics 8 lb",
+            "expected_brand": "Manna Pro",
+            "input_brand": "Manna Pro",
+            "category": "Poultry Feed",
+            "success": true,
+            "selected_url": "https://mannapro.com/products/all-flock-with-probiotic-crumble",
+            "selected_domain": "mannapro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "mannapro.com"
+            ],
+            "first_attempt_domain": "mannapro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "032247278140",
+            "product_name": "Miracle-Gro Potting Mix 25 Quart",
+            "expected_brand": "Miracle-Gro",
+            "input_brand": "Miracle-Gro",
+            "category": "Garden > Potting Mix",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/brands/miracle-gro/products/potting-mix/miracle-gro-potting-mix.html",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "scottsmiraclegro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "032247279048",
+            "product_name": "Miracle-Gro Potting Mix 50 Quart",
+            "expected_brand": "Miracle-Gro",
+            "input_brand": "Miracle-Gro",
+            "category": "Garden > Potting Mix",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/brands/miracle-gro/products/potting-mix/miracle-gro-potting-mix.html",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "scottsmiraclegro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "032247884594",
+            "product_name": "Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+            "expected_brand": "Scotts",
+            "input_brand": "Scotts",
+            "category": "Garden > Mulch",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/scotts-nature-scapes-color-enhanced-mulch.html?bvstate=pg:7/ct:r",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "scottsmiraclegro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "095668302580",
+            "product_name": "Manna Pro Bite-Size Nuggets Alfalfa & Molasses 4 lb",
+            "expected_brand": "Manna Pro",
+            "input_brand": "Manna Pro",
+            "category": "Horse Supplies > Treats",
+            "success": true,
+            "selected_url": "https://mannapro.com/products/bite-size-nuggets-horse-treats",
+            "selected_domain": "mannapro.com",
+            "attempt_count": 2,
+            "attempted_domains": [
+              "bigdweb.com",
+              "mannapro.com"
+            ],
+            "first_attempt_domain": "bigdweb.com",
+            "first_attempt_official": false,
+            "official_candidate_present": true,
+            "error": null
+          }
+        ]
+      },
+      "comparison": {
+        "success_delta": 0.0,
+        "first_attempt_official_delta": 0.2,
+        "average_attempts_delta": -1.0,
+        "improved_skus": [],
+        "regressed_skus": [],
+        "fewer_attempt_skus": [
+          "032247278140",
+          "032247279048"
+        ],
+        "more_attempt_skus": []
+      }
+    },
+    "missing_brand_siblings": {
+      "independent": {
+        "summary": {
+          "mode": "independent",
+          "total_products": 10,
+          "official_candidate_present": 10,
+          "successes": 5,
+          "success_rate": 0.5,
+          "first_attempt_official_rate": 0.4,
+          "average_attempts": 4.0
+        },
+        "results": [
+          {
+            "sku": "032247886598",
+            "product_name": "Scotts NatureScapes Color Enhanced Mulch Deep Forest Brown 1.5 cu ft",
+            "expected_brand": "Scotts",
+            "input_brand": "Scotts",
+            "category": "Garden > Mulch",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/scotts-nature-scapes-color-enhanced-mulch.html",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "scottsmiraclegro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "095668300593",
+            "product_name": "Manna Pro Duckling & Gosling Starter Grower Crumbles 8 lb",
+            "expected_brand": "Manna Pro",
+            "input_brand": "Manna Pro",
+            "category": "Poultry Feed",
+            "success": true,
+            "selected_url": "https://mannapro.com/products/duck-starter-grower-crumble",
+            "selected_domain": "mannapro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "mannapro.com"
+            ],
+            "first_attempt_domain": "mannapro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "032247761215",
+            "product_name": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
+            "expected_brand": "Scotts",
+            "input_brand": null,
+            "category": "Lawn Care > Spreaders",
+            "success": false,
+            "selected_url": null,
+            "selected_domain": null,
+            "attempt_count": 6,
+            "attempted_domains": [
+              "diyhomecenter.net",
+              "wdbryant.com",
+              "forschlerstore.shoptruevalue.com",
+              "maycresthardware.com",
+              "wiltonhardware.com",
+              "hammondhardware.com"
+            ],
+            "first_attempt_domain": "diyhomecenter.net",
+            "first_attempt_official": false,
+            "official_candidate_present": true,
+            "error": "Oracle rejected non-official source"
+          },
+          {
+            "sku": "032247885591",
+            "product_name": "Scotts NatureScapes Classic Black Color Enhanced Mulch 1.5 cu ft",
+            "expected_brand": "Scotts",
+            "input_brand": null,
+            "category": "Garden > Mulch",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/scotts-nature-scapes-color-enhanced-mulch.html",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "scottsmiraclegro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "095668001032",
+            "product_name": "Manna Pro Farmhouse Favorites Mini Horse & Donkey Treats",
+            "expected_brand": "Manna Pro",
+            "input_brand": null,
+            "category": "Horse Supplies > Treats",
+            "success": false,
+            "selected_url": null,
+            "selected_domain": null,
+            "attempt_count": 6,
+            "attempted_domains": [
+              "bradleycaldwell.com",
+              "bradleycaldwell.com",
+              "klemsonline.com",
+              "hardypaw.com",
+              "easternsierrafeed.com",
+              "cheshirehorse.com"
+            ],
+            "first_attempt_domain": "bradleycaldwell.com",
+            "first_attempt_official": false,
+            "official_candidate_present": true,
+            "error": "Oracle rejected non-official source"
+          },
+          {
+            "sku": "095668225308",
+            "product_name": "Manna Pro 16% All Flock Crumbles with Probiotics 8 lb",
+            "expected_brand": "Manna Pro",
+            "input_brand": null,
+            "category": "Poultry Feed",
+            "success": false,
+            "selected_url": null,
+            "selected_domain": null,
+            "attempt_count": 6,
+            "attempted_domains": [
+              "westplains.hirschfeed.com",
+              "eselling.animalhealthinternational.com",
+              "domyown.com",
+              "southernstates.com",
+              "petsupreme.com",
+              "kroger.com"
+            ],
+            "first_attempt_domain": "westplains.hirschfeed.com",
+            "first_attempt_official": false,
+            "official_candidate_present": true,
+            "error": "Oracle rejected non-official source"
+          },
+          {
+            "sku": "032247278140",
+            "product_name": "Miracle-Gro Potting Mix 25 Quart",
+            "expected_brand": "Miracle-Gro",
+            "input_brand": "Miracle-Gro",
+            "category": "Garden > Potting Mix",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/brands/miracle-gro/products/potting-mix/miracle-gro-potting-mix.html",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 6,
+            "attempted_domains": [
+              "tractorsupply.com",
+              "homedepot.com",
+              "homedepot.com",
+              "homedepot.com",
+              "acehardware.com",
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "tractorsupply.com",
+            "first_attempt_official": false,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "032247279048",
+            "product_name": "Miracle-Gro Potting Mix 50 Quart",
+            "expected_brand": "Miracle-Gro",
+            "input_brand": null,
+            "category": "Garden > Potting Mix",
+            "success": false,
+            "selected_url": null,
+            "selected_domain": null,
+            "attempt_count": 6,
+            "attempted_domains": [
+              "homedepot.com",
+              "homedepot.com",
+              "acehardware.com",
+              "lowes.com",
+              "brickseek.com",
+              "bfgsupply.com"
+            ],
+            "first_attempt_domain": "homedepot.com",
+            "first_attempt_official": false,
+            "official_candidate_present": true,
+            "error": "Oracle rejected non-official source"
+          },
+          {
+            "sku": "032247884594",
+            "product_name": "Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+            "expected_brand": "Scotts",
+            "input_brand": null,
+            "category": "Garden > Mulch",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/scotts-nature-scapes-color-enhanced-mulch.html?bvstate=pg:7/ct:r",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "scottsmiraclegro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "095668302580",
+            "product_name": "Manna Pro Bite-Size Nuggets Alfalfa & Molasses 4 lb",
+            "expected_brand": "Manna Pro",
+            "input_brand": null,
+            "category": "Horse Supplies > Treats",
+            "success": false,
+            "selected_url": null,
+            "selected_domain": null,
+            "attempt_count": 6,
+            "attempted_domains": [
+              "bigdweb.com",
+              "bigdweb.com",
+              "campbellsagwaytv.shoptruevalue.com",
+              "klemsonline.com",
+              "hammondhardware.com",
+              "fcfarmandhome.com"
+            ],
+            "first_attempt_domain": "bigdweb.com",
+            "first_attempt_official": false,
+            "official_candidate_present": true,
+            "error": "Oracle rejected non-official source"
+          }
+        ]
+      },
+      "batch": {
+        "summary": {
+          "mode": "batch",
+          "total_products": 10,
+          "official_candidate_present": 10,
+          "successes": 5,
+          "success_rate": 0.5,
+          "first_attempt_official_rate": 0.5,
+          "average_attempts": 3.5
+        },
+        "results": [
+          {
+            "sku": "032247886598",
+            "product_name": "Scotts NatureScapes Color Enhanced Mulch Deep Forest Brown 1.5 cu ft",
+            "expected_brand": "Scotts",
+            "input_brand": "Scotts",
+            "category": "Garden > Mulch",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/scotts-nature-scapes-color-enhanced-mulch.html",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "scottsmiraclegro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "095668300593",
+            "product_name": "Manna Pro Duckling & Gosling Starter Grower Crumbles 8 lb",
+            "expected_brand": "Manna Pro",
+            "input_brand": "Manna Pro",
+            "category": "Poultry Feed",
+            "success": true,
+            "selected_url": "https://mannapro.com/products/duck-starter-grower-crumble",
+            "selected_domain": "mannapro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "mannapro.com"
+            ],
+            "first_attempt_domain": "mannapro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "032247761215",
+            "product_name": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
+            "expected_brand": "Scotts",
+            "input_brand": null,
+            "category": "Lawn Care > Spreaders",
+            "success": false,
+            "selected_url": null,
+            "selected_domain": null,
+            "attempt_count": 6,
+            "attempted_domains": [
+              "diyhomecenter.net",
+              "wdbryant.com",
+              "forschlerstore.shoptruevalue.com",
+              "maycresthardware.com",
+              "wiltonhardware.com",
+              "hammondhardware.com"
+            ],
+            "first_attempt_domain": "diyhomecenter.net",
+            "first_attempt_official": false,
+            "official_candidate_present": true,
+            "error": "Oracle rejected non-official source"
+          },
+          {
+            "sku": "032247885591",
+            "product_name": "Scotts NatureScapes Classic Black Color Enhanced Mulch 1.5 cu ft",
+            "expected_brand": "Scotts",
+            "input_brand": null,
+            "category": "Garden > Mulch",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/scotts-nature-scapes-color-enhanced-mulch.html",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "scottsmiraclegro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "095668001032",
+            "product_name": "Manna Pro Farmhouse Favorites Mini Horse & Donkey Treats",
+            "expected_brand": "Manna Pro",
+            "input_brand": null,
+            "category": "Horse Supplies > Treats",
+            "success": false,
+            "selected_url": null,
+            "selected_domain": null,
+            "attempt_count": 6,
+            "attempted_domains": [
+              "bradleycaldwell.com",
+              "bradleycaldwell.com",
+              "klemsonline.com",
+              "hardypaw.com",
+              "easternsierrafeed.com",
+              "cheshirehorse.com"
+            ],
+            "first_attempt_domain": "bradleycaldwell.com",
+            "first_attempt_official": false,
+            "official_candidate_present": true,
+            "error": "Oracle rejected non-official source"
+          },
+          {
+            "sku": "095668225308",
+            "product_name": "Manna Pro 16% All Flock Crumbles with Probiotics 8 lb",
+            "expected_brand": "Manna Pro",
+            "input_brand": null,
+            "category": "Poultry Feed",
+            "success": false,
+            "selected_url": null,
+            "selected_domain": null,
+            "attempt_count": 6,
+            "attempted_domains": [
+              "westplains.hirschfeed.com",
+              "eselling.animalhealthinternational.com",
+              "domyown.com",
+              "southernstates.com",
+              "petsupreme.com",
+              "kroger.com"
+            ],
+            "first_attempt_domain": "westplains.hirschfeed.com",
+            "first_attempt_official": false,
+            "official_candidate_present": true,
+            "error": "Oracle rejected non-official source"
+          },
+          {
+            "sku": "032247278140",
+            "product_name": "Miracle-Gro Potting Mix 25 Quart",
+            "expected_brand": "Miracle-Gro",
+            "input_brand": "Miracle-Gro",
+            "category": "Garden > Potting Mix",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/brands/miracle-gro/products/potting-mix/miracle-gro-potting-mix.html",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "scottsmiraclegro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "032247279048",
+            "product_name": "Miracle-Gro Potting Mix 50 Quart",
+            "expected_brand": "Miracle-Gro",
+            "input_brand": null,
+            "category": "Garden > Potting Mix",
+            "success": false,
+            "selected_url": null,
+            "selected_domain": null,
+            "attempt_count": 6,
+            "attempted_domains": [
+              "homedepot.com",
+              "homedepot.com",
+              "acehardware.com",
+              "lowes.com",
+              "brickseek.com",
+              "bfgsupply.com"
+            ],
+            "first_attempt_domain": "homedepot.com",
+            "first_attempt_official": false,
+            "official_candidate_present": true,
+            "error": "Oracle rejected non-official source"
+          },
+          {
+            "sku": "032247884594",
+            "product_name": "Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+            "expected_brand": "Scotts",
+            "input_brand": null,
+            "category": "Garden > Mulch",
+            "success": true,
+            "selected_url": "https://scottsmiraclegro.com/en-us/scotts-nature-scapes-color-enhanced-mulch.html?bvstate=pg:7/ct:r",
+            "selected_domain": "scottsmiraclegro.com",
+            "attempt_count": 1,
+            "attempted_domains": [
+              "scottsmiraclegro.com"
+            ],
+            "first_attempt_domain": "scottsmiraclegro.com",
+            "first_attempt_official": true,
+            "official_candidate_present": true,
+            "error": null
+          },
+          {
+            "sku": "095668302580",
+            "product_name": "Manna Pro Bite-Size Nuggets Alfalfa & Molasses 4 lb",
+            "expected_brand": "Manna Pro",
+            "input_brand": null,
+            "category": "Horse Supplies > Treats",
+            "success": false,
+            "selected_url": null,
+            "selected_domain": null,
+            "attempt_count": 6,
+            "attempted_domains": [
+              "bigdweb.com",
+              "bigdweb.com",
+              "campbellsagwaytv.shoptruevalue.com",
+              "klemsonline.com",
+              "hammondhardware.com",
+              "fcfarmandhome.com"
+            ],
+            "first_attempt_domain": "bigdweb.com",
+            "first_attempt_official": false,
+            "official_candidate_present": true,
+            "error": "Oracle rejected non-official source"
+          }
+        ]
+      },
+      "comparison": {
+        "success_delta": 0.0,
+        "first_attempt_official_delta": 0.1,
+        "average_attempts_delta": -0.5,
+        "improved_skus": [],
+        "regressed_skus": [],
+        "fewer_attempt_skus": [
+          "032247278140"
+        ],
+        "more_attempt_skus": []
+      }
+    }
+  }
+}

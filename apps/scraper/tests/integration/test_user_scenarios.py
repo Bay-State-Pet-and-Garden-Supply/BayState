@@ -338,23 +338,28 @@ class UserScenarioCohortScraper(AISearchScraper):
         product_name: str | None = None,
         brand: str | None = None,
         category: str | None = None,
+        preferred_domains: list[str] | None = None,
         cohort_state: Any | None = None,
     ) -> AISearchResult:
         del category
         scenario = self._scenarios[sku]
         attempt = self._attempts.get(sku, 0) + 1
         self._attempts[sku] = attempt
-        preferred_domains = cohort_state.ranked_domains() if cohort_state is not None else []
+        observed_preferred_domains = list(preferred_domains or [])
+        if cohort_state is not None:
+            for preferred_domain in cohort_state.ranked_domains():
+                if preferred_domain not in observed_preferred_domains:
+                    observed_preferred_domains.append(preferred_domain)
         self.calls.append(
             {
                 "sku": sku,
                 "attempt": attempt,
                 "brand": brand,
-                "preferred_domains": preferred_domains,
+                "preferred_domains": observed_preferred_domains,
             }
         )
 
-        if sku == "027773010586" and scenario.expected_domain not in preferred_domains:
+        if sku == "027773010586" and scenario.expected_domain not in observed_preferred_domains:
             return AISearchResult(success=False, sku=sku, error="Initial dominant-domain miss")
 
         return AISearchResult(
@@ -418,12 +423,8 @@ async def test_user_scenarios_sku_first_match_recorded_outputs() -> None:
     assert {sku: candidates[0].url for sku, candidates in search_results.items()} == {
         scenario.sku: scenario.expected_url for scenario in RECORDED_SKU_FIRST_SCENARIOS
     }
-    assert {result.sku: result.url for result in results} == {
-        scenario.sku: scenario.expected_url for scenario in RECORDED_SKU_FIRST_SCENARIOS
-    }
-    assert {result.sku: result.brand for result in results} == {
-        scenario.sku: scenario.expected_brand for scenario in RECORDED_SKU_FIRST_SCENARIOS
-    }
+    assert {result.sku: result.url for result in results} == {scenario.sku: scenario.expected_url for scenario in RECORDED_SKU_FIRST_SCENARIOS}
+    assert {result.sku: result.brand for result in results} == {scenario.sku: scenario.expected_brand for scenario in RECORDED_SKU_FIRST_SCENARIOS}
     assert all(result.success for result in results)
     assert all(result.source_website == ScenarioScorer().domain_from_url(result.url or "") for result in results)
     assert [sku for sku, _ in consolidator.consolidate_calls] == [scenario.sku for scenario in RECORDED_SKU_FIRST_SCENARIOS]

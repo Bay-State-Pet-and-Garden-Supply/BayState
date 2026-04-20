@@ -10,6 +10,7 @@ from collections.abc import Awaitable, Callable
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any, Optional, cast
+from urllib.parse import urlparse
 
 from scrapers.ai_cost_tracker import AICostTracker
 from scrapers.ai_metrics import record_ai_extraction
@@ -561,6 +562,41 @@ class AISearchScraper:
             ordered.append(domain)
         return ordered or None
 
+    @staticmethod
+    def _merge_preferred_domains(*domain_lists: list[str] | None) -> list[str]:
+        ordered: list[str] = []
+        seen: set[str] = set()
+
+        for domain_list in domain_lists:
+            for domain in domain_list or []:
+                normalized = str(domain or "").strip().lower().strip("/")
+                if normalized.startswith("http://"):
+                    normalized = normalized[len("http://") :]
+                elif normalized.startswith("https://"):
+                    normalized = normalized[len("https://") :]
+
+                parsed = urlparse(f"https://{normalized}" if "://" not in str(domain or "") else str(domain or ""))
+                normalized = str(parsed.netloc or normalized).strip().lower()
+                if normalized.startswith("www."):
+                    normalized = normalized[4:]
+                normalized = normalized.split("/", 1)[0].strip()
+                if not normalized or normalized in seen:
+                    continue
+                seen.add(normalized)
+                ordered.append(normalized)
+
+        return ordered
+
+    @staticmethod
+    def _normalize_input_preferred_domains(raw_value: Any) -> list[str] | None:
+        if not isinstance(raw_value, list):
+            return None
+
+        normalized = AISearchScraper._merge_preferred_domains(
+            [str(candidate) for candidate in raw_value if isinstance(candidate, str)],
+        )
+        return normalized or None
+
     def _remember_cohort_success(
         self,
         cohort_state: _BatchCohortState,
@@ -583,11 +619,7 @@ class AISearchScraper:
         if cohort_state is None:
             return None
 
-        official_domain = cohort_state.dominant_official_domain(minimum_count=2)
-        if official_domain:
-            return official_domain
-
-        return cohort_state.dominant_domain()
+        return cohort_state.dominant_official_domain(minimum_count=2)
 
     def _build_locked_cohort_state(
         self,
@@ -643,6 +675,7 @@ class AISearchScraper:
                 product_name=product.get("product_name"),
                 brand=product.get("brand"),
                 category=product.get("category"),
+                preferred_domains=self._normalize_input_preferred_domains(product.get("preferred_domains")),
                 cohort_state=locked_state,
             )
             retry_domain = self._scoring.domain_from_url(retry_result.url or "")
@@ -870,6 +903,7 @@ class AISearchScraper:
                     name=str(product.get("product_name") or ""),
                     brand=str(product.get("brand") or "").strip() or None,
                     category=str(product.get("category") or "").strip() or None,
+                    preferred_domains=self._normalize_input_preferred_domains(product.get("preferred_domains")),
                 )
             )
 
@@ -949,6 +983,7 @@ class AISearchScraper:
                         product_name=product.get("product_name"),
                         brand=product.get("brand"),
                         category=product.get("category"),
+                        preferred_domains=self._normalize_input_preferred_domains(product.get("preferred_domains")),
                         cohort_state=cohort_state,
                     )
                     cohort_results.append((original_index, result))
@@ -1303,6 +1338,7 @@ class AISearchScraper:
         brand: Optional[str],
         category: Optional[str],
         cost_context: _ScrapeCostContext | None = None,
+        preferred_domains: Optional[list[str]] = None,
     ) -> list[dict[str, Any]]:
         if not self.enable_two_step or self._two_step_refiner is None or not search_results:
             return search_results
@@ -1344,6 +1380,7 @@ class AISearchScraper:
             brand=brand,
             product_name=product_name,
             category=category,
+            preferred_domains=preferred_domains,
         )
         if not prepared_refined_results:
             return search_results
@@ -1362,6 +1399,7 @@ class AISearchScraper:
         product_name: Optional[str] = None,
         brand: Optional[str] = None,
         category: Optional[str] = None,
+        preferred_domains: Optional[list[str]] = None,
         cohort_state: _BatchCohortState | None = None,
     ) -> AISearchResult:
         """Scrape a product using AI search.
@@ -1377,7 +1415,13 @@ class AISearchScraper:
         """
         cost_context = _ScrapeCostContext()
         try:
-            preferred_domains = self._preferred_cohort_domains(cohort_state)
+            preferred_domains = (
+                self._merge_preferred_domains(
+                    preferred_domains,
+                    self._preferred_cohort_domains(cohort_state),
+                )
+                or None
+            )
             inferred_brand = None
             if not brand and cohort_state is not None:
                 ranked_brands = cohort_state.ranked_brands()
@@ -1412,6 +1456,7 @@ class AISearchScraper:
                 brand=effective_brand,
                 category=category,
                 cost_context=cost_context,
+                preferred_domains=preferred_domains,
             )
 
             if not effective_brand and not preferred_domains:
@@ -1686,6 +1731,48 @@ class AISearchScraper:
             product_name,
             brand,
             normalized_result.get("url") or url,
+        )
+
+    async def extract_from_fixture(
+        self,
+        *,
+        url: str,
+        sku: str,
+        product_name: Optional[str] = None,
+        brand: Optional[str] = None,
+        html: str,
+        markdown: str = "",
+        final_url: str | None = None,
+        status_code: int | None = None,
+    ) -> AISearchResult:
+        """Extract product data from captured page content without live crawling."""
+        extraction_result = await self._crawl4ai_extractor.extract_from_fixture(
+            url=url,
+            sku=sku,
+            product_name=product_name,
+            brand=brand,
+            html=html,
+            markdown=markdown,
+            final_url=final_url,
+            status_code=status_code,
+        )
+        normalized_result = dict(extraction_result)
+        normalized_result.setdefault("url", final_url or url)
+
+        if not normalized_result.get("success"):
+            return AISearchResult(
+                success=False,
+                sku=sku,
+                error=str(normalized_result.get("error") or "Extraction failed"),
+                cost_usd=float(self._cost_tracker.get_cost_summary().get("total_cost_usd", 0) or 0.0),
+            )
+
+        return self._build_discovery_result(
+            normalized_result,
+            sku,
+            product_name,
+            brand,
+            normalized_result.get("url") or final_url or url,
         )
 
     async def _extract_candidates_parallel(self, urls: list[str], sku: str, product_name: Optional[str], brand: Optional[str]) -> list[dict[str, Any]]:
