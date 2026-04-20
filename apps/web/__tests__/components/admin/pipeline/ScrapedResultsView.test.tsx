@@ -32,6 +32,32 @@ function makeProducts(suffix: string): PipelineProduct[] {
   ];
 }
 
+function makeMultiSourceProducts(): PipelineProduct[] {
+  return [
+    {
+      id: 'product-multi',
+      sku: 'SKU-multi',
+      input: { name: 'Multi Source Product', price: 18.5 },
+      sources: {
+        orgill: {
+          title: 'Orgill Product',
+          price: 18.5,
+          url: 'https://example.com/orgill',
+        },
+        central_pet: {
+          title: 'Central Pet Product',
+          price: 19.5,
+          url: 'https://example.com/central-pet',
+        },
+      },
+      consolidated: { name: 'Multi Source Product' },
+      pipeline_status: 'scraped',
+      created_at: '2026-03-26T00:00:00.000Z',
+      updated_at: '2026-03-26T00:00:00.000Z',
+    },
+  ];
+}
+
 describe('ScrapedResultsView', () => {
   beforeAll(() => {
     Object.defineProperty(window.HTMLElement.prototype, 'scrollIntoView', {
@@ -131,5 +157,46 @@ describe('ScrapedResultsView', () => {
         }),
       });
     });
+  });
+
+  it('switches between source tabs with arrow keys', async () => {
+    render(
+      <ScrapedResultsView
+        products={makeMultiSourceProducts()}
+        selectedSkus={new Set()}
+        onSelectSku={jest.fn()}
+        onRefresh={jest.fn()}
+      />
+    );
+
+    expect(screen.getByRole('tab', { name: 'orgill' })).toHaveAttribute('data-state', 'active');
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'central_pet' })).toHaveAttribute('data-state', 'active');
+    });
+
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'orgill' })).toHaveAttribute('data-state', 'active');
+    });
+  });
+
+  it('opens the remove source confirmation with backspace', async () => {
+    render(
+      <ScrapedResultsView
+        products={makeMultiSourceProducts()}
+        selectedSkus={new Set()}
+        onSelectSku={jest.fn()}
+        onRefresh={jest.fn()}
+      />
+    );
+
+    fireEvent.keyDown(window, { key: 'Backspace' });
+
+    expect(await screen.findByText('Delete Source')).toBeInTheDocument();
+    expect(screen.getByText('Are you sure you want to delete the source "orgill"?')).toBeInTheDocument();
   });
 });

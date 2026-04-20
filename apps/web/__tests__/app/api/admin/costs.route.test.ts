@@ -136,6 +136,33 @@ describe('admin costs route', () => {
       failedJobs: 0,
     });
 
+    expect(body.usage.byProvider).toEqual([
+      {
+        provider: 'openai',
+        totalCost: 0.75,
+        totalJobs: 1,
+        completedJobs: 0,
+        failedJobs: 1,
+        totalTokens: 100,
+      },
+      {
+        provider: 'gemini',
+        totalCost: 1.25,
+        totalJobs: 1,
+        completedJobs: 1,
+        failedJobs: 0,
+        totalTokens: 150,
+      },
+      {
+        provider: 'openai_compatible',
+        totalCost: 0.5,
+        totalJobs: 1,
+        completedJobs: 1,
+        failedJobs: 0,
+        totalTokens: 50,
+      },
+    ]);
+
     expect(body.recentUsage).toHaveLength(3);
     expect(body.estimatedMonthlyTotal).toBe(2.5);
   });

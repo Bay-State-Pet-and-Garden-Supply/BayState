@@ -121,7 +121,10 @@ export function ScrapedResultsView({
   }, [sortedProducts, preferredSku]);
 
   const sources = selectedProduct?.sources || EMPTY_SOURCES;
-  const sourceKeys = Object.keys(sources).filter((k) => !k.startsWith("_"));
+  const sourceKeys = useMemo(
+    () => Object.keys(sources).filter((k) => !k.startsWith("_")),
+    [sources],
+  );
 
   const [preferredSource, setPreferredSource] = useState<string>("");
 
@@ -172,11 +175,11 @@ export function ScrapedResultsView({
     [selectedProduct?.sku],
   );
 
-  const handleDeleteSourceClick = (sourceKey: string) => {
+  const handleDeleteSourceClick = useCallback((sourceKey: string) => {
     if (!selectedProduct) return;
     setPendingDeleteSource(sourceKey);
     setConfirmOpen(true);
-  };
+  }, [selectedProduct]);
 
   const handleConfirmDeleteSource = async () => {
     if (!selectedProduct || !pendingDeleteSource) return;
@@ -209,6 +212,49 @@ export function ScrapedResultsView({
     }
     setPendingDeleteSource(null);
   };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const activeElement = document.activeElement;
+      if (
+        activeElement instanceof HTMLInputElement ||
+        activeElement instanceof HTMLTextAreaElement ||
+        activeElement?.getAttribute("contenteditable") === "true"
+      ) {
+        return;
+      }
+
+      if (confirmOpen) {
+        return;
+      }
+
+      if (sourceKeys.length === 0) {
+        return;
+      }
+
+      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        event.preventDefault();
+
+        const currentIndex = sourceKeys.indexOf(activeSource);
+        const fallbackIndex = currentIndex === -1 ? 0 : currentIndex;
+        const nextIndex =
+          event.key === "ArrowRight"
+            ? (fallbackIndex + 1) % sourceKeys.length
+            : (fallbackIndex - 1 + sourceKeys.length) % sourceKeys.length;
+
+        setPreferredSource(sourceKeys[nextIndex] ?? "");
+        return;
+      }
+
+      if (event.key === "Backspace" && activeSource && !confirmOpen) {
+        event.preventDefault();
+        handleDeleteSourceClick(activeSource);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeSource, confirmOpen, handleDeleteSourceClick, sourceKeys]);
 
   // 5. Effects
   return (

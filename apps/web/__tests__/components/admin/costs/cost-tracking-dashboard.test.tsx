@@ -50,6 +50,32 @@ const mockCostResponse = {
       failedJobs: 1,
       totalTokens: 1500,
     },
+    byProvider: [
+      {
+        provider: 'openai',
+        totalCost: 3.5,
+        totalJobs: 3,
+        completedJobs: 2,
+        failedJobs: 1,
+        totalTokens: 1000,
+      },
+      {
+        provider: 'gemini',
+        totalCost: 1.25,
+        totalJobs: 1,
+        completedJobs: 1,
+        failedJobs: 0,
+        totalTokens: 500,
+      },
+      {
+        provider: 'openai_compatible',
+        totalCost: 0.25,
+        totalJobs: 1,
+        completedJobs: 1,
+        failedJobs: 0,
+        totalTokens: 100,
+      },
+    ],
     combined: {
       totalCost: 5,
       totalJobs: 6,
@@ -83,17 +109,20 @@ describe('CostTrackingDashboard', () => {
     jest.resetAllMocks();
   });
 
-  it('renders feature-based cost tracking details', async () => {
+  it('renders feature and provider-based cost tracking details', async () => {
     render(<CostTrackingDashboard />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Total Live Spend/i)).toBeInTheDocument();
+      expect(screen.getByText('Estimated Monthly')).toBeInTheDocument();
     });
 
     expect(screen.getByText('AI Search (30d)')).toBeInTheDocument();
     expect(screen.getByText('Crawl4AI (30d)')).toBeInTheDocument();
     expect(screen.getByText('Consolidation (30d)')).toBeInTheDocument();
-    expect(screen.getByText('Recent Feature Usage')).toBeInTheDocument();
+    expect(screen.getByText('OpenAI Usage (30d)')).toBeInTheDocument();
+    expect(screen.getByText('Gemini Usage (30d)')).toBeInTheDocument();
+    expect(screen.getByText('OpenAI-Compatible Usage (30d)')).toBeInTheDocument();
+    expect(screen.getByText('Recent External Usage')).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Feature' })).toBeInTheDocument();
     expect(screen.getByText('Consolidation')).toBeInTheDocument();
   });
