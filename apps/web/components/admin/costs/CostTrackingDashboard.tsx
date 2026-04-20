@@ -45,6 +45,15 @@ interface FeatureUsage {
   totalTokens?: number;
 }
 
+interface ProviderUsage {
+  provider: string;
+  totalCost: number;
+  totalJobs: number;
+  completedJobs: number;
+  failedJobs: number;
+  totalTokens: number;
+}
+
 interface RecentUsageRecord {
   id: string;
   feature: 'AI Search' | 'Crawl4AI' | 'Consolidation';
@@ -66,6 +75,7 @@ interface CostData {
     aiSearch: FeatureUsage;
     crawl4ai: FeatureUsage;
     consolidation: FeatureUsage;
+    byProvider: ProviderUsage[];
     combined: {
       totalCost: number;
       totalJobs: number;
@@ -125,9 +135,11 @@ function formatDate(dateStr: string): string {
 }
 
 function getProviderLabel(provider: string): string {
+  if (provider === 'gemini') return 'Gemini';
   if (provider === 'openai_compatible') return 'OpenAI-Compatible';
+  if (provider === 'openai') return 'OpenAI';
   if (provider === 'serper') return 'Serper';
-  return 'OpenAI';
+  return provider.replace(/[_-]/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -399,6 +411,29 @@ export function CostTrackingDashboard() {
           bgAccent="bg-cyan-500/10"
         />
       </div>
+
+      {data.usage.byProvider.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {data.usage.byProvider.map((providerUsage) => {
+            const summaryTitle = `${getProviderLabel(providerUsage.provider)} Usage (${days}d)`;
+            const tokenDescription = providerUsage.totalTokens > 0
+              ? ` · ${formatTokens(providerUsage.totalTokens)} tokens`
+              : '';
+
+            return (
+              <SummaryCard
+                key={providerUsage.provider}
+                title={summaryTitle}
+                value={formatCurrency(providerUsage.totalCost)}
+                icon={SERVICE_ICONS[providerUsage.provider] ?? Brain}
+                description={`${providerUsage.totalJobs} jobs · ${providerUsage.completedJobs} completed${tokenDescription}`}
+                accent={providerUsage.provider === 'gemini' ? 'text-violet-300' : providerUsage.provider === 'openai_compatible' ? 'text-amber-300' : 'text-cyan-300'}
+                bgAccent={providerUsage.provider === 'gemini' ? 'bg-violet-500/10' : providerUsage.provider === 'openai_compatible' ? 'bg-amber-500/10' : 'bg-cyan-500/10'}
+              />
+            );
+          })}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {categories.map(([category, services]) => (

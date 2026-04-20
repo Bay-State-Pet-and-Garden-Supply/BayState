@@ -45,6 +45,15 @@ interface FeatureUsageSummary {
   totalTokens?: number;
 }
 
+interface ProviderUsageSummary {
+  provider: string;
+  totalCost: number;
+  totalJobs: number;
+  completedJobs: number;
+  failedJobs: number;
+  totalTokens: number;
+}
+
 interface RecentUsageRecord {
   id: string;
   feature: 'AI Search' | 'Crawl4AI' | 'Consolidation';
@@ -55,6 +64,69 @@ interface RecentUsageRecord {
   created_at: string;
   completed_at: string | null;
   description: string | null;
+}
+
+const CORE_USAGE_PROVIDERS = ['openai', 'gemini', 'openai_compatible'] as const;
+
+function normalizeUsageProvider(value: unknown): string {
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return value.trim();
+  }
+
+  return 'openai';
+}
+
+function createProviderUsageSummary(provider: string): ProviderUsageSummary {
+  return {
+    provider,
+    totalCost: 0,
+    totalJobs: 0,
+    completedJobs: 0,
+    failedJobs: 0,
+    totalTokens: 0,
+  };
+}
+
+function summarizeUsageByProvider(records: RecentUsageRecord[]): ProviderUsageSummary[] {
+  const summaries = new Map<string, ProviderUsageSummary>();
+
+  for (const provider of CORE_USAGE_PROVIDERS) {
+    summaries.set(provider, createProviderUsageSummary(provider));
+  }
+
+  for (const record of records) {
+    const provider = normalizeUsageProvider(record.provider);
+    const summary = summaries.get(provider) ?? createProviderUsageSummary(provider);
+
+    summary.totalCost += toNumber(record.estimated_cost);
+    summary.totalJobs += 1;
+    summary.totalTokens += toNumber(record.total_tokens);
+
+    if (record.status === 'completed') {
+      summary.completedJobs += 1;
+    }
+
+    if (record.status === 'failed') {
+      summary.failedJobs += 1;
+    }
+
+    summaries.set(provider, summary);
+  }
+
+  const providerOrder = new Map<string, number>(
+    CORE_USAGE_PROVIDERS.map((provider, index) => [provider, index])
+  );
+
+  return Array.from(summaries.values()).sort((left, right) => {
+    const leftRank = providerOrder.get(left.provider) ?? Number.MAX_SAFE_INTEGER;
+    const rightRank = providerOrder.get(right.provider) ?? Number.MAX_SAFE_INTEGER;
+
+    if (leftRank !== rightRank) {
+      return leftRank - rightRank;
+    }
+
+    return left.provider.localeCompare(right.provider);
+  });
 }
 
 function toNumber(value: unknown): number {
@@ -219,11 +291,11 @@ export async function GET(request: Request) {
       {} as Record<string, ServiceCostRecord[]>
     );
 
-    const recentUsage: RecentUsageRecord[] = [
+    const allUsageRecords: RecentUsageRecord[] = [
       ...batchJobs.map((job) => ({
         id: job.id,
         feature: 'Consolidation' as const,
-        provider: job.provider || 'openai',
+        provider: normalizeUsageProvider(job.provider),
         status: job.status,
         estimated_cost: toNumber(job.estimated_cost),
         total_tokens: job.total_tokens ?? 0,
@@ -237,7 +309,7 @@ export async function GET(request: Request) {
         return {
           id: job.id,
           feature: 'AI Search' as const,
-          provider: String(aiSearchMetadata?.llm_provider ?? 'openai'),
+          provider: normalizeUsageProvider(aiSearchMetadata?.llm_provider),
           status: job.status,
           estimated_cost: toNumber(aiSearchMetadata?.total_cost ?? metadata?.total_cost),
           total_tokens: 0,
@@ -267,9 +339,12 @@ export async function GET(request: Request) {
           description: 'Crawl4AI scrape job',
         };
       }),
-    ]
+    ];
+
+    const recentUsage = allUsageRecords
       .sort((a, b) => b.created_at.localeCompare(a.created_at))
       .slice(0, 12);
+    const usageByProvider = summarizeUsageByProvider(allUsageRecords);
 
     const totalUsageCost = aiSearch.totalCost + crawl4ai.totalCost + consolidation.totalCost;
 
@@ -282,6 +357,7 @@ export async function GET(request: Request) {
         aiSearch,
         crawl4ai,
         consolidation,
+        byProvider: usageByProvider,
         combined: {
           totalCost: totalUsageCost,
           totalJobs: aiSearch.totalJobs + crawl4ai.totalJobs + consolidation.totalJobs,
