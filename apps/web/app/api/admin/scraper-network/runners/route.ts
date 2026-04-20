@@ -1,12 +1,23 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import {
+  coerceRunnerMetadata,
+  getEffectiveRunnerStatus,
+  getRunnerBuildCheckReason,
+  getRunnerConnectivityStatus,
+  getRunnerLabels,
+  getRunnerLastSeen,
+  getRunnerOs,
+  getRunnerVersion,
+} from '@/lib/scraper-runners';
 
 export const dynamic = 'force-dynamic';
 
 interface RunnerData {
   name: string;
   last_seen_at: string | null;
-  status: 'online' | 'offline' | 'busy' | 'idle' | 'polling' | 'paused';
+  created_at: string | null;
+  status: string | null;
   current_job_id: string | null;
   enabled: boolean;
   metadata: Record<string, unknown> | null;
@@ -17,42 +28,34 @@ export async function GET() {
     const supabase = await createClient();
     const { data: runnersData, error } = await supabase
       .from('scraper_runners')
-      .select('name,last_seen_at,status,current_job_id,enabled,metadata')
+      .select('name,last_seen_at,created_at,status,current_job_id,enabled,metadata')
       .order('last_seen_at', { ascending: false });
 
     if (error) {
       throw error;
     }
 
-    const now = new Date();
     const runners = ((runnersData ?? []) as RunnerData[]).map((runner) => {
-      const lastSeenAt = runner.last_seen_at ? new Date(runner.last_seen_at) : null;
-      const minutesSinceSeen = lastSeenAt
-        ? (now.getTime() - lastSeenAt.getTime()) / 1000 / 60
-        : Number.POSITIVE_INFINITY;
-      const status = minutesSinceSeen > 5 || runner.status === 'offline' ? 'offline' : 'online';
-
-      // Extract version info from metadata
-      const metadata = runner.metadata || {};
-      const version =
-        (metadata.build_sha as string) ||
-        (metadata.build_id as string) ||
-        (metadata.version as string) ||
-        null;
-      const buildCheckReason = (metadata.build_check_reason as string) || 'unconfigured';
+      const metadata = coerceRunnerMetadata(runner.metadata);
+      const durableStatus = getEffectiveRunnerStatus(runner);
+      const status = getRunnerConnectivityStatus(durableStatus);
+      const version = getRunnerVersion(metadata);
+      const buildCheckReason = getRunnerBuildCheckReason(metadata);
 
       return {
         id: runner.name,
         name: runner.name,
-        os: 'Linux/Mac',
+        os: getRunnerOs(metadata),
         status,
-        busy: runner.status === 'busy',
-        labels: [],
-        last_seen: runner.last_seen_at ?? new Date(0).toISOString(),
+        raw_status: durableStatus,
+        busy: durableStatus === 'busy',
+        labels: getRunnerLabels(metadata).map((name) => ({ name })),
+        last_seen: getRunnerLastSeen(runner),
         active_jobs: runner.current_job_id ? 1 : 0,
         enabled: runner.enabled,
         version,
         build_check_reason: buildCheckReason,
+        metadata,
       };
     });
 

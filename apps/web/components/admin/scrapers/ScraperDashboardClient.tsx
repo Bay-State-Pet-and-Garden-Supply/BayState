@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { useEffect, useState } from 'react';
 import {
   BarChart3,
   CheckCircle2,
@@ -11,10 +10,8 @@ import {
   HelpCircle,
   Activity,
   FileCode2,
-  Beaker,
   Server,
   History,
-  Settings2,
   Plus,
   RefreshCw,
 } from 'lucide-react';
@@ -69,18 +66,6 @@ interface JobDisplayItem {
   runner_name?: string | null;
 }
 
-// Shared job type for display (union compatible)
-interface DisplayJob {
-  id: string;
-  scrapers?: string[];
-  status: string;
-  total_skus?: number;
-  completed_skus?: number;
-  failed_skus?: number;
-  created_at: string;
-  runner_name?: string | null;
-}
-
 interface ScraperDashboardClientProps {
   scrapers: ScraperSummary[];
   recentJobs: RecentJob[];
@@ -103,12 +88,10 @@ export function ScraperDashboardClient({
   recentJobs: initialJobs,
   healthCounts,
   statusCounts,
-  runnerCount: initialRunnerCount,
 }: ScraperDashboardClientProps) {
   // Realtime job subscription
   const {
     jobs: realtimeJobs,
-    counts: jobCounts,
     isConnected: isJobsConnected,
     refetch: refetchJobs,
   } = useJobSubscription({
@@ -120,11 +103,13 @@ export function ScraperDashboardClient({
   const {
     runners: realtimeRunners,
     isConnected: isRunnersConnected,
+    getOnlineCount,
   } = useRunnerPresence({
     autoConnect: true,
   });
 
   const realtimeRunnerCount = Object.keys(realtimeRunners).length;
+  const onlineRunnerCount = getOnlineCount();
 
   // Combine initial jobs with realtime jobs for display
   const displayJobs: JobDisplayItem[] = [
@@ -157,21 +142,6 @@ export function ScraperDashboardClient({
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const colors: Record<string, string> = {
-      passed: 'bg-green-100 text-green-700',
-      failed: 'bg-red-100 text-red-700',
-      partial: 'bg-yellow-100 text-yellow-700',
-      running: 'bg-blue-100 text-blue-700',
-      pending: 'bg-muted text-muted-foreground',
-    };
-    return (
-      <Badge variant="outline" className={colors[status] || colors.pending}>
-        {status}
-      </Badge>
-    );
-  };
-
   return (
     <div className="space-y-6 p-6">
       {/* Realtime Status Banner */}
@@ -195,7 +165,7 @@ export function ScraperDashboardClient({
             {isRunnersConnected ? (
               <Badge variant="default" className="gap-1 text-xs">
                 <RefreshCw className="h-3 w-3 animate-pulse" />
-                {realtimeRunnerCount} online
+                {onlineRunnerCount} online
               </Badge>
             ) : (
               <Badge variant="secondary" className="text-xs">

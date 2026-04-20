@@ -19,7 +19,7 @@ function getSupabaseAdmin(): SupabaseClient {
 
 interface HeartbeatRequest {
     runner_name?: string;
-    status?: 'idle' | 'busy' | 'polling';
+    status?: 'idle' | 'busy' | 'polling' | 'paused';
     current_job_id?: string;
     lease_token?: string;
     jobs_completed?: number;
@@ -134,10 +134,13 @@ export async function POST(request: NextRequest) {
         const updatePayload: Record<string, unknown> = {
             last_seen_at: nowIso,
             status: body.status || 'idle',
+            metadata: versionMetadata,
         };
 
         if (body.current_job_id !== undefined) {
             updatePayload.current_job_id = body.current_job_id;
+        } else if (!body.current_job_id && body.status && body.status !== 'busy') {
+            updatePayload.current_job_id = null;
         }
         if (body.jobs_completed !== undefined) {
             updatePayload.jobs_completed = body.jobs_completed;

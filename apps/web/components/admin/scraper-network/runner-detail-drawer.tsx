@@ -11,6 +11,12 @@ import {
 import { RunnerDetailClient } from './runner-detail-client';
 import type { RunnerDetail } from './types';
 import { createClient } from '@/lib/supabase/client';
+import {
+  coerceRunnerMetadata,
+  getEffectiveRunnerStatus,
+  getRunnerBuildCheckReason,
+  getRunnerVersion,
+} from '@/lib/scraper-runners';
 
 interface RunnerDetailDrawerProps {
   runner?: RunnerDetail | null;
@@ -46,21 +52,17 @@ export function RunnerDetailDrawer({
             .single();
 
           if (!error && data) {
-            const metadata = data.metadata || {};
+            const metadata = coerceRunnerMetadata(data.metadata) || {};
             setRunner({
               id: data.name,
               name: data.name,
-              status: data.status as RunnerDetail['status'],
+              status: getEffectiveRunnerStatus(data) as RunnerDetail['status'],
               enabled: data.enabled,
               last_seen_at: data.last_seen_at,
               active_jobs: data.current_job_id ? 1 : 0,
               region: (metadata.region as string) || null,
-              version:
-                (metadata.build_sha as string) ||
-                (metadata.build_id as string) ||
-                (metadata.version as string) ||
-                null,
-              build_check_reason: (metadata.build_check_reason as string) || 'unconfigured',
+              version: getRunnerVersion(metadata),
+              build_check_reason: getRunnerBuildCheckReason(metadata),
               latest_build_sha: (metadata.latest_build_sha as string) || null,
               latest_build_id: (metadata.latest_build_id as string) || null,
               metadata,

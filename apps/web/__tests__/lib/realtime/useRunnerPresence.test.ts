@@ -2,20 +2,17 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { useRunnerPresence } from '@/lib/realtime/useRunnerPresence';
 
 type RealtimeStatus = 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CLOSED' | 'TIMED_OUT';
-type PresenceHandler = (payload: unknown) => void;
+type PostgresChangeHandler = (payload: unknown) => void;
 type SubscribeHandler = (status: RealtimeStatus) => void;
 
 class MockRealtimeChannel {
-  private readonly presenceHandlers: Map<string, PresenceHandler[]> = new Map();
+  private readonly postgresChangeHandlers: PostgresChangeHandler[] = [];
   private subscribeHandler: SubscribeHandler | null = null;
 
   public readonly on = jest.fn(
-    (type: string, _filter: Record<string, unknown>, handler: PresenceHandler) => {
-      if (type === 'presence') {
-        const key = `${type}-${JSON.stringify(_filter)}`;
-        const handlers = this.presenceHandlers.get(key) || [];
-        handlers.push(handler);
-        this.presenceHandlers.set(key, handlers);
+    (type: string, _filter: Record<string, unknown>, handler: PostgresChangeHandler) => {
+      if (type === 'postgres_changes') {
+        this.postgresChangeHandlers.push(handler);
       }
       return this;
     },
@@ -28,20 +25,14 @@ class MockRealtimeChannel {
 
   public readonly unsubscribe = jest.fn(async () => 'ok');
 
-  public readonly track = jest.fn(async () => ({}));
-
-  public readonly presenceState = jest.fn(() => ({}));
-
   public emitStatus(status: RealtimeStatus) {
     this.subscribeHandler?.(status);
   }
 
-  public emitPresenceSync() {
-    this.presenceHandlers.forEach((handlers) => {
-      handlers.forEach((handler) => {
-        handler({});
-      });
-    });
+  public emitPostgresChange(payload: unknown) {
+    for (const handler of this.postgresChangeHandlers) {
+      handler(payload);
+    }
   }
 }
 
@@ -78,7 +69,6 @@ describe('useRunnerPresence', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockChannels.length = 0;
-
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -88,10 +78,15 @@ describe('useRunnerPresence', () => {
             name: 'Runner One',
             os: 'linux',
             status: 'online',
-            busy: false,
-            labels: [],
-            active_jobs: 0,
+            raw_status: 'busy',
+            busy: true,
+            labels: [{ name: 'primary' }],
+            active_jobs: 1,
             enabled: true,
+            last_seen: '2026-04-20T10:00:00.000Z',
+            version: 'sha-123',
+            build_check_reason: 'current',
+            metadata: { region: 'us-east-1' },
           },
         ],
       }),
@@ -102,261 +97,193 @@ describe('useRunnerPresence', () => {
     jest.useRealTimers();
   });
 
-  describe('initialization', () => {
-    it('should initialize with default state', async () => {
-      jest.useFakeTimers();
-      const { result } = renderHook(() =>
-        useRunnerPresence({ autoConnect: false, fetchInitial: false }),
-      );
+  it('initializes with default state', () => {
+    const { result } = renderHook(() =>
+      useRunnerPresence({ autoConnect: false, fetchInitial: false }),
+    );
 
-      expect(result.current.isConnected).toBe(false);
-      expect(result.current.error).toBeNull();
-      expect(result.current.runners).toEqual({});
-      expect(result.current.onlineIds.size).toBe(0);
-    });
-
-    it('should accept custom channel name', async () => {
-      jest.useFakeTimers();
-      const { result } = renderHook(() =>
-        useRunnerPresence({ channelName: 'custom-presence', autoConnect: false, fetchInitial: false }),
-      );
-
-      expect(result.current.isConnected).toBe(false);
-    });
+    expect(result.current.isConnected).toBe(false);
+    expect(result.current.error).toBeNull();
+    expect(result.current.runners).toEqual({});
+    expect(result.current.onlineIds.size).toBe(0);
   });
 
-  describe('connection management', () => {
-    it('should connect to presence channel when autoConnect is true', async () => {
-      jest.useFakeTimers();
+  it('fetches initial durable runners', async () => {
+    const { result } = renderHook(() =>
+      useRunnerPresence({ autoConnect: false, fetchInitial: true }),
+    );
 
-      const { result } = renderHook(() =>
-        useRunnerPresence({ autoConnect: true, fetchInitial: false }),
-      );
-
-      act(() => {
-        jest.advanceTimersByTime(0);
-      });
-
-      await waitFor(() => {
-        expect(result.current.isConnected).toBe(true);
-      });
-    });
-
-    it('should not connect when autoConnect is false', async () => {
-      const { result } = renderHook(() =>
-        useRunnerPresence({ autoConnect: false, fetchInitial: false }),
-      );
-
-      expect(result.current.isConnected).toBe(false);
-    });
-
-    it('should not create duplicate channels on multiple connect calls', async () => {
-      jest.useFakeTimers();
-
-      const { result } = renderHook(() =>
-        useRunnerPresence({ autoConnect: false, fetchInitial: false }),
-      );
-
-      act(() => {
-        result.current.connect();
-      });
-
-      const channelCountAfterFirst = mockChannelFactory.mock.calls.length;
-
-      act(() => {
-        result.current.connect();
-      });
-
-      expect(mockChannelFactory.mock.calls.length).toBe(channelCountAfterFirst);
-    });
-  });
-
-  describe('disconnect', () => {
-    it('should disconnect from presence channel', async () => {
-      jest.useFakeTimers();
-
-      const { result } = renderHook(() =>
-        useRunnerPresence({ autoConnect: true, fetchInitial: false }),
-      );
-
-      act(() => {
-        jest.advanceTimersByTime(0);
-      });
-
-      await waitFor(() => {
-        expect(result.current.isConnected).toBe(true);
-      });
-
-      act(() => {
-        result.current.disconnect();
-      });
-
-      expect(result.current.isConnected).toBe(false);
-    });
-  });
-
-  describe('fetchInitial', () => {
-    it('should fetch initial runners when fetchInitial is true', async () => {
-      jest.useFakeTimers();
-
-      renderHook(() =>
-        useRunnerPresence({ autoConnect: false, fetchInitial: true }),
-      );
-
-      await act(async () => {
-        jest.advanceTimersByTime(0);
-        await Promise.resolve();
-      });
-
-      expect(mockFetch).toHaveBeenCalled();
-    });
-
-    it('should not fetch when fetchInitial is false', async () => {
-      renderHook(() =>
-        useRunnerPresence({ autoConnect: false, fetchInitial: false }),
-      );
-
-      await act(async () => {
-        jest.advanceTimersByTime(100);
-        await Promise.resolve();
-      });
-
-      expect(mockFetch).not.toHaveBeenCalled();
-    });
-
-    it('should set isLoading state while fetching', async () => {
-      jest.useFakeTimers();
-
-      const { result } = renderHook(() =>
-        useRunnerPresence({ autoConnect: false, fetchInitial: true }),
-      );
-
-      expect(result.current.isLoading).toBe(true);
-
-      await act(async () => {
-        jest.advanceTimersByTime(100);
-        await Promise.resolve();
-      });
-
+    await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
+      expect(result.current.runners['runner-1']).toEqual(
+        expect.objectContaining({
+          runner_id: 'runner-1',
+          runner_name: 'Runner One',
+          status: 'busy',
+          raw_status: 'busy',
+          active_jobs: 1,
+          build_check_reason: 'current',
+          version: 'sha-123',
+        }),
+      );
     });
 
-    it('should handle fetch error gracefully', async () => {
-      jest.useFakeTimers();
+    expect(mockFetch).toHaveBeenCalledWith('/api/admin/scraper-network/runners');
+    expect(result.current.onlineIds.has('runner-1')).toBe(true);
+  });
 
-      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+  it('connects to the shared scraper_runners channel when autoConnect is true', async () => {
+    const { result } = renderHook(() =>
+      useRunnerPresence({ autoConnect: true, fetchInitial: false }),
+    );
 
-      const { result } = renderHook(() =>
-        useRunnerPresence({ autoConnect: false, fetchInitial: true }),
-      );
+    expect(mockChannelFactory).toHaveBeenCalledWith('scraper-runners-pg');
 
-      await act(async () => {
-        jest.advanceTimersByTime(100);
-        await Promise.resolve();
+    act(() => {
+      getLastChannel().emitStatus('SUBSCRIBED');
+    });
+
+    await waitFor(() => {
+      expect(result.current.isConnected).toBe(true);
+    });
+  });
+
+  it('updates runner state from scraper_runners Postgres changes', async () => {
+    const { result } = renderHook(() =>
+      useRunnerPresence({ autoConnect: true, fetchInitial: false }),
+    );
+
+    act(() => {
+      getLastChannel().emitStatus('SUBSCRIBED');
+      getLastChannel().emitPostgresChange({
+        eventType: 'UPDATE',
+        new: {
+          name: 'runner-2',
+          status: 'idle',
+          current_job_id: null,
+          enabled: true,
+          last_seen_at: '2999-04-20T10:00:00.000Z',
+          created_at: '2026-04-20T09:00:00.000Z',
+          metadata: { region: 'us-west-2', build_check_reason: 'current' },
+          jobs_completed: 12,
+          memory_usage_mb: 256,
+        },
       });
+    });
 
+    await waitFor(() => {
+      expect(result.current.runners['runner-2']).toEqual(
+        expect.objectContaining({
+          runner_id: 'runner-2',
+          status: 'idle',
+          raw_status: 'idle',
+          active_jobs: 0,
+        }),
+      );
+    });
+  });
+
+  it('marks runners offline when the durable row becomes stale', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-04-20T10:10:00.000Z'));
+
+    const { result } = renderHook(() =>
+      useRunnerPresence({ autoConnect: true, fetchInitial: false }),
+    );
+
+    act(() => {
+      getLastChannel().emitStatus('SUBSCRIBED');
+      getLastChannel().emitPostgresChange({
+        eventType: 'UPDATE',
+        new: {
+          name: 'runner-3',
+          status: 'busy',
+          current_job_id: 'job-3',
+          enabled: true,
+          last_seen_at: '2026-04-20T10:00:00.000Z',
+          created_at: '2026-04-20T09:00:00.000Z',
+          metadata: {},
+          jobs_completed: 4,
+          memory_usage_mb: 128,
+        },
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.runners['runner-3']?.status).toBe('offline');
+    });
+
+    expect(result.current.isOnline('runner-3')).toBe(false);
+  });
+
+  it('removes deleted runners from state', async () => {
+    const { result } = renderHook(() =>
+      useRunnerPresence({ autoConnect: true, fetchInitial: false }),
+    );
+
+    act(() => {
+      getLastChannel().emitStatus('SUBSCRIBED');
+      getLastChannel().emitPostgresChange({
+        eventType: 'UPDATE',
+        new: {
+          name: 'runner-4',
+          status: 'idle',
+          current_job_id: null,
+          enabled: true,
+          last_seen_at: '2999-04-20T10:00:00.000Z',
+          created_at: '2026-04-20T09:00:00.000Z',
+          metadata: {},
+          jobs_completed: 0,
+          memory_usage_mb: null,
+        },
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.getRunner('runner-4')).toBeDefined();
+    });
+
+    act(() => {
+      getLastChannel().emitPostgresChange({
+        eventType: 'DELETE',
+        old: { name: 'runner-4' },
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.getRunner('runner-4')).toBeUndefined();
+    });
+  });
+
+  it('disconnects from the shared channel', async () => {
+    const { result } = renderHook(() =>
+      useRunnerPresence({ autoConnect: true, fetchInitial: false }),
+    );
+
+    act(() => {
+      getLastChannel().emitStatus('SUBSCRIBED');
+    });
+
+    await waitFor(() => {
+      expect(result.current.isConnected).toBe(true);
+    });
+
+    act(() => {
+      result.current.disconnect();
+    });
+
+    expect(result.current.isConnected).toBe(false);
+    expect(mockRemoveChannel).toHaveBeenCalled();
+  });
+
+  it('surfaces fetch errors', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+    const { result } = renderHook(() =>
+      useRunnerPresence({ autoConnect: false, fetchInitial: true }),
+    );
+
+    await waitFor(() => {
       expect(result.current.error).toEqual(new Error('Network error'));
-      expect(result.current.isLoading).toBe(false);
-    });
-  });
-
-  describe('sync', () => {
-    it('should expose sync function', async () => {
-      jest.useFakeTimers();
-
-      const { result } = renderHook(() =>
-        useRunnerPresence({ autoConnect: false, fetchInitial: false }),
-      );
-
-      act(() => {
-        result.current.connect();
-      });
-
-      expect(typeof result.current.sync).toBe('function');
-    });
-  });
-
-  describe('getRunner', () => {
-    it('should return undefined for non-existent runner', async () => {
-      jest.useFakeTimers();
-
-      const { result } = renderHook(() =>
-        useRunnerPresence({ autoConnect: false, fetchInitial: false }),
-      );
-
-      const runner = result.current.getRunner('non-existent');
-      expect(runner).toBeUndefined();
-    });
-  });
-
-  describe('getOnlineCount', () => {
-    it('should return 0 when no runners online', async () => {
-      jest.useFakeTimers();
-
-      const { result } = renderHook(() =>
-        useRunnerPresence({ autoConnect: false, fetchInitial: false }),
-      );
-
-      expect(result.current.getOnlineCount()).toBe(0);
-    });
-  });
-
-  describe('getBusyCount', () => {
-    it('should return 0 when no runners busy', async () => {
-      jest.useFakeTimers();
-
-      const { result } = renderHook(() =>
-        useRunnerPresence({ autoConnect: false, fetchInitial: false }),
-      );
-
-      expect(result.current.getBusyCount()).toBe(0);
-    });
-  });
-
-  describe('isOnline', () => {
-    it('should return false for non-existent runner', async () => {
-      jest.useFakeTimers();
-
-      const { result } = renderHook(() =>
-        useRunnerPresence({ autoConnect: false, fetchInitial: false }),
-      );
-
-      expect(result.current.isOnline('non-existent')).toBe(false);
-    });
-  });
-
-  describe('callbacks', () => {
-    it('should handle onJoin callback', async () => {
-      jest.useFakeTimers();
-
-      const onJoin = jest.fn();
-      renderHook(() =>
-        useRunnerPresence({ autoConnect: false, fetchInitial: false, onJoin }),
-      );
-
-      expect(onJoin).not.toHaveBeenCalled();
-    });
-
-    it('should handle onLeave callback', async () => {
-      jest.useFakeTimers();
-
-      const onLeave = jest.fn();
-      renderHook(() =>
-        useRunnerPresence({ autoConnect: false, fetchInitial: false, onLeave }),
-      );
-
-      expect(onLeave).not.toHaveBeenCalled();
-    });
-
-    it('should handle onSync callback', async () => {
-      jest.useFakeTimers();
-
-      const onSync = jest.fn();
-      renderHook(() =>
-        useRunnerPresence({ autoConnect: false, fetchInitial: false, onSync }),
-      );
-
-      expect(onSync).not.toHaveBeenCalled();
     });
   });
 });

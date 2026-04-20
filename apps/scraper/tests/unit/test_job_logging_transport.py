@@ -3,7 +3,7 @@ import logging
 import time
 from dataclasses import dataclass
 
-from utils.logging_handlers import JobLogEntry, JobLogTransport, RunnerLogHandler
+from utils.logging_handlers import JobLogEntry, JobLogTransport, JobLoggingSession, RunnerLogHandler
 
 
 def build_record(
@@ -140,12 +140,12 @@ def test_transport_broadcasts_normalized_log_and_progress(monkeypatch):
     monkeypatch.setattr(asyncio, "run_coroutine_threadsafe", run_now)
 
     entry = transport.capture(
-      build_record(
-          level=logging.INFO,
-          message="Runner started",
-          job_id="job-123",
-          scraper_name="amazon",
-      )
+        build_record(
+            level=logging.INFO,
+            message="Runner started",
+            job_id="job-123",
+            scraper_name="amazon",
+        )
     )
     assert entry is not None
 
@@ -239,3 +239,34 @@ def test_transport_persists_latest_progress_snapshot():
     assert api_client.progress_payloads[-1]["job_id"] == "job-123"
     assert api_client.progress_payloads[-1]["lease_token"] == "lease-123"
     assert api_client.progress_payloads[-1]["progress"] == 60
+
+
+def test_job_logging_session_injects_job_context_into_plain_logs():
+    logger_instance = logging.getLogger("test.job_logging_context")
+    logger_instance.handlers = []
+    logger_instance.setLevel(logging.INFO)
+    logger_instance.propagate = False
+
+    with JobLoggingSession(job_id="job-ctx", runner_name="runner-one", logger_instance=logger_instance) as session:
+        logger_instance.info("Inherited context log")
+        snapshot = session.snapshot()
+
+    assert len(snapshot) == 1
+    assert snapshot[0]["job_id"] == "job-ctx"
+    assert snapshot[0]["runner_name"] == "runner-one"
+    assert snapshot[0]["message"] == "Inherited context log"
+
+
+def test_job_logging_session_clears_context_after_detach():
+    logger_instance = logging.getLogger("test.job_logging_context_cleanup")
+    logger_instance.handlers = []
+    logger_instance.setLevel(logging.INFO)
+    logger_instance.propagate = False
+
+    with JobLoggingSession(job_id="job-ctx", runner_name="runner-one", logger_instance=logger_instance) as session:
+        logger_instance.info("Captured inside session")
+
+    logger_instance.info("Ignored outside session")
+
+    snapshot = session.snapshot()
+    assert [entry["message"] for entry in snapshot] == ["Captured inside session"]
