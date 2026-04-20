@@ -23,22 +23,44 @@ jobs:
         working-directory: ./apps/scraper
     env:
       PYTHONPATH: .
-      BRAVE_API_KEY: ${{ secrets.BRAVE_API_KEY }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Resolve workflow credentials
+        env:
+          WORKFLOW_SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
+          WORKFLOW_BRAVE_API_KEY: ${{ secrets.BRAVE_API_KEY }}
+          WORKFLOW_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WORKFLOW_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          WORKFLOW_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          WORKFLOW_SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          export_if_present() {
+            local name="$1"
+            local value="$2"
+            if [ -n "$value" ]; then
+              echo "::add-mask::$value"
+              printf '%s=%s\n' "$name" "$value" >> "$GITHUB_ENV"
+            fi
+          }
+
+          if [ -n "${WORKFLOW_SERPER_API_KEY:-}" ]; then
+            export_if_present "SERPER_API_KEY" "${WORKFLOW_SERPER_API_KEY}"
+          else
+            export_if_present "SERPER_API_KEY" "${WORKFLOW_BRAVE_API_KEY:-}"
+          fi
+
+          export_if_present "OPENAI_API_KEY" "${WORKFLOW_OPENAI_API_KEY:-}"
+          export_if_present "SUPABASE_URL" "${WORKFLOW_SUPABASE_URL:-}"
+          export_if_present "SUPABASE_SERVICE_ROLE_KEY" "${WORKFLOW_SUPABASE_SERVICE_ROLE_KEY:-}"
+          export_if_present "SLACK_WEBHOOK_URL" "${WORKFLOW_SLACK_WEBHOOK_URL:-}"
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: apps/scraper/requirements.txt
 
       - name: Install dependencies
         run: |
@@ -241,7 +263,7 @@ jobs:
             echo
             echo "- Status: $([ \"${VALIDATION_STATUS:-1}\" = \"0\" ] && printf 'passed' || printf 'failed')"
             echo "- Workflow run: ${RUN_URL}"
-            echo "- Review artifact: \\`artifacts/weekly-validation-review.md\\`"
+            echo '- Review artifact: `artifacts/weekly-validation-review.md`'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Post Slack notification
