@@ -4,7 +4,9 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { ProductReview, ReviewStatus } from '@/lib/types';
 
-import { ReviewWithProduct } from './review-types';
+import type { ReviewWithProduct } from './review-types';
+
+export type { ReviewWithProduct } from './review-types';
 
 export async function getReviews(options?: {
   status?: ReviewStatus;

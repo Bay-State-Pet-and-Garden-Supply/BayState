@@ -3,7 +3,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { ProductReview } from '@/lib/types';
-import { ReviewWithUser, SubmitReviewInput } from './types';
+import type { ReviewWithUser, SubmitReviewInput } from './types';
+
+export type { ReviewWithUser, SubmitReviewInput } from './types';
 
 
 export async function getApprovedReviews(productId: string): Promise<ReviewWithUser[]> {

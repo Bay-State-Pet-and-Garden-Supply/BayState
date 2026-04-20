@@ -3,7 +3,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
-import { QuestionWithAnswers } from './types';
+import type { QuestionWithAnswers } from './types';
+
+export type { QuestionWithAnswers } from './types';
 
 export async function getProductQuestions(
   productId: string
