@@ -2,7 +2,9 @@
 
 import { createClient } from '@/lib/supabase/server'
 
-import { FrequentProduct } from './types';
+import type { FrequentProduct } from './types';
+
+export type { FrequentProduct } from './types';
 
 /**
  * Get products that the current user has ordered multiple times.

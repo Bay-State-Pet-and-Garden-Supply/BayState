@@ -9,19 +9,15 @@ import {
   getRunnerLastSeen,
   getRunnerOs,
   getRunnerVersion,
+  type ScraperRunnerRow,
 } from '@/lib/scraper-runners';
 
 export const dynamic = 'force-dynamic';
 
-interface RunnerData {
-  name: string;
-  last_seen_at: string | null;
-  created_at: string | null;
-  status: string | null;
-  current_job_id: string | null;
-  enabled: boolean;
-  metadata: Record<string, unknown> | null;
-}
+type RunnerData = Pick<
+  ScraperRunnerRow,
+  'name' | 'last_seen_at' | 'created_at' | 'status' | 'current_job_id' | 'enabled' | 'metadata'
+>;
 
 export async function GET() {
   try {

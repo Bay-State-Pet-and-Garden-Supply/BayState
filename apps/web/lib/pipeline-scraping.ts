@@ -11,6 +11,8 @@ import type {
     ScrapeResult 
 } from './pipeline-scraping-types';
 
+export type { ScrapeOptions } from './pipeline-scraping-types';
+
 interface PipelineInputRow {
     sku: string;
     input?: {

@@ -3,7 +3,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
-import { Scraper } from './scrapers/types';
+import type { Scraper } from './scrapers/types';
+
+export type { Scraper } from './scrapers/types';
 
 export async function getScrapers(): Promise<Scraper[]> {
   const supabase = await createClient();

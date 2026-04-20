@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
 import type {
@@ -1104,8 +1105,9 @@ export function PipelineClient({
     <div className="flex flex-wrap items-center gap-2">
       {shellControlsBelongToRoute ? (
         <>
-          <label className="flex shrink-0 items-center justify-center h-8 w-8 border border-zinc-950 bg-white shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-zinc-50 cursor-pointer transition-colors">
+          <div className="flex shrink-0 items-center justify-center h-8 w-8 border border-zinc-950 bg-white shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-zinc-50 transition-colors">
             <Checkbox
+              aria-label="Select all visible products"
               checked={
                 filteredProducts.length > 0 &&
                 filteredProducts.every((p) => selectedSkus.has(p.sku))
@@ -1117,17 +1119,21 @@ export function PipelineClient({
               onCheckedChange={(checked) => {
                 if (checked) {
                   const next = new Set(selectedSkus);
-                  filteredProducts.forEach((p) => next.add(p.sku));
+                  filteredProducts.forEach((p) => {
+                    next.add(p.sku);
+                  });
                   setSelectedSkus(next);
                 } else {
                   const next = new Set(selectedSkus);
-                  filteredProducts.forEach((p) => next.delete(p.sku));
+                  filteredProducts.forEach((p) => {
+                    next.delete(p.sku);
+                  });
                   setSelectedSkus(next);
                 }
               }}
               className="h-4 w-4 rounded-none border-2 border-zinc-950 accent-zinc-950 data-[state=checked]:bg-zinc-950 data-[state=checked]:text-white data-[state=indeterminate]:bg-zinc-950 data-[state=indeterminate]:text-white"
             />
-          </label>
+          </div>
           <PipelineSearchField
             value={search}
             onChange={setSearch}
@@ -1480,11 +1486,15 @@ export function PipelineClient({
                                   onChange={(e) => {
                                     if (e.target.checked) {
                                       const next = new Set(selectedSkus);
-                                      cohortSkus.forEach(s => next.add(s));
+                                      cohortSkus.forEach((s) => {
+                                        next.add(s);
+                                      });
                                       setSelectedSkus(next);
                                     } else {
                                       const next = new Set(selectedSkus);
-                                      cohortSkus.forEach(s => next.delete(s));
+                                      cohortSkus.forEach((s) => {
+                                        next.delete(s);
+                                      });
                                       setSelectedSkus(next);
                                     }
                                   }}

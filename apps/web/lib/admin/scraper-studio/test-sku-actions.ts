@@ -4,7 +4,9 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
-import { ActionState, TestSkuType, TestSku } from './types';
+import type { ActionState, TestSkuType, TestSku } from './types';
+
+export type { ActionState, TestSkuType, TestSku } from './types';
 
 
 // Validation schema for test SKU

@@ -3,6 +3,7 @@ import type { Database, Json } from '@/types/supabase';
 export type ScraperRunnerRow = Database['public']['Tables']['scraper_runners']['Row'];
 export type RunnerDurableStatus = 'online' | 'offline' | 'busy' | 'idle' | 'polling' | 'paused';
 export type RunnerPresenceStatus = 'online' | 'offline' | 'busy' | 'idle';
+type JsonObject = { [key: string]: Json | undefined };
 
 export const RUNNER_STALE_AFTER_MS = 5 * 60 * 1000;
 
@@ -15,11 +16,11 @@ const RUNNER_STATUSES = new Set<RunnerDurableStatus>([
   'paused',
 ]);
 
-function isRecord(value: Json | null): value is Record<string, unknown> {
+function isRecord(value: Json | null): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-export function coerceRunnerMetadata(metadata: Json | null): Record<string, unknown> | null {
+export function coerceRunnerMetadata(metadata: Json | null): JsonObject | null {
   return isRecord(metadata) ? metadata : null;
 }
 
@@ -86,7 +87,7 @@ export function getRunnerConnectivityStatus(
   return status === 'offline' ? 'offline' : 'online';
 }
 
-export function getRunnerVersion(metadata: Record<string, unknown> | null): string | null {
+export function getRunnerVersion(metadata: JsonObject | null): string | null {
   if (!metadata) {
     return null;
   }
@@ -96,7 +97,7 @@ export function getRunnerVersion(metadata: Record<string, unknown> | null): stri
 }
 
 export function getRunnerBuildCheckReason(
-  metadata: Record<string, unknown> | null,
+  metadata: JsonObject | null,
 ): string | null {
   if (!metadata) {
     return null;
@@ -106,7 +107,7 @@ export function getRunnerBuildCheckReason(
   return typeof candidate === 'string' && candidate.trim() ? candidate : null;
 }
 
-export function getRunnerLabels(metadata: Record<string, unknown> | null): string[] {
+export function getRunnerLabels(metadata: JsonObject | null): string[] {
   if (!metadata) {
     return [];
   }
@@ -119,7 +120,7 @@ export function getRunnerLabels(metadata: Record<string, unknown> | null): strin
   return labels.filter((label): label is string => typeof label === 'string' && label.trim().length > 0);
 }
 
-export function getRunnerOs(metadata: Record<string, unknown> | null): string {
+export function getRunnerOs(metadata: JsonObject | null): string {
   if (!metadata) {
     return 'Unknown';
   }

@@ -22,9 +22,9 @@ import { useLogSubscription } from '@/lib/realtime/useLogSubscription';
 import {
   mergeScrapeJobLogs,
   progressUpdateFromJobRecord,
+  type ScrapeJobLogEntry as ScrapeJobLog,
   type ScrapeJobProgressUpdate,
 } from '@/lib/scraper-logs';
-import type { ScrapeJobLog } from '@/app/admin/scrapers/runs/actions';
 
 interface LogViewerProps {
   jobId: string;
