@@ -14,6 +14,15 @@ interface CohortMember {
   sort_order: number;
 }
 
+function toOptionalTrimmedString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 export async function GET(request: NextRequest, context: RouteContext) {
   const auth = await requireAdminAuth();
   if (!auth.authorized) return auth.response;
@@ -25,7 +34,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   // Fetch cohort with brand join
   const { data: cohort, error } = await supabase
     .from('cohort_batches')
-    .select('*, brands(id, name, slug, logo_url)')
+    .select('*, brands(id, name, slug, logo_url, website_url, official_domains, preferred_domains)')
     .eq('id', id)
     .single();
 
@@ -85,12 +94,20 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   // Build update payload — only allow specific fields
   const updatePayload: Record<string, unknown> = {};
 
-  if ('brand_name' in body) {
-    updatePayload.brand_name = typeof body.brand_name === 'string' ? body.brand_name.trim() || null : null;
-  }
+  if ('brand_id' in body || 'brand_name' in body) {
+    const brandId = toOptionalTrimmedString(body.brand_id);
+    const brandName = toOptionalTrimmedString(body.brand_name);
 
-  if ('brand_id' in body) {
-    updatePayload.brand_id = typeof body.brand_id === 'string' && body.brand_id.length > 0 ? body.brand_id : null;
+    if (brandId) {
+      updatePayload.brand_id = brandId;
+      updatePayload.brand_name = null;
+    } else if (brandName) {
+      updatePayload.brand_id = null;
+      updatePayload.brand_name = brandName;
+    } else {
+      updatePayload.brand_id = null;
+      updatePayload.brand_name = null;
+    }
   }
 
   if ('product_line' in body) {
@@ -112,7 +129,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     .from('cohort_batches')
     .update(updatePayload)
     .eq('id', id)
-    .select('*')
+    .select('*, brands(id, name, slug, logo_url, website_url, official_domains, preferred_domains)')
     .single();
 
   if (error) {

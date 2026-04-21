@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { AdminBrandsClient } from '@/components/admin/brands/AdminBrandsClient';
-import { type Brand } from '@/components/admin/brands/BrandModal';
+import { type Brand } from '@/components/admin/brands/types';
 
 export default async function AdminBrandsPage() {
   const supabase = await createClient();

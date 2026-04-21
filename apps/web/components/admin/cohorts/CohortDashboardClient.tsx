@@ -14,26 +14,16 @@ import {
   XCircle,
   RefreshCw,
   Filter,
-  Tag,
   Sparkles,
-  Edit2,
-  Check,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { CohortBrandBadge } from "./CohortBrandBadge";
-
-interface BrandInfo {
-  id: string;
-  name: string;
-  slug: string;
-  logo_url: string | null;
-}
+import type { CohortBrandInfo } from "./types";
+import { isConfiguredBrand } from "./types";
 
 interface CohortBatch {
   id: string;
@@ -44,7 +34,7 @@ interface CohortBatch {
   scraper_config: string | null;
   brand_id: string | null;
   brand_name: string | null;
-  brands: BrandInfo | null;
+  brands: CohortBrandInfo | null;
   created_at: string;
   updated_at: string;
   metadata: Record<string, unknown>;
@@ -224,12 +214,16 @@ export function CohortDashboardClient() {
     setLoading(true);
   };
 
-  const handleAssignBrand = async (cohortId: string, brandName: string) => {
+  const handleAssignBrand = async (cohortId: string, brand: CohortBrandInfo | null) => {
     try {
       const response = await fetch(`/api/admin/cohorts/${cohortId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brand_name: brandName }),
+        body: JSON.stringify(
+          brand
+            ? { brand_id: brand.id, brand_name: null }
+            : { brand_id: null, brand_name: null }
+        ),
       });
 
       if (!response.ok) {
@@ -237,9 +231,15 @@ export function CohortDashboardClient() {
         throw new Error(data.error || "Failed to assign brand");
       }
 
-      toast.success(`Brand "${brandName}" assigned`, {
-        description: "Scraper recommendations will now be available.",
-      });
+      if (brand) {
+        toast.success(`Brand "${brand.name}" assigned`, {
+          description: isConfiguredBrand(brand)
+            ? "Scraper recommendations will now be available."
+            : "Brand assigned. Add site/domain details to strengthen AI Search guidance.",
+        });
+      } else {
+        toast.success("Brand assignment cleared");
+      }
 
       await fetchCohorts();
     } catch (err) {
@@ -369,7 +369,6 @@ export function CohortDashboardClient() {
         <ScrollArea className="flex-1 border border-zinc-950 p-1 min-h-0">
           <div className="space-y-3 pr-4">
             {cohorts.map((cohort) => {
-              const config = STATUS_CONFIG[cohort.status];
               const timeSinceUpdate = getTimeSince(cohort.updated_at);
               const metadataError =
                 typeof cohort.metadata === "object" &&
@@ -382,6 +381,7 @@ export function CohortDashboardClient() {
                   ? null
                   : String(metadataError);
               const hasBrand = !!(cohort.brand_name || cohort.brands?.name);
+              const configuredBrand = isConfiguredBrand(cohort.brands);
 
               return (
                 <Card
@@ -397,9 +397,8 @@ export function CohortDashboardClient() {
                           </h3>
                           <StatusBadge status={cohort.status} />
                           <CohortBrandBadge 
-                            cohortId={cohort.id} 
-                            brandName={cohort.brand_name || cohort.brands?.name || null} 
-                            onAssign={handleAssignBrand} 
+                            brand={cohort.brands}
+                            onAssign={(brand) => handleAssignBrand(cohort.id, brand)}
                           />
                         </div>
 
@@ -428,9 +427,9 @@ export function CohortDashboardClient() {
 
                           {hasBrand && (
                             <div className="mt-1">
-                              <Badge variant="outline" className="rounded-none border border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green font-black uppercase text-[10px] gap-1">
+                              <Badge variant="outline" className={`rounded-none font-black uppercase text-[10px] gap-1 ${configuredBrand ? 'border border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green' : 'border border-brand-burgundy bg-brand-burgundy/10 text-brand-burgundy'}`}>
                                 <Sparkles className="h-3 w-3" />
-                                Recommendations available
+                                {configuredBrand ? 'Recommendations ready' : 'Brand needs site setup'}
                               </Badge>
                             </div>
                           )}

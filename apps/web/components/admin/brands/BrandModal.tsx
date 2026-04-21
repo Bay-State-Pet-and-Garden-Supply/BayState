@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { createBrand, updateBrand } from '@/app/admin/brands/actions';
+import type { Brand } from '@/components/admin/brands/types';
 import { AlertBanner } from '@/components/admin/pipeline/AlertBanner';
 import {
     Dialog,
@@ -19,18 +20,6 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog';
-
-export interface Brand {
-    id: string;
-    name: string;
-    slug: string;
-    logo_url: string | null;
-    description: string | null;
-    website_url: string | null;
-    official_domains: string[];
-    preferred_domains: string[];
-    created_at: string;
-}
 
 const brandSchema = z.object({
     name: z.string().min(1, 'Brand name is required').max(100, 'Name is too long'),
@@ -48,13 +37,15 @@ type BrandFormValues = z.infer<typeof brandSchema>;
 interface BrandModalProps {
     brand?: Brand;
     onClose: () => void;
-    onSave: () => void;
+    onSave: (brand?: Brand) => void;
+    initialName?: string;
 }
 
 export function BrandModal({
     brand,
     onClose,
     onSave,
+    initialName,
 }: BrandModalProps) {
     const [serverError, setServerError] = useState<string | null>(null);
     const isEditing = !!brand;
@@ -68,7 +59,7 @@ export function BrandModal({
     } = useForm<BrandFormValues>({
         resolver: zodResolver(brandSchema),
         defaultValues: {
-            name: brand?.name ?? '',
+            name: brand?.name ?? initialName ?? '',
             slug: brand?.slug ?? '',
             logo_url: brand?.logo_url ?? '',
             description: brand?.description ?? '',
@@ -111,7 +102,7 @@ export function BrandModal({
             }
 
             toast.success(brand ? 'Brand updated successfully' : 'Brand created successfully');
-            onSave();
+            onSave(result.brand);
             onClose();
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Failed to save';
