@@ -6,7 +6,7 @@ import re
 from typing import Any, Optional
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
-from scrapers.ai_search.matching import MatchingUtils
+from .matching import MatchingUtils
 
 
 class ExtractionUtils:
@@ -569,7 +569,7 @@ class ExtractionUtils:
         """Extract category-like breadcrumb names from JSON-LD breadcrumb lists."""
         categories: list[str] = []
         product_name_normalized = (
-            self._scoring._matching.normalize_token_text(product_name) if hasattr(self._scoring, "_matching") else self._normalize_lookup_token(product_name)
+            self._matching.normalize_token_text(product_name) if hasattr(self, "_matching") else self._normalize_lookup_token(product_name)
         )
 
         for node in self._iter_jsonld_nodes(html_text):
