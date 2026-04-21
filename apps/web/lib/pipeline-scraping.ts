@@ -1,6 +1,16 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import {
+    brandHintToSlug,
+    findBrandRegistryByHints,
+    getBrandRegistryName,
+    getBrandRegistryPreferredDomains,
+    loadBrandRegistryEntries,
+    toBrandRegistryEntry,
+    type BrandRegistryEntry,
+    type BrandRegistryRow,
+} from '@/lib/brand-registry';
 
 import { getLocalScraperConfigs } from '@/lib/admin/scrapers/configs';
 import type { ScraperConfig } from '@/lib/admin/scrapers/types';
@@ -15,6 +25,12 @@ export type { ScrapeOptions } from './pipeline-scraping-types';
 
 interface PipelineInputRow {
     sku: string;
+    cohort_id?: string | null;
+    consolidated?: {
+        brand_id?: unknown;
+        brand_name?: unknown;
+        brand?: unknown;
+    } | null;
     input?: {
         name?: unknown;
         price?: unknown;
@@ -27,18 +43,8 @@ interface ProductCatalogRow {
     sku?: string | null;
     name?: unknown;
     brand?:
-        | {
-            name?: unknown;
-            website_url?: unknown;
-            official_domains?: unknown;
-            preferred_domains?: unknown;
-        }
-        | Array<{
-            name?: unknown;
-            website_url?: unknown;
-            official_domains?: unknown;
-            preferred_domains?: unknown;
-        }>
+        | BrandRegistryRow
+        | Array<BrandRegistryRow>
         | null;
     product_categories?: Array<{
         category?:
@@ -118,16 +124,11 @@ interface ScrapeContextItem {
     preferred_domains?: string[];
 }
 
-function toStringArray(value: unknown): string[] | undefined {
-    if (!Array.isArray(value)) {
-        return undefined;
-    }
-
-    const normalized = value
-        .map((item) => toOptionalString(item))
-        .filter((item): item is string => Boolean(item));
-
-    return normalized.length > 0 ? normalized : undefined;
+interface CohortLookupRow {
+    id?: string | null;
+    brand_name?: unknown;
+    brand_id?: unknown;
+    brands?: BrandRegistryRow | BrandRegistryRow[] | null;
 }
 
 function normalizeDomainCandidate(value: string): string | undefined {
@@ -166,43 +167,74 @@ interface BuildChunkPlanOptions {
     scraperConfigs?: ScraperConfig[];
 }
 
-function getCatalogBrandName(
-    brandRelation: ProductCatalogRow['brand']
-): string | undefined {
-    const brand = Array.isArray(brandRelation) ? brandRelation[0] ?? null : brandRelation;
-    return toOptionalString(brand?.name);
-}
-
-function getCatalogBrandDomainPreferences(
-    brandRelation: ProductCatalogRow['brand']
-): string[] | undefined {
-    const brand = Array.isArray(brandRelation) ? brandRelation[0] ?? null : brandRelation;
-    if (!brand) {
-        return undefined;
-    }
-
+function mergePreferredDomains(...domainLists: Array<string[] | undefined>): string[] | undefined {
     const ordered: string[] = [];
     const seen = new Set<string>();
 
-    const pushDomain = (candidate: unknown) => {
-        if (typeof candidate !== 'string') {
-            return;
-        }
+    domainLists.forEach((domainList) => {
+        domainList?.forEach((candidate) => {
+            const normalized = normalizeDomainCandidate(candidate);
+            if (!normalized || seen.has(normalized)) {
+                return;
+            }
 
-        const normalized = normalizeDomainCandidate(candidate);
-        if (!normalized || seen.has(normalized)) {
-            return;
-        }
-
-        seen.add(normalized);
-        ordered.push(normalized);
-    };
-
-    toStringArray(brand.official_domains)?.forEach(pushDomain);
-    pushDomain(brand.website_url);
-    toStringArray(brand.preferred_domains)?.forEach(pushDomain);
+            seen.add(normalized);
+            ordered.push(normalized);
+        });
+    });
 
     return ordered.length > 0 ? ordered : undefined;
+}
+
+function getCatalogBrandEntry(
+    brandRelation: ProductCatalogRow['brand']
+): BrandRegistryEntry | undefined {
+    return toBrandRegistryEntry(brandRelation);
+}
+
+async function loadCohortBrandRegistryEntries(
+    supabase: Awaited<ReturnType<typeof createClient>>,
+    cohortIds: string[]
+): Promise<Map<string, BrandRegistryEntry>> {
+    const normalizedCohortIds = Array.from(new Set(cohortIds.filter(Boolean)));
+    if (normalizedCohortIds.length === 0) {
+        return new Map();
+    }
+
+    const { data, error } = await supabase
+        .from('cohort_batches')
+        .select('id, brand_name, brand_id, brands(id, name, slug, website_url, official_domains, preferred_domains)')
+        .in('id', normalizedCohortIds);
+
+    if (error) {
+        console.warn('[Pipeline Scraping] Failed to load cohort brand registry context:', error);
+        return new Map();
+    }
+
+    const entries = new Map<string, BrandRegistryEntry>();
+    const rows = Array.isArray(data) ? (data as CohortLookupRow[]) : [];
+    rows.forEach((row) => {
+        const cohortId = toOptionalString(row.id);
+        if (!cohortId) {
+            return;
+        }
+
+        const joinedBrand = toBrandRegistryEntry(row.brands);
+        const fallbackName = toOptionalString(row.brand_name);
+        const fallbackId = toOptionalString(row.brand_id);
+        const entry: BrandRegistryEntry = {
+            id: joinedBrand?.id ?? fallbackId,
+            slug: joinedBrand?.slug,
+            name: joinedBrand?.name ?? fallbackName,
+            preferredDomains: joinedBrand?.preferredDomains,
+        };
+
+        if (entry.id || entry.slug || entry.name || entry.preferredDomains) {
+            entries.set(cohortId, entry);
+        }
+    });
+
+    return entries;
 }
 
 function getCatalogCategoryName(
@@ -532,14 +564,18 @@ async function loadScrapeContextItems(
     skus: string[],
     options?: {
         preferCatalogContext?: boolean;
+        fallbackBrandHint?: string;
+        useBrandRegistryFallback?: boolean;
     }
 ): Promise<ScrapeContextItem[]> {
     const preferCatalogContext = options?.preferCatalogContext ?? false;
+    const fallbackBrandHint = toOptionalString(options?.fallbackBrandHint);
+    const useBrandRegistryFallback = options?.useBrandRegistryFallback ?? false;
 
     const [{ data: ingestionData, error: ingestionError }, { data: productData, error: productError }] = await Promise.all([
         supabase
             .from('products_ingestion')
-            .select('sku, input')
+            .select('sku, cohort_id, consolidated, input')
             .in('sku', skus),
         supabase
             .from('products')
@@ -556,7 +592,7 @@ async function loadScrapeContextItems(
     }
 
     const ingestionRows = Array.isArray(ingestionData) ? (ingestionData as PipelineInputRow[]) : [];
-    const ingestionBySku = new Map(ingestionRows.map((row) => [row.sku, row.input ?? null]));
+    const ingestionBySku = new Map(ingestionRows.map((row) => [row.sku, row]));
 
     const productRows = Array.isArray(productData) ? (productData as ProductCatalogRow[]) : [];
     const productBySku = new Map<string, ProductCatalogRow>();
@@ -567,17 +603,92 @@ async function loadScrapeContextItems(
         }
     });
 
+    let brandRegistryLookup: { byId: Map<string, BrandRegistryEntry>; bySlug: Map<string, BrandRegistryEntry> } = {
+        byId: new Map(),
+        bySlug: new Map(),
+    };
+    let cohortBrandEntries = new Map<string, BrandRegistryEntry>();
+
+    if (useBrandRegistryFallback) {
+        const brandIds = new Set<string>();
+        const brandSlugs = new Set<string>();
+        const cohortIds = new Set<string>();
+
+        if (fallbackBrandHint) {
+            const fallbackSlug = brandHintToSlug(fallbackBrandHint);
+            if (fallbackSlug) {
+                brandSlugs.add(fallbackSlug);
+            }
+        }
+
+        ingestionRows.forEach((row) => {
+            const consolidated = row.consolidated;
+            const brandId = toOptionalString(consolidated?.brand_id);
+            if (brandId) {
+                brandIds.add(brandId);
+            }
+
+            [consolidated?.brand_name, consolidated?.brand, row.input?.brand].forEach((brandHint) => {
+                const slug = brandHintToSlug(brandHint);
+                if (slug) {
+                    brandSlugs.add(slug);
+                }
+            });
+
+            const cohortId = toOptionalString(row.cohort_id);
+            if (cohortId) {
+                cohortIds.add(cohortId);
+            }
+        });
+
+        brandRegistryLookup = await loadBrandRegistryEntries(supabase, {
+            brandIds: Array.from(brandIds),
+            brandSlugs: Array.from(brandSlugs),
+        });
+        cohortBrandEntries = await loadCohortBrandRegistryEntries(supabase, Array.from(cohortIds));
+    }
+
     return skus.map((sku) => {
-        const input = ingestionBySku.get(sku);
+        const ingestion = ingestionBySku.get(sku);
+        const input = ingestion?.input ?? null;
         const product = productBySku.get(sku);
+        const catalogBrandEntry = getCatalogBrandEntry(product?.brand);
+        const consolidatedBrandId = toOptionalString(ingestion?.consolidated?.brand_id);
+        const registryBrandById = consolidatedBrandId
+            ? brandRegistryLookup.byId.get(consolidatedBrandId)
+            : undefined;
+        const registryBrandByHint = findBrandRegistryByHints(
+            [
+                toOptionalString(ingestion?.consolidated?.brand_name),
+                toOptionalString(ingestion?.consolidated?.brand),
+                toOptionalString(input?.brand),
+                fallbackBrandHint,
+            ],
+            brandRegistryLookup.bySlug,
+        );
+        const cohortBrandEntry = (() => {
+            const cohortId = toOptionalString(ingestion?.cohort_id);
+            return cohortId ? cohortBrandEntries.get(cohortId) : undefined;
+        })();
+        const resolvedBrandEntry = catalogBrandEntry
+            ?? registryBrandById
+            ?? registryBrandByHint
+            ?? cohortBrandEntry;
 
         const ingestionName = toOptionalString(input?.name);
         const catalogName = toOptionalString(product?.name);
         const ingestionBrand = toOptionalString(input?.brand);
-        const catalogBrand = getCatalogBrandName(product?.brand);
-        const catalogPreferredDomains = getCatalogBrandDomainPreferences(product?.brand);
+        const catalogBrand = catalogBrandEntry?.name ?? getBrandRegistryName(product?.brand);
+        const catalogPreferredDomains = catalogBrandEntry?.preferredDomains ?? getBrandRegistryPreferredDomains(product?.brand);
         const ingestionCategory = toOptionalString(input?.category);
         const catalogCategory = getCatalogCategoryName(product?.product_categories);
+        const resolvedBrandName = resolvedBrandEntry?.name;
+        const resolvedPreferredDomains = mergePreferredDomains(
+            catalogPreferredDomains,
+            registryBrandById?.preferredDomains,
+            registryBrandByHint?.preferredDomains,
+            cohortBrandEntry?.preferredDomains,
+        );
 
         return {
             sku,
@@ -586,12 +697,12 @@ async function loadScrapeContextItems(
                 : ingestionName ?? catalogName,
             price: toOptionalNumber(input?.price),
             brand: preferCatalogContext
-                ? catalogBrand ?? ingestionBrand
-                : ingestionBrand ?? catalogBrand,
+                ? catalogBrand ?? ingestionBrand ?? resolvedBrandName
+                : ingestionBrand ?? catalogBrand ?? resolvedBrandName,
             category: preferCatalogContext
                 ? catalogCategory ?? ingestionCategory
                 : ingestionCategory ?? catalogCategory,
-            preferred_domains: catalogPreferredDomains,
+            preferred_domains: resolvedPreferredDomains,
         };
     });
 }
@@ -670,6 +781,8 @@ export async function scrapeProducts(
     const supabase = await createClient();
     const scrapeContextItems = await loadScrapeContextItems(supabase, skus, {
         preferCatalogContext: isAISearch,
+        fallbackBrandHint: options?.cohortBrand ?? options?.aiSearchConfig?.brand,
+        useBrandRegistryFallback: isAISearch,
     });
 
     // Inject cohort brand into context items that lack one

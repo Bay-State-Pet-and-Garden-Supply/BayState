@@ -163,13 +163,38 @@ def test_infer_brand_from_candidate_title_prefix() -> None:
 
 def test_extract_demandware_variant_candidates_prefers_matching_color_and_size() -> None:
     utils = _build_utils()
-    html = """
-    <button class="btn-size" value="https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0031&amp;dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&amp;pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1" data-attr-value="1.5cf" data-attr-id="size">1.5 CF</button>
-    <button class="btn-size" value="https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0031&amp;dwvar_scotts-nature-scapes-color-enhanced-mulch_size=2cf&amp;pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1" data-attr-value="2cf" data-attr-id="size">2 CF</button>
-    <button aria-label="Select Color Black" data-url="https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0031&amp;dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&amp;pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1"><span data-attr-value="0031"></span></button>
-    <button aria-label="Select Color Red" data-url="https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0039&amp;dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&amp;pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1"><span data-attr-value="0039"></span></button>
-    <button aria-label="Select Color Brown" data-url="https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0041&amp;dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&amp;pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1"><span data-attr-value="0041"></span></button>
-    """
+    html = (
+        '<button class="btn-size" '
+        'value="https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?'
+        "dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0031&amp;"
+        "dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&amp;"
+        'pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1" '
+        'data-attr-value="1.5cf" data-attr-id="size">1.5 CF</button>'
+        '<button class="btn-size" '
+        'value="https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?'
+        "dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0031&amp;"
+        "dwvar_scotts-nature-scapes-color-enhanced-mulch_size=2cf&amp;"
+        'pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1" '
+        'data-attr-value="2cf" data-attr-id="size">2 CF</button>'
+        '<button aria-label="Select Color Black" '
+        'data-url="https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?'
+        "dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0031&amp;"
+        "dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&amp;"
+        'pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1">'
+        '<span data-attr-value="0031"></span></button>'
+        '<button aria-label="Select Color Red" '
+        'data-url="https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?'
+        "dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0039&amp;"
+        "dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&amp;"
+        'pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1">'
+        '<span data-attr-value="0039"></span></button>'
+        '<button aria-label="Select Color Brown" '
+        'data-url="https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?'
+        "dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0041&amp;"
+        "dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&amp;"
+        'pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1">'
+        '<span data-attr-value="0041"></span></button>'
+    )
 
     candidates = utils.extract_demandware_variant_candidates(
         html_text=html,

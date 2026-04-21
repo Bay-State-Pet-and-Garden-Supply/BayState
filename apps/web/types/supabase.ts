@@ -394,6 +394,8 @@ export type Database = {
           id: string
           logo_url: string | null
           name: string
+          official_domains: string[]
+          preferred_domains: string[]
           slug: string
           website_url: string | null
         }
@@ -403,6 +405,8 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name: string
+          official_domains?: string[]
+          preferred_domains?: string[]
           slug: string
           website_url?: string | null
         }
@@ -412,10 +416,62 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name?: string
+          official_domains?: string[]
+          preferred_domains?: string[]
           slug?: string
           website_url?: string | null
         }
         Relationships: []
+      }
+      cohort_batches: {
+        Row: {
+          brand_id: string | null
+          brand_name: string | null
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          name: string | null
+          product_line: string | null
+          scraper_config: string | null
+          status: string | null
+          upc_prefix: string
+          updated_at: string | null
+        }
+        Insert: {
+          brand_id?: string | null
+          brand_name?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string | null
+          product_line?: string | null
+          scraper_config?: string | null
+          status?: string | null
+          upc_prefix: string
+          updated_at?: string | null
+        }
+        Update: {
+          brand_id?: string | null
+          brand_name?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string | null
+          product_line?: string | null
+          scraper_config?: string | null
+          status?: string | null
+          upc_prefix?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_batches_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       categories: {
         Row: {
@@ -1864,6 +1920,7 @@ export type Database = {
       products_ingestion: {
         Row: {
           b2b_sources: Json | null
+          cohort_id: string | null
           confidence_score: number | null
           consolidated: Json | null
           created_at: string | null
@@ -1874,7 +1931,6 @@ export type Database = {
           input: Json | null
           is_test_run: boolean | null
           pipeline_status: Database["public"]["Enums"]["pipeline_status_five"]
-          pipeline_status_new: Database["public"]["Enums"]["pipeline_status_new_enum"]
           product_line: string | null
           retry_count: number | null
           selected_images: Json | null
@@ -1884,6 +1940,7 @@ export type Database = {
         }
         Insert: {
           b2b_sources?: Json | null
+          cohort_id?: string | null
           confidence_score?: number | null
           consolidated?: Json | null
           created_at?: string | null
@@ -1893,8 +1950,7 @@ export type Database = {
           image_candidates?: string[] | null
           input?: Json | null
           is_test_run?: boolean | null
-          pipeline_status?: Database["public"]["Enums"]["pipeline_status_five"]
-          pipeline_status_new: Database["public"]["Enums"]["pipeline_status_new_enum"]
+          pipeline_status: Database["public"]["Enums"]["pipeline_status_five"]
           product_line?: string | null
           retry_count?: number | null
           selected_images?: Json | null
@@ -1904,6 +1960,7 @@ export type Database = {
         }
         Update: {
           b2b_sources?: Json | null
+          cohort_id?: string | null
           confidence_score?: number | null
           consolidated?: Json | null
           created_at?: string | null
@@ -1914,7 +1971,6 @@ export type Database = {
           input?: Json | null
           is_test_run?: boolean | null
           pipeline_status?: Database["public"]["Enums"]["pipeline_status_five"]
-          pipeline_status_new?: Database["public"]["Enums"]["pipeline_status_new_enum"]
           product_line?: string | null
           retry_count?: number | null
           selected_images?: Json | null
@@ -1922,7 +1978,15 @@ export type Database = {
           sources?: Json | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "products_ingestion_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohort_batches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

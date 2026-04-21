@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from core.scraper_testing_integration import ScraperIntegrationTester
+from tests.support.scraper_testing_integration import ScraperIntegrationTester
 
 
 LOGIN_SCRAPERS = ("orgill", "phillips", "petfoodex")

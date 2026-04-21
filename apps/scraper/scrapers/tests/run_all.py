@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import sys
 
-from core.scraper_testing_integration import *
+from tests.support.scraper_testing_integration import ScraperIntegrationTester
 
 
 async def run_all():

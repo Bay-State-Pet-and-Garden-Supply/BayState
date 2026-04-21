@@ -1,0 +1,20 @@
+# Generated caches and build artifacts
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.cache/
+.artifacts/
+.coverage
+.data/
+.browser_storage_states/
+.sisyphus/
+baystate_scraper.egg-info/
+
+# Generated runtime outputs
+reports/
+data/analytics/
+data/events/
+data/scraper_sessions/
+data/retry_history_*.json
+data/selectors.json

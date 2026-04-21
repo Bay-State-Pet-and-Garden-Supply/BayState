@@ -22,14 +22,50 @@ describe('scrapeProducts', () => {
     const makeSupabaseMock = (options?: {
         jobInsertError?: unknown;
         unitInsertError?: unknown;
-        pipelineRows?: Array<{ sku: string; input?: Record<string, unknown> | null }>;
+        pipelineRows?: Array<{
+            sku: string;
+            cohort_id?: string | null;
+            consolidated?: Record<string, unknown> | null;
+            input?: Record<string, unknown> | null;
+        }>;
         productRows?: Array<{
             sku: string;
             name?: string | null;
-            brand?: { name?: string | null } | Array<{ name?: string | null }> | null;
+            brand?: {
+                name?: string | null;
+                website_url?: string | null;
+                official_domains?: string[];
+                preferred_domains?: string[];
+            } | Array<{
+                name?: string | null;
+                website_url?: string | null;
+                official_domains?: string[];
+                preferred_domains?: string[];
+            }> | null;
             product_categories?: Array<{
                 category?: { name?: string | null } | Array<{ name?: string | null }> | null;
             }> | null;
+        }>;
+        brandRows?: Array<{
+            id?: string;
+            name?: string | null;
+            slug?: string | null;
+            website_url?: string | null;
+            official_domains?: string[];
+            preferred_domains?: string[];
+        }>;
+        cohortRows?: Array<{
+            id: string;
+            brand_name?: string | null;
+            brand_id?: string | null;
+            brands?: {
+                id?: string;
+                name?: string | null;
+                slug?: string | null;
+                website_url?: string | null;
+                official_domains?: string[];
+                preferred_domains?: string[];
+            } | null;
         }>;
     }) => {
         const scrapeJobsBuilder = {
@@ -60,18 +96,58 @@ describe('scrapeProducts', () => {
             in: jest.fn().mockResolvedValue({ data: options?.productRows ?? [], error: null }),
         };
 
+        const brandsBuilder = {
+            select: jest.fn().mockReturnThis(),
+            in: jest.fn().mockImplementation((column: string, values: string[]) => {
+                const rows = options?.brandRows ?? [];
+                if (column === 'id') {
+                    return Promise.resolve({
+                        data: rows.filter((row) => row.id && values.includes(row.id)),
+                        error: null,
+                    });
+                }
+
+                if (column === 'slug') {
+                    return Promise.resolve({
+                        data: rows.filter((row) => row.slug && values.includes(row.slug)),
+                        error: null,
+                    });
+                }
+
+                return Promise.resolve({ data: [], error: null });
+            }),
+        };
+
+        const cohortBuilder = {
+            select: jest.fn().mockReturnThis(),
+            in: jest.fn().mockImplementation((column: string, values: string[]) => {
+                if (column !== 'id') {
+                    return Promise.resolve({ data: [], error: null });
+                }
+
+                return Promise.resolve({
+                    data: (options?.cohortRows ?? []).filter((row) => values.includes(row.id)),
+                    error: null,
+                });
+            }),
+        };
+
         return {
             from: jest.fn().mockImplementation((table: string) => {
                 if (table === 'scrape_jobs') return scrapeJobsBuilder;
                 if (table === 'scrape_job_chunks') return scrapeUnitsBuilder;
                 if (table === 'products_ingestion') return productsIngestionBuilder;
                 if (table === 'products') return productsBuilder;
+                if (table === 'brands') return brandsBuilder;
+                if (table === 'cohort_batches') return cohortBuilder;
                 return scrapeJobsBuilder;
             }),
             _scrapeJobsBuilder: scrapeJobsBuilder,
             _scrapeUnitsBuilder: scrapeUnitsBuilder,
             _productsIngestionBuilder: productsIngestionBuilder,
             _productsBuilder: productsBuilder,
+            _brandsBuilder: brandsBuilder,
+            _cohortBuilder: cohortBuilder,
         };
     };
 
@@ -244,7 +320,7 @@ describe('scrapeProducts', () => {
         const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'ai_search' });
 
         expect(result.success).toBe(true);
-        expect(mockSupabase._productsIngestionBuilder.select).toHaveBeenCalledWith('sku, input');
+        expect(mockSupabase._productsIngestionBuilder.select).toHaveBeenCalledWith('sku, cohort_id, consolidated, input');
         expect(mockSupabase._productsIngestionBuilder.in).toHaveBeenCalledWith('sku', ['SKU-1']);
 
         const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
@@ -391,6 +467,100 @@ describe('scrapeProducts', () => {
                 brand: 'Miracle-Gro',
                 category: 'Garden > Potting Mix',
                 preferred_domains: ['scottsmiraclegro.com', 'homedepot.com', 'lowes.com'],
+            },
+        ]);
+    });
+
+    it('should backfill ai_search brand registry domains from consolidated brand id', async () => {
+        mockSupabase = makeSupabaseMock({
+            pipelineRows: [
+                {
+                    sku: 'SKU-1',
+                    consolidated: {
+                        brand_id: 'brand-1',
+                    },
+                    input: {
+                        name: 'Widget 25 QT',
+                        price: 9.99,
+                        category: 'Garden > Potting Mix',
+                    },
+                },
+            ],
+            brandRows: [
+                {
+                    id: 'brand-1',
+                    name: 'Miracle-Gro',
+                    slug: 'miracle-gro',
+                    website_url: 'https://www.scottsmiraclegro.com/en-us/brands/miracle-gro',
+                    official_domains: ['scottsmiraclegro.com'],
+                    preferred_domains: ['homedepot.com', 'lowes.com'],
+                },
+            ],
+        });
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'ai_search' });
+
+        expect(result.success).toBe(true);
+        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
+        expect(insertedPayload.config.items).toEqual([
+            {
+                sku: 'SKU-1',
+                product_name: 'Widget 25 QT',
+                price: 9.99,
+                brand: 'Miracle-Gro',
+                category: 'Garden > Potting Mix',
+                preferred_domains: ['scottsmiraclegro.com', 'homedepot.com', 'lowes.com'],
+            },
+        ]);
+    });
+
+    it('should backfill ai_search brand registry domains from cohort brand context', async () => {
+        mockSupabase = makeSupabaseMock({
+            pipelineRows: [
+                {
+                    sku: 'SKU-1',
+                    cohort_id: 'cohort-1',
+                    input: {
+                        name: 'Tomato Jubilee 1943',
+                        price: 2.49,
+                        category: 'Vegetable Seeds',
+                    },
+                },
+            ],
+            cohortRows: [
+                {
+                    id: 'cohort-1',
+                    brand_name: 'Bentley Seed',
+                    brand_id: 'brand-bentley',
+                    brands: {
+                        id: 'brand-bentley',
+                        name: 'Bentley Seed',
+                        slug: 'bentley-seed',
+                        website_url: 'https://bentleyseeds.com',
+                        official_domains: ['bentleyseeds.com'],
+                        preferred_domains: ['arett.com'],
+                    },
+                },
+            ],
+        });
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], {
+            enrichment_method: 'ai_search',
+            cohortBrand: 'Bentley Seed',
+        });
+
+        expect(result.success).toBe(true);
+        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
+        expect(insertedPayload.config.items).toEqual([
+            {
+                sku: 'SKU-1',
+                product_name: 'Tomato Jubilee 1943',
+                price: 2.49,
+                brand: 'Bentley Seed',
+                category: 'Vegetable Seeds',
+                preferred_domains: ['bentleyseeds.com', 'arett.com'],
             },
         ]);
     });

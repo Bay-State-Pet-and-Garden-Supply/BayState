@@ -607,7 +607,11 @@ def test_generate_markdown_report_renders_human_readable_tables() -> None:
         category_analysis={
             "underperforming_threshold_pct": 70.0,
             "underperforming_categories": [],
-            "comparison_visualization": "Status Category          Accuracy Bar            Accuracy Trend\n------ ---------------- -------------------- -------- ----------------\n✅ Tools            ████████████████████  100.0% (1/1) ↑ +50.0 pts",
+            "comparison_visualization": (
+                "Status Category          Accuracy Bar            Accuracy Trend\n"
+                "------ ---------------- -------------------- -------- ----------------\n"
+                "✅ Tools            ████████████████████  100.0% (1/1) ↑ +50.0 pts"
+            ),
             "categories": {
                 "Tools": {
                     "metrics": {

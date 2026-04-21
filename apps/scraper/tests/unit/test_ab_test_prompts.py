@@ -412,10 +412,20 @@ def test_run_cli_writes_report_and_prints_recommendation(
     expected_report = cast(ABTestReport, cast(object, expected_report_payload))
 
     class FakeABTestRunner:
-        def __init__(self, dataset_path: Path, *, strategy_a_spec: str, strategy_b_spec: str) -> None:
+        def __init__(
+            self,
+            dataset_path: Path,
+            *,
+            strategy_a_spec: str,
+            strategy_b_spec: str,
+            prompt_a_path: Path | None = None,
+            prompt_b_path: Path | None = None,
+        ) -> None:
             self.dataset_path: Path = dataset_path
             self.strategy_a_spec: str = strategy_a_spec
             self.strategy_b_spec: str = strategy_b_spec
+            self.prompt_a_path: Path | None = prompt_a_path
+            self.prompt_b_path: Path | None = prompt_b_path
 
         async def run_ab_test(self) -> ABTestReport:
             return expected_report
@@ -451,13 +461,20 @@ def test_run_cli_writes_report_and_prints_recommendation(
 
 def test_parse_args_supports_prompt_flags() -> None:
     """Test that --prompt-a and --prompt-b flags are supported."""
-    args = parse_args([
-        "--dataset", "data/golden.json",
-        "--strategy-a", "heuristic",
-        "--strategy-b", "llm",
-        "--prompt-a", "prompts/v1.txt",
-        "--prompt-b", "prompts/v2.txt",
-    ])
+    args = parse_args(
+        [
+            "--dataset",
+            "data/golden.json",
+            "--strategy-a",
+            "heuristic",
+            "--strategy-b",
+            "llm",
+            "--prompt-a",
+            "prompts/v1.txt",
+            "--prompt-b",
+            "prompts/v2.txt",
+        ]
+    )
 
     assert args.dataset == Path("data/golden.json")
     assert args.strategy_a == "heuristic"
@@ -527,8 +544,6 @@ def test_load_prompt_from_file_raises_on_empty_file(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_ab_test_runner_with_prompts_tracks_prompt_comparison(tmp_path: Path) -> None:
     """Test that ABTestRunner generates prompt comparison when prompts are provided."""
-    from scripts.ab_test_prompts import load_prompt_from_file
-
     # Create prompt files
     prompt_a_path = tmp_path / "prompt_a.txt"
     prompt_b_path = tmp_path / "prompt_b.txt"
@@ -564,7 +579,30 @@ async def test_ab_test_runner_with_prompts_tracks_prompt_comparison(tmp_path: Pa
 
     report_a = _benchmark_report(report_a_results, mode="llm")
     report_b = _benchmark_report(report_b_results, mode="llm")
-    fake_runner = _make_fake_runner({"llm": report_a, "llm": report_b})
+
+    class FakeRunnerWithPromptReports:
+        calls: list[dict[str, object]] = []
+
+        def __init__(
+            self,
+            dataset_path: Path,
+            *,
+            mode: str,
+            cache_dir: Path | None = None,
+            llm_model: str = "gpt-4o-mini",
+            llm_provider: str = "openai",
+            llm_base_url: str | None = None,
+            llm_api_key: str | None = None,
+        ) -> None:
+            _ = (cache_dir, llm_model, llm_provider, llm_base_url, llm_api_key)
+            self.dataset_path: Path = dataset_path
+            self.mode: str = mode
+            type(self).calls.append({"mode": mode})
+
+        async def run(self) -> BenchmarkReport:
+            if len(type(self).calls) == 1:
+                return report_a
+            return report_b
 
     report = await ABTestRunner(
         dataset_path=tmp_path / "golden.json",
@@ -572,7 +610,7 @@ async def test_ab_test_runner_with_prompts_tracks_prompt_comparison(tmp_path: Pa
         strategy_b_spec="llm",
         prompt_a_path=prompt_a_path,
         prompt_b_path=prompt_b_path,
-        runner_cls=fake_runner,
+        runner_cls=FakeRunnerWithPromptReports,
     ).run_ab_test()
 
     # Verify prompt comparison exists
@@ -582,7 +620,7 @@ async def test_ab_test_runner_with_prompts_tracks_prompt_comparison(tmp_path: Pa
     # Verify metrics
     assert prompt_comparison["prompt_a_metrics"]["accuracy"] == 0.3  # 3/10
     assert prompt_comparison["prompt_b_metrics"]["accuracy"] == 0.7  # 7/10
-    assert prompt_comparison["accuracy_delta"] == 0.4  # 0.7 - 0.3
+    assert prompt_comparison["accuracy_delta"] == pytest.approx(0.4)  # 0.7 - 0.3
     assert prompt_comparison["improved_count"] == 4  # indices 3, 4, 5, 6
     assert prompt_comparison["regressed_count"] == 0
     assert prompt_comparison["total_examples"] == 10
@@ -596,6 +634,11 @@ async def test_ab_test_runner_with_prompts_tracks_prompt_comparison(tmp_path: Pa
 @pytest.mark.asyncio
 async def test_ab_test_runner_prompt_comparison_detects_regression(tmp_path: Path) -> None:
     """Test that prompt comparison correctly detects regressions."""
+    prompt_a_path = tmp_path / "prompt_a.txt"
+    prompt_b_path = tmp_path / "prompt_b.txt"
+    _ = prompt_a_path.write_text("Prompt A content", encoding="utf-8")
+    _ = prompt_b_path.write_text("Prompt B content", encoding="utf-8")
+
     # Create reports where B is worse than A
     report_a_results: list[BenchmarkResultRow] = []
     report_b_results: list[BenchmarkResultRow] = []
@@ -625,7 +668,6 @@ async def test_ab_test_runner_prompt_comparison_detects_regression(tmp_path: Pat
 
     report_a = _benchmark_report(report_a_results, mode="llm")
     report_b = _benchmark_report(report_b_results, mode="llm")
-    fake_runner = _make_fake_runner({"llm": report_a})
 
     # Create a fake runner that returns different reports for A and B
     class FakeRunnerWithDifferentReports:
@@ -656,6 +698,8 @@ async def test_ab_test_runner_prompt_comparison_detects_regression(tmp_path: Pat
         dataset_path=tmp_path / "golden.json",
         strategy_a_spec="llm",
         strategy_b_spec="llm",
+        prompt_a_path=prompt_a_path,
+        prompt_b_path=prompt_b_path,
         runner_cls=FakeRunnerWithDifferentReports,
     ).run_ab_test()
 
@@ -667,8 +711,6 @@ async def test_ab_test_runner_prompt_comparison_detects_regression(tmp_path: Pat
 
 def test_render_console_report_includes_prompt_comparison() -> None:
     """Test that render_console_report includes prompt comparison section."""
-    from scripts.ab_test_prompts import PromptComparisonReport, PromptMetrics
-
     # Create a mock report with prompt comparison
     report: ABTestReport = cast(
         ABTestReport,
@@ -749,7 +791,13 @@ def test_render_console_report_includes_prompt_comparison() -> None:
                     "unchanged_count": 6,
                     "total_examples": 10,
                     "improved_examples": [
-                        {"index": 3, "query": "test query 3", "expected_source_url": "http://example.com/3", "strategy_a_predicted": None, "strategy_b_predicted": "http://example.com/3"},
+                        {
+                            "index": 3,
+                            "query": "test query 3",
+                            "expected_source_url": "http://example.com/3",
+                            "strategy_a_predicted": None,
+                            "strategy_b_predicted": "http://example.com/3",
+                        },
                     ],
                     "regressed_examples": [],
                     "prompt_a_metrics": {

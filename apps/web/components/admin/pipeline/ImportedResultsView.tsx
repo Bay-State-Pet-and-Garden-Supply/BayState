@@ -88,7 +88,37 @@ export function ImportedResultsView({
     return sortedProducts.find((p) => p.sku === preferredSku) || null;
   }, [sortedProducts, preferredSku]);
 
-  // 5. Effects
+  // track previous products to detect when a product is removed
+  const prevProductsRef = useRef<PipelineProduct[]>(sortedProducts);
+
+  // 4. Effects
+  // Intelligent selection: When products change, if the current selection is gone,
+  // select the next product that was after it.
+  useEffect(() => {
+    const prevProducts = prevProductsRef.current;
+    if (prevProducts !== sortedProducts) {
+      const currentExists = sortedProducts.some((p) => p.sku === preferredSku);
+      if (!currentExists && preferredSku) {
+        // Current SKU was removed.
+        // Find where it was in the PREVIOUS list.
+        const prevIndex = prevProducts.findIndex((p) => p.sku === preferredSku);
+        if (prevIndex !== -1) {
+          // Select the product that is now at that same index (or the one before if it was last)
+          const nextIndex = Math.min(prevIndex, sortedProducts.length - 1);
+          if (nextIndex >= 0) {
+            setPreferredSku(sortedProducts[nextIndex].sku);
+          } else {
+            setPreferredSku(null);
+          }
+        }
+      } else if (!preferredSku && sortedProducts.length > 0) {
+        setPreferredSku(sortedProducts[0].sku);
+      }
+      prevProductsRef.current = sortedProducts;
+    }
+  }, [sortedProducts, preferredSku]);
+
+  // 5. Render logic
   return (
     <div data-testid="product-table" className="flex h-full min-h-0 border-4 border-zinc-950 rounded-none overflow-hidden bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)] max-w-full m-1 mr-4 mb-4">
       {/* Left Column: Product List */}

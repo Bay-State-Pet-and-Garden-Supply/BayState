@@ -3,13 +3,13 @@
 import pytest
 from unittest.mock import patch
 
-from engine.transpiler.yaml_parser import (
+from src.crawl4ai_engine.transpiler.yaml_parser import (
     YAMLConfigParser,
     ParsedYAMLConfig,
     SelectorField,
     UnsupportedFeature,
 )
-from engine.transpiler.schema_generator import YAMLToCrawl4AI
+from src.crawl4ai_engine.transpiler.schema_generator import YAMLToCrawl4AI
 
 
 class TestYAMLConfigParser:

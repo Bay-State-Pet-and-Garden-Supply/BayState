@@ -11,10 +11,7 @@ from typing import Any
 from core.events import EventEmitter
 from core.retry_executor import RetryExecutor
 
-try:
-    from actions import ActionRegistry
-except Exception:
-    from scrapers.actions import ActionRegistry
+from scrapers.actions import ActionRegistry
 from scrapers.exceptions import ConfigurationError, ErrorContext
 from scrapers.models.config import WorkflowStep
 
@@ -306,6 +303,7 @@ class StepExecutor:
 
         # Replace {{var}} with {var} for .format() compatibility
         import re
+
         processed_text = re.sub(r"\{\{([^}]+)\}\}", r"{\1}", text)
 
         try:
@@ -321,7 +319,7 @@ class StepExecutor:
     def _on_retry_callback(self, attempt: int, error: Exception, delay: float) -> None:
         """Callback called before each retry attempt."""
         logger.info(f"Retry attempt {attempt + 2} for {self.config_name} after {type(error).__name__}, waiting {delay:.2f}s")
-        
+
         # Update timeout multiplier in shared context if available
         if hasattr(error, "context") and hasattr(error.context, "timeout_multiplier"):
             multiplier = getattr(error.context, "timeout_multiplier", 1.0)

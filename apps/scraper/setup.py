@@ -27,6 +27,7 @@ setup(
         "rich>=13.0.0",
         "structlog>=23.0.0",
         "supabase>=2.0.0",
+        "cryptography>=42.0.0",
         "playwright-stealth>=1.0.4",
         "eval-type-backport>=0.1.3",
         "sentry-sdk>=1.40.0",

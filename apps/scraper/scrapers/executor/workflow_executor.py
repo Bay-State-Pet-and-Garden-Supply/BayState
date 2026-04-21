@@ -27,10 +27,7 @@ from core.failure_classifier import FailureClassifier, FailureType
 from core.retry_executor import RetryExecutor, CircuitBreakerConfig
 from core.settings_manager import SettingsManager
 
-try:
-    from scrapers.actions.registry import ActionRegistry
-except ImportError:
-    from scrapers.actions.registry import ActionRegistry
+from scrapers.actions.registry import ActionRegistry
 from scrapers.exceptions import (
     BrowserError,
     CircuitBreakerOpenError,

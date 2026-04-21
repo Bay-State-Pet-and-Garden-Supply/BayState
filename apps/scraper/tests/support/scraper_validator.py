@@ -1,4 +1,3 @@
-"""Scraper Validator for testing product data quality."""
 from __future__ import annotations
 
 from typing import Any
@@ -85,15 +84,9 @@ class ScraperValidator:
 
         total_products = len(products)
         invalid_products = total_products - valid_products
-        field_coverage = {
-            field: (count / total_products) * 100 for field, count in field_counts.items()
-        }
+        field_coverage = {field: (count / total_products) * 100 for field, count in field_counts.items()}
         valid_ratio = valid_products / total_products if total_products else 0.0
-        coverage_ratio = (
-            sum(field_coverage.values()) / (len(field_coverage) * 100)
-            if field_coverage
-            else 0.0
-        )
+        coverage_ratio = sum(field_coverage.values()) / (len(field_coverage) * 100) if field_coverage else 0.0
         data_quality_score = valid_ratio * 0.7 + coverage_ratio * 0.3
 
         return {

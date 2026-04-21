@@ -3,7 +3,7 @@
 import pytest
 import time
 
-from engine.retry import (
+from src.crawl4ai_engine.retry import (
     CircuitBreaker,
     CircuitBreakerConfig,
     CircuitState,
