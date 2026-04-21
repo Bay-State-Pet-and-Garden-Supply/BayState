@@ -3,9 +3,9 @@
 import logging
 from typing import Any, Optional
 
-from scrapers.ai_cost_tracker import AICostTracker
-from scrapers.ai_search.llm_runtime import resolve_llm_runtime
-from scrapers.providers.factory import create_llm_provider
+from ..ai_cost_tracker import AICostTracker
+from .llm_runtime import resolve_llm_runtime
+from ..providers.factory import create_llm_provider
 
 logger = logging.getLogger(__name__)
 
