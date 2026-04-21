@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import * as z from 'zod';
-import { ActionState } from '@/lib/types';
+import type { BrandActionState } from '@/components/admin/brands/types';
 
 const brandSchema = z.object({
     name: z.string().min(1, 'Name is required'),
@@ -27,7 +27,7 @@ function parseDomainList(value: FormDataEntryValue | null): string[] {
 }
 
 
-export async function createBrand(formData: FormData): Promise<ActionState> {
+export async function createBrand(formData: FormData): Promise<BrandActionState> {
     const supabase = await createClient();
 
     const rawData = {
@@ -43,9 +43,11 @@ export async function createBrand(formData: FormData): Promise<ActionState> {
     try {
         const validatedData = brandSchema.parse(rawData);
 
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from('brands')
-            .insert(validatedData);
+            .insert(validatedData)
+            .select('id, name, slug, logo_url, description, website_url, official_domains, preferred_domains, created_at')
+            .single();
 
         if (error) {
             console.error('Database Error:', error);
@@ -57,7 +59,7 @@ export async function createBrand(formData: FormData): Promise<ActionState> {
         revalidatePath('/brands');
         revalidatePath('/products');
         revalidatePath('/', 'layout');
-        return { success: true };
+        return { success: true, brand: data ?? undefined };
     } catch (err) {
         if (err instanceof z.ZodError) {
             return { success: false, error: 'Validation failed: ' + err.issues[0].message };
@@ -66,7 +68,7 @@ export async function createBrand(formData: FormData): Promise<ActionState> {
     }
 }
 
-export async function updateBrand(id: string, formData: FormData): Promise<ActionState> {
+export async function updateBrand(id: string, formData: FormData): Promise<BrandActionState> {
     const supabase = await createClient();
 
     const rawData = {
@@ -82,10 +84,12 @@ export async function updateBrand(id: string, formData: FormData): Promise<Actio
     try {
         const validatedData = brandSchema.parse(rawData);
 
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from('brands')
             .update(validatedData)
-            .eq('id', id);
+            .eq('id', id)
+            .select('id, name, slug, logo_url, description, website_url, official_domains, preferred_domains, created_at')
+            .single();
 
         if (error) {
             console.error('Database Error:', error);
@@ -97,7 +101,7 @@ export async function updateBrand(id: string, formData: FormData): Promise<Actio
         revalidatePath('/brands');
         revalidatePath('/products');
         revalidatePath('/', 'layout');
-        return { success: true };
+        return { success: true, brand: data ?? undefined };
     } catch (err) {
         if (err instanceof z.ZodError) {
             return { success: false, error: 'Validation failed: ' + err.issues[0].message };

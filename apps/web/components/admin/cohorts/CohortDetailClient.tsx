@@ -8,22 +8,16 @@ import {
   Loader2,
   AlertCircle,
   Package,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Activity,
-  Edit2,
-  Check,
-  X,
   Sparkles,
   BarChart3,
   RefreshCw,
   Zap,
+  Globe,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -33,13 +27,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-
-interface BrandInfo {
-  id: string;
-  name: string;
-  slug: string;
-  logo_url: string | null;
-}
+import { CohortBrandPicker } from "./CohortBrandPicker";
+import type { CohortBrandInfo } from "./types";
+import { isConfiguredBrand } from "./types";
+import { BrandModal } from "@/components/admin/brands/BrandModal";
 
 interface CohortDetail {
   id: string;
@@ -49,7 +40,7 @@ interface CohortDetail {
   scraper_config: string | null;
   brand_id: string | null;
   brand_name: string | null;
-  brands: BrandInfo | null;
+  brands: CohortBrandInfo | null;
   created_at: string;
   updated_at: string;
   metadata: Record<string, unknown>;
@@ -124,8 +115,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
   const [loading, setLoading] = useState(true);
   const [loadingRecs, setLoadingRecs] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isEditingBrand, setIsEditingBrand] = useState(false);
-  const [brandInput, setBrandInput] = useState("");
+  const [editingBrand, setEditingBrand] = useState<CohortBrandInfo | null>(null);
 
   const fetchCohort = useCallback(async () => {
     try {
@@ -169,16 +159,18 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
     if (cohort && (cohort.brand_name || cohort.brands?.name)) {
       void fetchRecommendations();
     }
-  }, [cohort?.brand_name, cohort?.brands?.name, fetchRecommendations]);
+  }, [cohort, fetchRecommendations]);
 
-  const handleAssignBrand = async () => {
-    if (!brandInput.trim()) return;
-
+  const handleAssignBrand = async (brand: CohortBrandInfo | null) => {
     try {
       const response = await fetch(`/api/admin/cohorts/${cohortId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brand_name: brandInput.trim() }),
+        body: JSON.stringify(
+          brand
+            ? { brand_id: brand.id, brand_name: null }
+            : { brand_id: null, brand_name: null }
+        ),
       });
 
       if (!response.ok) {
@@ -186,9 +178,16 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
         throw new Error(data.error || "Failed to assign brand");
       }
 
-      toast.success(`Brand "${brandInput.trim()}" assigned`);
-      setIsEditingBrand(false);
-      setBrandInput("");
+      if (brand) {
+        toast.success(`Brand "${brand.name}" assigned`, {
+          description: isConfiguredBrand(brand)
+            ? "Scraper recommendations are active for this cohort."
+            : "Brand linked. Add official site/domain details to strengthen AI Search guidance.",
+        });
+      } else {
+        toast.success("Brand assignment cleared");
+      }
+
       await fetchCohort();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to assign brand");
@@ -218,6 +217,8 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
   }
 
   const brandName = cohort.brand_name || cohort.brands?.name || null;
+  const brand = cohort.brands;
+  const configuredBrand = isConfiguredBrand(brand);
   const statusBadge = STATUS_BADGE_CONFIG[cohort.status] || STATUS_BADGE_CONFIG.pending;
 
   // Pipeline status breakdown
@@ -277,69 +278,70 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              {isEditingBrand ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={brandInput}
-                    onChange={(e) => setBrandInput(e.target.value)}
-                    placeholder="Enter brand name (e.g., KONG, Blue Buffalo)"
-                    className="flex-1 rounded-none border border-zinc-950"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") void handleAssignBrand();
-                      if (e.key === "Escape") setIsEditingBrand(false);
-                    }}
-                  />
-                  <Button size="sm" onClick={() => void handleAssignBrand()} disabled={!brandInput.trim()}>
-                    <Check className="mr-1 h-4 w-4" />
-                    Save
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setIsEditingBrand(false)} className="rounded-none border border-transparent hover:border-zinc-950">
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : brandName ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-none border border-zinc-950 p-2.5 bg-brand-forest-green shadow-[1px_1px_0px_rgba(0,0,0,1)]">
-                      <Tag className="h-5 w-5 text-white" />
+              <div className="space-y-4">
+                <CohortBrandPicker
+                  value={brand}
+                  onAssign={handleAssignBrand}
+                  triggerClassName="w-full justify-between px-3 py-5"
+                  emptyLabel="Assign Brand"
+                />
+                {brandName ? (
+                  <div className="rounded-none border border-zinc-950 bg-zinc-50 p-4 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-2">
+                        <p className="font-black uppercase text-zinc-950 tracking-tight">{brandName}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-600">
+                          {configuredBrand
+                            ? 'Scraper recommendations are active for this brand'
+                            : 'Brand linked, but official site/domain guidance is still missing'}
+                        </p>
+                      </div>
+                      {brand && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase"
+                          onClick={() => setEditingBrand(brand)}
+                        >
+                          <Pencil className="mr-1 h-3.5 w-3.5" />
+                          Edit Brand Details
+                        </Button>
+                      )}
                     </div>
-                    <div>
-                      <p className="font-black uppercase text-zinc-950 tracking-tight">{brandName}</p>
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-600">
-                        Scraper recommendations are active for this brand
-                      </p>
-                    </div>
+                    {brand && (
+                      <div className="mt-4 grid gap-2 text-[10px] font-black uppercase tracking-wide text-zinc-600 sm:grid-cols-3">
+                        <div className="rounded-none border border-zinc-200 bg-white px-3 py-2">
+                          <span className="block text-zinc-500">Official Site</span>
+                          {brand.website_url ? (
+                            <a href={brand.website_url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-brand-forest-green hover:underline">
+                              <Globe className="h-3 w-3" />
+                              View Site
+                            </a>
+                          ) : (
+                            <span className="mt-1 block text-brand-burgundy">Missing</span>
+                          )}
+                        </div>
+                        <div className="rounded-none border border-zinc-200 bg-white px-3 py-2">
+                          <span className="block text-zinc-500">Official Domains</span>
+                          <span className="mt-1 block text-zinc-950">{brand.official_domains.length}</span>
+                        </div>
+                        <div className="rounded-none border border-zinc-200 bg-white px-3 py-2">
+                          <span className="block text-zinc-500">Preferred Domains</span>
+                          <span className="mt-1 block text-zinc-950">{brand.preferred_domains.length}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase"
-                    onClick={() => {
-                      setBrandInput(brandName);
-                      setIsEditingBrand(true);
-                    }}
-                  >
-                    <Edit2 className="mr-1 h-3.5 w-3.5" />
-                    Edit
-                  </Button>
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <Tag className="h-8 w-8 text-zinc-300 mx-auto mb-3" />
-                  <p className="text-xs font-bold uppercase tracking-wide text-zinc-500 mb-4">
-                    Assign a brand to enable automatic scraper recommendations
-                  </p>
-                  <Button
-                    variant="outline"
-                    className="rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase"
-                    onClick={() => setIsEditingBrand(true)}
-                  >
-                    <Tag className="mr-2 h-4 w-4" />
-                    Assign Brand
-                  </Button>
-                </div>
-              )}
+                ) : (
+                  <div className="text-center py-6">
+                    <Tag className="h-8 w-8 text-zinc-300 mx-auto mb-3" />
+                    <p className="text-xs font-bold uppercase tracking-wide text-zinc-500 mb-4">
+                      Assign a brand to enable automatic scraper recommendations
+                    </p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -546,6 +548,16 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
           </Card>
         </div>
       </div>
+      {editingBrand && (
+        <BrandModal
+          brand={editingBrand}
+          onClose={() => setEditingBrand(null)}
+          onSave={(savedBrand) => {
+            setEditingBrand(savedBrand ?? null);
+            void fetchCohort();
+          }}
+        />
+      )}
     </div>
   );
 }
