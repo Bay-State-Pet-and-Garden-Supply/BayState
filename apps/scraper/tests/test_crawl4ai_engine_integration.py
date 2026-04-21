@@ -3,13 +3,13 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from engine.engine import Crawl4AIEngine
-from engine.strategies.css_strategy import CSSExtractionStrategy
-from engine.strategies.xpath_strategy import XPathExtractionStrategy
-from engine.callback import CallbackDelivery
-from engine.retry import CircuitBreaker, RetryPolicy, execute_with_retry
-from engine.transpiler.yaml_parser import YAMLConfigParser
-from engine.transpiler.schema_generator import YAMLToCrawl4AI
+from src.crawl4ai_engine.engine import Crawl4AIEngine
+from src.crawl4ai_engine.strategies.css_strategy import CSSExtractionStrategy
+from src.crawl4ai_engine.strategies.xpath_strategy import XPathExtractionStrategy
+from src.crawl4ai_engine.callback import CallbackDelivery
+from src.crawl4ai_engine.retry import CircuitBreaker, RetryPolicy, execute_with_retry
+from src.crawl4ai_engine.transpiler.yaml_parser import YAMLConfigParser
+from src.crawl4ai_engine.transpiler.schema_generator import YAMLToCrawl4AI
 
 
 class TestEndToEndExtractionFlow:

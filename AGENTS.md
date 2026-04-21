@@ -95,7 +95,7 @@ Three-part system: **apps/web** (Next.js 16 PWA + Admin), **apps/scraper** (Pyth
 | `validate-scraper-configs.yml` | PR | YAML config validation |
 | `prompt-regression.yml` | PR | AI prompt accuracy checks |
 | `weekly-validation.yml` | cron | Scraper validation + GitHub issues |
-| `register-sync.yml` | schedule | Windows ODBC register sync |
+| `register-sync.yml` | manual | Windows ODBC register sync |
 
 ## SUBPROJECTS
 - **apps/web/** → `apps/web/AGENTS.md`

@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 import pytest
 from core.api_client import *
-from utils.api_handler import ScraperAPIHandler
+from tests.support.api_handler import ScraperAPIHandler
 from utils.logger import JSONFormatter, setup_logging, reset_logging
 
 

@@ -25,20 +25,28 @@ WORKDIR /app
 ARG RUNNER_BUILD_ID=unknown
 ARG RUNNER_BUILD_SHA=unknown
 
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Install psutil for health check script
-RUN pip install --no-cache-dir psutil
+# Install only the dependencies needed by the runner image
+COPY requirements-runtime.txt ./requirements-runtime.txt
+RUN pip install --no-cache-dir -r requirements-runtime.txt
 
 # Install Playwright browsers (chromium only - firefox rarely needed)
 RUN playwright install chromium
 
-# Copy scraper source code
-COPY . .
+# Copy only the runtime code needed by the runner image
+COPY daemon.py ./daemon.py
+COPY runner.py ./runner.py
+COPY core ./core
+COPY runner ./runner
+COPY scrapers ./scrapers
+COPY src ./src
+COPY utils ./utils
+COPY validation ./validation
+COPY prompts ./prompts
+COPY scripts/health_check.py ./scripts/health_check.py
 
-# Set Python path
+# Python runtime defaults
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 
 # Environment defaults

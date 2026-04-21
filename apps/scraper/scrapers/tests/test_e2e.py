@@ -16,8 +16,7 @@ from typing import Any
 import pytest
 import yaml  # type: ignore
 
-from core.scraper_testing_client import *
-from core.scraper_testing_integration import *
+from tests.support.scraper_testing_integration import ScraperIntegrationTester
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 

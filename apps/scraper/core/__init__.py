@@ -2,15 +2,14 @@
 ProductScraper Core Module
 Provides core functionality for scraping, data processing, and platform integration.
 """
+
 from __future__ import annotations
 
 
 from .failure_classifier import FailureClassifier, FailureContext, FailureType
-from .scraper_testing_client import ScraperTestingClient
 
 __all__ = [
     "FailureClassifier",
     "FailureContext",
     "FailureType",
-    "ScraperTestingClient",
 ]

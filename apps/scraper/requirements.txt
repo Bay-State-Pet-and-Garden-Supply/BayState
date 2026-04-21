@@ -1,5 +1,6 @@
 # Bay State Scraper Backend Requirements
-# Core dependencies for web scraping
+# Core dependencies for local development, tests, and full tooling.
+# The daemon Docker image installs `requirements-runtime.txt` instead.
 
 # AI-powered browser automation
 crawl4ai>=0.8.0
@@ -32,6 +33,7 @@ structlog>=23.0.0
 
 # Supabase client for result storage
 supabase>=2.0.0
+cryptography>=42.0.0
 
 # Stealth
 playwright-stealth>=1.0.4

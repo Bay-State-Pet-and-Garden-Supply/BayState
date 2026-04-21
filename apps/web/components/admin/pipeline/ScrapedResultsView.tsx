@@ -147,7 +147,37 @@ export function ScrapedResultsView({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
-  // 4. Callbacks
+  // track previous products to detect when a product is removed (e.g. moved to imported when last source is deleted)
+  const prevProductsRef = useRef<PipelineProduct[]>(sortedProducts);
+
+  // 4. Effects
+  // Intelligent selection: When products change, if the current selection is gone,
+  // select the next product that was after it.
+  useEffect(() => {
+    const prevProducts = prevProductsRef.current;
+    if (prevProducts !== sortedProducts) {
+      const currentExists = sortedProducts.some((p) => p.sku === preferredSku);
+      if (!currentExists && preferredSku) {
+        // Current SKU was removed.
+        // Find where it was in the PREVIOUS list.
+        const prevIndex = prevProducts.findIndex((p) => p.sku === preferredSku);
+        if (prevIndex !== -1) {
+          // Select the product that is now at that same index (or the one before if it was last)
+          const nextIndex = Math.min(prevIndex, sortedProducts.length - 1);
+          if (nextIndex >= 0) {
+            setPreferredSku(sortedProducts[nextIndex].sku);
+          } else {
+            setPreferredSku(null);
+          }
+        }
+      } else if (!preferredSku && sortedProducts.length > 0) {
+        setPreferredSku(sortedProducts[0].sku);
+      }
+      prevProductsRef.current = sortedProducts;
+    }
+  }, [sortedProducts, preferredSku]);
+
+  // 5. Callbacks
   const handleImageError = useCallback(
     (imageUrl: string | undefined) => {
       const productId = selectedProduct?.sku;
@@ -185,6 +215,18 @@ export function ScrapedResultsView({
     if (!selectedProduct || !pendingDeleteSource) return;
     setConfirmOpen(false);
     const sourceKey = pendingDeleteSource;
+
+    // Calculate next source to select before we delete the current one
+    const currentIndex = sourceKeys.indexOf(sourceKey);
+    let nextSource = "";
+    if (currentIndex !== -1 && sourceKeys.length > 1) {
+      const tempKeys = sourceKeys.filter(k => k !== sourceKey);
+      const targetIndex = Math.min(currentIndex, tempKeys.length - 1);
+      if (targetIndex >= 0) {
+        nextSource = tempKeys[targetIndex];
+      }
+    }
+
     try {
       const newSources = { ...selectedProduct.sources };
       delete newSources[sourceKey];
@@ -202,6 +244,12 @@ export function ScrapedResultsView({
       });
       if (res.ok) {
         toast.success(`Source "${sourceKey}" deleted`);
+        
+        // Update preferred source locally to avoid tab jump/loss
+        if (nextSource) {
+            setPreferredSource(nextSource);
+        }
+        
         onRefresh(true);
       } else {
         const data = await res.json();

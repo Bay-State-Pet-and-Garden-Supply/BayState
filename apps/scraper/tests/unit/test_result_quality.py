@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from utils.testing.scraper_validator import ScraperValidator
+from tests.support.scraper_validator import ScraperValidator
 from validation.result_quality import sanitize_product_payload
 
 

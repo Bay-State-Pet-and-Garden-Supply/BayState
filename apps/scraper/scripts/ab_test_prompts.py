@@ -141,9 +141,6 @@ class StrategyReport(TypedDict):
     prompt: PromptReport | None
 
 
- 
-
-
 class DifferingExample(TypedDict):
     """One example where the strategies produced different outputs."""
 
@@ -239,7 +236,6 @@ def parse_args(argv: list[str] | None = None) -> ABTestArgs:
 
 
 class ABTestRunner:
-
     def __init__(
         self,
         dataset_path: Path,
@@ -318,6 +314,19 @@ class ABTestRunner:
             llm_api_key=strategy.llm_api_key,
             prompt=prompt_config,
         )
+
+    async def _run_strategy(self, strategy: StrategyConfig) -> BenchmarkReport:
+        """Execute one configured benchmark strategy."""
+        runner = self._runner_cls(
+            self.dataset_path,
+            mode=strategy.mode,
+            cache_dir=strategy.cache_dir,
+            llm_model=strategy.llm_model,
+            llm_provider=strategy.llm_provider,
+            llm_base_url=strategy.llm_base_url,
+            llm_api_key=strategy.llm_api_key,
+        )
+        return await runner.run()
 
     def _compare_prompts(
         self,
@@ -477,13 +486,20 @@ class ABTestRunner:
         accuracy_b = float(report_b["summary"]["accuracy_exact_match_pct"])
 
         reasons = [
-            f"Exact-match accuracy: {strategy_a.name} {accuracy_a:.3f}% vs {strategy_b.name} {accuracy_b:.3f}% across {int(comparison_summary['paired_examples'])} paired examples.",
+            (
+                f"Exact-match accuracy: {strategy_a.name} {accuracy_a:.3f}% vs {strategy_b.name} "
+                f"{accuracy_b:.3f}% across {int(comparison_summary['paired_examples'])} paired examples."
+            ),
             f"Primary-metric significance: paired t-test p={paired_t_p:.6f}; Wilcoxon p={wilcoxon_p:.6f}.",
         ]
 
         if differing_examples:
             reasons.append(
-                f"Differing predictions: {len(differing_examples)} examples ({strategy_a.label}-only correct={a_only_correct}, {strategy_b.label}-only correct={b_only_correct})."
+                (
+                    f"Differing predictions: {len(differing_examples)} examples "
+                    f"({strategy_a.label}-only correct={a_only_correct}, "
+                    f"{strategy_b.label}-only correct={b_only_correct})."
+                )
             )
         else:
             reasons.append("Both strategies produced identical predictions for every paired example.")
@@ -502,7 +518,11 @@ class ABTestRunner:
             cost_b = float(report_b["summary"]["total_selection_cost_usd"])
             if cost_a != cost_b:
                 reasons.append(
-                    f"Secondary note: selection cost was ${cost_a:.6f} for {strategy_a.name} vs ${cost_b:.6f} for {strategy_b.name}, but the primary metric was not significantly different."
+                    (
+                        f"Secondary note: selection cost was ${cost_a:.6f} for {strategy_a.name} "
+                        f"vs ${cost_b:.6f} for {strategy_b.name}, but the primary metric was not "
+                        "significantly different."
+                    )
                 )
             choice = "No difference"
             winner = None
@@ -631,16 +651,20 @@ def render_console_report(report: ABTestReport) -> str:
 
     # Add prompt comparison section if available
     if prompt_comparison:
-        lines.extend([
-            "",
-            "## Prompt Comparison",
-            "",
-            f"- Prompt A Accuracy: {prompt_comparison['prompt_a_metrics']['accuracy']:.3f} ({prompt_comparison['prompt_a_metrics']['exact_matches']}/{prompt_comparison['prompt_a_metrics']['total_examples']})",
-            f"- Prompt B Accuracy: {prompt_comparison['prompt_b_metrics']['accuracy']:.3f} ({prompt_comparison['prompt_b_metrics']['exact_matches']}/{prompt_comparison['prompt_b_metrics']['total_examples']})",
-            f"- Accuracy Delta: {prompt_comparison['accuracy_delta']:.3f} ({prompt_comparison['accuracy_delta_pct']:+.1f}%)",
-            f"- Improved Examples: {prompt_comparison['improved_count']}",
-            f"- Regressed Examples: {prompt_comparison['regressed_count']}",
-        ])
+        prompt_a_metrics = prompt_comparison["prompt_a_metrics"]
+        prompt_b_metrics = prompt_comparison["prompt_b_metrics"]
+        lines.extend(
+            [
+                "",
+                "## Prompt Comparison",
+                "",
+                (f"- Prompt A Accuracy: {prompt_a_metrics['accuracy']:.3f} ({prompt_a_metrics['exact_matches']}/{prompt_a_metrics['total_examples']})"),
+                (f"- Prompt B Accuracy: {prompt_b_metrics['accuracy']:.3f} ({prompt_b_metrics['exact_matches']}/{prompt_b_metrics['total_examples']})"),
+                f"- Accuracy Delta: {prompt_comparison['accuracy_delta']:.3f} ({prompt_comparison['accuracy_delta_pct']:+.1f}%)",
+                f"- Improved Examples: {prompt_comparison['improved_count']}",
+                f"- Regressed Examples: {prompt_comparison['regressed_count']}",
+            ]
+        )
 
         # Show improved examples
         if prompt_comparison["improved_examples"]:
@@ -681,6 +705,7 @@ def render_console_report(report: ABTestReport) -> str:
 
     return "\n".join(lines).rstrip() + "\n"
 
+
 def run_cli(argv: list[str] | None = None) -> int:
     """Run the A/B test CLI."""
     try:
@@ -703,7 +728,7 @@ def run_cli(argv: list[str] | None = None) -> int:
     print(render_console_report(report))
     print(f"JSON report: {output_path}")
     return 0
- 
+
 
 def main(argv: list[str] | None = None) -> int:
     """CLI entrypoint."""
@@ -740,7 +765,6 @@ def _serialize_strategy(strategy: StrategyConfig, summary: BenchmarkSummary) -> 
         benchmark_summary=summary,
         prompt=prompt_report,
     )
- 
 
 
 def _load_strategy_from_file(*, label: str, config_path: Path) -> StrategyConfig:

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import {
+  brandHintToSlug,
+  findBrandRegistryByHints,
+  loadBrandRegistryEntries,
+} from '@/lib/brand-registry';
 
 const discoveryRequestSchema = z.object({
   skus: z.array(z.string().min(1)).min(1),
@@ -50,6 +55,14 @@ export async function POST(request: NextRequest) {
     const chunkSize = body.chunk_size ?? 50;
     const maxWorkers = body.max_workers ?? 3;
     const maxAttempts = body.max_attempts ?? 3;
+    const brandSlug = brandHintToSlug(body.brand);
+    const brandRegistryLookup = brandSlug
+      ? await loadBrandRegistryEntries(supabase, { brandSlugs: [brandSlug] })
+      : { byId: new Map(), bySlug: new Map() };
+    const registryBrand = findBrandRegistryByHints(
+      [body.brand],
+      brandRegistryLookup.bySlug,
+    );
 
     const { data: job, error: jobError } = await supabase
       .from('scrape_jobs')
@@ -72,6 +85,7 @@ export async function POST(request: NextRequest) {
         config: {
           product_name: body.product_name,
           brand: body.brand,
+          preferred_domains: registryBrand?.preferredDomains,
           ...(body.config || {}),
         },
         metadata: {

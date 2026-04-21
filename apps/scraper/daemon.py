@@ -96,14 +96,16 @@ try:
         capture_antibot_event,
     )
 
-    # Defer metrics endpoint import to runtime branch below to avoid static
-    # assignment/signature mismatches when providing fallbacks for import checks.
-    # Typed no-op defaults for metrics server so static checkers accept usages
-    def start_metrics_server(port: int | None = None):
-        return (None, None)
+    try:
+        from src.crawl4ai_engine.metrics_endpoint import start_metrics_server, stop_metrics_server
+    except Exception:
+        # Keep a typed no-op fallback so the daemon can still start if the
+        # metrics endpoint is intentionally unavailable.
+        def start_metrics_server(port: int | None = None):
+            return (None, None)
 
-    def stop_metrics_server(httpd: object | None = None) -> None:
-        return None
+        def stop_metrics_server(httpd: object | None = None) -> None:
+            return None
 except Exception:
     # Support importing daemon.py as a top-level module (for quick import checks
     # used in CI/verification) where relative imports fail with "no known parent
@@ -143,7 +145,7 @@ except Exception:
     # Try to import the metrics endpoint if available; provide typed fallbacks
     # so static type checkers do not report assignment/signature mismatches.
     try:
-        metrics_mod = importlib.import_module("apps.scraper.engine.metrics_endpoint")
+        metrics_mod = importlib.import_module("apps.scraper.src.crawl4ai_engine.metrics_endpoint")
         start_metrics_server = getattr(metrics_mod, "start_metrics_server")
         stop_metrics_server = getattr(metrics_mod, "stop_metrics_server")
     except Exception:

@@ -12,8 +12,8 @@ from typing import TypeAlias
 import pytest
 from typing_extensions import override
 
-from core.performance_profiler import *
 from scrapers.ai_search import AISearchScraper
+from tests.support.performance_profiler import OperationStats, OperationType, PerformanceProfiler
 
 JsonScalar: TypeAlias = str | int | float | bool | None
 JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | Mapping[str, "JsonValue"]

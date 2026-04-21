@@ -6,11 +6,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-import pytest
-
 from scrapers.ai_search.dataset_validator import (
     DatasetValidator,
-    SCHEMA_PATH,
     URL_PATTERN,
     VALID_DIFFICULTIES,
     ValidationError,
@@ -182,7 +179,6 @@ class TestDatasetValidator:
         error = result.errors[0]
         assert error.field in ("difficulty", None)
         assert "expert" in error.message or "is not one of" in error.message
-
 
     def test_validate_missing_required_entry_field(self) -> None:
         validator = DatasetValidator()

@@ -2,40 +2,85 @@
 .git
 .gitignore
 
-# Local caches and virtualenvs
+# Local env and virtualenvs
+.env*
+.venv/
+venv/
+
+# Python caches and metadata
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
 __pycache__/
 **/__pycache__/
 *.py[cod]
-.venv/
-venv/
+*.egg-info/
 
-# Test and benchmark assets
-tests/
+# Generated runtime and benchmark artifacts
+.browser_storage_states/
+.cache/
+.artifacts/
+.coverage
+.data/
 reports/
-data/benchmark_*.json
-data/golden_dataset_*.json
-data/annotation_guide*.md
-data/benchmark_expansion/
+data/
+*.log
+
+# Tests, docs, and local-only tooling
+tests/
+docs/
+actions/
+ai/
+api/
+cli/
+config/
+infra/
+tools/
+transpiler/
+scripts/**
+!scripts/
+!scripts/health_check.py
+
+# Local-only modules inside copied runtime packages
+core/local_storage/
+core/concurrent_scraper.py
+core/performance_profiler.py
+core/scraper_testing_client.py
+core/scraper_testing_integration.py
+scrapers/tests/
+scrapers/runtime.py
+scrapers/sku_loader.py
+utils/testing/
+utils/debugging/
+utils/api_handler.py
+utils/llm_wrappers.py
+validation/errors.py
+validation/schemas.py
 
 # Local/dev docs and agent metadata
 .agents/
 AGENTS.md
 **/AGENTS.md
 walkthrough.md
+README.md
+CHANGELOG.md
+CONTRIBUTING.md
+DEV_SETUP.md
+BATCH_SEARCH_READINESS.md
+GEMINI.md
 
-# Local runtime artifacts
-.browser_storage_states/
-*.log
+# Build-only and local orchestration files
+docker-compose.yml
+run-dev.sh
+run-prod.sh
+get.sh
+install.py
+start-runner.sh
+start-runner.bat
+package.json
+setup.py
 
 # Editor and OS files
 .DS_Store
 .idea/
 .vscode/
-
-# Compose and local-only tooling
-docker-compose.yml
-run-dev.sh
-run-prod.sh
