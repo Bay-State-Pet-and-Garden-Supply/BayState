@@ -56,7 +56,9 @@ workflows:
       timeout: 15
       selector:
         - "a[href*='?searchid='][href*='search_query=']"
-        - "body"
+        - "a:has-text('Products (0) »')"
+        - "main :has-text('Products (0)')"
+        - "main :has-text('No products found')"
   - action: check_no_results
     name: null
     params: {}
@@ -113,6 +115,7 @@ validation:
   no_results_selectors:
     - "a:has-text('Products (0) »')"
     - "main :has-text('Products (0)')"
+    - "main :has-text('No products found')"
   no_results_text_patterns:
     - products (0)
     - no products found
