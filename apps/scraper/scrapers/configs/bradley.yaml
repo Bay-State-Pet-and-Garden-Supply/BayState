@@ -72,6 +72,10 @@ workflows:
     name: search_page
     params:
       url: https://www.bradleycaldwell.com/search?term={sku}
+  - action: wait
+    name: settle_after_navigation
+    params:
+      seconds: 1
   - action: conditional_click
     name: null
     params:

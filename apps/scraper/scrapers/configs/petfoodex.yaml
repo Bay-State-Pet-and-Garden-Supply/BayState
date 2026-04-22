@@ -74,8 +74,9 @@ workflows:
       timeout: 10
       selector:
         - h1
-        - h2
         - "[data-test-selector='page_ProductDetailsPage']"
+        - //h2[contains(., '0 item')]
+        - //h2[contains(., '0 items')]
   - action: check_no_results
     name: null
     params: {}
@@ -154,7 +155,12 @@ validation:
   no_results_selectors:
     - //h2[contains(., '0 item')]
     - //h2[contains(., '0 items')]
-  no_results_text_patterns: []
+  no_results_text_patterns:
+    - "0 items found"
+    - "0 item found"
+    - your search returned 0 items
+    - no results found
+    - no products found
 login:
   url: https://orders.petfoodexperts.com/SignIn
   timeout: 20
@@ -162,6 +168,17 @@ login:
   password_field: "#password"
   username_field: "#userName"
   success_indicator: "[data-test-selector='header_userName']"
+  failure_indicators:
+    selectors:
+      - "[data-test-selector='signIn_error']"
+      - ".validation-summary-errors"
+      - ".login-error"
+    texts:
+      - invalid username or password
+      - incorrect email or password
+      - sign in was unsuccessful
+    url_contains:
+      - /signin
 http_status: null
 normalization: null
 timeout: 15

@@ -89,8 +89,15 @@ workflows:
     name: null
     params:
       timeout: 5
-      selector: ".snize-product, a[href*='/products/'], .snize-no-results,
-        .snize-no-products-found, #search-no-results, .search-results, body"
+      selector:
+        - ".snize-product"
+        - "a[href*='/products/']"
+        - ".snize-no-results"
+        - ".snize-no-products-found"
+        - ".snize-no-products-found-text"
+        - "#search-no-results"
+        - ".snize-no-results-container"
+        - ".snize-message-no-results"
   - action: wait
     name: null
     params:
@@ -102,10 +109,17 @@ workflows:
     name: null
     params:
       if_flag: no_results_found
-  - action: click
+  - action: extract_single
+    name: extract_product_url
+    params:
+      field: product_url
+      selector_id: search_result_link
+  - action: navigate
     name: open_product_page
     params:
-      selector: search_result_link
+      url: "{{product_url}}"
+      wait_until: commit
+      wait_after: 2
   - action: wait_for
     name: null
     params:

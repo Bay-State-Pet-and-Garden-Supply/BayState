@@ -57,6 +57,10 @@ workflows:
       url: "https://petswarehouse.com/search?q={sku}%3Bsd&options%5Bprefix%5D=last"
       wait_until: commit
       wait_after: 3
+  - action: wait
+    name: settle_after_navigation
+    params:
+      seconds: 1
   - action: conditional_click
     name: accept_cookies_if_present
     params:
