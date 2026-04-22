@@ -215,7 +215,7 @@ export function StorefrontHeader({
         <div 
           className={cn(
             "bg-zinc-900 py-2 px-4 text-[10px] font-black tracking-[0.25em] text-white flex justify-between items-center border-b-2 border-white/5 uppercase transition-all duration-300 ease-in-out overflow-hidden",
-            isScrolled ? "h-0 py-0 opacity-0 border-b-0" : "h-10"
+            isScrolled ? "h-0 py-0 opacity-0 border-b-0" : "min-h-[32px]"
           )}
         >
           <div className="container mx-auto flex justify-between items-center">
@@ -298,8 +298,8 @@ export function StorefrontHeader({
                 </span>
                 <span 
                   className={cn(
-                    "hidden sm:text-xs font-black sm:inline leading-none text-white/80 uppercase tracking-[0.2em] mt-1 border-t border-white/20 pt-1 transition-all duration-300 ease-in-out",
-                    isScrolled ? "opacity-0 h-0 mt-0 pt-0 overflow-hidden border-t-0" : "opacity-100"
+                    "hidden sm:text-xs font-black sm:block leading-none text-white/80 uppercase tracking-[0.2em] mt-1 border-t border-white/20 pt-1 transition-all duration-300 ease-in-out",
+                    isScrolled ? "hidden" : ""
                   )}
                 >
                   Pet & Garden Supply
