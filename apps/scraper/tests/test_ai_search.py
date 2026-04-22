@@ -250,6 +250,50 @@ def test_prepare_search_results_prefers_official_family_page_with_variant_signal
     )
 
 
+def test_prepare_search_results_demotes_wrong_official_brand_pdp_below_exact_retailer_match() -> None:
+    scraper = AISearchScraper(prefer_manufacturer=True)
+    results = [
+        {
+            "url": "https://acmepets.com/products/deluxe-ball",
+            "title": "Acme Deluxe Ball | Official Product Page",
+            "description": "Official Acme product page for the Deluxe Ball dog toy.",
+        },
+        {
+            "url": "https://www.chewy.com/acme-squeaky-ball-12345/dp/123456",
+            "title": "Acme Squeaky Ball 12345",
+            "description": "Exact retailer PDP for the Acme Squeaky Ball with add to cart and in stock details.",
+        },
+    ]
+
+    prepared = scraper._scoring.prepare_search_results(
+        search_results=results,
+        sku="12345",
+        brand="Acme",
+        product_name="Acme Squeaky Ball",
+        category="Dog Toys",
+        prefer_manufacturer=True,
+    )
+
+    assert prepared[0]["url"] == "https://www.chewy.com/acme-squeaky-ball-12345/dp/123456"
+
+
+def test_classify_result_source_marks_wrong_official_brand_pdp_as_generic() -> None:
+    scraper = AISearchScraper(prefer_manufacturer=True)
+
+    source_type = scraper._scoring.classify_result_source(
+        {
+            "url": "https://acmepets.com/products/deluxe-ball",
+            "title": "Acme Deluxe Ball | Official Product Page",
+            "description": "Official Acme product page for the Deluxe Ball dog toy.",
+        },
+        sku="12345",
+        brand="Acme",
+        product_name="Acme Squeaky Ball",
+    )
+
+    assert source_type == "official_generic"
+
+
 def test_prepare_search_results_prefers_official_brand_segment_when_brand_missing() -> None:
     scraper = AISearchScraper(prefer_manufacturer=True)
     results = [

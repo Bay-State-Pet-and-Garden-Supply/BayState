@@ -10,7 +10,7 @@ import math
 import sys
 import time
 from collections import Counter, defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,9 +24,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scrapers.ai_cost_tracker import AICostTracker
+from scrapers.ai_search.candidate_resolver import CandidateResolver
 from scrapers.ai_search.dataset_validator import DatasetValidator, ValidationResult
 from scrapers.ai_search.fixture_search_client import CacheMissError, FixtureSearchClient
+from scrapers.ai_search.models import ResolvedCandidate
 from scrapers.ai_search.scoring import SearchScorer
+from scrapers.ai_search.selection_pipeline import SelectionPipelineResult, run_selection_pipeline
 from scrapers.ai_search.source_selector import LLMSourceSelector
 
 DEFAULT_CACHE_DIR = ROOT / "data" / "benchmark_cache"
@@ -83,9 +86,16 @@ class DatasetEntryPayload(TypedDict):
 
     query: str
     expected_source_url: str
+    expected_source_tier: str
+    expected_family_url: str
+    expected_variant_label: str
+    cohort_key: str
     category: str
     difficulty: str
     rationale: str
+    brand: str
+    sku: str
+    product_name: str
 
 
 class DatasetPayload(TypedDict):
@@ -102,6 +112,8 @@ class FixtureManifestEntry(TypedDict):
 
     query: str
     results: list[dict[str, object]]
+    html_by_url: dict[str, str]
+    resolved_payload_by_url: dict[str, str]
 
 
 class FixtureManifestPayload(TypedDict):
@@ -133,6 +145,13 @@ class BenchmarkResultRow(TypedDict):
     difficulty: str
     rationale: str
     error: str | None
+    expected_source_tier: str | None
+    expected_family_url: str | None
+    expected_variant_label: str | None
+    cohort_key: str | None
+    predicted_source_tier: str | None
+    predicted_family_url: str | None
+    predicted_variant_label: str | None
 
 
 class AccuracyConfidenceInterval(TypedDict):
@@ -209,6 +228,10 @@ class BenchmarkSummary(TypedDict):
     mean_reciprocal_rank: float
     precision_at_1: float
     recall_at_1: float
+    official_source_selection_rate_pct: float
+    resolved_variant_selection_rate_pct: float
+    cohort_consistency_rate_pct: float
+    false_official_rate_pct: float
     accuracy_confidence_interval_95: AccuracyConfidenceInterval
     total_duration_ms: float
     average_duration_ms: float
@@ -284,6 +307,19 @@ class SourceSelector(Protocol):
     ) -> tuple[str | None, float]: ...
 
 
+class ResolverInputBuilder(Protocol):
+    """Build optional resolver inputs for benchmark candidate resolution."""
+
+    async def __call__(
+        self,
+        *,
+        search_results: list[dict[str, object]],
+        sku: str,
+        brand: str | None,
+        product_name: str | None,
+    ) -> tuple[dict[str, str], dict[str, str]]: ...
+
+
 @dataclass(frozen=True)
 class BenchmarkExample:
     """One golden-dataset example."""
@@ -297,6 +333,10 @@ class BenchmarkExample:
     brand: str | None = None
     sku: str | None = None
     product_name: str | None = None
+    expected_source_tier: str | None = None
+    expected_family_url: str | None = None
+    expected_variant_label: str | None = None
+    cohort_key: str | None = None
 
 
 @dataclass(frozen=True)
@@ -306,6 +346,16 @@ class BenchmarkSelection:
     url: str | None
     selection_method: str
     selection_cost_usd: float
+    ranked_results: tuple[dict[str, object], ...] = ()
+
+
+@dataclass(frozen=True)
+class PredictionMetadata:
+    """Benchmark-only metadata for resolution quality reporting."""
+
+    source_tier: str | None = None
+    family_url: str | None = None
+    variant_label: str | None = None
 
 
 class MetricsCalculator:
@@ -334,6 +384,10 @@ class MetricsCalculator:
         mean_reciprocal_rank = self._calculate_mean_reciprocal_rank(results)
         precision_at_1 = self._calculate_precision_at_1(results)
         recall_at_1 = self._calculate_recall_at_1(results)
+        official_source_selection_rate_pct = self._calculate_official_source_selection_rate_pct(results)
+        resolved_variant_selection_rate_pct = self._calculate_resolved_variant_selection_rate_pct(results)
+        cohort_consistency_rate_pct = self._calculate_cohort_consistency_rate_pct(results)
+        false_official_rate_pct = self._calculate_false_official_rate_pct(results)
 
         total_cost_usd = total_serper_cost_usd + total_selection_cost_usd
         cost_per_success_usd = total_cost_usd / matched_examples if matched_examples else 0.0
@@ -353,6 +407,10 @@ class MetricsCalculator:
             mean_reciprocal_rank=round(mean_reciprocal_rank, 6),
             precision_at_1=round(precision_at_1, 6),
             recall_at_1=round(recall_at_1, 6),
+            official_source_selection_rate_pct=round(official_source_selection_rate_pct, 3),
+            resolved_variant_selection_rate_pct=round(resolved_variant_selection_rate_pct, 3),
+            cohort_consistency_rate_pct=round(cohort_consistency_rate_pct, 3),
+            false_official_rate_pct=round(false_official_rate_pct, 3),
             accuracy_confidence_interval_95=self.calculate_accuracy_confidence_interval(results),
             total_duration_ms=round(total_duration_ms, 3),
             average_duration_ms=round(average_duration_ms, 3),
@@ -452,6 +510,51 @@ class MetricsCalculator:
         false_negatives = total_examples - true_positives
         denominator = true_positives + false_negatives
         return true_positives / denominator if denominator else 0.0
+
+    @staticmethod
+    def _calculate_official_source_selection_rate_pct(results: Sequence[BenchmarkResultRow]) -> float:
+        official_expected_results = [result for result in results if _is_official_tier(result.get("expected_source_tier"))]
+        total_examples = len(official_expected_results)
+        if total_examples == 0:
+            return 0.0
+        official_predictions = sum(1 for result in official_expected_results if _is_official_tier(result.get("predicted_source_tier")))
+        return (official_predictions / total_examples) * 100.0
+
+    @staticmethod
+    def _calculate_resolved_variant_selection_rate_pct(results: Sequence[BenchmarkResultRow]) -> float:
+        variant_expected_results = [result for result in results if _row_expects_resolved_variant(result)]
+        total_examples = len(variant_expected_results)
+        if total_examples == 0:
+            return 0.0
+
+        successful_variant_resolutions = sum(1 for result in variant_expected_results if _row_has_resolved_variant_match(result))
+        return (successful_variant_resolutions / total_examples) * 100.0
+
+    @staticmethod
+    def _calculate_cohort_consistency_rate_pct(results: Sequence[BenchmarkResultRow]) -> float:
+        cohort_results = [result for result in results if str(result.get("cohort_key") or "").strip()]
+        total_examples = len(cohort_results)
+        if total_examples == 0:
+            return 0.0
+
+        dominant_domain_by_cohort = _build_dominant_expected_domain_by_cohort(cohort_results)
+        consistent_predictions = sum(1 for result in cohort_results if _row_matches_dominant_cohort_domain(result, dominant_domain_by_cohort))
+        return (consistent_predictions / total_examples) * 100.0
+
+    @staticmethod
+    def _calculate_false_official_rate_pct(results: Sequence[BenchmarkResultRow]) -> float:
+        official_expected_results = [result for result in results if _is_official_tier(result.get("expected_source_tier"))]
+        total_examples = len(official_expected_results)
+        if total_examples == 0:
+            return 0.0
+
+        false_official_predictions = sum(
+            1
+            for result in official_expected_results
+            if _is_official_tier(result.get("predicted_source_tier"))
+            and _normalized_url_or_none(result.get("predicted_source_url")) != _normalized_url_or_none(result.get("expected_source_url"))
+        )
+        return (false_official_predictions / total_examples) * 100.0
 
 
 class CategoryAnalyzer:
@@ -675,7 +778,10 @@ class BenchmarkRunner:
         cache_dir: Path | None = None,
         validator: DatasetValidator | None = None,
         scorer: SearchScorer | None = None,
+        candidate_resolver: CandidateResolver | None = None,
         search_client: FixtureSearchClient | None = None,
+        selection_pipeline: Callable[..., Awaitable[SelectionPipelineResult]] = run_selection_pipeline,
+        resolver_input_builder: ResolverInputBuilder | None = None,
         selector: SourceSelector | None = None,
         metrics_calculator: MetricsCalculator | None = None,
         category_analyzer: CategoryAnalyzer | None = None,
@@ -690,7 +796,10 @@ class BenchmarkRunner:
         self.cache_dir: Path | None = cache_dir
         self._validator: DatasetValidator = validator or DatasetValidator()
         self._scorer: SearchScorer = scorer or SearchScorer()
+        self._candidate_resolver: CandidateResolver = candidate_resolver or CandidateResolver(self._scorer)
         self._search_client: FixtureSearchClient | None = search_client
+        self._selection_pipeline: Callable[..., Awaitable[SelectionPipelineResult]] = selection_pipeline
+        self._resolver_input_builder: ResolverInputBuilder | None = resolver_input_builder
         self._selector: SourceSelector | None = selector
         self._metrics_calculator: MetricsCalculator = metrics_calculator or MetricsCalculator()
         self._category_analyzer: CategoryAnalyzer = category_analyzer or CategoryAnalyzer(metrics_calculator=self._metrics_calculator)
@@ -701,6 +810,7 @@ class BenchmarkRunner:
         self._temp_cache_dir: TemporaryDirectory[str] | None = None
         self._cost_tracker: AICostTracker = cost_tracker or AICostTracker()
         self._using_fixtures: bool = True
+        self._fixture_resolver_inputs_by_query: dict[str, tuple[dict[str, str], dict[str, str]]] = {}
 
     def validate_dataset(self) -> ValidationResult:
         """Validate the dataset file using the shared validator."""
@@ -728,6 +838,10 @@ class BenchmarkRunner:
                 brand=entry.get("brand"),
                 sku=entry.get("sku"),
                 product_name=entry.get("product_name"),
+                expected_source_tier=entry.get("expected_source_tier"),
+                expected_family_url=entry.get("expected_family_url"),
+                expected_variant_label=entry.get("expected_variant_label"),
+                cohort_key=entry.get("cohort_key"),
             )
             for index, entry in enumerate(entries)
         ]
@@ -770,9 +884,10 @@ class BenchmarkRunner:
             exact_match = canonicalize_benchmark_url(selection.url) == canonicalize_benchmark_url(example.expected_source_url)
             correct_rank = self._find_rank(example.expected_source_url, ranked_candidates)
             reciprocal_rank = 1.0 / correct_rank if correct_rank else 0.0
-            score = self._score_prediction(example, selection.url, search_results)
+            score = self._score_prediction(example, selection.url, ranked_candidates, search_results)
             precision_at_1 = 1.0 if exact_match else 0.0
             recall_at_1 = 1.0 if correct_rank == 1 else 0.0
+            prediction_metadata = self._build_prediction_metadata(example, selection.url, ranked_candidates, exact_match=exact_match)
 
             results.append(
                 BenchmarkResultRow(
@@ -795,6 +910,13 @@ class BenchmarkRunner:
                     difficulty=example.difficulty,
                     rationale=example.rationale,
                     error=error,
+                    expected_source_tier=example.expected_source_tier,
+                    expected_family_url=example.expected_family_url,
+                    expected_variant_label=example.expected_variant_label,
+                    cohort_key=example.cohort_key,
+                    predicted_source_tier=prediction_metadata.source_tier,
+                    predicted_family_url=prediction_metadata.family_url,
+                    predicted_variant_label=prediction_metadata.variant_label,
                 )
             )
 
@@ -849,21 +971,111 @@ class BenchmarkRunner:
 
     async def _select_source(self, example: BenchmarkExample, search_results: list[dict[str, object]]) -> BenchmarkSelection:
         """Select the top source for one dataset example."""
-        heuristic_url = self._select_with_heuristics(example, search_results)
-        if self.mode == "heuristic":
-            return BenchmarkSelection(url=heuristic_url, selection_method="heuristic", selection_cost_usd=0.0)
+        if not search_results:
+            return BenchmarkSelection(url=None, selection_method="none", selection_cost_usd=0.0)
 
-        selector = self._resolve_selector()
-        llm_url, llm_cost = await selector.select_best_url(
-            results=search_results,
-            sku=example.sku or self._infer_sku(example.query),
-            product_name=example.product_name or example.query,
+        sku = example.sku or self._infer_sku(example.query)
+        product_name = self._benchmark_product_name(example)
+        html_by_url, resolved_payload_by_url = await self._resolve_resolver_inputs(
+            example,
+            search_results=search_results,
+            sku=sku,
             brand=example.brand,
+            product_name=product_name,
+        )
+        selection_result = await self._selection_pipeline(
+            search_results=search_results,
+            sku=sku,
+            product_name=product_name,
+            brand=example.brand,
+            category=example.category,
+            resolver=self._candidate_resolver,
+            scoring=self._scorer,
+            html_by_url=html_by_url,
+            resolved_payload_by_url=resolved_payload_by_url,
+            selector=self._resolve_selector() if self.mode == "llm" else None,
+            prefer_manufacturer=True,
             preferred_domains=None,
         )
-        if llm_url:
-            return BenchmarkSelection(url=llm_url, selection_method="llm", selection_cost_usd=float(llm_cost or 0.0))
-        return BenchmarkSelection(url=heuristic_url, selection_method="heuristic_fallback", selection_cost_usd=float(llm_cost or 0.0))
+        ranked_results = tuple(self._build_resolved_ranked_results(example, search_results, selection_result.ranked_candidates))
+        selection_method = selection_result.selection_method if self.mode == "llm" else "heuristic"
+        return BenchmarkSelection(
+            url=selection_result.prioritized_url,
+            selection_method=selection_method,
+            selection_cost_usd=float(selection_result.selector_cost_usd or 0.0),
+            ranked_results=ranked_results,
+        )
+
+    async def _resolve_resolver_inputs(
+        self,
+        example: BenchmarkExample,
+        *,
+        search_results: list[dict[str, object]],
+        sku: str,
+        brand: str | None,
+        product_name: str | None,
+    ) -> tuple[dict[str, str], dict[str, str]]:
+        if self._resolver_input_builder is not None:
+            return await self._resolver_input_builder(
+                search_results=search_results,
+                sku=sku,
+                brand=brand,
+                product_name=product_name,
+            )
+
+        fixture_inputs = self._fixture_resolver_inputs_by_query.get(str(example.query).strip())
+        if fixture_inputs is None:
+            return {}, {}
+
+        html_by_url, resolved_payload_by_url = fixture_inputs
+        return dict(html_by_url), dict(resolved_payload_by_url)
+
+    def _build_resolved_ranked_results(
+        self,
+        example: BenchmarkExample,
+        search_results: Sequence[Mapping[str, object]],
+        ranked_candidates: Sequence[ResolvedCandidate],
+    ) -> list[dict[str, object]]:
+        if not ranked_candidates:
+            return []
+
+        sku = example.sku or self._infer_sku(example.query)
+        product_name = self._benchmark_product_name(example)
+        source_results_by_url = {str(result.get("url") or "").strip(): dict(result) for result in search_results if str(result.get("url") or "").strip()}
+        ranked_results: list[dict[str, object]] = []
+        for candidate in ranked_candidates:
+            source_result = source_results_by_url.get(candidate.source_url)
+            source_type = (
+                self._scorer.classify_result_source(dict(source_result), sku, example.brand, product_name)
+                if source_result is not None
+                else candidate.source_type
+            )
+            score = self._scorer.score_resolved_candidate(
+                candidate,
+                source_result=source_result,
+                sku=sku,
+                brand=example.brand,
+                product_name=product_name,
+                category=example.category,
+                prefer_manufacturer=True,
+                preferred_domains=None,
+            )
+            ranked_results.append(
+                {
+                    "url": candidate.resolved_url,
+                    "resolved_url": candidate.resolved_url,
+                    "title": str((source_result or {}).get("title") or ""),
+                    "description": str((source_result or {}).get("description") or ""),
+                    "source_url": candidate.source_url,
+                    "source_type": candidate.source_type,
+                    "source_tier": source_type,
+                    "source_domain": candidate.source_domain,
+                    "family_url": candidate.family_url,
+                    "resolved_variant": candidate.resolved_variant,
+                    "score": float(score),
+                }
+            )
+        return ranked_results
 
     def _select_with_heuristics(self, example: BenchmarkExample, search_results: list[dict[str, object]]) -> str | None:
         """Mirror AISearchScraper heuristic source selection."""
@@ -872,7 +1084,7 @@ class BenchmarkRunner:
 
         sku = example.sku or self._infer_sku(example.query)
         brand = example.brand
-        product_name = example.product_name or example.query
+        product_name = self._benchmark_product_name(example)
         strong_url = self._scorer.pick_strong_candidate_url(
             search_results=search_results,
             sku=sku,
@@ -905,6 +1117,9 @@ class BenchmarkRunner:
         selection: BenchmarkSelection,
     ) -> list[dict[str, object]]:
         """Build the evaluated ranking order for metrics like MRR and Recall@1."""
+        if selection.ranked_results:
+            return self._move_url_to_front(selection.url, selection.ranked_results)
+
         if not search_results:
             return []
 
@@ -913,7 +1128,7 @@ class BenchmarkRunner:
                 search_results=search_results,
                 sku=example.sku or self._infer_sku(example.query),
                 brand=example.brand,
-                product_name=example.product_name or example.query,
+                product_name=self._benchmark_product_name(example),
                 category=example.category,
                 prefer_manufacturer=True,
                 preferred_domains=None,
@@ -923,10 +1138,23 @@ class BenchmarkRunner:
         deduped_results = self._dedupe_search_results(search_results)
         return self._move_url_to_front(selection.url, deduped_results)
 
-    def _score_prediction(self, example: BenchmarkExample, predicted_url: str | None, search_results: list[dict[str, object]]) -> float:
+    def _score_prediction(
+        self,
+        example: BenchmarkExample,
+        predicted_url: str | None,
+        ranked_candidates: Sequence[Mapping[str, object]],
+        search_results: list[dict[str, object]],
+    ) -> float:
         """Score the predicted URL using the shared heuristic scorer."""
         if not predicted_url:
             return 0.0
+
+        normalized_predicted_url = canonicalize_benchmark_url(predicted_url)
+        for result in ranked_candidates:
+            if canonicalize_benchmark_url(str(result.get("url") or "")) != normalized_predicted_url:
+                continue
+            if result.get("score") is not None:
+                return float(result.get("score") or 0.0)
 
         for result in search_results:
             if str(result.get("url") or "") != predicted_url:
@@ -936,13 +1164,67 @@ class BenchmarkRunner:
                     result=result,
                     sku=example.sku or self._infer_sku(example.query),
                     brand=example.brand,
-                    product_name=example.product_name or example.query,
+                    product_name=self._benchmark_product_name(example),
                     category=example.category,
                     prefer_manufacturer=True,
                     preferred_domains=None,
                 )
             )
         return 0.0
+
+    def _build_prediction_metadata(
+        self,
+        example: BenchmarkExample,
+        predicted_url: str | None,
+        search_results: Sequence[Mapping[str, object]],
+        *,
+        exact_match: bool,
+    ) -> PredictionMetadata:
+        """Infer benchmark-only metadata for official-family reporting."""
+        if not predicted_url:
+            return PredictionMetadata()
+
+        matched_result = self._find_matching_result(predicted_url, search_results)
+        if matched_result is None:
+            return PredictionMetadata(
+                source_tier=_normalize_source_tier(example.expected_source_tier) if exact_match else None,
+            )
+
+        family_url = str(matched_result.get("family_url") or "").strip() or None
+        source_tier = _normalize_source_tier(matched_result.get("source_tier") or matched_result.get("source_type"))
+        if source_tier is None:
+            source_tier = _normalize_source_tier(
+                self._scorer.classify_result_source(
+                    dict(matched_result),
+                    example.sku or self._infer_sku(example.query),
+                    example.brand,
+                    self._benchmark_product_name(example),
+                )
+            )
+
+        if family_url is None and str(matched_result.get("source_type") or "").strip() == "official_family":
+            family_url = str(matched_result.get("source_url") or matched_result.get("url") or "").strip() or None
+
+        variant_label = _extract_variant_label(matched_result)
+
+        if source_tier is None and exact_match:
+            source_tier = _normalize_source_tier(example.expected_source_tier)
+
+        return PredictionMetadata(source_tier=source_tier, family_url=family_url, variant_label=variant_label)
+
+    @staticmethod
+    def _find_matching_result(predicted_url: str, search_results: Sequence[Mapping[str, object]]) -> Mapping[str, object] | None:
+        normalized_predicted_url = canonicalize_benchmark_url(predicted_url)
+        for result in search_results:
+            candidate_urls = (
+                result.get("url"),
+                result.get("resolved_url"),
+                result.get("source_url"),
+                result.get("family_url"),
+            )
+            if any(canonicalize_benchmark_url(str(candidate_url or "")) == normalized_predicted_url for candidate_url in candidate_urls):
+                return result
+        return None
 
     @staticmethod
     def _find_rank(expected_url: str, ranked_candidates: Sequence[Mapping[str, object]]) -> int | None:
@@ -1006,6 +1288,7 @@ class BenchmarkRunner:
             payload = cast(FixtureManifestPayload, json.load(handle))
 
         entries = payload["entries"]
+        self._fixture_resolver_inputs_by_query = {}
 
         self._temp_cache_dir = TemporaryDirectory(prefix="ai_search_benchmark_cache_")
         client = FixtureSearchClient(cache_dir=Path(self._temp_cache_dir.name), allow_real_api=False)
@@ -1015,6 +1298,19 @@ class BenchmarkRunner:
             if not query:
                 raise ValueError(f"Fixture manifest entry missing query/results: {fixture_path}")
             _ = client.write_cache_entry(query, [dict(result) for result in results])
+
+            html_by_url = {
+                str(url): str(html_text)
+                for url, html_text in cast(Mapping[object, object], entry.get("html_by_url") or {}).items()
+                if str(url).strip() and isinstance(html_text, str)
+            }
+            resolved_payload_by_url = {
+                str(url): str(payload_text)
+                for url, payload_text in cast(Mapping[object, object], entry.get("resolved_payload_by_url") or {}).items()
+                if str(url).strip() and isinstance(payload_text, str)
+            }
+            if html_by_url or resolved_payload_by_url:
+                self._fixture_resolver_inputs_by_query[query] = (html_by_url, resolved_payload_by_url)
         return client
 
     def _resolve_selector(self) -> SourceSelector:
@@ -1036,6 +1332,32 @@ class BenchmarkRunner:
             if any(character.isdigit() for character in normalized) and len(normalized) >= 5:
                 return normalized
         return ""
+
+    def _benchmark_product_name(self, example: BenchmarkExample) -> str:
+        """Best-effort benchmark product name stripped of SKU/category noise."""
+        if example.product_name:
+            return example.product_name
+
+        raw_query = str(example.query or "").strip()
+        if not raw_query:
+            return ""
+
+        normalized_sku = self._scorer._matching.normalize_token_text(example.sku or self._infer_sku(raw_query))
+        category_tokens = self._scorer._matching.tokenize_keywords(example.category)
+        cleaned_tokens: list[str] = []
+        for token in raw_query.split():
+            stripped = token.strip().strip(",;:()[]{}")
+            normalized = self._scorer._matching.normalize_token_text(stripped)
+            if not normalized:
+                continue
+            if normalized_sku and normalized == normalized_sku:
+                continue
+            if normalized in category_tokens:
+                continue
+            cleaned_tokens.append(stripped)
+
+        cleaned_name = " ".join(cleaned_tokens).strip()
+        return cleaned_name or raw_query
 
 
 def write_report(report: Mapping[str, object], output_path: Path) -> None:
@@ -1136,6 +1458,10 @@ def generate_markdown_report(report: BenchmarkReport) -> str:
     summary = report["summary"]
     confidence_interval = summary["accuracy_confidence_interval_95"]
     metadata = report["metadata"]
+    official_source_selection_rate_pct = _coerce_float(summary.get("official_source_selection_rate_pct"))
+    resolved_variant_selection_rate_pct = _coerce_float(summary.get("resolved_variant_selection_rate_pct"))
+    cohort_consistency_rate_pct = _coerce_float(summary.get("cohort_consistency_rate_pct"))
+    false_official_rate_pct = _coerce_float(summary.get("false_official_rate_pct"))
 
     lines = [
         "# AI Search Benchmark Report",
@@ -1159,6 +1485,10 @@ def generate_markdown_report(report: BenchmarkReport) -> str:
         f"| Mean Reciprocal Rank | {summary['mean_reciprocal_rank']:.6f} |",
         f"| Precision@1 | {summary['precision_at_1']:.6f} |",
         f"| Recall@1 | {summary['recall_at_1']:.6f} |",
+        f"| Official Source Selection Rate (%) | {official_source_selection_rate_pct:.3f} |",
+        f"| Resolved Variant Selection Rate (%) | {resolved_variant_selection_rate_pct:.3f} |",
+        f"| Cohort Consistency Rate (%) | {cohort_consistency_rate_pct:.3f} |",
+        f"| False Official Rate (%) | {false_official_rate_pct:.3f} |",
         f"| Accuracy 95% CI | {confidence_interval['lower_bound_pct']:.3f}% - {confidence_interval['upper_bound_pct']:.3f}% |",
         f"| Average Duration (ms) | {summary['average_duration_ms']:.3f} |",
         f"| Error Count | {summary['error_count']} |",
@@ -1288,6 +1618,112 @@ def _truncate_markdown(value: str, limit: int) -> str:
     if len(normalized) <= limit:
         return normalized
     return normalized[: limit - 1].rstrip() + "…"
+
+
+def _normalize_source_tier(value: object) -> str | None:
+    """Collapse source-type variants into stable benchmark tiers."""
+    normalized = str(value or "").strip().lower()
+    if not normalized:
+        return None
+    if normalized.startswith("official"):
+        return "official"
+    if "retailer" in normalized:
+        return "retailer"
+    if normalized.startswith("marketplace"):
+        return "marketplace"
+    return normalized
+
+
+def _is_official_tier(value: object) -> bool:
+    return _normalize_source_tier(value) == "official"
+
+
+def _normalized_url_or_none(value: object) -> str | None:
+    normalized = canonicalize_benchmark_url(str(value or ""))
+    return normalized or None
+
+
+def _normalized_text_or_none(value: object) -> str | None:
+    normalized = " ".join(str(value or "").strip().lower().split())
+    return normalized or None
+
+
+def _normalized_domain_or_none(value: object) -> str | None:
+    normalized_url = _normalized_url_or_none(value)
+    if not normalized_url:
+        return None
+
+    netloc = urlsplit(normalized_url).netloc.strip().lower()
+    if netloc.startswith("www."):
+        netloc = netloc[4:]
+    return netloc or None
+
+
+def _extract_variant_label(result: Mapping[str, object]) -> str | None:
+    resolved_variant = result.get("resolved_variant") if isinstance(result.get("resolved_variant"), Mapping) else None
+    candidate_values = (
+        (resolved_variant or {}).get("label"),
+        (resolved_variant or {}).get("variant_label"),
+        (resolved_variant or {}).get("name"),
+        (resolved_variant or {}).get("variant_name"),
+        result.get("variant_label"),
+    )
+    for value in candidate_values:
+        normalized = str(value or "").strip()
+        if normalized:
+            return normalized
+    return None
+
+
+def _row_expects_resolved_variant(result: Mapping[str, object]) -> bool:
+    return _normalize_source_tier(result.get("expected_source_tier")) == "official" and bool(_normalized_text_or_none(result.get("expected_variant_label")))
+
+
+def _row_has_resolved_variant_match(result: Mapping[str, object]) -> bool:
+    if not _row_expects_resolved_variant(result):
+        return False
+    if not _is_official_tier(result.get("predicted_source_tier")):
+        return False
+
+    expected_family_url = _normalized_url_or_none(result.get("expected_family_url"))
+    predicted_family_url = _normalized_url_or_none(result.get("predicted_family_url"))
+    if expected_family_url and predicted_family_url != expected_family_url:
+        return False
+
+    expected_variant_label = _normalized_text_or_none(result.get("expected_variant_label"))
+    predicted_variant_label = _normalized_text_or_none(result.get("predicted_variant_label"))
+    if predicted_variant_label:
+        return predicted_variant_label == expected_variant_label
+
+    return bool(result.get("exact_match"))
+
+
+def _build_dominant_expected_domain_by_cohort(results: Sequence[Mapping[str, object]]) -> dict[str, str]:
+    grouped_expected_domains: dict[str, Counter[str]] = defaultdict(Counter)
+    for result in results:
+        cohort_key = str(result.get("cohort_key") or "").strip()
+        expected_domain = _normalized_domain_or_none(result.get("expected_source_url"))
+        if cohort_key and expected_domain:
+            grouped_expected_domains[cohort_key][expected_domain] += 1
+
+    dominant_domain_by_cohort: dict[str, str] = {}
+    for cohort_key, domain_counts in grouped_expected_domains.items():
+        dominant_domain, _count = sorted(domain_counts.items(), key=lambda item: (-item[1], item[0]))[0]
+        dominant_domain_by_cohort[cohort_key] = dominant_domain
+    return dominant_domain_by_cohort
+
+
+def _row_matches_dominant_cohort_domain(result: Mapping[str, object], dominant_domain_by_cohort: Mapping[str, str]) -> bool:
+    cohort_key = str(result.get("cohort_key") or "").strip()
+    if not cohort_key:
+        return False
+
+    dominant_expected_domain = dominant_domain_by_cohort.get(cohort_key)
+    if not dominant_expected_domain:
+        return False
+
+    predicted_domain = _normalized_domain_or_none(result.get("predicted_source_url"))
+    return predicted_domain == dominant_expected_domain
 
 
 def _coerce_float(value: object) -> float:
