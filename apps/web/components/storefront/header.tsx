@@ -298,7 +298,7 @@ export function StorefrontHeader({
                 </span>
                 <span 
                   className={cn(
-                    "hidden sm:text-xs font-black sm:block leading-none text-white/80 uppercase tracking-[0.2em] mt-1 border-t border-white/20 pt-1 transition-all duration-300 ease-in-out",
+                    "hidden sm:text-xs font-black sm:block leading-none text-white/80 uppercase tracking-[0.2em] mt-1 border-t border-white/20 pt-1 text-center transition-all duration-300 ease-in-out",
                     isScrolled ? "hidden" : ""
                   )}
                 >
