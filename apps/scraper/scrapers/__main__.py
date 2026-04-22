@@ -24,6 +24,7 @@ if project_root not in sys.path:
 
 from core.settings_manager import *
 from core.config import use_yaml_configs
+from utils.debugging.config_validator import validate_local_runtime_requirements
 from utils.logger import setup_logging
 
 
@@ -57,8 +58,16 @@ def _fetch_scraper_configs(scrapers: list[str] | None = None) -> dict[str, dict[
                 
                 if requested and normalized_slug not in requested:
                     continue
-                
-                with open(os.path.join(configs_dir, filename), "r", encoding="utf-8") as f:
+
+                config_path = os.path.join(configs_dir, filename)
+                preflight = validate_local_runtime_requirements(config_path)
+                if not preflight.valid:
+                    raise RuntimeError(
+                        f"Local config validation failed for {filename}: "
+                        + "; ".join(preflight.errors or preflight.actionable_warnings)
+                    )
+
+                with open(config_path, "r", encoding="utf-8") as f:
                     import yaml
                     payload = yaml.safe_load(f)
                     

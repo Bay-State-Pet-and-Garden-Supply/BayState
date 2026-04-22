@@ -6,11 +6,20 @@ import json
 import logging
 import os
 import sys
+from pathlib import Path
 
 from core.api_client import ConnectionError
 from core.api_client import JobConfig
 from core.api_client import ScraperAPIClient
 from core.api_client import ScraperConfig
+from utils.debugging.config_validator import (
+    build_local_validation_payload,
+    ConfigValidator,
+    format_local_validation_payload,
+    LocalRuntimePreflight,
+    validate_local_runtime_requirements,
+)
+from utils.logging_handlers import JobLoggingSession
 from utils.structured_logging import setup_structured_logging
 
 from runner.chunk_mode import run_chunk_worker_mode
@@ -40,8 +49,24 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", help="Output file path for results JSON (default: stdout)")
     parser.add_argument("--headless", action="store_true", default=True, help="Run browser headless (default: true)")
     parser.add_argument("--no-headless", action="store_true", help="Run browser in visible mode for debugging")
+    parser.add_argument(
+        "--validate",
+        action="store_true",
+        help="Validate local YAML config and exit (or preflight before local execution)",
+    )
+    parser.add_argument(
+        "--strict-validate",
+        action="store_true",
+        help="Treat config validation warnings as errors in local validation mode",
+    )
 
     args = parser.parse_args()
+
+    if args.validate and not args.local:
+        parser.error("--validate requires --local")
+
+    if args.strict_validate and not (args.local or args.validate):
+        parser.error("--strict-validate is only supported with local config validation")
 
     if args.local:
         if not args.config:
@@ -51,6 +76,38 @@ def parse_args() -> argparse.Namespace:
             parser.error("--job-id is required unless --mode realtime or --local")
 
     return args
+
+
+def _log_local_validation_summary(preflight: LocalRuntimePreflight) -> None:
+    if preflight.uses_login:
+        logger.info(
+            "[Local Validate] Login-enabled config detected",
+            extra={
+                "phase": "local-validate",
+                "details": {
+                    "credential_refs": preflight.credential_refs,
+                    "credential_sources": preflight.credential_sources,
+                    "missing_credential_refs": preflight.missing_credential_refs,
+                },
+            },
+        )
+
+
+def validate_local_config(args: argparse.Namespace) -> int:
+    config_path = Path(args.config)
+    validator = ConfigValidator(strict=args.strict_validate)
+    validation_result = validator.validate_file(config_path)
+    preflight = validate_local_runtime_requirements(
+        config_path,
+        strict=args.strict_validate,
+        validation_result=validation_result,
+    )
+    payload = build_local_validation_payload(validation_result, preflight)
+
+    print(format_local_validation_payload(payload))
+    print()
+    print(json.dumps(payload, indent=2))
+    return 0 if payload["valid"] else 1
 
 
 def run_local_mode(args: argparse.Namespace) -> None:
@@ -65,6 +122,30 @@ def run_local_mode(args: argparse.Namespace) -> None:
     if not os.path.isfile(config_path):
         logger.error(f"Config file not found: {config_path}")
         sys.exit(1)
+
+    validator = ConfigValidator(strict=args.strict_validate)
+    validation_result = validator.validate_file(config_path)
+    preflight = validate_local_runtime_requirements(
+        config_path,
+        strict=args.strict_validate,
+        validation_result=validation_result,
+    )
+    if not validation_result.valid or not preflight.valid:
+        payload = build_local_validation_payload(validation_result, preflight)
+        logger.error("[Local] Config validation failed")
+        print(format_local_validation_payload(payload))
+        print()
+        print(json.dumps(payload, indent=2))
+        sys.exit(1)
+
+    _log_local_validation_summary(preflight)
+
+    if args.validate:
+        payload = build_local_validation_payload(validation_result, preflight)
+        print(format_local_validation_payload(payload))
+        print()
+        print(json.dumps(payload, indent=2))
+        return
 
     parser = ScraperConfigParser()
     try:
@@ -136,7 +217,34 @@ def run_local_mode(args: argparse.Namespace) -> None:
 
     logger.info(f"[Local] Starting local scrape job: {job_id}")
     try:
-        results = run_job(job_config, runner_name="local-cli", api_client=credential_client)
+        with JobLoggingSession(
+            job_id=job_id,
+            runner_name="local-cli",
+            api_client=credential_client,
+        ) as job_logging:
+            logger.info(
+                "[Local] Local job validation complete",
+                extra={
+                    "job_id": job_id,
+                    "runner_name": "local-cli",
+                    "phase": "local-validate",
+                    "details": {
+                        "config_path": str(config_path),
+                        "config_name": config.name,
+                        "uses_login": preflight.uses_login,
+                        "credential_refs": preflight.credential_refs,
+                        "credential_sources": preflight.credential_sources,
+                        "missing_credential_refs": preflight.missing_credential_refs,
+                    },
+                    "flush_immediately": True,
+                },
+            )
+            results = run_job(
+                job_config,
+                runner_name="local-cli",
+                api_client=credential_client,
+                job_logging=job_logging,
+            )
     except Exception as e:
         logger.exception(f"[Local] Job failed: {e}")
         sys.exit(1)
@@ -156,6 +264,8 @@ def main() -> None:
     setup_structured_logging(debug=args.debug)
 
     if args.local:
+        if args.validate:
+            sys.exit(validate_local_config(args))
         run_local_mode(args)
         return
 

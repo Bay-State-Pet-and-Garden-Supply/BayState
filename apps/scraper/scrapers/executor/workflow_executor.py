@@ -18,6 +18,7 @@ import inspect
 import os
 import threading
 import time
+from pathlib import Path
 from typing import Any, cast
 
 from core.adaptive_retry_strategy import AdaptiveRetryStrategy
@@ -287,6 +288,82 @@ class WorkflowExecutor:
         self.normalization_engine = None
         self.step_executor = None
 
+    async def collect_runtime_debug_context(
+        self,
+        *,
+        include_page_source: bool = False,
+        include_screenshot: bool = False,
+    ) -> dict[str, Any]:
+        """Collect a structured runtime snapshot for failure diagnostics."""
+
+        snapshot: dict[str, Any] = {
+            "scraper": self.config.name,
+            "job_id": self.job_id,
+            "sku": self.context.get("sku") if isinstance(self.context, dict) else None,
+            "current_step_index": self.current_step_index,
+            "requires_login": self.config.requires_login(),
+            "session_authenticated": self.is_session_authenticated(),
+            "credential_refs": list(self.config.credential_refs or []),
+            "runtime_credential_refs": self._build_runtime_credential_refs(),
+            "resolved_credentials": {
+                ref: {
+                    "source": value.get("_credential_source"),
+                    "type": value.get("type"),
+                    "has_username": bool(value.get("username")),
+                    "has_password": bool(value.get("password")),
+                    "has_api_key": bool(value.get("api_key")),
+                }
+                for ref, value in (self.credentials or {}).items()
+                if isinstance(value, dict)
+            },
+            "storage_state": {
+                "key": self.browser_state_key,
+                "path": self.browser_state_path,
+                "exists": bool(self.browser_state_path and Path(self.browser_state_path).is_file()),
+            },
+            "results_keys": sorted(self.results.keys()),
+            "context_keys": sorted(self.context.keys()) if isinstance(self.context, dict) else [],
+        }
+
+        if self.browser and hasattr(self.browser, "get_debug_snapshot"):
+            try:
+                snapshot["browser"] = self.browser.get_debug_snapshot()
+            except Exception as exc:
+                snapshot["browser_snapshot_error"] = str(exc)
+
+        page = getattr(self.browser, "page", None) if self.browser else None
+        if page is not None:
+            try:
+                snapshot["page_url"] = page.url
+            except Exception:
+                pass
+            try:
+                snapshot["page_title"] = await page.title()
+            except Exception:
+                pass
+
+            if include_page_source:
+                try:
+                    page_source = await page.content()
+                    snapshot["page_source_length"] = len(page_source)
+                    snapshot["page_source_preview"] = page_source[:4000]
+                except Exception as exc:
+                    snapshot["page_source_error"] = str(exc)
+
+            if include_screenshot:
+                try:
+                    if self.debug_capture is not None:
+                        screenshot_path = await self.debug_capture.save_screenshot(
+                            page,
+                            filename=f"login_failure_{self.config.name}_{int(time.time())}.png",
+                        )
+                        if screenshot_path:
+                            snapshot["screenshot_path"] = screenshot_path
+                except Exception as exc:
+                    snapshot["screenshot_error"] = str(exc)
+
+        return snapshot
+
     async def _close_browser(self, browser: Any) -> None:
         """Close a browser instance, supporting async and sync quit methods."""
         quit_method = getattr(browser, "quit", None)
@@ -392,38 +469,88 @@ class WorkflowExecutor:
         retry_executor.register_recovery_handler(FailureType.RATE_LIMITED, handle_rate_limit)
         retry_executor.register_recovery_handler(FailureType.ACCESS_DENIED, handle_access_denied)
 
+    def _build_runtime_credential_refs(self) -> list[str]:
+        refs: list[str] = []
+
+        if self.config.requires_login() and self.config.name:
+            refs.append(str(self.config.name).strip())
+
+        refs.extend(
+            str(ref).strip()
+            for ref in (self.config.credential_refs or [])
+            if str(ref).strip()
+        )
+
+        seen: set[str] = set()
+        ordered_refs: list[str] = []
+        for ref in refs:
+            if ref in seen:
+                continue
+            seen.add(ref)
+            ordered_refs.append(ref)
+
+        return ordered_refs
+
     def _resolve_credential_refs(self) -> dict[str, dict[str, str]]:
         """Resolve credential_refs from config using the API client or environment variables."""
-        logger.info(f"[Credentials] Resolving credential_refs for {self.config.name}: {self.config.credential_refs}")
+        runtime_credential_refs = self._build_runtime_credential_refs()
+        logger.info(
+            "[Credentials] Resolving runtime credential refs for %s: %s",
+            self.config.name,
+            runtime_credential_refs,
+        )
 
-        if not self.config.credential_refs:
-            logger.info(f"[Credentials] No credential_refs defined for {self.config.name}")
+        if not runtime_credential_refs:
+            logger.info(
+                "[Credentials] No runtime credential refs defined for %s",
+                self.config.name,
+            )
             return {}
 
+        resolved: dict[str, dict[str, str]] = {}
         if self.api_client:
-            logger.info(f"[Credentials] Using API client to resolve {len(self.config.credential_refs)} credential refs")
+            logger.info(
+                "[Credentials] Using API client to resolve %s runtime credential refs",
+                len(runtime_credential_refs),
+            )
             try:
-                resolved = self.api_client.resolve_credentials(self.config.credential_refs)
-                if resolved:
-                    logger.info(f"[Credentials] Resolved {len(resolved)} credential references for {self.config.name}: {list(resolved.keys())}")
-                else:
-                    logger.warning(f"[Credentials] API client returned no credentials for {self.config.name}")
-                return resolved
+                resolved = self.api_client.resolve_credentials(runtime_credential_refs)
             except Exception as e:
                 logger.error(f"[Credentials] Failed to resolve credential_refs via API: {e}", exc_info=True)
 
-        # Fallback: resolve from environment variables
         from core.api_client import ScraperAPIClient
 
-        resolved: dict[str, dict[str, str]] = {}
-        for ref in self.config.credential_refs:
-            env_creds = ScraperAPIClient.get_credentials_from_env(ref)
-            if env_creds:
-                resolved[ref] = env_creds
+        missing_refs = [ref for ref in runtime_credential_refs if ref not in resolved]
+        if missing_refs:
+            for ref in missing_refs:
+                supabase_creds = ScraperAPIClient.get_credentials_from_supabase(ref)
+                if supabase_creds:
+                    resolved[ref] = supabase_creds
+                    continue
+
+                env_creds = ScraperAPIClient.get_credentials_from_env(ref)
+                if env_creds:
+                    resolved[ref] = env_creds
+
         if resolved:
-            logger.info(f"Resolved {len(resolved)} credential references from environment for {self.config.name}")
+            logger.info(
+                "[Credentials] Resolved %s runtime credential refs for %s: %s",
+                len(resolved),
+                self.config.name,
+                {
+                    ref: str(creds.get("_credential_source") or "unknown")
+                    for ref, creds in resolved.items()
+                },
+            )
+        missing_refs = [ref for ref in runtime_credential_refs if ref not in resolved]
+        if missing_refs:
+            logger.warning(
+                "[Credentials] Missing runtime credential refs for %s: %s",
+                self.config.name,
+                missing_refs,
+            )
         elif not self.api_client:
-            logger.warning(f"Cannot resolve credential_refs: no API client and no env credentials")
+            logger.info("[Credentials] Resolved runtime credential refs without an API client")
         return resolved
 
     async def execute_workflow(
@@ -452,10 +579,10 @@ class WorkflowExecutor:
             self.step_errors = []
             self.current_step_index = 0
 
-            # Resolve credential_refs before execution
+            # Resolve credential refs before execution.
             self.credentials = self._resolve_credential_refs()
-            if self.config.credential_refs and not self.credentials:
-                logger.warning(f"Failed to resolve any credential_refs for {self.config.name}")
+            if self._build_runtime_credential_refs() and not self.credentials:
+                logger.warning(f"Failed to resolve any runtime credential refs for {self.config.name}")
 
             if self.stop_event and self.stop_event.is_set():
                 raise WorkflowExecutionError("Workflow cancelled", context=ErrorContext(site_name=self.config.name))

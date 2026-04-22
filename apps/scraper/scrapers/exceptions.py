@@ -271,6 +271,9 @@ def classify_exception(
     Returns:
         Appropriate ScraperError subclass instance
     """
+    if isinstance(exc, ScraperError):
+        return exc
+
     exc_str = str(exc).lower()
     exc_type = type(exc).__name__
     ctx = context or ErrorContext()
