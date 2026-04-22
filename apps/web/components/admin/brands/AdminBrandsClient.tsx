@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { DataTable, type Column } from '@/components/admin/data-table';
 import { toast } from 'sonner';
 import { deleteBrand } from '@/app/admin/brands/actions';
-import { BrandModal, Brand } from './BrandModal';
+import { BrandModal } from './BrandModal';
+import { Brand } from '@/components/admin/brands/types';
 import { ConfirmationDialog } from '@/components/admin/confirmation-dialog';
 
 interface AdminBrandsClientProps {
