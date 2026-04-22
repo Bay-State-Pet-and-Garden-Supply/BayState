@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+import argparse
 from unittest.mock import MagicMock, patch
 
 import daemon as scraper_daemon
@@ -86,12 +87,24 @@ def test_local_mode_uses_runner_api_client_for_credential_resolution(monkeypatch
     monkeypatch.setattr(yaml_parser, "ScraperConfigParser", FakeParser)
     monkeypatch.setattr(runner_cli.os.path, "isfile", lambda path: True)
     monkeypatch.setattr(runner_cli, "ScraperAPIClient", lambda **kwargs: client)
+    monkeypatch.setattr(
+        runner_cli.ConfigValidator,
+        "validate_file",
+        lambda self, path: SimpleNamespace(valid=True, errors=[], warnings=[], actionable_warnings=[], config_name="phillips", file_path=path, metadata={}),
+    )
+    monkeypatch.setattr(
+        runner_cli,
+        "validate_local_runtime_requirements",
+        lambda *args, **kwargs: runner_cli.LocalRuntimePreflight(valid=True, config_path="/tmp/phillips.yaml", config_name="phillips"),
+    )
 
     args = SimpleNamespace(
         config="/tmp/phillips.yaml",
         sku="SKU-1",
         output=None,
         no_headless=False,
+        strict_validate=False,
+        validate=False,
     )
 
     with patch("runner.run_job", side_effect=fake_run_job), patch("builtins.print"):
@@ -103,3 +116,19 @@ def test_local_mode_uses_runner_api_client_for_credential_resolution(monkeypatch
     assert scraper_cfg.credential_refs == ["phillips"]
     assert scraper_cfg.options is not None
     assert "_credentials" not in scraper_cfg.options
+
+
+def test_validate_local_config_reports_invalid_top_level_yaml(tmp_path, capsys) -> None:
+    config_path = tmp_path / "invalid.yaml"
+    _ = config_path.write_text("- just\n- a\n- list\n", encoding="utf-8")
+
+    exit_code = runner_cli.validate_local_config(
+        argparse.Namespace(
+            config=str(config_path),
+            strict_validate=False,
+        )
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "Top-level YAML document must be an object, got list" in captured.out

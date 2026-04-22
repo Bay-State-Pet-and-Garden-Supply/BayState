@@ -12,9 +12,13 @@ from __future__ import annotations
 
 import base64
 import logging
+import os
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
+
+from utils.debugging.config_validator import validate_local_runtime_requirements
 
 logger = logging.getLogger(__name__)
 
@@ -332,9 +336,23 @@ class SelectorTester:
             BatchSelectorResult with all selector test results
         """
         import yaml  # type: ignore
-        from pathlib import Path
 
         config_path_obj = Path(config_path)
+        os.environ["USE_YAML_CONFIGS"] = "true"
+        preflight = validate_local_runtime_requirements(config_path_obj)
+        if not preflight.valid:
+            result = BatchSelectorResult(url=url or str(config_path_obj), results=[])
+            result.results.append(
+                SelectorTestResult(
+                    selector=str(config_path_obj),
+                    selector_type="config",
+                    match_count=0,
+                    error="; ".join(preflight.errors or preflight.actionable_warnings),
+                    url=url,
+                )
+            )
+            return result
+
         with open(config_path_obj, encoding="utf-8") as f:
             config = yaml.safe_load(f)
 

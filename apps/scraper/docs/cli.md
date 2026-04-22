@@ -54,11 +54,14 @@ bsr --version
 Test a scraper locally without an API server:
 
 ```bash
-# Test with built-in test SKUs from config
-bsr batch test --config scrapers/configs/phillips.yaml --local
+# Validate a local config before running it
+bsr batch validate --config scrapers/configs/phillips.yaml
 
-# Test specific SKUs
-bsr batch test --config scrapers/configs/phillips.yaml --sku "072705115310" --local
+# Test built-in SKUs from a local config
+bsr batch test --scraper phillips --config scrapers/configs/phillips.yaml
+
+# Test specific SKUs with validation output first
+bsr batch test --scraper phillips --config scrapers/configs/phillips.yaml --sku "072705115310" --validate
 
 # Visualize cohort distribution
 bsr cohort visualize --products fixtures/sample-products.json
@@ -83,12 +86,12 @@ These options work with any command:
 
 Test product batches locally.
 
-#### bsr batch test
+#### bsr batch validate
 
-Run a local batch test against a scraper configuration.
+Lint and preflight-check a local YAML scraper config without executing it.
 
 ```bash
-bsr batch test --config <path> [options]
+bsr batch validate --config <path> [options]
 ```
 
 **Required Flags:**
@@ -101,10 +104,45 @@ bsr batch test --config <path> [options]
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--local` | false | Run in local mode (no API server required) |
+| `--scraper` | inferred | Optional scraper name used when resolving config path |
+| `--strict` | false | Treat validation warnings as errors |
+
+**Examples:**
+
+```bash
+# Validate a config and print local runtime preflight details
+bsr batch validate --config scrapers/configs/phillips.yaml
+
+# Fail validation on warnings too
+bsr batch validate --config scrapers/configs/phillips.yaml --strict
+```
+
+#### bsr batch test
+
+Run a local batch test against a scraper configuration.
+
+```bash
+bsr batch test --scraper <name> --config <path> [options]
+```
+
+**Required Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--scraper` | Scraper config name |
+| `--config` | Path to YAML scraper configuration file |
+
+**Optional Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--product-line` | - | Product line label for the batch report |
+| `--upc-prefix` | - | Limit the batch to SKUs matching a UPC prefix |
+| `--limit` | 10 | Maximum products to test |
 | `--sku` | - | Comma-separated list of SKUs to test |
 | `--output` | stdout | Output file path for results JSON |
-| `--headless` | true | Run browser in headless mode |
+| `--validate` | false | Print config validation and runtime preflight output before execution |
+| `--strict-validate` | false | Treat validation warnings as errors |
 | `--no-headless` | false | Show browser window for debugging |
 | `--debug` | false | Enable debug logging |
 
@@ -112,20 +150,24 @@ bsr batch test --config <path> [options]
 
 ```bash
 # Test with config's test_skus
-bsr batch test --config scrapers/configs/phillips.yaml --local
+bsr batch test --scraper phillips --config scrapers/configs/phillips.yaml
 
 # Test specific SKUs
-bsr batch test --config scrapers/configs/phillips.yaml --sku "072705115310,072705115327" --local
+bsr batch test --scraper phillips --config scrapers/configs/phillips.yaml --sku "072705115310,072705115327"
+
+# Validate first, then run visible browser mode for login debugging
+bsr batch test --scraper phillips --config scrapers/configs/phillips.yaml --validate --no-headless --debug
 
 # Save results to file with visible browser
-bsr batch test --config scrapers/configs/phillips.yaml --sku "072705115310" --no-headless --output results.json
+bsr batch test --scraper phillips --config scrapers/configs/phillips.yaml --sku "072705115310" --no-headless --output results.json
 ```
 
 **Behavior:**
 
 - Without `--sku`, uses `test_skus` defined in the YAML config
-- With `--local`, fetches credentials from environment variables or API if configured
+- Login-enabled scrapers are routed through the runner local mode so credential fallback and structured logs match real runner execution
 - Results are printed to stdout or saved to the specified output file
+- Validation output includes local login runtime preflight details such as runtime credential refs, detected credential sources, and missing refs
 
 ---
 
@@ -267,8 +309,9 @@ python runner.py [options]
 | `--config` | ** | - | Path to local YAML config (requires `--local`) |
 | `--sku` | - | - | SKU or comma-separated SKUs (requires `--local`) |
 | `--output` | - | stdout | Output file path for results JSON |
-| `--headless` | - | true | Run browser headless |
 | `--no-headless` | - | false | Run browser in visible mode |
+| `--validate` | - | false | Validate local YAML config and exit |
+| `--strict-validate` | - | false | Treat warnings as errors during local validation |
 
 *Required unless `--local` is set  
 **Required when `--local` is set
@@ -304,6 +347,9 @@ python runner.py --mode realtime
 ```bash
 # Test with built-in test SKUs
 python runner.py --local --config scrapers/configs/phillips.yaml
+
+# Validate only
+python runner.py --local --config scrapers/configs/phillips.yaml --validate
 
 # Test specific SKU with visible browser
 python runner.py --local --config scrapers/configs/phillips.yaml --sku "072705115310" --no-headless
@@ -349,8 +395,11 @@ test_skus:
 
 Local mode supports credential loading from:
 
-1. **API/Supabase** (if `SCRAPER_API_URL` and `SCRAPER_API_KEY` are set)
-2. **Environment Variables** (fallback): `{REF}_USERNAME` and `{REF}_PASSWORD`
+1. **Runner credential API** via `SCRAPER_API_URL` and `SCRAPER_API_KEY`
+2. **Supabase direct lookup** when Supabase env vars and `AI_CREDENTIALS_ENCRYPTION_KEY` are available
+3. **Environment Variables**: `{REF}_USERNAME` and `{REF}_PASSWORD`
+
+For login-enabled configs, local validation preflight checks all runtime credential candidates. That includes explicit `credential_refs` and the implicit fallback to the scraper `name`.
 
 **Example:**
 
@@ -369,6 +418,29 @@ export PHILLIPS_PASSWORD="mypass"
 
 python runner.py --local --config scrapers/configs/phillips.yaml
 ```
+
+### Login Debug Workflow
+
+Use validation before runtime for login scrapers:
+
+```bash
+bsr batch validate --config scrapers/configs/phillips.yaml
+python runner.py --local --config scrapers/configs/phillips.yaml --validate
+```
+
+For runtime debugging, prefer runner logs instead of browser automation helpers:
+
+```bash
+bsr batch test --scraper phillips --config scrapers/configs/phillips.yaml --validate --debug --no-headless
+```
+
+Login failures now include:
+
+- credential refs attempted and resolved credential source
+- login step that failed
+- auth redirect or still-on-login-page detection
+- failure-indicator selector or text matches when configured
+- browser request snapshot, current URL, and optional screenshot path from runner diagnostics
 
 ---
 
@@ -439,6 +511,36 @@ test_skus:
    export SCRAPER_API_KEY="bsr_..."
    ```
 
+3. Re-run validation to confirm the runtime credential refs being checked:
+   ```bash
+   bsr batch validate --config scrapers/configs/phillips.yaml
+   ```
+
+#### "Login failed" with auth redirect or failure indicator details
+
+**Cause:** Credentials were rejected, the site redirected back into an auth flow, or a configured login error selector/text was detected.  
+**Solution:**
+
+1. Re-run with validation and debug logs:
+   ```bash
+   bsr batch test --scraper phillips --config scrapers/configs/phillips.yaml --validate --debug --no-headless
+   ```
+
+2. Add `failure_indicators` to the config so login failures report explicit site-specific reasons:
+   ```yaml
+   login:
+     url: https://shop.phillipspet.com/login
+     username_field: "#emailField"
+     password_field: "#passwordField"
+     submit_button: "#send2Dsk"
+     success_indicator: "a.doLogout.cc_do_logout"
+     failure_indicators:
+       selectors:
+         - ".login-error"
+       texts:
+         - "invalid username or password"
+   ```
+
 #### Browser timeout errors
 
 **Cause:** Page load taking longer than timeout  
@@ -496,7 +598,7 @@ crawl4ai_config:
 Enable debug logging for detailed output:
 
 ```bash
-bsr batch test --config config.yaml --local --debug
+bsr batch test --scraper phillips --config config.yaml --debug
 # or
 python runner.py --local --config config.yaml --debug
 ```

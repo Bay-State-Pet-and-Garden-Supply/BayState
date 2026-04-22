@@ -300,6 +300,8 @@ class TestScraperAPIClient:
             "username": "local-user",
             "password": "local-password",
             "type": "basic",
+            "_credential_source": "supabase",
+            "_credential_ref": "phillips",
         }
 
     def test_get_credentials_from_http_preserves_api_key_and_uses_cache(self):
@@ -321,6 +323,8 @@ class TestScraperAPIClient:
             "password": "http-password",
             "api_key": "http-api-key",
             "type": "basic",
+            "_credential_source": "api",
+            "_credential_ref": "petfoodex",
         }
         assert cached_creds == creds
         mock_request.assert_called_once_with("GET", "/api/scraper/v1/credentials/petfoodex")
@@ -369,6 +373,8 @@ class TestScraperAPIClient:
             "username": "legacy-user",
             "password": "legacy-password",
             "type": "basic",
+            "_credential_source": "supabase",
+            "_credential_ref": "orgill",
         }
 
     def test_get_credentials_uses_supabase_when_api_url_missing(self):

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 
 import asyncio
+import logging
 import time
 import inspect
 from pathlib import Path
@@ -40,6 +41,8 @@ from playwright.sync_api import (
     sync_playwright,
 )
 # playwright_stealth imports are done lazily in initialize() to avoid hard dependency
+
+logger = logging.getLogger(__name__)
 
 
 class PlaywrightScraperBrowser:
@@ -86,6 +89,9 @@ class PlaywrightScraperBrowser:
         self.context: BrowserContext | None = None
         self.page: Page | None = None
         self._last_response: Response | None = None
+        self._last_request_url: str | None = None
+        self._last_request_method: str | None = None
+        self._last_failed_request: dict[str, str] | None = None
         # Metrics for resource blocking
         self.blocked_count: int = 0
         self.allowed_count: int = 0
@@ -94,7 +100,7 @@ class PlaywrightScraperBrowser:
     async def initialize(self) -> None:
         """Async initialization of Playwright resources."""
         start_time = time.time()
-        print(f"[WEB] [{self.site_name}] Initializing Playwright (Async)...")
+        logger.info("[WEB] [%s] Initializing Playwright (Async)...", self.site_name)
 
         try:
             self.playwright = await async_playwright().start()
@@ -132,7 +138,11 @@ class PlaywrightScraperBrowser:
                 storage_state_file = Path(self.storage_state_path)
                 if storage_state_file.is_file():
                     context_options["storage_state"] = str(storage_state_file)
-                    print(f"[WEB] [{self.site_name}] Reusing browser state from {storage_state_file}")
+                    logger.info(
+                        "[WEB] [%s] Reusing browser state from %s",
+                        self.site_name,
+                        storage_state_file,
+                    )
 
             try:
                 self.context = await self.browser.new_context(
@@ -142,7 +152,7 @@ class PlaywrightScraperBrowser:
                 if "storage_state" not in context_options:
                     raise
 
-                print(f"[WARN] [{self.site_name}] Failed to reuse browser state: {e}")
+                logger.warning("[WEB] [%s] Failed to reuse browser state: %s", self.site_name, e)
                 context_options.pop("storage_state", None)
                 self.context = await self.browser.new_context(
                     **context_options,
@@ -158,7 +168,7 @@ class PlaywrightScraperBrowser:
                 try:
                     await self.block_unnecessary_resources()
                 except Exception as e:
-                    print(f"[WARN] [{self.site_name}] Failed to enable resource blocking: {e}")
+                    logger.warning("[WEB] [%s] Failed to enable resource blocking: %s", self.site_name, e)
 
             # Apply stealth (best-effort)
             if self.use_stealth:
@@ -200,29 +210,46 @@ class PlaywrightScraperBrowser:
                     
                     if applied:
                         self.is_stealth_active = True
-                        print(f"[WEB] [{self.site_name}] Stealth measures applied")
+                        logger.info("[WEB] [%s] Stealth measures applied", self.site_name)
                     else:
-                        print(f"[WARN] [{self.site_name}] No valid stealth method found in playwright_stealth module")
+                        logger.warning(
+                            "[WEB] [%s] No valid stealth method found in playwright_stealth module",
+                            self.site_name,
+                        )
                 except Exception as e:
                     # If stealth import or call fails, log and continue.
-                    print(f"[WARN] [{self.site_name}] playwright_stealth not available or failed: {e}")
+                    logger.warning(
+                        "[WEB] [%s] playwright_stealth not available or failed: %s",
+                        self.site_name,
+                        e,
+                    )
 
             # Set timeouts
             self.page.set_default_timeout(self.timeout)
             self.page.set_default_navigation_timeout(self.timeout)
 
             init_time = time.time() - start_time
-            print(f"[WEB] [{self.site_name}] Playwright initialized in {init_time:.2f}s (stealth={self.is_stealth_active})")
+            logger.info(
+                "[WEB] [%s] Playwright initialized in %.2fs (stealth=%s)",
+                self.site_name,
+                init_time,
+                self.is_stealth_active,
+            )
 
         except Exception as e:
             init_time = time.time() - start_time
-            print(f"[WEB] [{self.site_name}] Initialization failed after {init_time:.2f}s: {e}")
+            logger.error(
+                "[WEB] [%s] Initialization failed after %.2fs: %s",
+                self.site_name,
+                init_time,
+                e,
+            )
             await self.quit()
             raise
 
     async def reinitialize_with_stealth(self) -> None:
         """Force a restart with stealth measures enabled."""
-        print(f"[WEB] [{self.site_name}] Re-initializing with full stealth fallback...")
+        logger.info("[WEB] [%s] Re-initializing with full stealth fallback...", self.site_name)
         await self.quit()
         self.use_stealth = True
         # Add some extra "human-like" arguments
@@ -254,6 +281,8 @@ class PlaywrightScraperBrowser:
             try:
                 # Use a slightly shorter timeout for intermediate strategies if multiple exist
                 current_timeout = self.timeout if len(strategies) == 1 else self.timeout * 0.7
+                self._last_request_url = url
+                self._last_request_method = "GET"
                 
                 self._last_response = await self.page.goto(
                     url, 
@@ -263,7 +292,12 @@ class PlaywrightScraperBrowser:
                 return  # Success
             except Exception as e:
                 last_exception = e
-                print(f"[WARN] [{self.site_name}] Navigation with '{strategy}' failed: {e}")
+                logger.warning(
+                    "[WEB] [%s] Navigation with '%s' failed: %s",
+                    self.site_name,
+                    strategy,
+                    e,
+                )
                 # Continue to next strategy
 
         # If we get here, all strategies failed
@@ -284,18 +318,22 @@ class PlaywrightScraperBrowser:
                     storage_state_file = Path(self.storage_state_path)
                     storage_state_file.parent.mkdir(parents=True, exist_ok=True)
                     await self.context.storage_state(path=str(storage_state_file))
-                    print(f"[WEB] [{self.site_name}] Saved browser state to {storage_state_file}")
+                    logger.info(
+                        "[WEB] [%s] Saved browser state to %s",
+                        self.site_name,
+                        storage_state_file,
+                    )
                 except Exception as e:
-                    print(f"[WARN] [{self.site_name}] Failed to save browser state: {e}")
+                    logger.warning("[WEB] [%s] Failed to save browser state: %s", self.site_name, e)
             if self.context:
                 await self.context.close()
             if self.browser:
                 await self.browser.close()
             if self.playwright:
                 await self.playwright.stop()
-            print(f"[LOCK] [{self.site_name}] Playwright browser closed")
+            logger.info("[LOCK] [%s] Playwright browser closed", self.site_name)
         except Exception as e:
-            print(f"[WARN] [{self.site_name}] Error closing browser: {e}")
+            logger.warning("[WEB] [%s] Error closing browser: %s", self.site_name, e)
         finally:
             self.page = None
             self.context = None
@@ -398,6 +436,8 @@ class PlaywrightScraperBrowser:
         def _on_request(request):
             try:
                 self._requests_total += 1
+                self._last_request_url = request.url
+                self._last_request_method = request.method
             except Exception:
                 pass
 
@@ -416,6 +456,15 @@ class PlaywrightScraperBrowser:
                     # Some mock objects may not implement failure()
                     failure = None
 
+                failure_text = ""
+                if failure:
+                    failure_text = getattr(failure, "errorText", None) or (failure.get("errorText") if isinstance(failure, dict) else "") or ""
+                self._last_failed_request = {
+                    "url": request.url,
+                    "method": request.method,
+                    "error": failure_text,
+                }
+
                 # Many blocked requests surface as aborted network failures
                 if failure:
                     # Playwright's failure() often returns a dict-like object
@@ -433,6 +482,44 @@ class PlaywrightScraperBrowser:
         self.page.on("request", _on_request)
         self.page.on("requestfinished", _on_request_finished)
         self.page.on("requestfailed", _on_request_failed)
+
+    def get_debug_snapshot(self) -> dict[str, Any]:
+        page_title = None
+        current_url = None
+        if self.page is not None:
+            current_url = self.page.url
+            title_callable = getattr(self.page, "title", None)
+            if callable(title_callable) and not inspect.iscoroutinefunction(title_callable):
+                try:
+                    page_title = title_callable()
+                except Exception:
+                    page_title = None
+
+        status_code = None
+        if self._last_response is not None:
+            try:
+                status_code = self._last_response.status
+            except Exception:
+                status_code = None
+
+        return {
+            "site_name": self.site_name,
+            "current_url": current_url,
+            "page_title": page_title,
+            "last_request": {
+                "url": self._last_request_url,
+                "method": self._last_request_method,
+                "status": status_code,
+            },
+            "last_failed_request": self._last_failed_request,
+            "request_totals": {
+                "total": self._requests_total,
+                "allowed": self.allowed_count,
+                "blocked": self.blocked_count,
+            },
+            "storage_state_path": self.storage_state_path,
+            "stealth_active": self.is_stealth_active,
+        }
 
 
 async def create_playwright_browser(

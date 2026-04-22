@@ -1012,7 +1012,13 @@ class ScraperAPIClient:
         password = os.environ.get(f"{prefix}_PASSWORD")
         if username and password:
             logger.info(f"Resolved credentials for {scraper_slug} from environment variables")
-            return {"username": username, "password": password, "type": "basic"}
+            return {
+                "username": username,
+                "password": password,
+                "type": "basic",
+                "_credential_source": "env",
+                "_credential_ref": scraper_slug,
+            }
         return None
 
     @staticmethod
@@ -1136,11 +1142,15 @@ class ScraperAPIClient:
 
         if "username" in resolved and "password" in resolved:
             resolved.setdefault("type", "basic")
+            resolved["_credential_source"] = "supabase"
+            resolved["_credential_ref"] = scraper_slug
             logger.info(f"Resolved credentials for {scraper_slug} from Supabase")
             return resolved
 
         if "api_key" in resolved:
             resolved.setdefault("type", "api_key")
+            resolved["_credential_source"] = "supabase"
+            resolved["_credential_ref"] = scraper_slug
             logger.info(f"Resolved API credential for {scraper_slug} from Supabase")
             return resolved
 
@@ -1190,6 +1200,8 @@ class ScraperAPIClient:
                 }
                 if data.get("api_key"):
                     credentials["api_key"] = data["api_key"]
+                credentials["_credential_source"] = "api"
+                credentials["_credential_ref"] = scraper_slug
                 # Cache credentials for job duration
                 self._credential_cache[scraper_slug] = credentials
                 logger.debug(f"Retrieved and cached credentials for {scraper_slug}")
