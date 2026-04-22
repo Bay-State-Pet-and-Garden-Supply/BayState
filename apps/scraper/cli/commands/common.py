@@ -11,6 +11,12 @@ import click
 
 from scrapers.models.config import ScraperConfig
 from scrapers.parser.yaml_parser import ScraperConfigParser
+from utils.debugging.config_validator import (
+    build_local_validation_payload,
+    ConfigValidator,
+    format_local_validation_payload,
+    validate_local_runtime_requirements,
+)
 
 
 def project_root() -> Path:
@@ -86,12 +92,39 @@ def discover_config_paths(
 
 def load_scraper_config(config_path: Path) -> ScraperConfig:
     os.environ["USE_YAML_CONFIGS"] = "true"
+    validator = ConfigValidator(strict=False)
+    validation_result = validator.validate_file(config_path)
+    preflight = validate_local_runtime_requirements(
+        config_path,
+        validation_result=validation_result,
+    )
+
+    if not validation_result.valid or not preflight.valid:
+        payload = build_local_validation_payload(validation_result, preflight)
+        raise click.ClickException(format_local_validation_payload(payload))
+
     parser = ScraperConfigParser()
 
     try:
         return parser.load_from_file(config_path)
     except Exception as exc:
         raise click.ClickException(f"Failed to load scraper config from {config_path}: {exc}") from exc
+
+
+def validate_scraper_config(
+    config_path: Path,
+    *,
+    strict: bool = False,
+) -> tuple[dict[str, object], bool]:
+    validator = ConfigValidator(strict=strict)
+    validation_result = validator.validate_file(config_path)
+    preflight = validate_local_runtime_requirements(
+        config_path,
+        strict=strict,
+        validation_result=validation_result,
+    )
+    payload = build_local_validation_payload(validation_result, preflight)
+    return payload, bool(payload.get("valid"))
 
 
 def normalize_sku_list(skus: Sequence[object] | None) -> list[str]:

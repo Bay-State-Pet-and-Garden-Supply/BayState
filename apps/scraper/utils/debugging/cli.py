@@ -29,48 +29,82 @@ from pathlib import Path
 
 def cmd_validate(args: argparse.Namespace) -> int:
     """Validate a single config file."""
-    from .config_validator import ConfigValidator
+    from .config_validator import (
+        build_local_validation_payload,
+        ConfigValidator,
+        format_local_validation_payload,
+        validate_local_runtime_requirements,
+    )
 
     validator = ConfigValidator(strict=args.strict)
     result = validator.validate_file(args.config_path)
+    preflight = validate_local_runtime_requirements(
+        args.config_path,
+        strict=args.strict,
+        validation_result=result,
+    )
+    payload = build_local_validation_payload(result, preflight)
 
-    print(result)
+    print(format_local_validation_payload(payload))
 
     if args.json:
-        output = {
-            "valid": result.valid,
-            "errors": result.errors,
-            "warnings": result.warnings,
-            "config_name": result.config_name,
-            "file_path": result.file_path,
-        }
-        print(json.dumps(output, indent=2))
+        print(json.dumps(payload, indent=2))
 
-    return 0 if result.valid else 1
+    return 0 if payload["valid"] else 1
 
 
 def cmd_validate_all(args: argparse.Namespace) -> int:
     """Validate all configs in a directory."""
-    from .config_validator import validate_all_configs
+    from .config_validator import (
+        build_local_validation_payload,
+        format_local_validation_payload,
+        validate_all_configs,
+        validate_local_runtime_requirements,
+    )
 
     results = validate_all_configs(args.configs_dir, strict=args.strict)
+    payloads: dict[str, dict[str, object]] = {}
+    for filename, result in results.items():
+        config_path = Path(args.configs_dir) / filename
+        preflight = validate_local_runtime_requirements(
+            config_path,
+            strict=args.strict,
+            validation_result=result,
+        )
+        payloads[filename] = build_local_validation_payload(result, preflight)
 
     total = len(results)
-    valid_count = sum(1 for r in results.values() if r.valid)
+    valid_count = sum(1 for payload in payloads.values() if payload.get("valid"))
     invalid_count = total - valid_count
 
     print(f"\nValidation Results: {valid_count}/{total} valid\n")
     print("-" * 60)
 
-    for filename, result in sorted(results.items()):
-        status = "PASS" if result.valid else "FAIL"
+    for filename, payload in sorted(payloads.items()):
+        status = "PASS" if payload.get("valid") else "FAIL"
         print(f"[{status}] {filename}")
-        if not result.valid:
-            for error in result.errors[:3]:
+        errors = payload.get("errors")
+        if isinstance(errors, list) and errors:
+            for error in errors[:3]:
                 print(f"      ERROR: {error}")
-        if result.warnings and args.show_warnings:
-            for warning in result.warnings[:3]:
-                print(f"      WARN: {warning}")
+        if args.show_warnings:
+            warnings = payload.get("warnings")
+            actionable = payload.get("actionable_warnings")
+            if isinstance(warnings, list):
+                for warning in warnings[:3]:
+                    print(f"      WARN: {warning}")
+            if isinstance(actionable, list):
+                for warning in actionable[:3]:
+                    print(f"      ACTION: {warning}")
+
+        if args.verbose and status == "FAIL":
+            print(format_local_validation_payload(payload))
+
+        metadata = payload.get("metadata")
+        if isinstance(metadata, dict) and metadata.get("uses_login"):
+            missing_refs = metadata.get("missing_credential_refs")
+            if isinstance(missing_refs, list) and missing_refs:
+                print(f"      LOGIN: missing credentials for {', '.join(str(ref) for ref in missing_refs)}")
 
     print("-" * 60)
     print(f"Total: {total}, Valid: {valid_count}, Invalid: {invalid_count}")
@@ -80,18 +114,16 @@ def cmd_validate_all(args: argparse.Namespace) -> int:
             "total": total,
             "valid": valid_count,
             "invalid": invalid_count,
-            "results": {
-                filename: {
-                    "valid": r.valid,
-                    "errors": r.errors,
-                    "warnings": r.warnings,
-                }
-                for filename, r in results.items()
-            },
+            "results": payloads,
         }
         print(json.dumps(output, indent=2))
 
     return 0 if invalid_count == 0 else 1
+
+
+def cmd_lint(args: argparse.Namespace) -> int:
+    """Alias for local config linting."""
+    return cmd_validate(args)
 
 
 def cmd_test_selector(args: argparse.Namespace) -> int:
@@ -307,6 +339,13 @@ def main() -> int:
     )
     validate_parser.add_argument("--json", action="store_true", help="Output as JSON")
 
+    lint_parser = subparsers.add_parser("lint", help="Lint a config file")
+    lint_parser.add_argument("config_path", help="Path to YAML config file")
+    lint_parser.add_argument(
+        "--strict", action="store_true", help="Treat warnings as errors"
+    )
+    lint_parser.add_argument("--json", action="store_true", help="Output as JSON")
+
     # validate-all command
     validate_all_parser = subparsers.add_parser(
         "validate-all", help="Validate all configs in directory"
@@ -319,6 +358,9 @@ def main() -> int:
     )
     validate_all_parser.add_argument(
         "--show-warnings", action="store_true", help="Show warnings in output"
+    )
+    validate_all_parser.add_argument(
+        "--verbose", action="store_true", help="Print detailed output for invalid configs"
     )
     validate_all_parser.add_argument(
         "--json", action="store_true", help="Output as JSON"
@@ -379,6 +421,8 @@ def main() -> int:
 
     if args.command == "validate":
         return cmd_validate(args)
+    elif args.command == "lint":
+        return cmd_lint(args)
     elif args.command == "validate-all":
         return cmd_validate_all(args)
     elif args.command == "test-selector":

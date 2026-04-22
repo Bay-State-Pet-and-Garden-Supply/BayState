@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { InlineSearch } from "@/components/storefront/inline-search";
 import { useCartStore } from "@/lib/cart-store";
 import { cn } from "@/lib/utils";
+import { useScroll } from "@/hooks/use-scroll";
 import { CartDrawer } from "@/components/storefront/cart-drawer";
 import { MobileNavDrawer } from "@/components/storefront/mobile-nav-drawer";
 import {
@@ -69,6 +70,7 @@ export function StorefrontHeader({
   }>;
 }) {
   const itemCount = useCartStore((state) => state.getItemCount());
+  const isScrolled = useScroll(50);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const hasServerProvidedAuth = user !== undefined || userRole !== undefined;
   const [clientUser, setClientUser] = useState<User | null>(null);
@@ -202,9 +204,20 @@ export function StorefrontHeader({
 
   return (
     <>
-      <header className="max-md:hidden sticky top-0 z-50 w-full flex flex-col border-b-2 border-zinc-900">
+      <header 
+        data-scrolled={isScrolled}
+        className={cn(
+          "max-md:hidden sticky top-0 z-50 w-full flex flex-col border-b-2 border-zinc-900 transition-all duration-300 ease-in-out",
+          isScrolled ? "shadow-md" : ""
+        )}
+      >
         {/* Tier 1: Pre-Header */}
-        <div className="bg-zinc-900 py-2 px-4 text-[10px] font-black tracking-[0.25em] text-white flex justify-between items-center border-b-2 border-white/5 uppercase">
+        <div 
+          className={cn(
+            "bg-zinc-900 py-2 px-4 text-[10px] font-black tracking-[0.25em] text-white flex justify-between items-center border-b-2 border-white/5 uppercase transition-all duration-300 ease-in-out overflow-hidden",
+            isScrolled ? "h-0 py-0 opacity-0 border-b-0" : "min-h-[32px]"
+          )}
+        >
           <div className="container mx-auto flex justify-between items-center">
             <div className="flex items-center gap-2">
               <span className="text-accent">★</span>
@@ -245,10 +258,26 @@ export function StorefrontHeader({
 
 
         {/* Tier 2: Main Header Logo & Actions */}
-        <div className="bg-primary text-white border-b-4 border-zinc-900 shadow-[0_4px_0_rgba(0,0,0,0.1)]">
-          <div className="container mx-auto flex h-24 items-center justify-between px-4">
-            <Link href="/" className="flex items-center gap-4 group shrink-0">
-              <div className="h-16 w-16 relative">
+        <div className="bg-primary text-white border-b-4 border-zinc-900 shadow-[0_4px_0_rgba(0,0,0,1)] transition-all duration-300 ease-in-out">
+          <div 
+            className={cn(
+              "container mx-auto flex items-center justify-between px-4 transition-all duration-300 ease-in-out",
+              isScrolled ? "h-20" : "h-24"
+            )}
+          >
+            <Link 
+              href="/" 
+              className={cn(
+                "flex items-center group shrink-0 transition-all duration-300 ease-in-out",
+                isScrolled ? "gap-2" : "gap-4"
+              )}
+            >
+              <div 
+                className={cn(
+                  "relative transition-all duration-300 ease-in-out",
+                  isScrolled ? "h-16 w-16" : "h-16 w-16"
+                )}
+              >
                 <Image
                   src="/logo.png"
                   alt="Bay State Pet & Garden Supply Logo"
@@ -259,10 +288,20 @@ export function StorefrontHeader({
                 />
               </div>
               <div className="flex flex-col">
-                <span className="text-4xl font-black leading-none tracking-tighter text-white uppercase font-display group-hover:text-accent transition-colors">
+                <span 
+                  className={cn(
+                    "font-black leading-none tracking-tighter text-white uppercase font-display group-hover:text-accent transition-all duration-300 ease-in-out",
+                    isScrolled ? "text-4xl" : "text-4xl"
+                  )}
+                >
                   Bay State
                 </span>
-                <span className="hidden sm:text-xs font-black sm:inline leading-none text-white/80 uppercase tracking-[0.2em] mt-1 border-t border-white/20 pt-1">
+                <span 
+                  className={cn(
+                    "hidden sm:text-xs font-black sm:block leading-none text-white/80 uppercase tracking-[0.2em] mt-1 border-t border-white/20 pt-1 text-center transition-all duration-300 ease-in-out",
+                    isScrolled ? "hidden" : ""
+                  )}
+                >
                   Pet & Garden Supply
                 </span>
               </div>
@@ -293,8 +332,8 @@ export function StorefrontHeader({
 
 
         {/* Tier 3: Navigation Bar (Mega Menu) */}
-        <div className="bg-zinc-900 text-white border-b-2 border-zinc-900 relative">
-          <div className="container mx-auto flex h-11 items-center px-4" ref={containerRef}>
+        <div className="bg-zinc-900 text-white border-b-2 border-zinc-900 relative transition-all duration-300 ease-in-out">
+          <div className="container mx-auto flex h-11 items-center px-4 transition-all duration-300 ease-in-out" ref={containerRef}>
             <NavigationMenu className="flex w-full max-w-none" aria-label="Main Navigation" viewport={false}>
               
               {/* Hidden container for measurement */}

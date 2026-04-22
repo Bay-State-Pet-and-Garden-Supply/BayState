@@ -35,7 +35,7 @@ _ACTIVE_JOB_LOG_CONTEXT: contextvars.ContextVar[dict[str, Any] | None] = context
     default=None,
 )
 
-IGNORED_LOGGER_PREFIXES = ("httpx", "httpcore", "urllib3")
+IGNORED_LOGGER_PREFIXES = ("httpx", "httpcore", "urllib3", "realtime._async", "websocket", "websockets")
 LOG_RECORD_RESERVED_KEYS = set(logging.makeLogRecord({}).__dict__.keys()) | {"message", "asctime"}
 TRANSPORT_CIRCUIT_BREAKER_THRESHOLD = 5
 TRANSPORT_CIRCUIT_BREAKER_TIMEOUT_SECONDS = 60.0

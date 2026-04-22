@@ -133,3 +133,66 @@ def test_batch_command_errors_when_prefix_matches_no_products(tmp_path: Path) ->
 
     assert result.exit_code != 0
     assert "No test SKUs matched scraper 'test-scraper' with UPC prefix '55555555'." in result.output
+
+
+def test_batch_validate_command_prints_login_runtime_preflight(tmp_path: Path) -> None:
+    config_path = tmp_path / "login-scraper.yaml"
+    _ = config_path.write_text(
+        "\n".join(
+            [
+                'schema_version: "1.0"',
+                "name: phillips",
+                "base_url: https://shop.phillipspet.com",
+                "selectors: []",
+                "workflows:",
+                "  - action: login",
+                "    params: {}",
+                "login:",
+                "  url: https://shop.phillipspet.com/login",
+                "  username_field: '#emailField'",
+                "  password_field: '#passwordField'",
+                "  submit_button: '#send2Dsk'",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "batch",
+            "validate",
+            "--config",
+            str(config_path),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Validation Result: VALID" in result.output
+    assert "Login Runtime:" in result.output
+    assert "credential_refs: phillips" in result.output
+
+
+def test_runner_batch_error_mapping_uses_logs_when_runner_data_is_missing() -> None:
+    products = [{"sku": "SKU-1", "product_line": "test", "product_name": "test 1", "scraper": "phillips"}]
+    runner_results = {
+        "data": {},
+        "logs": [
+            {
+                "message": "phillips/SKU-1: AuthenticationError - Login failed for phillips: Missing login credentials",
+                "sku": "SKU-1",
+                "scraper_name": "phillips",
+                "level": "error",
+            }
+        ],
+    }
+
+    processed = batch_commands._cohort_results_from_runner_payload(
+        runner_results=runner_results,
+        products=products,
+    )
+
+    result = processed["SKU-1"]
+    assert result.status == "failed"
+    assert result.results["SKU-1"]["error"] == "Login failed for phillips: Missing login credentials"

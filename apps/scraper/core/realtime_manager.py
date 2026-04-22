@@ -181,6 +181,8 @@ class RealtimeManager:
                 self.supabase_url,
                 self.service_key,
                 auto_reconnect=False,
+                hb_interval=10,
+                timeout=30,
             )
 
             await self.client.connect()

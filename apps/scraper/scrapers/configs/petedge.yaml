@@ -31,7 +31,8 @@ selectors:
   - name: SKU
     selector: ".product.attribute.sku .value"
     fallback_selectors:
-      - "body :has-text('ITEM #')"
+      - "li.list-wrapper:has(.list-heading:has-text('ITEM #')) .list-text"
+      - "li.list-wrapper:has-text('ITEM #') .list-text"
     attribute: text
     multiple: false
     required: true
@@ -64,6 +65,16 @@ workflows:
     params:
       selector: "#onetrust-accept-btn-handler, button:has-text('Accept Cookies'), button:has-text('Accept')"
       timeout: 2
+  - action: wait_for
+    name: wait_for_search_results
+    params:
+      timeout: 15
+      selector:
+        - "a.klevuProductClick"
+        - ".kuLandingNoResultsMessage"
+        - ".kuNoResults"
+        - ".kuNoRecordFound"
+        - "main :has-text('No Results')"
   - action: check_no_results
     name: null
     params: {}
@@ -71,13 +82,6 @@ workflows:
     name: null
     params:
       if_flag: no_results_found
-  - action: wait_for
-    name: wait_for_search_results
-    params:
-      timeout: 15
-      selector:
-        - "a.klevuProductClick"
-        - "body"
   - action: conditional
     name: open_exact_sku_match
     params:

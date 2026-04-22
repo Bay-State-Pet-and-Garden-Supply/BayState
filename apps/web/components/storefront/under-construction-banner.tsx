@@ -8,7 +8,7 @@ import { ExternalLink, AlertTriangle } from "lucide-react";
  */
 export function UnderConstructionBanner() {
   return (
-    <div className="bg-accent text-accent-foreground border-b-4 border-zinc-900 py-3 px-4 relative z-50">
+    <div className="bg-accent text-accent-foreground border-b-4 border-zinc-900 py-1.5 px-4 relative z-50">
       <div className="container mx-auto flex flex-col md:flex-row items-center justify-center gap-3 text-center">
         <div className="flex items-center gap-2 font-display font-black uppercase tracking-tighter text-sm md:text-base">
           <AlertTriangle className="h-5 w-5 animate-pulse" />
@@ -16,9 +16,7 @@ export function UnderConstructionBanner() {
         </div>
 
         <p className="text-xs md:text-sm font-medium max-w-2xl">
-          This is a development preview of our new website. Some features may be
-          incomplete. For official orders and information, please visit our
-          current site.
+          Development preview. Visit our official site for orders.
         </p>
 
         <a

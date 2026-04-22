@@ -11,6 +11,7 @@ Provides comprehensive validation of scraper configuration files with:
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,17 @@ from typing import Any
 import yaml  # type: ignore
 
 logger = logging.getLogger(__name__)
+
+
+INLINE_SELECTOR_ACTIONS = {
+    "click",
+    "conditional_click",
+    "input_text",
+    "navigate",
+    "verify",
+    "wait_for",
+    "wait_for_hidden",
+}
 
 
 class ConfigValidationError(Exception):
@@ -36,8 +48,10 @@ class ValidationResult:
     valid: bool
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    actionable_warnings: list[str] = field(default_factory=list)
     config_name: str | None = None
     file_path: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __str__(self) -> str:
         status = "VALID" if self.valid else "INVALID"
@@ -54,7 +68,225 @@ class ValidationResult:
             lines.append(f"Warnings ({len(self.warnings)}):")
             for warn in self.warnings:
                 lines.append(f"  - {warn}")
+        if self.actionable_warnings:
+            lines.append(f"Actionable Warnings ({len(self.actionable_warnings)}):")
+            for warn in self.actionable_warnings:
+                lines.append(f"  - {warn}")
         return "\n".join(lines)
+
+
+@dataclass
+class LocalRuntimePreflight:
+    """Preflight details for local config execution."""
+
+    valid: bool
+    config_path: str
+    config_name: str | None = None
+    uses_login: bool = False
+    credential_refs: list[str] = field(default_factory=list)
+    credential_sources: dict[str, str] = field(default_factory=dict)
+    missing_credential_refs: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    actionable_warnings: list[str] = field(default_factory=list)
+
+
+def build_local_validation_payload(
+    validation_result: ValidationResult,
+    preflight: LocalRuntimePreflight,
+) -> dict[str, object]:
+    return {
+        "valid": validation_result.valid and preflight.valid,
+        "config_name": validation_result.config_name,
+        "file_path": validation_result.file_path or preflight.config_path,
+        "errors": _dedupe_items([*validation_result.errors, *preflight.errors]),
+        "warnings": _dedupe_items([*validation_result.warnings, *preflight.warnings]),
+        "actionable_warnings": _dedupe_items(
+            [*validation_result.actionable_warnings, *preflight.actionable_warnings]
+        ),
+        "metadata": {
+            **(validation_result.metadata or {}),
+            "uses_login": preflight.uses_login,
+            "credential_refs": preflight.credential_refs,
+            "credential_sources": preflight.credential_sources,
+            "missing_credential_refs": preflight.missing_credential_refs,
+        },
+    }
+
+
+def format_local_validation_payload(payload: dict[str, object]) -> str:
+    lines = [
+        f"Validation Result: {'VALID' if payload.get('valid') else 'INVALID'}",
+    ]
+
+    config_name = payload.get("config_name")
+    if isinstance(config_name, str) and config_name:
+        lines.append(f"Config: {config_name}")
+
+    file_path = payload.get("file_path")
+    if isinstance(file_path, str) and file_path:
+        lines.append(f"File: {file_path}")
+
+    for key, label in (
+        ("errors", "Errors"),
+        ("warnings", "Warnings"),
+        ("actionable_warnings", "Actionable Warnings"),
+    ):
+        values = payload.get(key)
+        if not isinstance(values, list) or not values:
+            continue
+        lines.append(f"{label} ({len(values)}):")
+        for value in values:
+            lines.append(f"  - {value}")
+
+    metadata = payload.get("metadata")
+    if isinstance(metadata, dict) and metadata.get("uses_login"):
+        lines.append("Login Runtime:")
+        credential_refs = metadata.get("credential_refs")
+        if isinstance(credential_refs, list) and credential_refs:
+            lines.append(f"  - credential_refs: {', '.join(str(ref) for ref in credential_refs)}")
+        credential_sources = metadata.get("credential_sources")
+        if isinstance(credential_sources, dict) and credential_sources:
+            for ref, source in credential_sources.items():
+                lines.append(f"  - {ref}: {source}")
+        missing_refs = metadata.get("missing_credential_refs")
+        if isinstance(missing_refs, list) and missing_refs:
+            lines.append(
+                "  - missing credential refs: "
+                + ", ".join(str(ref) for ref in missing_refs)
+            )
+
+    return "\n".join(lines)
+
+
+def _dedupe_items(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        result.append(value)
+    return result
+
+
+def _extract_login_selector_map(login_config: Any) -> dict[str, str]:
+    if hasattr(login_config, "model_dump"):
+        candidate = login_config.model_dump()
+    else:
+        candidate = login_config
+
+    if not isinstance(candidate, dict):
+        return {}
+
+    selector_map: dict[str, str] = {}
+    for key in ("username_field", "password_field", "submit_button", "success_indicator"):
+        value = candidate.get(key)
+        if isinstance(value, str) and value.strip():
+            selector_map[key] = value.strip()
+    return selector_map
+
+
+def _normalize_credential_ref(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _detect_credential_source(ref: str) -> str | None:
+    if not ref:
+        return None
+
+    from core.api_client import ScraperAPIClient
+
+    prefix = ref.upper().replace("-", "_")
+    username_key = f"{prefix}_USERNAME"
+    password_key = f"{prefix}_PASSWORD"
+    api_url_present = bool(str(os.environ.get("SCRAPER_API_URL", "")).strip())
+    api_key_present = bool(str(os.environ.get("SCRAPER_API_KEY", "")).strip())
+
+    env_creds = ScraperAPIClient.get_credentials_from_env(ref)
+    if env_creds:
+        return f"env ({username_key}/{password_key})"
+
+    try:
+        supabase_creds = ScraperAPIClient.get_credentials_from_supabase(ref)
+    except Exception as exc:
+        logger.debug("Supabase credential preflight failed for %s: %s", ref, exc, exc_info=True)
+        supabase_creds = None
+    if supabase_creds:
+        return "supabase"
+
+    if api_url_present and api_key_present:
+        return "api (deferred runtime lookup)"
+
+    return None
+
+
+def validate_local_runtime_requirements(
+    file_path: str | Path,
+    *,
+    strict: bool = False,
+    validation_result: ValidationResult | None = None,
+) -> LocalRuntimePreflight:
+    """Validate local runtime readiness for a YAML config path."""
+
+    if validation_result is None:
+        validator = ConfigValidator(strict=strict)
+        validation_result = validator.validate_file(file_path)
+    config_path = str(Path(file_path))
+
+    if not validation_result.valid:
+        return LocalRuntimePreflight(
+            valid=False,
+            config_path=config_path,
+            config_name=validation_result.config_name,
+            errors=list(validation_result.errors),
+            warnings=list(validation_result.warnings),
+            actionable_warnings=list(validation_result.actionable_warnings),
+        )
+
+    config_metadata = validation_result.metadata or {}
+    uses_login = bool(config_metadata.get("requires_login"))
+    raw_refs = config_metadata.get("runtime_credential_refs", [])
+    credential_refs = [ref for ref in (_normalize_credential_ref(value) for value in raw_refs) if ref]
+    credential_sources: dict[str, str] = {}
+    missing_credential_refs: list[str] = []
+    warnings = list(validation_result.warnings)
+    actionable_warnings = list(validation_result.actionable_warnings)
+    errors = list(validation_result.errors)
+
+    if uses_login:
+        if not credential_refs:
+            errors.append(
+                "Login-enabled config has no runtime credential candidates. Add 'credential_refs' or provide env credentials for the scraper slug."
+            )
+        else:
+            for ref in credential_refs:
+                source = _detect_credential_source(ref)
+                if source:
+                    credential_sources[ref] = source
+                else:
+                    missing_credential_refs.append(ref)
+
+            if missing_credential_refs:
+                actionable_warnings.append(
+                    "Local login test cannot confirm credentials for refs: "
+                    + ", ".join(missing_credential_refs)
+                    + ". Set SCRAPER_API_URL/SCRAPER_API_KEY, Supabase env, or vendor env credentials before running local mode."
+                )
+
+    valid = len(errors) == 0
+    return LocalRuntimePreflight(
+        valid=valid,
+        config_path=config_path,
+        config_name=validation_result.config_name,
+        uses_login=uses_login,
+        credential_refs=credential_refs,
+        credential_sources=credential_sources,
+        missing_credential_refs=missing_credential_refs,
+        errors=_dedupe_items(errors),
+        warnings=_dedupe_items(warnings),
+        actionable_warnings=_dedupe_items(actionable_warnings),
+    )
 
 
 class ConfigValidator:
@@ -74,6 +306,7 @@ class ConfigValidator:
         "navigate",
         "wait",
         "wait_for",
+        "wait_for_hidden",
         "click",
         "conditional_click",
         "input_text",
@@ -84,20 +317,30 @@ class ConfigValidator:
         "extract_from_json",
         "check_no_results",
         "conditional_skip",
+        "validate_http_status",
+        "validate_search_result",
         "verify",
+        "verify_value",
+        "verify_sku_on_page",
         "scroll",
         "login",
-        "anti_detection",
-        "combine",
+        "detect_captcha",
+        "handle_blocking",
+        "rate_limit",
+        "simulate_human",
+        "rotate_session",
+        "configure_browser",
+        "combine_fields",
         "conditional",
-        "image",
-        "json",
-        "script",
-        "sponsored",
-        "table",
-        "transform",
-        "validation",
-        "weight",
+        "process_images",
+        "extract_from_json",
+        "execute_script",
+        "check_sponsored",
+        "parse_table",
+        "transform_value",
+        "parse_weight",
+        "filter_brand",
+        "set_proxy",
     }
 
     def __init__(self, strict: bool = False):
@@ -140,6 +383,7 @@ class ConfigValidator:
         file_path = Path(file_path)
         errors: list[str] = []
         warnings: list[str] = []
+        actionable_warnings: list[str] = []
         config_name: str | None = None
 
         # Check file exists
@@ -168,43 +412,78 @@ class ConfigValidator:
                 file_path=str(file_path),
             )
 
+        if not isinstance(config_dict, dict):
+            return ValidationResult(
+                valid=False,
+                errors=[
+                    f"Top-level YAML document must be an object, got {type(config_dict).__name__}"
+                ],
+                file_path=str(file_path),
+            )
+
         config_name = config_dict.get("name", "unknown")
 
         # Validate structure
         structure_result = self._validate_structure(config_dict)
         errors.extend(structure_result["errors"])
         warnings.extend(structure_result["warnings"])
+        actionable_warnings.extend(structure_result["actionable_warnings"])
 
         # Validate using Pydantic schema
         schema_result = self._validate_schema(config_dict)
         errors.extend(schema_result["errors"])
         warnings.extend(schema_result["warnings"])
+        actionable_warnings.extend(schema_result["actionable_warnings"])
 
         # Validate workflow actions
         action_result = self._validate_actions(config_dict)
         errors.extend(action_result["errors"])
         warnings.extend(action_result["warnings"])
+        actionable_warnings.extend(action_result["actionable_warnings"])
 
         # Validate selector references
         selector_result = self._validate_selectors(config_dict)
         errors.extend(selector_result["errors"])
         warnings.extend(selector_result["warnings"])
+        actionable_warnings.extend(selector_result["actionable_warnings"])
+
+        login_result = self._validate_login_config(config_dict)
+        errors.extend(login_result["errors"])
+        warnings.extend(login_result["warnings"])
+        actionable_warnings.extend(login_result["actionable_warnings"])
 
         # Best practice checks
         bp_result = self._check_best_practices(config_dict)
         warnings.extend(bp_result["warnings"])
+        actionable_warnings.extend(bp_result["actionable_warnings"])
         if self.strict:
-            errors.extend(bp_result["warnings"])
+            errors.extend(warnings)
+            errors.extend(actionable_warnings)
+
+        deduped_errors = _dedupe_items(errors)
+        deduped_warnings = _dedupe_items(warnings)
+        deduped_actionable_warnings = _dedupe_items(actionable_warnings)
+
+        requires_login = self._requires_login(config_dict)
+        runtime_credential_refs = self._build_runtime_credential_refs(config_dict)
+        selector_names, selector_ids = self._collect_selector_names_and_ids(config_dict)
 
         return ValidationResult(
-            valid=len(errors) == 0,
-            errors=errors,
-            warnings=warnings,
+            valid=len(deduped_errors) == 0,
+            errors=deduped_errors,
+            warnings=deduped_warnings,
+            actionable_warnings=deduped_actionable_warnings,
             config_name=config_name,
             file_path=str(file_path),
+            metadata={
+                "requires_login": requires_login,
+                "runtime_credential_refs": runtime_credential_refs,
+                "selector_names": sorted(selector_names),
+                "selector_ids": sorted(selector_ids),
+            },
         )
 
-    def validate_dict(self, config_dict: dict[str, Any]) -> ValidationResult:
+    def validate_dict(self, config_dict: Any) -> ValidationResult:
         """
         Validate a configuration dictionary.
 
@@ -216,39 +495,75 @@ class ConfigValidator:
         """
         errors: list[str] = []
         warnings: list[str] = []
+        actionable_warnings: list[str] = []
+
+        if not isinstance(config_dict, dict):
+            return ValidationResult(
+                valid=False,
+                errors=[
+                    f"Top-level YAML document must be an object, got {type(config_dict).__name__}"
+                ],
+            )
+
         config_name = config_dict.get("name", "unknown")
 
         # Validate structure
         structure_result = self._validate_structure(config_dict)
         errors.extend(structure_result["errors"])
         warnings.extend(structure_result["warnings"])
+        actionable_warnings.extend(structure_result["actionable_warnings"])
 
         # Validate using Pydantic schema
         schema_result = self._validate_schema(config_dict)
         errors.extend(schema_result["errors"])
         warnings.extend(schema_result["warnings"])
+        actionable_warnings.extend(schema_result["actionable_warnings"])
 
         # Validate workflow actions
         action_result = self._validate_actions(config_dict)
         errors.extend(action_result["errors"])
         warnings.extend(action_result["warnings"])
+        actionable_warnings.extend(action_result["actionable_warnings"])
 
         # Validate selector references
         selector_result = self._validate_selectors(config_dict)
         errors.extend(selector_result["errors"])
         warnings.extend(selector_result["warnings"])
+        actionable_warnings.extend(selector_result["actionable_warnings"])
+
+        login_result = self._validate_login_config(config_dict)
+        errors.extend(login_result["errors"])
+        warnings.extend(login_result["warnings"])
+        actionable_warnings.extend(login_result["actionable_warnings"])
 
         # Best practice checks
         bp_result = self._check_best_practices(config_dict)
         warnings.extend(bp_result["warnings"])
+        actionable_warnings.extend(bp_result["actionable_warnings"])
         if self.strict:
-            errors.extend(bp_result["warnings"])
+            errors.extend(warnings)
+            errors.extend(actionable_warnings)
+
+        deduped_errors = _dedupe_items(errors)
+        deduped_warnings = _dedupe_items(warnings)
+        deduped_actionable_warnings = _dedupe_items(actionable_warnings)
+
+        requires_login = self._requires_login(config_dict)
+        runtime_credential_refs = self._build_runtime_credential_refs(config_dict)
+        selector_names, selector_ids = self._collect_selector_names_and_ids(config_dict)
 
         return ValidationResult(
-            valid=len(errors) == 0,
-            errors=errors,
-            warnings=warnings,
+            valid=len(deduped_errors) == 0,
+            errors=deduped_errors,
+            warnings=deduped_warnings,
+            actionable_warnings=deduped_actionable_warnings,
             config_name=config_name,
+            metadata={
+                "requires_login": requires_login,
+                "runtime_credential_refs": runtime_credential_refs,
+                "selector_names": sorted(selector_names),
+                "selector_ids": sorted(selector_ids),
+            },
         )
 
     def validate_yaml_string(self, yaml_string: str) -> ValidationResult:
@@ -281,6 +596,7 @@ class ConfigValidator:
         """Validate basic structure requirements."""
         errors: list[str] = []
         warnings: list[str] = []
+        actionable_warnings: list[str] = []
 
         # Required top-level fields
         required_fields = ["name", "base_url"]
@@ -292,20 +608,33 @@ class ConfigValidator:
 
         # Workflows should exist (even if empty)
         if "workflows" not in config_dict:
-            warnings.append(
+            actionable_warnings.append(
                 "No 'workflows' defined - scraper will not perform any actions"
             )
         elif not config_dict["workflows"]:
-            warnings.append(
+            actionable_warnings.append(
                 "'workflows' is empty - scraper will not perform any actions"
             )
 
-        return {"errors": errors, "warnings": warnings}
+        selectors = config_dict.get("selectors", [])
+        if selectors is not None and not isinstance(selectors, list):
+            errors.append("'selectors' must be a list of selector objects")
+
+        workflows = config_dict.get("workflows", [])
+        if workflows is not None and not isinstance(workflows, list):
+            errors.append("'workflows' must be a list of workflow steps")
+
+        return {
+            "errors": errors,
+            "warnings": warnings,
+            "actionable_warnings": actionable_warnings,
+        }
 
     def _validate_schema(self, config_dict: dict[str, Any]) -> dict[str, list[str]]:
         """Validate against Pydantic schema."""
         errors: list[str] = []
         warnings: list[str] = []
+        actionable_warnings: list[str] = []
 
         try:
             from core.anti_detection_manager import AntiDetectionConfig
@@ -341,16 +670,25 @@ class ConfigValidator:
             else:
                 errors.append(f"Schema validation failed: {error_msg}")
 
-        return {"errors": errors, "warnings": warnings}
+        return {
+            "errors": errors,
+            "warnings": warnings,
+            "actionable_warnings": actionable_warnings,
+        }
 
     def _validate_actions(self, config_dict: dict[str, Any]) -> dict[str, list[str]]:
         """Validate workflow action names."""
         errors: list[str] = []
         warnings: list[str] = []
+        actionable_warnings: list[str] = []
 
         workflows = config_dict.get("workflows", [])
         if not workflows:
-            return {"errors": errors, "warnings": warnings}
+            return {
+                "errors": errors,
+                "warnings": warnings,
+                "actionable_warnings": actionable_warnings,
+            }
 
         registered_actions = self._get_registered_actions()
 
@@ -375,10 +713,26 @@ class ConfigValidator:
 
             # Validate action-specific params
             params = step.get("params", {})
+            if params is None:
+                params = {}
+            if not isinstance(params, dict):
+                errors.append(
+                    f"Step {i}: 'params' must be an object when provided"
+                )
+                continue
             action_errors = self._validate_action_params(action_lower, params, i)
             errors.extend(action_errors)
 
-        return {"errors": errors, "warnings": warnings}
+            if action_lower == "login" and not isinstance(config_dict.get("login"), dict):
+                actionable_warnings.append(
+                    f"Step {i}: login action exists but login config is missing. Add a top-level 'login' block so local validation can test selectors and failures clearly."
+                )
+
+        return {
+            "errors": errors,
+            "warnings": warnings,
+            "actionable_warnings": actionable_warnings,
+        }
 
     def _validate_action_params(
         self, action: str, params: dict[str, Any], step_num: int
@@ -437,14 +791,86 @@ class ConfigValidator:
                     f"Step {step_num}: 'verify' action requires 'expected_value' parameter"
                 )
 
+        elif action == "verify_value":
+            if "field" not in params:
+                errors.append(
+                    f"Step {step_num}: 'verify_value' action requires 'field' parameter"
+                )
+
+        elif action == "combine_fields":
+            if "target_field" not in params:
+                errors.append(
+                    f"Step {step_num}: 'combine_fields' action requires 'target_field' parameter"
+                )
+            if "format" not in params:
+                errors.append(
+                    f"Step {step_num}: 'combine_fields' action requires 'format' parameter"
+                )
+
+        elif action == "extract_single":
+            if "field" not in params:
+                errors.append(
+                    f"Step {step_num}: 'extract_single' action requires 'field' parameter"
+                )
+            if "selector_id" not in params and "selector" not in params:
+                errors.append(
+                    f"Step {step_num}: 'extract_single' action requires 'selector_id' or 'selector' parameter"
+                )
+
+        elif action == "extract_multiple":
+            if "field" not in params:
+                errors.append(
+                    f"Step {step_num}: 'extract_multiple' action requires 'field' parameter"
+                )
+            if "selector_id" not in params and "selector" not in params:
+                errors.append(
+                    f"Step {step_num}: 'extract_multiple' action requires 'selector_id' or 'selector' parameter"
+                )
+
+        elif action == "extract_and_transform":
+            fields = params.get("fields")
+            if not isinstance(fields, list) or not fields:
+                errors.append(
+                    f"Step {step_num}: 'extract_and_transform' action requires a non-empty 'fields' list"
+                )
+            else:
+                for field_index, field in enumerate(fields, start=1):
+                    if not isinstance(field, dict):
+                        errors.append(
+                            f"Step {step_num} field {field_index}: expected object, got {type(field).__name__}"
+                        )
+                        continue
+                    if not field.get("name"):
+                        errors.append(
+                            f"Step {step_num} field {field_index}: missing 'name'"
+                        )
+                    if not field.get("selector"):
+                        errors.append(
+                            f"Step {step_num} field {field_index}: missing 'selector'"
+                        )
+
+        elif action == "set_proxy":
+            proxy_payload = params.get("proxy")
+            if proxy_payload is not None and not isinstance(proxy_payload, dict):
+                errors.append(
+                    f"Step {step_num}: 'set_proxy' action expects 'proxy' to be an object when provided"
+                )
+
         return errors
 
     def _validate_selectors(self, config_dict: dict[str, Any]) -> dict[str, list[str]]:
         """Validate selector definitions and references."""
         errors: list[str] = []
         warnings: list[str] = []
+        actionable_warnings: list[str] = []
 
         selectors = config_dict.get("selectors", [])
+        if not isinstance(selectors, list):
+            return {
+                "errors": errors,
+                "warnings": warnings,
+                "actionable_warnings": actionable_warnings,
+            }
         selector_names: set[str] = set()
         selector_ids: set[str] = set()
 
@@ -470,40 +896,147 @@ class ConfigValidator:
 
             if "selector" not in sel:
                 errors.append(f"Selector '{name or i + 1}': Missing 'selector' field")
+            else:
+                raw_selector = sel.get("selector")
+                if not isinstance(raw_selector, str) or not raw_selector.strip():
+                    errors.append(
+                        f"Selector '{name or i + 1}': 'selector' must be a non-empty string"
+                    )
+
+            fallback_selectors = sel.get("fallback_selectors", [])
+            if fallback_selectors is not None and not isinstance(fallback_selectors, list):
+                errors.append(
+                    f"Selector '{name or i + 1}': 'fallback_selectors' must be a list"
+                )
 
         # Check extract action references
         workflows = config_dict.get("workflows", [])
+        if not isinstance(workflows, list):
+            return {
+                "errors": errors,
+                "warnings": warnings,
+                "actionable_warnings": actionable_warnings,
+            }
         for i, step in enumerate(workflows, 1):
             if not isinstance(step, dict):
                 continue
 
             action = step.get("action", "").lower()
             params = step.get("params", {})
+            if not isinstance(params, dict):
+                continue
 
             if action == "extract":
                 fields = params.get("fields", [])
                 for field in fields:
                     if isinstance(field, str):
                         if field not in selector_names and field not in selector_ids:
-                            warnings.append(
+                            actionable_warnings.append(
                                 f"Step {i}: 'extract' references undefined selector '{field}'"
                             )
 
-        return {"errors": errors, "warnings": warnings}
+            if action in {"extract_single", "extract_multiple"}:
+                identifier = params.get("selector_id") or params.get("selector")
+                if isinstance(identifier, str) and identifier not in selector_names and identifier not in selector_ids:
+                    actionable_warnings.append(
+                        f"Step {i}: '{action}' references undefined selector '{identifier}'"
+                    )
+
+            if action in INLINE_SELECTOR_ACTIONS:
+                selector_value = params.get("selector")
+                if isinstance(selector_value, str) and selector_value in selector_names:
+                    actionable_warnings.append(
+                        f"Step {i}: action '{action}' uses selector name '{selector_value}' as a raw selector. Use the actual CSS/XPath selector string or switch to an action that resolves selector references."
+                    )
+
+        return {
+            "errors": errors,
+            "warnings": warnings,
+            "actionable_warnings": actionable_warnings,
+        }
+
+    def _validate_login_config(self, config_dict: dict[str, Any]) -> dict[str, list[str]]:
+        """Validate login-specific config readiness for local testing."""
+
+        errors: list[str] = []
+        warnings: list[str] = []
+        actionable_warnings: list[str] = []
+
+        if not self._requires_login(config_dict):
+            return {
+                "errors": errors,
+                "warnings": warnings,
+                "actionable_warnings": actionable_warnings,
+            }
+
+        login_config = config_dict.get("login")
+        if not isinstance(login_config, dict):
+            errors.append(
+                "Config requires login but has no valid top-level 'login' block. Add login.url, username_field, password_field, and submit_button so local debugging can validate the flow."
+            )
+            return {
+                "errors": errors,
+                "warnings": warnings,
+                "actionable_warnings": actionable_warnings,
+            }
+
+        required_fields = ["url", "username_field", "password_field", "submit_button"]
+        for field in required_fields:
+            value = login_config.get(field)
+            if not isinstance(value, str) or not value.strip():
+                errors.append(f"Login config missing required field '{field}'")
+
+        selector_names, _ = self._collect_selector_names_and_ids(config_dict)
+        login_selector_map = _extract_login_selector_map(login_config)
+        for selector_name, selector_value in login_selector_map.items():
+            if selector_value in selector_names:
+                actionable_warnings.append(
+                    f"Login field '{selector_name}' points to selector name '{selector_value}' instead of a raw selector string. Login actions do not resolve selector references automatically."
+                )
+
+        runtime_credential_refs = self._build_runtime_credential_refs(config_dict)
+        explicit_refs = [
+            _normalize_credential_ref(value)
+            for value in config_dict.get("credential_refs", []) or []
+            if _normalize_credential_ref(value)
+        ]
+        if not explicit_refs:
+            actionable_warnings.append(
+                "Login-enabled config is relying on implicit scraper-slug credential fallback. Add explicit 'credential_refs' so local validation and runtime diagnostics can report credential lookup failures clearly."
+            )
+
+        if not runtime_credential_refs:
+            errors.append(
+                "Login-enabled config does not expose any runtime credential candidate. Add 'credential_refs' or ensure the scraper 'name' can map to env credentials."
+            )
+
+        if login_config.get("failure_indicators") is None:
+            actionable_warnings.append(
+                "Login config has no 'failure_indicators'. Add auth failure selectors/text patterns so failed login scrapes report explicit reasons instead of generic timeouts."
+            )
+
+        return {
+            "errors": errors,
+            "warnings": warnings,
+            "actionable_warnings": actionable_warnings,
+        }
 
     def _check_best_practices(
         self, config_dict: dict[str, Any]
     ) -> dict[str, list[str]]:
         """Check for best practices and common issues."""
         warnings: list[str] = []
+        actionable_warnings: list[str] = []
 
         # Check for test_skus
         if "test_skus" not in config_dict:
-            warnings.append("No 'test_skus' defined - consider adding for testing")
+            actionable_warnings.append(
+                "No 'test_skus' defined - local runtime testing will require --sku every time"
+            )
 
         # Check for validation section
         if "validation" not in config_dict:
-            warnings.append(
+            actionable_warnings.append(
                 "No 'validation' section - consider adding no_results detection"
             )
 
@@ -537,11 +1070,73 @@ class ConfigValidator:
                 if isinstance(next_step, dict):
                     next_action = next_step.get("action", "").lower()
                     if next_action not in ["wait", "wait_for"]:
-                        warnings.append(
+                        actionable_warnings.append(
                             f"Step {i + 1}: 'navigate' not followed by wait - page may not be loaded"
                         )
 
-        return {"errors": [], "warnings": warnings}
+        if self._requires_login(config_dict):
+            fake_skus = config_dict.get("fake_skus") or []
+            if not fake_skus:
+                actionable_warnings.append(
+                    "Login-enabled config has no 'fake_skus'. Add at least one fake SKU so local testing can validate post-login no-results handling."
+                )
+
+        return {"errors": [], "warnings": warnings, "actionable_warnings": actionable_warnings}
+
+    def _collect_selector_names_and_ids(
+        self, config_dict: dict[str, Any]
+    ) -> tuple[set[str], set[str]]:
+        selector_names: set[str] = set()
+        selector_ids: set[str] = set()
+        selectors = config_dict.get("selectors", [])
+        if not isinstance(selectors, list):
+            return selector_names, selector_ids
+
+        for selector in selectors:
+            if not isinstance(selector, dict):
+                continue
+            name = selector.get("name")
+            if isinstance(name, str) and name.strip():
+                selector_names.add(name.strip())
+            selector_id = selector.get("id")
+            if isinstance(selector_id, str) and selector_id.strip():
+                selector_ids.add(selector_id.strip())
+        return selector_names, selector_ids
+
+    def _requires_login(self, config_dict: dict[str, Any]) -> bool:
+        login_config = config_dict.get("login")
+        if isinstance(login_config, dict) and login_config:
+            return True
+
+        workflows = config_dict.get("workflows", [])
+        if not isinstance(workflows, list):
+            return False
+
+        for step in workflows:
+            if not isinstance(step, dict):
+                continue
+            action = str(step.get("action") or "").strip().lower()
+            if action == "login":
+                return True
+
+        return False
+
+    def _build_runtime_credential_refs(self, config_dict: dict[str, Any]) -> list[str]:
+        refs: list[str] = []
+
+        name = _normalize_credential_ref(config_dict.get("name"))
+        if name:
+            refs.append(name)
+
+        explicit_refs = config_dict.get("credential_refs", []) or []
+        if isinstance(explicit_refs, list):
+            refs.extend(
+                ref
+                for ref in (_normalize_credential_ref(value) for value in explicit_refs)
+                if ref
+            )
+
+        return _dedupe_items(refs)
 
 
 def validate_config_file(

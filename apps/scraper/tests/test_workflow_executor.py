@@ -281,3 +281,39 @@ async def test_initialize_disables_browser_state_persistence_for_non_login_scrap
 
     assert create_browser.await_args.kwargs["storage_state_path"] is None
     assert executor.browser_state_path is None
+
+
+def test_resolve_credential_refs_includes_login_slug_fallback_when_api_returns_nothing() -> None:
+    from scrapers.executor.workflow_executor import WorkflowExecutor
+
+    config = _build_config(
+        login=LoginConfig(
+            url="https://portal.example.com/login",
+            username_field="#username",
+            password_field="#password",
+            submit_button="button[type='submit']",
+            success_indicator=".account-nav",
+        )
+    )
+    client = type("Client", (), {"resolve_credentials": lambda self, refs: {}})()
+    executor = WorkflowExecutor(config=config, api_client=client)
+
+    with patch(
+        "core.api_client.ScraperAPIClient.get_credentials_from_supabase",
+        return_value={
+            "username": "supabase-user",
+            "password": "supabase-password",
+            "type": "basic",
+            "_credential_source": "supabase",
+            "_credential_ref": config.name,
+        },
+    ) as mock_supabase, patch(
+        "core.api_client.ScraperAPIClient.get_credentials_from_env",
+        return_value=None,
+    ) as mock_env:
+        resolved = executor._resolve_credential_refs()
+
+    assert executor._build_runtime_credential_refs() == [config.name]
+    assert resolved[config.name]["username"] == "supabase-user"
+    mock_supabase.assert_called_once_with(config.name)
+    mock_env.assert_not_called()
