@@ -38,9 +38,14 @@ Update the "Scraper Runs" page (`/admin/scrapers/runs`) to utilize the new archi
 - Remove outdated icons or generic soft-rounded UI elements from `ScraperRunsClient`.
 - Verify the page handles empty states and errors using the modern blocky style.
 
+### 4. Backend: Fix 1006 WebSocket Error Leak
+- **Log Leak:** In `apps/scraper/utils/logging_handlers.py`, update `IGNORED_LOGGER_PREFIXES` to include `"realtime._async"`, `"websocket"`, and `"websockets"` so internal 1006 disconnects don't leak into the scrape job logs.
+- **Stability:** In `apps/scraper/core/realtime_manager.py`, pass `hb_interval=10` to the `_AsyncRealtimeClient` initialization to keep connections alive behind proxies.
+
 ## Verification & Testing
 - Load the `/admin/scrapers/runs` page and verify the layout exactly matches the pipeline's Scraping tab style.
 - Trigger a new scraper run and ensure the new job appears real-time via the WebSocket subscription without a page refresh.
 - Expand a running job to verify that chunks and live logs stream correctly.
+- Ensure that the "WebSocket connection closed with code: 1006" errors no longer appear in the job's live logs.
 - Verify that historical runs (fetched server-side and passed via props) render properly below or alongside the live runs.
 - Test the "Retry" and "Cancel" buttons on both historical and live runs to ensure they execute successfully.
