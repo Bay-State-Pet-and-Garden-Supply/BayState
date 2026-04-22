@@ -13,17 +13,17 @@ export function useScroll(threshold: number = 50): boolean {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    let ticking = false;
-
     const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const currentScrollY = window.scrollY;
-          setIsScrolled(currentScrollY > threshold);
-          ticking = false;
-        });
-        ticking = true;
-      }
+      const currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
+      const scrolled = currentScrollY > threshold;
+      
+      // Only update state if it actually changed to avoid unnecessary re-renders
+      setIsScrolled((prev) => {
+        if (prev !== scrolled) {
+          return scrolled;
+        }
+        return prev;
+      });
     };
 
     // Initial check to set state correctly on mount

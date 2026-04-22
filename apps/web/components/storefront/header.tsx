@@ -206,12 +206,17 @@ export function StorefrontHeader({
     <>
       <header 
         data-scrolled={isScrolled}
-        className="max-md:hidden sticky top-0 z-50 w-full flex flex-col border-b-2 border-zinc-900 transition-all duration-300 ease-in-out"
+        className={cn(
+          "max-md:hidden sticky top-0 z-50 w-full flex flex-col border-b-2 border-zinc-900 transition-all duration-300 ease-in-out",
+          isScrolled ? "shadow-md" : ""
+        )}
       >
         {/* Tier 1: Pre-Header */}
         <div 
-          data-scrolled={isScrolled}
-          className="bg-zinc-900 py-2 px-4 text-[10px] font-black tracking-[0.25em] text-white flex justify-between items-center border-b-2 border-white/5 uppercase transition-all duration-300 ease-in-out data-[scrolled=true]:h-0 data-[scrolled=true]:py-0 data-[scrolled=true]:opacity-0 data-[scrolled=true]:overflow-hidden data-[scrolled=true]:border-b-0"
+          className={cn(
+            "bg-zinc-900 py-2 px-4 text-[10px] font-black tracking-[0.25em] text-white flex justify-between items-center border-b-2 border-white/5 uppercase transition-all duration-300 ease-in-out overflow-hidden",
+            isScrolled ? "h-0 py-0 opacity-0 border-b-0" : "h-10"
+          )}
         >
           <div className="container mx-auto flex justify-between items-center">
             <div className="flex items-center gap-2">
@@ -255,17 +260,23 @@ export function StorefrontHeader({
         {/* Tier 2: Main Header Logo & Actions */}
         <div className="bg-primary text-white border-b-4 border-zinc-900 shadow-[0_4px_0_rgba(0,0,0,1)] transition-all duration-300 ease-in-out">
           <div 
-            data-scrolled={isScrolled}
-            className="container mx-auto flex h-24 items-center justify-between px-4 transition-all duration-300 ease-in-out data-[scrolled=true]:h-16"
+            className={cn(
+              "container mx-auto flex items-center justify-between px-4 transition-all duration-300 ease-in-out",
+              isScrolled ? "h-16" : "h-24"
+            )}
           >
             <Link 
               href="/" 
-              data-scrolled={isScrolled}
-              className="flex items-center gap-4 group shrink-0 transition-all duration-300 ease-in-out data-[scrolled=true]:gap-2"
+              className={cn(
+                "flex items-center group shrink-0 transition-all duration-300 ease-in-out",
+                isScrolled ? "gap-2" : "gap-4"
+              )}
             >
               <div 
-                data-scrolled={isScrolled}
-                className="h-16 w-16 relative transition-all duration-300 ease-in-out data-[scrolled=true]:h-10 data-[scrolled=true]:w-10"
+                className={cn(
+                  "relative transition-all duration-300 ease-in-out",
+                  isScrolled ? "h-10 w-10" : "h-16 w-16"
+                )}
               >
                 <Image
                   src="/logo.png"
@@ -278,14 +289,18 @@ export function StorefrontHeader({
               </div>
               <div className="flex flex-col">
                 <span 
-                  data-scrolled={isScrolled}
-                  className="text-4xl font-black leading-none tracking-tighter text-white uppercase font-display group-hover:text-accent transition-all duration-300 ease-in-out data-[scrolled=true]:text-2xl"
+                  className={cn(
+                    "font-black leading-none tracking-tighter text-white uppercase font-display group-hover:text-accent transition-all duration-300 ease-in-out",
+                    isScrolled ? "text-2xl" : "text-4xl"
+                  )}
                 >
                   Bay State
                 </span>
                 <span 
-                  data-scrolled={isScrolled}
-                  className="hidden sm:text-xs font-black sm:inline leading-none text-white/80 uppercase tracking-[0.2em] mt-1 border-t border-white/20 pt-1 transition-all duration-300 ease-in-out data-[scrolled=true]:hidden"
+                  className={cn(
+                    "hidden sm:text-xs font-black sm:inline leading-none text-white/80 uppercase tracking-[0.2em] mt-1 border-t border-white/20 pt-1 transition-all duration-300 ease-in-out",
+                    isScrolled ? "opacity-0 h-0 mt-0 pt-0 overflow-hidden border-t-0" : "opacity-100"
+                  )}
                 >
                   Pet & Garden Supply
                 </span>
