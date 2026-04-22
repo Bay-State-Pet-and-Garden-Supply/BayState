@@ -103,7 +103,7 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
       jobMap.set(rj.id, {
         ...nextJob,
         // Preserve any existing data not in realtime record if needed
-        completedAt: rj.completed_at || existing?.completedAt || null,
+        completedAt: (rj.status === 'completed' ? (rj.updated_at ?? null) : null) || existing?.completedAt || null,
       });
     });
 

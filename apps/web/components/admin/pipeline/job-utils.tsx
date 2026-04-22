@@ -57,6 +57,8 @@ export interface ActiveJob {
 
 export type ExpandPanel = "chunks" | "logs";
 
+export type TimeRange = "1h" | "6h" | "24h" | "7d" | "30d";
+
 export const LOG_LEVEL_CONFIG: Record<
   string,
   { icon: typeof Info; color: string; bgColor: string }
@@ -153,7 +155,7 @@ export function toActiveJob(job: JobAssignment): ActiveJob {
         ? "running"
         : (job.status as ActiveJob["status"]),
     createdAt: job.created_at,
-    completedAt: job.completed_at ?? null,
+    completedAt: null,
     progress: liveProgress?.progress ?? 0,
     runnerName: job.runner_name ?? liveProgress?.runner_name ?? null,
     progressMessage: liveProgress?.message ?? null,
