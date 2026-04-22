@@ -16,9 +16,7 @@ export function UnderConstructionBanner() {
         </div>
 
         <p className="text-xs md:text-sm font-medium max-w-2xl">
-          This is a development preview of our new website. Some features may be
-          incomplete. For official orders and information, please visit our
-          current site.
+          Development preview. Visit our official site for orders.
         </p>
 
         <a
