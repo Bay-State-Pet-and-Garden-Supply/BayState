@@ -186,6 +186,17 @@ login:
   password_field: "#cphMainContent_ctl00_loginOrgillxs_Password"
   username_field: "#cphMainContent_ctl00_loginOrgillxs_UserName"
   success_indicator: "#btnMyProfile"
+  failure_indicators:
+    selectors:
+      - "#cphMainContent_ctl00_loginOrgillxs_FailureText"
+      - ".validation-summary-errors"
+      - ".login-error"
+    texts:
+      - invalid username or password
+      - login was unsuccessful
+      - the username or password provided is incorrect
+    url_contains:
+      - index.aspx?tab=8
 http_status: null
 normalization: null
 timeout: 30

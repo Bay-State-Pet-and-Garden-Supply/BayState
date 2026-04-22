@@ -37,7 +37,6 @@ selectors:
     selector: "main .product__media img"
     fallback_selectors:
       - "img[src*='/cdn/shop/files/']"
-      - "meta[property='og:image']"
     attribute: src
     multiple: true
     required: true
@@ -62,7 +61,14 @@ workflows:
       timeout: 15
       selector:
         - "a.snize-view-link[href*='/products/']"
-        - "body"
+        - ".snize-no-products-found"
+        - ".snize-no-products-found-text"
+        - ".snize-no-results"
+        - "#search-no-results"
+        - ".snize-no-results-container"
+        - ".snize-message-no-results"
+        - "main :has-text('0 results found')"
+        - "main :has-text('No results found')"
   - action: check_no_results
     name: null
     params: {}
@@ -153,6 +159,12 @@ anti_detection:
   session_rotation_interval: 100
 validation:
   no_results_selectors:
+    - ".snize-no-products-found"
+    - ".snize-no-products-found-text"
+    - ".snize-no-results"
+    - "#search-no-results"
+    - ".snize-no-results-container"
+    - ".snize-message-no-results"
     - "main :has-text('0 results found')"
     - "main :has-text('No results found')"
   no_results_text_patterns:

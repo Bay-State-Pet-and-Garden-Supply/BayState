@@ -148,6 +148,7 @@ def run_scraping(
     # Initialize API client if possible
     from core.api_client import ScraperAPIClient
     api_client = ScraperAPIClient()
+    from utils.debugging.config_validator import validate_local_runtime_requirements
 
     if use_yaml_configs():
         # Load configs from local filesystem instead of API
@@ -161,7 +162,16 @@ def run_scraping(
         for filename in os.listdir(configs_dir):
             if filename.endswith(".yaml"):
                 slug = filename[:-5]
-                with open(os.path.join(configs_dir, filename), "r", encoding="utf-8") as f:
+                config_path = os.path.join(configs_dir, filename)
+                preflight = validate_local_runtime_requirements(config_path)
+                if not preflight.valid:
+                    log(
+                        f"Failed local config validation for {filename}: "
+                        + "; ".join(preflight.errors or preflight.actionable_warnings),
+                        "WARNING",
+                    )
+                    continue
+                with open(config_path, "r", encoding="utf-8") as f:
                     import yaml
                     try:
                         cfg_payload = yaml.safe_load(f)

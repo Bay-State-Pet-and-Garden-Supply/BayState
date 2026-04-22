@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import base64
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -20,6 +21,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml  # type: ignore
+
+from utils.debugging.config_validator import validate_local_runtime_requirements
 
 logger = logging.getLogger(__name__)
 
@@ -122,9 +125,16 @@ class StepDebugger:
         try:
             from scrapers.parser.yaml_parser import ScraperConfigParser
 
+            os.environ["USE_YAML_CONFIGS"] = "true"
             parser = ScraperConfigParser()
 
             if self.config_path:
+                preflight = validate_local_runtime_requirements(self.config_path)
+                if not preflight.valid:
+                    raise ValueError(
+                        "Local config validation failed before step debugging: "
+                        + "; ".join(preflight.errors or preflight.actionable_warnings)
+                    )
                 self.config = parser.load_from_file(self.config_path)
             elif self.config_dict:
                 self.config = parser.load_from_dict(self.config_dict)

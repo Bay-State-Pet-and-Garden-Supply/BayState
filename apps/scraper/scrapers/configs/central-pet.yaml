@@ -66,14 +66,14 @@ workflows:
     name: null
     params:
       url: "{base_url}/Search?criteria={sku}"
+  - action: wait
+    name: settle_after_navigation
+    params:
+      seconds: 1
   - action: conditional_click
     name: null
     params:
       selector: //button[contains(text(), 'Accept')]
-  - action: wait
-    name: null
-    params:
-      seconds: 2
   - action: wait_for
     name: null
     params:

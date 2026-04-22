@@ -135,6 +135,17 @@ login:
   password_field: "#passwordField"
   username_field: "#emailField"
   success_indicator: a.doLogout.cc_do_logout
+  failure_indicators:
+    selectors:
+      - ".cc-error-message"
+      - ".login-error"
+      - ".sfdc_notificationToastMessage"
+    texts:
+      - invalid username or password
+      - login failed
+      - your login attempt has failed
+    url_contains:
+      - ccrz__CCSiteLogin
 http_status: null
 normalization: null
 timeout: 30

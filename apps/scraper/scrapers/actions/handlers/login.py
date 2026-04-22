@@ -1,14 +1,30 @@
 from __future__ import annotations
-import asyncio
 
+import asyncio
 import logging
 from typing import Any, cast
 
 from scrapers.actions.base import BaseAction
 from scrapers.actions.registry import ActionRegistry
-from scrapers.exceptions import WorkflowExecutionError
+from scrapers.exceptions import AuthenticationError, ErrorContext, WorkflowExecutionError
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_string_list(value: Any) -> list[str]:
+    if isinstance(value, str):
+        candidate = value.strip()
+        return [candidate] if candidate else []
+
+    if isinstance(value, (list, tuple, set)):
+        normalized: list[str] = []
+        for item in value:
+            candidate = str(item).strip()
+            if candidate:
+                normalized.append(candidate)
+        return normalized
+
+    return []
 
 
 @ActionRegistry.register("login")
@@ -16,193 +32,516 @@ class LoginAction(BaseAction):
     """Action to execute login workflow with session persistence."""
 
     async def execute(self, params: dict[str, Any]) -> None:
+        from scrapers.models.config import WorkflowStep
+
         scraper_name = self.ctx.config.name
-
-        # Test mode: Log login selector definitions for testing page
-        # Getting test_mode from context (ensure it defaults to False if not present)
-        test_mode = getattr(self.ctx, "context", {}).get("test_mode", False)
-
-        if test_mode:
-            logger.info(f"LoginAction executing in test_mode for {scraper_name}")
-
-        # Check if already authenticated in this session
-        if test_mode:
-            logger.info(f"Current session auth state: {self.ctx.is_session_authenticated()}")
+        sku = self._current_sku()
+        runtime_context = getattr(self.ctx, "context", {}) or {}
+        test_mode = bool(runtime_context.get("test_mode")) if isinstance(runtime_context, dict) else False
+        login_params = dict(params)
+        login_config = getattr(self.ctx.config, "login", None)
+        if login_config is not None and hasattr(login_config, "model_dump"):
+            for key, value in login_config.model_dump().items():
+                login_params.setdefault(key, value)
 
         if self.ctx.is_session_authenticated():
-            if test_mode:
-                logger.info(f"Session already authenticated for {scraper_name}, but verifying selectors in test_mode")
-                # If we are already authenticated, we might not be on the login page.
-                # In test mode, we should try to go to the login page to verify selectors,
-                # UNLESS the success indicator is present (which implies we are logged in).
-                # To be safe and show results, we'll try to navigate to login url anyway if test_mode matches.
-                # OR we can just emit a status saying "AUTHENTICATED" or similar.
-                # Let's emit "FOUND" for success_indicator and "SKIPPED" for others if we are authenticated?
-                # Actually, simply navigating to login page again usually redirects to home if logged in,
-                # so finding username/password fields might fail.
-                #
-                # Strategy:
-                # 1. Emit success_indicator = FOUND (since we are authenticated)
-                # 2. Emit others as SKIPPED or just don't emit them (but UI might show Pending).
-                #
-                # Better Strategy for "Test Mode":
-                # Use a fresh context or force navigation to login page?
-                # Using a fresh context is expensive.
-                # Let's just assume if we are authenticated, we don't need to re-verify login selectors
-                # BUT the user wants to see them.
-                #
-                # Let's emit a special status "SKIPPED (Auth)" that the frontend can handle?
-                # For now, let's just log and skip to match previous behavior but adding a note.
-                #
-                # Actually, the user PROBABLY wants to verify the selectors still work.
-                # So we should probably navigate to login URL even if authenticated in test_mode.
-                pass  # Fall through to execute login logic
-            else:
-                logger.info(f"Skipping login for {scraper_name} - session already authenticated")
+            if not test_mode:
+                self._log_login(
+                    logging.INFO,
+                    f"Skipping login for {scraper_name} - session already authenticated",
+                    sku=sku,
+                )
                 return
+            self._log_login(
+                logging.INFO,
+                f"Session already authenticated for {scraper_name}; continuing login selector verification in test mode",
+                sku=sku,
+            )
 
-        if self.ctx.config.login and not params.get("url"):
-            params.update(self.ctx.config.login.model_dump())
+        current_step: dict[str, str] = {"name": "resolve_credentials"}
+        credential_resolution = self._resolve_login_credentials(login_params, scraper_name)
+        login_url = str(login_params.get("url") or "").strip()
+        username = str(login_params.get("username") or "").strip()
+        password = str(login_params.get("password") or "").strip()
+        success_indicator = str(login_params.get("success_indicator") or "").strip()
 
-        creds = getattr(self.ctx.config, "options", {}) or {}
-        if "_credentials" in creds:
-            params["username"] = creds["_credentials"].get("username")
-            params["password"] = creds["_credentials"].get("password")
-            if creds["_credentials"].get("api_key") and not params.get("api_key"):
-                params["api_key"] = creds["_credentials"].get("api_key")
-
-        if not params.get("username") or not params.get("password"):
-            resolved_credentials = getattr(self.ctx, "credentials", {}) or {}
-            credential_refs = list(getattr(self.ctx.config, "credential_refs", []) or [])
-            candidate_refs = [scraper_name, *credential_refs]
-
-            logger.info(f"[Login] Looking for credentials in ctx.credentials: {list(resolved_credentials.keys()) if resolved_credentials else 'empty'}")
-            logger.info(f"[Login] Candidate refs: {candidate_refs}")
-
-            for ref in candidate_refs:
-                resolved = resolved_credentials.get(ref)
-                logger.info(f"[Login] Checking ref '{ref}': {'found' if resolved else 'not found'}")
-                if not resolved:
-                    continue
-                params.setdefault("username", resolved.get("username"))
-                params.setdefault("password", resolved.get("password"))
-                if resolved.get("api_key") and not params.get("api_key"):
-                    params["api_key"] = resolved.get("api_key")
-                if params.get("username") and params.get("password"):
-                    logger.info(f"[Login] Successfully resolved credentials from ref '{ref}'")
-                    break
-
-        username = params.get("username")
-        password = params.get("password")
-
-        # Ensure credentials are strings
-        if username is not None:
-            username = str(username)
-        if password is not None:
-            password = str(password)
-        login_url = params.get("url")
-
-        if not username or not password:
-            logger.warning(f"Missing credentials for {scraper_name}, skipping login")
-            return
-
-        logger.info(f"Logging in to {scraper_name} at {login_url}")
+        self._log_login(
+            logging.INFO,
+            f"Preparing login workflow for {scraper_name}",
+            sku=sku,
+            details={
+                "login_url": login_url,
+                "test_mode": test_mode,
+                "already_authenticated": self.ctx.is_session_authenticated(),
+                "credential_resolution": credential_resolution,
+            },
+        )
 
         try:
-            # Navigate
-            from scrapers.models.config import WorkflowStep
+            if not login_url:
+                raise WorkflowExecutionError("Login config is missing a login URL")
 
+            if not username or not password:
+                attempted_refs = credential_resolution.get("candidate_refs", [])
+                available_refs = credential_resolution.get("available_resolved_refs", [])
+                raise AuthenticationError(
+                    "Missing login credentials. "
+                    + f"Tried refs: {attempted_refs or ['<none>']}. "
+                    + f"Resolved refs available: {available_refs or ['<none>']}."
+                )
+
+            current_step = {"name": "navigate_login", "selector": login_url}
+            self._log_login(
+                logging.INFO,
+                f"Navigating to login page for {scraper_name}",
+                sku=sku,
+                details={"url": login_url},
+            )
             await self.ctx._execute_step(WorkflowStep(action="navigate", params={"url": login_url}))
 
-            # In test mode, validate login selectors exist on the page
             if test_mode:
-                await self._validate_login_selectors(params)
+                await self._validate_login_selectors(login_params)
 
-            # Check if already logged in
-            success_indicator = params.get("success_indicator")
             if success_indicator:
+                current_step = {
+                    "name": "check_existing_authenticated_session",
+                    "selector": success_indicator,
+                }
                 try:
-                    # Check quickly if we are already logged in
                     await self.ctx._execute_step(
                         WorkflowStep(
                             action="wait_for",
                             params={"selector": success_indicator, "timeout": 5},
                         )
                     )
-                    logger.info(f"Already logged in to {scraper_name}")
-                    if test_mode:
-                        # If we are already logged in, we can't verify form fields (they are hidden).
-                        # Emit 'FOUND' for success indicator, 'SKIPPED' for others.
-                        if self.ctx.event_emitter:
-                            self.ctx.event_emitter.login_selector_status(
-                                scraper=scraper_name,
-                                selector_name="success_indicator",
-                                status="FOUND",
-                            )
-                            for field in ["username_field", "password_field", "submit_button"]:
-                                if params.get(field):
-                                    self.ctx.event_emitter.login_selector_status(
-                                        scraper=scraper_name,
-                                        selector_name=field,
-                                        status="SKIPPED",
-                                    )
+                    self._log_login(
+                        logging.INFO,
+                        f"Existing authenticated session detected for {scraper_name}",
+                        sku=sku,
+                        details={"success_indicator": success_indicator},
+                    )
+                    if test_mode and self.ctx.event_emitter:
+                        self.ctx.event_emitter.login_selector_status(
+                            scraper=scraper_name,
+                            selector_name="success_indicator",
+                            status="FOUND",
+                        )
+                        for field in ["username_field", "password_field", "submit_button"]:
+                            if login_params.get(field):
+                                self.ctx.event_emitter.login_selector_status(
+                                    scraper=scraper_name,
+                                    selector_name=field,
+                                    status="SKIPPED",
+                                )
                     return
                 except Exception:
-                    # Not logged in (or indicator not found), proceed with login
-                    pass
+                    self._log_login(
+                        logging.INFO,
+                        f"No existing authenticated session detected for {scraper_name}",
+                        sku=sku,
+                        details={"success_indicator": success_indicator},
+                    )
 
-            # Wait for the login form to be ready before inputting credentials
-            username_field = params.get("username_field")
+            username_field = str(login_params.get("username_field") or "").strip()
             if username_field:
-                # Wait for username field to appear (with timeout)
+                current_step = {"name": "wait_for_username_field", "selector": username_field}
                 await self.ctx._execute_step(
                     WorkflowStep(
                         action="wait_for",
                         params={"selector": username_field, "timeout": 15},
                     )
                 )
-                # Input username
-                await self.ctx._execute_step(WorkflowStep(action="input_text", params={"selector": username_field, "text": username}))
+                current_step = {"name": "input_username", "selector": username_field}
+                self._log_login(
+                    logging.INFO,
+                    f"Populating username field for {scraper_name}",
+                    sku=sku,
+                    details={"selector": username_field},
+                )
+                await self.ctx._execute_step(
+                    WorkflowStep(
+                        action="input_text",
+                        params={"selector": username_field, "text": username},
+                    )
+                )
 
-            # Input password
-            password_field = params.get("password_field")
+            password_field = str(login_params.get("password_field") or "").strip()
             if password_field:
-                await self.ctx._execute_step(WorkflowStep(action="input_text", params={"selector": password_field, "text": password}))
+                current_step = {"name": "input_password", "selector": password_field}
+                self._log_login(
+                    logging.INFO,
+                    f"Populating password field for {scraper_name}",
+                    sku=sku,
+                    details={"selector": password_field},
+                )
+                await self.ctx._execute_step(
+                    WorkflowStep(
+                        action="input_text",
+                        params={"selector": password_field, "text": password},
+                    )
+                )
 
-            # Click submit
-            submit_button = params.get("submit_button")
+            submit_button = str(login_params.get("submit_button") or "").strip()
             if submit_button:
-                await self.ctx._execute_step(WorkflowStep(action="click", params={"selector": submit_button}))
+                current_step = {"name": "submit_login", "selector": submit_button}
+                self._log_login(
+                    logging.INFO,
+                    f"Submitting login form for {scraper_name}",
+                    sku=sku,
+                    details={"selector": submit_button},
+                )
+                await self.ctx._execute_step(
+                    WorkflowStep(action="click", params={"selector": submit_button})
+                )
 
-            # Wait for success
-            timeout = params.get("timeout", 30)
+            timeout = int(login_params.get("timeout") or 30)
             if success_indicator:
+                current_step = {
+                    "name": "wait_for_success_indicator",
+                    "selector": success_indicator,
+                }
+                self._log_login(
+                    logging.INFO,
+                    f"Waiting for login success indicator for {scraper_name}",
+                    sku=sku,
+                    details={"selector": success_indicator, "timeout": timeout},
+                )
                 await self.ctx._execute_step(
                     WorkflowStep(
                         action="wait_for",
                         params={"selector": success_indicator, "timeout": timeout},
                     )
                 )
-                logger.info("Login successful")
+            else:
+                self._log_login(
+                    logging.WARNING,
+                    f"No success indicator configured for {scraper_name}; marking session authenticated after submit",
+                    sku=sku,
+                )
 
-            # In test mode, confirm success indicator was found
             if test_mode and success_indicator:
                 logger.info("[LOGIN_SELECTOR] success_indicator: 'FOUND'")
 
-            # Mark session as authenticated
             self.ctx.mark_session_authenticated()
-        except Exception as e:
-            logger.error(f"Login failed for {scraper_name}: {e}")
-            raise WorkflowExecutionError(f"Login failed for {scraper_name}: {e}") from e
+            self._log_login(
+                logging.INFO,
+                f"Login successful for {scraper_name}",
+                sku=sku,
+                details={
+                    "success_indicator": success_indicator or None,
+                    "credential_source": credential_resolution.get("credential_source"),
+                    "credential_ref": credential_resolution.get("credential_ref"),
+                },
+            )
+        except Exception as exc:
+            failure_details = await self._collect_login_failure_details(
+                login_params=login_params,
+                credential_resolution=credential_resolution,
+                current_step=current_step,
+                error=exc,
+                sku=sku,
+            )
+            failure_reason = self._build_failure_reason(
+                error=exc,
+                failure_details=failure_details,
+                current_step=current_step,
+            )
+            self._log_login(
+                logging.ERROR,
+                f"Login failed for {scraper_name}: {failure_reason}",
+                sku=sku,
+                details=failure_details,
+                flush_immediately=True,
+            )
+
+            error_context = ErrorContext(
+                site_name=scraper_name,
+                action="login",
+                selector=current_step.get("selector"),
+                url=login_url or None,
+                sku=sku,
+                extra={"login_failure": failure_details},
+            )
+            if isinstance(exc, AuthenticationError) or failure_details.get("category") == "authentication":
+                raise AuthenticationError(
+                    f"Login failed for {scraper_name}: {failure_reason}",
+                    context=error_context,
+                    cause=exc,
+                ) from exc
+            raise WorkflowExecutionError(
+                f"Login failed for {scraper_name}: {failure_reason}",
+                context=error_context,
+                cause=exc,
+            ) from exc
+
+    def _current_sku(self) -> str | None:
+        for container_name in ("context", "results"):
+            container = getattr(self.ctx, container_name, {}) or {}
+            if not isinstance(container, dict):
+                continue
+            candidate = container.get("sku")
+            if candidate is None:
+                continue
+            normalized = str(candidate).strip()
+            if normalized:
+                return normalized
+        return None
+
+    def _candidate_credential_refs(self, scraper_name: str) -> list[str]:
+        refs = [scraper_name]
+        refs.extend(
+            str(ref).strip()
+            for ref in (getattr(self.ctx.config, "credential_refs", []) or [])
+            if str(ref).strip()
+        )
+
+        seen: set[str] = set()
+        ordered_refs: list[str] = []
+        for ref in refs:
+            if ref in seen:
+                continue
+            seen.add(ref)
+            ordered_refs.append(ref)
+        return ordered_refs
+
+    def _resolve_login_credentials(
+        self,
+        login_params: dict[str, Any],
+        scraper_name: str,
+    ) -> dict[str, Any]:
+        candidate_refs = self._candidate_credential_refs(scraper_name)
+        resolved_credentials = getattr(self.ctx, "credentials", {}) or {}
+        available_resolved_refs = (
+            sorted(str(ref) for ref in resolved_credentials.keys())
+            if isinstance(resolved_credentials, dict)
+            else []
+        )
+        had_param_credentials = bool(login_params.get("username") and login_params.get("password"))
+        resolution: dict[str, Any] = {
+            "candidate_refs": candidate_refs,
+            "available_resolved_refs": available_resolved_refs,
+            "credential_source": None,
+            "credential_ref": None,
+        }
+
+        if had_param_credentials:
+            resolution["credential_source"] = "params"
+
+        option_creds = getattr(self.ctx.config, "options", {}) or {}
+        if isinstance(option_creds, dict):
+            legacy_creds = option_creds.get("_credentials")
+            if isinstance(legacy_creds, dict):
+                login_params.setdefault("username", legacy_creds.get("username"))
+                login_params.setdefault("password", legacy_creds.get("password"))
+                if legacy_creds.get("api_key") and not login_params.get("api_key"):
+                    login_params["api_key"] = legacy_creds.get("api_key")
+                if (
+                    login_params.get("username")
+                    and login_params.get("password")
+                    and resolution.get("credential_source") is None
+                ):
+                    resolution["credential_source"] = "config.options._credentials"
+
+        if not isinstance(resolved_credentials, dict):
+            resolved_credentials = {}
+
+        for ref in candidate_refs:
+            resolved = resolved_credentials.get(ref)
+            if not isinstance(resolved, dict):
+                continue
+            login_params.setdefault("username", resolved.get("username"))
+            login_params.setdefault("password", resolved.get("password"))
+            if resolved.get("api_key") and not login_params.get("api_key"):
+                login_params["api_key"] = resolved.get("api_key")
+            if not had_param_credentials and login_params.get("username") and login_params.get("password"):
+                resolution["credential_source"] = str(
+                    resolved.get("_credential_source") or resolution.get("credential_source") or "resolved_credentials"
+                )
+                resolution["credential_ref"] = str(
+                    resolved.get("_credential_ref") or ref
+                )
+                break
+
+        resolution["has_username"] = bool(login_params.get("username"))
+        resolution["has_password"] = bool(login_params.get("password"))
+        resolution["has_api_key"] = bool(login_params.get("api_key"))
+        return resolution
+
+    async def _collect_login_failure_details(
+        self,
+        *,
+        login_params: dict[str, Any],
+        credential_resolution: dict[str, Any],
+        current_step: dict[str, str],
+        error: Exception,
+        sku: str | None,
+    ) -> dict[str, Any]:
+        runtime_debug = await self._collect_runtime_debug_context()
+        failure_indicator = await self._detect_failure_indicator(login_params)
+        current_url = self._extract_current_url(runtime_debug)
+        auth_flow_state = self._detect_auth_flow_state(
+            login_url=str(login_params.get("url") or "").strip(),
+            current_url=current_url,
+            current_step=current_step,
+        )
+        category = "authentication" if (
+            isinstance(error, AuthenticationError)
+            or failure_indicator is not None
+            or auth_flow_state in {"still_on_auth_page", "auth_redirect"}
+        ) else "workflow"
+
+        return {
+            "category": category,
+            "current_step": current_step,
+            "credential_resolution": credential_resolution,
+            "failure_indicator": failure_indicator,
+            "auth_flow_state": auth_flow_state,
+            "runtime_debug": runtime_debug,
+            "error_type": type(error).__name__,
+            "sku": sku,
+        }
+
+    async def _collect_runtime_debug_context(self) -> dict[str, Any]:
+        collector = getattr(self.ctx, "collect_runtime_debug_context", None)
+        if not callable(collector):
+            return {}
+
+        try:
+            return await collector(include_screenshot=True)
+        except Exception as exc:
+            return {"debug_context_error": str(exc)}
+
+    async def _detect_failure_indicator(self, login_params: dict[str, Any]) -> dict[str, str] | None:
+        failure_indicators = login_params.get("failure_indicators")
+        if not isinstance(failure_indicators, dict):
+            return None
+
+        for selector in _normalize_string_list(failure_indicators.get("selectors")) + _normalize_string_list(failure_indicators.get("selector")):
+            try:
+                element = await self.ctx.find_element_safe(selector, required=False, timeout=2)
+            except Exception:
+                element = None
+            if element is not None:
+                return {"type": "selector", "value": selector}
+
+        page = getattr(getattr(self.ctx, "browser", None), "page", None)
+        if page is not None and hasattr(page, "content"):
+            try:
+                page_content = (await page.content()).lower()
+            except Exception:
+                page_content = ""
+            for text_pattern in _normalize_string_list(failure_indicators.get("texts")) + _normalize_string_list(failure_indicators.get("text_patterns")):
+                if text_pattern.lower() in page_content:
+                    return {"type": "text", "value": text_pattern}
+
+        current_url = ""
+        try:
+            current_url = str(getattr(page, "url", "") or "")
+        except Exception:
+            current_url = ""
+        for fragment in _normalize_string_list(failure_indicators.get("url_contains")):
+            if fragment.lower() in current_url.lower():
+                return {"type": "url", "value": fragment}
+
+        return None
+
+    def _extract_current_url(self, runtime_debug: dict[str, Any]) -> str | None:
+        page_url = runtime_debug.get("page_url")
+        if isinstance(page_url, str) and page_url:
+            return page_url
+
+        browser_debug = runtime_debug.get("browser")
+        if isinstance(browser_debug, dict):
+            current_url = browser_debug.get("current_url")
+            if isinstance(current_url, str) and current_url:
+                return current_url
+
+        return None
+
+    def _detect_auth_flow_state(
+        self,
+        *,
+        login_url: str,
+        current_url: str | None,
+        current_step: dict[str, str],
+    ) -> str | None:
+        if not current_url:
+            return None
+
+        lowered_current = current_url.lower()
+        lowered_login = login_url.lower()
+        auth_tokens = ("login", "signin", "sign-in", "authenticate", "auth")
+        is_auth_url = any(token in lowered_current for token in auth_tokens)
+        login_prefix = lowered_login.split("?", 1)[0] if lowered_login else ""
+
+        if current_step.get("name") == "wait_for_success_indicator" and (
+            (login_prefix and lowered_current.startswith(login_prefix)) or is_auth_url
+        ):
+            return "still_on_auth_page"
+
+        if is_auth_url and login_prefix and not lowered_current.startswith(login_prefix):
+            return "auth_redirect"
+
+        return None
+
+    def _build_failure_reason(
+        self,
+        *,
+        error: Exception,
+        failure_details: dict[str, Any],
+        current_step: dict[str, str],
+    ) -> str:
+        if isinstance(error, AuthenticationError):
+            return error.message
+
+        failure_indicator = failure_details.get("failure_indicator")
+        if isinstance(failure_indicator, dict):
+            indicator_type = str(failure_indicator.get("type") or "indicator")
+            indicator_value = str(failure_indicator.get("value") or "")
+            return f"failure indicator matched ({indicator_type}: {indicator_value})"
+
+        auth_flow_state = failure_details.get("auth_flow_state")
+        runtime_debug = failure_details.get("runtime_debug")
+        current_url = self._extract_current_url(runtime_debug if isinstance(runtime_debug, dict) else {})
+        if auth_flow_state == "still_on_auth_page":
+            return f"login did not leave the auth page after submit{f' ({current_url})' if current_url else ''}"
+        if auth_flow_state == "auth_redirect":
+            return f"login redirected into an auth flow{f' ({current_url})' if current_url else ''}"
+
+        current_step_name = current_step.get("name")
+        current_selector = current_step.get("selector")
+        if current_step_name and current_selector:
+            return f"{current_step_name} failed for selector '{current_selector}': {error}"
+        if current_step_name:
+            return f"{current_step_name} failed: {error}"
+        return str(error)
+
+    def _log_login(
+        self,
+        level: int,
+        message: str,
+        *,
+        sku: str | None,
+        details: dict[str, Any] | None = None,
+        flush_immediately: bool = False,
+    ) -> None:
+        logger.log(
+            level,
+            message,
+            extra={
+                "scraper_name": self.ctx.config.name,
+                "sku": sku,
+                "phase": "login",
+                "details": details,
+                "flush_immediately": flush_immediately,
+            },
+        )
 
     async def _validate_login_selectors(self, params: dict[str, Any]) -> None:
         """
         Validate presence of login selectors on the page and log results for UI.
         Used in test_mode.
         """
-        import time
-
-        # Small wait to ensure page is interactive/loaded beyond basic navigation
         await asyncio.sleep(2)
 
         selectors = {
@@ -215,14 +554,11 @@ class LoginAction(BaseAction):
             if not selector:
                 continue
 
-            # Check if element exists
             element = await self.ctx.find_element_safe(cast(str, selector), required=False)
             status = "FOUND" if element else "MISSING"
 
-            # Log in format expected by TestingPage: [LOGIN_SELECTOR] name: 'STATUS'
             logger.info(f"[LOGIN_SELECTOR] {name}: '{status}'")
 
-            # Emit event for UI
             if self.ctx.event_emitter:
                 self.ctx.event_emitter.login_selector_status(
                     scraper=self.ctx.config.name,

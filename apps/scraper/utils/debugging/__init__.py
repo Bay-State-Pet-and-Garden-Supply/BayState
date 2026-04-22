@@ -9,14 +9,26 @@ This module provides tools for:
 
 from __future__ import annotations
 
-from .config_validator import ConfigValidator, ConfigValidationError, ValidationResult
+from .config_validator import (
+    build_local_validation_payload,
+    ConfigValidator,
+    ConfigValidationError,
+    format_local_validation_payload,
+    LocalRuntimePreflight,
+    ValidationResult,
+    validate_local_runtime_requirements,
+)
 from .selector_tester import SelectorTester, SelectorTestResult
 from .step_debugger import StepDebugger, StepResult, DebugState
 
 __all__ = [
+    "build_local_validation_payload",
     "ConfigValidator",
     "ConfigValidationError",
+    "format_local_validation_payload",
+    "LocalRuntimePreflight",
     "ValidationResult",
+    "validate_local_runtime_requirements",
     "SelectorTester",
     "SelectorTestResult",
     "StepDebugger",

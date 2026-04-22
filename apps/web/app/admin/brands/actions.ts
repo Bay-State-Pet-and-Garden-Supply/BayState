@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import * as z from 'zod';
+import type { ActionState } from '@/lib/types';
 import type { BrandActionState } from '@/components/admin/brands/types';
 
 const brandSchema = z.object({
