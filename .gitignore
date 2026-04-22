@@ -15,6 +15,7 @@
 .anthropic/
 .openai/
 .zencoder/
+.worktrees/
 .archive/
 .legacy/
 .data/
