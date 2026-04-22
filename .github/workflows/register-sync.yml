@@ -78,14 +78,7 @@ jobs:
         shell: pwsh
 
       - name: Install dependencies
-        run: |
-          # Clear potentially corrupted node_modules from previous runs since checkout clean: false
-          if (Test-Path "node_modules") { 
-            Write-Host "Cleaning existing node_modules..."
-            Remove-Item -Recurse -Force node_modules 
-          }
-          bun pm cache rm
-          bun install --frozen-lockfile --verbose
+        run: bun install --frozen-lockfile --silent
         env:
           CI: true
 
