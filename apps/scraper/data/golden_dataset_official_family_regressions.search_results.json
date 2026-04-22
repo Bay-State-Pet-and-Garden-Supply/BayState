@@ -25,7 +25,13 @@
           "provider": "serper",
           "result_type": "organic"
         }
-      ]
+      ],
+      "html_by_url": {
+        "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html": "<button class=\"btn-size\" value=\"https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0039&amp;dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&amp;pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1\" data-attr-value=\"1.5cf\" data-attr-id=\"size\">1.5 CF</button><button aria-label=\"Select Color Sierra Red\" data-url=\"https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0039&amp;dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&amp;pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1\"><span data-attr-value=\"0039\"></span></button>"
+      },
+      "resolved_payload_by_url": {
+        "https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0039&dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&pid=scotts-nature-scapes-color-enhanced-mulch&quantity=1": "{\"product\":{\"productName\":\"Scotts Nature Scapes Color Enhanced Mulch 1.5 cu. ft.\",\"brand\":\"Scotts\",\"upc\":\"032247884594\",\"id\":\"88459442\",\"selectedProductUrl\":\"/en-us/brands/scotts/products/browse-all-scotts-products/88459442.html\",\"shortDescription\":\"Scotts Nature Scapes color enhanced mulch with rich, red color.\",\"images\":{\"large\":[{\"url\":\"https://example.com/mulch.webp\"}]}}}"
+      }
     },
     {
       "query": "032247884594 Scotts Miracle-Gro NatureScapes Sierra Red 1.5 CF",
@@ -51,7 +57,13 @@
           "provider": "serper",
           "result_type": "organic"
         }
-      ]
+      ],
+      "html_by_url": {
+        "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html": "<button class=\"btn-size\" value=\"https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0039&amp;dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&amp;pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1\" data-attr-value=\"1.5cf\" data-attr-id=\"size\">1.5 CF</button><button aria-label=\"Select Color Sierra Red\" data-url=\"https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0039&amp;dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&amp;pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1\"><span data-attr-value=\"0039\"></span></button>"
+      },
+      "resolved_payload_by_url": {
+        "https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0039&dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&pid=scotts-nature-scapes-color-enhanced-mulch&quantity=1": "{\"product\":{\"productName\":\"Scotts Nature Scapes Color Enhanced Mulch 1.5 cu. ft.\",\"brand\":\"Scotts\",\"upc\":\"032247884594\",\"id\":\"88459442\",\"selectedProductUrl\":\"/en-us/brands/scotts/products/browse-all-scotts-products/88459442.html\",\"shortDescription\":\"Scotts Nature Scapes color enhanced mulch with rich, red color.\",\"images\":{\"large\":[{\"url\":\"https://example.com/mulch.webp\"}]}}}"
+      }
     },
     {
       "query": "032247884594 Scotts Nature Scapes Sierra Red 1.5 CF mulch",
@@ -77,7 +89,13 @@
           "provider": "serper",
           "result_type": "organic"
         }
-      ]
+      ],
+      "html_by_url": {
+        "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html": "<button class=\"btn-size\" value=\"https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0039&amp;dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&amp;pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1\" data-attr-value=\"1.5cf\" data-attr-id=\"size\">1.5 CF</button><button aria-label=\"Select Color Sierra Red\" data-url=\"https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0039&amp;dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&amp;pid=scotts-nature-scapes-color-enhanced-mulch&amp;quantity=1\"><span data-attr-value=\"0039\"></span></button>"
+      },
+      "resolved_payload_by_url": {
+        "https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0039&dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&pid=scotts-nature-scapes-color-enhanced-mulch&quantity=1": "{\"product\":{\"productName\":\"Scotts Nature Scapes Color Enhanced Mulch 1.5 cu. ft.\",\"brand\":\"Scotts\",\"upc\":\"032247884594\",\"id\":\"88459442\",\"selectedProductUrl\":\"/en-us/brands/scotts/products/browse-all-scotts-products/88459442.html\",\"shortDescription\":\"Scotts Nature Scapes color enhanced mulch with rich, red color.\",\"images\":{\"large\":[{\"url\":\"https://example.com/mulch.webp\"}]}}}"
+      }
     }
   ]
 }

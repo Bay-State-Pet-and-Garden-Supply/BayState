@@ -97,6 +97,13 @@ def _result_row(
     category: str,
     difficulty: str,
     error: str | None = None,
+    expected_source_tier: str | None = None,
+    expected_family_url: str | None = None,
+    expected_variant_label: str | None = None,
+    cohort_key: str | None = None,
+    predicted_source_tier: str | None = None,
+    predicted_family_url: str | None = None,
+    predicted_variant_label: str | None = None,
 ) -> BenchmarkResultRow:
     return BenchmarkResultRow(
         index=index,
@@ -118,6 +125,13 @@ def _result_row(
         difficulty=difficulty,
         rationale="pytest",
         error=error,
+        expected_source_tier=expected_source_tier,
+        expected_family_url=expected_family_url,
+        expected_variant_label=expected_variant_label,
+        cohort_key=cohort_key,
+        predicted_source_tier=predicted_source_tier,
+        predicted_family_url=predicted_family_url,
+        predicted_variant_label=predicted_variant_label,
     )
 
 
@@ -487,6 +501,202 @@ async def test_benchmark_runner_prefers_official_family_page_over_smaller_retail
     assert report["results"][0]["correct_rank"] == 1
 
 
+async def test_benchmark_runner_resolves_official_family_page_to_variant_url(tmp_path: Path) -> None:
+    entries = [
+        {
+            "query": "032247884594 Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+            "expected_source_url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/88459442.html",
+            "category": "Mulch",
+            "difficulty": "medium",
+            "rationale": "Resolved official child URL should beat the family page fixture once variant selection is implemented.",
+            "brand": "Scotts",
+            "sku": "032247884594",
+            "product_name": "Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+        }
+    ]
+    dataset_path = _write_dataset(tmp_path, entries, filename="golden_dataset_v1.json")
+    fixture_manifest_path = tmp_path / "golden_dataset_v1.search_results.json"
+    _ = fixture_manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "entries": [
+                    {
+                        "query": "032247884594 Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+                        "results": [
+                            _result(
+                                "https://www.wiltonhardware.com/p/nature-scapes-color-enhanced-mulch-sierra-red-032247884594",
+                                "Nature Scapes Color Enhanced Mulch Sierra Red 032247884594",
+                                "Independent retailer PDP for Scotts Sierra Red mulch 1.5 cu ft.",
+                            ),
+                            _result(
+                                "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
+                                "Scotts Nature Scapes Color Enhanced Mulch 1.5 cu. ft.",
+                                "Official Scotts family page with Red, Brown, and Black color variants plus 1.5 CF and 2 CF size options.",
+                            ),
+                        ],
+                    }
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    family_url = "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html"
+    variation_url = (
+        "https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?"
+        "dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0039&"
+        "dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&"
+        "pid=scotts-nature-scapes-color-enhanced-mulch&quantity=1"
+    )
+    family_html = (
+        '<button class="btn-size" '
+        f'value="{variation_url}" '
+        'data-attr-value="1.5cf" data-attr-id="size">1.5 CF</button>'
+        f'<button aria-label="Select Color Sierra Red" data-url="{variation_url}">'
+        '<span data-attr-value="0039"></span></button>'
+    )
+    variation_payload = json.dumps(
+        {
+            "product": {
+                "productName": "Scotts Nature Scapes Color Enhanced Mulch 1.5 cu. ft.",
+                "brand": "Scotts",
+                "upc": "032247884594",
+                "id": "88459442",
+                "selectedProductUrl": "/en-us/brands/scotts/products/browse-all-scotts-products/88459442.html",
+                "shortDescription": "Scotts Nature Scapes color enhanced mulch with rich, red color.",
+                "images": {"large": [{"url": "https://example.com/mulch.webp"}]},
+            }
+        }
+    )
+
+    async def _resolver_inputs(**kwargs: object) -> tuple[dict[str, str], dict[str, str]]:
+        _ = kwargs
+        return ({family_url: family_html}, {variation_url: variation_payload})
+
+    runner = BenchmarkRunner(dataset_path=dataset_path, resolver_input_builder=_resolver_inputs)
+    report = await runner.run()
+
+    assert report["summary"]["matched_examples"] == 1
+    assert report["results"][0]["predicted_source_url"] == "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/88459442.html"
+    assert report["results"][0]["expected_source_url"] == "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/88459442.html"
+    assert report["results"][0]["exact_match"] is True
+    assert report["results"][0]["predicted_source_tier"] == "official"
+    assert report["results"][0]["predicted_family_url"] == family_url
+
+
+@pytest.mark.asyncio
+async def test_benchmark_runner_uses_companion_fixture_resolver_inputs(tmp_path: Path) -> None:
+    entries = [
+        {
+            "query": "032247884594 Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+            "expected_source_url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/88459442.html",
+            "category": "Mulch",
+            "difficulty": "medium",
+            "rationale": "Companion resolver fixture inputs should let benchmark runs resolve official family pages offline.",
+            "brand": "Scotts",
+            "sku": "032247884594",
+            "product_name": "Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+        }
+    ]
+    dataset_path = _write_dataset(tmp_path, entries, filename="golden_dataset_v1.json")
+    fixture_manifest_path = tmp_path / "golden_dataset_v1.search_results.json"
+    family_url = "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html"
+    variation_url = (
+        "https://scottsmiraclegro.com/on/demandware.store/Sites-SMG-Site/en_US/Product-Variation?"
+        "dwvar_scotts-nature-scapes-color-enhanced-mulch_color=0039&"
+        "dwvar_scotts-nature-scapes-color-enhanced-mulch_size=1.5cf&"
+        "pid=scotts-nature-scapes-color-enhanced-mulch&quantity=1"
+    )
+    family_html = (
+        '<button class="btn-size" '
+        f'value="{variation_url}" '
+        'data-attr-value="1.5cf" data-attr-id="size">1.5 CF</button>'
+        f'<button aria-label="Select Color Sierra Red" data-url="{variation_url}">'
+        '<span data-attr-value="0039"></span></button>'
+    )
+    variation_payload = json.dumps(
+        {
+            "product": {
+                "productName": "Scotts Nature Scapes Color Enhanced Mulch 1.5 cu. ft.",
+                "brand": "Scotts",
+                "upc": "032247884594",
+                "id": "88459442",
+                "selectedProductUrl": "/en-us/brands/scotts/products/browse-all-scotts-products/88459442.html",
+                "shortDescription": "Scotts Nature Scapes color enhanced mulch with rich, red color.",
+                "images": {"large": [{"url": "https://example.com/mulch.webp"}]},
+            }
+        }
+    )
+    _ = fixture_manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "entries": [
+                    {
+                        "query": "032247884594 Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+                        "results": [
+                            _result(
+                                "https://www.wiltonhardware.com/p/nature-scapes-color-enhanced-mulch-sierra-red-032247884594",
+                                "Nature Scapes Color Enhanced Mulch Sierra Red 032247884594",
+                                "Independent retailer PDP for Scotts Sierra Red mulch 1.5 cu ft.",
+                            ),
+                            _result(
+                                family_url,
+                                "Scotts Nature Scapes Color Enhanced Mulch 1.5 cu. ft.",
+                                "Official Scotts family page with Red, Brown, and Black color variants plus 1.5 CF and 2 CF size options.",
+                            ),
+                        ],
+                        "html_by_url": {family_url: family_html},
+                        "resolved_payload_by_url": {variation_url: variation_payload},
+                    }
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    runner = BenchmarkRunner(dataset_path=dataset_path)
+    report = await runner.run()
+
+    assert report["summary"]["matched_examples"] == 1
+    assert report["results"][0]["predicted_source_url"] == "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/88459442.html"
+
+
+def test_benchmark_runner_does_not_backfill_variant_metadata_from_exact_match_ground_truth() -> None:
+    runner = BenchmarkRunner(dataset_path=Path("/tmp/dataset.json"))
+    example = benchmark_ai_search.BenchmarkExample(
+        index=0,
+        query="12345 Example Widget",
+        expected_source_url="https://brand.example/product-a",
+        category="Tools",
+        difficulty="easy",
+        rationale="pytest",
+        expected_source_tier="official_variant",
+        expected_family_url="https://brand.example/family-a",
+        expected_variant_label="Blue / Large",
+    )
+
+    metadata = runner._build_prediction_metadata(
+        example,
+        predicted_url="https://brand.example/product-a",
+        search_results=[
+            {
+                "url": "https://brand.example/product-a",
+                "title": "Brand Example Widget",
+                "description": "Official product page",
+            }
+        ],
+        exact_match=True,
+    )
+
+    assert metadata.source_tier == "official"
+    assert metadata.family_url is None
+    assert metadata.variant_label is None
+
+
 @pytest.mark.asyncio
 async def test_benchmark_runner_supports_llm_mode_with_selector_fallback(tmp_path: Path) -> None:
     entries = [
@@ -570,6 +780,10 @@ def test_generate_markdown_report_renders_human_readable_tables() -> None:
             "mean_reciprocal_rank": 1.0,
             "precision_at_1": 1.0,
             "recall_at_1": 1.0,
+            "official_source_selection_rate_pct": 100.0,
+            "resolved_variant_selection_rate_pct": 100.0,
+            "cohort_consistency_rate_pct": 100.0,
+            "false_official_rate_pct": 0.0,
             "accuracy_confidence_interval_95": {
                 "confidence_level": 0.95,
                 "lower_bound_pct": 100.0,
@@ -670,6 +884,13 @@ def test_generate_markdown_report_renders_human_readable_tables() -> None:
                 duration_ms=10.0,
                 category="Tools",
                 difficulty="easy",
+                expected_source_tier="official",
+                expected_family_url="https://acme.com/widget-family",
+                expected_variant_label="Blue / Large",
+                cohort_key="acme-widget-family",
+                predicted_source_tier="official",
+                predicted_family_url="https://acme.com/widget-family",
+                predicted_variant_label="Blue / Large",
             )
         ],
     )
@@ -681,9 +902,251 @@ def test_generate_markdown_report_renders_human_readable_tables() -> None:
     assert "## Baseline Comparison" in markdown
     assert "## Category Analysis" in markdown
     assert "## Category Comparison Visualization" in markdown
+    assert "| Official Source Selection Rate (%) | 100.000 |" in markdown
+    assert "| Resolved Variant Selection Rate (%) | 100.000 |" in markdown
+    assert "| Cohort Consistency Rate (%) | 100.000 |" in markdown
+    assert "| False Official Rate (%) | 0.000 |" in markdown
     assert "## Per-Example Results" in markdown
     assert "Maintain the current ranking strategy for Tools" in markdown
     assert "| Tools | 1 | 100.000 |" in markdown
+
+
+def test_metrics_calculator_computes_official_family_resolution_metrics() -> None:
+    calculator = MetricsCalculator()
+    results = [
+        _result_row(
+            index=0,
+            query="official exact",
+            expected_source_url="https://brand.example/product-a",
+            predicted_source_url="https://brand.example/product-a",
+            exact_match=True,
+            score=9.0,
+            correct_rank=1,
+            reciprocal_rank=1.0,
+            precision_at_1=1.0,
+            recall_at_1=1.0,
+            duration_ms=11.0,
+            category="Tools",
+            difficulty="easy",
+            expected_source_tier="official",
+            expected_family_url="https://brand.example/family-a",
+            expected_variant_label="Red / Large",
+            predicted_source_tier="official",
+            predicted_family_url="https://brand.example/family-a",
+            predicted_variant_label="Red / Large",
+        ),
+        _result_row(
+            index=1,
+            query="official family unresolved",
+            expected_source_url="https://brand.example/family-b",
+            predicted_source_url="https://brand.example/family-b",
+            exact_match=True,
+            score=8.0,
+            correct_rank=1,
+            reciprocal_rank=1.0,
+            precision_at_1=1.0,
+            recall_at_1=1.0,
+            duration_ms=12.0,
+            category="Tools",
+            difficulty="medium",
+            expected_source_tier="official",
+            expected_family_url="https://brand.example/family-b",
+            predicted_source_tier="official",
+            predicted_family_url="https://brand.example/family-b",
+        ),
+        _result_row(
+            index=2,
+            query="retailer prediction",
+            expected_source_url="https://brand.example/product-c",
+            predicted_source_url="https://retailer.example/product-c",
+            exact_match=False,
+            score=4.0,
+            correct_rank=2,
+            reciprocal_rank=0.5,
+            precision_at_1=0.0,
+            recall_at_1=0.0,
+            duration_ms=13.0,
+            category="Garden",
+            difficulty="hard",
+            expected_source_tier="official",
+            expected_family_url="https://brand.example/family-c",
+            expected_variant_label="Green / Small",
+            predicted_source_tier="retailer",
+            predicted_family_url="https://retailer.example/family-c",
+            predicted_variant_label="Green / Small",
+        ),
+        _result_row(
+            index=3,
+            query="false official",
+            expected_source_url="https://brand.example/product-d-correct",
+            predicted_source_url="https://brand.example/product-d-wrong",
+            exact_match=False,
+            score=3.0,
+            correct_rank=None,
+            reciprocal_rank=0.0,
+            precision_at_1=0.0,
+            recall_at_1=0.0,
+            duration_ms=14.0,
+            category="Garden",
+            difficulty="hard",
+            expected_source_tier="official",
+            expected_family_url="https://brand.example/family-d",
+            expected_variant_label="Yellow / Small",
+            predicted_source_tier="official",
+            predicted_family_url="https://brand.example/family-d",
+            predicted_variant_label="Blue / Large",
+        ),
+        _result_row(
+            index=4,
+            query="retailer exact",
+            expected_source_url="https://retailer.example/product-e",
+            predicted_source_url="https://retailer.example/product-e",
+            exact_match=True,
+            score=6.0,
+            correct_rank=1,
+            reciprocal_rank=1.0,
+            precision_at_1=1.0,
+            recall_at_1=1.0,
+            duration_ms=9.0,
+            category="Garden",
+            difficulty="easy",
+            expected_source_tier="retailer",
+            predicted_source_tier="retailer",
+        ),
+    ]
+
+    summary = calculator.calculate_metrics(results, execution_duration_ms=50.0)
+
+    assert summary["official_source_selection_rate_pct"] == 75.0
+    assert summary["resolved_variant_selection_rate_pct"] == 33.333
+    assert summary["cohort_consistency_rate_pct"] == 0.0
+    assert summary["false_official_rate_pct"] == 25.0
+
+
+def test_metrics_calculator_measures_cohort_consistency_by_domain_consensus() -> None:
+    calculator = MetricsCalculator()
+    results = [
+        _result_row(
+            index=0,
+            query="cohort a exact",
+            expected_source_url="https://www.brand.example/product-a-red",
+            predicted_source_url="https://www.brand.example/product-a-red",
+            exact_match=True,
+            score=8.5,
+            correct_rank=1,
+            reciprocal_rank=1.0,
+            precision_at_1=1.0,
+            recall_at_1=1.0,
+            duration_ms=10.0,
+            category="Tools",
+            difficulty="easy",
+            expected_source_tier="official",
+            cohort_key="family-a",
+            predicted_source_tier="official",
+        ),
+        _result_row(
+            index=1,
+            query="cohort a wrong variant same domain",
+            expected_source_url="https://brand.example/product-a-blue",
+            predicted_source_url="https://brand.example/product-a-green",
+            exact_match=False,
+            score=7.0,
+            correct_rank=2,
+            reciprocal_rank=0.5,
+            precision_at_1=0.0,
+            recall_at_1=0.0,
+            duration_ms=11.0,
+            category="Tools",
+            difficulty="medium",
+            expected_source_tier="official",
+            cohort_key="family-a",
+            predicted_source_tier="official",
+        ),
+        _result_row(
+            index=2,
+            query="cohort b exact",
+            expected_source_url="https://www.maker.example/product-b-small",
+            predicted_source_url="https://www.maker.example/product-b-small",
+            exact_match=True,
+            score=8.0,
+            correct_rank=1,
+            reciprocal_rank=1.0,
+            precision_at_1=1.0,
+            recall_at_1=1.0,
+            duration_ms=12.0,
+            category="Garden",
+            difficulty="easy",
+            expected_source_tier="official",
+            cohort_key="family-b",
+            predicted_source_tier="official",
+        ),
+        _result_row(
+            index=3,
+            query="cohort b off-domain prediction",
+            expected_source_url="https://maker.example/product-b-large",
+            predicted_source_url="https://retailer.example/product-b-medium",
+            exact_match=False,
+            score=6.5,
+            correct_rank=2,
+            reciprocal_rank=0.5,
+            precision_at_1=0.0,
+            recall_at_1=0.0,
+            duration_ms=13.0,
+            category="Garden",
+            difficulty="medium",
+            expected_source_tier="official",
+            cohort_key="family-b",
+            predicted_source_tier="retailer",
+        ),
+    ]
+
+    summary = calculator.calculate_metrics(results, execution_duration_ms=46.0)
+
+    assert summary["cohort_consistency_rate_pct"] == 75.0
+
+
+def test_metrics_calculator_ignores_false_official_rate_for_legacy_unannotated_rows() -> None:
+    calculator = MetricsCalculator()
+    results = [
+        _result_row(
+            index=0,
+            query="legacy official prediction",
+            expected_source_url="https://retailer.example/product-a",
+            predicted_source_url="https://brand.example/product-a",
+            exact_match=False,
+            score=4.0,
+            correct_rank=2,
+            reciprocal_rank=0.5,
+            precision_at_1=0.0,
+            recall_at_1=0.0,
+            duration_ms=12.0,
+            category="Tools",
+            difficulty="medium",
+            predicted_source_tier="official",
+        ),
+        _result_row(
+            index=1,
+            query="annotated retailer expectation",
+            expected_source_url="https://retailer.example/product-b",
+            predicted_source_url="https://retailer.example/product-b",
+            exact_match=True,
+            score=7.0,
+            correct_rank=1,
+            reciprocal_rank=1.0,
+            precision_at_1=1.0,
+            recall_at_1=1.0,
+            duration_ms=10.0,
+            category="Garden",
+            difficulty="easy",
+            expected_source_tier="retailer",
+            predicted_source_tier="retailer",
+        ),
+    ]
+
+    summary = calculator.calculate_metrics(results, execution_duration_ms=22.0)
+
+    assert summary["official_source_selection_rate_pct"] == 0.0
+    assert summary["false_official_rate_pct"] == 0.0
 
 
 def test_print_console_text_falls_back_for_non_utf8_console(monkeypatch: pytest.MonkeyPatch) -> None:
