@@ -275,7 +275,7 @@ export function StorefrontHeader({
               <div 
                 className={cn(
                   "relative transition-all duration-300 ease-in-out",
-                  isScrolled ? "h-10 w-10" : "h-16 w-16"
+                  isScrolled ? "h-12 w-12" : "h-16 w-16"
                 )}
               >
                 <Image
@@ -291,7 +291,7 @@ export function StorefrontHeader({
                 <span 
                   className={cn(
                     "font-black leading-none tracking-tighter text-white uppercase font-display group-hover:text-accent transition-all duration-300 ease-in-out",
-                    isScrolled ? "text-2xl" : "text-4xl"
+                    isScrolled ? "text-3xl" : "text-4xl"
                   )}
                 >
                   Bay State
