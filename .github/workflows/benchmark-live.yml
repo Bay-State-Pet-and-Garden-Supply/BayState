@@ -1,0 +1,100 @@
+name: Benchmark Live
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # Nightly at 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      max_urls:
+        description: "Max URLs to benchmark"
+        required: false
+        default: "50"
+      modes:
+        description: "Extraction modes (comma-separated: llm-free,llm,auto)"
+        required: false
+        default: "auto"
+      timeout:
+        description: "Per-URL timeout in seconds"
+        required: false
+        default: "30"
+
+jobs:
+  benchmark:
+    name: Run Live Benchmarks
+    runs-on: [self-hosted, linux]
+    timeout-minutes: 45
+
+    defaults:
+      run:
+        working-directory: ./apps/scraper
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: "./apps/scraper/requirements.txt"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install ruff==0.1.9 mypy pytest pytest-cov types-requests types-PyYAML
+
+      - name: Install Playwright browsers
+        run: python -m playwright install chromium
+
+      - name: Run benchmark tests
+        env:
+          PYTHONPATH: .
+          SCRAPER_API_KEY: ${{ secrets.SCRAPER_API_KEY }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          BENCHMARK_MAX_URLS: ${{ github.event.inputs.max_urls || '50' }}
+          BENCHMARK_MODES: ${{ github.event.inputs.modes || 'auto' }}
+          BENCHMARK_TIMEOUT: ${{ github.event.inputs.timeout || '30' }}
+        run: |
+          pytest tests/benchmarks/unified/ \
+            -m "benchmark or live" \
+            --run-live \
+            --max-urls=${{ github.event.inputs.max_urls || '50' }} \
+            --modes=${{ github.event.inputs.modes || 'auto' }} \
+            --timeout=${{ github.event.inputs.timeout || '30' }} \
+            --tb=short \
+            --json-report \
+            --json-report-file=.sisyphus/evidence/benchmark-report.json \
+            || true
+
+      - name: Run performance benchmarks
+        env:
+          PYTHONPATH: .
+        run: |
+          pytest tests/benchmarks/unified/ \
+            -m "performance" \
+            --max-urls=${{ github.event.inputs.max_urls || '50' }} \
+            --modes=${{ github.event.inputs.modes || 'auto' }} \
+            --timeout=${{ github.event.inputs.timeout || '30' }} \
+            --tb=short \
+            || true
+
+      - name: Upload benchmark reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-reports
+          path: |
+            apps/scraper/.sisyphus/evidence/benchmark-report.json
+            apps/scraper/.sisyphus/evidence/
+          retention-days: 30
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f .sisyphus/evidence/benchmark-report.json ]; then
+            echo "Report uploaded as artifact." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No benchmark report generated." >> $GITHUB_STEP_SUMMARY
+          fi
