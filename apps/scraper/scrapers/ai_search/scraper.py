@@ -623,7 +623,7 @@ class AISearchScraper:
         if cohort_state is None:
             return None
 
-        return cohort_state.dominant_official_domain(minimum_count=2)
+        return cohort_state.dominant_official_domain(minimum_count=1)
 
     def _build_locked_cohort_state(
         self,
@@ -1477,19 +1477,26 @@ class AISearchScraper:
         """
         cost_context = _ScrapeCostContext()
         try:
-            preferred_domains = (
-                self._merge_preferred_domains(
-                    preferred_domains,
-                    self._preferred_cohort_domains(cohort_state),
-                )
-                or None
-            )
             inferred_brand = None
             if not brand and cohort_state is not None:
                 ranked_brands = cohort_state.ranked_brands()
                 if ranked_brands:
                     inferred_brand = ranked_brands[0]
             effective_brand = brand or inferred_brand
+
+            brand_domains: list[str] = []
+            if effective_brand:
+                brand_normalized = self._scoring._matching.normalize_token_text(effective_brand)
+                brand_domains = list(self._scoring.BRAND_DOMAIN_ALIASES.get(brand_normalized, set()))
+
+            preferred_domains = (
+                self._merge_preferred_domains(
+                    preferred_domains,
+                    self._preferred_cohort_domains(cohort_state),
+                    brand_domains,
+                )
+                or None
+            )
 
             search_results, product_name, search_error = await self._collect_search_candidates(
                 sku=sku,

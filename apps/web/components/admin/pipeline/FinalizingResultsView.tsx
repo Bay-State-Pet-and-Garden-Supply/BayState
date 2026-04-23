@@ -1818,6 +1818,9 @@ export function FinalizingResultsView({
                   <ImageCarousel
                     selectedImages={formData.selectedImages}
                     onToggleImage={toggleImage}
+                    onReorderImages={(newImages) =>
+                      handleInputChange("selectedImages", newImages)
+                    }
                   />
 
                   <div className="space-y-2 min-w-0">

@@ -304,7 +304,7 @@ def test_prepare_search_results_prefers_official_brand_segment_when_brand_missin
         },
         {
             "url": "https://bentleyseeds.com/products/jubilee-tomato-seed",
-            "title": "Seed Packets - Bentley Seeds",
+            "title": "Seed Packets 1943 - Bentley Seeds",
             "description": "Official product page",
         },
     ]
@@ -991,3 +991,21 @@ def test_scrape_product_rejects_unrelated_result() -> None:
     assert result.success is False
     assert result.error is not None
     assert any(term in result.error.lower() for term in ["mismatch", "extraction failed"])
+
+
+def test_cohort_normalization_triggers_on_single_domain_occurrence() -> None:
+    from scrapers.ai_search.scraper import _BatchCohortState
+    
+    scraper = AISearchScraper(prefer_manufacturer=True)
+    cohort_state = _BatchCohortState(
+        key="test_cohort",
+        preferred_domain_counts={},
+        preferred_brand_counts={},
+        official_domain_counts={},
+    )
+    cohort_state.remember_domain("scottsmiraclegro.com")
+    cohort_state.remember_official_domain("scottsmiraclegro.com")
+    
+    # Verify that the minimum_count=1 logic triggers successfully on a single occurrence
+    dominant = scraper._cohort_normalization_domain(cohort_state)
+    assert dominant == "scottsmiraclegro.com"
