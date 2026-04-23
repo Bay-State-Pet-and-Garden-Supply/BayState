@@ -837,8 +837,24 @@ class SearchScorer:
         elif source_tier == "marketplace":
             score -= 3.5
 
+        if preferred_domains and domain:
+            effective_preferred_domains = list(preferred_domains)
+        else:
+            effective_preferred_domains = []
+
+        for category_domain in self._category_preferred_domains(category):
+            if category_domain not in effective_preferred_domains:
+                effective_preferred_domains.append(category_domain)
+
+        is_preferred = domain and any(
+            domain == pref or domain.endswith(f".{pref}") 
+            for pref in effective_preferred_domains if pref
+        )
+
         if source_class in {"official_generic", "official_root"}:
-            score -= 4.0
+            # Bypass generic penalty if the domain is explicitly preferred (e.g. from brand registry)
+            if not is_preferred:
+                score -= 4.0
 
         score += self._query_param_penalty(url)
 
@@ -849,15 +865,6 @@ class SearchScorer:
                 score += 3.0
             elif success_rate < 0.3:
                 score -= 3.0
-
-        if preferred_domains and domain:
-            effective_preferred_domains = list(preferred_domains)
-        else:
-            effective_preferred_domains = []
-
-        for category_domain in self._category_preferred_domains(category):
-            if category_domain not in effective_preferred_domains:
-                effective_preferred_domains.append(category_domain)
 
         if effective_preferred_domains and domain:
             for index, preferred_domain in enumerate(effective_preferred_domains):
