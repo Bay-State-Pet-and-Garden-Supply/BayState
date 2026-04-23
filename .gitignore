@@ -79,3 +79,5 @@ __pycache__/
 dogfood-output/
 
 docker/github-actions-runner/_work/
+
+.omg
