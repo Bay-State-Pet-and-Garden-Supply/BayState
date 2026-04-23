@@ -253,15 +253,17 @@ class Crawl4AIEngine:
             
             # Content filtering
             css_selector=run_settings.get("css_selector"),
-            excluded_tags=run_settings.get("excluded_tags", ["nav", "footer", "header", "aside"]),
+            excluded_tags=run_settings.get("excluded_tags", ["nav", "footer", "header", "aside", "form"]),
+            target_elements=run_settings.get("target_elements"),
             markdown_generator=markdown_generator,
             
             # Standard settings
             js_code=run_settings.get("js_code"),
             wait_for=run_settings.get("wait_for"),
-            wait_until=run_settings.get("wait_until", "domcontentloaded"),
+            wait_until=run_settings.get("wait_until", "networkidle"),
             wait_for_images=run_settings.get("wait_for_images", False),
             page_timeout=page_timeout,
+            delay_before_return_html=float(run_settings.get("delay_before_return_html", 0)),
             mean_delay=run_settings.get("mean_delay", 0.1),
             max_range=run_settings.get("max_range", 0.3),
             semaphore_count=semaphore_count,
