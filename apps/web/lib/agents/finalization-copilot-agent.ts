@@ -21,8 +21,8 @@ const FINALIZATION_COPILOT_MODEL = DEFAULT_AI_MODEL;
 const FINALIZATION_COPILOT_MISSING_KEY_ERROR =
   "OpenAI API key is not configured. Save it in Admin -> Settings -> AI Scraping Settings before using Finalization Copilot.";
 
-function buildFinalizationCopilotModel(apiKey: string, modelId: string) {
-  return createOpenAI({ apiKey })(modelId);
+function buildFinalizationCopilotModel(apiKey: string, modelId: string, baseURL?: string) {
+  return createOpenAI({ apiKey, baseURL })(modelId);
 }
 
 function toRecord(value: unknown): Record<string, unknown> {
@@ -98,12 +98,13 @@ export const finalizationCopilotAgent = new ToolLoopAgent({
       throw new Error(FINALIZATION_COPILOT_MISSING_KEY_ERROR);
     }
     const modelId = runtimeConfig.llm_model?.trim() || FINALIZATION_COPILOT_MODEL;
+    const baseURL = runtimeConfig.llm_base_url?.trim();
 
     const supabase = await createClient();
 
     return {
       ...settings,
-      model: buildFinalizationCopilotModel(openaiApiKey, modelId),
+      model: buildFinalizationCopilotModel(openaiApiKey, modelId, baseURL),
       instructions: buildInstructions(options),
       tools: createFinalizationCopilotTools({
         searchBrands: async (query) => {
