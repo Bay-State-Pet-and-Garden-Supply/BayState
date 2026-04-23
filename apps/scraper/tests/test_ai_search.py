@@ -993,9 +993,43 @@ def test_scrape_product_rejects_unrelated_result() -> None:
     assert any(term in result.error.lower() for term in ["mismatch", "extraction failed"])
 
 
+def test_validate_extraction_match_accepts_official_domain_without_demandware() -> None:
+    """Regression: official-tier sources should bypass name mismatch rejection
+    even when no Demandware variant resolver is present.
+
+    This verifies the fix that changed the official-family bypass condition from
+    `source_tier == "official" and variant_resolver == "demandware_product_variation"`
+    to simply `source_tier == "official"`, allowing any official domain to skip
+    name mismatch rejection when variant tokens overlap.
+    """
+    scraper = AISearchScraper(confidence_threshold=0.7)
+
+    ok, reason = scraper._validator.validate_extraction_match(
+        extraction_result={
+            "success": True,
+            "product_name": "RED MULCH 1.5 CUFT S COTTS NATURESCAPES",
+            "brand": "Scotts",
+            "description": "Scotts Nature Scapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+            "size_metrics": "1.5 cu ft",
+            "images": ["https://scottsmiraclegro.com/images/products/naturescapes-mulch-red.jpg"],
+            "categories": ["Mulch"],
+            "confidence": 0.85,
+            "resolved_variant": None,
+            "variant_tokens": ["red", "mulch"],
+        },
+        sku="032247884594",
+        product_name="SCOTTS NATURESCAPES COLOR ENHANCED MULCH SIERRA RED 1.5 CU FT",
+        brand="Scotts",
+        source_url="https://scottsmiraclegro.com/products/some-mulch",
+    )
+
+    assert ok is True
+    assert "Product name mismatch" not in reason
+
+
 def test_cohort_normalization_triggers_on_single_domain_occurrence() -> None:
     from scrapers.ai_search.scraper import _BatchCohortState
-    
+
     scraper = AISearchScraper(prefer_manufacturer=True)
     cohort_state = _BatchCohortState(
         key="test_cohort",
@@ -1005,7 +1039,7 @@ def test_cohort_normalization_triggers_on_single_domain_occurrence() -> None:
     )
     cohort_state.remember_domain("scottsmiraclegro.com")
     cohort_state.remember_official_domain("scottsmiraclegro.com")
-    
+
     # Verify that the minimum_count=1 logic triggers successfully on a single occurrence
     dominant = scraper._cohort_normalization_domain(cohort_state)
     assert dominant == "scottsmiraclegro.com"
