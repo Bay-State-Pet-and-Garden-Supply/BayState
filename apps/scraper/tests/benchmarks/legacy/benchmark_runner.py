@@ -1,5 +1,10 @@
 """
 Main benchmark runner for crawl4ai vs legacy scraper comparison.
+
+.. deprecated::
+    This module is part of the legacy benchmark suite.
+    Use ``tests.benchmarks.unified`` for new benchmarks.
+    This file will be removed in a future release.
 """
 
 from __future__ import annotations
@@ -12,7 +17,7 @@ from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any
 
-from tests.benchmarks.utils import Timer, MemoryProfiler
+from tests.benchmarks.legacy.utils import Timer, MemoryProfiler
 
 logger = logging.getLogger(__name__)
 

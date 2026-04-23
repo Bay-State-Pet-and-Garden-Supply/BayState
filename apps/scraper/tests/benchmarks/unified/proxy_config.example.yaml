@@ -1,0 +1,37 @@
+# BayState Benchmark Proxy Configuration
+# Copy this file to proxy_config.yaml and fill in your proxy details.
+#
+# Load with:
+#   from tests.benchmarks.unified.proxy import ProxyRotator
+#   rotator = ProxyRotator.from_yaml("proxy_config.yaml")
+#
+# Or via environment variable (comma-separated URLs):
+#   export BENCHMARK_PROXY_POOL="http://user:pass@proxy1:8080,socks5://proxy2:1080"
+
+proxies:
+  # HTTP proxy with authentication
+  - host: proxy1.example.com
+    port: 8080
+    protocol: http
+    username: "${PROXY_USER}"   # Resolved from env vars at runtime
+    password: "${PROXY_PASS}"
+
+  # SOCKS5 proxy without auth
+  - host: proxy2.example.com
+    port: 1080
+    protocol: socks5
+
+  # HTTPS proxy
+  - host: proxy3.example.com
+    port: 443
+    protocol: https
+
+# Rotation settings
+rotation:
+  max_failures: 3          # Mark proxy down after N consecutive failures
+  cooldown_seconds: 300    # Wait N seconds before retrying a downed proxy
+
+# Health check settings
+health_check:
+  url: "https://httpbin.org/ip"
+  timeout_seconds: 10
