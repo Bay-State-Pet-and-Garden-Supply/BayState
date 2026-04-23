@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
         const { skus, scrapers, enrichment_method, testMode, cohort_id } = body as {
             skus: string[];
             scrapers: string[];
-            enrichment_method?: 'scrapers' | 'ai_search';
+            enrichment_method?: 'scrapers' | 'ai_search' | 'official_brand';
             testMode?: boolean;
             cohort_id?: string;
         };

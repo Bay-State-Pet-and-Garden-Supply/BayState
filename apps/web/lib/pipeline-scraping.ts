@@ -753,12 +753,15 @@ export async function scrapeProducts(
     const chunkSize = options?.chunkSize ?? 50; // Default 50 SKUs per chunk
     const enrichmentMethod = options?.enrichment_method ?? (options?.jobType === 'ai_search' ? 'ai_search' : 'scrapers');
     const isAISearch = enrichmentMethod === 'ai_search';
-    const effectiveScrapersRaw = isAISearch ? ['ai_search'] : scrapers;
-    const jobType: ScrapeJobInsertType = isAISearch ? 'ai_search' : 'standard';
+    const isOfficialBrand = enrichmentMethod === 'official_brand';
+    const isDiscovery = isAISearch || isOfficialBrand;
+
+    const effectiveScrapersRaw = isDiscovery ? [enrichmentMethod] : scrapers;
+    const jobType: ScrapeJobInsertType = isDiscovery ? 'ai_search' : 'standard';
 
     // Resolve scraper display names to slugs if possible using local YAML configs
     let effectiveScrapers = effectiveScrapersRaw;
-    if (scrapers.length > 0 && !isAISearch) {
+    if (scrapers.length > 0 && !isDiscovery) {
         const configs = await getLocalScraperConfigs();
         
         if (configs && configs.length > 0) {

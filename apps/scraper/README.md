@@ -2,6 +2,14 @@
 
 Distributed headless scraper runners for Bay State Pet & Garden Supply.
 
+## What's New in v0.3.x (Development)
+
+- **Official Brand Scraper** - Isolated pipeline for direct-from-manufacturer ingestion
+- **Manufacturer Isolation** - Automatic bypass of retail aggregators (Amazon, Chewy, etc.)
+- **Knowledge Graph Anchoring** - Deterministic source verification via Google Knowledge Graph
+- **Two-Stage Brand Extraction** - High-speed deterministic CSS → semantic LLM fallback
+- **Offline Schema Generation** - Tooling for pre-generating resilient, LLM-free extraction rules
+
 ## What's New in v0.3.0
 
 - **crawl4ai Engine** - New high-performance extraction engine (3-5x faster)
