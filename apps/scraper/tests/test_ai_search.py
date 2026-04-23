@@ -250,6 +250,50 @@ def test_prepare_search_results_prefers_official_family_page_with_variant_signal
     )
 
 
+def test_prepare_search_results_demotes_wrong_official_brand_pdp_below_exact_retailer_match() -> None:
+    scraper = AISearchScraper(prefer_manufacturer=True)
+    results = [
+        {
+            "url": "https://acmepets.com/products/deluxe-ball",
+            "title": "Acme Deluxe Ball | Official Product Page",
+            "description": "Official Acme product page for the Deluxe Ball dog toy.",
+        },
+        {
+            "url": "https://www.chewy.com/acme-squeaky-ball-12345/dp/123456",
+            "title": "Acme Squeaky Ball 12345",
+            "description": "Exact retailer PDP for the Acme Squeaky Ball with add to cart and in stock details.",
+        },
+    ]
+
+    prepared = scraper._scoring.prepare_search_results(
+        search_results=results,
+        sku="12345",
+        brand="Acme",
+        product_name="Acme Squeaky Ball",
+        category="Dog Toys",
+        prefer_manufacturer=True,
+    )
+
+    assert prepared[0]["url"] == "https://www.chewy.com/acme-squeaky-ball-12345/dp/123456"
+
+
+def test_classify_result_source_marks_wrong_official_brand_pdp_as_generic() -> None:
+    scraper = AISearchScraper(prefer_manufacturer=True)
+
+    source_type = scraper._scoring.classify_result_source(
+        {
+            "url": "https://acmepets.com/products/deluxe-ball",
+            "title": "Acme Deluxe Ball | Official Product Page",
+            "description": "Official Acme product page for the Deluxe Ball dog toy.",
+        },
+        sku="12345",
+        brand="Acme",
+        product_name="Acme Squeaky Ball",
+    )
+
+    assert source_type == "official_generic"
+
+
 def test_prepare_search_results_prefers_official_brand_segment_when_brand_missing() -> None:
     scraper = AISearchScraper(prefer_manufacturer=True)
     results = [
@@ -260,7 +304,7 @@ def test_prepare_search_results_prefers_official_brand_segment_when_brand_missin
         },
         {
             "url": "https://bentleyseeds.com/products/jubilee-tomato-seed",
-            "title": "Seed Packets - Bentley Seeds",
+            "title": "Seed Packets 1943 - Bentley Seeds",
             "description": "Official product page",
         },
     ]
@@ -947,3 +991,55 @@ def test_scrape_product_rejects_unrelated_result() -> None:
     assert result.success is False
     assert result.error is not None
     assert any(term in result.error.lower() for term in ["mismatch", "extraction failed"])
+
+
+def test_validate_extraction_match_accepts_official_domain_without_demandware() -> None:
+    """Regression: official-tier sources should bypass name mismatch rejection
+    even when no Demandware variant resolver is present.
+
+    This verifies the fix that changed the official-family bypass condition from
+    `source_tier == "official" and variant_resolver == "demandware_product_variation"`
+    to simply `source_tier == "official"`, allowing any official domain to skip
+    name mismatch rejection when variant tokens overlap.
+    """
+    scraper = AISearchScraper(confidence_threshold=0.7)
+
+    ok, reason = scraper._validator.validate_extraction_match(
+        extraction_result={
+            "success": True,
+            "product_name": "RED MULCH 1.5 CUFT S COTTS NATURESCAPES",
+            "brand": "Scotts",
+            "description": "Scotts Nature Scapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
+            "size_metrics": "1.5 cu ft",
+            "images": ["https://scottsmiraclegro.com/images/products/naturescapes-mulch-red.jpg"],
+            "categories": ["Mulch"],
+            "confidence": 0.85,
+            "resolved_variant": None,
+            "variant_tokens": ["red", "mulch"],
+        },
+        sku="032247884594",
+        product_name="SCOTTS NATURESCAPES COLOR ENHANCED MULCH SIERRA RED 1.5 CU FT",
+        brand="Scotts",
+        source_url="https://scottsmiraclegro.com/products/some-mulch",
+    )
+
+    assert ok is True
+    assert "Product name mismatch" not in reason
+
+
+def test_cohort_normalization_triggers_on_single_domain_occurrence() -> None:
+    from scrapers.ai_search.scraper import _BatchCohortState
+
+    scraper = AISearchScraper(prefer_manufacturer=True)
+    cohort_state = _BatchCohortState(
+        key="test_cohort",
+        preferred_domain_counts={},
+        preferred_brand_counts={},
+        official_domain_counts={},
+    )
+    cohort_state.remember_domain("scottsmiraclegro.com")
+    cohort_state.remember_official_domain("scottsmiraclegro.com")
+
+    # Verify that the minimum_count=1 logic triggers successfully on a single occurrence
+    dominant = scraper._cohort_normalization_domain(cohort_state)
+    assert dominant == "scottsmiraclegro.com"

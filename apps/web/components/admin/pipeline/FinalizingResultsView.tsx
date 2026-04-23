@@ -16,6 +16,8 @@ import {
   Search,
   Check,
   Sparkles,
+  Trash2,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
@@ -643,6 +645,58 @@ export function FinalizingResultsView({
     }
   };
 
+  const addCustomSource = () => {
+    if (!selectedSku) return;
+    const url = formData.customSourceUrl.trim();
+    if (!url) return;
+    if (pendingCopilotReviewRef.current) {
+      notifyPendingCopilotReview("editing the draft manually");
+      return;
+    }
+
+    try {
+      new URL(url);
+    } catch {
+      toast.error("Enter a valid URL");
+      return;
+    }
+
+    const hostname = new URL(url).hostname.replace("www.", "");
+    const sourceKey = `custom:${hostname}`;
+
+    updateDraftForSku(selectedSku, (prev) => ({
+      ...prev,
+      sources: {
+        ...prev.sources,
+        [sourceKey]: {
+          url,
+          scraped_at: new Date().toISOString(),
+          _is_custom: true,
+        },
+      },
+      customSourceUrl: "",
+    }));
+    toast.success(`Added source: ${hostname}`);
+  };
+
+  const removeSource = (sourceKey: string) => {
+    if (!selectedSku) return;
+    if (pendingCopilotReviewRef.current) {
+      notifyPendingCopilotReview("editing the draft manually");
+      return;
+    }
+
+    updateDraftForSku(selectedSku, (prev) => {
+      const nextSources = { ...prev.sources };
+      delete nextSources[sourceKey];
+      return {
+        ...prev,
+        sources: nextSources,
+      };
+    });
+    toast.success(`Removed source: ${sourceKey}`);
+  };
+
   const normalizeStorePages = useCallback(
     (pages: string[]) => {
       const requestedPages = new Set(
@@ -708,6 +762,7 @@ export function FinalizingResultsView({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   consolidated: buildConsolidatedPayloadFromDraft(currentDraft),
+                  sources: currentDraft.sources,
                 }),
               },
             );
@@ -1815,10 +1870,38 @@ export function FinalizingResultsView({
             <div className="flex-1 min-h-0 flex flex-col">
               <div className="flex-1 overflow-y-auto min-h-0 p-2 sm:p-3 space-y-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-start">
-                  <ImageCarousel
-                    selectedImages={formData.selectedImages}
-                    onToggleImage={toggleImage}
-                  />
+                  <div className="space-y-2">
+                    <ImageCarousel
+                      selectedImages={formData.selectedImages}
+                      onToggleImage={toggleImage}
+                      onReorderImages={(newImages) =>
+                        handleInputChange("selectedImages", newImages)
+                      }
+                    />
+                    <div className="flex gap-2">
+                      <Input
+                        value={formData.customImageUrl}
+                        onChange={(e) =>
+                          handleInputChange("customImageUrl", e.target.value)
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            addCustomImage();
+                          }
+                        }}
+                        placeholder="Paste custom product image URL..."
+                        className="h-8 border border-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold text-xs"
+                      />
+                      <Button
+                        onClick={addCustomImage}
+                        size="sm"
+                        className="h-8 bg-zinc-950 text-white rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-zinc-800 font-black uppercase tracking-tighter text-[10px]"
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  </div>
 
                   <div className="space-y-2 min-w-0">
                     <div className="space-y-1">
@@ -2128,6 +2211,90 @@ export function FinalizingResultsView({
                           </div>
                         </PopoverContent>
                       </Popover>
+                    </div>
+
+                    <div className="space-y-1 pt-4">
+                      <h3 className="text-xs font-black uppercase tracking-tighter text-zinc-950">
+                        Source URLs
+                      </h3>
+                      <Separator className="h-1 bg-zinc-950" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <Input
+                          value={formData.customSourceUrl}
+                          onChange={(e) =>
+                            handleInputChange("customSourceUrl", e.target.value)
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addCustomSource();
+                            }
+                          }}
+                          placeholder="Paste custom product source URL..."
+                          className="h-8 border border-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold text-xs"
+                        />
+                        <Button
+                          onClick={addCustomSource}
+                          size="sm"
+                          className="h-8 bg-zinc-950 text-white rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-zinc-800 font-black uppercase tracking-tighter text-[10px]"
+                        >
+                          Add
+                        </Button>
+                      </div>
+
+                      <div className="space-y-1 max-h-[160px] overflow-y-auto p-1 border border-dashed border-zinc-300">
+                        {Object.entries(formData.sources).length > 0 ? (
+                          Object.entries(formData.sources).map(([key, sourceData]) => {
+                            const typedSourceData = sourceData as { url?: string; _is_custom?: boolean };
+                            const url = typedSourceData?.url;
+                            const isCustom = typedSourceData?._is_custom;
+                            
+                            return (
+                              <div
+                                key={key}
+                                className="flex items-center justify-between gap-2 border border-zinc-950 bg-white p-2 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+                              >
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-[10px] font-black uppercase tracking-tighter text-zinc-950 truncate">
+                                    {key}
+                                    {isCustom && (
+                                      <span className="ml-1 text-[8px] text-violet-600 font-black italic">
+                                        Custom
+                                      </span>
+                                    )}
+                                  </span>
+                                  {url && (
+                                    <a
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-[9px] font-bold text-zinc-500 hover:text-zinc-950 truncate flex items-center gap-1"
+                                    >
+                                      {url}
+                                      <ExternalLink className="h-2 w-2" />
+                                    </a>
+                                  )}
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 rounded-none text-zinc-400 hover:text-red-600 hover:bg-red-50"
+                                  onClick={() => removeSource(key)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="py-4 text-center text-[10px] font-black uppercase tracking-tighter text-zinc-400 italic">
+                            No sources added.
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="space-y-1 pt-4">

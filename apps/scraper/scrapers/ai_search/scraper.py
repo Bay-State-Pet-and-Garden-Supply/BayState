@@ -1,6 +1,7 @@
 """Main AI Search Scraper implementation."""
 
 import asyncio
+import httpx
 import json
 import logging
 import os
@@ -25,6 +26,8 @@ from scrapers.ai_search.query_builder import QueryBuilder
 from scrapers.ai_search.cohort_state import _BatchCohortState
 from scrapers.ai_search.name_consolidator import NameConsolidator
 from scrapers.ai_search.source_selector import LLMSourceSelector
+from scrapers.ai_search.candidate_resolver import CandidateResolver
+from scrapers.ai_search.selection_pipeline import run_selection_pipeline
 from scrapers.ai_search.two_step_refiner import TwoStepSearchRefiner
 from scrapers.ai_search.validation import ExtractionValidator
 
@@ -222,6 +225,7 @@ class AISearchScraper:
         )
         self._query_builder = QueryBuilder()
         self._validator = ExtractionValidator(confidence_threshold)
+        self._candidate_resolver = CandidateResolver(self._scoring)
         self._source_selector = LLMSourceSelector(
             model=self.llm_model,
             provider=self.llm_provider,
@@ -619,7 +623,7 @@ class AISearchScraper:
         if cohort_state is None:
             return None
 
-        return cohort_state.dominant_official_domain(minimum_count=2)
+        return cohort_state.dominant_official_domain(minimum_count=1)
 
     def _build_locked_cohort_state(
         self,
@@ -884,6 +888,11 @@ class AISearchScraper:
             name_consolidator=self._name_consolidator,
             cohort_state=cohort_state,
             validator=self._validator,
+            resolver=self._candidate_resolver,
+            selection_pipeline=run_selection_pipeline,
+            resolver_input_builder=self._build_selection_pipeline_resolver_inputs,
+            source_selector=self._source_selector if self.use_ai_source_selection else None,
+            prefer_manufacturer=self.prefer_manufacturer,
         )
 
         valid_batch: list[tuple[int, dict[str, Any]]] = []
@@ -1393,6 +1402,59 @@ class AISearchScraper:
         )
         return prepared_refined_results
 
+    async def _build_selection_pipeline_resolver_inputs(
+        self,
+        search_results: list[dict[str, Any]],
+        sku: str,
+        brand: Optional[str],
+        product_name: Optional[str],
+    ) -> tuple[dict[str, str], dict[str, str]]:
+        html_by_url: dict[str, str] = {}
+        resolved_payload_by_url: dict[str, str] = {}
+
+        family_candidates: list[str] = []
+        for result in search_results[:5]:
+            source_url = str(result.get("url") or "").strip()
+            if not source_url:
+                continue
+            if self._scoring.classify_result_source(result, sku, brand, product_name) != "official_family":
+                continue
+            family_candidates.append(source_url)
+
+        if not family_candidates:
+            return html_by_url, resolved_payload_by_url
+
+        async with httpx.AsyncClient(follow_redirects=True, timeout=20.0) as client:
+            for family_url in family_candidates:
+                try:
+                    family_response = await client.get(family_url)
+                    family_response.raise_for_status()
+                except Exception as exc:
+                    logger.debug("[AI Search] Failed fetching official family HTML for %s: %s", family_url, exc)
+                    continue
+
+                family_html = family_response.text
+                html_by_url[family_url] = family_html
+
+                variation_candidates = self._extraction.extract_demandware_variant_candidates(
+                    html_text=family_html,
+                    source_url=family_url,
+                    expected_name=product_name,
+                )
+                for variation_candidate in variation_candidates[:3]:
+                    variation_url = str(variation_candidate.get("url") or "").strip()
+                    if not variation_url or variation_url in resolved_payload_by_url:
+                        continue
+                    try:
+                        variation_response = await client.get(variation_url)
+                        variation_response.raise_for_status()
+                    except Exception as exc:
+                        logger.debug("[AI Search] Failed fetching variation payload for %s: %s", variation_url, exc)
+                        continue
+                    resolved_payload_by_url[variation_url] = variation_response.text
+
+        return html_by_url, resolved_payload_by_url
+
     async def scrape_product(
         self,
         sku: str,
@@ -1415,19 +1477,26 @@ class AISearchScraper:
         """
         cost_context = _ScrapeCostContext()
         try:
-            preferred_domains = (
-                self._merge_preferred_domains(
-                    preferred_domains,
-                    self._preferred_cohort_domains(cohort_state),
-                )
-                or None
-            )
             inferred_brand = None
             if not brand and cohort_state is not None:
                 ranked_brands = cohort_state.ranked_brands()
                 if ranked_brands:
                     inferred_brand = ranked_brands[0]
             effective_brand = brand or inferred_brand
+
+            brand_domains: list[str] = []
+            if effective_brand:
+                brand_normalized = self._scoring._matching.normalize_token_text(effective_brand)
+                brand_domains = list(self._scoring.BRAND_DOMAIN_ALIASES.get(brand_normalized, set()))
+
+            preferred_domains = (
+                self._merge_preferred_domains(
+                    preferred_domains,
+                    self._preferred_cohort_domains(cohort_state),
+                    brand_domains,
+                )
+                or None
+            )
 
             search_results, product_name, search_error = await self._collect_search_candidates(
                 sku=sku,
@@ -1492,26 +1561,63 @@ class AISearchScraper:
                         cost_context=cost_context,
                     )
 
-            ordered_results = list(search_results)
-            prioritized_url = None
-            if self.use_ai_source_selection:
-                prioritized_url = await self._identify_best_source(
-                    ordered_results[:5],
-                    sku,
-                    effective_brand,
-                    product_name,
-                    cost_context=cost_context,
-                    preferred_domains=preferred_domains,
-                )
+            html_by_url, resolved_payload_by_url = await self._build_selection_pipeline_resolver_inputs(
+                search_results=search_results,
+                sku=sku,
+                brand=effective_brand,
+                product_name=product_name,
+            )
+
+            selection_result = await run_selection_pipeline(
+                search_results=search_results,
+                sku=sku,
+                product_name=product_name,
+                brand=effective_brand,
+                category=category,
+                resolver=self._candidate_resolver,
+                scoring=self._scoring,
+                html_by_url=html_by_url,
+                resolved_payload_by_url=resolved_payload_by_url,
+                selector=self._source_selector if self.use_ai_source_selection else None,
+                prefer_manufacturer=self.prefer_manufacturer,
+                preferred_domains=preferred_domains,
+            )
+
+            if cost_context is not None:
+                cost_context.llm_cost_usd += float(selection_result.selector_cost_usd or 0.0)
+
+            ordered_results = [
+                {
+                    "url": candidate.resolved_url,
+                    "title": str(next((result.get("title") for result in search_results if str(result.get("url") or "") == candidate.source_url), "") or ""),
+                    "description": str(
+                        next((result.get("description") for result in search_results if str(result.get("url") or "") == candidate.source_url), "") or ""
+                    ),
+                    "source_url": candidate.source_url,
+                    "source_type": candidate.source_type,
+                    "source_domain": candidate.source_domain,
+                    "family_url": candidate.family_url,
+                    "resolved_variant": candidate.resolved_variant,
+                }
+                for candidate in selection_result.ranked_candidates
+            ] or list(search_results)
+
+            prioritized_url = selection_result.prioritized_url
+            heuristic_url = self._heuristic_source_selection(
+                ordered_results,
+                sku,
+                effective_brand,
+                product_name,
+                category,
+                preferred_domains=preferred_domains,
+            )
+            if self.use_ai_source_selection and prioritized_url and heuristic_url:
+                agreement = prioritized_url == heuristic_url
+                self._telemetry["llm_heuristic_agreement"].append(agreement)
+                logger.info(f"[AI Search] LLM/Heuristic agreement: {agreement}")
+
             if not prioritized_url:
-                prioritized_url = self._heuristic_source_selection(
-                    ordered_results,
-                    sku,
-                    effective_brand,
-                    product_name,
-                    category,
-                    preferred_domains=preferred_domains,
-                )
+                prioritized_url = heuristic_url
 
             if prioritized_url:
                 ordered_results.sort(key=lambda result: 0 if str(result.get("url") or "") == prioritized_url else 1)

@@ -78,8 +78,7 @@ class LLMSourceSelector:
         try:
             response = await self.provider.generate_text(
                 system_prompt=(
-                    "You are a product sourcing expert. Your task is to identify "
-                    "the official manufacturer's product detail page from a list of search results."
+                    "You are a product sourcing expert. Your task is to identify the official manufacturer's product detail page from a list of search results."
                 ),
                 user_prompt=prompt,
                 temperature=0.0,
@@ -125,7 +124,38 @@ class LLMSourceSelector:
         """Build the selection prompt."""
         result_list = []
         for i, res in enumerate(candidates):
-            result_list.append(f"Result [{i}]:\nURL: {res['url']}\nTitle: {res['title']}\nDescription: {res['description']}\n")
+            result_lines = [
+                f"Result [{i}]:",
+                f"URL: {str(res.get('url') or '')}",
+                f"Title: {str(res.get('title') or '')}",
+                f"Description: {str(res.get('description') or '')}",
+            ]
+
+            source_url = str(res.get("source_url") or "").strip()
+            if source_url:
+                result_lines.append(f"Source URL: {source_url}")
+
+            source_type = str(res.get("source_type") or "").strip()
+            if source_type:
+                result_lines.append(f"Source Type: {source_type}")
+
+            source_domain = str(res.get("source_domain") or res.get("source_tier") or "").strip()
+            if source_domain:
+                result_lines.append(f"Source Tier/Domain: {source_domain}")
+
+            family_url = str(res.get("family_url") or "").strip()
+            if family_url:
+                result_lines.append(f"Family URL: {family_url}")
+
+            resolved_variant = res.get("resolved_variant")
+            if resolved_variant:
+                result_lines.append(f"Resolved Variant: {resolved_variant}")
+
+            resolver = str(res.get("resolver") or (resolved_variant or {}).get("resolver") or "").strip()
+            if resolver:
+                result_lines.append(f"Resolver: {resolver}")
+
+            result_list.append("\n".join(result_lines) + "\n")
 
         results_text = "\n".join(result_list)
         preferred_domains_text = ", ".join(preferred_domains or []) or "None"

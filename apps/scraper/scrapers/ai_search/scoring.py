@@ -5,7 +5,7 @@ import httpx
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from threading import Lock
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 from urllib.parse import urlparse
 
 
@@ -50,6 +50,9 @@ def reset_domain_history() -> None:
 
 
 from scrapers.ai_search.matching import MatchingUtils
+
+if TYPE_CHECKING:
+    from .models import ResolvedCandidate
 
 
 class SearchScorer:
@@ -654,8 +657,12 @@ class SearchScorer:
             ]
         )
         has_identifier = bool(sku) and sku.lower() in combined.lower()
-        variant_match = self._matching.has_variant_token_overlap(product_name, combined)
+        expected_variant_tokens = self._matching.extract_variant_tokens(product_name)
+        variant_match = bool(expected_variant_tokens) and self._matching.has_variant_token_overlap(product_name, combined)
         specific_token_overlap = self._matching.has_specific_token_overlap(product_name, combined, effective_brand)
+        specific_expected_tokens = self._matching.tokenize_keywords(product_name).difference(self._matching.tokenize_keywords(effective_brand))
+        actual_tokens = self._matching.tokenize_keywords(combined)
+        specific_overlap_count = len(specific_expected_tokens.intersection(actual_tokens))
         is_category_like = self.is_category_like_url(url)
 
         if source_tier == "official":
@@ -665,7 +672,10 @@ class SearchScorer:
                 if has_identifier or self._result_has_resolvable_family_signals(result, product_name, effective_brand):
                     return "official_family"
                 return "official_generic"
-            return "official_exact" if has_identifier or variant_match else "official_exact"
+            has_full_specific_token_match = bool(specific_expected_tokens) and specific_overlap_count == len(specific_expected_tokens)
+            if has_identifier or variant_match or has_full_specific_token_match or (not specific_expected_tokens and specific_token_overlap):
+                return "official_exact"
+            return "official_generic"
 
         if source_tier == "major_retailer":
             return "major_retailer_exact" if not is_category_like and (has_identifier or variant_match or specific_token_overlap) else "major_retailer"
@@ -827,8 +837,24 @@ class SearchScorer:
         elif source_tier == "marketplace":
             score -= 3.5
 
+        if preferred_domains and domain:
+            effective_preferred_domains = list(preferred_domains)
+        else:
+            effective_preferred_domains = []
+
+        for category_domain in self._category_preferred_domains(category):
+            if category_domain not in effective_preferred_domains:
+                effective_preferred_domains.append(category_domain)
+
+        is_preferred = domain and any(
+            domain == pref or domain.endswith(f".{pref}") 
+            for pref in effective_preferred_domains if pref
+        )
+
         if source_class in {"official_generic", "official_root"}:
-            score -= 4.0
+            # Bypass generic penalty if the domain is explicitly preferred (e.g. from brand registry)
+            if not is_preferred:
+                score -= 4.0
 
         score += self._query_param_penalty(url)
 
@@ -839,15 +865,6 @@ class SearchScorer:
                 score += 3.0
             elif success_rate < 0.3:
                 score -= 3.0
-
-        if preferred_domains and domain:
-            effective_preferred_domains = list(preferred_domains)
-        else:
-            effective_preferred_domains = []
-
-        for category_domain in self._category_preferred_domains(category):
-            if category_domain not in effective_preferred_domains:
-                effective_preferred_domains.append(category_domain)
 
         if effective_preferred_domains and domain:
             for index, preferred_domain in enumerate(effective_preferred_domains):
@@ -882,6 +899,85 @@ class SearchScorer:
             score -= 6.0
 
         return score
+
+    def score_resolved_candidate(
+        self,
+        candidate: "ResolvedCandidate",
+        *,
+        source_result: dict[str, Any] | None,
+        sku: str,
+        brand: Optional[str],
+        product_name: Optional[str],
+        category: Optional[str],
+        prefer_manufacturer: bool = False,
+        preferred_domains: Optional[list[str]] = None,
+    ) -> float:
+        """Score a resolved candidate using source-result relevance plus resolution signals."""
+        base_result = source_result or {"url": candidate.source_url}
+        score = self.score_search_result(
+            result=base_result,
+            sku=sku,
+            brand=brand,
+            product_name=product_name,
+            category=category,
+            prefer_manufacturer=prefer_manufacturer,
+            preferred_domains=preferred_domains,
+        )
+
+        resolved_url_text = f"{candidate.resolved_url} {candidate.url}".lower()
+        resolved_domain = self.domain_from_url(candidate.resolved_url or candidate.url)
+        variant_id = str((candidate.resolved_variant or {}).get("variant_id") or "").strip().lower()
+
+        if candidate.source_type == "official_family" and candidate.resolved_url and candidate.resolved_url != candidate.source_url:
+            score += 4.0
+
+        if sku and (sku.lower() in resolved_url_text or variant_id == sku.lower()):
+            score += 3.0
+
+        if preferred_domains and resolved_domain:
+            for index, preferred_domain in enumerate(preferred_domains):
+                if not preferred_domain:
+                    continue
+                if resolved_domain == preferred_domain or resolved_domain.endswith(f".{preferred_domain}"):
+                    score += max(0.5, 2.5 - float(index) * 0.5)
+                    break
+
+        if product_name and self._matching.has_conflicting_variant_tokens(product_name, resolved_url_text):
+            score -= 5.0
+
+        return score
+
+    def rank_resolved_candidates(
+        self,
+        candidates: list["ResolvedCandidate"],
+        *,
+        source_results_by_url: dict[str, dict[str, Any]],
+        sku: str,
+        brand: Optional[str],
+        product_name: Optional[str],
+        category: Optional[str],
+        prefer_manufacturer: bool = False,
+        preferred_domains: Optional[list[str]] = None,
+    ) -> list["ResolvedCandidate"]:
+        """Rank resolved candidates by combined source and resolution signals."""
+        scored_candidates = [
+            (
+                candidate,
+                self.score_resolved_candidate(
+                    candidate,
+                    source_result=source_results_by_url.get(candidate.source_url),
+                    sku=sku,
+                    brand=brand,
+                    product_name=product_name,
+                    category=category,
+                    prefer_manufacturer=prefer_manufacturer,
+                    preferred_domains=preferred_domains,
+                ),
+            )
+            for candidate in candidates
+        ]
+        scored_candidates.sort(key=lambda item: item[1], reverse=True)
+        return [candidate for candidate, _score in scored_candidates]
 
     def pick_strong_candidate_url(
         self,
