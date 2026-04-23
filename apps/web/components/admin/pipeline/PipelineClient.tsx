@@ -1037,7 +1037,7 @@ export function PipelineClient({
   // Handle scrape dialog confirm — creates actual scraper jobs
   const handleScrapeConfirm = async (
     scrapers: string[],
-    enrichmentMethod: "scrapers" | "ai_search",
+    enrichmentMethod: "scrapers" | "ai_search" | "official_brand",
   ) => {
     const skus = Array.from(selectedSkus);
     if (skus.length === 0) return;

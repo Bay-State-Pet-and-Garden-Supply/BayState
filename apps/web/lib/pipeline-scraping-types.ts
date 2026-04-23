@@ -34,7 +34,7 @@ export interface ScrapeOptions {
     chunkSize?: number;
     jobType?: 'standard' | 'ai_search';
     /** Explicit enrichment method - takes precedence over jobType */
-    enrichment_method?: 'scrapers' | 'ai_search';
+    enrichment_method?: 'scrapers' | 'ai_search' | 'official_brand';
     aiSearchConfig?: {
         product_name?: string;
         brand?: string;
