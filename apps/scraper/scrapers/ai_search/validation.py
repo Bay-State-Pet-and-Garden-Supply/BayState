@@ -128,7 +128,7 @@ class ExtractionValidator:
         source_tier = self._scoring.classify_source_domain(source_domain, brand)
         resolved_variant = extraction_result.get("resolved_variant") if isinstance(extraction_result.get("resolved_variant"), dict) else None
         variant_resolver = str((resolved_variant or {}).get("resolver") or "").strip()
-        is_resolved_official_family = source_tier == "official" and variant_resolver == "demandware_product_variation"
+        is_resolved_official_family = source_tier == "official"
 
         validation_context = {
             "url": source_url,
