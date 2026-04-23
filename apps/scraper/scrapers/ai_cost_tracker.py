@@ -6,6 +6,7 @@ runaway API spending. Includes circuit breaker for repeated overruns.
 """
 
 import logging
+import litellm
 from typing import Any
 from dataclasses import dataclass, field
 from collections import defaultdict
@@ -55,18 +56,8 @@ class AICostTracker:
             trigger_fallback()
     """
 
-    # OpenAI pricing per 1K tokens (as of 2024)
-    PRICING = {
-        "gpt-4o": {"input": 0.005, "output": 0.015},
-        "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
-        "gpt-4": {"input": 0.03, "output": 0.06},
-        "gpt-3.5-turbo": {"input": 0.0005, "output": 0.0015},
-        "gemini-2.5-flash": {"input": 0.00025, "output": 0.0015},
-        "gemini-2.5-pro": {"input": 0.002, "output": 0.012},
-        "gemini-3-flash-preview": {"input": 0.00025, "output": 0.0015},
-    }
-
     def __init__(self):
+
         self.extractions: list[ExtractionCost] = []
         self._circuit_breaker_counts: dict[str, int] = defaultdict(int)
         self._total_cost_usd: float = 0.0
@@ -82,18 +73,17 @@ class AICostTracker:
         Returns:
             Cost in USD
         """
-        # Normalize model name
-        model_key = model.lower()
-        if model_key not in self.PRICING:
-            # Default to gpt-4o-mini pricing if unknown
-            logger.warning(f"Unknown model '{model}', using gpt-4o-mini pricing")
-            model_key = "gpt-4o-mini"
-
-        pricing = self.PRICING[model_key]
-        input_cost = (input_tokens / 1000) * pricing["input"]
-        output_cost = (output_tokens / 1000) * pricing["output"]
-
-        return input_cost + output_cost
+        try:
+            return float(
+                litellm.completion_cost(
+                    model=model,
+                    prompt_tokens=input_tokens,
+                    completion_tokens=output_tokens,
+                )
+            )
+        except Exception as e:
+            logger.warning(f"Error calculating cost for model '{model}': {e}")
+            return 0.0
 
     def track_extraction(self, input_tokens: int, output_tokens: int, model: str, scraper_name: str = "default") -> ExtractionCost:
         """Track an extraction and return cost data.
