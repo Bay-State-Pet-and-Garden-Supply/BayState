@@ -39,7 +39,7 @@ interface ScraperSelectDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     selectedSkuCount: number;
-    onConfirm: (scrapers: string[], enrichmentMethod: 'scrapers' | 'ai_search') => void;
+    onConfirm: (scrapers: string[], enrichmentMethod: 'scrapers' | 'ai_search' | 'official_brand') => void;
     /** When provided, fetches and shows scraper recommendations for this brand */
     brandName?: string | null;
 }
@@ -73,7 +73,7 @@ export function ScraperSelectDialog({
         try {
             const res = await fetch('/api/admin/pipeline/scrapers');
             if (!res.ok) throw new Error('Failed to load scrapers');
-            const data = await response.json();
+            const data = await res.json();
             const list: ScraperOption[] = data.scrapers ?? [];
             setScrapers(list);
             // Select all by default (may be overridden by recommendations)
