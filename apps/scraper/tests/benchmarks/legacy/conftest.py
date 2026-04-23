@@ -1,11 +1,16 @@
 """
 pytest fixtures for benchmark tests.
+
+.. deprecated::
+    This module is part of the legacy benchmark suite.
+    Use ``tests.benchmarks.unified`` for new benchmarks.
+    This file will be removed in a future release.
 """
 
 import pytest
 from pathlib import Path
 
-from benchmarks import BenchmarkConfig, BenchmarkRunner
+from tests.benchmarks.legacy import BenchmarkConfig, BenchmarkRunner
 
 
 @pytest.fixture

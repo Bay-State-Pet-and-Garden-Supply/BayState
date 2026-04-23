@@ -1,9 +1,14 @@
 """
 Main benchmark tests comparing crawl4ai vs legacy scraper.
 
+.. deprecated::
+    This module is part of the legacy benchmark suite.
+    Use ``tests.benchmarks.unified`` for new benchmarks.
+    This file will be removed in a future release.
+
 Usage:
-    pytest tests/benchmarks/test_benchmark_crawl4ai.py -v
-    pytest tests/benchmarks/test_benchmark_crawl4ai.py::test_browser_startup -v
+    pytest tests/benchmarks/legacy/test_benchmark_crawl4ai.py -v
+    pytest tests/benchmarks/legacy/test_benchmark_crawl4ai.py::test_browser_startup -v
 """
 
 from __future__ import annotations
@@ -12,7 +17,7 @@ import pytest
 import time
 from statistics import median
 
-from tests.benchmarks import Timer, MemoryProfiler
+from tests.benchmarks.legacy import Timer, MemoryProfiler
 
 
 # =============================================================================
