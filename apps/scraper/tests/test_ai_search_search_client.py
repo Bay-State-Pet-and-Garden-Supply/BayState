@@ -58,7 +58,7 @@ async def test_search_client_allows_explicit_gemini_provider() -> None:
     ], None))
 
     client = SearchClient(max_results=5, provider="gemini")
-    client.gemini_client = gemini_stub
+    client.serper_client = gemini_stub
 
     results, error = await client.search("Acme Squeaky Ball 12345")
 
@@ -211,3 +211,24 @@ async def test_search_client_passes_runtime_api_key_to_serper_client(monkeypatch
 
 async def test_canonicalize_result_url_strips_tracking_params() -> None:
     assert canonicalize_result_url("https://example.com/product?id=123&utm_source=google&ref=ads#details") == "https://example.com/product?id=123"
+
+
+async def test_serper_localization_parameters():
+    from scrapers.providers.serper import SerperSearchClient
+    client = SerperSearchClient(gl="us", hl="en")
+    payload = client._build_payload("query")
+    assert payload["gl"] == "us"
+    assert payload["hl"] == "en"
+
+
+async def test_serper_extracts_knowledge_graph():
+    from scrapers.providers.serper import SerperSearchClient
+    client = SerperSearchClient()
+    data = {
+        "organic": [{"link": "https://example.com/product", "title": "Example", "snippet": "A product"}],
+        "knowledgeGraph": {"title": "Example Brand", "website": "https://example.com"}
+    }
+    results = client._extract_results(data)
+    assert len(results) == 2
+    assert results[0]["result_type"] == "knowledge_graph"
+    assert results[0]["url"] == "https://example.com"
