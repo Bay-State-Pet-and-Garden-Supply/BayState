@@ -27,6 +27,8 @@ export interface FinalizationDraft {
   isSpecialOrder: boolean;
   customImageUrl: string;
   selectedImages: string[];
+  customSourceUrl: string;
+  sources: Record<string, unknown>;
 }
 
 export const EMPTY_FINALIZATION_DRAFT: FinalizationDraft = {
@@ -45,6 +47,8 @@ export const EMPTY_FINALIZATION_DRAFT: FinalizationDraft = {
   isSpecialOrder: false,
   customImageUrl: "",
   selectedImages: [],
+  customSourceUrl: "",
+  sources: {},
 };
 
 export const finalizationDraftSchema = z.object({
@@ -63,6 +67,8 @@ export const finalizationDraftSchema = z.object({
   isSpecialOrder: z.boolean(),
   customImageUrl: z.string(),
   selectedImages: z.array(z.string()),
+  customSourceUrl: z.string(),
+  sources: z.record(z.string(), z.unknown()),
 });
 
 const nullableUnknownRecordSchema = z.record(z.string(), z.unknown()).nullable();
@@ -207,6 +213,8 @@ export function buildInitialFinalizationDraft(
     customImageUrl: "",
     selectedImages:
       consolidatedImages.length > 0 ? consolidatedImages : metadataSelectedImages,
+    customSourceUrl: "",
+    sources: product.sources || {},
   };
 }
 
@@ -244,6 +252,8 @@ export function createPersistedFinalizationDraftSnapshot(
     productOnPages: parseProductOnPages(draft.productOnPages),
     customImageUrl: "",
     selectedImages: toFinalizationImageArray(draft.selectedImages),
+    customSourceUrl: "",
+    sources: draft.sources,
   };
 }
 
