@@ -72,14 +72,12 @@ export function AIConsolidationSettingsCard() {
         ...DEFAULTS,
         ...data.consolidationDefaults,
         llm_provider: 'openai',
-        llm_base_url: null,
         llm_supports_batch_api: true,
       });
       setInitialDefaults({
         ...DEFAULTS,
         ...data.consolidationDefaults,
         llm_provider: 'openai',
-        llm_base_url: null,
         llm_supports_batch_api: true,
       });
     } catch (e) {
@@ -97,6 +95,7 @@ export function AIConsolidationSettingsCard() {
     return (
       openaiApiKey.trim().length > 0 ||
       defaults.llm_model !== initialDefaults.llm_model ||
+      defaults.llm_base_url !== initialDefaults.llm_base_url ||
       defaults.confidence_threshold !== initialDefaults.confidence_threshold
     );
   }, [defaults, openaiApiKey, initialDefaults]);
@@ -111,7 +110,6 @@ export function AIConsolidationSettingsCard() {
         consolidationDefaults: {
           ...defaults,
           llm_provider: 'openai' as const,
-          llm_base_url: null,
           llm_supports_batch_api: true,
         },
       };
@@ -137,14 +135,12 @@ export function AIConsolidationSettingsCard() {
         ...DEFAULTS,
         ...body.consolidationDefaults,
         llm_provider: 'openai',
-        llm_base_url: null,
         llm_supports_batch_api: true,
       });
       setInitialDefaults({
         ...DEFAULTS,
         ...body.consolidationDefaults,
         llm_provider: 'openai',
-        llm_base_url: null,
         llm_supports_batch_api: true,
       });
       setOpenaiApiKey('');
@@ -207,9 +203,23 @@ export function AIConsolidationSettingsCard() {
                   }
                 />
               </div>
-            </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="consolidation-llm-base-url">LiteLLM Proxy URL (Optional)</Label>
+                <Input
+                  id="consolidation-llm-base-url"
+                  type="url"
+                  value={defaults.llm_base_url || ""}
+                  onChange={(e) =>
+                    setDefaults((prev) => ({
+                      ...prev,
+                      llm_base_url: e.target.value.trim() || null,
+                    }))
+                  }
+                  placeholder="http://localhost:4000/v1"
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="consolidation-confidence-threshold">
                   Confidence Threshold

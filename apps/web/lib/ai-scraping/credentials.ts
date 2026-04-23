@@ -429,12 +429,20 @@ function resolveOpenAIApiKey(apiKey: string | null | undefined): string | null {
   return null;
 }
 
+function normalizeLLMBaseUrl(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return process.env.OPENAI_BASE_URL || null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : (process.env.OPENAI_BASE_URL || null);
+}
+
 function normalizeDefaults(raw: unknown): AIScrapingDefaults {
   const value = (raw && typeof raw === 'object') ? (raw as Record<string, unknown>) : {};
 
   const llmProvider = normalizeLLMProvider(value.llm_provider);
   const llmModel = normalizeOpenAIModel(value.llm_model, getDefaultModelForProvider(llmProvider));
-  const llmBaseUrl = null;
+  const llmBaseUrl = normalizeLLMBaseUrl(value.llm_base_url);
   const maxSearchResults = Number.isFinite(value.max_search_results) ? Number(value.max_search_results) : DEFAULT_AI_SCRAPING_DEFAULTS.max_search_results;
   const maxSteps = Number.isFinite(value.max_steps) ? Number(value.max_steps) : DEFAULT_AI_SCRAPING_DEFAULTS.max_steps;
   const confidenceThreshold = Number.isFinite(value.confidence_threshold)
@@ -460,7 +468,10 @@ export async function getAIScrapingDefaults(): Promise<AIScrapingDefaults> {
     .single();
 
   if (error || !data) {
-    return DEFAULT_AI_SCRAPING_DEFAULTS;
+    return {
+      ...DEFAULT_AI_SCRAPING_DEFAULTS,
+      llm_base_url: process.env.OPENAI_BASE_URL || null,
+    };
   }
 
   return normalizeDefaults(data.value);
@@ -469,7 +480,7 @@ export async function getAIScrapingDefaults(): Promise<AIScrapingDefaults> {
 export async function upsertAIScrapingDefaults(partial: Partial<AIScrapingDefaults>): Promise<AIScrapingDefaults> {
   const admin = getSupabaseAdmin();
   const current = await getAIScrapingDefaults();
-  const merged = { ...current, ...partial, llm_base_url: null };
+  const merged = { ...current, ...partial };
   if (partial.llm_provider && partial.llm_model === undefined) {
     merged.llm_model = getDefaultModelForProvider(partial.llm_provider);
   }
@@ -498,7 +509,7 @@ function normalizeConsolidationDefaults(raw: unknown): AIConsolidationDefaults {
 
   const llmProvider = normalizeLLMProvider(value.llm_provider);
   const llmModel = normalizeOpenAIModel(value.llm_model, getDefaultModelForProvider(llmProvider));
-  const llmBaseUrl = null;
+  const llmBaseUrl = normalizeLLMBaseUrl(value.llm_base_url);
   const confidenceThreshold = Number.isFinite(value.confidence_threshold)
     ? Number(value.confidence_threshold)
     : DEFAULT_AI_CONSOLIDATION_DEFAULTS.confidence_threshold;
@@ -522,7 +533,10 @@ export async function getAIConsolidationDefaults(): Promise<AIConsolidationDefau
     .single();
 
   if (error || !data) {
-    return DEFAULT_AI_CONSOLIDATION_DEFAULTS;
+    return {
+      ...DEFAULT_AI_CONSOLIDATION_DEFAULTS,
+      llm_base_url: process.env.OPENAI_BASE_URL || null,
+    };
   }
 
   return normalizeConsolidationDefaults(data.value);
@@ -531,7 +545,7 @@ export async function getAIConsolidationDefaults(): Promise<AIConsolidationDefau
 export async function upsertAIConsolidationDefaults(partial: Partial<AIConsolidationDefaults>): Promise<AIConsolidationDefaults> {
   const admin = getSupabaseAdmin();
   const current = await getAIConsolidationDefaults();
-  const merged = { ...current, ...partial, llm_base_url: null };
+  const merged = { ...current, ...partial };
   if (partial.llm_provider && partial.llm_model === undefined) {
     merged.llm_model = getDefaultModelForProvider(partial.llm_provider);
   }
@@ -708,6 +722,7 @@ export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRunti
   const credentials: AIScrapingRuntimeCredentials = {
     llm_provider: defaults.llm_provider,
     llm_model: defaults.llm_model,
+    llm_base_url: defaults.llm_base_url || undefined,
   };
 
   if (llmApiKey) {
@@ -736,7 +751,7 @@ export async function getAIConsolidationRuntimeConfig(): Promise<AIConsolidation
   return {
     llm_provider: defaults.llm_provider,
     llm_model: defaults.llm_model,
-    llm_base_url: null,
+    llm_base_url: defaults.llm_base_url,
     llm_api_key: llmApiKey,
     ...(resolvedOpenAI ? { openai_api_key: resolvedOpenAI } : {}),
     confidence_threshold: defaults.confidence_threshold,

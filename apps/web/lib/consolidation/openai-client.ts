@@ -48,14 +48,16 @@ export async function getOpenAIClient(options?: ConsolidationConfigOptions): Pro
     }
 
     const apiKey = runtimeConfig.llm_api_key;
+    const baseURL = runtimeConfig.llm_base_url || undefined;
     const clientSignature = JSON.stringify({
         provider: runtimeConfig.llm_provider,
         apiKey,
+        baseURL,
     });
 
     if (clientSignature !== lastClientSignature || !openaiClient) {
         lastClientSignature = clientSignature;
-        openaiClient = new OpenAI({ apiKey });
+        openaiClient = new OpenAI({ apiKey, baseURL });
     }
 
     return openaiClient;
@@ -104,7 +106,7 @@ export async function getConsolidationConfig(
             model,
             llm_provider: effectiveProvider,
             configured_llm_provider: runtimeConfig.llm_provider,
-            llm_base_url: null,
+            llm_base_url: runtimeConfig.llm_base_url,
             llm_api_key: apiKey ?? null,
             llm_supports_batch_api: true,
             confidence_threshold: runtimeConfig.confidence_threshold,
@@ -112,11 +114,12 @@ export async function getConsolidationConfig(
         };
     } catch (err) {
         console.error('[Consolidation] Failed to load config from DB, using hardcoded defaults:', err);
+        const baseUrl = process.env.OPENAI_BASE_URL || null;
         return {
             ...CONSOLIDATION_CONFIG,
             llm_provider: 'openai' as const,
             configured_llm_provider: 'openai' as const,
-            llm_base_url: null,
+            llm_base_url: baseUrl,
             llm_api_key: null,
             llm_supports_batch_api: true,
             confidence_threshold: 0.7,

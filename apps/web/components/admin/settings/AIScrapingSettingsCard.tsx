@@ -93,22 +93,15 @@ export function AIScrapingSettingsCard() {
       }
 
       const data = (await res.json()) as ApiResponse;
-      setStatuses({
-        gemini: data.statuses.gemini ?? EMPTY_STATUSES.gemini,
-        openai: data.statuses.openai ?? EMPTY_STATUSES.openai,
-        serpapi: data.statuses.serpapi ?? EMPTY_STATUSES.serpapi,
-      });
       setDefaults({
         ...DEFAULTS,
         ...data.defaults,
         llm_provider: "openai",
-        llm_base_url: null,
       });
       setInitialDefaults({
         ...DEFAULTS,
         ...data.defaults,
         llm_provider: "openai",
-        llm_base_url: null,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
@@ -127,6 +120,7 @@ export function AIScrapingSettingsCard() {
       openaiApiKey.trim().length > 0 ||
       serperApiKey.trim().length > 0 ||
       defaults.llm_model !== initialDefaults.llm_model ||
+      defaults.llm_base_url !== initialDefaults.llm_base_url ||
       defaults.max_search_results !== initialDefaults.max_search_results ||
       defaults.max_steps !== initialDefaults.max_steps ||
       defaults.confidence_threshold !== initialDefaults.confidence_threshold
@@ -145,7 +139,6 @@ export function AIScrapingSettingsCard() {
         defaults: {
           ...defaults,
           llm_provider: "openai" as const,
-          llm_base_url: null,
         },
       };
 
@@ -176,13 +169,11 @@ export function AIScrapingSettingsCard() {
         ...DEFAULTS,
         ...body.defaults,
         llm_provider: "openai",
-        llm_base_url: null,
       });
       setInitialDefaults({
         ...DEFAULTS,
         ...body.defaults,
         llm_provider: "openai",
-        llm_base_url: null,
       });
       setGeminiApiKey("");
       setOpenaiApiKey("");
@@ -290,38 +281,23 @@ export function AIScrapingSettingsCard() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="max-search-results">Max Search Results</Label>
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="llm-base-url">LiteLLM Proxy URL (Optional)</Label>
                 <Input
-                  id="max-search-results"
-                  type="number"
-                  min={1}
-                  max={10}
-                  value={defaults.max_search_results}
+                  id="llm-base-url"
+                  type="url"
+                  value={defaults.llm_base_url || ""}
                   onChange={(e) =>
                     setDefaults((prev) => ({
                       ...prev,
-                      max_search_results: Number(e.target.value) || 5,
+                      llm_base_url: e.target.value.trim() || null,
                     }))
                   }
+                  placeholder="http://localhost:4000/v1"
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="max-steps">Max Steps</Label>
-                <Input
-                  id="max-steps"
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={defaults.max_steps}
-                  onChange={(e) =>
-                    setDefaults((prev) => ({
-                      ...prev,
-                      max_steps: Number(e.target.value) || 15,
-                    }))
-                  }
-                />
+                <div className="text-xs text-muted-foreground">
+                  Route all LLM traffic through a LiteLLM Proxy for centralized cost tracking.
+                </div>
               </div>
             </div>
 

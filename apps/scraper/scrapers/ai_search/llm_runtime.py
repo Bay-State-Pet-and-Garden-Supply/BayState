@@ -64,13 +64,15 @@ def resolve_llm_runtime(
         default_model = DEFAULT_OPENAI_COMPATIBLE_MODEL
     normalized_model = _normalize_optional_string(model) or default_model
 
+    # Always attempt to resolve base_url and api_key from specialized env vars or provided args
     if normalized_provider == "openai_compatible":
         normalized_base_url = _normalize_base_url(base_url or os.getenv("OPENAI_COMPATIBLE_BASE_URL"))
         normalized_api_key = _normalize_optional_string(api_key or os.getenv("OPENAI_COMPATIBLE_API_KEY"))
         if normalized_base_url and normalized_api_key is None:
             normalized_api_key = LOCAL_OPENAI_COMPATIBLE_API_KEY
     else:
-        normalized_base_url = None
+        # Default openai provider can also use a custom base_url (e.g. LiteLLM Proxy)
+        normalized_base_url = _normalize_base_url(base_url or os.getenv("OPENAI_BASE_URL"))
         normalized_api_key = _normalize_optional_string(api_key or os.getenv("OPENAI_API_KEY"))
 
     return LLMRuntimeConfig(
@@ -82,15 +84,12 @@ def resolve_llm_runtime(
 
 
 def create_async_openai_client(runtime: LLMRuntimeConfig) -> AsyncOpenAI | None:
-    if runtime.provider == "openai":
-        if runtime.api_key is None:
-            return None
-        return AsyncOpenAI(api_key=runtime.api_key)
-
-    if runtime.base_url is None:
+    if runtime.api_key is None:
         return None
 
+    # If base_url is None, AsyncOpenAI will naturally use official OpenAI endpoints
+    # or pick up OPENAI_BASE_URL from the environment automatically.
     return AsyncOpenAI(
-        api_key=runtime.api_key or LOCAL_OPENAI_COMPATIBLE_API_KEY,
+        api_key=runtime.api_key,
         base_url=runtime.base_url,
     )
