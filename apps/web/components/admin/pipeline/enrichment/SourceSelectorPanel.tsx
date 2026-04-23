@@ -5,7 +5,7 @@ import { Check, Lock, RefreshCw, Circle, Sparkles } from 'lucide-react';
 interface Source {
   id: string;
   displayName: string;
-  type: 'scraper' | 'ai_search';
+  type: 'scraper' | 'official_brand';
   status: 'healthy' | 'degraded' | 'offline' | 'unknown';
   enabled: boolean;
   requiresAuth: boolean;
@@ -43,11 +43,11 @@ export function SourceSelectorPanel({
   isLoading = false,
 }: SourceSelectorPanelProps) {
   const scrapers = sources.filter((s) => s.type === 'scraper');
-  const aiSources = sources.filter((s) => s.type === 'ai_search');
+  const officialSources = sources.filter((s) => s.type === 'official_brand');
 
   const renderSourceRow = (source: Source) => {
     const isEnabled = enabledSourceIds.includes(source.id);
-    const isAI = source.type === 'ai_search';
+    const isOfficial = source.type === 'official_brand';
 
     return (
       <div
@@ -61,7 +61,7 @@ export function SourceSelectorPanel({
             className={`
               flex h-5 w-5 shrink-0 items-center justify-center rounded border
               transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1
-              ${isAI
+              ${isOfficial
                 ? `focus:ring-purple-500 ${isEnabled
                   ? 'bg-purple-600 border-purple-600 text-white'
                   : 'border-border bg-card hover:border-purple-500'
@@ -82,7 +82,7 @@ export function SourceSelectorPanel({
 
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
-              {isAI && <Sparkles className="h-3.5 w-3.5 text-purple-500 shrink-0" />}
+              {isOfficial && <Sparkles className="h-3.5 w-3.5 text-purple-500 shrink-0" />}
               <span className="text-sm font-medium text-muted-foreground truncate block max-w-[140px]">
                 {source.displayName}
               </span>
@@ -90,8 +90,8 @@ export function SourceSelectorPanel({
                 <Lock className="h-3 w-3 text-muted-foreground shrink-0" aria-label="Requires authentication" />
               )}
             </div>
-            {isAI && (
-              <span className="text-[10px] text-purple-500 mt-0.5">Gemini Search + AI Extract</span>
+            {isOfficial && (
+              <span className="text-[10px] text-purple-500 mt-0.5">Official Brand Directory Search</span>
             )}
           </div>
         </div>
@@ -104,7 +104,7 @@ export function SourceSelectorPanel({
             />
           </div>
 
-          {onRefreshSource && !isAI && (
+          {onRefreshSource && !isOfficial && (
             <button
               onClick={() => onRefreshSource(source.id)}
               disabled={isLoading}
@@ -139,15 +139,15 @@ export function SourceSelectorPanel({
           </div>
         )}
 
-        {/* AI Search Section */}
-        {aiSources.length > 0 && (
+        {/* Automated Search Section */}
+        {officialSources.length > 0 && (
           <div>
             <h4 className="px-3 py-1 text-xs font-semibold text-purple-600 uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles className="h-3 w-3" />
-              AI Search
+              Automated Search
             </h4>
             <div className="mt-1 space-y-0.5">
-              {aiSources.map(renderSourceRow)}
+              {officialSources.map(renderSourceRow)}
             </div>
           </div>
         )}

@@ -12,7 +12,7 @@ import { formatCurrency } from '@/lib/utils';
 interface EnrichmentSource {
   id: string;
   displayName: string;
-  type: 'scraper' | 'ai_search';
+  type: 'scraper' | 'official_brand';
   status: 'healthy' | 'degraded' | 'offline' | 'unknown';
   enabled: boolean;
   requiresAuth: boolean;
@@ -168,12 +168,12 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
 
     setIsRunningEnhancement(true);
     try {
-      // Separate selected sources into scrapers and AI discovery
+      // Separate selected sources into scrapers and Official Brand discovery
       const selectedScrapers = sources
         .filter((s) => s.type === 'scraper' && enabledSourceIds.includes(s.id))
         .map((s) => s.id);
-      const hasAISearch = sources.some(
-        (s) => s.type === 'ai_search' && enabledSourceIds.includes(s.id)
+      const hasOfficialBrand = sources.some(
+        (s) => s.type === 'official_brand' && enabledSourceIds.includes(s.id)
       );
 
       if (isBatchMode && skus) {
@@ -193,15 +193,15 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
           }
         }
 
-        // Dispatch AI Search job if selected
-        if (hasAISearch) {
-          const aiSearchResult = await scrapeProducts(skus, {
-            enrichment_method: 'ai_search',
+        // Dispatch Official Brand job if selected
+        if (hasOfficialBrand) {
+          const officialBrandResult = await scrapeProducts(skus, {
+            enrichment_method: 'official_brand',
           });
-          if (aiSearchResult.success && aiSearchResult.jobIds) {
-            allJobIds.push(...aiSearchResult.jobIds);
+          if (officialBrandResult.success && officialBrandResult.jobIds) {
+            allJobIds.push(...officialBrandResult.jobIds);
           } else {
-            console.error('Failed to start AI Search enhancement:', aiSearchResult.error);
+            console.error('Failed to start Official Brand enhancement:', officialBrandResult.error);
           }
         }
 
@@ -216,10 +216,10 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
         }
       } else {
         // Single SKU mode
-        if (hasAISearch) {
-          // Use scrapeProducts with ai_search method for single SKU too
+        if (hasOfficialBrand) {
+          // Use scrapeProducts with official_brand method for single SKU too
           const result = await scrapeProducts([effectiveSku], {
-            enrichment_method: 'ai_search',
+            enrichment_method: 'official_brand',
             scrapers: selectedScrapers.length > 0 ? selectedScrapers : undefined,
           });
           if (result.success) {
@@ -281,9 +281,9 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
   }
 
   const scraperSources = sources.filter((s) => s.type === 'scraper');
-  const aiSearchSources = sources.filter((s) => s.type === 'ai_search');
+  const officialBrandSources = sources.filter((s) => s.type === 'official_brand');
   const enabledScrapers = scraperSources.filter((s) => enabledSourceIds.includes(s.id));
-  const enabledAI = aiSearchSources.filter((s) => enabledSourceIds.includes(s.id));
+  const enabledOfficial = officialBrandSources.filter((s) => enabledSourceIds.includes(s.id));
 
   return (
     <div className="fixed inset-0 bg-zinc-950/55 flex items-center justify-center z-50 p-4">
@@ -442,11 +442,11 @@ export function EnrichmentWorkspace({ sku, skus, onClose, onSave, onRunBatch }: 
                           <p className="text-sm text-blue-700 mt-1">
                             {enabledScrapers.length > 0 && (
                               <>{enabledScrapers.length} scraper{enabledScrapers.length !== 1 ? 's' : ''}</>)}
-                            {enabledScrapers.length > 0 && enabledAI.length > 0 && ' + '}
-                            {enabledAI.length > 0 && (
+                            {enabledScrapers.length > 0 && enabledOfficial.length > 0 && ' + '}
+                            {enabledOfficial.length > 0 && (
                               <span className="inline-flex items-center gap-1">
                                 <Sparkles className="inline h-3.5 w-3.5 text-purple-500" />
-                                AI Search
+                                Official Brand Search
                               </span>
                             )}
                             {' '}selected. Click &quot;Run Enhancement&quot; to fetch data.
