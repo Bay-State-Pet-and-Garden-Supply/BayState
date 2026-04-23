@@ -1094,3 +1094,47 @@ class SearchScorer:
 
         except Exception:
             return None
+
+
+class BrandSourceSelector:
+    """Uses LLM to evaluate SERP snippets for official manufacturer authenticity."""
+
+    def __init__(self, api_key: str | None = None, model: str = "gpt-4o-mini"):
+        import litellm
+
+        self.model = model
+        self.api_key = api_key
+
+    async def score_snippet(self, url: str, snippet: str, brand: str) -> dict:
+        """Score a snippet based on Domain Congruence, Trust Signals, and Lack of Aggregator terms."""
+        prompt = f"""
+        Analyze this search engine result for brand: "{brand}".
+        URL: {url}
+        Snippet: {snippet}
+
+        Determine if this is the OFFICIAL manufacturer/brand website, or a third-party reseller/aggregator.
+        Criteria:
+        1. Domain Name Congruence: Does the domain match the brand?
+        2. Absence of Aggregator Terminology: Penalize "Huge discounts", "Compare prices", "Wholesale".
+        3. Corporate Trust Signals: Look for "Official Store", "Technical Support", "Warranty".
+        4. Navigational Intent: Does it read like the ultimate source of truth?
+
+        Return valid JSON ONLY with keys:
+        - "is_official": boolean
+        - "confidence_score": float 0.0 to 1.0
+        - "reason": string
+        """
+        import json
+
+        import litellm
+
+        try:
+            response = await litellm.acompletion(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                api_key=self.api_key,
+                response_format={"type": "json_object"},
+            )
+            return json.loads(response.choices[0].message.content)
+        except Exception as e:
+            return {"is_official": False, "confidence_score": 0.0, "reason": str(e)}
