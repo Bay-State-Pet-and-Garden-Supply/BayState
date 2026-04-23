@@ -44,6 +44,18 @@ class QueryBuilder:
         """Build the lowest-cost identifier-only query for a product."""
         return self._clean_text(sku)
 
+    def build_brand_focused_query(
+        self,
+        base_query: str,
+        exclusions: list[str]
+    ) -> str:
+        """Build a query with explicit site exclusions to filter out aggregators."""
+        query = self._clean_text(base_query)
+        if exclusions:
+            exclusion_string = " ".join([f"-site:{excl}" for excl in exclusions])
+            query = f"{query} {exclusion_string}"
+        return query
+
     def build_name_query(self, product_name: Optional[str]) -> str:
         """Build the canonical follow-up query from a consolidated product name."""
         return self._clean_text(product_name)
