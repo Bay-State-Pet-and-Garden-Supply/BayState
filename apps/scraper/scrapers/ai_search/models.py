@@ -1,7 +1,7 @@
 """Data models for AI Search Scraper."""
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 
 @dataclass
@@ -28,3 +28,18 @@ class AISearchResult:
             self.images = []
         if self.categories is None:
             self.categories = []
+
+
+@dataclass
+class ResolvedCandidate:
+    """Normalized extraction target with provenance and optional family-resolution metadata."""
+
+    url: str
+    canonical_url: str
+    source_url: str
+    source_domain: str
+    source_type: str
+    resolved_url: str
+    resolved_canonical_url: str
+    family_url: Optional[str] = None
+    resolved_variant: Optional[dict[str, Any]] = None

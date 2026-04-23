@@ -3,21 +3,12 @@
 import { useState, useEffect } from "react";
 import {
   Image as ImageIcon,
-  CheckCircle,
-  Plus,
   X,
   Maximize2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Carousel,
   CarouselContent,
@@ -32,18 +23,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import type { ImageSourceOption } from "./finalizing-utils";
 
 export interface ImageCarouselProps {
   selectedImages: string[];
   onToggleImage: (url: string) => void;
+  onReorderImages?: (images: string[]) => void;
 }
 
 export function ImageCarousel({
   selectedImages,
   onToggleImage,
+  onReorderImages,
 }: ImageCarouselProps) {
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -62,6 +53,28 @@ export function ImageCarousel({
       carouselApi.off("select", onSelect);
     };
   }, [carouselApi]);
+
+  const moveImage = (index: number, direction: "left" | "right") => {
+    if (!onReorderImages) return;
+
+    const newImages = [...selectedImages];
+    const targetIndex = direction === "left" ? index - 1 : index + 1;
+
+    if (targetIndex < 0 || targetIndex >= newImages.length) return;
+
+    // Swap images
+    [newImages[index], newImages[targetIndex]] = [
+      newImages[targetIndex],
+      newImages[index],
+    ];
+
+    onReorderImages(newImages);
+
+    // After reordering, if the moved image was current, update selection to follow it
+    if (currentImageIndex === index) {
+      setTimeout(() => carouselApi?.scrollTo(targetIndex), 0);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -154,13 +167,13 @@ export function ImageCarousel({
 
         {/* Thumbnails of selected images */}
         {selectedImages.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide px-1">
+          <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide px-1">
             {selectedImages.map((url, index) => (
               <div
-                key={`thumb-${url}`}
+                key={`thumb-${url}-${index}`}
                 onClick={() => carouselApi?.scrollTo(index)}
                 className={cn(
-                  "relative flex-shrink-0 w-16 h-16 rounded-none border overflow-hidden cursor-pointer transition-all",
+                  "group/thumb relative flex-shrink-0 w-16 h-16 rounded-none border overflow-hidden cursor-pointer transition-all",
                   currentImageIndex === index
                     ? "border-zinc-950 ring-2 ring-zinc-950/10 scale-105 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
                     : "border-zinc-200 opacity-60 hover:opacity-100 hover:border-zinc-950",
@@ -171,6 +184,38 @@ export function ImageCarousel({
                   alt=""
                   className="w-full h-full object-cover"
                 />
+
+                {/* Reorder Buttons */}
+                {onReorderImages && selectedImages.length > 1 && (
+                  <div className="absolute inset-0 flex items-center justify-between px-0.5 opacity-0 group-hover/thumb:opacity-100 transition-opacity pointer-events-none">
+                    <button
+                      disabled={index === 0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        moveImage(index, "left");
+                      }}
+                      className={cn(
+                        "pointer-events-auto bg-white border border-zinc-950 p-0.5 shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-zinc-100 disabled:opacity-0 transition-all",
+                        index === 0 && "hidden",
+                      )}
+                    >
+                      <ChevronLeft className="h-3 w-3" />
+                    </button>
+                    <button
+                      disabled={index === selectedImages.length - 1}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        moveImage(index, "right");
+                      }}
+                      className={cn(
+                        "pointer-events-auto bg-white border border-zinc-950 p-0.5 shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-zinc-100 disabled:opacity-0 transition-all",
+                        index === selectedImages.length - 1 && "hidden",
+                      )}
+                    >
+                      <ChevronRight className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

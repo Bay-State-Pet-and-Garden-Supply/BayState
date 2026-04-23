@@ -180,6 +180,59 @@ class TestDatasetValidator:
         assert error.field in ("difficulty", None)
         assert "expert" in error.message or "is not one of" in error.message
 
+    def test_validate_invalid_expected_family_url_format(self) -> None:
+        validator = DatasetValidator()
+        entries = [
+            {
+                **_valid_entry(),
+                "expected_source_tier": "official_variant",
+                "expected_family_url": "not-a-url",
+                "expected_variant_label": "Sierra Red 1.5 CF",
+                "cohort_key": "scotts-naturescapes-1-5cf",
+            }
+        ]
+        payload = _valid_dataset_payload(entries)
+
+        result = validator.validate_payload(payload)
+
+        assert result.valid is False
+        assert any(error.field == "expected_family_url" and "Invalid URL format" in error.message for error in result.errors)
+
+    def test_validate_invalid_expected_source_tier_value(self) -> None:
+        validator = DatasetValidator()
+        entries = [
+            {
+                **_valid_entry(),
+                "expected_source_tier": "offical",
+                "expected_family_url": "https://brand.example/family",
+                "expected_variant_label": "Blue / Large",
+                "cohort_key": "brand-family",
+            }
+        ]
+        payload = _valid_dataset_payload(entries)
+
+        result = validator.validate_payload(payload)
+
+        assert result.valid is False
+        assert any(error.field == "expected_source_tier" and "Invalid expected_source_tier" in error.message for error in result.errors)
+
+    def test_validate_accepts_official_variant_expected_source_tier(self) -> None:
+        validator = DatasetValidator()
+        entries = [
+            {
+                **_valid_entry(),
+                "expected_source_tier": "official_variant",
+                "expected_family_url": "https://brand.example/family",
+                "expected_variant_label": "Blue / Large",
+                "cohort_key": "brand-family",
+            }
+        ]
+        payload = _valid_dataset_payload(entries)
+
+        result = validator.validate_payload(payload)
+
+        assert result.valid is True
+
     def test_validate_missing_required_entry_field(self) -> None:
         validator = DatasetValidator()
         invalid_entry: dict[str, Any] = {"query": "test"}  # Missing other required fields

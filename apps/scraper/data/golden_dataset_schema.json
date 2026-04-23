@@ -15,6 +15,23 @@
           "title": "Expected Source Url",
           "type": "string"
         },
+        "expected_source_tier": {
+          "title": "Expected Source Tier",
+          "type": "string"
+        },
+        "expected_family_url": {
+          "format": "uri",
+          "title": "Expected Family Url",
+          "type": "string"
+        },
+        "expected_variant_label": {
+          "title": "Expected Variant Label",
+          "type": "string"
+        },
+        "cohort_key": {
+          "title": "Cohort Key",
+          "type": "string"
+        },
         "category": {
           "minLength": 1,
           "title": "Category",

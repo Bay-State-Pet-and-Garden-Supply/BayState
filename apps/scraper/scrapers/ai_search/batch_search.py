@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
@@ -12,6 +13,7 @@ from scrapers.ai_search.cohort_state import _BatchCohortState
 from scrapers.ai_search.name_consolidator import NameConsolidator
 from scrapers.ai_search.query_builder import QueryBuilder
 from scrapers.ai_search.search import SearchClient
+from scrapers.ai_search.selection_pipeline import SelectionPipelineResult, run_selection_pipeline
 
 from .validation import ExtractionValidator
 
@@ -129,6 +131,11 @@ class BatchSearchOrchestrator:
         name_consolidator: NameConsolidator | None = None,
         cohort_state: _BatchCohortState | None = None,
         validator: ExtractionValidator | None = None,
+        resolver: Any | None = None,
+        selection_pipeline: Callable[..., Awaitable[SelectionPipelineResult]] = run_selection_pipeline,
+        resolver_input_builder: Callable[..., Awaitable[tuple[dict[str, str], dict[str, str]]]] | None = None,
+        source_selector: Any | None = None,
+        prefer_manufacturer: bool = False,
     ):
         self._search_client = search_client
         self._extractor = extractor
@@ -138,6 +145,11 @@ class BatchSearchOrchestrator:
         self._product_context: dict[str, ProductInput] = {}
         self._consolidated_names: dict[str, str] = {}
         self._cohort_state = cohort_state
+        self._resolver = resolver
+        self._selection_pipeline = selection_pipeline
+        self._resolver_input_builder = resolver_input_builder
+        self._source_selector = source_selector
+        self._prefer_manufacturer = prefer_manufacturer
 
     @staticmethod
     def _to_search_results(raw_results: list[dict[str, Any]]) -> list[SearchResult]:
@@ -228,20 +240,114 @@ class BatchSearchOrchestrator:
                 )
                 ranked_results[sku] = ranked
 
-        # Step 4: Batch extraction from top URLs
-        selections = {sku: ranked[:3] for sku, ranked in ranked_results.items()}
+        # Step 4: Resolve extraction targets through the shared selection pipeline
+        selections, final_ranked = await self._build_extraction_selections(
+            products,
+            search_results,
+            ranked_results,
+        )
         extractions = await self.extract_batch(selections, max_concurrent=max_extract_concurrent)
 
         # Step 5: Build final results
-        final_ranked: dict[str, list[RankedResult]] = {}
         for sku, ranked_list in ranked_results.items():
             # Mark which URL was successfully extracted
-            if sku in extractions and extractions[sku].get("success"):
-                final_ranked[sku] = ranked_list
-            else:
+            if sku not in final_ranked:
                 final_ranked[sku] = ranked_list
 
         return BatchSearchResult(results=final_ranked, extractions=extractions)
+
+    async def _build_extraction_selections(
+        self,
+        products: list[ProductInput],
+        search_results: dict[str, list[SearchResult]],
+        ranked_results: dict[str, list[RankedResult]],
+    ) -> tuple[dict[str, list[RankedResult]], dict[str, list[RankedResult]]]:
+        selections: dict[str, list[RankedResult]] = {sku: ranked[:3] for sku, ranked in ranked_results.items()}
+        final_ranked: dict[str, list[RankedResult]] = dict(ranked_results)
+
+        if not self._resolver or not self._resolver_input_builder:
+            return selections, final_ranked
+
+        for product in products:
+            sku = product.sku
+            raw_results = search_results.get(sku, [])
+            if not raw_results:
+                continue
+
+            source_results = [
+                {
+                    "url": result.url,
+                    "title": result.title or "",
+                    "description": result.description or "",
+                }
+                for result in raw_results
+                if result.url
+            ]
+            if not source_results:
+                continue
+
+            product_name = self._consolidated_names.get(sku) or product.name
+            preferred_domains = self._merge_preferred_domains(
+                product.preferred_domains,
+                self._preferred_ranking_domains(),
+            )
+            html_by_url, resolved_payload_by_url = await self._resolver_input_builder(
+                search_results=source_results,
+                sku=sku,
+                brand=product.brand,
+                product_name=product_name,
+            )
+            selection_result = await self._selection_pipeline(
+                search_results=source_results,
+                sku=sku,
+                product_name=product_name,
+                brand=product.brand,
+                category=product.category,
+                resolver=self._resolver,
+                scoring=self._scorer,
+                html_by_url=html_by_url,
+                resolved_payload_by_url=resolved_payload_by_url,
+                selector=self._source_selector,
+                prefer_manufacturer=self._prefer_manufacturer,
+                preferred_domains=preferred_domains,
+            )
+            resolved_ranked = self._resolved_ranked_results(
+                selection_result,
+                source_results,
+            )
+            if not resolved_ranked:
+                continue
+
+            final_ranked[sku] = resolved_ranked
+            selections[sku] = resolved_ranked[:3]
+
+        return selections, final_ranked
+
+    @staticmethod
+    def _resolved_ranked_results(
+        selection_result: SelectionPipelineResult,
+        source_results: list[dict[str, Any]],
+    ) -> list[RankedResult]:
+        source_results_by_url = {str(result.get("url") or ""): result for result in source_results if str(result.get("url") or "")}
+        resolved_ranked = [
+            RankedResult(
+                result=SearchResult(
+                    url=candidate.resolved_url,
+                    title=str((source_results_by_url.get(candidate.source_url) or {}).get("title") or ""),
+                    description=str((source_results_by_url.get(candidate.source_url) or {}).get("description") or ""),
+                ),
+                score=float(len(selection_result.ranked_candidates) - index),
+            )
+            for index, candidate in enumerate(selection_result.ranked_candidates)
+            if candidate.resolved_url
+        ]
+        prioritized_url = selection_result.prioritized_url
+        if prioritized_url:
+            resolved_ranked.sort(key=lambda ranked: 0 if ranked.result.url == prioritized_url else 1)
+            total = len(resolved_ranked)
+            for index, ranked in enumerate(resolved_ranked):
+                ranked.score = float(total - index)
+        return resolved_ranked
 
     async def search_all_skus(
         self,

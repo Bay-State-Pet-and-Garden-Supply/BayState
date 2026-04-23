@@ -24,6 +24,19 @@ URL_PATTERN = re.compile(r"^https?://.+$", re.IGNORECASE)
 # Valid difficulty enum values
 VALID_DIFFICULTIES: frozenset[str] = frozenset({"easy", "medium", "hard"})
 
+# Valid optional benchmark source-tier annotations
+VALID_EXPECTED_SOURCE_TIERS: frozenset[str] = frozenset(
+    {
+        "official",
+        "official_variant",
+        "major_retailer",
+        "secondary_retailer",
+        "marketplace",
+        "retailer",
+        "unknown",
+    }
+)
+
 
 class ValidationError(NamedTuple):
     """A single validation error with location and message."""
@@ -192,6 +205,26 @@ class DatasetValidator:
                         entry_index=idx,
                         field="expected_source_url",
                         message=f"Invalid URL format: {url!r} (must start with http:// or https://)",
+                    )
+                )
+
+            expected_family_url = entry.get("expected_family_url", "")
+            if expected_family_url and not URL_PATTERN.match(expected_family_url):
+                errors.append(
+                    ValidationError(
+                        entry_index=idx,
+                        field="expected_family_url",
+                        message=f"Invalid URL format: {expected_family_url!r} (must start with http:// or https://)",
+                    )
+                )
+
+            expected_source_tier = str(entry.get("expected_source_tier", "") or "").strip()
+            if expected_source_tier and expected_source_tier not in VALID_EXPECTED_SOURCE_TIERS:
+                errors.append(
+                    ValidationError(
+                        entry_index=idx,
+                        field="expected_source_tier",
+                        message=(f"Invalid expected_source_tier: {expected_source_tier!r} (must be one of: {', '.join(sorted(VALID_EXPECTED_SOURCE_TIERS))})"),
                     )
                 )
 
