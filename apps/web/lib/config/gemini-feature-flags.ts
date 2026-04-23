@@ -2,7 +2,6 @@ import crypto from 'crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 export interface GeminiFeatureFlags {
-  GEMINI_AI_SEARCH_ENABLED: boolean;
   GEMINI_CRAWL4AI_ENABLED: boolean;
   GEMINI_BATCH_ENABLED: boolean;
   GEMINI_PARALLEL_RUN_ENABLED: boolean;
@@ -24,7 +23,6 @@ export interface GeminiFeatureFlagAuditEntry {
 const GEMINI_FEATURE_FLAGS_SETTINGS_KEY = 'gemini_feature_flags';
 const GEMINI_FEATURE_FLAGS_AUDIT_SETTINGS_KEY = 'gemini_feature_flags_audit_log';
 export const DEFAULT_GEMINI_FEATURE_FLAGS: GeminiFeatureFlags = {
-  GEMINI_AI_SEARCH_ENABLED: false,
   GEMINI_CRAWL4AI_ENABLED: false,
   GEMINI_BATCH_ENABLED: false,
   GEMINI_PARALLEL_RUN_ENABLED: false,
@@ -56,7 +54,6 @@ function normalizeGeminiFeatureFlags(raw: unknown): GeminiFeatureFlags {
   const value = (raw && typeof raw === 'object') ? (raw as Record<string, unknown>) : {};
 
   return {
-    GEMINI_AI_SEARCH_ENABLED: value.GEMINI_AI_SEARCH_ENABLED === true,
     GEMINI_CRAWL4AI_ENABLED: value.GEMINI_CRAWL4AI_ENABLED === true,
     GEMINI_BATCH_ENABLED: value.GEMINI_BATCH_ENABLED === true,
     GEMINI_PARALLEL_RUN_ENABLED: value.GEMINI_PARALLEL_RUN_ENABLED === true,

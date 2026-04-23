@@ -32,28 +32,9 @@ export interface ScrapeOptions {
     maxAttempts?: number;
     /** Number of SKUs per chunk (default: 50) */
     chunkSize?: number;
-    jobType?: 'standard' | 'ai_search';
+    jobType?: 'standard' | 'official_brand';
     /** Explicit enrichment method - takes precedence over jobType */
-    enrichment_method?: 'scrapers' | 'ai_search' | 'official_brand';
-    aiSearchConfig?: {
-        product_name?: string;
-        brand?: string;
-        max_search_results?: number;
-        max_steps?: number;
-        confidence_threshold?: number;
-        llm_provider?: 'openai';
-        llm_model?: string;
-        llm_base_url?: string | null;
-        prefer_manufacturer?: boolean;
-        fallback_to_static?: boolean;
-        max_concurrency?: number;
-        extraction_strategy?: 'llm' | 'llm_free' | 'auto';
-        cache_enabled?: boolean;
-        max_retries?: number;
-        timeout?: number;
-    };
-    /** Maximum cost in USD for AI Search jobs (default: 5.00, max: 10.00) */
-    maxAISearchCostUsd?: number;
+    enrichment_method?: 'scrapers' | 'official_brand';
     /** Brand name from cohort assignment — injected into context items that lack a brand */
     cohortBrand?: string;
 }

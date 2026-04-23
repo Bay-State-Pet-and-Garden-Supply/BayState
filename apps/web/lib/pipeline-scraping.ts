@@ -65,7 +65,7 @@ interface PostgrestLikeError {
     hint?: string;
 }
 
-type ScrapeJobInsertType = 'standard' | 'ai_search' | 'discovery';
+type ScrapeJobInsertType = 'standard' | 'discovery';
 
 
 function isLegacyJobTypeConstraintError(error: unknown): boolean {
@@ -751,13 +751,12 @@ export async function scrapeProducts(
     const scrapers = options?.scrapers ?? [];
     const maxAttempts = options?.maxAttempts ?? 3;
     const chunkSize = options?.chunkSize ?? 50; // Default 50 SKUs per chunk
-    const enrichmentMethod = options?.enrichment_method ?? (options?.jobType === 'ai_search' ? 'ai_search' : 'scrapers');
-    const isAISearch = enrichmentMethod === 'ai_search';
+    const enrichmentMethod = options?.enrichment_method ?? 'scrapers';
     const isOfficialBrand = enrichmentMethod === 'official_brand';
-    const isDiscovery = isAISearch || isOfficialBrand;
+    const isDiscovery = isOfficialBrand;
 
     const effectiveScrapersRaw = isDiscovery ? [enrichmentMethod] : scrapers;
-    const jobType: ScrapeJobInsertType = isDiscovery ? 'ai_search' : 'standard';
+    const jobType: ScrapeJobInsertType = isDiscovery ? 'discovery' : 'standard';
 
     // Resolve scraper display names to slugs if possible using local YAML configs
     let effectiveScrapers = effectiveScrapersRaw;
@@ -783,9 +782,9 @@ export async function scrapeProducts(
 
     const supabase = await createClient();
     const scrapeContextItems = await loadScrapeContextItems(supabase, skus, {
-        preferCatalogContext: isAISearch,
-        fallbackBrandHint: options?.cohortBrand ?? options?.aiSearchConfig?.brand,
-        useBrandRegistryFallback: isAISearch,
+        preferCatalogContext: isDiscovery,
+        fallbackBrandHint: options?.cohortBrand,
+        useBrandRegistryFallback: isDiscovery,
     });
 
     // Inject cohort brand into context items that lack one
@@ -798,16 +797,11 @@ export async function scrapeProducts(
         });
     }
 
-    const standardSkuContext = isAISearch ? undefined : buildStandardSkuContext(scrapeContextItems);
-
-    const maxAISearchCostUsd = isAISearch ? (options?.maxAISearchCostUsd ?? 5.00) : undefined;
-    if (isAISearch && maxAISearchCostUsd !== undefined && maxAISearchCostUsd > 10.00) {
-        return { success: false, error: 'Cost cap exceeds maximum of $10.00' };
-    }
+    const standardSkuContext = isDiscovery ? undefined : buildStandardSkuContext(scrapeContextItems);
 
     const nowIso = new Date().toISOString();
 
-    const plannedStandardJob = !isAISearch
+    const plannedStandardJob = !isDiscovery
         ? await loadStandardScrapePlan(
             skus,
             effectiveScrapers,
@@ -832,16 +826,14 @@ export async function scrapeProducts(
         runner_name: null,
         started_at: null,
         type,
-        config: isAISearch ? {
-            ...(options?.aiSearchConfig ?? {}),
+        config: isDiscovery ? {
             items: scrapeContextItems,
-            max_cost_usd: maxAISearchCostUsd,
         } : (standardSkuContext ? { sku_context: standardSkuContext } : null),
-        metadata: isAISearch
+        metadata: isDiscovery
             ? {
                 source: 'pipeline',
-                mode: 'ai_search',
-                requested_job_type: 'ai_search',
+                mode: enrichmentMethod,
+                requested_job_type: enrichmentMethod,
                 stored_job_type: type,
             }
             : {
@@ -849,7 +841,7 @@ export async function scrapeProducts(
                 ...(plannedStandardJob?.metadata ?? {}),
             },
         items_processed: 0,
-        items_total: isAISearch ? skus.length : plannedStandardJob?.plannedWorkUnits ?? skus.length,
+        items_total: isDiscovery ? skus.length : plannedStandardJob?.plannedWorkUnits ?? skus.length,
         updated_at: nowIso,
     });
 
@@ -858,18 +850,6 @@ export async function scrapeProducts(
         .insert(buildJobInsertPayload(jobType))
         .select('id')
         .single();
-
-    if (insertError && isAISearch && isLegacyJobTypeConstraintError(insertError)) {
-        console.warn('[Pipeline Scraping] Legacy scrape_jobs type constraint detected; retrying AI search insert using discovery type');
-        const retryResult = await supabase
-            .from('scrape_jobs')
-            .insert(buildJobInsertPayload('discovery'))
-            .select('id')
-            .single();
-
-        job = retryResult.data;
-        insertError = retryResult.error;
-    }
 
     if (insertError || !job) {
         console.error('[Pipeline Scraping] Failed to create parent job:', insertError);
@@ -882,28 +862,21 @@ export async function scrapeProducts(
 
     const plannedChunks = plannedStandardJob?.plannedChunkCount ?? Math.ceil(skus.length / chunkSize);
 
-    const linearChunkPlan = isAISearch
-        ? await buildLinearChunkPlan(skus, effectiveScrapers, chunkSize)
-        : null;
+    const chunkPlan = !isDiscovery
+        ? plannedStandardJob
+        : await buildLinearChunkPlan(skus, effectiveScrapers, chunkSize);
 
-    const chunkResult = isAISearch
-        ? await createScrapeJobChunks(
-            supabase,
-            job.id,
-            linearChunkPlan ?? await buildLinearChunkPlan(skus, effectiveScrapers, chunkSize),
-            nowIso,
-        )
-        : await createScrapeJobChunks(
-            supabase,
-            job.id,
-            plannedStandardJob ?? {
-                chunks: [],
-                metadata: {},
-                plannedChunkCount: 0,
-                plannedWorkUnits: 0,
-            },
-            nowIso,
-        );
+    const chunkResult = await createScrapeJobChunks(
+        supabase,
+        job.id,
+        chunkPlan ?? {
+            chunks: [],
+            metadata: {},
+            plannedChunkCount: 0,
+            plannedWorkUnits: 0,
+        },
+        nowIso,
+    );
 
     if (!chunkResult.success) {
         await supabase.from('scrape_jobs').delete().eq('id', job.id);

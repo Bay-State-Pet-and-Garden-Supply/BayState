@@ -183,28 +183,6 @@ export async function getScraperRecommendations(
     return b.hit_rate - a.hit_rate;
   });
 
-  // Ensure ai_search is always present as a fallback recommendation
-  const hasAiSearch = recommendations.some((r) => r.scraper_slug === 'ai_search' || r.scraper_slug === 'ai-search');
-  if (!hasAiSearch) {
-    const aiAffinity = affinityBySlug.get('ai_search') || affinityBySlug.get('ai-search');
-    const hitRate = aiAffinity ? Number(aiAffinity.hit_rate) || 0 : 0;
-    const totalAttempts = aiAffinity?.total_attempts || 0;
-    const confidence = aiAffinity ? classifyConfidence(totalAttempts, hitRate) : 'untested' as RecommendationConfidence;
-
-    recommendations.push({
-      scraper_slug: 'ai_search',
-      scraper_name: 'AI Search',
-      hit_rate: hitRate,
-      total_attempts: totalAttempts,
-      successful_extractions: aiAffinity?.successful_extractions || 0,
-      confidence,
-      reason: buildReason(confidence, totalAttempts, hitRate, 'AI Search'),
-      avg_fields_extracted: Number(aiAffinity?.avg_fields_extracted) || 0,
-      avg_images_found: Number(aiAffinity?.avg_images_found) || 0,
-      preselected: confidence === 'high' || confidence === 'medium',
-    });
-  }
-
   return recommendations;
 }
 

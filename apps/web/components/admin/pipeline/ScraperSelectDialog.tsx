@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, Search, CheckSquare, Square, Zap, Sparkles } from 'lucide-react';
+import { Loader2, Search, CheckSquare, Square, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -39,7 +39,7 @@ interface ScraperSelectDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     selectedSkuCount: number;
-    onConfirm: (scrapers: string[], enrichmentMethod: 'scrapers' | 'ai_search' | 'official_brand') => void;
+    onConfirm: (scrapers: string[], enrichmentMethod: 'scrapers' | 'official_brand') => void;
     /** When provided, fetches and shows scraper recommendations for this brand */
     brandName?: string | null;
 }
@@ -60,7 +60,7 @@ export function ScraperSelectDialog({
 }: ScraperSelectDialogProps) {
     const [scrapers, setScrapers] = useState<ScraperOption[]>([]);
     const [selectedScrapers, setSelectedScrapers] = useState<Set<string>>(new Set());
-    const [enrichmentMethod, setEnrichmentMethod] = useState<'scrapers' | 'ai_search' | 'official_brand'>('scrapers');
+    const [enrichmentMethod, setEnrichmentMethod] = useState<'scrapers' | 'official_brand'>('scrapers');
     const [isLoadingScrapers, setIsLoadingScrapers] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -153,7 +153,7 @@ export function ScraperSelectDialog({
         }
     };
 
-    const isDiscovery = enrichmentMethod === 'ai_search' || enrichmentMethod === 'official_brand';
+    const isDiscovery = enrichmentMethod === 'official_brand';
     const canSubmit = isDiscovery || selectedScrapers.size > 0;
 
     return (
@@ -179,15 +179,6 @@ export function ScraperSelectDialog({
                         >
                             <Search className="mr-1.5 h-3.5 w-3.5" />
                             Standard
-                        </Button>
-                        <Button
-                            variant={enrichmentMethod === 'ai_search' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setEnrichmentMethod('ai_search')}
-                            className={enrichmentMethod === 'ai_search' ? 'bg-violet-500 hover:bg-violet-500/90 text-white' : ''}
-                        >
-                            <Zap className="mr-1.5 h-3.5 w-3.5" />
-                            AI Search
                         </Button>
                         <Button
                             variant={enrichmentMethod === 'official_brand' ? 'default' : 'outline'}
@@ -300,13 +291,6 @@ export function ScraperSelectDialog({
                                 <> · <Sparkles className="inline h-3 w-3 text-green-600" /> Recommendations for <strong>{brandName}</strong></>
                             )}
                         </p>
-                    </div>
-                )}
-
-                {enrichmentMethod === 'ai_search' && (
-                    <div className="rounded-md border border-violet-200 bg-violet-50 p-3 text-sm text-violet-700">
-                        AI Search uses LLM-powered web search to find product data across the internet.
-                        No specific scrapers needed — cost is capped at $5 per job.
                     </div>
                 )}
 
