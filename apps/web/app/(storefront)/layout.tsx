@@ -1,7 +1,6 @@
 import { StorefrontHeader } from '@/components/storefront/header';
 import { StorefrontFooter } from '@/components/storefront/footer';
 import { MobileNav } from '@/components/storefront/mobile-nav';
-import { CampaignBanner } from '@/components/storefront/campaign-banner';
 import { UnderConstructionBanner } from '@/components/storefront/under-construction-banner';
 import { SearchProvider } from '@/components/storefront/search-provider';
 import { StickyCart } from '@/components/storefront/sticky-cart';
@@ -94,21 +93,14 @@ export default async function StorefrontLayout({
       <div className="flex min-h-screen flex-col w-full">
         <SkipLink />
         <UnderConstructionBanner />
-        {campaignBanner.enabled && campaignBanner.messages.length > 0 && (
-          <CampaignBanner
-            messages={campaignBanner.messages}
-            variant={campaignBanner.variant}
-            cycleInterval={campaignBanner.cycleInterval}
-          />
-        )}
-        <StorefrontHeader
-          user={user}
-          userRole={userRole}
+        <StorefrontHeader 
+          user={user} 
+          userRole={userRole} 
           categories={categories}
           petTypes={petTypes}
           brands={brands}
-        />
-        <main id="main-content" className="flex-1 pb-20 md:pb-0">{children}</main>
+          campaignBanner={campaignBanner}
+        />        <main id="main-content" className="flex-1 pb-20 md:pb-0">{children}</main>
         <StorefrontFooter />
         <StickyCart />
         <MobileNav />

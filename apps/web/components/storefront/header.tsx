@@ -29,6 +29,7 @@ import {
 import { User } from "@supabase/supabase-js";
 import { UserMenu } from "@/components/auth/user-menu";
 import { createClient } from "@/lib/supabase/client";
+import type { CampaignBannerSettings } from "@/lib/settings";
 
 function normalizeStorefrontUserRole(user: User | null): string | null {
   const metadataRoles = [
@@ -51,6 +52,7 @@ export function StorefrontHeader({
   categories,
   petTypes,
   brands,
+  campaignBanner,
 }: {
   user?: User | null;
   userRole?: string | null;
@@ -68,10 +70,34 @@ export function StorefrontHeader({
     slug: string;
     logo_url: string | null;
   }>;
+  campaignBanner?: CampaignBannerSettings;
 }) {
   const itemCount = useCartStore((state) => state.getItemCount());
   const isScrolled = useScroll(50);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  
+  // Dynamic Topbar Logic
+  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  
+  const bannerEnabled = campaignBanner?.enabled && campaignBanner?.messages && campaignBanner.messages.length > 0;
+  const messages = campaignBanner?.messages || [];
+  const cycleInterval = campaignBanner?.cycleInterval || 5000;
+
+  useEffect(() => {
+    if (!bannerEnabled || messages.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentMessageIndex((prev) => (prev + 1) % messages.length);
+        setIsTransitioning(false);
+      }, 300);
+    }, cycleInterval);
+
+    return () => clearInterval(interval);
+  }, [bannerEnabled, messages.length, cycleInterval]);
+
   const hasServerProvidedAuth = user !== undefined || userRole !== undefined;
   const [clientUser, setClientUser] = useState<User | null>(null);
   const [clientUserRole, setClientUserRole] = useState<string | null>(null);
@@ -219,9 +245,26 @@ export function StorefrontHeader({
           )}
         >
           <div className="container mx-auto flex justify-between items-center">
-            <div className="flex items-center gap-2">
+            <div className={cn(
+              "flex items-center gap-2 transition-opacity duration-300",
+              isTransitioning ? "opacity-0" : "opacity-100"
+            )}>
               <span className="text-accent">★</span>
-              From big to small, we feed them all!
+              {bannerEnabled ? (
+                <>
+                  {messages[currentMessageIndex].text}
+                  {messages[currentMessageIndex].linkText && messages[currentMessageIndex].linkHref && (
+                    <Link 
+                      href={messages[currentMessageIndex].linkHref!} 
+                      className="ml-2 text-accent hover:underline underline-offset-4"
+                    >
+                      {messages[currentMessageIndex].linkText}
+                    </Link>
+                  )}
+                </>
+              ) : (
+                "From big to small, we feed them all!"
+              )}
               <span className="text-accent">★</span>
             </div>
             <div className="flex gap-6">

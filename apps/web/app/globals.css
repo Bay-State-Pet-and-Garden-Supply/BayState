@@ -188,18 +188,11 @@
   }
 
   html {
-    overflow: auto;
-    height: 100%;
+    @apply scroll-smooth;
   }
 
   body {
-    @apply bg-background text-foreground;
-    height: 100%;
-    overflow: auto;
-  }
-
-  #__next {
-    height: 100%;
+    @apply bg-background text-foreground min-h-screen;
   }
 }
 
