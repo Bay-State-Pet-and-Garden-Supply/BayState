@@ -1,32 +1,14 @@
 """
-AI Search Scraper - Universal product extraction.
+Official Brand Scraper - Manufacturer domain discovery.
 
-This module provides a standalone AI scraper that:
-1. Searches for products using SerpAPI/Google search with provider fallbacks
-2. Identifies manufacturer websites intelligently
-3. Navigates and extracts product data
+This module provides a standalone scraper that:
+1. Searches for official manufacturer websites
+2. Identifies the best candidate URL
+3. Extracts product data from the official source
 4. Returns structured results
-
-Usage:
-    from scrapers.ai_search import AISearchScraper, AISearchResult
-
-    scraper = AISearchScraper()
-    result = await scraper.scrape_product(
-        sku="12345",
-        product_name="Purina Pro Plan",
-        brand="Purina"
-    )
 """
 
 from scrapers.ai_search.models import AISearchResult
-
-AISearchScraper = None
-try:
-    from scrapers.ai_search.scraper import AISearchScraper as _AISearchScraper
-except ModuleNotFoundError:
-    pass
-else:
-    AISearchScraper = _AISearchScraper
 
 OfficialBrandScraper = None
 try:
@@ -36,4 +18,4 @@ except ModuleNotFoundError:
 else:
     OfficialBrandScraper = _OfficialBrandScraper
 
-__all__ = ["AISearchScraper", "OfficialBrandScraper", "AISearchResult"]
+__all__ = ["OfficialBrandScraper", "AISearchResult"]

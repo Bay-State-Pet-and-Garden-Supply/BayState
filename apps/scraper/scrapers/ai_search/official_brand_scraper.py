@@ -12,7 +12,7 @@ from scrapers.ai_search.llm_runtime import resolve_llm_runtime
 from scrapers.ai_search.models import AISearchResult
 from scrapers.ai_search.query_builder import QueryBuilder
 from scrapers.ai_search.search import SearchClient
-from scrapers.ai_search.source_selector import LLMSourceSelector
+from scrapers.ai_search.scoring import BrandSourceSelector
 from src.crawl4ai_engine.engine import Crawl4AIEngine
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ class OfficialBrandScraper:
         self,
         search_client: SearchClient | None = None,
         query_builder: QueryBuilder | None = None,
-        source_selector: LLMSourceSelector | None = None,
+        source_selector: BrandSourceSelector | None = None,
         headless: bool = True,
         llm_provider: str = "openai",
         llm_model: str = "gpt-4o-mini",
@@ -45,12 +45,15 @@ class OfficialBrandScraper:
     ):
         self._search_client = search_client or SearchClient()
         self._query_builder = query_builder or QueryBuilder()
-        self._source_selector = source_selector or LLMSourceSelector()
         self.headless = headless
         self._llm_runtime = resolve_llm_runtime(
             provider=llm_provider,
             model=llm_model,
             api_key=llm_api_key,
+        )
+        self._source_selector = source_selector or BrandSourceSelector(
+            api_key=self._llm_runtime.api_key,
+            model=self._llm_runtime.model
         )
 
     async def identify_official_url(self, sku: str, brand: str) -> str | None:
@@ -101,24 +104,36 @@ class OfficialBrandScraper:
                     return kg_url
 
         # 4. Fallback to LLM scoring for top 5 organic results
-        # select_best_url takes top 5 internally, but we'll pass the full list
-        best_url, cost = await self._source_selector.select_best_url(
-            results=results,
-            sku=sku,
-            product_name=f"{brand} {sku}",
-            brand=brand,
-        )
+        scored_results = []
+        for result in results[:5]:
+            url = result.get("url")
+            snippet = result.get("description") or result.get("title", "")
+            if not url:
+                continue
+                
+            score_data = await self._source_selector.score_snippet(url, snippet, brand)
+            if score_data.get("is_official"):
+                confidence = score_data.get("confidence_score", 0.0)
+                scored_results.append((url, confidence))
+                logger.debug(
+                    "[OfficialBrandScraper] Scored URL %s: official=%s, confidence=%s",
+                    url, True, confidence
+                )
 
-        if best_url:
+        if scored_results:
+            # Sort by confidence
+            scored_results.sort(key=lambda x: x[1], reverse=True)
+            best_url = scored_results[0][0]
             logger.info(
-                "[OfficialBrandScraper] LLM selected official URL: %s (cost: $%s)",
+                "[OfficialBrandScraper] LLM selected official URL: %s (confidence: %s)",
                 best_url,
-                f"{cost:.4f}",
+                scored_results[0][1],
             )
             return best_url
 
         logger.info("[OfficialBrandScraper] No official URL identified for %s %s", brand, sku)
         return None
+
 
     async def extract_data(self, url: str, schema_path: str | None = None) -> dict[str, Any]:
         """Extract product data using a two-stage process.
