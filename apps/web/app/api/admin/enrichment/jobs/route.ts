@@ -6,23 +6,9 @@ export const dynamic = 'force-dynamic';
 
 interface EnrichmentJobRequest {
     skus: string[];
-    method: 'scrapers' | 'ai_search' | 'discovery' | 'crawl4ai';
+    method: 'scrapers' | 'official_brand' | 'crawl4ai';
     config?: {
         scrapers?: string[];
-        aiSearch?: ScrapeOptions['aiSearchConfig'];
-        discovery?: {
-            product_name?: string;
-            brand?: string;
-            max_search_results?: number;
-            max_steps?: number;
-            confidence_threshold?: number;
-            llm_provider?: 'openai';
-            llm_model?: string;
-            llm_base_url?: string | null;
-            prefer_manufacturer?: boolean;
-            fallback_to_static?: boolean;
-            max_concurrency?: number;
-        };
         crawl4ai?: {
             extraction_strategy?: 'llm' | 'llm_free' | 'auto';
             cache_enabled?: boolean;
@@ -38,26 +24,6 @@ interface EnrichmentJobRequest {
     maxRunners?: number;
 }
 
-function normalizeAISearchConfig(request: EnrichmentJobRequest): ScrapeOptions['aiSearchConfig'] | undefined {
-    if (!request.config) {
-        return undefined;
-    }
-
-    if (request.method === 'ai_search' && request.config.aiSearch) {
-        return request.config.aiSearch;
-    }
-
-    if (request.method === 'discovery' && request.config.discovery) {
-        return request.config.discovery;
-    }
-
-    if (request.method === 'crawl4ai' && request.config.crawl4ai) {
-        return request.config.crawl4ai;
-    }
-
-    return undefined;
-}
-
 export async function POST(request: NextRequest) {
     const auth = await requireAdminAuth();
     if (!auth.authorized) {
@@ -71,7 +37,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'skus must be a non-empty array' }, { status: 400 });
         }
 
-        const validMethods = ['scrapers', 'ai_search', 'discovery', 'crawl4ai'];
+        const validMethods = ['scrapers', 'official_brand', 'crawl4ai'];
         if (!body.method || !validMethods.includes(body.method)) {
             return NextResponse.json(
                 { error: `method must be one of: ${validMethods.join(', ')}` },
@@ -80,7 +46,7 @@ export async function POST(request: NextRequest) {
         }
 
         const normalizedMethod: ScrapeOptions['enrichment_method'] =
-            body.method === 'scrapers' ? 'scrapers' : 'ai_search';
+            body.method === 'scrapers' ? 'scrapers' : 'official_brand';
 
         const scrapeOptions: ScrapeOptions = {
             enrichment_method: normalizedMethod,
@@ -91,11 +57,6 @@ export async function POST(request: NextRequest) {
 
         if (body.method === 'scrapers' && body.config?.scrapers) {
             scrapeOptions.scrapers = body.config.scrapers;
-        }
-
-        const aiSearchConfig = normalizeAISearchConfig(body);
-        if (normalizedMethod === 'ai_search' && aiSearchConfig) {
-            scrapeOptions.aiSearchConfig = aiSearchConfig;
         }
 
         const result = await scrapeProducts(body.skus, scrapeOptions);

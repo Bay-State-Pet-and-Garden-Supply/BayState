@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Loader2, Sparkles } from 'lucide-react';
 
-interface AISearchConfig {
+interface OfficialBrandConfig {
     max_search_results: number; // 1-10, default 5
     llm_model?: string;
     max_steps: number; // 1-50, default 15
@@ -24,11 +24,11 @@ interface ScrapersConfig {
     scrapers: string[]; // Array of scraper names
 }
 
-export type EnrichmentMethod = 'scrapers' | 'ai_search' | 'consolidation';
+export type EnrichmentMethod = 'scrapers' | 'official_brand' | 'consolidation';
 
 export interface MethodSelectionProps {
     selectedSkus: string[];
-    onNext: (data: { method: EnrichmentMethod; config: AISearchConfig | ScrapersConfig | Record<string, never> }) => void;
+    onNext: (data: { method: EnrichmentMethod; config: any }) => void;
     onBack?: () => void;
 }
 
@@ -40,13 +40,13 @@ interface Scraper {
 }
 
 export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectionProps) {
-    const [method, setMethod] = useState<EnrichmentMethod>('ai_search');
+    const [method, setMethod] = useState<EnrichmentMethod>('official_brand');
     const [scrapers, setScrapers] = useState<Scraper[]>([]);
     const [loadingScrapers, setLoadingScrapers] = useState(false);
     const [scrapersError, setScrapersError] = useState<string | null>(null);
     const [selectedScrapers, setSelectedScrapers] = useState<string[]>([]);
 
-    const [aiSearchConfig, setAiSearchConfig] = useState<AISearchConfig>({
+    const [officialBrandConfig, setOfficialBrandConfig] = useState<OfficialBrandConfig>({
         max_search_results: 5,
         llm_model: '',
         max_steps: 15,
@@ -89,11 +89,11 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                 .filter(s => selectedScrapers.includes(s.id))
                 .map(s => s.name);
             onNext({ method, config: { scrapers: selectedScraperNames } });
-        } else if (method === 'ai_search') {
-            const nextConfig = aiSearchConfig.llm_model && aiSearchConfig.llm_model.trim().length > 0
-                ? { ...aiSearchConfig, llm_model: aiSearchConfig.llm_model.trim() }
+        } else if (method === 'official_brand') {
+            const nextConfig = officialBrandConfig.llm_model && officialBrandConfig.llm_model.trim().length > 0
+                ? { ...officialBrandConfig, llm_model: officialBrandConfig.llm_model.trim() }
                 : {
-                    ...aiSearchConfig,
+                    ...officialBrandConfig,
                     llm_model: undefined,
                 };
             onNext({ method, config: nextConfig });
@@ -146,18 +146,18 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
 
                 <div className="relative">
                     <RadioGroupItem
-                        value="ai_search"
-                        id="method-ai-search"
+                        value="official_brand"
+                        id="method-official-brand"
                         className="peer sr-only"
-                        data-testid="enrichment-method-ai-search"
+                        data-testid="enrichment-method-official-brand"
                     />
                     <Label
-                        htmlFor="method-ai-search"
+                        htmlFor="method-official-brand"
                         className="flex flex-col items-start gap-2 rounded-md border border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                     >
-                        <span className="font-semibold">AI Search</span>
+                        <span className="font-semibold">Official Brand Search</span>
                         <span className="text-sm text-muted-foreground font-normal">
-                            Intelligently search the web and extract product information. Ideal for unknown or obscure items.
+                            Intelligently search brand websites and extract high-fidelity product information.
                         </span>
                     </Label>
                 </div>
@@ -232,11 +232,11 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                             </div>
                         )}
                     </div>
-                ) : method === 'ai_search' ? (
-                    <div className="space-y-6" data-testid="ai-search-config-panel">
+                ) : method === 'official_brand' ? (
+                    <div className="space-y-6" data-testid="official-brand-config-panel">
                         <div>
-                            <h4 className="font-medium">AI Search Configuration</h4>
-                            <p className="text-sm text-muted-foreground">Configure the intelligent extraction parameters.</p>
+                            <h4 className="font-medium">Official Brand Search Configuration</h4>
+                            <p className="text-sm text-muted-foreground">Configure the automated extraction parameters.</p>
                         </div>
 
                         <div className="grid gap-6 sm:grid-cols-2">
@@ -244,11 +244,11 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                                 <Label htmlFor="llm-model">LLM Model</Label>
                                 <Input
                                     id="llm-model"
-                                    value={aiSearchConfig.llm_model || ""}
+                                    value={officialBrandConfig.llm_model || ""}
                                     onChange={(e) =>
-                                        setAiSearchConfig(prev => ({ ...prev, llm_model: e.target.value }))
+                                        setOfficialBrandConfig(prev => ({ ...prev, llm_model: e.target.value }))
                                     }
-                                    disabled={aiSearchConfig.extraction_strategy === 'llm_free'}
+                                    disabled={officialBrandConfig.extraction_strategy === 'llm_free'}
                                     placeholder="Leave blank to use the global default model"
                                     data-testid="config-llm-model"
                                 />
@@ -257,9 +257,9 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                             <div className="space-y-3">
                                 <Label htmlFor="extraction-strategy">Extraction Strategy</Label>
                                 <Select
-                                    value={aiSearchConfig.extraction_strategy}
+                                    value={officialBrandConfig.extraction_strategy}
                                     onValueChange={(val: 'llm' | 'llm_free' | 'auto') =>
-                                        setAiSearchConfig(prev => ({ ...prev, extraction_strategy: val }))
+                                        setOfficialBrandConfig(prev => ({ ...prev, extraction_strategy: val }))
                                     }
                                 >
                                     <SelectTrigger id="extraction-strategy" data-testid="config-extraction-strategy">
@@ -280,8 +280,8 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                                     type="number"
                                     min={1}
                                     max={10}
-                                    value={aiSearchConfig.max_search_results}
-                                    onChange={(e) => setAiSearchConfig(prev => ({
+                                    value={officialBrandConfig.max_search_results}
+                                    onChange={(e) => setOfficialBrandConfig(prev => ({
                                         ...prev,
                                         max_search_results: Math.min(10, Math.max(1, parseInt(e.target.value) || 5))
                                     }))}
@@ -292,14 +292,14 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
 
                             <div className="flex items-center space-x-2 pt-4">
                                 <Checkbox
-                                    id="ai-search-cache"
-                                    checked={aiSearchConfig.cache_enabled}
-                                    onCheckedChange={(checked) => setAiSearchConfig(prev => ({ ...prev, cache_enabled: !!checked }))}
+                                    id="official-brand-cache"
+                                    checked={officialBrandConfig.cache_enabled}
+                                    onCheckedChange={(checked) => setOfficialBrandConfig(prev => ({ ...prev, cache_enabled: !!checked }))}
                                     data-testid="config-cache-enabled"
                                 />
                                 <div className="grid gap-1.5 leading-none">
                                     <label
-                                        htmlFor="ai-search-cache"
+                                        htmlFor="official-brand-cache"
                                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                     >
                                         Enable Caching
@@ -313,14 +313,14 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                             <div className="space-y-4">
                                 <div className="flex justify-between">
                                     <Label>Max Agent Steps</Label>
-                                    <span className="text-sm text-muted-foreground">{aiSearchConfig.max_steps}</span>
+                                    <span className="text-sm text-muted-foreground">{officialBrandConfig.max_steps}</span>
                                 </div>
                                 <Slider
                                     min={1}
                                     max={50}
                                     step={1}
-                                    value={[aiSearchConfig.max_steps]}
-                                    onValueChange={(vals) => setAiSearchConfig(prev => ({ ...prev, max_steps: vals[0] }))}
+                                    value={[officialBrandConfig.max_steps]}
+                                    onValueChange={(vals) => setOfficialBrandConfig(prev => ({ ...prev, max_steps: vals[0] }))}
                                     data-testid="config-max-steps"
                                 />
                                 <p className="text-xs text-muted-foreground">Maximum navigation actions before giving up</p>
@@ -330,15 +330,15 @@ export function MethodSelection({ selectedSkus, onNext, onBack }: MethodSelectio
                                 <div className="flex justify-between">
                                     <Label>Confidence Threshold</Label>
                                     <span className="text-sm text-muted-foreground">
-                                        {Math.round(aiSearchConfig.confidence_threshold * 100)}%
+                                        {Math.round(officialBrandConfig.confidence_threshold * 100)}%
                                     </span>
                                 </div>
                                 <Slider
                                     min={0.1}
                                     max={1.0}
                                     step={0.05}
-                                    value={[aiSearchConfig.confidence_threshold]}
-                                    onValueChange={(vals) => setAiSearchConfig(prev => ({ ...prev, confidence_threshold: vals[0] }))}
+                                    value={[officialBrandConfig.confidence_threshold]}
+                                    onValueChange={(vals) => setOfficialBrandConfig(prev => ({ ...prev, confidence_threshold: vals[0] }))}
                                     data-testid="config-confidence"
                                 />
                                 <p className="text-xs text-muted-foreground">Minimum certainty required to save found data</p>

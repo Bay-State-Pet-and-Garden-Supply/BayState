@@ -7,7 +7,7 @@ import { SourceSelectorPanel } from './enrichment/SourceSelectorPanel';
 interface Source {
     id: string;
     displayName: string;
-    type: 'scraper' | 'ai_search';
+    type: 'scraper' | 'official_brand';
     status: 'healthy' | 'degraded' | 'offline' | 'unknown';
     enabled: boolean;
     requiresAuth: boolean;
@@ -15,7 +15,7 @@ interface Source {
 
 interface BatchEnhanceDialogProps {
     selectedCount: number;
-    onConfirm: (options: { scrapers: string[], useAiSearch: boolean }) => void;
+    onConfirm: (options: { scrapers: string[], useOfficialBrand: boolean }) => void;
     onCancel: () => void;
     isEnhancing: boolean;
 }
@@ -60,8 +60,8 @@ export function BatchEnhanceDialog({
         const selectedScrapers = sources
             .filter((source) => source.type === 'scraper' && enabledSourceIds.includes(source.id))
             .map((source) => source.id);
-        const useAiSearch = enabledSourceIds.includes('ai_search');
-        onConfirm({ scrapers: selectedScrapers, useAiSearch });
+        const useOfficialBrand = enabledSourceIds.includes('official_brand');
+        onConfirm({ scrapers: selectedScrapers, useOfficialBrand });
     };
 
     return (

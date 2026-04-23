@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 
 interface ReviewSubmitProps {
     selectedSkus: string[];
-    method: 'scrapers' | 'ai_search' | 'consolidation';
+    method: 'scrapers' | 'official_brand' | 'consolidation';
     methodConfig: unknown;
     chunkConfig: {
         chunkSize: number;
@@ -23,7 +23,7 @@ interface ScraperMethodConfig {
     scrapers: string[];
 }
 
-interface AISearchMethodConfig {
+interface OfficialBrandMethodConfig {
     extraction_strategy?: string;
     llm_model?: string;
     cache_enabled?: boolean;
@@ -42,7 +42,7 @@ export function ReviewSubmit({
     const [error, setError] = useState<string | null>(null);
 
     const scraperConfig = methodConfig as ScraperMethodConfig;
-    const aiSearchConfig = methodConfig as AISearchMethodConfig;
+    const officialBrandConfig = methodConfig as OfficialBrandMethodConfig;
 
     const handleSubmit = async () => {
         setIsSubmitting(true);
@@ -67,8 +67,8 @@ export function ReviewSubmit({
                 return;
             }
 
-            const configPayload = method === 'ai_search'
-                ? { aiSearchConfig: methodConfig }
+            const configPayload = method === 'official_brand'
+                ? { aiSearchConfig: methodConfig } // Using 'aiSearchConfig' key for API compatibility
                 : { scrapers: scraperConfig.scrapers };
 
             const response = await fetch('/api/admin/enrichment/jobs', {
@@ -139,7 +139,7 @@ export function ReviewSubmit({
                             <span className="text-muted-foreground font-medium">Enrichment Method</span>
                             <Badge className="capitalize text-sm font-semibold">
                                 {method === 'scrapers' ? 'Static Scrapers' :
-                                    method === 'ai_search' ? 'AI Search' : 'AI Consolidation'}
+                                    method === 'official_brand' ? 'Official Brand Search' : 'AI Consolidation'}
                             </Badge>
                         </div>
                         <div className="flex justify-between items-center p-3 rounded-lg bg-background border border-border/40">
@@ -177,25 +177,25 @@ export function ReviewSubmit({
                                         )) || <span className="text-sm text-muted-foreground italic">None selected</span>}
                                     </div>
                                 </div>
-                            ) : method === 'ai_search' ? (
+                            ) : method === 'official_brand' ? (
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground">Strategy:</span>
-                                        <span className="font-medium uppercase">{aiSearchConfig.extraction_strategy}</span>
+                                        <span className="font-medium uppercase">{officialBrandConfig.extraction_strategy}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground">Model:</span>
-                                        <span className="font-medium">{aiSearchConfig.llm_model || 'N/A'}</span>
+                                        <span className="font-medium">{officialBrandConfig.llm_model || 'N/A'}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground">Caching:</span>
-                                        <span className="font-medium">{aiSearchConfig.cache_enabled ? 'Enabled' : 'Disabled'}</span>
+                                        <span className="font-medium">{officialBrandConfig.cache_enabled ? 'Enabled' : 'Disabled'}</span>
                                     </div>
-                                    {aiSearchConfig.costEstimate && (
+                                    {officialBrandConfig.costEstimate && (
                                         <div className="mt-4 p-3 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">
                                             <div className="flex justify-between items-center text-sm font-semibold">
                                                 <span>Estimated Cost:</span>
-                                                <span>${aiSearchConfig.costEstimate}</span>
+                                                <span>${officialBrandConfig.costEstimate}</span>
                                             </div>
                                         </div>
                                     )}

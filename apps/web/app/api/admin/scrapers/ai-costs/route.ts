@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       .select('id, status, created_at, completed_at, metadata, scrapers, type')
       .gte('created_at', `${startDate}T00:00:00Z`)
       .lte('created_at', `${endDate}T23:59:59Z`)
-      .eq('type', 'ai_search')
+      .in('type', ['ai_search', 'official_brand'])
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -43,7 +43,8 @@ export async function GET(request: Request) {
 
     for (const job of jobs ?? []) {
       const metadata = asRecord(job.metadata);
-      const aiSearch = asRecord(metadata?.ai_search);
+      // Support both legacy ai_search and new official_brand keys in metadata
+      const aiSearch = asRecord(metadata?.official_brand || metadata?.ai_search);
       const model = typeof aiSearch?.llm_model === 'string' ? aiSearch.llm_model : 'unknown';
       const cost = toNumber(aiSearch?.total_cost ?? metadata?.total_cost);
       const date = job.created_at.split('T')[0];
