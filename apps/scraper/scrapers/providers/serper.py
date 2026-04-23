@@ -16,10 +16,19 @@ class SerperSearchClient(BaseSearchProvider):
     _MAX_BATCH_SIZE = 100
     _MAX_RETRIES = 3
 
-    def __init__(self, max_results: int = 15, api_key: str | None = None, timeout_seconds: float = 15.0) -> None:
+    def __init__(
+        self,
+        max_results: int = 15,
+        api_key: str | None = None,
+        timeout_seconds: float = 15.0,
+        gl: str = "us",
+        hl: str = "en",
+    ) -> None:
         self.max_results = max(1, max_results)
         self.api_key = (api_key or os.getenv("SERPER_API_KEY") or "").strip()
         self.timeout_seconds = timeout_seconds
+        self.gl = gl
+        self.hl = hl
 
     def _build_headers(self) -> dict[str, str]:
         return {
@@ -32,36 +41,57 @@ class SerperSearchClient(BaseSearchProvider):
             "q": query,
             "num": self.max_results,
             "autocorrect": False,
+            "gl": self.gl,
+            "hl": self.hl,
         }
 
     def _extract_results(self, data: Any) -> list[dict[str, Any]]:
-        organic_results = data.get("organic") if isinstance(data, dict) else None
-        if not isinstance(organic_results, list):
+        if not isinstance(data, dict):
             return []
 
         results: list[dict[str, Any]] = []
         seen_urls: set[str] = set()
-        for item in organic_results:
-            if not isinstance(item, dict):
-                continue
 
-            url = str(item.get("link") or "").strip()
-            if not url or url in seen_urls:
-                continue
-            seen_urls.add(url)
+        # 1. Extract Knowledge Graph if present (highest priority)
+        kg = data.get("knowledgeGraph")
+        if isinstance(kg, dict):
+            kg_url = str(kg.get("website") or "").strip()
+            if kg_url and kg_url not in seen_urls:
+                seen_urls.add(kg_url)
+                results.append(
+                    {
+                        "url": kg_url,
+                        "title": str(kg.get("title") or "Knowledge Graph").strip(),
+                        "description": "Verified website from Knowledge Graph",
+                        "provider": "serper",
+                        "result_type": "knowledge_graph",
+                    }
+                )
 
-            results.append(
-                {
-                    "url": url,
-                    "title": str(item.get("title") or "").strip(),
-                    "description": str(item.get("snippet") or "").strip(),
-                    "provider": "serper",
-                    "result_type": "organic",
-                }
-            )
+        # 2. Extract organic results
+        organic_results = data.get("organic")
+        if isinstance(organic_results, list):
+            for item in organic_results:
+                if not isinstance(item, dict):
+                    continue
 
-            if len(results) >= self.max_results:
-                break
+                url = str(item.get("link") or "").strip()
+                if not url or url in seen_urls:
+                    continue
+                seen_urls.add(url)
+
+                results.append(
+                    {
+                        "url": url,
+                        "title": str(item.get("title") or "").strip(),
+                        "description": str(item.get("snippet") or "").strip(),
+                        "provider": "serper",
+                        "result_type": "organic",
+                    }
+                )
+
+                if len(results) >= self.max_results:
+                    break
 
         return results
 
