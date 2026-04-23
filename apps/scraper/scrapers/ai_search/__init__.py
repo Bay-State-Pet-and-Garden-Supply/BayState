@@ -28,4 +28,12 @@ except ModuleNotFoundError:
 else:
     AISearchScraper = _AISearchScraper
 
-__all__ = ["AISearchScraper", "AISearchResult"]
+OfficialBrandScraper = None
+try:
+    from scrapers.ai_search.official_brand_scraper import OfficialBrandScraper as _OfficialBrandScraper
+except ModuleNotFoundError:
+    pass
+else:
+    OfficialBrandScraper = _OfficialBrandScraper
+
+__all__ = ["AISearchScraper", "OfficialBrandScraper", "AISearchResult"]

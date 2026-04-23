@@ -550,7 +550,7 @@ def _run_sequential_job(
         return results
 
     is_ai_search_job = job_config.job_type in {"ai_search", "discovery", "crawl4ai"} or any(
-        s.name in {"ai_search", "ai_discovery", "crawl4ai_discovery"} for s in job_config.scrapers
+        s.name in {"ai_search", "ai_discovery", "crawl4ai_discovery", "official_brand"} for s in job_config.scrapers
     )
 
     if is_ai_search_job:
@@ -1062,7 +1062,8 @@ def _run_ai_search_job(
         return "gpt-4o-mini"
 
     search_cfg = job_config.job_config or {}
-    scraper_name = "ai_search"
+    is_official_brand = any(s.name == "official_brand" for s in job_config.scrapers)
+    scraper_name = "official_brand" if is_official_brand else "ai_search"
 
     max_concurrency = int(search_cfg.get("max_concurrency", job_config.max_workers) or job_config.max_workers)
     max_search_results = int(search_cfg.get("max_search_results", 5) or 5)
@@ -1153,7 +1154,7 @@ def _run_ai_search_job(
         job_logging=job_logging,
         log_buffer=log_buffer,
         level="info",
-        message=f"Starting AI Search scraper for {len(items)} SKUs",
+        message=f"Starting {scraper_name} scraper for {len(items)} SKUs",
         details={
             "max_concurrency": max_concurrency,
             "max_search_results": max_search_results,
@@ -1175,7 +1176,7 @@ def _run_ai_search_job(
         job_logging=job_logging,
         status="running",
         progress=5,
-        message="Starting AI Search scraper",
+        message=f"Starting {scraper_name} scraper",
         phase="starting",
         details={"scraper_name": scraper_name},
         items_total=len(items),
@@ -1188,25 +1189,34 @@ def _run_ai_search_job(
     crawl4ai_llm_api_key = llm_api_key
 
     async def _run() -> list[Any]:
-        scraper = AISearchScraper(
-            headless=settings.browser_settings["headless"],
-            max_search_results=max_search_results,
-            max_steps=max_steps,
-            confidence_threshold=confidence_threshold,
-            llm_provider=llm_provider,
-            llm_model=llm_model,
-            llm_base_url=llm_base_url,
-            llm_api_key=llm_api_key,
-            search_api_key=runtime_serper,
-            crawl4ai_llm_provider=crawl4ai_llm_provider,
-            crawl4ai_llm_model=crawl4ai_llm_model,
-            crawl4ai_llm_base_url=crawl4ai_llm_base_url,
-            crawl4ai_llm_api_key=crawl4ai_llm_api_key,
-            search_provider=search_provider,
-            cache_enabled=cache_enabled,
-            extraction_strategy=extraction_strategy,
-            prefer_manufacturer=prefer_manufacturer,
-        )
+        if is_official_brand:
+            from scrapers.ai_search import OfficialBrandScraper
+            scraper = OfficialBrandScraper(
+                headless=settings.browser_settings["headless"],
+                llm_provider=llm_provider,
+                llm_model=llm_model,
+                llm_api_key=llm_api_key,
+            )
+        else:
+            scraper = AISearchScraper(
+                headless=settings.browser_settings["headless"],
+                max_search_results=max_search_results,
+                max_steps=max_steps,
+                confidence_threshold=confidence_threshold,
+                llm_provider=llm_provider,
+                llm_model=llm_model,
+                llm_base_url=llm_base_url,
+                llm_api_key=llm_api_key,
+                search_api_key=runtime_serper,
+                crawl4ai_llm_provider=crawl4ai_llm_provider,
+                crawl4ai_llm_model=crawl4ai_llm_model,
+                crawl4ai_llm_base_url=crawl4ai_llm_base_url,
+                crawl4ai_llm_api_key=crawl4ai_llm_api_key,
+                search_provider=search_provider,
+                cache_enabled=cache_enabled,
+                extraction_strategy=extraction_strategy,
+                prefer_manufacturer=prefer_manufacturer,
+            )
         return await scraper.scrape_products_batch(items, max_concurrency=max_concurrency)
 
     try:

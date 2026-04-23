@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
-from typing import Any
+from typing import Any, List
 
 from pydantic import BaseModel, Field
 
 from scrapers.ai_search.llm_runtime import resolve_llm_runtime
+from scrapers.ai_search.models import AISearchResult
 from scrapers.ai_search.query_builder import QueryBuilder
 from scrapers.ai_search.search import SearchClient
 from scrapers.ai_search.source_selector import LLMSourceSelector
@@ -217,3 +219,50 @@ class OfficialBrandScraper:
                     logger.error("[OfficialBrandScraper] Failed to parse Stage 2 results: %s", e)
 
             return {"success": False, "error": result.get("error") or "Extraction failed"}
+
+    async def scrape_products_batch(
+        self,
+        products: list[dict[str, Any]],
+        max_concurrency: int = 4,
+    ) -> list[AISearchResult]:
+        """Scrape multiple products in batch (Compatibility for Runner)."""
+        if not products:
+            return []
+
+        semaphore = asyncio.Semaphore(max(1, max_concurrency))
+
+        async def _scrape_single(product: dict[str, Any]) -> AISearchResult:
+            async with semaphore:
+                sku = str(product.get("sku", "")).strip()
+                brand = str(product.get("brand", "")).strip()
+                if not sku or not brand:
+                    return AISearchResult(success=False, sku=sku, error="Missing SKU or Brand")
+
+                # 1. Discovery
+                url = await self.identify_official_url(sku, brand)
+                if not url:
+                    return AISearchResult(success=False, sku=sku, error="Could not identify official brand URL")
+
+                # 2. Extraction
+                res = await self.extract_data(url)
+
+                if res.get("success"):
+                    data = res["data"]
+                    return AISearchResult(
+                        success=True,
+                        sku=sku,
+                        product_name=data.get("name"),
+                        brand=data.get("brand") or brand,
+                        description=data.get("description"),
+                        images=data.get("images"),
+                        categories=data.get("categories"),
+                        url=url,
+                        source_website=url,
+                        confidence=1.0 if res["method"] == "json_css" else 0.8,
+                        cost_usd=0.05,  # Nominal cost
+                    )
+                else:
+                    return AISearchResult(success=False, sku=sku, error=res.get("error", "Extraction failed"))
+
+        tasks = [_scrape_single(p) for p in products]
+        return list(await asyncio.gather(*tasks))

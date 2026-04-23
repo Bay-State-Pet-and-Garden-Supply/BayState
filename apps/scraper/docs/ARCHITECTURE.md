@@ -97,6 +97,32 @@ The scraper system uses a fully decoupled, API-driven architecture with **API Ke
 | **Fallback** | HMAC signature for Docker crash reports |
 | **Isolation** | Runners have zero database credentials |
 
+### Official Brand Scraper (Manufacturer Isolation)
+
+The system includes a specialized pipeline for direct-from-manufacturer ingestion, designed to bypass retail aggregators.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 Official Brand Pipeline                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  1. Search (Serper.dev)                                     │
+│     - gl/hl tuning                                          │
+│     - -site:amazon.com exclusion                            │
+│                                                             │
+│  2. Validation (Knowledge Graph / LLM Scoring)              │
+│     - Anchor to KG website field                            │
+│     - Score snippets for domain congruence                  │
+│                                                             │
+│  3. Extraction (Crawl4AI)                                   │
+│     - Stage 1: Deterministic (JSON CSS, cached)             │
+│     - Stage 2: Semantic Fallback (LLM, strictly typed)      │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+For more details, see [OFFICIAL_BRAND_SCRAPER.md](./OFFICIAL_BRAND_SCRAPER.md).
+
 ## Local/Offline Operation (Developer Mode)
 
 While the production runner is API-driven, the system supports a **Stateless Local Mode** designed for development and CI/CD validation.

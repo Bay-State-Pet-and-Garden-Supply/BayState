@@ -60,7 +60,7 @@ export function ScraperSelectDialog({
 }: ScraperSelectDialogProps) {
     const [scrapers, setScrapers] = useState<ScraperOption[]>([]);
     const [selectedScrapers, setSelectedScrapers] = useState<Set<string>>(new Set());
-    const [enrichmentMethod, setEnrichmentMethod] = useState<'scrapers' | 'ai_search'>('scrapers');
+    const [enrichmentMethod, setEnrichmentMethod] = useState<'scrapers' | 'ai_search' | 'official_brand'>('scrapers');
     const [isLoadingScrapers, setIsLoadingScrapers] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -73,7 +73,7 @@ export function ScraperSelectDialog({
         try {
             const res = await fetch('/api/admin/pipeline/scrapers');
             if (!res.ok) throw new Error('Failed to load scrapers');
-            const data = await res.json();
+            const data = await response.json();
             const list: ScraperOption[] = data.scrapers ?? [];
             setScrapers(list);
             // Select all by default (may be overridden by recommendations)
@@ -153,8 +153,8 @@ export function ScraperSelectDialog({
         }
     };
 
-    const isAISearch = enrichmentMethod === 'ai_search';
-    const canSubmit = isAISearch || selectedScrapers.size > 0;
+    const isDiscovery = enrichmentMethod === 'ai_search' || enrichmentMethod === 'official_brand';
+    const canSubmit = isDiscovery || selectedScrapers.size > 0;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -170,7 +170,7 @@ export function ScraperSelectDialog({
                 {/* Enrichment Method Toggle */}
                 <div className="space-y-3">
                     <Label className="text-sm font-medium">Enrichment Method</Label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                         <Button
                             variant={enrichmentMethod === 'scrapers' ? 'default' : 'outline'}
                             size="sm"
@@ -178,22 +178,31 @@ export function ScraperSelectDialog({
                             className={enrichmentMethod === 'scrapers' ? 'bg-primary hover:bg-primary/90' : ''}
                         >
                             <Search className="mr-1.5 h-3.5 w-3.5" />
-                            Standard Scrapers
+                            Standard
                         </Button>
                         <Button
                             variant={enrichmentMethod === 'ai_search' ? 'default' : 'outline'}
                             size="sm"
                             onClick={() => setEnrichmentMethod('ai_search')}
-                            className={enrichmentMethod === 'ai_search' ? 'bg-violet-500 hover:bg-violet-500/90' : ''}
+                            className={enrichmentMethod === 'ai_search' ? 'bg-violet-500 hover:bg-violet-500/90 text-white' : ''}
                         >
                             <Zap className="mr-1.5 h-3.5 w-3.5" />
                             AI Search
+                        </Button>
+                        <Button
+                            variant={enrichmentMethod === 'official_brand' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setEnrichmentMethod('official_brand')}
+                            className={enrichmentMethod === 'official_brand' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
+                        >
+                            <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                            Official Brand
                         </Button>
                     </div>
                 </div>
 
                 {/* Scraper List (only shown for standard method) */}
-                {!isAISearch && (
+                {!isDiscovery && (
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
                             <Label className="text-sm font-medium">Select Scrapers</Label>
@@ -294,10 +303,17 @@ export function ScraperSelectDialog({
                     </div>
                 )}
 
-                {isAISearch && (
+                {enrichmentMethod === 'ai_search' && (
                     <div className="rounded-md border border-violet-200 bg-violet-50 p-3 text-sm text-violet-700">
                         AI Search uses LLM-powered web search to find product data across the internet.
                         No specific scrapers needed — cost is capped at $5 per job.
+                    </div>
+                )}
+
+                {enrichmentMethod === 'official_brand' && (
+                    <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+                        Official Brand uses high-fidelity manufacturer isolation to extract data
+                        directly from brand websites. Best for high-quality technical specs.
                     </div>
                 )}
 
