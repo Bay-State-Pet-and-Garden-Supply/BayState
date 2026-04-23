@@ -195,9 +195,9 @@ export function ScraperNetworkDashboard() {
 
   useEffect(() => {
     const runnersArray = Object.values(runners);
-    const online = runnersArray.filter((r) => r.status === "online").length;
+    const idleCount = runnersArray.filter((r) => r.status === "idle").length;
+    const onlineCount = runnersArray.filter((r) => r.status === "online").length;
     const busy = runnersArray.filter((r) => r.status === "busy").length;
-    const idle = runnersArray.filter((r) => r.status === "idle").length;
     const offline = runnersArray.filter(
       (r) => r.status === "offline"
     ).length;
@@ -205,9 +205,9 @@ export function ScraperNetworkDashboard() {
 
     setStats({
       totalRunners: runnersArray.length,
-      online,
+      online: onlineCount + idleCount,
       busy,
-      idle,
+      idle: idleCount,
       offline,
       disabled,
     });
