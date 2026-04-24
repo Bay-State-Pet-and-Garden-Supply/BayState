@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
         heartbeat_at: null,
         runner_name: null,
         started_at: null,
-        type: 'discovery',
+        type: 'ai_search',
         config: {
           product_name: body.product_name,
           brand: body.brand,

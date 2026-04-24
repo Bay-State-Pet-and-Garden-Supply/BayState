@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useId } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Activity, Beaker, FlaskConical, Settings, ShieldCheck } from 'lucide-react';
+import { Activity, Beaker, Settings, ShieldCheck } from 'lucide-react';
 
 interface ScraperTabsClientProps {
   slug: string;
@@ -43,16 +43,7 @@ export function ScraperTabsClient({ slug }: ScraperTabsClientProps) {
               Configuration
             </Link>
           </TabsTrigger>
-          <TabsTrigger 
-            value="testing" 
-            asChild 
-            className="inline-flex items-center justify-center whitespace-nowrap py-2 px-4 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-b data-[state=active]:border-[#66161D] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-none bg-transparent"
-          >
-            <Link href={`/admin/scrapers/${slug}/testing`} data-testid="tab-testing">
-              <FlaskConical className="w-4 h-4 mr-2" />
-              Testing
-            </Link>
-          </TabsTrigger>
+          
           <TabsTrigger 
             value="credentials" 
             asChild 
