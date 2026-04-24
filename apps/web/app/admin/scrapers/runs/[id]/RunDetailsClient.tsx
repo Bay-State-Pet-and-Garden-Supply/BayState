@@ -15,8 +15,10 @@ import {
   Activity,
   BarChart3,
   Server,
-  Zap
+  Zap,
+  RotateCcw
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 import { ScraperRunRecord, ScraperRunChunk } from '@/lib/admin/scrapers/runs-types';
 import { type ScrapeJobLogEntry as ScrapeJobLog } from '@/lib/scraper-logs';
@@ -26,7 +28,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { LogViewer } from '@/components/admin/scrapers/LogViewer';
 import { RunBatchesTable } from '@/components/admin/scrapers/RunBatchesTable';
+import { ChunkStatusGrid } from '@/components/admin/scrapers/ChunkStatusGrid';
 import { progressUpdateFromJobRecord } from '@/lib/scraper-logs';
+import { cancelScraperRun, retryScraperRun } from '../actions';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import { ConfirmationDialog } from '@/components/admin/confirmation-dialog';
 
 interface RunDetailsClientProps {
   run: ScraperRunRecord;
@@ -56,7 +63,11 @@ function formatDuration(createdAt: string, completedAt: string | null): string {
 }
 
 export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
+  const router = useRouter();
   const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
 
   const status = run.status.toLowerCase();
   const config = statusConfig[status as keyof typeof statusConfig] ?? statusConfig.pending;
@@ -66,6 +77,43 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
   const completedChunks = chunks.filter(c => c.status === 'completed').length;
   const totalChunks = chunks.length;
   const chunkProgress = totalChunks > 0 ? Math.round((completedChunks / totalChunks) * 100) : 0;
+
+  const handleRetry = async () => {
+    setIsRetrying(true);
+    try {
+      const result = await retryScraperRun(run.id);
+      if (result.success) {
+        toast.success('Run retried successfully');
+        if (result.newJobId) {
+          router.push(`/admin/scrapers/runs/${result.newJobId}`);
+        }
+      } else {
+        toast.error(result.error || 'Failed to retry run');
+      }
+    } catch (err) {
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    setIsCancelling(true);
+    try {
+      const result = await cancelScraperRun(run.id);
+      if (result.success) {
+        toast.success('Run cancelled successfully');
+        router.refresh();
+      } else {
+        toast.error(result.error || 'Failed to cancel run');
+      }
+    } catch (err) {
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsCancelling(false);
+      setConfirmCancelOpen(false);
+    }
+  };
 
   return (
     <div className="space-y-8 p-6 max-w-[1600px] mx-auto">
@@ -90,7 +138,31 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
             </p>
           </div>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
+          {(status === 'completed' || status === 'failed' || status === 'cancelled') && (
+            <Button
+              variant="outline"
+              onClick={handleRetry}
+              disabled={isRetrying}
+              className="border-4 border-zinc-900 font-black uppercase tracking-tighter shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+            >
+              <RotateCcw className={cn("mr-2 h-5 w-5", isRetrying && "animate-spin")} />
+              Retry Run
+            </Button>
+          )}
+
+          {(status === 'pending' || status === 'running' || status === 'claimed') && (
+            <Button
+              variant="destructive"
+              onClick={() => setConfirmCancelOpen(true)}
+              disabled={isCancelling}
+              className="border-4 border-zinc-900 font-black uppercase tracking-tighter shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+            >
+              <XCircle className="mr-2 h-5 w-5" />
+              Terminate
+            </Button>
+          )}
+
           <Button 
             variant="outline" 
             asChild 
@@ -103,6 +175,17 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
           </Button>
         </div>
       </div>
+
+      <ConfirmationDialog
+        open={confirmCancelOpen}
+        onOpenChange={setConfirmCancelOpen}
+        onConfirm={handleCancel}
+        title="Terminate Scraper Run"
+        description="Are you sure you want to terminate this scraper run? This will stop all active batches and mark the job as cancelled."
+        confirmLabel="Terminate Job"
+        variant="destructive"
+        isLoading={isCancelling}
+      />
 
       {/* Overview Dashboard */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -245,6 +328,21 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
             <h3 className="text-xl font-black uppercase tracking-tighter text-red-700 leading-none">Job Error Termination</h3>
             <p className="text-red-900 font-mono text-sm font-bold bg-white/50 p-2 border border-red-200 mt-2">{run.error_message}</p>
           </div>
+        </div>
+      )}
+
+      {/* Batches Overview Grid */}
+      {chunks.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-2">
+            <Boxes className="h-6 w-6" />
+            Batch Overview
+          </h3>
+          <ChunkStatusGrid 
+            chunks={chunks} 
+            selectedChunkId={selectedChunkId} 
+            onSelectChunk={setSelectedChunkId} 
+          />
         </div>
       )}
 

@@ -145,7 +145,9 @@ export function LogViewer({
   const [isExpanded, setIsExpanded] = useState(true);
   const [filter, setFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');
+  const [isPinnedToBottom, setIsPinnedToBottom] = useState(true);
   const logContainerRef = useRef<HTMLDivElement>(null);
+  const isFirstRender = useRef(true);
 
   const { logs: persistedRealtimeLogs, isConnected: dbConnected } = useLogSubscription({
     jobId,
@@ -174,12 +176,48 @@ export function LogViewer({
     ? progressUpdateFromJobRecord(currentJob)
     : initialProgress;
   const isConnected = dbConnected || jobConnected;
+  const isJobActive = currentJob ? ['pending', 'running'].includes(currentJob.status) : true;
 
-  useEffect(() => {
-    if (isExpanded && logContainerRef.current && mergedLogs.length > 0) {
+  // Handle smart scrolling
+  const scrollToBottom = useCallback(() => {
+    if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
-  }, [isExpanded, mergedLogs.length]);
+  }, []);
+
+  // Track scroll position to determine if we should pin to bottom
+  const handleScroll = useCallback(() => {
+    if (logContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = logContainerRef.current;
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
+      setIsPinnedToBottom(isAtBottom);
+    }
+  }, []);
+
+  // Initial scroll and auto-scroll on new logs
+  useEffect(() => {
+    if (!isExpanded || !logContainerRef.current || mergedLogs.length === 0) return;
+
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      // Only auto-scroll to bottom on first load if the job is active
+      // or if we have very few logs. For historical runs, stay at the top.
+      if (isJobActive || mergedLogs.length < 20) {
+        scrollToBottom();
+      } else {
+        setIsPinnedToBottom(false);
+      }
+      return;
+    }
+
+    if (isPinnedToBottom) {
+      scrollToBottom();
+    }
+  }, [isExpanded, mergedLogs.length, isJobActive, scrollToBottom, isPinnedToBottom]);
+
+  // If the user selects a chunk, they probably want to see the start of that chunk's logs
+  // but if it's an active run, staying pinned might be preferred. 
+  // For now, let's stay pinned if they were already pinned.
 
   const filteredLogs = useMemo(() => {
     return mergedLogs.filter((log) => {
@@ -296,10 +334,11 @@ export function LogViewer({
       </CardHeader>
 
       {isExpanded ? (
-        <CardContent>
+        <CardContent className="relative">
           <div
             ref={logContainerRef}
-            className="max-h-[32rem] overflow-y-auto rounded-lg border bg-slate-900 p-3 text-slate-100"
+            onScroll={handleScroll}
+            className="max-h-[32rem] overflow-y-auto rounded-lg border bg-slate-900 p-3 text-slate-100 scroll-smooth"
           >
             {filteredLogs.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">
@@ -311,9 +350,21 @@ export function LogViewer({
               filteredLogs.map((log) => <LogEntry key={log.id} log={log} />)
             )}
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Showing {filteredLogs.length} of {mergedLogs.length} logs
-          </p>
+          <div className="mt-2 flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              Showing {filteredLogs.length} of {mergedLogs.length} logs
+            </p>
+            {!isPinnedToBottom && filteredLogs.length > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={scrollToBottom}
+                className="h-6 text-[10px] font-black uppercase tracking-tighter"
+              >
+                Scroll to Bottom
+              </Button>
+            )}
+          </div>
         </CardContent>
       ) : null}
     </Card>
