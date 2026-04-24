@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { createClient } from '@/lib/supabase/server';
-import { ScraperRunRecord } from '@/lib/admin/scrapers/runs-types';
+import { ScraperRunRecord, ScraperRunChunk } from '@/lib/admin/scrapers/runs-types';
 import { normalizeScrapeLogEntry, type ScrapeJobLogEntry } from '@/lib/scraper-logs';
 import { cloneScrapeJobForRetry } from '@/lib/pipeline-scraping';
 
@@ -281,4 +281,21 @@ export async function getScraperRunLogs(jobId: string): Promise<ScrapeJobLogEntr
   }
 
   return (data || []).map((row) => normalizeScrapeLogEntry(row as Record<string, unknown>, { persisted: true }));
+}
+
+export async function getScraperRunChunks(jobId: string): Promise<ScraperRunChunk[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('scrape_job_chunks')
+    .select('*')
+    .eq('job_id', jobId)
+    .order('chunk_index', { ascending: true });
+
+  if (error) {
+    console.error(`Error fetching chunks for job ${jobId}:`, error);
+    return [];
+  }
+
+  return (data || []) as ScraperRunChunk[];
 }
