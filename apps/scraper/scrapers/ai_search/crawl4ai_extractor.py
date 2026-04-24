@@ -291,7 +291,7 @@ class Crawl4AIExtractor:
 
     @staticmethod
     def _is_llm_error_payload(payload: Any) -> bool:
-        """Reject Crawl4AI/LiteLLM error payloads before normalizing them as products."""
+        """Reject Crawl4AI/provider error payloads before normalizing them as products."""
         if not isinstance(payload, dict):
             return False
 

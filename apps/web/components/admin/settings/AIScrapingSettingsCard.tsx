@@ -120,7 +120,6 @@ export function AIScrapingSettingsCard() {
       openaiApiKey.trim().length > 0 ||
       serperApiKey.trim().length > 0 ||
       defaults.llm_model !== initialDefaults.llm_model ||
-      defaults.llm_base_url !== initialDefaults.llm_base_url ||
       defaults.max_search_results !== initialDefaults.max_search_results ||
       defaults.max_steps !== initialDefaults.max_steps ||
       defaults.confidence_threshold !== initialDefaults.confidence_threshold
@@ -281,24 +280,6 @@ export function AIScrapingSettingsCard() {
                 />
               </div>
 
-              <div className="col-span-2 space-y-2">
-                <Label htmlFor="llm-base-url">LiteLLM Proxy URL (Optional)</Label>
-                <Input
-                  id="llm-base-url"
-                  type="url"
-                  value={defaults.llm_base_url || ""}
-                  onChange={(e) =>
-                    setDefaults((prev) => ({
-                      ...prev,
-                      llm_base_url: e.target.value.trim() || null,
-                    }))
-                  }
-                  placeholder="http://localhost:4000/v1"
-                />
-                <div className="text-xs text-muted-foreground">
-                  Route all LLM traffic through a LiteLLM Proxy for centralized cost tracking.
-                </div>
-              </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">

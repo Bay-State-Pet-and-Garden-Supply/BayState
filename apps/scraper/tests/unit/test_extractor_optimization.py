@@ -531,7 +531,7 @@ class TestCrawl4AIExtractorOptimization:
 
     @pytest.mark.asyncio
     async def test_extract_falls_back_on_error_tagged_llm_payload(self, extractor):
-        """LiteLLM/Crawl4AI error payloads should not be normalized into fake product data."""
+        """Provider/Crawl4AI error payloads should not be normalized into fake product data."""
         url = "https://example.com/p/123"
         sku = "SKU123"
 
@@ -554,7 +554,7 @@ class TestCrawl4AIExtractorOptimization:
                         "index": 0,
                         "error": True,
                         "tags": ["error"],
-                        "content": "litellm.APIConnectionError: provider mismatch",
+                        "content": "openai.APIConnectionError: provider mismatch",
                         "product_name": "",
                         "images": [],
                     }

@@ -1,5 +1,6 @@
 """Search result scoring and filtering logic."""
 
+import json
 import re
 import httpx
 from dataclasses import dataclass
@@ -7,6 +8,8 @@ from datetime import datetime, timezone
 from threading import Lock
 from typing import TYPE_CHECKING, Any, Optional
 from urllib.parse import urlparse
+
+from scrapers.providers.factory import create_llm_provider
 
 
 # Domain success history tracking
@@ -1100,41 +1103,50 @@ class BrandSourceSelector:
     """Uses LLM to evaluate SERP snippets for official manufacturer authenticity."""
 
     def __init__(self, api_key: str | None = None, model: str = "gpt-4o-mini"):
-        import litellm
-
         self.model = model
         self.api_key = api_key
+        self._provider = create_llm_provider(
+            provider="openai",
+            model=model,
+            api_key=api_key,
+        )
 
     async def score_snippet(self, url: str, snippet: str, brand: str) -> dict:
         """Score a snippet based on Domain Congruence, Trust Signals, and Lack of Aggregator terms."""
-        prompt = f"""
-        Analyze this search engine result for brand: "{brand}".
-        URL: {url}
-        Snippet: {snippet}
+        prompt = f"""Analyze this search engine result for brand: "{brand}".
+URL: {url}
+Snippet: {snippet}
 
-        Determine if this is the OFFICIAL manufacturer/brand website, or a third-party reseller/aggregator.
-        Criteria:
-        1. Domain Name Congruence: Does the domain match the brand?
-        2. Absence of Aggregator Terminology: Penalize "Huge discounts", "Compare prices", "Wholesale".
-        3. Corporate Trust Signals: Look for "Official Store", "Technical Support", "Warranty".
-        4. Navigational Intent: Does it read like the ultimate source of truth?
+Determine if this is the OFFICIAL manufacturer/brand website, or a third-party reseller/aggregator.
+Criteria:
+1. Domain Name Congruence: Does the domain match the brand?
+2. Absence of Aggregator Terminology: Penalize "Huge discounts", "Compare prices", "Wholesale".
+3. Corporate Trust Signals: Look for "Official Store", "Technical Support", "Warranty".
+4. Navigational Intent: Does it read like the ultimate source of truth?
 
-        Return valid JSON ONLY with keys:
-        - "is_official": boolean
-        - "confidence_score": float 0.0 to 1.0
-        - "reason": string
-        """
-        import json
+Return valid JSON ONLY with keys:
+- "is_official": boolean
+- "confidence_score": float 0.0 to 1.0
+- "reason": string"""
 
-        import litellm
+        if not self._provider:
+            return {"is_official": False, "confidence_score": 0.0, "reason": "LLM provider not initialized"}
 
         try:
-            response = await litellm.acompletion(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                api_key=self.api_key,
-                response_format={"type": "json_object"},
+            response = await self._provider.generate_text(
+                system_prompt=None,
+                user_prompt=prompt,
+                temperature=0.0,
+                response_schema={
+                    "type": "object",
+                    "properties": {
+                        "is_official": {"type": "boolean"},
+                        "confidence_score": {"type": "number"},
+                        "reason": {"type": "string"},
+                    },
+                    "required": ["is_official", "confidence_score", "reason"],
+                },
             )
-            return json.loads(response.choices[0].message.content)
+            return json.loads(response.text)
         except Exception as e:
             return {"is_official": False, "confidence_score": 0.0, "reason": str(e)}

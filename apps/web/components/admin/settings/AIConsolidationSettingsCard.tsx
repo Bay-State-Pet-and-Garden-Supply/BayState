@@ -95,7 +95,6 @@ export function AIConsolidationSettingsCard() {
     return (
       openaiApiKey.trim().length > 0 ||
       defaults.llm_model !== initialDefaults.llm_model ||
-      defaults.llm_base_url !== initialDefaults.llm_base_url ||
       defaults.confidence_threshold !== initialDefaults.confidence_threshold
     );
   }, [defaults, openaiApiKey, initialDefaults]);
@@ -201,22 +200,6 @@ export function AIConsolidationSettingsCard() {
                   onChange={(value) =>
                     setDefaults((prev) => ({ ...prev, llm_model: value }))
                   }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="consolidation-llm-base-url">LiteLLM Proxy URL (Optional)</Label>
-                <Input
-                  id="consolidation-llm-base-url"
-                  type="url"
-                  value={defaults.llm_base_url || ""}
-                  onChange={(e) =>
-                    setDefaults((prev) => ({
-                      ...prev,
-                      llm_base_url: e.target.value.trim() || null,
-                    }))
-                  }
-                  placeholder="http://localhost:4000/v1"
                 />
               </div>
 
