@@ -1,0 +1,75 @@
+name: ShopSite Order Sync
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # Run nightly at 2 AM
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Maximum number of orders to sync'
+        required: false
+        default: '500'
+      start_date:
+        description: 'Start date for sync (mm/dd/yyyy)'
+        required: false
+
+concurrency:
+  group: shopsite-order-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync ShopSite Orders
+    runs-on: [self-hosted, Windows, X64, register-sync]
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: apps/web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun (Manual)
+        run: |
+          $version = "1.3.5"
+          $url = "https://github.com/oven-sh/bun/releases/download/bun-v$version/bun-windows-x64.zip"
+          $zipPath = "$HOME\bun.zip"
+          $extractPath = "$HOME\bun-bin"
+          
+          if (-not (Test-Path $extractPath)) {
+            Write-Host "Downloading Bun v$version..."
+            curl.exe -L -o $zipPath $url
+            New-Item -ItemType Directory -Path $extractPath -Force | Out-Null
+            tar.exe -xf $zipPath -C $extractPath
+            
+            $bunExeDir = Get-ChildItem -Path $extractPath -Filter "bun-windows-x64" -Directory | Select-Object -First 1
+            if ($null -eq $bunExeDir) { $bunExeDir = $extractPath } else { $bunExeDir = $bunExeDir.FullName }
+            
+            echo "$bunExeDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            Remove-Item $zipPath
+          }
+        shell: pwsh
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --silent
+        env:
+          CI: true
+
+      - name: Run order sync
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SHOPSITE_URL: ${{ secrets.SHOPSITE_URL }}
+          SHOPSITE_MERCHANT_ID: ${{ secrets.SHOPSITE_MERCHANT_ID }}
+          SHOPSITE_PASSWORD: ${{ secrets.SHOPSITE_PASSWORD }}
+        run: |
+          $args = @()
+          if ("${{ github.event.inputs.limit }}" -ne "") {
+            $args += "--limit=${{ github.event.inputs.limit }}"
+          }
+          if ("${{ github.event.inputs.start_date }}" -ne "") {
+            $args += "--start-date=${{ github.event.inputs.start_date }}"
+          }
+          
+          bun run sync:orders @args
