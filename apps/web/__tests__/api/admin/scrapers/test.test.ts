@@ -52,12 +52,17 @@ jest.mock("@/lib/admin/api-auth", () => ({
   requireAdminAuth: jest.fn(),
 }));
 
+jest.mock("@/lib/admin/scrapers/configs", () => ({
+  getLocalScraperConfig: jest.fn(),
+}));
+
 // This import will FAIL because the POST endpoint doesn't exist yet (Task 8).
 // That's intentional — these are RED tests.
 const { POST } = require("@/app/api/admin/scrapers/test/route");
 const { NextRequest } = require("next/server");
 const { createClient } = require("@/lib/supabase/server");
 const { requireAdminAuth } = require("@/lib/admin/api-auth");
+const { getLocalScraperConfig } = require("@/lib/admin/scrapers/configs");
 
 describe("POST /api/admin/scrapers/test", () => {
   let mockSupabase: any;
@@ -69,6 +74,14 @@ describe("POST /api/admin/scrapers/test", () => {
     (requireAdminAuth as jest.Mock).mockResolvedValue({
       authorized: false,
       response: { status: 403, body: { error: "Forbidden: Admin or staff access required" } },
+    });
+
+    (getLocalScraperConfig as jest.Mock).mockResolvedValue({
+      config: {
+        test_assertions: [
+          { sku: "SKU-001", expected: { name: "Test Product" } },
+        ],
+      },
     });
 
     mockSupabase = {
@@ -131,6 +144,7 @@ describe("POST /api/admin/scrapers/test", () => {
       const selectQuery = {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
+        or: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({
           data: null,
           error: { message: "Not found", code: "PGRST116" },
@@ -155,15 +169,21 @@ describe("POST /api/admin/scrapers/test", () => {
         role: "admin",
       });
 
-      // Scraper exists but has no test_assertions
+      (getLocalScraperConfig as jest.Mock).mockResolvedValue({
+        config: {
+          test_assertions: [],
+        },
+      });
+
       const selectQuery = {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
+        or: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({
           data: {
             id: "scraper-no-assertions",
-            name: "Test Scraper",
-            test_assertions: null,
+            display_name: "Test Scraper",
+            slug: "scraper-no-assertions",
           },
           error: null,
         }),
@@ -192,17 +212,23 @@ describe("POST /api/admin/scrapers/test", () => {
         role: "admin",
       });
 
-      // Scraper exists with test_assertions
+      (getLocalScraperConfig as jest.Mock).mockResolvedValue({
+        config: {
+          test_assertions: [
+            { sku: "SKU-001", expected: { name: "Test Product", price: "$9.99" } },
+          ],
+        },
+      });
+
       const selectQuery = {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
+        or: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({
           data: {
             id: "scraper-with-assertions",
-            name: "Good Scraper",
-            test_assertions: [
-              { sku: "SKU-001", expected: { name: "Test Product", price: "$9.99" } },
-            ],
+            slug: "scraper-with-assertions",
+            display_name: "Good Scraper",
           },
           error: null,
         }),
@@ -248,16 +274,23 @@ describe("POST /api/admin/scrapers/test", () => {
         role: "admin",
       });
 
+      (getLocalScraperConfig as jest.Mock).mockResolvedValue({
+        config: {
+          test_assertions: [
+            { sku: "SKU-001", expected: { name: "Test Product", price: "$9.99" } },
+          ],
+        },
+      });
+
       const selectQuery = {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
+        or: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({
           data: {
             id: "scraper-with-assertions",
-            name: "Good Scraper",
-            test_assertions: [
-              { sku: "SKU-001", expected: { name: "Test Product", price: "$9.99" } },
-            ],
+            slug: "scraper-with-assertions",
+            display_name: "Good Scraper",
           },
           error: null,
         }),

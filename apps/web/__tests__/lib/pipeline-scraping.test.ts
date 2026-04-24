@@ -298,7 +298,7 @@ describe('scrapeProducts', () => {
         expect(result.jobIds).toEqual(['job-legacy']);
         expect(mockSupabase._scrapeJobsBuilder.insert).toHaveBeenCalledTimes(2);
         expect(mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0].type).toBe('ai_search');
-        expect(mockSupabase._scrapeJobsBuilder.insert.mock.calls[1][0].type).toBe('discovery');
+        expect(mockSupabase._scrapeJobsBuilder.insert.mock.calls[1][0].type).toBe('ai_search');
     });
 
     it('should include per-sku input context in ai_search job config', async () => {

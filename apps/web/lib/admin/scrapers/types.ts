@@ -48,6 +48,10 @@ export interface ScraperConfig {
   test_skus?: string[];
   fake_skus?: string[];
   edge_case_skus?: string[];
+  test_assertions?: Array<{
+    sku: string;
+    expected: Record<string, string>;
+  }>;
   ai_config?: AIConfig;
   credential_refs?: string[];
 }

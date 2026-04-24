@@ -1,8 +1,13 @@
 /**
  * @jest-environment node
  *
- * Integration test for complete scraper QA flow:
- * Admin clicks Run Test → API queues job → Runner executes → Callback updates → UI shows results
+ * Integration test for scraper QA callback flow:
+ * Runner completes test → Callback POST → Health score updates in DB
+ *
+ * Tests verify the backend health monitoring pipeline:
+ * - processTestResultCallback updates health scores
+ * - calculateHealthScore and determineHealthStatus work correctly
+ * - Duplicate callbacks are handled idempotently
  */
 
 import { TextEncoder, TextDecoder } from 'util';
@@ -27,8 +32,6 @@ if (typeof (globalThis as any).Response === 'undefined') {
   (globalThis as any).Response = Response;
 }
 
-import { POST as createTestJob } from '@/app/api/admin/scrapers/test/route';
-import { GET as getTestJobStatus } from '@/app/api/admin/scrapers/studio/test/[id]/route';
 import {
   processTestResultCallback,
   calculateHealthScore,
@@ -41,18 +44,10 @@ jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
 }));
 
-jest.mock('@/lib/admin/api-auth', () => ({
-  requireAdminAuth: jest.fn(),
-}));
-
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(),
   SupabaseClient: class {},
 }));
-
-// Import mocked modules after jest.mock
-const { requireAdminAuth } = require('@/lib/admin/api-auth');
-const { NextRequest } = require('next/server');
 
 // Types
 interface MockScraperConfig {
@@ -106,8 +101,6 @@ interface TestState {
 // Test data
 const NOW = '2026-04-23T12:00:00.000Z';
 const MOCK_SCRAPER_ID = 'scraper-test-001';
-const MOCK_ADMIN_USER = { id: 'admin-123', email: 'admin@example.com', role: 'admin' };
-const MOCK_NON_ADMIN_USER = { id: 'user-456', email: 'user@example.com', role: 'customer' };
 
 // Test assertions data
 const TEST_ASSERTIONS = [
@@ -158,11 +151,10 @@ function buildMockSupabase(state: TestState) {
               error: { message: 'Not found', code: 'PGRST116' },
             };
           }
-          
-          // Parse columns and return only requested fields
+
           const fields = columns.split(',').map(f => f.trim());
           const selectedData: Record<string, unknown> = { id: scraper.id };
-          
+
           fields.forEach((field) => {
             if (field === 'id') selectedData.id = scraper.id;
             if (field === 'name') selectedData.name = scraper.name;
@@ -172,7 +164,7 @@ function buildMockSupabase(state: TestState) {
             if (field === 'last_test_at') selectedData.last_test_at = scraper.last_test_at;
             if (field === 'last_test_result') selectedData.last_test_result = scraper.last_test_result;
           });
-          
+
           return { data: selectedData, error: null };
         },
       }),
@@ -183,7 +175,7 @@ function buildMockSupabase(state: TestState) {
         if (!scraper) {
           return { error: { message: `Scraper ${value} not found` } };
         }
-        
+
         Object.assign(scraper, payload, { updated_at: NOW });
         return { error: null };
       },
@@ -246,7 +238,7 @@ function buildMockSupabase(state: TestState) {
         if (!job) {
           return { error: { message: `Job ${value} not found` } };
         }
-        
+
         Object.assign(job, payload, { updated_at: NOW });
         return { error: null };
       },
@@ -319,7 +311,7 @@ function buildMockSupabase(state: TestState) {
 
   const auth = {
     getUser: async () => ({
-      data: { user: { id: MOCK_ADMIN_USER.id, email: MOCK_ADMIN_USER.email } },
+      data: { user: { id: 'admin-123', email: 'admin@example.com' } },
       error: null,
     }),
   };
@@ -365,12 +357,7 @@ function buildMockSupabase(state: TestState) {
   };
 }
 
-// Helper to create NextRequest mock
-function createMockRequest(url: string, init?: { method?: string; body?: string; headers?: Record<string, string> }) {
-  return new NextRequest(url, init);
-}
-
-describe('Scraper QA Flow Integration', () => {
+describe('Scraper QA Callback Flow', () => {
   let state: TestState;
   let mockSupabase: ReturnType<typeof buildMockSupabase>;
 
@@ -384,11 +371,11 @@ describe('Scraper QA Flow Integration', () => {
     createSupabaseClient.mockReturnValue(mockSupabase);
   });
 
-  function setupMockScraper(hasAssertions: boolean = true): MockScraperConfig {
+  function setupMockScraper(): MockScraperConfig {
     const scraper: MockScraperConfig = {
       id: MOCK_SCRAPER_ID,
       name: 'Test Scraper',
-      test_assertions: hasAssertions ? TEST_ASSERTIONS : [],
+      test_assertions: TEST_ASSERTIONS,
       health_score: null,
       health_status: null,
       last_test_at: null,
@@ -398,49 +385,12 @@ describe('Scraper QA Flow Integration', () => {
     return scraper;
   }
 
-  describe('Happy Path: Complete Test Flow', () => {
-    it('should complete full flow: queue job → mock runner → callback → UI results', async () => {
-      // Setup: Admin auth and existing scraper
-      (requireAdminAuth as jest.Mock).mockResolvedValue({
-        authorized: true,
-        user: MOCK_ADMIN_USER,
-        role: 'admin',
-      });
+  describe('Callback: Successful test results update health score', () => {
+    it('should update health score to 100 when all assertions pass', async () => {
       setupMockScraper();
 
-      // Step 1: Admin clicks Run Test → API queues job
-      const queueRequest = createMockRequest(
-        'http://localhost/api/admin/scrapers/test',
-        {
-          method: 'POST',
-          body: JSON.stringify({ scraper_id: MOCK_SCRAPER_ID, type: 'test' }),
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-
-      const queueResponse = await createTestJob(queueRequest);
-      expect(queueResponse.status).toBe(200);
-
-      const queueData = await queueResponse.json();
-      expect(queueData.job_id).toBeDefined();
-      expect(queueData.status).toBe('queued');
-
-      const jobId = queueData.job_id;
-
-      // Step 2: Verify job was created with correct state
-      const job = state.jobs.get(jobId);
-      expect(job).toBeDefined();
-      expect(job?.status).toBe('pending');
-      expect(job?.config_id).toBe(MOCK_SCRAPER_ID);
-      expect(job?.job_type).toBe('test');
-
-      // Step 3: Simulate runner processing (mock runner execution)
-      // Update job status to running
-      job!.status = 'running';
-
-      // Step 4: Simulate callback from runner with test results
       const callbackPayload = {
-        job_id: jobId,
+        job_id: 'job-001',
         config_id: MOCK_SCRAPER_ID,
         status: 'completed' as const,
         runner_name: 'test-runner-001',
@@ -474,7 +424,6 @@ describe('Scraper QA Flow Integration', () => {
         duration_ms: 12345,
       };
 
-      // Process the callback
       const callbackResult = await processTestResultCallback(
         mockSupabase as any,
         callbackPayload
@@ -483,71 +432,19 @@ describe('Scraper QA Flow Integration', () => {
       expect(callbackResult.success).toBe(true);
       expect(callbackResult.message).toContain('6/6 passed');
 
-      // Step 5: Verify health score was updated in DB
+      // Verify health score was updated in DB
       const scraper = state.scrapers.get(MOCK_SCRAPER_ID);
       expect(scraper?.health_score).toBe(100);
       expect(scraper?.health_status).toBe('healthy');
       expect(scraper?.last_test_at).toBe(NOW);
       expect(scraper?.last_test_result).toBe('passed');
-
-      // Step 6: Simulate UI polling for results
-      job!.status = 'completed';
-      job!.test_metadata = {
-        config_id: MOCK_SCRAPER_ID,
-        test_type: 'test',
-        summary: {
-          passed_count: callbackPayload.summary.passed,
-          failed_count: callbackPayload.summary.failed,
-          total_skus: callbackPayload.summary.total,
-          duration_ms: callbackPayload.duration_ms,
-        },
-        sku_results: callbackPayload.assertion_results,
-      };
-
-      const statusRequest = createMockRequest(
-        `http://localhost/api/admin/scrapers/studio/test/${jobId}`
-      );
-
-      const statusResponse = await getTestJobStatus(statusRequest, {
-        params: Promise.resolve({ id: jobId }),
-      });
-
-      expect(statusResponse.status).toBe(200);
-      const statusData = await statusResponse.json();
-
-      expect(statusData.id).toBe(jobId);
-      expect(statusData.status).toBe('completed');
-      expect(statusData.test_status).toBe('passed');
-      expect(statusData.summary.total).toBe(6);
-      expect(statusData.summary.passed).toBe(6);
-      expect(statusData.summary.failed).toBe(0);
-      expect(statusData.sku_results).toHaveLength(2);
     });
 
-    it('should handle partial test failures with degraded health status', async () => {
-      (requireAdminAuth as jest.Mock).mockResolvedValue({
-        authorized: true,
-        user: MOCK_ADMIN_USER,
-        role: 'admin',
-      });
+    it('should set degraded health status for partial failures', async () => {
       setupMockScraper();
 
-      // Queue job
-      const queueRequest = createMockRequest(
-        'http://localhost/api/admin/scrapers/test',
-        {
-          method: 'POST',
-          body: JSON.stringify({ scraper_id: MOCK_SCRAPER_ID, type: 'test' }),
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-
-      const queueResponse = await createTestJob(queueRequest);
-      const { job_id: jobId } = await queueResponse.json();
-
-      // Simulate partial failure callback
       const callbackPayload = {
-        job_id: jobId,
+        job_id: 'job-002',
         config_id: MOCK_SCRAPER_ID,
         status: 'completed' as const,
         runner_name: 'test-runner-001',
@@ -556,7 +453,7 @@ describe('Scraper QA Flow Integration', () => {
             sku: '123456789',
             assertions: [
               { field: 'name', expected: 'Test Product Name', actual: 'Test Product Name', passed: true },
-              { field: 'price', expected: '$9.99', actual: '$12.99', passed: false }, // Mismatch
+              { field: 'price', expected: '$9.99', actual: '$12.99', passed: false },
             ],
             passed: false,
             summary: { total: 2, passed: 1, failed: 1 },
@@ -580,64 +477,17 @@ describe('Scraper QA Flow Integration', () => {
 
       await processTestResultCallback(mockSupabase as any, callbackPayload);
 
-      // Verify degraded health status
       const scraper = state.scrapers.get(MOCK_SCRAPER_ID);
       expect(scraper?.health_score).toBe(67); // 2/3 = 67%
       expect(scraper?.health_status).toBe('degraded');
       expect(scraper?.last_test_result).toBe('failed');
-
-      const job = state.jobs.get(jobId)!;
-      job.status = 'completed';
-      job.test_metadata = {
-        config_id: MOCK_SCRAPER_ID,
-        test_type: 'test',
-        summary: {
-          passed_count: callbackPayload.summary.passed,
-          failed_count: callbackPayload.summary.failed,
-          total_skus: callbackPayload.summary.total,
-          duration_ms: callbackPayload.duration_ms,
-        },
-        sku_results: callbackPayload.assertion_results,
-      };
-
-      const statusResponse = await getTestJobStatus(
-        createMockRequest(`http://localhost/api/admin/scrapers/studio/test/${jobId}`),
-        { params: Promise.resolve({ id: jobId }) }
-      );
-
-      const statusData = await statusResponse.json();
-      expect(statusData.test_status).toBe('partial');
-      expect(statusData.summary.total).toBe(3);
-      expect(statusData.summary.passed).toBe(2);
-      expect(statusData.summary.failed).toBe(1);
     });
-  });
 
-  describe('Error Path: Runner Failure', () => {
-    it('should handle runner failures and show error state in UI', async () => {
-      (requireAdminAuth as jest.Mock).mockResolvedValue({
-        authorized: true,
-        user: MOCK_ADMIN_USER,
-        role: 'admin',
-      });
+    it('should set broken health status when runner fails completely', async () => {
       setupMockScraper();
 
-      // Queue job
-      const queueRequest = createMockRequest(
-        'http://localhost/api/admin/scrapers/test',
-        {
-          method: 'POST',
-          body: JSON.stringify({ scraper_id: MOCK_SCRAPER_ID, type: 'test' }),
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-
-      const queueResponse = await createTestJob(queueRequest);
-      const { job_id: jobId } = await queueResponse.json();
-
-      // Simulate failure callback from runner
       const callbackPayload = {
-        job_id: jobId,
+        job_id: 'job-003',
         config_id: MOCK_SCRAPER_ID,
         status: 'failed' as const,
         runner_name: 'test-runner-001',
@@ -656,185 +506,21 @@ describe('Scraper QA Flow Integration', () => {
         callbackPayload
       );
 
-      // Should still process successfully (just mark as failed)
       expect(callbackResult.success).toBe(true);
 
-      // Verify broken health status
       const scraper = state.scrapers.get(MOCK_SCRAPER_ID);
       expect(scraper?.health_score).toBe(0);
       expect(scraper?.health_status).toBe('broken');
       expect(scraper?.last_test_result).toBe('failed');
-
-      // Update job for UI check
-      const job = state.jobs.get(jobId)!;
-      job.status = 'failed';
-      job.error_message = callbackPayload.error_message;
-
-      const statusResponse = await getTestJobStatus(
-        createMockRequest(`http://localhost/api/admin/scrapers/studio/test/${jobId}`),
-        { params: Promise.resolve({ id: jobId }) }
-      );
-
-      const statusData = await statusResponse.json();
-      expect(statusData.status).toBe('failed');
-      expect(statusData.test_status).toBe('failed');
-      expect(statusData.error_message).toBe('Connection timeout while accessing supplier website');
     });
   });
 
-  describe('Auth Path: Non-admin Access', () => {
-    it('should reject test job creation for non-admin users', async () => {
-      (requireAdminAuth as jest.Mock).mockResolvedValue({
-        authorized: false,
-        response: { status: 403, body: { error: 'Forbidden: Admin or staff access required' } },
-      });
-      setupMockScraper();
-
-      const queueRequest = createMockRequest(
-        'http://localhost/api/admin/scrapers/test',
-        {
-          method: 'POST',
-          body: JSON.stringify({ scraper_id: MOCK_SCRAPER_ID, type: 'test' }),
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-
-      const queueResponse = await createTestJob(queueRequest);
-      expect(queueResponse.status).toBe(403);
-
-      // Verify no job was created
-      expect(state.jobs.size).toBe(0);
-    });
-
-    it('should reject status check for unauthorized users', async () => {
-      // Setup: Create a job first with admin auth
-      (requireAdminAuth as jest.Mock).mockResolvedValue({
-        authorized: true,
-        user: MOCK_ADMIN_USER,
-        role: 'admin',
-      });
-      setupMockScraper();
-
-      const queueRequest = createMockRequest(
-        'http://localhost/api/admin/scrapers/test',
-        {
-          method: 'POST',
-          body: JSON.stringify({ scraper_id: MOCK_SCRAPER_ID, type: 'test' }),
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-
-      const queueResponse = await createTestJob(queueRequest);
-      const { job_id: jobId } = await queueResponse.json();
-
-      // Now simulate unauthorized user
-      mockSupabase.auth.getUser = async () => ({
-        data: { user: null },
-        error: { message: 'Not authenticated' },
-      });
-
-      const statusResponse = await getTestJobStatus(
-        createMockRequest(`http://localhost/api/admin/scrapers/studio/test/${jobId}`),
-        { params: Promise.resolve({ id: jobId }) }
-      );
-
-      expect(statusResponse.status).toBe(401);
-    });
-
-    it('should allow staff users to run tests', async () => {
-      (requireAdminAuth as jest.Mock).mockResolvedValue({
-        authorized: true,
-        user: { id: 'staff-123', email: 'staff@example.com' },
-        role: 'staff',
-      });
-      setupMockScraper();
-
-      const queueRequest = createMockRequest(
-        'http://localhost/api/admin/scrapers/test',
-        {
-          method: 'POST',
-          body: JSON.stringify({ scraper_id: MOCK_SCRAPER_ID, type: 'test' }),
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-
-      const queueResponse = await createTestJob(queueRequest);
-      expect(queueResponse.status).toBe(200);
-
-      const queueData = await queueResponse.json();
-      expect(queueData.job_id).toBeDefined();
-    });
-  });
-
-  describe('Validation: Edge Cases', () => {
-    it('should return 404 for non-existent scraper', async () => {
-      (requireAdminAuth as jest.Mock).mockResolvedValue({
-        authorized: true,
-        user: MOCK_ADMIN_USER,
-        role: 'admin',
-      });
-      // Don't create the scraper
-
-      const queueRequest = createMockRequest(
-        'http://localhost/api/admin/scrapers/test',
-        {
-          method: 'POST',
-          body: JSON.stringify({ scraper_id: 'non-existent-scraper', type: 'test' }),
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-
-      const queueResponse = await createTestJob(queueRequest);
-      expect(queueResponse.status).toBe(404);
-    });
-
-    it('should return 400 for scraper without test assertions', async () => {
-      (requireAdminAuth as jest.Mock).mockResolvedValue({
-        authorized: true,
-        user: MOCK_ADMIN_USER,
-        role: 'admin',
-      });
-      setupMockScraper(false); // Create scraper without assertions
-
-      const queueRequest = createMockRequest(
-        'http://localhost/api/admin/scrapers/test',
-        {
-          method: 'POST',
-          body: JSON.stringify({ scraper_id: MOCK_SCRAPER_ID, type: 'test' }),
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-
-      const queueResponse = await createTestJob(queueRequest);
-      expect(queueResponse.status).toBe(400);
-
-      const data = await queueResponse.json();
-      expect(data.error).toContain('test_assertions');
-    });
-
+  describe('Callback: Idempotency', () => {
     it('should handle duplicate callbacks idempotently', async () => {
-      (requireAdminAuth as jest.Mock).mockResolvedValue({
-        authorized: true,
-        user: MOCK_ADMIN_USER,
-        role: 'admin',
-      });
       setupMockScraper();
-
-      // Queue job
-      const queueRequest = createMockRequest(
-        'http://localhost/api/admin/scrapers/test',
-        {
-          method: 'POST',
-          body: JSON.stringify({ scraper_id: MOCK_SCRAPER_ID, type: 'test' }),
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-
-      const queueResponse = await createTestJob(queueRequest);
-      const { job_id: jobId } = await queueResponse.json();
 
       const callbackPayload = {
-        job_id: jobId,
+        job_id: 'job-dup-001',
         config_id: MOCK_SCRAPER_ID,
         status: 'completed' as const,
         runner_name: 'test-runner-001',

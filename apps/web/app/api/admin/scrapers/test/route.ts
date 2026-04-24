@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
 import { createClient } from "@/lib/supabase/server";
+import { getLocalScraperConfig } from "@/lib/admin/scrapers/configs";
 
 /**
  * POST /api/admin/scrapers/test
@@ -51,10 +52,11 @@ export async function POST(request: NextRequest) {
     const { scraper_id, type } = parseResult.data;
 
     const supabase = await createClient();
+
     const { data: scraper, error: scraperError } = await supabase
       .from("scraper_configs")
-      .select("id, name, test_assertions")
-      .eq("id", scraper_id)
+      .select("id, slug, display_name")
+      .or(`slug.eq.${scraper_id},id.eq.${scraper_id}`)
       .single();
 
     if (scraperError || !scraper) {
@@ -64,9 +66,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const localConfig = await getLocalScraperConfig(scraper.slug);
+    if (!localConfig) {
+      return NextResponse.json(
+        { error: "Scraper config file not found" },
+        { status: 404 }
+      );
+    }
+
+    const testAssertions = localConfig.config.test_assertions;
     if (
-      !scraper.test_assertions ||
-      (Array.isArray(scraper.test_assertions) && scraper.test_assertions.length === 0)
+      !testAssertions ||
+      (Array.isArray(testAssertions) && testAssertions.length === 0)
     ) {
       return NextResponse.json(
         { error: "Scraper has no test_assertions defined" },
@@ -77,11 +88,11 @@ export async function POST(request: NextRequest) {
     const { data: job, error: jobError } = await supabase
       .from("scrape_jobs")
       .insert({
-        config_id: scraper_id,
+        config_id: scraper.id,
         status: "pending",
         job_type: type,
         test_metadata: {
-          config_id: scraper_id,
+          config_id: scraper.id,
           test_type: type,
         },
       })
