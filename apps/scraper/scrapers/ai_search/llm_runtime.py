@@ -71,7 +71,7 @@ def resolve_llm_runtime(
         if normalized_base_url and normalized_api_key is None:
             normalized_api_key = LOCAL_OPENAI_COMPATIBLE_API_KEY
     else:
-        # Default openai provider can also use a custom base_url (e.g. LiteLLM Proxy)
+        # Default openai provider can also use a custom base_url (e.g. OpenAI-compatible endpoint)
         normalized_base_url = _normalize_base_url(base_url or os.getenv("OPENAI_BASE_URL"))
         normalized_api_key = _normalize_optional_string(api_key or os.getenv("OPENAI_API_KEY"))
 

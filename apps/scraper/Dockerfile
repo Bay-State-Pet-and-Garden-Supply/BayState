@@ -44,6 +44,9 @@ COPY validation ./validation
 COPY prompts ./prompts
 COPY scripts/health_check.py ./scripts/health_check.py
 
+# Shared pricing catalog for AI cost calculation
+COPY shared/ai-pricing/pricing-catalog.json ./shared/ai-pricing/pricing-catalog.json
+
 # Python runtime defaults
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1

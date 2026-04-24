@@ -6,10 +6,11 @@ runaway API spending. Includes circuit breaker for repeated overruns.
 """
 
 import logging
-import litellm
 from typing import Any
 from dataclasses import dataclass, field
 from collections import defaultdict
+
+from scrapers.pricing_loader import calculate_cost_from_catalog
 
 from scrapers.ai_metrics import (
     record_ai_extraction,
@@ -73,17 +74,7 @@ class AICostTracker:
         Returns:
             Cost in USD
         """
-        try:
-            return float(
-                litellm.completion_cost(
-                    model=model,
-                    prompt_tokens=input_tokens,
-                    completion_tokens=output_tokens,
-                )
-            )
-        except Exception as e:
-            logger.warning(f"Error calculating cost for model '{model}': {e}")
-            return 0.0
+        return calculate_cost_from_catalog(model, input_tokens, output_tokens)
 
     def track_extraction(self, input_tokens: int, output_tokens: int, model: str, scraper_name: str = "default") -> ExtractionCost:
         """Track an extraction and return cost data.

@@ -9,19 +9,6 @@
 # See: https://github.com/unclecode/crawl4ai/issues/1754
 
 services:
-  litellm:
-    image: ghcr.io/berriai/litellm:main-latest
-    restart: always
-    ports:
-      - "4000:4000"
-    volumes:
-      - ./litellm_config.yaml:/app/config.yaml
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-baystate-master-key}
-    command: [ "--config", "/app/config.yaml", "--port", "4000", "--detailed_debug" ]
-
   scraper:
     image: baystate-scraper:latest
     build: .
@@ -38,7 +25,7 @@ services:
       - SCRAPER_BROWSER_STATE_DIR=/app/.browser_storage_states
       - HEALTHCHECK_MAX_MEMORY_PERCENT=${HEALTHCHECK_MAX_MEMORY_PERCENT:-90}
       - LOG_LEVEL=DEBUG
-      - OPENAI_BASE_URL=http://litellm:4000/v1
+      
       # YAML-only mode: load configs from local files instead of API
       - USE_YAML_CONFIGS=true
     volumes:
