@@ -99,12 +99,35 @@ async function main() {
     try {
         const client = new ShopSiteClient(credentials);
         
+        // 1. Determine High-Water Mark (Latest Order Number)
+        let startOrderArg = getArgValue('start-order');
+        if (!startOrderArg && !startDate) {
+            console.log('No start-order or start-date provided. Checking database for latest order...');
+            const { data: latestOrder } = await supabase
+                .from('orders')
+                .select('order_number')
+                .order('order_number', { ascending: false })
+                .limit(1)
+                .single();
+            
+            if (latestOrder?.order_number) {
+                // ShopSite order numbers are sequential strings/numbers. 
+                // We add 1 to the last one we have.
+                const lastNum = parseInt(latestOrder.order_number, 10);
+                if (!isNaN(lastNum)) {
+                    startOrderArg = (lastNum + 1).toString();
+                    console.log(`Resuming from order number: ${startOrderArg}`);
+                }
+            }
+        }
+
         // 2. Fetch Orders from ShopSite
-        console.log(`Fetching orders from ShopSite${startDate ? ` since ${startDate}` : ''}...`);
+        console.log(`Fetching orders from ShopSite${startOrderArg ? ` starting at #${startOrderArg}` : startDate ? ` since ${startDate}` : ''}...`);
         const shopsiteOrders = await client.fetchOrders({ 
             limit, 
             version: '15.0',
-            startDate 
+            startDate,
+            startOrder: startOrderArg
         });
         console.log(`Downloaded ${shopsiteOrders.length} orders`);
 
