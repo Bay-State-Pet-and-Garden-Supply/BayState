@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useFormContext } from 'react-hook-form';
@@ -19,14 +18,12 @@ import { ConfigFormValues } from '../form-schema';
 
 export function TestingTab() {
   const { control } = useFormContext<ConfigFormValues>();
-  
-  // Test SKUs array
+
   const testSkus = useFieldArray({
     control,
     name: 'test_skus' as never,
   });
 
-  // Fake SKUs array
   const fakeSkus = useFieldArray({
     control,
     name: 'fake_skus' as never,
@@ -34,7 +31,22 @@ export function TestingTab() {
 
   return (
     <div className="space-y-4">
-      {/* Test SKUs */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Test Configuration</CardTitle>
+          <CardDescription>
+            Define SKUs for health checks and no-results validation. Tests are run locally using{' '}
+            <code className="text-xs bg-muted px-1 py-0.5 rounded">python runner.py --local --config &lt;slug&gt; --test-mode</code>.
+            Health scores are updated automatically via callback.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Test results and health scores appear in the Overview tab after a local test run completes and reports back.
+          </p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
@@ -80,7 +92,6 @@ export function TestingTab() {
         </CardContent>
       </Card>
 
-      {/* Fake SKUs */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>

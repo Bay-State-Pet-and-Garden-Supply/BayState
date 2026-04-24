@@ -216,3 +216,12 @@ fake_skus:
 edge_case_skus:
   - A1
   - ABCDEFGHIJKLMNOPQRSTUVWXYZ
+test_assertions:
+  - sku: "B0018CLX3C"
+    expected:
+      title: "Flourite Black Sand, 15.4 Pound (Pack of 1)"
+      brand: "Seachem"
+  - sku: "035585499741"
+    expected:
+      title: "KONG Pull-A-Partz Pals 2 Toys in 1 Dog Toy (Koala)"
+      brand: "KONG"

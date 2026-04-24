@@ -167,3 +167,8 @@ fake_skus:
 edge_case_skus:
   - "123"
   - "1234567890123456789"
+test_assertions:
+  - sku: "072705115310"
+    expected:
+      title: "Fromm Gold Large Breed Dog 30 lb"
+      brand: "FROMM FAMILY FOODS LLC"

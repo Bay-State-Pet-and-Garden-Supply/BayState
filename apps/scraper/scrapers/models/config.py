@@ -75,6 +75,16 @@ class NormalizationRule(BaseModel):
     params: dict[str, Any] = Field(default_factory=dict, description="Parameters for the action")
 
 
+class SkuAssertion(BaseModel):
+    """Expected result for a test SKU, used for QA validation of scraper output."""
+
+    sku: str = Field(..., description="SKU to test")
+    expected: dict[str, str | None] = Field(
+        default_factory=dict,
+        description="Expected field values (name, price, image, etc.). None means field should be absent/empty.",
+    )
+
+
 class ScraperConfig(BaseModel):
     """Main configuration for a scraper."""
 
@@ -167,6 +177,7 @@ class ScraperConfig(BaseModel):
     test_skus: list[str] | None = Field(None, description="List of SKUs to use for testing")
     fake_skus: list[str] | None = Field(None, description="List of fake SKUs for no-results validation")
     edge_case_skus: list[str] | None = Field(None, description="List of edge case SKUs for boundary testing")
+    test_assertions: list[SkuAssertion] | None = Field(None, description="Structured test assertions with expected field values per SKU")
     image_quality: int = Field(50, description="Quality score for images (0-100)", ge=0, le=100)
 
     def requires_login(self) -> bool:

@@ -188,9 +188,11 @@ test_skus:
   - HSCP2
   - "06601"
   - "07001"
-  - "14401"
-  - SCC12
-  - WWAC1
+test_assertions:
+  - sku: "HSCP2"
+    expected:
+      title: "Herm. Sprenger ULTRA-PLUS Dog Training Collar with Center Plate & Assembly Chain with 2 Rings"
+      brand: "Herm. Sprenger"
 fake_skus:
   - xyzabc123notexist456
   - ZZZZZ

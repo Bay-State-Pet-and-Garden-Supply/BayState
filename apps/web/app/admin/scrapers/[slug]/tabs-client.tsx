@@ -43,6 +43,7 @@ export function ScraperTabsClient({ slug }: ScraperTabsClientProps) {
               Configuration
             </Link>
           </TabsTrigger>
+          
           <TabsTrigger 
             value="credentials" 
             asChild 

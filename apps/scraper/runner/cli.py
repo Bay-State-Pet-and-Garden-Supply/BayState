@@ -7,6 +7,7 @@ import logging
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 from core.api_client import ConnectionError
 from core.api_client import JobConfig
@@ -58,6 +59,12 @@ def parse_args() -> argparse.Namespace:
         "--strict-validate",
         action="store_true",
         help="Treat config validation warnings as errors in local validation mode",
+    )
+    parser.add_argument(
+        "--test-mode",
+        action="store_true",
+        default=False,
+        help="Run in test mode using test_assertions from config instead of test_skus",
     )
 
     args = parser.parse_args()
@@ -255,8 +262,176 @@ def run_local_mode(args: argparse.Namespace) -> None:
         with open(args.output, "w", encoding="utf-8") as f:
             f.write(output_json)
         logger.info(f"[Local] Results written to {args.output}")
-    else:
+    elif not args.test_mode:
         print(output_json)
+
+    if args.test_mode:
+        test_payload = build_test_mode_payload(config, results)
+        
+        print("\n" + "="*50)
+        print(f" TEST MODE SUMMARY: {config.name}")
+        print("="*50)
+        
+        total = len(test_payload["assertion_results"])
+        passed = sum(1 for r in test_payload["assertion_results"] if r["passed"])
+        
+        for result in test_payload["assertion_results"]:
+            status = "✅ PASSED" if result["passed"] else "❌ FAILED"
+            print(f"\nSKU: {result['sku']} - {status}")
+            
+            if not result["passed"]:
+                print("  Failures:")
+                expected = result["expected"]
+                actual = result["actual"]
+                for field, exp_val in expected.items():
+                    act_val = actual.get(field)
+                    if exp_val != act_val:
+                        print(f"    - {field}:")
+                        print(f"        Expected: {exp_val}")
+                        print(f"        Actual:   {act_val}")
+        
+        print("\n" + "="*50)
+        print(f" FINAL SCORE: {passed}/{total} ({passed/total*100:.1f}%)")
+        print("="*50 + "\n")
+        
+        if passed < total:
+            sys.exit(1)
+
+
+class TestModeResult:
+    def __init__(self, skus: list[str]):
+        self.skus = skus
+
+
+def _select_test_mode_skus(config: Any, cli_sku: str | None) -> list[str]:
+    if cli_sku:
+        return [s.strip() for s in cli_sku.split(",") if s.strip()]
+
+    test_assertions = getattr(config, "test_assertions", None)
+    if test_assertions:
+        return [a.sku for a in test_assertions if hasattr(a, "sku") and a.sku]
+
+    test_skus = getattr(config, "test_skus", None)
+    if test_skus:
+        return list(test_skus)
+
+    return []
+
+
+def run_test_mode(args: argparse.Namespace, _config: Any = None) -> TestModeResult:
+    from scrapers.parser.yaml_parser import ScraperConfigParser
+
+    os.environ["USE_YAML_CONFIGS"] = "true"
+
+    if _config is not None:
+        config = _config
+    else:
+        config_path = args.config
+        if not os.path.isfile(config_path):
+            logger.error(f"Config file not found: {config_path}")
+            sys.exit(1)
+
+        validator = ConfigValidator(strict=args.strict_validate)
+        validation_result = validator.validate_file(config_path)
+        preflight = validate_local_runtime_requirements(
+            config_path,
+            strict=args.strict_validate,
+            validation_result=validation_result,
+        )
+        if not validation_result.valid or not preflight.valid:
+            payload = build_local_validation_payload(validation_result, preflight)
+            logger.error("[Test Mode] Config validation failed")
+            print(format_local_validation_payload(payload))
+            print()
+            print(json.dumps(payload, indent=2))
+            sys.exit(1)
+
+        _log_local_validation_summary(preflight)
+
+        parser = ScraperConfigParser()
+        try:
+            config = parser.load_from_file(config_path)
+        except Exception as e:
+            logger.error(f"Failed to load config: {e}")
+            sys.exit(1)
+
+        logger.info(f"[Test Mode] Loaded config: {config.name} ({config_path})")
+
+    skus = _select_test_mode_skus(config, args.sku)
+
+    if skus and getattr(config, "test_assertions", None) and not args.sku:
+        logger.info(f"[Test Mode] Using {len(skus)} SKUs from test_assertions")
+    elif skus and getattr(config, "test_skus", None) and not getattr(config, "test_assertions", None) and not args.sku:
+        logger.info(f"[Test Mode] No test_assertions, falling back to {len(skus)} test_skus")
+
+    if not skus:
+        logger.error("[Test Mode] No SKUs: define test_assertions or test_skus in the YAML config")
+        sys.exit(1)
+
+    logger.info(f"[Test Mode] SKUs to test: {skus}")
+
+    return TestModeResult(skus=skus)
+
+
+def build_test_mode_payload(
+    config: Any,
+    results: dict[str, Any],
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "test_type": "qa",
+        "scraper_name": getattr(config, "name", "unknown"),
+        "results": results,
+        "assertion_results": [],
+    }
+
+    test_assertions = getattr(config, "test_assertions", None) or []
+    # run_job returns a dict with "data" containing {sku: result_dict}
+    results_data = results.get("data", {})
+    
+    if os.environ.get("DEBUG_TEST_MODE") == "true":
+        print(f"DEBUG: results_data keys: {list(results_data.keys())}")
+    
+    for assertion in test_assertions:
+        if not hasattr(assertion, "sku"):
+            continue
+
+        sku = assertion.sku
+        expected = getattr(assertion, "expected", {}) or {}
+        sku_data = results_data.get(sku, {})
+        
+        # Data is nested by scraper name: {sku: {scraper_name: data}}
+        scraper_name = getattr(config, "name", "unknown")
+        actual = sku_data.get(scraper_name, {})
+        
+        if not actual and sku_data:
+            # Fallback: if scraper name not found but only one scraper ran, use that
+            if len(sku_data) == 1:
+                actual = list(sku_data.values())[0]
+
+        field_results = []
+        for field_name, expected_value in expected.items():
+            actual_value = actual.get(field_name)
+            field_results.append(
+                {
+                    "field": field_name,
+                    "expected": expected_value,
+                    "actual": actual_value,
+                    "passed": actual_value == expected_value,
+                }
+            )
+
+        all_passed = all(f["passed"] for f in field_results) if field_results else True
+
+        payload["assertion_results"].append(
+            {
+                "sku": sku,
+                "expected": expected,
+                "actual": {f["field"]: f["actual"] for f in field_results},
+                "passed": all_passed,
+            }
+        )
+
+    return payload
 
 
 def main() -> None:
@@ -266,6 +441,10 @@ def main() -> None:
     if args.local:
         if args.validate:
             sys.exit(validate_local_config(args))
+        if args.test_mode:
+            test_info = run_test_mode(args)
+            args.sku = ",".join(test_info.skus)
+        
         run_local_mode(args)
         return
 

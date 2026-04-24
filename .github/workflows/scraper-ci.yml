@@ -46,5 +46,6 @@ jobs:
       - name: Run Tests
         env:
           PYTHONPATH: .
-        # fail if tests fail
-        run: pytest
+        # Run unit/integration tests only — skip benchmark and live tests
+        # Benchmark tests run in benchmark-live.yml workflow
+        run: pytest -m "not benchmark and not live and not performance" --ignore=tests/benchmarks

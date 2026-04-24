@@ -54,7 +54,7 @@ async def _capture_authenticated_images_as_data_urls(ctx: Any, image_urls: list[
 
     captured_images = await page.evaluate(
         """
-        async (urls, fetchTimeoutMs, maxAttempts, initialRetryDelayMs, scrollStep, scrollWaitMs) => {
+        async ([urls, fetchTimeoutMs, maxAttempts, initialRetryDelayMs, scrollStep, scrollWaitMs]) => {
             for (let y = 0; y < document.body.scrollHeight; y += scrollStep) {
                 window.scrollTo(0, y);
                 await new Promise(resolve => setTimeout(resolve, scrollWaitMs));
@@ -203,12 +203,14 @@ async def _capture_authenticated_images_as_data_urls(ctx: Any, image_urls: list[
             return results;
         }
         """,
-        image_urls,
-        FETCH_TIMEOUT_MS,
-        max_attempts,
-        INITIAL_RETRY_DELAY_SECONDS * 1000,
-        SCROLL_STEP_PX,
-        SCROLL_WAIT_MS,
+        [
+            image_urls,
+            FETCH_TIMEOUT_MS,
+            max_attempts,
+            INITIAL_RETRY_DELAY_SECONDS * 1000,
+            SCROLL_STEP_PX,
+            SCROLL_WAIT_MS,
+        ],
     )
 
     if hasattr(page, "wait_for_load_state"):

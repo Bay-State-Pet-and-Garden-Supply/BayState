@@ -214,9 +214,15 @@ test_skus:
   - "38777520"
   - "43580233"
   - "55599200"
-  - "32530920"
-  - "74200017"
-  - "32530120"
+test_assertions:
+  - sku: "38777520"
+    expected:
+      title: "KONG Air Dog Squeaker Tennis Ball Dog Toy"
+      brand: "KONG"
+  - sku: "43580233"
+    expected:
+      title: "IAMS Perfect Portions Grain Free Healthy Pat\u00e9 Kitten Wet Cat Food"
+      brand: "IAMS"
 fake_skus:
   - xyzabc123notexist456
   - "00000000"

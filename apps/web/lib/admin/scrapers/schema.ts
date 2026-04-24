@@ -216,6 +216,17 @@ export const normalizationRuleSchema = z.object({
 
 export type NormalizationRule = z.infer<typeof normalizationRuleSchema>;
 
+export const skuAssertionSchema = z.object({
+  sku: z.string().min(1, 'SKU is required'),
+  expected: z.object({
+    name: z.string().optional(),
+    price: z.string().optional(),
+    image: z.string().optional(),
+  }).catchall(z.string().nullable().optional()),
+});
+
+export type SkuAssertion = z.infer<typeof skuAssertionSchema>;
+
 // Full scraper config schema
 export const scraperConfigSchema = z.object({
   schema_version: schemaVersionSchema,
@@ -236,6 +247,7 @@ export const scraperConfigSchema = z.object({
   test_skus: z.array(z.string()).default([]),
   fake_skus: z.array(z.string()).default([]),
   edge_case_skus: z.array(z.string()).optional(),
+  test_assertions: z.array(skuAssertionSchema).optional(),
   ai_config: aiConfigSchema.optional(),
 });
 

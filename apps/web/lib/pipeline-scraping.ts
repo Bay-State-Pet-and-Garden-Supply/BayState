@@ -65,7 +65,7 @@ interface PostgrestLikeError {
     hint?: string;
 }
 
-type ScrapeJobInsertType = 'standard' | 'discovery';
+type ScrapeJobInsertType = 'standard' | 'ai_search';
 
 
 function isLegacyJobTypeConstraintError(error: unknown): boolean {
@@ -781,7 +781,7 @@ export async function scrapeProducts(
     const isDiscovery = isOfficialBrand;
 
     const effectiveScrapersRaw = isDiscovery ? [enrichmentMethod] : scrapers;
-    const jobType: ScrapeJobInsertType = isDiscovery ? 'discovery' : 'standard';
+    const jobType: ScrapeJobInsertType = isDiscovery ? 'ai_search' : 'standard';
 
     // Resolve scraper display names to slugs if possible using local YAML configs
     let effectiveScrapers = effectiveScrapersRaw;
