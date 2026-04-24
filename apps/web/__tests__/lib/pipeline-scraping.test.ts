@@ -278,30 +278,9 @@ describe('scrapeProducts', () => {
         expect(result.error).toContain('Failed to create scraping job');
     });
 
-    it('should retry ai_search job creation with discovery type on legacy constraint', async () => {
-        mockSupabase = makeSupabaseMock();
-        mockSupabase._scrapeJobsBuilder.single
-            .mockResolvedValueOnce({
-                data: null,
-                error: {
-                    code: '23514',
-                    message: 'new row for relation "scrape_jobs" violates check constraint "scrape_jobs_type_check"',
-                },
-            })
-            .mockResolvedValueOnce({ data: { id: 'job-legacy' }, error: null });
 
-        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
 
-        const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'ai_search' });
-
-        expect(result.success).toBe(true);
-        expect(result.jobIds).toEqual(['job-legacy']);
-        expect(mockSupabase._scrapeJobsBuilder.insert).toHaveBeenCalledTimes(2);
-        expect(mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0].type).toBe('ai_search');
-        expect(mockSupabase._scrapeJobsBuilder.insert.mock.calls[1][0].type).toBe('discovery');
-    });
-
-    it('should include per-sku input context in ai_search job config', async () => {
+    it('should include per-sku input context in discovery job config', async () => {
         mockSupabase = makeSupabaseMock({
             pipelineRows: [
                 {
@@ -317,7 +296,7 @@ describe('scrapeProducts', () => {
         });
         (createClient as jest.Mock).mockResolvedValue(mockSupabase);
 
-        const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'ai_search' });
+        const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'official_brand' });
 
         expect(result.success).toBe(true);
         expect(mockSupabase._productsIngestionBuilder.select).toHaveBeenCalledWith('sku, cohort_id, consolidated, input');
@@ -368,8 +347,8 @@ describe('scrapeProducts', () => {
         });
     });
 
-    it('should build linear chunk plans for ai search style jobs', async () => {
-        const plan = await buildLinearChunkPlan(['SKU-1', 'SKU-2', 'SKU-3'], ['ai_search'], 2);
+    it('should build linear chunk plans for discovery style jobs', async () => {
+        const plan = await buildLinearChunkPlan(['SKU-1', 'SKU-2', 'SKU-3'], ['official_brand'], 2);
 
         expect(plan.plannedChunkCount).toBe(2);
         expect(plan.plannedWorkUnits).toBe(3);
@@ -381,12 +360,12 @@ describe('scrapeProducts', () => {
         expect(plan.chunks[0]).toMatchObject({
             chunk_index: 0,
             skus: ['SKU-1', 'SKU-2'],
-            scrapers: ['ai_search'],
+            scrapers: ['official_brand'],
             planned_work_units: 2,
         });
     });
 
-    it('should prefer catalog product context for ai_search jobs when available', async () => {
+    it('should prefer catalog product context for discovery jobs when available', async () => {
         mockSupabase = makeSupabaseMock({
             pipelineRows: [
                 {
@@ -408,7 +387,7 @@ describe('scrapeProducts', () => {
         });
         (createClient as jest.Mock).mockResolvedValue(mockSupabase);
 
-        const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'ai_search' });
+        const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'official_brand' });
 
         expect(result.success).toBe(true);
         expect(mockSupabase._productsBuilder.select).toHaveBeenCalledWith(
@@ -428,7 +407,7 @@ describe('scrapeProducts', () => {
         ]);
     });
 
-    it('should include brand domain preferences in ai_search job config when available', async () => {
+    it('should include brand domain preferences in discovery job config when available', async () => {
         mockSupabase = makeSupabaseMock({
             pipelineRows: [
                 {
@@ -455,7 +434,7 @@ describe('scrapeProducts', () => {
         });
         (createClient as jest.Mock).mockResolvedValue(mockSupabase);
 
-        const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'ai_search' });
+        const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'official_brand' });
 
         expect(result.success).toBe(true);
         const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
@@ -471,7 +450,7 @@ describe('scrapeProducts', () => {
         ]);
     });
 
-    it('should backfill ai_search brand registry domains from consolidated brand id', async () => {
+    it('should backfill discovery brand registry domains from consolidated brand id', async () => {
         mockSupabase = makeSupabaseMock({
             pipelineRows: [
                 {
@@ -499,7 +478,7 @@ describe('scrapeProducts', () => {
         });
         (createClient as jest.Mock).mockResolvedValue(mockSupabase);
 
-        const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'ai_search' });
+        const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'official_brand' });
 
         expect(result.success).toBe(true);
         const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
@@ -515,7 +494,7 @@ describe('scrapeProducts', () => {
         ]);
     });
 
-    it('should backfill ai_search brand registry domains from cohort brand context', async () => {
+    it('should backfill discovery brand registry domains from cohort brand context', async () => {
         mockSupabase = makeSupabaseMock({
             pipelineRows: [
                 {
@@ -547,7 +526,7 @@ describe('scrapeProducts', () => {
         (createClient as jest.Mock).mockResolvedValue(mockSupabase);
 
         const result = await scrapeProducts(['SKU-1'], {
-            enrichment_method: 'ai_search',
+            enrichment_method: 'official_brand',
             cohortBrand: 'Bentley Seed',
         });
 
