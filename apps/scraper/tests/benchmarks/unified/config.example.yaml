@@ -1,0 +1,46 @@
+# BayState Benchmark Configuration
+# Copy this file and modify for your benchmark runs.
+# Environment variable overrides:
+#   BENCHMARK_TIMEOUT  - Override timeout (seconds)
+#   BENCHMARK_MAX_URLS - Truncate URL list to this count
+
+benchmark_type: extraction  # extraction | ranking | performance
+
+urls:
+  - https://www.chewy.com/dp/1
+  - https://www.petsmart.com/product/2
+  - https://www.petco.com/product/3
+
+modes:
+  - llm-free
+  - llm
+  - auto
+
+timeout: 30
+concurrency: 5
+iterations: 3
+headless: true
+llm_provider: auto  # auto | openai | gemini | openai_compatible
+llm_model: null
+max_cost_usd: 2.0
+auto_acceptance_threshold: 0.8
+
+# Optional: Load URLs from a JSON products file instead of the urls list above
+# products_path: path/to/products.json
+
+# Optional: Write report to file
+# output_path: benchmark-report.json
+
+# Optional: Type-specific overrides (merge with top-level config)
+# extraction:
+#   timeout: 60
+#   iterations: 5
+#
+# ranking:
+#   ranking_k: [1, 3, 5, 10]
+#   relevance_threshold: 0.7
+#
+# performance:
+#   warmup_iterations: 2
+#   profile_memory: true
+#   max_memory_mb: 512

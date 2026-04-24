@@ -129,6 +129,11 @@ test_skus:
   - "073564"
   - "284177"
   - "091069"
+test_assertions:
+  - sku: "073564"
+    expected:
+      title: "Good 'n' Fun Triple Flavor Twists, 6 Pack"
+      brand: "SPECTRUM BRAND, INC."
 fake_skus:
   - zzznotreal9999
   - "999999999999"

@@ -1,4 +1,11 @@
-"""Benchmark commands for crawl4ai extraction modes."""
+"""Benchmark commands for crawl4ai extraction modes.
+
+.. deprecated::
+    Use ``cli.commands.benchmark_unified`` instead. This module will be removed
+    in a future release. The unified CLI provides subcommands (run, report,
+    compare, validate-urls) with cost estimation, progress output, and
+    integration with the unified config/reporter/metrics modules.
+"""
 
 from __future__ import annotations
 
@@ -1023,7 +1030,18 @@ def benchmark_extraction(
     llm_model: str | None,
     max_cost_usd: float,
 ) -> None:
-    """Benchmark crawl4ai extraction strategies on sample products."""
+    """Benchmark crawl4ai extraction strategies on sample products.
+
+    .. deprecated:: Use ``benchmark_unified run`` instead.
+    """
+    import warnings
+
+    warnings.warn(
+        "The 'benchmark extraction' command is deprecated. Use 'benchmark_unified run' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    click.echo(click.style("⚠ DEPRECATED: Use 'benchmark_unified run' instead.", fg="yellow"))
     products = _load_products(products_path)
     benchmark_modes = _resolve_benchmark_modes(mode)
     llm_config = _resolve_llm_config(llm_provider, llm_model)
