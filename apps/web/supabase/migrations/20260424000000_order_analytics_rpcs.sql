@@ -3,13 +3,17 @@
 
 BEGIN;
 
-CREATE OR REPLACE FUNCTION public.get_sales_metrics(start_date timestamptz, end_date timestamptz)
+CREATE OR REPLACE FUNCTION public.get_sales_metrics(start_date timestamp, end_date timestamp)
 RETURNS TABLE (
     total_revenue numeric,
     total_orders bigint,
     average_order_value numeric,
     total_tax numeric
-) AS $$
+) 
+LANGUAGE plpgsql 
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
     RETURN QUERY
     SELECT 
@@ -21,14 +25,18 @@ BEGIN
     WHERE status IN ('completed', 'processing')
       AND created_at >= start_date AND created_at <= end_date;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
-CREATE OR REPLACE FUNCTION public.get_sales_trends(start_date timestamptz, end_date timestamptz, period text DEFAULT 'day')
+CREATE OR REPLACE FUNCTION public.get_sales_trends(start_date timestamp, end_date timestamp, period text DEFAULT 'day')
 RETURNS TABLE (
     period_date text,
     revenue numeric,
     orders bigint
-) AS $$
+) 
+LANGUAGE plpgsql 
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
     RETURN QUERY
     SELECT 
@@ -41,10 +49,10 @@ BEGIN
     GROUP BY date_trunc(period, created_at)
     ORDER BY date_trunc(period, created_at) ASC;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- Grant access to authenticated users (staff/admin)
-GRANT EXECUTE ON FUNCTION public.get_sales_metrics(timestamptz, timestamptz) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_sales_trends(timestamptz, timestamptz, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_sales_metrics(timestamp, timestamp) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_sales_trends(timestamp, timestamp, text) TO authenticated;
 
 COMMIT;
