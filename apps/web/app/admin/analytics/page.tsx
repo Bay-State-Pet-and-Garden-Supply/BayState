@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { AnalyticsDashboard } from './analytics-dashboard';
 
 export const metadata = {
@@ -8,10 +8,12 @@ export const metadata = {
 export default async function AnalyticsPage() {
     const supabase = await createClient();
     
-    // Set date range to last 30 days
+    // Fetch analytics data. 
+    // Since this is a migration phase, we'll look at a wider range (last 10 years) 
+    // to ensure historical ShopSite data is visible.
     const endDate = new Date().toISOString();
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 30);
+    startDate.setFullYear(startDate.getFullYear() - 10);
     
     // Fetch top level metrics
     const { data: metricsData, error: metricsError } = await supabase
@@ -29,7 +31,7 @@ export default async function AnalyticsPage() {
         .rpc('get_sales_trends', { 
             start_date: startDate.toISOString(), 
             end_date: endDate, 
-            period: 'day' 
+            period: 'month' 
         });
 
     if (trendsError) {
