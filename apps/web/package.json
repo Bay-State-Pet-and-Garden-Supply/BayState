@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "sync:shopsite": "bun scripts/sync-shopsite-products.ts",
+    "sync:orders": "bun scripts/sync-shopsite-orders.ts",
     "sync:register": "bun scripts/sync-register-inventory.ts",
     "test": "node scripts/run-jest.cjs",
     "test:api-compat": "ts-node scripts/test-api-compatibility.ts",
