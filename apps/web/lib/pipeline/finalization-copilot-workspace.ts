@@ -42,9 +42,15 @@ export const finalizationProductScopeSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("query"),
-    query: z.string().min(1),
+    query: z.string().optional(),
+    name: z.string().optional(),
+    description: z.string().optional(),
+    brand: z.string().optional(),
     limit: z.number().int().min(1).max(200).optional(),
-  }),
+  }).refine(
+    (data) => data.query || data.name || data.description || data.brand,
+    { message: "At least one search parameter must be provided" },
+  ),
 ]);
 
 export type FinalizationProductScope = z.infer<
@@ -53,6 +59,9 @@ export type FinalizationProductScope = z.infer<
 
 export const listWorkspaceProductsInputSchema = z.object({
   query: z.string().optional(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  brand: z.string().optional(),
   limit: z.number().int().min(1).max(200).optional(),
 });
 
