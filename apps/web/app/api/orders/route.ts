@@ -31,7 +31,7 @@ const orderSchema = z.object({
   promoCode: z.string().nullable().optional(),
   promoCodeId: z.string().nullable().optional(),
   discountAmount: z.number().optional(),
-  paymentMethod: z.enum(['pickup', 'credit_card', 'paypal']).default('pickup'),
+  paymentMethod: z.enum(['pickup', 'credit_card', 'paypal', 'in_store']).default('pickup'),
   fulfillmentMethod: z.enum(['pickup', 'delivery']).default('pickup'),
   deliveryAddress: deliveryAddressSchema.nullable().optional(),
   deliveryDistanceMiles: z.number().nullable().optional(),

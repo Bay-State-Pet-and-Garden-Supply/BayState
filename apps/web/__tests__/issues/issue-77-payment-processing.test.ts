@@ -23,6 +23,11 @@ describe('Issue #77: Online Payment Processing', () => {
       expect(method).toBe('paypal');
     });
 
+    it('should support in_store payment method for register sales', () => {
+      const method: PaymentMethod = 'in_store';
+      expect(method).toBe('in_store');
+    });
+
     it('should support all payment statuses', () => {
       const statuses: PaymentStatus[] = [
         'pending',

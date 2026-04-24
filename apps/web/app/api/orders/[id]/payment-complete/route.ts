@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 const paymentCompleteSchema = z.object({
   paymentIntentId: z.string(),
-  paymentMethod: z.enum(['pickup', 'credit_card', 'paypal']).default('credit_card'),
+  paymentMethod: z.enum(['pickup', 'credit_card', 'paypal', 'in_store']).default('credit_card'),
 });
 
 export async function POST(

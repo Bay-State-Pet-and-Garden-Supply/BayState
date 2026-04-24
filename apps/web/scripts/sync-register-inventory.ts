@@ -268,6 +268,8 @@ async function syncSales(supabase: SupabaseClient, workspacePath: string, dryRun
                 order_number: orderNumber,
                 source: 'integra',
                 status: 'completed',
+                customer_name: 'In-Store Customer',
+                customer_email: 'instore@baystate.com',
                 subtotal: Number(sale.SALE_TOTAL) - Number(sale.SALE_TAX),
                 tax: Number(sale.SALE_TAX),
                 total: Number(sale.SALE_TOTAL),
