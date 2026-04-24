@@ -82,12 +82,67 @@ function Get-RegisterConnectionString {
     throw 'Missing register ODBC configuration. Set REGISTER_ODBC_CONNECTION_STRING (preferred), REGISTER_ODBC_DSN, or REGISTER_ODBC_DRIVER plus REGISTER_ODBC_SERVER.'
 }
 
+function Export-Table-To-Json {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Data.Odbc.OdbcConnection]$Connection,
+        [Parameter(Mandatory = $true)]
+        [string]$Query,
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath
+    )
+
+    $cmd = $Connection.CreateCommand()
+    $cmd.CommandText = $Query
+    
+    $commandTimeout = Get-EnvValue 'REGISTER_ODBC_COMMAND_TIMEOUT_SECONDS'
+    if ($commandTimeout) {
+        $cmd.CommandTimeout = [int]$commandTimeout
+    }
+
+    $rdr = $cmd.ExecuteReader()
+    $stm = [System.IO.File]::Create($FilePath)
+    $writer = [System.Text.Json.Utf8JsonWriter]::new($stm)
+    $writer.WriteStartArray()
+
+    while ($rdr.Read()) {
+        $writer.WriteStartObject()
+        for ($index = 0; $index -lt $rdr.FieldCount; $index += 1) {
+            $columnName = $rdr.GetName($index)
+            if ($rdr.IsDBNull($index)) {
+                $writer.WriteNull($columnName)
+                continue
+            }
+            $value = $rdr.GetValue($index)
+            switch ($value.GetType().FullName) {
+                'System.Boolean' { $writer.WriteBoolean($columnName, [bool]$value) }
+                'System.Byte'    { $writer.WriteNumber($columnName, [byte]$value) }
+                'System.Int16'   { $writer.WriteNumber($columnName, [int16]$value) }
+                'System.Int32'   { $writer.WriteNumber($columnName, [int]$value) }
+                'System.Int64'   { $writer.WriteNumber($columnName, [long]$value) }
+                'System.Single'  { $writer.WriteNumber($columnName, [single]$value) }
+                'System.Double'  { $writer.WriteNumber($columnName, [double]$value) }
+                'System.Decimal' { $writer.WriteNumber($columnName, [decimal]$value) }
+                default          { $writer.WriteString($columnName, [string]$value) }
+            }
+        }
+        $writer.WriteEndObject()
+    }
+
+    $writer.WriteEndArray()
+    $writer.Flush()
+    $writer.Dispose()
+    $stm.Dispose()
+    $rdr.Dispose()
+    $cmd.Dispose()
+}
+
 $selectClause = 'SELECT'
 if ($RowLimit -gt 0) {
     $selectClause = "SELECT TOP $RowLimit"
 }
 
-$query = @"
+$inventoryQuery = @"
 $selectClause
     POS_INVENTORY.SKU_NO,
     POS_INVENTORY.DESCRIPTION1,
@@ -102,100 +157,46 @@ $selectClause
 FROM none.POS_INVENTORY POS_INVENTORY
 "@
 
-$connection = $null
-$command = $null
-$reader = $null
-$stream = $null
-$jsonWriter = $null
+$salesQuery = @"
+$selectClause
+    POS_SALES_HEADER.TRAN_DATE,
+    POS_SALES_HEADER.TRAN_TIME,
+    POS_SALES_HEADER.SALE_TOTAL,
+    POS_SALES_HEADER.SALE_TAX,
+    POS_SALES_HEADER.SALE_COST,
+    POS_SALES_HEADER.INVOICE_NO,
+    POS_SALES_HEADER.CASHIER,
+    POS_SALES_HEADER.REGISTER
+FROM none.POS_SALES_HEADER POS_SALES_HEADER
+"@
 
+$connection = $null
 try {
-    $parentDirectory = Split-Path -Path $OutputPath -Parent
-    if (-not [string]::IsNullOrWhiteSpace($parentDirectory)) {
-        [System.IO.Directory]::CreateDirectory($parentDirectory) | Out-Null
+    $outputDir = if ([System.IO.Directory]::Exists($OutputPath)) { $OutputPath } else { Split-Path -Path $OutputPath -Parent }
+    if (-not [string]::IsNullOrWhiteSpace($outputDir) -and -not [System.IO.Directory]::Exists($outputDir)) {
+        [System.IO.Directory]::CreateDirectory($outputDir) | Out-Null
     }
 
     $connection = [System.Data.Odbc.OdbcConnection]::new((Get-RegisterConnectionString))
-    $command = $connection.CreateCommand()
-    $command.CommandText = $query
-
-    $commandTimeout = Get-EnvValue 'REGISTER_ODBC_COMMAND_TIMEOUT_SECONDS'
-    if ($commandTimeout) {
-        $command.CommandTimeout = [int]$commandTimeout
-    }
-
     $connection.Open()
-    $reader = $command.ExecuteReader()
 
-    $stream = [System.IO.File]::Create($OutputPath)
-    $jsonWriter = [System.Text.Json.Utf8JsonWriter]::new($stream)
-    $jsonWriter.WriteStartArray()
-
-    while ($reader.Read()) {
-        $jsonWriter.WriteStartObject()
-
-        for ($index = 0; $index -lt $reader.FieldCount; $index += 1) {
-            $columnName = $reader.GetName($index)
-
-            if ($reader.IsDBNull($index)) {
-                $jsonWriter.WriteNull($columnName)
-                continue
-            }
-
-            $value = $reader.GetValue($index)
-            switch ($value.GetType().FullName) {
-                'System.Boolean' {
-                    $jsonWriter.WriteBoolean($columnName, [bool]$value)
-                }
-                'System.Byte' {
-                    $jsonWriter.WriteNumber($columnName, [byte]$value)
-                }
-                'System.Int16' {
-                    $jsonWriter.WriteNumber($columnName, [int16]$value)
-                }
-                'System.Int32' {
-                    $jsonWriter.WriteNumber($columnName, [int]$value)
-                }
-                'System.Int64' {
-                    $jsonWriter.WriteNumber($columnName, [long]$value)
-                }
-                'System.Single' {
-                    $jsonWriter.WriteNumber($columnName, [single]$value)
-                }
-                'System.Double' {
-                    $jsonWriter.WriteNumber($columnName, [double]$value)
-                }
-                'System.Decimal' {
-                    $jsonWriter.WriteNumber($columnName, [decimal]$value)
-                }
-                default {
-                    $jsonWriter.WriteString($columnName, [string]$value)
-                }
-            }
-        }
-
-        $jsonWriter.WriteEndObject()
+    # If OutputPath is a directory, use fixed filenames. If it's a file path, use it for inventory and derive sales.
+    $inventoryPath = $OutputPath
+    $salesPath = [System.IO.Path]::Combine((Split-Path -Path $OutputPath -Parent), "register-sales.json")
+    
+    if ([System.IO.Directory]::Exists($OutputPath)) {
+        $inventoryPath = [System.IO.Path]::Combine($OutputPath, "register-inventory.json")
     }
 
-    $jsonWriter.WriteEndArray()
-    $jsonWriter.Flush()
+    Write-Host "Exporting inventory to $inventoryPath..."
+    Export-Table-To-Json -Connection $connection -Query $inventoryQuery -FilePath $inventoryPath
+    
+    Write-Host "Exporting sales to $salesPath..."
+    Export-Table-To-Json -Connection $connection -Query $salesQuery -FilePath $salesPath
+
+    Write-Host "Export complete."
 }
 finally {
-    if ($jsonWriter) {
-        $jsonWriter.Dispose()
-    }
-
-    if ($stream) {
-        $stream.Dispose()
-    }
-
-    if ($reader) {
-        $reader.Dispose()
-    }
-
-    if ($command) {
-        $command.Dispose()
-    }
-
     if ($connection) {
         $connection.Dispose()
     }
