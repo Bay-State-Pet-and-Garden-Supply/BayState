@@ -153,7 +153,17 @@ async function main() {
 
                 if (orderError) throw orderError;
                 
-                // Upsert Items
+                // 1. Delete existing items for this order to ensure idempotency
+                const { error: deleteError } = await supabase
+                    .from('order_items')
+                    .delete()
+                    .eq('order_id', upsertedOrder.id);
+
+                if (deleteError) {
+                    console.warn(`Warning: Failed to clear items for order ${transformed.legacy_order_number}:`, deleteError.message);
+                }
+
+                // 2. Insert Items
                 if (upsertedOrder && items.length > 0) {
                     const mappedItems = items.map(item => ({
                         order_id: upsertedOrder.id,
@@ -168,10 +178,10 @@ async function main() {
 
                     const { error: itemsError } = await supabase
                         .from('order_items')
-                        .upsert(mappedItems, { onConflict: 'order_id,item_slug' } as any);
+                        .insert(mappedItems);
                     
                     if (itemsError) {
-                        console.warn(`Warning: Failed to upsert items for order ${transformed.legacy_order_number}:`, itemsError.message);
+                        console.warn(`Warning: Failed to insert items for order ${transformed.legacy_order_number}:`, itemsError.message);
                     }
                 }
 
