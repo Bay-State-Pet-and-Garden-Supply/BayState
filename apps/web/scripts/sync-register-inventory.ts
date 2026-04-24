@@ -23,7 +23,7 @@ import {
 } from '../lib/admin/register-sync';
 import type { SyncResult } from '../lib/admin/migration/types';
 
-const DEFAULT_FILE_GLOB = '..\\temp\\inventory*.xlsx';
+const DEFAULT_FILE_GLOB = '..\\..\\temp\\inventory*.xlsx';
 const PRODUCT_BATCH_SIZE = 500;
 const SYNC_TYPE = 'register_inventory';
 
