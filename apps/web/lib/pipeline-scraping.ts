@@ -327,10 +327,21 @@ function buildScrapeChunkPlan({
     scraperConfigs,
 }: BuildChunkPlanOptions): PlannedScrapeJob {
     const normalizedChunkSize = Math.max(1, chunkSize);
+    const numChunks = Math.ceil(skus.length / normalizedChunkSize);
     const skuSlices: string[][] = [];
 
-    for (let index = 0; index < skus.length; index += normalizedChunkSize) {
-        skuSlices.push(skus.slice(index, index + normalizedChunkSize));
+    if (numChunks > 0) {
+        const baseSize = Math.floor(skus.length / numChunks);
+        let remainder = skus.length % numChunks;
+        
+        let currentIndex = 0;
+        for (let i = 0; i < numChunks; i++) {
+            const currentChunkSize = baseSize + (remainder > 0 ? 1 : 0);
+            if (remainder > 0) remainder--;
+            
+            skuSlices.push(skus.slice(currentIndex, currentIndex + currentChunkSize));
+            currentIndex += currentChunkSize;
+        }
     }
 
     const siteGroups = buildScraperSiteGroups(scrapers, scraperConfigs);
@@ -533,16 +544,30 @@ export async function buildLinearChunkPlan(
     chunkSize: number,
 ): Promise<PlannedScrapeJob> {
     const normalizedChunkSize = Math.max(1, chunkSize);
-    const chunks = Array.from({ length: Math.ceil(skus.length / normalizedChunkSize) }, (_, sliceIndex) => {
-        const sliceSkus = skus.slice(sliceIndex * normalizedChunkSize, (sliceIndex + 1) * normalizedChunkSize);
-        return {
-            chunk_index: sliceIndex,
-            skus: sliceSkus,
-            scrapers,
-            planned_work_units: sliceSkus.length,
-            sku_slice_index: sliceIndex,
-        } satisfies PlannedScrapeChunk;
-    });
+    const numChunks = Math.ceil(skus.length / normalizedChunkSize);
+    const chunks: PlannedScrapeChunk[] = [];
+
+    if (numChunks > 0) {
+        const baseSize = Math.floor(skus.length / numChunks);
+        let remainder = skus.length % numChunks;
+        
+        let currentIndex = 0;
+        for (let sliceIndex = 0; sliceIndex < numChunks; sliceIndex++) {
+            const currentChunkSize = baseSize + (remainder > 0 ? 1 : 0);
+            if (remainder > 0) remainder--;
+            
+            const sliceSkus = skus.slice(currentIndex, currentIndex + currentChunkSize);
+            chunks.push({
+                chunk_index: sliceIndex,
+                skus: sliceSkus,
+                scrapers,
+                planned_work_units: sliceSkus.length,
+                sku_slice_index: sliceIndex,
+            });
+            
+            currentIndex += currentChunkSize;
+        }
+    }
 
     return {
         chunks,
