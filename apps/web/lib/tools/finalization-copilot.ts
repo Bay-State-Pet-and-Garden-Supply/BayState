@@ -293,7 +293,7 @@ export function createFinalizationCopilotTools(
   return {
     listWorkspaceProducts: tool({
       description:
-        "List products currently loaded in the finalizing workspace. Use this before any multi-product action to inspect candidates or narrow scope.",
+        "List products in the finalizing workspace. You can search by generic query or target specific fields like name, description, or brand. Use this before multi-product actions to narrow scope.",
       inputSchema: listWorkspaceProductsInputSchema,
       outputSchema: listWorkspaceProductsOutputSchema,
     }),
