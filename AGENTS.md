@@ -75,6 +75,63 @@ Three-part system: **apps/web** (Next.js 16 PWA + Admin), **apps/scraper** (Pyth
 - **App extras**: `test:a11y:e2e`, `test:a11y:unit` for accessibility.
 - **Scraper extras**: `asyncio_mode=auto`, markers: `integration`, `benchmark`.
 
+### Cross-Project Scraper QA Workflow
+
+The scraper QA integration enables automated testing of scraper configurations before production deployment.
+
+**Workflow:**
+
+1. **Define Test Assertions** (in YAML config)
+   ```yaml
+   test_assertions:
+     - sku: "072705115310"
+       expected:
+         name: "Product Name"
+         brand: "Brand Name"
+         price: "$49.99"
+   ```
+
+2. **Run from Admin UI**
+   - Navigate to Admin → Scrapers → Scraper Lab
+   - Select Testing tab
+   - Click "Run Test" to queue via `POST /api/admin/scrapers/test`
+
+3. **Runner Executes in Test Mode**
+   - Scraper runner receives job with `job_type: "test"`
+   - Executes against SKUs in `test_assertions`
+   - Compares extracted data to expected values
+   - Returns assertion results to API callback
+
+4. **Review Results in UI**
+   - Real-time polling displays progress
+   - Per-SKU pass/fail indicators
+   - Diff view for failed assertions (expected vs actual)
+
+**Key Components:**
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| **Test API** | `apps/web/app/api/admin/scrapers/test/route.ts` | Queue test jobs from Admin UI |
+| **Test Tab** | `apps/web/components/admin/scrapers/tabs/TestingTab.tsx` | UI for running and viewing tests |
+| **Runner CLI** | `apps/scraper/runner/cli.py` | `--test-mode` flag for assertion validation |
+| **Assertion Engine** | `apps/scraper/runner/cli.py` | Compares extracted vs expected values |
+
+**Test Types:**
+
+- **test**: Validates extraction accuracy against `test_assertions`
+- **fake**: Validates no-results detection using `fake_skus`
+
+**Data Flow:**
+```
+Admin UI → POST /api/admin/scrapers/test → scrape_jobs (DB)
+                                            ↓
+Runner polls job → Executes with test_mode=True → Compares assertions
+                                            ↓
+Results POST /api/admin/scraping/callback ← Assertion results stored
+                                            ↓
+Admin UI polls ← Real-time status updates in Testing tab
+```
+
 ## ANTI-PATTERNS (GLOBAL)
 - **NO** `any`, `@ts-ignore`, `@ts-expect-error`, default exports, `var`
 - **NO** database credentials in scraper runners (API-only)
