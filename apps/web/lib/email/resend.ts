@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { render } from '@react-email/components';
+import { render } from '@react-email/render';
 import { OrderConfirmationEmail } from './templates/order-confirmation';
 import type { Order } from '@/lib/orders';
 import { createClient } from '@/lib/supabase/server';
