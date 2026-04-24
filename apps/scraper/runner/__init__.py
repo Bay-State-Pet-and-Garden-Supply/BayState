@@ -292,12 +292,12 @@ def _get_cohort_products(job_config: JobConfig) -> list[CohortProduct]:
 
 def _build_cohort_processor(job_config: JobConfig) -> CohortProcessor:
     job_payload = job_config.job_config if isinstance(job_config.job_config, dict) else {}
-    prefix_length = job_payload.get("cohort_prefix_length", job_payload.get("prefix_length", 8))
+    prefix_length = job_payload.get("cohort_prefix_length", job_payload.get("prefix_length", 6))
     if not isinstance(prefix_length, int):
         try:
             prefix_length = int(prefix_length)
         except (TypeError, ValueError):
-            prefix_length = 8
+            prefix_length = 6
 
     return CohortProcessor(
         grouping_strategy=str(job_payload.get("cohort_grouping_strategy", job_payload.get("grouping_strategy", "upc_prefix")) or "upc_prefix"),

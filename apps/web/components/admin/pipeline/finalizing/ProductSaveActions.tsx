@@ -61,7 +61,7 @@ export function ProductSaveActions({
           {isDirty ? (
             <Badge
               variant="outline"
-              className="ml-2 h-5 border border-zinc-950 bg-amber-100 text-[9px] font-black uppercase tracking-tighter text-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] animate-pulse"
+              className="ml-2 h-5 border border-zinc-950 bg-amber-100 text-[9px] font-black uppercase tracking-tighter text-amber-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] animate-pulse"
             >
               Unsaved Changes
             </Badge>
@@ -77,7 +77,7 @@ export function ProductSaveActions({
           {hasPendingCopilotReview ? (
             <Badge
               variant="outline"
-              className="ml-2 h-5 border border-zinc-950 bg-violet-100 text-[9px] font-black uppercase tracking-tighter text-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+              className="ml-2 h-5 border border-zinc-950 bg-violet-100 text-[9px] font-black uppercase tracking-tighter text-violet-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)]"
             >
               Copilot Review Pending
             </Badge>

@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class CohortGroupingConfig:
     """Configuration for cohort grouping."""
 
-    prefix_length: int = 8
+    prefix_length: int = 6
     max_cohort_size: int = 100
     min_cohort_size: int = 1
     skip_invalid_upcs: bool = True
