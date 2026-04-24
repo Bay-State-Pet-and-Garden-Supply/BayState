@@ -123,12 +123,14 @@ export function AnalyticsDashboard({
                                 />
 
                                 <Area 
-                                    type="stepAfter" 
+                                    type="monotone" 
                                     dataKey="revenue" 
                                     stroke="#18181b" 
                                     fillOpacity={1} 
                                     fill="url(#colorRevenue)" 
                                     strokeWidth={4} 
+                                    dot={{ r: 4, fill: '#18181b', strokeWidth: 2, stroke: '#fff' }}
+                                    activeDot={{ r: 6, strokeWidth: 0 }}
                                 />
                             </AreaChart>
                         </ResponsiveContainer>
