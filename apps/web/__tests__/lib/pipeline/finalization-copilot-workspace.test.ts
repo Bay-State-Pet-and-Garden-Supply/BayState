@@ -203,6 +203,41 @@ describe("finalization copilot workspace helpers", () => {
     ).toEqual([alpha.sku, gamma.sku]);
   });
 
+  it("filters products by description and expanded broad query", () => {
+    const alpha = createProduct("SKU-ALPHA");
+    const alphaDraft = {
+      ...buildInitialFinalizationDraft(alpha),
+      description: "Schleich horse figurine",
+    };
+
+    const resultQuery = listWorkspaceProducts(
+      [alpha],
+      { [alpha.sku]: alphaDraft },
+      { [alpha.sku]: alphaDraft },
+      null,
+      { query: "schleich" },
+    );
+    expect(resultQuery.matched).toBe(1);
+
+    const resultTargeted = listWorkspaceProducts(
+      [alpha],
+      { [alpha.sku]: alphaDraft },
+      { [alpha.sku]: alphaDraft },
+      null,
+      { description: "figurine" },
+    );
+    expect(resultTargeted.matched).toBe(1);
+
+    const resultMiss = listWorkspaceProducts(
+      [alpha],
+      { [alpha.sku]: alphaDraft },
+      { [alpha.sku]: alphaDraft },
+      null,
+      { description: "dragon" },
+    );
+    expect(resultMiss.matched).toBe(0);
+  });
+
   it("applies field patches using persisted finalization draft formats", () => {
     const product = createProduct("SKU-ALPHA");
     const draft = buildInitialFinalizationDraft(product);

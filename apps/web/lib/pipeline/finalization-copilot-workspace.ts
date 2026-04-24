@@ -204,6 +204,9 @@ function matchesWorkspaceQuery(
     product.sku,
     summary.name ?? "",
     getSearchableBrandText(product, draft),
+    draft?.description ?? "",
+    draft?.longDescription ?? "",
+    draft?.gtin ?? "",
     ...summary.sourceKeys,
   ];
 
@@ -232,19 +235,45 @@ export function listWorkspaceProducts(
     ),
   );
 
-  const filtered = input.query
-    ? products
-        .map((product, index) => ({ product, summary: summaries[index] }))
-        .filter(({ product, summary }) =>
-          matchesWorkspaceQuery(
-            product,
-            summary,
-            draftsBySku[product.sku],
-            input.query ?? "",
-          ),
-        )
-        .map(({ summary }) => summary)
-    : summaries;
+  const filtered = summaries.filter((summary, index) => {
+    const product = products[index];
+    const draft = draftsBySku[product.sku];
+
+    // Broad query check
+    if (
+      input.query &&
+      !matchesWorkspaceQuery(product, summary, draft, input.query)
+    ) {
+      return false;
+    }
+
+    // Targeted filters (AND logic)
+    if (
+      input.name &&
+      !summary.name?.toLowerCase().includes(input.name.toLowerCase())
+    ) {
+      return false;
+    }
+
+    if (
+      input.brand &&
+      !getSearchableBrandText(product, draft)
+        .toLowerCase()
+        .includes(input.brand.toLowerCase())
+    ) {
+      return false;
+    }
+
+    if (input.description) {
+      const desc =
+        (draft?.description ?? "") + " " + (draft?.longDescription ?? "");
+      if (!desc.toLowerCase().includes(input.description.toLowerCase())) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 
   const limit = input.limit ?? 25;
 
@@ -281,6 +310,9 @@ export function resolveFinalizationProductScope(
         selectedSku,
         {
           query: scope.query,
+          name: scope.name,
+          description: scope.description,
+          brand: scope.brand,
           limit: scope.limit ?? 200,
         },
       ).products.map((product) => product.sku);
