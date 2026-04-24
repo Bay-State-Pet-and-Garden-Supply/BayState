@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_PAGE_SIZE = 500
 DEFAULT_WRITE_BATCH_SIZE = 100
-DEFAULT_PREFIX_LENGTH = 8
+DEFAULT_PREFIX_LENGTH = 6
 
 
 class SupabaseResponse(Protocol):

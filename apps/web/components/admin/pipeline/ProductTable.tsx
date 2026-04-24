@@ -99,11 +99,11 @@ function DataTableColumnHeader<TData, TValue>({
       >
         <span>{title}</span>
         {column.getIsSorted() === "desc" ? (
-          <ChevronDown className="ml-2 h-4 w-4" />
+          <ChevronDown className="ml-2 h-4 w-4" aria-hidden="true" />
         ) : column.getIsSorted() === "asc" ? (
-          <ChevronUp className="ml-2 h-4 w-4" />
+          <ChevronUp className="ml-2 h-4 w-4" aria-hidden="true" />
         ) : (
-          <ChevronsUpDown className="ml-2 h-4 w-4" />
+          <ChevronsUpDown className="ml-2 h-4 w-4" aria-hidden="true" />
         )}
       </Button>
     </div>
@@ -206,7 +206,7 @@ export function ProductTable({
         ),
         cell: ({ row }) => (
           <div 
-            className="font-mono text-[10px] text-zinc-950 font-black uppercase tracking-tight"
+            className="font-mono text-[10px] text-zinc-950 font-black uppercase tracking-tight tabular-nums"
             role="gridcell"
             aria-label={String(row.getValue("sku"))}
           >
@@ -236,7 +236,7 @@ export function ProductTable({
                   title={product.error_message}
                   className="shrink-0 flex items-center justify-center"
                 >
-                  <AlertCircle className="h-3.5 w-3.5 text-brand-burgundy" />
+                  <AlertCircle className="h-3.5 w-3.5 text-brand-burgundy" aria-hidden="true" />
                 </span>
               )}
             </div>
@@ -256,7 +256,7 @@ export function ProductTable({
         cell: ({ row }) => {
           const price = row.getValue("price") as number;
           return (
-            <div className="text-right font-black text-zinc-950 text-xs">
+            <div className="text-right font-black text-zinc-950 text-xs tabular-nums">
               {price > 0 ? `$${price.toFixed(2)}` : "—"}
             </div>
           );
@@ -285,7 +285,7 @@ export function ProductTable({
                     {count > 0 ? (
                       <Badge
                         variant="secondary"
-                        className="text-[10px] px-1.5 py-0 rounded-none border border-zinc-950 bg-zinc-100 text-zinc-950 font-black uppercase"
+                        className="text-[10px] px-1.5 py-0 rounded-none border border-zinc-950 bg-zinc-100 text-zinc-950 font-black uppercase tabular-nums"
                       >
                         {count} source{count !== 1 ? "s" : ""}
                       </Badge>
@@ -329,7 +329,7 @@ export function ProductTable({
                     <Badge
                       variant="outline"
                       className={cn(
-                        "text-[10px] px-1.5 py-0 rounded-none border font-black uppercase",
+                        "text-[10px] px-1.5 py-0 rounded-none border font-black uppercase tabular-nums",
                         confidence >= 0.8
                           ? "border-brand-forest-green text-brand-forest-green bg-brand-forest-green/10"
                           : confidence >= 0.5
@@ -351,7 +351,7 @@ export function ProductTable({
           <DataTableColumnHeader column={column} title="Updated" />
         ),
         cell: ({ row }) => (
-          <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-tight text-right">
+          <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-tight text-right tabular-nums">
             {formatDate(row.getValue("updated_at"))}
           </div>
         ),
@@ -563,7 +563,7 @@ export function ProductTable({
                 colSpan={columns.length}
                 className="h-16 text-center font-bold uppercase tracking-widest text-zinc-400"
               >
-                No products in this stage.
+                No products in this step.
               </TableCell>
             </TableRow>
           ) : null}

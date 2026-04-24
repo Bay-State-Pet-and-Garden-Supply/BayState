@@ -38,7 +38,7 @@ class CohortProcessor:
     def __init__(
         self,
         grouping_strategy: str = "upc_prefix",
-        prefix_length: int = 8,
+        prefix_length: int = 6,
         upc_field: str = "sku",
         brand_field: str = "brand",
         name_field: str = "product_name",

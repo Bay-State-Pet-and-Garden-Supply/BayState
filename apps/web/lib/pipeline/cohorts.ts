@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server';
 
-const DEFAULT_PREFIX_LENGTH = 8;
+const DEFAULT_PREFIX_LENGTH = 6;
 
 /**
  * Normalizes a SKU by removing dashes and spaces.

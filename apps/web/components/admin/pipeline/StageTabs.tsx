@@ -63,7 +63,7 @@ export function StageTabs({
                 </TabsTrigger>
                 {index < PIPELINE_TABS.length - 1 && (
                   <div className="flex items-center px-0.5">
-                    <ChevronRight className="h-3 w-3 text-zinc-400 shrink-0" />
+                    <ChevronRight className="h-3 w-3 text-zinc-400 shrink-0" aria-hidden="true" />
                   </div>
                 )}
               </Fragment>

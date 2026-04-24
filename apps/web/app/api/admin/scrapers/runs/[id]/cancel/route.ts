@@ -11,6 +11,21 @@ export async function POST(
 
     const nowIso = new Date().toISOString();
     
+    // Get the job first so we know which SKUs to revert
+    const { data: job, error: fetchError } = await supabase
+      .from('scrape_jobs')
+      .select('skus')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) {
+      console.error(`Error fetching scraper run ${id}:`, fetchError);
+      return NextResponse.json(
+        { error: 'Failed to fetch scraper run' },
+        { status: 500 }
+      );
+    }
+
     // Update job status
     const { error: jobError } = await supabase
       .from('scrape_jobs')
@@ -23,6 +38,23 @@ export async function POST(
         { error: 'Failed to cancel scraper run' },
         { status: 500 }
       );
+    }
+
+    // Revert products that were in 'scraping' status back to 'imported'
+    if (job?.skus && job.skus.length > 0) {
+      const { error: productsError } = await supabase
+        .from('products_ingestion')
+        .update({
+          pipeline_status: 'imported',
+          updated_at: nowIso,
+          error_message: 'Scrape job was cancelled'
+        })
+        .in('sku', job.skus)
+        .eq('pipeline_status', 'scraping');
+
+      if (productsError) {
+        console.warn(`Warning: Failed to revert products pipeline status for job ${id}:`, productsError);
+      }
     }
 
     // Also update all chunks for this job to failed

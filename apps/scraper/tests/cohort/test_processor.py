@@ -4,7 +4,7 @@ from scrapers.cohort import CohortProcessor
 
 
 def test_groups_products_by_upc_prefix() -> None:
-    processor = CohortProcessor(prefix_length=8)
+    processor = CohortProcessor(prefix_length=6)
 
     cohorts = processor.group_products(
         [
@@ -14,19 +14,19 @@ def test_groups_products_by_upc_prefix() -> None:
         ]
     )
 
-    assert sorted(cohorts) == ["12345678", "99999999"]
-    assert [product["sku"] for product in cohorts["12345678"]] == ["123456789012", "123456789013"]
-    assert [product["sku"] for product in cohorts["99999999"]] == ["999999999999"]
+    assert sorted(cohorts) == ["123456", "999999"]
+    assert [product["sku"] for product in cohorts["123456"]] == ["123456789012", "123456789013"]
+    assert [product["sku"] for product in cohorts["999999"]] == ["999999999999"]
 
 
 def test_returns_full_upc_when_shorter_than_prefix() -> None:
-    processor = CohortProcessor(prefix_length=8)
+    processor = CohortProcessor(prefix_length=6)
 
     assert processor.build_cohort_key({"sku": "12345"}) == "12345"
 
 
 def test_skips_missing_or_non_numeric_upcs() -> None:
-    processor = CohortProcessor(prefix_length=8)
+    processor = CohortProcessor(prefix_length=6)
 
     cohorts = processor.group_products(
         [
@@ -37,41 +37,40 @@ def test_skips_missing_or_non_numeric_upcs() -> None:
         ]
     )
 
-    assert cohorts == {"12345678": [{"sku": "12345678"}]}
+    assert cohorts == {"123456": [{"sku": "12345678"}]}
 
 
 def test_handles_mixed_upc_lengths_in_same_batch() -> None:
-    processor = CohortProcessor(prefix_length=8)
+    processor = CohortProcessor(prefix_length=6)
 
     cohorts = processor.group_products(
         [
             {"sku": "123456789012"},
             {"sku": "12345678"},
-            {"sku": "1234567"},
+            {"sku": "123456"},
         ]
     )
 
-    assert sorted(cohorts) == ["1234567", "12345678"]
-    assert [product["sku"] for product in cohorts["12345678"]] == ["123456789012", "12345678"]
-    assert [product["sku"] for product in cohorts["1234567"]] == ["1234567"]
+    assert sorted(cohorts) == ["123456"]
+    assert [product["sku"] for product in cohorts["123456"]] == ["123456789012", "12345678", "123456"]
 
 
 def test_returns_shared_metadata_for_upc_cohort() -> None:
-    processor = CohortProcessor(prefix_length=8)
+    processor = CohortProcessor(prefix_length=6)
     products = [
         {"sku": "123456789012", "brand": "Acme", "category": "Toys"},
         {"sku": "123456789013", "brand": "Acme", "category": "Toys"},
     ]
 
-    metadata = processor.get_cohort_metadata("12345678", products)
+    metadata = processor.get_cohort_metadata("123456", products)
 
     assert metadata == {
-        "cohort_key": "12345678",
+        "cohort_key": "123456",
         "grouping_strategy": "upc_prefix",
         "product_count": 2,
         "common_brands": ["Acme"],
         "common_categories": ["Toys"],
-        "upc_prefix": "12345678",
+        "upc_prefix": "123456",
     }
 
 

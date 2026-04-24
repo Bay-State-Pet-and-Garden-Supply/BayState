@@ -751,7 +751,7 @@ export function FinalizationCopilotPanel({
                           <Badge variant="secondary" className="rounded-none border border-zinc-950 bg-zinc-950 text-white text-[8px] font-black uppercase tracking-tighter">Selected</Badge>
                         )}
                         {product.dirty === true && (
-                          <Badge variant="outline" className="rounded-none border border-zinc-950 bg-amber-100 text-zinc-950 text-[8px] font-black uppercase tracking-tighter">Unsaved</Badge>
+                          <Badge variant="outline" className="rounded-none border border-zinc-950 bg-amber-100 text-amber-950 text-[8px] font-black uppercase tracking-tighter">Unsaved</Badge>
                         )}
                       </div>
                     </div>
@@ -931,7 +931,7 @@ export function FinalizationCopilotPanel({
 
       <div className="flex-1 overflow-y-auto px-4 py-4 bg-zinc-50/50">
         {hasPendingCopilotReview && (
-          <Alert className="mb-4 border border-zinc-950 bg-violet-50 text-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+          <Alert className="mb-4 border border-zinc-950 bg-violet-50 text-violet-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)]">
             <AlertTitle className="font-black uppercase tracking-tighter text-xs">Copilot changes are ready for review</AlertTitle>
             <AlertDescription className="space-y-3">
               <p className="text-xs font-black uppercase tracking-tighter">

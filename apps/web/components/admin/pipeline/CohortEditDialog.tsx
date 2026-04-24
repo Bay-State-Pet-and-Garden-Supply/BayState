@@ -57,14 +57,14 @@ export function CohortEditDialog({
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to update cohort");
+        throw new Error(error.error || "Failed to update batch");
       }
 
-      toast.success("Cohort updated successfully");
+      toast.success("Batch updated successfully");
       onSuccess();
       onOpenChange(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to update cohort");
+      toast.error(error instanceof Error ? error.message : "Failed to update batch");
     } finally {
       setIsLoading(false);
     }
@@ -74,14 +74,14 @@ export function CohortEditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Cohort</DialogTitle>
+          <DialogTitle>Edit Batch</DialogTitle>
           <DialogDescription>
-            Update the human-readable name and brand for this cohort.
+            Update the human-readable name and brand for this batch.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="name">Cohort Name</Label>
+            <Label htmlFor="name">Batch Name</Label>
             <Input
               id="name"
               value={name}

@@ -96,7 +96,7 @@ export function PipelineFilters({
           ) : null}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-3 border border-zinc-900 shadow-[1px_1px_0px_rgba(0,0,0,1)]" align="start">
+      <PopoverContent className="w-80 p-3 border border-zinc-900 shadow-[1px_1px_0px_rgba(0,0,0,1)]" align="start">
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div className="space-y-0.5">

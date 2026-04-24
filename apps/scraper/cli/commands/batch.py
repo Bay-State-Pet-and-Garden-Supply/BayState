@@ -491,7 +491,7 @@ def test_batch_command(
             upc_prefix=upc_prefix,
             limit=limit,
         )
-    prefix_length = len(upc_prefix) if upc_prefix else 8
+    prefix_length = len(upc_prefix) if upc_prefix else 6
     grouping_config = CohortGroupingConfig(prefix_length=prefix_length, skip_invalid_upcs=False)
     grouping_result = group_products_into_cohorts(products, grouping_config)
 

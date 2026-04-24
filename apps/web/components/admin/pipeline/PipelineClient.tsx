@@ -1556,7 +1556,7 @@ export function PipelineClient({
                                     }}
                                   >
                                     <Edit2 className="h-3 w-3 mr-1" />
-                                    Edit Cohort
+                                    Edit Batch
                                   </Button>
                                 )}
                             </div>
