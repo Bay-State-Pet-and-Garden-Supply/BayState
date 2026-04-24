@@ -90,12 +90,53 @@ const defaultSettings: SiteSettings = {
     hero: {
       title: 'Welcome to Bay State Pet & Garden',
       subtitle: 'Your local source for pet supplies and garden needs.',
-      imageUrl: '/hero-placeholder.jpg',
+      imageUrl: '/images/legacy/baby-chicks-are-here-s-ider.png',
       ctaText: 'Shop Now',
       ctaLink: '/products',
     },
     featuredProductIds: [],
-    heroSlides: [],
+    heroSlides: [
+      {
+        id: '1',
+        title: 'Baby Chicks',
+        subtitle: 'In stock today',
+        imageUrl: '/images/legacy/baby-chicks-are-here-s-ider.png',
+        linkUrl: '/products?category=farm',
+        linkText: 'Shop Now'
+      },
+      {
+        id: '2',
+        title: 'Mulch & Loam',
+        subtitle: 'In stock now',
+        imageUrl: '/images/legacy/in-stock-mulch-slider.png',
+        linkUrl: '/products?category=lawn-garden',
+        linkText: 'Shop Now'
+      },
+      {
+        id: '3',
+        title: 'Seed Starting Supplies',
+        subtitle: 'Get ready for spring',
+        imageUrl: '/images/legacy/seed-starting-supplies.png',
+        linkUrl: '/products?category=lawn-garden',
+        linkText: 'Shop Now'
+      },
+      {
+        id: '4',
+        title: 'Jonathan Green',
+        subtitle: 'Lawn Care',
+        imageUrl: '/images/legacy/choose-jonathan-green.png',
+        linkUrl: '/products?brand=jonathan-green',
+        linkText: 'Shop Now'
+      },
+      {
+        id: '5',
+        title: 'Budget Friendly',
+        subtitle: 'Pet Supplies',
+        imageUrl: '/images/legacy/budget-friendly-pet-supplies.png',
+        linkUrl: '/products?category=pet-supplies',
+        linkText: 'Shop Now'
+      }
+    ],
     heroSlideInterval: 5000,
     storeHours: 'Mon-Fri: 9am - 6pm\nSat: 9am - 5pm\nSun: 10am - 4pm',
   },
