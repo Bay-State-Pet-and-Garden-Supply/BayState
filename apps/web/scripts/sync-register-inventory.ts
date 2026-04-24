@@ -152,6 +152,7 @@ function exportRegisterSnapshotToJson(
         {
             env: process.env,
             encoding: 'utf8',
+            stdio: 'inherit',
         },
     );
 
@@ -162,13 +163,8 @@ function exportRegisterSnapshotToJson(
     }
 
     if (result.status !== 0) {
-        const details = [result.stderr, result.stdout]
-            .filter((value) => Boolean(value?.trim()))
-            .join('\n')
-            .trim();
-
         throw new Error(
-            details || `Register ODBC export failed with exit code ${result.status}.`,
+            `Register ODBC export failed with exit code ${result.status}.`,
         );
     }
 }
