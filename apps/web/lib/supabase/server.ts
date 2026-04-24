@@ -1,4 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
+import type { SupabaseClient } from '@supabase/supabase-js'
+export type { SupabaseClient }
 import { cookies } from 'next/headers'
 import {
   SUPABASE_SERVICE_ROLE_KEY,

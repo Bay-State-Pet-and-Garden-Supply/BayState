@@ -1,4 +1,4 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@/lib/supabase/server';
 import {
   hasMeaningfulProductSourceData,
   mergeProductSources,
