@@ -50,66 +50,43 @@ export default async function HomePage() {
       )}
 
       <div className="container mx-auto px-4">
-        {/* Promotional Banner Grid - Modern Farm Utilitarian Style */}
-        <section className="my-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Link href="/products?category=lawn-garden" className="group border border-zinc-900 overflow-hidden relative h-[320px] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none shadow-[4px_4px_0px_rgba(0,0,0,1)] bg-white">
-            <div className="h-2/3 relative bg-green-600 flex items-center justify-center">
-               <h3 className="text-white text-5xl font-black uppercase tracking-tighter leading-none font-display">Garden</h3>
-            </div>
-            <div className="h-1/3 bg-white flex flex-col items-center justify-center p-4 border-t border-zinc-900 group-hover:bg-zinc-50">
-              <h3 className="text-zinc-900 text-2xl font-black uppercase tracking-tighter leading-none font-display">Seed Starting</h3>
-              <span className="uppercase tracking-widest text-zinc-600 font-black text-sm mb-2">Supplies</span>
-              <span className="bg-primary text-white font-black py-1.5 px-6 uppercase text-sm border-b border-black/20">SHOP NOW</span>
+        {/* Promotional Banner Grid - Modern Farm Utilitarian Style with Legacy Assets */}
+        <section className="my-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Winter Essentials: 1.67:1 Ratio */}
+          <Link href="/products?category=seasonal" className="group border-[4px] border-zinc-900 overflow-hidden relative aspect-[627/376] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none shadow-[8px_8px_0px_rgba(0,0,0,1)] bg-zinc-100">
+            <Image src="/images/legacy/img1.png" alt="Winter Essentials" fill className="object-cover" />
+            <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-4">
+              <h3 className="text-white text-xl sm:text-2xl font-black uppercase tracking-widest leading-none font-display">Winter Essentials</h3>
             </div>
           </Link>
 
-          <Link href="/products?category=farm" className="group border border-zinc-900 overflow-hidden relative h-[320px] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none shadow-[8px_8px_0px_rgba(255,183,0,1)] bg-accent">
-             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 border-8 border-white/20">
-              <h3 className="text-5xl font-black mb-2 text-secondary uppercase leading-none font-display">Bee Nuc&apos;s</h3>
-              <div className="bg-black text-accent font-black px-6 py-3 text-2xl shadow-lg uppercase">
-                PRE-ORDER NOW
-              </div>
-              <p className="mt-4 text-secondary font-bold uppercase tracking-widest text-xs">Arriving Spring 2026</p>
-            </div>
-          </Link>
+          {/* Stacked 3.6:1 Ratios (Bee Nuc & Pellets) */}
+          <div className="flex flex-col gap-6">
+            <Link href="/products?category=farm" className="group border-[4px] border-zinc-900 overflow-hidden relative aspect-[627/174] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none shadow-[8px_8px_0px_rgba(255,183,0,1)] bg-zinc-100">
+               <Image src="/images/legacy/img2.png" alt="Bee Nuc Pre-Order" fill className="object-cover" />
+               <div className="absolute top-2 right-2 bg-zinc-900 p-2">
+                 <h3 className="text-white text-xs sm:text-sm font-black uppercase tracking-widest leading-none font-display">Bee Nuc Pre-Order</h3>
+               </div>
+            </Link>
 
-          <Link href="/products?category=home" className="group border border-zinc-900 overflow-hidden relative h-[320px] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none shadow-[8px_8px_0px_rgba(220,38,38,1)] bg-white">
-            <div className="h-2/3 relative bg-zinc-900 flex items-center justify-center">
-              <h3 className="text-white text-5xl font-black uppercase tracking-tighter leading-none font-display">Heating</h3>
-              <div className="absolute top-4 left-4 bg-blue-600 text-white font-black text-xs px-2 py-1 uppercase tracking-wider">
-                In Stock Now
+            <Link href="/products?category=home" className="group border-[4px] border-zinc-900 overflow-hidden relative aspect-[627/174] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none shadow-[8px_8px_0px_rgba(220,38,38,1)] bg-zinc-100">
+              <Image src="/images/legacy/img3.png" alt="Wood Pellets Sale" fill className="object-cover" />
+              <div className="absolute top-2 right-2 bg-red-600 p-2">
+                <h3 className="text-white text-xs sm:text-sm font-black uppercase tracking-widest leading-none font-display">Wood Pellets Sale</h3>
               </div>
-            </div>
-            <div className="h-1/3 bg-red-600 flex flex-col items-center justify-center p-4 border-t border-zinc-900 group-hover:bg-red-700">
-              <h3 className="text-white text-xl font-black uppercase leading-none font-display">WOOD PELLETS</h3>
-              <span className="text-accent font-black text-sm mb-2 uppercase tracking-widest">WE BRING THE HEAT!</span>
-              <span className="bg-white text-red-600 font-black py-1 px-4 uppercase text-xs border-b border-black/10">Order for Pickup</span>
-            </div>
-          </Link>
+            </Link>
+          </div>
         </section>
 
-        {/* Gift Shop Banner - Robust Box Style */}
-        <section className="mb-12 border-2 border-zinc-900 bg-secondary text-accent p-8 text-center relative overflow-hidden shadow-[6px_6px_0px_rgba(0,0,0,0.2)]">
-          <div className="absolute top-0 left-0 w-full h-2 bg-accent opacity-20"></div>
-          <div className="flex flex-col items-center justify-center relative z-10">
-            <h2 className="text-4xl sm:text-6xl font-black tracking-tighter mb-1 font-display">BAY STATE</h2>
-            <h3 className="text-xl sm:text-2xl font-bold mb-8 uppercase tracking-[0.2em] border-y border-accent/30 py-1 px-6">Country Gift Shop</h3>
-            <div className="max-w-4xl bg-accent text-secondary p-4 sm:p-6 shadow-xl border-b-2 border-black/20">
-               <p className="text-sm sm:text-lg font-black uppercase leading-relaxed flex flex-wrap justify-center gap-x-4 gap-y-2">
-                <span>Unique Gifts</span>
-                <span className="text-black/30">•</span>
-                <span>Soy Candles</span>
-                <span className="text-black/30">•</span>
-                <span>Goat Milk Soap</span>
-                <span className="text-black/30">•</span>
-                <span>Farm Fresh Eggs</span>
-                <span className="text-black/30">•</span>
-                <span>Local Raw Honey</span>
-                <span className="text-black/30">•</span>
-                <span>Old Fashioned Candy</span>
-              </p>
-            </div>
-          </div>
+        {/* Gift Shop Banner - Wide 5.5:1 Ratio */}
+        <section className="mb-12 border-[4px] border-zinc-900 relative overflow-hidden shadow-[8px_8px_0px_rgba(37,99,235,1)] aspect-[1280/230] bg-zinc-100 transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none block">
+          <Link href="/products?category=gift-shop" className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 group">
+            <Image src="/images/legacy/img4.png" alt="Country Gift Shop" fill className="object-cover -z-10" />
+            <h2 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tighter text-white uppercase drop-shadow-[2px_2px_4px_rgba(0,0,0,0.8)] font-display group-hover:scale-105 transition-transform">
+              Country Gift Shop
+            </h2>
+          </Link>
         </section>
 
         {/* Shop by Department - Bold Typography-Driven Grid */}
