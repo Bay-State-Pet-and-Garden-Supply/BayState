@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@/lib/supabase/server';
 import { generateUniqueSlug, transformShopSiteProduct } from './product-sync';
 import { resolveCanonicalPetTypes } from './pet-type-inference';
 import type { ShopSiteProduct } from './types';
