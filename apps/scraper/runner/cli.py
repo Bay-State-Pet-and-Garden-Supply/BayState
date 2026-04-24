@@ -262,8 +262,40 @@ def run_local_mode(args: argparse.Namespace) -> None:
         with open(args.output, "w", encoding="utf-8") as f:
             f.write(output_json)
         logger.info(f"[Local] Results written to {args.output}")
-    else:
+    elif not args.test_mode:
         print(output_json)
+
+    if args.test_mode:
+        test_payload = build_test_mode_payload(config, results)
+        
+        print("\n" + "="*50)
+        print(f" TEST MODE SUMMARY: {config.name}")
+        print("="*50)
+        
+        total = len(test_payload["assertion_results"])
+        passed = sum(1 for r in test_payload["assertion_results"] if r["passed"])
+        
+        for result in test_payload["assertion_results"]:
+            status = "✅ PASSED" if result["passed"] else "❌ FAILED"
+            print(f"\nSKU: {result['sku']} - {status}")
+            
+            if not result["passed"]:
+                print("  Failures:")
+                expected = result["expected"]
+                actual = result["actual"]
+                for field, exp_val in expected.items():
+                    act_val = actual.get(field)
+                    if exp_val != act_val:
+                        print(f"    - {field}:")
+                        print(f"        Expected: {exp_val}")
+                        print(f"        Actual:   {act_val}")
+        
+        print("\n" + "="*50)
+        print(f" FINAL SCORE: {passed}/{total} ({passed/total*100:.1f}%)")
+        print("="*50 + "\n")
+        
+        if passed < total:
+            sys.exit(1)
 
 
 class TestModeResult:
@@ -343,7 +375,7 @@ def run_test_mode(args: argparse.Namespace, _config: Any = None) -> TestModeResu
 
 def build_test_mode_payload(
     config: Any,
-    results: list[dict[str, Any]],
+    results: dict[str, Any],
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "test_type": "qa",
@@ -353,15 +385,28 @@ def build_test_mode_payload(
     }
 
     test_assertions = getattr(config, "test_assertions", None) or []
-    results_by_sku = {r.get("sku"): r for r in results if isinstance(r, dict) and r.get("sku")}
-
+    # run_job returns a dict with "data" containing {sku: result_dict}
+    results_data = results.get("data", {})
+    
+    if os.environ.get("DEBUG_TEST_MODE") == "true":
+        print(f"DEBUG: results_data keys: {list(results_data.keys())}")
+    
     for assertion in test_assertions:
         if not hasattr(assertion, "sku"):
             continue
 
         sku = assertion.sku
         expected = getattr(assertion, "expected", {}) or {}
-        actual = results_by_sku.get(sku, {})
+        sku_data = results_data.get(sku, {})
+        
+        # Data is nested by scraper name: {sku: {scraper_name: data}}
+        scraper_name = getattr(config, "name", "unknown")
+        actual = sku_data.get(scraper_name, {})
+        
+        if not actual and sku_data:
+            # Fallback: if scraper name not found but only one scraper ran, use that
+            if len(sku_data) == 1:
+                actual = list(sku_data.values())[0]
 
         field_results = []
         for field_name, expected_value in expected.items():
@@ -397,8 +442,9 @@ def main() -> None:
         if args.validate:
             sys.exit(validate_local_config(args))
         if args.test_mode:
-            run_test_mode(args)
-            return
+            test_info = run_test_mode(args)
+            args.sku = ",".join(test_info.skus)
+        
         run_local_mode(args)
         return
 

@@ -196,9 +196,12 @@ timeout: 25
 retries: 2
 image_quality: 60
 test_skus:
+  - "1001"
   - "042055302456"
-  - "000945651107"
-  - "042055309202"
+test_assertions:
+  - sku: "1001"
+    expected:
+      title: "Sicce SYNCRA SDC 9.0 Controllable Return Pump - 1000 GPH-2500 GPH"
 fake_skus:
   - "xyzabc123notexist456"
   - "999999999999"
