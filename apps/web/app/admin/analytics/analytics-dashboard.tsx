@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatCurrency } from '@/lib/utils';
+import { useEffect, useState } from 'react';
 
 interface SalesMetric {
     total_revenue: number;
@@ -24,6 +25,12 @@ export function AnalyticsDashboard({
     metrics: SalesMetric; 
     trends: TrendData[] 
 }) {
+    const [hasMounted, setHasMounted] = useState(false);
+
+    useEffect(() => {
+        setHasMounted(true);
+    }, []);
+
     return (
         <div className="space-y-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -77,49 +84,55 @@ export function AnalyticsDashboard({
                     Revenue Trends (Last 30 Days)
                 </h2>
                 <div className="h-[400px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={trends} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#18181b" stopOpacity={0.1}/>
-                                    <stop offset="95%" stopColor="#18181b" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" />
-                            <XAxis 
-                                dataKey="period_date" 
-                                tickFormatter={(v) => {
-                                    const date = new Date(v);
-                                    return `${date.getMonth() + 1}/${date.getDate()}`;
-                                }}
-                                axisLine={{ stroke: '#18181b', strokeWidth: 2 }}
-                                tick={{ fill: '#71717a', fontSize: 12, fontWeight: 600 }}
-                            />
-                            <YAxis 
-                                tickFormatter={(v) => `$${v}`}
-                                axisLine={{ stroke: '#18181b', strokeWidth: 2 }}
-                                tick={{ fill: '#71717a', fontSize: 12, fontWeight: 600 }}
-                            />
-                            <Tooltip 
-                                contentStyle={{ 
-                                    border: '4px solid #18181b', 
-                                    borderRadius: '0px',
-                                    boxShadow: '4px 4px 0px rgba(0,0,0,1)',
-                                    fontWeight: 'bold'
-                                }}
-                                formatter={(value: number) => [formatCurrency(value), 'Revenue']}
-                                labelFormatter={(label) => new Date(label as string).toLocaleDateString(undefined, { dateStyle: 'long' })}
-                            />
-                            <Area 
-                                type="stepAfter" 
-                                dataKey="revenue" 
-                                stroke="#18181b" 
-                                fillOpacity={1} 
-                                fill="url(#colorRevenue)" 
-                                strokeWidth={4} 
-                            />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                    {hasMounted ? (
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                            <AreaChart data={trends} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#18181b" stopOpacity={0.1}/>
+                                        <stop offset="95%" stopColor="#18181b" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" />
+                                <XAxis 
+                                    dataKey="period_date" 
+                                    tickFormatter={(v) => {
+                                        const date = new Date(v);
+                                        return `${date.getMonth() + 1}/${date.getDate()}`;
+                                    }}
+                                    axisLine={{ stroke: '#18181b', strokeWidth: 2 }}
+                                    tick={{ fill: '#71717a', fontSize: 12, fontWeight: 600 }}
+                                />
+                                <YAxis 
+                                    tickFormatter={(v) => `$${v}`}
+                                    axisLine={{ stroke: '#18181b', strokeWidth: 2 }}
+                                    tick={{ fill: '#71717a', fontSize: 12, fontWeight: 600 }}
+                                />
+                                <Tooltip 
+                                    contentStyle={{ 
+                                        border: '4px solid #18181b', 
+                                        borderRadius: '0px',
+                                        boxShadow: '4px 4px 0px rgba(0,0,0,1)',
+                                        fontWeight: 'bold'
+                                    }}
+                                    formatter={(value: number | string | (string | number)[] | undefined) => [formatCurrency(Number(value) || 0), 'Revenue']}
+                                    labelFormatter={(label) => new Date(label as string).toLocaleDateString(undefined, { dateStyle: 'long' })}
+                                />
+                                <Area 
+                                    type="stepAfter" 
+                                    dataKey="revenue" 
+                                    stroke="#18181b" 
+                                    fillOpacity={1} 
+                                    fill="url(#colorRevenue)" 
+                                    strokeWidth={4} 
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="w-full h-full bg-zinc-50 animate-pulse flex items-center justify-center border-2 border-dashed border-zinc-200">
+                            <span className="text-zinc-400 font-bold uppercase text-xs">Loading Chart...</span>
+                        </div>
+                    )}
                 </div>
             </Card>
         </div>
