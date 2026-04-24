@@ -870,7 +870,7 @@ export async function scrapeProducts(
         updated_at: nowIso,
     });
 
-    let { data: job, error: insertError } = await supabase
+    const { data: job, error: insertError } = await supabase
         .from('scrape_jobs')
         .insert(buildJobInsertPayload(jobType))
         .select('id')

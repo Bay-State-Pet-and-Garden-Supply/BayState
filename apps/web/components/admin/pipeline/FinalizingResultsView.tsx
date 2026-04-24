@@ -324,7 +324,7 @@ export function FinalizingResultsView({
   }, [brands, brandSearch]);
 
   const filteredPages = useMemo(() => {
-    if (!pageSearch.trim()) return SHOPSITE_PAGES;
+    if (!pageSearch.trim()) return [...SHOPSITE_PAGES];
     const search = pageSearch.toLowerCase();
     return SHOPSITE_PAGES.filter((p) => p.toLowerCase().includes(search));
   }, [pageSearch]);

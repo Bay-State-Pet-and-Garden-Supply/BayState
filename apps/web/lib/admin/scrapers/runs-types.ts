@@ -7,8 +7,32 @@ import { z } from 'zod';
 export const scrapeJobStatusSchema = z.enum(['pending', 'running', 'completed', 'failed', 'cancelled']);
 export type ScrapeJobStatus = z.infer<typeof scrapeJobStatusSchema>;
 
+export const scrapeJobChunkStatusSchema = z.enum(['pending', 'running', 'completed', 'failed']);
+export type ScrapeJobChunkStatus = z.infer<typeof scrapeJobChunkStatusSchema>;
+
 // Extended statuses used in the UI
 export type ScraperRunStatus = ScrapeJobStatus | 'claimed';
+
+// Scraper run chunk record from database (matches scrape_job_chunks table)
+export interface ScraperRunChunk {
+  id: string;
+  job_id: string;
+  chunk_index: number;
+  status: ScrapeJobChunkStatus;
+  scrapers: string[];
+  skus: string[];
+  runner_id: string | null;
+  claimed_by: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  heartbeat_at: string | null;
+  lease_expires_at: string | null;
+  error_message: string | null;
+  work_units_processed: number;
+  planned_work_units: number;
+  created_at: string;
+  updated_at: string;
+}
 
 // Scraper run record from database (matches scrape_jobs table)
 export interface ScraperRunRecord {

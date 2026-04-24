@@ -28,7 +28,7 @@ export type EnrichmentMethod = 'scrapers' | 'official_brand' | 'consolidation';
 
 export interface MethodSelectionProps {
     selectedSkus: string[];
-    onNext: (data: { method: EnrichmentMethod; config: any }) => void;
+    onNext: (data: { method: EnrichmentMethod; config: unknown }) => void;
     onBack?: () => void;
 }
 

@@ -31,6 +31,9 @@ interface LogViewerProps {
   logs: ScrapeJobLog[];
   initialProgress?: ScrapeJobProgressUpdate | null;
   className?: string;
+  selectedChunkId?: string | null;
+  onSelectChunk?: (chunkId: string | null) => void;
+  chunks?: { id: string; chunk_index: number }[];
 }
 
 const logLevelConfig = {
@@ -135,6 +138,9 @@ export function LogViewer({
   logs: initialLogs,
   initialProgress = null,
   className,
+  selectedChunkId,
+  onSelectChunk,
+  chunks = [],
 }: LogViewerProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [filter, setFilter] = useState('');
@@ -191,9 +197,12 @@ export function LogViewer({
 
       const matchesSearch = filter === '' || haystack.includes(filter.toLowerCase());
       const matchesLevel = levelFilter === 'all' || log.level === levelFilter;
-      return matchesSearch && matchesLevel;
+      const matchesChunk = !selectedChunkId || 
+        (log.details && typeof log.details === 'object' && (log.details as Record<string, unknown>).chunk_id === selectedChunkId);
+      
+      return matchesSearch && matchesLevel && matchesChunk;
     });
-  }, [filter, levelFilter, mergedLogs]);
+  }, [filter, levelFilter, mergedLogs, selectedChunkId]);
 
   const logCounts = useMemo(
     () => ({
@@ -262,12 +271,27 @@ export function LogViewer({
             onChange={(event) => setLevelFilter(event.target.value)}
             className="h-8 rounded border bg-card px-2 text-xs"
           >
-            <option value="all">All ({logCounts.all})</option>
+            <option value="all">Levels: All ({logCounts.all})</option>
             <option value="info">Info ({logCounts.info})</option>
             <option value="warning">Warn ({logCounts.warning})</option>
             <option value="error">Error ({logCounts.error})</option>
             <option value="debug">Debug ({logCounts.debug})</option>
           </select>
+
+          {chunks.length > 0 && onSelectChunk && (
+            <select
+              value={selectedChunkId || 'all'}
+              onChange={(event) => onSelectChunk(event.target.value === 'all' ? null : event.target.value)}
+              className="h-8 rounded border bg-card px-2 text-xs"
+            >
+              <option value="all">All Batches</option>
+              {chunks.map((chunk) => (
+                <option key={chunk.id} value={chunk.id}>
+                  Batch #{chunk.chunk_index}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       </CardHeader>
 
