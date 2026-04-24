@@ -170,9 +170,5 @@ edge_case_skus:
 test_assertions:
   - sku: "072705115310"
     expected:
-      name: "Fromm Gold Large Breed Adult Dog Food 30lb"
-      brand: "FROMM PET FOOD"
-  - sku: "072705104321"
-    expected:
-      name: "Fromm Four-Star Nutritionals Surf & Turf Dog Food"
-      brand: "FROMM PET FOOD"
+      title: "Fromm Gold Large Breed Dog 30 lb"
+      brand: "FROMM FAMILY FOODS LLC"

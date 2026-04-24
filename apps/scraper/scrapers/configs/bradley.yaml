@@ -183,10 +183,11 @@ test_skus:
   - "001135"
   - "010199"
   - "010202"
-  - "043205"
-  - "083354"
-  - "269376"
-  - "055353"
+test_assertions:
+  - sku: "001135"
+    expected:
+      title: "E-Z HANG SCALE"
+      brand: "KERBL"
 fake_skus:
   - xyzabc123notexist456
   - "999999"

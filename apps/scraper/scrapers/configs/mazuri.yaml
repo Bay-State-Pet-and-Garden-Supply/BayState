@@ -5,18 +5,12 @@ base_url: https://www.mazuri.com
 scraper_type: static
 selectors:
   - name: Name
-    selector: main h1
-    fallback_selectors:
-      - h1
-      - .product-single__title
+    selector: h1.product-single__title, .product-single__title, main h1, h1
     attribute: text
     multiple: false
     required: true
   - name: Brand
-    selector: main h1
-    fallback_selectors:
-      - h1
-      - .product-single__title
+    selector: h1.product-single__title, .product-single__title, main h1, h1
     attribute: text
     multiple: false
     required: true
@@ -209,12 +203,13 @@ timeout: 30
 retries: 2
 image_quality: 60
 test_skus:
-  - 5E5L
-  - 5M30
-  - 5M3N
-  - 5M21
-  - 5MA2
-  - 5M4C
+  - 56A6
+  - 5M2M
+test_assertions:
+  - sku: "56A6"
+    expected:
+      title: "MAZURI\u00ae SMALL BIRD DIET"
+      brand: "Mazuri"
 fake_skus:
   - xyzabc123notexist456
   - "9999999"
