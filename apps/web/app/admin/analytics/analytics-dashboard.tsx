@@ -81,7 +81,7 @@ export function AnalyticsDashboard({
             
             <Card className="border-4 border-zinc-900 shadow-[8px_8px_0px_rgba(0,0,0,1)] rounded-none p-6 bg-white">
                 <h2 className="font-display font-black uppercase tracking-tighter text-2xl mb-6">
-                    Revenue Trends (Last 30 Days)
+                    Historical Revenue Trends
                 </h2>
                 <div className="h-[400px] w-full">
                     {hasMounted ? (
@@ -98,7 +98,7 @@ export function AnalyticsDashboard({
                                     dataKey="period_date" 
                                     tickFormatter={(v) => {
                                         const date = new Date(v);
-                                        return `${date.getMonth() + 1}/${date.getDate()}`;
+                                        return `${date.getMonth() + 1}/${date.getFullYear().toString().slice(-2)}`;
                                     }}
                                     axisLine={{ stroke: '#18181b', strokeWidth: 2 }}
                                     tick={{ fill: '#71717a', fontSize: 12, fontWeight: 600 }}
@@ -116,8 +116,12 @@ export function AnalyticsDashboard({
                                         fontWeight: 'bold'
                                     }}
                                     formatter={(value: number | string | (string | number)[] | undefined) => [formatCurrency(Number(value) || 0), 'Revenue']}
-                                    labelFormatter={(label) => new Date(label as string).toLocaleDateString(undefined, { dateStyle: 'long' })}
+                                    labelFormatter={(label) => {
+                                        const date = new Date(label as string);
+                                        return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+                                    }}
                                 />
+
                                 <Area 
                                     type="stepAfter" 
                                     dataKey="revenue" 
