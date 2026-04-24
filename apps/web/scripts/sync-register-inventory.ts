@@ -31,6 +31,7 @@ interface RegisterSnapshot {
     source: RegisterSyncSource;
     sourceLabel: string;
     products: RegisterWorkbookProduct[];
+    workspacePath?: string; // Path to temp dir where files are stored
 }
 
 function getArgValue(name: string): string | undefined {
@@ -198,15 +199,16 @@ async function loadRegisterProductsFromOdbc(
     }
 
     const tempDirectory = await mkdtemp(join(tmpdir(), 'register-sync-'));
-    const outputPath = join(tempDirectory, 'register-export.json');
+    const inventoryPath = join(tempDirectory, 'register-inventory.json');
 
     try {
-        exportRegisterSnapshotToJson(outputPath, limit);
+        // export-register-odbc.ps1 now exports both inventory and sales if OutputPath is a directory
+        exportRegisterSnapshotToJson(tempDirectory, limit);
 
-        const rawSnapshot = await readFile(outputPath, 'utf8');
+        const rawSnapshot = await readFile(inventoryPath, 'utf8');
         const parsedRows = JSON.parse(rawSnapshot) as unknown;
         if (!Array.isArray(parsedRows)) {
-            throw new Error('Register ODBC export returned an invalid payload.');
+            throw new Error('Register ODBC export returned an invalid payload for inventory.');
         }
 
         const products = parseRegisterRows(
@@ -217,10 +219,82 @@ async function loadRegisterProductsFromOdbc(
             source: 'odbc',
             sourceLabel: 'live ODBC source',
             products,
+            workspacePath: tempDirectory
         };
-    } finally {
+    } catch (err) {
         await rm(tempDirectory, { recursive: true, force: true });
+        throw err;
     }
+}
+
+async function syncSales(supabase: SupabaseClient, workspacePath: string, dryRun: boolean) {
+    const salesPath = join(workspacePath, 'register-sales.json');
+    let salesRaw: string;
+    try {
+        salesRaw = await readFile(salesPath, 'utf-8');
+    } catch (e: any) {
+        if (e.code === 'ENOENT') {
+            console.log('No register-sales.json found, skipping sales sync.');
+            return { inserted: 0, failed: 0 };
+        }
+        throw e;
+    }
+
+    const sales = JSON.parse(salesRaw);
+    console.log(`Loaded ${sales.length} sales records for sync.`);
+
+    if (dryRun) {
+        console.log(`[DRY RUN] Would sync ${sales.length} sales records.`);
+        return { inserted: sales.length, failed: 0 };
+    }
+
+    let inserted = 0;
+    let failed = 0;
+
+    // Batching sales upserts for better performance
+    const salesBatchSize = 100;
+    for (let i = 0; i < sales.length; i += salesBatchSize) {
+        const batch = sales.slice(i, i + salesBatchSize);
+        const mappedBatch = batch.map((sale: any) => {
+            // Helper to parse the peculiar "/Date(1577941200000)/" format
+            let tranDateStr = sale.TRAN_DATE;
+            let dateObj = new Date();
+            if (tranDateStr && tranDateStr.startsWith('/Date(')) {
+                const ms = parseInt(tranDateStr.replace(/[^0-9]/g, ''), 10);
+                dateObj = new Date(ms);
+            }
+
+            // Create a unique ID for the upsert since INVOICE_NO is often 0
+            // Example: "INT-1577941200000-80351-33-1"
+            const orderNumber = `INT-${dateObj.getTime()}-${sale.TRAN_TIME}-${sale.CASHIER}-${sale.REGISTER}`;
+
+            return {
+                order_number: orderNumber,
+                source: 'integra',
+                status: 'completed',
+                subtotal: Number(sale.SALE_TOTAL) - Number(sale.SALE_TAX),
+                tax: Number(sale.SALE_TAX),
+                total: Number(sale.SALE_TOTAL),
+                created_at: dateObj.toISOString(),
+                payment_method: 'in_store',
+                notes: `Cashier: ${sale.CASHIER}, Register: ${sale.REGISTER}`
+            };
+        });
+
+        const { error } = await supabase
+            .from('orders')
+            .upsert(mappedBatch, { onConflict: 'order_number' });
+
+        if (error) {
+            console.error(`Failed to upsert sales batch starting at ${i}:`, error.message);
+            failed += batch.length;
+        } else {
+            inserted += batch.length;
+        }
+    }
+
+    console.log(`Sales Sync Complete. Upserted: ${inserted}, Failed: ${failed}`);
+    return { inserted, failed };
 }
 
 async function startLog(supabase: SupabaseClient): Promise<string | null> {
@@ -354,6 +428,7 @@ function buildSyncSummary(
     result: SyncResult,
     plan: ReturnType<typeof planRegisterSync>,
     appliedUpdates: number,
+    salesResult?: { inserted: number; failed: number }
 ) {
     return {
         success: result.success,
@@ -367,6 +442,8 @@ function buildSyncSummary(
         updatesPlanned: plan.updates.length,
         updatesApplied: appliedUpdates,
         missingOnWebsite: plan.missingProducts.length,
+        salesSynced: salesResult?.inserted || 0,
+        salesFailed: salesResult?.failed || 0,
         missingPreview: plan.missingProducts.slice(0, 10).map((product) => ({
             sku: product.sku,
             name: product.name,
@@ -414,7 +491,7 @@ async function main() {
         },
     });
 
-    console.log('Starting register inventory sync...');
+    console.log('Starting register data sync (inventory + sales)...');
     console.log(`Source: ${source}`);
     console.log(`Mode: ${dryRun ? 'dry-run' : 'apply'}`);
     console.log(`Fields: ${fields.join(', ')}`);
@@ -434,12 +511,7 @@ async function main() {
             console.log(`Using workbook: ${registerSnapshot.sourceLabel}`);
         }
 
-        if (registerProducts.length === 0) {
-            throw new Error(
-                'No valid register rows were found in the selected source.',
-            );
-        }
-
+        // 1. Sync Inventory
         const existingProducts = await fetchExistingProducts(
             supabase,
             registerProducts.map((product) => product.sku),
@@ -451,12 +523,19 @@ async function main() {
             appliedUpdates = await applyUpdates(supabase, plan.updates);
         }
 
+        // 2. Sync Sales (if ODBC)
+        let salesResult = { inserted: 0, failed: 0 };
+        if (registerSnapshot.source === 'odbc' && registerSnapshot.workspacePath) {
+            console.log('Syncing in-store sales records...');
+            salesResult = await syncSales(supabase, registerSnapshot.workspacePath, dryRun);
+        }
+
         const result: SyncResult = {
             success: true,
             processed: plan.totalInFile,
             created: 0,
             updated: dryRun ? plan.updates.length : appliedUpdates,
-            failed: 0,
+            failed: salesResult.failed,
             errors: [],
             duration: Date.now() - startedAt,
         };
@@ -476,11 +555,18 @@ async function main() {
                     result,
                     plan,
                     appliedUpdates,
+                    salesResult
                 ),
                 null,
                 2,
             ),
         );
+
+        // Cleanup workspace if it was created
+        if (registerSnapshot.workspacePath) {
+            await rm(registerSnapshot.workspacePath, { recursive: true, force: true });
+        }
+
     } catch (error) {
         const result: SyncResult = {
             success: false,
@@ -508,6 +594,6 @@ async function main() {
 }
 
 main().catch((error) => {
-    console.error('Register inventory sync failed:', error);
+    console.error('Register sync failed:', error);
     process.exit(1);
 });
