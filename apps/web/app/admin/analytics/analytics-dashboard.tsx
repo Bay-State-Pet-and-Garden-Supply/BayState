@@ -2,8 +2,9 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 interface SalesMetric {
     total_revenue: number;
@@ -18,21 +19,49 @@ interface TrendData {
     orders: number;
 }
 
+interface AnalyticsDashboardProps {
+    metrics: SalesMetric;
+    trends: TrendData[];
+    activeSource: string | null;
+}
+
 export function AnalyticsDashboard({ 
     metrics, 
-    trends 
-}: { 
-    metrics: SalesMetric; 
-    trends: TrendData[] 
-}) {
+    trends,
+    activeSource
+}: AnalyticsDashboardProps) {
     const [hasMounted, setHasMounted] = useState(false);
 
     useEffect(() => {
         setHasMounted(true);
     }, []);
 
+    const channels = [
+        { label: 'All Channels', value: null },
+        { label: 'Online (ShopSite)', value: 'shopsite' },
+        { label: 'In-Store (Integra)', value: 'integra' },
+    ];
+
     return (
         <div className="space-y-8">
+            {/* Channel Tabs */}
+            <div className="flex flex-wrap gap-4 mb-8">
+                {channels.map((channel) => (
+                    <Link
+                        key={channel.label}
+                        href={channel.value ? `/admin/analytics?source=${channel.value}` : '/admin/analytics'}
+                        className={cn(
+                            "px-6 py-3 font-display font-black uppercase tracking-tighter text-lg border-4 transition-all",
+                            activeSource === channel.value
+                                ? "bg-zinc-900 text-white border-zinc-900 shadow-[4px_4px_0px_rgba(0,0,0,0.3)]"
+                                : "bg-white text-zinc-900 border-zinc-900 shadow-[8px_8px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+                        )}
+                    >
+                        {channel.label}
+                    </Link>
+                ))}
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <Card className="border-4 border-zinc-900 shadow-[8px_8px_0px_rgba(0,0,0,1)] rounded-none bg-white">
                     <CardHeader className="pb-2">
