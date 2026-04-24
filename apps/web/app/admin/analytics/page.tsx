@@ -5,8 +5,16 @@ export const metadata = {
   title: 'Analytics | Bay State Admin',
 };
 
-export default async function AnalyticsPage() {
+interface PageProps {
+  searchParams: Promise<{
+    source?: string;
+  }>;
+}
+
+export default async function AnalyticsPage({ searchParams }: PageProps) {
     const supabase = await createClient();
+    const params = await searchParams;
+    const source = params.source || null;
     
     // Fetch analytics data. 
     // Since this is a migration phase, we'll look at a wider range (last 10 years) 
@@ -19,7 +27,8 @@ export default async function AnalyticsPage() {
     const { data: metricsData, error: metricsError } = await supabase
         .rpc('get_sales_metrics', { 
             start_date: startDate.toISOString(), 
-            end_date: endDate 
+            end_date: endDate,
+            p_source: source
         });
 
     if (metricsError) {
@@ -31,7 +40,8 @@ export default async function AnalyticsPage() {
         .rpc('get_sales_trends', { 
             start_date: startDate.toISOString(), 
             end_date: endDate, 
-            period: 'month' 
+            period: 'month',
+            p_source: source
         });
 
     if (trendsError) {
@@ -50,7 +60,7 @@ export default async function AnalyticsPage() {
             <h1 className="font-display font-black uppercase tracking-tighter text-4xl mb-8">
                 Analytics & Reporting
             </h1>
-            <AnalyticsDashboard metrics={metrics} trends={trendsData || []} />
+            <AnalyticsDashboard metrics={metrics} trends={trendsData || []} activeSource={source} />
         </div>
     );
 }
