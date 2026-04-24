@@ -16,7 +16,7 @@ export interface OrderItem {
   created_at: string;
 }
 
-export type PaymentMethod = 'pickup' | 'credit_card' | 'paypal';
+export type PaymentMethod = 'pickup' | 'credit_card' | 'paypal' | 'in_store';
 export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'refunded' | 'partially_refunded';
 export type FulfillmentMethod = 'pickup' | 'delivery';
 
