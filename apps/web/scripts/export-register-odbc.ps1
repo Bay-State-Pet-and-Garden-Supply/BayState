@@ -182,10 +182,13 @@ try {
 
     # If OutputPath is a directory, use fixed filenames. If it's a file path, use it for inventory and derive sales.
     $inventoryPath = $OutputPath
-    $salesPath = [System.IO.Path]::Combine((Split-Path -Path $OutputPath -Parent), "register-sales.json")
+    $salesPath = $null
     
     if ([System.IO.Directory]::Exists($OutputPath)) {
         $inventoryPath = [System.IO.Path]::Combine($OutputPath, "register-inventory.json")
+        $salesPath = [System.IO.Path]::Combine($OutputPath, "register-sales.json")
+    } else {
+        $salesPath = [System.IO.Path]::Combine((Split-Path -Path $OutputPath -Parent), "register-sales.json")
     }
 
     Write-Host "Exporting inventory to $inventoryPath..."
