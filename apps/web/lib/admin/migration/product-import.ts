@@ -18,6 +18,7 @@ import {
     normalizeCategoryValue,
     splitMultiValueFacet,
 } from '@/lib/facets/normalization';
+import { getMappedCategorySlug } from '@/lib/facets/category-mapping';
 
 type ProgressUpdater = (result: SyncResult) => Promise<void>;
 
@@ -445,11 +446,11 @@ export async function importShopSiteProducts({
             brandNames.add(normalizedBrandName);
         }
 
-        const normalizedCategoryValue = normalizeCategoryValue(p.categoryName);
-        if (normalizedCategoryValue) {
-            splitMultiValueFacet(normalizedCategoryValue).forEach((categoryName) => {
-                categoryNames.add(categoryName);
-            });
+        const mappedSlug = getMappedCategorySlug(p.categoryName, p.productTypeName);
+        if (mappedSlug) {
+            categoryNames.add(mappedSlug);
+        } else if (p.categoryName) {
+            console.warn(`[Import] Unmapped legacy category: ${p.categoryName} > ${p.productTypeName || 'none'}`);
         }
     }
 
@@ -475,20 +476,13 @@ export async function importShopSiteProducts({
         }
     }
 
-    for (const name of Array.from(categoryNames)) {
-        const slug = buildFacetSlug(name);
+    for (const slug of Array.from(categoryNames)) {
         const { data: existing } = await supabase.from('categories').select('id').eq('slug', slug).single();
 
         if (existing) {
-            categoryMap.set(name, existing.id);
+            categoryMap.set(slug, existing.id);
         } else {
-            const { data: createdCategory } = await supabase.from('categories').insert({
-                name,
-                slug,
-                display_order: 0,
-            }).select('id').single();
-
-            if (createdCategory) categoryMap.set(name, createdCategory.id);
+            console.warn(`[Import] Mapped category slug not found in DB: ${slug}`);
         }
     }
 
@@ -594,9 +588,12 @@ export async function importShopSiteProducts({
                 if (upserted) {
                     importedProductIdsBySku.set(shopSiteProduct.sku, upserted.id);
                     existingProductIdBySku.set(shopSiteProduct.sku, upserted.id);
-                    const categoryIds = splitMultiValueFacet(category_name)
-                        .map((categoryToken) => categoryMap.get(categoryToken))
-                        .filter((categoryId): categoryId is string => !!categoryId);
+                    const mappedSlug = getMappedCategorySlug(shopSiteProduct.categoryName, shopSiteProduct.productTypeName);
+                    const categoryIds: string[] = [];
+                    if (mappedSlug) {
+                        const categoryId = categoryMap.get(mappedSlug);
+                        if (categoryId) categoryIds.push(categoryId);
+                    }
 
                     await replaceProductCategories(supabase, upserted.id, categoryIds);
 
