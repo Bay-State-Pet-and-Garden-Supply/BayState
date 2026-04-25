@@ -9,7 +9,12 @@
       "https://www.lowes.com/pd/Scotts-Color-Enhanced-1-5-cu-ft-Deep-Forest-Brown-Blend-Mulch/1001364002"
     ],
     "categories": ["Mulch", "Garden Care", "Soil Amendment"],
-    "source": "ScottsMiracle-Gro, Lowes, True Value"
+    "source": "ScottsMiracle-Gro, Lowes, True Value",
+    "expected_source_url": "https://www.scotts.com/en-us/shop/mulch-soil-garden/scotts-nature-scapes-color-enhanced-mulch/scotts-nature-scapes-color-enhanced-mulch.html",
+    "expected_source_domain": "scotts.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "images", "size_metrics"],
+    "difficulty": "easy"
   },
   {
     "sku": "095668300593",
@@ -21,7 +26,12 @@
       "https://mannapro.com/products/duck-starter-grower"
     ],
     "categories": ["Poultry Feed", "Duck Feed", "Starter Feed"],
-    "source": "MannaPro, Tractor Supply, Southern States"
+    "source": "MannaPro, Tractor Supply, Southern States",
+    "expected_source_url": "https://mannapro.com/products/duck-starter-grower",
+    "expected_source_domain": "mannapro.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "images", "size_metrics"],
+    "difficulty": "easy"
   },
   {
     "sku": "032247761215",
@@ -33,7 +43,12 @@
       "https://www.scotts.com/en-us/shop/spreaders/scotts-turf-builder-edgeguard-mini-broadcast-spreader/76121B.html"
     ],
     "categories": ["Spreader", "Lawn Care", "Garden Tool"],
-    "source": "Scotts, Home Depot, Lowes"
+    "source": "Scotts, Home Depot, Lowes",
+    "expected_source_url": "https://www.scotts.com/en-us/shop/spreaders/scotts-turf-builder-edgeguard-mini-broadcast-spreader/76121B.html",
+    "expected_source_domain": "scotts.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "images", "size_metrics"],
+    "difficulty": "easy"
   },
   {
     "sku": "032247885591",
@@ -45,7 +60,12 @@
       "https://www.scotts.com/en-us/scotts-nature-scapes-classic-black-42.5l/88559750.html"
     ],
     "categories": ["Mulch", "Garden Care", "Soil Amendment"],
-    "source": "ScottsMiracle-Gro, True Value, Lowes"
+    "source": "ScottsMiracle-Gro, True Value, Lowes",
+    "expected_source_url": "https://www.scotts.com/en-us/scotts-nature-scapes-classic-black-42.5l/88559750.html",
+    "expected_source_domain": "scotts.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "images", "size_metrics"],
+    "difficulty": "easy"
   },
   {
     "sku": "095668001032",
@@ -57,7 +77,12 @@
       "https://mannapro.com/products/farmhouse-favorites-mini-horse-donkey-treats"
     ],
     "categories": ["Horse Treats", "Mini Horse Treats", "Donkey Treats"],
-    "source": "MannaPro, Tractor Supply"
+    "source": "MannaPro, Tractor Supply",
+    "expected_source_url": "https://mannapro.com/products/farmhouse-favorites-mini-horse-donkey-treats",
+    "expected_source_domain": "mannapro.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "images"],
+    "difficulty": "easy"
   },
   {
     "sku": "095668225308",
@@ -69,7 +94,12 @@
       "https://mannapro.com/products/all-flock-with-probiotic-crumble"
     ],
     "categories": ["Poultry Feed", "All Flock Feed", "Mixed Flock"],
-    "source": "MannaPro, Tractor Supply, HorseLoverZ"
+    "source": "MannaPro, Tractor Supply, HorseLoverZ",
+    "expected_source_url": "https://mannapro.com/products/all-flock-with-probiotic-crumble",
+    "expected_source_domain": "mannapro.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "images", "size_metrics"],
+    "difficulty": "easy"
   },
   {
     "sku": "032247278140",
@@ -81,7 +111,12 @@
       "https://miraclegro.com/en-us/shop/soils/miracle-gro-potting-mix/miracle-gro-potting-mix.html"
     ],
     "categories": ["Potting Mix", "Soil", "Container Gardening"],
-    "source": "Miracle-Gro, Home Depot, Lowes"
+    "source": "Miracle-Gro, Home Depot, Lowes",
+    "expected_source_url": "https://miraclegro.com/en-us/shop/soils/miracle-gro-potting-mix/miracle-gro-potting-mix.html",
+    "expected_source_domain": "miraclegro.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "images", "size_metrics"],
+    "difficulty": "easy"
   },
   {
     "sku": "032247279048",
@@ -93,7 +128,12 @@
       "https://miraclegro.com/en-us/shop/soils/miracle-gro-potting-mix/miracle-gro-potting-mix.html"
     ],
     "categories": ["Potting Mix", "Soil", "Container Gardening"],
-    "source": "Miracle-Gro, True Value, Lowes"
+    "source": "Miracle-Gro, True Value, Lowes",
+    "expected_source_url": "https://miraclegro.com/en-us/shop/soils/miracle-gro-potting-mix/miracle-gro-potting-mix.html",
+    "expected_source_domain": "miraclegro.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "images", "size_metrics"],
+    "difficulty": "easy"
   },
   {
     "sku": "032247884594",
@@ -105,7 +145,12 @@
       "https://www.scotts.com/en-us/shop/mulch-soil-garden/scotts-nature-scapes-color-enhanced-mulch/scotts-nature-scapes-color-enhanced-mulch.html"
     ],
     "categories": ["Mulch", "Garden Care", "Soil Amendment"],
-    "source": "ScottsMiracle-Gro, True Value"
+    "source": "ScottsMiracle-Gro, True Value",
+    "expected_source_url": "https://www.scotts.com/en-us/shop/mulch-soil-garden/scotts-nature-scapes-color-enhanced-mulch/scotts-nature-scapes-color-enhanced-mulch.html",
+    "expected_source_domain": "scotts.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "images", "size_metrics"],
+    "difficulty": "easy"
   },
   {
     "sku": "095668302580",
@@ -117,6 +162,356 @@
       "https://mannapro.com/products/bite-size-nuggets-horse-treats"
     ],
     "categories": ["Horse Treats", "Horse Feed", "Training Treats"],
-    "source": "MannaPro, Tractor Supply, HorseLoverZ"
+    "source": "MannaPro, Tractor Supply, HorseLoverZ",
+    "expected_source_url": "https://mannapro.com/products/bite-size-nuggets-horse-treats",
+    "expected_source_domain": "mannapro.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "images", "size_metrics"],
+    "difficulty": "easy"
+  },
+  {
+    "sku": "072705115310",
+    "brand": "Fromm",
+    "name": "Fromm Gold Large Breed Adult Dog Food 30 lb",
+    "description": "Fromm Gold Nutritionals Large Breed Adult Dry Dog Food. Formulated specifically for large breed adult dogs with reduced fat and calorie levels. Made with fresh duck, chicken, and lamb.",
+    "size_metrics": "30 lb",
+    "images": [],
+    "categories": ["Dog Food", "Large Breed", "Premium Pet Food"],
+    "source": "Fromm, PetFlow",
+    "expected_source_url": "https://frommfamily.com/products/gold-large-breed-adult",
+    "expected_source_domain": "frommfamily.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "medium"
+  },
+  {
+    "sku": "074198600116",
+    "brand": "Purina",
+    "name": "Purina Pro Plan Savor Shredded Blend Adult Chicken & Rice Formula",
+    "description": "High-protein dog food with real chicken and shredded pieces for a taste dogs love. Combines crunchy kibble and tender shredded pieces. Optimized for adult dogs.",
+    "size_metrics": "",
+    "images": [],
+    "categories": ["Dog Food", "Premium Pet Food", "Pro Plan"],
+    "source": "Purina, Chewy, PetSmart",
+    "expected_source_url": "https://www.purina.com/pro-plan/dogs/dry-dog-food/pro-plan-savor-shredded-blend-adult-chicken-rice",
+    "expected_source_domain": "purina.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description"],
+    "difficulty": "medium"
+  },
+  {
+    "sku": "023100130596",
+    "brand": "Purina",
+    "name": "Purina Tidy Cats Clumping Cat Litter 24/7 Performance 35 lb",
+    "description": "Tidy Cats Clumping Cat Litter with 24/7 Performance. Strong clumping action for easy cleanup. Powerful odor control. Multi-cat formula.",
+    "size_metrics": "35 lb",
+    "images": [],
+    "categories": ["Cat Litter", "Clumping Litter", "Multi-Cat"],
+    "source": "Purina, Target, Walmart",
+    "expected_source_url": "https://www.tidycats.com/cat-litter-products/clumping/247-performance",
+    "expected_source_domain": "tidycats.com",
+    "expected_source_tier": "official_variant",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "easy"
+  },
+  {
+    "sku": "038100138319",
+    "brand": "Miracle-Gro",
+    "name": "Miracle-Gro Water Soluble All Purpose Plant Food 1.5 lb",
+    "description": "Water soluble plant food that feeds instantly. Great for all flowers, vegetables, trees, shrubs, and houseplants. Can be used with any watering can or feeder. Feeds through roots and leaves.",
+    "size_metrics": "1.5 lb",
+    "images": [],
+    "categories": ["Plant Food", "Fertilizer", "Water Soluble"],
+    "source": "Miracle-Gro, Home Depot, Lowes",
+    "expected_source_url": "https://miraclegro.com/en-us/shop/plant-food/miracle-gro-water-soluble-all-purpose-plant-food/miracle-gro-water-soluble-all-purpose-plant-food.html",
+    "expected_source_domain": "miraclegro.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "easy"
+  },
+  {
+    "sku": "072357002006",
+    "brand": "Espoma",
+    "name": "Espoma Organic Blood Meal 3 lb",
+    "description": "All natural organic nitrogen fertilizer. Provides a slow release of nitrogen for steady feeding. Ideal for heavy feeding plants. Promotes rapid growth and deep green foliage.",
+    "size_metrics": "3 lb",
+    "images": [],
+    "categories": ["Organic Fertilizer", "Blood Meal", "Soil Amendment"],
+    "source": "Espoma, Home Depot, Lowes",
+    "expected_source_url": "https://www.espoma.com/product/blood-meal/",
+    "expected_source_domain": "espoma.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "easy"
+  },
+  {
+    "sku": "073219020014",
+    "brand": "Espoma",
+    "name": "Espoma Organic Bone Meal 3 lb",
+    "description": "All natural organic phosphorus fertilizer. Promotes root development. Ideal for bulbs and transplanting. Safe for people, pets, and the environment.",
+    "size_metrics": "3 lb",
+    "images": [],
+    "categories": ["Organic Fertilizer", "Bone Meal", "Root Development"],
+    "source": "Espoma, Home Depot, Lowes",
+    "expected_source_url": "https://www.espoma.com/product/bone-meal/",
+    "expected_source_domain": "espoma.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "easy"
+  },
+  {
+    "sku": "070375000014",
+    "brand": "Ferti-Lome",
+    "name": "Ferti-Lome Tree & Shrub Systemic Insect Drench 1 Gallon",
+    "description": "Systemic insecticide for trees and shrubs. Absorbed through roots and moves throughout the plant. Protects against aphids, borers, scale, and other listed insects. One application protects for up to 12 months.",
+    "size_metrics": "1 Gallon",
+    "images": [],
+    "categories": ["Insecticide", "Systemic", "Tree & Shrub Care"],
+    "source": "Ferti-Lome, Tractor Supply",
+    "expected_source_url": "https://www.fertilome.com/product/tree-shrub-systemic-insect-drench",
+    "expected_source_domain": "fertilome.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "medium"
+  },
+  {
+    "sku": "070183000018",
+    "brand": "Bonide",
+    "name": "Bonide Neem Oil 32 oz Ready-to-Use",
+    "description": "Organic neem oil insecticide, miticide, and fungicide. Controls aphids, mites, scale, whiteflies, and other listed pests. Also controls powdery mildew, rust, and black spot. For use on indoor and outdoor plants.",
+    "size_metrics": "32 oz",
+    "images": [],
+    "categories": ["Organic Pest Control", "Neem Oil", "Fungicide"],
+    "source": "Bonide, Home Depot, Lowes",
+    "expected_source_url": "https://www.bonide.com/product/neem-oil-rtu",
+    "expected_source_domain": "bonide.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "medium"
+  },
+  {
+    "sku": "088544001004",
+    "brand": "Kaytee",
+    "name": "Kaytee Wild Bird Seed Black Oil Sunflower 5 lb",
+    "description": "High-energy black oil sunflower seed for wild birds. Attracts a wide variety of songbirds including cardinals, chickadees, finches, and nuthatches. Rich in oil and protein for energy.",
+    "size_metrics": "5 lb",
+    "images": [],
+    "categories": ["Wild Bird Seed", "Sunflower Seed", "Bird Feed"],
+    "source": "Kaytee, Walmart, Tractor Supply",
+    "expected_source_url": "https://www.kaytee.com/products/wild-bird/black-oil-sunflower-seed.php",
+    "expected_source_domain": "kaytee.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "easy"
+  },
+  {
+    "sku": "071800001016",
+    "brand": "Pennington",
+    "name": "Pennington Smart Seed Dense Shade Grass Seed Mix 3 lb",
+    "description": "Grass seed mix designed for dense shade areas. Contains just the right amount of seed, fertilizer, and mulch. Requires up to 30% less water. Grows in as few as 8 days.",
+    "size_metrics": "3 lb",
+    "images": [],
+    "categories": ["Grass Seed", "Shade Grass", "Lawn Care"],
+    "source": "Pennington, Home Depot, Lowes",
+    "expected_source_url": "https://www.pennington.com/products/grass-seed/smart-seed-dense-shade",
+    "expected_source_domain": "pennington.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "medium"
+  },
+  {
+    "sku": "070924001014",
+    "brand": "Spectracide",
+    "name": "Spectracide Weed Stop for Lawns Plus Crabgrass Killer 40 oz",
+    "description": "Kills over 200 types of weeds including crabgrass. Won't harm lawn grasses when used as directed. Rainproof in 4 hours. Results in hours. For use on Northern and Southern turf grasses.",
+    "size_metrics": "40 oz",
+    "images": [],
+    "categories": ["Weed Killer", "Lawn Care", "Herbicide"],
+    "source": "Spectracide, Home Depot, Lowes",
+    "expected_source_url": "https://www.spectracide.com/products/weed-stop-for-lawns-plus-crabgrass-killer",
+    "expected_source_domain": "spectracide.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "medium"
+  },
+  {
+    "sku": "070192001019",
+    "brand": "Ortho",
+    "name": "Ortho Home Defense Insect Killer for Indoor & Perimeter 1 Gallon",
+    "description": "Kills ants, roaches, spiders, and other listed insects. Creates a bug barrier that lasts up to 12 months indoors. Easy-to-use comfort wand. No staining or odor. For indoor and outdoor use.",
+    "size_metrics": "1 Gallon",
+    "images": [],
+    "categories": ["Insect Killer", "Home Defense", "Pest Control"],
+    "source": "Ortho, Home Depot, Lowes",
+    "expected_source_url": "https://www.ortho.com/en-us/products/bugs/ortho-home-defense-insect-killer-indoor-perimeter",
+    "expected_source_domain": "ortho.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "medium"
+  },
+  {
+    "sku": "070115001016",
+    "brand": "Roundup",
+    "name": "Roundup Ready-to-Use Weed & Grass Killer III 1 Gallon",
+    "description": "Kills weeds and grasses to the root. Rainproof in 10 minutes. Results in 3 hours. For use on patios, walkways, driveways, and along fences. No mixing required.",
+    "size_metrics": "1 Gallon",
+    "images": [],
+    "categories": ["Weed Killer", "Herbicide", "Roundup"],
+    "source": "Roundup, Home Depot, Lowes",
+    "expected_source_url": "https://www.roundup.com/products/ready-to-use/roundup-ready-to-use-weed-grass-killer-iii",
+    "expected_source_domain": "roundup.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "easy"
+  },
+  {
+    "sku": "071829001019",
+    "brand": "Sevin",
+    "name": "Sevin Insect Bug Killer Concentrate 16 oz",
+    "description": "Kills over 100 insect pests on vegetables, fruits, ornamentals, and lawns. Fast-acting formula. Can be used up to day of harvest. Protects for up to 2 weeks.",
+    "size_metrics": "16 oz",
+    "images": [],
+    "categories": ["Insecticide", "Bug Killer", "Garden Pest Control"],
+    "source": "Sevin, Home Depot, Lowes",
+    "expected_source_url": "https://www.sevin.com/products/concentrate",
+    "expected_source_domain": "sevin.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "medium"
+  },
+  {
+    "sku": "071829001026",
+    "brand": "Sevin",
+    "name": "Sevin Insect Bug Killer Ready-to-Use 32 oz",
+    "description": "Kills over 100 insect pests on vegetables, fruits, ornamentals, and lawns. Ready-to-use spray bottle. No mixing required. Can be used up to day of harvest.",
+    "size_metrics": "32 oz",
+    "images": [],
+    "categories": ["Insecticide", "Bug Killer", "Garden Pest Control"],
+    "source": "Sevin, Home Depot, Lowes",
+    "expected_source_url": "https://www.sevin.com/products/ready-to-use",
+    "expected_source_domain": "sevin.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "easy"
+  },
+  {
+    "sku": "071829001033",
+    "brand": "Sevin",
+    "name": "Sevin Insect Bug Killer Dust 4 lb",
+    "description": "Kills over 65 insect pests on vegetables, fruits, and ornamentals. Dust formulation for easy application. Can be used up to day of harvest. Effective against Japanese beetles.",
+    "size_metrics": "4 lb",
+    "images": [],
+    "categories": ["Insecticide", "Dust", "Garden Pest Control"],
+    "source": "Sevin, Home Depot, Lowes",
+    "expected_source_url": "https://www.sevin.com/products/dust",
+    "expected_source_domain": "sevin.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "easy"
+  },
+  {
+    "sku": "071829001040",
+    "brand": "Sevin",
+    "name": "Sevin Insect Bug Killer Granules 6 lb",
+    "description": "Kills over 100 insect pests on lawns and around home perimeter. Granular formulation for easy application with spreader. Protects for up to 2 weeks. For outdoor use only.",
+    "size_metrics": "6 lb",
+    "images": [],
+    "categories": ["Insecticide", "Granules", "Lawn Pest Control"],
+    "source": "Sevin, Home Depot, Lowes",
+    "expected_source_url": "https://www.sevin.com/products/granules",
+    "expected_source_domain": "sevin.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "easy"
+  },
+  {
+    "sku": "071829001057",
+    "brand": "Sevin",
+    "name": "Sevin Insect Bug Killer Ready-to-Spray 32 oz",
+    "description": "Kills over 100 insect pests on vegetables, fruits, ornamentals, and lawns. Ready-to-spray hose-end sprayer. No mixing required. Can be used up to day of harvest.",
+    "size_metrics": "32 oz",
+    "images": [],
+    "categories": ["Insecticide", "Bug Killer", "Garden Pest Control"],
+    "source": "Sevin, Home Depot, Lowes",
+    "expected_source_url": "https://www.sevin.com/products/ready-to-spray",
+    "expected_source_domain": "sevin.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "easy"
+  },
+  {
+    "sku": "071829001064",
+    "brand": "Sevin",
+    "name": "Sevin Insect Bug Killer Concentrate 32 oz",
+    "description": "Kills over 100 insect pests on vegetables, fruits, ornamentals, and lawns. Concentrate formula for economical coverage. Can be used up to day of harvest. Protects for up to 2 weeks.",
+    "size_metrics": "32 oz",
+    "images": [],
+    "categories": ["Insecticide", "Bug Killer", "Garden Pest Control"],
+    "source": "Sevin, Home Depot, Lowes",
+    "expected_source_url": "https://www.sevin.com/products/concentrate",
+    "expected_source_domain": "sevin.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "easy"
+  },
+  {
+    "sku": "071829001071",
+    "brand": "Sevin",
+    "name": "Sevin Insect Bug Killer Granules 10 lb",
+    "description": "Kills over 100 insect pests on lawns and around home perimeter. Granular formulation for easy application with spreader. Protects for up to 2 weeks. For outdoor use only.",
+    "size_metrics": "10 lb",
+    "images": [],
+    "categories": ["Insecticide", "Granules", "Lawn Pest Control"],
+    "source": "Sevin, Home Depot, Lowes",
+    "expected_source_url": "https://www.sevin.com/products/granules",
+    "expected_source_domain": "sevin.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "easy"
+  },
+  {
+    "sku": "071829001088",
+    "brand": "Sevin",
+    "name": "Sevin Insect Bug Killer Ready-to-Use 64 oz",
+    "description": "Kills over 100 insect pests on vegetables, fruits, ornamentals, and lawns. Ready-to-use spray bottle. No mixing required. Can be used up to day of harvest.",
+    "size_metrics": "64 oz",
+    "images": [],
+    "categories": ["Insecticide", "Bug Killer", "Garden Pest Control"],
+    "source": "Sevin, Home Depot, Lowes",
+    "expected_source_url": "https://www.sevin.com/products/ready-to-use",
+    "expected_source_domain": "sevin.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "easy"
+  },
+  {
+    "sku": "071829001095",
+    "brand": "Sevin",
+    "name": "Sevin Insect Bug Killer Dust 8 lb",
+    "description": "Kills over 65 insect pests on vegetables, fruits, and ornamentals. Dust formulation for easy application. Can be used up to day of harvest. Effective against Japanese beetles.",
+    "size_metrics": "8 lb",
+    "images": [],
+    "categories": ["Insecticide", "Dust", "Garden Pest Control"],
+    "source": "Sevin, Home Depot, Lowes",
+    "expected_source_url": "https://www.sevin.com/products/dust",
+    "expected_source_domain": "sevin.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "easy"
+  },
+  {
+    "sku": "071829001102",
+    "brand": "Sevin",
+    "name": "Sevin Insect Bug Killer Granules 20 lb",
+    "description": "Kills over 100 insect pests on lawns and around home perimeter. Granular formulation for easy application with spreader. Protects for up to 2 weeks. For outdoor use only.",
+    "size_metrics": "20 lb",
+    "images": [],
+    "categories": ["Insecticide", "Granules", "Lawn Pest Control"],
+    "source": "Sevin, Home Depot, Lowes",
+    "expected_source_url": "https://www.sevin.com/products/granules",
+    "expected_source_domain": "sevin.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "easy"
   }
 ]

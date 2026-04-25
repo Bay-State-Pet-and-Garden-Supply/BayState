@@ -19,7 +19,10 @@ FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 GROUND_TRUTH_FILE = FIXTURES_DIR / "test_skus_ground_truth.json"
 
 # Required fields that must be present in each ground truth product
+# Core fields (backward-compatible with GroundTruthProduct dataclass)
 REQUIRED_FIELDS = {"sku", "brand", "name"}
+# OBS-specific fields required for official brand scraper regression testing
+OBS_REQUIRED_FIELDS = {"sku", "brand", "name", "expected_source_url", "expected_source_domain", "expected_source_tier", "expected_fields"}
 
 
 def _parse_size_metrics(size_str: str | None) -> SizeMetrics | None:
@@ -162,12 +165,50 @@ def get_all_skus() -> list[str]:
     return [p.sku for p in products]
 
 
-# Allow direct execution for testing
+def load_fixture_raw() -> list[dict[str, Any]]:
+    """Load raw fixture data as list of dicts (preserves all fields including OBS-specific).
+
+    Returns:
+        List of product entry dicts from the fixture file.
+
+    Raises:
+        FileNotFoundError: If ground truth file doesn't exist.
+    """
+    if not GROUND_TRUTH_FILE.exists():
+        raise FileNotFoundError(f"Ground truth file not found: {GROUND_TRUTH_FILE}")
+
+    with open(GROUND_TRUTH_FILE) as f:
+        data = json.load(f)
+
+    return data
+
+
+def load_fixture_validated() -> list[dict[str, Any]]:
+    """Load fixture data with full OBS schema validation.
+
+    Uses ground_truth_validator.validate_fixture() to ensure all entries
+    have the required OBS fields (expected_source_url, expected_source_domain,
+    expected_source_tier, expected_fields).
+
+    Returns:
+        List of validated product entry dicts.
+
+    Raises:
+        FileNotFoundError: If ground truth file doesn't exist.
+        ValueError: If any entry fails validation.
+    """
+    from tests.evaluation.ground_truth_validator import load_and_validate_fixture
+
+    data, result = load_and_validate_fixture(GROUND_TRUTH_FILE)
+    if not result.valid:
+        raise ValueError(f"Ground truth fixture validation failed:\n{result.summary()}")
+    return data
+
+
 if __name__ == "__main__":
     products = load_ground_truth()
     print(f"Loaded {len(products)} ground truth products")
 
-    # Test SKU lookup
     test_sku = "032247886598"
     product = get_ground_truth(test_sku)
     if product:
@@ -175,5 +216,4 @@ if __name__ == "__main__":
     else:
         print(f"Product not found: {test_sku}")
 
-    # List all SKUs
     print(f"All SKUs: {get_all_skus()}")
