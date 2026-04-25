@@ -12,9 +12,9 @@
 ## Building and Running
 
 ```bash
-# Build Docker image
-docker build -t baystate-scraper:latest scraper_backend/
-
+# Build Docker image (from repository root)
+docker build -f apps/scraper/Dockerfile -t baystate-scraper:latest .
+```
 # Manual workflow trigger
 gh workflow run scrape.yml \
   -f job_id=test-123 \

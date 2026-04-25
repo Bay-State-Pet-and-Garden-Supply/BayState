@@ -90,8 +90,8 @@ ruff check .                            # Lint check
 mypy scraper_backend/                   # Type check (warnings OK)
 
 # Docker
-docker build -t baystate-scraper .      # Build image
-docker compose up -d                    # Start runner stack
+docker build -f apps/scraper/Dockerfile -t baystate-scraper .      # Build image (from repo root)
+docker compose up -d                                              # Start runner stack
 
 # Scripts
 ./run-dev.sh                            # Dev mode wrapper
