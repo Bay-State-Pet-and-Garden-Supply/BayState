@@ -2,6 +2,7 @@
 # Provides consistent Python + Playwright environment for web scraping
 #
 # Usage (daemon mode - recommended):
+#   docker build -f apps/scraper/Dockerfile -t baystate-scraper:latest .
 #   docker run -d --restart unless-stopped \
 #     -e SCRAPER_API_URL=https://app.baystatepet.com \
 #     -e SCRAPER_API_KEY=bsr_xxxx \
@@ -26,23 +27,23 @@ ARG RUNNER_BUILD_ID=unknown
 ARG RUNNER_BUILD_SHA=unknown
 
 # Install only the dependencies needed by the runner image
-COPY requirements-runtime.txt ./requirements-runtime.txt
+COPY apps/scraper/requirements-runtime.txt ./requirements-runtime.txt
 RUN pip install --no-cache-dir -r requirements-runtime.txt
 
 # Install Playwright browsers (chromium only - firefox rarely needed)
 RUN playwright install chromium
 
 # Copy only the runtime code needed by the runner image
-COPY daemon.py ./daemon.py
-COPY runner.py ./runner.py
-COPY core ./core
-COPY runner ./runner
-COPY scrapers ./scrapers
-COPY src ./src
-COPY utils ./utils
-COPY validation ./validation
-COPY prompts ./prompts
-COPY scripts/health_check.py ./scripts/health_check.py
+COPY apps/scraper/daemon.py ./daemon.py
+COPY apps/scraper/runner.py ./runner.py
+COPY apps/scraper/core ./core
+COPY apps/scraper/runner ./runner
+COPY apps/scraper/scrapers ./scrapers
+COPY apps/scraper/src ./src
+COPY apps/scraper/utils ./utils
+COPY apps/scraper/validation ./validation
+COPY apps/scraper/prompts ./prompts
+COPY apps/scraper/scripts/health_check.py ./scripts/health_check.py
 
 # Shared pricing catalog for AI cost calculation
 COPY shared/ai-pricing/pricing-catalog.json ./shared/ai-pricing/pricing-catalog.json

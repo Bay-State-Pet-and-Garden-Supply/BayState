@@ -266,20 +266,20 @@ If you prefer docker-compose:
 ```bash
 # Clone the repo
 git clone https://github.com/Bay-State-Pet-and-Garden-Supply/BayState.git
-cd BayStateScraper
+cd BayState
 
-# Create .env file
-cat > .env << EOF
+# Create .env file for scraper
+cat > apps/scraper/.env << EOF
 SCRAPER_API_URL=https://bay-state-app.vercel.app/
 SCRAPER_API_KEY=bsr_your_key_here
 RUNNER_NAME=$(hostname)
 EOF
 
-# Create browser-state directory (cookies/session storage persist here)
-mkdir -p .browser_storage_states
+# Create browser-state directory
+mkdir -p apps/scraper/.browser_storage_states
 
-# Start
-docker compose up -d
+# Start from root
+docker compose -f apps/scraper/docker-compose.yml up -d
 ```
 
 Browser session data will be persisted in `apps/scraper/.browser_storage_states/` by default.

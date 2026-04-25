@@ -1,0 +1,93 @@
+# VCS
+.git
+.gitignore
+
+# Other apps and monorepo folders (keep context slim)
+apps/web/
+conductor/
+docker/
+scratch/
+sisyphus/
+temp/
+supabase/
+
+# Scraper Local env and virtualenvs
+apps/scraper/.env*
+apps/scraper/.venv/
+apps/scraper/venv/
+
+# Python caches and metadata
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+**/__pycache__/
+**/*.py[cod]
+**/*.egg-info/
+
+# Scraper Generated runtime and benchmark artifacts
+apps/scraper/.browser_storage_states/
+apps/scraper/.cache/
+apps/scraper/.artifacts/
+apps/scraper/.coverage
+apps/scraper/.data/
+apps/scraper/reports/
+apps/scraper/data/
+**/*.log
+
+# Scraper Tests, docs, and local-only tooling
+apps/scraper/tests/
+apps/scraper/docs/
+apps/scraper/actions/
+apps/scraper/ai/
+apps/scraper/api/
+apps/scraper/cli/
+apps/scraper/config/
+apps/scraper/infra/
+apps/scraper/tools/
+apps/scraper/transpiler/
+apps/scraper/scripts/**
+!apps/scraper/scripts/
+!apps/scraper/scripts/health_check.py
+
+# Local-only modules inside copied runtime packages
+apps/scraper/core/local_storage/
+apps/scraper/core/concurrent_scraper.py
+apps/scraper/core/performance_profiler.py
+apps/scraper/core/scraper_testing_client.py
+apps/scraper/core/scraper_testing_integration.py
+apps/scraper/scrapers/tests/
+apps/scraper/scrapers/runtime.py
+apps/scraper/scrapers/sku_loader.py
+apps/scraper/utils/testing/
+apps/scraper/utils/debugging/
+apps/scraper/utils/api_handler.py
+apps/scraper/utils/llm_wrappers.py
+apps/scraper/validation/errors.py
+apps/scraper/validation/schemas.py
+
+# Local/dev docs and agent metadata
+**/.agents/
+**/AGENTS.md
+**/walkthrough.md
+**/README.md
+**/CHANGELOG.md
+**/CONTRIBUTING.md
+**/DEV_SETUP.md
+**/BATCH_SEARCH_READINESS.md
+**/GEMINI.md
+
+# Build-only and local orchestration files
+apps/scraper/docker-compose.yml
+apps/scraper/run-dev.sh
+apps/scraper/run-prod.sh
+apps/scraper/get.sh
+apps/scraper/install.py
+apps/scraper/start-runner.sh
+apps/scraper/start-runner.bat
+apps/scraper/package.json
+apps/scraper/setup.py
+
+# Editor and OS files
+**/.DS_Store
+**/.idea/
+**/.vscode/

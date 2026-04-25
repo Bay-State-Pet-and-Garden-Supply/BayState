@@ -85,7 +85,7 @@ jobs:
         id: build_image
         uses: docker/build-push-action@v6
         with:
-          context: ./apps/scraper
+          context: .
           file: ./apps/scraper/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true

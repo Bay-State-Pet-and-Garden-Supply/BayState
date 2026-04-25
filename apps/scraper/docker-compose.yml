@@ -11,7 +11,9 @@
 services:
   scraper:
     image: baystate-scraper:latest
-    build: .
+    build:
+      context: ../../
+      dockerfile: apps/scraper/Dockerfile
     restart: on-failure
     init: true
     shm_size: '2gb'
