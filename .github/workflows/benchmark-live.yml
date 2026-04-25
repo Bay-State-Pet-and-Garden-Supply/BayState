@@ -21,7 +21,7 @@ on:
 jobs:
   benchmark:
     name: Run Live Benchmarks
-    runs-on: [self-hosted, linux]
+    runs-on: [self-hosted, Linux, ARM64, docker]
     timeout-minutes: 45
 
     defaults:
