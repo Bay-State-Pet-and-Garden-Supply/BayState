@@ -297,22 +297,26 @@ export async function importShopSiteProductsBatched({
     // Only purge if we successfully processed a significant number of products (full sync safety)
     if (created + updated > 100) {
         console.log('[Batch Import] Phase 6: Purging inactive products...');
-        const activeSkus = Array.from(importedProductIdBySku.keys());
-        
-        // Safety: Process cleanup in chunks if SKU list is massive
-        const { error: cleanupError, count } = await supabase
-            .from('products')
-            .delete()
-            .not('sku', 'in', `(${activeSkus.join(',')})`);
-            
-        if (!cleanupError) {
-            deletedCount = count ?? 0;
-            console.log(`[Batch Import] Purged ${deletedCount} inactive/disabled products.`);
-        } else {
-            console.warn(`[Batch Import] Failed to purge inactive products: ${cleanupError.message}`);
-        }
-    }
+        const activeSkusSet = new Set(importedProductIdBySku.keys());
+        const skusToDelete = Array.from(existingSkus).filter(sku => !activeSkusSet.has(sku));
 
+        console.log(`[Batch Import] Found ${skusToDelete.length} products to delete.`);
+
+        for (let i = 0; i < skusToDelete.length; i += BATCH_SIZE) {
+            const batch = skusToDelete.slice(i, i + BATCH_SIZE);
+            const { error: cleanupError, count } = await supabase
+                .from('products')
+                .delete()
+                .in('sku', batch);
+
+            if (!cleanupError) {
+                deletedCount += count ?? batch.length;
+            } else {
+                console.warn(`[Batch Import] Failed to purge batch: ${cleanupError.message}`);
+            }
+        }
+        console.log(`[Batch Import] Purged ${deletedCount} inactive/disabled products.`);
+    }
     const duration = Date.now() - startTime;
     console.log(`[Batch Import] Complete! Duration: ${(duration / 1000).toFixed(1)}s`);
     console.log(`[Batch Import] Results: ${created} created, ${updated} updated, ${failed} failed, ${deletedCount} deleted`);
@@ -330,21 +334,50 @@ export async function importShopSiteProductsBatched({
     } as any;
 }
 
+async function fetchAll<T>(
+    supabase: SupabaseClient,
+    table: string,
+    select: string,
+): Promise<T[]> {
+    const allData: T[] = [];
+    const limit = 1000;
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+        const { data, error } = await supabase
+            .from(table)
+            .select(select)
+            .range(offset, offset + limit - 1);
+
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+            allData.push(...(data as unknown as T[]));
+            offset += limit;
+        } else {
+            hasMore = false;
+        }
+    }
+    return allData;
+}
+
 async function loadReferenceData(supabase: SupabaseClient) {
+    console.log('[Batch Import] Fetching all reference data (paginated)...');
     const [
-        productsResult,
-        brandsResult,
-        categoriesResult,
-        petTypesResult,
-        facetDefinitionsResult,
-        facetValuesResult,
+        productsData,
+        brandsData,
+        categoriesData,
+        petTypesData,
+        facetDefinitionsData,
+        facetValuesData,
     ] = await Promise.all([
-        supabase.from('products').select('id, sku, slug'),
-        supabase.from('brands').select('id, name'),
-        supabase.from('categories').select('id, name, slug'),
-        supabase.from('pet_types').select('id, name'),
-        supabase.from('facet_definitions').select('id, name'),
-        supabase.from('facet_values').select('id, facet_definition_id, normalized_value'),
+        fetchAll<{id: string, sku: string, slug: string}>(supabase, 'products', 'id, sku, slug'),
+        fetchAll<{id: string, name: string}>(supabase, 'brands', 'id, name'),
+        fetchAll<{id: string, name: string, slug: string}>(supabase, 'categories', 'id, name, slug'),
+        fetchAll<{id: string, name: string}>(supabase, 'pet_types', 'id, name'),
+        fetchAll<{id: string, name: string}>(supabase, 'facet_definitions', 'id, name'),
+        fetchAll<{id: string, facet_definition_id: string, normalized_value: string}>(supabase, 'facet_values', 'id, facet_definition_id, normalized_value'),
     ]);
 
     const existingSkus = new Set<string>();
@@ -352,23 +385,21 @@ async function loadReferenceData(supabase: SupabaseClient) {
     const slugBySku = new Map<string, string>();
     const productIdBySku = new Map<string, string>();
 
-    if (productsResult.data) {
-        for (const product of productsResult.data) {
-            existingSkus.add(product.sku);
-            existingSlugs.add(product.slug);
-            slugBySku.set(product.sku, product.slug);
-            productIdBySku.set(product.sku, product.id);
-        }
+    for (const product of productsData) {
+        existingSkus.add(product.sku);
+        existingSlugs.add(product.slug);
+        slugBySku.set(product.sku, product.slug);
+        productIdBySku.set(product.sku, product.id);
     }
 
-    const brandMap = new Map(brandsResult.data?.map((b) => [b.name, b.id]) || []);
-    const categoryMap = new Map(categoriesResult.data?.map((c) => [c.slug, c.id]) || []);
-    const petTypeMap = new Map(petTypesResult.data?.map((p) => [p.name, p.id]) || []);
+    const brandMap = new Map(brandsData.map((b) => [b.name, b.id]));
+    const categoryMap = new Map(categoriesData.map((c) => [c.slug, c.id]));
+    const petTypeMap = new Map(petTypesData.map((p) => [p.name, p.id]));
     const facetDefinitionMap = new Map(
-        facetDefinitionsResult.data?.map((d) => [d.name as GenericFacetName, d.id]) || [],
+        facetDefinitionsData.map((d) => [d.name as GenericFacetName, d.id]),
     );
     const facetValueMap = new Map(
-        facetValuesResult.data?.map((v) => [`${v.facet_definition_id}:${v.normalized_value}`, v.id]) || [],
+        facetValuesData.map((v) => [`${v.facet_definition_id}:${v.normalized_value}`, v.id]),
     );
 
     return {
