@@ -88,6 +88,39 @@ export async function importShopSiteProductsBatched({
     console.log(`[Batch Import] Loaded ${brandMap.size} brands, ${categoryMap.size} categories, ${petTypeMap.size} pet types`);
     console.log(`[Batch Import] Existing products: ${existingSkus.size}`);
 
+    // Phase 1.5: Cleanup (Purge disabled/removed products FIRST to avoid slug conflicts)
+    let deletedCount = 0;
+    // Only purge if we are doing a full sync (passing many products)
+    if (shopSiteProducts.length > 100) {
+        console.log('[Batch Import] Phase 1.5: Purging inactive products before processing...');
+        const activeSkusInFeed = new Set(shopSiteProducts.map(p => p.sku));
+        const skusToDelete = Array.from(existingSkus).filter(sku => !activeSkusInFeed.has(sku));
+        
+        if (skusToDelete.length > 0) {
+            console.log(`[Batch Import] Found ${skusToDelete.length} products to delete.`);
+            for (let i = 0; i < skusToDelete.length; i += BATCH_SIZE) {
+                const batch = skusToDelete.slice(i, i + BATCH_SIZE);
+                const { error: cleanupError, count } = await supabase
+                    .from('products')
+                    .delete()
+                    .in('sku', batch);
+                    
+                if (!cleanupError) {
+                    deletedCount += count ?? batch.length;
+                    // Remove from memory to free up slugs/skus
+                    batch.forEach(sku => {
+                        const slug = slugBySku.get(sku);
+                        if (slug) existingSlugs.delete(slug);
+                        existingSkus.delete(sku);
+                    });
+                } else {
+                    console.warn(`[Batch Import] Failed to purge batch: ${cleanupError.message}`);
+                }
+            }
+            console.log(`[Batch Import] Pre-sync purge complete: ${deletedCount} products removed.`);
+        }
+    }
+
     // Phase 2: Transform all products and pre-generate unique slugs
     console.log('[Batch Import] Phase 2: Transforming products and generating slugs...');
     const transformedProducts = shopSiteProducts.map((product) => {
