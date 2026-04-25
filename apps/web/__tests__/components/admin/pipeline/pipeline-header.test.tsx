@@ -65,6 +65,7 @@ describe('PipelineHeader', () => {
     const { container } = render(
       <PipelineHeader 
         title="Test Pipeline" 
+        subtitle="Test Description"
         icon={Package} 
       />
     );

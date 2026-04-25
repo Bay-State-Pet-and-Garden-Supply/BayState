@@ -16,8 +16,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Plus, Package, ExternalLink, Pencil, RefreshCw, Search, X, CheckSquare, Square, Check } from 'lucide-react';
-import { ProductEditModal, PublishedProduct } from './ProductEditModal';
+import { Plus, Package, ExternalLink, RefreshCw, Search, X, CheckSquare, Square, Check } from 'lucide-react';
+import { PublishedProduct } from './ProductEditModal';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { formatCurrency, cn, formatImageUrl } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -43,7 +43,6 @@ export function AdminProductsClient({
     // Sync products with initialProducts prop (which changes on server re-render)
     const products = initialProducts;
     
-    const [editingProducts, setEditingProducts] = useState<PublishedProduct[] | null>(null);
     const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
     
     // Search state
@@ -113,26 +112,9 @@ export function AdminProductsClient({
         return url && (url.startsWith('/') || url.startsWith('http'));
     };
 
-    const handleEdit = (product: PublishedProduct) => {
-        setEditingProducts([product]);
-    };
-    
-    const handleBulkEdit = () => {
-        const selectedProducts = products.filter(p => selectedProductIds.has(p.id));
-        if (selectedProducts.length > 0) {
-            setEditingProducts(selectedProducts);
-        }
-    };
-
-    const handleCloseModal = () => {
-        setEditingProducts(null);
-    };
-
     const handleSave = () => {
         // Clear selection after bulk save
-        if (editingProducts && editingProducts.length > 1) {
-            setSelectedProductIds(new Set());
-        }
+        setSelectedProductIds(new Set());
         startTransition(() => {
             router.refresh();
         });
@@ -404,14 +386,10 @@ export function AdminProductsClient({
                                     </div>
 
                                     <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                                        <Button variant="secondary" size="sm" className="flex-1 bg-muted/50 hover:bg-muted" onClick={() => handleEdit(product)}>
-                                            <Pencil className="mr-2 size-3.5" />
-                                            Edit
-                                        </Button>
-                                        <Button variant="ghost" size="sm" asChild className="size-8 p-0 border border-border/50" title="View in Storefront">
+                                        <Button variant="secondary" size="sm" asChild className="flex-1 bg-muted/50 hover:bg-muted" title="View in Storefront">
                                             <Link href={`/products/${product.slug}`} target="_blank">
-                                                <ExternalLink className="size-4" />
-                                                <span className="sr-only">View in Storefront</span>
+                                                <ExternalLink className="mr-2 size-3.5" />
+                                                View Storefront
                                             </Link>
                                         </Button>
                                     </div>
@@ -436,9 +414,11 @@ export function AdminProductsClient({
                         <Button variant="ghost" size="sm" onClick={() => setSelectedProductIds(new Set())} className="text-muted-foreground hover:text-foreground">
                             Cancel
                         </Button>
-                        <Button size="sm" onClick={handleBulkEdit} className="shadow-md">
-                            <Pencil className="mr-2 size-4" />
-                            Edit Selected
+                        <Button size="sm" asChild className="shadow-md">
+                            <Link href="/admin/pipeline">
+                                <Plus className="mr-2 size-4" />
+                                Process via Pipeline
+                            </Link>
                         </Button>
                     </div>
                 </div>
@@ -450,13 +430,6 @@ export function AdminProductsClient({
                 </div>
             )}
 
-            {editingProducts && (
-                <ProductEditModal
-                    products={editingProducts}
-                    onClose={handleCloseModal}
-                    onSave={handleSave}
-                />
-            )}
         </div>
     );
 }

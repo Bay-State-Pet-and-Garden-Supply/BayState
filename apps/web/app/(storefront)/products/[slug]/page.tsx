@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/breadcrumb';
 import { AddToCartButton } from '@/components/storefront/add-to-cart-button';
 import { ProductImageCarousel } from '@/components/storefront/product-image-carousel';
-import { ProductAdminEdit } from '@/components/storefront/product-admin-edit';
 import { ProductCard } from '@/components/storefront/product-card';
 import { ProductReviews } from '@/components/storefront/product-reviews';
 import { ReviewSubmissionForm } from '@/components/storefront/review-submission-form';
@@ -216,22 +215,6 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
     }
   }
 
-  // Transform product for the edit modal (add missing fields with defaults)
-  const editableProduct = {
-    id: product.id,
-    sku: product.sku ?? product.slug,
-    name: product.name,
-    slug: product.slug,
-    description: product.description,
-    price: product.price,
-    stock_status: product.stock_status,
-    is_featured: product.is_featured,
-    images: product.images,
-    brand_id: product.brand_id,
-    brand_name: product.brand?.name ?? null,
-    brand_slug: product.brand?.slug ?? null,
-    created_at: product.created_at,
-  };
 
   return (
     <div className="container mx-auto px-4 pt-4 pb-8">
@@ -288,14 +271,9 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
               </Link>
             )}
 
-            <div className="flex items-start justify-between gap-4">
               <h1 className="text-3xl font-extrabold text-zinc-900 leading-tight">
                 {isGroupPage ? group?.name : product.name}
               </h1>
-              {canEditProducts && (
-                <ProductAdminEdit product={editableProduct} />
-              )}
-            </div>
             
             {/* Trust Badges & Microdata */}
             <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-500">
