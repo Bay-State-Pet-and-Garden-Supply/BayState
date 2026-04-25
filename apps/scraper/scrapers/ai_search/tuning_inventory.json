@@ -1,0 +1,279 @@
+{
+  "schema_version": 1,
+  "generated_for": "benchmark-driven-scraper-finetuning:T2",
+  "status_values": ["allowed", "report-only", "forbidden"],
+  "source_files": {
+    "scoring": "apps/scraper/scrapers/ai_search/scoring.py",
+    "validation": "apps/scraper/scrapers/ai_search/validation.py",
+    "golden_regression": "apps/scraper/tests/unit/test_golden_dataset_regression.py"
+  },
+  "entries": [
+    {
+      "id": "scoring.brand_domain_aliases",
+      "status": "allowed",
+      "kind": "class_constant",
+      "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
+      "source_symbol": "SearchScorer.BRAND_DOMAIN_ALIASES",
+      "description": "Brand-to-domain alias map used to classify official sources.",
+      "value": {
+        "scotts": ["scotts.com", "scottsmiraclegro.com"],
+        "scottsmiraclegro": ["miraclegro.com", "scotts.com", "scottsmiraclegro.com"],
+        "miraclegro": ["miraclegro.com", "scottsmiraclegro.com"]
+      }
+    },
+    {
+      "id": "scoring.noisy_query_params",
+      "status": "allowed",
+      "kind": "class_constant",
+      "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
+      "source_symbol": "SearchScorer.NOISY_QUERY_PARAMS",
+      "description": "Query parameters penalized by _query_param_penalty.",
+      "value": ["bvstate", "bvrrp", "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "srsltid", "fbclid", "gclid"]
+    },
+    {
+      "id": "scoring.retailer_groups",
+      "status": "allowed",
+      "kind": "class_constants",
+      "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
+      "source_symbol": "SearchScorer.MAJOR_RETAILERS|GENERAL_MASS_RETAILERS|SECONDARY_RETAILERS|MARKETPLACES|TRUSTED_RETAILERS",
+      "description": "Retailer source-tier groups used by classification, ranking, and validation.",
+      "value": {
+        "major_retailers": ["amazon.com", "walmart.com", "target.com", "chewy.com", "petco.com", "petsmart.com", "tractorsupply.com", "homedepot.com", "lowes.com", "acehardware.com", "costco.com", "summitracing.com"],
+        "general_mass_retailers": ["amazon.com", "walmart.com", "target.com"],
+        "secondary_retailers": ["berings.com", "farmstore.com", "hugglepets.co.uk", "mickeyspetsupplies.com", "rachelspetsupply.com", "animalproductsshop.com", "petedge.com", "animalsupply.com", "phillipspet.com", "frontiercoop.com", "petsuppliesplus.com", "bradleycaldwell.com", "petswarehouse.com"],
+        "marketplaces": ["ebay.com"],
+        "trusted_retailers": ["acehardware.com", "amazon.com", "animalproductsshop.com", "animalsupply.com", "berings.com", "bradleycaldwell.com", "chewy.com", "costco.com", "farmstore.com", "frontiercoop.com", "homedepot.com", "hugglepets.co.uk", "lowes.com", "mickeyspetsupplies.com", "petco.com", "petedge.com", "petsmart.com", "petsuppliesplus.com", "petswarehouse.com", "phillipspet.com", "rachelspetsupply.com", "summitracing.com", "target.com", "tractorsupply.com", "walmart.com"]
+      }
+    },
+    {
+      "id": "scoring.blocked_domains",
+      "status": "allowed",
+      "kind": "class_constant",
+      "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
+      "source_symbol": "SearchScorer.BLOCKED_DOMAINS",
+      "description": "Domains filtered as social, aggregator, barcode lookup, coupon, or infrastructure results.",
+      "value": ["reddit.com", "pinterest.com", "youtube.com", "facebook.com", "instagram.com", "tiktok.com", "medium.com", "quora.com", "upcitemdb.com", "barcodelookup.com", "upcdatabase.org", "buycott.com", "barcode-list.com", "digit-eyes.com", "upcindex.com", "go-upc.com", "upcscavenger.com", "eandata.com", "upccodesearch.com", "upc-search.org", "barcodesinc.com", "pricerunner.com", "pricegrabber.com", "shopzilla.com", "shopping.google.com", "nextag.com", "bizrate.com", "retailmenot.com", "coupons.com", "slickdeals.net", "vertexaisearch.cloud.google.com"]
+    },
+    {
+      "id": "scoring.low_quality_patterns",
+      "status": "allowed",
+      "kind": "class_constant",
+      "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
+      "source_symbol": "SearchScorer.LOW_QUALITY_PATTERNS",
+      "description": "Regex phrases that mark SERP results as low quality.",
+      "value": ["\\breview\\b", "\\bbest\\b", "\\btop 10\\b", "\\bcomparison\\b", "\\bvs\\b", "\\breddit\\b", "\\bpinterest\\b", "\\byoutube\\b", "\\bfacebook\\b", "\\binstagram\\b", "\\btiktok\\b", "\\baffiliate\\b", "\\bcoupon\\b", "\\bdeal(?:s)?\\b", "\\bblog\\b", "\\bforum\\b", "\\bgift guide\\b", "\\bbuying guide\\b", "\\btop picks\\b", "\\bbest toys\\b", "\\bbest dog toys\\b", "\\bupc database\\b", "\\bbarcode search\\b", "\\bgtin search\\b", "\\bproduct lookup\\b", "\\bwhere to buy\\b", "\\bfind a store\\b", "\\bstore locator\\b", "\\bfind a retailer\\b", "\\bfind a dealer\\b", "\\b\\d+ best\\b", "\\bpicks for \\d{4}\\b"]
+    },
+    {
+      "id": "scoring.grounded_explanation_markers",
+      "status": "report-only",
+      "kind": "class_constant",
+      "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
+      "source_symbol": "SearchScorer.GROUNDED_EXPLANATION_MARKERS",
+      "description": "Gemini grounded-result explanation markers treated as low quality.",
+      "value": ["the search for ", "did not return any direct results", "while it is not currently appearing in the indexed results", "however, the upc", "however, the product"]
+    },
+    {
+      "id": "scoring.low_quality_url_fragments",
+      "status": "allowed",
+      "kind": "class_constant",
+      "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
+      "source_symbol": "SearchScorer.LOW_QUALITY_URL_FRAGMENTS",
+      "description": "URL fragments that mark results as low quality.",
+      "value": ["category/", "/collections/", "/blocked?url="]
+    },
+    {
+      "id": "scoring.category_patterns",
+      "status": "allowed",
+      "kind": "class_constant",
+      "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
+      "source_symbol": "SearchScorer.CATEGORY_PATTERNS",
+      "description": "URL substrings used to classify category/listing pages.",
+      "value": ["/collections/", "/category/", "/categories/", "/search", "/products?", "/collections?", "/product-line/", "/product-lines/", "/product-range/", "/our-products/", "/all-products/", "/store-locator", "/where-to-buy", "/find-a-store", "/find-a-retailer"]
+    },
+    {
+      "id": "scoring.listing_path_segments",
+      "status": "allowed",
+      "kind": "class_constant",
+      "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
+      "source_symbol": "SearchScorer.LISTING_PATH_SEGMENTS",
+      "description": "Path segments used to classify listing pages.",
+      "value": ["all", "all-products", "bestseller", "bestsellers", "browse", "categories", "category", "collections", "new-products", "our-products", "products", "search", "shop-all", "where-to-buy"]
+    },
+    {
+      "id": "scoring.category_domain_preferences",
+      "status": "allowed",
+      "kind": "class_constant_with_weights",
+      "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
+      "source_symbol": "SearchScorer.CATEGORY_DOMAIN_PREFERENCES",
+      "description": "Category-triggered preferred-domain bonuses.",
+      "value": [
+        {"triggers": ["dog", "cat", "pet", "pets", "flea", "tick", "aquarium", "aquariums"], "domain_weights": {"chewy.com": 6.5, "petco.com": 6.0, "petsmart.com": 5.5, "petfood.express": 5.0, "petsuppliesplus.com": 4.5, "thepetbeastro.com": 5.5, "hollywoodfeed.com": 4.5}},
+        {"triggers": ["garden", "outdoor", "mulch", "fountain", "decor", "hardware", "farm", "pest"], "domain_weights": {"acehardware.com": 6.0, "tractorsupply.com": 5.5, "homedepot.com": 5.0, "lowes.com": 4.5}},
+        {"triggers": ["horse", "equine"], "domain_weights": {"bigdweb.com": 6.0, "doversaddlery.com": 5.5, "sstack.com": 5.5, "statelinetack.com": 5.0, "cheshirehorse.com": 5.0}},
+        {"triggers": ["fuel", "engine", "motorsport", "utility", "container", "containers", "jug", "jugs"], "domain_weights": {"summitracing.com": 6.5, "jegs.com": 6.0, "plasticproductformers.com": 5.5, "acehardware.com": 4.5}}
+      ]
+    },
+    {
+      "id": "scoring.lexical_variants",
+      "status": "allowed",
+      "kind": "class_constants",
+      "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
+      "source_symbol": "SearchScorer.LEXICAL_VARIANT_GROUPS|LEXICAL_VARIANT_EQUIVALENTS",
+      "description": "Variant groups/equivalents used by _lexical_variant_adjustment.",
+      "value": {
+        "groups": [["bulk", "packet", "packets"], ["dog", "cat"]],
+        "equivalents": {"packet": "packet", "packets": "packet", "bulk": "bulk", "dog": "dog", "cat": "cat"}
+      }
+    },
+    {
+      "id": "scoring.multi_product_indicators",
+      "status": "allowed",
+      "kind": "class_constant",
+      "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
+      "source_symbol": "SearchScorer.MULTI_PRODUCT_INDICATORS",
+      "description": "Title/snippet regex phrases that suggest a multi-product listing page.",
+      "value": ["\\bshop all\\b", "\\bbrowse\\b", "\\bcollection\\b", "\\ball products\\b", "\\bbestsellers?\\b", "\\bnew products\\b", "\\bour range\\b", "\\bvarieties\\b", "\\bview all\\b", "\\bexplore our\\b", "\\bfind a retailer\\b", "\\bwhere to buy\\b", "\\bavailable at\\b", "\\bbuy from\\b"]
+    },
+    {
+      "id": "scoring.score_search_result.weights",
+      "status": "allowed",
+      "kind": "method_numeric_weights",
+      "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
+      "source_symbol": "SearchScorer.score_search_result",
+      "description": "Existing numeric scoring signals in score_search_result. Tuning may adjust these existing weights only after approval.",
+      "value": {
+        "sku_match_bonus": 5.0,
+        "brand_token_match_cap": 3.0,
+        "brand_token_match_each": 1.0,
+        "product_token_overlap_cap": 4.0,
+        "product_token_overlap_each": 0.8,
+        "path_specific_token_overlap_cap": 2.5,
+        "path_specific_token_overlap_each": 0.9,
+        "variant_overlap_cap": 3.0,
+        "variant_overlap_each": 1.5,
+        "variant_missing_penalty": -2.0,
+        "conflicting_variant_penalty": -4.5,
+        "lexical_variant_match_bonus_each": 1.0,
+        "lexical_variant_conflict_penalty_each": -3.0,
+        "category_token_match_cap": 1.5,
+        "category_token_match_each": 0.5,
+        "product_page_indicator_bonus": 1.0,
+        "official_exact_bonus": 6.0,
+        "official_exact_prefer_manufacturer_bonus": 8.0,
+        "official_exact_specific_overlap_ge_3_bonus": 3.5,
+        "official_exact_specific_overlap_ge_2_bonus": 4.5,
+        "official_family_bonus": 5.5,
+        "official_family_prefer_manufacturer_bonus": 7.0,
+        "official_family_variant_overlap_bonus": 2.5,
+        "official_family_specific_overlap_ge_2_bonus": 2.5,
+        "major_retailer_bonus": 2.5,
+        "secondary_retailer_bonus": 1.0,
+        "marketplace_penalty": -3.5,
+        "generic_official_penalty": -4.0,
+        "noisy_query_bvstate_penalty": -2.0,
+        "noisy_query_other_penalty": -1.0,
+        "domain_success_rate_high_threshold": 0.8,
+        "domain_success_rate_high_bonus": 3.0,
+        "domain_success_rate_low_threshold": 0.3,
+        "domain_success_rate_low_penalty": -3.0,
+        "preferred_domain_first_bonus": 2.5,
+        "preferred_domain_step_down": 0.5,
+        "preferred_domain_min_bonus": 0.5,
+        "category_mass_retailer_penalty": -2.5,
+        "official_root_missing_variant_penalty": -4.0,
+        "category_page_penalty": -2.0,
+        "non_official_product_line_penalty": -1.5,
+        "ecommerce_signal_bonus": 1.0,
+        "low_quality_penalty": -6.0
+      }
+    },
+    {
+      "id": "scoring.score_search_result.boolean_signals",
+      "status": "report-only",
+      "kind": "method_decision_criteria",
+      "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
+      "source_symbol": "SearchScorer.score_search_result",
+      "description": "Existing boolean signal gates; report-only unless changed as part of approved weight/prompt tuning.",
+      "value": ["sku present in combined text", "brand token match", "product-name token overlap", "specific token path overlap", "variant token overlap", "conflicting variant tokens", "category token match", "product URL marker", "source class official_exact", "source class official_family", "source tier major_retailer", "source tier secondary_retailer", "source tier marketplace", "preferred domain match", "domain success history", "category preferred domain", "category mass retailer", "official root missing variant", "category-like URL", "product-line URL", "e-commerce text markers", "low-quality result"]
+    },
+    {
+      "id": "scoring.pick_strong_candidate_url.thresholds",
+      "status": "allowed",
+      "kind": "method_thresholds",
+      "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
+      "source_symbol": "SearchScorer.pick_strong_candidate_url",
+      "description": "Thresholds for auto-selecting a strong candidate URL.",
+      "value": {"top_score_minimum": 6.0, "top_vs_second_margin_minimum": 2.0, "missing_second_score_sentinel": -999.0}
+    },
+    {
+      "id": "scoring.score_resolved_candidate.weights",
+      "status": "allowed",
+      "kind": "method_numeric_weights",
+      "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
+      "source_symbol": "SearchScorer.score_resolved_candidate",
+      "description": "Existing resolved-candidate weights layered on top of score_search_result.",
+      "value": {"official_family_resolved_url_bonus": 4.0, "resolved_sku_or_variant_id_bonus": 3.0, "preferred_domain_first_bonus": 2.5, "preferred_domain_step_down": 0.5, "preferred_domain_min_bonus": 0.5, "resolved_conflicting_variant_penalty": -5.0}
+    },
+    {
+      "id": "brand_source_selector.prompt_and_schema",
+      "status": "allowed",
+      "kind": "prompt",
+      "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
+      "source_symbol": "BrandSourceSelector.score_snippet",
+      "description": "LLM prompt text, response schema, and deterministic generation settings for official-source snippet scoring.",
+      "value": {
+        "model_default": "gpt-4o-mini",
+        "temperature": 0.0,
+        "positive_criteria": ["Domain matches brand perfectly", "Snippet mentions Official Site, Official Store, or Our Products", "Corporate links like Investor Relations, Contact Corporate, Technical Support, Warranty", "Navigational intent as primary source of truth", "Where to Buy or Store Locator links"],
+        "negative_criteria": ["Competitive brands or Compare prices", "Retailer phrases such as discounts, free shipping, wholesale prices", "Barcode/UPC lookup databases", "Review sites, blogs, or forums"],
+        "response_keys": ["is_official", "confidence_score", "reason"],
+        "confidence_guidance": "0.9+ for certain brand domains, 0.7 for strong corporate signals"
+      }
+    },
+    {
+      "id": "validation.extraction_thresholds",
+      "status": "allowed",
+      "kind": "validation_thresholds",
+      "source_file": "apps/scraper/scrapers/ai_search/validation.py",
+      "source_symbol": "ExtractionValidator.validate_extraction_match",
+      "description": "Extraction acceptance thresholds and source-tier-specific confidence floors.",
+      "value": {"default_confidence_threshold": 0.7, "confidence_epsilon": 0.005, "untrusted_domain_confidence_floor": 0.76, "missing_sku_signal_confidence_floor": 0.83, "secondary_retailer_missing_sku_confidence_floor": 0.78, "official_or_major_retailer_missing_sku_confidence_floor": 0.75, "specific_token_overlap_confidence_exception_floor": 0.9}
+    },
+    {
+      "id": "validation.product_image_thresholds",
+      "status": "report-only",
+      "kind": "validation_thresholds",
+      "source_file": "apps/scraper/scrapers/ai_search/validation.py",
+      "source_symbol": "_MIN_PATH_SEGMENTS_FOR_PRODUCT_IMAGE|_LOGO_PLACEHOLDER_PATTERNS",
+      "description": "Image URL filtering thresholds and placeholder/logo regexes used by extraction validation.",
+      "value": {"min_path_segments_for_product_image": 2, "template_token_rejected": true, "bigcommerce_size_placeholder_replacement": "3840w"}
+    },
+    {
+      "id": "golden_dataset_regression.thresholds",
+      "status": "report-only",
+      "kind": "test_thresholds",
+      "source_file": "apps/scraper/tests/unit/test_golden_dataset_regression.py",
+      "source_symbol": "OFFICIAL_DOMAIN_DETECTION_THRESHOLD|ZERO_RETAILER_SELECTION_THRESHOLD|FIXTURE_SHAPE_VALIDITY_THRESHOLD|MAX_TIME_PER_ENTRY_MS",
+      "description": "Current golden dataset regression floors and performance budget.",
+      "value": {"official_domain_detection_threshold": 0.7, "zero_retailer_selection_threshold": 0.3, "fixture_shape_validity_threshold": 0.98, "max_time_per_entry_ms": 200}
+    },
+    {
+      "id": "forbidden.add_new_scoring_signals",
+      "status": "forbidden",
+      "kind": "guardrail",
+      "source_file": ".sisyphus/plans/benchmark-driven-scraper-finetuning.md",
+      "source_symbol": "Must NOT Have",
+      "description": "Adding new scoring signals is outside the approved tuning surface for this plan.",
+      "value": {"forbidden_action": "add_new_scoring_signals"}
+    },
+    {
+      "id": "forbidden.algorithm_rewrite",
+      "status": "forbidden",
+      "kind": "guardrail",
+      "source_file": ".sisyphus/plans/benchmark-driven-scraper-finetuning.md",
+      "source_symbol": "Must NOT Have",
+      "description": "Rewriting the scorer/ranking algorithm is outside the approved tuning surface for this plan.",
+      "value": {"forbidden_action": "rewrite_scoring_algorithm"}
+    }
+  ]
+}
