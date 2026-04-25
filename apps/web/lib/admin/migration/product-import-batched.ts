@@ -1,5 +1,9 @@
 import type { SupabaseClient } from '@/lib/supabase/server';
-import { generateUniqueSlug, transformShopSiteProduct } from './product-sync';
+import {
+    buildPipelineInputFromShopSiteProduct,
+    generateUniqueSlug,
+    transformShopSiteProduct,
+} from './product-sync';
 import { resolveCanonicalPetTypes } from './pet-type-inference';
 import type { ShopSiteProduct } from './types';
 import {
@@ -84,12 +88,26 @@ export async function importShopSiteProductsBatched({
     console.log(`[Batch Import] Loaded ${brandMap.size} brands, ${categoryMap.size} categories, ${petTypeMap.size} pet types`);
     console.log(`[Batch Import] Existing products: ${existingSkus.size}`);
 
-    // Phase 2: Transform all products
-    console.log('[Batch Import] Phase 2: Transforming products...');
+    // Phase 2: Transform all products and pre-generate unique slugs
+    console.log('[Batch Import] Phase 2: Transforming products and generating slugs...');
     const transformedProducts = shopSiteProducts.map((product) => {
         try {
             const transformed = transformShopSiteProduct(product);
-            return { product, transformed, success: true as const };
+            const isUpdate = existingSkus.has(product.sku);
+            
+            let slug: string;
+            if (isUpdate) {
+                slug = slugBySku.get(product.sku) ?? transformed.slug;
+            } else {
+                slug = generateUniqueSlug(transformed.slug, existingSlugs);
+                existingSlugs.add(slug);
+            }
+
+            return { 
+                product, 
+                transformed: { ...transformed, slug }, 
+                success: true as const 
+            };
         } catch (err) {
             errors.push({
                 sku: product.sku,
@@ -110,36 +128,45 @@ export async function importShopSiteProductsBatched({
 
     for (let i = 0; i < productBatches.length; i++) {
         const batch = productBatches[i];
-        console.log(`[Batch Import] Processing batch ${i + 1}/${productBatches.length} (${batch.length} products)...`);
+        if (i % 10 === 0) {
+            console.log(`[Batch Import] Processing batch ${i + 1}/${productBatches.length}...`);
+        }
 
         try {
-            const result = await processProductBatch(
-                supabase,
-                batch,
-                existingSkus,
-                existingSlugs,
-                slugBySku,
-                brandMap,
-            );
+            const productsToUpsert = batch.map(({ product, transformed }) => {
+                const brandId = transformed.brand_name ? brandMap.get(transformed.brand_name) : null;
+                return buildProductRecord(transformed, transformed.slug, brandId ?? null);
+            });
 
-            importedProducts.push(...result.imported);
-            created += result.created;
-            updated += result.updated;
-            failed += result.failed;
-            errors.push(...result.errors);
+            const { data: upserted, error } = await supabase
+                .from('products')
+                .upsert(productsToUpsert, { onConflict: 'sku' })
+                .select('id, sku');
+
+            if (error) {
+                console.error(`[Batch Import] Batch ${i + 1} failed:`, error.message);
+                failed += batch.length;
+                batch.forEach(({ product }) => {
+                    errors.push({ sku: product.sku, error: error.message });
+                });
+            } else if (upserted) {
+                for (const product of upserted) {
+                    const isUpdate = existingSkus.has(product.sku);
+                    importedProducts.push({ sku: product.sku, id: product.id, isUpdate });
+                    if (isUpdate) {
+                        updated++;
+                    } else {
+                        created++;
+                    }
+                }
+            }
 
             if (logProgress) {
                 await logProgress(importedProducts.length, shopSiteProducts.length);
             }
         } catch (err) {
-            console.error(`[Batch Import] Batch ${i + 1} failed:`, err);
+            console.error(`[Batch Import] Batch ${i + 1} threw exception:`, err);
             failed += batch.length;
-            batch.forEach(({ product }) => {
-                errors.push({
-                    sku: product.sku,
-                    error: `Batch failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
-                });
-            });
         }
     }
 
@@ -172,7 +199,14 @@ export async function importShopSiteProductsBatched({
             if (categoryId) {
                 categoriesToInsert.push({ product_id: productId, category_id: categoryId });
             } else {
-                console.warn(`[Batch Import] Category slug not found in DB: ${mappedSlug}`);
+                if (categoriesToInsert.length < 5) {
+                    console.warn(`[Batch Import] Slug "${mappedSlug}" found but not in categoryMap (size: ${categoryMap.size})`);
+                }
+            }
+        } else {
+            if (transformed.category_name && categoriesToInsert.length < 5) {
+                // Only log first few failures to avoid spam
+                // console.log(`[Batch Import] No mapping for: "${transformed.category_name}" > "${transformed.product_type}"`);
             }
         }
 
@@ -258,9 +292,30 @@ export async function importShopSiteProductsBatched({
         productIdBySku,
     );
 
+    // Phase 6: Cleanup (Purge disabled/removed products)
+    let deletedCount = 0;
+    // Only purge if we successfully processed a significant number of products (full sync safety)
+    if (created + updated > 100) {
+        console.log('[Batch Import] Phase 6: Purging inactive products...');
+        const activeSkus = Array.from(importedProductIdBySku.keys());
+        
+        // Safety: Process cleanup in chunks if SKU list is massive
+        const { error: cleanupError, count } = await supabase
+            .from('products')
+            .delete()
+            .not('sku', 'in', `(${activeSkus.join(',')})`);
+            
+        if (!cleanupError) {
+            deletedCount = count ?? 0;
+            console.log(`[Batch Import] Purged ${deletedCount} inactive/disabled products.`);
+        } else {
+            console.warn(`[Batch Import] Failed to purge inactive products: ${cleanupError.message}`);
+        }
+    }
+
     const duration = Date.now() - startTime;
     console.log(`[Batch Import] Complete! Duration: ${(duration / 1000).toFixed(1)}s`);
-    console.log(`[Batch Import] Results: ${created} created, ${updated} updated, ${failed} failed`);
+    console.log(`[Batch Import] Results: ${created} created, ${updated} updated, ${failed} failed, ${deletedCount} deleted`);
     console.log(`[Batch Import] Cross-sells: ${crossSellStats.linked} linked, ${crossSellStats.skippedMissing} missing skipped`);
 
     return {
@@ -269,9 +324,10 @@ export async function importShopSiteProductsBatched({
         created,
         updated,
         failed,
+        deleted: deletedCount,
         errors,
         crossSellStats,
-    };
+    } as any;
 }
 
 async function loadReferenceData(supabase: SupabaseClient) {
@@ -564,7 +620,8 @@ function buildProductRecord(
 ): Record<string, unknown> {
     const {
         brand_name: _brandName,
-        category_name,
+        category_name: _categoryName,
+        product_type: _productType,
         pet_type_name: _petTypeName,
         life_stage: _lifeStage,
         pet_size: _petSize,
@@ -583,7 +640,6 @@ function buildProductRecord(
         ...productFields,
         slug,
         brand_id: brandId,
-        category: category_name || null,
     };
 }
 
@@ -631,3 +687,70 @@ const GENERIC_FACET_INPUTS: ReadonlyArray<{ field: GenericFacetField; transforme
     { field: 'ProductField29', transformedKey: 'color' },
     { field: 'ProductField30', transformedKey: 'packaging_type' },
 ] as const;
+
+
+export async function syncExistingProductsIngestionInputFromShopSite({
+    supabase,
+    shopSiteProducts,
+}: {
+    supabase: SupabaseClient;
+    shopSiteProducts: ShopSiteProduct[];
+}): Promise<{ updated: number }> {
+    if (shopSiteProducts.length === 0) {
+        return { updated: 0 };
+    }
+
+    const inputBySku = new Map(
+        shopSiteProducts.map((product) => [product.sku, buildPipelineInputFromShopSiteProduct(product)])
+    );
+    const BATCH_SIZE = 500;
+    let updated = 0;
+
+    for (let index = 0; index < shopSiteProducts.length; index += BATCH_SIZE) {
+        const batchProducts = shopSiteProducts.slice(index, index + BATCH_SIZE);
+        const batchSkus = batchProducts.map((product) => product.sku);
+
+        const { data: existingRows, error: existingRowsError } = await supabase
+            .from("products_ingestion")
+            .select("sku, input, pipeline_status")
+            .in("sku", batchSkus);
+
+        if (existingRowsError) {
+            throw new Error(`Failed to load products_ingestion rows: ${existingRowsError.message}`);
+        }
+
+        if (!existingRows || existingRows.length === 0) {
+            continue;
+        }
+
+        const updatedAt = new Date().toISOString();
+        const updateRows = existingRows.map((row) => {
+            const existingInput =
+                row.input && typeof row.input === "object" && !Array.isArray(row.input)
+                    ? (row.input as Record<string, unknown>)
+                    : {};
+
+            return {
+                sku: row.sku,
+                pipeline_status: row.pipeline_status,
+                input: {
+                    ...existingInput,
+                    ...inputBySku.get(row.sku),
+                },
+                updated_at: updatedAt,
+            };
+        });
+
+        const { error: upsertError } = await supabase
+            .from("products_ingestion")
+            .upsert(updateRows, { onConflict: "sku" });
+
+        if (upsertError) {
+            throw new Error(`Failed to sync products_ingestion inputs: ${upsertError.message}`);
+        }
+
+        updated += updateRows.length;
+    }
+
+    return { updated };
+}

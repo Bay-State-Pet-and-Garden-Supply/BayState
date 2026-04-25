@@ -131,6 +131,8 @@ describe("finalization draft helpers", () => {
       price: " 19.50 ",
       weight: " 30 lb ",
       brandId: "",
+      customSourceUrl: "",
+      sources: [],
       stockStatus: "in_stock",
       availability: "   ",
       minimumQuantity: "   ",

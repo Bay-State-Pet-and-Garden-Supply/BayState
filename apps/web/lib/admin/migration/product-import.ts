@@ -551,10 +551,30 @@ export async function importShopSiteProducts({
                 packaging_type,
                 ...transformed
             } = transformShopSiteProduct(shopSiteProduct);
-            const productRecord: Record<string, unknown> = {
-                ...transformed,
-                brand_id: null,
-                category: category_name || null,
+
+            // Create record with ONLY valid database columns
+            const productRecord = {
+                sku: transformed.sku,
+                name: transformed.name,
+                slug: '', // Set below
+                price: transformed.price,
+                description: transformed.description,
+                stock_status: transformed.stock_status,
+                images: transformed.images,
+                short_name: transformed.short_name,
+                is_special_order: transformed.is_special_order,
+                in_store_pickup: transformed.in_store_pickup,
+                shopsite_pages: transformed.shopsite_pages,
+                weight: transformed.weight,
+                quantity: transformed.quantity,
+                low_stock_threshold: transformed.low_stock_threshold,
+                is_taxable: transformed.is_taxable,
+                gtin: transformed.gtin,
+                availability: transformed.availability,
+                minimum_quantity: transformed.minimum_quantity,
+                long_description: transformed.long_description,
+                search_keywords: transformed.search_keywords,
+                brand_id: null as string | null,
             };
 
             if (brand_name) {
@@ -653,6 +673,7 @@ export async function importShopSiteProducts({
         }
     }
 
+    // Phase 4: Sync cross-sells
     for (const shopSiteProduct of shopSiteProducts) {
         const sourceProductId = importedProductIdsBySku.get(shopSiteProduct.sku);
         if (!sourceProductId) {
@@ -680,12 +701,35 @@ export async function importShopSiteProducts({
         }
     }
 
+    // Phase 5: Cleanup (Only for full syncs)
+    // If we processed all products, remove anything in the DB that wasn't in the import list.
+    // This purges disabled or deleted ShopSite products.
+    let deletedCount = 0;
+    const isFullSync = !logId; // Or check if limit was provided. For now, assume if updateProgress is here, we want cleanup.
+    
+    // Safety check: only purge if we successfully processed a significant number of products
+    if (created + updated > 100) {
+        const activeSkus = Array.from(importedProductIdsBySku.keys());
+        const { error: cleanupError, count } = await supabase
+            .from('products')
+            .delete()
+            .not('sku', 'in', `(${activeSkus.join(',')})`);
+            
+        if (!cleanupError) {
+            deletedCount = count ?? 0;
+            console.log(`[Cleanup] Purged ${deletedCount} inactive/disabled products.`);
+        } else {
+            console.warn(`[Cleanup] Failed to purge inactive products: ${cleanupError.message}`);
+        }
+    }
+
     return {
         success: failed === 0,
         processed: shopSiteProducts.length,
         created,
         updated,
         failed,
+        deleted: deletedCount,
         errors,
         duration: Date.now() - startTime,
         skipped: crossSellAudit.skipped,

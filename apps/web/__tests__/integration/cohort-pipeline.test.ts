@@ -361,7 +361,7 @@ function moveConsistencyPassedRowsToFinalized(
                 weight: result.weight,
                 confidence_score: result.confidence_score,
             },
-            pipeline_status: result.consistencyStatus === 'passed' ? 'finalizing' : 'scraped',
+            pipeline_status: result.consistencyStatus === 'passed' ? 'consolidated' : 'scraped',
             updated_at: NOW,
             confidence_score: result.confidence_score ?? null,
             error_message: null,

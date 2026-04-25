@@ -7,7 +7,7 @@ import { PipelineSidebarTable } from '@/components/admin/pipeline/PipelineSideba
 import type { PipelineProduct } from '@/lib/pipeline/types';
 
 jest.mock('@/components/admin/pipeline/VirtualizedPipelineTable', () => ({
-  VirtualizedPipelineTable: ({ items, renderRow }: { items: unknown[]; renderRow: (item: unknown, index: number, virtualRow: { key: string; index: number }) => unknown }) => (
+  VirtualizedPipelineTable: ({ items, renderRow }: { items: unknown[]; renderRow: (item: unknown, index: number, virtualRow: { key: string; index: number }) => React.ReactNode }) => (
     <table data-testid="virtualized-pipeline-table-mock">
       <tbody>
         {items.map((item, index) => renderRow(item, index, { key: `row-${index}`, index }))}

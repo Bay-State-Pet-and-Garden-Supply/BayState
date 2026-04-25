@@ -3,9 +3,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { readFile } from 'node:fs/promises';
 import { ShopSiteClient } from '../lib/admin/migration/shopsite-client';
 import {
-    importShopSiteProducts,
+    importShopSiteProductsBatched,
     syncExistingProductsIngestionInputFromShopSite,
-} from '../lib/admin/migration/product-import';
+} from '../lib/admin/migration/product-import-batched';
 import type { SyncResult } from '../lib/admin/migration/types';
 
 const MIGRATION_SETTINGS_KEY = 'shopsite_migration';
@@ -80,6 +80,10 @@ async function main() {
     const supabaseUrl = process.env.SUPABASE_URL?.trim();
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
+    console.log(`Supabase URL: ${supabaseUrl}`);
+    console.log(`Service Key (first 5): ${serviceRoleKey?.substring(0, 5)}...`);
+    console.log(`Service Key (last 5): ...${serviceRoleKey?.substring(serviceRoleKey.length - 5)}`);
+
     if (!supabaseUrl || !serviceRoleKey) {
         throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.');
     }
@@ -138,13 +142,14 @@ async function main() {
 
         console.log(`${xmlFile ? 'Loaded' : 'Downloaded'} ${shopSiteProducts.length} ShopSite products`);
 
-        const result = await importShopSiteProducts({
+        const result = await importShopSiteProductsBatched({
             supabase,
             shopSiteProducts,
-            logId: logId ?? undefined,
-            updateProgress: logId
-                ? async (progressResult) => updateLogProgress(supabase, logId, progressResult)
-                : undefined,
+            logProgress: async (processed, total) => {
+                if (processed % 500 === 0 || processed === total) {
+                    console.log(`[Progress] ${processed}/${total} products processed...`);
+                }
+            },
         });
         const pipelineInputSync = await syncExistingProductsIngestionInputFromShopSite({
             supabase,
