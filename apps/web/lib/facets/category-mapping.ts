@@ -218,9 +218,33 @@ export const SHOPSITE_CATEGORY_MAPPING: Record<string, Record<string, string>> =
         'Trash Bags': 'home-storage-utility-trash-bags',
         '*': 'home',
     },
-    'household': {
-        'cleaning': 'home-cleaning-pest-control',
-        'pest control': 'home-cleaning-pest-control-indoor-pest-control',
+    'Farm Animal Sheep & Goat': {
+        'Supplements': 'farm-animal-goat-sheep-supplements',
+        'Treats': 'farm-animal-goat-sheep-feed',
+        '*': 'farm-animal-goat-sheep',
+    },
+    'Farm Animals': {
+        'Chicken Supplies': 'farm-animal-chicken-coop-supplies',
+        '*': 'farm-animal',
+    },
+    'Household Supplies': {
+        'Heating': 'home-heating-fuel',
+        '*': 'home',
+    },
+    'Wildlife Food': {
+        'Food': 'wild-bird-seed-food',
+        '*': 'wild-bird-seed-food',
+    },
+    'Dog Cleanup': {
+        '*': 'dog-waste-cleanup',
+    },
+    'horse grooming': {
+        'combs': 'farm-animal-livestock-health-hoof-care',
+        'hoof pick': 'farm-animal-livestock-health-hoof-care',
+        '*': 'farm-animal-livestock-health',
+    },
+    'outdoors': {
+        'hand warmers': 'home-heating-fuel',
         '*': 'home',
     },
 };
@@ -231,12 +255,38 @@ export function getMappedCategorySlug(
 ): string | null {
     if (!categoryName) return null;
 
-    const categoryMap = SHOPSITE_CATEGORY_MAPPING[categoryName];
-    if (!categoryMap) return null;
-
-    if (productTypeName && categoryMap[productTypeName]) {
-        return categoryMap[productTypeName];
+    // Support piped categories (e.g. "Barn Supplies|Farm Animal") by trying each part
+    const categories = categoryName.split('|').map(c => c.trim());
+    
+    // Create a lowercase version of the mapping for case-insensitive lookup
+    const lowerMapping: Record<string, Record<string, string>> = {};
+    for (const [cat, types] of Object.entries(SHOPSITE_CATEGORY_MAPPING)) {
+        const lowerTypes: Record<string, string> = {};
+        for (const [type, slug] of Object.entries(types)) {
+            lowerTypes[type.toLowerCase()] = slug;
+        }
+        lowerMapping[cat.toLowerCase()] = lowerTypes;
     }
 
-    return categoryMap['*'] || null;
+    for (const cat of categories) {
+        const catLower = cat.toLowerCase();
+        const typeMap = lowerMapping[catLower];
+        
+        if (typeMap) {
+            // Try specific type match
+            if (productTypeName) {
+                const typeLower = productTypeName.toLowerCase();
+                if (typeMap[typeLower]) {
+                    return typeMap[typeLower];
+                }
+            }
+            
+            // Fallback to wildcard for this category
+            if (typeMap['*']) {
+                return typeMap['*'];
+            }
+        }
+    }
+
+    return null;
 }
