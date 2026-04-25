@@ -253,16 +253,38 @@ async function syncSales(supabase: SupabaseClient, workspacePath: string, dryRun
         const batch = sales.slice(i, i + salesBatchSize);
         const mappedBatch = batch.map((sale: any) => {
             // Helper to parse the peculiar "/Date(1577941200000)/" format
+            // or standard ODBC date strings
             let tranDateStr = sale.TRAN_DATE;
             let dateObj = new Date();
-            if (tranDateStr && tranDateStr.startsWith('/Date(')) {
-                const ms = parseInt(tranDateStr.replace(/[^0-9]/g, ''), 10);
-                dateObj = new Date(ms);
+            
+            if (tranDateStr) {
+                if (tranDateStr.startsWith('/Date(')) {
+                    const ms = parseInt(tranDateStr.replace(/[^0-9]/g, ''), 10);
+                    dateObj = new Date(ms);
+                } else {
+                    const parsed = new Date(tranDateStr);
+                    if (!isNaN(parsed.getTime())) {
+                        dateObj = parsed;
+                    }
+                }
+            }
+
+            // Parse TRAN_TIME (HHMMSS format, e.g. 125941 -> 12:59:41)
+            const tranTime = sale.TRAN_TIME;
+            if (tranTime !== undefined && tranTime !== null) {
+                const timeStr = String(tranTime).padStart(6, '0');
+                const h = parseInt(timeStr.slice(0, 2), 10);
+                const m = parseInt(timeStr.slice(2, 4), 10);
+                const s = parseInt(timeStr.slice(4, 6), 10);
+                
+                if (!isNaN(h) && !isNaN(m) && !isNaN(s)) {
+                    dateObj.setHours(h, m, s, 0);
+                }
             }
 
             // Create a unique ID for the upsert since INVOICE_NO is often 0
-            // Example: "INT-1577941200000-80351-33-1"
-            const orderNumber = `INT-${dateObj.getTime()}-${sale.TRAN_TIME}-${sale.CASHIER}-${sale.REGISTER}`;
+            // We use the parsed timestamp for stability
+            const orderNumber = `INT-${dateObj.getTime()}-${sale.CASHIER}-${sale.REGISTER}`;
 
             return {
                 order_number: orderNumber,
