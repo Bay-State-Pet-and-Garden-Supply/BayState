@@ -249,6 +249,16 @@ export const SHOPSITE_CATEGORY_MAPPING: Record<string, Record<string, string>> =
     },
 };
 
+// Pre-compute lowercase mapping for efficiency
+const LOWER_CATEGORY_MAPPING: Record<string, Record<string, string>> = {};
+for (const [cat, types] of Object.entries(SHOPSITE_CATEGORY_MAPPING)) {
+    const catLower = cat.toLowerCase();
+    LOWER_CATEGORY_MAPPING[catLower] = LOWER_CATEGORY_MAPPING[catLower] || {};
+    for (const [type, slug] of Object.entries(types)) {
+        LOWER_CATEGORY_MAPPING[catLower][type.toLowerCase()] = slug;
+    }
+}
+
 export function getMappedCategorySlug(
     categoryName: string | null | undefined,
     productTypeName: string | null | undefined
@@ -257,20 +267,10 @@ export function getMappedCategorySlug(
 
     // Support piped categories (e.g. "Barn Supplies|Farm Animal") by trying each part
     const categories = categoryName.split('|').map(c => c.trim());
-    
-    // Create a lowercase version of the mapping for case-insensitive lookup
-    const lowerMapping: Record<string, Record<string, string>> = {};
-    for (const [cat, types] of Object.entries(SHOPSITE_CATEGORY_MAPPING)) {
-        const lowerTypes: Record<string, string> = {};
-        for (const [type, slug] of Object.entries(types)) {
-            lowerTypes[type.toLowerCase()] = slug;
-        }
-        lowerMapping[cat.toLowerCase()] = lowerTypes;
-    }
 
     for (const cat of categories) {
         const catLower = cat.toLowerCase();
-        const typeMap = lowerMapping[catLower];
+        const typeMap = LOWER_CATEGORY_MAPPING[catLower];
         
         if (typeMap) {
             // Try specific type match
