@@ -9,6 +9,7 @@ import {
     normalizeGenericFacetValues,
 } from '@/lib/facets/generic-normalization';
 import { splitMultiValueFacet } from '@/lib/facets/normalization';
+import { getMappedCategorySlug } from '@/lib/facets/category-mapping';
 
 interface BatchImportOptions {
     supabase: SupabaseClient;
@@ -165,13 +166,13 @@ export async function importShopSiteProductsBatched({
         if (!productId) continue;
 
         // Categories (PF24)
-        if (transformed.category_name) {
-            const categoryTokens = splitMultiValueFacet(transformed.category_name);
-            for (const token of categoryTokens) {
-                const categoryId = categoryMap.get(token);
-                if (categoryId) {
-                    categoriesToInsert.push({ product_id: productId, category_id: categoryId });
-                }
+        const mappedSlug = getMappedCategorySlug(transformed.category_name, transformed.product_type);
+        if (mappedSlug) {
+            const categoryId = categoryMap.get(mappedSlug);
+            if (categoryId) {
+                categoriesToInsert.push({ product_id: productId, category_id: categoryId });
+            } else {
+                console.warn(`[Batch Import] Category slug not found in DB: ${mappedSlug}`);
             }
         }
 
@@ -284,7 +285,7 @@ async function loadReferenceData(supabase: SupabaseClient) {
     ] = await Promise.all([
         supabase.from('products').select('id, sku, slug'),
         supabase.from('brands').select('id, name'),
-        supabase.from('categories').select('id, name'),
+        supabase.from('categories').select('id, name, slug'),
         supabase.from('pet_types').select('id, name'),
         supabase.from('facet_definitions').select('id, name'),
         supabase.from('facet_values').select('id, facet_definition_id, normalized_value'),
@@ -305,7 +306,7 @@ async function loadReferenceData(supabase: SupabaseClient) {
     }
 
     const brandMap = new Map(brandsResult.data?.map((b) => [b.name, b.id]) || []);
-    const categoryMap = new Map(categoriesResult.data?.map((c) => [c.name, c.id]) || []);
+    const categoryMap = new Map(categoriesResult.data?.map((c) => [c.slug, c.id]) || []);
     const petTypeMap = new Map(petTypesResult.data?.map((p) => [p.name, p.id]) || []);
     const facetDefinitionMap = new Map(
         facetDefinitionsResult.data?.map((d) => [d.name as GenericFacetName, d.id]) || [],
