@@ -15,7 +15,7 @@ on:
 jobs:
   python-quality:
     name: Python Quality & Tests
-    runs-on: [self-hosted, linux]
+    runs-on: [self-hosted, Linux, ARM64, docker]
     defaults:
       run:
         working-directory: ./apps/scraper
