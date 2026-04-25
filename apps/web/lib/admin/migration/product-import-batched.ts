@@ -326,9 +326,8 @@ export async function importShopSiteProductsBatched({
     );
 
     // Phase 6: Cleanup (Purge disabled/removed products)
-    let deletedCount = 0;
     // Only purge if we successfully processed a significant number of products (full sync safety)
-    if (created + updated > 100) {
+    if (created + updated > 100 && deletedCount === 0) {
         console.log('[Batch Import] Phase 6: Purging inactive products...');
         const activeSkusSet = new Set(importedProductIdBySku.keys());
         const skusToDelete = Array.from(existingSkus).filter(sku => !activeSkusSet.has(sku));
