@@ -718,7 +718,7 @@ export async function syncExistingProductsIngestionInputFromShopSite({
 
         const { data: existingRows, error: existingRowsError } = await supabase
             .from('products_ingestion')
-            .select('sku, input')
+            .select('sku, input, pipeline_status')
             .in('sku', batchSkus);
 
         if (existingRowsError) {
@@ -738,6 +738,7 @@ export async function syncExistingProductsIngestionInputFromShopSite({
 
             return {
                 sku: row.sku,
+                pipeline_status: row.pipeline_status,
                 input: {
                     ...existingInput,
                     ...inputBySku.get(row.sku),
