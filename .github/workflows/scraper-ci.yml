@@ -46,6 +46,6 @@ jobs:
       - name: Run Tests
         env:
           PYTHONPATH: .
-        # Run unit/integration tests only — skip benchmark and live tests
-        # Benchmark tests run in benchmark-live.yml workflow
+        # Offline deterministic tests only — excludes live API calls, benchmarks, and performance tests
+        # Live/benchmark tests run in benchmark-live.yml (scheduled) and ai-search-benchmark.yml (PR)
         run: pytest -m "not benchmark and not live and not performance" --ignore=tests/benchmarks
