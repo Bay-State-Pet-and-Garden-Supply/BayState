@@ -1,5 +1,10 @@
-const supabaseUrl = 'https://fapnuczapcatelxxmrail.supabase.co';
-const serviceRoleKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhcG51Y3phcGN0ZWx4eG1yYWlsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTc0MzcxOCwiZXhwIjoyMDgxMzE5NzE4fQ.-X_NU9wDFA5RwfQQ7oWrrorW_b9h_TSfGldtnrmqG2g';
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('❌ Error: SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables are required.');
+  process.exit(1);
+}
 
 const endpoint = new URL(`${supabaseUrl}/rest/v1/site_settings`);
 endpoint.searchParams.set('key', 'eq.scraper_runner_release_latest');
@@ -7,8 +12,8 @@ endpoint.searchParams.set('key', 'eq.scraper_runner_release_latest');
 const response = await fetch(endpoint, {
   method: 'GET',
   headers: {
-    apikey: serviceRoleKey,
-    Authorization: `Bearer ${serviceRoleKey}`,
+    apikey: SUPABASE_SERVICE_ROLE_KEY,
+    Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
   },
 });
 
