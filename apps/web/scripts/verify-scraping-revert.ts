@@ -1,9 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
-// Load environment variables from .supabase_env if not present
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://fapnuczapctelxxmrail.supabase.co';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhcG51Y3phcGN0ZWx4eG1yYWlsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTc0MzcxOCwiZXhwIjoyMDgxMzE5NzE4fQ.-X_NU9wDFA5RwfQQ7oWrrorW_b9h_TSfGldtnrmqG2g';
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+    console.error('❌ Error: SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables are required.');
+    process.exit(1);
+}
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 const API_BASE_URL = 'http://localhost:3000';
