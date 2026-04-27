@@ -777,7 +777,7 @@ class SearchScorer:
             specific_overlap_count = len(specific_expected_tokens.intersection(combined_tokens))
             if specific_expected_tokens and path_tokens:
                 path_overlap = len(specific_expected_tokens.intersection(path_tokens))
-                score += min(2.5, float(path_overlap) * 0.9)
+                score += min(2.5, float(path_overlap) * 1.25)
         else:
             specific_expected_tokens = set()
             specific_overlap_count = 0
@@ -792,7 +792,7 @@ class SearchScorer:
             elif source_class != "official_family":
                 score -= 2.0
             if source_class != "official_family" and self._matching.has_conflicting_variant_tokens(product_name, combined):
-                score -= 4.5
+                score -= 12.0
 
         score += self._lexical_variant_adjustment(product_name, combined)
 
@@ -857,7 +857,7 @@ class SearchScorer:
         if source_class in {"official_generic", "official_root"}:
             # Bypass generic penalty if the domain is explicitly preferred (e.g. from brand registry)
             if not is_preferred:
-                score -= 4.0
+                score += 11.0
 
         score += self._query_param_penalty(url)
 
@@ -885,7 +885,7 @@ class SearchScorer:
         if source_tier == "official" and self._is_root_path(url) and expected_variant_tokens and variant_overlap == 0:
             # Brand homepages often mention the product family but are poor extraction
             # targets when the exact variant is absent from the path/snippet.
-            score -= 4.0
+            score -= 18.0
 
         # Category page penalty
         if self.is_category_like_url(url):

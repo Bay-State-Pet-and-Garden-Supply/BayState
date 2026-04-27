@@ -77,6 +77,15 @@ def test_inventory_includes_required_sku_and_official_exact_weights_as_allowed()
     assert weights["official_exact_prefer_manufacturer_bonus"] == 8.0
 
 
+def test_inventory_tracks_current_tuned_search_scorer_weights() -> None:
+    weights = _entries_by_id()["scoring.score_search_result.weights"]["value"]
+
+    assert weights["path_specific_token_overlap_each"] == 1.25
+    assert weights["conflicting_variant_penalty"] == -12.0
+    assert weights["official_generic_root_non_preferred_bonus"] == 11.0
+    assert weights["official_root_missing_variant_penalty"] == -18.0
+
+
 def test_inventory_includes_brand_source_selector_prompt_decision_criteria() -> None:
     entry = _entries_by_id()["brand_source_selector.prompt_and_schema"]
     value = entry["value"]
