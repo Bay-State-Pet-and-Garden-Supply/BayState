@@ -1,4 +1,8 @@
-"""Manual approval report and tuning gate for benchmark-driven scraper tuning."""
+"""Manual approval report and tuning gate for benchmark-driven scraper tuning.
+
+The generated report captures an evidence-based recommendation. A separate
+recorded approval state is required before tuning is allowed to proceed.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +13,8 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal, TypedDict, cast
+
+from tests.benchmarks.unified.report_contract import validate_benchmark_report
 
 
 ApprovalState = Literal["Approve", "Deny", "Request More Data"]
@@ -21,9 +27,13 @@ class ApprovalGateError(RuntimeError):
 class ApprovalReport(TypedDict):
     schema_version: str
     generated_at: str
-    approval_state: ApprovalState
+    recommended_state: ApprovalState
+    approval_state: ApprovalState | None
+    approval_recorded_at: str | None
+    approval_note: str | None
     state_reason: str
     baseline_summary: dict[str, object]
+    live_baseline_summary: dict[str, object] | None
     cost_blocker_summary: dict[str, object]
     tuning_recommendations: list[dict[str, object]]
     approval_options: list[ApprovalState]
@@ -34,6 +44,7 @@ def build_approval_report(
     cv_report: Mapping[str, object],
     baseline_evidence: str,
     cost_evidence: str,
+    baseline_reports: Sequence[Mapping[str, object]] | None = None,
     generated_at: str | None = None,
 ) -> ApprovalReport:
     """Build a deterministic approval report from offline CV metrics and blocker evidence."""
@@ -41,14 +52,18 @@ def build_approval_report(
     missing_credentials = _missing_credentials(baseline_evidence)
     live_baseline_missing = "Three baseline live runs could not be executed" in baseline_evidence or bool(missing_credentials)
     cost_preflight_missing = "No repository-supported `--max-cost`" in cost_evidence or "No repository-supported --max-cost" in cost_evidence
-    approval_state: ApprovalState = "Request More Data" if live_baseline_missing or cost_preflight_missing else "Deny"
+    recommended_state: ApprovalState = "Request More Data" if live_baseline_missing or cost_preflight_missing else "Approve"
 
     return {
         "schema_version": "benchmark-approval-report-v1",
         "generated_at": generated_at or datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-        "approval_state": approval_state,
+        "recommended_state": recommended_state,
+        "approval_state": None,
+        "approval_recorded_at": None,
+        "approval_note": None,
         "state_reason": _state_reason(live_baseline_missing=live_baseline_missing, cost_preflight_missing=cost_preflight_missing),
         "baseline_summary": _baseline_summary(cv_report),
+        "live_baseline_summary": _live_baseline_summary(baseline_reports or []),
         "cost_blocker_summary": {
             "live_baseline_runs_completed": 0 if live_baseline_missing else 3,
             "required_live_runs": 3,
@@ -64,14 +79,20 @@ def build_approval_report(
 def render_approval_markdown(report: Mapping[str, object]) -> str:
     """Render a self-contained Markdown approval report."""
 
+    recommended_state = _recommended_state(report)
+    approval_state = _approval_state(report)
+    approval_recorded_at = report.get("approval_recorded_at")
+    approval_note = report.get("approval_note")
     baseline = cast(Mapping[str, object], report["baseline_summary"])
+    live_baseline = cast(Mapping[str, object] | None, report.get("live_baseline_summary"))
     aggregate_metrics = cast(Mapping[str, Mapping[str, object]], baseline["aggregate_metrics"])
     cost_blockers = cast(Mapping[str, object], report["cost_blocker_summary"])
     lines = [
         "# Benchmark Tuning Approval Report",
         "",
         f"- Generated At: `{report['generated_at']}`",
-        f"- Recommended State: `{report['approval_state']}`",
+        f"- Recommended State: `{recommended_state}`",
+        f"- Recorded Approval: `{approval_state or 'pending'}`",
         f"- Reason: {report['state_reason']}",
         f"- Approval Options: {', '.join(cast(Sequence[str], report['approval_options']))}",
         "",
@@ -112,6 +133,31 @@ def render_approval_markdown(report: Mapping[str, object]) -> str:
     for item in cast(Sequence[Mapping[str, object]], baseline["confusion_matrix_summary"]):
         lines.append(f"| {item['expected']} | {item['actual']} | {item['count']} |")
 
+    if live_baseline:
+        lines.extend([
+            "",
+            "## Live Baseline Summary",
+            "",
+            f"- Runs: {live_baseline['runs']}",
+            f"- Dataset: `{live_baseline['dataset_id']}`",
+            "",
+            "| Metric | Mean | Std |",
+            "| --- | ---: | ---: |",
+        ])
+        aggregate = cast(Mapping[str, Mapping[str, float]], live_baseline["aggregate_metrics"])
+        for metric in ("top1_official_accuracy", "retailer_false_positive_rate", "field_correctness", "cost_usd", "latency_ms"):
+            lines.append(f"| {metric} | {aggregate[metric]['mean']:.6f} | {aggregate[metric]['std']:.6f} |")
+
+        lines.extend([
+            "",
+            "| Run | Generated At | Top-1 Accuracy | Retailer FPR | Field Correctness | Cost USD | Latency ms |",
+            "| --- | --- | ---: | ---: | ---: | ---: | ---: |",
+        ])
+        for run in cast(Sequence[Mapping[str, object]], live_baseline["run_summaries"]):
+            lines.append(
+                f"| {run['run_id']} | {run['generated_at']} | {run['top1_official_accuracy']:.6f} | {run['retailer_false_positive_rate']:.6f} | {run['field_correctness']:.6f} | {run['cost_usd']:.6f} | {run['latency_ms']:.3f} |"
+            )
+
     lines.extend([
         "",
         "## Cost And Blockers",
@@ -122,6 +168,11 @@ def render_approval_markdown(report: Mapping[str, object]) -> str:
     ])
     for blocker in cast(Sequence[str], cost_blockers["blockers"]):
         lines.append(f"- Blocker: {blocker}")
+
+    if approval_recorded_at:
+        lines.append(f"- Approval Recorded At: `{approval_recorded_at}`")
+    if isinstance(approval_note, str) and approval_note:
+        lines.append(f"- Approval Note: {approval_note}")
 
     lines.extend(["", "## Candidate Tuning Recommendations", "", "| Candidate | Target | Expected Impact | Risk | Status |", "| --- | --- | --- | --- | --- |"])
     for recommendation in cast(Sequence[Mapping[str, object]], report["tuning_recommendations"]):
@@ -149,13 +200,30 @@ def write_approval_artifacts(report: Mapping[str, object], output_dir: Path, *, 
     return json_path, markdown_path
 
 
+def record_tuning_approval(
+    approval_artifact: Path,
+    *,
+    approval_state: ApprovalState,
+    note: str | None = None,
+    recorded_at: str | None = None,
+) -> tuple[Path, Path]:
+    """Record an explicit approval decision on an existing approval artifact."""
+
+    payload = _load_json_object(approval_artifact)
+    payload["recommended_state"] = _recommended_state(payload)
+    payload["approval_state"] = approval_state
+    payload["approval_recorded_at"] = recorded_at or datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    payload["approval_note"] = note
+    return write_approval_artifacts(payload, approval_artifact.parent, basename=approval_artifact.stem)
+
+
 def require_tuning_approval(approval_artifact: Path) -> None:
     """Fail unless the approval artifact exists and explicitly approves tuning."""
 
     if not approval_artifact.exists():
         raise ApprovalGateError(f"approval required: missing approval artifact {approval_artifact}")
     payload = _load_json_object(approval_artifact)
-    state = payload.get("approval_state")
+    state = _approval_state(payload)
     if state != "Approve":
         raise ApprovalGateError(f"approval required: approval_state is {state!r}, expected 'Approve'")
 
@@ -168,7 +236,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     generate_parser.add_argument("--cv-report", type=Path, required=True)
     generate_parser.add_argument("--baseline-evidence", type=Path, required=True)
     generate_parser.add_argument("--cost-evidence", type=Path, required=True)
+    generate_parser.add_argument("--baseline-artifacts-dir", type=Path, default=None)
     generate_parser.add_argument("--output-dir", type=Path, required=True)
+
+    record_parser = subparsers.add_parser("record-approval", help="Record an explicit approval decision on an existing approval report")
+    record_parser.add_argument("--approval-artifact", type=Path, required=True)
+    record_parser.add_argument("--state", choices=["Approve", "Deny", "Request More Data"], required=True)
+    record_parser.add_argument("--note", default=None)
 
     check_parser = subparsers.add_parser("check-approval", help="Fail unless tuning has explicit approval")
     check_parser.add_argument("--approval-artifact", type=Path, required=True)
@@ -179,9 +253,28 @@ def main(argv: Sequence[str] | None = None) -> int:
             cv_report=_load_json_object(args.cv_report),
             baseline_evidence=args.baseline_evidence.read_text(encoding="utf-8"),
             cost_evidence=args.cost_evidence.read_text(encoding="utf-8"),
+            baseline_reports=_load_baseline_reports(args.baseline_artifacts_dir),
         )
         json_path, markdown_path = write_approval_artifacts(report, args.output_dir)
-        sys.stdout.write(f"Approval state: {report['approval_state']}\nJSON report: {json_path}\nMarkdown report: {markdown_path}\n")
+        sys.stdout.write(
+            f"Recommended state: {report['recommended_state']}\n"
+            f"Approval state: {report['approval_state']}\n"
+            f"JSON report: {json_path}\n"
+            f"Markdown report: {markdown_path}\n"
+        )
+        return 0
+
+    if args.command == "record-approval":
+        json_path, markdown_path = record_tuning_approval(
+            args.approval_artifact,
+            approval_state=cast(ApprovalState, args.state),
+            note=args.note,
+        )
+        sys.stdout.write(
+            f"Recorded approval state: {args.state}\n"
+            f"JSON report: {json_path}\n"
+            f"Markdown report: {markdown_path}\n"
+        )
         return 0
 
     if args.command == "check-approval":
@@ -215,6 +308,42 @@ def _baseline_summary(cv_report: Mapping[str, object]) -> dict[str, object]:
     }
 
 
+def _live_baseline_summary(baseline_reports: Sequence[Mapping[str, object]]) -> dict[str, object] | None:
+    if not baseline_reports:
+        return None
+
+    validated_reports = [validate_benchmark_report(report) for report in baseline_reports]
+    validated_reports.sort(key=lambda report: str(report["run_id"]))
+
+    def _collect(metric: str) -> list[float]:
+        return [float(report[metric]) for report in validated_reports]
+
+    aggregate_metrics = {
+        metric: _aggregate_metric(_collect(metric))
+        for metric in ("top1_official_accuracy", "retailer_false_positive_rate", "field_correctness", "cost_usd", "latency_ms")
+    }
+
+    run_summaries = [
+        {
+            "run_id": report["run_id"],
+            "generated_at": report["generated_at"],
+            "top1_official_accuracy": float(report["top1_official_accuracy"]),
+            "retailer_false_positive_rate": float(report["retailer_false_positive_rate"]),
+            "field_correctness": float(report["field_correctness"]),
+            "cost_usd": float(report["cost_usd"]),
+            "latency_ms": float(report["latency_ms"]),
+        }
+        for report in validated_reports
+    ]
+
+    return {
+        "runs": len(validated_reports),
+        "dataset_id": validated_reports[0]["dataset_id"],
+        "aggregate_metrics": aggregate_metrics,
+        "run_summaries": run_summaries,
+    }
+
+
 def _missing_credentials(evidence: str) -> list[str]:
     credentials = []
     for name in ("SERPER_API_KEY", "LLM_API_KEY", "SCRAPER_API_KEY"):
@@ -229,7 +358,15 @@ def _state_reason(*, live_baseline_missing: bool, cost_preflight_missing: bool) 
         reasons.append("required three-run live baseline is missing")
     if cost_preflight_missing:
         reasons.append("dollar-denominated max-cost preflight support is missing")
-    return "; ".join(reasons) if reasons else "live baseline and cost preflight evidence are present, but no approval was recorded"
+    return "; ".join(reasons) if reasons else "live baseline and cost preflight evidence are present; awaiting explicit approval decision"
+
+
+def _aggregate_metric(values: Sequence[float]) -> dict[str, float]:
+    if not values:
+        return {"mean": 0.0, "std": 0.0}
+    mean = sum(values) / len(values)
+    variance = sum((value - mean) ** 2 for value in values) / (len(values) - 1) if len(values) > 1 else 0.0
+    return {"mean": round(mean, 6), "std": round(variance ** 0.5, 6)}
 
 
 def _blockers(*, live_baseline_missing: bool, cost_preflight_missing: bool) -> list[str]:
@@ -319,6 +456,32 @@ def _load_json_object(path: Path) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError(f"expected JSON object: {path}")
     return payload
+
+
+def _load_baseline_reports(path: Path | None) -> list[dict[str, Any]]:
+    if path is None or not path.exists():
+        return []
+    reports = []
+    for report_path in sorted(path.glob("baseline-*-report.json")):
+        reports.append(_load_json_object(report_path))
+    return reports
+
+
+def _recommended_state(payload: Mapping[str, object]) -> ApprovalState:
+    state = payload.get("recommended_state")
+    if state in {"Approve", "Deny", "Request More Data"}:
+        return cast(ApprovalState, state)
+    legacy_state = payload.get("approval_state")
+    if legacy_state in {"Approve", "Deny", "Request More Data"}:
+        return cast(ApprovalState, legacy_state)
+    return "Request More Data"
+
+
+def _approval_state(payload: Mapping[str, object]) -> ApprovalState | None:
+    state = payload.get("approval_state")
+    if state in {"Approve", "Deny", "Request More Data"}:
+        return cast(ApprovalState, state)
+    return None
 
 
 if __name__ == "__main__":

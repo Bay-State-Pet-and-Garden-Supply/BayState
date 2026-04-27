@@ -4,7 +4,10 @@ import copy
 import json
 from pathlib import Path
 
+import pytest
+
 from tests.benchmarks.unified.cv_report import (
+    build_live_baseline_report,
     build_offline_cv_report,
     compare_report_to_baseline,
     main,
@@ -117,6 +120,65 @@ def test_generate_command_writes_json_and_markdown(tmp_path: Path, capsys) -> No
     assert (output_dir / "offline-cv-report.md").exists()
 
 
+def test_live_baseline_report_uses_search_client_results_and_writes_replay_artifact(tmp_path: Path) -> None:
+    dataset_path, _search_results_path = _write_fixture_files(tmp_path)
+    replay_path = tmp_path / "live-search-results.json"
+    search_client = _LiveSearchClientStub(
+        {
+            "Acme Hammer": [{"url": "https://acme.com/products/hammer", "title": "Acme Hammer", "description": "Official Acme hammer page"}],
+            "Acme Saw": [{"url": "https://acme.com/products/saw", "title": "Acme Saw", "description": "Official Acme saw page"}],
+            "Bravo Hose": [{"url": "https://bravo.com/products/hose", "title": "Bravo Hose", "description": "Official Bravo hose page"}],
+            "Bravo Rake": [{"url": "https://bravo.com/products/rake", "title": "Bravo Rake", "description": "Official Bravo rake page"}],
+            "Retail Paint": [
+                {
+                    "url": "https://www.homedepot.com/p/retail-paint",
+                    "title": "Retail Paint",
+                    "description": "Retail paint detail page",
+                }
+            ],
+        }
+    )
+
+    report = build_live_baseline_report(
+        dataset_path=dataset_path,
+        run_id="baseline-1",
+        search_client=search_client,
+        max_cost_usd=0.01,
+        search_results_output_path=replay_path,
+    )
+
+    replay_payload = json.loads(replay_path.read_text(encoding="utf-8"))
+
+    assert report["run_id"] == "baseline-1"
+    assert report["top1_official_accuracy"] == 1.0
+    assert report["retailer_false_positive_rate"] == 0.0
+    assert report["field_correctness"] == 1.0
+    assert report["cost_usd"] == 0.005
+    assert report["model_provider_metadata"]["search_provider"] == "live-serper"
+    assert report["model_provider_metadata"]["live_api_calls"] == 5
+    assert replay_payload["schema_version"] == 1
+    assert len(replay_payload["entries"]) == 5
+    assert search_client.queries == [
+        "Acme Hammer",
+        "Acme Saw",
+        "Bravo Hose",
+        "Bravo Rake",
+        "Retail Paint",
+    ]
+
+
+def test_live_baseline_report_refuses_to_run_when_cost_cap_is_too_low(tmp_path: Path) -> None:
+    dataset_path, _search_results_path = _write_fixture_files(tmp_path)
+
+    with pytest.raises(ValueError, match=r"Estimated live baseline cost \$0.01 exceeds max_cost_usd \$0.00"):
+        build_live_baseline_report(
+            dataset_path=dataset_path,
+            run_id="baseline-tight-cap",
+            search_client=_LiveSearchClientStub({}),
+            max_cost_usd=0.004,
+        )
+
+
 def _write_fixture_files(tmp_path: Path) -> tuple[Path, Path]:
     entries = [
         _entry("sku-1", "Acme", "Tools", "Acme Hammer", "https://acme.com/products/hammer"),
@@ -156,3 +218,13 @@ def _entry(sku: str, brand: str, category: str, product_name: str, expected_url:
         "product_name": product_name,
         "expected_source_url": expected_url,
     }
+
+
+class _LiveSearchClientStub:
+    def __init__(self, results_by_query: dict[str, list[dict[str, object]]]) -> None:
+        self.results_by_query = results_by_query
+        self.queries: list[str] = []
+
+    async def search(self, query: str) -> tuple[list[dict[str, object]], str | None]:
+        self.queries.append(query)
+        return [dict(result) for result in self.results_by_query.get(query, [])], None

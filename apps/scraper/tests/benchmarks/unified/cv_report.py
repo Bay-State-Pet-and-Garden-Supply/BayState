@@ -11,6 +11,7 @@ import json
 import math
 import subprocess
 import sys
+import time
 from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from datetime import datetime, timezone
@@ -18,6 +19,7 @@ from pathlib import Path
 from typing import Any, Literal, TypedDict, cast
 from urllib.parse import urlparse, urlunparse
 
+from scrapers.ai_search.search import SearchClient
 from scrapers.ai_search.scoring import SearchScorer, reset_domain_history
 from tests.benchmarks.unified.cv_split import CVFold, build_stratified_folds, load_split_entries
 from tests.benchmarks.unified.report_contract import (
@@ -33,6 +35,8 @@ DEFAULT_THRESHOLDS = {
     "retailer_false_positive_rate": 1.0,
     "field_correctness": 0.0,
 }
+
+SERPER_COST_PER_QUERY_USD = 0.001
 
 
 class EvaluationEntry(TypedDict):
@@ -128,6 +132,66 @@ def build_offline_cv_report(
         ],
         "aggregate_metrics": aggregate_metrics,
         "stratification_fallbacks": list(split.stratification_fallbacks),
+    }
+    report["pass_fail"] = build_pass_fail_comparison(report, thresholds or DEFAULT_THRESHOLDS)
+    validate_benchmark_report(report)
+    return report
+
+
+def build_live_baseline_report(
+    *,
+    dataset_path: Path,
+    run_id: str,
+    search_client: Any | None = None,
+    max_cost_usd: float = 50.0,
+    search_results_output_path: Path | None = None,
+    thresholds: Mapping[str, float] | None = None,
+) -> dict[str, object]:
+    """Build a benchmark-contract report using live search results.
+
+    Search results are fetched once per dataset query, evaluated with the current
+    scorer, and optionally persisted as a replay artifact for later offline use.
+    """
+
+    entries = _load_evaluation_entries(dataset_path)
+    estimated_cost = round(len(entries) * SERPER_COST_PER_QUERY_USD, 6)
+    if estimated_cost > max_cost_usd:
+        raise ValueError(
+            f"Estimated live baseline cost ${estimated_cost:.2f} exceeds max_cost_usd ${max_cost_usd:.2f}"
+        )
+
+    resolved_search_client = search_client or SearchClient(max_results=15)
+    search_results, generated_at, latency_ms = _collect_live_search_results(entries, resolved_search_client)
+    if search_results_output_path is not None:
+        _write_search_results_fixture(entries=entries, search_results=search_results, output_path=search_results_output_path)
+
+    reset_domain_history()
+    scorer = SearchScorer()
+    rows = [_score_entry(entry=entry, search_results=search_results, scorer=scorer) for entry in entries]
+    reset_domain_history()
+    summary = _summarize_rows(rows)
+    report: dict[str, object] = {
+        "run_id": run_id,
+        "commit_sha": _get_commit_sha(),
+        "generated_at": generated_at,
+        "dataset_id": f"{dataset_path.name}:{len(entries)}",
+        "top1_official_accuracy": summary["top1_official_accuracy"],
+        "retailer_false_positive_rate": summary["retailer_false_positive_rate"],
+        "field_correctness": summary["field_correctness"],
+        "cost_usd": estimated_cost,
+        "latency_ms": round(latency_ms, 3),
+        "brand_breakdown": _breakdown(rows=rows, field="brand"),
+        "category_breakdown": _breakdown(rows=rows, field="category"),
+        "confusion_matrix": summary["confusion_matrix"],
+        "model_provider_metadata": {
+            "search_provider": "live-serper",
+            "llm_provider": "none",
+            "model": "none",
+            "live_api_calls": len(entries),
+            "search_results_artifact": str(search_results_output_path) if search_results_output_path is not None else None,
+            "max_cost_usd": max_cost_usd,
+        },
+        "pass_fail": {},
     }
     report["pass_fail"] = build_pass_fail_comparison(report, thresholds or DEFAULT_THRESHOLDS)
     validate_benchmark_report(report)
@@ -285,6 +349,45 @@ def _load_search_results(path: Path) -> dict[str, list[dict[str, Any]]]:
         if query and isinstance(results, list):
             results_by_query[query] = [result for result in results if isinstance(result, dict)]
     return results_by_query
+
+
+def _collect_live_search_results(
+    entries: Sequence[EvaluationEntry],
+    search_client: Any,
+) -> tuple[dict[str, list[dict[str, Any]]], str, float]:
+    async def _run() -> tuple[dict[str, list[dict[str, Any]]], str, float]:
+        started = time.perf_counter()
+        generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        results_by_query: dict[str, list[dict[str, Any]]] = {}
+        for entry in entries:
+            results, error = await search_client.search(entry["query"])
+            if error:
+                raise ValueError(f"live search failed for query {entry['query']!r}: {error}")
+            results_by_query[entry["query"]] = [dict(result) for result in results if isinstance(result, dict)]
+        latency_ms = (time.perf_counter() - started) * 1000.0
+        return results_by_query, generated_at, latency_ms
+
+    return _run_sync(_run())
+
+
+def _write_search_results_fixture(
+    *,
+    entries: Sequence[EvaluationEntry],
+    search_results: Mapping[str, list[dict[str, Any]]],
+    output_path: Path,
+) -> None:
+    payload = {
+        "schema_version": 1,
+        "entries": [
+            {
+                "query": entry["query"],
+                "results": search_results.get(entry["query"], []),
+            }
+            for entry in entries
+        ],
+    }
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def _evaluate_fold(
@@ -450,6 +553,15 @@ def _load_json_object(path: Path) -> dict[str, Any]:
 
 def _rate(numerator: int, denominator: int) -> float:
     return round(numerator / denominator, 6) if denominator else 0.0
+
+
+def _run_sync(awaitable: Any) -> Any:
+    try:
+        import asyncio
+
+        return asyncio.run(awaitable)
+    except RuntimeError as exc:
+        raise RuntimeError("live baseline helpers require a synchronous caller") from exc
 
 
 def _get_commit_sha() -> str:

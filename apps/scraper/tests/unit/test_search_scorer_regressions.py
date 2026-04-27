@@ -89,6 +89,197 @@ def test_scoring_prefers_exact_official_stella_page_over_retailer() -> None:
     assert official_score > retailer_score
 
 
+@pytest.mark.parametrize(
+    ("result", "sku", "brand", "product_name"),
+    [
+        (
+            _result(
+                "https://www.stellaandchewys.com/products/stellas-shredrs-beef-salmon-recipe-in-broth",
+                "Stella's Shredrs Beef & Salmon Recipe in Broth for Dogs",
+            ),
+            "810027374677",
+            "Stella & Chewy's",
+            "Stella & Chewy's Dog Topper Shreds Beef Salmon In Broth 2.8 oz",
+        ),
+        (
+            _result(
+                "https://fluvalaquatics.com/us/shop/product/betta-premium-aquarium-kit-2-6-us-gal-10-l",
+                "Betta Premium Aquarium Kit, 2.6 US Gal / 10 L - Fluval USA",
+            ),
+            "015561104982",
+            "Fluval",
+            "Fluval Betta Premium Aquarium Kit 2.6 Gallon",
+        ),
+        (
+            _result(
+                "https://mannapro.com/products/bite-size-nuggets-horse-treats",
+                "Bite-Size Nuggets Horse Treats | MannaPro",
+            ),
+            "095668302580",
+            "Manna Pro",
+            "Manna Pro Bite Size Alfalfa Molasses Nuggets 4 Lb",
+        ),
+    ],
+)
+def test_clean_official_product_pages_can_remain_generic_classification(
+    result: dict[str, object],
+    sku: str,
+    brand: str,
+    product_name: str,
+) -> None:
+    scorer = SearchScorer()
+
+    source_class = scorer.classify_result_source(result, sku=sku, brand=brand, product_name=product_name)
+
+    assert source_class == "official_generic"
+
+
+def test_conflicting_official_sibling_page_stays_generic_classification() -> None:
+    scorer = SearchScorer()
+    sibling_result = _result(
+        "https://www.fourpaws.com/products/wee-wee-cat-pee-pads",
+        "Wee-Wee Cat Pads",
+        'Each pad measures 28" x 30" and includes 10 cat urine pads.',
+    )
+
+    source_class = scorer.classify_result_source(
+        sibling_result,
+        sku="045663976866",
+        brand="Four Paws",
+        product_name="Four Paws Wee-Wee Cat Pads 11x17 10ct",
+    )
+
+    assert source_class == "official_generic"
+
+
+def test_scoring_prefers_exact_official_pdp_over_broader_official_generic_page() -> None:
+    scorer = SearchScorer()
+    exact_result = _result(
+        "https://brand.com/products/chicken-recipe-dog-food-5lb",
+        "Chicken Recipe Dog Food 5 lb | Brand",
+    )
+    broader_result = _result(
+        "https://brand.com/products/dog-food",
+        "Dog Food | Brand",
+    )
+
+    exact_score = scorer.score_search_result(
+        exact_result,
+        sku="12345",
+        brand="Brand",
+        product_name="Brand Chicken Recipe Dog Food 5 lb",
+        category="Dog Food Dry",
+        prefer_manufacturer=True,
+    )
+    broader_score = scorer.score_search_result(
+        broader_result,
+        sku="12345",
+        brand="Brand",
+        product_name="Brand Chicken Recipe Dog Food 5 lb",
+        category="Dog Food Dry",
+        prefer_manufacturer=True,
+    )
+
+    assert exact_score > broader_score
+
+
+def test_scoring_prefers_exact_major_retailer_pdp_over_broader_official_generic_page() -> None:
+    scorer = SearchScorer()
+    broader_official_result = _result(
+        "https://brand.com/products/dog-treats",
+        "Dog Treats | Brand",
+    )
+    exact_retailer_result = _result(
+        "https://www.chewy.com/brand-chicken-recipe-dog-treats/dp/12345",
+        "Brand Chicken Recipe Dog Treats 5 lb",
+    )
+
+    broader_official_score = scorer.score_search_result(
+        broader_official_result,
+        sku="12345",
+        brand="Brand",
+        product_name="Brand Chicken Recipe Dog Treats 5 lb",
+        category="Dog Treats",
+        prefer_manufacturer=True,
+    )
+    exact_retailer_score = scorer.score_search_result(
+        exact_retailer_result,
+        sku="12345",
+        brand="Brand",
+        product_name="Brand Chicken Recipe Dog Treats 5 lb",
+        category="Dog Treats",
+        prefer_manufacturer=True,
+    )
+
+    assert exact_retailer_score > broader_official_score
+
+
+def test_scoring_prefers_exact_retailer_over_official_root_without_variant_evidence() -> None:
+    scorer = SearchScorer()
+    homepage_result = _result(
+        "https://studmuffinshorsetreats.com/",
+        "Stud Muffins Horse Treats",
+        "Wholesome horse treats made with oats, barley, corn, and flaxseed.",
+    )
+    distributor_result = _result(
+        "https://www.bigdweb.com/stud-muffins-horse-treats-10-oz",
+        "Stud Muffins Horse Treats 10 oz",
+        "Horse treat tub 10 oz",
+    )
+
+    homepage_score = scorer.score_search_result(
+        homepage_result,
+        sku="813347001018",
+        brand="Stud Muffins",
+        product_name="Stud Muffins Horse Treats 10 oz Tub",
+        category="Horse Treats",
+        prefer_manufacturer=True,
+    )
+    distributor_score = scorer.score_search_result(
+        distributor_result,
+        sku="813347001018",
+        brand="Stud Muffins",
+        product_name="Stud Muffins Horse Treats 10 oz Tub",
+        category="Horse Treats",
+        prefer_manufacturer=True,
+    )
+
+    assert distributor_score > homepage_score
+
+
+def test_scoring_prefers_exact_retailer_over_official_root_without_parseable_variant_tokens() -> None:
+    scorer = SearchScorer()
+    homepage_result = _result(
+        "https://brand.com/",
+        "Brand Products",
+        "Official Brand site for premium pet products.",
+    )
+    retailer_result = _result(
+        "https://retailer.com/products/sku-12345",
+        "Brand Chicken Recipe Dog Food",
+        "Retailer product detail page.",
+    )
+
+    homepage_score = scorer.score_search_result(
+        homepage_result,
+        sku="sku-12345",
+        brand="Brand",
+        product_name="Brand Chicken Recipe Dog Food",
+        category="Dog Food Dry",
+        prefer_manufacturer=True,
+    )
+    retailer_score = scorer.score_search_result(
+        retailer_result,
+        sku="sku-12345",
+        brand="Brand",
+        product_name="Brand Chicken Recipe Dog Food",
+        category="Dog Food Dry",
+        prefer_manufacturer=True,
+    )
+
+    assert retailer_score > homepage_score
+
+
 def test_scoring_prefers_exact_variant_page_over_related_official_page() -> None:
     scorer = SearchScorer()
     exact_result = _result(
