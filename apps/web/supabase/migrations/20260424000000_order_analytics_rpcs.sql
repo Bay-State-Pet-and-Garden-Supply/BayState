@@ -3,7 +3,14 @@
 
 BEGIN;
 
-CREATE OR REPLACE FUNCTION public.get_sales_metrics(start_date timestamp, end_date timestamp)
+-- Drop old versions to ensure clean signature update
+DROP FUNCTION IF EXISTS public.get_sales_metrics(timestamp, timestamp);
+
+CREATE OR REPLACE FUNCTION public.get_sales_metrics(
+    start_date timestamp, 
+    end_date timestamp,
+    p_source text DEFAULT NULL
+)
 RETURNS TABLE (
     total_revenue numeric,
     total_orders bigint,
@@ -23,11 +30,20 @@ BEGIN
         COALESCE(SUM(tax), 0)::numeric AS total_tax
     FROM public.orders
     WHERE status IN ('completed', 'processing')
-      AND created_at >= start_date AND created_at <= end_date;
+      AND created_at >= start_date 
+      AND created_at <= end_date
+      AND (p_source IS NULL OR source = p_source);
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.get_sales_trends(start_date timestamp, end_date timestamp, period text DEFAULT 'day')
+DROP FUNCTION IF EXISTS public.get_sales_trends(timestamp, timestamp, text);
+
+CREATE OR REPLACE FUNCTION public.get_sales_trends(
+    start_date timestamp, 
+    end_date timestamp, 
+    period text DEFAULT 'day',
+    p_source text DEFAULT NULL
+)
 RETURNS TABLE (
     period_date text,
     revenue numeric,
@@ -45,14 +61,16 @@ BEGIN
         COUNT(id) AS orders
     FROM public.orders
     WHERE status IN ('completed', 'processing')
-      AND created_at >= start_date AND created_at <= end_date
+      AND created_at >= start_date 
+      AND created_at <= end_date
+      AND (p_source IS NULL OR source = p_source)
     GROUP BY date_trunc(period, created_at)
     ORDER BY date_trunc(period, created_at) ASC;
 END;
 $$;
 
 -- Grant access to authenticated users (staff/admin)
-GRANT EXECUTE ON FUNCTION public.get_sales_metrics(timestamp, timestamp) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_sales_trends(timestamp, timestamp, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_sales_metrics(timestamp, timestamp, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_sales_trends(timestamp, timestamp, text, text) TO authenticated;
 
 COMMIT;

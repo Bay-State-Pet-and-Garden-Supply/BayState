@@ -132,7 +132,7 @@ describe("finalization draft helpers", () => {
       weight: " 30 lb ",
       brandId: "",
       customSourceUrl: "",
-      sources: [],
+      sources: {},
       stockStatus: "in_stock",
       availability: "   ",
       minimumQuantity: "   ",
@@ -186,6 +186,8 @@ describe("finalization draft helpers", () => {
       isSpecialOrder: true,
       customImageUrl: "https://cdn.example.com/ignored.jpg",
       selectedImages: ["https://cdn.example.com/side.jpg"],
+      customSourceUrl: "",
+      sources: {},
     };
 
     expect(buildConsolidatedPayloadFromDraft(draft)).toEqual({

@@ -16,27 +16,35 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
     const params = await searchParams;
     const source = params.source || null;
     
-    // Fetch analytics data. 
-    // Since this is a migration phase, we'll look at a wider range (last 10 years) 
-    // to ensure historical ShopSite data is visible.
     const endDate = new Date().toISOString();
     const startDate = new Date();
-    startDate.setFullYear(startDate.getFullYear() - 10);
+    startDate.setFullYear(startDate.getFullYear() - 10); // 10 years for historical ShopSite data
     
-    // Fetch top level metrics
-    const { data: metricsData, error: metricsError } = await supabase
+    // 1. Fetch top level metrics
+    const { data: metricsData } = await supabase
         .rpc('get_sales_metrics', { 
             start_date: startDate.toISOString(), 
             end_date: endDate,
             p_source: source
         });
 
-    if (metricsError) {
-        console.error('Error fetching metrics:', metricsError);
+    // Fetch channel comparison data if no source is selected
+    let channelMetrics = null;
+    if (!source) {
+        const { data: online } = await supabase.rpc('get_sales_metrics', { 
+            start_date: startDate.toISOString(), end_date: endDate, p_source: 'shopsite' 
+        });
+        const { data: instore } = await supabase.rpc('get_sales_metrics', { 
+            start_date: startDate.toISOString(), end_date: endDate, p_source: 'integra' 
+        });
+        channelMetrics = {
+            online: online?.[0] || { total_revenue: 0, average_order_value: 0 },
+            instore: instore?.[0] || { total_revenue: 0, average_order_value: 0 }
+        };
     }
-        
-    // Fetch trends
-    const { data: trendsData, error: trendsError } = await supabase
+
+    // 2. Fetch trends
+    const { data: trendsData } = await supabase
         .rpc('get_sales_trends', { 
             start_date: startDate.toISOString(), 
             end_date: endDate, 
@@ -44,9 +52,28 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
             p_source: source
         });
 
-    if (trendsError) {
-        console.error('Error fetching trends:', trendsError);
-    }
+    // 3. Fetch Inventory Drift (Module 1 & 5)
+    const { data: driftData } = await supabase
+        .rpc('get_inventory_drift', { p_days: 7 });
+
+    // 4. Fetch Sync Health (Module 3)
+    const { data: healthData } = await supabase
+        .rpc('get_sync_health', { p_days: 30 });
+
+    // 5. Fetch Stock Aging & Velocity (Module 4)
+    const { data: fastMovers } = await supabase
+        .from('products')
+        .select('sku, name, date_sold, quantity')
+        .not('date_sold', 'is', null)
+        .order('date_sold', { ascending: false })
+        .limit(5);
+
+    const { data: deadStock } = await supabase
+        .from('products')
+        .select('sku, name, date_sold, quantity, date_received')
+        .gt('quantity', 0)
+        .order('date_sold', { ascending: true, nullsFirst: true })
+        .limit(5);
 
     const metrics = metricsData?.[0] || {
         total_revenue: 0,
@@ -60,7 +87,16 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
             <h1 className="font-display font-black uppercase tracking-tighter text-4xl mb-8">
                 Analytics & Reporting
             </h1>
-            <AnalyticsDashboard metrics={metrics} trends={trendsData || []} activeSource={source} />
+            <AnalyticsDashboard 
+                metrics={metrics} 
+                trends={trendsData || []} 
+                activeSource={source}
+                drift={driftData || []}
+                syncHealth={healthData || []}
+                fastMovers={fastMovers || []}
+                deadStock={deadStock || []}
+                channelMetrics={channelMetrics}
+            />
         </div>
     );
 }

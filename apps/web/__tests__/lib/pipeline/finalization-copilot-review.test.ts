@@ -14,7 +14,7 @@ const draftA: FinalizationDraft = {
   weight: "",
   brandId: "none",
   customSourceUrl: "",
-  sources: [],
+  sources: {},
   stockStatus: "in_stock",
   availability: "in stock",
   minimumQuantity: "0",
