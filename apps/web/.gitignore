@@ -58,3 +58,9 @@ sessions/
 session_*.json
 .env*.local
 ai_debug.log
+
+# Supabase
+.supabase_env
+supabase/.temp/
+supabase/config.toml
+supabase/.branch

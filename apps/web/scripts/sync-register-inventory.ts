@@ -360,6 +360,7 @@ async function completeLog(
     supabase: SupabaseClient,
     logId: string,
     result: SyncResult,
+    metadata: any = {}
 ): Promise<void> {
     const { error } = await supabase
         .from('migration_log')
@@ -372,6 +373,7 @@ async function completeLog(
             failed: result.failed,
             duration_ms: result.duration,
             errors: result.errors,
+            metadata: metadata
         } as never)
         .eq('id', logId);
 
@@ -391,7 +393,7 @@ async function fetchExistingProducts(
         const skuBatch = uniqueSkus.slice(start, start + PRODUCT_BATCH_SIZE);
         const { data, error } = await supabase
             .from('products')
-            .select('id, sku, name, slug, price, quantity, stock_status')
+            .select('id, sku, name, slug, price, quantity, stock_status, date_sold, date_received, date_counted, date_created, date_priced')
             .in('sku', skuBatch);
 
         if (error) {
@@ -560,23 +562,25 @@ async function main() {
             duration: Date.now() - startedAt,
         };
 
+        const syncSummary = buildSyncSummary(
+            registerSnapshot.source,
+            registerSnapshot.sourceLabel,
+            dryRun,
+            fields,
+            result,
+            plan,
+            appliedUpdates,
+            salesResult
+        );
+
         if (logId) {
             await updateLogProgress(supabase, logId, result);
-            await completeLog(supabase, logId, result);
+            await completeLog(supabase, logId, result, syncSummary);
         }
 
         console.log(
             JSON.stringify(
-                buildSyncSummary(
-                    registerSnapshot.source,
-                    registerSnapshot.sourceLabel,
-                    dryRun,
-                    fields,
-                    result,
-                    plan,
-                    appliedUpdates,
-                    salesResult
-                ),
+                syncSummary,
                 null,
                 2,
             ),

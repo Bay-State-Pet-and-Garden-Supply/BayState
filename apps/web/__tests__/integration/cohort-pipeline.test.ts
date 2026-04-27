@@ -33,7 +33,7 @@ jest.mock('@/lib/product-image-storage', () => ({
     replaceInlineImageDataUrls: jest.fn().mockImplementation(async (_supabase: unknown, value: unknown) => ({ value })),
 }));
 
-type IngestionStatus = 'imported' | 'scraped' | 'finalized' | 'failed';
+type IngestionStatus = 'imported' | 'scraped' | 'consolidated' | 'finalizing' | 'finalized' | 'failed';
 
 interface IngestionRow extends Record<string, unknown> {
     sku: string;

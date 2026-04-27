@@ -10,12 +10,17 @@ export interface RegisterSyncExistingProduct {
   price: number;
   quantity: number;
   stock_status: string;
+  date_sold?: string | null;
+  date_received?: string | null;
+  date_counted?: string | null;
+  date_created?: string | null;
+  date_priced?: string | null;
 }
 
 export interface RegisterSyncChange {
-  field: RegisterSyncField;
-  before: number | string;
-  after: number | string;
+  field: RegisterSyncField | "date_sold" | "date_received" | "date_counted" | "date_created" | "date_priced";
+  before: number | string | null;
+  after: number | string | null;
 }
 
 export interface RegisterSyncPreview {
@@ -32,6 +37,11 @@ export interface RegisterSyncUpdate {
   price: number;
   quantity: number;
   stock_status: string;
+  date_sold?: string | null;
+  date_received?: string | null;
+  date_counted?: string | null;
+  date_created?: string | null;
+  date_priced?: string | null;
   updated_at: string;
 }
 
@@ -185,6 +195,28 @@ export function planRegisterSync(
     }
 
     if (changes.length === 0) {
+      // Also check if dates changed, even if core fields didn't
+      const dateFields = ["date_sold", "date_received", "date_counted", "date_created", "date_priced"] as const;
+      for (const dateField of dateFields) {
+        const registerKey = dateField === "date_received" ? "dateReceived" : 
+                           dateField === "date_sold" ? "dateSold" :
+                           dateField === "date_counted" ? "dateCounted" :
+                           dateField === "date_created" ? "dateCreated" : "datePriced";
+        
+        const existingValue = existingProduct[dateField] ? new Date(existingProduct[dateField]!).getTime() : null;
+        const registerValue = registerProduct[registerKey] ? new Date(registerProduct[registerKey]!).getTime() : null;
+
+        if (existingValue !== registerValue) {
+          changes.push({
+            field: dateField,
+            before: existingProduct[dateField] || null,
+            after: registerProduct[registerKey] || null,
+          });
+        }
+      }
+    }
+
+    if (changes.length === 0) {
       unchangedProducts += 1;
       continue;
     }
@@ -197,6 +229,11 @@ export function planRegisterSync(
       price: nextPrice,
       quantity: nextQuantity,
       stock_status: nextStockStatus,
+      date_sold: registerProduct.dateSold,
+      date_received: registerProduct.dateReceived,
+      date_counted: registerProduct.dateCounted,
+      date_created: registerProduct.dateCreated,
+      date_priced: registerProduct.datePriced,
       updated_at: updatedAt,
     });
 
