@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-
-export type DiscountType = 'percentage' | 'fixed_amount' | 'free_shipping';
+import { DiscountType } from './types';
 
 export interface PromoCode {
   id: string;
@@ -128,7 +127,7 @@ export async function validatePromoCode(input: ApplyPromoInput): Promise<PromoVa
   };
 }
 
-export function calculateDiscount(promo: PromoCode, subtotal: number): number {
+function calculateDiscount(promo: PromoCode, subtotal: number): number {
   let discount = 0;
 
   switch (promo.discount_type) {
@@ -174,7 +173,7 @@ export async function recordPromoRedemption(input: {
   return true;
 }
 
-export async function getPromoCodeByCode(code: string): Promise<PromoCode | null> {
+async function getPromoCodeByCode(code: string): Promise<PromoCode | null> {
   const supabase = await createClient();
 
   const { data, error } = await supabase

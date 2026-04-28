@@ -90,7 +90,7 @@ export function getGenericFacetDefinition(field: GenericFacetField): GenericFace
     };
 }
 
-export function normalizeGenericFacetToken(value: string | null | undefined): string | null {
+function normalizeGenericFacetToken(value: string | null | undefined): string | null {
     if (!value) {
         return null;
     }

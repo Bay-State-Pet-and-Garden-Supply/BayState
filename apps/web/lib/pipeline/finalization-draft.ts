@@ -135,7 +135,7 @@ function toFinalizationStockStatus(value: unknown): FinalizationStockStatus {
   return "in_stock";
 }
 
-export function buildFinalizationImageDedupKey(value: string): string {
+function buildFinalizationImageDedupKey(value: string): string {
   const normalized = normalizeImageUrl(value);
   if (/amazon\./i.test(normalized) && /\/images\/I\//i.test(normalized)) {
     return normalized.replace(/^https?:\/\/[^/]+/i, "").toLowerCase();
@@ -163,7 +163,7 @@ export function toFinalizationImageArray(value: unknown): string[] {
   return Array.from(deduped.values());
 }
 
-export function extractSelectedImageUrls(value: unknown): string[] {
+function extractSelectedImageUrls(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
 
   const urls = value

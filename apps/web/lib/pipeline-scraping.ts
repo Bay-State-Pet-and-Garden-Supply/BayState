@@ -424,7 +424,7 @@ async function loadStandardScrapePlan(
     });
 }
 
-export async function createScrapeJobChunks(
+async function createScrapeJobChunks(
     supabase: Awaited<ReturnType<typeof createClient>>,
     jobId: string,
     plannedJob: PlannedScrapeJob,
@@ -538,7 +538,7 @@ export async function cloneScrapeJobForRetry(
     };
 }
 
-export async function buildLinearChunkPlan(
+async function buildLinearChunkPlan(
     skus: string[],
     scrapers: string[],
     chunkSize: number,

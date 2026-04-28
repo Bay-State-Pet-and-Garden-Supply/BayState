@@ -1,4 +1,4 @@
-import { getOrders } from '@/lib/account/data'
+import { getUserOrders } from '@/lib/account/data'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { Package, ChevronRight } from 'lucide-react'
@@ -12,7 +12,7 @@ export const metadata = {
 }
 
 export default async function OrdersPage() {
-    const orders = await getOrders()
+    const orders = await getUserOrders()
 
     return (
         <div className="space-y-12">

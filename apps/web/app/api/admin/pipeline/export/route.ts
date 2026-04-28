@@ -89,7 +89,7 @@ function isExportReady(product: ExportProduct): boolean {
   return hasName && hasDescription && (selected.length > 0 || fallbackImages.length > 0);
 }
 
-export async function streamWorkbookRows(
+async function streamWorkbookRows(
   products: AsyncIterable<ExportProduct>,
   output: PassThrough
 ) {
@@ -136,7 +136,7 @@ export async function streamWorkbookRows(
   await workbook.commit();
 }
 
-export async function streamWorkbook(status: ExportStatus | 'all', output: PassThrough) {
+async function streamWorkbook(status: ExportStatus | 'all', output: PassThrough) {
   const supabase = await createAdminClient();
 
   async function* loadProducts(): AsyncGenerator<ExportProduct> {
@@ -186,7 +186,7 @@ export async function streamWorkbook(status: ExportStatus | 'all', output: PassT
   await streamWorkbookRows(loadProducts(), output);
 }
 
-export async function streamWorkbookForSkus(skus: string[], output: PassThrough) {
+async function streamWorkbookForSkus(skus: string[], output: PassThrough) {
   const supabase = await createAdminClient();
   const normalizedSkus = Array.from(
     new Set(

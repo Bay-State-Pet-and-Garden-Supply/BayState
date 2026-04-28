@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { scraperConfigSchema } from '@/lib/admin/scrapers/schema';
 
 // Use input type for form values (matches what zodResolver expects)
-export const configFormSchema = scraperConfigSchema;
+const configFormSchema = scraperConfigSchema;
 
 export type ConfigFormValues = z.input<typeof configFormSchema>;
 

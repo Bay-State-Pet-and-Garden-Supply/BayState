@@ -70,31 +70,6 @@ export class OrgillClient implements B2BClient {
       .map(r => this.mapToB2BProduct(r));
   }
 
-  async fetchInventory(skus: string[]): Promise<B2BInventoryUpdate[]> {
-    const catalog = await this.fetchCatalog();
-    const skuSet = new Set(skus);
-    
-    return catalog
-      .filter(p => skuSet.has(p.distributorSku))
-      .map(p => ({
-        distributorSku: p.distributorSku,
-        quantity: p.quantity,
-      }));
-  }
-
-  async fetchPricing(skus: string[]): Promise<B2BPriceUpdate[]> {
-    const catalog = await this.fetchCatalog();
-    const skuSet = new Set(skus);
-    
-    return catalog
-      .filter(p => skuSet.has(p.distributorSku))
-      .map(p => ({
-        distributorSku: p.distributorSku,
-        cost: p.cost,
-        msrp: p.price,
-      }));
-  }
-
   async healthCheck(): Promise<boolean> {
     try {
       if (!this.config.sftpHost || !this.config.username) {

@@ -59,7 +59,7 @@ export type ExpandPanel = "chunks" | "logs";
 
 export type TimeRange = "1h" | "6h" | "24h" | "7d" | "30d";
 
-export const LOG_LEVEL_CONFIG: Record<
+const LOG_LEVEL_CONFIG: Record<
   string,
   { icon: typeof Info; color: string; bgColor: string }
 > = {
@@ -74,7 +74,7 @@ export const LOG_LEVEL_CONFIG: Record<
   critical: { icon: AlertCircle, color: "text-white", bgColor: "bg-brand-burgundy" },
 };
 
-export function LogLevelBadge({ level }: { level: string }) {
+function LogLevelBadge({ level }: { level: string }) {
   const config = LOG_LEVEL_CONFIG[level.toLowerCase()] || LOG_LEVEL_CONFIG.info;
   const Icon = config.icon;
   return (
@@ -105,7 +105,7 @@ export function ConnectionIndicator({ isConnected }: { isConnected: boolean }) {
   );
 }
 
-export function JobLogPanel({ jobId, logs }: { jobId: string; logs: LogEntry[] }) {
+function JobLogPanel({ jobId, logs }: { jobId: string; logs: LogEntry[] }) {
   const jobLogs = useMemo(
     () => logs.filter((l) => l.job_id === jobId),
     [jobId, logs]
@@ -177,7 +177,7 @@ export function toActiveJob(job: JobAssignment): ActiveJob {
   };
 }
 
-export function JobStatusBadge({ status }: { status: ActiveJob["status"] }) {
+function JobStatusBadge({ status }: { status: ActiveJob["status"] }) {
   const statusMap = {
     running: {
       className: "bg-blue-100 text-blue-950",

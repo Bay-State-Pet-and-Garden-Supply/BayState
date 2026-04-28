@@ -87,7 +87,7 @@ function collapseWhitespace(value: string): string {
     return value.replace(/\s+/g, ' ').trim();
 }
 
-export function normalizePetTypeToken(value: string | null | undefined): PetTypeName | null {
+function normalizePetTypeToken(value: string | null | undefined): PetTypeName | null {
     if (!value) {
         return null;
     }
@@ -106,7 +106,7 @@ export function normalizePetTypeToken(value: string | null | undefined): PetType
     return null;
 }
 
-export function normalizePetTypeValues(value: string | null | undefined): PetTypeName[] {
+function normalizePetTypeValues(value: string | null | undefined): PetTypeName[] {
     const deduped = new Map<string, PetTypeName>();
 
     for (const token of splitMultiValueFacet(value)) {
@@ -176,7 +176,7 @@ export function resolveCanonicalPetTypes(product: ShopSiteProduct): ResolvedPetT
     };
 }
 
-export function inferPetTypes(product: ShopSiteProduct): PetTypeInferenceResult {
+function inferPetTypes(product: ShopSiteProduct): PetTypeInferenceResult {
     const text = buildSearchableText(product);
     const petTypeResolution = resolveCanonicalPetTypes(product);
 
@@ -213,7 +213,7 @@ export function inferPetTypes(product: ShopSiteProduct): PetTypeInferenceResult 
     };
 }
 
-export function inferPetTypesFromText(text: string): PetTypeName[] {
+function inferPetTypesFromText(text: string): PetTypeName[] {
     const petTypes: PetTypeName[] = [];
     for (const [petType, pattern] of Object.entries(PET_TYPE_PATTERNS)) {
         if (pattern.test(text)) {

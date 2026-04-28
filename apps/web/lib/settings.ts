@@ -214,7 +214,7 @@ function normalizeCampaignBanner(settings: CampaignBannerSettings): CampaignBann
 /**
  * Fetches a site setting by key.
  */
-export async function getSetting<K extends keyof SiteSettings>(
+async function getSetting<K extends keyof SiteSettings>(
   key: K
 ): Promise<SiteSettings[K]> {
   const supabase = createPublicClient();
@@ -245,7 +245,7 @@ export async function getSetting<K extends keyof SiteSettings>(
 /**
  * Updates a site setting.
  */
-export async function updateSetting<K extends keyof SiteSettings>(
+async function updateSetting<K extends keyof SiteSettings>(
   key: K,
   value: SiteSettings[K]
 ): Promise<boolean> {
@@ -307,7 +307,7 @@ export async function updateHomepageSettings(
 /**
  * Fetches the navigation settings.
  */
-export async function getNavigationSettings(): Promise<NavigationSettings> {
+async function getNavigationSettings(): Promise<NavigationSettings> {
   const settings = await getSetting('navigation');
   return {
     ...defaultSettings.navigation,
@@ -327,7 +327,7 @@ export async function updateNavigationSettings(
 /**
  * Fetches the branding settings.
  */
-export async function getBrandingSettings(): Promise<BrandingSettings> {
+async function getBrandingSettings(): Promise<BrandingSettings> {
   const settings = await getSetting('branding');
   return {
     ...defaultSettings.branding,

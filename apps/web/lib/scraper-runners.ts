@@ -5,7 +5,7 @@ export type RunnerDurableStatus = 'online' | 'offline' | 'busy' | 'idle' | 'poll
 export type RunnerPresenceStatus = 'online' | 'offline' | 'busy' | 'idle';
 type JsonObject = { [key: string]: Json | undefined };
 
-export const RUNNER_STALE_AFTER_MS = 5 * 60 * 1000;
+const RUNNER_STALE_AFTER_MS = 5 * 60 * 1000;
 
 const RUNNER_STATUSES = new Set<RunnerDurableStatus>([
   'online',

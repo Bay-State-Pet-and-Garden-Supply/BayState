@@ -78,7 +78,7 @@ const DEFAULT_AI_CONSOLIDATION_DEFAULTS: AIConsolidationDefaults = {
   llm_supports_batch_api: true,
 };
 
-export function getDefaultModelForProvider(provider: LLMProvider): string {
+function getDefaultModelForProvider(provider: LLMProvider): string {
   void provider;
   return DEFAULT_AI_MODEL;
 }
@@ -705,7 +705,7 @@ async function getAIScrapingProviderSecret(provider: AIProvider): Promise<string
   );
 }
 
-export async function getAIProviderSecret(provider: AIProvider): Promise<string | null> {
+async function getAIProviderSecret(provider: AIProvider): Promise<string | null> {
   return getAIScrapingProviderSecret(provider);
 }
 

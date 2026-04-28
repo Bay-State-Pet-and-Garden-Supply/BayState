@@ -8,8 +8,14 @@ export interface Brand {
   name: string;
   slug: string;
   logo_url: string | null;
+  description?: string | null;
+  website_url?: string | null;
+  official_domains?: string[];
+  preferred_domains?: string[];
   created_at?: string;
 }
+
+export type DiscountType = 'percentage' | 'fixed_amount' | 'free_shipping';
 
 export interface Product {
   id: string;

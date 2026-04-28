@@ -24,7 +24,7 @@ export type PipelineStage = (typeof PIPELINE_TABS)[number];
 export type PipelineTab = PipelineStage;
 
 /** No pipeline tabs are derived; the workflow vocabulary is canonical everywhere. */
-export const DERIVED_PIPELINE_TABS = [] as const;
+const DERIVED_PIPELINE_TABS = [] as const;
 
 export type DerivedPipelineTab = (typeof DERIVED_PIPELINE_TABS)[number];
 

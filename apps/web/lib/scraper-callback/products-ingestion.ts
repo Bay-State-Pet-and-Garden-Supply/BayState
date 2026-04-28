@@ -52,7 +52,7 @@ async function makeIncomingSourcesDurable(
  * Loads existing sources from products_ingestion for the given SKUs.
  * Returns only rows that exist — does NOT throw on missing SKUs.
  */
-export async function loadProductsIngestionSourcesBySku(
+async function loadProductsIngestionSourcesBySku(
   supabase: SupabaseClient,
   skus: string[]
 ): Promise<Map<string, ProductsIngestionSourceRow>> {

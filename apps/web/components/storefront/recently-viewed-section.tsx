@@ -19,7 +19,7 @@ interface RecentlyViewedSectionProps {
  * A server component that displays a horizontally scrollable list of recently viewed products.
  * Uses CSS snap scrolling for a smooth native-like feel.
  */
-export function RecentlyViewedSection({ products }: RecentlyViewedSectionProps) {
+function RecentlyViewedSection({ products }: RecentlyViewedSectionProps) {
   // Return null if no products to display
   if (!products || products.length === 0) {
     return null;

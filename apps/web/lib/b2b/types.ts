@@ -37,17 +37,6 @@ export interface B2BClient {
   fetchCatalog(): Promise<B2BProduct[]>;
 
   /**
-   * Fetch real-time inventory for specific SKUs.
-   * Use this for PDP checks or checkout validation.
-   */
-  fetchInventory(skus: string[]): Promise<B2BInventoryUpdate[]>;
-
-  /**
-   * Fetch real-time pricing.
-   */
-  fetchPricing(skus: string[]): Promise<B2BPriceUpdate[]>;
-
-  /**
    * Check connection status.
    */
   healthCheck(): Promise<boolean>;

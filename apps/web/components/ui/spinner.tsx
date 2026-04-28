@@ -45,7 +45,7 @@ interface SpinnerOverlayProps {
   message?: string
 }
 
-export function SpinnerOverlay({ className, message }: SpinnerOverlayProps) {
+function SpinnerOverlay({ className, message }: SpinnerOverlayProps) {
   return (
     <div
       className={cn(

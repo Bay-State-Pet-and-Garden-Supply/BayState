@@ -47,7 +47,7 @@ export {
 } from './batch-service';
 
 // OpenAI Client
-export { getOpenAIClient, isOpenAIConfigured, CONSOLIDATION_CONFIG } from './openai-client';
+export { isOpenAIConfigured } from './openai-client';
 
 // Prompt Builder
 
@@ -61,7 +61,6 @@ export {
 } from './taxonomy-validator';
 
 // Result Normalizer
-export { normalizeConsolidationResult, parseJsonResponse } from './result-normalizer';
 
 // Evaluation helpers
 export {

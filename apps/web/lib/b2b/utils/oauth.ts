@@ -120,27 +120,10 @@ export class OAuthClient {
   }
 
   /**
-   * Creates an Authorization header value.
-   */
-  async getAuthorizationHeader(): Promise<string | null> {
-    const result = await this.getAccessToken();
-    if (!result.success || !result.token) return null;
-    return `${result.token.tokenType} ${result.token.accessToken}`;
-  }
-
-  /**
    * Clears the cached token (useful for testing or forced refresh).
    */
   clearCache(): void {
     this.cachedToken = null;
-  }
-
-  /**
-   * Tests the OAuth configuration by attempting to fetch a token.
-   */
-  async testConnection(): Promise<boolean> {
-    const result = await this.fetchToken();
-    return result.success;
   }
 }
 
@@ -168,7 +151,7 @@ export function createOrderCloudClient(
  * Creates an OAuth client for Endless Aisles (Phillips).
  * Note: Phillips may use API key auth instead - this is a fallback.
  */
-export function createEndlessAislesClient(
+function createEndlessAislesClient(
   apiKey: string,
   apiSecret: string
 ): OAuthClient {

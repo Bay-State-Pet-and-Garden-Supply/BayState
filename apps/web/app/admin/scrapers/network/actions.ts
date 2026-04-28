@@ -180,7 +180,7 @@ export async function enableRunner(id: string): Promise<{ success: boolean; erro
 /**
  * Pause a runner - prevents new jobs from being assigned
  */
-export async function pauseRunner(id: string): Promise<{ success: boolean; error?: string }> {
+async function pauseRunner(id: string): Promise<{ success: boolean; error?: string }> {
     const { error: adminError } = await verifyAdminAccess();
     if (adminError) {
         return { success: false, error: adminError };
@@ -222,7 +222,7 @@ export async function pauseRunner(id: string): Promise<{ success: boolean; error
 /**
  * Resume a runner from paused state
  */
-export async function resumeRunner(id: string): Promise<{ success: boolean; error?: string }> {
+async function resumeRunner(id: string): Promise<{ success: boolean; error?: string }> {
     const { error: adminError } = await verifyAdminAccess();
     if (adminError) {
         return { success: false, error: adminError };

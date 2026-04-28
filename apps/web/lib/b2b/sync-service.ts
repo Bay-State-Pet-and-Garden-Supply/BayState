@@ -28,7 +28,7 @@ export async function getB2BFeeds(): Promise<B2BFeed[]> {
   return data as B2BFeed[];
 }
 
-export async function getB2BFeed(distributorCode: DistributorCode): Promise<B2BFeed | null> {
+async function getB2BFeed(distributorCode: DistributorCode): Promise<B2BFeed | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('b2b_feeds')
@@ -70,7 +70,7 @@ export async function getSyncJobs(
   return data as B2BSyncJob[];
 }
 
-export async function getCredentials(
+async function getCredentials(
   distributorCode: DistributorCode
 ): Promise<B2BConfig | null> {
   const supabase = await createClient();

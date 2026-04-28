@@ -77,7 +77,7 @@ export function canonicalizeBrandName(name: string): string {
         .trim();
 }
 
-export function normalizeCategoryName(value: string | null | undefined): string | null {
+function normalizeCategoryName(value: string | null | undefined): string | null {
     if (!value) {
         return null;
     }
@@ -100,7 +100,7 @@ export function normalizeCategoryValue(value: string | null | undefined): string
     return normalizedValues.length > 0 ? normalizedValues.join('|') : null;
 }
 
-export function normalizeProductTypeToken(value: string | null | undefined): string | null {
+function normalizeProductTypeToken(value: string | null | undefined): string | null {
     if (!value) {
         return null;
     }

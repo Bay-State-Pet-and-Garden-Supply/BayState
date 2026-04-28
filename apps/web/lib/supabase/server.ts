@@ -84,7 +84,7 @@ export async function createAdminClient() {
   )
 }
 
-export function createClientFromRequest(request: Request) {
+function createClientFromRequest(request: Request) {
   // For use in contexts where we don't have access to cookies() async
   // This is a fallback that reads cookies from the request header
   const { url, anonKey } = requireSupabaseConfig()

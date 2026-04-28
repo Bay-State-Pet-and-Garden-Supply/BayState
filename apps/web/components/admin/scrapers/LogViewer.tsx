@@ -205,7 +205,8 @@ export function LogViewer({
       if (isJobActive || mergedLogs.length < 20) {
         scrollToBottom();
       } else {
-        setIsPinnedToBottom(false);
+        // Defer setting state to avoid cascading render warning
+        setTimeout(() => setIsPinnedToBottom(false), 0);
       }
       return;
     }

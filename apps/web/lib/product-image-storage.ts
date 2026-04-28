@@ -8,7 +8,7 @@ import {
 } from './image-capture-errors';
 import type { ImageErrorType, ImageRetryQueueInsert } from './supabase/database.types';
 
-export const PRODUCT_IMAGES_BUCKET = 'product-images';
+const PRODUCT_IMAGES_BUCKET = 'product-images';
 export const PENDING_RETRY_IMAGE_PREFIX = 'pending_retry://';
 
 const INLINE_IMAGE_DATA_URL_REGEX = /^data:(image\/[a-z0-9.+-]+);base64,([a-z0-9+/=\s]+)$/i;
@@ -119,11 +119,11 @@ export function buildProductImageStorageFolder(...segments: string[]): string {
   return normalizeStorageFolderPath(segments.join('/'));
 }
 
-export function isInlineImageDataUrl(value: string): boolean {
+function isInlineImageDataUrl(value: string): boolean {
   return INLINE_IMAGE_DATA_URL_REGEX.test(value.trim());
 }
 
-export function isProductImageStorageUrl(value: string): boolean {
+function isProductImageStorageUrl(value: string): boolean {
   const normalized = value.trim();
 
   return (

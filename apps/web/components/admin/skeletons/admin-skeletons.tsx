@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function AdminTableSkeleton() {
+function AdminTableSkeleton() {
   return (
     <div className="space-y-4">
       {/* Filter bar skeleton */}
@@ -100,7 +100,7 @@ export function AdminPageSkeleton() {
   );
 }
 
-export function AdminDetailSkeleton() {
+function AdminDetailSkeleton() {
   return (
     <div className="space-y-6">
       {/* Header skeleton */}

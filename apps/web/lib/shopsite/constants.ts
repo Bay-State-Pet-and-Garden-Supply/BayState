@@ -297,7 +297,7 @@ export const AUDIT_ONLY_PRODUCT_FIELDS = ['ProductField31'] as const;
  *
  * Both Graphic and MoreInformationGraphic use the first product image.
  */
-export const IMAGE_FIELD_MAPPING = {
+const IMAGE_FIELD_MAPPING = {
     primary: ['Graphic', 'MoreInformationGraphic'] as const,
     additional: [
         'MoreInfoImage1',

@@ -197,7 +197,7 @@ function buildUniqueStem(base: string, usedStems: Set<string>, sku: string): str
     return finalCandidate;
 }
 
-export function prepareStorefrontShopSiteExport(
+function prepareStorefrontShopSiteExport(
     rows: ShopSiteExportSourceRow[],
     brandsById: Map<string, ShopSiteExportBrandRow> = new Map(),
 ): PreparedShopSiteExportProduct[] {

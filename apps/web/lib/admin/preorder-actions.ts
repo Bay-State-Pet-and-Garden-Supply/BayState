@@ -130,7 +130,7 @@ export async function createPreorderBatch(formData: FormData) {
   redirect(`/admin/preorder-groups/${rawData.preorder_group_id}`)
 }
 
-export async function updatePreorderBatch(id: string, formData: FormData) {
+async function updatePreorderBatch(id: string, formData: FormData) {
   const supabase = await createClient()
   
   const rawData = {
@@ -246,7 +246,7 @@ export async function getPreorderGroups() {
   return data
 }
 
-export async function getPreorderGroup(id: string) {
+async function getPreorderGroup(id: string) {
   const supabase = await createClient()
   
   const { data, error } = await supabase
@@ -263,7 +263,7 @@ export async function getPreorderGroup(id: string) {
   return data
 }
 
-export async function getPreorderBatches(groupId: string) {
+async function getPreorderBatches(groupId: string) {
   const supabase = await createClient()
   
   const { data, error } = await supabase

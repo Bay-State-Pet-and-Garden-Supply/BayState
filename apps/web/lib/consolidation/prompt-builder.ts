@@ -124,7 +124,7 @@ function buildSiblingProductSummary(sibling: SiblingProduct): SiblingProductProm
     };
 }
 
-export function buildProductLinePromptContext(product: ProductSource): ProductLinePromptContext | undefined {
+function buildProductLinePromptContext(product: ProductSource): ProductLinePromptContext | undefined {
     const context = product.productLineContext;
     if (!context) {
         return undefined;
@@ -175,7 +175,7 @@ export function buildUserPrompt(
 /**
  * Fetch categories from the database.
  */
-export async function getCategories() {
+async function getCategories() {
     const { createAdminClient } = await import('@/lib/supabase/server');
     const supabase = await createAdminClient();
     const { data, error } = await supabase

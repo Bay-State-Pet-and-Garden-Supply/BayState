@@ -4,7 +4,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
   console.warn('STRIPE_SECRET_KEY not set. Payment processing will not work.');
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder', {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder', {
   apiVersion: '2025-12-15.clover' as Stripe.LatestApiVersion,
   typescript: true,
 });
@@ -49,13 +49,13 @@ export async function retrievePaymentIntent(
   return await stripe.paymentIntents.retrieve(paymentIntentId);
 }
 
-export async function cancelPaymentIntent(
+async function cancelPaymentIntent(
   paymentIntentId: string
 ): Promise<Stripe.PaymentIntent> {
   return await stripe.paymentIntents.cancel(paymentIntentId);
 }
 
-export async function createRefund(
+async function createRefund(
   paymentIntentId: string,
   amount?: number
 ): Promise<Stripe.Refund> {
@@ -70,7 +70,7 @@ export async function createRefund(
   return await stripe.refunds.create(refundParams);
 }
 
-export async function createStripeCustomer(
+async function createStripeCustomer(
   email: string,
   name: string,
   metadata?: Record<string, string>
@@ -82,7 +82,7 @@ export async function createStripeCustomer(
   });
 }
 
-export async function getStripeCustomerByEmail(
+async function getStripeCustomerByEmail(
   email: string
 ): Promise<Stripe.Customer | null> {
   const customers = await stripe.customers.list({

@@ -6,19 +6,19 @@ const KNOWN_SCHEMA_VERSIONS = ["1.0"] as const;
 
 export type SchemaVersion = (typeof KNOWN_SCHEMA_VERSIONS)[number];
 
-export const schemaVersionSchema = z.enum(KNOWN_SCHEMA_VERSIONS);
+const schemaVersionSchema = z.enum(KNOWN_SCHEMA_VERSIONS);
 
 // ============================================================================
 // AI SCRAPER TYPES
 // ============================================================================
 
-export const scraperTypeSchema = z.enum(['static', 'agentic']);
+const scraperTypeSchema = z.enum(['static', 'agentic']);
 export type ScraperType = z.infer<typeof scraperTypeSchema>;
 
-export const aiModelSchema = z.enum(AI_MODEL_VALUES);
+const aiModelSchema = z.enum(AI_MODEL_VALUES);
 export type AIModel = z.infer<typeof aiModelSchema>;
 
-export const aiConfigSchema = z.object({
+const aiConfigSchema = z.object({
   tool: z.literal('browser-use').default('browser-use'),
   task: z.string().min(1, 'AI task description is required'),
   max_steps: z.number().min(1).max(50).default(10),
@@ -52,7 +52,7 @@ export const aiValidateParamsSchema = z.object({
 });
 
 // Transform types supported by the extract_and_transform action
-export const transformTypeSchema = z.enum([
+const transformTypeSchema = z.enum([
   'replace',
   'strip',
   'lower',
@@ -83,13 +83,13 @@ export const selectorConfigSchema = z.object({
 }).strict();
 
 // Workflow step parameter schemas for different action types
-export const navigateParamsSchema = z.object({
+const navigateParamsSchema = z.object({
   url: z.string().min(1, 'URL is required'),
   wait_after: z.number().optional(),
   fail_on_error: z.boolean().optional(),
 });
 
-export const clickParamsSchema = z.object({
+const clickParamsSchema = z.object({
   selector: z.string().min(1, 'Selector is required'),
   filter_text: z.string().optional(),
   filter_text_exclude: z.string().optional(),
@@ -98,17 +98,17 @@ export const clickParamsSchema = z.object({
   max_retries: z.number().optional(),
 });
 
-export const waitForParamsSchema = z.object({
+const waitForParamsSchema = z.object({
   selector: z.union([z.string(), z.array(z.string())]),
   timeout: z.number().default(10),
 });
 
-export const waitParamsSchema = z.object({
+const waitParamsSchema = z.object({
   seconds: z.number().optional(),
   duration: z.number().optional(),
 });
 
-export const extractParamsSchema = z.object({
+const extractParamsSchema = z.object({
   fields: z.array(z.string()).optional(),
   selector_ids: z.array(z.string()).optional(),
 });
@@ -123,11 +123,11 @@ export const extractFieldConfigSchema = z.object({
   transform: z.array(transformationSchema).optional(),
 });
 
-export const extractAndTransformParamsSchema = z.object({
+const extractAndTransformParamsSchema = z.object({
   fields: z.array(extractFieldConfigSchema),
 });
 
-export const transformValueParamsSchema = z.object({
+const transformValueParamsSchema = z.object({
   field: z.string().optional(),
   source_field: z.string().optional(),
   target_field: z.string().optional(),
@@ -135,28 +135,28 @@ export const transformValueParamsSchema = z.object({
   transformations: z.array(transformationSchema).optional(),
 });
 
-export const conditionalClickParamsSchema = z.object({
+const conditionalClickParamsSchema = z.object({
   selector: z.string().min(1, 'Selector is required'),
   timeout: z.number().default(2),
 });
 
-export const conditionalSkipParamsSchema = z.object({
+const conditionalSkipParamsSchema = z.object({
   if_flag: z.string().min(1, 'Flag name is required'),
 });
 
-export const inputTextParamsSchema = z.object({
+const inputTextParamsSchema = z.object({
   selector: z.string().min(1, 'Selector is required'),
   text: z.string(),
   clear_first: z.boolean().optional(),
 });
 
-export const scrollParamsSchema = z.object({
+const scrollParamsSchema = z.object({
   direction: z.enum(['up', 'down', 'top', 'bottom']).optional(),
   amount: z.number().optional(),
   selector: z.string().optional(),
 });
 
-export const verifyParamsSchema = z.object({
+const verifyParamsSchema = z.object({
   selector: z.string(),
   expected_value: z.string(),
   attribute: z.string().optional(),
@@ -171,13 +171,13 @@ export const workflowStepSchema = z.object({
 });
 
 // Validation config for no-results detection
-export const validationConfigSchema = z.object({
+const validationConfigSchema = z.object({
   no_results_selectors: z.array(z.string()).optional(),
   no_results_text_patterns: z.array(z.string()).optional(),
 });
 
 // Anti-detection config
-export const antiDetectionConfigSchema = z.object({
+const antiDetectionConfigSchema = z.object({
   enable_captcha_detection: z.boolean().default(false),
   enable_rate_limiting: z.boolean().default(false),
   enable_human_simulation: z.boolean().default(false),
@@ -190,7 +190,7 @@ export const antiDetectionConfigSchema = z.object({
 });
 
 // HTTP status config
-export const httpStatusConfigSchema = z.object({
+const httpStatusConfigSchema = z.object({
   enabled: z.boolean().default(false),
   fail_on_error_status: z.boolean().default(true),
   error_status_codes: z.array(z.number()).default([400, 401, 403, 404, 500, 502, 503, 504]),
@@ -198,7 +198,7 @@ export const httpStatusConfigSchema = z.object({
 });
 
 // Login config - all fields optional since not all scrapers need login
-export const loginConfigSchema = z.object({
+const loginConfigSchema = z.object({
   url: z.string().optional(),
   username_field: z.string().optional(),
   password_field: z.string().optional(),
@@ -208,7 +208,7 @@ export const loginConfigSchema = z.object({
 });
 
 // Normalization rule
-export const normalizationRuleSchema = z.object({
+const normalizationRuleSchema = z.object({
   field: z.string(),
   action: z.enum(['title_case', 'lowercase', 'uppercase', 'trim', 'remove_prefix', 'extract_weight']),
   params: z.record(z.string(), z.unknown()).default({}),
@@ -216,7 +216,7 @@ export const normalizationRuleSchema = z.object({
 
 export type NormalizationRule = z.infer<typeof normalizationRuleSchema>;
 
-export const skuAssertionSchema = z.object({
+const skuAssertionSchema = z.object({
   sku: z.string().min(1, 'SKU is required'),
   expected: z.object({
     name: z.string().optional(),
@@ -291,7 +291,7 @@ export const selectorSuggestionSchema = z.object({
 });
 
 // Action types enum for workflow builder
-export const actionTypes = [
+const actionTypes = [
   'navigate',
   'wait',
   'wait_for',
@@ -324,7 +324,7 @@ export const actionTypeSchema = z.enum(actionTypes);
 // ============================================================================
 
 // Selector for normalized table
-export const scraperSelectorSchema = z.object({
+const scraperSelectorSchema = z.object({
   name: z.string().min(1, 'Selector name is required'),
   selector: z.string().min(1, 'Selector is required'),
   attribute: z.string().default('text'),
@@ -333,14 +333,14 @@ export const scraperSelectorSchema = z.object({
 });
 
 // Workflow step for normalized table
-export const scraperWorkflowStepSchema = z.object({
+const scraperWorkflowStepSchema = z.object({
   action: z.string().min(1, 'Action is required'),
   name: z.string().optional(),
   params: z.record(z.string(), z.unknown()).default({}),
 });
 
 // Scraper config metadata (for forms)
-export const scraperConfigMetadataSchema = z.object({
+const scraperConfigMetadataSchema = z.object({
   slug: z.string().min(1, 'Slug is required').max(255).regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens'),
   display_name: z.string().optional(),
   base_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
@@ -349,14 +349,14 @@ export const scraperConfigMetadataSchema = z.object({
 });
 
 // Settings for version (timeout, retries, etc.)
-export const scraperVersionSettingsSchema = z.object({
+const scraperVersionSettingsSchema = z.object({
   timeout: z.number().min(1).max(300).default(30),
   retries: z.number().min(0).max(10).default(3),
   image_quality: z.number().min(0).max(100).default(50),
 });
 
 // Test SKU schema
-export const scraperTestSkuSchema = z.object({
+const scraperTestSkuSchema = z.object({
   sku: z.string().min(1, 'SKU is required'),
   sku_type: z.enum(['test', 'fake', 'edge_case']),
 });

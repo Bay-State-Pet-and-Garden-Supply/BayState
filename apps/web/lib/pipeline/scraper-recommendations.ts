@@ -190,7 +190,7 @@ export async function getScraperRecommendations(
  * Returns a summary of which brands have the most affinity data.
  * Useful for displaying global brand coverage in admin dashboards.
  */
-export async function getBrandAffinitySummary(): Promise<
+async function getBrandAffinitySummary(): Promise<
   Array<{
     brand_name: string;
     scrapers_tested: number;

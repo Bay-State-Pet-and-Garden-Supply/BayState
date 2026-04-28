@@ -44,7 +44,7 @@ const productSnapshotSchema = z.object({
   savedDraft: finalizationDraftSchema,
 });
 
-export const productSnapshotInputSchema = z.object({
+const productSnapshotInputSchema = z.object({
   sku: z.string().optional(),
 });
 
@@ -58,7 +58,7 @@ const inspectSourceDataOutputSchema = z.object({
   data: z.record(z.string(), z.unknown()),
 });
 
-export const inspectSourceDataInputSchema = z.object({
+const inspectSourceDataInputSchema = z.object({
   sku: z.string().optional(),
   sourceKey: z.string(),
   focus: z.enum(["all", "pricing", "content", "images"]).default("all"),
@@ -79,7 +79,7 @@ const listImageSourcesOutputSchema = z.object({
   ),
 });
 
-export const listImageSourcesInputSchema = z.object({
+const listImageSourcesInputSchema = z.object({
   sku: z.string().optional(),
 });
 
@@ -110,7 +110,7 @@ const noteInputSchema = z.object({
   note: z.string().optional(),
 });
 
-export const setProductFieldsInputSchema = z
+const setProductFieldsInputSchema = z
   .object({
     name: z.string().optional(),
     description: z.string().optional(),
@@ -133,7 +133,7 @@ export const setProductFieldsInputSchema = z
 
 export type SetProductFieldsInput = z.infer<typeof setProductFieldsInputSchema>;
 
-export const bulkSetProductFieldsInputSchema = z.object({
+const bulkSetProductFieldsInputSchema = z.object({
   scope: finalizationProductScopeSchema,
   changes: setProductFieldsInputSchema,
 });
@@ -142,7 +142,7 @@ export type BulkSetProductFieldsInput = z.infer<
   typeof bulkSetProductFieldsInputSchema
 >;
 
-export const bulkTransformProductNamesInputSchema = z
+const bulkTransformProductNamesInputSchema = z
   .object({
     scope: finalizationProductScopeSchema,
     mode: z.enum(["prefix", "suffix", "replace"]),
@@ -172,14 +172,14 @@ export type BulkTransformProductNamesInput = z.infer<
   typeof bulkTransformProductNamesInputSchema
 >;
 
-export const assignBrandInputSchema = z.object({
+const assignBrandInputSchema = z.object({
   brandId: z.string().min(1),
   brandName: z.string().min(1),
 });
 
 export type AssignBrandInput = z.infer<typeof assignBrandInputSchema>;
 
-export const bulkAssignBrandInputSchema = z.object({
+const bulkAssignBrandInputSchema = z.object({
   scope: finalizationProductScopeSchema,
   brandId: z.string().min(1),
   brandName: z.string().min(1),
@@ -187,19 +187,19 @@ export const bulkAssignBrandInputSchema = z.object({
 
 export type BulkAssignBrandInput = z.infer<typeof bulkAssignBrandInputSchema>;
 
-export const createBrandInputSchema = z.object({
+const createBrandInputSchema = z.object({
   name: z.string().min(1),
 });
 
 export type CreateBrandInput = z.infer<typeof createBrandInputSchema>;
 
-export const setStorePagesInputSchema = z.object({
+const setStorePagesInputSchema = z.object({
   pages: z.array(z.string()).min(1),
 });
 
 export type SetStorePagesInput = z.infer<typeof setStorePagesInputSchema>;
 
-export const bulkStorePagesInputSchema = z.object({
+const bulkStorePagesInputSchema = z.object({
   scope: finalizationProductScopeSchema,
   mode: z.enum(["replace", "add", "remove"]),
   pages: z.array(z.string()).min(1),
@@ -207,19 +207,19 @@ export const bulkStorePagesInputSchema = z.object({
 
 export type BulkStorePagesInput = z.infer<typeof bulkStorePagesInputSchema>;
 
-export const addStorePagesInputSchema = z.object({
+const addStorePagesInputSchema = z.object({
   pages: z.array(z.string()).min(1),
 });
 
 export type AddStorePagesInput = z.infer<typeof addStorePagesInputSchema>;
 
-export const removeStorePagesInputSchema = z.object({
+const removeStorePagesInputSchema = z.object({
   pages: z.array(z.string()).min(1),
 });
 
 export type RemoveStorePagesInput = z.infer<typeof removeStorePagesInputSchema>;
 
-export const replaceSelectedImagesInputSchema = z.object({
+const replaceSelectedImagesInputSchema = z.object({
   images: z.array(z.string()).min(1),
 });
 
@@ -227,7 +227,7 @@ export type ReplaceSelectedImagesInput = z.infer<
   typeof replaceSelectedImagesInputSchema
 >;
 
-export const addSelectedImagesInputSchema = z.object({
+const addSelectedImagesInputSchema = z.object({
   images: z.array(z.string()).min(1),
 });
 
@@ -235,7 +235,7 @@ export type AddSelectedImagesInput = z.infer<
   typeof addSelectedImagesInputSchema
 >;
 
-export const removeSelectedImagesInputSchema = z.object({
+const removeSelectedImagesInputSchema = z.object({
   images: z.array(z.string()).min(1),
 });
 
@@ -243,18 +243,18 @@ export type RemoveSelectedImagesInput = z.infer<
   typeof removeSelectedImagesInputSchema
 >;
 
-export const restoreSavedDraftInputSchema = noteInputSchema;
+const restoreSavedDraftInputSchema = noteInputSchema;
 export type RestoreSavedDraftInput = z.infer<
   typeof restoreSavedDraftInputSchema
 >;
 
-export const saveDraftInputSchema = noteInputSchema;
+const saveDraftInputSchema = noteInputSchema;
 export type SaveDraftInput = z.infer<typeof saveDraftInputSchema>;
 
-export const approveProductInputSchema = noteInputSchema;
+const approveProductInputSchema = noteInputSchema;
 export type ApproveProductInput = z.infer<typeof approveProductInputSchema>;
 
-export const scopedProductActionInputSchema = z.object({
+const scopedProductActionInputSchema = z.object({
   scope: finalizationProductScopeSchema,
   note: z.string().optional(),
 });
@@ -263,13 +263,13 @@ export type ScopedProductActionInput = z.infer<
   typeof scopedProductActionInputSchema
 >;
 
-export const rejectProductInputSchema = z.object({
+const rejectProductInputSchema = z.object({
   reason: z.string().optional(),
 });
 
 export type RejectProductInput = z.infer<typeof rejectProductInputSchema>;
 
-export const scopedRejectProductInputSchema = z.object({
+const scopedRejectProductInputSchema = z.object({
   scope: finalizationProductScopeSchema,
   reason: z.string().optional(),
 });

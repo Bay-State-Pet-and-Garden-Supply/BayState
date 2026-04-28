@@ -143,7 +143,7 @@ export async function removeProductFromGroup(groupId: string, productId: string)
   revalidatePath(`/admin/product-groups/${groupId}`)
 }
 
-export async function updateProductGroupPosition(
+async function updateProductGroupPosition(
   groupId: string,
   productId: string,
   sortOrder: number
@@ -195,7 +195,7 @@ export async function setGroupDefaultProduct(groupId: string, productId: string)
 }
 
 // Fetch functions for use in server components
-export async function getProductGroups() {
+async function getProductGroups() {
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -211,7 +211,7 @@ export async function getProductGroups() {
   return data
 }
 
-export async function getProductGroup(id: string) {
+async function getProductGroup(id: string) {
   const supabase = await createClient()
 
   const { data, error } = await supabase

@@ -37,7 +37,7 @@ export interface RunnerPresence {
 /**
  * Zod schema for RunnerPresence validation.
  */
-export const runnerPresenceSchema = z.object({
+const runnerPresenceSchema = z.object({
   runner_id: z.string(),
   runner_name: z.string(),
   status: z.enum(['online', 'busy', 'idle', 'offline']),
@@ -108,7 +108,7 @@ export interface JobAssignment {
 /**
  * Zod schema for JobAssignment validation.
  */
-export const jobAssignmentSchema = z.object({
+const jobAssignmentSchema = z.object({
   id: z.string(),
   job_id: z.string().optional(),
   scrapers: z.array(z.string()),
@@ -153,7 +153,7 @@ export interface BroadcastEvent<T = unknown> {
 /**
  * Zod schema for BroadcastEvent validation.
  */
-export const broadcastEventSchema = z.object({
+const broadcastEventSchema = z.object({
   event: z.string(),
   payload: z.unknown(),
   timestamp: z.string(),
@@ -198,7 +198,7 @@ export interface ScrapeJobLog {
 /**
  * Zod schema for ScrapeJobLog validation.
  */
-export const scrapeJobLogSchema = z.object({
+const scrapeJobLogSchema = z.object({
   id: z.string(),
   event_id: z.string().optional(),
   job_id: z.string(),

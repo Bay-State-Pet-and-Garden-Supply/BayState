@@ -95,7 +95,7 @@ export async function bulkTitleCaseNames(): Promise<ActionResult> {
   return { success: true, affectedCount: fixedCount };
 }
 
-export async function assignDefaultBrand(sku: string, brandId: string): Promise<ActionResult> {
+async function assignDefaultBrand(sku: string, brandId: string): Promise<ActionResult> {
   const supabase = await createClient();
   
   const { data: product, error: fetchError } = await supabase
@@ -123,7 +123,7 @@ export async function assignDefaultBrand(sku: string, brandId: string): Promise<
   return { success: true };
 }
 
-export async function updateConsolidatedField(
+async function updateConsolidatedField(
   sku: string,
   field: string,
   value: unknown

@@ -88,7 +88,7 @@ export function transformShopSiteOrder(
 /**
  * Batch orders into chunks for efficient processing.
  */
-export function batchOrders<T>(orders: T[], batchSize: number = 50): T[][] {
+function batchOrders<T>(orders: T[], batchSize: number = 50): T[][] {
     const batches: T[][] = [];
     for (let i = 0; i < orders.length; i += batchSize) {
         batches.push(orders.slice(i, i + batchSize));

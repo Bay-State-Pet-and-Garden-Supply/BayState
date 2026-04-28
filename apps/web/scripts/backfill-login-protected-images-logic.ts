@@ -451,7 +451,7 @@ export async function executeLoginProtectedImageBackfillWithClient(
   };
 }
 
-export async function runLoginProtectedImageBackfill(
+async function runLoginProtectedImageBackfill(
   options: LoginProtectedImageBackfillOptions,
 ): Promise<LoginProtectedImageBackfillResult> {
   const supabase = createSupabaseAdminClient();

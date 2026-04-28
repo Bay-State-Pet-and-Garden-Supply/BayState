@@ -21,7 +21,7 @@ interface ProductQAProps {
   isLoggedIn: boolean;
 }
 
-export function ProductQA({ productId, productSlug, questions, isLoggedIn }: ProductQAProps) {
+function ProductQA({ productId, productSlug, questions, isLoggedIn }: ProductQAProps) {
   const [questionText, setQuestionText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 

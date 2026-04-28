@@ -9,7 +9,7 @@ export interface PendingCopilotDraftReview {
   summaries: string[];
 }
 
-export function cloneFinalizationDraft(
+function cloneFinalizationDraft(
   draft: FinalizationDraft,
 ): FinalizationDraft {
   return {

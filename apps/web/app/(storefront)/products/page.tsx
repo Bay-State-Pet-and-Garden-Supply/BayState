@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/pagination';
 import { getFilteredProducts } from '@/lib/products';
 import { getBrands, getNavCategories } from '@/lib/data';
-import { getPetTypes } from '@/lib/recommendations';
+import { getPetTypes } from '@/lib/pet-types';
 import { getDynamicFacets } from '@/lib/facets';
 import { ProductCard } from '@/components/storefront/product-card';
 import { FacetSidebar } from '@/components/storefront/facet-sidebar';

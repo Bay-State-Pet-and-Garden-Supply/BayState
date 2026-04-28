@@ -137,51 +137,6 @@ export class BCIClient implements B2BClient {
     }
   }
 
-  async fetchInventory(skus: string[]): Promise<B2BInventoryUpdate[]> {
-    if (skus.length === 0) return [];
-    
-    const headers = await this.getHeaders();
-    const updates: B2BInventoryUpdate[] = [];
-
-    for (const sku of skus) {
-      try {
-        const response = await fetch(
-          `${this.baseUrl}/me/products/${sku}/inventory`,
-          { headers }
-        );
-        
-        if (response.ok) {
-          const data: OrderCloudInventory = await response.json();
-          updates.push({
-            distributorSku: sku,
-            quantity: data.QuantityAvailable || 0,
-          });
-        } else {
-          updates.push({ distributorSku: sku, quantity: 0 });
-        }
-      } catch {
-        updates.push({ distributorSku: sku, quantity: 0 });
-      }
-    }
-
-    return updates;
-  }
-
-  async fetchPricing(skus: string[]): Promise<B2BPriceUpdate[]> {
-    if (skus.length === 0) return [];
-    
-    const headers = await this.getHeaders();
-    const updates: B2BPriceUpdate[] = [];
-
-    for (const sku of skus) {
-      const priceSchedule = await this.fetchPriceSchedule(sku, headers);
-      const cost = priceSchedule?.PriceBreaks?.[0]?.Price || 0;
-      updates.push({ distributorSku: sku, cost });
-    }
-
-    return updates;
-  }
-
   async healthCheck(): Promise<boolean> {
     try {
       return await this.getOAuthClient().testConnection();

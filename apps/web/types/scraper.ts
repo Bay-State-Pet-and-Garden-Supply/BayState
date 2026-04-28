@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export enum EventType {
+enum EventType {
   JOB_STARTED = 'JOB_STARTED',
   JOB_COMPLETED = 'JOB_COMPLETED',
   JOB_FAILED = 'JOB_FAILED',
@@ -27,7 +27,7 @@ export enum EventType {
   LOGIN_SELECTOR_STATUS = 'LOGIN_SELECTOR_STATUS',
 }
 
-export enum EventSeverity {
+enum EventSeverity {
   DEBUG = 'DEBUG',
   INFO = 'INFO',
   WARNING = 'WARNING',
@@ -35,7 +35,7 @@ export enum EventSeverity {
   CRITICAL = 'CRITICAL',
 }
 
-export const SelectorConfigSchema = z.object({
+const SelectorConfigSchema = z.object({
   id: z.string(),
   name: z.string(),
   selector: z.string(),
@@ -46,7 +46,7 @@ export const SelectorConfigSchema = z.object({
 
 export type SelectorConfig = z.infer<typeof SelectorConfigSchema>;
 
-export const WorkflowStepSchema = z.object({
+const WorkflowStepSchema = z.object({
   action: z.string(),
   name: z.string(),
   params: z.record(z.string(), z.any()).default({}),
@@ -54,7 +54,7 @@ export const WorkflowStepSchema = z.object({
 
 export type WorkflowStep = z.infer<typeof WorkflowStepSchema>;
 
-export const LoginConfigSchema = z.object({
+const LoginConfigSchema = z.object({
   url: z.string(),
   username_field: z.string(),
   password_field: z.string(),
@@ -65,7 +65,7 @@ export const LoginConfigSchema = z.object({
 
 export type LoginConfig = z.infer<typeof LoginConfigSchema>;
 
-export const HttpStatusConfigSchema = z.object({
+const HttpStatusConfigSchema = z.object({
   enabled: z.boolean().default(true),
   fail_on_error_status: z.boolean().default(true),
   error_status_codes: z.array(z.number()).default([]),
@@ -74,14 +74,14 @@ export const HttpStatusConfigSchema = z.object({
 
 export type HttpStatusConfig = z.infer<typeof HttpStatusConfigSchema>;
 
-export const ValidationConfigSchema = z.object({
+const ValidationConfigSchema = z.object({
   no_results_selectors: z.array(z.string()).default([]),
   no_results_text_patterns: z.array(z.string()).default([]),
 });
 
 export type ValidationConfig = z.infer<typeof ValidationConfigSchema>;
 
-export const NormalizationRuleSchema = z.object({
+const NormalizationRuleSchema = z.object({
   field: z.string(),
   action: z.string(),
   params: z.record(z.string(), z.any()).default({}),
@@ -89,11 +89,11 @@ export const NormalizationRuleSchema = z.object({
 
 export type NormalizationRule = z.infer<typeof NormalizationRuleSchema>;
 
-export const AntiDetectionConfigSchema = z.record(z.string(), z.any());
+const AntiDetectionConfigSchema = z.record(z.string(), z.any());
 
 export type AntiDetectionConfig = z.infer<typeof AntiDetectionConfigSchema>;
 
-export const ScraperConfigSchema = z.object({
+const ScraperConfigSchema = z.object({
   schema_version: z.literal('1.0'),
   name: z.string(),
   base_url: z.string(),
