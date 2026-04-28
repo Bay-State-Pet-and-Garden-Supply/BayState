@@ -628,21 +628,27 @@ async function loadScrapeContextItems(
         }
     });
 
-    let brandRegistryLookup: { byId: Map<string, BrandRegistryEntry>; bySlug: Map<string, BrandRegistryEntry> } = {
+    let brandRegistryLookup: { byId: Map<string, BrandRegistryEntry>; bySlug: Map<string, BrandRegistryEntry>; byAlias: Map<string, BrandRegistryEntry> } = {
         byId: new Map(),
         bySlug: new Map(),
+        byAlias: new Map(),
     };
     let cohortBrandEntries = new Map<string, BrandRegistryEntry>();
 
     if (useBrandRegistryFallback) {
         const brandIds = new Set<string>();
         const brandSlugs = new Set<string>();
+        const brandAliases = new Set<string>();
         const cohortIds = new Set<string>();
 
         if (fallbackBrandHint) {
             const fallbackSlug = brandHintToSlug(fallbackBrandHint);
             if (fallbackSlug) {
                 brandSlugs.add(fallbackSlug);
+            }
+            const fallbackRaw = toOptionalString(fallbackBrandHint);
+            if (fallbackRaw) {
+                brandAliases.add(fallbackRaw);
             }
         }
 
@@ -658,6 +664,10 @@ async function loadScrapeContextItems(
                 if (slug) {
                     brandSlugs.add(slug);
                 }
+                const raw = toOptionalString(brandHint);
+                if (raw) {
+                    brandAliases.add(raw);
+                }
             });
 
             const cohortId = toOptionalString(row.cohort_id);
@@ -669,6 +679,7 @@ async function loadScrapeContextItems(
         brandRegistryLookup = await loadBrandRegistryEntries(supabase, {
             brandIds: Array.from(brandIds),
             brandSlugs: Array.from(brandSlugs),
+            brandAliases: Array.from(brandAliases),
         });
         cohortBrandEntries = await loadCohortBrandRegistryEntries(supabase, Array.from(cohortIds));
     }
@@ -690,6 +701,7 @@ async function loadScrapeContextItems(
                 fallbackBrandHint,
             ],
             brandRegistryLookup.bySlug,
+            brandRegistryLookup.byAlias,
         );
         const cohortBrandEntry = (() => {
             const cohortId = toOptionalString(ingestion?.cohort_id);

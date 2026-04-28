@@ -8,6 +8,7 @@ export interface BrandRegistryRow {
     website_url?: unknown;
     official_domains?: unknown;
     preferred_domains?: unknown;
+    aliases?: unknown;
 }
 
 export interface BrandRegistryEntry {
@@ -15,16 +16,19 @@ export interface BrandRegistryEntry {
     name?: string;
     slug?: string;
     preferredDomains?: string[];
+    aliases?: string[];
 }
 
 interface BrandRegistryLookupOptions {
     brandIds?: string[];
     brandSlugs?: string[];
+    brandAliases?: string[];
 }
 
 interface BrandRegistryLookup {
     byId: Map<string, BrandRegistryEntry>;
     bySlug: Map<string, BrandRegistryEntry>;
+    byAlias: Map<string, BrandRegistryEntry>;
 }
 
 interface BrandRegistryLookupResponse {
@@ -144,6 +148,7 @@ export function toBrandRegistryEntry(
     const name = getBrandRegistryName(brand);
     const slug = toOptionalString(brand.slug);
     const preferredDomains = getBrandRegistryPreferredDomains(brand);
+    const aliases = toStringArray(brand.aliases);
 
     if (!id && !name && !slug && !preferredDomains) {
         return undefined;
@@ -154,13 +159,15 @@ export function toBrandRegistryEntry(
         name,
         slug,
         preferredDomains,
+        aliases,
     };
 }
 
 function rememberBrandRegistryEntry(
     entry: BrandRegistryEntry | undefined,
     byId: Map<string, BrandRegistryEntry>,
-    bySlug: Map<string, BrandRegistryEntry>
+    bySlug: Map<string, BrandRegistryEntry>,
+    byAlias: Map<string, BrandRegistryEntry>
 ): void {
     if (!entry) {
         return;
@@ -173,6 +180,15 @@ function rememberBrandRegistryEntry(
     if (entry.slug) {
         bySlug.set(entry.slug, entry);
     }
+
+    if (entry.aliases) {
+        for (const alias of entry.aliases) {
+            const aliasSlug = brandHintToSlug(alias);
+            if (aliasSlug) {
+                byAlias.set(aliasSlug, entry);
+            }
+        }
+    }
 }
 
 export async function loadBrandRegistryEntries(
@@ -181,8 +197,10 @@ export async function loadBrandRegistryEntries(
 ): Promise<BrandRegistryLookup> {
     const byId = new Map<string, BrandRegistryEntry>();
     const bySlug = new Map<string, BrandRegistryEntry>();
+    const byAlias = new Map<string, BrandRegistryEntry>();
     const brandIds = Array.from(new Set((options.brandIds ?? []).filter(Boolean)));
     const brandSlugs = Array.from(new Set((options.brandSlugs ?? []).filter(Boolean)));
+    const brandAliases = Array.from(new Set((options.brandAliases ?? []).filter(Boolean)));
 
     const runLookup = async (
         column: 'id' | 'slug',
@@ -190,8 +208,22 @@ export async function loadBrandRegistryEntries(
     ): Promise<BrandRegistryLookupResponse> => {
         const result = await supabase
             .from('brands')
-            .select('id, name, slug, website_url, official_domains, preferred_domains')
+            .select('id, name, slug, website_url, official_domains, preferred_domains, aliases')
             .in(column, values);
+
+        return {
+            data: Array.isArray(result.data) ? (result.data as unknown as BrandRegistryRow[]) : null,
+            error: result.error ? { message: result.error.message } : null,
+        };
+    };
+
+    const runAliasLookup = async (
+        aliases: string[]
+    ): Promise<BrandRegistryLookupResponse> => {
+        const result = await supabase
+            .from('brands')
+            .select('id, name, slug, website_url, official_domains, preferred_domains, aliases')
+            .overlaps('aliases', aliases);
 
         return {
             data: Array.isArray(result.data) ? (result.data as unknown as BrandRegistryRow[]) : null,
@@ -208,6 +240,10 @@ export async function loadBrandRegistryEntries(
         queries.push(runLookup('slug', brandSlugs));
     }
 
+    if (brandAliases.length > 0) {
+        queries.push(runAliasLookup(brandAliases));
+    }
+
     const responses = await Promise.all(queries);
 
     responses.forEach(({ data, error }) => {
@@ -217,16 +253,17 @@ export async function loadBrandRegistryEntries(
         }
 
         (data ?? []).forEach((row) => {
-            rememberBrandRegistryEntry(toBrandRegistryEntry(row), byId, bySlug);
+            rememberBrandRegistryEntry(toBrandRegistryEntry(row), byId, bySlug, byAlias);
         });
     });
 
-    return { byId, bySlug };
+    return { byId, bySlug, byAlias };
 }
 
 export function findBrandRegistryByHints(
     hints: Array<string | undefined>,
-    bySlug: Map<string, BrandRegistryEntry>
+    bySlug: Map<string, BrandRegistryEntry>,
+    byAlias?: Map<string, BrandRegistryEntry>
 ): BrandRegistryEntry | undefined {
     for (const hint of hints) {
         const slug = brandHintToSlug(hint);
@@ -237,6 +274,13 @@ export function findBrandRegistryByHints(
         const entry = bySlug.get(slug);
         if (entry) {
             return entry;
+        }
+
+        if (byAlias) {
+            const aliasEntry = byAlias.get(slug);
+            if (aliasEntry) {
+                return aliasEntry;
+            }
         }
     }
 

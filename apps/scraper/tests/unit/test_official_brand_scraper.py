@@ -1347,3 +1347,88 @@ class TestIdentifyOfficialUrlEdgeCases:
         assert "amazon.com" in exclusions
         assert "ebay.com" in exclusions
         assert "walmart.com" in exclusions
+
+
+class TestIdentifyOfficialUrlMissingBrandFallback:
+    """Test branch: Missing or None brand falls back to product_name in query."""
+
+    @pytest.mark.asyncio
+    async def test_missing_brand_uses_product_name(
+        self,
+        scraper_for_identify: OfficialBrandScraper,
+        mock_search_client: MagicMock,
+        mock_query_builder: MagicMock,
+    ) -> None:
+        """When brand is empty, query should be built from product_name and sku."""
+        mock_search_client.search = AsyncMock(return_value=([], None))
+
+        await scraper_for_identify.identify_official_url(
+            "051178039965", "", "LV SEED ORGANIC WHEAT GRASS HARD RED"
+        )
+
+        mock_query_builder.build_brand_focused_query.assert_called_once()
+        base_query = mock_query_builder.build_brand_focused_query.call_args[0][0]
+        assert "LV SEED ORGANIC WHEAT GRASS HARD RED" in base_query
+        assert "051178039965" in base_query
+
+    @pytest.mark.asyncio
+    async def test_none_string_brand_uses_product_name(
+        self,
+        scraper_for_identify: OfficialBrandScraper,
+        mock_search_client: MagicMock,
+        mock_query_builder: MagicMock,
+    ) -> None:
+        """When brand is the literal string 'None', it should be treated as missing."""
+        mock_search_client.search = AsyncMock(return_value=([], None))
+
+        await scraper_for_identify.identify_official_url(
+            "051178039965", "None", "LV SEED ORGANIC WHEAT GRASS HARD RED"
+        )
+
+        mock_query_builder.build_brand_focused_query.assert_called_once()
+        base_query = mock_query_builder.build_brand_focused_query.call_args[0][0]
+        assert "LV SEED ORGANIC WHEAT GRASS HARD RED" in base_query
+        assert "None" not in base_query
+
+    @pytest.mark.asyncio
+    async def test_no_brand_no_product_name_returns_none(
+        self,
+        scraper_for_identify: OfficialBrandScraper,
+        mock_search_client: MagicMock,
+    ) -> None:
+        """When both brand and product_name are missing, should return None immediately."""
+        result = await scraper_for_identify.identify_official_url("051178039965", "")
+        assert result is None
+        mock_search_client.search.assert_not_called()
+
+
+class TestScrapeProductsBatchMissingBrand:
+    """Test batch entry point with missing brand context."""
+
+    @pytest.mark.asyncio
+    async def test_batch_falls_back_to_product_name_when_brand_none(
+        self,
+        scraper_for_identify: OfficialBrandScraper,
+        mock_search_client: MagicMock,
+        mock_query_builder: MagicMock,
+    ) -> None:
+        """Batch should not fail when brand is None if product_name is present."""
+        mock_search_client.search = AsyncMock(return_value=([], None))
+
+        result = await scraper_for_identify.scrape_products_batch(
+            [
+                {
+                    "sku": "051178039965",
+                    "brand": None,
+                    "product_name": "LV SEED ORGANIC WHEAT GRASS HARD RED",
+                }
+            ]
+        )
+
+        assert len(result) == 1
+        assert result[0].sku == "051178039965"
+        assert result[0].success is False
+        assert "Could not identify official brand URL" in (result[0].error or "")
+        mock_query_builder.build_brand_focused_query.assert_called_once()
+        base_query = mock_query_builder.build_brand_focused_query.call_args[0][0]
+        assert "LV SEED ORGANIC WHEAT GRASS HARD RED" in base_query
