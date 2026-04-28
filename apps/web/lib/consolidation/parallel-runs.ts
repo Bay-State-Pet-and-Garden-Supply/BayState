@@ -107,7 +107,7 @@ async function updateParallelRun(
     return normalizeParallelRunRow(data as Record<string, unknown>);
 }
 
-export async function registerParallelRun(
+async function registerParallelRun(
     params: RegisterParallelRunParams
 ): Promise<ParallelRunRecord | null> {
     const supabase = await createAdminClient();
@@ -136,7 +136,7 @@ export async function registerParallelRun(
     return normalizeParallelRunRow(data as Record<string, unknown>);
 }
 
-export async function listParallelRuns(limit = 20): Promise<ParallelRunRecord[]> {
+async function listParallelRuns(limit = 20): Promise<ParallelRunRecord[]> {
     const supabase = await createAdminClient();
     const { data, error } = await supabase
         .from('llm_parallel_runs')
@@ -152,7 +152,7 @@ export async function listParallelRuns(limit = 20): Promise<ParallelRunRecord[]>
     return data.map((row) => normalizeParallelRunRow(row as Record<string, unknown>));
 }
 
-export async function syncParallelRunComparison(parallelRunId: string): Promise<ParallelRunRecord | null> {
+async function syncParallelRunComparison(parallelRunId: string): Promise<ParallelRunRecord | null> {
     const supabase = await createAdminClient();
     const { data, error } = await supabase
         .from('llm_parallel_runs')

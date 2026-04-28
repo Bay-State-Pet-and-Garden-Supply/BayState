@@ -223,7 +223,7 @@ export function resolveTaxonomySelections(
   };
 }
 
-export function serializeTaxonomySelections(
+function serializeTaxonomySelections(
   categories: TaxonomyCategoryNode[]
 ): string {
   return categories.map((category) => category.breadcrumb).join('|');

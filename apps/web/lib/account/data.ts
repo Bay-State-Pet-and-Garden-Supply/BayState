@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { Address, ProductSummary } from './types'
-import { Order } from '@/lib/orders'
+import { Order, getOrders as getOrdersBase } from '@/lib/orders'
 
 export async function getAddresses(): Promise<Address[]> {
     const supabase = await createClient()
@@ -49,21 +49,11 @@ export async function getWishlist(): Promise<ProductSummary[]> {
         .filter((p): p is ProductSummary => p !== null && p !== undefined)
 }
 
-export async function getOrders(): Promise<Order[]> {
+export async function getUserOrders(): Promise<Order[]> {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return []
 
-    const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-
-    if (error) {
-        console.error('Error fetching orders:', error)
-        return []
-    }
-
-    return data as Order[]
+    const { orders } = await getOrdersBase({ userId: user.id })
+    return orders
 }

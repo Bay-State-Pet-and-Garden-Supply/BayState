@@ -5,7 +5,7 @@ export type ValidationResult<T> =
     | { success: true; data: T }
     | { success: false; error: NextResponse };
 
-export async function validateRequest<T>(
+async function validateRequest<T>(
     request: NextRequest,
     schema: z.ZodSchema<T>,
     options?: {
@@ -44,7 +44,7 @@ export async function validateRequest<T>(
     }
 }
 
-export function createValidationMiddleware<T>(
+function createValidationMiddleware<T>(
     schema: z.ZodSchema<T>
 ) {
     return async function (request: NextRequest): Promise<ValidationResult<T>> {
@@ -52,7 +52,7 @@ export function createValidationMiddleware<T>(
     };
 }
 
-export function withValidation<T>(
+function withValidation<T>(
     schema: z.ZodSchema<T>,
     handler: (data: T, request: NextRequest) => Promise<NextResponse>
 ) {
@@ -67,7 +67,7 @@ export function withValidation<T>(
     };
 }
 
-export async function parseQueryParams<T>(
+async function parseQueryParams<T>(
     searchParams: URLSearchParams,
     schema: z.ZodSchema<T>
 ): Promise<{ success: true; data: T } | { success: false; error: NextResponse }> {
@@ -100,4 +100,3 @@ export async function parseQueryParams<T>(
     }
 }
 
-export { z };

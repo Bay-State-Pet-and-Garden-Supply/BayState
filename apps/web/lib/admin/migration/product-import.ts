@@ -739,7 +739,7 @@ export async function importShopSiteProducts({
     } as ImportAuditResult;
 }
 
-export async function syncExistingProductsIngestionInputFromShopSite({
+async function syncExistingProductsIngestionInputFromShopSite({
     supabase,
     shopSiteProducts,
 }: {

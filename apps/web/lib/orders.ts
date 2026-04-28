@@ -193,7 +193,7 @@ export async function getOrderById(id: string): Promise<Order | null> {
   return data as Order;
 }
 
-export async function getOrderByNumber(orderNumber: string): Promise<Order | null> {
+async function getOrderByNumber(orderNumber: string): Promise<Order | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('orders')

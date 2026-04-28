@@ -88,62 +88,6 @@ export class PhillipsClient implements B2BClient {
     return products;
   }
 
-  async fetchInventory(skus: string[]): Promise<B2BInventoryUpdate[]> {
-    if (skus.length === 0) return [];
-
-    try {
-      const response = await fetch(`${this.baseUrl}/inventory/check`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify({ skus }),
-      });
-
-      if (!response.ok) {
-        console.error('[Phillips] Inventory request failed:', response.status);
-        return skus.map(sku => ({ distributorSku: sku, quantity: 0 }));
-      }
-
-      const data = await response.json();
-      const items: PhillipsInventoryResponse[] = data.items || [];
-
-      return items.map(item => ({
-        distributorSku: item.sku,
-        quantity: item.quantity,
-        nextAvailabilityDate: item.nextAvailable,
-      }));
-    } catch (error) {
-      console.error('[Phillips] Inventory fetch error:', error);
-      return skus.map(sku => ({ distributorSku: sku, quantity: 0 }));
-    }
-  }
-
-  async fetchPricing(skus: string[]): Promise<B2BPriceUpdate[]> {
-    if (skus.length === 0) return [];
-
-    try {
-      const response = await fetch(`${this.baseUrl}/pricing`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify({ skus }),
-      });
-
-      if (!response.ok) {
-        console.error('[Phillips] Pricing request failed:', response.status);
-        return skus.map(sku => ({ distributorSku: sku, cost: 0 }));
-      }
-
-      const data = await response.json();
-      return (data.items || []).map((item: { sku: string; cost: number; msrp?: number }) => ({
-        distributorSku: item.sku,
-        cost: item.cost,
-        msrp: item.msrp,
-      }));
-    } catch (error) {
-      console.error('[Phillips] Pricing fetch error:', error);
-      return skus.map(sku => ({ distributorSku: sku, cost: 0 }));
-    }
-  }
-
   async healthCheck(): Promise<boolean> {
     try {
       const response = await fetch(`${this.baseUrl}/health`, {

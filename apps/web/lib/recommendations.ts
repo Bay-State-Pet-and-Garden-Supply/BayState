@@ -1,5 +1,6 @@
 import { createClient, createPublicClient } from '@/lib/supabase/server';
 import type { Product } from '@/lib/types';
+import { getPetTypes } from './pet-types';
 
 export interface PersonalizedProduct extends Product {
   petName: string;
@@ -42,7 +43,7 @@ export async function getPersonalizedProducts(
   }));
 }
 
-export async function getProductsForPetType(
+async function getProductsForPetType(
   petTypeId: string,
   limit = 24
 ): Promise<ProductWithPetType[]> {
@@ -74,7 +75,7 @@ export async function getProductsForPetType(
   return products;
 }
 
-export async function getProductsForUserPets(
+async function getProductsForUserPets(
   userId: string
 ): Promise<Map<string, Product[]>> {
   const supabase = await createClient();
@@ -117,22 +118,6 @@ export async function getProductsForUserPets(
   }
 
   return productsByPetType;
-}
-
-export async function getPetTypes(): Promise<{ id: string; name: string }[]> {
-  const supabase = createPublicClient();
-
-  const { data, error } = await supabase
-    .from('pet_types')
-    .select('id, name')
-    .order('display_order');
-
-  if (error) {
-    console.error('Error fetching pet types:', error);
-    return [];
-  }
-
-  return data || [];
 }
 
 export async function getRelatedProductsByPetType(

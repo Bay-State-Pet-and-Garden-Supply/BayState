@@ -191,8 +191,6 @@ export function extractGeminiResponseText(rawResponse: unknown): string | undefi
 }
 
 export class GeminiClientAdapter implements LLMClient {
-  readonly provider = 'gemini' as const;
-
   private readonly apiKey: string;
   private aiPromise: Promise<GoogleGenAI> | null = null;
 

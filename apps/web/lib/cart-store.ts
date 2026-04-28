@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { DiscountType } from './types';
 
 export interface CartItem {
   id: string;
@@ -11,8 +12,6 @@ export interface CartItem {
   preorderBatchId?: string | null;
   pickup_only?: boolean;
 }
-
-export type DiscountType = 'percentage' | 'fixed_amount' | 'free_shipping';
 
 interface PromoState {
   code: string | null;

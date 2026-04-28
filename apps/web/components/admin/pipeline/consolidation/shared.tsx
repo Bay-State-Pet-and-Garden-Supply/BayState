@@ -41,7 +41,7 @@ export interface BatchHistoryJob {
 // Status Badge Configuration
 // ============================================================================
 
-export const STATUS_CONFIG: Record<
+const STATUS_CONFIG: Record<
   string,
   { label: string; color: string; bgColor: string; icon: typeof Loader2 }
 > = {

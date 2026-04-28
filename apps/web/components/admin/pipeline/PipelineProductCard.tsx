@@ -29,7 +29,7 @@ interface PipelineProductCardProps {
     currentStage?: PipelineStage;
 }
 
-export function PipelineProductCardSkeleton() {
+function PipelineProductCardSkeleton() {
     return (
         <div className="rounded-lg border border-border bg-card p-4">
             <div className="flex items-start gap-3">
@@ -54,7 +54,7 @@ export function PipelineProductCardSkeleton() {
     );
 }
 
-export function PipelineProductCardStorefrontSkeleton() {
+function PipelineProductCardStorefrontSkeleton() {
     return (
         <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="relative aspect-square w-full bg-muted">

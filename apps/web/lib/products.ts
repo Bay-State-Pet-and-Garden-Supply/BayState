@@ -325,7 +325,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
  * Fetches a single product by SKU/ID.
  * Uses products table.
  */
-export async function getProductById(id: string): Promise<Product | null> {
+async function getProductById(id: string): Promise<Product | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('products')
@@ -533,7 +533,7 @@ export async function getFeaturedProducts(limit = 6): Promise<Product[]> {
  * Fetches all products (for sitemaps, etc.)
  * Uses products table with embedded brand join.
  */
-export async function getAllProducts(): Promise<Product[]> {
+async function getAllProducts(): Promise<Product[]> {
   const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('products')
@@ -551,7 +551,7 @@ export async function getAllProducts(): Promise<Product[]> {
 /**
  * Fetches products by brand.
  */
-export async function getProductsByBrand(brandSlug: string): Promise<Product[]> {
+async function getProductsByBrand(brandSlug: string): Promise<Product[]> {
   const { products } = await getFilteredProducts({ brandSlug });
   return products;
 }
@@ -559,7 +559,7 @@ export async function getProductsByBrand(brandSlug: string): Promise<Product[]> 
 /**
  * Search products by name.
  */
-export async function searchProducts(
+async function searchProducts(
   query: string,
   limit = 10
 ): Promise<Product[]> {
@@ -694,7 +694,7 @@ export async function getProductGroupBySlug(
 /**
  * Fetch a product group by ID.
  */
-export async function getProductGroupById(
+async function getProductGroupById(
   id: string
 ): Promise<ProductGroup | null> {
   const supabase = await createClient();
@@ -715,7 +715,7 @@ export async function getProductGroupById(
 /**
  * Get all products in a group (lightweight version without full product data).
  */
-export async function getGroupProductIds(
+async function getGroupProductIds(
   groupId: string
 ): Promise<Array<{ productId: string; sortOrder: number; isDefault: boolean; displayLabel: string | null }>> {
   const supabase = await createClient();
@@ -741,7 +741,7 @@ export async function getGroupProductIds(
 /**
  * Create a new product group.
  */
-export async function createProductGroup(options: {
+async function createProductGroup(options: {
   slug: string;
   name: string;
   description?: string;
@@ -772,7 +772,7 @@ export async function createProductGroup(options: {
 /**
  * Update a product group.
  */
-export async function updateProductGroup(
+async function updateProductGroup(
   id: string,
   updates: Partial<Pick<ProductGroup, 'name' | 'slug' | 'description' | 'hero_image_url' | 'default_product_id' | 'brand_id' | 'is_active'>>
 ): Promise<ProductGroup | null> {
@@ -805,7 +805,7 @@ export async function updateProductGroup(
 /**
  * Delete a product group (and cascade to junction table).
  */
-export async function deleteProductGroup(id: string): Promise<boolean> {
+async function deleteProductGroup(id: string): Promise<boolean> {
   const supabase = await createClient();
   const { error } = await supabase.from('product_groups').delete().eq('id', id);
 
@@ -820,7 +820,7 @@ export async function deleteProductGroup(id: string): Promise<boolean> {
 /**
  * Add a product to a group.
  */
-export async function addProductToGroup(
+async function addProductToGroup(
   groupId: string,
   productId: string,
   options?: {
@@ -865,7 +865,7 @@ export async function addProductToGroup(
 /**
  * Remove a product from a group.
  */
-export async function removeProductFromGroup(
+async function removeProductFromGroup(
   groupId: string,
   productId: string
 ): Promise<boolean> {
@@ -887,7 +887,7 @@ export async function removeProductFromGroup(
 /**
  * Update a product's position in a group.
  */
-export async function updateProductGroupPosition(
+async function updateProductGroupPosition(
   groupId: string,
   productId: string,
   sortOrder: number
@@ -911,7 +911,7 @@ export async function updateProductGroupPosition(
  * Set a product as the default for a group.
  * Clears default flag from other products in the group.
  */
-export async function setGroupDefaultProduct(
+async function setGroupDefaultProduct(
   groupId: string,
   productId: string
 ): Promise<boolean> {
@@ -947,7 +947,7 @@ export async function setGroupDefaultProduct(
 /**
  * Get all product groups (for admin).
  */
-export async function getAllProductGroups(): Promise<ProductGroup[]> {
+async function getAllProductGroups(): Promise<ProductGroup[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('product_groups')
@@ -965,7 +965,7 @@ export async function getAllProductGroups(): Promise<ProductGroup[]> {
 /**
  * Check if a product belongs to any groups.
  */
-export async function getProductGroups(
+async function getProductGroups(
   productId: string
 ): Promise<Array<{ groupId: string; groupName: string; groupSlug: string }>> {
   const supabase = await createClient();

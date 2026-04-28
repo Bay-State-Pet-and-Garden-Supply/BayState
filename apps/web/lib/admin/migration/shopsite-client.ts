@@ -107,7 +107,6 @@ const PRODUCT_DOWNLOAD_FIELDS = [
     ...Array.from({ length: 20 }, (_, index) => `MoreInfoImage${index + 1}`),
 ].join('|');
 
-export { ShopSiteConfigSchema };
 export type { ShopSiteConfig, AddressInfo } from './types';
 
 

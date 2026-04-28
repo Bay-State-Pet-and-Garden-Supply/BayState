@@ -77,7 +77,7 @@ export type PreviewProductScopeInput = z.infer<
   typeof previewProductScopeInputSchema
 >;
 
-export const finalizationCopilotWorkspaceSchema = z.object({
+const finalizationCopilotWorkspaceSchema = z.object({
   totalProducts: z.number().int().min(0),
   selectedSku: z.string().nullable(),
   dirtySkus: z.array(z.string()),

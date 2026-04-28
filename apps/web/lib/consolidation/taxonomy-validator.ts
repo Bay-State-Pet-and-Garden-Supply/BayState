@@ -50,7 +50,7 @@ function levenshteinDistance(a: string, b: string): number {
  * @param validOptions - Array of valid options to match against
  * @returns The closest matching option, or the first option if no good match
  */
-export function findClosestMatch(value: string, validOptions: string[]): string {
+function findClosestMatch(value: string, validOptions: string[]): string {
     const normalizedValidOptions = validOptions.filter(
         (option): option is string => typeof option === 'string' && option.trim().length > 0
     );

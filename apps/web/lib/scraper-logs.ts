@@ -95,7 +95,7 @@ function toOptionalNumber(value: unknown): number | null | undefined {
   return undefined;
 }
 
-export function normalizeScrapeLogLevel(level: unknown): ScrapeLogLevel {
+function normalizeScrapeLogLevel(level: unknown): ScrapeLogLevel {
   const normalized = typeof level === 'string' ? level.toLowerCase() : 'info';
   if (normalized === 'warn') {
     return 'warning';
@@ -162,7 +162,7 @@ export function normalizeScrapeLogEntry(
   };
 }
 
-export function buildScrapeLogKey(log: ScrapeJobLogEntry): string {
+function buildScrapeLogKey(log: ScrapeJobLogEntry): string {
   if (log.event_id) {
     return log.event_id;
   }

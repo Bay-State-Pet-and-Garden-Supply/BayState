@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { getPetTypes, getUserPets } from '@/lib/account/pets'
+import { getUserPets } from '@/lib/account/pets'
+import { getPetTypes } from '@/lib/pet-types'
 import { PetList } from '@/components/account/pet-list'
 
 export const metadata = {

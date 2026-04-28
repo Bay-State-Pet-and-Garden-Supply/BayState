@@ -5,7 +5,7 @@ export type TwoPhaseSelection = 'phase1' | 'both';
 
 export type ConsistencyRuleType = 'exact_match' | 'expected_value';
 
-export interface ConsistencyRule {
+export interface TwoPhaseConsistencyRule {
     id: string;
     field: keyof ConsolidationResult;
     type: ConsistencyRuleType;
@@ -17,7 +17,7 @@ export interface ConsistencyRule {
 export interface TwoPhaseConsolidationConfig {
     enablePhase2?: boolean;
     phaseSelection?: TwoPhaseSelection;
-    consistencyRules?: ConsistencyRule[];
+    consistencyRules?: TwoPhaseConsistencyRule[];
     maxSiblingsInContext?: number;
     batchMetadata?: {
         description?: string;
@@ -337,13 +337,13 @@ export class TwoPhaseConsolidationService {
     }
 }
 
-export function createTwoPhaseConsolidationService(
+function createTwoPhaseConsolidationService(
     dependencies?: TwoPhaseConsolidationDependencies
 ): TwoPhaseConsolidationService {
     return new TwoPhaseConsolidationService(dependencies);
 }
 
-export function buildDefaultConsistencyRules(): ConsistencyRule[] {
+export function buildDefaultConsistencyRules(): TwoPhaseConsistencyRule[] {
     return [
         {
             id: 'brand_matches_expected_product_line',

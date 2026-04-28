@@ -18,8 +18,8 @@
     "vercel-build": "cd apps/web && next build"
   },
   "dependencies": {
-    "ansi-styles": "^4.3.0",
-    "dotenv": "^17.4.2"
+    "dotenv": "^17.4.2",
+    "lightningcss": "1.32.0"
   },
   "devDependencies": {
     "turbo": "^2.8.17"

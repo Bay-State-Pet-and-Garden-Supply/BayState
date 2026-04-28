@@ -19,7 +19,7 @@ import { getAllSources } from './sources';
 /**
  * Gets the enrichment config for a product.
  */
-export async function getEnrichmentConfig(sku: string): Promise<EnrichmentConfig | null> {
+async function getEnrichmentConfig(sku: string): Promise<EnrichmentConfig | null> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -39,7 +39,7 @@ export async function getEnrichmentConfig(sku: string): Promise<EnrichmentConfig
 /**
  * Updates the enrichment config for a product.
  */
-export async function updateEnrichmentConfig(
+async function updateEnrichmentConfig(
   sku: string,
   config: Partial<EnrichmentConfig>
 ): Promise<{ success: boolean; error?: string }> {
@@ -139,7 +139,7 @@ export async function setFieldSourceOverride(
 /**
  * Clears the source override for a specific field.
  */
-export async function clearFieldSourceOverride(
+async function clearFieldSourceOverride(
   sku: string,
   field: EnrichableField
 ): Promise<{ success: boolean; error?: string }> {
@@ -289,7 +289,7 @@ function resolveEnrichmentData(
 /**
  * Gets enrichment summaries for multiple products.
  */
-export async function getProductEnrichmentSummaries(
+async function getProductEnrichmentSummaries(
   skus: string[]
 ): Promise<Map<string, ProductEnrichmentSummary>> {
   const results = new Map<string, ProductEnrichmentSummary>();

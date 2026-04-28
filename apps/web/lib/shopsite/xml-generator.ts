@@ -227,7 +227,7 @@ export function generateShopSiteXml(
     return lines.join('\n');
 }
 
-export function* generateShopSiteXmlStream(
+function* generateShopSiteXmlStream(
     products: Iterable<ShopSiteExportProduct>,
     options: ShopSiteXmlOptions = {},
 ): Generator<string> {

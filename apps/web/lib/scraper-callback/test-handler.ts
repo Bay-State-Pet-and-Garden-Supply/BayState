@@ -29,7 +29,7 @@ const TestResultsSummarySchema = z.object({
   failed: z.number().int(),
 });
 
-export const TestResultCallbackSchema = z.object({
+const TestResultCallbackSchema = z.object({
   job_id: z.string().min(1, 'job_id is required'),
   config_id: z.string().min(1, 'config_id is required'),
   status: z.enum(['completed', 'failed']),
@@ -69,7 +69,7 @@ export function determineHealthStatus(score: number): 'healthy' | 'degraded' | '
   return 'broken';
 }
 
-export async function writeTestResults(
+async function writeTestResults(
   supabase: SupabaseClient,
   payload: TestResultCallbackPayload,
   healthScore: number
@@ -110,7 +110,7 @@ export async function writeTestResults(
   return { success: true, testRunId: data.id };
 }
 
-export async function updateScraperHealth(
+async function updateScraperHealth(
   supabase: SupabaseClient,
   configId: string,
   healthScore: number,
@@ -138,7 +138,7 @@ export async function updateScraperHealth(
   return { success: true };
 }
 
-export async function updateHealthViaDbFunction(
+async function updateHealthViaDbFunction(
   supabase: SupabaseClient,
   configId: string,
   status: string,

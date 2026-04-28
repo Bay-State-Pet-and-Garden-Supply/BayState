@@ -16,16 +16,6 @@ export class CentralClient implements B2BClient {
     return [];
   }
 
-  async fetchInventory(_skus: string[]): Promise<B2BInventoryUpdate[]> {
-    console.warn('[Central] EDI 846 parsing not implemented.');
-    return [];
-  }
-
-  async fetchPricing(_skus: string[]): Promise<B2BPriceUpdate[]> {
-    console.warn('[Central] Pricing from EDI 832 not implemented.');
-    return [];
-  }
-
   async healthCheck(): Promise<boolean> {
     console.warn('[Central] Health check requires EDI VAN connectivity.');
     return false;

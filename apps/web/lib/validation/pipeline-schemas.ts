@@ -10,7 +10,7 @@ export const PipelineStatusSchema = z.enum([
     'failed',
 ]);
 
-export const PipelineStageSchema = z.enum([
+const PipelineStageSchema = z.enum([
     'imported',
     'scraping',
     'scraped',
@@ -20,12 +20,12 @@ export const PipelineStageSchema = z.enum([
     'failed',
 ]);
 
-export const PipelineProductInputSchema = z.object({
+const PipelineProductInputSchema = z.object({
     name: z.string().optional(),
     price: z.number().optional(),
 });
 
-export const PipelineProductConsolidatedSchema = z.object({
+const PipelineProductConsolidatedSchema = z.object({
     name: z.string().optional(),
     description: z.string().optional(),
     long_description: z.string().optional(),
@@ -56,17 +56,17 @@ export const PipelineProductSchema = z.object({
     updated_at: z.string(),
 });
 
-export const StatusCountSchema = z.object({
+const StatusCountSchema = z.object({
     status: PipelineStageSchema,
     count: z.number().int().min(0),
 });
 
-export const BulkUpdateStatusSchema = z.object({
+const BulkUpdateStatusSchema = z.object({
     skus: z.array(z.string().min(1)).min(1, 'At least one SKU is required'),
     newStatus: PipelineStatusSchema,
 });
 
-export const GetProductsByStatusOptionsSchema = z.object({
+const GetProductsByStatusOptionsSchema = z.object({
     limit: z.number().int().min(1).max(100).optional(),
     offset: z.number().int().min(0).optional(),
     search: z.string().optional(),

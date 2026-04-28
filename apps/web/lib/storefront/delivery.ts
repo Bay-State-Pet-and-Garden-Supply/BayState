@@ -3,7 +3,7 @@ import type { DeliveryServiceOption, DELIVERY_SERVICE_OPTIONS } from '@/lib/type
 // Store location (Taunton, MA) - configure via env or DB
 const STORE_LAT = parseFloat(process.env.STORE_LATITUDE || '42.3601');
 const STORE_LNG = parseFloat(process.env.STORE_LONGITUDE || '-71.0589');
-export const STORE_LOCATION: [number, number] = [STORE_LNG, STORE_LAT];
+const STORE_LOCATION: [number, number] = [STORE_LNG, STORE_LAT];
 
 // Delivery fee configuration
 interface DeliveryFeeConfig {
@@ -37,7 +37,7 @@ export interface DeliveryFeeBreakdown {
   outOfRangeMessage?: string;
 }
 
-export async function geocodeAddress(address: string): Promise<[number, number] | null> {
+async function geocodeAddress(address: string): Promise<[number, number] | null> {
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
   
   if (!mapboxToken) {
@@ -65,7 +65,7 @@ export async function geocodeAddress(address: string): Promise<[number, number] 
   }
 }
 
-export async function calculateDistance(
+async function calculateDistance(
   origin: [number, number],
   destination: [number, number]
 ): Promise<number | null> {
@@ -203,7 +203,7 @@ export function formatDeliveryFee(breakdown: DeliveryFeeBreakdown): string {
   return parts.join(' ');
 }
 
-export function cartHasPickupOnlyItems(
+function cartHasPickupOnlyItems(
   cartItems: Array<{ pickup_only?: boolean }>
 ): boolean {
   return cartItems.some(item => item.pickup_only);

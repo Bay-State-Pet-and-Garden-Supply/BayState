@@ -1012,7 +1012,7 @@ function groupProductsByProductLine(products: ProductSource[]): Map<string, Prod
     return groups;
 }
 
-export async function submitBatchByProductLine(
+async function submitBatchByProductLine(
     products: ProductSource[],
     metadata: BatchMetadata = {}
 ): Promise<SubmitBatchResponse | BatchErrorResponse> {

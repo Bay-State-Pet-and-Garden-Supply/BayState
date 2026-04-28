@@ -115,7 +115,7 @@ export function queryImportedTabProducts(
   return queryTab("imported", supabase, pagination);
 }
 
-export function queryScrapingTabProducts(
+function queryScrapingTabProducts(
   supabase: PipelineQuerySupabaseClient,
   pagination?: PipelineTabPagination,
   _activeScrapeIdentifiers?: unknown
@@ -123,7 +123,7 @@ export function queryScrapingTabProducts(
   return queryTab("scraping", supabase, pagination);
 }
 
-export function queryScrapedTabProducts(
+function queryScrapedTabProducts(
   supabase: PipelineQuerySupabaseClient,
   pagination?: PipelineTabPagination,
   _activeScrapeIdentifiers?: unknown
@@ -131,7 +131,7 @@ export function queryScrapedTabProducts(
   return queryTab("scraped", supabase, pagination);
 }
 
-export function queryConsolidatingTabProducts(
+function queryConsolidatingTabProducts(
   supabase: PipelineQuerySupabaseClient,
   pagination?: PipelineTabPagination,
   _activeConsolidationIdentifiers?: unknown
@@ -139,7 +139,7 @@ export function queryConsolidatingTabProducts(
   return queryTab("consolidating", supabase, pagination);
 }
 
-export function queryFinalizingTabProducts(
+function queryFinalizingTabProducts(
   supabase: PipelineQuerySupabaseClient,
   pagination?: PipelineTabPagination,
   _activeConsolidationIdentifiers?: unknown,
@@ -148,9 +148,9 @@ export function queryFinalizingTabProducts(
   return queryTab("finalizing", supabase, pagination);
 }
 
-export const queryFinalizedTabProducts = queryFinalizingTabProducts;
+const queryFinalizedTabProducts = queryFinalizingTabProducts;
 
-export function queryExportTabProducts(
+function queryExportTabProducts(
   supabase: PipelineQuerySupabaseClient,
   pagination?: PipelineTabPagination,
   _activeConsolidationIdentifiers?: unknown,
@@ -159,7 +159,7 @@ export function queryExportTabProducts(
   return queryTab("exporting", supabase, pagination);
 }
 
-export function queryFailedTabProducts(
+function queryFailedTabProducts(
   supabase: PipelineQuerySupabaseClient,
   pagination?: PipelineTabPagination
 ): Promise<PipelineTabQueryResult> {

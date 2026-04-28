@@ -4,10 +4,10 @@
 import { z } from 'zod';
 
 // Scraper run status enum (from database constraint)
-export const scrapeJobStatusSchema = z.enum(['pending', 'running', 'completed', 'failed', 'cancelled']);
+const scrapeJobStatusSchema = z.enum(['pending', 'running', 'completed', 'failed', 'cancelled']);
 export type ScrapeJobStatus = z.infer<typeof scrapeJobStatusSchema>;
 
-export const scrapeJobChunkStatusSchema = z.enum(['pending', 'running', 'completed', 'failed']);
+const scrapeJobChunkStatusSchema = z.enum(['pending', 'running', 'completed', 'failed']);
 export type ScrapeJobChunkStatus = z.infer<typeof scrapeJobChunkStatusSchema>;
 
 // Extended statuses used in the UI

@@ -3,24 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { Pet, PetType } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
-
-/**
- * Fetch all available pet types for the dropdown
- */
-export async function getPetTypes() {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-        .from('pet_types')
-        .select('*')
-        .order('display_order', { ascending: true });
-
-    if (error) {
-        console.error('Error fetching pet types:', error);
-        return [];
-    }
-
-    return data as PetType[];
-}
+import { getPetTypes } from '@/lib/pet-types';
 
 /**
  * Fetch all pets for the current user
@@ -46,7 +29,7 @@ export async function getUserPets() {
 /**
  * Fetch a single pet by ID
  */
-export async function getPetById(id: string) {
+async function getPetById(id: string) {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from('user_pets')

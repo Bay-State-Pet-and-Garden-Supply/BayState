@@ -84,7 +84,7 @@ interface ProductEditModalProps {
     onSave: () => void;
 }
 
-export function ProductEditModal({
+function ProductEditModal({
     products,
     onClose,
     onSave,

@@ -88,7 +88,7 @@ const SCRAPER_SOURCES: Omit<EnrichmentSource, 'status' | 'enabled' | 'lastFetchA
 /**
  * Gets all available scraper sources with their current status from the local YAML configurations.
  */
-export async function getScraperSources(): Promise<EnrichmentSource[]> {
+async function getScraperSources(): Promise<EnrichmentSource[]> {
   // Fetch configs from the local YAML files
   const configs = await getLocalScraperConfigs();
 
@@ -168,7 +168,7 @@ export async function getAllSources(): Promise<EnrichmentSource[]> {
 /**
  * Gets a single source by ID.
  */
-export async function getSourceById(sourceId: string): Promise<EnrichmentSource | null> {
+async function getSourceById(sourceId: string): Promise<EnrichmentSource | null> {
   const sources = await getAllSources();
   return sources.find((s) => s.id === sourceId) ?? null;
 }

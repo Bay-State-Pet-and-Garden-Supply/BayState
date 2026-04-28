@@ -3755,7 +3755,7 @@ export type CompositeTypes<
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
-export const Constants = {
+const Constants = {
   public: {
     Enums: {
       pipeline_status_five: [

@@ -16,7 +16,7 @@ export interface ProductStorefrontSettings {
     pickup_only: boolean;
 }
 
-export const PRODUCT_STOREFRONT_SETTINGS_SELECT =
+const PRODUCT_STOREFRONT_SETTINGS_SELECT =
     'storefront_settings:product_storefront_settings(is_featured, pickup_only)';
 
 export function normalizeProductStorefrontSettings(

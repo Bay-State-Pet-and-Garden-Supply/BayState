@@ -11,7 +11,7 @@
  * Fields that are NEVER modified by enrichment - they come from the original import only.
  * This is a business-critical constraint to ensure pricing integrity.
  */
-export const PROTECTED_FIELDS = ['price', 'sku', 'cost', 'msrp'] as const;
+const PROTECTED_FIELDS = ['price', 'sku', 'cost', 'msrp'] as const;
 export type ProtectedField = (typeof PROTECTED_FIELDS)[number];
 
 /**

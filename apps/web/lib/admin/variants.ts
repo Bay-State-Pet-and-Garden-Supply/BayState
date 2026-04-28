@@ -74,7 +74,7 @@ export async function createProductOption(
   return { success: true, option: data as ProductOption };
 }
 
-export async function updateProductOption(
+async function updateProductOption(
   optionId: string,
   updates: Partial<Pick<ProductOption, 'name' | 'position'>>
 ): Promise<{ success: boolean; error?: string }> {

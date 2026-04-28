@@ -1,4 +1,4 @@
-export const SHOPSITE_CATEGORY_MAPPING: Record<string, Record<string, string>> = {
+const SHOPSITE_CATEGORY_MAPPING: Record<string, Record<string, string>> = {
     'Barn Supplies': {
         'Buckets & Feeders': 'farm-animal-livestock-waterers-feeders',
         'Chicken Supplies|Shavings & Bedding': 'farm-animal-chicken-coop-supplies',

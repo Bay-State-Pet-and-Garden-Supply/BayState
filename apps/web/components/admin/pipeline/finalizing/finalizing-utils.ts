@@ -1,4 +1,5 @@
 import { normalizeImageUrl } from "@/lib/product-sources";
+import { extractSelectedImageUrls } from "@/lib/pipeline/finalization-draft";
 
 export interface ImageSourceOption {
   id: string;
@@ -11,7 +12,7 @@ export interface ImageSourceOption {
  * For Amazon images, strips the host to handle same image from different CDNs.
  * This matches the logic in product-sources.ts buildImageDedupKey.
  */
-export function buildImageDedupKey(value: string): string {
+function buildImageDedupKey(value: string): string {
   const normalized = normalizeImageUrl(value);
   if (/amazon\./i.test(normalized) && /\/images\/I\//i.test(normalized)) {
     return normalized.replace(/^https?:\/\/[^/]+/i, "").toLowerCase();
@@ -23,7 +24,7 @@ export function buildImageDedupKey(value: string): string {
  * Convert array to string array with Amazon-aware deduplication.
  * Handles case where same Amazon image comes from different hosts/CDNs.
  */
-export function toStringArray(value: unknown): string[] {
+function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
 
   const deduped = new Map<string, string>();
@@ -42,26 +43,7 @@ export function toStringArray(value: unknown): string[] {
   return Array.from(deduped.values());
 }
 
-export function extractSelectedImageUrls(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-
-  const urls = value
-    .map((entry) => {
-      if (typeof entry === "string") return entry;
-      if (entry && typeof entry === "object" && "url" in entry) {
-        const url = (entry as { url?: unknown }).url;
-        return typeof url === "string" ? url : null;
-      }
-      return null;
-    })
-    .filter((url): url is string => typeof url === "string")
-    .map((url) => normalizeImageUrl(url))
-    .filter((url) => url.length > 0);
-
-  return Array.from(new Set(urls));
-}
-
-export function formatSourceLabel(sourceKey: string): string {
+function formatSourceLabel(sourceKey: string): string {
   return sourceKey
     .replace(/^source:/i, "")
     .split(/[_-]+/)

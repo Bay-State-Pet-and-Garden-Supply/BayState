@@ -848,7 +848,7 @@ export async function bulkUpdateStatus(
 /**
  * Fetches a single product by SKU.
  */
-export async function getProductBySku(
+async function getProductBySku(
   sku: string,
 ): Promise<PipelineProduct | null> {
   const supabase = await createClient();
@@ -998,7 +998,7 @@ export async function clearScrapeResultsAndResetStatus(
 /**
  * Fetches selected images for a product by SKU.
  */
-export async function getSelectedImages(sku: string): Promise<SelectedImage[]> {
+async function getSelectedImages(sku: string): Promise<SelectedImage[]> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -1020,7 +1020,7 @@ export async function getSelectedImages(sku: string): Promise<SelectedImage[]> {
  * Validates that images are from the product's image_candidates.
  * Max 10 images allowed.
  */
-export async function setSelectedImages(
+async function setSelectedImages(
   sku: string,
   imageUrls: string[],
   userId?: string,

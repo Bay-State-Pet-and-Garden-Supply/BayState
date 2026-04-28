@@ -16,7 +16,7 @@ interface ProductReviewsProps {
   };
 }
 
-export function ProductReviews({ reviews, stats }: ProductReviewsProps) {
+function ProductReviews({ reviews, stats }: ProductReviewsProps) {
   if (!reviews || reviews.length === 0) {
     return (
       <Card className="bg-muted/30 border-dashed">

@@ -6,9 +6,9 @@ import { createClient } from '@/lib/supabase/server';
 
 const resendApiKey = process.env.RESEND_API_KEY;
 
-export const resend = resendApiKey ? new Resend(resendApiKey) : null;
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
-export const FROM_EMAIL = 'Bay State Pet & Garden <orders@baystatepet.com>';
+const FROM_EMAIL = 'Bay State Pet & Garden <orders@baystatepet.com>';
 
 interface PetRecommendation {
   id: string;

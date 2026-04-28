@@ -4,9 +4,9 @@ import { NextResponse } from 'next/server';
 export const RUNNER_BUILD_ID_HEADER = 'X-BayState-Runner-Build-Id';
 export const RUNNER_BUILD_SHA_HEADER = 'X-BayState-Runner-Build-Sha';
 export const RUNNER_RELEASE_CHANNEL_HEADER = 'X-BayState-Runner-Release-Channel';
-export const RUNNER_BUILD_STATUS_HEADER = 'X-BayState-Runner-Build-Status';
-export const LATEST_RUNNER_BUILD_ID_HEADER = 'X-BayState-Latest-Runner-Build-Id';
-export const LATEST_RUNNER_BUILD_SHA_HEADER = 'X-BayState-Latest-Runner-Build-Sha';
+const RUNNER_BUILD_STATUS_HEADER = 'X-BayState-Runner-Build-Status';
+const LATEST_RUNNER_BUILD_ID_HEADER = 'X-BayState-Latest-Runner-Build-Id';
+const LATEST_RUNNER_BUILD_SHA_HEADER = 'X-BayState-Latest-Runner-Build-Sha';
 
 const DEFAULT_RUNNER_RELEASE_CHANNEL = 'latest';
 const RELEASE_SETTING_PREFIX = 'scraper_runner_release_';
@@ -79,7 +79,7 @@ function parsePublishedRunnerRelease(
     };
 }
 
-export function getRunnerReleaseChannel(
+function getRunnerReleaseChannel(
     headers: { get(name: string): string | null }
 ): string {
     return normalizeReleaseChannel(headers.get(RUNNER_RELEASE_CHANNEL_HEADER));

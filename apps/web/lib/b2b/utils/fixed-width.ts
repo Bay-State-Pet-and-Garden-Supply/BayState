@@ -127,7 +127,7 @@ export const ORGILL_HD1_FIELDS: FieldDefinition[] = [
  * Helper to create HD1 field layout with custom offsets.
  * Use this when Orgill changes their format.
  */
-export function createHD1Layout(customOffsets?: Partial<Record<string, { start: number; end: number }>>): FieldDefinition[] {
+function createHD1Layout(customOffsets?: Partial<Record<string, { start: number; end: number }>>): FieldDefinition[] {
   const defaults = [...ORGILL_HD1_FIELDS];
   
   if (customOffsets) {

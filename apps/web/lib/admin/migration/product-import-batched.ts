@@ -27,6 +27,7 @@ interface BatchImportResult {
     created: number;
     updated: number;
     failed: number;
+    deleted: number;
     errors: Array<{ sku: string; error: string }>;
     crossSellStats: {
         linked: number;
@@ -363,7 +364,7 @@ export async function importShopSiteProductsBatched({
         deleted: deletedCount,
         errors,
         crossSellStats,
-    } as any;
+    };
 }
 
 async function fetchAll<T>(

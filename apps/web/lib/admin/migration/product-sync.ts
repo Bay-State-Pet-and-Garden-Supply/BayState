@@ -172,7 +172,7 @@ function formatOptionalNumber(value: number | null): string | undefined {
     return String(value);
 }
 
-export function buildPipelineInputFromTransformedShopSiteProduct(
+function buildPipelineInputFromTransformedShopSiteProduct(
     transformed: ReturnType<typeof transformShopSiteProduct>
 ): ShopSitePipelineInput {
     const input: ShopSitePipelineInput = {

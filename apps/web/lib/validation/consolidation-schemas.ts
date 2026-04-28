@@ -23,7 +23,7 @@ export const BatchMetadataSchema = z.object({
     use_web_search: z.boolean().optional(),
 }).catchall(z.union([z.string(), z.number(), z.boolean()]));
 
-export const BatchStatusSchema = z.object({
+const BatchStatusSchema = z.object({
     id: z.string().min(1, 'Invalid batch ID'),
     status: BatchJobStatusSchema,
     provider: z.enum(['openai', 'openai_compatible', 'gemini']).optional(),
@@ -134,12 +134,12 @@ export const SubmitBatchResponseSchema = z.object({
     product_count: z.number().int().min(1),
 });
 
-export const BatchErrorResponseSchema = z.object({
+const BatchErrorResponseSchema = z.object({
     success: z.literal(false),
     error: z.string().min(1, 'Error message is required'),
 });
 
-export const ApplyResultsResponseSchema = z.object({
+const ApplyResultsResponseSchema = z.object({
     status: z.literal('applied'),
     success_count: z.number().int().min(0),
     error_count: z.number().int().min(0),
@@ -161,7 +161,7 @@ export const CategorySchema = z.object({
     slug: z.string().nullable().optional(),
 });
 
-export const ProductTypeSchema = z.object({
+const ProductTypeSchema = z.object({
     id: uuid('Invalid product type ID'),
     name: z.string().min(1, 'Product type name is required'),
 });
@@ -172,7 +172,7 @@ export const ConsolidationSubmitSchema = z.object({
     auto_apply: z.boolean().optional(),
 });
 
-export const ScrapedDataItemSchema = z.object({
+const ScrapedDataItemSchema = z.object({
     price: z.number().min(0).optional(),
     title: z.string().optional(),
     brand: z.string().optional(),
@@ -202,7 +202,7 @@ export const ScrapedDataItemSchema = z.object({
     scraped_at: z.string().optional(),
 }).catchall(z.unknown());
 
-export const ScrapedDataSchema = z.record(z.string(), ScrapedDataItemSchema);
+const ScrapedDataSchema = z.record(z.string(), ScrapedDataItemSchema);
 
 export const ScrapeCallbackPayloadSchema = z.object({
     job_id: uuid('Invalid job ID'),

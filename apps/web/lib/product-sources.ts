@@ -179,7 +179,7 @@ function mergeCanonicalFieldValue(
     return currentValue;
 }
 
-export function normalizeSourcePayload(sourcePayload: unknown): CanonicalProductSourceRecord {
+function normalizeSourcePayload(sourcePayload: unknown): CanonicalProductSourceRecord {
     if (!isRecord(sourcePayload)) {
         return {};
     }
@@ -427,7 +427,7 @@ export function normalizeImageUrl(url: string): string {
     return resolved;
 }
 
-export function extractSourceMetadata(rawSources: unknown): Record<string, unknown> {
+function extractSourceMetadata(rawSources: unknown): Record<string, unknown> {
     if (!isRecord(rawSources)) {
         return {};
     }

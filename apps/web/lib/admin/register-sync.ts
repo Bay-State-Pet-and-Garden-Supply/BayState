@@ -66,7 +66,7 @@ function roundCurrency(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-export function deriveInventoryStockStatus(
+function deriveInventoryStockStatus(
   quantityOnHand: number,
   currentStatus: string,
 ): string {

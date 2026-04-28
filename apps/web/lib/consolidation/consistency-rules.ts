@@ -416,4 +416,4 @@ export function validateConsistency(
 
 export const brandConsistencyRule = buildBrandConsistencyRule();
 export const descriptionFormatRule = buildDescriptionFormatRule();
-export const defaultConsistencyRules = createConsistencyRules();
+const defaultConsistencyRules = createConsistencyRules();
