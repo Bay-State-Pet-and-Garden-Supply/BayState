@@ -56,18 +56,30 @@ class OfficialBrandScraper:
             model=self._llm_runtime.model
         )
 
-    async def identify_official_url(self, sku: str, brand: str) -> str | None:
+    async def identify_official_url(
+        self, sku: str, brand: str, product_name: str | None = None
+    ) -> str | None:
         """Identify the official manufacturer URL for a product.
 
         Args:
             sku: Product SKU or identifier
             brand: Product brand name
+            product_name: Optional product name fallback when brand is missing
 
         Returns:
             The official manufacturer URL or None if not found
         """
         # 1. Build query with exclusions
-        base_query = f"{brand} {sku} official website"
+        effective_brand = brand.strip() if brand and brand.lower() != "none" else ""
+        if effective_brand:
+            base_query = f"{effective_brand} {sku} official website"
+        elif product_name:
+            base_query = f"{product_name} {sku} official website"
+        else:
+            logger.info(
+                "[OfficialBrandScraper] No brand or product_name available for %s", sku
+            )
+            return None
         # Standard aggregators and retailers to exclude from search results
         exclusions = [
             "amazon.com",
@@ -92,7 +104,11 @@ class OfficialBrandScraper:
             return None
 
         if not results:
-            logger.info("[OfficialBrandScraper] No search results found for %s %s", brand, sku)
+            logger.info(
+                "[OfficialBrandScraper] No search results found for %s %s",
+                effective_brand or product_name or "",
+                sku,
+            )
             return None
 
         # 3. Check for Knowledge Graph result first
@@ -100,24 +116,29 @@ class OfficialBrandScraper:
             if result.get("result_type") == "knowledge_graph":
                 kg_url = str(result.get("url") or "").strip()
                 if kg_url:
-                    logger.info("[OfficialBrandScraper] Found Knowledge Graph result: %s", kg_url)
+                    logger.info(
+                        "[OfficialBrandScraper] Found Knowledge Graph result: %s", kg_url
+                    )
                     return kg_url
 
         # 4. Fallback to LLM scoring for top 5 organic results
         scored_results = []
+        scoring_context = effective_brand or product_name or ""
         for result in results[:5]:
             url = result.get("url")
             snippet = result.get("description") or result.get("title", "")
             if not url:
                 continue
-                
-            score_data = await self._source_selector.score_snippet(url, snippet, brand)
+
+            score_data = await self._source_selector.score_snippet(url, snippet, scoring_context)
             if score_data.get("is_official"):
                 confidence = score_data.get("confidence_score", 0.0)
                 scored_results.append((url, confidence))
                 logger.debug(
                     "[OfficialBrandScraper] Scored URL %s: official=%s, confidence=%s",
-                    url, True, confidence
+                    url,
+                    True,
+                    confidence,
                 )
 
         if scored_results:
@@ -131,7 +152,11 @@ class OfficialBrandScraper:
             )
             return best_url
 
-        logger.info("[OfficialBrandScraper] No official URL identified for %s %s", brand, sku)
+        logger.info(
+            "[OfficialBrandScraper] No official URL identified for %s %s",
+            effective_brand or product_name or "",
+            sku,
+        )
         return None
 
 
@@ -248,15 +273,22 @@ class OfficialBrandScraper:
 
         async def _scrape_single(product: dict[str, Any]) -> AISearchResult:
             async with semaphore:
-                sku = str(product.get("sku", "")).strip()
-                brand = str(product.get("brand", "")).strip()
-                if not sku or not brand:
-                    return AISearchResult(success=False, sku=sku, error="Missing SKU or Brand")
+                sku = str(product.get("sku") or "").strip()
+                brand = str(product.get("brand") or "").strip()
+                product_name = str(product.get("product_name") or "").strip()
+                if not sku:
+                    return AISearchResult(success=False, sku=sku, error="Missing SKU")
+                if not brand and not product_name:
+                    return AISearchResult(
+                        success=False, sku=sku, error="Missing Brand and Product Name"
+                    )
 
                 # 1. Discovery
-                url = await self.identify_official_url(sku, brand)
+                url = await self.identify_official_url(sku, brand, product_name)
                 if not url:
-                    return AISearchResult(success=False, sku=sku, error="Could not identify official brand URL")
+                    return AISearchResult(
+                        success=False, sku=sku, error="Could not identify official brand URL"
+                    )
 
                 # 2. Extraction
                 res = await self.extract_data(url)

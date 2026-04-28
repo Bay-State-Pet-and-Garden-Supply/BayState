@@ -1140,10 +1140,10 @@ def _run_ai_search_job(
         items.append(
             {
                 "sku": sku,
-                "product_name": item_context.get("product_name", search_cfg.get("product_name")),
-                "brand": item_context.get("brand", search_cfg.get("brand")),
-                "category": item_context.get("category", search_cfg.get("category")),
-                "preferred_domains": item_context.get("preferred_domains", search_cfg.get("preferred_domains")),
+                "product_name": item_context.get("product_name") if item_context.get("product_name") is not None else search_cfg.get("product_name"),
+                "brand": item_context.get("brand") if item_context.get("brand") is not None else search_cfg.get("brand"),
+                "category": item_context.get("category") if item_context.get("category") is not None else search_cfg.get("category"),
+                "preferred_domains": item_context.get("preferred_domains") if item_context.get("preferred_domains") is not None else search_cfg.get("preferred_domains"),
             }
         )
 

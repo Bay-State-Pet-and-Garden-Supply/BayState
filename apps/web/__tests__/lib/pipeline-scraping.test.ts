@@ -53,6 +53,7 @@ describe('scrapeProducts', () => {
             website_url?: string | null;
             official_domains?: string[];
             preferred_domains?: string[];
+            aliases?: string[];
         }>;
         cohortRows?: Array<{
             id: string;
@@ -114,6 +115,18 @@ describe('scrapeProducts', () => {
                     });
                 }
 
+                return Promise.resolve({ data: [], error: null });
+            }),
+            overlaps: jest.fn().mockImplementation((column: string, values: string[]) => {
+                const rows = options?.brandRows ?? [];
+                if (column === 'aliases') {
+                    return Promise.resolve({
+                        data: rows.filter((row) =>
+                            row.aliases && row.aliases.some((a: string) => values.includes(a))
+                        ),
+                        error: null,
+                    });
+                }
                 return Promise.resolve({ data: [], error: null });
             }),
         };
@@ -430,6 +443,63 @@ describe('scrapeProducts', () => {
                 },
             ],
         });
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'official_brand' });
+
+        expect(result.success).toBe(true);
+        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
+        expect(insertedPayload.config.items).toEqual([
+            {
+                sku: 'SKU-1',
+                product_name: 'Miracle-Gro Potting Mix 25 Quart',
+                price: 9.99,
+                brand: 'Miracle-Gro',
+                category: 'Garden > Potting Mix',
+                preferred_domains: ['scottsmiraclegro.com', 'homedepot.com', 'lowes.com'],
+            },
+        ]);
+    });
+
+    it('should resolve brand via aliases when exact slug does not match', async () => {
+        mockSupabase = makeSupabaseMock({
+            pipelineRows: [
+                {
+                    sku: 'SKU-1',
+                    input: {
+                        name: 'LV SEED ORGANIC WHEAT GRASS HARD RED',
+                        price: 3.29,
+                    },
+                },
+            ],
+            brandRows: [
+                {
+                    id: 'brand-lvs',
+                    name: 'Lake Valley Seed',
+                    slug: 'lake-valley-seed',
+                    website_url: 'https://lakevalleyseed.com',
+                    official_domains: ['lakevalleyseed.com'],
+                    aliases: ['LV SEED'],
+                },
+            ],
+        });
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'official_brand' });
+
+        expect(result.success).toBe(true);
+        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
+        expect(insertedPayload.config.items).toEqual([
+            {
+                sku: 'SKU-1',
+                product_name: 'LV SEED ORGANIC WHEAT GRASS HARD RED',
+                price: 3.29,
+                brand: 'Lake Valley Seed',
+                preferred_domains: ['lakevalleyseed.com'],
+            },
+        ]);
+    });
+});
         (createClient as jest.Mock).mockResolvedValue(mockSupabase);
 
         const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'official_brand' });
