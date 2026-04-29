@@ -92,7 +92,7 @@ interface ScraperYamlConfig {
   requires_login?: boolean;
 }
 
-export interface ScraperRuntimeConfig {
+interface ScraperRuntimeConfig {
   slug: string;
   filePath: string;
   baseUrl: string | null;
@@ -109,7 +109,7 @@ interface BrowserSessionState {
   storageStatePath: string;
 }
 
-export interface ResolvedImageRetryTarget {
+interface ResolvedImageRetryTarget {
   productId: string;
   sku: string;
   sources: Record<string, unknown>;
@@ -128,7 +128,7 @@ interface RetryErrorEnvelope {
   auth?: RetryAuthMetadata;
 }
 
-export interface ImageRetryCaptureRequest {
+interface ImageRetryCaptureRequest {
   productId: string;
   sku: string;
   imageUrl: string;
@@ -143,7 +143,7 @@ export interface ImageRetryCaptureResult {
   errorMessage?: string;
 }
 
-export interface PollAndProcessResult {
+interface PollAndProcessResult {
   fetched: number;
   processed: number;
   completed: number;
@@ -154,7 +154,7 @@ export interface PollAndProcessResult {
 
 export type ImageRetryEntry = PendingImageRetry;
 
-export interface ImageRetryProcessorOptions {
+interface ImageRetryProcessorOptions {
   supabase?: Pick<SupabaseClient, 'rpc' | 'from'>;
   captureImage?: (request: ImageRetryCaptureRequest) => Promise<ImageRetryCaptureResult>;
   readBrowserSession?: (scraper: ScraperRuntimeConfig) => Promise<BrowserSessionState>;

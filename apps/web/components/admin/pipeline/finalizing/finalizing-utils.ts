@@ -1,7 +1,7 @@
 import { normalizeImageUrl } from "@/lib/product-sources";
 import { extractSelectedImageUrls } from "@/lib/pipeline/finalization-draft";
 
-export interface ImageSourceOption {
+interface ImageSourceOption {
   id: string;
   label: string;
   candidates: string[];
@@ -43,7 +43,7 @@ function toStringArray(value: unknown): string[] {
   return Array.from(deduped.values());
 }
 
-function formatSourceLabel(sourceKey: string): string {
+export function formatSourceLabel(sourceKey: string): string {
   return sourceKey
     .replace(/^source:/i, "")
     .split(/[_-]+/)

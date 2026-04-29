@@ -31,7 +31,7 @@ export interface Column<T> {
   className?: string;
 }
 
-export interface DataTableProps<T extends { id: string | number }> {
+interface DataTableProps<T extends { id: string | number }> {
   data: T[];
   columns: Column<T>[];
   searchPlaceholder?: string;

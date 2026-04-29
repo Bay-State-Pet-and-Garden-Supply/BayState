@@ -20,12 +20,12 @@ export interface ShopSiteExportBrandRow {
 
 type JsonRecord = Record<string, unknown>;
 
-export interface PreparedShopSiteExportProduct extends ShopSiteExportProduct {
+interface PreparedShopSiteExportProduct extends ShopSiteExportProduct {
     brand_folder: string;
     image_sources: string[];
 }
 
-export interface PreparedShopSiteExport {
+interface PreparedShopSiteExport {
     products: PreparedShopSiteExportProduct[];
 }
 

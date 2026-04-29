@@ -18,7 +18,7 @@ export interface OrderItem {
 
 export type PaymentMethod = 'pickup' | 'credit_card' | 'paypal' | 'in_store';
 export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'refunded' | 'partially_refunded';
-export type FulfillmentMethod = 'pickup' | 'delivery';
+type FulfillmentMethod = 'pickup' | 'delivery';
 
 export interface Order {
   id: string;
@@ -52,22 +52,7 @@ export interface Order {
   items?: OrderItem[];
 }
 
-export interface OrderPayment {
-  id: string;
-  order_id: string;
-  amount: number;
-  currency: string;
-  payment_method: 'credit_card' | 'paypal';
-  stripe_payment_intent_id: string | null;
-  stripe_charge_id: string | null;
-  status: 'pending' | 'processing' | 'succeeded' | 'failed' | 'cancelled' | 'refunded';
-  error_message: string | null;
-  metadata: Record<string, unknown>;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CreateOrderInput {
+interface CreateOrderInput {
   userId?: string | null;
   customerName: string;
   customerEmail: string;

@@ -1,9 +1,9 @@
 import type { ProductSource } from './types';
 
-export type ConsistencySeverity = 'error' | 'warning' | 'info';
-export type ConsistencyRuleName = 'brand-consistency' | 'description-format';
+type ConsistencySeverity = 'error' | 'warning' | 'info';
+type ConsistencyRuleName = 'brand-consistency' | 'description-format';
 
-export interface ConsistencyRule {
+interface ConsistencyRule {
     name: ConsistencyRuleName;
     severity: ConsistencySeverity;
     validate: (products: ProductSource[]) => Violation[];
@@ -19,7 +19,7 @@ export interface Violation {
     actual?: string;
 }
 
-export interface ConsistencyRulesConfig {
+interface ConsistencyRulesConfig {
     severities?: Partial<Record<ConsistencyRuleName, ConsistencySeverity>>;
     sourcePriority?: string[];
     descriptionSentenceTolerance?: number;

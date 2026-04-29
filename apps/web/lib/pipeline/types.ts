@@ -21,12 +21,12 @@ export type PersistedPipelineStatus =
 export const PIPELINE_TABS = PERSISTED_PIPELINE_STATUSES;
 
 export type PipelineStage = (typeof PIPELINE_TABS)[number];
-export type PipelineTab = PipelineStage;
+type PipelineTab = PipelineStage;
 
 /** No pipeline tabs are derived; the workflow vocabulary is canonical everywhere. */
 const DERIVED_PIPELINE_TABS = [] as const;
 
-export type DerivedPipelineTab = (typeof DERIVED_PIPELINE_TABS)[number];
+type DerivedPipelineTab = (typeof DERIVED_PIPELINE_TABS)[number];
 
 /** Status-like labels that appear in badges, counts, or actions. */
 export type PipelineStatus = PersistedPipelineStatus;
@@ -174,7 +174,7 @@ export interface StatusCount {
 /**
  * Configuration for displaying a pipeline stage
  */
-export interface StageConfig {
+interface StageConfig {
   /** Human-readable stage label */
   label: string;
   /** Hex color for UI display */

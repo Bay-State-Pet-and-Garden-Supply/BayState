@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 
-export type RealtimeConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error';
-export type RealtimePresenceState = ReturnType<RealtimeChannel['presenceState']>;
+type RealtimeConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error';
+type RealtimePresenceState = ReturnType<RealtimeChannel['presenceState']>;
 
 type RealtimeChannelStatus = 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CLOSED' | 'TIMED_OUT';
 type SupabaseClientFactory = typeof import('@/lib/supabase/client')['createClient'];
@@ -111,7 +111,7 @@ function getOrCreateChannel(channelName: string): PooledChannelEntry {
   return entry;
 }
 
-export interface UseRealtimeChannelOptions {
+interface UseRealtimeChannelOptions {
   channelName: string;
   onMessage: (payload: unknown) => void;
   onPresenceSync?: (presenceState: RealtimePresenceState) => void;
@@ -119,7 +119,7 @@ export interface UseRealtimeChannelOptions {
   autoConnect?: boolean;
 }
 
-export interface UseRealtimeChannelReturn {
+interface UseRealtimeChannelReturn {
   connectionState: RealtimeConnectionState;
   lastError: Error | null;
   reconnectAttempt: number;

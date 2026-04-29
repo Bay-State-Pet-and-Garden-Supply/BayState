@@ -218,13 +218,3 @@ export const ScrapeCallbackPayloadSchema = z.object({
         })
         .optional(),
 });
-
-export type BatchJobStatus = z.infer<typeof BatchJobStatusSchema>;
-export type BatchJob = z.infer<typeof BatchJobSchema>;
-export type ProductSource = z.infer<typeof ProductSourceSchema>;
-export type ConsolidationResult = z.infer<typeof ConsolidationResultSchema>;
-export type ConsolidatedData = z.infer<typeof ConsolidatedDataSchema>;
-export type Category = z.infer<typeof CategorySchema>;
-export type ProductType = z.infer<typeof ProductTypeSchema>;
-export type ConsolidationSubmit = z.infer<typeof ConsolidationSubmitSchema>;
-export type ScrapeCallbackPayload = z.infer<typeof ScrapeCallbackPayloadSchema>;

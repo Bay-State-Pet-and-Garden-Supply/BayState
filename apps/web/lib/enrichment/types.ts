@@ -12,7 +12,7 @@
  * This is a business-critical constraint to ensure pricing integrity.
  */
 const PROTECTED_FIELDS = ['price', 'sku', 'cost', 'msrp'] as const;
-export type ProtectedField = (typeof PROTECTED_FIELDS)[number];
+type ProtectedField = (typeof PROTECTED_FIELDS)[number];
 
 /**
  * Fields that CAN be enriched from external sources.
@@ -116,22 +116,6 @@ export interface ProductEnrichmentSummary {
   conflicts: EnrichableField[];
   /** The "Golden Record" - resolved enrichment data */
   resolved: Partial<Record<EnrichableField, { value: unknown; source: string }>>;
-}
-
-/**
- * Request to update enrichment config for a product.
- */
-export interface UpdateEnrichmentConfigRequest {
-  sku: string;
-  config: Partial<EnrichmentConfig>;
-}
-
-/**
- * Request to trigger a targeted scrape for specific sources.
- */
-export interface TargetedScrapeRequest {
-  sku: string;
-  sources: string[];
 }
 
 /**

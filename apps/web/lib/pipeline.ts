@@ -1112,6 +1112,5 @@ export type {
   PipelineStatus,
   PipelineStage,
   StatusCount,
-  StageConfig,
   PipelineProduct,
 } from "@/lib/pipeline/types";

@@ -12,7 +12,7 @@ import { normalizeScrapeLogEntry, mergeScrapeJobLogs, type ScrapeJobLogEntry } f
 
 export type LogEntry = ScrapeJobLogEntry;
 
-export interface UseLogSubscriptionOptions {
+interface UseLogSubscriptionOptions {
     /** Filter logs to a specific job ID */
     jobId?: string;
     /** Maximum log entries to keep in memory (default: 200) */
@@ -23,7 +23,7 @@ export interface UseLogSubscriptionOptions {
     onLog?: (log: LogEntry) => void;
 }
 
-export interface UseLogSubscriptionReturn {
+interface UseLogSubscriptionReturn {
     /** All log entries, newest first */
     logs: LogEntry[];
     /** Whether the subscription is connected */

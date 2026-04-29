@@ -10,16 +10,6 @@ export interface RecentlyViewedProduct {
   viewed_at: string;
 }
 
-export interface RelatedProductWithDetails {
-  id: string;
-  name: string;
-  slug: string;
-  price: number;
-  images: string[];
-  stock_status: 'in_stock' | 'out_of_stock' | 'pre_order';
-  relation_type: string;
-}
-
 export interface QuestionWithAnswers {
   id: string;
   question: string;

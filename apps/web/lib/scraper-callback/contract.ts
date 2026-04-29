@@ -235,7 +235,7 @@ type CallbackValidationError =
 type CallbackValidationSuccess<T> = { success: true; payload: T };
 type CallbackValidationFailure = { success: false; error: CallbackValidationError };
 
-export type CallbackValidationResult<T> =
+type CallbackValidationResult<T> =
     | CallbackValidationSuccess<T>
     | CallbackValidationFailure;
 
@@ -327,5 +327,3 @@ export const parseChunkCallbackPayload = (bodyText: string): CallbackValidationR
 
 export type ScraperCallbackPayload = z.infer<typeof ScraperCallbackPayloadSchema>;
 export type ChunkCallbackPayload = z.infer<typeof ChunkCallbackPayloadSchema>;
-export type ChunkProgressPayload = z.infer<typeof ChunkProgressSchema>;
-export type ScraperResults = z.infer<typeof ScraperResultsSchema>;

@@ -1,6 +1,6 @@
 import type { LLMProvider } from '@/lib/ai-scraping/credentials';
 
-export type ConsolidationProvider = LLMProvider;
+type ConsolidationProvider = LLMProvider;
 
 export interface ProviderUsage {
   promptTokens?: number;

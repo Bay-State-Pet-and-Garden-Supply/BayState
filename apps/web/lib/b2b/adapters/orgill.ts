@@ -1,4 +1,4 @@
-import { B2BClient, B2BConfig, B2BProduct, B2BInventoryUpdate, B2BPriceUpdate } from '../types';
+import { B2BClient, B2BConfig, B2BProduct } from '../types';
 import { parseFixedWidth, ORGILL_HD1_FIELDS } from '../utils/fixed-width';
 
 interface OrgillHD1Record {

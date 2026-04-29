@@ -3,7 +3,7 @@
 import { Check, X, Trash2, XCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export interface PipelineActionsProps {
+interface PipelineActionsProps {
     selectedCount: number;
     selectedSkus: string[];
     currentStatus: string;

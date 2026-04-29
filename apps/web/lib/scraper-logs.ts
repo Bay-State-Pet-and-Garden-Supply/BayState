@@ -1,4 +1,4 @@
-export type ScrapeLogLevel = 'debug' | 'info' | 'warning' | 'error' | 'critical';
+type ScrapeLogLevel = 'debug' | 'info' | 'warning' | 'error' | 'critical';
 
 export interface ScrapeJobLogEntry {
   id: string;
@@ -34,7 +34,7 @@ export interface ScrapeJobProgressUpdate {
   timestamp: string;
 }
 
-export interface ScrapeJobRuntimeRecord {
+interface ScrapeJobRuntimeRecord {
   id?: string;
   job_id?: string;
   status?: string | null;

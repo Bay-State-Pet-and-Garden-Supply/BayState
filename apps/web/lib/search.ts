@@ -1,7 +1,7 @@
 import Fuse from 'fuse.js';
 import { type Product, type Service, type Brand } from '@/lib/data';
 
-export interface SearchResult {
+interface SearchResult {
   type: 'product' | 'service' | 'brand';
   id: string;
   name: string;

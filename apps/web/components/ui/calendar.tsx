@@ -15,7 +15,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 
-function Calendar({
+export function Calendar({
   className,
   classNames,
   showOutsideDays = true,
@@ -216,4 +216,3 @@ function CalendarDayButton({
     />
   )
 }
-

@@ -1,4 +1,4 @@
-export interface AIModelOption {
+interface AIModelOption {
   value: string;
   label: string;
   description: string;
@@ -28,7 +28,7 @@ export function getAIModelLabel(value: string): string {
   return getAIModelOption(value)?.label ?? value;
 }
 
-export type GeminiModelOption = AIModelOption;
+type GeminiModelOption = AIModelOption;
 
 const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_MODEL_VALUES = [DEFAULT_GEMINI_MODEL, 'gemini-2.5-pro'] as const;

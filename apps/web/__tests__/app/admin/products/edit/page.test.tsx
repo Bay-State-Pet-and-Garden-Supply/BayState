@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import EditProductPage from '@/app/admin/products/[id]/edit/page';
 
 // Polyfill fetch for JSDOM
@@ -26,10 +27,6 @@ jest.mock('@/lib/supabase/server', () => ({
   }),
 }));
 
-jest.mock('@/app/admin/products/[id]/edit/actions', () => ({
-  updateProduct: jest.fn(),
-}));
-
 jest.mock('@/lib/admin/preorder-actions', () => ({
   getPreorderGroups: jest.fn().mockResolvedValue([]),
   getProductPreorderAssignment: jest.fn().mockResolvedValue(null),
@@ -39,11 +36,17 @@ jest.mock('@/lib/admin/preorder-actions', () => ({
 
 describe('Edit Product Page', () => {
   it('pre-fills form with product data', async () => {
+    const user = userEvent.setup();
     const Page = await EditProductPage({ params: Promise.resolve(params) });
     render(Page);
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Existing Product')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: 'Pricing' }));
+
+    await waitFor(() => {
       expect(screen.getByDisplayValue('10')).toBeInTheDocument();
     });
   });

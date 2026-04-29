@@ -2,12 +2,12 @@ import { createClient, createPublicClient } from '@/lib/supabase/server';
 import type { Product } from '@/lib/types';
 import { getPetTypes } from './pet-types';
 
-export interface PersonalizedProduct extends Product {
+interface PersonalizedProduct extends Product {
   petName: string;
   petTypeName: string;
 }
 
-export interface ProductWithPetType extends Product {
+interface ProductWithPetType extends Product {
   petTypeId: string;
 }
 

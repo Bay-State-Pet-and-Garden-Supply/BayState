@@ -51,7 +51,7 @@ interface ProductLinePromptContext {
     consistency_examples?: string[];
 }
 
-export interface ConsolidationPromptPayload {
+interface ConsolidationPromptPayload {
     sku: string;
     sources: Array<{
         source: string;
@@ -61,7 +61,7 @@ export interface ConsolidationPromptPayload {
     product_line_context?: ProductLinePromptContext;
 }
 
-export interface ConsolidationPromptContext {
+interface ConsolidationPromptContext {
     systemPrompt: string;
     shopsitePages: string[];
     categories: string[];

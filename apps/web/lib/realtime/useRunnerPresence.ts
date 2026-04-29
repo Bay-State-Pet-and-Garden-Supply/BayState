@@ -253,14 +253,14 @@ function normalizeApiRunner(runner: ApiRunnerData): RunnerPresence {
   };
 }
 
-export interface RunnerPresenceState {
+interface RunnerPresenceState {
   runners: Record<string, RunnerPresence>;
   onlineIds: Set<string>;
   isConnected: boolean;
   error: Error | null;
 }
 
-export interface UseRunnerPresenceOptions {
+interface UseRunnerPresenceOptions {
   channelName?: string;
   autoConnect?: boolean;
   fetchInitial?: boolean;
@@ -273,7 +273,7 @@ const DEFAULT_OPTIONS: Partial<UseRunnerPresenceOptions> = {
   autoConnect: true,
 };
 
-export interface UseRunnerPresenceReturn extends RunnerPresenceState {
+interface UseRunnerPresenceReturn extends RunnerPresenceState {
   connect: () => void;
   disconnect: () => void;
   sync: () => void;

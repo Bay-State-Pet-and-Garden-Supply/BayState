@@ -5,7 +5,7 @@ import { Package, RotateCcw, Save, CheckCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-export interface ProductSaveActionsProps {
+interface ProductSaveActionsProps {
   productName: string;
   originalName: string;
   productPrice: string;

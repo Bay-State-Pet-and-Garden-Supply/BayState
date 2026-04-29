@@ -346,8 +346,6 @@ describe('importShopSiteProducts pet-type canonical mapping', () => {
                 short_name: null,
                 is_special_order: false,
                 in_store_pickup: false,
-                category: null,
-                product_type: null,
             }),
         ]);
         expect(state.product_categories).toEqual([]);

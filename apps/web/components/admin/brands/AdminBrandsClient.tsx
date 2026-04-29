@@ -122,19 +122,24 @@ export function AdminBrandsClient({ initialBrands, totalCount }: AdminBrandsClie
             header: 'Brand Name',
             sortable: true,
             searchable: true,
-            render: (_, row) => (
-                <div>
-                    <p className="font-medium text-foreground">{row.name}</p>
-                    {row.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-1">{row.description}</p>
-                    )}
-                    {(row.official_domains.length > 0 || row.preferred_domains.length > 0) && (
-                        <p className="text-[10px] text-muted-foreground line-clamp-1">
-                            {row.official_domains.length} official, {row.preferred_domains.length} preferred domains
-                        </p>
-                    )}
-                </div>
-            ),
+            render: (_, row) => {
+                const officialDomains = row.official_domains ?? [];
+                const preferredDomains = row.preferred_domains ?? [];
+
+                return (
+                    <div>
+                        <p className="font-medium text-foreground">{row.name}</p>
+                        {row.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-1">{row.description}</p>
+                        )}
+                        {(officialDomains.length > 0 || preferredDomains.length > 0) && (
+                            <p className="text-[10px] text-muted-foreground line-clamp-1">
+                                {officialDomains.length} official, {preferredDomains.length} preferred domains
+                            </p>
+                        )}
+                    </div>
+                );
+            },
         },
         {
             key: 'slug',

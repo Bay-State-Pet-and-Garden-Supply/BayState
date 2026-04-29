@@ -93,6 +93,11 @@ export function AIScrapingSettingsCard() {
       }
 
       const data = (await res.json()) as ApiResponse;
+      setStatuses({
+        gemini: data.statuses.gemini ?? EMPTY_STATUSES.gemini,
+        openai: data.statuses.openai ?? EMPTY_STATUSES.openai,
+        serpapi: data.statuses.serpapi ?? EMPTY_STATUSES.serpapi,
+      });
       setDefaults({
         ...DEFAULTS,
         ...data.defaults,

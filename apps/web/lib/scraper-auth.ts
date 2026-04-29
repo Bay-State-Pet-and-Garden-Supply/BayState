@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
-export interface RunnerAuthResult {
+interface RunnerAuthResult {
     runnerName: string;
     keyId?: string;
     authMethod: 'api_key';

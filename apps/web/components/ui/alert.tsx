@@ -5,15 +5,15 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const alertVariants = cva(
-  "relative w-full rounded-none border-2 border-zinc-950 px-4 py-3 text-sm [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7 shadow-[2px_2px_0px_rgba(0,0,0,1)]",
+  "relative w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7",
   {
     variants: {
       variant: {
         default: "bg-background text-foreground",
         destructive:
-          "bg-brand-burgundy/10 border-brand-burgundy text-brand-burgundy dark:border-brand-burgundy [&>svg]:text-brand-burgundy",
+          "bg-brand-burgundy/10 border-brand-burgundy/30 text-brand-burgundy dark:border-brand-burgundy [&>svg]:text-brand-burgundy",
         warning:
-          "bg-brand-gold/10 border-brand-gold text-brand-burgundy dark:text-brand-gold [&>svg]:text-brand-burgundy",
+          "bg-brand-gold/10 border-brand-gold/40 text-brand-burgundy dark:text-brand-gold [&>svg]:text-brand-burgundy",
       },
     },
     defaultVariants: {

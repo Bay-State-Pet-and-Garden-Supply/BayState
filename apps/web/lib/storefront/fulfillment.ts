@@ -2,7 +2,7 @@ import type { PreorderGroup, PreorderBatch } from '@/lib/types';
 import type { CartItem } from '@/lib/cart-store';
 import { createClient } from '@/lib/supabase/server';
 
-export interface ValidationError {
+interface ValidationError {
   type: 'pickup_only' | 'batch_minimum' | 'delivery_unavailable';
   message: string;
   batchId?: string;
@@ -10,13 +10,13 @@ export interface ValidationError {
   minimumQuantity?: number;
 }
 
-export interface ValidationResult {
+interface ValidationResult {
   isValid: boolean;
   errors: ValidationError[];
   groupedCart?: Map<string, CartItem[]>;
 }
 
-export interface GroupedCartItems {
+interface GroupedCartItems {
   batchId: string | 'standard';
   batch?: PreorderBatch;
   group?: PreorderGroup;
@@ -145,7 +145,7 @@ export function groupCartByBatch(
 /**
  * Validate cart for checkout eligibility
  */
-async function validateCartForCheckout(
+export async function validateCartForCheckout(
   cartItems: CartItem[]
 ): Promise<ValidationResult> {
   const errors: ValidationError[] = [];
@@ -199,7 +199,7 @@ async function validateCartForCheckout(
 /**
  * Get formatted validation error messages for display
  */
-function formatValidationErrors(errors: ValidationError[]): string[] {
+export function formatValidationErrors(errors: ValidationError[]): string[] {
   return errors.map(error => {
     switch (error.type) {
       case 'pickup_only':
@@ -217,7 +217,7 @@ function formatValidationErrors(errors: ValidationError[]): string[] {
 /**
  * Get available delivery services for the cart
  */
-function getAvailableDeliveryServices(
+export function getAvailableDeliveryServices(
   cartItems: CartItem[],
   preorderGroups: Map<string, PreorderGroup>
 ): string[] {

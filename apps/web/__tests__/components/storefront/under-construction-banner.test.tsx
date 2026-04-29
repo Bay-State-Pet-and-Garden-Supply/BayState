@@ -5,7 +5,7 @@ describe('UnderConstructionBanner', () => {
   it('renders the under construction message', () => {
     render(<UnderConstructionBanner />);
     expect(screen.getByText(/Under Construction \/ Beta Preview/i)).toBeInTheDocument();
-    expect(screen.getByText(/This is a development preview of our new website/i)).toBeInTheDocument();
+    expect(screen.getByText(/Development preview\. Visit our official site for orders\./i)).toBeInTheDocument();
   });
 
   it('contains a link to the official site', () => {

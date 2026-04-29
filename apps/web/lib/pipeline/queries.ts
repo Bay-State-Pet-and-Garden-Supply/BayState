@@ -4,12 +4,12 @@ import type {
   PipelineProduct,
 } from "@/lib/pipeline/types";
 
-export interface PipelineTabPagination {
+interface PipelineTabPagination {
   limit?: number;
   offset?: number;
 }
 
-export interface PipelineTabQueryResult {
+interface PipelineTabQueryResult {
   tab: WorkflowPipelineTab;
   products: PipelineProduct[];
   count: number;

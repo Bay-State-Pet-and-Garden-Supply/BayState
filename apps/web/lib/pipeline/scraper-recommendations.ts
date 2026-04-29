@@ -13,9 +13,9 @@
 
 import { createClient } from '@/lib/supabase/server';
 
-export type RecommendationConfidence = 'high' | 'medium' | 'low' | 'untested';
+type RecommendationConfidence = 'high' | 'medium' | 'low' | 'untested';
 
-export interface ScraperRecommendation {
+interface ScraperRecommendation {
   /** Scraper slug (matches scraper_configs.slug) */
   scraper_slug: string;
   /** Human-readable scraper name */

@@ -13,10 +13,8 @@ const schemaVersionSchema = z.enum(KNOWN_SCHEMA_VERSIONS);
 // ============================================================================
 
 const scraperTypeSchema = z.enum(['static', 'agentic']);
-export type ScraperType = z.infer<typeof scraperTypeSchema>;
 
 const aiModelSchema = z.enum(AI_MODEL_VALUES);
-export type AIModel = z.infer<typeof aiModelSchema>;
 
 const aiConfigSchema = z.object({
   tool: z.literal('browser-use').default('browser-use'),
@@ -29,27 +27,6 @@ const aiConfigSchema = z.object({
 });
 
 export type AIConfig = z.infer<typeof aiConfigSchema>;
-
-// AI-specific action parameter schemas
-export const aiSearchParamsSchema = z.object({
-  query: z.string().min(1, 'Search query is required'),
-  max_results: z.number().min(1).max(20).default(5),
-});
-
-export const aiExtractParamsSchema = z.object({
-  task: z.string().optional(),
-  schema: z.record(z.string(), z.enum(['str', 'int', 'float', 'list', 'bool'])).optional(),
-  visit_top_n: z.number().min(1).max(10).default(1),
-  max_steps: z.number().min(1).max(50).optional(),
-  confidence_threshold: z.number().min(0).max(1).optional(),
-  use_vision: z.boolean().optional(),
-});
-
-export const aiValidateParamsSchema = z.object({
-  required_fields: z.array(z.string()).default([]),
-  sku_must_match: z.boolean().default(true),
-  min_confidence: z.number().min(0).max(1).default(0.0),
-});
 
 // Transform types supported by the extract_and_transform action
 const transformTypeSchema = z.enum([
@@ -64,7 +41,7 @@ const transformTypeSchema = z.enum([
   'default',
 ]);
 
-export const transformationSchema = z.object({
+const transformationSchema = z.object({
   type: transformTypeSchema,
   pattern: z.string().optional(),
   replacement: z.string().optional(),
@@ -114,7 +91,7 @@ const extractParamsSchema = z.object({
 });
 
 // Field config for extract_and_transform action
-export const extractFieldConfigSchema = z.object({
+const extractFieldConfigSchema = z.object({
   name: z.string().min(1, 'Field name is required'),
   selector: z.string().min(1, 'Selector is required'),
   attribute: z.string().optional(),
@@ -225,8 +202,6 @@ const skuAssertionSchema = z.object({
   }).catchall(z.string().nullable().optional()),
 });
 
-export type SkuAssertion = z.infer<typeof skuAssertionSchema>;
-
 // Full scraper config schema
 export const scraperConfigSchema = z.object({
   schema_version: schemaVersionSchema,
@@ -250,74 +225,6 @@ export const scraperConfigSchema = z.object({
   test_assertions: z.array(skuAssertionSchema).optional(),
   ai_config: aiConfigSchema.optional(),
 });
-
-// Database record schemas
-export const scraperRecordSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  display_name: z.string().nullable(),
-  base_url: z.string(),
-  config: scraperConfigSchema,
-  status: z.enum(['draft', 'active', 'disabled', 'archived']),
-  health_status: z.enum(['healthy', 'degraded', 'broken', 'unknown']),
-  health_score: z.number(),
-  last_test_at: z.string().nullable(),
-  last_test_result: z.record(z.string(), z.unknown()).nullable(),
-  created_at: z.string(),
-  updated_at: z.string(),
-  created_by: z.string().uuid().nullable(),
-});
-
-// Legacy test run schemas removed
-
-export const selectorSuggestionSchema = z.object({
-  id: z.string().uuid(),
-  scraper_id: z.string().uuid().nullable(),
-  target_url: z.string(),
-  target_description: z.string(),
-  suggested_selector: z.string(),
-  selector_type: z.enum(['css', 'xpath']),
-  alternatives: z.array(z.object({
-    selector: z.string(),
-    type: z.enum(['css', 'xpath']),
-    confidence: z.number(),
-    reasoning: z.string().optional(),
-  })).optional(),
-  confidence: z.number().nullable(),
-  llm_model: z.string().nullable(),
-  verified: z.boolean(),
-  verified_at: z.string().nullable(),
-  created_at: z.string(),
-});
-
-// Action types enum for workflow builder
-const actionTypes = [
-  'navigate',
-  'wait',
-  'wait_for',
-  'click',
-  'conditional_click',
-  'input_text',
-  'extract',
-  'extract_and_transform',
-  'transform_value',
-  'check_no_results',
-  'conditional_skip',
-  'conditional',
-  'scroll',
-  'verify',
-  'login',
-  'execute_script',
-  'process_images',
-  'combine_fields',
-  'parse_weight',
-  'extract_from_json',
-  'ai_search',
-  'ai_extract',
-  'ai_validate',
-] as const;
-
-export const actionTypeSchema = z.enum(actionTypes);
 
 // ============================================================================
 // NORMALIZED SCHEMA ZOD SCHEMAS (from scraper-schema-overhaul)

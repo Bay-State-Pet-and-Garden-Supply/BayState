@@ -4,7 +4,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import yaml from 'yaml';
 import type { ImageRetryQueueInsert } from '../lib/supabase/database.types';
 
-export type BackfillMode = 'dry-run' | 'execute';
+type BackfillMode = 'dry-run' | 'execute';
 
 interface ProductsIngestionBackfillRow {
   sku: string;
@@ -29,14 +29,14 @@ interface ProductSourceHelpers {
   normalizeProductSources: (rawSources: unknown) => Record<string, unknown>;
 }
 
-export interface LoginProtectedImageBackfillOptions {
+interface LoginProtectedImageBackfillOptions {
   mode: BackfillMode;
   skus?: string[];
   limit?: number;
   batchSize?: number;
 }
 
-export interface LoginProtectedImageBackfillResult {
+interface LoginProtectedImageBackfillResult {
   mode: BackfillMode;
   scannedCount: number;
   totalFound: number;

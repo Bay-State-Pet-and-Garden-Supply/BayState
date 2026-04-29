@@ -30,7 +30,7 @@ export interface CanonicalProductSourceRecord extends SourceRecord {
     size_metrics?: Record<string, unknown>;
 }
 
-export type ProductSourceMap = Record<string, CanonicalProductSourceRecord>;
+type ProductSourceMap = Record<string, CanonicalProductSourceRecord>;
 
 const LEGACY_SOURCE_KEY = '_legacy';
 const AI_DIAGNOSTIC_ONLY_KEYS = new Set([

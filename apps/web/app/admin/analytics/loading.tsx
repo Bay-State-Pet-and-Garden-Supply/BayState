@@ -3,14 +3,15 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export default function AnalyticsLoading() {
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="font-display font-black uppercase tracking-tighter text-4xl mb-8">
-        Analytics & Reporting
-      </h1>
+    <div className="space-y-6 p-6">
+      <div className="space-y-2">
+        <h1 className="admin-page-title">Analytics & reporting</h1>
+        <p className="admin-page-copy">Loading channel metrics and operational reporting.</p>
+      </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[...Array(4)].map((_, i) => (
-          <Card key={i} className="border-4 border-zinc-900 shadow-[8px_8px_0px_rgba(0,0,0,1)] rounded-none bg-white">
+          <Card key={i} className="border border-zinc-200 bg-white shadow-none">
             <CardHeader className="pb-2">
               <Skeleton className="h-4 w-24" />
             </CardHeader>
@@ -21,7 +22,7 @@ export default function AnalyticsLoading() {
         ))}
       </div>
 
-      <Card className="border-4 border-zinc-900 shadow-[8px_8px_0px_rgba(0,0,0,1)] rounded-none p-6 bg-white">
+      <Card className="border border-zinc-200 bg-white p-6 shadow-none">
         <Skeleton className="h-8 w-64 mb-6" />
         <Skeleton className="h-[400px] w-full" />
       </Card>

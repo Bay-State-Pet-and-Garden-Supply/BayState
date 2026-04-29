@@ -115,6 +115,31 @@ function toOptionalNumber(value: unknown): number | undefined {
     return undefined;
 }
 
+function getLeadingBrandHintCandidates(
+    value: unknown,
+    maxWords = 4,
+): string[] {
+    const normalized = toOptionalString(value);
+    if (!normalized) {
+        return [];
+    }
+
+    const tokens = normalized
+        .split(/\s+/)
+        .map((token) => token.trim())
+        .filter(Boolean);
+
+    const candidates: string[] = [];
+    for (let length = Math.min(tokens.length, maxWords); length >= 1; length -= 1) {
+        const candidate = tokens.slice(0, length).join(' ');
+        if (candidate.length > 1) {
+            candidates.push(candidate);
+        }
+    }
+
+    return Array.from(new Set(candidates));
+}
+
 interface ScrapeContextItem {
     sku: string;
     product_name?: string;
@@ -129,6 +154,34 @@ interface CohortLookupRow {
     brand_name?: unknown;
     brand_id?: unknown;
     brands?: BrandRegistryRow | BrandRegistryRow[] | null;
+}
+
+function compactScrapeContextItem(item: ScrapeContextItem): ScrapeContextItem {
+    const compacted: ScrapeContextItem = {
+        sku: item.sku,
+    };
+
+    if (item.product_name !== undefined) {
+        compacted.product_name = item.product_name;
+    }
+
+    if (item.price !== undefined) {
+        compacted.price = item.price;
+    }
+
+    if (item.brand !== undefined) {
+        compacted.brand = item.brand;
+    }
+
+    if (item.category !== undefined) {
+        compacted.category = item.category;
+    }
+
+    if (item.preferred_domains !== undefined) {
+        compacted.preferred_domains = item.preferred_domains;
+    }
+
+    return compacted;
 }
 
 function normalizeDomainCandidate(value: string): string | undefined {
@@ -538,7 +591,7 @@ export async function cloneScrapeJobForRetry(
     };
 }
 
-async function buildLinearChunkPlan(
+export async function buildLinearChunkPlan(
     skus: string[],
     scrapers: string[],
     chunkSize: number,
@@ -659,7 +712,9 @@ async function loadScrapeContextItems(
                 brandIds.add(brandId);
             }
 
-            [consolidated?.brand_name, consolidated?.brand, row.input?.brand].forEach((brandHint) => {
+            const explicitBrandHints = [consolidated?.brand_name, consolidated?.brand, row.input?.brand];
+
+            explicitBrandHints.forEach((brandHint) => {
                 const slug = brandHintToSlug(brandHint);
                 if (slug) {
                     brandSlugs.add(slug);
@@ -669,6 +724,17 @@ async function loadScrapeContextItems(
                     brandAliases.add(raw);
                 }
             });
+
+            const hasExplicitBrandHint = explicitBrandHints.some((brandHint) => Boolean(toOptionalString(brandHint)));
+            if (!hasExplicitBrandHint) {
+                getLeadingBrandHintCandidates(row.input?.name).forEach((brandHint) => {
+                    const slug = brandHintToSlug(brandHint);
+                    if (slug) {
+                        brandSlugs.add(slug);
+                    }
+                    brandAliases.add(brandHint);
+                });
+            }
 
             const cohortId = toOptionalString(row.cohort_id);
             if (cohortId) {
@@ -690,6 +756,7 @@ async function loadScrapeContextItems(
         const product = productBySku.get(sku);
         const catalogBrandEntry = getCatalogBrandEntry(product?.brand);
         const consolidatedBrandId = toOptionalString(ingestion?.consolidated?.brand_id);
+        const nameDerivedBrandHints = getLeadingBrandHintCandidates(input?.name);
         const registryBrandById = consolidatedBrandId
             ? brandRegistryLookup.byId.get(consolidatedBrandId)
             : undefined;
@@ -699,6 +766,7 @@ async function loadScrapeContextItems(
                 toOptionalString(ingestion?.consolidated?.brand),
                 toOptionalString(input?.brand),
                 fallbackBrandHint,
+                ...nameDerivedBrandHints,
             ],
             brandRegistryLookup.bySlug,
             brandRegistryLookup.byAlias,
@@ -727,7 +795,7 @@ async function loadScrapeContextItems(
             cohortBrandEntry?.preferredDomains,
         );
 
-        return {
+        return compactScrapeContextItem({
             sku,
             product_name: preferCatalogContext
                 ? catalogName ?? ingestionName
@@ -740,7 +808,7 @@ async function loadScrapeContextItems(
                 ? catalogCategory ?? ingestionCategory
                 : ingestionCategory ?? catalogCategory,
             preferred_domains: resolvedPreferredDomains,
-        };
+        });
     });
 }
 

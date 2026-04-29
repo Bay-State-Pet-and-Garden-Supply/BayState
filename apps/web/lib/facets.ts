@@ -7,7 +7,7 @@ export interface FacetDefinition {
   values: FacetValue[];
 }
 
-export interface FacetValue {
+interface FacetValue {
   id: string;
   value: string;
   slug: string;

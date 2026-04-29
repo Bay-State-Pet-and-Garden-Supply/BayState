@@ -5,6 +5,8 @@ import { Pet, PetType } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import { getPetTypes } from '@/lib/pet-types';
 
+export { getPetTypes };
+
 /**
  * Fetch all pets for the current user
  */
@@ -29,7 +31,7 @@ export async function getUserPets() {
 /**
  * Fetch a single pet by ID
  */
-async function getPetById(id: string) {
+export async function getPetById(id: string) {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from('user_pets')

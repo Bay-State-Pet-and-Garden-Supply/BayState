@@ -46,13 +46,13 @@ export const GENERIC_FACET_FIELDS = {
 export type GenericFacetField = keyof typeof GENERIC_FACET_FIELDS;
 export type GenericFacetName = (typeof GENERIC_FACET_FIELDS)[GenericFacetField]['name'];
 
-export type GenericFacetDefinition = {
+type GenericFacetDefinition = {
     name: GenericFacetName;
     slug: string;
     description: string;
 };
 
-export type NormalizedGenericFacetValue = {
+type NormalizedGenericFacetValue = {
     value: string;
     normalizedValue: string;
     slug: string;

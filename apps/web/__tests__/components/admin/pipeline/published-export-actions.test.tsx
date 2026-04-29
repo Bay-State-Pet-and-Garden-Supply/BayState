@@ -130,11 +130,11 @@ describe('export tab actions', () => {
 
         await waitFor(() => {
             expect(
-                screen.getByRole('button', { name: 'Upload' }),
+                screen.getByRole('button', { name: 'Upload to ShopSite' }),
             ).toBeEnabled();
         });
 
-        fireEvent.click(screen.getByRole('button', { name: 'Upload' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Upload to ShopSite' }));
 
         await waitFor(() => {
             expect(mockFetch).toHaveBeenCalledWith(

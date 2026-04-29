@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
 
-export interface ChunkDetail {
+interface ChunkDetail {
   id: string;
   jobId: string;
   chunkIndex: number;
@@ -23,7 +23,7 @@ export interface ChunkDetail {
   errorMessage: string | null;
 }
 
-export interface ActiveJob {
+interface ActiveJob {
   id: string;
   skuCount: number;
   scrapers: string[];

@@ -154,6 +154,7 @@ function parseResultLine(line: string): BatchResultRecord | null {
 }
 
 export class GeminiBatchProvider implements BatchProvider {
+  readonly provider = 'gemini' as const;
   private readonly apiKey: string;
   private aiPromise: Promise<GoogleGenAI> | null = null;
 

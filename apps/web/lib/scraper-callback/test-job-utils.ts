@@ -10,7 +10,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export interface TestJobSummary {
+interface TestJobSummary {
   test_status: 'passed' | 'failed' | 'partial';
   passed_count: number;
   failed_count: number;
@@ -26,7 +26,7 @@ export interface ChunkTelemetry {
   logins?: TelemetryLogin[];
 }
 
-export interface TelemetryStep {
+interface TelemetryStep {
   step_index: number;
   action_type: string;
   status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
@@ -38,7 +38,7 @@ export interface TelemetryStep {
   sku?: string;
 }
 
-export interface TelemetrySelector {
+interface TelemetrySelector {
   sku?: string;
   selector_name: string;
   selector_value: string;
@@ -47,7 +47,7 @@ export interface TelemetrySelector {
   duration_ms?: number;
 }
 
-export interface TelemetryExtraction {
+interface TelemetryExtraction {
   sku?: string;
   field_name: string;
   field_value?: string;
@@ -56,7 +56,7 @@ export interface TelemetryExtraction {
   duration_ms?: number;
 }
 
-export interface TelemetryLogin {
+interface TelemetryLogin {
   sku?: string;
   status: 'SUCCESS' | 'FAILED' | 'SKIPPED';
   error_message?: string;

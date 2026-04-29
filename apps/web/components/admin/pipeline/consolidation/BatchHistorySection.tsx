@@ -17,7 +17,7 @@ import type { BatchHistoryJob } from "./shared";
 // Types
 // ============================================================================
 
-export interface BatchHistorySectionProps {
+interface BatchHistorySectionProps {
   historyJobs: BatchHistoryJob[];
   onApply: (id: string) => void;
   applyingId: string | null;

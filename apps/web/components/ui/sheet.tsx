@@ -78,7 +78,7 @@ function SheetContent({
       <DialogPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 gap-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all duration-300 ease-in-out outline-none",
+          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 gap-4 rounded-none border border-zinc-200 shadow-[var(--shadow-float)] transition-all duration-300 ease-in-out outline-none",
           positionClasses[side],
           animationClasses[side],
           className
@@ -89,7 +89,7 @@ function SheetContent({
         {showCloseButton && (
           <SheetClose
             data-slot="sheet-close"
-            className="ring-offset-background focus:ring-ring absolute top-4 right-4 rounded-none opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className="ring-offset-background focus:ring-ring absolute right-4 top-4 rounded-full border border-zinc-200 bg-white p-1 text-zinc-500 opacity-100 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
           >
             <XIcon />
             <span className="sr-only">Close</span>
@@ -130,7 +130,7 @@ function SheetTitle({
   return (
     <DialogPrimitive.Title
       data-slot="sheet-title"
-      className={cn("text-lg leading-none font-black uppercase tracking-tight", className)}
+      className={cn("text-lg font-semibold leading-none text-zinc-950", className)}
       {...props}
     />
   )
@@ -151,13 +151,9 @@ function SheetDescription({
 
 export {
   Sheet,
-  SheetClose,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
-  SheetOverlay,
-  SheetPortal,
   SheetTitle,
   SheetTrigger,
 }

@@ -69,6 +69,7 @@ describe('useRunnerPresence', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockChannels.length = 0;
+    const recentLastSeen = new Date(Date.now() - 60_000).toISOString();
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -83,7 +84,7 @@ describe('useRunnerPresence', () => {
             labels: [{ name: 'primary' }],
             active_jobs: 1,
             enabled: true,
-            last_seen: '2026-04-20T10:00:00.000Z',
+            last_seen: recentLastSeen,
             version: 'sha-123',
             build_check_reason: 'current',
             metadata: { region: 'us-east-1' },

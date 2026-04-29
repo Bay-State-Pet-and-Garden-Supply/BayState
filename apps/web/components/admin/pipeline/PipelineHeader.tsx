@@ -2,7 +2,7 @@ import { Package } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
-export interface PipelineHeaderProps {
+interface PipelineHeaderProps {
   title: string;
   subtitle: string;
   icon?: LucideIcon;

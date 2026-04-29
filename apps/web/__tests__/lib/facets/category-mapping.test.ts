@@ -2,7 +2,7 @@ import { getMappedCategorySlug } from '@/lib/facets/category-mapping';
 
 describe('Category Mapping', () => {
     it('maps an exact category and product type match', () => {
-        expect(getMappedCategorySlug('Barn Supplies', 'Buckets & Feeders')).toBe('farm-animal-chicken-coop-supplies');
+        expect(getMappedCategorySlug('Barn Supplies', 'Buckets & Feeders')).toBe('farm-animal-livestock-waterers-feeders');
     });
 
     it('falls back to the category level if product type is missing or unmapped', () => {

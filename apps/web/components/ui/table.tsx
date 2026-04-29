@@ -8,12 +8,12 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto shadow-[8px_8px_0px_rgba(0,0,0,1)]"
+      className="relative w-full overflow-x-auto rounded-2xl border border-zinc-200 bg-white"
     >
       <table
         data-slot="table"
         className={cn(
-          "w-full caption-bottom text-sm border-4 border-zinc-950 border-separate border-spacing-0 bg-white",
+          "w-full caption-bottom border-separate border-spacing-0 bg-white text-sm",
           className
         )}
         {...props}
@@ -47,7 +47,7 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
     <tfoot
       data-slot="table-footer"
       className={cn(
-        "bg-zinc-50 border-t-2 border-zinc-950 font-black uppercase tracking-tighter text-zinc-950",
+        "bg-zinc-50 border-t border-zinc-200 font-semibold text-zinc-950",
         className
       )}
       {...props}
@@ -73,7 +73,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     <th
       data-slot="table-head"
       className={cn(
-        "text-zinc-950 h-12 px-3 text-left align-middle font-black uppercase tracking-tighter whitespace-nowrap border-b-2 border-zinc-950 bg-zinc-50 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "h-12 whitespace-nowrap border-b border-zinc-200 bg-zinc-50 px-3 text-left align-middle font-semibold text-zinc-600 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className
       )}
       {...props}
@@ -86,7 +86,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "p-3 align-middle whitespace-nowrap text-zinc-950 border-b border-zinc-950 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "border-b border-zinc-200 p-3 align-middle whitespace-nowrap text-zinc-950 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className
       )}
       {...props}
@@ -101,7 +101,7 @@ function TableCaption({
   return (
     <caption
       data-slot="table-caption"
-      className={cn("text-zinc-500 mt-4 text-xs font-black uppercase tracking-tighter", className)}
+      className={cn("mt-4 text-xs font-medium text-zinc-500", className)}
       {...props}
     />
   )
@@ -111,9 +111,7 @@ export {
   Table,
   TableHeader,
   TableBody,
-  TableFooter,
   TableHead,
   TableRow,
   TableCell,
-  TableCaption,
 }

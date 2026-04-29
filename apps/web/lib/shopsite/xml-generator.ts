@@ -51,7 +51,7 @@ export interface ShopSiteExportProduct {
     cross_sell_skus?: string[] | null;
 }
 
-export interface ShopSiteXmlOptions {
+interface ShopSiteXmlOptions {
     markerDate?: Date;
     newProductTag?: string;
 }

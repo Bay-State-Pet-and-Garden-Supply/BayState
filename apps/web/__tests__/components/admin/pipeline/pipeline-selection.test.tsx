@@ -24,6 +24,43 @@ jest.mock("next/navigation", () => ({
   useSearchParams: () => mockSearchParams,
 }));
 
+jest.mock("@/components/admin/pipeline/ProductTable", () => ({
+  ProductTable: ({
+    products,
+    selectedSkus,
+    onSelectSku,
+  }: {
+    products: Array<{ sku: string }>;
+    selectedSkus: Set<string>;
+    onSelectSku: (
+      sku: string,
+      selected: boolean,
+      index?: number,
+      isShiftClick?: boolean,
+      visibleProducts?: Array<{ sku: string }>,
+    ) => void;
+  }) => (
+    <div data-testid="product-table">
+      {products.map((product, index) => {
+        const isSelected = selectedSkus.has(product.sku);
+
+        return (
+          <button
+            key={product.sku}
+            type="button"
+            data-state={isSelected ? "selected" : "unselected"}
+            onClick={(event) =>
+              onSelectSku(product.sku, !isSelected, index, event.shiftKey, products)
+            }
+          >
+            {product.sku}
+          </button>
+        );
+      })}
+    </div>
+  ),
+}));
+
 const products: PipelineProduct[] = [
   {
     sku: "SKU001",
@@ -93,27 +130,19 @@ describe("PipelineClient shift range selection", () => {
         initialCounts={counts}
         initialProducts={products}
         initialTotal={3}
+        initialStage="failed"
       />,
     );
 
-    const rows = await screen.findAllByText("SKU001");
-    const row1 = rows[0];
-    const row2Cell = (await screen.findAllByText("SKU002"))[0];
-    const row3Cell = (await screen.findAllByText("SKU003"))[0];
-    
-    const row1Element = row1.closest("tr");
-    const row2 = row2Cell.closest("tr");
-    const row3 = row3Cell.closest("tr");
+    const row1 = await screen.findByRole("button", { name: "SKU001" });
+    const row2 = screen.getByRole("button", { name: "SKU002" });
+    const row3 = screen.getByRole("button", { name: "SKU003" });
 
-    expect(row1Element).toBeTruthy();
-    expect(row2).toBeTruthy();
-    expect(row3).toBeTruthy();
-
-    fireEvent.click(row1Element!);
-    fireEvent.click(row3!, { shiftKey: true });
+    fireEvent.click(row1);
+    fireEvent.click(row3, { shiftKey: true });
 
     await waitFor(() => {
-      expect(row1Element).toHaveAttribute("data-state", "selected");
+      expect(row1).toHaveAttribute("data-state", "selected");
       expect(row2).toHaveAttribute("data-state", "selected");
       expect(row3).toHaveAttribute("data-state", "selected");
     });

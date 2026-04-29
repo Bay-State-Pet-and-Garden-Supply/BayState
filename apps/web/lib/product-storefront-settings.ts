@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export interface ProductStorefrontSettingsRecord {
+interface ProductStorefrontSettingsRecord {
     is_featured: boolean | null;
     pickup_only: boolean | null;
 }
@@ -11,7 +11,7 @@ export type ProductStorefrontSettingsRelation =
     | null
     | undefined;
 
-export interface ProductStorefrontSettings {
+interface ProductStorefrontSettings {
     is_featured: boolean;
     pickup_only: boolean;
 }

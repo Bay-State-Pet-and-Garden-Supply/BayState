@@ -133,7 +133,7 @@ export function transformShopSiteProduct(product: ShopSiteProduct): {
     };
 }
 
-export interface ShopSitePipelineInput {
+interface ShopSitePipelineInput {
     name: string;
     price: number;
     product_on_pages: string[];

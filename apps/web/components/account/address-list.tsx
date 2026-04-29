@@ -68,6 +68,7 @@ export function AddressList({ initialAddresses }: { initialAddresses: Address[] 
                         <div className="flex border-t-4 border-zinc-900 bg-zinc-50">
                             {!addr.is_default && (
                                 <button 
+                                    type="button"
                                     onClick={() => handleSetDefault(addr.id)} 
                                     className="flex-1 py-4 text-xs font-black uppercase tracking-widest text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 border-r-4 border-zinc-900 transition-colors"
                                 >
@@ -75,6 +76,8 @@ export function AddressList({ initialAddresses }: { initialAddresses: Address[] 
                                 </button>
                             )}
                             <button 
+                                type="button"
+                                aria-label={addr.is_default ? 'Delete address' : `Delete address for ${addr.full_name}`}
                                 className={cn(
                                     "py-4 px-6 text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors",
                                     addr.is_default ? "w-full text-center font-black uppercase text-xs tracking-widest" : ""

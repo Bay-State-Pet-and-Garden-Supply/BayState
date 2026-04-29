@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { DEFAULT_AI_MODEL } from '@/lib/ai-scraping/models';
 
-export type AIProvider = 'openai' | 'openai_compatible' | 'gemini' | 'serpapi' | 'brave';
+type AIProvider = 'openai' | 'openai_compatible' | 'gemini' | 'serpapi' | 'brave';
 export type LLMProvider = 'openai' | 'openai_compatible' | 'gemini';
 
 interface BaseLLMDefaults {
@@ -22,7 +22,7 @@ export interface AIConsolidationDefaults extends BaseLLMDefaults {
   llm_supports_batch_api: boolean;
 }
 
-export interface AICredentialStatus {
+interface AICredentialStatus {
   provider: AIProvider;
   configured: boolean;
   last4: string | null;
@@ -39,7 +39,7 @@ export interface AIScrapingRuntimeCredentials {
   serpapi_api_key?: string;
 }
 
-export interface AIConsolidationRuntimeConfig {
+interface AIConsolidationRuntimeConfig {
   llm_provider: LLMProvider;
   llm_model: string;
   llm_base_url: string | null;

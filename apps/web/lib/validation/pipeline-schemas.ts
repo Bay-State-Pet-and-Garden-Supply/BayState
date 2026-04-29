@@ -71,9 +71,3 @@ const GetProductsByStatusOptionsSchema = z.object({
     offset: z.number().int().min(0).optional(),
     search: z.string().optional(),
 });
-
-export type PipelineStatus = z.infer<typeof PipelineStatusSchema>;
-export type PipelineStage = z.infer<typeof PipelineStageSchema>;
-export type PipelineProduct = z.infer<typeof PipelineProductSchema>;
-export type StatusCount = z.infer<typeof StatusCountSchema>;
-export type BulkUpdateStatus = z.infer<typeof BulkUpdateStatusSchema>;

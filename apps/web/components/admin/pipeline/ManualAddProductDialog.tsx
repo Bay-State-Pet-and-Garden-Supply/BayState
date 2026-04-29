@@ -19,7 +19,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export interface ManualAddProductDialogProps {
+interface ManualAddProductDialogProps {
     onSuccess: () => void;
     onCancel: () => void;
 }

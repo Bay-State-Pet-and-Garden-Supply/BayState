@@ -1,4 +1,4 @@
-import { B2BClient, B2BConfig, B2BProduct, B2BInventoryUpdate, B2BPriceUpdate } from '../types';
+import { B2BClient, B2BConfig, B2BProduct } from '../types';
 
 export class CentralClient implements B2BClient {
   private config: B2BConfig;

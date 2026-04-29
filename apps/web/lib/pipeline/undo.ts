@@ -1,6 +1,6 @@
 import type { PersistedPipelineStatus } from '@/lib/pipeline/types';
 
-export interface UndoAction {
+interface UndoAction {
     id: string;
     type: 'status_change';
     skus: string[];

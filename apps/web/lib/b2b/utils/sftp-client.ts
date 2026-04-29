@@ -1,4 +1,4 @@
-export interface SFTPConfig {
+interface SFTPConfig {
   host: string;
   port?: number;
   username: string;
@@ -6,7 +6,7 @@ export interface SFTPConfig {
   privateKey?: string;
 }
 
-export interface SFTPClientResult {
+interface SFTPDownloadResult {
   success: boolean;
   data?: string;
   error?: string;
@@ -30,6 +30,57 @@ export class B2BSFTPClient {
 
   constructor(config: SFTPConfig) {
     this.config = config;
+  }
+
+  async downloadFile(remotePath: string): Promise<SFTPDownloadResult> {
+    let client: InstanceType<SFTPClientConstructor> | null = null;
+
+    try {
+      const SFTPClient = await loadSFTPModule();
+      client = new SFTPClient();
+      await client.connect(this.config);
+      const file = await client.get(remotePath);
+
+      if (typeof file === 'string') {
+        return { success: true, data: file };
+      }
+
+      if (Buffer.isBuffer(file)) {
+        return { success: true, data: file.toString('utf8') };
+      }
+
+      if (file instanceof Uint8Array) {
+        return { success: true, data: Buffer.from(file).toString('utf8') };
+      }
+
+      return { success: false, error: 'Unsupported SFTP response type' };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown SFTP error',
+      };
+    } finally {
+      if (client) {
+        await client.end().catch(() => undefined);
+      }
+    }
+  }
+
+  async testConnection(): Promise<boolean> {
+    let client: InstanceType<SFTPClientConstructor> | null = null;
+
+    try {
+      const SFTPClient = await loadSFTPModule();
+      client = new SFTPClient();
+      await client.connect(this.config);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      if (client) {
+        await client.end().catch(() => undefined);
+      }
+    }
   }
 }
 

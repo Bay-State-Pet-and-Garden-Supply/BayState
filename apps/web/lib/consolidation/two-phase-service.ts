@@ -1,11 +1,11 @@
 import { getBatchStatus, retrieveResults, submitBatch } from './batch-service';
 import type { BatchStatus, ConsolidationResult, ProductSource } from './types';
 
-export type TwoPhaseSelection = 'phase1' | 'both';
+type TwoPhaseSelection = 'phase1' | 'both';
 
-export type ConsistencyRuleType = 'exact_match' | 'expected_value';
+type ConsistencyRuleType = 'exact_match' | 'expected_value';
 
-export interface TwoPhaseConsistencyRule {
+interface TwoPhaseConsistencyRule {
     id: string;
     field: keyof ConsolidationResult;
     type: ConsistencyRuleType;
@@ -14,7 +14,7 @@ export interface TwoPhaseConsistencyRule {
     expectedValueSource?: 'expectedBrand';
 }
 
-export interface TwoPhaseConsolidationConfig {
+interface TwoPhaseConsolidationConfig {
     enablePhase2?: boolean;
     phaseSelection?: TwoPhaseSelection;
     consistencyRules?: TwoPhaseConsistencyRule[];
@@ -27,7 +27,7 @@ export interface TwoPhaseConsolidationConfig {
     };
 }
 
-export interface ConsistencyIssue {
+interface ConsistencyIssue {
     sku: string;
     ruleId: string;
     field: keyof ConsolidationResult;
@@ -40,7 +40,7 @@ export interface ConsistencyIssue {
     conflictingValues?: string[];
 }
 
-export interface ConsistencyReport {
+interface ConsistencyReport {
     enabled: boolean;
     totalProducts: number;
     flaggedProducts: number;
@@ -51,12 +51,12 @@ export interface ConsistencyReport {
     skippedReason?: string;
 }
 
-export interface TwoPhaseConsolidationProductResult extends ConsolidationResult {
+interface TwoPhaseConsolidationProductResult extends ConsolidationResult {
     consistencyIssues: ConsistencyIssue[];
     consistencyStatus: 'passed' | 'flagged' | 'skipped';
 }
 
-export interface TwoPhaseConsolidationResult {
+interface TwoPhaseConsolidationResult {
     phase: 'phase1' | 'phase2';
     products: TwoPhaseConsolidationProductResult[];
     consistencyReport: ConsistencyReport;

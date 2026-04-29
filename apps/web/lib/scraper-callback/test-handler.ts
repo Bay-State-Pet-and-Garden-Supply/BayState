@@ -40,12 +40,10 @@ const TestResultCallbackSchema = z.object({
   error_message: z.string().optional(),
 });
 
-export type TestResultCallbackPayload = z.infer<typeof TestResultCallbackSchema>;
-export type SkuAssertionResult = z.infer<typeof SkuAssertionResultSchema>;
-export type AssertionResult = z.infer<typeof AssertionResultSchema>;
-export type TestResultsSummary = z.infer<typeof TestResultsSummarySchema>;
+type TestResultCallbackPayload = z.infer<typeof TestResultCallbackSchema>;
+type TestResultsSummary = z.infer<typeof TestResultsSummarySchema>;
 
-export interface TestCallbackResult {
+interface TestCallbackResult {
   success: boolean;
   idempotent?: boolean;
   message?: string;

@@ -6,7 +6,7 @@ import {
 } from '@/lib/taxonomy';
 
 // Re-export types from lib/types.ts for backward compatibility
-export type { Brand, Product, Service, Category } from '@/lib/types';
+export type { Brand, Product, Service } from '@/lib/types';
 import type { Service, Brand } from '@/lib/types';
 
 /**
@@ -86,6 +86,5 @@ export async function getPetTypesNav() {
 // This ensures existing imports continue to work
 export {
   getFeaturedProducts,
-  getProductBySlug,
   getFilteredProducts as getProducts,
 } from '@/lib/products';

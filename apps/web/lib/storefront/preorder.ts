@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { normalizeProductStorefrontSettings } from '@/lib/product-storefront-settings'
 import type { PreorderGroup, PreorderBatch } from '@/lib/types'
 
-export interface ProductPreorderData {
+interface ProductPreorderData {
   preorderGroup: PreorderGroup | null
   preorderBatches: PreorderBatch[]
   isPickupOnly: boolean

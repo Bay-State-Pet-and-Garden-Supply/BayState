@@ -3,7 +3,7 @@
  * Used by PFX and other distributors with CSV/flat-file exports.
  */
 
-export interface CSVParseOptions {
+interface CSVParseOptions {
   /** Delimiter character (default: ',') */
   delimiter?: string;
   /** Whether first row contains headers (default: true) */
@@ -18,7 +18,7 @@ export interface CSVParseOptions {
   quoteChar?: string;
 }
 
-export interface CSVParseResult<T = Record<string, string>> {
+interface CSVParseResult<T = Record<string, string>> {
   success: boolean;
   data: T[];
   headers: string[];
