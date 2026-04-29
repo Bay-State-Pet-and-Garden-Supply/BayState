@@ -1,69 +1,12 @@
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-
 import { Button } from '@/components/ui/button';
 import { FeaturedProducts } from '@/components/storefront/featured-products';
 import { PetRecommendations } from '@/components/storefront/pet-recommendations';
 import { HeroCarousel } from '@/components/storefront/hero-carousel';
 import { getFeaturedProducts, getBrands } from '@/lib/data';
 import { getHomepageSettings } from '@/lib/settings';
-
-const stackedPromotions = [
-  {
-    href: '/products?category=farm',
-    imageSrc: '/images/legacy/img2.png',
-    alt: 'Bee Nuc Pre-Order',
-    title: 'Bee Nuc Pre-Order',
-    description: 'Reserve your spring setup before the rush starts.',
-  },
-  {
-    href: '/products?category=home',
-    imageSrc: '/images/legacy/img3.png',
-    alt: 'Wood Pellets Sale',
-    title: 'Wood Pellets Sale',
-    description: 'Steady fuel and household basics for colder days.',
-  },
-] as const;
-
-const departmentCards = [
-  {
-    href: '/products?category=pet-supplies',
-    title: 'Pet Supplies',
-    description: 'Feed, treats, and practical everyday care from brands customers actually ask for by name.',
-    tone: 'from-[#55735f] to-[#385142]',
-  },
-  {
-    href: '/products?category=farm',
-    title: 'Farm & Livestock',
-    description: 'Chick starter, bedding, and durable barn staples for chores that need to get done right the first time.',
-    tone: 'from-[#8b5a45] to-[#6c4332]',
-  },
-  {
-    href: '/products?category=lawn-garden',
-    title: 'Lawn & Garden',
-    description: 'Soil, seed, tools, and seasonal help for the kind of yard work that still feels hands-on.',
-    tone: 'from-[#648a57] to-[#43623c]',
-  },
-  {
-    href: '/products?category=home',
-    title: 'Home & Fuel',
-    description: 'Pellets, heating basics, and useful household goods for practical New England routines.',
-    tone: 'from-[#58718d] to-[#3f5369]',
-  },
-  {
-    href: '/products?category=seasonal',
-    title: 'Seasonal Shoppe',
-    description: 'Rotating local favorites, holiday extras, and the seasonal finds that make a visit feel worth it.',
-    tone: 'from-[#b06c3f] to-[#8f522f]',
-  },
-  {
-    href: '/products?category=gift-shop',
-    title: 'Gift Shop',
-    description: 'Country gifts, porch-worthy decor, and the small things customers like to discover on the way to checkout.',
-    tone: 'from-[#816247] to-[#5e4834]',
-  },
-] as const;
 
 export default async function HomePage() {
   const [featuredProducts, homepageSettings, brands] = await Promise.all([
@@ -75,7 +18,7 @@ export default async function HomePage() {
   const { heroSlides, heroSlideInterval } = homepageSettings;
 
   return (
-    <div className="w-full max-w-none pb-12 pt-0">
+    <div className="w-full max-w-none pt-0 pb-8">
       {heroSlides && heroSlides.length > 0 && (
         <div className="px-4 pt-4">
           <HeroCarousel slides={heroSlides} interval={heroSlideInterval} />
@@ -83,152 +26,125 @@ export default async function HomePage() {
       )}
 
       {(!heroSlides || heroSlides.length === 0) && (
-        <section className="px-4 pt-4">
-          <div className="container mx-auto">
-            <div className="storefront-panel overflow-hidden bg-[linear-gradient(135deg,#47654b_0%,#344c38_100%)] px-8 py-14 text-white sm:px-12 sm:py-18">
-              <p className="mb-3 text-sm font-medium tracking-[0.14em] text-white/70">
-                Fresh from the co-op counter
-              </p>
-              <h1 className="mb-4 font-display text-4xl font-bold tracking-tight sm:text-5xl">
-                Baby Chicks Are Here!
-              </h1>
-              <p className="mb-8 max-w-2xl text-lg font-medium text-white/80">
-                Browse online, then stop in for the kind of practical advice and pickup experience a local store should offer.
-              </p>
-              <Button
-                size="lg"
-                className="bg-accent px-8 py-6 text-lg font-semibold text-secondary shadow-sm hover:bg-accent/90"
-                asChild
-              >
-                <Link href="/products?category=farm">Shop Now</Link>
-              </Button>
-            </div>
+        <section className="mb-12 bg-primary text-white py-16 text-center shadow-md">
+          <div className="container mx-auto px-4">
+            <h1 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl uppercase drop-shadow-md text-accent font-display">
+              Baby Chicks Are Here!
+            </h1>
+            <p className="mx-auto mb-8 max-w-2xl text-xl font-medium uppercase tracking-wider">
+              Pick up in store today, or pre-order!
+            </p>
+            <Button size="lg" className="bg-accent text-secondary hover:bg-accent/90 text-lg font-bold px-8 py-6 rounded-none shadow-lg border-b-2 border-black/20" asChild>
+              <Link href="/products?category=farm">
+                Shop Now
+              </Link>
+            </Button>
           </div>
         </section>
       )}
 
-      <div className="container mx-auto space-y-16 px-4">
-        <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.5fr_1fr]">
-          <Link
-            href="/products?category=seasonal"
-            className="storefront-panel group relative aspect-[627/376] overflow-hidden"
-          >
-            <Image
-              src="/images/legacy/img1.png"
-              alt="Winter Essentials"
-              fill
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 p-6 text-white">
-              <p className="mb-2 text-sm font-medium tracking-[0.14em] text-white/75">
-                Locally stocked staples
-              </p>
-              <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-                Winter essentials
-              </h2>
-              <p className="mt-3 max-w-md text-sm font-medium text-white/80">
-                Feed, bedding, and practical cold-weather supplies that are ready when the forecast turns.
-              </p>
+      <div className="container mx-auto px-4">
+        <section className="my-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Link href="/products?category=seasonal" className="group border-[4px] border-zinc-900 overflow-hidden relative aspect-[627/376] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none shadow-[8px_8px_0px_rgba(0,0,0,1)] bg-zinc-100">
+            <Image src="/images/legacy/img1.png" alt="Winter Essentials" fill className="object-cover" />
+            <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-4">
+              <h3 className="text-white text-xl sm:text-2xl font-black uppercase tracking-widest leading-none font-display">Winter Essentials</h3>
             </div>
           </Link>
 
-          <div className="grid gap-6">
-            {stackedPromotions.map((promotion) => (
-              <Link
-                key={promotion.title}
-                href={promotion.href}
-                className="storefront-panel group relative aspect-[627/174] overflow-hidden"
-              >
-                <Image
-                  src={promotion.imageSrc}
-                  alt={promotion.alt}
-                  fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/15" />
-                <div className="absolute inset-0 flex flex-col justify-end p-5 text-white">
-                  <h3 className="font-display text-2xl font-bold tracking-tight">
-                    {promotion.title}
-                  </h3>
-                  <p className="mt-2 max-w-sm text-sm font-medium text-white/80">
-                    {promotion.description}
-                  </p>
-                </div>
-              </Link>
-            ))}
+          <div className="flex flex-col gap-6">
+            <Link href="/products?category=farm" className="group border-[4px] border-zinc-900 overflow-hidden relative aspect-[627/174] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none shadow-[8px_8px_0px_rgba(255,183,0,1)] bg-zinc-100">
+               <Image src="/images/legacy/img2.png" alt="Bee Nuc Pre-Order" fill className="object-cover" />
+               <div className="absolute top-2 right-2 bg-zinc-900 p-2">
+                 <h3 className="text-white text-xs sm:text-sm font-black uppercase tracking-widest leading-none font-display">Bee Nuc Pre-Order</h3>
+               </div>
+            </Link>
+
+            <Link href="/products?category=home" className="group border-[4px] border-zinc-900 overflow-hidden relative aspect-[627/174] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none shadow-[8px_8px_0px_rgba(220,38,38,1)] bg-zinc-100">
+              <Image src="/images/legacy/img3.png" alt="Wood Pellets Sale" fill className="object-cover" />
+              <div className="absolute top-2 right-2 bg-red-600 p-2">
+                <h3 className="text-white text-xs sm:text-sm font-black uppercase tracking-widest leading-none font-display">Wood Pellets Sale</h3>
+              </div>
+            </Link>
           </div>
         </section>
 
-        <section className="storefront-panel group relative block aspect-[1280/230] overflow-hidden">
-          <Link
-            href="/products?category=gift-shop"
-            className="absolute inset-0 z-10 flex items-center justify-center bg-black/25"
-          >
-            <Image
-              src="/images/legacy/img4.png"
-              alt="Country Gift Shop"
-              fill
-              className="-z-10 object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-            <div className="rounded-[1.5rem] border border-white/20 bg-black/35 px-8 py-5 text-center text-white backdrop-blur-sm">
-              <p className="mb-2 text-sm font-medium tracking-[0.14em] text-white/75">
-                A front-porch favorite
-              </p>
-              <h2 className="font-display text-3xl font-bold tracking-tight sm:text-5xl">
-                Country gift shop
-              </h2>
-            </div>
+        <section className="mb-12 border-[4px] border-zinc-900 relative overflow-hidden shadow-[8px_8px_0px_rgba(37,99,235,1)] aspect-[1280/230] bg-zinc-100 transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none block">
+          <Link href="/products?category=gift-shop" className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 group">
+            <Image src="/images/legacy/img4.png" alt="Country Gift Shop" fill className="object-cover -z-10" />
+            <h2 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tighter text-white uppercase drop-shadow-[2px_2px_4px_rgba(0,0,0,0.8)] font-display group-hover:scale-105 transition-transform">
+              Country Gift Shop
+            </h2>
           </Link>
         </section>
 
-        <section className="space-y-8">
-          <div className="border-b border-[var(--surface-storefront-border)] pb-4">
-            <p className="storefront-kicker mb-2">Browse in person or online</p>
-            <h2 className="font-display text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl">
-              Shop by department
+        <section className="mb-16">
+          <div className="flex justify-between items-end mb-8 border-b-8 border-zinc-900 pb-2">
+            <h2 className="text-4xl sm:text-6xl font-black text-zinc-900 uppercase tracking-tighter font-display">
+              Shop by Department
             </h2>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {departmentCards.map((department) => (
-              <Link
-                key={department.title}
-                href={department.href}
-                className={`storefront-panel group relative min-h-[300px] overflow-hidden bg-gradient-to-br ${department.tone}`}
-              >
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_40%)]" />
-                <div className="relative flex h-full flex-col justify-between p-7 text-white">
-                  <div>
-                    <p className="text-sm font-medium tracking-[0.14em] text-white/70">
-                      Department
-                    </p>
-                    <h3 className="mt-3 font-display text-4xl font-bold tracking-tight">
-                      {department.title}
-                    </h3>
-                    <p className="mt-4 max-w-xs text-sm font-medium leading-6 text-white/82">
-                      {department.description}
-                    </p>
-                  </div>
-                  <span className="inline-flex w-fit items-center rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur-sm">
-                    Explore department
-                  </span>
-                </div>
-              </Link>
-            ))}
+            <Link href="/products?category=pet-supplies" className="group border-2 border-zinc-900 bg-primary h-[300px] transition-all hover:-translate-x-1 hover:-translate-y-1 shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] relative overflow-hidden">
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-primary group-hover:bg-primary/95 transition-colors">
+                <h3 className="text-5xl font-black uppercase leading-[0.85] tracking-tighter text-white font-display mb-4">
+                  Pet<br/>Supplies
+                </h3>
+                <div className="h-2 w-24 bg-accent mt-2 shadow-[2px_2px_0px_rgba(0,0,0,0.2)]"></div>
+                <span className="mt-8 text-white/80 font-bold uppercase tracking-[0.2em] text-xs">Explore Department →</span>
+              </div>
+            </Link>
+
+            <Link href="/products?category=farm" className="group border-2 border-zinc-900 bg-red-600 h-[300px] transition-all hover:-translate-x-1 hover:-translate-y-1 shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] relative overflow-hidden">
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-red-600 group-hover:bg-red-700 transition-colors">
+                <h3 className="text-5xl font-black uppercase leading-[0.85] tracking-tighter text-white font-display mb-4">
+                  Farm &<br/>Livestock
+                </h3>
+                <div className="h-2 w-24 bg-accent mt-2 shadow-[2px_2px_0px_rgba(0,0,0,0.2)]"></div>
+                <span className="mt-8 text-white/80 font-bold uppercase tracking-[0.2em] text-xs">Explore Department →</span>
+              </div>
+            </Link>
+
+            <Link href="/products?category=lawn-garden" className="group border-2 border-zinc-900 bg-green-600 h-[300px] transition-all hover:-translate-x-1 hover:-translate-y-1 shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] relative overflow-hidden">
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-green-600 group-hover:bg-green-700 transition-colors">
+                <h3 className="text-5xl font-black uppercase leading-[0.85] tracking-tighter text-white font-display mb-4">
+                  Lawn &<br/>Garden
+                </h3>
+                <div className="h-2 w-24 bg-accent mt-2 shadow-[2px_2px_0px_rgba(0,0,0,0.2)]"></div>
+                <span className="mt-8 text-white/80 font-bold uppercase tracking-[0.2em] text-xs">Explore Department →</span>
+              </div>
+            </Link>
+
+            <Link href="/products?category=home" className="group border-2 border-zinc-900 bg-blue-600 h-[300px] transition-all hover:-translate-x-1 hover:-translate-y-1 shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] relative overflow-hidden">
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-blue-600 group-hover:bg-blue-700 transition-colors">
+                <h3 className="text-5xl font-black uppercase leading-[0.85] tracking-tighter text-white font-display mb-4">
+                  Home &<br/>Fuel
+                </h3>
+                <div className="h-2 w-24 bg-accent mt-2 shadow-[2px_2px_0px_rgba(0,0,0,0.2)]"></div>
+                <span className="mt-8 text-white/80 font-bold uppercase tracking-[0.2em] text-xs">Explore Department →</span>
+              </div>
+            </Link>
+
+            <Link href="/products?category=seasonal" className="group border-2 border-zinc-900 bg-orange-600 h-[300px] transition-all hover:-translate-x-1 hover:-translate-y-1 shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] relative overflow-hidden">
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-orange-600 group-hover:bg-orange-700 transition-colors">
+                <h3 className="text-5xl font-black uppercase leading-[0.85] tracking-tighter text-white font-display mb-4">
+                  Seasonal<br/>Shoppe
+                </h3>
+                <div className="h-2 w-24 bg-accent mt-2 shadow-[2px_2px_0px_rgba(0,0,0,0.2)]"></div>
+                <span className="mt-8 text-white/80 font-bold uppercase tracking-[0.2em] text-xs">Explore Department →</span>
+              </div>
+            </Link>
           </div>
         </section>
 
         {brands && brands.length > 0 && (
-          <section className="space-y-8">
-            <div className="flex items-end justify-between border-b border-[var(--surface-storefront-border)] pb-4">
-              <div>
-                <p className="storefront-kicker mb-2">Trusted makers</p>
-                <h2 className="font-display text-3xl font-bold tracking-tight text-zinc-900">
-                  300+ brands in stock
-                </h2>
-              </div>
-              <Link href="/brands" className="flex items-center text-sm font-medium text-primary hover:underline">
-                Shop all <ArrowRight className="ml-1 h-4 w-4" />
+          <section className="mb-16">
+            <div className="flex justify-between items-end mb-8 border-b-2 border-zinc-900 pb-4">
+              <h2 className="text-3xl font-black text-zinc-900 uppercase tracking-tighter font-display">
+                300+ Brands in Stock!
+              </h2>
+              <Link href="/brands" className="text-primary hover:underline font-black uppercase text-sm flex items-center">
+                shop all <ArrowRight className="ml-1 w-4 h-4" />
               </Link>
             </div>
             <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
@@ -236,7 +152,7 @@ export default async function HomePage() {
                 <Link
                   key={brand.id}
                   href={`/products?brand=${brand.slug}`}
-                  className="storefront-panel flex items-center justify-center p-4 grayscale transition-all hover:border-[var(--surface-storefront-accent)] hover:grayscale-0"
+                  className="flex items-center justify-center p-4 bg-white border border-zinc-200 hover:border-zinc-900 transition-colors grayscale hover:grayscale-0"
                 >
                   {brand.logo_url ? (
                     <Image
@@ -244,10 +160,10 @@ export default async function HomePage() {
                       alt={brand.name}
                       width={120}
                       height={60}
-                      className="max-h-16 object-contain"
+                      className="object-contain max-h-16"
                     />
                   ) : (
-                    <span className="text-center font-display text-xs font-bold tracking-tight text-zinc-500">
+                    <span className="font-bold text-zinc-500 text-center uppercase tracking-tight text-xs font-display">
                       {brand.name}
                     </span>
                   )}
@@ -260,21 +176,16 @@ export default async function HomePage() {
         <PetRecommendations />
         <FeaturedProducts products={featuredProducts} />
 
-        <section className="storefront-panel relative overflow-hidden bg-[url('/images/services-bg.jpg')] bg-cover bg-center text-white">
-          <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(17,24,39,0.72),rgba(39,45,34,0.62))]" />
-          <div className="relative z-10 flex flex-col items-center px-8 py-14 text-center sm:px-12">
-            <p className="mb-3 text-sm font-medium tracking-[0.14em] text-white/70">
-              Helpful around the yard and barn
-            </p>
-            <h2 className="mb-4 font-display text-4xl font-bold tracking-tight sm:text-5xl">
-              Local services
-            </h2>
-            <p className="mx-auto mb-10 max-w-xl text-lg font-medium text-zinc-200">
-              Propane refills, equipment rentals, and practical services that make a neighborhood supply store worth the trip.
+        <section className="mt-16 border-2 border-zinc-900 bg-zinc-900 p-12 text-center text-white bg-[url('/images/services-bg.jpg')] bg-cover bg-center relative overflow-hidden shadow-[8px_8px_0px_rgba(0,0,0,0.2)]">
+          <div className="absolute inset-0 bg-black/80"></div>
+          <div className="relative z-10 flex flex-col items-center">
+            <h2 className="mb-4 text-5xl font-black uppercase tracking-tighter font-display">Local Services</h2>
+            <p className="mx-auto mb-10 max-w-xl text-zinc-200 text-lg font-bold uppercase tracking-wide">
+              Propane refills, equipment rentals, and more. Stop by or reserve online.
             </p>
             <Button
               size="lg"
-              className="h-16 rounded-full bg-accent px-12 text-xl font-semibold text-secondary shadow-sm hover:bg-accent/90"
+              className="h-16 px-12 text-xl font-black uppercase rounded-none bg-accent text-secondary hover:bg-accent/90 border-b-2 border-black/20"
               asChild
             >
               <Link href="/services">View All Services</Link>

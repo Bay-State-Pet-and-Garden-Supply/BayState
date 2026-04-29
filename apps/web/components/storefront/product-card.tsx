@@ -28,7 +28,7 @@ export function ProductCard({ product }: ProductCardProps) {
         <WishlistButton productId={product.id} />
       </div>
       <Link href={`/products/${product.slug}`} className="block h-full">
-        <Card className="h-full cursor-pointer overflow-hidden border-[var(--surface-storefront-border)] bg-[var(--surface-storefront-card)] shadow-[var(--shadow-warm-sm)] transition-all group-hover:border-[var(--surface-storefront-accent)] group-hover:shadow-[var(--shadow-warm-md)] group-hover:-translate-y-1">
+        <Card className="h-full flex flex-col cursor-pointer overflow-hidden rounded-none border-2 border-zinc-200 bg-white transition-all group-hover:border-zinc-900 group-hover:shadow-[4px_4px_0px_rgba(0,0,0,1)] group-hover:-translate-x-0.5 group-hover:-translate-y-0.5">
           <CardContent className="flex flex-1 flex-col p-0">
             <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-white p-4 border-b border-zinc-100">
               {hasValidImage ? (
@@ -44,28 +44,28 @@ export function ProductCard({ product }: ProductCardProps) {
               ) : (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-zinc-50 text-zinc-300">
                   <ImageIcon className="size-[--icon-size-2xl]" />
-                  <span className="text-xs font-medium text-zinc-400">No image</span>
+                  <span className="text-xs font-black uppercase text-zinc-400">No Image</span>
                 </div>
               )}
               
               <div className="absolute left-0 top-3 flex flex-col items-start gap-1">
                 {product.stock_status === 'out_of_stock' && !product.is_special_order && (
-                  <Badge className="bg-red-600 text-white text-[10px] shadow-none">
+                  <Badge className="rounded-none bg-red-600 hover:bg-red-700 text-white font-black uppercase text-[10px] px-2 py-0.5 shadow-sm border-r-2 border-b-2 border-black/20">
                     Out of Stock
                   </Badge>
                 )}
                 {product.stock_status === 'pre_order' && (
-                  <Badge className="bg-accent text-secondary text-[10px] shadow-none">
+                  <Badge className="rounded-none bg-accent text-secondary hover:bg-accent/90 font-black uppercase text-[10px] px-2 py-0.5 border-r-2 border-b-2 border-black/20">
                     Pre-Order
                   </Badge>
                 )}
                 {product.pickup_only && (
-                  <Badge className="bg-zinc-900 text-white text-[10px] shadow-none">
+                  <Badge className="rounded-none bg-zinc-900 text-white font-black uppercase text-[10px] px-2 py-0.5 border-r-2 border-b-2 border-white/20">
                     Pickup Only
                   </Badge>
                 )}
                 {product.is_special_order && (
-                  <Badge className="bg-primary text-white text-[10px] shadow-none">
+                  <Badge className="rounded-none bg-primary text-white font-black uppercase text-[10px] px-2 py-0.5 border-r-2 border-b-2 border-black/20">
                     Special Order
                   </Badge>
                 )}
@@ -74,18 +74,18 @@ export function ProductCard({ product }: ProductCardProps) {
 
             <div className="flex flex-1 flex-col p-4 pt-3">
               {product.brand && (
-                <p className="mb-1 text-[11px] font-medium tracking-[0.08em] text-zinc-400">
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-zinc-400 font-display">
                   {product.brand.name}
                 </p>
               )}
               
-              <h3 className="mb-2 line-clamp-2 text-sm font-semibold leading-snug text-zinc-800 transition-colors group-hover:text-primary">
+              <h3 className="mb-2 line-clamp-2 text-sm font-bold uppercase tracking-tight text-zinc-800 leading-snug group-hover:text-primary transition-colors">
                 {product.name}
               </h3>
               
               <div className="mt-auto flex flex-col gap-1 pt-2 border-t border-zinc-100">
                 <div className="flex items-baseline gap-1">
-                  <span className="font-display text-xl font-bold tracking-tight text-zinc-900">
+                  <span className="text-xl font-black tracking-tighter text-zinc-900 font-display">
                     {formattedPrice}
                   </span>
                 </div>
