@@ -1,6 +1,6 @@
 import { RegisterWorkbookProduct } from "@/lib/admin/register-file";
 
-export type RegisterSyncField = "quantity" | "stock_status" | "price";
+type RegisterSyncField = "quantity" | "stock_status" | "price";
 
 export interface RegisterSyncExistingProduct {
   id: string;
@@ -17,13 +17,13 @@ export interface RegisterSyncExistingProduct {
   date_priced?: string | null;
 }
 
-export interface RegisterSyncChange {
+interface RegisterSyncChange {
   field: RegisterSyncField | "date_sold" | "date_received" | "date_counted" | "date_created" | "date_priced";
   before: number | string | null;
   after: number | string | null;
 }
 
-export interface RegisterSyncPreview {
+interface RegisterSyncPreview {
   sku: string;
   name: string;
   changes: RegisterSyncChange[];
@@ -45,7 +45,7 @@ export interface RegisterSyncUpdate {
   updated_at: string;
 }
 
-export interface RegisterSyncPlan {
+interface RegisterSyncPlan {
   totalInFile: number;
   matchedProducts: number;
   unchangedProducts: number;

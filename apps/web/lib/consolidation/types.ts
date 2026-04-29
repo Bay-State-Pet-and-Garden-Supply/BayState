@@ -47,7 +47,7 @@ export interface BatchStatus {
 /**
  * Possible batch job statuses from OpenAI.
  */
-export type BatchJobStatus =
+type BatchJobStatus =
     | 'validating'
     | 'in_progress'
     | 'finalizing'
@@ -137,24 +137,6 @@ export interface ConsolidationResult {
     error?: string;
 }
 
-/**
- * Consolidated product data stored in products_ingestion.consolidated.
- */
-export interface ConsolidatedData {
-    name?: string;
-    description?: string;
-    price?: number;
-    images?: string[];
-    brand_id?: string;
-    is_special_order?: boolean;
-    category?: string;
-    product_on_pages?: string[];
-    weight?: string;
-    availability?: string;
-    is_taxable?: boolean;
-    confidence_score?: number;
-}
-
 // =============================================================================
 // API Response Types
 // =============================================================================
@@ -200,7 +182,7 @@ export interface ApplyResultsResponse {
     errors?: string[];
 }
 
-export type ParallelRunStatus = 'pending' | 'running' | 'completed' | 'failed';
+type ParallelRunStatus = 'pending' | 'running' | 'completed' | 'failed';
 
 export interface ParallelRunComparison {
     accuracy: number;
@@ -228,19 +210,6 @@ export interface ParallelRunRecord {
     created_at: string;
     updated_at: string;
     completed_at: string | null;
-}
-
-// =============================================================================
-// Taxonomy Types
-// =============================================================================
-
-/**
- * Category from the categories table.
- */
-export interface Category {
-    id: string;
-    name: string;
-    slug: string | null;
 }
 
 /**

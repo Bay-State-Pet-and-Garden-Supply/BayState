@@ -161,7 +161,7 @@ function resolveBroadcastEnvelope(
 /**
  * Broadcast subscription state for transient diagnostic events.
  */
-export interface JobBroadcastState {
+interface JobBroadcastState {
   /** All received broadcasts organized by event type */
   broadcasts: Record<string, BroadcastEvent[]>;
   /** Most recent broadcast for each event type */
@@ -179,7 +179,7 @@ export interface JobBroadcastState {
 /**
  * Configuration options for the transient diagnostic hook.
  */
-export interface UseJobBroadcastOptions {
+interface UseJobBroadcastOptions {
   /** Optional custom channel name for broadcasts */
   channelName?: string;
   /** Whether to automatically connect on mount (default: true) */
@@ -197,7 +197,7 @@ export interface UseJobBroadcastOptions {
 /**
  * Event type filters for subscribing to specific broadcast events
  */
-export interface BroadcastEventFilters {
+interface BroadcastEventFilters {
   /** Subscribe to log events */
   includeLogs?: boolean;
   /** Subscribe to progress events */
@@ -220,7 +220,7 @@ const DEFAULT_OPTIONS: Partial<UseJobBroadcastOptions> = {
 /**
  * Hook return type
  */
-export interface UseJobBroadcastsReturn extends JobBroadcastState {
+interface UseJobBroadcastsReturn extends JobBroadcastState {
   /** Connect to the broadcast channel */
   connect: () => void;
   /** Disconnect from the broadcast channel */

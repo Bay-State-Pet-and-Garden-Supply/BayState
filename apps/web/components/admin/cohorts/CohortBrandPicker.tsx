@@ -24,10 +24,13 @@ function slugifyBrandName(value: string): string {
 }
 
 function isBrandConfigured(brand: CohortBrandOption): boolean {
+  const officialDomains = brand.official_domains ?? [];
+  const preferredDomains = brand.preferred_domains ?? [];
+
   return Boolean(
     (brand.website_url && brand.website_url.trim())
-      || brand.official_domains.length > 0
-      || brand.preferred_domains.length > 0
+      || officialDomains.length > 0
+      || preferredDomains.length > 0
   );
 }
 

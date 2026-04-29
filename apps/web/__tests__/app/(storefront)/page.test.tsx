@@ -60,15 +60,11 @@ describe('Home Page', () => {
   it('renders category cards', async () => {
     const page = await HomePage();
     render(page);
-    
-    // Cards now use separate elements for words
-    expect(screen.getAllByText(/Pet/)[0]).toBeInTheDocument();
-    expect(screen.getAllByText(/Supplies/)[0]).toBeInTheDocument();
-    
-    expect(screen.getAllByText(/Garden/)[0]).toBeInTheDocument();
-    expect(screen.getAllByText(/Seed Starting/)[0]).toBeInTheDocument();
 
-    expect(screen.getAllByText(/Heating/)[0]).toBeInTheDocument();
-    expect(screen.getAllByText(/WOOD PELLETS/)[0]).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Shop by Department/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Pet Supplies/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Farm & Livestock/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Lawn & Garden/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Home & Fuel/i })).toBeInTheDocument();
   });
 });

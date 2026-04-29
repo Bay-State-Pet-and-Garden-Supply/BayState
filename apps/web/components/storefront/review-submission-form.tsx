@@ -20,7 +20,7 @@ interface ReviewSubmissionFormProps {
   hasAlreadyReviewed: boolean;
 }
 
-function ReviewSubmissionForm({
+export function ReviewSubmissionForm({
   productId,
   productSlug,
   isLoggedIn,

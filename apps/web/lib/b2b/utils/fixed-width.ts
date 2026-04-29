@@ -3,7 +3,7 @@
  * Used primarily by Orgill (HD1 format).
  */
 
-export interface FieldDefinition {
+interface FieldDefinition {
   name: string;
   start: number;
   end: number;
@@ -12,7 +12,7 @@ export interface FieldDefinition {
   trim?: boolean;
 }
 
-export interface ParseOptions {
+interface ParseOptions {
   /** Skip lines that don't start with this prefix */
   linePrefix?: string;
   /** Skip header lines (number of lines to skip) */

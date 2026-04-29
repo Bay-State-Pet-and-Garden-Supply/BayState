@@ -16,7 +16,7 @@ export type ImageErrorType =
   | 'cors_blocked'
   | 'unknown';
 
-export type ImageRetryStatus = 
+type ImageRetryStatus = 
   | 'pending'
   | 'processing'
   | 'completed'
@@ -82,7 +82,7 @@ export interface PendingImageRetry {
   last_error?: string | null;
 }
 
-export interface ProductImageRetryHistory {
+interface ProductImageRetryHistory {
   retry_id: string;
   image_url: string;
   error_type: ImageErrorType;

@@ -18,15 +18,13 @@ export interface B2BProduct {
 export interface B2BInventoryUpdate {
   distributorSku: string;
   quantity: number;
-  nextAvailabilityDate?: string;
 }
 
 export interface B2BPriceUpdate {
   distributorSku: string;
-  cost: number;
+  price: number;
+  cost?: number;
   msrp?: number;
-  promoCost?: number;
-  promoEnds?: string;
 }
 
 export interface B2BClient {
@@ -59,9 +57,9 @@ export type B2BConfig = {
 
 export type DistributorCode = 'BCI' | 'ORGILL' | 'PHILLIPS' | 'CENTRAL' | 'PFX';
 
-export type FeedStatus = 'healthy' | 'degraded' | 'offline' | 'unconfigured';
+type FeedStatus = 'healthy' | 'degraded' | 'offline' | 'unconfigured';
 
-export type SyncJobStatus = 'pending' | 'running' | 'completed' | 'failed';
+type SyncJobStatus = 'pending' | 'running' | 'completed' | 'failed';
 
 export type SyncJobType = 'catalog' | 'inventory' | 'pricing' | 'full';
 

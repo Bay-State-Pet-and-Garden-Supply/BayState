@@ -13,7 +13,7 @@ import type { JobAssignment } from './types';
 /**
  * Job subscription state
  */
-export interface JobSubscriptionState {
+interface JobSubscriptionState {
   /** All jobs organized by status */
   jobs: {
     pending: JobAssignment[];
@@ -42,7 +42,7 @@ export interface JobSubscriptionState {
 /**
  * Configuration options for the job subscription hook
  */
-export interface UseJobSubscriptionOptions {
+interface UseJobSubscriptionOptions {
   /** Optional custom channel name for job subscriptions */
   channelName?: string;
   /** Whether to automatically connect on mount (default: true) */
@@ -66,7 +66,7 @@ export interface UseJobSubscriptionOptions {
 /**
  * Event type filters
  */
-export interface JobEventFilters {
+interface JobEventFilters {
   /** Subscribe to INSERT events (new jobs) */
   includeInsert?: boolean;
   /** Subscribe to UPDATE events (status changes) */
@@ -86,7 +86,7 @@ const DEFAULT_OPTIONS: Partial<UseJobSubscriptionOptions> = {
 /**
  * Hook return type
  */
-export interface UseJobSubscriptionReturn extends JobSubscriptionState {
+interface UseJobSubscriptionReturn extends JobSubscriptionState {
   /** Connect to the job subscription channel */
   connect: () => void;
   /** Disconnect from the job subscription channel */

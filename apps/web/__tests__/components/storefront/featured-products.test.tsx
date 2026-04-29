@@ -46,7 +46,7 @@ const mockProducts: Product[] = [
 describe('FeaturedProducts', () => {
   it('renders section title', () => {
     render(<FeaturedProducts products={mockProducts} />);
-    expect(screen.getByText('Featured Products')).toBeInTheDocument();
+    expect(screen.getByText('Featured products')).toBeInTheDocument();
   });
 
   it('renders all products', () => {

@@ -4,7 +4,7 @@ import { createHash } from 'crypto';
 /**
  * Idempotency key types for different callback scenarios
  */
-export type IdempotencyKeyType = 'admin' | 'chunk';
+type IdempotencyKeyType = 'admin' | 'chunk';
 
 /**
  * Generate a deterministic idempotency key for callback deduplication
@@ -163,15 +163,6 @@ export async function recordCallbackProcessedWithRetry(
   }
 
   return { success: false, error: lastError };
-}
-
-/**
- * Idempotency check result type
- */
-export interface IdempotencyCheckResult {
-  isDuplicate: boolean;
-  existingRecordId?: string;
-  existingRecordCreatedAt?: string;
 }
 
 /**

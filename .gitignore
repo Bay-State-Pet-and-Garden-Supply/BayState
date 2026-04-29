@@ -4,6 +4,7 @@
 /dist/
 .turbo/
 .cache/
+.fallow/
 
 # AI Agent Workspaces & State
 .gemini/

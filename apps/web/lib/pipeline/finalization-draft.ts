@@ -8,7 +8,7 @@ export const FINALIZATION_STOCK_STATUS_VALUES = [
   "pre_order",
 ] as const;
 
-export type FinalizationStockStatus =
+type FinalizationStockStatus =
   (typeof FINALIZATION_STOCK_STATUS_VALUES)[number];
 
 export interface FinalizationDraft {
@@ -163,7 +163,7 @@ export function toFinalizationImageArray(value: unknown): string[] {
   return Array.from(deduped.values());
 }
 
-function extractSelectedImageUrls(value: unknown): string[] {
+export function extractSelectedImageUrls(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
 
   const urls = value

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-export type ValidationResult<T> =
+type ValidationResult<T> =
     | { success: true; data: T }
     | { success: false; error: NextResponse };
 
@@ -99,4 +99,3 @@ async function parseQueryParams<T>(
         };
     }
 }
-

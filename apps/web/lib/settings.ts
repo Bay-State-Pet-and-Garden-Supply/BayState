@@ -17,7 +17,7 @@ export interface CampaignBannerSettings {
   link_href?: string;
 }
 
-export interface HeroSettings {
+interface HeroSettings {
   title: string;
   subtitle?: string;
   imageUrl?: string;
@@ -48,7 +48,7 @@ export interface NavLink {
   openInNewTab?: boolean;
 }
 
-export interface NavigationSettings {
+interface NavigationSettings {
   headerLinks: NavLink[];
   footerShopLinks: NavLink[];
   footerServiceLinks: NavLink[];
@@ -60,7 +60,7 @@ export interface SocialLink {
   url: string;
 }
 
-export interface BrandingSettings {
+interface BrandingSettings {
   siteName: string;
   tagline: string;
   logoUrl: string;
@@ -72,7 +72,7 @@ export interface BrandingSettings {
   socialLinks: SocialLink[];
 }
 
-export interface SiteSettings {
+interface SiteSettings {
   campaign_banner: CampaignBannerSettings;
   homepage: HomepageSettings;
   navigation: NavigationSettings;

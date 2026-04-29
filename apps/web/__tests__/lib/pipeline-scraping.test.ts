@@ -499,25 +499,6 @@ describe('scrapeProducts', () => {
             },
         ]);
     });
-});
-        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
-
-        const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'official_brand' });
-
-        expect(result.success).toBe(true);
-        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
-        expect(insertedPayload.config.items).toEqual([
-            {
-                sku: 'SKU-1',
-                product_name: 'Miracle-Gro Potting Mix 25 Quart',
-                price: 9.99,
-                brand: 'Miracle-Gro',
-                category: 'Garden > Potting Mix',
-                preferred_domains: ['scottsmiraclegro.com', 'homedepot.com', 'lowes.com'],
-            },
-        ]);
-    });
-
     it('should backfill discovery brand registry domains from consolidated brand id', async () => {
         mockSupabase = makeSupabaseMock({
             pipelineRows: [

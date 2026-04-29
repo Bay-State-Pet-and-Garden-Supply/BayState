@@ -324,11 +324,11 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
                         </div>
                         <div className="rounded-none border border-zinc-200 bg-white px-3 py-2">
                           <span className="block text-zinc-500">Official Domains</span>
-                          <span className="mt-1 block text-zinc-950">{brand.official_domains.length}</span>
+                          <span className="mt-1 block text-zinc-950">{brand.official_domains?.length ?? 0}</span>
                         </div>
                         <div className="rounded-none border border-zinc-200 bg-white px-3 py-2">
                           <span className="block text-zinc-500">Preferred Domains</span>
-                          <span className="mt-1 block text-zinc-950">{brand.preferred_domains.length}</span>
+                          <span className="mt-1 block text-zinc-950">{brand.preferred_domains?.length ?? 0}</span>
                         </div>
                       </div>
                     )}

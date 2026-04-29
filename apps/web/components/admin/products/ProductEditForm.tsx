@@ -24,7 +24,7 @@ import { SearchableMultiSelect } from './SearchableMultiSelect';
 import { updateProduct } from '@/app/admin/products/actions';
 import { cn } from '@/lib/utils';
 
-export interface PublishedProduct {
+interface PublishedProduct {
     id: string;
     sku: string;
     name: string;

@@ -29,12 +29,12 @@ export interface ProductTabDerivationInput {
   in_storefront?: boolean | null;
 }
 
-export interface ActivePipelineJobs {
+interface ActivePipelineJobs {
   scraping: boolean;
   consolidation: boolean;
 }
 
-export interface ActiveJobsLookupOptions {
+interface ActiveJobsLookupOptions {
   scrapeTable?: string;
   scrapeProductIdColumn?: string;
   scrapeSkuArrayColumn?: string;

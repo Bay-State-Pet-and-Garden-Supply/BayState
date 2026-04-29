@@ -164,8 +164,6 @@ export const SHOPSITE_PAGES = [
     'Wood Pellets',
 ] as const;
 
-export type ShopSitePage = (typeof SHOPSITE_PAGES)[number];
-
 export function parseShopSitePages(value: unknown): string[] {
     const rawPages = Array.isArray(value)
         ? value

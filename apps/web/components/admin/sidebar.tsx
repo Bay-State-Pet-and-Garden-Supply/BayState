@@ -199,12 +199,12 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
   return (
     <aside
       className={cn(
-        "relative flex h-full flex-col bg-brand-forest-green text-white transition-all duration-300 ease-in-out border-r border-zinc-950 z-50",
+        "relative z-50 flex h-full flex-col border-r border-white/12 bg-brand-forest-green text-white transition-all duration-300 ease-in-out",
         collapsed ? "w-[80px]" : "w-[240px]",
       )}
     >
       {/* Header */}
-      <div className="flex h-20 items-center px-4 mb-2 border-b border-zinc-950 bg-brand-forest-green">
+      <div className="mb-2 flex h-20 items-center border-b border-white/10 bg-brand-forest-green px-4">
         <div
           className={cn(
             "flex items-center gap-2.5 transition-opacity duration-300",
@@ -213,7 +213,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
               : "opacity-100 visible w-full",
           )}
         >
-          <div className="bg-brand-gold p-1.5 rounded-none border border-zinc-950 shrink-0 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+          <div className="shrink-0 rounded-xl bg-white/12 p-2 ring-1 ring-white/15 backdrop-blur-sm">
             <Image
               src="/icon.png"
               alt="Bay State app icon"
@@ -223,10 +223,10 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
             />
           </div>
           <div className="min-w-0">
-            <h1 className="text-sm font-black uppercase tracking-tighter text-white leading-tight truncate">
+            <h1 className="truncate text-sm font-semibold leading-tight text-white">
               Bay State
             </h1>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-brand-gold truncate">
+            <p className="truncate text-[11px] font-medium text-white/72">
               Admin Control
             </p>
           </div>
@@ -248,7 +248,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
           type="button"
           onClick={toggleCollapsed}
           className={cn(
-            "absolute -right-4 top-1/2 -translate-y-1/2 z-50 flex h-8 w-8 items-center justify-center rounded-none bg-brand-gold border border-zinc-950 text-brand-burgundy shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-brand-gold/90 transition-colors duration-150 active:scale-95 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-forest-green",
+            "absolute -right-4 top-1/2 z-50 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-white text-brand-forest-green shadow-[var(--shadow-md)] transition-colors duration-150 hover:bg-white/90 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-forest-green",
             collapsed && "right-[-16px]",
           )}
           aria-label={collapsed ? "Expand" : "Collapse"}
@@ -264,7 +264,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
       {/* Navigation */}
       <nav
         className={cn(
-          "flex-1 space-y-6 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-brand-gold/20 scrollbar-track-transparent py-4",
+          "flex-1 space-y-6 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent py-4",
           collapsed ? "px-4" : "px-4",
         )}
       >
@@ -275,7 +275,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
               className="space-y-2"
             >
               {section.title && !collapsed && (
-                <h2 className="px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white/60 truncate">
+                <h2 className="truncate px-3 py-1 text-[11px] font-medium tracking-[0.08em] text-white/55">
                   {section.title}
                 </h2>
               )}
@@ -295,23 +295,23 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
                       href={item.href}
                       aria-label={item.label}
                       className={cn(
-                        "group relative flex items-center rounded-none px-3 py-2.5 transition-all duration-200 border",
+                        "group relative flex items-center rounded-xl px-3 py-2.5 text-sm transition-all duration-200",
                         collapsed ? "justify-center" : "gap-2.5",
                         isActive
-                          ? "bg-brand-gold text-brand-burgundy border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase"
-                          : "text-white/80 border-transparent hover:bg-white/10 hover:text-white font-bold uppercase",
+                          ? "bg-white text-brand-forest-green shadow-[var(--shadow-sm)]"
+                          : "text-white/78 hover:bg-white/12 hover:text-white",
                       )}
                     >
                       <Icon
                         className={cn(
                           "h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110",
                           isActive
-                            ? "text-brand-burgundy"
+                            ? "text-brand-forest-green"
                             : "text-white/60 group-hover:text-white",
                         )}
                       />
                       {!collapsed && (
-                        <span className="text-xs tracking-tight truncate">
+                        <span className="truncate font-medium">
                           {item.label}
                         </span>
                       )}
@@ -325,7 +325,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
                         <TooltipContent
                           side="right"
                           sideOffset={20}
-                          className="bg-brand-gold border border-zinc-950 text-brand-burgundy font-black uppercase px-4 py-2 text-xs shadow-[1px_1px_0px_rgba(0,0,0,1)] rounded-none"
+                          className="border border-white/20 bg-white px-4 py-2 text-xs font-medium text-brand-forest-green shadow-[var(--shadow-md)]"
                         >
                           {item.label}
                         </TooltipContent>
@@ -342,7 +342,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
       </nav>
 
       {/* Footer / User Profile */}
-      <div className="mt-auto p-3 border-t border-zinc-950 bg-brand-forest-green/80">
+      <div className="mt-auto border-t border-white/10 bg-black/8 p-3 backdrop-blur-sm">
         <div
           className={cn(
             "flex items-center",
@@ -350,14 +350,14 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
           )}
         >
           <div className="relative shrink-0">
-            <div className="h-10 w-10 rounded-none bg-brand-gold flex items-center justify-center border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
-              <User className="h-5 w-5 text-brand-burgundy" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-brand-forest-green ring-1 ring-white/10">
+              <User className="h-5 w-5 text-brand-forest-green" />
             </div>
           </div>
 
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-black uppercase text-white truncate leading-tight">
+              <p className="truncate text-xs font-semibold leading-tight text-white">
                 Staff Account
               </p>
               <div className="flex items-center gap-1 mt-0.5">
@@ -369,7 +369,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
                 />
                 <span
                   className={cn(
-                    "text-[9px] font-black uppercase tracking-widest truncate",
+                    "truncate text-[11px] font-medium",
                     isAdmin ? "text-brand-gold" : "text-white/60",
                   )}
                 >
@@ -389,7 +389,7 @@ export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
           <Link
             href="/"
             className={cn(
-              "flex items-center rounded-none px-2.5 py-2 text-[10px] font-black uppercase text-white/60 transition-all border border-transparent hover:border-zinc-950 hover:bg-brand-burgundy hover:text-white hover:shadow-[1px_1px_0px_rgba(0,0,0,1)]",
+              "flex items-center rounded-xl px-2.5 py-2 text-[11px] font-medium text-white/70 transition-all hover:bg-white/10 hover:text-white",
               collapsed ? "justify-center" : "gap-2.5",
             )}
           >

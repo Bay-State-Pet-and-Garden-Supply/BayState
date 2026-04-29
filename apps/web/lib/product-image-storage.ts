@@ -36,7 +36,7 @@ interface ReplaceInlineImageDataUrlOptions {
   onError?: (message: string, error: unknown) => void;
 }
 
-export interface ScraperImageCaptureResult {
+interface ScraperImageCaptureResult {
   status?: 'success' | 'error';
   data_url?: string | null;
   error_type?: ImageErrorType | null;
@@ -45,7 +45,7 @@ export interface ScraperImageCaptureResult {
   status_code?: number | null;
 }
 
-export interface QueuedInlineImage {
+interface QueuedInlineImage {
   errorType: ImageErrorType;
   imageUrl: string;
   marker: string;
@@ -53,7 +53,7 @@ export interface QueuedInlineImage {
   scheduledFor: string;
 }
 
-export interface ReplaceInlineImageDataUrlsResult<T> {
+interface ReplaceInlineImageDataUrlsResult<T> {
   value: T;
   queuedImages: QueuedInlineImage[];
 }

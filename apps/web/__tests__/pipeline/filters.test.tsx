@@ -119,6 +119,7 @@ describe('PipelineClient Integration', () => {
     const mockCounts = [{ status: 'imported', count: 1 }];
 
     it('updates the stage in the URL when the active stage changes', async () => {
+        const user = userEvent.setup();
         mockSearchParamsToString.mockReturnValue('stage=scraped&search=seed&source=scraper-1&product_line=Seeds&cohort_id=batch-123');
         mockSearchParamGet.mockImplementation((key: string) => {
             const values: Record<string, string | null> = {
@@ -142,10 +143,12 @@ describe('PipelineClient Integration', () => {
             />
         );
 
-        fireEvent.click(screen.getByRole('tab', { name: /Finalizing/i }));
+        await user.click(screen.getByRole('tab', { name: /Finalizing/i }));
 
         await waitFor(() => {
-            expect(mockReplace).toHaveBeenCalledWith('/admin/pipeline?stage=finalizing');
+            expect(
+                mockReplace.mock.calls.some(([url]) => url === '/admin/pipeline?stage=finalizing')
+            ).toBe(true);
         });
     });
 });

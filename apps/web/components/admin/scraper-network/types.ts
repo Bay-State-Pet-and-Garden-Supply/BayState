@@ -19,7 +19,7 @@ export interface RunnerDetail {
   metadata: Record<string, unknown> | null;
 }
 
-export interface RunnerScraperBreakdown {
+interface RunnerScraperBreakdown {
   scraperName: string;
   runCount: number;
   successRate: number;

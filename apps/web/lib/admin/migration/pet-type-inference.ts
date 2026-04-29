@@ -12,9 +12,9 @@ export type PetTypeName =
     | 'Horse' 
     | 'Livestock';
 
-export type LifeStage = 'puppy' | 'adult' | 'senior' | 'all';
-export type SizeClass = 'small' | 'medium' | 'large' | 'giant' | 'all';
-export type SpecialNeed = 
+type LifeStage = 'puppy' | 'adult' | 'senior' | 'all';
+type SizeClass = 'small' | 'medium' | 'large' | 'giant' | 'all';
+type SpecialNeed = 
     | 'grain-free' 
     | 'sensitive-stomach' 
     | 'weight-management' 
@@ -24,7 +24,7 @@ export type SpecialNeed =
     | 'joint-support'
     | 'skin-coat';
 
-export interface PetTypeInferenceResult {
+interface PetTypeInferenceResult {
     petTypes: PetTypeName[];
     lifeStages: LifeStage[];
     sizeClasses: SizeClass[];
@@ -33,7 +33,7 @@ export interface PetTypeInferenceResult {
     maxWeightLbs: number | null;
 }
 
-export interface ResolvedPetTypesResult {
+interface ResolvedPetTypesResult {
     petTypes: PetTypeName[];
     source: 'direct' | 'inference' | 'none';
 }

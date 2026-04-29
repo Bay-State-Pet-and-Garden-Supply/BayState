@@ -33,7 +33,7 @@ export function MobileSidebarDrawer({ children }: MobileSidebarDrawerProps) {
         variant="default"
         size="icon"
         onClick={() => setOpen(true)}
-        className="fixed top-4 left-4 z-50 md:hidden bg-zinc-950 text-white border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] rounded-none"
+        className="fixed left-4 top-4 z-50 rounded-full border border-zinc-200 bg-white text-zinc-900 shadow-[var(--shadow-md)] md:hidden"
         aria-label="Open navigation menu"
       >
         <Menu className="h-5 w-5" />
@@ -42,7 +42,7 @@ export function MobileSidebarDrawer({ children }: MobileSidebarDrawerProps) {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="left"
-          className="w-[240px] p-0 bg-white border-r border-zinc-950 rounded-none"
+          className="w-[240px] border-r border-zinc-200 bg-white p-0"
           showCloseButton={false}
         >
           <SheetTitle className="sr-only">Navigation Menu</SheetTitle>

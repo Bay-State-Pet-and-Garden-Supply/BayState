@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-export interface ProductStats {
+interface ProductStats {
   total_count: number;
   published_count: number;
   out_of_stock_count: number;
@@ -9,7 +9,7 @@ export interface ProductStats {
   last_updated: string;
 }
 
-export interface ScraperStats {
+interface ScraperStats {
   total_jobs: number;
   completed_jobs: number;
   failed_jobs: number;

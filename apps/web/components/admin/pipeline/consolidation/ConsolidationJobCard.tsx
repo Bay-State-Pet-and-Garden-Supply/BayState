@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 // Types
 // ============================================================================
 
-export interface ConsolidationJobCardProps {
+interface ConsolidationJobCardProps {
   job: ConsolidationJob;
   onCancel: (id: string) => void;
   onApply: (id: string) => void;

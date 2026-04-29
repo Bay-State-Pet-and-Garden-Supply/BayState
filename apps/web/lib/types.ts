@@ -62,7 +62,7 @@ export interface Service {
   created_at: string;
 }
 
-export interface Category {
+interface Category {
   id: string;
   name: string;
   slug: string;
@@ -169,35 +169,6 @@ export interface ProductReview {
   user?: { full_name: string | null };
 }
 
-export interface ReviewHelpfulVote {
-  user_id: string;
-  review_id: string;
-  is_helpful: boolean;
-  created_at: string;
-}
-
-export interface ProductQuestion {
-  id: string;
-  product_id: string;
-  user_id: string | null;
-  question: string;
-  status: ReviewStatus;
-  created_at: string;
-  user?: { full_name: string | null };
-  answers?: ProductAnswer[];
-}
-
-export interface ProductAnswer {
-  id: string;
-  question_id: string;
-  user_id: string | null;
-  answer: string;
-  is_official: boolean;
-  helpful_count: number;
-  created_at: string;
-  user?: { full_name: string | null };
-}
-
 // ============================================================================
 // Product Variants & Options
 // ============================================================================
@@ -221,7 +192,7 @@ export interface ProductOptionValue {
   created_at: string;
 }
 
-export type WeightUnit = 'lb' | 'oz' | 'kg' | 'g';
+type WeightUnit = 'lb' | 'oz' | 'kg' | 'g';
 
 export interface ProductVariant {
   id: string;
@@ -281,62 +252,6 @@ export interface ProductGroupMember {
   product?: Product;
 }
 
-/**
- * Response when fetching a group by slug.
- * Includes the group info and all member products.
- */
-export interface ProductGroupWithMembers {
-  group: ProductGroup;
-  members: Array<{
-    member: ProductGroupMember;
-    product: Product;
-  }>;
-  defaultMember: ProductGroupMember | null;
-}
-
-// ============================================================================
-// Cohort Metadata (distributed scraping batches)
-// ============================================================================
-
-export interface CohortBatch {
-  id: string;
-  upc_prefix: string;
-  product_line: string | null;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  scraper_config: string | null;
-  /** FK to brands table for known catalog brands */
-  brand_id: string | null;
-  /** Free-text brand name for scraping context */
-  brand_name: string | null;
-  created_at: string;
-  updated_at: string;
-  metadata: Record<string, unknown> | null;
-}
-
-export interface CohortMember {
-  cohort_id: string;
-  product_sku: string;
-  upc_prefix: string;
-  sort_order: number;
-  created_at: string;
-}
-
-/** Tracks which scrapers historically produce results for which brands */
-export interface BrandScraperAffinity {
-  id: string;
-  brand_name: string;
-  scraper_slug: string;
-  total_attempts: number;
-  successful_extractions: number;
-  hit_rate: number;
-  avg_fields_extracted: number;
-  avg_images_found: number;
-  last_success_at: string | null;
-  last_attempt_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
 // ============================================================================
 // Product Images
 // ============================================================================
@@ -352,53 +267,6 @@ export interface ProductImage {
   height: number | null;
   is_primary: boolean;
   created_at: string;
-}
-
-// ============================================================================
-// Tags & Attributes
-// ============================================================================
-
-export interface Tag {
-  id: string;
-  name: string;
-  slug: string;
-  created_at: string;
-}
-
-export interface ProductTag {
-  product_id: string;
-  tag_id: string;
-}
-
-export interface ProductAttribute {
-  id: string;
-  product_id: string;
-  key: string;
-  value: string;
-  is_filterable: boolean;
-  created_at: string;
-}
-
-// ============================================================================
-// User Activity & Recommendations
-// ============================================================================
-
-export interface RecentlyViewed {
-  user_id: string;
-  product_id: string;
-  viewed_at: string;
-  product?: Product;
-}
-
-export type RelationType = 'related' | 'upsell' | 'cross_sell' | 'bundle' | 'accessory' | 'frequently_bought';
-
-export interface RelatedProduct {
-  product_id: string;
-  related_product_id: string;
-  relation_type: RelationType;
-  position: number;
-  created_at: string;
-  related_product?: Product;
 }
 
 // ============================================================================

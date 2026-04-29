@@ -5,13 +5,13 @@ import { z } from 'zod';
 
 // Scraper run status enum (from database constraint)
 const scrapeJobStatusSchema = z.enum(['pending', 'running', 'completed', 'failed', 'cancelled']);
-export type ScrapeJobStatus = z.infer<typeof scrapeJobStatusSchema>;
+type ScrapeJobStatus = z.infer<typeof scrapeJobStatusSchema>;
 
 const scrapeJobChunkStatusSchema = z.enum(['pending', 'running', 'completed', 'failed']);
-export type ScrapeJobChunkStatus = z.infer<typeof scrapeJobChunkStatusSchema>;
+type ScrapeJobChunkStatus = z.infer<typeof scrapeJobChunkStatusSchema>;
 
 // Extended statuses used in the UI
-export type ScraperRunStatus = ScrapeJobStatus | 'claimed';
+type ScraperRunStatus = ScrapeJobStatus | 'claimed';
 
 // Scraper run chunk record from database (matches scrape_job_chunks table)
 export interface ScraperRunChunk {
@@ -74,7 +74,7 @@ export interface ScraperRunRecord {
 }
 
 // API response type for runs list
-export interface ScraperRunsResponse {
+interface ScraperRunsResponse {
   runs: ScraperRunRecord[];
   totalCount: number;
 }

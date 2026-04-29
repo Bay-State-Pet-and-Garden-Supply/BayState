@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
-import { DiscountType } from './types';
+import type { DiscountType } from './types';
+
+export type { DiscountType };
 
 export interface PromoCode {
   id: string;
@@ -21,7 +23,7 @@ export interface PromoCode {
   updated_at: string;
 }
 
-export interface PromoValidationResult {
+interface PromoValidationResult {
   valid: boolean;
   error?: string;
   promo?: PromoCode;
@@ -29,7 +31,7 @@ export interface PromoValidationResult {
   discountType?: DiscountType;
 }
 
-export interface ApplyPromoInput {
+interface ApplyPromoInput {
   code: string;
   subtotal: number;
   userId?: string | null;

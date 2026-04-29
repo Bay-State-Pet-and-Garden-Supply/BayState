@@ -21,7 +21,7 @@ export class MissingProductsIngestionSkusError extends Error {
   }
 }
 
-export interface PartialPersistenceResult {
+interface PartialPersistenceResult {
   persisted: string[];
   missing: string[];
 }

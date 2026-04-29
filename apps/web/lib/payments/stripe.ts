@@ -9,7 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder'
   typescript: true,
 });
 
-export interface CreatePaymentIntentParams {
+interface CreatePaymentIntentParams {
   amount: number;
   currency?: string;
   customerEmail: string;
@@ -100,5 +100,3 @@ export function constructWebhookEvent(
 ): Stripe.Event {
   return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
 }
-
-export type PaymentIntentStatus = Stripe.PaymentIntent.Status;

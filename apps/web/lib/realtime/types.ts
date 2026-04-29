@@ -164,7 +164,7 @@ const broadcastEventSchema = z.object({
  * Scrape job log event from runners.
  * Structured logging for tracking job execution progress and errors.
  */
-export interface ScrapeJobLog {
+interface ScrapeJobLog {
   /** Unique identifier for the log entry */
   id: string;
   /** Stable runner-generated event identifier */
@@ -218,7 +218,7 @@ const scrapeJobLogSchema = z.object({
 /**
  * Union type for all realtime event payloads.
  */
-export type RealtimeEventPayload =
+type RealtimeEventPayload =
   | RunnerPresence
   | JobAssignment
   | BroadcastEvent
@@ -227,7 +227,7 @@ export type RealtimeEventPayload =
 /**
  * Union type for all realtime event schemas.
  */
-export type RealtimeEventSchema =
+type RealtimeEventSchema =
   | typeof runnerPresenceSchema
   | typeof jobAssignmentSchema
   | typeof broadcastEventSchema

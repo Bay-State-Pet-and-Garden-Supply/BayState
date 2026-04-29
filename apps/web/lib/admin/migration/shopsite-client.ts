@@ -16,7 +16,7 @@ import {
     AddressInfo,
 } from './types';
 
-export interface OrderDownloadOptions {
+interface OrderDownloadOptions {
     version?: string;
     startOrder?: string;
     endOrder?: string;
@@ -30,7 +30,7 @@ interface FetchProductsOptions {
     includeRawXml?: boolean;
 }
 
-export interface ShopSitePublishOptions {
+interface ShopSitePublishOptions {
     htmlpages?: boolean;
     custompages?: boolean;
     index?: boolean;
@@ -38,7 +38,7 @@ export interface ShopSitePublishOptions {
     sitemap?: boolean;
 }
 
-export interface ShopSiteUploadOptions {
+interface ShopSiteUploadOptions {
     uniqueName?: string;
     batchSize?: number;
     newRecords?: boolean;
@@ -47,7 +47,7 @@ export interface ShopSiteUploadOptions {
     publish?: ShopSitePublishOptions | false;
 }
 
-export interface ShopSiteUploadResult {
+interface ShopSiteUploadResult {
     dbmakeQuery: string;
     uploadResponse: string;
     dbmakeResponse: string;
@@ -107,7 +107,7 @@ const PRODUCT_DOWNLOAD_FIELDS = [
     ...Array.from({ length: 20 }, (_, index) => `MoreInfoImage${index + 1}`),
 ].join('|');
 
-export type { ShopSiteConfig, AddressInfo } from './types';
+export type { ShopSiteConfig } from './types';
 
 
 /**

@@ -15,12 +15,6 @@ jest.mock('@/lib/supabase/server', () => ({
     createClient: jest.fn(),
 }));
 
-// Mock the actions
-jest.mock('@/app/admin/migration/actions', () => ({
-    saveCredentialsAction: jest.fn(),
-    testConnectionAction: jest.fn(),
-}));
-
 // We can't easily test async server components in Jest
 // So we'll test the client component parts and basic rendering
 describe('Migration Dashboard Page', () => {

@@ -9,11 +9,11 @@ import { PipelineSidebarProductRow } from "./PipelineSidebarProductRow";
 
 export type PipelineSidebarTableVariant = "scraped" | "finalizing" | "imported";
 
-export type FlatItem = 
+type FlatItem = 
   | { type: 'header'; cohortId: string; groupProducts: PipelineProduct[] }
   | { type: 'product'; product: PipelineProduct; index: number; visibleProducts: PipelineProduct[] };
 
-export interface PipelineSidebarTableProps {
+interface PipelineSidebarTableProps {
   products: PipelineProduct[];
   groupedProducts?: {
     groups: Record<string, PipelineProduct[]>;

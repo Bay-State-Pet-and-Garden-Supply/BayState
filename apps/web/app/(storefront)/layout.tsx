@@ -90,7 +90,10 @@ export default async function StorefrontLayout({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="flex min-h-screen flex-col w-full">
+      <div
+        data-ui-surface="storefront"
+        className="flex min-h-screen w-full flex-col bg-[var(--bg-page)] text-zinc-900"
+      >
         <SkipLink />
         <UnderConstructionBanner />
         <StorefrontHeader 
@@ -100,7 +103,10 @@ export default async function StorefrontLayout({
           petTypes={petTypes}
           brands={brands}
           campaignBanner={campaignBanner}
-        />        <main id="main-content" className="flex-1 pb-20 md:pb-0">{children}</main>
+        />
+        <main id="main-content" className="flex-1 bg-[var(--bg-page)] pb-20 md:pb-0">
+          {children}
+        </main>
         <StorefrontFooter />
         <StickyCart />
         <MobileNav />

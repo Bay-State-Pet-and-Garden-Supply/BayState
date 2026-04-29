@@ -127,21 +127,6 @@ export interface ShopSiteCustomer {
 // Migration Log Types
 // ============================================================================
 
-export type SyncType = 'products' | 'customers';
-
-export interface MigrationLog {
-    id: string;
-    syncType: SyncType;
-    startedAt: string;
-    completedAt: string | null;
-    recordsProcessed: number;
-    recordsCreated: number;
-    recordsUpdated: number;
-    recordsFailed: number;
-    errorDetails: MigrationError[] | null;
-    triggeredBy: string | null;
-}
-
 export interface MigrationError {
     record: string;
     error: string;

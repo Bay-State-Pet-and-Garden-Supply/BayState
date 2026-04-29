@@ -46,8 +46,8 @@ describe('AI settings cards', () => {
     });
 
     expect(screen.getByLabelText('OpenAI API Key')).toBeInTheDocument();
+    expect(screen.getByLabelText('Serper API Key')).toBeInTheDocument();
     expect(screen.queryByLabelText('Brave Search API Key')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('SerpAPI Key')).not.toBeInTheDocument();
     expect(
       screen.getByText(/Legacy Gemini scraping settings are deprecated/i)
     ).toBeInTheDocument();

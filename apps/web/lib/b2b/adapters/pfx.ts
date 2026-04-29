@@ -1,4 +1,4 @@
-import { B2BClient, B2BConfig, B2BProduct, B2BInventoryUpdate, B2BPriceUpdate } from '../types';
+import { B2BClient, B2BConfig, B2BProduct } from '../types';
 import { parseCSV, mapCSVToType } from '../utils/csv-parser';
 
 interface PFXProductRecord {

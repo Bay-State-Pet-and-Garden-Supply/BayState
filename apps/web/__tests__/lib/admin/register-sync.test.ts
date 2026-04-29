@@ -88,6 +88,11 @@ describe("register sync planning", () => {
         price: 14.99,
         quantity: 0,
         stock_status: "out_of_stock",
+        date_sold: null,
+        date_received: null,
+        date_counted: null,
+        date_created: null,
+        date_priced: null,
         updated_at: "2026-04-04T17:04:30.771Z",
       },
     ]);
@@ -151,6 +156,11 @@ describe("register sync planning", () => {
         price: 19.49,
         quantity: 3,
         stock_status: "in_stock",
+        date_sold: null,
+        date_received: null,
+        date_counted: null,
+        date_created: null,
+        date_priced: null,
         updated_at: "2026-04-04T17:04:30.771Z",
       },
     ]);

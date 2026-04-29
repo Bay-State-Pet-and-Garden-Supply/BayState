@@ -4,7 +4,7 @@ import { AlertCircle, AlertTriangle, Info, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export interface AlertBannerAction {
+interface AlertBannerAction {
   /** Label for the action button */
   label: string;
   /** Callback when action is clicked */
@@ -13,7 +13,7 @@ export interface AlertBannerAction {
   variant?: "default" | "outline" | "ghost" | "destructive" | "secondary" | "link";
 }
 
-export interface AlertBannerProps {
+interface AlertBannerProps {
   /** Severity level determines color and icon */
   severity: "error" | "warning" | "info";
   /** Title text for the alert */

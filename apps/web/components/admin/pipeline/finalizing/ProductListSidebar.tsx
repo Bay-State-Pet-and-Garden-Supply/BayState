@@ -12,7 +12,7 @@ import { PipelineSearchField } from "@/components/admin/pipeline/PipelineSearchF
 import { PipelineSidebarTable } from "@/components/admin/pipeline/PipelineSidebarTable";
 import type { VirtualizedPipelineTableHandle } from "@/components/admin/pipeline/VirtualizedPipelineTable";
 
-export interface ProductListSidebarProps {
+interface ProductListSidebarProps {
   products: PipelineProduct[];
   selectedSku: string | null;
   onSelectProduct: (sku: string) => void;

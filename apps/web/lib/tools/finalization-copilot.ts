@@ -12,7 +12,6 @@ import {
 } from "@/lib/pipeline/finalization-copilot-workspace";
 
 export type {
-  FinalizationProductScope,
   ListWorkspaceProductsInput,
   PreviewProductScopeInput,
 } from "@/lib/pipeline/finalization-copilot-workspace";
@@ -211,8 +210,6 @@ const addStorePagesInputSchema = z.object({
   pages: z.array(z.string()).min(1),
 });
 
-export type AddStorePagesInput = z.infer<typeof addStorePagesInputSchema>;
-
 const removeStorePagesInputSchema = z.object({
   pages: z.array(z.string()).min(1),
 });
@@ -284,7 +281,7 @@ interface BrandSearchMatch {
   slug?: string | null;
 }
 
-export interface FinalizationCopilotToolServices {
+interface FinalizationCopilotToolServices {
   searchBrands: (query: string) => Promise<BrandSearchMatch[]>;
 }
 export function createFinalizationCopilotTools(

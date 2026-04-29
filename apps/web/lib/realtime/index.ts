@@ -19,6 +19,5 @@
 
 // Types
 export * from './types';
-export * from './broadcast-types';
 
 // Hooks

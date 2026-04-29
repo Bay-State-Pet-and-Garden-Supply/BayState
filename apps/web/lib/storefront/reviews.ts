@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import type { ProductReview } from '@/lib/types';
 import type { ReviewWithUser, SubmitReviewInput } from './types';
 
-export type { ReviewWithUser, SubmitReviewInput } from './types';
+export type { ReviewWithUser } from './types';
 
 
 export async function getApprovedReviews(productId: string): Promise<ReviewWithUser[]> {

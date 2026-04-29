@@ -8,7 +8,7 @@
 
 import catalogData from '../../../../shared/ai-pricing/pricing-catalog.json';
 
-export interface ModelPricing {
+interface ModelPricing {
     input: number;
     output: number;
 }

@@ -86,20 +86,24 @@ export function AnalyticsDashboard({
     ];
 
     return (
-        <div className="space-y-12">
-            {/* Tactical Channel Switchboard */}
-            <div className="flex flex-col space-y-4">
-                <span className="font-mono text-xs font-bold uppercase tracking-widest text-zinc-500 ml-1">Channel Switchboard</span>
-                <div className="flex flex-wrap gap-0 border-4 border-zinc-900 shadow-[8px_8px_0px_rgba(0,0,0,1)] w-fit bg-zinc-900">
+        <div className="space-y-10 pb-8">
+            <div className="space-y-2">
+                <h1 className="admin-page-title">Analytics & reporting</h1>
+                <p className="admin-page-copy">Track revenue, inventory drift, channel mix, and sync health without the extra visual noise.</p>
+            </div>
+
+            <div className="admin-toolbar flex flex-col gap-4 p-4">
+                <span className="text-xs font-semibold tracking-[0.08em] text-zinc-500">Channel view</span>
+                <div className="flex flex-wrap gap-2">
                     {channels.map((channel) => (
                         <Link
                             key={channel.label}
                             href={channel.value ? `/admin/analytics?source=${channel.value}` : '/admin/analytics'}
                             className={cn(
-                                "px-8 py-4 font-display font-black uppercase tracking-tighter text-xl transition-all border-r-4 last:border-r-0 border-zinc-900",
+                                "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
                                 activeSource === channel.value
-                                    ? "bg-zinc-100 text-zinc-900"
-                                    : "bg-zinc-900 text-zinc-400 hover:text-zinc-100"
+                                    ? "border-primary bg-primary text-white"
+                                    : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:text-zinc-900"
                             )}
                         >
                             {channel.label}
@@ -108,32 +112,29 @@ export function AnalyticsDashboard({
                 </div>
             </div>
 
-            {/* Top Level Metric Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border-4 border-zinc-900 bg-zinc-900">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <MetricCard title="Total Revenue" value={formatCurrency(metrics.total_revenue || 0)} label="GROSS SALES" />
                 <MetricCard title="Order Volume" value={metrics.total_orders || 0} label="UNITS PROCESSED" />
                 <MetricCard title="Avg Order" value={formatCurrency(metrics.average_order_value || 0)} label="UNIT VALUE" />
                 <MetricCard title="Tax Liability" value={formatCurrency(metrics.total_tax || 0)} label="COMPLIANCE" />
             </div>
 
-            {/* Main Console Grid */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-                {/* Left Column: Drift & Health */}
                 <div className="xl:col-span-4 space-y-8">
                     <InventoryDriftMonitor drift={drift} />
                     <SyncHealthTimeline health={syncHealth} />
                 </div>
 
-                {/* Right Column: Trends & Comparison */}
                 <div className="xl:col-span-8 space-y-8">
-                    {/* Historical Revenue Trends */}
-                    <div className="border-4 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)] p-6">
-                        <h3 className="font-display font-black uppercase tracking-tighter text-2xl mb-6 flex items-center gap-4">
+                    <div className="admin-panel p-6">
+                        <div className="mb-6 flex flex-wrap items-center gap-3">
+                            <h3 className="text-2xl font-semibold text-zinc-950">
                             Revenue Trajectory
-                            <span className="bg-zinc-900 text-white text-[10px] px-2 py-1 font-mono tracking-widest uppercase">
+                            </h3>
+                            <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-600">
                                 {activeSource || 'ALL_CHANNELS'}
                             </span>
-                        </h3>
+                        </div>
                         <div className="h-[300px] w-full">
                             {hasMounted ? (
                                 <ResponsiveContainer width="100%" height="100%">
@@ -144,43 +145,43 @@ export function AnalyticsDashboard({
                                                     style={{ stroke: '#18181b', strokeWidth: 1 }} />
                                             </pattern>
                                         </defs>
-                                        <CartesianGrid strokeDasharray="0" vertical={true} stroke="#e4e4e7" />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" />
                                         <XAxis 
                                             dataKey="period_date" 
                                             tickFormatter={(v) => {
                                                 const date = new Date(v);
                                                 return `${date.getMonth() + 1}/${date.getFullYear().toString().slice(-2)}`;
                                             }}
-                                            axisLine={{ stroke: '#18181b', strokeWidth: 4 }}
-                                            tick={{ fill: '#18181b', fontSize: 10, fontWeight: 800, fontFamily: 'monospace' }}
+                                            axisLine={{ stroke: '#d4d4d8', strokeWidth: 1 }}
+                                            tick={{ fill: '#71717a', fontSize: 11, fontWeight: 500, fontFamily: 'Inter, sans-serif' }}
                                         />
                                         <YAxis 
                                             tickFormatter={(v) => `$${v/1000}k`}
-                                            axisLine={{ stroke: '#18181b', strokeWidth: 4 }}
-                                            tick={{ fill: '#18181b', fontSize: 10, fontWeight: 800, fontFamily: 'monospace' }}
+                                            axisLine={{ stroke: '#d4d4d8', strokeWidth: 1 }}
+                                            tick={{ fill: '#71717a', fontSize: 11, fontWeight: 500, fontFamily: 'Inter, sans-serif' }}
                                         />
                                         <Tooltip 
                                             contentStyle={{ 
-                                                border: '4px solid #18181b', 
-                                                borderRadius: '0px',
-                                                boxShadow: '8px 8px 0px rgba(0,0,0,1)',
-                                                fontFamily: 'monospace',
-                                                fontWeight: 'bold'
+                                                border: '1px solid #d4d4d8', 
+                                                borderRadius: '12px',
+                                                boxShadow: 'var(--shadow-md)',
+                                                fontFamily: 'Inter, sans-serif',
+                                                fontWeight: '600'
                                             }}
                                             formatter={(value: number | string | undefined) => [formatCurrency(Number(value) || 0), 'REV']}
                                         />
                                         <Area 
                                             type="stepAfter" 
                                             dataKey="revenue" 
-                                            stroke="#18181b" 
-                                            fillOpacity={1} 
-                                            fill="url(#diagonalHatch)" 
-                                            strokeWidth={4} 
+                                            stroke="#008850" 
+                                            fillOpacity={0.12} 
+                                            fill="#008850" 
+                                            strokeWidth={2.5} 
                                         />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             ) : (
-                                <div className="w-full h-full bg-zinc-50 animate-pulse border-4 border-dashed border-zinc-200" />
+                                <div className="h-full w-full animate-pulse rounded-2xl border border-dashed border-zinc-200 bg-zinc-50" />
                             )}
                         </div>
                     </div>
@@ -199,11 +200,11 @@ export function AnalyticsDashboard({
 
 function MetricCard({ title, value, label }: { title: string, value: string | number, label: string }) {
     return (
-        <div className="bg-white border-r-4 border-b-4 last:border-r-0 border-zinc-900 p-6 group transition-all hover:bg-zinc-50">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-400 group-hover:text-zinc-900 transition-colors">{label}</span>
+        <div className="admin-panel group p-6 transition-colors hover:bg-zinc-50/80">
+            <span className="text-[11px] font-medium tracking-[0.08em] text-zinc-500 transition-colors group-hover:text-zinc-700">{label}</span>
             <div className="flex flex-col mt-1">
-                <span className="text-4xl font-black text-zinc-900 tracking-tighter leading-none">{value}</span>
-                <span className="font-display font-bold uppercase text-xs text-zinc-500 mt-2">{title}</span>
+                <span className="text-4xl font-semibold leading-none text-zinc-900">{value}</span>
+                <span className="mt-2 text-sm font-medium text-zinc-500">{title}</span>
             </div>
         </div>
     );
@@ -214,37 +215,37 @@ function InventoryDriftMonitor({ drift }: { drift: InventoryDrift[] }) {
     const stockOuts = drift.filter(d => d.field === 'quantity' && d.after_value === '0');
     
     return (
-        <div className="border-4 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)]">
-            <div className="bg-zinc-900 p-2 border-b-4 border-zinc-900 flex justify-between items-center">
-                <h3 className="font-display font-black text-white uppercase tracking-tighter text-lg">Inventory Drift Monitor</h3>
-                <span className="bg-yellow-400 text-zinc-900 text-[10px] px-2 py-1 font-mono font-bold">7_DAY_WINDOW</span>
+        <div className="admin-panel overflow-hidden">
+            <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50 px-4 py-3">
+                <h3 className="text-lg font-semibold text-zinc-950">Inventory drift monitor</h3>
+                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-medium text-amber-900">7 day window</span>
             </div>
             <div className="p-4 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="border-4 border-zinc-900 p-4 bg-zinc-50">
-                        <span className="font-mono text-[10px] font-bold text-zinc-500 uppercase">Total Changes</span>
-                        <div className="text-3xl font-black">{totalChanges}</div>
+                    <div className="admin-panel-muted p-4">
+                        <span className="text-[11px] font-medium text-zinc-500">Total changes</span>
+                        <div className="text-3xl font-semibold text-zinc-900">{totalChanges}</div>
                     </div>
                     <div className={cn(
-                        "border-4 border-zinc-900 p-4",
-                        stockOuts.length > 0 ? "bg-red-500 text-white" : "bg-zinc-50"
+                        "rounded-xl border p-4",
+                        stockOuts.length > 0 ? "border-red-200 bg-red-50 text-red-700" : "border-zinc-200 bg-zinc-50"
                     )}>
-                        <span className="font-mono text-[10px] font-bold uppercase opacity-70">Stock Outs</span>
-                        <div className="text-3xl font-black">{stockOuts.length}</div>
+                        <span className="text-[11px] font-medium opacity-80">Stock outs</span>
+                        <div className="text-3xl font-semibold">{stockOuts.length}</div>
                     </div>
                 </div>
                 
                 <div className="space-y-2">
-                    <span className="font-mono text-[10px] font-bold text-zinc-500 uppercase">Recent Swings</span>
+                    <span className="text-[11px] font-medium text-zinc-500">Recent swings</span>
                     <div className="space-y-1">
                         {drift.length > 0 ? drift.slice(0, 5).map((item, i) => (
-                            <div key={i} className="flex justify-between text-[10px] font-mono border-b border-zinc-100 pb-1">
-                                <span className="truncate w-32 font-bold uppercase">{item.name}</span>
+                            <div key={i} className="flex justify-between border-b border-zinc-100 pb-2 text-xs">
+                                <span className="w-32 truncate font-medium text-zinc-900">{item.name}</span>
                                 <span className="text-zinc-400">{item.field}:</span>
-                                <span className="font-bold">{item.before_value} → {item.after_value}</span>
+                                <span className="font-medium text-zinc-700">{item.before_value} → {item.after_value}</span>
                             </div>
                         )) : (
-                            <div className="text-[10px] font-mono text-zinc-400 py-2">NO_RECENT_CHANGES</div>
+                            <div className="py-2 text-xs text-zinc-400">No recent changes</div>
                         )}
                     </div>
                 </div>
@@ -267,18 +268,18 @@ function ChannelComparison({ activeSource, channelMetrics }: {
     const instorePct = total > 0 ? (channelMetrics.instore.total_revenue / total) * 100 : 0;
 
     return (
-        <div className="border-4 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)] p-6">
-            <h3 className="font-display font-black uppercase tracking-tighter text-2xl mb-6">Channel Split</h3>
+        <div className="admin-panel p-6">
+            <h3 className="mb-6 text-2xl font-semibold text-zinc-950">Channel split</h3>
             <div className="space-y-6">
-                <div className="flex h-12 border-4 border-zinc-900 overflow-hidden bg-zinc-100">
+                <div className="flex h-12 overflow-hidden rounded-full border border-zinc-200 bg-zinc-100">
                     <div 
-                        className="bg-zinc-900 flex items-center justify-center text-white font-black text-[10px] border-r-2 border-white"
+                        className="flex items-center justify-center border-r border-white bg-primary text-[11px] font-medium text-white"
                         style={{ width: `${onlinePct}%` }}
                     >
                         {onlinePct > 15 && `ONLINE ${onlinePct.toFixed(0)}%`}
                     </div>
                     <div 
-                        className="bg-zinc-400 flex items-center justify-center text-zinc-900 font-black text-[10px]"
+                        className="flex items-center justify-center bg-zinc-300 text-[11px] font-medium text-zinc-800"
                         style={{ width: `${instorePct}%` }}
                     >
                         {instorePct > 15 && `IN-STORE ${instorePct.toFixed(0)}%`}
@@ -287,12 +288,12 @@ function ChannelComparison({ activeSource, channelMetrics }: {
                 
                 <div className="grid grid-cols-2 gap-8">
                     <div>
-                        <span className="font-mono text-[10px] font-bold text-zinc-400 uppercase">Online AOV</span>
-                        <div className="text-2xl font-black">{formatCurrency(channelMetrics.online.average_order_value)}</div>
+                        <span className="text-[11px] font-medium text-zinc-500">Online AOV</span>
+                        <div className="text-2xl font-semibold text-zinc-900">{formatCurrency(channelMetrics.online.average_order_value)}</div>
                     </div>
                     <div>
-                        <span className="font-mono text-[10px] font-bold text-zinc-400 uppercase">In-Store AOV</span>
-                        <div className="text-2xl font-black">{formatCurrency(channelMetrics.instore.average_order_value)}</div>
+                        <span className="text-[11px] font-medium text-zinc-500">In-store AOV</span>
+                        <div className="text-2xl font-semibold text-zinc-900">{formatCurrency(channelMetrics.instore.average_order_value)}</div>
                     </div>
                 </div>
             </div>
@@ -320,12 +321,12 @@ function SyncHealthTimeline({ health }: { health: SyncHealth[] }) {
     };
 
     return (
-        <div className="border-4 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)]">
-            <div className="bg-zinc-900 p-2 border-b-4 border-zinc-900 flex justify-between items-center">
-                <h3 className="font-display font-black text-white uppercase tracking-tighter text-lg">Sync Health Timeline</h3>
+        <div className="admin-panel overflow-hidden">
+            <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50 p-3">
+                <h3 className="text-lg font-semibold text-zinc-950">Sync health timeline</h3>
                 <Button 
                     onClick={triggerSync}
-                    className="bg-white text-zinc-900 hover:bg-zinc-200 font-display font-black uppercase text-[10px] h-6 px-2 rounded-none border-2 border-zinc-900"
+                    className="h-8 border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-900 hover:bg-zinc-100"
                 >
                     Trigger Sync
                 </Button>
@@ -333,34 +334,34 @@ function SyncHealthTimeline({ health }: { health: SyncHealth[] }) {
             <div className="p-4 space-y-4">
                 <div className="flex justify-between items-end">
                     <div>
-                        <span className="font-mono text-[10px] font-bold text-zinc-400 uppercase">Last Sync</span>
-                        <div className="text-xl font-black uppercase truncate w-32">{lastSync?.sync_type || 'NONE'}</div>
+                        <span className="text-[11px] font-medium text-zinc-500">Last sync</span>
+                        <div className="w-32 truncate text-xl font-semibold text-zinc-900">{lastSync?.sync_type || 'None'}</div>
                     </div>
                     <div className="text-right">
-                        <span className="font-mono text-[10px] font-bold text-zinc-400 uppercase">Days Since</span>
-                        <div className="text-3xl font-black">{daysSinceLastSync}</div>
+                        <span className="text-[11px] font-medium text-zinc-500">Days since</span>
+                        <div className="text-3xl font-semibold text-zinc-900">{daysSinceLastSync}</div>
                     </div>
                 </div>
 
-                <div className="flex gap-1 h-8">
+                <div className="flex h-8 gap-1">
                     {health.length > 0 ? health.slice(0, 30).reverse().map((h, i) => (
                         <div 
                             key={i} 
                             className={cn(
-                                "flex-1 border border-zinc-900",
+                                "flex-1 rounded-sm border border-zinc-200",
                                 h.status === 'completed' ? "bg-green-500" : "bg-red-500"
                             )}
                             title={`${h.sync_type}: ${h.status} (${new Date(h.started_at).toLocaleDateString()})`}
                         />
                     )) : (
-                        <div className="flex-1 bg-zinc-100 border border-dashed border-zinc-300" />
+                        <div className="flex-1 rounded-sm border border-dashed border-zinc-300 bg-zinc-100" />
                     )}
                 </div>
 
                 <div className="space-y-1 max-h-32 overflow-y-auto">
                     {health.filter(h => h.status === 'failed').slice(0, 3).map((h, i) => (
-                        <div key={i} className="bg-red-50 p-2 border-l-4 border-red-500 text-[10px] font-mono">
-                            <div className="font-bold uppercase">FAILED: {h.sync_type}</div>
+                        <div key={i} className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs">
+                            <div className="font-semibold text-red-700">Failed: {h.sync_type}</div>
                             <div className="text-zinc-500">{new Date(h.started_at).toLocaleString()}</div>
                         </div>
                     ))}
@@ -372,40 +373,40 @@ function SyncHealthTimeline({ health }: { health: SyncHealth[] }) {
 
 function StockAgingVelocity({ fastMovers, deadStock }: { fastMovers: ProductMetric[], deadStock: ProductMetric[] }) {
     return (
-        <div className="border-4 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)]">
-            <div className="bg-zinc-900 p-2 border-b-4 border-zinc-900">
-                <h3 className="font-display font-black text-white uppercase tracking-tighter text-lg">Stock Aging & Velocity</h3>
+        <div className="admin-panel overflow-hidden">
+            <div className="border-b border-zinc-200 bg-zinc-50 p-3">
+                <h3 className="text-lg font-semibold text-zinc-950">Stock aging & velocity</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 divide-x-0 md:divide-x-4 divide-zinc-900">
+            <div className="grid grid-cols-1 md:grid-cols-2 md:divide-x md:divide-zinc-200">
                 <div className="p-4 space-y-4">
-                    <span className="bg-green-500 text-white text-[10px] px-2 py-1 font-mono font-bold uppercase">Fast Movers (Recent Sales)</span>
+                    <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-[11px] font-medium text-green-700">Fast movers</span>
                     <div className="space-y-2">
                         {fastMovers.length > 0 ? fastMovers.map((p) => (
                             <div key={p.sku} className="flex justify-between items-center border-b border-zinc-100 pb-1">
                                 <div className="flex flex-col">
-                                    <span className="font-display font-black uppercase text-xs truncate w-48">{p.name}</span>
-                                    <span className="font-mono text-[10px] text-zinc-400">SOLD: {p.date_sold ? new Date(p.date_sold).toLocaleDateString() : 'NEVER'}</span>
+                                    <span className="w-48 truncate text-sm font-medium text-zinc-900">{p.name}</span>
+                                    <span className="text-[11px] text-zinc-400">Sold: {p.date_sold ? new Date(p.date_sold).toLocaleDateString() : 'Never'}</span>
                                 </div>
-                                <span className="font-mono font-black text-sm">{p.quantity}</span>
+                                <span className="text-sm font-semibold text-zinc-900">{p.quantity}</span>
                             </div>
                         )) : (
-                            <div className="text-[10px] font-mono text-zinc-400 py-2">NO_DATA</div>
+                            <div className="py-2 text-xs text-zinc-400">No data</div>
                         )}
                     </div>
                 </div>
-                <div className="p-4 space-y-4 border-t-4 md:border-t-0 border-zinc-900">
-                    <span className="bg-zinc-900 text-white text-[10px] px-2 py-1 font-mono font-bold uppercase">Dead Stock (Oldest Sales)</span>
+                <div className="border-t border-zinc-200 p-4 md:border-t-0 md:border-l-0 space-y-4">
+                    <span className="inline-flex rounded-full bg-zinc-100 px-3 py-1 text-[11px] font-medium text-zinc-700">Dead stock</span>
                     <div className="space-y-2">
                         {deadStock.length > 0 ? deadStock.map((p) => (
                             <div key={p.sku} className="flex justify-between items-center border-b border-zinc-100 pb-1">
                                 <div className="flex flex-col">
-                                    <span className="font-display font-black uppercase text-xs truncate w-48">{p.name}</span>
-                                    <span className="font-mono text-[10px] text-zinc-400">RCVD: {p.date_received ? new Date(p.date_received).toLocaleDateString() : 'N/A'}</span>
+                                    <span className="w-48 truncate text-sm font-medium text-zinc-900">{p.name}</span>
+                                    <span className="text-[11px] text-zinc-400">Received: {p.date_received ? new Date(p.date_received).toLocaleDateString() : 'N/A'}</span>
                                 </div>
-                                <span className="font-mono font-black text-sm text-red-600">{p.quantity}</span>
+                                <span className="text-sm font-semibold text-red-600">{p.quantity}</span>
                             </div>
                         )) : (
-                            <div className="text-[10px] font-mono text-zinc-400 py-2">NO_DATA</div>
+                            <div className="py-2 text-xs text-zinc-400">No data</div>
                         )}
                     </div>
                 </div>
@@ -418,26 +419,26 @@ function PriceDiscrepancyDetector({ drift }: { drift: InventoryDrift[] }) {
     const priceChanges = drift.filter(d => d.field === 'price' || d.field === 'sale_price');
     
     return (
-        <div className="border-4 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)]">
-            <div className="bg-zinc-900 p-2 border-b-4 border-zinc-900">
-                <h3 className="font-display font-black text-white uppercase tracking-tighter text-lg">Price Discrepancy Detector</h3>
+        <div className="admin-panel overflow-hidden">
+            <div className="border-b border-zinc-200 bg-zinc-50 p-3">
+                <h3 className="text-lg font-semibold text-zinc-950">Price discrepancy detector</h3>
             </div>
             <div className="p-4">
                 {priceChanges.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-8 text-zinc-400">
-                        <span className="font-mono text-[10px] font-bold">NO_DISCREPANCIES_DETECTED</span>
+                        <span className="text-xs font-medium">No discrepancies detected</span>
                     </div>
                 ) : (
                     <div className="space-y-2">
                         {priceChanges.map((item, i) => (
                             <div key={i} className="flex justify-between items-center border-b border-zinc-100 pb-2 last:border-0">
                                 <div className="flex flex-col">
-                                    <span className="font-display font-black uppercase text-xs truncate w-40">{item.name}</span>
-                                    <span className="font-mono text-[10px] text-zinc-400">{item.sku}</span>
+                                    <span className="w-40 truncate text-sm font-medium text-zinc-900">{item.name}</span>
+                                    <span className="text-[11px] text-zinc-400">{item.sku}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className="font-mono text-xs line-through text-zinc-400">${item.before_value}</span>
-                                    <span className="font-mono font-black text-green-600">${item.after_value}</span>
+                                    <span className="text-xs text-zinc-400 line-through">${item.before_value}</span>
+                                    <span className="font-semibold text-green-600">${item.after_value}</span>
                                 </div>
                             </div>
                         ))}

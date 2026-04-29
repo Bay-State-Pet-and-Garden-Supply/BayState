@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
-export interface VirtualizedPipelineTableProps<T> {
+interface VirtualizedPipelineTableProps<T> {
   /**
    * The items to render in the table
    */

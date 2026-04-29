@@ -26,14 +26,17 @@ export async function PetRecommendations() {
 
   return (
     <section className="mb-12">
-      <div className="mb-8 flex items-center justify-between border-b-4 border-zinc-900 pb-2">
+      <div className="mb-8 flex items-center justify-between border-b border-[var(--surface-storefront-border)] pb-4">
         <div className="flex items-center gap-3">
           <Heart className="h-6 w-6 text-rose-600 fill-rose-600" />
-          <h2 className="text-3xl font-black text-zinc-900 uppercase tracking-tighter font-display">
+          <div>
+            <p className="storefront-kicker mb-1">Personalized for you</p>
+            <h2 className="font-display text-3xl font-bold tracking-tight text-zinc-900">
             For {petNamesDisplay}
-          </h2>
+            </h2>
+          </div>
         </div>
-        <Button variant="ghost" asChild className="font-black uppercase text-xs tracking-widest hover:underline">
+        <Button variant="ghost" asChild className="font-medium text-sm text-primary hover:bg-white">
           <Link href="/account/pets">
             Manage Pets
             <ArrowRight className="ml-2 h-4 w-4" />

@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-export interface ImageCarouselProps {
+interface ImageCarouselProps {
   selectedImages: string[];
   onToggleImage: (url: string) => void;
   onReorderImages?: (images: string[]) => void;

@@ -7,7 +7,7 @@ import {
   type ScrapeJobLogEntry,
 } from '@/lib/scraper-logs';
 
-export interface PersistScrapeJobLogsOptions {
+interface PersistScrapeJobLogsOptions {
   fallbackRunnerName?: string;
 }
 

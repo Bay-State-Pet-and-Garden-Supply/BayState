@@ -25,7 +25,7 @@ export const finalizationWorkspaceProductSummarySchema = z.object({
   dirty: z.boolean(),
 });
 
-export type FinalizationWorkspaceProductSummary = z.infer<
+type FinalizationWorkspaceProductSummary = z.infer<
   typeof finalizationWorkspaceProductSummarySchema
 >;
 
@@ -53,7 +53,7 @@ export const finalizationProductScopeSchema = z.discriminatedUnion("type", [
   ),
 ]);
 
-export type FinalizationProductScope = z.infer<
+type FinalizationProductScope = z.infer<
   typeof finalizationProductScopeSchema
 >;
 

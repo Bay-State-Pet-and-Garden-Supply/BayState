@@ -3,7 +3,7 @@
  * Used by BCI (OrderCloud) and other OAuth-based providers.
  */
 
-export interface OAuthConfig {
+interface OAuthConfig {
   tokenUrl: string;
   clientId: string;
   clientSecret: string;
@@ -13,7 +13,7 @@ export interface OAuthConfig {
   password?: string;
 }
 
-export interface OAuthToken {
+interface OAuthToken {
   accessToken: string;
   tokenType: string;
   expiresIn: number;
@@ -22,7 +22,7 @@ export interface OAuthToken {
   refreshToken?: string;
 }
 
-export interface OAuthResult {
+interface OAuthResult {
   success: boolean;
   token?: OAuthToken;
   error?: string;
@@ -50,6 +50,21 @@ export class OAuthClient {
 
     // Fetch new token
     return this.fetchToken();
+  }
+
+  async getAuthorizationHeader(): Promise<string | null> {
+    const result = await this.getAccessToken();
+    if (!result.success || !result.token) {
+      return null;
+    }
+
+    const tokenType = result.token.tokenType || 'Bearer';
+    return `${tokenType} ${result.token.accessToken}`;
+  }
+
+  async testConnection(): Promise<boolean> {
+    const result = await this.getAccessToken();
+    return result.success;
   }
 
   /**

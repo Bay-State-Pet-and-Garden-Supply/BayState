@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-export interface AdminAuthResult {
+interface AdminAuthResult {
   authorized: true;
   user: { id: string; email?: string };
   role: 'admin' | 'staff';
 }
 
-export interface AdminAuthError {
+interface AdminAuthError {
   authorized: false;
   response: NextResponse;
 }

@@ -22,9 +22,9 @@ export interface PublishedRunnerRelease {
     sourceRef: string | null;
 }
 
-export type RunnerBuildStatus = 'current' | 'missing' | 'outdated' | 'unconfigured';
+type RunnerBuildStatus = 'current' | 'missing' | 'outdated' | 'unconfigured';
 
-export interface RunnerBuildCheck {
+interface RunnerBuildCheck {
     releaseChannel: string;
     runnerBuildId: string | null;
     runnerBuildSha: string | null;
