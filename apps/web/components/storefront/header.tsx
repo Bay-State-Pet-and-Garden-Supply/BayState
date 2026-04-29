@@ -233,14 +233,13 @@ export function StorefrontHeader({
       <header 
         data-scrolled={isScrolled}
         className={cn(
-          "max-md:hidden sticky top-0 z-50 w-full flex flex-col border-b-2 border-zinc-900 transition-all duration-300 ease-in-out",
-          isScrolled ? "shadow-md" : ""
+          "sticky top-0 z-50 hidden w-full flex-col border-b border-[var(--surface-storefront-border)] bg-[rgba(246,241,230,0.92)] backdrop-blur max-md:hidden transition-all duration-300 ease-in-out",
+          isScrolled ? "shadow-sm" : ""
         )}
       >
-        {/* Tier 1: Pre-Header */}
         <div 
           className={cn(
-            "bg-zinc-900 py-2 px-4 text-[10px] font-black tracking-[0.25em] text-white flex justify-between items-center border-b-2 border-white/5 uppercase transition-all duration-300 ease-in-out overflow-hidden",
+            "overflow-hidden border-b border-[var(--surface-storefront-border)] bg-[var(--surface-storefront-muted)] px-4 py-2 text-[11px] font-medium text-zinc-700 transition-all duration-300 ease-in-out",
             isScrolled ? "h-0 py-0 opacity-0 border-b-0" : "min-h-[32px]"
           )}
         >
@@ -249,7 +248,7 @@ export function StorefrontHeader({
               "flex items-center gap-2 transition-opacity duration-300",
               isTransitioning ? "opacity-0" : "opacity-100"
             )}>
-              <span className="text-accent">★</span>
+              <span className="text-accent">•</span>
               {bannerEnabled ? (
                 <>
                   {messages[currentMessageIndex].text}
@@ -265,43 +264,41 @@ export function StorefrontHeader({
               ) : (
                 "From big to small, we feed them all!"
               )}
-              <span className="text-accent">★</span>
+              <span className="text-accent">•</span>
             </div>
-            <div className="flex gap-6">
+            <div className="flex gap-6 text-zinc-500">
               <a
                 href="https://www.facebook.com/baystatepet"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-accent transition-colors flex items-center gap-1.5"
+                className="flex items-center gap-1.5 transition-colors hover:text-zinc-900"
               >
                 <Facebook className="h-3 w-3" />
-                <span>FACEBOOK</span>
+                <span>Facebook</span>
               </a>
               <a
                 href="https://twitter.com/BayStatePet"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-accent transition-colors flex items-center gap-1.5"
+                className="flex items-center gap-1.5 transition-colors hover:text-zinc-900"
               >
                 <Twitter className="h-3 w-3" />
-                <span>TWITTER</span>
+                <span>Twitter</span>
               </a>
               <a
                 href="https://www.instagram.com/baystatepet/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-accent transition-colors flex items-center gap-1.5"
+                className="flex items-center gap-1.5 transition-colors hover:text-zinc-900"
               >
                 <Instagram className="h-3 w-3" />
-                <span>INSTAGRAM</span>
+                <span>Instagram</span>
               </a>
             </div>
           </div>
         </div>
 
-
-        {/* Tier 2: Main Header Logo & Actions */}
-        <div className="bg-primary text-white border-b-4 border-zinc-900 shadow-[0_4px_0_rgba(0,0,0,1)] transition-all duration-300 ease-in-out">
+        <div className="border-b border-[var(--surface-storefront-border)] bg-[rgba(255,253,248,0.96)] text-zinc-900 transition-all duration-300 ease-in-out">
           <div 
             className={cn(
               "container mx-auto flex items-center justify-between px-4 transition-all duration-300 ease-in-out",
@@ -333,7 +330,7 @@ export function StorefrontHeader({
               <div className="flex flex-col">
                 <span 
                   className={cn(
-                    "font-black leading-none tracking-tighter text-white uppercase font-display group-hover:text-accent transition-all duration-300 ease-in-out",
+                    "font-display leading-none text-zinc-900 transition-all duration-300 ease-in-out group-hover:text-primary font-bold tracking-tight",
                     isScrolled ? "text-4xl" : "text-4xl"
                   )}
                 >
@@ -341,7 +338,7 @@ export function StorefrontHeader({
                 </span>
                 <span 
                   className={cn(
-                    "hidden sm:text-xs font-black sm:block leading-none text-white/80 uppercase tracking-[0.2em] mt-1 border-t border-white/20 pt-1 text-center transition-all duration-300 ease-in-out",
+                    "mt-1 hidden border-t border-zinc-200 pt-1 text-center text-xs font-medium leading-none text-zinc-500 sm:block transition-all duration-300 ease-in-out",
                     isScrolled ? "hidden" : ""
                   )}
                 >
@@ -356,16 +353,16 @@ export function StorefrontHeader({
 
             <div className="flex items-center gap-4 shrink-0">
               <UserMenu user={resolvedUser} userRole={resolvedUserRole} />
-              <div className="h-12 w-px bg-white/20 mx-2" />
+              <div className="mx-2 h-12 w-px bg-zinc-200" />
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative h-14 w-14 text-white hover:bg-zinc-900 rounded-none border-4 border-transparent hover:border-zinc-900 transition-all group"
+                className="group relative h-12 w-12 rounded-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
                 aria-label="Shopping cart"
                 onClick={() => setIsCartOpen(true)}
               >
-                <ShoppingCart className="h-7 w-7 group-hover:scale-110 transition-transform" />
-                <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center bg-accent text-[12px] font-black text-secondary border-4 border-zinc-900 shadow-[2px_2px_0_rgba(0,0,0,1)]">
+                <ShoppingCart className="h-6 w-6 transition-transform group-hover:scale-105" />
+                <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[11px] font-semibold text-secondary shadow-sm">
                   {itemCount}
                 </span>
               </Button>
@@ -373,19 +370,17 @@ export function StorefrontHeader({
           </div>
         </div>
 
-
-        {/* Tier 3: Navigation Bar (Mega Menu) */}
-        <div className="bg-zinc-900 text-white border-b-2 border-zinc-900 relative transition-all duration-300 ease-in-out">
+        <div className="relative border-b border-[var(--surface-storefront-border)] bg-[rgba(255,253,248,0.92)] text-zinc-900 transition-all duration-300 ease-in-out">
           <div className="container mx-auto flex h-11 items-center px-4 transition-all duration-300 ease-in-out" ref={containerRef}>
             <NavigationMenu className="flex w-full max-w-none" aria-label="Main Navigation" viewport={false}>
               
               {/* Hidden container for measurement */}
               <div className="absolute opacity-0 pointer-events-none flex whitespace-nowrap" aria-hidden="true">
                  {allNavItems.map(item => (
-                   <div key={item.id} className="nav-item-measure px-6 font-display font-black text-[13px] tracking-tighter h-11 flex items-center border-r-2 border-white/10">
-                     {item.name}
-                     <ChevronDownIcon className="ml-1 size-3" />
-                   </div>
+                    <div key={item.id} className="nav-item-measure flex h-11 items-center px-6 text-[13px] font-medium text-zinc-900">
+                      {item.name}
+                      <ChevronDownIcon className="ml-1 size-3" />
+                    </div>
                  ))}
               </div>
 
@@ -393,7 +388,7 @@ export function StorefrontHeader({
                 {visibleItems.map((item, index) => {
                   const isRightAligned = index >= visibleItems.length / 2;
                   const contentClassName = cn(
-                    "top-full p-0 z-[100] shadow-none mt-0 border-0 rounded-none",
+                    "top-full z-[100] mt-2 border-0 bg-transparent p-0",
                     isRightAligned ? "md:left-auto md:right-0" : "left-0"
                   );
 
@@ -413,31 +408,30 @@ export function StorefrontHeader({
 
                     return (
                       <NavigationMenuItem key={parent.id}>
-                        <NavigationMenuTrigger className="bg-transparent text-white font-black uppercase tracking-tighter text-[13px] h-11 px-6 rounded-none hover:bg-white/10 data-[state=open]:bg-accent data-[state=open]:text-zinc-900 transition-all font-display border-r-2 border-white/10">
+                        <NavigationMenuTrigger className="h-11 rounded-full bg-transparent px-5 text-[14px] font-medium text-zinc-700 hover:bg-white hover:text-zinc-900 data-[state=open]:bg-white data-[state=open]:text-zinc-900">
                           {displayName}
                         </NavigationMenuTrigger>
                         <NavigationMenuContent className={contentClassName}>
-                          <div className="mt-0 flex gap-8 p-10 w-max max-w-[calc(100vw-2rem)] min-w-[500px] text-zinc-900 bg-zinc-50 border-4 border-zinc-900 rounded-none shadow-[8px_8px_0px_rgba(0,0,0,1)]">
+                          <div className="mt-0 flex min-w-[500px] w-max max-w-[calc(100vw-2rem)] gap-8 rounded-[1.5rem] border border-[var(--surface-storefront-border)] bg-[var(--surface-storefront-card)] p-8 text-zinc-900 shadow-[var(--shadow-warm-md)]">
                             {columns.map((col, idx) => (
                               <div key={idx} className="flex flex-col gap-3 min-w-[220px]">
-                                  {/* Show header only on first column, mock others to align grid */}
                                   {idx === 0 ? (
-                                  <h4 className="font-black text-2xl mb-4 border-b-8 border-primary pb-2 text-zinc-900 tracking-tighter uppercase font-display">
-                                    {displayName}
-                                  </h4>
-                                ) : (
-                                  <div className="h-[44px] mb-4 border-b-8 border-transparent" />
-                                )}
-                                
+                                  <h4 className="mb-4 border-b border-[var(--surface-storefront-border)] pb-3 font-display text-2xl font-bold tracking-tight text-zinc-900">
+                                     {displayName}
+                                   </h4>
+                                 ) : (
+                                  <div className="mb-4 h-[44px] border-b border-transparent" />
+                                 )}
+                                 
                                 <div className="flex flex-col gap-1">
                                   {col.map(child => {
                                     return (
                                       <NavigationMenuLink key={child.id} asChild>
                                         <Link
                                           href={`/products?category=${child.slug}`}
-                                          className="text-xs font-black text-zinc-500 hover:text-primary hover:bg-white p-2 border-2 border-transparent hover:border-zinc-900 transition-all uppercase tracking-tight flex items-center gap-2 group"
+                                          className="group flex items-center gap-2 rounded-xl p-2 text-sm font-medium text-zinc-600 transition-all hover:bg-white hover:text-primary"
                                         >
-                                          <span className="h-1 w-0 bg-primary group-hover:w-3 transition-all" />
+                                          <span className="h-1.5 w-1.5 rounded-full bg-primary/35 transition-all group-hover:scale-125 group-hover:bg-primary" />
                                           {child.name}
                                         </Link>
                                       </NavigationMenuLink>
@@ -451,15 +445,14 @@ export function StorefrontHeader({
                       </NavigationMenuItem>
                     );
                   } else {
-                    // Brands Dropdown
                     return (
                       <NavigationMenuItem key="brands">
-                        <NavigationMenuTrigger className="bg-transparent text-white font-black uppercase tracking-tighter text-[13px] h-11 px-6 rounded-none hover:bg-white/10 data-[state=open]:bg-accent data-[state=open]:text-zinc-900 transition-all font-display border-r-2 border-white/10">
+                        <NavigationMenuTrigger className="h-11 rounded-full bg-transparent px-5 text-[14px] font-medium text-zinc-700 hover:bg-white hover:text-zinc-900 data-[state=open]:bg-white data-[state=open]:text-zinc-900">
                           Brands
                         </NavigationMenuTrigger>
                         <NavigationMenuContent className={contentClassName}>
-                          <div className="mt-0 w-max max-w-[calc(100vw-2rem)] md:w-[700px] p-10 text-zinc-900 bg-zinc-50 border-4 border-zinc-900 rounded-none shadow-[8px_8px_0px_rgba(0,0,0,1)]">
-                            <h4 className="font-black text-2xl mb-6 border-b-8 border-primary pb-2 text-zinc-900 tracking-tighter uppercase font-display">
+                          <div className="mt-0 w-max max-w-[calc(100vw-2rem)] rounded-[1.5rem] border border-[var(--surface-storefront-border)] bg-[var(--surface-storefront-card)] p-8 text-zinc-900 shadow-[var(--shadow-warm-md)] md:w-[700px]">
+                            <h4 className="mb-6 border-b border-[var(--surface-storefront-border)] pb-3 font-display text-2xl font-bold tracking-tight text-zinc-900">
                               Featured Brands
                             </h4>
                             <div className="grid grid-cols-3 gap-x-10 gap-y-2">
@@ -467,17 +460,17 @@ export function StorefrontHeader({
                                 <NavigationMenuLink key={brand.id} asChild>
                                   <Link
                                     href={`/products?brand=${brand.slug}`}
-                                    className="text-xs font-black text-zinc-500 hover:text-primary hover:bg-white p-2 border-2 border-transparent hover:border-zinc-900 transition-all uppercase tracking-tight truncate"
+                                    className="truncate rounded-xl p-2 text-sm font-medium text-zinc-600 transition-all hover:bg-white hover:text-primary"
                                   >
                                     {brand.name}
                                   </Link>
                                 </NavigationMenuLink>
                               ))}
                             </div>
-                            <div className="mt-10 pt-8 border-t-4 border-zinc-200 flex justify-end">
+                            <div className="mt-10 flex justify-end border-t border-[var(--surface-storefront-border)] pt-6">
                               <NavigationMenuLink asChild>
-                                <Link href="/brands" className="text-xs font-black text-white uppercase tracking-[0.25em] bg-zinc-900 py-4 px-8 border-b-4 border-black/30 hover:bg-primary transition-colors shadow-lg active:translate-y-1 active:border-b-0">
-                                  View All Brands →
+                                <Link href="/brands" className="rounded-full bg-zinc-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-primary">
+                                  View all brands
                                 </Link>
                               </NavigationMenuLink>
                             </div>
@@ -491,18 +484,18 @@ export function StorefrontHeader({
                 {/* More Menu */}
                 {moreItems.length > 0 && (
                   <NavigationMenuItem>
-                    <NavigationMenuTrigger className="bg-transparent text-white font-black uppercase tracking-tighter text-[13px] h-11 px-6 rounded-none hover:bg-white/10 data-[state=open]:bg-accent data-[state=open]:text-zinc-900 transition-all font-display border-r-2 border-white/10">
+                    <NavigationMenuTrigger className="h-11 rounded-full bg-transparent px-5 text-[14px] font-medium text-zinc-700 hover:bg-white hover:text-zinc-900 data-[state=open]:bg-white data-[state=open]:text-zinc-900">
                       More
                     </NavigationMenuTrigger>
-                    <NavigationMenuContent className="md:left-auto md:right-0 top-full p-0 z-[100] shadow-none mt-0 border-0 rounded-none">
-                      <div className="mt-0 w-64 p-6 text-zinc-900 bg-zinc-50 border-4 border-zinc-900 rounded-none shadow-[8px_8px_0px_rgba(0,0,0,1)] flex flex-col gap-2">
+                    <NavigationMenuContent className="md:left-auto md:right-0 top-full z-[100] mt-2 border-0 bg-transparent p-0">
+                      <div className="mt-0 flex w-64 flex-col gap-2 rounded-[1.5rem] border border-[var(--surface-storefront-border)] bg-[var(--surface-storefront-card)] p-6 text-zinc-900 shadow-[var(--shadow-warm-md)]">
                         {moreItems.map(item => (
                           <NavigationMenuLink key={item.id} asChild>
                             <Link
                               href={item.type === 'category' ? `/products?category=${item.slug}` : '/brands'}
-                              className="text-xs font-black text-zinc-500 hover:text-primary hover:bg-white p-2 border-2 border-transparent hover:border-zinc-900 transition-all uppercase tracking-tight flex items-center gap-2 group"
+                              className="group flex items-center gap-2 rounded-xl p-2 text-sm font-medium text-zinc-600 transition-all hover:bg-white hover:text-primary"
                             >
-                              <span className="h-1 w-0 bg-primary group-hover:w-3 transition-all" />
+                              <span className="h-1.5 w-1.5 rounded-full bg-primary/35 transition-all group-hover:scale-125 group-hover:bg-primary" />
                               {item.name}
                             </Link>
                           </NavigationMenuLink>
@@ -519,7 +512,7 @@ export function StorefrontHeader({
                   <NavigationMenuLink asChild>
                     <Link
                       href="/services"
-                      className="group inline-flex h-11 w-max items-center justify-center rounded-none bg-transparent px-8 py-2 text-[11px] uppercase tracking-[0.25em] font-black text-white/40 transition-colors hover:text-white focus:text-white"
+                      className="group inline-flex h-11 w-max items-center justify-center rounded-full bg-transparent px-6 py-2 text-sm font-medium text-zinc-500 transition-colors hover:bg-white hover:text-zinc-900 focus:text-zinc-900"
                     >
                       Our Services
                     </Link>
@@ -531,8 +524,7 @@ export function StorefrontHeader({
         </div>
       </header>
 
-      {/* Mobile Header (Retains original Drawer structure) */}
-      <header className="md:hidden sticky top-0 z-50 w-full border-b-4 border-zinc-900 bg-primary text-white shadow-sm flex h-20 items-center justify-between px-4">
+      <header className="sticky top-0 z-50 flex h-20 items-center justify-between border-b border-[var(--surface-storefront-border)] bg-[rgba(255,253,248,0.96)] px-4 text-zinc-900 shadow-sm md:hidden">
         <MobileNavDrawer
           categories={categories}
           petTypes={petTypes}
@@ -549,7 +541,7 @@ export function StorefrontHeader({
               className="object-contain"
             />
           </div>
-          <span className="font-black text-white uppercase tracking-tighter text-xl">
+          <span className="font-display text-xl font-bold tracking-tight text-zinc-900">
             Bay State
           </span>
         </Link>
@@ -559,12 +551,12 @@ export function StorefrontHeader({
           <Button
             variant="ghost"
             size="icon"
-            className="relative h-12 w-12 text-white hover:bg-zinc-900 rounded-none border-2 border-transparent active:border-zinc-900"
+            className="relative h-11 w-11 rounded-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
             aria-label="Shopping cart"
             onClick={() => setIsCartOpen(true)}
           >
             <ShoppingCart className="h-6 w-6" />
-            <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center bg-accent text-[10px] font-black text-secondary border-2 border-zinc-900 shadow-[2px_2px_0_rgba(0,0,0,1)]">
+            <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[10px] font-semibold text-secondary shadow-sm">
               {itemCount}
             </span>
           </Button>

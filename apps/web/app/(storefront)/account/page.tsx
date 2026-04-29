@@ -26,23 +26,22 @@ export default async function AccountPage() {
 
     return (
         <div className="space-y-12">
-            <div className="border-b-8 border-zinc-900 pb-4">
-                <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase font-display leading-none">Account Dashboard</h1>
-                <p className="text-zinc-600 font-bold uppercase tracking-widest text-sm mt-2">Welcome back, {profile?.full_name || user.email}</p>
+            <div className="border-b border-[var(--surface-storefront-border)] pb-5">
+                <p className="storefront-kicker mb-2">Account overview</p>
+                <h1 className="storefront-section-title">Account dashboard</h1>
+                <p className="storefront-section-copy mt-3">Welcome back, {profile?.full_name || user.email}</p>
             </div>
 
-            {/* Buy Again Section */}
             <BuyAgainSection products={frequentProducts} />
 
-            {/* Pet Recommendations Section */}
             {petRecommendations.length > 0 && (
-                <section className="border-2 border-zinc-900 bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)]">
-                    <div className="bg-primary p-4 border-b-2 border-zinc-900 flex items-center justify-between">
+                <section className="storefront-panel overflow-hidden">
+                    <div className="flex items-center justify-between border-b border-[var(--surface-storefront-border)] bg-[var(--surface-storefront-muted)] p-5">
                         <div className="flex items-center gap-2">
                             <Heart className="h-6 w-6 text-accent fill-accent" />
-                            <h2 className="text-2xl font-black uppercase tracking-tight text-white font-display">Recommended for Your Pets</h2>
+                            <h2 className="font-display text-2xl font-bold text-zinc-900">Recommended for your pets</h2>
                         </div>
-                        <Button variant="outline" size="sm" className="bg-white text-primary border border-zinc-900 rounded-none font-black uppercase text-xs" asChild>
+                        <Button variant="outline" size="sm" className="rounded-full bg-white text-primary" asChild>
                             <Link href="/products">
                                 View More
                                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -58,39 +57,37 @@ export default async function AccountPage() {
             )}
 
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                {/* Profile Card */}
-                <div className="border-2 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(59,130,246,1)] flex flex-col">
-                    <div className="bg-blue-600 p-4 border-b-2 border-zinc-900 flex items-center justify-between text-white">
-                        <h2 className="text-xl font-black uppercase tracking-tight font-display">Profile</h2>
-                        <User className="h-5 w-5" />
+                <div className="storefront-panel flex flex-col">
+                    <div className="flex items-center justify-between border-b border-[var(--surface-storefront-border)] bg-[var(--surface-storefront-muted)] p-4 text-zinc-900">
+                        <h2 className="font-display text-xl font-bold">Profile</h2>
+                        <User className="h-5 w-5 text-primary" />
                     </div>
                     <div className="p-6 space-y-6 flex-1">
                         <div className="grid gap-1">
-                            <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">Full Name</span>
+                            <span className="text-xs font-medium tracking-[0.08em] text-zinc-500">Full name</span>
                             <span className="text-lg font-bold">{profile?.full_name || 'Not provided'}</span>
                         </div>
                         <div className="grid gap-1">
-                            <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">Email</span>
+                            <span className="text-xs font-medium tracking-[0.08em] text-zinc-500">Email</span>
                             <span className="truncate font-bold">{user.email}</span>
                         </div>
-                        <Button asChild variant="outline" className="w-full border border-zinc-900 rounded-none font-black uppercase tracking-tight hover:bg-zinc-100 mt-auto">
+                        <Button asChild variant="outline" className="mt-auto w-full rounded-xl">
                             <Link href="/account/profile">Edit Profile</Link>
                         </Button>
                     </div>
                 </div>
 
-                {/* My Pets */}
-                <div className="border-2 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(22,163,74,1)] flex flex-col">
-                    <div className="bg-green-600 p-4 border-b-2 border-zinc-900 flex items-center justify-between text-white">
-                        <h2 className="text-xl font-black uppercase tracking-tight font-display">My Pets</h2>
-                        <Dog className="h-5 w-5" />
+                <div className="storefront-panel flex flex-col">
+                    <div className="flex items-center justify-between border-b border-[var(--surface-storefront-border)] bg-[var(--surface-storefront-muted)] p-4 text-zinc-900">
+                        <h2 className="font-display text-xl font-bold">My pets</h2>
+                        <Dog className="h-5 w-5 text-primary" />
                     </div>
                     <div className="p-6 space-y-6 flex-1">
                         <div className="grid gap-1">
-                            <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">Registered Pets</span>
-                            <span className="text-4xl font-black tracking-tighter">{pets.length}</span>
+                            <span className="text-xs font-medium tracking-[0.08em] text-zinc-500">Registered pets</span>
+                            <span className="text-4xl font-semibold tracking-tight text-zinc-900">{pets.length}</span>
                         </div>
-                        <div className="text-sm font-medium text-zinc-600 bg-zinc-50 p-3 border border-zinc-100">
+                        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm font-medium text-zinc-600">
                             {pets.length > 0 ? (
                                 <p>
                                     Configured for: <span className="text-zinc-900 font-bold">{pets.slice(0, 3).map(p => p.name).join(', ')}</span>
@@ -100,38 +97,37 @@ export default async function AccountPage() {
                                 <p>Add pets to get personalized product recommendations.</p>
                             )}
                         </div>
-                        <Button asChild variant="outline" className="w-full border border-zinc-900 rounded-none font-black uppercase tracking-tight hover:bg-zinc-100 mt-auto">
+                        <Button asChild variant="outline" className="mt-auto w-full rounded-xl">
                             <Link href="/account/pets">{pets.length > 0 ? 'Manage Pets' : 'Add a Pet'}</Link>
                         </Button>
                     </div>
                 </div>
 
-                {/* Recent Orders Card */}
-                <div className="border-2 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(220,38,38,1)] flex flex-col">
-                    <div className="bg-red-600 p-4 border-b-2 border-zinc-900 flex items-center justify-between text-white">
-                        <h2 className="text-xl font-black uppercase tracking-tight font-display">Recent Orders</h2>
-                        <Package className="h-5 w-5" />
+                <div className="storefront-panel flex flex-col">
+                    <div className="flex items-center justify-between border-b border-[var(--surface-storefront-border)] bg-[var(--surface-storefront-muted)] p-4 text-zinc-900">
+                        <h2 className="font-display text-xl font-bold">Recent orders</h2>
+                        <Package className="h-5 w-5 text-primary" />
                     </div>
                     <div className="p-6 space-y-6 flex-1">
                         {recentOrders.length > 0 ? (
                             <div className="space-y-4">
                                 {recentOrders.slice(0, 3).map((order) => (
-                                    <div key={order.id} className="flex items-center justify-between p-3 border border-zinc-100 bg-zinc-50">
+                                    <div key={order.id} className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
                                         <div className="flex flex-col">
-                                            <span className="font-black text-sm uppercase">#{order.order_number}</span>
+                                            <span className="text-sm font-semibold text-zinc-900">#{order.order_number}</span>
                                             <StatusBadge status={order.status} showIcon={false} className="h-5 text-[9px] w-fit mt-1 border border-zinc-200" />
                                         </div>
-                                        <span className="font-black text-lg tracking-tight">{formatCurrency(Number(order.total))}</span>
+                                        <span className="text-lg font-semibold tracking-tight text-zinc-900">{formatCurrency(Number(order.total))}</span>
                                     </div>
                                 ))}
-                                <Button asChild variant="link" className="p-0 h-auto font-black uppercase text-xs text-primary hover:no-underline hover:text-primary/80 flex items-center gap-1 mt-2">
+                                <Button asChild variant="link" className="mt-2 flex h-auto items-center gap-1 p-0 text-xs font-medium text-primary hover:no-underline hover:text-primary/80">
                                     <Link href="/account/orders">View All Orders <ArrowRight className="h-3 w-3" /></Link>
                                 </Button>
                             </div>
                         ) : (
                             <div className="flex flex-col items-center justify-center py-6 text-center">
-                                <p className="font-bold text-zinc-500 uppercase text-xs tracking-widest">No orders yet</p>
-                                <Button asChild variant="outline" className="mt-4 border border-zinc-900 rounded-none font-black uppercase tracking-tight hover:bg-zinc-100">
+                                <p className="text-xs font-medium tracking-[0.08em] text-zinc-500">No orders yet</p>
+                                <Button asChild variant="outline" className="mt-4 rounded-xl">
                                     <Link href="/products">Start Shopping</Link>
                                 </Button>
                             </div>
@@ -139,15 +135,14 @@ export default async function AccountPage() {
                     </div>
                 </div>
 
-                {/* Addresses Card */}
-                <div className="border-2 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(249,115,22,1)] flex flex-col">
-                    <div className="bg-orange-600 p-4 border-b-2 border-zinc-900 flex items-center justify-between text-white">
-                        <h2 className="text-xl font-black uppercase tracking-tight font-display">Addresses</h2>
-                        <MapPin className="h-5 w-5" />
+                <div className="storefront-panel flex flex-col">
+                    <div className="flex items-center justify-between border-b border-[var(--surface-storefront-border)] bg-[var(--surface-storefront-muted)] p-4 text-zinc-900">
+                        <h2 className="font-display text-xl font-bold">Addresses</h2>
+                        <MapPin className="h-5 w-5 text-primary" />
                     </div>
                     <div className="p-6 space-y-6 flex-1">
                         <p className="text-sm font-medium text-zinc-600">Manage your shipping and billing addresses for faster checkout.</p>
-                        <Button asChild variant="outline" className="w-full border border-zinc-900 rounded-none font-black uppercase tracking-tight hover:bg-zinc-100 mt-auto">
+                        <Button asChild variant="outline" className="mt-auto w-full rounded-xl">
                             <Link href="/account/addresses">Manage Addresses</Link>
                         </Button>
                     </div>

@@ -30,8 +30,8 @@ export function MobileNav() {
   const { openSearch } = useSearch();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white md:hidden" aria-label="Mobile">
-      <div className="flex h-16 items-center justify-around">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--surface-storefront-border)] bg-[rgba(255,253,248,0.96)] backdrop-blur md:hidden" aria-label="Mobile">
+      <div className="flex h-16 items-center justify-around px-2">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
@@ -42,8 +42,8 @@ export function MobileNav() {
                 key={item.label}
                 onClick={openSearch}
                 className={cn(
-                  'flex h-14 w-14 flex-col items-center justify-center gap-1 rounded-lg transition-colors',
-                  'text-zinc-700 hover:text-zinc-700'
+                  'flex h-12 min-w-[4.25rem] flex-col items-center justify-center gap-1 rounded-xl transition-colors',
+                  'text-zinc-700 hover:bg-white hover:text-zinc-900'
                 )}
                 aria-label={item.label}
               >
@@ -58,10 +58,10 @@ export function MobileNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex h-14 w-14 flex-col items-center justify-center gap-1 rounded-lg transition-colors hover:underline underline-offset-4',
+                'flex h-12 min-w-[4.25rem] flex-col items-center justify-center gap-1 rounded-xl transition-colors',
                 isActive
-                  ? 'text-zinc-900'
-                  : 'text-zinc-700 hover:text-zinc-700'
+                  ? 'bg-white text-zinc-900 shadow-sm'
+                  : 'text-zinc-700 hover:bg-white hover:text-zinc-900'
               )}
               aria-label={item.label}
               aria-current={isActive ? 'page' : undefined}
@@ -72,7 +72,6 @@ export function MobileNav() {
           );
         })}
       </div>
-      {/* Safe area padding for iOS devices */}
       <div className="h-safe-area-inset-bottom bg-white" />
     </nav>
   );

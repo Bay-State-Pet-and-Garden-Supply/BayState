@@ -22,9 +22,10 @@ export default async function ProfilePage() {
     if (!profile) {
         return (
             <div className="space-y-12">
-                <div className="border-b-8 border-zinc-900 pb-4">
-                    <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase font-display leading-none text-zinc-900">Profile</h1>
-                    <p className="text-zinc-600 font-bold uppercase tracking-widest text-sm mt-2">Manage your personal information.</p>
+                <div className="border-b border-[var(--surface-storefront-border)] pb-5">
+                    <p className="storefront-kicker mb-2">Account settings</p>
+                    <h1 className="storefront-section-title">Profile</h1>
+                    <p className="storefront-section-copy mt-3">Manage your personal information.</p>
                 </div>
 
                 <CreateProfileCard 
@@ -37,18 +38,19 @@ export default async function ProfilePage() {
 
     return (
         <div className="space-y-12">
-            <div className="border-b-8 border-zinc-900 pb-4">
-                <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase font-display leading-none text-zinc-900">Profile</h1>
-                <p className="text-zinc-600 font-bold uppercase tracking-widest text-sm mt-2">Manage your personal information.</p>
+            <div className="border-b border-[var(--surface-storefront-border)] pb-5">
+                <p className="storefront-kicker mb-2">Account settings</p>
+                <h1 className="storefront-section-title">Profile</h1>
+                <p className="storefront-section-copy mt-3">Manage your personal information.</p>
             </div>
 
-            <div className="border-2 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(59,130,246,1)]">
-                <div className="bg-blue-600 p-4 border-b-2 border-zinc-900 text-white flex items-center justify-between">
+            <div className="storefront-panel overflow-hidden">
+                <div className="flex items-center justify-between border-b border-[var(--surface-storefront-border)] bg-[var(--surface-storefront-muted)] p-4 text-zinc-900">
                     <div className="flex flex-col">
-                        <h2 className="text-2xl font-black uppercase tracking-tight font-display">Personal Information</h2>
-                        <p className="text-xs font-bold uppercase tracking-widest text-blue-100">Update your name and contact details.</p>
+                        <h2 className="font-display text-2xl font-bold">Personal information</h2>
+                        <p className="text-sm font-medium text-zinc-500">Update your name and contact details.</p>
                     </div>
-                    <User className="h-6 w-6" />
+                    <User className="h-6 w-6 text-primary" />
                 </div>
                 <div className="p-8">
                     <ProfileForm profile={profile} />
@@ -57,4 +59,3 @@ export default async function ProfilePage() {
         </div>
     )
 }
-
