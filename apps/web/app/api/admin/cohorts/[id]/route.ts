@@ -15,6 +15,9 @@ interface CohortMember {
 }
 
 function toOptionalTrimmedString(value: unknown): string | null {
+  if (typeof value === 'number') {
+    value = String(value);
+  }
   if (typeof value !== 'string') {
     return null;
   }

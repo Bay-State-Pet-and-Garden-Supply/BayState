@@ -154,78 +154,83 @@ export function CohortBrandPicker({
             <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[360px] p-0" align="start">
+        <PopoverContent className="w-[360px] p-0 rounded-none border-2 border-zinc-900 shadow-[8px_8px_0px_rgba(0,0,0,1)] bg-white" align="start">
           <div className="flex flex-col">
-            <div className="flex items-center border-b px-3 py-2">
-              <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+            <div className="flex items-center border-b-2 border-zinc-900 px-3 py-2 bg-zinc-50">
+              <Search className="mr-2 h-4 w-4 shrink-0 text-zinc-900" />
               <input
-                className="flex h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                className="flex h-8 w-full bg-transparent text-xs font-bold uppercase tracking-tight outline-none placeholder:text-zinc-400"
                 placeholder="Search brands..."
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
             </div>
-            <div className="max-h-72 overflow-y-auto p-1">
+            <div className="max-h-72 overflow-y-auto">
               {value && (
                 <button
                   type="button"
-                  className="flex w-full items-center rounded-sm px-2 py-2 text-left text-sm text-brand-burgundy hover:bg-brand-burgundy/10"
+                  className="flex w-full items-center px-4 py-2 text-left text-[10px] font-black uppercase text-brand-burgundy hover:bg-brand-burgundy/5 border-b border-zinc-100"
                   onClick={() => void assignBrand(null)}
                   disabled={isSubmitting}
                 >
-                  <X className="mr-2 h-4 w-4" />
+                  <X className="mr-2 h-3.5 w-3.5" />
                   Clear brand assignment
                 </button>
               )}
               {loadingBrands ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">Loading brands...</div>
+                <div className="p-8 text-center">
+                  <div className="animate-spin inline-block w-4 h-4 border-2 border-zinc-900 border-t-transparent mb-2"></div>
+                  <div className="text-[10px] font-black uppercase text-zinc-500">Loading...</div>
+                </div>
               ) : filteredBrands.length > 0 ? (
-                filteredBrands.map((brand) => {
-                  const selected = value?.id === brand.id;
-                  const configured = isBrandConfigured(brand);
-                  return (
-                    <button
-                      key={brand.id}
-                      type="button"
-                      className={cn(
-                        'flex w-full items-start rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground',
-                        selected && 'bg-accent text-accent-foreground'
-                      )}
-                      onClick={() => void assignBrand(brand)}
-                      disabled={isSubmitting}
-                    >
-                      <Check className={cn('mr-2 mt-0.5 h-4 w-4 shrink-0', selected ? 'opacity-100' : 'opacity-0')} />
-                      <span className="flex min-w-0 flex-1 flex-col gap-1">
-                        <span className="flex items-center gap-2">
-                          <span className="truncate font-medium">{brand.name}</span>
-                          <span className={cn(
-                            'rounded-none border px-1 py-0 text-[9px] font-black uppercase',
-                            configured
-                              ? 'border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green'
-                              : 'border-brand-burgundy bg-brand-burgundy/10 text-brand-burgundy'
-                          )}>
-                            {configured ? 'Configured' : 'Needs Site'}
-                          </span>
-                        </span>
-                        <span className="truncate text-xs text-muted-foreground">{brand.slug}</span>
-                        {brand.website_url && (
-                          <span className="truncate text-xs text-muted-foreground">{brand.website_url}</span>
+                <div className="divide-y divide-zinc-100">
+                  {filteredBrands.map((brand) => {
+                    const selected = value?.id === brand.id;
+                    const configured = isBrandConfigured(brand);
+                    return (
+                      <button
+                        key={brand.id}
+                        type="button"
+                        className={cn(
+                          'flex w-full items-start px-4 py-3 text-left hover:bg-zinc-50 transition-colors',
+                          selected && 'bg-zinc-50'
                         )}
-                      </span>
-                    </button>
-                  );
-                })
+                        onClick={() => void assignBrand(brand)}
+                        disabled={isSubmitting}
+                      >
+                        <Check className={cn('mr-3 mt-0.5 h-4 w-4 shrink-0 text-zinc-900', selected ? 'opacity-100' : 'opacity-0')} />
+                        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                          <span className="flex items-center gap-2">
+                            <span className="truncate text-xs font-black uppercase tracking-tight text-zinc-900">{brand.name}</span>
+                            <span className={cn(
+                              'rounded-none border px-1 py-0 text-[8px] font-black uppercase',
+                              configured
+                                ? 'border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green'
+                                : 'border-brand-burgundy bg-brand-burgundy/10 text-brand-burgundy'
+                            )}>
+                              {configured ? 'Config' : 'Needs Site'}
+                            </span>
+                          </span>
+                          <span className="truncate text-[9px] font-bold text-zinc-400 uppercase tracking-widest">{brand.slug}</span>
+                          {brand.website_url && (
+                            <span className="truncate text-[9px] italic text-zinc-500">{brand.website_url}</span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               ) : (
-                <div className="p-4 text-center text-sm text-muted-foreground">No brands found.</div>
+                <div className="p-8 text-center text-[10px] font-black uppercase text-zinc-400">No brands found.</div>
               )}
             </div>
             {search.trim() && !exactMatch && (
-              <div className="border-t p-1">
+              <div className="border-t-2 border-zinc-900 p-2 bg-zinc-50">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="w-full justify-start text-xs font-normal"
+                  className="w-full justify-start text-[10px] font-black uppercase tracking-tight hover:bg-zinc-900 hover:text-white rounded-none border border-transparent hover:border-zinc-900 transition-all"
                   onClick={() => createBrand(search.trim())}
                 >
                   <Plus className="mr-2 h-3.5 w-3.5" />

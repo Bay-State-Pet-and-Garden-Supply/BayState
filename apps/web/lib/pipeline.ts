@@ -60,6 +60,72 @@ const PIPELINE_STAGE_QUERY_SOURCE: Record<
   },
 };
 
+const COHORT_BRAND_RELATION_SELECT =
+  "id, name, slug, logo_url, description, website_url, official_domains, preferred_domains, aliases, created_at";
+const COHORT_BATCH_METADATA_SELECT =
+  `id, name, brand_id, brand_name, brands(${COHORT_BRAND_RELATION_SELECT})`;
+
+type CohortBrandRecord = NonNullable<PipelineProduct["cohort_brands"]>;
+
+interface CohortBatchMetadata {
+  name: string | null;
+  brand_id: string | null;
+  brand_name: string | null;
+  brands: CohortBrandRecord | null;
+}
+
+interface CohortBatchMetadataRow {
+  id: string;
+  name: string | null;
+  brand_id: string | null;
+  brand_name: string | null;
+  brands: CohortBrandRecord | CohortBrandRecord[] | null;
+}
+
+interface CohortBatchRelationRow {
+  name: string | null;
+  brand_id: string | null;
+  brand_name: string | null;
+  brands: CohortBrandRecord | CohortBrandRecord[] | null;
+}
+
+function toSingleRelation<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) {
+    return value[0] ?? null;
+  }
+
+  return value ?? null;
+}
+
+function normalizeCohortMetadata(
+  cohort: CohortBatchRelationRow | CohortBatchRelationRow[] | null | undefined,
+): CohortBatchMetadata | null {
+  const relation = toSingleRelation(cohort);
+  if (!relation) {
+    return null;
+  }
+
+  return {
+    name: relation.name,
+    brand_id: relation.brand_id,
+    brand_name: relation.brand_name,
+    brands: toSingleRelation(relation.brands),
+  };
+}
+
+function withCohortBatchMetadata(
+  product: PipelineProduct,
+  cohort: CohortBatchMetadata,
+): PipelineProduct {
+  return {
+    ...product,
+    cohort_name: cohort.name,
+    cohort_brand_name: cohort.brands?.name ?? cohort.brand_name,
+    cohort_brand_id: cohort.brands?.id ?? cohort.brand_id,
+    cohort_brands: cohort.brands,
+  };
+}
+
 function getInvalidTargetStatusError(targetStatus: string): string {
   return `Invalid status transition to '${targetStatus}'. Allowed persisted statuses: ${CANONICAL_PERSISTED_STATUS_LIST}`;
 }
@@ -158,7 +224,10 @@ export async function getProductsByStatus(
 
   let query = supabase
     .from("products_ingestion")
-    .select("*, cohort_batches(name, brand_name)", { count: "exact" })
+    .select(
+      `*, cohort_batches(${COHORT_BATCH_METADATA_SELECT})`,
+      { count: "exact" },
+    )
     .order("updated_at", { ascending: false })
     .eq("pipeline_status", status)
     .is("exported_at", null);
@@ -218,19 +287,17 @@ export async function getProductsByStatus(
   }
 
   interface PipelineRow extends PipelineProduct {
-    cohort_batches?: {
-      name: string | null;
-      brand_name: string | null;
-    };
+    cohort_batches?: CohortBatchRelationRow | CohortBatchRelationRow[] | null;
   }
 
   const products = ((data as PipelineRow[]) || []).map((row) => {
     const product = withMergedImageCandidates(row);
-    if (row.cohort_batches) {
-      product.cohort_name = row.cohort_batches.name;
-      product.cohort_brand_name = row.cohort_batches.brand_name;
+    const cohort = normalizeCohortMetadata(row.cohort_batches);
+    if (!cohort) {
+      return product;
     }
-    return product;
+
+    return withCohortBatchMetadata(product, cohort);
   });
   return { products, count: count || 0 };
 }
@@ -256,7 +323,7 @@ async function hydrateCohortMetadata(
 
   const { data, error } = await supabase
     .from("cohort_batches")
-    .select("id, name, brand_name")
+    .select(COHORT_BATCH_METADATA_SELECT)
     .in("id", cohortIds);
 
   if (error) {
@@ -266,16 +333,21 @@ async function hydrateCohortMetadata(
 
   const cohortsById = new Map<
     string,
-    { name: string | null; brand_name: string | null }
+    CohortBatchMetadata
   >();
-  (data || []).forEach(
-    (row: { id: string; name: string | null; brand_name: string | null }) => {
-      cohortsById.set(row.id, {
-        name: row.name,
-        brand_name: row.brand_name,
-      });
-    },
-  );
+  ((data as CohortBatchMetadataRow[]) || []).forEach((row) => {
+    const cohort = normalizeCohortMetadata(row);
+    if (!cohort) {
+      return;
+    }
+
+    cohortsById.set(row.id, {
+      name: cohort.name,
+      brand_id: cohort.brand_id,
+      brand_name: cohort.brand_name,
+      brands: cohort.brands,
+    });
+  });
 
   return products.map((product) => {
     const hydrated = withMergedImageCandidates(product);
@@ -286,11 +358,7 @@ async function hydrateCohortMetadata(
       return hydrated;
     }
 
-    return {
-      ...hydrated,
-      cohort_name: cohort.name,
-      cohort_brand_name: cohort.brand_name,
-    };
+    return withCohortBatchMetadata(hydrated, cohort);
   });
 }
 

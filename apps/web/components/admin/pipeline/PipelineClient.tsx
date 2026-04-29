@@ -44,6 +44,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
+import type { Brand } from "@/lib/types";
 import type {
   PipelineProduct,
   PipelineStage,
@@ -134,7 +135,7 @@ export function PipelineClient({
     name: string | null;
     brandName: string | null;
     brandId?: string | null;
-    brand?: any | null;
+    brand?: Brand | null;
   } | null>(null);
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [sourceFilter, setSourceFilter] = useState(
@@ -169,7 +170,7 @@ export function PipelineClient({
     const cohortIds: string[] = [];
     const brands: Record<string, string> = {};
     const brandIds: Record<string, string> = {};
-    const brandObjects: Record<string, any> = {};
+    const brandObjects: Record<string, Brand> = {};
     const names: Record<string, string> = {};
 
     // Grouping in a single pass
@@ -1376,7 +1377,13 @@ export function PipelineClient({
               onEditCohort={
                 canEditCohorts
                   ? (id, name, brandName) => {
-                      setEditingCohort({ id, name, brandName });
+                      setEditingCohort({
+                        id,
+                        name,
+                        brandName,
+                        brandId: groupedProducts.brandIds[id] || null,
+                        brand: groupedProducts.brandObjects[id] || null,
+                      });
                     }
                   : undefined
               }
@@ -1397,7 +1404,13 @@ export function PipelineClient({
                 onEditCohort={
                   canEditCohorts
                     ? (id, name, brandName) => {
-                        setEditingCohort({ id, name, brandName });
+                        setEditingCohort({
+                          id,
+                          name,
+                          brandName,
+                          brandId: groupedProducts.brandIds[id] || null,
+                          brand: groupedProducts.brandObjects[id] || null,
+                        });
                       }
                     : undefined
                 }
@@ -1440,7 +1453,13 @@ export function PipelineClient({
               onEditCohort={
                 canEditCohorts
                   ? (id, name, brandName) => {
-                      setEditingCohort({ id, name, brandName });
+                      setEditingCohort({
+                        id,
+                        name,
+                        brandName,
+                        brandId: groupedProducts.brandIds[id] || null,
+                        brand: groupedProducts.brandObjects[id] || null,
+                      });
                     }
                   : undefined
               }
