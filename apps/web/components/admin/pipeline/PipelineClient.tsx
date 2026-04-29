@@ -133,6 +133,8 @@ export function PipelineClient({
     id: string;
     name: string | null;
     brandName: string | null;
+    brandId?: string | null;
+    brand?: any | null;
   } | null>(null);
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [sourceFilter, setSourceFilter] = useState(
@@ -166,6 +168,8 @@ export function PipelineClient({
     const groups: Record<string, PipelineProduct[]> = {};
     const cohortIds: string[] = [];
     const brands: Record<string, string> = {};
+    const brandIds: Record<string, string> = {};
+    const brandObjects: Record<string, any> = {};
     const names: Record<string, string> = {};
 
     // Grouping in a single pass
@@ -182,6 +186,12 @@ export function PipelineClient({
       if (cohortId !== "ungrouped") {
         if (product.cohort_brand_name && !brands[cohortId]) {
           brands[cohortId] = product.cohort_brand_name;
+        }
+        if (product.cohort_brand_id && !brandIds[cohortId]) {
+          brandIds[cohortId] = product.cohort_brand_id;
+        }
+        if (product.cohort_brands && !brandObjects[cohortId]) {
+          brandObjects[cohortId] = product.cohort_brands;
         }
         if (product.cohort_name && !names[cohortId]) {
           names[cohortId] = product.cohort_name;
@@ -200,7 +210,7 @@ export function PipelineClient({
       return nameA.localeCompare(nameB);
     });
 
-    return { groups, cohortIds, brands, names };
+    return { groups, cohortIds, brands, brandIds, brandObjects, names };
   }, [filteredProducts]);
 
   // Reset source filter if the selected source is no longer available in the product set
@@ -1552,6 +1562,12 @@ export function PipelineClient({
                                         brandName:
                                           groupedProducts.brands[cohortId] ||
                                           null,
+                                        brandId:
+                                          groupedProducts.brandIds[cohortId] ||
+                                          null,
+                                        brand:
+                                          groupedProducts.brandObjects[cohortId] ||
+                                          null,
                                       });
                                     }}
                                   >
@@ -1699,6 +1715,8 @@ export function PipelineClient({
         cohortId={editingCohort?.id || ""}
         initialName={editingCohort?.name || null}
         initialBrandName={editingCohort?.brandName || null}
+        initialBrandId={editingCohort?.brandId}
+        initialBrand={editingCohort?.brand}
         onSuccess={refreshAll}
       />
 

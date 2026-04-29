@@ -13,7 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Edit2 } from "lucide-react";
+import { CohortBrandPicker } from "../cohorts/CohortBrandPicker";
+import { BrandModal } from "../brands/BrandModal";
+import type { Brand } from "@/lib/types";
 
 interface CohortEditDialogProps {
   open: boolean;
@@ -21,6 +24,8 @@ interface CohortEditDialogProps {
   cohortId: string;
   initialName: string | null;
   initialBrandName: string | null;
+  initialBrandId?: string | null;
+  initialBrand?: Brand | null;
   onSuccess: () => void;
 }
 
@@ -30,18 +35,23 @@ export function CohortEditDialog({
   cohortId,
   initialName,
   initialBrandName,
+  initialBrandId,
+  initialBrand,
   onSuccess,
 }: CohortEditDialogProps) {
   const [name, setName] = useState(initialName || "");
   const [brandName, setBrandName] = useState(initialBrandName || "");
+  const [selectedBrand, setSelectedBrand] = useState<Brand | null>(initialBrand || null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isEditingBrand, setIsEditingBrand] = useState(false);
 
   useEffect(() => {
     if (open) {
       setName(initialName || "");
       setBrandName(initialBrandName || "");
+      setSelectedBrand(initialBrand || null);
     }
-  }, [open, initialName, initialBrandName]);
+  }, [open, initialName, initialBrandName, initialBrand]);
 
   const handleSave = async () => {
     setIsLoading(true);
@@ -51,7 +61,8 @@ export function CohortEditDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim() || null,
-          brand_name: brandName.trim() || null,
+          brand_id: selectedBrand?.id || null,
+          brand_name: selectedBrand ? null : (brandName.trim() || null),
         }),
       });
 
@@ -71,50 +82,105 @@ export function CohortEditDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Edit Batch</DialogTitle>
-          <DialogDescription>
-            Update the human-readable name and brand for this batch.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="name">Batch Name</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. KONG Classic Dog Toy"
-              disabled={isLoading}
-            />
+    <>
+      <Dialog open={open && !isEditingBrand} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Batch</DialogTitle>
+            <DialogDescription>
+              Update the human-readable name and brand for this batch.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-6 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name" className="text-xs font-black uppercase tracking-widest text-zinc-500">Batch Name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. KONG Classic Dog Toy"
+                disabled={isLoading}
+                className="rounded-none border-zinc-950 focus-visible:ring-brand-forest-green"
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-black uppercase tracking-widest text-zinc-500">Brand Selection</Label>
+                {selectedBrand && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[10px] uppercase font-bold text-zinc-500 hover:text-zinc-900"
+                    onClick={() => setIsEditingBrand(true)}
+                  >
+                    <Edit2 className="h-3 w-3 mr-1" />
+                    Edit Settings
+                  </Button>
+                )}
+              </div>
+              <CohortBrandPicker
+                value={selectedBrand}
+                onAssign={async (brand) => setSelectedBrand(brand)}
+                triggerClassName="w-full h-10"
+                emptyLabel="Select Brand from Registry"
+              />
+              <p className="text-[10px] text-muted-foreground italic">
+                Linking to a registry brand enables official domain tracking and fallback aliases for the scraper.
+              </p>
+            </div>
+
+            {!selectedBrand && (
+              <div className="grid gap-2 pt-2 border-t border-dashed border-zinc-200">
+                <Label htmlFor="brand" className="text-xs font-black uppercase tracking-widest text-zinc-400">Manual Brand Name Fallback</Label>
+                <Input
+                  id="brand"
+                  value={brandName}
+                  onChange={(e) => setBrandName(e.target.value)}
+                  placeholder="e.g. KONG"
+                  disabled={isLoading}
+                  className="rounded-none border-zinc-200 focus-visible:ring-brand-forest-green text-zinc-500"
+                />
+                <p className="text-[10px] text-zinc-400">
+                  Only used if no brand is selected from the registry above.
+                </p>
+              </div>
+            )}
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="brand">Brand Name</Label>
-            <Input
-              id="brand"
-              value={brandName}
-              onChange={(e) => setBrandName(e.target.value)}
-              placeholder="e.g. KONG"
+          <DialogFooter className="border-t border-zinc-100 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
               disabled={isLoading}
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+              className="rounded-none border-zinc-950"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSave} 
+              disabled={isLoading}
+              className="rounded-none bg-zinc-900 hover:bg-zinc-800 text-white font-black uppercase tracking-tighter shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+            >
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {isEditingBrand && selectedBrand && (
+        <BrandModal
+          brand={selectedBrand}
+          onClose={() => setIsEditingBrand(false)}
+          onSave={(updatedBrand) => {
+            if (updatedBrand) {
+              setSelectedBrand(updatedBrand);
+              onSuccess();
+            }
+          }}
+        />
+      )}
+    </>
   );
 }

@@ -16,6 +16,7 @@ export interface BrandRegistryEntry {
     name?: string;
     slug?: string;
     preferredDomains?: string[];
+    officialDomains?: string[];
     aliases?: string[];
 }
 
@@ -104,7 +105,7 @@ export function getBrandRegistryName(
     return toOptionalString(brand?.name);
 }
 
-export function getBrandRegistryPreferredDomains(
+export function getBrandRegistryOfficialDomains(
     value: BrandRegistryRow | BrandRegistryRow[] | null | undefined
 ): string[] | undefined {
     const brand = getSingleBrandRecord(value);
@@ -131,6 +132,35 @@ export function getBrandRegistryPreferredDomains(
 
     toStringArray(brand.official_domains)?.forEach(pushDomain);
     pushDomain(brand.website_url);
+
+    return ordered.length > 0 ? ordered : undefined;
+}
+
+export function getBrandRegistryPreferredDomains(
+    value: BrandRegistryRow | BrandRegistryRow[] | null | undefined
+): string[] | undefined {
+    const brand = getSingleBrandRecord(value);
+    if (!brand) {
+        return undefined;
+    }
+
+    const ordered: string[] = [];
+    const seen = new Set<string>();
+
+    const pushDomain = (candidate: unknown) => {
+        if (typeof candidate !== 'string') {
+            return;
+        }
+
+        const normalized = normalizeDomainCandidate(candidate);
+        if (!normalized || seen.has(normalized)) {
+            return;
+        }
+
+        seen.add(normalized);
+        ordered.push(normalized);
+    };
+
     toStringArray(brand.preferred_domains)?.forEach(pushDomain);
 
     return ordered.length > 0 ? ordered : undefined;
@@ -147,10 +177,11 @@ export function toBrandRegistryEntry(
     const id = toOptionalString(brand.id);
     const name = getBrandRegistryName(brand);
     const slug = toOptionalString(brand.slug);
+    const officialDomains = getBrandRegistryOfficialDomains(brand);
     const preferredDomains = getBrandRegistryPreferredDomains(brand);
     const aliases = toStringArray(brand.aliases);
 
-    if (!id && !name && !slug && !preferredDomains) {
+    if (!id && !name && !slug && !officialDomains && !preferredDomains) {
         return undefined;
     }
 
@@ -158,6 +189,7 @@ export function toBrandRegistryEntry(
         id,
         name,
         slug,
+        officialDomains,
         preferredDomains,
         aliases,
     };

@@ -1144,6 +1144,7 @@ def _run_ai_search_job(
                 "brand": item_context.get("brand") if item_context.get("brand") is not None else search_cfg.get("brand"),
                 "category": item_context.get("category") if item_context.get("category") is not None else search_cfg.get("category"),
                 "preferred_domains": item_context.get("preferred_domains") if item_context.get("preferred_domains") is not None else search_cfg.get("preferred_domains"),
+                "official_domains": item_context.get("official_domains") if item_context.get("official_domains") is not None else search_cfg.get("official_domains"),
             }
         )
 

@@ -12,6 +12,7 @@ export interface Brand {
   website_url?: string | null;
   official_domains?: string[];
   preferred_domains?: string[];
+  aliases?: string[];
   created_at?: string;
 }
 
