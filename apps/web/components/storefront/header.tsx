@@ -31,6 +31,21 @@ import { UserMenu } from "@/components/auth/user-menu";
 import { createClient } from "@/lib/supabase/client";
 import type { CampaignBannerSettings } from "@/lib/settings";
 
+type StorefrontCategory = {
+  id: string;
+  name: string;
+  slug: string | null;
+  parent_id?: string | null;
+  is_featured?: boolean | null;
+  description?: string | null;
+};
+
+const desktopNavigationTriggerClassName =
+  "h-12 rounded-none bg-transparent px-4 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white focus:bg-white/10 focus:text-white data-[state=open]:bg-white data-[state=open]:text-zinc-950 data-[state=open]:hover:bg-white data-[state=open]:focus:bg-white";
+
+const desktopMegaMenuContentClassName =
+  "left-0 right-0 top-full z-[100] w-full overflow-hidden bg-white text-zinc-900 shadow-[0_24px_48px_rgba(15,23,42,0.12)] md:w-full";
+
 function normalizeStorefrontUserRole(user: User | null): string | null {
   const metadataRoles = [
     user?.app_metadata?.role,
@@ -46,6 +61,18 @@ function normalizeStorefrontUserRole(user: User | null): string | null {
   return null;
 }
 
+function getCategoryHref(slug: string | null): string {
+  return slug ? `/products?category=${slug}` : "/products";
+}
+
+function getCategorySummary(category: StorefrontCategory): string {
+  if (category.description?.trim()) {
+    return category.description.trim();
+  }
+
+  return `Explore popular departments and everyday essentials for ${category.name.toLowerCase()}.`;
+}
+
 export function StorefrontHeader({
   user,
   userRole,
@@ -56,13 +83,7 @@ export function StorefrontHeader({
 }: {
   user?: User | null;
   userRole?: string | null;
-  categories: Array<{
-    id: string;
-    name: string;
-    slug: string | null;
-    parent_id?: string | null;
-    is_featured?: boolean | null;
-  }>;
+  categories: StorefrontCategory[];
   petTypes: Array<{ id: string; name: string; icon: string | null }>;
   brands: Array<{
     id: string;
@@ -145,14 +166,17 @@ export function StorefrontHeader({
   // Group categories into a hierarchy for the Mega Menu
   const { topLevel, childrenMap } = useMemo(() => {
     const topLevel = categories.filter((c) => !c.parent_id);
-    const childrenMap = new Map<string, typeof categories>();
-    
-    topLevel.forEach(parent => {
-      const children = categories
-        .filter((c) => c.parent_id === parent.id)
-        .sort((a, b) => a.name.localeCompare(b.name));
-      childrenMap.set(parent.id, children);
-    });
+    const childrenMap = new Map<string, StorefrontCategory[]>();
+
+    for (const category of categories) {
+      if (!category.parent_id) {
+        continue;
+      }
+
+      const siblings = childrenMap.get(category.parent_id) ?? [];
+      siblings.push(category);
+      childrenMap.set(category.parent_id, siblings);
+    }
 
     return { topLevel, childrenMap };
   }, [categories]);
@@ -233,13 +257,13 @@ export function StorefrontHeader({
       <header 
         data-scrolled={isScrolled}
         className={cn(
-          "sticky top-0 z-50 hidden w-full flex-col border-b border-[var(--surface-storefront-border)] bg-[rgba(246,241,230,0.92)] backdrop-blur max-md:hidden transition-all duration-300 ease-in-out",
-          isScrolled ? "shadow-sm" : ""
+          "max-md:hidden sticky top-0 z-50 w-full flex flex-col border-b-2 border-zinc-900 transition-all duration-300 ease-in-out",
+          isScrolled ? "shadow-md" : ""
         )}
       >
         <div 
           className={cn(
-            "overflow-hidden border-b border-[var(--surface-storefront-border)] bg-[var(--surface-storefront-muted)] px-4 py-2 text-[11px] font-medium text-zinc-700 transition-all duration-300 ease-in-out",
+            "bg-zinc-900 py-2 px-4 text-[10px] font-black tracking-[0.25em] text-white flex justify-between items-center border-b-2 border-white/5 uppercase transition-all duration-300 ease-in-out overflow-hidden",
             isScrolled ? "h-0 py-0 opacity-0 border-b-0" : "min-h-[32px]"
           )}
         >
@@ -248,7 +272,7 @@ export function StorefrontHeader({
               "flex items-center gap-2 transition-opacity duration-300",
               isTransitioning ? "opacity-0" : "opacity-100"
             )}>
-              <span className="text-accent">•</span>
+              <span className="text-accent">★</span>
               {bannerEnabled ? (
                 <>
                   {messages[currentMessageIndex].text}
@@ -264,41 +288,41 @@ export function StorefrontHeader({
               ) : (
                 "From big to small, we feed them all!"
               )}
-              <span className="text-accent">•</span>
+              <span className="text-accent">★</span>
             </div>
-            <div className="flex gap-6 text-zinc-500">
+            <div className="flex gap-6">
               <a
                 href="https://www.facebook.com/baystatepet"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 transition-colors hover:text-zinc-900"
+                className="hover:text-accent transition-colors flex items-center gap-1.5"
               >
                 <Facebook className="h-3 w-3" />
-                <span>Facebook</span>
+                <span>FACEBOOK</span>
               </a>
               <a
                 href="https://twitter.com/BayStatePet"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 transition-colors hover:text-zinc-900"
+                className="hover:text-accent transition-colors flex items-center gap-1.5"
               >
                 <Twitter className="h-3 w-3" />
-                <span>Twitter</span>
+                <span>TWITTER</span>
               </a>
               <a
                 href="https://www.instagram.com/baystatepet/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 transition-colors hover:text-zinc-900"
+                className="hover:text-accent transition-colors flex items-center gap-1.5"
               >
                 <Instagram className="h-3 w-3" />
-                <span>Instagram</span>
+                <span>INSTAGRAM</span>
               </a>
             </div>
           </div>
         </div>
 
-        <div className="border-b border-[var(--surface-storefront-border)] bg-[rgba(255,253,248,0.96)] text-zinc-900 transition-all duration-300 ease-in-out">
+        <div className="bg-primary text-white border-b-4 border-zinc-900 shadow-[0_4px_0_rgba(0,0,0,1)] transition-all duration-300 ease-in-out">
           <div 
             className={cn(
               "container mx-auto flex items-center justify-between px-4 transition-all duration-300 ease-in-out",
@@ -330,7 +354,7 @@ export function StorefrontHeader({
               <div className="flex flex-col">
                 <span 
                   className={cn(
-                    "font-display leading-none text-zinc-900 transition-all duration-300 ease-in-out group-hover:text-primary font-bold tracking-tight",
+                    "font-black leading-none tracking-tighter text-white uppercase font-display group-hover:text-accent transition-all duration-300 ease-in-out",
                     isScrolled ? "text-4xl" : "text-4xl"
                   )}
                 >
@@ -338,7 +362,7 @@ export function StorefrontHeader({
                 </span>
                 <span 
                   className={cn(
-                    "mt-1 hidden border-t border-zinc-200 pt-1 text-center text-xs font-medium leading-none text-zinc-500 sm:block transition-all duration-300 ease-in-out",
+                    "hidden sm:text-xs font-black sm:block leading-none text-white/80 uppercase tracking-[0.2em] mt-1 border-t border-white/20 pt-1 text-center transition-all duration-300 ease-in-out",
                     isScrolled ? "hidden" : ""
                   )}
                 >
@@ -353,16 +377,16 @@ export function StorefrontHeader({
 
             <div className="flex items-center gap-4 shrink-0">
               <UserMenu user={resolvedUser} userRole={resolvedUserRole} />
-              <div className="mx-2 h-12 w-px bg-zinc-200" />
+              <div className="h-12 w-px bg-white/20 mx-2" />
               <Button
                 variant="ghost"
                 size="icon"
-                className="group relative h-12 w-12 rounded-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
+                className="relative h-14 w-14 text-white hover:bg-zinc-900 rounded-none border-4 border-transparent hover:border-zinc-900 transition-all group"
                 aria-label="Shopping cart"
                 onClick={() => setIsCartOpen(true)}
               >
-                <ShoppingCart className="h-6 w-6 transition-transform group-hover:scale-105" />
-                <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[11px] font-semibold text-secondary shadow-sm">
+                <ShoppingCart className="h-7 w-7 group-hover:scale-110 transition-transform" />
+                <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center bg-accent text-[12px] font-black text-secondary border-4 border-zinc-900 shadow-[2px_2px_0_rgba(0,0,0,1)]">
                   {itemCount}
                 </span>
               </Button>
@@ -370,109 +394,130 @@ export function StorefrontHeader({
           </div>
         </div>
 
-        <div className="relative border-b border-[var(--surface-storefront-border)] bg-[rgba(255,253,248,0.92)] text-zinc-900 transition-all duration-300 ease-in-out">
-          <div className="container mx-auto flex h-11 items-center px-4 transition-all duration-300 ease-in-out" ref={containerRef}>
+        <div className="relative border-b border-white/10 bg-zinc-950 text-white/90 transition-all duration-300 ease-in-out">
+          <div className="container mx-auto flex h-12 items-center px-4 transition-all duration-300 ease-in-out" ref={containerRef}>
             <NavigationMenu className="flex w-full max-w-none" aria-label="Main Navigation" viewport={false}>
               
               {/* Hidden container for measurement */}
               <div className="absolute opacity-0 pointer-events-none flex whitespace-nowrap" aria-hidden="true">
                  {allNavItems.map(item => (
-                    <div key={item.id} className="nav-item-measure flex h-11 items-center px-6 text-[13px] font-medium text-zinc-900">
-                      {item.name}
-                      <ChevronDownIcon className="ml-1 size-3" />
+                   <div key={item.id} className="nav-item-measure flex h-12 items-center px-4 text-sm font-medium text-white/80">
+                       {item.name}
+                       <ChevronDownIcon className="ml-1 size-3" />
                     </div>
                  ))}
               </div>
 
-              <NavigationMenuList className="w-full justify-start gap-0">
-                {visibleItems.map((item, index) => {
-                  const isRightAligned = index >= visibleItems.length / 2;
-                  const contentClassName = cn(
-                    "top-full z-[100] mt-2 border-0 bg-transparent p-0",
-                    isRightAligned ? "md:left-auto md:right-0" : "left-0"
-                  );
-
+               <NavigationMenuList className="w-full justify-start gap-0">
+                {visibleItems.map((item) => {
                   if (item.type === 'category') {
                     const parent = item;
-                    const children = childrenMap.get(parent.id) || [];
-                    if (children.length === 0) return null;
+                    const sections = (childrenMap.get(parent.id) || []).map((section) => ({
+                      section,
+                      links: childrenMap.get(section.id) || [],
+                    }));
 
-                    const displayName = parent.name;
-
-                    // Split into columns of 8
-                    const chunkSize = 8;
-                    const columns = [];
-                    for (let i = 0; i < children.length; i += chunkSize) {
-                      columns.push(children.slice(i, i + chunkSize));
-                    }
+                    if (sections.length === 0) return null;
 
                     return (
-                      <NavigationMenuItem key={parent.id}>
-                        <NavigationMenuTrigger className="h-11 rounded-full bg-transparent px-5 text-[14px] font-medium text-zinc-700 hover:bg-white hover:text-zinc-900 data-[state=open]:bg-white data-[state=open]:text-zinc-900">
-                          {displayName}
+                      <NavigationMenuItem key={parent.id} className="static">
+                        <NavigationMenuTrigger className={desktopNavigationTriggerClassName}>
+                          {parent.name}
                         </NavigationMenuTrigger>
-                        <NavigationMenuContent className={contentClassName}>
-                          <div className="mt-0 flex min-w-[500px] w-max max-w-[calc(100vw-2rem)] gap-8 rounded-[1.5rem] border border-[var(--surface-storefront-border)] bg-[var(--surface-storefront-card)] p-8 text-zinc-900 shadow-[var(--shadow-warm-md)]">
-                            {columns.map((col, idx) => (
-                              <div key={idx} className="flex flex-col gap-3 min-w-[220px]">
-                                  {idx === 0 ? (
-                                  <h4 className="mb-4 border-b border-[var(--surface-storefront-border)] pb-3 font-display text-2xl font-bold tracking-tight text-zinc-900">
-                                     {displayName}
-                                   </h4>
-                                 ) : (
-                                  <div className="mb-4 h-[44px] border-b border-transparent" />
-                                 )}
-                                 
-                                <div className="flex flex-col gap-1">
-                                  {col.map(child => {
-                                    return (
-                                      <NavigationMenuLink key={child.id} asChild>
-                                        <Link
-                                          href={`/products?category=${child.slug}`}
-                                          className="group flex items-center gap-2 rounded-xl p-2 text-sm font-medium text-zinc-600 transition-all hover:bg-white hover:text-primary"
-                                        >
-                                          <span className="h-1.5 w-1.5 rounded-full bg-primary/35 transition-all group-hover:scale-125 group-hover:bg-primary" />
-                                          {child.name}
-                                        </Link>
-                                      </NavigationMenuLink>
-                                    );
-                                  })}
+                        <NavigationMenuContent className={desktopMegaMenuContentClassName}>
+                          <div className="container mx-auto grid grid-cols-[220px_minmax(0,1fr)] gap-10 px-4 py-8">
+                            <div className="flex flex-col gap-4 border-r border-zinc-200 pr-8">
+                              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/70">
+                                Explore {parent.name}
+                              </p>
+                              <h3 className="text-3xl font-semibold tracking-tight text-zinc-950">
+                                {parent.name}
+                              </h3>
+                              <p className="text-sm leading-6 text-zinc-600">
+                                {getCategorySummary(parent)}
+                              </p>
+                              <NavigationMenuLink asChild>
+                                <Link
+                                  href={getCategoryHref(parent.slug)}
+                                  className="inline-flex items-center text-sm font-semibold text-primary transition-colors hover:text-primary/80"
+                                >
+                                  Shop all {parent.name}
+                                </Link>
+                              </NavigationMenuLink>
+                            </div>
+
+                            <div className="grid auto-rows-max grid-cols-2 gap-x-8 gap-y-8 xl:grid-cols-4">
+                              {sections.map(({ section, links }) => (
+                                <div key={section.id} className="min-w-0">
+                                  <NavigationMenuLink asChild>
+                                    <Link
+                                      href={getCategoryHref(section.slug)}
+                                      className="mb-3 inline-flex items-center text-[15px] font-semibold text-zinc-950 transition-colors hover:text-primary"
+                                    >
+                                      {section.name}
+                                    </Link>
+                                  </NavigationMenuLink>
+
+                                  {links.length > 0 ? (
+                                    <div className="space-y-2.5">
+                                      {links.map((child) => (
+                                        <NavigationMenuLink key={child.id} asChild>
+                                          <Link
+                                            href={getCategoryHref(child.slug)}
+                                            className="block text-sm leading-6 text-zinc-600 transition-colors hover:text-zinc-950"
+                                          >
+                                            {child.name}
+                                          </Link>
+                                        </NavigationMenuLink>
+                                      ))}
+                                    </div>
+                                  ) : null}
                                 </div>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
                           </div>
                         </NavigationMenuContent>
                       </NavigationMenuItem>
                     );
                   } else {
                     return (
-                      <NavigationMenuItem key="brands">
-                        <NavigationMenuTrigger className="h-11 rounded-full bg-transparent px-5 text-[14px] font-medium text-zinc-700 hover:bg-white hover:text-zinc-900 data-[state=open]:bg-white data-[state=open]:text-zinc-900">
+                      <NavigationMenuItem key="brands" className="static">
+                        <NavigationMenuTrigger className={desktopNavigationTriggerClassName}>
                           Brands
                         </NavigationMenuTrigger>
-                        <NavigationMenuContent className={contentClassName}>
-                          <div className="mt-0 w-max max-w-[calc(100vw-2rem)] rounded-[1.5rem] border border-[var(--surface-storefront-border)] bg-[var(--surface-storefront-card)] p-8 text-zinc-900 shadow-[var(--shadow-warm-md)] md:w-[700px]">
-                            <h4 className="mb-6 border-b border-[var(--surface-storefront-border)] pb-3 font-display text-2xl font-bold tracking-tight text-zinc-900">
-                              Featured Brands
-                            </h4>
-                            <div className="grid grid-cols-3 gap-x-10 gap-y-2">
-                              {brands.slice(0, 15).map((brand) => (
+                        <NavigationMenuContent className={desktopMegaMenuContentClassName}>
+                          <div className="container mx-auto grid grid-cols-[220px_minmax(0,1fr)] gap-10 px-4 py-8">
+                            <div className="flex flex-col gap-4 border-r border-zinc-200 pr-8">
+                              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/70">
+                                Browse by maker
+                              </p>
+                              <h3 className="text-3xl font-semibold tracking-tight text-zinc-950">
+                                Brands
+                              </h3>
+                              <p className="text-sm leading-6 text-zinc-600">
+                                Shop trusted pet, farm, garden, and home brands carried at Bay State.
+                              </p>
+                              <NavigationMenuLink asChild>
+                                <Link
+                                  href="/brands"
+                                  className="inline-flex items-center text-sm font-semibold text-primary transition-colors hover:text-primary/80"
+                                >
+                                  View all brands
+                                </Link>
+                              </NavigationMenuLink>
+                            </div>
+
+                            <div className="grid auto-rows-max grid-cols-2 gap-x-6 gap-y-2 xl:grid-cols-4">
+                              {brands.slice(0, 20).map((brand) => (
                                 <NavigationMenuLink key={brand.id} asChild>
                                   <Link
                                     href={`/products?brand=${brand.slug}`}
-                                    className="truncate rounded-xl p-2 text-sm font-medium text-zinc-600 transition-all hover:bg-white hover:text-primary"
+                                    className="block rounded-md px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 hover:text-zinc-950"
                                   >
                                     {brand.name}
                                   </Link>
                                 </NavigationMenuLink>
                               ))}
-                            </div>
-                            <div className="mt-10 flex justify-end border-t border-[var(--surface-storefront-border)] pt-6">
-                              <NavigationMenuLink asChild>
-                                <Link href="/brands" className="rounded-full bg-zinc-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-primary">
-                                  View all brands
-                                </Link>
-                              </NavigationMenuLink>
                             </div>
                           </div>
                         </NavigationMenuContent>
@@ -484,18 +529,20 @@ export function StorefrontHeader({
                 {/* More Menu */}
                 {moreItems.length > 0 && (
                   <NavigationMenuItem>
-                    <NavigationMenuTrigger className="h-11 rounded-full bg-transparent px-5 text-[14px] font-medium text-zinc-700 hover:bg-white hover:text-zinc-900 data-[state=open]:bg-white data-[state=open]:text-zinc-900">
+                    <NavigationMenuTrigger className={desktopNavigationTriggerClassName}>
                       More
                     </NavigationMenuTrigger>
-                    <NavigationMenuContent className="md:left-auto md:right-0 top-full z-[100] mt-2 border-0 bg-transparent p-0">
-                      <div className="mt-0 flex w-64 flex-col gap-2 rounded-[1.5rem] border border-[var(--surface-storefront-border)] bg-[var(--surface-storefront-card)] p-6 text-zinc-900 shadow-[var(--shadow-warm-md)]">
+                    <NavigationMenuContent className="top-full z-[110] w-72 overflow-hidden rounded-b-xl border border-t-0 border-zinc-200 bg-white text-zinc-900 shadow-[0_16px_32px_rgba(15,23,42,0.16)] md:left-auto md:right-0">
+                      <div className="border-b border-zinc-100 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                        Browse more
+                      </div>
+                      <div className="p-2">
                         {moreItems.map(item => (
                           <NavigationMenuLink key={item.id} asChild>
                             <Link
-                              href={item.type === 'category' ? `/products?category=${item.slug}` : '/brands'}
-                              className="group flex items-center gap-2 rounded-xl p-2 text-sm font-medium text-zinc-600 transition-all hover:bg-white hover:text-primary"
+                              href={item.type === 'category' ? getCategoryHref(item.slug) : '/brands'}
+                              className="block rounded-md px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 hover:text-zinc-950"
                             >
-                              <span className="h-1.5 w-1.5 rounded-full bg-primary/35 transition-all group-hover:scale-125 group-hover:bg-primary" />
                               {item.name}
                             </Link>
                           </NavigationMenuLink>
@@ -512,7 +559,7 @@ export function StorefrontHeader({
                   <NavigationMenuLink asChild>
                     <Link
                       href="/services"
-                      className="group inline-flex h-11 w-max items-center justify-center rounded-full bg-transparent px-6 py-2 text-sm font-medium text-zinc-500 transition-colors hover:bg-white hover:text-zinc-900 focus:text-zinc-900"
+                      className="group inline-flex h-12 w-max items-center justify-center px-4 text-sm font-medium text-white/70 transition-colors hover:text-white focus:text-white"
                     >
                       Our Services
                     </Link>
@@ -524,7 +571,7 @@ export function StorefrontHeader({
         </div>
       </header>
 
-      <header className="sticky top-0 z-50 flex h-20 items-center justify-between border-b border-[var(--surface-storefront-border)] bg-[rgba(255,253,248,0.96)] px-4 text-zinc-900 shadow-sm md:hidden">
+      <header className="md:hidden sticky top-0 z-50 w-full border-b-4 border-zinc-900 bg-primary text-white shadow-sm flex h-20 items-center justify-between px-4">
         <MobileNavDrawer
           categories={categories}
           petTypes={petTypes}
@@ -541,7 +588,7 @@ export function StorefrontHeader({
               className="object-contain"
             />
           </div>
-          <span className="font-display text-xl font-bold tracking-tight text-zinc-900">
+          <span className="font-black text-white uppercase tracking-tighter text-xl">
             Bay State
           </span>
         </Link>
@@ -551,12 +598,12 @@ export function StorefrontHeader({
           <Button
             variant="ghost"
             size="icon"
-            className="relative h-11 w-11 rounded-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
+            className="relative h-12 w-12 text-white hover:bg-zinc-900 rounded-none border-2 border-transparent active:border-zinc-900"
             aria-label="Shopping cart"
             onClick={() => setIsCartOpen(true)}
           >
             <ShoppingCart className="h-6 w-6" />
-            <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[10px] font-semibold text-secondary shadow-sm">
+            <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center bg-accent text-[10px] font-black text-secondary border-2 border-zinc-900 shadow-[2px_2px_0_rgba(0,0,0,1)]">
               {itemCount}
             </span>
           </Button>
