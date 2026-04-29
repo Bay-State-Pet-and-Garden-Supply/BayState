@@ -36,7 +36,7 @@ export function HeroCarousel({ slides, interval = 5000 }: HeroCarouselProps) {
 
     return (
         <section
-            className="storefront-panel relative mb-12 aspect-[1900/680] w-full overflow-hidden group"
+            className="relative w-full aspect-[1900/680] overflow-hidden rounded-sm mb-12 border-b-8 border-zinc-900 group"
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
         >
@@ -66,14 +66,13 @@ export function HeroCarousel({ slides, interval = 5000 }: HeroCarouselProps) {
                 </div>
             )}
 
-            <div className="pointer-events-none absolute inset-0 z-10 flex items-end bg-gradient-to-r from-black/45 via-black/20 to-transparent p-6 sm:p-10">
-                <div className="pointer-events-auto max-w-xl rounded-[1.75rem] border border-white/20 bg-white/92 p-6 text-zinc-900 shadow-[var(--shadow-warm-md)] backdrop-blur-sm sm:p-8">
-                    <p className="storefront-kicker mb-3 text-[var(--surface-storefront-accent)]">Seasonal feature</p>
-                    <h2 className="m-0 font-display text-3xl font-bold leading-tight tracking-tight sm:text-5xl">
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/40 to-transparent flex items-end p-6 sm:p-10 z-10">
+                <div className="bg-zinc-900 text-white p-6 border-l-[12px] border-accent shadow-[12px_12px_0px_rgba(0,0,0,0.25)] pointer-events-auto">
+                    <h2 className="text-3xl sm:text-5xl font-black uppercase m-0 leading-tight tracking-tighter font-display">
                         {currentSlide.title}
                     </h2>
                     {currentSlide.subtitle && (
-                        <p className="mt-3 text-sm font-medium text-zinc-600 sm:text-base">
+                        <p className="text-sm sm:text-base font-bold mt-2 text-accent uppercase tracking-widest">
                             {currentSlide.subtitle}
                         </p>
                     )}
@@ -84,31 +83,31 @@ export function HeroCarousel({ slides, interval = 5000 }: HeroCarouselProps) {
                 <div className="absolute top-1/2 w-full flex justify-between -translate-y-1/2 px-4 z-20 pointer-events-none">
                     <button
                         onClick={(e) => { e.preventDefault(); goToPrev(); }}
-                        className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-white/90 text-zinc-900 shadow-sm transition-colors hover:bg-white"
+                        className="bg-white border-4 border-black text-black hover:bg-zinc-100 w-12 h-[60px] flex items-center justify-center shadow-[4px_4px_0px_rgba(0,0,0,0.2)] transition-transform active:translate-x-0.5 active:translate-y-0.5 pointer-events-auto"
                         aria-label="Previous slide"
                     >
-                        <ChevronLeft className="h-5 w-5" />
+                        <ChevronLeft className="h-8 w-8" />
                     </button>
                     <button
                         onClick={(e) => { e.preventDefault(); goToNext(); }}
-                        className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-white/90 text-zinc-900 shadow-sm transition-colors hover:bg-white"
+                        className="bg-white border-4 border-black text-black hover:bg-zinc-100 w-12 h-[60px] flex items-center justify-center shadow-[4px_4px_0px_rgba(0,0,0,0.2)] transition-transform active:translate-x-0.5 active:translate-y-0.5 pointer-events-auto"
                         aria-label="Next slide"
                     >
-                        <ChevronRight className="h-5 w-5" />
+                        <ChevronRight className="h-8 w-8" />
                     </button>
                 </div>
             )}
 
             {slides.length > 1 && (
-                <div className="absolute right-6 top-6 z-20 flex gap-2 rounded-full bg-black/20 px-3 py-2 backdrop-blur-sm">
+                <div className="absolute top-6 right-6 flex gap-2 z-20">
                     {slides.map((_, idx) => (
                         <button
                             key={idx}
                             onClick={(e) => { e.preventDefault(); setCurrentIndex(idx); }}
-                            className={`h-2 rounded-full transition-all ${idx === currentIndex
-                                    ? 'w-10 bg-white'
-                                    : 'w-2 bg-white/55 hover:bg-white/75'
-                                 }`}
+                            className={`h-1.5 w-10 transition-all ${idx === currentIndex
+                                    ? 'bg-accent shadow-[2px_2px_0px_rgba(0,0,0,0.2)]'
+                                    : 'bg-white/50 hover:bg-white/80'
+                                }`}
                             aria-label={`Go to slide ${idx + 1}`}
                         />
                     ))}

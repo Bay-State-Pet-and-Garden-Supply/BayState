@@ -24,39 +24,39 @@ export function StatusBadge({ status, className, showIcon = true }: StatusBadgeP
     const config: Record<string, { label: string, classes: string, icon: React.ElementType }> = {
         pending: {
             label: 'Pending',
-            classes: 'bg-brand-gold/15 text-brand-burgundy border-brand-gold/40',
+            classes: 'bg-brand-gold/20 text-brand-burgundy border-brand-gold/50',
             icon: Clock
         },
         processing: {
             label: 'Processing',
-            classes: 'bg-brand-forest-green/10 text-brand-forest-green border-brand-forest-green/25',
+            classes: 'bg-brand-forest-green/10 text-brand-forest-green border-brand-forest-green/30',
             icon: Package
         },
         ready: {
             label: 'Ready',
-            classes: 'bg-brand-forest-green/15 text-brand-forest-green border-brand-forest-green/30',
+            classes: 'bg-brand-forest-green/20 text-brand-forest-green border-brand-forest-green/50',
             icon: ShoppingBag
         },
         completed: {
             label: 'Completed',
-            classes: 'bg-brand-forest-green text-white border-brand-forest-green',
+            classes: 'bg-brand-forest-green text-white border-zinc-950',
             icon: CheckCircle
         },
         cancelled: {
             label: 'Cancelled',
-            classes: 'bg-brand-burgundy/10 text-brand-burgundy border-brand-burgundy/25',
+            classes: 'bg-brand-burgundy/10 text-brand-burgundy border-brand-burgundy/30',
             icon: XCircle
         },
         refunded: {
             label: 'Refunded',
-            classes: 'bg-brand-burgundy/15 text-brand-burgundy border-brand-burgundy/30',
+            classes: 'bg-brand-burgundy/20 text-brand-burgundy border-brand-burgundy/50',
             icon: RefreshCcw
         }
     }
 
     const statusConfig = config[normalizedStatus] || {
         label: status,
-        classes: 'bg-zinc-100 text-zinc-800 border-zinc-300',
+        classes: 'bg-zinc-100 text-zinc-800 border-zinc-900',
         icon: Clock
     }
 

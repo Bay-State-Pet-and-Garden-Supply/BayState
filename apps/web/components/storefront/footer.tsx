@@ -4,14 +4,14 @@ import { NewsletterSignup } from '@/components/storefront/newsletter-signup';
 
 export function StorefrontFooter() {
   return (
-    <footer className="border-t border-[var(--surface-storefront-border)] bg-[#1f1a15] text-zinc-300">
+    <footer className="bg-zinc-900 text-zinc-300 border-t-4 border-primary">
       <div className="container mx-auto px-4 py-16">
         <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <h3 className="mb-4 text-2xl font-bold text-white font-display">
+            <h3 className="mb-4 text-2xl font-black text-white uppercase tracking-tighter font-display">
               Bay State Pet & Garden
             </h3>
-            <p className="mb-6 border-l-2 border-accent pl-3 text-sm font-medium text-zinc-400">
+            <p className="text-zinc-400 mb-6 border-l-2 border-accent pl-3 text-xs uppercase font-bold tracking-widest">
               From big to small, we feed them all!
             </p>
             <div className="flex space-x-4">
@@ -46,7 +46,7 @@ export function StorefrontFooter() {
           </div>
 
           <div>
-            <h4 className="mb-6 text-sm font-semibold tracking-[0.08em] text-white">
+            <h4 className="mb-6 text-sm font-bold uppercase tracking-widest text-white">
               Shop
             </h4>
             <ul className="space-y-4">
@@ -81,7 +81,7 @@ export function StorefrontFooter() {
           </div>
 
           <div>
-            <h4 className="mb-6 text-sm font-semibold tracking-[0.08em] text-white">
+            <h4 className="mb-6 text-sm font-bold uppercase tracking-widest text-white">
               Services
             </h4>
             <ul className="space-y-4">
@@ -107,7 +107,7 @@ export function StorefrontFooter() {
           </div>
 
           <div>
-            <h4 className="mb-6 text-sm font-semibold tracking-[0.08em] text-white">
+            <h4 className="mb-6 text-sm font-bold uppercase tracking-widest text-white">
               Contact & Hours
             </h4>
             <ul className="space-y-3 text-sm">
