@@ -3,6 +3,8 @@
  * The durable workflow states are the same states shown in the admin UI.
  */
 
+import type { Brand } from "@/lib/types";
+
 /** Canonical workflow states persisted in products_ingestion.pipeline_status. */
 export const PERSISTED_PIPELINE_STATUSES = [
   "imported",
@@ -158,7 +160,7 @@ export interface PipelineProduct {
   /** Brand ID from the associated cohort batch */
   cohort_brand_id?: string | null;
   /** Brand record from the associated cohort batch */
-  cohort_brands?: any | null;
+  cohort_brands?: Brand | null;
   /** Record creation timestamp */
   created_at: string;
   /** Last update timestamp */

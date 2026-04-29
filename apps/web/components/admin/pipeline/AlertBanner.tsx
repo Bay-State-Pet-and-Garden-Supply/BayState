@@ -115,35 +115,35 @@ export function AlertBanner({
       aria-live="polite"
       aria-atomic="true"
       className={cn(
-        "relative flex w-full items-start gap-2.5 rounded-lg border border-zinc-900 bg-background p-3 shadow-sm",
+        "relative flex w-full items-start gap-4 rounded-none border-2 border-zinc-900 bg-background p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)]",
         config.containerClass,
         className
       )}
     >
       <div
         className={cn(
-          "flex shrink-0 items-center justify-center rounded-full p-1",
-          config.iconBgClass
+          "flex shrink-0 items-center justify-center rounded-none border-2 border-zinc-900 bg-white p-2 shadow-[2px_2px_0px_rgba(0,0,0,1)]",
+          config.iconClass
         )}
       >
-        <IconComponent className={cn("size-4", config.iconClass)} aria-hidden="true" />
+        <IconComponent className="size-5" aria-hidden="true" />
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-black uppercase tracking-tight text-foreground">{title}</p>
+        <p className="text-sm font-black uppercase tracking-tighter text-zinc-900">{title}</p>
         {message && (
-          <p className="mt-0.5 text-xs text-muted-foreground leading-tight">{message}</p>
+          <p className="mt-1 text-xs font-bold text-zinc-600 leading-tight uppercase tracking-tight">{message}</p>
         )}
 
         {actions && actions.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-3">
             {actions.map((action, index) => (
               <Button
                 key={index}
                 size="sm"
                 variant={action.variant || "outline"}
                 onClick={action.onClick}
-                className="h-7 text-[10px] font-black uppercase tracking-tight border-zinc-900"
+                className="h-8 rounded-none border-2 border-zinc-900 text-[10px] font-black uppercase tracking-tight hover:bg-zinc-100 transition-all"
               >
                 {action.label}
               </Button>

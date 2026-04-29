@@ -9,7 +9,7 @@ SECURITY DEFINER
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT pipeline_status as status, COUNT(*) as count
+    SELECT pipeline_status::text as status, COUNT(*) as count
     FROM products_ingestion
     WHERE exported_at IS NULL
     GROUP BY pipeline_status;
@@ -26,7 +26,7 @@ BEGIN
     RETURN QUERY
     SELECT DISTINCT jsonb_object_keys(sources) as source_key
     FROM products_ingestion
-    WHERE pipeline_status = p_stage_status
+    WHERE pipeline_status = p_stage_status::pipeline_status_five
       AND exported_at IS NULL
       AND sources IS NOT NULL;
 END;
