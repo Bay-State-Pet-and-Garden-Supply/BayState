@@ -30,8 +30,6 @@ const navItems = [
 
 export function MobileNavDrawer({
   categories,
-  petTypes,
-  brands,
   userRole,
 }: MobileNavDrawerProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -49,15 +47,15 @@ export function MobileNavDrawer({
         <Button
           variant="ghost"
           size="icon"
-          className="h-11 w-11 text-white hover:bg-white/20 hover:text-white md:hidden"
+          className="h-11 w-11 rounded-full border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50 hover:text-zinc-900 md:hidden"
           aria-label="Menu"
         >
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-full max-w-sm p-0 overflow-y-auto">
-        <SheetHeader className="border-b px-4 py-4">
-          <SheetTitle className="text-lg font-bold">Menu</SheetTitle>
+      <SheetContent side="right" className="w-full max-w-sm overflow-y-auto p-0">
+        <SheetHeader className="border-b border-zinc-200 px-4 py-4">
+          <SheetTitle className="font-display text-lg font-bold">Menu</SheetTitle>
         </SheetHeader>
 
         <nav className="flex flex-col py-4" aria-label="Mobile navigation">
@@ -71,7 +69,7 @@ export function MobileNavDrawer({
                   href={item.href}
                   onClick={() => setIsOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium transition-colors",
+                    "flex items-center gap-3 rounded-xl px-3 py-3 text-base font-medium transition-colors",
                     isActive(item.href)
                       ? "bg-primary text-primary-foreground"
                       : "hover:bg-muted"
@@ -92,7 +90,7 @@ export function MobileNavDrawer({
                 <Link
                   href="/admin"
                   onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium text-red-600 hover:bg-red-50"
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-base font-medium text-red-600 hover:bg-red-50"
                 >
                   <User className="h-5 w-5" />
                   Admin Portal
@@ -104,7 +102,7 @@ export function MobileNavDrawer({
           {/* Categories Section */}
           <div className="my-4 border-t" />
           <div className="px-4 py-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            <p className="mb-3 text-xs font-medium tracking-[0.08em] text-muted-foreground">
               Shop by Department
             </p>
             <div className="space-y-4">
@@ -115,8 +113,8 @@ export function MobileNavDrawer({
                       key={cat.id}
                       href={`/products?category=${cat.slug}`}
                       onClick={() => setIsOpen(false)}
-                      className="block rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
+                        className="block rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                     >
                       {cat.name.replace(' Department', '')}
                     </Link>
                   ))}

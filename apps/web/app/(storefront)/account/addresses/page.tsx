@@ -11,13 +11,13 @@ export default async function AddressesPage() {
 
     return (
         <div className="space-y-12">
-            <div className="border-b-8 border-zinc-900 pb-4">
-                <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase font-display leading-none text-zinc-900">Addresses</h1>
-                <p className="text-zinc-600 font-bold uppercase tracking-widest text-sm mt-2">Manage your shipping and billing locations for faster checkout.</p>
+            <div className="border-b border-[var(--surface-storefront-border)] pb-5">
+                <p className="storefront-kicker mb-2">Delivery</p>
+                <h1 className="storefront-section-title">Addresses</h1>
+                <p className="storefront-section-copy mt-3">Manage your shipping and billing locations for faster checkout.</p>
             </div>
 
             <AddressList initialAddresses={addresses} />
         </div>
     )
 }
-

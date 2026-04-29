@@ -34,42 +34,42 @@ export default async function OrderDetailsPage({ params }: Props) {
 
     return (
         <div className="space-y-12">
-            <div className="border-b-8 border-zinc-900 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="flex flex-col gap-6 border-b border-[var(--surface-storefront-border)] pb-6 md:flex-row md:items-end md:justify-between">
                 <div className="space-y-4">
                     <Link 
                         href="/account/orders" 
-                        className="inline-flex items-center text-xs font-black uppercase tracking-widest text-zinc-500 hover:text-zinc-900 transition-colors"
+                        className="inline-flex items-center text-xs font-medium tracking-[0.08em] text-zinc-500 transition-colors hover:text-zinc-900"
                     >
                         <ChevronLeft className="mr-1 h-4 w-4" /> Back to Orders
                     </Link>
-                    <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase font-display leading-none text-zinc-900">
+                    <h1 className="storefront-section-title">
                         Order #{order.order_number}
                     </h1>
-                    <p className="text-zinc-600 font-bold uppercase tracking-widest text-sm">
+                    <p className="storefront-section-copy text-sm">
                         Placed on {new Date(order.created_at).toLocaleDateString()}
                     </p>
                 </div>
-                <div className="flex items-center gap-4 bg-zinc-900 text-white p-4 shadow-[8px_8px_0px_rgba(220,38,38,1)]">
-                    <span className="text-xs font-black uppercase tracking-widest text-zinc-400">STATUS:</span>
-                    <StatusBadge status={order.status} className="border border-white/20 bg-white/10 text-white font-black uppercase text-xs" />
+                <div className="storefront-panel-soft flex items-center gap-4 p-4">
+                    <span className="text-xs font-medium tracking-[0.08em] text-zinc-500">Status</span>
+                    <StatusBadge status={order.status} className="text-xs" />
                 </div>
             </div>
 
             <div className="grid gap-8 lg:grid-cols-3">
                 <div className="lg:col-span-2 space-y-8">
-                    <div className="border-2 border-zinc-900 bg-white shadow-[4px_4px_0px_rgba(0,0,0,0.1)]">
-                        <div className="bg-zinc-900 p-4 border-b-2 border-zinc-900 text-white">
-                            <h2 className="text-xl font-black uppercase tracking-tight font-display text-accent">Order Items</h2>
+                    <div className="storefront-panel overflow-hidden">
+                        <div className="border-b border-[var(--surface-storefront-border)] bg-[var(--surface-storefront-muted)] p-4">
+                            <h2 className="font-display text-xl font-bold text-zinc-900">Order items</h2>
                         </div>
                         <div className="p-6">
                             <div className="space-y-6">
                                 {order.items?.map((item) => (
                                     <div key={item.id} className="flex items-center justify-between border-b border-zinc-100 last:border-0 pb-6 last:pb-0">
                                         <div className="space-y-1">
-                                            <p className="font-black uppercase text-lg leading-none">{item.item_name}</p>
-                                            <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">QTY: {item.quantity}</p>
+                                            <p className="text-lg font-semibold leading-none text-zinc-900">{item.item_name}</p>
+                                            <p className="text-xs font-medium tracking-[0.08em] text-zinc-400">Qty: {item.quantity}</p>
                                         </div>
-                                        <p className="text-2xl font-black tracking-tighter">{formatCurrency(Number(item.total_price))}</p>
+                                        <p className="text-2xl font-semibold tracking-tight text-zinc-900">{formatCurrency(Number(item.total_price))}</p>
                                     </div>
                                 ))}
                             </div>
@@ -78,35 +78,35 @@ export default async function OrderDetailsPage({ params }: Props) {
                 </div>
 
                 <div className="space-y-8">
-                    <div className="border-2 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(220,38,38,1)]">
-                        <div className="bg-red-600 p-4 border-b-2 border-zinc-900 text-white">
-                            <h2 className="text-xl font-black uppercase tracking-tight font-display">Summary</h2>
+                    <div className="storefront-panel overflow-hidden">
+                        <div className="border-b border-[var(--surface-storefront-border)] bg-[var(--surface-storefront-muted)] p-4">
+                            <h2 className="font-display text-xl font-bold text-zinc-900">Summary</h2>
                         </div>
                         <div className="p-6 space-y-4">
-                            <div className="flex justify-between text-sm font-bold uppercase tracking-tight text-zinc-500">
+                            <div className="flex justify-between text-sm font-medium text-zinc-500">
                                 <span>Subtotal</span>
                                 <span className="text-zinc-900">{formatCurrency(Number(order.subtotal))}</span>
                             </div>
-                            <div className="flex justify-between text-sm font-bold uppercase tracking-tight text-zinc-500">
+                            <div className="flex justify-between text-sm font-medium text-zinc-500">
                                 <span>Tax</span>
                                 <span className="text-zinc-900">{formatCurrency(Number(order.tax))}</span>
                             </div>
-                            <div className="border-t-2 border-zinc-900 pt-4 mt-4 flex justify-between">
-                                <span className="text-lg font-black uppercase tracking-tighter font-display">Total</span>
-                                <span className="text-3xl font-black tracking-tighter">{formatCurrency(Number(order.total))}</span>
+                            <div className="mt-4 flex justify-between border-t border-[var(--surface-storefront-border)] pt-4">
+                                <span className="font-display text-lg font-bold text-zinc-900">Total</span>
+                                <span className="text-3xl font-semibold tracking-tight text-zinc-900">{formatCurrency(Number(order.total))}</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="border-2 border-zinc-900 bg-white shadow-[4px_4px_0px_rgba(0,0,0,0.1)]">
-                        <div className="bg-zinc-900 p-4 border-b-2 border-zinc-900 text-white">
-                            <h2 className="text-xl font-black uppercase tracking-tight font-display text-accent">Customer</h2>
+                    <div className="storefront-panel overflow-hidden">
+                        <div className="border-b border-[var(--surface-storefront-border)] bg-[var(--surface-storefront-muted)] p-4">
+                            <h2 className="font-display text-xl font-bold text-zinc-900">Customer</h2>
                         </div>
                         <div className="p-6 space-y-4">
                             <div className="grid gap-2">
-                                <span className="text-xs font-black uppercase tracking-widest text-zinc-400">CONTACT INFO</span>
+                                <span className="text-xs font-medium tracking-[0.08em] text-zinc-400">Contact info</span>
                                 <p className="font-bold text-lg leading-tight break-all">{order.customer_email}</p>
-                                {order.customer_phone && <p className="font-black text-zinc-500 uppercase tracking-widest text-xs">TEL: {order.customer_phone}</p>}
+                                {order.customer_phone && <p className="text-xs font-medium tracking-[0.08em] text-zinc-500">Tel: {order.customer_phone}</p>}
                             </div>
                         </div>
                     </div>
@@ -115,4 +115,3 @@ export default async function OrderDetailsPage({ params }: Props) {
         </div>
     )
 }
-

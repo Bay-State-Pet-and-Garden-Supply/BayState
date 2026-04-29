@@ -11,13 +11,13 @@ export default async function WishlistPage() {
 
     return (
         <div className="space-y-12">
-            <div className="border-b-8 border-zinc-900 pb-4">
-                <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase font-display leading-none text-zinc-900">Wishlist</h1>
-                <p className="text-zinc-600 font-bold uppercase tracking-widest text-sm mt-2">Save items to buy later.</p>
+            <div className="border-b border-[var(--surface-storefront-border)] pb-5">
+                <p className="storefront-kicker mb-2">Saved for later</p>
+                <h1 className="storefront-section-title">Wishlist</h1>
+                <p className="storefront-section-copy mt-3">Save items to buy later.</p>
             </div>
 
             <WishlistGrid items={wishlist} />
         </div>
     )
 }
-
