@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { StorefrontHeader } from '@/components/storefront/header';
 
 const defaultProps = {
@@ -10,8 +11,11 @@ const defaultProps = {
 };
 
 const categoriesWithDogMenu = [
-  { id: 'dog', name: 'Dog', slug: 'dog', parent_id: null },
-  { id: 'dog-food', name: 'Dog Food', slug: 'dog-food', parent_id: 'dog' },
+  { id: 'dog', name: 'Dog', slug: 'dog', parent_id: null, is_featured: true },
+  { id: 'dog-food', name: 'Food', slug: 'dog-food', parent_id: 'dog' },
+  { id: 'dog-dry', name: 'Dry Food', slug: 'dog-food-dry', parent_id: 'dog-food' },
+  { id: 'dog-treats', name: 'Treats', slug: 'dog-treats', parent_id: 'dog' },
+  { id: 'dog-jerky', name: 'Jerky & Chews', slug: 'dog-jerky', parent_id: 'dog-treats' },
 ];
 
 const brands = [{ id: 'brand-1', name: 'Acme', slug: 'acme', logo_url: null }];
@@ -69,6 +73,25 @@ describe('StorefrontHeader', () => {
     );
     expect(screen.getByRole('button', { name: /^Brands$/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Our Services/i })).toBeInTheDocument();
+  });
+
+  it('renders grouped mega menu content for nested categories', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <StorefrontHeader
+        {...defaultProps}
+        categories={categoriesWithDogMenu}
+        brands={brands}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /^Dog$/i }));
+
+    expect(await screen.findByRole('link', { name: /Shop all Dog/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^Food$/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Dry Food/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Jerky & Chews/i })).toBeInTheDocument();
   });
 
   it('renders menu button for mobile', () => {
