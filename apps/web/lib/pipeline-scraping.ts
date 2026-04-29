@@ -147,6 +147,7 @@ interface ScrapeContextItem {
     brand?: string;
     category?: string;
     preferred_domains?: string[];
+    official_domains?: string[];
 }
 
 interface CohortLookupRow {
@@ -179,6 +180,10 @@ function compactScrapeContextItem(item: ScrapeContextItem): ScrapeContextItem {
 
     if (item.preferred_domains !== undefined) {
         compacted.preferred_domains = item.preferred_domains;
+    }
+
+    if (item.official_domains !== undefined) {
+        compacted.official_domains = item.official_domains;
     }
 
     return compacted;
@@ -218,6 +223,25 @@ interface BuildChunkPlanOptions {
     scrapers: string[];
     maxRunners?: number;
     scraperConfigs?: ScraperConfig[];
+}
+
+function mergeOfficialDomains(...domainLists: Array<string[] | undefined>): string[] | undefined {
+    const ordered: string[] = [];
+    const seen = new Set<string>();
+
+    domainLists.forEach((domainList) => {
+        domainList?.forEach((candidate) => {
+            const normalized = normalizeDomainCandidate(candidate);
+            if (!normalized || seen.has(normalized)) {
+                return;
+            }
+
+            seen.add(normalized);
+            ordered.push(normalized);
+        });
+    });
+
+    return ordered.length > 0 ? ordered : undefined;
 }
 
 function mergePreferredDomains(...domainLists: Array<string[] | undefined>): string[] | undefined {
@@ -280,6 +304,7 @@ async function loadCohortBrandRegistryEntries(
             slug: joinedBrand?.slug,
             name: joinedBrand?.name ?? fallbackName,
             preferredDomains: joinedBrand?.preferredDomains,
+            officialDomains: joinedBrand?.officialDomains,
         };
 
         if (entry.id || entry.slug || entry.name || entry.preferredDomains) {
@@ -788,8 +813,14 @@ async function loadScrapeContextItems(
         const ingestionCategory = toOptionalString(input?.category);
         const catalogCategory = getCatalogCategoryName(product?.product_categories);
         const resolvedBrandName = resolvedBrandEntry?.name;
+        const resolvedOfficialDomains = mergeOfficialDomains(
+            catalogBrandEntry?.officialDomains,
+            registryBrandById?.officialDomains,
+            registryBrandByHint?.officialDomains,
+            cohortBrandEntry?.officialDomains,
+        );
         const resolvedPreferredDomains = mergePreferredDomains(
-            catalogPreferredDomains,
+            catalogBrandEntry?.preferredDomains,
             registryBrandById?.preferredDomains,
             registryBrandByHint?.preferredDomains,
             cohortBrandEntry?.preferredDomains,
@@ -807,6 +838,7 @@ async function loadScrapeContextItems(
             category: preferCatalogContext
                 ? catalogCategory ?? ingestionCategory
                 : ingestionCategory ?? catalogCategory,
+            official_domains: resolvedOfficialDomains,
             preferred_domains: resolvedPreferredDomains,
         });
     });

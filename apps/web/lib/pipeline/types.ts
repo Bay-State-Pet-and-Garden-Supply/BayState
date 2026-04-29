@@ -155,6 +155,10 @@ export interface PipelineProduct {
   cohort_name?: string | null;
   /** Brand name from the associated cohort batch */
   cohort_brand_name?: string | null;
+  /** Brand ID from the associated cohort batch */
+  cohort_brand_id?: string | null;
+  /** Brand record from the associated cohort batch */
+  cohort_brands?: any | null;
   /** Record creation timestamp */
   created_at: string;
   /** Last update timestamp */

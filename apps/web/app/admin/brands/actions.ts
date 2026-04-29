@@ -14,6 +14,7 @@ const brandSchema = z.object({
     website_url: z.string().optional().nullable(),
     official_domains: z.array(z.string()).optional(),
     preferred_domains: z.array(z.string()).optional(),
+    aliases: z.array(z.string()).optional(),
 });
 
 function parseDomainList(value: FormDataEntryValue | null): string[] {
@@ -23,7 +24,7 @@ function parseDomainList(value: FormDataEntryValue | null): string[] {
 
     return value
         .split(/[\n,]/)
-        .map((item) => item.trim().toLowerCase())
+        .map((item) => item.trim())
         .filter((item, index, array) => item.length > 0 && array.indexOf(item) === index);
 }
 
@@ -37,8 +38,9 @@ export async function createBrand(formData: FormData): Promise<BrandActionState>
         logo_url: formData.get('logo_url'),
         description: formData.get('description'),
         website_url: formData.get('website_url'),
-        official_domains: parseDomainList(formData.get('official_domains')),
-        preferred_domains: parseDomainList(formData.get('preferred_domains')),
+        official_domains: parseDomainList(formData.get('official_domains')).map(d => d.toLowerCase()),
+        preferred_domains: parseDomainList(formData.get('preferred_domains')).map(d => d.toLowerCase()),
+        aliases: parseDomainList(formData.get('aliases')),
     };
 
     try {
@@ -47,7 +49,7 @@ export async function createBrand(formData: FormData): Promise<BrandActionState>
         const { data, error } = await supabase
             .from('brands')
             .insert(validatedData)
-            .select('id, name, slug, logo_url, description, website_url, official_domains, preferred_domains, created_at')
+            .select('id, name, slug, logo_url, description, website_url, official_domains, preferred_domains, aliases, created_at')
             .single();
 
         if (error) {
@@ -78,8 +80,9 @@ export async function updateBrand(id: string, formData: FormData): Promise<Brand
         logo_url: formData.get('logo_url'),
         description: formData.get('description'),
         website_url: formData.get('website_url'),
-        official_domains: parseDomainList(formData.get('official_domains')),
-        preferred_domains: parseDomainList(formData.get('preferred_domains')),
+        official_domains: parseDomainList(formData.get('official_domains')).map(d => d.toLowerCase()),
+        preferred_domains: parseDomainList(formData.get('preferred_domains')).map(d => d.toLowerCase()),
+        aliases: parseDomainList(formData.get('aliases')),
     };
 
     try {
@@ -89,7 +92,7 @@ export async function updateBrand(id: string, formData: FormData): Promise<Brand
             .from('brands')
             .update(validatedData)
             .eq('id', id)
-            .select('id, name, slug, logo_url, description, website_url, official_domains, preferred_domains, created_at')
+            .select('id, name, slug, logo_url, description, website_url, official_domains, preferred_domains, aliases, created_at')
             .single();
 
         if (error) {

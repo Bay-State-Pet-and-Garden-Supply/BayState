@@ -57,7 +57,12 @@ class OfficialBrandScraper:
         )
 
     async def identify_official_url(
-        self, sku: str, brand: str, product_name: str | None = None
+        self,
+        sku: str,
+        brand: str,
+        product_name: str | None = None,
+        official_domains: list[str] | None = None,
+        preferred_domains: list[str] | None = None,
     ) -> str | None:
         """Identify the official manufacturer URL for a product.
 
@@ -65,6 +70,8 @@ class OfficialBrandScraper:
             sku: Product SKU or identifier
             brand: Product brand name
             product_name: Optional product name fallback when brand is missing
+            official_domains: Optional list of known official domains to prioritize
+            preferred_domains: Optional list of domains to score highly
 
         Returns:
             The official manufacturer URL or None if not found
@@ -121,7 +128,23 @@ class OfficialBrandScraper:
                     )
                     return kg_url
 
-        # 4. Fallback to LLM scoring for top 5 organic results
+        # 4. Check against official_domains if provided
+        if official_domains:
+            for result in results[:5]:
+                url = result.get("url")
+                if not url:
+                    continue
+                domain = urlparse(url).netloc.lower()
+                if domain.startswith("www."):
+                    domain = domain[4:]
+                
+                if any(domain == off or domain.endswith(f".{off}") for off in official_domains):
+                    logger.info(
+                        "[OfficialBrandScraper] Found matching official domain: %s", url
+                    )
+                    return url
+
+        # 5. Fallback to LLM scoring for top 5 organic results
         scored_results = []
         scoring_context = effective_brand or product_name or ""
         for result in results[:5]:
@@ -130,7 +153,12 @@ class OfficialBrandScraper:
             if not url:
                 continue
 
-            score_data = await self._source_selector.score_snippet(url, snippet, scoring_context)
+            # Prioritize preferred_domains in LLM context if they exist
+            context_with_domains = scoring_context
+            if preferred_domains:
+                context_with_domains += f" (Preferred domains: {', '.join(preferred_domains)})"
+
+            score_data = await self._source_selector.score_snippet(url, snippet, context_with_domains)
             if score_data.get("is_official"):
                 confidence = score_data.get("confidence_score", 0.0)
                 scored_results.append((url, confidence))
@@ -146,7 +174,7 @@ class OfficialBrandScraper:
             scored_results.sort(key=lambda x: x[1], reverse=True)
             best_url = scored_results[0][0]
             logger.info(
-                "[OfficialBrandScraper] LLM selected official URL: %s (confidence: %s)",
+                "[OfficialBrandScraper] Identified official URL via LLM: %s (confidence: %s)",
                 best_url,
                 scored_results[0][1],
             )
@@ -276,6 +304,9 @@ class OfficialBrandScraper:
                 sku = str(product.get("sku") or "").strip()
                 brand = str(product.get("brand") or "").strip()
                 product_name = str(product.get("product_name") or "").strip()
+                official_domains = product.get("official_domains")
+                preferred_domains = product.get("preferred_domains")
+
                 if not sku:
                     return AISearchResult(success=False, sku=sku, error="Missing SKU")
                 if not brand and not product_name:
@@ -284,7 +315,13 @@ class OfficialBrandScraper:
                     )
 
                 # 1. Discovery
-                url = await self.identify_official_url(sku, brand, product_name)
+                url = await self.identify_official_url(
+                    sku,
+                    brand,
+                    product_name,
+                    official_domains=official_domains,
+                    preferred_domains=preferred_domains,
+                )
                 if not url:
                     return AISearchResult(
                         success=False, sku=sku, error="Could not identify official brand URL"
