@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'expo-router'
-import { useStripe } from '@stripe/stripe-react-native'
 import { ActivityIndicator, Alert, FlatList, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { trpc } from '../lib/trpc'
 import { useAuth } from '../providers/auth-provider'
@@ -10,13 +9,11 @@ export default function CheckoutScreen() {
   const router = useRouter()
   const { session } = useAuth()
   const { items, clearCart } = useCart()
-  const { initPaymentSheet, presentPaymentSheet } = useStripe()
 
   const [promoCode, setPromoCode] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [customerEmail, setCustomerEmail] = useState(session?.user.email || '')
-  const [paymentMethod, setPaymentMethod] = useState<'pickup' | 'credit_card'>('pickup')
-  const [isPaying, setIsPaying] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const checkoutItems = useMemo(
     () =>
@@ -40,8 +37,6 @@ export default function CheckoutScreen() {
   )
 
   const createOrder = trpc.mobileV1.checkout.createOrder.useMutation()
-  const createPaymentSheet = trpc.mobileV1.checkout.createPaymentSheet.useMutation()
-  const completePayment = trpc.mobileV1.checkout.completePayment.useMutation()
 
   async function handlePlaceOrder() {
     if (!customerName || !customerEmail) {
@@ -55,7 +50,7 @@ export default function CheckoutScreen() {
     }
 
     try {
-      setIsPaying(true)
+      setIsSubmitting(true)
 
       const created = await createOrder.mutateAsync({
         customerName,
@@ -65,54 +60,7 @@ export default function CheckoutScreen() {
         items: checkoutItems,
         promoCode: promoCode || null,
         fulfillmentMethod: 'pickup',
-        paymentMethod,
-      })
-
-      if (paymentMethod === 'pickup') {
-        clearCart()
-        if (created.guestAccessToken) {
-          router.push({
-            pathname: '/order-confirmation/[id]',
-            params: { id: created.order.id, token: created.guestAccessToken },
-          })
-        } else {
-          router.push({
-            pathname: '/order-confirmation/[id]',
-            params: { id: created.order.id },
-          })
-        }
-        return
-      }
-
-      const paymentSheet = await createPaymentSheet.mutateAsync({
-        orderId: created.order.id,
-        customerEmail,
-        customerName,
-      })
-
-      const initResult = await initPaymentSheet({
-        customerId: paymentSheet.customerId,
-        customerEphemeralKeySecret: paymentSheet.ephemeralKeySecret,
-        paymentIntentClientSecret: paymentSheet.paymentIntentClientSecret,
-        merchantDisplayName: 'Bay State Pet & Garden Supply',
-        returnURL: 'baystate://stripe-redirect',
-        allowsDelayedPaymentMethods: false,
-      })
-
-      if (initResult.error) {
-        throw new Error(initResult.error.message)
-      }
-
-      const presentResult = await presentPaymentSheet()
-      if (presentResult.error) {
-        throw new Error(presentResult.error.message)
-      }
-
-      await completePayment.mutateAsync({
-        orderId: created.order.id,
-        paymentIntentId: paymentSheet.paymentIntentId,
-        paymentMethod: 'credit_card',
-        customerEmail,
+        paymentMethod: 'pickup',
       })
 
       clearCart()
@@ -130,7 +78,7 @@ export default function CheckoutScreen() {
     } catch (error) {
       Alert.alert('Checkout failed', error instanceof Error ? error.message : 'Unknown checkout error')
     } finally {
-      setIsPaying(false)
+      setIsSubmitting(false)
     }
   }
 
@@ -149,6 +97,7 @@ export default function CheckoutScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <Text style={styles.title}>Checkout</Text>
+        <Text style={styles.note}>Web preview supports pickup checkout flow in this build.</Text>
 
         <TextInput style={styles.input} placeholder="Customer name" value={customerName} onChangeText={setCustomerName} />
         <TextInput
@@ -166,21 +115,6 @@ export default function CheckoutScreen() {
           value={promoCode}
           onChangeText={setPromoCode}
         />
-
-        <View style={styles.toggleRow}>
-          <Pressable
-            style={[styles.toggleBtn, paymentMethod === 'pickup' ? styles.toggleBtnActive : null]}
-            onPress={() => setPaymentMethod('pickup')}
-          >
-            <Text style={[styles.toggleText, paymentMethod === 'pickup' ? styles.toggleTextActive : null]}>Pay at Pickup</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.toggleBtn, paymentMethod === 'credit_card' ? styles.toggleBtnActive : null]}
-            onPress={() => setPaymentMethod('credit_card')}
-          >
-            <Text style={[styles.toggleText, paymentMethod === 'credit_card' ? styles.toggleTextActive : null]}>Credit Card</Text>
-          </Pressable>
-        </View>
 
         {quoteQuery.isLoading ? (
           <View style={styles.loadingRow}>
@@ -205,11 +139,9 @@ export default function CheckoutScreen() {
         <Pressable
           style={({ pressed }) => [styles.submitButton, pressed ? styles.submitButtonPressed : null]}
           onPress={handlePlaceOrder}
-          disabled={isPaying || quoteQuery.isLoading || items.length === 0}
+          disabled={isSubmitting || quoteQuery.isLoading || items.length === 0}
         >
-          <Text style={styles.submitButtonText}>
-            {isPaying ? 'Processing...' : paymentMethod === 'credit_card' ? 'Pay with Card' : 'Place Pickup Order'}
-          </Text>
+          <Text style={styles.submitButtonText}>{isSubmitting ? 'Processing...' : 'Place Pickup Order'}</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -220,6 +152,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#f7f6f2' },
   container: { padding: 20, gap: 12 },
   title: { fontSize: 26, fontWeight: '800', color: '#14532d' },
+  note: { color: '#374151' },
   input: {
     backgroundColor: '#ffffff',
     borderWidth: 1,
@@ -228,19 +161,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  toggleRow: { flexDirection: 'row', gap: 8 },
-  toggleBtn: {
-    flex: 1,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    backgroundColor: '#ffffff',
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  toggleBtnActive: { backgroundColor: '#dcfce7', borderColor: '#16a34a' },
-  toggleText: { color: '#374151', fontWeight: '600' },
-  toggleTextActive: { color: '#14532d' },
   loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   loadingText: { color: '#374151' },
   error: { color: '#b91c1c' },
