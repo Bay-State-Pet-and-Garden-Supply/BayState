@@ -14,6 +14,7 @@ interface CreatePaymentIntentParams {
   currency?: string;
   customerEmail: string;
   customerName: string;
+  customerId?: string;
   orderId?: string;
   metadata?: Record<string, string>;
 }
@@ -23,6 +24,7 @@ export async function createPaymentIntent({
   currency = 'usd',
   customerEmail,
   customerName,
+  customerId,
   orderId,
   metadata = {},
 }: CreatePaymentIntentParams): Promise<Stripe.PaymentIntent> {
@@ -32,6 +34,7 @@ export async function createPaymentIntent({
     automatic_payment_methods: {
       enabled: true,
     },
+    customer: customerId,
     receipt_email: customerEmail,
     metadata: {
       customer_name: customerName,
@@ -41,6 +44,10 @@ export async function createPaymentIntent({
   });
 
   return paymentIntent;
+}
+
+export function getStripePublishableKey(): string {
+  return process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder';
 }
 
 export async function retrievePaymentIntent(
@@ -91,6 +98,30 @@ async function getStripeCustomerByEmail(
   });
 
   return customers.data[0] || null;
+}
+
+export async function getOrCreateStripeCustomer(input: {
+  email: string;
+  name: string;
+  metadata?: Record<string, string>;
+}): Promise<Stripe.Customer> {
+  const existing = await getStripeCustomerByEmail(input.email);
+  if (existing) {
+    return existing;
+  }
+
+  return createStripeCustomer(input.email, input.name, input.metadata);
+}
+
+export async function createEphemeralKey(customerId: string): Promise<Stripe.EphemeralKey> {
+  return stripe.ephemeralKeys.create(
+    {
+      customer: customerId,
+    },
+    {
+      apiVersion: '2025-12-15.clover' as Stripe.LatestApiVersion,
+    }
+  );
 }
 
 export function constructWebhookEvent(
