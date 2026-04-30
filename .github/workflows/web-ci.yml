@@ -2,12 +2,12 @@ name: Web CI
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [master, main, develop]
     paths:
       - "apps/web/**"
       - ".github/workflows/web-ci.yml"
   push:
-    branches: [develop, main]
+    branches: [develop, main, master]
     paths:
       - "apps/web/**"
       - ".github/workflows/web-ci.yml"
