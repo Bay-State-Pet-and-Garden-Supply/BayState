@@ -180,6 +180,7 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
                                 width={40}
                                 height={40}
                                 className="h-10 w-10 object-cover"
+                                unoptimized
                             />
                         ) : (
                             <span className="text-lg font-bold text-muted-foreground">

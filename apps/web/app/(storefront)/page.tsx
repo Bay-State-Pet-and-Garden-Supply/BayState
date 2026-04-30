@@ -161,6 +161,7 @@ export default async function HomePage() {
                       width={120}
                       height={60}
                       className="object-contain max-h-16"
+                      unoptimized
                     />
                   ) : (
                     <span className="font-bold text-zinc-500 text-center uppercase tracking-tight text-xs font-display">

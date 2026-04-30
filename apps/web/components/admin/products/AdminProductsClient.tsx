@@ -16,7 +16,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Plus, Package, ExternalLink, RefreshCw, Search, X, CheckSquare, Square, Check } from 'lucide-react';
+import { Plus, Package, ExternalLink, RefreshCw, Search, X } from 'lucide-react';
 import { PublishedProduct } from './ProductEditModal';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { formatCurrency, cn, formatImageUrl } from '@/lib/utils';
@@ -42,8 +42,6 @@ export function AdminProductsClient({
     
     // Sync products with initialProducts prop (which changes on server re-render)
     const products = initialProducts;
-    
-    const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
     
     // Search state
     const [search, setSearch] = useState(searchParams.get('search') || '');
@@ -112,36 +110,10 @@ export function AdminProductsClient({
         return url && (url.startsWith('/') || url.startsWith('http'));
     };
 
-    const handleSave = () => {
-        // Clear selection after bulk save
-        setSelectedProductIds(new Set());
-        startTransition(() => {
-            router.refresh();
-        });
-    };
-
     const handleRefresh = () => {
         startTransition(() => {
             router.refresh();
         });
-    };
-
-    const toggleSelection = (productId: string) => {
-        const newSet = new Set(selectedProductIds);
-        if (newSet.has(productId)) {
-            newSet.delete(productId);
-        } else {
-            newSet.add(productId);
-        }
-        setSelectedProductIds(newSet);
-    };
-
-    const toggleSelectAll = () => {
-        if (selectedProductIds.size === products.length) {
-            setSelectedProductIds(new Set());
-        } else {
-            setSelectedProductIds(new Set(products.map(p => p.id)));
-        }
     };
 
     return (
@@ -162,12 +134,6 @@ export function AdminProductsClient({
                     <Button variant="outline" asChild>
                         <Link href="/admin/data/products">
                             View All Data
-                        </Link>
-                    </Button>
-                    <Button asChild>
-                        <Link href="/admin/pipeline">
-                            <Plus className="mr-2 size-4" />
-                            Add via Pipeline
                         </Link>
                     </Button>
                 </div>
@@ -261,27 +227,7 @@ export function AdminProductsClient({
                     </div>
                 </div>
                 
-                <div className="flex items-center justify-between border-t pt-4">
-                    <div className="flex items-center gap-3">
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={toggleSelectAll}
-                            className="h-8 text-xs bg-muted/50"
-                            disabled={products.length === 0}
-                        >
-                            {selectedProductIds.size === products.length && products.length > 0 ? (
-                                <><CheckSquare className="mr-2 size-3.5" /> Deselect All</>
-                            ) : (
-                                <><Square className="mr-2 size-3.5" /> Select All Visible</>
-                            )}
-                        </Button>
-                        {selectedProductIds.size > 0 && (
-                            <Badge variant="secondary" className="font-normal">
-                                {selectedProductIds.size} selected
-                            </Badge>
-                        )}
-                    </div>
+                <div className="flex items-center justify-end border-t pt-4">
                     <p className="text-xs text-muted-foreground">
                         {searchParams.get('search') ? (
                             <>Found <span className="font-semibold text-foreground">{totalCount}</span> matching products</>
@@ -306,32 +252,19 @@ export function AdminProductsClient({
                     {products.map((product) => {
                         const images = parseImages(product.images);
                         const imageUrl = images[0];
-                        const isSelected = selectedProductIds.has(product.id);
 
                         return (
                             <Card 
                                 key={product.id} 
-                                className={cn(
-                                    "group flex flex-col overflow-hidden transition-all hover:shadow-md relative cursor-pointer",
-                                    isSelected ? "ring-2 ring-primary border-primary" : "border-border/50"
-                                )}
-                                onClick={() => toggleSelection(product.id)}
+                                className="group flex flex-col overflow-hidden border-border/50 transition-all hover:shadow-md relative"
                             >
-                                <div className="absolute top-2 left-2 z-10">
-                                    <div className={cn(
-                                        "flex size-6 items-center justify-center rounded border bg-background/80 backdrop-blur transition-all",
-                                        isSelected ? "border-primary bg-primary text-primary-foreground" : "border-border group-hover:border-primary/50"
-                                    )}>
-                                        {isSelected && <Check className="size-3.5" />}
-                                    </div>
-                                </div>
                                 <div className="relative aspect-square overflow-hidden bg-muted/30">
                                     {imageUrl && isValidImageUrl(imageUrl) ? (
                                         <Image
                                             src={imageUrl}
                                             alt={product.name}
                                             fill
-                                            className={cn("object-cover transition-transform duration-500", isSelected ? "scale-[1.02]" : "group-hover:scale-[1.03]")}
+                                            className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                                             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                                             unoptimized
                                         />
@@ -397,30 +330,6 @@ export function AdminProductsClient({
                             </Card>
                         );
                     })}
-                </div>
-            )}
-
-            {/* Floating Action Bar for Bulk Edit */}
-            {selectedProductIds.size > 0 && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-8 fade-in duration-300">
-                    <div className="flex items-center gap-4 px-6 py-4 rounded-2xl bg-background/90 backdrop-blur-xl border border-border/50 shadow-2xl shadow-primary/10">
-                        <div className="flex items-center gap-3">
-                            <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                <span className="text-sm font-bold">{selectedProductIds.size}</span>
-                            </div>
-                            <span className="text-sm font-medium">products selected</span>
-                        </div>
-                        <div className="w-px h-6 bg-border/50 mx-2" />
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedProductIds(new Set())} className="text-muted-foreground hover:text-foreground">
-                            Cancel
-                        </Button>
-                        <Button size="sm" asChild className="shadow-md">
-                            <Link href="/admin/pipeline">
-                                <Plus className="mr-2 size-4" />
-                                Process via Pipeline
-                            </Link>
-                        </Button>
-                    </div>
                 </div>
             )}
 

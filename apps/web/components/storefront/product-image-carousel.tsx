@@ -72,6 +72,7 @@ export function ProductImageCarousel({
                                     sizes="(max-width: 1024px) 100vw, 50vw"
                                     className="object-cover"
                                     priority={index === 0}
+                                    unoptimized
                                 />
                             </div>
                         </CarouselItem>
@@ -99,6 +100,7 @@ export function ProductImageCarousel({
                                 fill
                                 sizes="80px"
                                 className="object-cover"
+                                unoptimized
                             />
                         </button>
                     ))}

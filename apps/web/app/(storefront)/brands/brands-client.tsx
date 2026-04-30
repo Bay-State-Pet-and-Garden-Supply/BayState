@@ -117,6 +117,7 @@ export function BrandsClient({ brands }: BrandsClientProps) {
                             fill
                             className="object-contain transition-transform duration-[--animate-duration-slower] group-hover:scale-105"
                             sizes="(max-width: 768px) 50vw, 25vw"
+                            unoptimized
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-zinc-100 rounded-full text-primary font-bold text-xl border border-primary/10">
