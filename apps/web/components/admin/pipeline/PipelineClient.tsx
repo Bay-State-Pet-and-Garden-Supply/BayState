@@ -214,6 +214,68 @@ export function PipelineClient({
     return { groups, cohortIds, brands, brandIds, brandObjects, names };
   }, [filteredProducts]);
 
+  const officialBrandSelection = useMemo(() => {
+    const selectedProducts = filteredProducts.filter((product) =>
+      selectedSkus.has(product.sku),
+    );
+
+    if (selectedProducts.length === 0) {
+      return {
+        allowed: false,
+        reason: "Select products from one cohort to use Official Brand.",
+      };
+    }
+
+    const cohortIds = Array.from(
+      new Set(
+        selectedProducts.map((product) => product.cohort_id || "ungrouped"),
+      ),
+    );
+
+    if (cohortIds.length !== 1) {
+      return {
+        allowed: false,
+        reason: "Official Brand requires one cohort at a time. Select products from a single cohort.",
+      };
+    }
+
+    const cohortId = cohortIds[0];
+    if (!cohortId || cohortId === "ungrouped") {
+      return {
+        allowed: false,
+        reason: "Official Brand only works on grouped cohort batches.",
+      };
+    }
+
+    const brand = groupedProducts.brandObjects[cohortId] || null;
+    if (!brand?.id) {
+      return {
+        allowed: false,
+        reason: "Official Brand requires the selected cohort to have an assigned registry brand.",
+      };
+    }
+
+    const hasConfiguredDomains = Boolean(
+      (brand.website_url && brand.website_url.trim())
+        || (brand.official_domains && brand.official_domains.length > 0)
+        || (brand.preferred_domains && brand.preferred_domains.length > 0),
+    );
+
+    if (!hasConfiguredDomains) {
+      return {
+        allowed: false,
+        reason: "Official Brand requires the cohort brand to have an official website or domain preferences configured.",
+      };
+    }
+
+    return {
+      allowed: true,
+      reason: null,
+      cohortId,
+      brandName: groupedProducts.brands[cohortId] || brand.name || null,
+    };
+  }, [filteredProducts, groupedProducts.brandObjects, groupedProducts.brands, selectedSkus]);
+
   // Reset source filter if the selected source is no longer available in the product set
   useEffect(() => {
     if (sourceFilter && sources.length > 0 && !sources.includes(sourceFilter)) {
@@ -1053,6 +1115,14 @@ export function PipelineClient({
     const skus = Array.from(selectedSkus);
     if (skus.length === 0) return;
 
+    if (enrichmentMethod === "official_brand" && !officialBrandSelection.allowed) {
+      toast.error(
+        officialBrandSelection.reason ||
+          "Official Brand requires one eligible cohort at a time.",
+      );
+      return;
+    }
+
     const isAdditionalScrape = currentStage === "scraped";
 
     try {
@@ -1063,7 +1133,10 @@ export function PipelineClient({
           skus,
           scrapers,
           enrichment_method: enrichmentMethod,
-          cohort_id: cohortIdFilter || undefined,
+          cohort_id:
+            enrichmentMethod === "official_brand"
+              ? officialBrandSelection.cohortId
+              : cohortIdFilter || undefined,
         }),
       });
 
@@ -1673,13 +1746,11 @@ export function PipelineClient({
         onOpenChange={setIsScrapeDialogOpen}
         selectedSkuCount={selectedSkus.size}
         onConfirm={handleScrapeConfirm}
-        brandName={(() => {
-          // Derive brand from the first selected product's cohort
-          const firstSku = Array.from(selectedSkus)[0];
-          const product = filteredProducts.find((p) => p.sku === firstSku);
-          const cId = product?.cohort_id;
-          return cId ? groupedProducts.brands[cId] || null : null;
-        })()}
+        brandName={officialBrandSelection.brandName ?? null}
+        officialBrandEligibility={{
+          allowed: officialBrandSelection.allowed,
+          reason: officialBrandSelection.reason,
+        }}
       />
       {/* Manual Add Product Dialog */}
       {isManualAddOpen && (

@@ -42,6 +42,10 @@ interface ScraperSelectDialogProps {
     onConfirm: (scrapers: string[], enrichmentMethod: 'scrapers' | 'official_brand') => void;
     /** When provided, fetches and shows scraper recommendations for this brand */
     brandName?: string | null;
+    officialBrandEligibility?: {
+        allowed: boolean;
+        reason?: string | null;
+    };
 }
 
 const CONFIDENCE_BADGE: Record<string, { label: string; className: string }> = {
@@ -57,6 +61,7 @@ export function ScraperSelectDialog({
     selectedSkuCount,
     onConfirm,
     brandName,
+    officialBrandEligibility,
 }: ScraperSelectDialogProps) {
     const [scrapers, setScrapers] = useState<ScraperOption[]>([]);
     const [selectedScrapers, setSelectedScrapers] = useState<Set<string>>(new Set());
@@ -154,7 +159,9 @@ export function ScraperSelectDialog({
     };
 
     const isDiscovery = enrichmentMethod === 'official_brand';
-    const canSubmit = isDiscovery || selectedScrapers.size > 0;
+    const canUseOfficialBrand = officialBrandEligibility?.allowed ?? true;
+    const officialBrandReason = officialBrandEligibility?.reason ?? null;
+    const canSubmit = isDiscovery ? canUseOfficialBrand : selectedScrapers.size > 0;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -183,7 +190,13 @@ export function ScraperSelectDialog({
                         <Button
                             variant={enrichmentMethod === 'official_brand' ? 'default' : 'outline'}
                             size="sm"
-                            onClick={() => setEnrichmentMethod('official_brand')}
+                            onClick={() => {
+                                if (!canUseOfficialBrand) {
+                                    return;
+                                }
+                                setEnrichmentMethod('official_brand');
+                            }}
+                            disabled={!canUseOfficialBrand}
                             className={enrichmentMethod === 'official_brand' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
                         >
                             <Sparkles className="mr-1.5 h-3.5 w-3.5" />
@@ -298,6 +311,12 @@ export function ScraperSelectDialog({
                     <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
                         Official Brand uses high-fidelity manufacturer isolation to extract data
                         directly from brand websites. Best for high-quality technical specs.
+                    </div>
+                )}
+
+                {!canUseOfficialBrand && officialBrandReason && (
+                    <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                        {officialBrandReason}
                     </div>
                 )}
 

@@ -39,6 +39,26 @@ interface BatchImportResult {
 
 const BATCH_SIZE = 100;
 
+export function dedupeProductsBySku(products: ShopSiteProduct[]): {
+    deduped: ShopSiteProduct[];
+    duplicateCount: number;
+} {
+    const bySku = new Map<string, ShopSiteProduct>();
+    let duplicateCount = 0;
+
+    for (const product of products) {
+        if (bySku.has(product.sku)) {
+            duplicateCount++;
+        }
+        bySku.set(product.sku, product);
+    }
+
+    return {
+        deduped: Array.from(bySku.values()),
+        duplicateCount,
+    };
+}
+
 type TransformedShopSiteProduct = ReturnType<typeof transformShopSiteProduct>;
 type SuccessfulTransformedProduct = {
     product: ShopSiteProduct;
@@ -65,12 +85,16 @@ export async function importShopSiteProductsBatched({
     logProgress,
 }: BatchImportOptions): Promise<BatchImportResult> {
     const startTime = Date.now();
+    const { deduped: uniqueProducts, duplicateCount } = dedupeProductsBySku(shopSiteProducts);
     const errors: Array<{ sku: string; error: string }> = [];
     let created = 0;
     let updated = 0;
     let failed = 0;
 
     console.log(`[Batch Import] Starting import of ${shopSiteProducts.length} products...`);
+    if (duplicateCount > 0) {
+        console.log(`[Batch Import] De-duplicated ${duplicateCount} duplicate SKU records before upsert.`);
+    }
 
     // Phase 1: Pre-load all reference data into memory
     console.log('[Batch Import] Phase 1: Loading reference data...');
@@ -92,9 +116,9 @@ export async function importShopSiteProductsBatched({
     // Phase 1.5: Cleanup (Purge disabled/removed products FIRST to avoid slug conflicts)
     let deletedCount = 0;
     // Only purge if we are doing a full sync (passing many products)
-    if (shopSiteProducts.length > 100) {
+    if (uniqueProducts.length > 100) {
         console.log('[Batch Import] Phase 1.5: Purging inactive products before processing...');
-        const activeSkusInFeed = new Set(shopSiteProducts.map(p => p.sku));
+        const activeSkusInFeed = new Set(uniqueProducts.map(p => p.sku));
         const skusToDelete = Array.from(existingSkus).filter(sku => !activeSkusInFeed.has(sku));
         
         if (skusToDelete.length > 0) {
@@ -124,7 +148,7 @@ export async function importShopSiteProductsBatched({
 
     // Phase 2: Transform all products and pre-generate unique slugs
     console.log('[Batch Import] Phase 2: Transforming products and generating slugs...');
-    const transformedProducts = shopSiteProducts.map((product) => {
+    const transformedProducts = uniqueProducts.map((product) => {
         try {
             const transformed = transformShopSiteProduct(product);
             const isUpdate = existingSkus.has(product.sku);
@@ -196,7 +220,7 @@ export async function importShopSiteProductsBatched({
             }
 
             if (logProgress) {
-                await logProgress(importedProducts.length, shopSiteProducts.length);
+                await logProgress(importedProducts.length, uniqueProducts.length);
             }
         } catch (err) {
             console.error(`[Batch Import] Batch ${i + 1} threw exception:`, err);
@@ -357,7 +381,7 @@ export async function importShopSiteProductsBatched({
 
     return {
         success: failed === 0,
-        processed: shopSiteProducts.length,
+        processed: uniqueProducts.length,
         created,
         updated,
         failed,

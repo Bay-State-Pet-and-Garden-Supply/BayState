@@ -74,6 +74,70 @@ describe('persistChunkResultsToPipeline', () => {
     // Should NOT throw — partial persistence handles missing SKUs gracefully
   });
 
+  it('filters non-consolidation-ready official brand results before persistence', async () => {
+    const metadataSingle = jest.fn().mockResolvedValue({
+      data: { metadata: { requested_job_type: 'official_brand' } },
+      error: null,
+    });
+    const metadataUpdateEq = jest.fn().mockResolvedValue({ data: null, error: null });
+    const metadataUpdate = jest.fn().mockReturnValue({ eq: metadataUpdateEq });
+    const mockedSupabase = {
+      from: jest.fn((table: string) => {
+        if (table === 'scrape_jobs') {
+          return {
+            select: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ single: metadataSingle }) }),
+            update: metadataUpdate,
+          };
+        }
+        throw new Error(`Unexpected table ${table}`);
+      }),
+    } as unknown as SupabaseClient;
+
+    mockedPersist.mockResolvedValue({ persisted: ['SKU-VALID'], missing: [] });
+
+    const result = await persistChunkResultsToPipeline(
+      mockedSupabase,
+      'job-official-brand',
+      {
+        'SKU-VALID': {
+          official_brand: {
+            title: 'Valid product',
+            brand: 'Miracle-Gro',
+            url: 'https://www.scottsmiraclegro.com/products/a',
+            source_website: 'https://www.scottsmiraclegro.com/products/a',
+            confidence: 0.92,
+            images: ['https://cdn.example.com/a.jpg'],
+          },
+        },
+        'SKU-INVALID': {
+          official_brand: {
+            title: 'Invalid product',
+            brand: 'Miracle-Gro',
+            url: 'https://www.amazon.com/products/a',
+            source_website: 'https://www.amazon.com/products/a',
+            confidence: 0.95,
+            images: ['https://cdn.example.com/a.jpg'],
+          },
+        },
+      },
+      false,
+      {
+        isOfficialBrandJob: true,
+        officialDomains: ['scottsmiraclegro.com'],
+      }
+    );
+
+    expect(result).toEqual(['SKU-VALID']);
+    expect(mockedPersist).toHaveBeenCalledWith(
+      mockedSupabase,
+      {
+        'SKU-VALID': expect.any(Object),
+      },
+      false,
+      expect.any(String)
+    );
+  });
+
   it('merges chunk results by source and preserves multiple scrapers', () => {
     const merged = mergeChunkResults([
       {

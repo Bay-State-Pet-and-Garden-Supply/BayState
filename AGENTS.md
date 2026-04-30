@@ -1,183 +1,40 @@
-# BAY STATE WORKSPACE
+# BayState agent notes
 
-**Generated:** 2026-04-05
-**Commit:** 7e468a1
-**Branch:** master
+## Read scope-specific notes first
+- Root app boundaries: `apps/web` (Next.js/Bun coordinator + admin/storefront), `apps/scraper` (Python runner), `conductor` (workflow docs only; no runtime code).
+- More specific instructions exist and override this file: `apps/web/AGENTS.md`, `apps/web/app/admin/AGENTS.md`, `apps/web/lib/consolidation/AGENTS.md`, `apps/scraper/AGENTS.md`, plus scraper subdirectory `AGENTS.md` files.
 
-## OVERVIEW
-Three-part system: **apps/web** (Next.js 16 PWA + Admin), **apps/scraper** (Python distributed engine with crawl4ai), **conductor** (AI Workflow Engine — docs only, no runtime code).
+## Monorepo commands that are easy to guess wrong
+- Package manager is Bun 1.3.5 (`packageManager`); prefer Bun over npm even where old READMEs show npm.
+- Root scripts use Turbo: `bun run dev|build|test|lint`. Note `turbo.json` makes root `test` depend on `build`; for focused checks use workspace commands instead.
+- Web workspace shortcut: `bun run web <script>` runs inside `apps/web` (examples: `bun run web dev`, `bun run web lint`, `bun run web test`, `bun run web build`).
+- Scraper workspace shortcut: `bun run scraper dev` runs `uv run --with-requirements requirements.txt python daemon.py --env dev`.
 
-## STRUCTURE
-```
-.
-├── apps/
-│   ├── web/               # Next.js 16, Supabase, Tailwind v4, shadcn/ui, Bun
-│   │   ├── app/           # App Router: (storefront), (auth), admin (26 modules), api (100+ routes)
-│   │   ├── components/    # UI: storefront/ admin/ ui/ account/ auth/ (278 files)
-│   │   ├── lib/           # Core: 22 domain modules (auth, pipeline, consolidation, realtime, etc.)
-│   │   └── supabase/      # 122 migrations, RLS policies, functions
-│   └── scraper/           # Python 3.10+, Docker, Playwright + crawl4ai v0.3.0
-│       ├── scrapers/      # YAML DSL, action handlers, executor, events
-│       ├── core/          # API client, retry/circuit-breaker, realtime, health
-│       ├── runner/        # Execution modes (full, chunk, realtime)
-│       ├── src/crawl4ai_engine/  # New extraction engine (LLM-free/LLM/auto)
-│       └── scripts/       # 17 operational scripts
-├── conductor/             # Dev workflow docs (TDD, tracks, checkpoints) — NO runtime code
-├── docker/                # Self-hosted GitHub Actions runner
-└── .github/workflows/     # 7 CI/CD workflows
-```
+## Web app (`apps/web`)
+- Next.js 16 App Router; `app/(storefront)` is customer UI, `app/admin` is the admin portal, `app/api` includes scraper/admin/payment/internal APIs.
+- Auth is handled in layouts/server code, not middleware; do not add `middleware.ts` for auth.
+- Supabase clients are split: server code uses `lib/supabase/server.ts`, browser code uses `lib/supabase/client.ts`; client components must not access the DB directly.
+- Imports use `@/*` from `apps/web`; TypeScript is strict and path aliases are in `tsconfig.json`.
+- Tests run through `node scripts/run-jest.cjs` because it finds a real Node executable instead of Bun’s node shim. Focused test example: `bun run web test -- --testPathPatterns="brands"` or pass a test file path after `--`.
+- CI for web runs, in order, `bun install --frozen-lockfile`, `bun run lint`, `CI=true bun run test`; the separate `tsc --noEmit` job is currently non-blocking (`|| true`).
+- ESLint flat config ignores `__tests__/**` and `scripts/**`; lint failures there require targeted checks, not `bun run web lint`.
+- Tailwind is v4 CSS/PostCSS based; there is no `tailwind.config.js` to edit.
+- DB migrations live in `apps/web/supabase/migrations` and use timestamp filenames; keep schema changes there rather than ad hoc SQL in app code.
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| **Feature Dev** | `apps/web/` | Mobile-first, Server Components, TDD |
-| **New Scraper Config** | BayStateApp Admin UI | Local YAML deprecated; API publishes |
-| **Scraper Engine** | `apps/scraper/scrapers/executor/` | Decomposed workflow engine |
-| **crawl4ai Engine** | `apps/scraper/src/crawl4ai_engine/` | v0.3.0 extraction (auto/llm-free/llm) |
-| **AI Consolidation** | `apps/web/lib/consolidation/` | OpenAI + Gemini batch processing |
-| **AI Workflow** | `conductor/` | Follow `workflow.md` strictly |
-| **Admin Portal** | `apps/web/app/admin/` | 26-module dashboard |
-| **Storefront** | `apps/web/app/(storefront)/` | Customer-facing PWA |
-| **Pipeline ETL** | `apps/web/lib/pipeline/` | Import → Scrape → Consolidate → Publish |
-| **Supabase Schema** | `apps/web/supabase/migrations/` | 122 migrations, `public` schema only |
+## Scraper (`apps/scraper`)
+- Runner is API-only: use `X-API-Key: bsr_*` to talk to the web coordinator; do not add direct database credentials or DB access to runner code.
+- Runtime flow is coordinator-runner: web queues jobs/callbacks, scraper polls or uses realtime, executes Playwright/crawl4ai, and posts results back.
+- Local config files exist under `scrapers/configs`, but new/production scraper configs are published through the BayState admin UI/API; avoid treating local YAML as the deployment source of truth.
+- Scraper configs should keep selectors/workflows in YAML; do not hardcode vendor selectors in Python handlers.
+- Use Playwright/crawl4ai only; do not introduce Selenium or `SyncPlaywright` in production paths.
+- Use structured logging instead of `print()`, and classify retryable failures instead of bare `except:`.
+- Test/lint commands from `apps/scraper`: `python -m pytest`, `pytest -m "not benchmark and not live and not performance" --ignore=tests/benchmarks` (CI subset), `ruff check . --output-format=github`, `mypy . --ignore-missing-imports || true`.
+- `pytest.ini` defaults to `-m "not live"` and `asyncio_mode=auto`; live/benchmark/performance suites are intentionally excluded from normal CI.
+- Local scraper QA examples: `python runner.py --local --config scrapers/configs/phillips.yaml --test-mode` and add `--sku ...` or `--no-headless` for focused debugging.
+- Docker Compose in `apps/scraper/docker-compose.yml` is production-oriented by default; for local development prefer `./run-dev.sh` or `python daemon.py --env dev`.
 
-## ARCHITECTURE
-**Coordinator-Runner Pattern:**
-- **apps/web** = Coordinator (dispatches jobs, receives callbacks, manages pipeline)
-- **apps/scraper** = Runner (stateless Docker containers, polls or Realtime WebSocket)
-- Communication: `X-API-Key` (bsr_*) auth, HMAC-SHA256 webhooks
-- Scraper API: `POST /api/scraper/v1/poll`, `/heartbeat`, `/credentials`, callback
-
-**Pipeline Flow:** Import (Integra/ShopSite) → Scrape (distributed) → Consolidate (AI) → Review → Publish
-
-## DESIGN SYSTEM (apps/web)
-| Color | Hex | Usage |
-|-------|-----|-------|
-| **Forest Green** | `#008850` | Primary, Sidebar, Ring |
-| **Bay State Burgundy** | `#66161D` | Secondary, Foreground |
-| **Harvest Gold** | `#FCD048` | Accent, Stars, Discounts |
-
-## CROSS-PROJECT CONVENTIONS
-- **Auth**: `X-API-Key` (bsr_*) for Scrapers. `getUser()` + Supabase RLS for App. `is_staff()` DB function for admin.
-- **DB Access**: App via `@supabase/ssr` (server.ts/client.ts split). Scrapers use API only.
-- **Imports**: `@/*` aliases in App. Named exports only. No default exports.
-- **State**: Zustand (cart/UI), URL state (filters/status), Server Components (data).
-- **Git**: `<type>(<scope>): <description>` (conventional commits).
-- **AI Providers**: Gemini migration in progress — feature flags in `lib/config/`. OpenAI fallback.
-
-## TESTING
-| Project | Framework | Command | Pattern |
-|---------|-----------|---------|---------|
-| **App** | Jest + RTL | `bun run web test` | `__tests__/` mirrors source |
-| **Scraper** | pytest | `python -m pytest` | `tests/unit/` mirrors source |
-
-- **TDD Required**: Red → Green → Refactor. 80% coverage minimum.
-- **App extras**: `test:a11y:e2e`, `test:a11y:unit` for accessibility.
-- **Scraper extras**: `asyncio_mode=auto`, markers: `integration`, `benchmark`.
-
-### Cross-Project Scraper QA Workflow
-
-The scraper QA integration enables automated testing of scraper configurations before production deployment.
-
-**Workflow:**
-
-1. **Define Test Assertions** (in YAML config)
-   ```yaml
-   test_assertions:
-     - sku: "072705115310"
-       expected:
-         name: "Product Name"
-         brand: "Brand Name"
-         price: "$49.99"
-   ```
-
-2. **Run from Admin UI**
-   - Navigate to Admin → Scrapers → Scraper Lab
-   - Select Testing tab
-   - Click "Run Test" to queue via `POST /api/admin/scrapers/test`
-
-3. **Runner Executes in Test Mode**
-   - Scraper runner receives job with `job_type: "test"`
-   - Executes against SKUs in `test_assertions`
-   - Compares extracted data to expected values
-   - Returns assertion results to API callback
-
-4. **Review Results in UI**
-   - Real-time polling displays progress
-   - Per-SKU pass/fail indicators
-   - Diff view for failed assertions (expected vs actual)
-
-**Key Components:**
-
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| **Test API** | `apps/web/app/api/admin/scrapers/test/route.ts` | Queue test jobs from Admin UI |
-| **Test Tab** | `apps/web/components/admin/scrapers/tabs/TestingTab.tsx` | UI for running and viewing tests |
-| **Runner CLI** | `apps/scraper/runner/cli.py` | `--test-mode` flag for assertion validation |
-| **Assertion Engine** | `apps/scraper/runner/cli.py` | Compares extracted vs expected values |
-
-**Test Types:**
-
-- **test**: Validates extraction accuracy against `test_assertions`
-- **fake**: Validates no-results detection using `fake_skus`
-
-**Data Flow:**
-```
-Admin UI → POST /api/admin/scrapers/test → scrape_jobs (DB)
-                                            ↓
-Runner polls job → Executes with test_mode=True → Compares assertions
-                                            ↓
-Results POST /api/admin/scraping/callback ← Assertion results stored
-                                            ↓
-Admin UI polls ← Real-time status updates in Testing tab
-```
-
-## ANTI-PATTERNS (GLOBAL)
-- **NO** `any`, `@ts-ignore`, `@ts-expect-error`, default exports, `var`
-- **NO** database credentials in scraper runners (API-only)
-- **NO** direct DB in client components (use Server Actions)
-- **NO** code before failing tests (TDD violation)
-- **NO** Selenium (Playwright only)
-- **NO** `print()` in Python (structured logger only)
-- **NO** bare `except:` (classify failures for retry)
-- **NO** hardcoded selectors in Python (YAML configs only)
-- **NO** `SyncPlaywright` in production
-
-## CI/CD
-| Workflow | Trigger | What |
-|----------|---------|------|
-| `web-ci.yml` | PR/push | Tests + lint for web app |
-| `scraper-ci.yml` | PR/push | Ruff + mypy + pytest |
-| `scraper-cd.yml` | main/dev push | Docker build → GHCR |
-| `validate-scraper-configs.yml` | PR | YAML config validation |
-| `prompt-regression.yml` | PR | AI prompt accuracy checks |
-| `weekly-validation.yml` | cron | Scraper validation + GitHub issues |
-| `register-sync.yml` | manual | Windows ODBC register sync |
-
-## SUBPROJECTS
-- **apps/web/** → `apps/web/AGENTS.md`
-- **apps/scraper/** → `apps/scraper/AGENTS.md`
-- **conductor/** → `conductor/AGENTS.md`
-
-## COMMANDS
-```bash
-# Web App
-bun run web dev           # Dev server (localhost:3000)
-bun run web test          # Run tests (custom jest runner)
-bun run web lint          # ESLint 9 flat config
-
-# Scraper (Local)
-cd apps/scraper && python daemon.py --env dev
-
-# Scraper (Docker)
-cd apps/scraper && docker build -t baystate-scraper .
-cd apps/scraper && docker compose up -d
-```
-
-## NOTES
-- **Tailwind v4**: CSS-based config via `@tailwindcss/postcss`, no tailwind.config.js
-- **ESLint 9**: Flat config in `eslint.config.mjs`
-- **Python**: Ruff (line-length 160, ignores: F401, E501, E722, E402, F541, F841, F811)
-- **Next.js config**: TypeScript (.ts), removes console in prod, security headers
-- **Bun 1.3.5**: Package manager and runtime
-- **No middleware.ts**: Auth handled at layout level, not middleware
+## Cross-project integration facts
+- `apps/web` is the coordinator; `apps/scraper` is a stateless runner. Scraper API endpoints include `/api/scraper/v1/poll`, `/heartbeat`, `/credentials`, and admin scraping callbacks.
+- Product pipeline is Import/Sync → Scrape → AI consolidation → Review/Publish. Web pipeline logic is under `apps/web/lib/pipeline`; AI consolidation is under `apps/web/lib/consolidation`.
+- Scraper test assertions are shared across UI/API/runner: YAML `test_assertions` feed Admin Scraper Lab jobs and runner `--test-mode` assertion diffs.
+- Git commit style in existing guidance is conventional commits: `<type>(<scope>): <description>`.

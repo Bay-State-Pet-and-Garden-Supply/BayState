@@ -614,6 +614,40 @@ class TestIdentifyOfficialUrlKnowledgeGraph:
         assert result == kg_url
 
     @pytest.mark.asyncio
+    async def test_official_domains_precede_knowledge_graph_result(
+        self,
+        scraper_for_identify: OfficialBrandScraper,
+        mock_search_client: MagicMock,
+    ) -> None:
+        """Configured official domains should be authoritative over KG results."""
+        official_url = "https://www.testbrand.com/products/12345"
+        mock_search_client.search = AsyncMock(return_value=(
+            [
+                {
+                    "url": "https://shopping.example.com/testbrand",
+                    "title": "TestBrand KG",
+                    "description": "Knowledge Graph",
+                    "result_type": "knowledge_graph",
+                },
+                {
+                    "url": official_url,
+                    "title": "TestBrand Product",
+                    "description": "Official site",
+                    "result_type": "organic",
+                },
+            ],
+            None,
+        ))
+
+        result = await scraper_for_identify.identify_official_url(
+            "12345",
+            "TestBrand",
+            official_domains=["testbrand.com"],
+        )
+
+        assert result == official_url
+
+    @pytest.mark.asyncio
     async def test_knowledge_graph_among_organic_results(
         self,
         scraper_for_identify: OfficialBrandScraper,
@@ -1347,6 +1381,66 @@ class TestIdentifyOfficialUrlEdgeCases:
         assert "amazon.com" in exclusions
         assert "ebay.com" in exclusions
         assert "walmart.com" in exclusions
+
+    @pytest.mark.asyncio
+    async def test_site_queries_are_built_from_official_domains(
+        self,
+        scraper_for_identify: OfficialBrandScraper,
+        mock_query_builder: MagicMock,
+        mock_search_client: MagicMock,
+    ) -> None:
+        """Official domains should trigger targeted site queries before general search."""
+        mock_query_builder.build_site_query_variants.return_value = [
+            "site:testbrand.com 12345",
+            "site:testbrand.com Test Brand Product",
+        ]
+        mock_search_client.search = AsyncMock(return_value=([], None))
+
+        await scraper_for_identify.identify_official_url(
+            "12345",
+            "TestBrand",
+            product_name="Test Brand Product",
+            official_domains=["testbrand.com"],
+        )
+
+        mock_query_builder.build_site_query_variants.assert_called_once_with(
+            ["testbrand.com"],
+            "12345",
+            "Test Brand Product",
+            "TestBrand",
+            None,
+        )
+        assert mock_search_client.search.await_args_list[0].args[0] == "site:testbrand.com 12345"
+
+    @pytest.mark.asyncio
+    async def test_preferred_domains_match_without_llm_scoring(
+        self,
+        scraper_for_identify: OfficialBrandScraper,
+        mock_search_client: MagicMock,
+        mock_source_selector: MagicMock,
+    ) -> None:
+        """Preferred domains should be selected deterministically before LLM fallback."""
+        preferred_url = "https://shop.testbrand.com/products/12345"
+        mock_search_client.search = AsyncMock(return_value=(
+            [
+                {
+                    "url": preferred_url,
+                    "title": "TestBrand Product",
+                    "description": "Preferred domain",
+                    "result_type": "organic",
+                }
+            ],
+            None,
+        ))
+
+        result = await scraper_for_identify.identify_official_url(
+            "12345",
+            "TestBrand",
+            preferred_domains=["testbrand.com"],
+        )
+
+        assert result == preferred_url
+        mock_source_selector.score_snippet.assert_not_called()
 
 
 class TestIdentifyOfficialUrlMissingBrandFallback:
