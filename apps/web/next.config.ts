@@ -6,6 +6,8 @@ const appDirectory = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(appDirectory, "..", "..");
 
 const nextConfig: NextConfig = {
+  transpilePackages: ['@baystate/api'],
+
   // Enable strict React mode for better development experience
   reactStrictMode: true,
   // Expose these specific variables to the client side without NEXT_PUBLIC_ prefix

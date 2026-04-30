@@ -12,6 +12,7 @@
     "sync:orders": "bun scripts/sync-shopsite-orders.ts",
     "sync:register": "bun scripts/sync-register-inventory.ts",
     "test": "node scripts/run-jest.cjs",
+    "typecheck": "tsc --noEmit",
     "test:api-compat": "ts-node scripts/test-api-compatibility.ts",
     "test:a11y:e2e": "playwright test --config=playwright.config.ts",
     "test:a11y:unit": "node scripts/run-jest.cjs --config=jest.a11y.config.ts --testPathPattern=a11y"
@@ -47,8 +48,10 @@
     "@stripe/stripe-js": "^8.6.3",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.104.1",
+    "@trpc/server": "^11.0.0",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.23",
+    "@baystate/api": "workspace:*",
     "yaml": "^2.8.2",
     "ai": "^6.0.158",
     "archiver": "^7.0.1",
