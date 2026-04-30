@@ -7,6 +7,19 @@ import type { Product, ProductGroup, ProductGroupMember } from '@/lib/types';
 
 type ProductReadClient = Awaited<ReturnType<typeof createPublicClient>>;
 
+const STOREFRONT_VISIBLE_STOCK_STATUSES = [
+  'in_stock',
+  'pre_order',
+] satisfies Product['stock_status'][];
+
+type StorefrontVisibleStockStatus = (typeof STOREFRONT_VISIBLE_STOCK_STATUSES)[number];
+
+function isStorefrontVisibleStockStatus(
+  stockStatus: string | undefined
+): stockStatus is StorefrontVisibleStockStatus {
+  return stockStatus === 'in_stock' || stockStatus === 'pre_order';
+}
+
 const PRODUCT_SELECT = `
   id,
   sku,
@@ -171,7 +184,7 @@ function transformProductRow(row: ProductRow): Product {
   return product;
 }
 
-async function resolveCategoryProductIds(
+async function resolveCategoryIds(
   supabase: ProductReadClient,
   options: { categoryId?: string; categorySlug?: string }
 ): Promise<string[] | null> {
@@ -219,18 +232,7 @@ async function resolveCategoryProductIds(
   }
 
   const targetCategoryIds = Array.from(descendantIds);
-
-  const { data: productCategories, error } = await supabase
-    .from('product_categories')
-    .select('product_id')
-    .in('category_id', targetCategoryIds);
-
-  if (error) {
-    console.error('Error resolving product categories:', error);
-    return [];
-  }
-
-  return (productCategories || []).map((row) => row.product_id);
+  return targetCategoryIds;
 }
 
 async function resolveFeaturedProductIds(
@@ -308,6 +310,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     .from('products')
     .select(PRODUCT_SELECT)
     .eq('slug', slug)
+    .in('stock_status', STOREFRONT_VISIBLE_STOCK_STATUSES)
     .single();
 
   // PGRST116 means "result contains 0 rows" - product doesn't exist
@@ -344,7 +347,7 @@ async function getProductById(id: string): Promise<Product | null> {
   return transformProductRow(data);
 }
 
-async function resolveFacetProductIds(
+async function resolveFacetValueIds(
   supabase: ProductReadClient,
   facetsString?: string
 ): Promise<string[] | null> {
@@ -378,20 +381,7 @@ async function resolveFacetProductIds(
 
   if (matchingValueIds.length === 0) return [];
 
-  // Get all product IDs that have ANY of these facet values (OR logic for simplicity in v1)
-  const { data: productFacets, error: pfError } = await supabase
-    .from('product_facets')
-    .select('product_id')
-    .in('facet_value_id', matchingValueIds);
-
-  if (pfError) {
-    console.error('Error resolving product facets:', JSON.stringify(pfError, null, 2));
-    return [];
-  }
-
-  if (!productFacets) return [];
-
-  return Array.from(new Set(productFacets.map(pf => pf.product_id)));
+  return matchingValueIds;
 }
 
 /**
@@ -413,6 +403,26 @@ export async function getFilteredProducts(options?: {
   offset?: number;
 }): Promise<{ products: Product[]; count: number }> {
   const supabase = createPublicClient();
+  const stockStatus = options?.stockStatus;
+
+  if (stockStatus === 'out_of_stock') {
+    return { products: [], count: 0 };
+  }
+
+  const categoryIds = await resolveCategoryIds(supabase, {
+    categoryId: options?.categoryId,
+    categorySlug: options?.categorySlug,
+  });
+
+  if (categoryIds && categoryIds.length === 0) {
+    return { products: [], count: 0 };
+  }
+
+  const facetValueIds = await resolveFacetValueIds(supabase, options?.facets);
+
+  if (facetValueIds && facetValueIds.length === 0) {
+    return { products: [], count: 0 };
+  }
   
   // Base selection
   let selectString = PRODUCT_SELECT;
@@ -420,6 +430,14 @@ export async function getFilteredProducts(options?: {
   // If filtering by pet type, add the inner join to the select string
   if (options?.petTypeId) {
     selectString += `, product_pet_types!inner(pet_type_id)`;
+  }
+
+  if (categoryIds) {
+    selectString += `, category_filter:product_categories!inner(category_id)`;
+  }
+
+  if (facetValueIds) {
+    selectString += `, facet_filter:product_facets!inner(facet_value_id)`;
   }
 
   let query = supabase
@@ -431,27 +449,12 @@ export async function getFilteredProducts(options?: {
     query = query.eq('product_pet_types.pet_type_id', options.petTypeId);
   }
 
-  const categoryProductIds = await resolveCategoryProductIds(supabase, {
-    categoryId: options?.categoryId,
-    categorySlug: options?.categorySlug,
-  });
-
-  if (categoryProductIds) {
-    if (categoryProductIds.length === 0) {
-      return { products: [], count: 0 };
-    }
-
-    query = query.in('id', categoryProductIds);
+  if (categoryIds) {
+    query = query.in('category_filter.category_id', categoryIds);
   }
 
-  const facetProductIds = await resolveFacetProductIds(supabase, options?.facets);
-  
-  if (facetProductIds) {
-    if (facetProductIds.length === 0) {
-      return { products: [], count: 0 };
-    }
-
-    query = query.in('id', facetProductIds);
+  if (facetValueIds) {
+    query = query.in('facet_filter.facet_value_id', facetValueIds);
   }
 
   // Filter by brand slug - resolve to ID first for performance/simplicity
@@ -473,8 +476,10 @@ export async function getFilteredProducts(options?: {
     query = query.eq('brand_id', options.brandId);
   }
   // Filter by stock status
-  if (options?.stockStatus) {
-    query = query.eq('stock_status', options.stockStatus);
+  if (isStorefrontVisibleStockStatus(stockStatus)) {
+    query = query.eq('stock_status', stockStatus);
+  } else {
+    query = query.in('stock_status', STOREFRONT_VISIBLE_STOCK_STATUSES);
   }
   // Filter by price range
   if (options?.minPrice !== undefined) {
@@ -538,6 +543,7 @@ async function getAllProducts(): Promise<Product[]> {
   const { data, error } = await supabase
     .from('products')
     .select(PRODUCT_SELECT)
+    .in('stock_status', STOREFRONT_VISIBLE_STOCK_STATUSES)
     .order('name');
 
   if (error) {
@@ -608,16 +614,17 @@ export async function getProductGroupBySlug(
     .from('product_group_products')
     .select(`
       *,
-      product:products(
+      product:products!inner(
         id, sku, name, slug, description, long_description, price,
         stock_status, images, brand_id, is_special_order, is_taxable,
-        YV|        weight, search_keywords, shopsite_pages,
+        weight, search_keywords, shopsite_pages,
         published_at, gtin, availability, minimum_quantity, quantity,
         low_stock_threshold, created_at, updated_at,
         storefront_settings:product_storefront_settings(is_featured, pickup_only)
       )
     `)
     .eq('group_id', group.id)
+    .in('product.stock_status', STOREFRONT_VISIBLE_STOCK_STATUSES)
     .order('sort_order', { ascending: true });
 
   if (membersError) {

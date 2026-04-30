@@ -141,6 +141,7 @@ async function main() {
         const result = await importShopSiteProductsBatched({
             supabase,
             shopSiteProducts,
+            purgeMissingProducts: limit === undefined,
             logProgress: async (processed, total) => {
                 if (processed % 500 === 0 || processed === total) {
                     console.log(`[Progress] ${processed}/${total} products processed...`);

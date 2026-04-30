@@ -1,8 +1,8 @@
 import { StorefrontHeader } from '@/components/storefront/header';
 import { StorefrontFooter } from '@/components/storefront/footer';
 import { MobileNav } from '@/components/storefront/mobile-nav';
-import { UnderConstructionBanner } from '@/components/storefront/under-construction-banner';
 import { SearchProvider } from '@/components/storefront/search-provider';
+import { CartStoreHydrator } from '@/components/storefront/cart-store-hydrator';
 import { StickyCart } from '@/components/storefront/sticky-cart';
 import { getProducts, getActiveServices, getBrands, getNavCategories, getPetTypesNav } from '@/lib/data';
 import { getCampaignBanner } from '@/lib/settings';
@@ -91,8 +91,8 @@ export default async function StorefrontLayout({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <div className="flex min-h-screen w-full flex-col">
+        <CartStoreHydrator />
         <SkipLink />
-        <UnderConstructionBanner />
         <StorefrontHeader 
           user={user} 
           userRole={userRole} 

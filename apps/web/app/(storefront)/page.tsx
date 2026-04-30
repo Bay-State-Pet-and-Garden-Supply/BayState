@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { FeaturedProducts } from '@/components/storefront/featured-products';
 import { PetRecommendations } from '@/components/storefront/pet-recommendations';
 import { HeroCarousel } from '@/components/storefront/hero-carousel';
+import { UnderConstructionBanner } from '@/components/storefront/under-construction-banner';
 import { getFeaturedProducts, getBrands } from '@/lib/data';
 import { getHomepageSettings } from '@/lib/settings';
 
@@ -19,6 +20,7 @@ export default async function HomePage() {
 
   return (
     <div className="w-full max-w-none pt-0 pb-8">
+      <UnderConstructionBanner />
       {heroSlides && heroSlides.length > 0 && (
         <div className="px-4 pt-4">
           <HeroCarousel slides={heroSlides} interval={heroSlideInterval} />

@@ -255,117 +255,29 @@ export function StorefrontHeader({
   return (
     <>
       <header 
-        data-scrolled={isScrolled}
-        className={cn(
-          "max-md:hidden sticky top-0 z-50 w-full flex flex-col border-b-2 border-zinc-900 transition-all duration-300 ease-in-out",
-          isScrolled ? "shadow-md" : ""
-        )}
+        className="max-md:hidden sticky top-0 z-50 w-full flex flex-col border-b-2 border-zinc-900 shadow-md"
       >
-        <div 
-          className={cn(
-            "bg-zinc-900 py-2 px-4 text-[10px] font-black tracking-[0.25em] text-white flex justify-between items-center border-b-2 border-white/5 uppercase transition-all duration-300 ease-in-out overflow-hidden",
-            isScrolled ? "h-0 py-0 opacity-0 border-b-0" : "min-h-[32px]"
-          )}
-        >
-          <div className="container mx-auto flex justify-between items-center">
-            <div className={cn(
-              "flex items-center gap-2 transition-opacity duration-300",
-              isTransitioning ? "opacity-0" : "opacity-100"
-            )}>
-              <span className="text-accent">★</span>
-              {bannerEnabled ? (
-                <>
-                  {messages[currentMessageIndex].text}
-                  {messages[currentMessageIndex].linkText && messages[currentMessageIndex].linkHref && (
-                    <Link 
-                      href={messages[currentMessageIndex].linkHref!} 
-                      className="ml-2 text-accent hover:underline underline-offset-4"
-                    >
-                      {messages[currentMessageIndex].linkText}
-                    </Link>
-                  )}
-                </>
-              ) : (
-                "From big to small, we feed them all!"
-              )}
-              <span className="text-accent">★</span>
-            </div>
-            <div className="flex gap-6">
-              <a
-                href="https://www.facebook.com/baystatepet"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-accent transition-colors flex items-center gap-1.5"
-              >
-                <Facebook className="h-3 w-3" />
-                <span>FACEBOOK</span>
-              </a>
-              <a
-                href="https://twitter.com/BayStatePet"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-accent transition-colors flex items-center gap-1.5"
-              >
-                <Twitter className="h-3 w-3" />
-                <span>TWITTER</span>
-              </a>
-              <a
-                href="https://www.instagram.com/baystatepet/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-accent transition-colors flex items-center gap-1.5"
-              >
-                <Instagram className="h-3 w-3" />
-                <span>INSTAGRAM</span>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-primary text-white border-b-4 border-zinc-900 shadow-[0_4px_0_rgba(0,0,0,1)] transition-all duration-300 ease-in-out">
-          <div 
-            className={cn(
-              "container mx-auto flex items-center justify-between px-4 transition-all duration-300 ease-in-out",
-              isScrolled ? "h-20" : "h-24"
-            )}
-          >
+        <div className="bg-primary text-white border-b-4 border-zinc-900 shadow-[0_4px_0_rgba(0,0,0,1)]">
+          <div className="container mx-auto flex h-20 items-center justify-between px-4">
             <Link 
               href="/" 
-              className={cn(
-                "flex items-center group shrink-0 transition-all duration-300 ease-in-out",
-                isScrolled ? "gap-2" : "gap-4"
-              )}
+              className="flex items-center group shrink-0 gap-3"
             >
-              <div 
-                className={cn(
-                  "relative transition-all duration-300 ease-in-out",
-                  isScrolled ? "h-16 w-16" : "h-16 w-16"
-                )}
-              >
+              <div className="relative h-16 w-32">
                 <Image
                   src="/logo.png"
                   alt="Bay State Pet & Garden Supply Logo"
                   fill
-                  sizes="64px"
+                  sizes="128px"
                   className="object-contain"
                   priority
                 />
               </div>
-              <div className="flex flex-col">
-                <span 
-                  className={cn(
-                    "font-black leading-none tracking-tighter text-white uppercase font-display group-hover:text-accent transition-all duration-300 ease-in-out",
-                    isScrolled ? "text-4xl" : "text-4xl"
-                  )}
-                >
+              <div className="flex flex-col items-center">
+                <span className="font-black leading-none tracking-tighter text-white uppercase font-display group-hover:text-accent text-4xl">
                   Bay State
                 </span>
-                <span 
-                  className={cn(
-                    "hidden sm:text-xs font-black sm:block leading-none text-white/80 uppercase tracking-[0.2em] mt-1 border-t border-white/20 pt-1 text-center transition-all duration-300 ease-in-out",
-                    isScrolled ? "hidden" : ""
-                  )}
-                >
+                <span className="hidden sm:block text-xs font-black leading-none text-white/80 uppercase tracking-[0.2em] mt-1 border-t border-white/20 pt-1 text-center w-full">
                   Pet & Garden Supply
                 </span>
               </div>

@@ -132,6 +132,7 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: 'bay-state-cart',
+      skipHydration: true,
     }
   )
 );

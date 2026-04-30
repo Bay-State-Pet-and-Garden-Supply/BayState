@@ -54,8 +54,6 @@ export function transformShopSiteProduct(product: ShopSiteProduct): {
     quantity: number;
     low_stock_threshold: number | null;
     is_taxable: boolean;
-    gtin: string | null;
-    availability: string | null;
     minimum_quantity: number;
     long_description: string | null;
     product_type: string | null;
@@ -83,16 +81,12 @@ export function transformShopSiteProduct(product: ShopSiteProduct): {
         images.push(...product.additionalImages);
     }
 
-    // Determine stock status based on quantity and availability
+    // Determine stock status from quantity only; ShopSite availability text is intentionally ignored.
     let stockStatus: 'in_stock' | 'out_of_stock' | 'pre_order' = 'out_of_stock';
     if (product.isDisabled) {
         stockStatus = 'out_of_stock';
     } else if (product.quantityOnHand > 0) {
         stockStatus = 'in_stock';
-    } else if (product.availability?.toLowerCase() === 'in stock') {
-        stockStatus = 'in_stock';
-    } else if (product.availability?.toLowerCase().includes('pre')) {
-        stockStatus = 'pre_order';
     }
 
     return {
@@ -110,9 +104,7 @@ export function transformShopSiteProduct(product: ShopSiteProduct): {
         weight: product.weight || null,
         quantity: product.quantityOnHand || 0,
         low_stock_threshold: product.lowStockThreshold ?? 5,
-        is_taxable: !!product.taxable,
-        gtin: product.gtin || null,
-        availability: product.availability || null,
+        is_taxable: true,
         minimum_quantity: Math.max(product.minimumQuantity ?? 0, 0),
         long_description: product.moreInfoText || null,
         product_type: normalizeProductTypeValue(product.productTypeName),
@@ -156,12 +148,9 @@ interface ShopSitePipelineInput {
     packaging_type?: string | null;
     weight?: string | null;
     search_keywords?: string | null;
-    gtin?: string | null;
-    availability?: string | null;
     minimum_quantity?: number;
     is_special_order?: boolean;
     in_store_pickup?: boolean;
-    is_taxable?: boolean;
 }
 
 function formatOptionalNumber(value: number | null): string | undefined {
@@ -198,12 +187,9 @@ function buildPipelineInputFromTransformedShopSiteProduct(
         packaging_type: transformed.packaging_type,
         weight: formatOptionalNumber(transformed.weight) ?? null,
         search_keywords: transformed.search_keywords,
-        gtin: transformed.gtin,
-        availability: transformed.availability,
         minimum_quantity: transformed.minimum_quantity,
         is_special_order: transformed.is_special_order,
         in_store_pickup: transformed.in_store_pickup,
-        is_taxable: transformed.is_taxable,
     };
 
     return input;

@@ -39,7 +39,7 @@ export async function getRecentlyViewedProducts(
     .from('recently_viewed')
     .select(`
       viewed_at,
-      product:products(
+      product:products!inner(
         id,
         name,
         slug,
@@ -49,6 +49,7 @@ export async function getRecentlyViewedProducts(
       )
     `)
     .eq('user_id', user.id)
+    .in('product.stock_status', ['in_stock', 'pre_order'])
     .order('viewed_at', { ascending: false })
     .limit(limit + 1);
 
@@ -64,7 +65,7 @@ export async function getRecentlyViewedProducts(
       const product = Array.isArray(item.product) ? item.product[0] : item.product;
       if (!product) return false;
       if (excludeProductId && product.id === excludeProductId) return false;
-      return true;
+      return product.stock_status === 'in_stock' || product.stock_status === 'pre_order';
     })
     .slice(0, limit)
     .map((item) => {

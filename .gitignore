@@ -93,3 +93,7 @@ docker/github-actions-runner/_work/
 
 .omg
 .worktrees
+.superpowers
+.fallow
+.ruff_cache
+
