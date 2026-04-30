@@ -413,6 +413,11 @@ async function fetchExistingProducts(
                 price: Number(product.price),
                 quantity: product.quantity ?? 0,
                 stock_status: product.stock_status ?? 'in_stock',
+                date_sold: product.date_sold,
+                date_received: product.date_received,
+                date_counted: product.date_counted,
+                date_created: product.date_created,
+                date_priced: product.date_priced,
             });
         }
     }

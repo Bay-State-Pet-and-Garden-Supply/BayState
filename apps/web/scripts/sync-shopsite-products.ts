@@ -80,10 +80,6 @@ async function main() {
     const supabaseUrl = process.env.SUPABASE_URL?.trim();
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
-    console.log(`Supabase URL: ${supabaseUrl}`);
-    console.log(`Service Key (first 5): ${serviceRoleKey?.substring(0, 5)}...`);
-    console.log(`Service Key (last 5): ...${serviceRoleKey?.substring(serviceRoleKey.length - 5)}`);
-
     if (!supabaseUrl || !serviceRoleKey) {
         throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.');
     }

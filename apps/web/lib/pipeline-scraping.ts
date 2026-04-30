@@ -17,11 +17,40 @@ import type { ScraperConfig } from '@/lib/admin/scrapers/types';
 import type { 
     PlannedScrapeChunk, 
     PlannedScrapeJob, 
+    OfficialBrandCohortContext,
     ScrapeOptions, 
     ScrapeResult 
 } from './pipeline-scraping-types';
 
 export type { ScrapeOptions } from './pipeline-scraping-types';
+
+function compactOfficialBrandCohortContext(
+    cohort: OfficialBrandCohortContext | undefined,
+): OfficialBrandCohortContext | undefined {
+    if (!cohort) {
+        return undefined;
+    }
+
+    const compacted: OfficialBrandCohortContext = {
+        id: cohort.id,
+        brandId: cohort.brandId,
+        brandName: cohort.brandName,
+    };
+
+    if (cohort.websiteUrl) {
+        compacted.websiteUrl = cohort.websiteUrl;
+    }
+
+    if (cohort.officialDomains && cohort.officialDomains.length > 0) {
+        compacted.officialDomains = cohort.officialDomains;
+    }
+
+    if (cohort.preferredDomains && cohort.preferredDomains.length > 0) {
+        compacted.preferredDomains = cohort.preferredDomains;
+    }
+
+    return compacted;
+}
 
 interface PipelineInputRow {
     sku: string;
@@ -935,6 +964,7 @@ export async function scrapeProducts(
     }
 
     const standardSkuContext = isDiscovery ? undefined : buildStandardSkuContext(scrapeContextItems);
+    const officialBrandCohort = compactOfficialBrandCohortContext(options?.officialBrandCohort);
 
     const nowIso = new Date().toISOString();
 
@@ -964,6 +994,7 @@ export async function scrapeProducts(
         started_at: null,
         type,
         config: isDiscovery ? {
+            ...(officialBrandCohort ? { cohort: officialBrandCohort } : {}),
             items: scrapeContextItems,
         } : (standardSkuContext ? { sku_context: standardSkuContext } : null),
         metadata: isDiscovery
