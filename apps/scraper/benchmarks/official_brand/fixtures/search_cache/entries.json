@@ -1,0 +1,29 @@
+{
+  "schema_version": "official-brand-search-fixtures-v1",
+  "entries": [
+    {
+      "query": "site:scotts.com 032247761215",
+      "results": [
+        {
+          "url": "https://www.scotts.com/en-us/products/spreaders/turf-builder-edgeguard-mini-broadcast-spreader",
+          "title": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
+          "description": "Official Scotts product page",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:miraclegro.com 032247279048",
+      "results": [
+        {
+          "url": "https://www.miraclegro.com/en-us/shop/soils/potting-mix/miracle-gro-potting-mix",
+          "title": "Miracle-Gro Potting Mix",
+          "description": "Official Miracle-Gro product page",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    }
+  ]
+}

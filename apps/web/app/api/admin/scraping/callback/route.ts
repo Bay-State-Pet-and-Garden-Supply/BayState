@@ -9,6 +9,7 @@ import {
 import {
     persistProductsIngestionSourcesPartial,
 } from '@/lib/scraper-callback/products-ingestion';
+import { filterOfficialBrandResultsForPersistence } from '@/lib/scraper-callback/official-brand-validation';
 import { filterMeaningfulProductSources, hasMeaningfulProductSourceData, normalizeProductSources } from '@/lib/product-sources';
 import {
     checkIdempotency,
@@ -207,7 +208,7 @@ export async function POST(request: NextRequest) {
 
         const { data: existingJob, error: existingJobError } = await supabase
             .from('scrape_jobs')
-            .select('id, type, status, lease_token, attempt_count, max_attempts, config, skus')
+            .select('id, type, status, lease_token, attempt_count, max_attempts, config, metadata, skus')
             .eq('id', payload.job_id)
             .single();
 
@@ -375,6 +376,19 @@ export async function POST(request: NextRequest) {
         const isTestJob = jobData?.test_mode === true;
         const testRunId = jobData?.metadata?.test_run_id as string | undefined;
         const resultsData = payload.results?.data;
+        const requestedJobType =
+            priorMetadata && typeof priorMetadata.requested_job_type === 'string'
+                ? priorMetadata.requested_job_type
+                : null;
+        const jobConfigRecord = existingJob.config && typeof existingJob.config === 'object'
+            ? (existingJob.config as Record<string, unknown>)
+            : {};
+        const cohortConfig =
+            jobConfigRecord.cohort && typeof jobConfigRecord.cohort === 'object'
+                ? (jobConfigRecord.cohort as Record<string, unknown>)
+                : null;
+        const isOfficialBrandJob = requestedJobType === 'official_brand' || Boolean(cohortConfig);
+        let effectiveJobStatus = typeof updateData.status === 'string' ? updateData.status : payload.status;
 
         if (updateData.status === 'failed' && !isTestJob) {
             const jobSkus = Array.isArray(existingJob.skus)
@@ -454,14 +468,77 @@ export async function POST(request: NextRequest) {
                 console.log(`[Callback] Test job ${payload.job_id} completed with ${skus.length} SKUs. Skipping products_ingestion persistence.`);
             } else {
                 const persistenceTimestamp = new Date().toISOString();
+                const officialBrandFilter = isOfficialBrandJob
+                    ? filterOfficialBrandResultsForPersistence(transformedResults, {
+                        officialDomains: Array.isArray(cohortConfig?.officialDomains) ? (cohortConfig?.officialDomains as string[]) : undefined,
+                        preferredDomains: Array.isArray(cohortConfig?.preferredDomains) ? (cohortConfig?.preferredDomains as string[]) : undefined,
+                    })
+                    : null;
+
+                const resultsToPersist = officialBrandFilter ? officialBrandFilter.acceptedResults : transformedResults;
+
+                if (officialBrandFilter && officialBrandFilter.rejectedCount > 0) {
+                    Object.entries(officialBrandFilter.rejectedBySku).forEach(([sku, reason]) => {
+                        console.warn(`[Callback] Official Brand rejected for ${sku}: ${reason}`);
+                    });
+                }
 
                 try {
                     const { persisted, missing } = await persistProductsIngestionSourcesPartial(
                         supabase,
-                        transformedResults,
+                        resultsToPersist,
                         false,
                         persistenceTimestamp
                     );
+
+                    if (officialBrandFilter) {
+                        const acceptedCount = persisted.length;
+                        const rejectedCount = officialBrandFilter.rejectedCount;
+                        const validationMetadata = {
+                            accepted_count: acceptedCount,
+                            rejected_count: rejectedCount,
+                            rejected_by_sku: officialBrandFilter.rejectedBySku,
+                            updated_at: persistenceTimestamp,
+                        };
+
+                        const { error: validationMetadataError } = await supabase
+                            .from('scrape_jobs')
+                            .update({
+                                metadata: {
+                                    ...priorMetadata,
+                                    crawl4ai: nextCrawl4AiMetadata,
+                                    official_brand_validation: validationMetadata,
+                                },
+                            })
+                            .eq('id', payload.job_id);
+
+                        if (validationMetadataError) {
+                            console.error('[Callback] Failed to persist Official Brand validation metadata:', validationMetadataError);
+                            return NextResponse.json({ error: 'Failed to persist Official Brand validation metadata' }, { status: 500 });
+                        }
+
+                        if (acceptedCount === 0) {
+                            const { error: zeroAcceptedStatusError } = await supabase
+                                .from('scrape_jobs')
+                                .update({
+                                    status: 'failed',
+                                    error_message: 'Official Brand returned no consolidation-ready results',
+                                    completed_at: persistenceTimestamp,
+                                    updated_at: persistenceTimestamp,
+                                })
+                                .eq('id', payload.job_id);
+
+                            if (zeroAcceptedStatusError) {
+                                console.error('[Callback] Failed to mark Official Brand job as failed after zero accepted results:', zeroAcceptedStatusError);
+                                return NextResponse.json(
+                                    { error: 'Failed to update Official Brand job status after validation' },
+                                    { status: 500 }
+                                );
+                            }
+
+                            effectiveJobStatus = 'failed';
+                        }
+                    }
 
                     if (missing.length > 0) {
                         console.warn(
@@ -522,7 +599,7 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        console.log(`[Callback] Job ${payload.job_id} updated to ${payload.status} by ${runnerName}`);
+        console.log(`[Callback] Job ${payload.job_id} updated to ${effectiveJobStatus} by ${runnerName}`);
 
         // Finalize test job if this is a test job that has reached a terminal state
         if ((payload.status === 'completed' || payload.status === 'failed') && isTestJob) {

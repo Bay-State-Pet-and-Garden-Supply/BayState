@@ -1134,6 +1134,19 @@ def _run_ai_search_job(
             merged_context.setdefault("sku", candidate_sku)
             item_context_by_sku[candidate_sku] = merged_context
 
+    cohort_context = search_cfg.get("cohort") if isinstance(search_cfg.get("cohort"), dict) else {}
+    cohort_brand = cohort_context.get("brandName") if isinstance(cohort_context.get("brandName"), str) else None
+    cohort_official_domains = (
+        cohort_context.get("officialDomains")
+        if isinstance(cohort_context.get("officialDomains"), list)
+        else None
+    )
+    cohort_preferred_domains = (
+        cohort_context.get("preferredDomains")
+        if isinstance(cohort_context.get("preferredDomains"), list)
+        else None
+    )
+
     items = []
     for sku in skus:
         item_context = item_context_by_sku.get(sku, {})
@@ -1141,10 +1154,10 @@ def _run_ai_search_job(
             {
                 "sku": sku,
                 "product_name": item_context.get("product_name") if item_context.get("product_name") is not None else search_cfg.get("product_name"),
-                "brand": item_context.get("brand") if item_context.get("brand") is not None else search_cfg.get("brand"),
+                "brand": item_context.get("brand") if item_context.get("brand") is not None else (cohort_brand if cohort_brand is not None else search_cfg.get("brand")),
                 "category": item_context.get("category") if item_context.get("category") is not None else search_cfg.get("category"),
-                "preferred_domains": item_context.get("preferred_domains") if item_context.get("preferred_domains") is not None else search_cfg.get("preferred_domains"),
-                "official_domains": item_context.get("official_domains") if item_context.get("official_domains") is not None else search_cfg.get("official_domains"),
+                "preferred_domains": item_context.get("preferred_domains") if item_context.get("preferred_domains") is not None else (cohort_preferred_domains if cohort_preferred_domains is not None else search_cfg.get("preferred_domains")),
+                "official_domains": item_context.get("official_domains") if item_context.get("official_domains") is not None else (cohort_official_domains if cohort_official_domains is not None else search_cfg.get("official_domains")),
             }
         )
 

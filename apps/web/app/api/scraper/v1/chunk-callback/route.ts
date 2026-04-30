@@ -5,6 +5,7 @@ import { parseChunkCallbackPayload, ChunkCallbackPayload } from '@/lib/scraper-c
 import {
     persistProductsIngestionSourcesPartial,
 } from '@/lib/scraper-callback/products-ingestion';
+import { filterOfficialBrandResultsForPersistence } from '@/lib/scraper-callback/official-brand-validation';
 import { filterMeaningfulProductSources, hasMeaningfulProductSourceData, mergeProductSources, normalizeProductSources } from '@/lib/product-sources';
 import {
     checkIdempotency,
@@ -55,7 +56,12 @@ export async function persistChunkResultsToPipeline(
     supabase: SupabaseClient,
     jobId: string,
     aggregatedResults: ScrapedDataBySku,
-    isTestJob: boolean
+    isTestJob: boolean,
+    officialBrandContext?: {
+        isOfficialBrandJob: boolean;
+        officialDomains?: string[];
+        preferredDomains?: string[];
+    }
 ): Promise<string[]> {
     if (isTestJob) {
         console.log(
@@ -65,12 +71,55 @@ export async function persistChunkResultsToPipeline(
     }
 
     const nowIso = new Date().toISOString();
+    const officialBrandFilter = officialBrandContext?.isOfficialBrandJob
+        ? filterOfficialBrandResultsForPersistence(aggregatedResults, {
+            officialDomains: officialBrandContext.officialDomains,
+            preferredDomains: officialBrandContext.preferredDomains,
+        })
+        : null;
+    const resultsToPersist = officialBrandFilter ? officialBrandFilter.acceptedResults : aggregatedResults;
+
+    if (officialBrandFilter && officialBrandFilter.rejectedCount > 0) {
+        Object.entries(officialBrandFilter.rejectedBySku).forEach(([sku, reason]) => {
+            console.warn(`[Chunk Callback] Official Brand rejected for ${sku}: ${reason}`);
+        });
+    }
+
     const { persisted, missing } = await persistProductsIngestionSourcesPartial(
         supabase,
-        aggregatedResults,
+        resultsToPersist,
         isTestJob,
         nowIso
     );
+
+    if (officialBrandFilter) {
+        const validationMetadata = {
+            accepted_count: persisted.length,
+            rejected_count: officialBrandFilter.rejectedCount,
+            rejected_by_sku: officialBrandFilter.rejectedBySku,
+            updated_at: nowIso,
+        };
+
+        const { data: metadataRow } = await supabase
+            .from('scrape_jobs')
+            .select('metadata')
+            .eq('id', jobId)
+            .single();
+
+        const priorMetadata = metadataRow?.metadata && typeof metadataRow.metadata === 'object'
+            ? (metadataRow.metadata as Record<string, unknown>)
+            : {};
+
+        await supabase
+            .from('scrape_jobs')
+            .update({
+                metadata: {
+                    ...priorMetadata,
+                    official_brand_validation: validationMetadata,
+                },
+            })
+            .eq('id', jobId);
+    }
 
     if (missing.length > 0) {
         console.warn(
@@ -138,11 +187,21 @@ export async function POST(request: NextRequest) {
         const jobId = chunk.job_id;
         const { data: updatedJobRecord } = await supabase
             .from('scrape_jobs')
-            .select('test_mode')
+            .select('test_mode, config, metadata')
             .eq('id', jobId)
             .single();
 
         const isTestJob = updatedJobRecord?.test_mode === true;
+        const metadataRecord = updatedJobRecord?.metadata && typeof updatedJobRecord.metadata === 'object'
+            ? (updatedJobRecord.metadata as Record<string, unknown>)
+            : {};
+        const configRecord = updatedJobRecord?.config && typeof updatedJobRecord.config === 'object'
+            ? (updatedJobRecord.config as Record<string, unknown>)
+            : {};
+        const cohortRecord = configRecord.cohort && typeof configRecord.cohort === 'object'
+            ? (configRecord.cohort as Record<string, unknown>)
+            : {};
+        const isOfficialBrandJob = metadataRecord.requested_job_type === 'official_brand' || Boolean(configRecord.cohort);
 
         const chunkIdempotency = await checkIdempotency(
             supabase,
@@ -167,7 +226,11 @@ export async function POST(request: NextRequest) {
             const chunkResultsBySku = mergeChunkResults([{ results: results.data }]);
             if (Object.keys(chunkResultsBySku).length > 0) {
                 try {
-                    await persistChunkResultsToPipeline(supabase, jobId, chunkResultsBySku, isTestJob);
+                    await persistChunkResultsToPipeline(supabase, jobId, chunkResultsBySku, isTestJob, {
+                        isOfficialBrandJob,
+                        officialDomains: Array.isArray(cohortRecord.officialDomains) ? (cohortRecord.officialDomains as string[]) : undefined,
+                        preferredDomains: Array.isArray(cohortRecord.preferredDomains) ? (cohortRecord.preferredDomains as string[]) : undefined,
+                    });
                     console.log(`[Chunk Callback] Persisted ${Object.keys(chunkResultsBySku).length} SKUs from chunk ${chunk.chunk_index}`);
                 } catch (persistError) {
                     effectiveChunkStatus = 'failed';

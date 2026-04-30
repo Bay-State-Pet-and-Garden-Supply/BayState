@@ -5,6 +5,7 @@ import json
 import logging
 import os
 from typing import Any, List
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
@@ -56,6 +57,78 @@ class OfficialBrandScraper:
             model=self._llm_runtime.model
         )
 
+    @staticmethod
+    def _normalize_domain(value: str) -> str | None:
+        trimmed = value.strip().lower()
+        if not trimmed:
+            return None
+
+        with_protocol = trimmed if "://" in trimmed else f"https://{trimmed}"
+
+        try:
+            hostname = urlparse(with_protocol).netloc.lower() or urlparse(with_protocol).path.lower()
+        except Exception:
+            hostname = trimmed
+
+        hostname = hostname.replace("www.", "", 1).split("/", 1)[0].strip()
+        return hostname or None
+
+    @classmethod
+    def _url_matches_domain_list(cls, url: str, domains: list[str] | None) -> bool:
+        if not domains:
+            return False
+
+        normalized_url_domain = cls._normalize_domain(url)
+        if not normalized_url_domain:
+            return False
+
+        normalized_domains = [domain for domain in (cls._normalize_domain(candidate) for candidate in domains) if domain]
+        return any(
+            normalized_url_domain == domain or normalized_url_domain.endswith(f".{domain}")
+            for domain in normalized_domains
+        )
+
+    async def _search_queries_until_match(
+        self,
+        queries: list[str],
+        target_domains: list[str] | None,
+    ) -> tuple[list[dict[str, Any]], str | None]:
+        merged_results: list[dict[str, Any]] = []
+        seen_urls: set[str] = set()
+
+        for query in queries:
+            logger.info("[OfficialBrandScraper] Searching for official URL: %s", query)
+            results, error = await self._search_client.search(query)
+            if error:
+                logger.error("[OfficialBrandScraper] Search failed: %s", error)
+                return [], error
+
+            if not results:
+                continue
+
+            for result in results:
+                url = str(result.get("url") or "").strip()
+                if url:
+                    if url in seen_urls:
+                        continue
+                    seen_urls.add(url)
+                merged_results.append(result)
+
+            if target_domains:
+                matched = next(
+                    (
+                        str(result.get("url") or "").strip()
+                        for result in results
+                        if str(result.get("url") or "").strip()
+                        and self._url_matches_domain_list(str(result.get("url") or "").strip(), target_domains)
+                    ),
+                    None,
+                )
+                if matched:
+                    return merged_results, None
+
+        return merged_results, None
+
     async def identify_official_url(
         self,
         sku: str,
@@ -76,6 +149,14 @@ class OfficialBrandScraper:
         Returns:
             The official manufacturer URL or None if not found
         """
+        normalized_official_domains = [
+            domain for domain in (self._normalize_domain(candidate) for candidate in (official_domains or [])) if domain
+        ]
+        normalized_preferred_domains = [
+            domain for domain in (self._normalize_domain(candidate) for candidate in (preferred_domains or [])) if domain
+        ]
+        targeted_domains = normalized_official_domains or normalized_preferred_domains
+
         # 1. Build query with exclusions
         effective_brand = brand.strip() if brand and brand.lower() != "none" else ""
         if effective_brand:
@@ -102,12 +183,19 @@ class OfficialBrandScraper:
         ]
         query = self._query_builder.build_brand_focused_query(base_query, exclusions)
 
-        logger.info("[OfficialBrandScraper] Searching for official URL: %s", query)
+        site_queries = self._query_builder.build_site_query_variants(
+            targeted_domains,
+            sku,
+            product_name,
+            effective_brand or None,
+            None,
+        )
+
+        queries = [*site_queries, query]
 
         # 2. Search
-        results, error = await self._search_client.search(query)
+        results, error = await self._search_queries_until_match(queries, normalized_official_domains or normalized_preferred_domains)
         if error:
-            logger.error("[OfficialBrandScraper] Search failed: %s", error)
             return None
 
         if not results:
@@ -118,33 +206,48 @@ class OfficialBrandScraper:
             )
             return None
 
-        # 3. Check for Knowledge Graph result first
-        for result in results:
-            if result.get("result_type") == "knowledge_graph":
-                kg_url = str(result.get("url") or "").strip()
-                if kg_url:
-                    logger.info(
-                        "[OfficialBrandScraper] Found Knowledge Graph result: %s", kg_url
-                    )
-                    return kg_url
-
-        # 4. Check against official_domains if provided
-        if official_domains:
+        # 3. Check against official_domains if provided
+        if normalized_official_domains:
             for result in results[:5]:
-                url = result.get("url")
+                url = str(result.get("url") or "").strip()
                 if not url:
                     continue
-                domain = urlparse(url).netloc.lower()
-                if domain.startswith("www."):
-                    domain = domain[4:]
-                
-                if any(domain == off or domain.endswith(f".{off}") for off in official_domains):
+
+                if self._url_matches_domain_list(url, normalized_official_domains):
                     logger.info(
                         "[OfficialBrandScraper] Found matching official domain: %s", url
                     )
                     return url
 
-        # 5. Fallback to LLM scoring for top 5 organic results
+        # 4. Check against preferred_domains if provided
+        if normalized_preferred_domains:
+            for result in results[:5]:
+                url = str(result.get("url") or "").strip()
+                if not url:
+                    continue
+
+                if self._url_matches_domain_list(url, normalized_preferred_domains):
+                    logger.info(
+                        "[OfficialBrandScraper] Found matching preferred domain: %s", url
+                    )
+                    return url
+
+        # 5. Check for Knowledge Graph result after configured domain checks
+        for result in results:
+            if result.get("result_type") == "knowledge_graph":
+                kg_url = str(result.get("url") or "").strip()
+                if not kg_url:
+                    continue
+
+                if targeted_domains and not self._url_matches_domain_list(kg_url, targeted_domains):
+                    continue
+
+                logger.info(
+                    "[OfficialBrandScraper] Found Knowledge Graph result: %s", kg_url
+                )
+                return kg_url
+
+        # 6. Fallback to LLM scoring for top 5 organic results
         scored_results = []
         scoring_context = effective_brand or product_name or ""
         for result in results[:5]:

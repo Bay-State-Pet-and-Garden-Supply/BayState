@@ -17,6 +17,15 @@ export interface PlannedScrapeJob {
     plannedWorkUnits: number;
 }
 
+export interface OfficialBrandCohortContext {
+    id: string;
+    brandId: string;
+    brandName: string;
+    websiteUrl?: string;
+    officialDomains?: string[];
+    preferredDomains?: string[];
+}
+
 /**
  * Options for scraping jobs.
  */
@@ -37,6 +46,8 @@ export interface ScrapeOptions {
     enrichment_method?: 'scrapers' | 'official_brand';
     /** Brand name from cohort assignment — injected into context items that lack a brand */
     cohortBrand?: string;
+    /** Cohort-scoped context for Official Brand jobs */
+    officialBrandCohort?: OfficialBrandCohortContext;
 }
 
 export interface ScrapeResult {
