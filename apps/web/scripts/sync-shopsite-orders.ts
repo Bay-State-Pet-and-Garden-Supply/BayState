@@ -2,9 +2,12 @@ import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ShopSiteClient } from '../lib/admin/migration/shopsite-client';
 import { transformShopSiteOrder } from '../lib/admin/migration/order-sync';
+import { chunk, parseNumericOrderNumber } from '../lib/admin/migration/shopsite-order-sync-utils';
 import type { SyncResult, ShopSiteOrder } from '../lib/admin/migration/types';
 
 const MIGRATION_SETTINGS_KEY = 'shopsite_migration';
+const ORDER_BATCH_SIZE = 200;
+const UUID_NIL = '00000000-0000-0000-0000-000000000000';
 
 function getArgValue(name: string): string | undefined {
     const exact = process.argv.find((arg) => arg === `--${name}`);
@@ -55,6 +58,34 @@ async function completeLog(supabase: SupabaseClient, logId: string, result: Sync
     }
 }
 
+async function getShopSiteHighWaterOrder(supabase: SupabaseClient): Promise<string | null> {
+    const { data, error } = await supabase
+        .from('orders')
+        .select('order_number')
+        .eq('source', 'shopsite');
+
+    if (error) {
+        throw new Error(`Failed to load ShopSite high-water mark: ${error.message}`);
+    }
+
+    let maxOrderNumber: number | null = null;
+    for (const row of data ?? []) {
+        const parsed = parseNumericOrderNumber(row.order_number);
+        if (parsed === null) {
+            continue;
+        }
+        if (maxOrderNumber === null || parsed > maxOrderNumber) {
+            maxOrderNumber = parsed;
+        }
+    }
+
+    if (maxOrderNumber === null) {
+        return null;
+    }
+
+    return String(maxOrderNumber + 1);
+}
+
 async function main() {
     const supabaseUrl = process.env.SUPABASE_URL?.trim();
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -99,25 +130,13 @@ async function main() {
     try {
         const client = new ShopSiteClient(credentials);
         
-        // 1. Determine High-Water Mark (Latest Order Number)
+        // 1. Determine High-Water Mark (Latest ShopSite Order Number)
         let startOrderArg = getArgValue('start-order');
         if (!startOrderArg && !startDate) {
-            console.log('No start-order or start-date provided. Checking database for latest order...');
-            const { data: latestOrder } = await supabase
-                .from('orders')
-                .select('order_number')
-                .order('order_number', { ascending: false })
-                .limit(1)
-                .single();
-            
-            if (latestOrder?.order_number) {
-                // ShopSite order numbers are sequential strings/numbers. 
-                // We add 1 to the last one we have.
-                const lastNum = parseInt(latestOrder.order_number, 10);
-                if (!isNaN(lastNum)) {
-                    startOrderArg = (lastNum + 1).toString();
-                    console.log(`Resuming from order number: ${startOrderArg}`);
-                }
+            console.log('No start-order or start-date provided. Checking database for latest ShopSite order...');
+            startOrderArg = await getShopSiteHighWaterOrder(supabase) ?? undefined;
+            if (startOrderArg) {
+                console.log(`Resuming from ShopSite order number: ${startOrderArg}`);
             }
         }
 
@@ -148,75 +167,105 @@ async function main() {
 
         // 4. Transform and Upsert Orders
         let created = 0;
-        let updated = 0;
+        const updated = 0;
         let failed = 0;
         const errors: any[] = [];
 
-        for (const order of shopsiteOrders) {
+        const orderBatches = chunk(shopsiteOrders, ORDER_BATCH_SIZE);
+        for (const [batchIndex, orderBatch] of orderBatches.entries()) {
             try {
-                const { order: transformed, items } = transformShopSiteOrder(order, profileIdMap, productIdMap);
-                
-                // Upsert Order
-                const { data: upsertedOrder, error: orderError } = await supabase
+                const transformedBatch = orderBatch.map((order) => {
+                    const transformedResult = transformShopSiteOrder(order, profileIdMap, productIdMap);
+                    return {
+                        sourceOrderNumber: order.orderNumber,
+                        transformedOrder: transformedResult.order,
+                        transformedItems: transformedResult.items,
+                    };
+                });
+
+                const orderRows = transformedBatch.map(({ transformedOrder }) => ({
+                    order_number: transformedOrder.legacy_order_number,
+                    user_id: transformedOrder.user_id,
+                    customer_name: transformedOrder.customer_name,
+                    customer_email: transformedOrder.customer_email,
+                    status: transformedOrder.status,
+                    subtotal: transformedOrder.subtotal,
+                    tax: transformedOrder.tax,
+                    total: transformedOrder.total,
+                    created_at: transformedOrder.created_at,
+                    payment_method: transformedOrder.payment_details.method === 'CreditCard' ? 'credit_card' : 'paypal',
+                    notes: `Imported from ShopSite. Transaction ID: ${transformedOrder.shopsite_transaction_id || 'N/A'}`,
+                    source: 'shopsite',
+                }));
+
+                const { data: upsertedOrders, error: orderError } = await supabase
                     .from('orders')
-                    .upsert({
-                        order_number: transformed.legacy_order_number,
-                        customer_name: transformed.customer_name,
-                        customer_email: transformed.customer_email,
-                        status: transformed.status,
-                        subtotal: transformed.subtotal,
-                        tax: transformed.tax,
-                        total: transformed.total,
-                        created_at: transformed.created_at,
-                        payment_method: transformed.payment_details.method === 'CreditCard' ? 'credit_card' : 'paypal',
-                        notes: `Imported from ShopSite. Transaction ID: ${transformed.shopsite_transaction_id || 'N/A'}`
-                    }, { onConflict: 'order_number' })
-                    .select('id')
-                    .single();
+                    .upsert(orderRows, { onConflict: 'order_number' })
+                    .select('id, order_number');
 
-                if (orderError) throw orderError;
-                
-                // 1. Delete existing items for this order to ensure idempotency
-                const { error: deleteError } = await supabase
-                    .from('order_items')
-                    .delete()
-                    .eq('order_id', upsertedOrder.id);
-
-                if (deleteError) {
-                    console.warn(`Warning: Failed to clear items for order ${transformed.legacy_order_number}:`, deleteError.message);
+                if (orderError) {
+                    throw orderError;
                 }
 
-                // 2. Insert Items
-                if (upsertedOrder && items.length > 0) {
-                    const mappedItems = items.map(item => ({
-                        order_id: upsertedOrder.id,
+                const orderIdByNumber = new Map<string, string>();
+                for (const order of upsertedOrders ?? []) {
+                    orderIdByNumber.set(order.order_number, order.id);
+                }
+
+                const upsertedOrderIds = Array.from(orderIdByNumber.values());
+                if (upsertedOrderIds.length > 0) {
+                    const { error: deleteError } = await supabase
+                        .from('order_items')
+                        .delete()
+                        .in('order_id', upsertedOrderIds);
+
+                    if (deleteError) {
+                        throw deleteError;
+                    }
+                }
+
+                const itemRows = transformedBatch.flatMap(({ transformedOrder, transformedItems }) => {
+                    const orderId = orderIdByNumber.get(transformedOrder.legacy_order_number);
+                    if (!orderId) {
+                        return [];
+                    }
+
+                    return transformedItems.map((item) => ({
+                        order_id: orderId,
                         item_type: 'product',
-                        item_id: item.item_id || '00000000-0000-0000-0000-000000000000', // Fallback for missing products
+                        item_id: item.item_id || UUID_NIL,
                         item_name: `Product ${item.legacy_sku}`,
                         item_slug: item.legacy_sku,
                         quantity: item.quantity,
                         unit_price: item.unit_price,
-                        total_price: item.unit_price * item.quantity
+                        total_price: item.unit_price * item.quantity,
                     }));
+                });
 
+                if (itemRows.length > 0) {
                     const { error: itemsError } = await supabase
                         .from('order_items')
-                        .insert(mappedItems);
-                    
+                        .insert(itemRows);
+
                     if (itemsError) {
-                        console.warn(`Warning: Failed to insert items for order ${transformed.legacy_order_number}:`, itemsError.message);
+                        throw itemsError;
                     }
                 }
 
-                created++; // Treating upsert as 'created' for simplicity in log
+                created += orderRows.length;
+                if ((batchIndex + 1) % 5 === 0 || batchIndex + 1 === orderBatches.length) {
+                    console.log(`[Progress] Processed ${Math.min((batchIndex + 1) * ORDER_BATCH_SIZE, shopsiteOrders.length)}/${shopsiteOrders.length} orders...`);
+                }
             } catch (err: any) {
-                console.error(`Failed to process order ${order.orderNumber}:`, err.message);
-                failed++;
-                errors.push({
-                    record: order.orderNumber,
-                    error: err.message,
-                    timestamp: new Date().toISOString()
-                });
+                console.error(`Failed to process order batch ${batchIndex + 1}:`, err.message);
+                failed += orderBatch.length;
+                for (const order of orderBatch) {
+                    errors.push({
+                        record: order.orderNumber,
+                        error: err.message,
+                        timestamp: new Date().toISOString(),
+                    });
+                }
             }
         }
 

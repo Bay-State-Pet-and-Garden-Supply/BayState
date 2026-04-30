@@ -1,0 +1,41 @@
+{
+  "schema_version": "official-brand-benchmark-dataset-v1",
+  "entries": [
+    {
+      "sku": "032247761215",
+      "brand": "Scotts",
+      "product_name": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
+      "expected_official_domains": [
+        "scotts.com"
+      ],
+      "preferred_domains": [
+        "scotts.com"
+      ],
+      "expected_url": "https://www.scotts.com/en-us/products/spreaders/turf-builder-edgeguard-mini-broadcast-spreader",
+      "category": "lawn-garden",
+      "difficulty": "easy",
+      "tags": [
+        "smoke",
+        "official-domain"
+      ]
+    },
+    {
+      "sku": "032247279048",
+      "brand": "Miracle-Gro",
+      "product_name": "Miracle-Gro Potting Mix 50 Quart",
+      "expected_official_domains": [
+        "miraclegro.com"
+      ],
+      "preferred_domains": [
+        "miraclegro.com"
+      ],
+      "expected_url": "https://www.miraclegro.com/en-us/shop/soils/potting-mix/miracle-gro-potting-mix",
+      "category": "lawn-garden",
+      "difficulty": "easy",
+      "tags": [
+        "smoke",
+        "official-domain"
+      ]
+    }
+  ]
+}

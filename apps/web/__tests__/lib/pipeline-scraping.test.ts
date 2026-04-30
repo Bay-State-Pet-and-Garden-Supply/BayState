@@ -325,6 +325,45 @@ describe('scrapeProducts', () => {
         ]);
     });
 
+    it('should include cohort-scoped brand context in official brand job config', async () => {
+        mockSupabase = makeSupabaseMock({
+            pipelineRows: [
+                {
+                    sku: 'SKU-1',
+                    cohort_id: 'cohort-1',
+                    input: {
+                        name: 'Miracle-Gro Potting Mix 25 Quart',
+                        price: 9.99,
+                    },
+                },
+            ],
+        });
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], {
+            enrichment_method: 'official_brand',
+            officialBrandCohort: {
+                id: 'cohort-1',
+                brandId: 'brand-1',
+                brandName: 'Miracle-Gro',
+                websiteUrl: 'https://www.scottsmiraclegro.com/en-us/brands/miracle-gro',
+                officialDomains: ['scottsmiraclegro.com'],
+                preferredDomains: ['homedepot.com'],
+            },
+        });
+
+        expect(result.success).toBe(true);
+        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
+        expect(insertedPayload.config.cohort).toEqual({
+            id: 'cohort-1',
+            brandId: 'brand-1',
+            brandName: 'Miracle-Gro',
+            websiteUrl: 'https://www.scottsmiraclegro.com/en-us/brands/miracle-gro',
+            officialDomains: ['scottsmiraclegro.com'],
+            preferredDomains: ['homedepot.com'],
+        });
+    });
+
     it('should include per-sku input context in standard job config', async () => {
         mockSupabase = makeSupabaseMock({
             pipelineRows: [
@@ -456,7 +495,8 @@ describe('scrapeProducts', () => {
                 price: 9.99,
                 brand: 'Miracle-Gro',
                 category: 'Garden > Potting Mix',
-                preferred_domains: ['scottsmiraclegro.com', 'homedepot.com', 'lowes.com'],
+                official_domains: ['scottsmiraclegro.com'],
+                preferred_domains: ['homedepot.com', 'lowes.com'],
             },
         ]);
     });
@@ -495,7 +535,7 @@ describe('scrapeProducts', () => {
                 product_name: 'LV SEED ORGANIC WHEAT GRASS HARD RED',
                 price: 3.29,
                 brand: 'Lake Valley Seed',
-                preferred_domains: ['lakevalleyseed.com'],
+                official_domains: ['lakevalleyseed.com'],
             },
         ]);
     });
@@ -538,7 +578,8 @@ describe('scrapeProducts', () => {
                 price: 9.99,
                 brand: 'Miracle-Gro',
                 category: 'Garden > Potting Mix',
-                preferred_domains: ['scottsmiraclegro.com', 'homedepot.com', 'lowes.com'],
+                official_domains: ['scottsmiraclegro.com'],
+                preferred_domains: ['homedepot.com', 'lowes.com'],
             },
         ]);
     });
@@ -588,7 +629,8 @@ describe('scrapeProducts', () => {
                 price: 2.49,
                 brand: 'Bentley Seed',
                 category: 'Vegetable Seeds',
-                preferred_domains: ['bentleyseeds.com', 'arett.com'],
+                official_domains: ['bentleyseeds.com'],
+                preferred_domains: ['arett.com'],
             },
         ]);
     });

@@ -10,9 +10,8 @@ Options:
 Commands:
     audit                  Run fleet-wide scraper audits.
     batch                  Test product batches locally.
+    benchmark              Run benchmark tools.
     cohort                 Visualize and manage cohorts.
-    benchmark              Benchmark extraction strategies (legacy).
-    benchmark-unified      Unified benchmark CLI (run, report, compare, validate-urls).
 """
 
 from __future__ import annotations
@@ -21,9 +20,8 @@ import click
 
 from .commands.audit import register_audit_commands
 from .commands.batch import register_batch_commands
-from .commands.benchmark import register_benchmark_commands
-from .commands.benchmark_unified import benchmark_unified
 from .commands.cohort import register_cohort_commands
+from .commands.official_brand_benchmark import register_official_brand_benchmark_commands
 
 __version__ = "0.1.0"
 
@@ -55,21 +53,14 @@ def cohort() -> None:
 
 @cli.group()
 def benchmark() -> None:
-    """Benchmark extraction strategies."""
-    pass
-
-
-@cli.group(name="benchmark-unified")
-def benchmark_unified_group() -> None:
-    """Unified benchmark CLI (run, report, compare, validate-urls)."""
+    """Run benchmark tools."""
     pass
 
 
 register_audit_commands(audit)
 register_cohort_commands(cohort)
 register_batch_commands(batch)
-register_benchmark_commands(benchmark)
-cli.add_command(benchmark_unified, name="benchmark-unified")
+register_official_brand_benchmark_commands(benchmark)
 
 
 if __name__ == "__main__":
