@@ -1,19 +1,18 @@
 import { AIScrapingSettingsCard } from "@/components/admin/settings/AIScrapingSettingsCard";
 import { AIConsolidationSettingsCard } from "@/components/admin/settings/AIConsolidationSettingsCard";
 import { ShopSiteCredentialsCard } from "@/components/admin/settings/ShopSiteCredentialsCard";
+import { AdminPageShell } from "@/components/admin/admin-page-shell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Brain } from "lucide-react";
+import { Brain, Settings } from "lucide-react";
 
 export default function AdminSettingsPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight font-black uppercase tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">
-          Manage shared credentials and OpenAI-powered external integrations.
-        </p>
-      </div>
-
+    <AdminPageShell
+      title="Settings"
+      description="Manage shared credentials and OpenAI-powered external integrations."
+      icon={<Settings className="h-5 w-5" />}
+      contentClassName="space-y-6"
+    >
       <Alert className="border-emerald-200 bg-emerald-50/80 text-emerald-950 [&>svg]:text-emerald-700">
         <Brain className="h-4 w-4" />
         <AlertTitle>External AI stack finalized</AlertTitle>
@@ -27,6 +26,6 @@ export default function AdminSettingsPage() {
       <ShopSiteCredentialsCard />
       <AIScrapingSettingsCard />
       <AIConsolidationSettingsCard />
-    </div>
+    </AdminPageShell>
   );
 }

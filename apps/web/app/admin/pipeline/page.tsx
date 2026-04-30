@@ -1,4 +1,6 @@
 import { Metadata } from 'next';
+import { Activity } from 'lucide-react';
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { PipelineClient } from '@/components/admin/pipeline/PipelineClient';
 import { getProductsByStage, getStatusCounts, getAvailableSourcesByStage } from '@/lib/pipeline';
 import { normalizePipelineStage } from '@/lib/pipeline/types';
@@ -78,12 +80,19 @@ export default async function PipelinePage({ searchParams }: PageProps) {
     }
 
     return (
-        <PipelineClient
-            initialProducts={initialProducts}
-            initialCounts={initialCounts}
-            initialTotal={initialTotal}
-            initialStage={initialStage}
-            initialSources={initialSources}
-        />
+        <AdminPageShell
+            title="Product Pipeline"
+            description="Manage product ingestion workflow from import through exporting."
+            icon={<Activity className="h-5 w-5" />}
+            fullHeight
+        >
+            <PipelineClient
+                initialProducts={initialProducts}
+                initialCounts={initialCounts}
+                initialTotal={initialTotal}
+                initialStage={initialStage}
+                initialSources={initialSources}
+            />
+        </AdminPageShell>
     );
 }

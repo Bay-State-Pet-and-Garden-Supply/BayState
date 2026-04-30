@@ -17,8 +17,6 @@ import {
   ArrowLeft,
   Layers,
   Tag,
-  Plus,
-  Database,
   Edit2,
 } from "lucide-react";
 import { StageTabs } from "./StageTabs";
@@ -33,6 +31,13 @@ import { PipelineFilters, type PipelineFiltersState } from "./PipelineFilters";
 import { PipelineSearchField } from "./PipelineSearchField";
 import { formatPipelineBatchLabel } from "./view-utils";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
+import {
+  AdminCard,
+  AdminCardHeader,
+  AdminCardTitle,
+  AdminCardDescription,
+  AdminCardContent,
+} from "@/components/admin/admin-card";
 import {
   Accordion,
   AccordionContent,
@@ -1369,41 +1374,41 @@ export function PipelineClient({
         >
           {currentStage === "scraping" ? (
             <div className="grid gap-4 xl:grid-cols-1 p-1 pr-8 pb-8">
-              <section className="rounded-none border-4 border-zinc-950 bg-card p-4 shadow-[8px_8px_0px_rgba(0,0,0,1)] sm:p-6">
-                <div className="flex items-start gap-3 mb-4">
-                  <div className="rounded-none border-2 border-zinc-950 bg-brand-forest-green/10 p-2">
-                    <Activity className="h-5 w-5 text-brand-forest-green" />
+              <AdminCard variant="panel">
+                <AdminCardHeader>
+                  <div className="rounded-lg bg-primary/10 p-2">
+                    <Activity className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-black uppercase tracking-tighter text-foreground">
-                      Active Runs
-                    </h2>
-                    <p className="text-[10px] font-black uppercase text-muted-foreground">
+                    <AdminCardTitle>Active Runs</AdminCardTitle>
+                    <AdminCardDescription>
                       Live scraper jobs currently running or queued.
-                    </p>
+                    </AdminCardDescription>
                   </div>
-                </div>
-                <ActiveRunsTab />
-              </section>
+                </AdminCardHeader>
+                <AdminCardContent>
+                  <ActiveRunsTab />
+                </AdminCardContent>
+              </AdminCard>
             </div>
           ) : currentStage === "consolidating" ? (
             <div className="grid gap-4 xl:grid-cols-1 p-1 pr-8 pb-8">
-              <section className="rounded-none border-4 border-zinc-950 bg-card p-4 shadow-[8px_8px_0px_rgba(0,0,0,1)] sm:p-6">
-                <div className="flex items-start gap-3 mb-4">
-                  <div className="rounded-none border-2 border-zinc-950 bg-brand-burgundy/10 p-2">
+              <AdminCard variant="panel">
+                <AdminCardHeader>
+                  <div className="rounded-lg bg-brand-burgundy/10 p-2">
                     <Brain className="h-5 w-5 text-brand-burgundy" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-black uppercase tracking-tighter text-foreground">
-                      AI Consolidations
-                    </h2>
-                    <p className="text-[10px] font-black uppercase text-muted-foreground">
+                    <AdminCardTitle>AI Consolidations</AdminCardTitle>
+                    <AdminCardDescription>
                       Active consolidation batches and history.
-                    </p>
+                    </AdminCardDescription>
                   </div>
-                </div>
-                <ActiveConsolidationsTab />
-              </section>
+                </AdminCardHeader>
+                <AdminCardContent>
+                  <ActiveConsolidationsTab />
+                </AdminCardContent>
+              </AdminCard>
             </div>
           ) : currentStage === "scraped" ? (
             <ScrapedResultsView
@@ -1724,15 +1729,15 @@ export function PipelineClient({
         </div>
 
         {(isLoading || isNavigating || isSearching) && (
-          <div 
+          <div
             className="absolute inset-0 z-50 flex items-center justify-center"
             role="status"
             aria-live="polite"
             aria-busy={isLoading || isNavigating || isSearching}
           >
-            <div className="flex flex-col items-center gap-2 rounded-none bg-background/80 px-8 py-6 shadow-[1px_1px_0px_rgba(0,0,0,1)] border border-zinc-950 backdrop-blur-sm">
-              <Activity className="h-8 w-8 animate-spin text-brand-forest-green" aria-hidden="true" />
-              <p className="text-sm font-black uppercase tracking-tighter">
+            <div className="flex flex-col items-center gap-2 rounded-lg bg-background/80 px-8 py-6 border border-border shadow-sm backdrop-blur-sm">
+              <Activity className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
+              <p className="text-sm font-semibold">
                 Updating Results...
               </p>
             </div>
