@@ -131,9 +131,6 @@ export function PipelineClient({
   const [exportActionState, setExportActionState] = useState<
     "upload" | "zip" | null
   >(null);
-  const [exportDownloadState, setExportDownloadState] = useState<
-    "excel" | "xml" | null
-  >(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [editingCohort, setEditingCohort] = useState<{
     id: string;
@@ -911,86 +908,6 @@ export function PipelineClient({
     [downloadResponseToFile, fetchPublishedImageZipResponse, totalCount],
   );
 
-  const downloadPublishedXml = useCallback(
-    async (skus?: string[]) => {
-      const exportCount = skus?.length ?? totalCount;
-      if (exportCount === 0) {
-        return;
-      }
-
-      setExportDownloadState("xml");
-      try {
-        const response =
-          skus && skus.length > 0
-            ? await fetch("/api/admin/pipeline/export-xml", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ skus }),
-              })
-            : await fetch("/api/admin/pipeline/export-xml");
-
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error(payload.error || "Failed to generate XML export");
-        }
-
-        await downloadResponseToFile(response, "shopsite-products.xml");
-
-        toast.success("ShopSite XML downloaded", {
-          description: `${exportCount} storefront product${exportCount === 1 ? "" : "s"}`,
-        });
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Failed to generate XML export",
-        );
-      } finally {
-        setExportDownloadState(null);
-      }
-    },
-    [downloadResponseToFile, totalCount],
-  );
-
-  const downloadPublishedWorkbook = useCallback(
-    async (skus?: string[]) => {
-      const exportCount = skus?.length ?? totalCount;
-      if (exportCount === 0) {
-        return;
-      }
-
-      setExportDownloadState("excel");
-      try {
-        const response =
-          skus && skus.length > 0
-            ? await fetch("/api/admin/pipeline/export", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ skus }),
-              })
-            : await fetch("/api/admin/pipeline/export?status=exporting");
-
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error(payload.error || "Failed to export products");
-        }
-
-        await downloadResponseToFile(response, "products-export.xlsx");
-
-        toast.success("Spreadsheet export downloaded", {
-          description: `${exportCount} storefront product${exportCount === 1 ? "" : "s"}`,
-        });
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Failed to export products",
-        );
-      } finally {
-        setExportDownloadState(null);
-      }
-    },
-    [downloadResponseToFile, totalCount],
-  );
-
   const handleUploadSelectedShopSite = useCallback(() => {
     void uploadPublishedProducts(Array.from(selectedSkus));
   }, [uploadPublishedProducts, selectedSkus]);
@@ -1239,79 +1156,6 @@ export function PipelineClient({
           showSourceFilter={false}
           className="h-8"
         />
-      ) : null}
-
-      {currentStage === "exporting" ? (
-        <>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              void uploadPublishedProducts(
-                selectedExportCount > 0 ? selectedExportSkus : undefined,
-              )
-            }
-            disabled={!hasExportableProducts || exportActionState !== null}
-            className="h-8 border-primary/20 text-primary hover:bg-primary/5 text-xs font-semibold"
-          >
-            {exportActionState === "upload"
-              ? "Uploading..."
-              : selectedExportCount > 0
-                ? `Upload ${selectedExportCount} Selected`
-                : "Upload to ShopSite"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              void downloadPublishedXml(
-                selectedExportCount > 0 ? selectedExportSkus : undefined,
-              )
-            }
-            disabled={!hasExportableProducts || exportDownloadState !== null}
-            className="h-8 border-border text-muted-foreground hover:bg-muted text-xs font-semibold"
-          >
-            {exportDownloadState === "xml"
-              ? "Exporting XML..."
-              : selectedExportCount > 0
-                ? `XML ${selectedExportCount} Selected`
-                : "Export ShopSite XML"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              void downloadPublishedWorkbook(
-                selectedExportCount > 0 ? selectedExportSkus : undefined,
-              )
-            }
-            disabled={!hasExportableProducts || exportDownloadState !== null}
-            className="h-8 border-border text-muted-foreground hover:bg-muted text-xs font-semibold"
-          >
-            {exportDownloadState === "excel"
-              ? "Exporting..."
-              : selectedExportCount > 0
-                ? `Export ${selectedExportCount} Selected`
-                : "Export Excel"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              void downloadPublishedImageZip(
-                selectedExportCount > 0 ? selectedExportSkus : undefined,
-              )
-            }
-            disabled={!hasExportableProducts || exportActionState !== null}
-            className="h-8 border-border text-muted-foreground hover:bg-muted text-xs font-semibold"
-          >
-            {exportActionState === "zip"
-              ? "Downloading ZIP..."
-              : selectedExportCount > 0
-                ? `ZIP ${selectedExportCount} Selected`
-                : "Download Images ZIP"}
-          </Button>
-        </>
       ) : null}
 
       {currentStage === "imported" && (
