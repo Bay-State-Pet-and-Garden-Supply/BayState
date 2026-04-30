@@ -2,12 +2,12 @@ name: Scraper CI
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [master, main, develop]
     paths:
       - "apps/scraper/**"
       - ".github/workflows/scraper-ci.yml"
   push:
-    branches: [develop]
+    branches: [develop, master]
     paths:
       - "apps/scraper/**"
       - ".github/workflows/scraper-ci.yml"
