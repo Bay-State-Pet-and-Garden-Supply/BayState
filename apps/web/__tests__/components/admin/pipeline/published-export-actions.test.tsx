@@ -117,7 +117,7 @@ describe('export tab actions', () => {
         HTMLAnchorElement.prototype.click = jest.fn();
     });
 
-    it('renders exporting-stage workspace actions when nothing is selected', async () => {
+    it('does not render top bar actions in exporting stage when nothing is selected', async () => {
         render(
             <PipelineClient
                 initialCounts={counts}
@@ -128,69 +128,11 @@ describe('export tab actions', () => {
             />,
         );
 
-        await waitFor(() => {
-            expect(
-                screen.getByRole('button', { name: 'Upload to ShopSite' }),
-            ).toBeEnabled();
-        });
-
-        fireEvent.click(screen.getByRole('button', { name: 'Upload to ShopSite' }));
-
-        await waitFor(() => {
-            expect(mockFetch).toHaveBeenCalledWith(
-                '/api/admin/pipeline/upload-shopsite',
-                expect.objectContaining({
-                    method: 'POST',
-                    body: JSON.stringify({}),
-                }),
-            );
-        });
-
-        await waitFor(() => {
-            expect(
-                screen.getByRole('button', { name: 'Export ShopSite XML' }),
-            ).toBeEnabled();
-        });
-
-        await waitFor(() => {
-            expect(mockFetch).toHaveBeenCalledWith(
-                '/api/admin/pipeline/export-zip',
-                expect.objectContaining({
-                    method: 'POST',
-                    body: JSON.stringify({
-                        skus: ['SKU001', 'SKU002'],
-                        includeExportedSelection: true,
-                    }),
-                }),
-            );
-        });
-
-        fireEvent.click(screen.getByRole('button', { name: 'Export ShopSite XML' }));
-        await waitFor(() => {
-            expect(mockFetch).toHaveBeenCalledWith(
-                '/api/admin/pipeline/export-xml',
-            );
-        });
-
-        await waitFor(() => {
-            expect(
-                screen.getByRole('button', { name: 'Export Excel' }),
-            ).toBeEnabled();
-        });
-        fireEvent.click(screen.getByRole('button', { name: 'Export Excel' }));
-        await waitFor(() => {
-            expect(mockFetch).toHaveBeenCalledWith('/api/admin/pipeline/export?status=exporting');
-        });
-
-        await waitFor(() => {
-            expect(
-                screen.getByRole('button', { name: 'Download Images ZIP' }),
-            ).toBeEnabled();
-        });
-        fireEvent.click(screen.getByRole('button', { name: 'Download Images ZIP' }));
-        await waitFor(() => {
-            expect(mockFetch).toHaveBeenCalledWith('/api/admin/pipeline/export-zip');
-        });
+        // Top bar should be empty for exporting stage now (except for tabs)
+        expect(screen.queryByRole('button', { name: 'Upload to ShopSite' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Export ShopSite XML' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Export Excel' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Download Images ZIP' })).not.toBeInTheDocument();
     });
 
     it('renders selected export actions in the exporting floating action bar', () => {
