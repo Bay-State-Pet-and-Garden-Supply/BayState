@@ -12,6 +12,9 @@ const customJestConfig = {
     moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/$1',
         '^bun:test$': '<rootDir>/test-utils/bun-test.ts',
+        '^react$': '<rootDir>/node_modules/react',
+        '^react-dom$': '<rootDir>/node_modules/react-dom',
+        '^react-dom/(.*)$': '<rootDir>/node_modules/react-dom/$1',
     },
     // Exclude Playwright tests - they should run via `npx playwright test` not Jest
     testPathIgnorePatterns: ['/node_modules/', '/.next/', '/a11y/', '/e2e/'],
