@@ -274,6 +274,7 @@ export async function createTRPCContext(request: Request): Promise<MobileApiCont
             .from('products')
             .select('id, name, slug, price, images, storefront_settings:product_storefront_settings(pickup_only)')
             .in('id', ids)
+            .in('stock_status', ['in_stock', 'pre_order'])
 
           if (error) {
             console.error('Failed to list products by ids:', error)
@@ -385,8 +386,9 @@ export async function createTRPCContext(request: Request): Promise<MobileApiCont
         listWishlist: async (userId) => {
           const { data, error } = await userClient
             .from('wishlists')
-            .select('products(id, name, slug, price, images, stock_status)')
+            .select('products!inner(id, name, slug, price, images, stock_status)')
             .eq('user_id', userId)
+            .in('products.stock_status', ['in_stock', 'pre_order'])
             .order('created_at', { ascending: false })
 
           if (error) {
@@ -416,7 +418,12 @@ export async function createTRPCContext(request: Request): Promise<MobileApiCont
 
           return rows
             .map((row) => (Array.isArray(row.products) ? row.products[0] : row.products))
-            .filter((product): product is NonNullable<typeof product> => Boolean(product))
+            .filter(
+              (product): product is NonNullable<typeof product> => {
+                if (!product) return false
+                return product.stock_status === 'in_stock' || product.stock_status === 'pre_order'
+              },
+            )
             .map((product) => ({
               ...product,
               images: parseImages(product.images),

@@ -180,7 +180,6 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
             <AccordionContent className="space-y-3 pt-1 pb-4">
               {[
                 { id: 'in_stock', label: 'In Stock' },
-                { id: 'out_of_stock', label: 'Out of Stock' },
                 { id: 'pre_order', label: 'Pre-Order' }
               ].map((status) => (
                 <div key={status.id} className="flex items-center space-x-3">

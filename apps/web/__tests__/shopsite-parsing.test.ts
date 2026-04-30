@@ -47,7 +47,6 @@ describe('ShopSite XML Parsing', () => {
                         <Price>25.00</Price>
                         <Quantity>5</Quantity>
                         <Weight>2.5</Weight>
-                        <Taxable>Yes</Taxable>
                     </Product>
                 </Products>
             `;
@@ -59,7 +58,6 @@ describe('ShopSite XML Parsing', () => {
                 price: 25.0,
                 quantityOnHand: 5,
                 weight: 2.5,
-                taxable: true
             });
         });
 
@@ -81,12 +79,9 @@ describe('ShopSite XML Parsing', () => {
                     <Name>Kaytee Bermuda Grass 16 oz.</Name>
                     <Price>4.99</Price>
                     <SaleAmount>3.99</SaleAmount>
-                    <ProductDisabled></ProductDisabled>
-                    <GTIN>071859002217</GTIN>
+                    <ProductDisabled>uncheck</ProductDisabled>
                     <Brand>Kaytee</Brand>
                     <Weight>1.02</Weight>
-                    <Taxable>checked</Taxable>
-                    <Availability>in stock</Availability>
                     <FileName>kaytee-bermuda-grass-16-oz.html</FileName>
                     <MinimumQuantity>0</MinimumQuantity>
                     <ProductID>378</ProductID>
@@ -102,11 +97,8 @@ describe('ShopSite XML Parsing', () => {
                 name: 'Kaytee Bermuda Grass 16 oz.',
                 price: 4.99,
                 saleAmount: 3.99,
-                gtin: '071859002217',
                 brandName: 'Kaytee',
                 weight: 1.02,
-                taxable: true,
-                availability: 'in stock',
                 fileName: 'kaytee-bermuda-grass-16-oz.html',
                 productId: '378',
                 productGuid: 'eda0c8b0-cb3b-11e5-a172-0025908f7730',
@@ -150,7 +142,7 @@ describe('ShopSite XML Parsing', () => {
                     <Product>
                         <SKU>ENABLED-SKU</SKU>
                         <Name>Enabled Product</Name>
-                        <ProductDisabled></ProductDisabled>
+                        <ProductDisabled>uncheck</ProductDisabled>
                     </Product>
                     <Product>
                         <SKU>DISABLED-SKU</SKU>
@@ -163,6 +155,62 @@ describe('ShopSite XML Parsing', () => {
             expect(products).toHaveLength(1);
             expect(products[0].sku).toBe('ENABLED-SKU');
         });
+
+        it.each(['checked', 'yes', 'true', '1', 'on', 'disabled'])(
+            'should skip products when ProductDisabled is %s',
+            (disabledValue) => {
+                const xml = `
+                    <Products>
+                        <Product>
+                            <SKU>DISABLED-SKU</SKU>
+                            <Name>Disabled Product</Name>
+                            <ProductDisabled>${disabledValue}</ProductDisabled>
+                        </Product>
+                    </Products>
+                `;
+
+                const products = (client as any).parseProductsXml(xml);
+
+                expect(products).toHaveLength(0);
+            },
+        );
+
+        it('should keep products when ProductDisabled is self-closing', () => {
+            const xml = `
+                <Products>
+                    <Product>
+                        <SKU>ENABLED-SKU</SKU>
+                        <Name>Enabled Product</Name>
+                        <ProductDisabled/>
+                    </Product>
+                </Products>
+            `;
+
+            const products = (client as any).parseProductsXml(xml);
+
+            expect(products).toHaveLength(1);
+            expect(products[0].sku).toBe('ENABLED-SKU');
+        });
+
+        it.each(['', 'uncheck', 'unchecked', 'no', 'false', '0'])(
+            'should keep products when ProductDisabled is explicitly active as %s',
+            (disabledValue) => {
+                const xml = `
+                    <Products>
+                        <Product>
+                            <SKU>ENABLED-SKU</SKU>
+                            <Name>Enabled Product</Name>
+                            <ProductDisabled>${disabledValue}</ProductDisabled>
+                        </Product>
+                    </Products>
+                `;
+
+                const products = (client as any).parseProductsXml(xml);
+
+                expect(products).toHaveLength(1);
+                expect(products[0].sku).toBe('ENABLED-SKU');
+            },
+        );
 
         it('should parse ShopSite v15 product exports with the wrapper document', () => {
             const xml = `
@@ -179,7 +227,6 @@ describe('ShopSite XML Parsing', () => {
                             <Price>12.34</Price>
                             <ProductDisabled>uncheck</ProductDisabled>
                             <QuantityOnHand/>
-                            <Availability>in stock</Availability>
                         </Product>
                     </Products>
                 </ShopSiteProducts>
@@ -193,7 +240,6 @@ describe('ShopSite XML Parsing', () => {
                 name: 'Version 15 Product',
                 price: 12.34,
                 quantityOnHand: 0,
-                availability: 'in stock',
                 isDisabled: false,
             });
         });

@@ -21,21 +21,34 @@ describe('Products Data Functions', () => {
   const mockGte = jest.fn();
   const mockLte = jest.fn();
   const mockIlike = jest.fn();
+  const mockIn = jest.fn();
   const mockOrder = jest.fn();
   const mockRange = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Chain mock for getProductBySlug
+    const queryChain = {
+      single: mockSingle,
+      eq: mockEq,
+      in: mockIn,
+      gte: mockGte,
+      lte: mockLte,
+      ilike: mockIlike,
+      order: mockOrder,
+      range: mockRange,
+    };
+
+    // Chain mock for product queries
     mockSingle.mockResolvedValue({ data: null, error: null });
-    mockEq.mockReturnValue({ single: mockSingle, eq: mockEq, gte: mockGte, lte: mockLte, ilike: mockIlike, order: mockOrder });
-    mockGte.mockReturnValue({ lte: mockLte, order: mockOrder });
-    mockLte.mockReturnValue({ order: mockOrder });
-    mockIlike.mockReturnValue({ order: mockOrder });
+    mockEq.mockReturnValue(queryChain);
+    mockIn.mockReturnValue(queryChain);
+    mockGte.mockReturnValue(queryChain);
+    mockLte.mockReturnValue(queryChain);
+    mockIlike.mockReturnValue(queryChain);
     mockOrder.mockReturnValue({ range: mockRange, limit: jest.fn() });
     mockRange.mockResolvedValue({ data: [], error: null, count: 0 });
-    mockSelect.mockReturnValue({ eq: mockEq, order: mockOrder });
+    mockSelect.mockReturnValue(queryChain);
     mockFrom.mockReturnValue({ select: mockSelect });
 
     mockCreatePublicClient.mockReturnValue({
@@ -53,6 +66,7 @@ describe('Products Data Functions', () => {
         'storefront_settings:product_storefront_settings(is_featured, pickup_only)'
       );
       expect(mockEq).toHaveBeenCalledWith('slug', 'test-product');
+      expect(mockIn).toHaveBeenCalledWith('stock_status', ['in_stock', 'pre_order']);
     });
 
     it('returns null on error', async () => {
@@ -129,6 +143,19 @@ describe('Products Data Functions', () => {
       await getFilteredProducts({ limit: 10, offset: 20 });
 
       expect(mockRange).toHaveBeenCalledWith(20, 29);
+    });
+
+    it('excludes out of stock products by default', async () => {
+      await getFilteredProducts();
+
+      expect(mockIn).toHaveBeenCalledWith('stock_status', ['in_stock', 'pre_order']);
+    });
+
+    it('returns no products for out of stock filter', async () => {
+      const result = await getFilteredProducts({ stockStatus: 'out_of_stock' });
+
+      expect(result).toEqual({ products: [], count: 0 });
+      expect(mockFrom).not.toHaveBeenCalled();
     });
   });
 });

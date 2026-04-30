@@ -60,53 +60,6 @@ const DEFAULT_UPLOAD_UNIQUE_NAME = 'SKU (Products)';
 
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
-const PRODUCT_DOWNLOAD_FIELDS = [
-    'ProductDisabled',
-    'SKU',
-    'Name',
-    'Price',
-    'SaleAmount',
-    'ProductDescription',
-    'QuantityOnHand',
-    'Quantity',
-    'LowStockThreshold',
-    'OutOfStockLimit',
-    'Graphic',
-    'Weight',
-    'Taxable',
-    'ProductType',
-    'ProdType',
-    'ProductID',
-    'ProductGUID',
-    'GTIN',
-    'ProductField7',
-    'ProductField11',
-    'ProductField15',
-    'ProductField16',
-    'ProductField17',
-    'ProductField18',
-    'ProductField19',
-    'ProductField20',
-    'ProductField21',
-    'ProductField22',
-    'ProductField23',
-    'ProductField24',
-    'ProductField25',
-    'ProductField26',
-    'ProductField27',
-    'ProductField29',
-    'ProductField30',
-    'ProductField32',
-    'Availability',
-    'FileName',
-    'MoreInformationText',
-    'SearchKeywords',
-    'GoogleProductCategory',
-    'ProductOnPages',
-    'MinimumQuantity',
-    ...Array.from({ length: 20 }, (_, index) => `MoreInfoImage${index + 1}`),
-].join('|');
-
 export type { ShopSiteConfig } from './types';
 
 
@@ -328,7 +281,6 @@ export class ShopSiteClient {
                 clientApp: '1',
                 dbname: 'products',
                 version: PRODUCT_XML_VERSION,
-                fields: `|${PRODUCT_DOWNLOAD_FIELDS}|`,
             });
 
             const response = await fetch(
@@ -629,9 +581,9 @@ export class ShopSiteClient {
 
         for (const productXml of productMatches) {
             // Check if product is disabled - skip disabled products to save storage
-            const disabledRaw = this.extractXmlValue(productXml, 'ProductDisabled') ||
-                this.extractXmlValue(productXml, 'productDisabled');
-            const isDisabled = disabledRaw?.toLowerCase() === 'checked';
+            const disabledRaw = this.extractOptionalXmlValue(productXml, 'ProductDisabled') ??
+                this.extractOptionalXmlValue(productXml, 'productDisabled');
+            const isDisabled = this.parseProductDisabledValue(disabledRaw);
 
             // Skip disabled products (user preference for free Supabase tier)
             if (isDisabled) {
@@ -687,10 +639,6 @@ export class ShopSiteClient {
 
             // Physical properties
             const weight = parseFloat(this.extractXmlValue(productXml, 'Weight') || this.extractXmlValue(productXml, 'weight') || '0');
-            const taxableRaw = this.extractXmlValue(productXml, 'Taxable') || this.extractXmlValue(productXml, 'taxable');
-            const taxableNormalized = taxableRaw?.trim().toLowerCase();
-            const taxable = taxableNormalized === 'checked' || taxableNormalized === 'yes' || taxableNormalized === 'true' || taxableNormalized === '1';
-
             const fulfillmentType = this.extractXmlValue(productXml, 'ProductType') ||
                 this.extractXmlValue(productXml, 'ProdType') ||
                 this.extractXmlValue(productXml, 'prod_type');
@@ -698,7 +646,6 @@ export class ShopSiteClient {
             // ShopSite identifiers
             const productId = this.extractXmlValue(productXml, 'ProductID');
             const productGuid = this.extractXmlValue(productXml, 'ProductGUID');
-            const gtin = this.extractXmlValue(productXml, 'GTIN') || this.extractXmlValue(productXml, 'gtin');
 
             // ProductField extraction
             const shortName = this.extractXmlValue(productXml, 'ProductField7');
@@ -718,9 +665,6 @@ export class ShopSiteClient {
             const color = this.extractXmlValue(productXml, 'ProductField29');
             const packagingType = this.extractXmlValue(productXml, 'ProductField30');
             const crossSellSkus = this.parseDelimitedField(this.extractXmlValue(productXml, 'ProductField32'));
-            const availability = this.extractXmlValue(productXml, 'Availability') ||
-                this.extractXmlValue(productXml, 'availability') ||
-                undefined;
 
 
             // SEO and content
@@ -757,11 +701,9 @@ export class ShopSiteClient {
                 imageUrl,
                 additionalImages: additionalImages.length > 0 ? additionalImages : undefined,
                 weight,
-                taxable,
                 fulfillmentType,
                 productId,
                 productGuid,
-                gtin,
                 shortName,
                 isSpecialOrder: this.parseProductFieldBoolean(specialOrderRaw),
                 inStorePickup: this.parseProductFieldBoolean(inStorePickupRaw),
@@ -781,7 +723,6 @@ export class ShopSiteClient {
                 packagingType,
                 crossSellSkus,
                 isDisabled,
-                availability,
                 fileName,
                 moreInfoText,
                 searchKeywords,
@@ -979,7 +920,31 @@ export class ShopSiteClient {
 
     private parseProductFieldBoolean(value: string): boolean {
         const normalized = value.trim().toLowerCase();
-        return normalized === 'yes' || normalized === 'checked' || normalized === 'true' || normalized === '1';
+        return normalized === 'yes' || normalized === 'checked' || normalized === 'true' || normalized === '1' || normalized === 'on';
+    }
+
+    private parseProductDisabledValue(value: string | null): boolean {
+        if (value === null) {
+            return false;
+        }
+
+        const normalized = value.trim().toLowerCase();
+        if (
+            normalized === '' ||
+            normalized === 'uncheck' ||
+            normalized === 'unchecked' ||
+            normalized === 'no' ||
+            normalized === 'false' ||
+            normalized === '0'
+        ) {
+            return false;
+        }
+
+        if (this.parseProductFieldBoolean(normalized)) {
+            return true;
+        }
+
+        return true;
     }
 
     private parseDelimitedField(value: string, delimiter: string = '|'): string[] {
@@ -998,9 +963,21 @@ export class ShopSiteClient {
      * This is a simple approach that works for flat XML structures.
      */
     private extractXmlValue(xml: string, tag: string): string {
-        const regex = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, 'i');
+        return this.extractOptionalXmlValue(xml, tag) ?? '';
+    }
+
+    private extractOptionalXmlValue(xml: string, tag: string): string | null {
+        const regex = new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)</${tag}>`, 'i');
         const match = xml.match(regex);
-        let value = match ? match[1].trim() : '';
+        const selfClosingRegex = new RegExp(`<${tag}\\b[^>]*/>`, 'i');
+        if (!match && selfClosingRegex.test(xml)) {
+            return '';
+        }
+        if (!match) {
+            return null;
+        }
+
+        let value = match[1].trim();
 
         // Handle CDATA if present
         if (value.startsWith('<![CDATA[')) {

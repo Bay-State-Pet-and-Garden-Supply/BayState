@@ -12,13 +12,14 @@ import {
     getGenericFacetDefinition,
     normalizeGenericFacetValues,
 } from '@/lib/facets/generic-normalization';
-import { splitMultiValueFacet } from '@/lib/facets/normalization';
+import { buildFacetSlug } from '@/lib/facets/normalization';
 import { getMappedCategorySlug } from '@/lib/facets/category-mapping';
 
 interface BatchImportOptions {
     supabase: SupabaseClient;
     shopSiteProducts: ShopSiteProduct[];
     logProgress?: (processed: number, total: number) => Promise<void>;
+    purgeMissingProducts?: boolean;
 }
 
 interface BatchImportResult {
@@ -83,6 +84,7 @@ export async function importShopSiteProductsBatched({
     supabase,
     shopSiteProducts,
     logProgress,
+    purgeMissingProducts = false,
 }: BatchImportOptions): Promise<BatchImportResult> {
     const startTime = Date.now();
     const { deduped: uniqueProducts, duplicateCount } = dedupeProductsBySku(shopSiteProducts);
@@ -115,10 +117,11 @@ export async function importShopSiteProductsBatched({
 
     // Phase 1.5: Cleanup (Purge disabled/removed products FIRST to avoid slug conflicts)
     let deletedCount = 0;
-    // Only purge if we are doing a full sync (passing many products)
-    if (uniqueProducts.length > 100) {
+    const activeSkusInFeed = new Set(uniqueProducts.map(p => p.sku));
+    const canPurgeMissingProducts = purgeMissingProducts && uniqueProducts.length > 100;
+    // Only purge for explicitly full, unbounded syncs. Limited syncs are samples and must not delete the rest of the catalog.
+    if (canPurgeMissingProducts) {
         console.log('[Batch Import] Phase 1.5: Purging inactive products before processing...');
-        const activeSkusInFeed = new Set(uniqueProducts.map(p => p.sku));
         const skusToDelete = Array.from(existingSkus).filter(sku => !activeSkusInFeed.has(sku));
         
         if (skusToDelete.length > 0) {
@@ -137,6 +140,7 @@ export async function importShopSiteProductsBatched({
                         const slug = slugBySku.get(sku);
                         if (slug) existingSlugs.delete(slug);
                         existingSkus.delete(sku);
+                        productIdBySku.delete(sku);
                     });
                 } else {
                     console.warn(`[Batch Import] Failed to purge batch: ${cleanupError.message}`);
@@ -144,6 +148,8 @@ export async function importShopSiteProductsBatched({
             }
             console.log(`[Batch Import] Pre-sync purge complete: ${deletedCount} products removed.`);
         }
+    } else if (!purgeMissingProducts) {
+        console.log('[Batch Import] Skipping inactive product purge for limited sync.');
     }
 
     // Phase 2: Transform all products and pre-generate unique slugs
@@ -178,6 +184,7 @@ export async function importShopSiteProductsBatched({
 
     const validProducts = transformedProducts.filter((p): p is SuccessfulTransformedProduct => p.success);
     console.log(`[Batch Import] Transformed ${validProducts.length} products (${failed} failed)`);
+    logShopSiteFieldCoverage(validProducts);
 
     // Phase 3: Batch upsert products
     console.log('[Batch Import] Phase 3: Upserting products in batches...');
@@ -250,21 +257,19 @@ export async function importShopSiteProductsBatched({
         const productId = importedProductIdBySku.get(product.sku);
         if (!productId) continue;
 
-        // Categories (PF24)
-        const mappedSlug = getMappedCategorySlug(transformed.category_name, transformed.product_type);
-        if (mappedSlug) {
-            const categoryId = categoryMap.get(mappedSlug);
-            if (categoryId) {
+        // Categories: PF24/PF25 are canonical; ProductOnPages is a fallback when PF24 is blank.
+        const categorySlugs = resolveCategorySlugs(transformed, categoryMap);
+        if (categorySlugs.length > 0) {
+            for (const mappedSlug of categorySlugs) {
+                const categoryId = categoryMap.get(mappedSlug);
+                if (!categoryId) continue;
                 categoriesToInsert.push({ product_id: productId, category_id: categoryId });
-            } else {
-                if (categoriesToInsert.length < 5) {
-                    console.warn(`[Batch Import] Slug "${mappedSlug}" found but not in categoryMap (size: ${categoryMap.size})`);
-                }
             }
         } else {
-            if (transformed.category_name && categoriesToInsert.length < 5) {
-                // Only log first few failures to avoid spam
-                // console.log(`[Batch Import] No mapping for: "${transformed.category_name}" > "${transformed.product_type}"`);
+            if ((transformed.category_name || transformed.shopsite_pages.length > 0) && categoriesToInsert.length < 5) {
+                console.warn(
+                    `[Batch Import] No category mapping for: PF24="${transformed.category_name ?? ''}" PF25="${transformed.product_type ?? ''}" pages="${transformed.shopsite_pages.join('|')}"`,
+                );
             }
         }
 
@@ -352,10 +357,9 @@ export async function importShopSiteProductsBatched({
 
     // Phase 6: Cleanup (Purge disabled/removed products)
     // Only purge if we successfully processed a significant number of products (full sync safety)
-    if (created + updated > 100 && deletedCount === 0) {
+    if (canPurgeMissingProducts && created + updated > 100 && deletedCount === 0) {
         console.log('[Batch Import] Phase 6: Purging inactive products...');
-        const activeSkusSet = new Set(importedProductIdBySku.keys());
-        const skusToDelete = Array.from(existingSkus).filter(sku => !activeSkusSet.has(sku));
+        const skusToDelete = Array.from(existingSkus).filter(sku => !activeSkusInFeed.has(sku));
 
         console.log(`[Batch Import] Found ${skusToDelete.length} products to delete.`);
 
@@ -470,6 +474,55 @@ async function loadReferenceData(supabase: SupabaseClient) {
         facetDefinitionMap,
         facetValueMap,
     };
+}
+
+function logShopSiteFieldCoverage(products: SuccessfulTransformedProduct[]): void {
+    const withCategory = products.filter(({ transformed }) => !!transformed.category_name).length;
+    const withProductType = products.filter(({ transformed }) => !!transformed.product_type).length;
+    const withPages = products.filter(({ transformed }) => transformed.shopsite_pages.length > 0).length;
+    const withGenericFacet = products.filter(({ transformed }) =>
+        GENERIC_FACET_INPUTS.some(({ transformedKey }) => !!transformed[transformedKey])
+    ).length;
+
+    console.log(
+        `[Batch Import] ShopSite field coverage: PF24 categories=${withCategory}, PF25 product types=${withProductType}, ProductOnPages=${withPages}, generic facets=${withGenericFacet}`,
+    );
+}
+
+function resolveCategorySlugs(
+    transformed: TransformedShopSiteProduct,
+    categoryMap: Map<string, string>,
+): string[] {
+    const slugs = new Set<string>();
+
+    addMappedCategorySlugs(slugs, categoryMap, transformed.category_name, transformed.product_type);
+
+    for (const pageName of transformed.shopsite_pages) {
+        addMappedCategorySlugs(slugs, categoryMap, pageName, transformed.product_type);
+    }
+
+    return Array.from(slugs);
+}
+
+function addMappedCategorySlugs(
+    slugs: Set<string>,
+    categoryMap: Map<string, string>,
+    categoryName: string | null | undefined,
+    productTypeName: string | null | undefined,
+): void {
+    if (!categoryName) return;
+
+    const mappedSlug = getMappedCategorySlug(categoryName, productTypeName);
+    if (mappedSlug && categoryMap.has(mappedSlug)) {
+        slugs.add(mappedSlug);
+    }
+
+    for (const categoryPart of categoryName.split('|')) {
+        const directSlug = buildFacetSlug(categoryPart);
+        if (categoryMap.has(directSlug)) {
+            slugs.add(directSlug);
+        }
+    }
 }
 
 async function processProductBatch(
@@ -728,6 +781,8 @@ function buildProductRecord(
         ...productFields,
         slug,
         brand_id: brandId,
+        gtin: null,
+        availability: null,
     };
 }
 

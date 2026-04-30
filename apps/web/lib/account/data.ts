@@ -31,11 +31,12 @@ export async function getWishlist(): Promise<ProductSummary[]> {
         .from('wishlists')
         .select(`
             product_id,
-            products (
+            products!inner (
                 id, name, slug, price, images, stock_status
             )
         `)
         .eq('user_id', user.id)
+        .in('products.stock_status', ['in_stock', 'pre_order'])
         .order('created_at', { ascending: false })
 
     if (error) {
@@ -46,7 +47,12 @@ export async function getWishlist(): Promise<ProductSummary[]> {
     // Supabase returns products as a single object for many-to-one relations
     return data
         .map((item) => item.products as unknown as ProductSummary)
-        .filter((p): p is ProductSummary => p !== null && p !== undefined)
+        .filter(
+            (p): p is ProductSummary =>
+                p !== null &&
+                p !== undefined &&
+                (p.stock_status === 'in_stock' || p.stock_status === 'pre_order')
+        )
 }
 
 export async function getUserOrders(): Promise<Order[]> {

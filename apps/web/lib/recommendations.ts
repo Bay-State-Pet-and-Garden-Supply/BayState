@@ -11,6 +11,10 @@ interface ProductWithPetType extends Product {
   petTypeId: string;
 }
 
+function isStorefrontVisibleProduct(row: Record<string, unknown>): boolean {
+  return row.stock_status === 'in_stock' || row.stock_status === 'pre_order';
+}
+
 export async function getPersonalizedProducts(
   userId: string,
   limit = 12
@@ -27,20 +31,22 @@ export async function getPersonalizedProducts(
     return [];
   }
 
-  return (data || []).map((row: Record<string, unknown>) => ({
-    id: row.id as string,
-    brand_id: row.brand_id as string | null,
-    name: row.name as string,
-    slug: row.slug as string,
-    description: null,
-    price: row.price as number,
-    stock_status: row.stock_status as 'in_stock' | 'out_of_stock' | 'pre_order',
-    images: row.images as string[],
-    is_featured: false,
-    created_at: '',
-    petName: row.pet_name as string,
-    petTypeName: row.pet_type_name as string,
-  }));
+  return (data || [])
+    .filter(isStorefrontVisibleProduct)
+    .map((row: Record<string, unknown>) => ({
+      id: row.id as string,
+      brand_id: row.brand_id as string | null,
+      name: row.name as string,
+      slug: row.slug as string,
+      description: null,
+      price: row.price as number,
+      stock_status: row.stock_status as 'in_stock' | 'out_of_stock' | 'pre_order',
+      images: row.images as string[],
+      is_featured: false,
+      created_at: '',
+      petName: row.pet_name as string,
+      petTypeName: row.pet_type_name as string,
+    }));
 }
 
 async function getProductsForPetType(
@@ -58,19 +64,22 @@ async function getProductsForPetType(
     return [];
   }
 
-  const products = (data || []).slice(0, limit).map((row: Record<string, unknown>) => ({
-    id: row.id as string,
-    brand_id: row.brand_id as string | null,
-    name: row.name as string,
-    slug: row.slug as string,
-    description: null,
-    price: row.price as number,
-    stock_status: row.stock_status as 'in_stock' | 'out_of_stock' | 'pre_order',
-    images: row.images as string[],
-    is_featured: false,
-    created_at: '',
-    petTypeId: row.pet_type_id as string,
-  }));
+  const products = (data || [])
+    .filter(isStorefrontVisibleProduct)
+    .slice(0, limit)
+    .map((row: Record<string, unknown>) => ({
+      id: row.id as string,
+      brand_id: row.brand_id as string | null,
+      name: row.name as string,
+      slug: row.slug as string,
+      description: null,
+      price: row.price as number,
+      stock_status: row.stock_status as 'in_stock' | 'out_of_stock' | 'pre_order',
+      images: row.images as string[],
+      is_featured: false,
+      created_at: '',
+      petTypeId: row.pet_type_id as string,
+    }));
 
   return products;
 }
@@ -99,7 +108,10 @@ async function getProductsForUserPets(
 
   for (const pet of userPets) {
     const petProducts = (products || [])
-      .filter((p: Record<string, unknown>) => p.pet_type_id === pet.pet_type_id)
+      .filter(
+        (p: Record<string, unknown>) =>
+          p.pet_type_id === pet.pet_type_id && isStorefrontVisibleProduct(p)
+      )
       .slice(0, 8)
       .map((row: Record<string, unknown>) => ({
         id: row.id as string,
@@ -147,7 +159,10 @@ export async function getRelatedProductsByPetType(
   });
 
   const relatedProducts = (relatedData || [])
-    .filter((p: Record<string, unknown>) => p.id !== productId)
+    .filter(
+      (p: Record<string, unknown>) =>
+        p.id !== productId && isStorefrontVisibleProduct(p)
+    )
     .slice(0, limit)
     .map((row: Record<string, unknown>) => ({
       id: row.id as string,

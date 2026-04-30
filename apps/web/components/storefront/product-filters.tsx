@@ -189,7 +189,6 @@ export function ProductFilters({ brands, petTypes, categories = [] }: ProductFil
         >
           <option value="">All Items</option>
           <option value="in_stock">In Stock</option>
-          <option value="out_of_stock">Out of Stock</option>
           <option value="pre_order">Pre-Order</option>
         </select>
       </div>

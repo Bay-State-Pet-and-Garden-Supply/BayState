@@ -33,13 +33,11 @@ export interface ShopSiteProduct {
     imageUrl: string;
     additionalImages?: string[];      // MoreInfoImage1-20 (non-"none" values)
     weight?: number;
-    taxable?: boolean;
     cost?: number;                    // shopsite_cost
     fulfillmentType?: string;         // <ProductType> e.g., "Tangible", "Digital", "Service"
     // ShopSite-specific identifiers
     productId?: string;               // <ProductID> - ShopSite internal ID
     productGuid?: string;             // <ProductGUID> - ShopSite UUID
-    gtin?: string;                    // <GTIN> - barcode (UPC/EAN)
     // Operational ProductFields
     shortName?: string;               // <ProductField7> - Child / Short Name
     isSpecialOrder?: boolean;         // <ProductField11> - special order flag
@@ -61,8 +59,7 @@ export interface ShopSiteProduct {
     packagingType?: string;           // <ProductField30>
     crossSellSkus?: string[];         // <ProductField32> - pipe-delimited related SKUs
     // Status fields
-    isDisabled?: boolean;             // <ProductDisabled> === 'checked'
-    availability?: string;            // <Availability> ('in stock', 'out of stock', etc.)
+    isDisabled?: boolean;             // Parsed from ShopSite ProductDisabled checkbox values.
     // SEO and content
     fileName?: string;                // <FileName> - legacy URL slug
     moreInfoText?: string;            // <MoreInformationText> - HTML product details

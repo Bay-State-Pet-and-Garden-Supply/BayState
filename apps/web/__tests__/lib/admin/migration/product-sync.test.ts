@@ -50,9 +50,6 @@ describe('Product Sync Utilities', () => {
                 fileName: 'test-product.html',
                 shopsitePages: ['Dogs', 'Featured'],
                 lowStockThreshold: 2,
-                taxable: true,
-                gtin: '0123456789012',
-                availability: 'in stock',
                 minimumQuantity: 0,
                 moreInfoText: '<p>Long form details</p>',
                 productTypeName: 'Dog Food',
@@ -76,8 +73,6 @@ describe('Product Sync Utilities', () => {
                 quantity: 10,
                 low_stock_threshold: 2,
                 is_taxable: true,
-                gtin: '0123456789012',
-                availability: 'in stock',
                 minimum_quantity: 0,
                 long_description: '<p>Long form details</p>',
                 product_type: 'Dog Food',
@@ -98,20 +93,19 @@ describe('Product Sync Utilities', () => {
             });
         });
 
-        it('sets stock_status based on availability string when quantity is 0', () => {
+        it('ignores ShopSite availability text when quantity is 0', () => {
             const shopSiteProduct = {
                 sku: 'SKU-AVAIL',
                 name: 'Availability Test Product',
                 price: 15.00,
                 description: '',
                 quantityOnHand: 0,
-                availability: 'in stock',
                 imageUrl: '',
             };
 
             const result = transformShopSiteProduct(shopSiteProduct);
 
-            expect(result.stock_status).toBe('in_stock');
+            expect(result.stock_status).toBe('out_of_stock');
         });
 
 

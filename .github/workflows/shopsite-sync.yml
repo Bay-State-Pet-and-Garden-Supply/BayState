@@ -4,8 +4,6 @@ permissions:
   contents: read
 
 on:
-  schedule:
-    - cron: '0 2 * * 0,4-6' # Run nightly at 2 AM from Thursday through Sunday
   workflow_dispatch:
     inputs:
       target:
@@ -21,7 +19,7 @@ on:
         description: 'Maximum number of items to sync (applies to both if target is "all")'
         required: false
         type: string
-        default: '500'
+        default: ''
       start_date:
         description: 'Start date for order sync (mm/dd/yyyy)'
         required: false
