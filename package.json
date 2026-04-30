@@ -5,6 +5,8 @@
   "description": "Monorepo for Bay State Pet and Garden Supply - Next.js web app and Python scraper",
   "packageManager": "bun@1.3.5",
   "workspaces": [
+    "packages/*",
+    "apps/mobile",
     "apps/web",
     "apps/scraper"
   ],
@@ -13,7 +15,9 @@
     "build": "bunx turbo run build",
     "test": "bunx turbo run test",
     "lint": "bunx turbo run lint",
+    "typecheck": "bunx turbo run typecheck",
     "web": "bun --cwd apps/web",
+    "mobile": "bun --cwd apps/mobile",
     "scraper": "bun --cwd apps/scraper",
     "vercel-build": "cd apps/web && next build",
     "fallow": "fallow"

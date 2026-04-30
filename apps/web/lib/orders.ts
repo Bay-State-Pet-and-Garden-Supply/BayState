@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, type SupabaseClient } from '@/lib/supabase/server';
 import { type CartItem } from '@/lib/cart-store';
 import { recordPromoRedemption } from '@/lib/promo-codes';
 
@@ -52,7 +52,7 @@ export interface Order {
   items?: OrderItem[];
 }
 
-interface CreateOrderInput {
+export interface CreateOrderInput {
   userId?: string | null;
   customerName: string;
   customerEmail: string;
@@ -79,17 +79,19 @@ interface CreateOrderInput {
   deliveryNotes?: string | null;
 }
 
-export async function createOrder(input: CreateOrderInput): Promise<Order | null> {
-  const supabase = await createClient();
-
+export async function createOrderWithClient(
+  supabase: SupabaseClient,
+  input: CreateOrderInput
+): Promise<Order | null> {
   const subtotal = input.items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
   const discountAmount = input.discountAmount || 0;
+  const deliveryFee = input.deliveryFee || 0;
   const discountedSubtotal = Math.max(0, subtotal - discountAmount);
   const tax = discountedSubtotal * 0.0625;
-  const total = discountedSubtotal + tax;
+  const total = discountedSubtotal + tax + deliveryFee;
 
   const { data: order, error: orderError } = await supabase
     .from('orders')
@@ -114,7 +116,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order | null
       fulfillment_method: input.fulfillmentMethod || 'pickup',
       delivery_address_id: null, // Create via separate table if needed
       delivery_distance_miles: input.deliveryDistanceMiles || null,
-      delivery_fee: input.deliveryFee || 0,
+      delivery_fee: deliveryFee,
       delivery_services: (input.deliveryServices || []).map((service) => ({
         service,
         fee: 0,
@@ -150,16 +152,31 @@ export async function createOrder(input: CreateOrderInput): Promise<Order | null
   }
 
   if (input.promoCodeId && discountAmount > 0) {
-    await recordPromoRedemption({
+    const recorded = await recordPromoRedemption({
       promoCodeId: input.promoCodeId,
       orderId: order.id,
       userId: order.user_id,
       guestEmail: input.customerEmail,
       discountApplied: discountAmount,
     });
+
+    if (!recorded) {
+      await supabase.from('promo_redemptions').insert({
+        promo_code_id: input.promoCodeId,
+        order_id: order.id,
+        user_id: order.user_id,
+        guest_email: order.user_id ? null : input.customerEmail,
+        discount_applied: discountAmount,
+      });
+    }
   }
 
   return order as Order;
+}
+
+export async function createOrder(input: CreateOrderInput): Promise<Order | null> {
+  const supabase = await createClient();
+  return createOrderWithClient(supabase, input);
 }
 
 export async function getOrderById(id: string): Promise<Order | null> {

@@ -2,7 +2,7 @@ name: Validate Scraper Configs
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [master, main, develop]
     paths:
       - "apps/scraper/scrapers/configs/**/*.yml"
       - "apps/scraper/scrapers/configs/**/*.yaml"
