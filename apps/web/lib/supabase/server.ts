@@ -1,5 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js'
 export type { SupabaseClient }
 import { cookies } from 'next/headers'
 import {
@@ -84,7 +84,7 @@ export async function createAdminClient() {
   )
 }
 
-function createClientFromRequest(request: Request) {
+export function createClientFromRequest(request: Request) {
   // For use in contexts where we don't have access to cookies() async
   // This is a fallback that reads cookies from the request header
   const { url, anonKey } = requireSupabaseConfig()
@@ -116,4 +116,20 @@ function createClientFromRequest(request: Request) {
       },
     }
   )
+}
+
+export function createClientFromBearerToken(token: string): SupabaseClient {
+  const { url, anonKey } = requireSupabaseConfig()
+
+  return createSupabaseClient(url, anonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  })
 }
