@@ -1,4 +1,6 @@
 import { Metadata } from 'next';
+import { Download } from 'lucide-react';
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { PipelineClient } from '@/components/admin/pipeline/PipelineClient';
 import { getProductsByStage, getStatusCounts, getAvailableSourcesByStage } from '@/lib/pipeline';
 import type { PipelineProduct, PipelineStage, StatusCount } from '@/lib/pipeline/types';
@@ -46,13 +48,20 @@ export default async function PipelineExportPage({ searchParams }: PageProps) {
     }
 
     return (
-        <PipelineClient
-            initialProducts={initialProducts}
-            initialCounts={initialCounts}
-            initialTotal={initialTotal}
-            initialStage={initialStage}
-            initialSources={initialSources}
-            hideTabs={false}
-        />
+        <AdminPageShell
+            title="Export Products"
+            description="Generate Excel exports of pipeline products."
+            icon={<Download className="h-5 w-5" />}
+            fullHeight
+        >
+            <PipelineClient
+                initialProducts={initialProducts}
+                initialCounts={initialCounts}
+                initialTotal={initialTotal}
+                initialStage={initialStage}
+                initialSources={initialSources}
+                hideTabs={false}
+            />
+        </AdminPageShell>
     );
 }
