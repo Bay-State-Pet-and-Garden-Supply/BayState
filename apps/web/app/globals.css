@@ -5,10 +5,10 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  /* Bay State Brand Colors */
-  --color-brand-forest-green: #008850;
-  --color-brand-burgundy: #66161D;
-  --color-brand-gold: #FCD048;
+  /* Heritage & Trust Brand Colors */
+  --color-brand-forest-green: oklch(35% 0.08 160);
+  --color-brand-warm-gray: oklch(25% 0.02 90);
+  --color-brand-cream: oklch(98% 0.01 90);
 
   /* Pipeline Status Colors */
   --color-status-success: #10B981;
@@ -103,91 +103,91 @@
 
 :root {
   --radius: 0.25rem;
-  --background: #ffffff;
-  --foreground: #66161D;
-  --card: #ffffff;
-  --card-foreground: #66161D;
-  --popover: #ffffff;
-  --popover-foreground: #66161D;
-  --primary: #008850; /* Forest Green (Prominent) */
-  --primary-foreground: #ffffff;
-  --secondary: #66161D; /* Bay State Burgundy (Secondary) */
-  --secondary-foreground: #FCD048; /* Harvest Gold text on Burgundy */
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --accent: #FCD048; /* Harvest Gold (Special Cases) */
-  --accent-foreground: #66161D;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #008850;
-  --chart-1: #008850;
-  --chart-2: #66161D;
-  --chart-3: #FCD048;
-  --chart-4: #e76e50;
-  --chart-5: #2a9d8f;
-  --sidebar: #008850;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #008850;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #00a86b;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgb(255 255 255 / 0.2);
-  --sidebar-ring: #FCD048;
+  --background: oklch(98% 0.01 90);
+  --foreground: oklch(25% 0.02 90);
+  --card: oklch(98% 0.01 90);
+  --card-foreground: oklch(25% 0.02 90);
+  --popover: oklch(98% 0.01 90);
+  --popover-foreground: oklch(25% 0.02 90);
+  --primary: oklch(35% 0.08 160);
+  --primary-foreground: oklch(98% 0.01 90);
+  --secondary: oklch(25% 0.02 90);
+  --secondary-foreground: oklch(98% 0.01 90);
+  --muted: oklch(96% 0.01 90);
+  --muted-foreground: oklch(55% 0.02 160);
+  --accent: oklch(35% 0.08 160);
+  --accent-foreground: oklch(98% 0.01 90);
+  --destructive: oklch(55% 0.12 25);
+  --destructive-foreground: oklch(98% 0.01 90);
+  --border: oklch(85% 0.03 160);
+  --input: oklch(85% 0.03 160);
+  --ring: oklch(35% 0.08 160);
+  --chart-1: oklch(35% 0.08 160);
+  --chart-2: oklch(25% 0.02 90);
+  --chart-3: oklch(45% 0.05 160);
+  --chart-4: oklch(65% 0.1 40);
+  --chart-5: oklch(75% 0.08 160);
+  --sidebar: oklch(35% 0.08 160);
+  --sidebar-foreground: oklch(98% 0.01 90);
+  --sidebar-primary: oklch(35% 0.08 160);
+  --sidebar-primary-foreground: oklch(98% 0.01 90);
+  --sidebar-accent: oklch(40% 0.07 160);
+  --sidebar-accent-foreground: oklch(98% 0.01 90);
+  --sidebar-border: oklch(85% 0.03 160);
+  --sidebar-ring: oklch(35% 0.08 160);
 
-  --surface-admin-bg: #f4f6f8;
-  --surface-admin-card: #ffffff;
-  --surface-admin-muted: #eef2f6;
-  --surface-admin-border: #d7dde5;
-  --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.06);
-  --shadow-sm: 0 12px 24px -22px rgb(15 23 42 / 0.24);
-  --shadow-md: 0 22px 40px -28px rgb(15 23 42 / 0.28);
-  --shadow-float: 0 28px 60px -30px rgb(15 23 42 / 0.34);
+  --surface-admin-bg: oklch(96% 0.01 90);
+  --surface-admin-card: oklch(98% 0.01 90);
+  --surface-admin-muted: oklch(94% 0.01 90);
+  --surface-admin-border: oklch(85% 0.03 160);
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 12px 24px -22px rgb(0 0 0 / 0.15);
+  --shadow-md: 0 22px 40px -28px rgb(0 0 0 / 0.2);
+  --shadow-float: 0 28px 60px -30px rgb(0 0 0 / 0.25);
 }
 
 .dark {
-  --background: #09090b;
-  --foreground: #ffffff;
-  --card: #09090b;
-  --card-foreground: #ffffff;
-  --popover: #09090b;
-  --popover-foreground: #ffffff;
-  --primary: #008850; /* Forest Green */
-  --primary-foreground: #ffffff;
-  --secondary: #66161D; /* Bay State Burgundy */
-  --secondary-foreground: #FCD048;
-  --muted: #3f3f46;
-  --muted-foreground: #d4d4d8;
-  --accent: #FCD048; /* Harvest Gold */
-  --accent-foreground: #66161D;
-  --destructive: #760F1D;
-  --destructive-foreground: #ffffff;
-  --border: #3f3f46;
-  --input: #3f3f46;
-  --ring: #008850;
-  --chart-1: #008850;
-  --chart-2: #66161D;
-  --chart-3: #FCD048;
-  --chart-4: #e76e50;
-  --chart-5: #2a9d8f;
-  --sidebar: #008850;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #008850;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #00a86b;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgb(255 255 255 / 0.2);
-  --sidebar-ring: #FCD048;
+  --background: oklch(20% 0.02 160);
+  --foreground: oklch(95% 0.02 90);
+  --card: oklch(20% 0.02 160);
+  --card-foreground: oklch(95% 0.02 90);
+  --popover: oklch(20% 0.02 160);
+  --popover-foreground: oklch(95% 0.02 90);
+  --primary: oklch(45% 0.08 160);
+  --primary-foreground: oklch(98% 0.01 90);
+  --secondary: oklch(30% 0.02 160);
+  --secondary-foreground: oklch(95% 0.02 90);
+  --muted: oklch(25% 0.02 160);
+  --muted-foreground: oklch(75% 0.02 160);
+  --accent: oklch(45% 0.08 160);
+  --accent-foreground: oklch(98% 0.01 90);
+  --destructive: oklch(45% 0.15 25);
+  --destructive-foreground: oklch(98% 0.01 90);
+  --border: oklch(30% 0.03 160);
+  --input: oklch(30% 0.03 160);
+  --ring: oklch(45% 0.08 160);
+  --chart-1: oklch(45% 0.08 160);
+  --chart-2: oklch(30% 0.02 160);
+  --chart-3: oklch(40% 0.05 160);
+  --chart-4: oklch(60% 0.1 40);
+  --chart-5: oklch(70% 0.08 160);
+  --sidebar: oklch(25% 0.05 160);
+  --sidebar-foreground: oklch(95% 0.02 90);
+  --sidebar-primary: oklch(45% 0.08 160);
+  --sidebar-primary-foreground: oklch(98% 0.01 90);
+  --sidebar-accent: oklch(30% 0.05 160);
+  --sidebar-accent-foreground: oklch(95% 0.02 90);
+  --sidebar-border: oklch(30% 0.03 160);
+  --sidebar-ring: oklch(45% 0.08 160);
 
-  --surface-admin-bg: #12161a;
-  --surface-admin-card: #181d22;
-  --surface-admin-muted: #20262d;
-  --surface-admin-border: #2f3741;
-  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.24);
-  --shadow-sm: 0 14px 30px -24px rgb(0 0 0 / 0.4);
-  --shadow-md: 0 22px 44px -28px rgb(0 0 0 / 0.46);
-  --shadow-float: 0 28px 60px -30px rgb(0 0 0 / 0.55);
+  --surface-admin-bg: oklch(15% 0.02 160);
+  --surface-admin-card: oklch(18% 0.02 160);
+  --surface-admin-muted: oklch(22% 0.02 160);
+  --surface-admin-border: oklch(30% 0.03 160);
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-sm: 0 14px 30px -24px rgb(0 0 0 / 0.5);
+  --shadow-md: 0 22px 44px -28px rgb(0 0 0 / 0.6);
+  --shadow-float: 0 28px 60px -30px rgb(0 0 0 / 0.7);
 }
 
 @layer base {
