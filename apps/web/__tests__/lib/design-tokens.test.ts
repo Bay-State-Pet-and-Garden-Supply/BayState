@@ -11,15 +11,15 @@ import {
 describe('design-tokens', () => {
     describe('BRAND_COLORS', () => {
         it('should have correct Forest Green value', () => {
-            expect(BRAND_COLORS.FOREST_GREEN).toBe('#008850');
+            expect(BRAND_COLORS.FOREST_GREEN).toBe('#1a4d3c');
         });
 
-        it('should have correct Burgundy value', () => {
-            expect(BRAND_COLORS.BURGUNDY).toBe('#66161D');
+        it('should have correct Warm Gray value', () => {
+            expect(BRAND_COLORS.WARM_GRAY).toBe('#3e3c3a');
         });
 
-        it('should have correct Gold value', () => {
-            expect(BRAND_COLORS.GOLD).toBe('#FCD048');
+        it('should have correct Cream value', () => {
+            expect(BRAND_COLORS.CREAM).toBe('#fcfaf8');
         });
     });
 
@@ -45,7 +45,7 @@ describe('design-tokens', () => {
         });
 
         it('should have correct Published value', () => {
-            expect(STATUS_COLORS.PUBLISHED).toBe('#008850');
+            expect(STATUS_COLORS.PUBLISHED).toBe('#1a4d3c');
         });
     });
 
@@ -63,7 +63,7 @@ describe('design-tokens', () => {
         });
 
         it('should map exporting to forest green', () => {
-            expect(PIPELINE_STATUS_COLORS.exporting).toBe('#008850');
+            expect(PIPELINE_STATUS_COLORS.exporting).toBe('#1a4d3c');
         });
 
         it('should map failed to failed red', () => {
@@ -86,8 +86,8 @@ describe('design-tokens', () => {
     describe('CSS_CUSTOM_PROPERTIES', () => {
         it('should have brand color properties', () => {
             expect(CSS_CUSTOM_PROPERTIES.BRAND.FOREST_GREEN).toBe('--color-brand-forest-green');
-            expect(CSS_CUSTOM_PROPERTIES.BRAND.BURGUNDY).toBe('--color-brand-burgundy');
-            expect(CSS_CUSTOM_PROPERTIES.BRAND.GOLD).toBe('--color-brand-gold');
+            expect(CSS_CUSTOM_PROPERTIES.BRAND.WARM_GRAY).toBe('--color-brand-warm-gray');
+            expect(CSS_CUSTOM_PROPERTIES.BRAND.CREAM).toBe('--color-brand-cream');
         });
 
         it('should have status color properties', () => {
@@ -113,7 +113,7 @@ describe('design-tokens', () => {
         });
 
         it('should return correct color for exporting status', () => {
-            expect(getStatusColor('exporting')).toBe('#008850');
+            expect(getStatusColor('exporting')).toBe('#1a4d3c');
         });
 
         it('should return correct color for failed status', () => {

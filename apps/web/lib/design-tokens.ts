@@ -1,9 +1,9 @@
 import type { PersistedPipelineStatus } from './pipeline/types';
 
 export const BRAND_COLORS = {
-    FOREST_GREEN: '#008850',
-    BURGUNDY: '#66161D',
-    GOLD: '#FCD048',
+    FOREST_GREEN: '#1a4d3c', // Approximate hex for oklch(35% 0.08 160)
+    WARM_GRAY: '#3e3c3a',    // Approximate hex for oklch(25% 0.02 90)
+    CREAM: '#fcfaf8',        // Approximate hex for oklch(98% 0.01 90)
 } as const;
 
 export const STATUS_COLORS = {
@@ -41,8 +41,8 @@ export const PIPELINE_STATUS_LABELS: Record<PersistedPipelineStatus, string> = {
 export const CSS_CUSTOM_PROPERTIES = {
     BRAND: {
         FOREST_GREEN: '--color-brand-forest-green',
-        BURGUNDY: '--color-brand-burgundy',
-        GOLD: '--color-brand-gold',
+        WARM_GRAY: '--color-brand-warm-gray',
+        CREAM: '--color-brand-cream',
     } as const,
     STATUS: {
         SUCCESS: '--color-status-success',
