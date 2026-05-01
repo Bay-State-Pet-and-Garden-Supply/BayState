@@ -1,0 +1,202 @@
+{
+  "schema_version": "ai-search-e2e-benchmark-dataset-v1",
+  "source_notes": {
+    "origin": "Subset of e2e_dataset.json for live-mode smoke testing",
+    "purpose": "Live-mode smoke test using real search APIs and page crawling. No search fixtures provided. Covers official domains, retailers, and varying difficulty levels.",
+    "scope": "6 entries across pet food, cat litter, garden, horse treats, collectible figurines, and poultry bedding categories."
+  },
+  "entries": [
+    {
+      "sku": "072318200618",
+      "product_name": "FirstMate Chicken Meal with Blueberries Formula Dry Cat Food 3.96lb",
+      "brand": "FirstMate",
+      "expected_official_domains": [
+        "firstmate.com"
+      ],
+      "expected_source_url": "https://firstmate.com/product/chicken-meal-with-blueberries-formula-for-cats/",
+      "source_type": "official",
+      "category": "Cat Food Dry",
+      "difficulty": "easy",
+      "tags": [
+        "e2e",
+        "official-domain",
+        "json-ld"
+      ],
+      "ground_truth": {
+        "brand": "FirstMate",
+        "name": "FirstMate Chicken Meal with Blueberries Formula Dry Cat Food 3.96lb",
+        "description_contains": [
+          "chicken",
+          "blueberries"
+        ],
+        "size_metrics": "3.96 lb",
+        "image_required": true,
+        "categories": [
+          "Cat Food Dry",
+          "Dry Cat Food",
+          "Limited Ingredient Diet"
+        ]
+      }
+    },
+    {
+      "sku": "045663976866",
+      "product_name": "Four Paws Wee-Wee Cat Pads 11x17 10ct",
+      "brand": "Four Paws",
+      "expected_official_domains": [
+        "fourpaws.com"
+      ],
+      "expected_source_url": "https://www.fourpaws.com/products/wee-wee-cat-litter-box-system-pads",
+      "source_type": "official",
+      "category": "Cat Litter Accessories",
+      "difficulty": "easy",
+      "tags": [
+        "e2e",
+        "official-domain",
+        "json-ld"
+      ],
+      "ground_truth": {
+        "brand": "Four Paws",
+        "name": "Four Paws Wee-Wee Cat Pads 11x17 10ct",
+        "description_contains": [
+          "cat litter box",
+          "odor"
+        ],
+        "size_metrics": "10 count",
+        "image_required": true,
+        "categories": [
+          "Cat Litter Accessories",
+          "Cat Pads",
+          "Litter Box Pads"
+        ]
+      }
+    },
+    {
+      "sku": "032247886598",
+      "product_name": "Scotts Nature Scapes Color Enhanced Mulch Deep Forest Brown 1.5 cu. ft.",
+      "brand": "Scotts",
+      "expected_official_domains": [
+        "scottsmiraclegro.com"
+      ],
+      "expected_source_url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
+      "source_type": "official",
+      "category": "Garden > Mulch",
+      "difficulty": "easy",
+      "tags": [
+        "e2e",
+        "official-domain",
+        "json-ld"
+      ],
+      "ground_truth": {
+        "brand": "Scotts",
+        "name": "Scotts Nature Scapes Color Enhanced Mulch Deep Forest Brown 1.5 cu. ft.",
+        "description_contains": [
+          "mulch",
+          "color"
+        ],
+        "size_metrics": "1.5 cu. ft.",
+        "image_required": true,
+        "categories": [
+          "Garden > Mulch",
+          "Mulch",
+          "Lawn & Garden"
+        ]
+      }
+    },
+    {
+      "sku": "850012047735",
+      "product_name": "The Honest Kitchen Grain Free Turkey & Chicken Clusters Dry Cat Food 1 lb",
+      "brand": "The Honest Kitchen",
+      "expected_official_domains": [
+        "thehonestkitchen.com"
+      ],
+      "expected_source_url": "https://www.thehonestkitchen.com/products/grain-free-turkey-and-chicken-whole-food-clusters-dry-cat-food",
+      "source_type": "official",
+      "category": "Cat Food Dry",
+      "difficulty": "hard",
+      "tags": [
+        "e2e",
+        "official-domain",
+        "json-ld"
+      ],
+      "ground_truth": {
+        "brand": "The Honest Kitchen",
+        "name": "The Honest Kitchen Grain Free Turkey & Chicken Clusters Dry Cat Food 1 lb",
+        "description_contains": [
+          "whole food clusters",
+          "probiotics"
+        ],
+        "size_metrics": "1 lb",
+        "image_required": true,
+        "categories": [
+          "Cat Food Dry",
+          "Dry Cat Food",
+          "Whole Food Clusters"
+        ]
+      }
+    },
+    {
+      "sku": "4059433816098",
+      "product_name": "Schleich Clydesdale Gelding Horse Toy Figurine",
+      "brand": "Schleich",
+      "expected_official_domains": [
+        "schleich-s.com"
+      ],
+      "expected_source_url": "https://us.schleich-s.com/products/clydesdale-gelding-13808-2",
+      "source_type": "official",
+      "category": "Collectible Animal Figurines",
+      "difficulty": "easy",
+      "tags": [
+        "e2e",
+        "official-domain",
+        "json-ld"
+      ],
+      "ground_truth": {
+        "brand": "Schleich",
+        "name": "Schleich Clydesdale Gelding Horse Toy Figurine",
+        "description_contains": [
+          "Clydesdale",
+          "horse"
+        ],
+        "size_metrics": "4.8 inch",
+        "image_required": true,
+        "categories": [
+          "Collectible Animal Figurines",
+          "Horse Figurines",
+          "Farm World"
+        ]
+      }
+    },
+    {
+      "sku": "095668480400",
+      "product_name": "Manna Pro Fresh Flakes Poultry Bedding 12 Lb",
+      "brand": "Manna Pro",
+      "expected_official_domains": [
+        "mannapro.com"
+      ],
+      "expected_source_url": "https://mannapro.com/products/fresh-flakes-poultry-bedding",
+      "source_type": "official",
+      "category": "Poultry Bedding",
+      "difficulty": "easy",
+      "tags": [
+        "e2e",
+        "official-domain",
+        "json-ld"
+      ],
+      "ground_truth": {
+        "brand": "Manna Pro",
+        "name": "Manna Pro Fresh Flakes Poultry Bedding 12 Lb",
+        "description_contains": [
+          "bedding",
+          "pine"
+        ],
+        "size_metrics": "12 lb",
+        "image_required": true,
+        "categories": [
+          "Poultry Bedding",
+          "Coop Bedding",
+          "Pine Shavings"
+        ]
+      }
+    }
+  ]
+}
