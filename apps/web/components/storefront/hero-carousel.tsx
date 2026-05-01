@@ -68,9 +68,9 @@ export function HeroCarousel({ slides, interval = 5000 }: HeroCarouselProps) {
 
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/40 to-transparent flex items-end p-6 sm:p-10 z-10">
                 <div className="bg-zinc-900 text-white p-6 border-l-[12px] border-accent shadow-[12px_12px_0px_rgba(0,0,0,0.25)] pointer-events-auto">
-                    <h2 className="text-3xl sm:text-5xl font-black uppercase m-0 leading-tight tracking-tighter font-display">
+                    <h1 className="text-3xl sm:text-5xl font-black uppercase m-0 leading-tight tracking-tighter font-display">
                         {currentSlide.title}
-                    </h2>
+                    </h1>
                     {currentSlide.subtitle && (
                         <p className="text-sm sm:text-base font-bold mt-2 text-accent uppercase tracking-widest">
                             {currentSlide.subtitle}

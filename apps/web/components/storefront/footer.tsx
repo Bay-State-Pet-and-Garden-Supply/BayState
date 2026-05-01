@@ -87,7 +87,7 @@ export function StorefrontFooter() {
             <ul className="space-y-4">
               <li>
                 <Link
-                  href="/services/propane"
+                  href="/services/propane-refill"
                   className="hover:text-accent transition-colors flex items-center"
                 >
                   <span className="w-2 h-2 rounded-full bg-accent/50 mr-2 inline-block"></span>
@@ -96,7 +96,7 @@ export function StorefrontFooter() {
               </li>
               <li>
                 <Link
-                  href="/services/rentals"
+                  href="/services/equipment-rentals"
                   className="hover:text-accent transition-colors flex items-center"
                 >
                   <span className="w-2 h-2 rounded-full bg-accent/50 mr-2 inline-block"></span>
@@ -144,7 +144,7 @@ export function StorefrontFooter() {
                 <Link href="/shipping" className="text-sm font-medium hover:text-white transition-colors">Shipping</Link>
                 <Link href="/returns" className="text-sm font-medium hover:text-white transition-colors">Returns</Link>
                 <Link href="/privacy" className="text-sm font-medium hover:text-white transition-colors">Privacy / Security</Link>
-                <Link href="/careers" className="text-sm font-medium hover:text-white transition-colors">Career Opportunities</Link>
+                <Link href="/contact" className="text-sm font-medium hover:text-white transition-colors">Career Opportunities</Link>
               </div>
               <p className="text-sm text-zinc-500 flex items-center gap-2">
                 &copy; {new Date().getFullYear()} Bay State Pet & Garden Supply. All rights reserved.
