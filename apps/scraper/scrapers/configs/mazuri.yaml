@@ -103,17 +103,11 @@ workflows:
     name: null
     params:
       if_flag: no_results_found
-  - action: extract_single
-    name: extract_product_url
+  - action: click
+    name: click_first_product_match
     params:
-      field: product_url
-      selector_id: search_result_link
-  - action: navigate
-    name: open_product_page
-    params:
-      url: "{{product_url}}"
-      wait_until: commit
-      wait_after: 2
+      selector: "a.snize-view-link, .snize-product a[href*='/products/']"
+      index: 0
   - action: wait_for
     name: null
     params:

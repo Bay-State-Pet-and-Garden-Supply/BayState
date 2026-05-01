@@ -39,6 +39,7 @@ Python-based scraper executing YAML-defined workflows to extract product data. R
 | **Fix Retry Logic** | `core/` | Exponential backoff, circuit breaker, failure classifier |
 | **Debug Job** | `api/debug.py` | Job state, browser contexts |
 | **Add CLI Command** | `cli/` | Click commands, entry in `__main__.py` |
+| **Official Brand Benchmark** | `benchmarks/official_brand/` | Discovery-only fixture benchmark; see `README.md` |
 | **Update Models** | `scrapers/models/` | Pydantic, validation rules |
 
 ## ARCHITECTURE

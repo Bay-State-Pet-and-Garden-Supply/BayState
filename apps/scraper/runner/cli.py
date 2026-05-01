@@ -262,10 +262,10 @@ def run_local_mode(args: argparse.Namespace) -> None:
         with open(args.output, "w", encoding="utf-8") as f:
             f.write(output_json)
         logger.info(f"[Local] Results written to {args.output}")
-    elif not args.test_mode:
+    elif not getattr(args, "test_mode", False):
         print(output_json)
 
-    if args.test_mode:
+    if getattr(args, "test_mode", False):
         test_payload = build_test_mode_payload(config, results)
         
         print("\n" + "="*50)
@@ -375,7 +375,7 @@ def run_test_mode(args: argparse.Namespace, _config: Any = None) -> TestModeResu
 
 def build_test_mode_payload(
     config: Any,
-    results: dict[str, Any],
+    results: Any,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "test_type": "qa",
@@ -386,7 +386,12 @@ def build_test_mode_payload(
 
     test_assertions = getattr(config, "test_assertions", None) or []
     # run_job returns a dict with "data" containing {sku: result_dict}
-    results_data = results.get("data", {})
+    if isinstance(results, dict):
+        results_data = results.get("data", {})
+    elif isinstance(results, list):
+        results_data = {str(row.get("sku") or ""): {getattr(config, "name", "unknown"): row} for row in results if isinstance(row, dict)}
+    else:
+        results_data = {}
     
     if os.environ.get("DEBUG_TEST_MODE") == "true":
         print(f"DEBUG: results_data keys: {list(results_data.keys())}")
