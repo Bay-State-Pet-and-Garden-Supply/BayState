@@ -264,6 +264,12 @@ def validate_local_runtime_requirements(
                 source = _detect_credential_source(ref)
                 if source:
                     credential_sources[ref] = source
+                    if source.startswith("api "):
+                        actionable_warnings.append(
+                            "Local login test cannot confirm credentials for refs: "
+                            + ref
+                            + ". API credential lookup is deferred until runtime."
+                        )
                 else:
                     missing_credential_refs.append(ref)
 
@@ -725,7 +731,8 @@ class ConfigValidator:
 
             if action_lower == "login" and not isinstance(config_dict.get("login"), dict):
                 actionable_warnings.append(
-                    f"Step {i}: login action exists but login config is missing. Add a top-level 'login' block so local validation can test selectors and failures clearly."
+                    f"Step {i}: login action exists but login config is missing. Add a top-level 'login' block so local "
+                    "validation can test selectors and failures clearly."
                 )
 
         return {
@@ -946,7 +953,8 @@ class ConfigValidator:
                 selector_value = params.get("selector")
                 if isinstance(selector_value, str) and selector_value in selector_names:
                     actionable_warnings.append(
-                        f"Step {i}: action '{action}' uses selector name '{selector_value}' as a raw selector. Use the actual CSS/XPath selector string or switch to an action that resolves selector references."
+                        f"Step {i}: action '{action}' uses selector name '{selector_value}' as a raw selector. Use the actual "
+                        "CSS/XPath selector string or switch to an action that resolves selector references."
                     )
 
         return {
@@ -972,7 +980,8 @@ class ConfigValidator:
         login_config = config_dict.get("login")
         if not isinstance(login_config, dict):
             errors.append(
-                "Config requires login but has no valid top-level 'login' block. Add login.url, username_field, password_field, and submit_button so local debugging can validate the flow."
+                "Config requires login but has no valid top-level 'login' block. Add login.url, username_field, "
+                "password_field, and submit_button so local debugging can validate the flow."
             )
             return {
                 "errors": errors,
@@ -991,7 +1000,8 @@ class ConfigValidator:
         for selector_name, selector_value in login_selector_map.items():
             if selector_value in selector_names:
                 actionable_warnings.append(
-                    f"Login field '{selector_name}' points to selector name '{selector_value}' instead of a raw selector string. Login actions do not resolve selector references automatically."
+                    f"Login field '{selector_name}' points to selector name '{selector_value}' instead of a raw selector string. "
+                    "Login actions do not resolve selector references automatically."
                 )
 
         runtime_credential_refs = self._build_runtime_credential_refs(config_dict)
@@ -1002,17 +1012,20 @@ class ConfigValidator:
         ]
         if not explicit_refs:
             actionable_warnings.append(
-                "Login-enabled config is relying on implicit scraper-slug credential fallback. Add explicit 'credential_refs' so local validation and runtime diagnostics can report credential lookup failures clearly."
+                "Login-enabled config is relying on implicit scraper-slug credential fallback. Add explicit "
+                "'credential_refs' so local validation and runtime diagnostics can report credential lookup failures clearly."
             )
 
         if not runtime_credential_refs:
             errors.append(
-                "Login-enabled config does not expose any runtime credential candidate. Add 'credential_refs' or ensure the scraper 'name' can map to env credentials."
+                "Login-enabled config does not expose any runtime credential candidate. Add 'credential_refs' or ensure the "
+                "scraper 'name' can map to env credentials."
             )
 
         if login_config.get("failure_indicators") is None:
             actionable_warnings.append(
-                "Login config has no 'failure_indicators'. Add auth failure selectors/text patterns so failed login scrapes report explicit reasons instead of generic timeouts."
+                "Login config has no 'failure_indicators'. Add auth failure selectors/text patterns so failed login scrapes "
+                "report explicit reasons instead of generic timeouts."
             )
 
         return {

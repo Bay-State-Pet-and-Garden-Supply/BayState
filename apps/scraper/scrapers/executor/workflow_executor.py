@@ -108,10 +108,6 @@ class WorkflowExecutor:
 
         self.timeout = timeout or config.timeout
 
-        # Increase timeout in CI environment for more reliable testing
-        if self.is_ci:
-            self.timeout = 60
-
         # Set max retries - default to 0 (no retries) for fast failure
         self.max_retries = max_retries if max_retries is not None else (config.retries if config.retries is not None else 0)
 
