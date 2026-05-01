@@ -15,6 +15,8 @@ RUN apt-get update && \
       liblttng-ust1 \
       libcurl4 \
       libunwind8 \
+      zip \
+      unzip \
       tzdata \
       procps \
       docker.io \
