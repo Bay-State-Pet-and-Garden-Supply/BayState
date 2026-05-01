@@ -17,11 +17,15 @@ const arvo = Arvo({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://bay-state-app.vercel.app"),
+  alternates: {
+    canonical: "/",
+  },
   title: {
-    default: "Bay State Pet & Garden Supply",
+    default: "Bay State Pet & Garden Supply | Taunton, MA",
     template: "%s | Bay State Pet & Garden",
   },
-  description: "Your local source for pet supplies, garden tools, and farm products. Family-owned and serving the community with quality products and neighborly service.",
+  description: "Bay State Pet & Garden Supply is your local Taunton source for premium pet supplies, garden tools, and farm products. Family-owned since 1997 with expert advice.",
   keywords: ["pet supplies", "garden tools", "farm products", "pet food", "garden center", "Massachusetts"],
   authors: [{ name: "Bay State Pet & Garden Supply" }],
   manifest: "/manifest.webmanifest",

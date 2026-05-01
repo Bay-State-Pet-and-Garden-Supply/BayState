@@ -5,16 +5,11 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   ShoppingCart,
-  Facebook,
-  Instagram,
-  Twitter,
   ChevronDownIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InlineSearch } from "@/components/storefront/inline-search";
 import { useCartStore } from "@/lib/cart-store";
-import { cn } from "@/lib/utils";
-import { useScroll } from "@/hooks/use-scroll";
 import { CartDrawer } from "@/components/storefront/cart-drawer";
 import { MobileNavDrawer } from "@/components/storefront/mobile-nav-drawer";
 import {
@@ -94,30 +89,7 @@ export function StorefrontHeader({
   campaignBanner?: CampaignBannerSettings;
 }) {
   const itemCount = useCartStore((state) => state.getItemCount());
-  const isScrolled = useScroll(50);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  
-  // Dynamic Topbar Logic
-  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  
-  const bannerEnabled = campaignBanner?.enabled && campaignBanner?.messages && campaignBanner.messages.length > 0;
-  const messages = campaignBanner?.messages || [];
-  const cycleInterval = campaignBanner?.cycleInterval || 5000;
-
-  useEffect(() => {
-    if (!bannerEnabled || messages.length <= 1) return;
-
-    const interval = setInterval(() => {
-      setIsTransitioning(true);
-      setTimeout(() => {
-        setCurrentMessageIndex((prev) => (prev + 1) % messages.length);
-        setIsTransitioning(false);
-      }, 300);
-    }, cycleInterval);
-
-    return () => clearInterval(interval);
-  }, [bannerEnabled, messages.length, cycleInterval]);
 
   const hasServerProvidedAuth = user !== undefined || userRole !== undefined;
   const [clientUser, setClientUser] = useState<User | null>(null);
@@ -263,13 +235,13 @@ export function StorefrontHeader({
               href="/" 
               className="flex items-center group shrink-0 gap-3"
             >
-              <div className="relative h-16 w-32">
+              <div className="h-16 w-32 relative">
                 <Image
                   src="/logo.png"
                   alt="Bay State Pet & Garden Supply Logo"
-                  fill
-                  sizes="128px"
-                  className="object-contain"
+                  width={128}
+                  height={64}
+                  className="object-contain w-full h-full"
                   priority
                 />
               </div>
@@ -294,7 +266,7 @@ export function StorefrontHeader({
                 variant="ghost"
                 size="icon"
                 className="relative h-14 w-14 text-white hover:bg-zinc-900 rounded-none border-4 border-transparent hover:border-zinc-900 transition-all group"
-                aria-label="Shopping cart"
+                aria-label={`Shopping cart, ${itemCount} items`}
                 onClick={() => setIsCartOpen(true)}
               >
                 <ShoppingCart className="h-7 w-7 group-hover:scale-110 transition-transform" />
@@ -464,7 +436,7 @@ export function StorefrontHeader({
                   </NavigationMenuItem>
                 )}
 
-                <div className="flex-1" />
+                <NavigationMenuItem className="flex-1" />
 
                 {/* Utility Links */}
                 <NavigationMenuItem>
@@ -511,7 +483,7 @@ export function StorefrontHeader({
             variant="ghost"
             size="icon"
             className="relative h-12 w-12 text-white hover:bg-zinc-900 rounded-none border-2 border-transparent active:border-zinc-900"
-            aria-label="Shopping cart"
+            aria-label={`Shopping cart, ${itemCount} items`}
             onClick={() => setIsCartOpen(true)}
           >
             <ShoppingCart className="h-6 w-6" />

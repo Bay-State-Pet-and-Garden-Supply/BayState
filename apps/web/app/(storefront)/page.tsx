@@ -48,7 +48,7 @@ export default async function HomePage() {
       <div className="container mx-auto px-4">
         <section className="my-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Link href="/products?category=seasonal" className="group border-[4px] border-zinc-900 overflow-hidden relative aspect-[627/376] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none shadow-[8px_8px_0px_rgba(0,0,0,1)] bg-zinc-100">
-            <Image src="/images/legacy/img1.png" alt="Winter Essentials" fill className="object-cover" />
+            <Image src="/images/legacy/img1.png" alt="Winter Essentials" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
             <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-4">
               <h3 className="text-white text-xl sm:text-2xl font-black uppercase tracking-widest leading-none font-display">Winter Essentials</h3>
             </div>
@@ -56,14 +56,14 @@ export default async function HomePage() {
 
           <div className="flex flex-col gap-6">
             <Link href="/products?category=farm" className="group border-[4px] border-zinc-900 overflow-hidden relative aspect-[627/174] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none shadow-[8px_8px_0px_rgba(255,183,0,1)] bg-zinc-100">
-               <Image src="/images/legacy/img2.png" alt="Bee Nuc Pre-Order" fill className="object-cover" />
+               <Image src="/images/legacy/img2.png" alt="Bee Nuc Pre-Order" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
                <div className="absolute top-2 right-2 bg-zinc-900 p-2">
                  <h3 className="text-white text-xs sm:text-sm font-black uppercase tracking-widest leading-none font-display">Bee Nuc Pre-Order</h3>
                </div>
             </Link>
 
             <Link href="/products?category=home" className="group border-[4px] border-zinc-900 overflow-hidden relative aspect-[627/174] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none shadow-[8px_8px_0px_rgba(220,38,38,1)] bg-zinc-100">
-              <Image src="/images/legacy/img3.png" alt="Wood Pellets Sale" fill className="object-cover" />
+              <Image src="/images/legacy/img3.png" alt="Wood Pellets Sale" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
               <div className="absolute top-2 right-2 bg-red-600 p-2">
                 <h3 className="text-white text-xs sm:text-sm font-black uppercase tracking-widest leading-none font-display">Wood Pellets Sale</h3>
               </div>

@@ -7,7 +7,7 @@ export default function LoginPage() {
     return (
         <div className="bg-white p-8 rounded-lg shadow border">
             <div className="mb-6 text-center">
-                <h2 className="text-3xl font-bold tracking-tight text-gray-900">Sign in</h2>
+                <h1 className="text-3xl font-bold tracking-tight text-gray-900">Sign in</h1>
                 <p className="mt-2 text-sm text-gray-600">
                     Or{" "}
                     <Link href="/signup" className="font-medium text-primary hover:text-primary/90 hover:underline underline-offset-4">

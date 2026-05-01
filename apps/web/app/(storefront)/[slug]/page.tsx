@@ -33,7 +33,13 @@ export default async function DynamicPage(props: PageProps) {
     <div className="container mx-auto px-4 py-12 max-w-4xl">
       <h1 className="text-4xl font-bold text-primary mb-8">{page.title}</h1>
       <article className="prose prose-stone lg:prose-lg max-w-none dark:prose-invert prose-headings:text-primary prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
-        <ReactMarkdown>{page.content}</ReactMarkdown>
+        <ReactMarkdown
+          components={{
+            h1: ({ ...props }) => <h2 className="text-3xl font-bold mb-6" {...props} />,
+          }}
+        >
+          {page.content}
+        </ReactMarkdown>
       </article>
       <div className="mt-12 text-sm text-muted-foreground border-t pt-4">
         Last updated: {new Date(page.updated_at).toLocaleDateString()}

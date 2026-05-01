@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Card, CardContent } from '@/components/ui/card';
 import { Brand } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -105,33 +104,31 @@ export function BrandsClient({ brands }: BrandsClientProps) {
                 <Link 
                   href={`/products?brand=${brand.slug}`} 
                   key={brand.id} 
-                  className="group block h-full"
+                  className="group block h-full p-4 bg-white border border-zinc-200 hover:border-primary/50 hover:shadow-lg transition-all rounded-xl"
                 >
-                  <Card className="h-full hover:shadow-lg transition-all duration-[--animate-duration-slow] border-zinc-200 overflow-hidden group-hover:border-primary/50">
-                    <CardContent className="p-4 flex flex-col items-center justify-center h-full text-center gap-3">
-                      <div className="relative w-24 h-24 flex items-center justify-center">
-                        {brand.logo_url ? (
-                          <Image
-                            src={brand.logo_url}
-                            alt={brand.name}
-                            fill
-                            className="object-contain transition-transform duration-[--animate-duration-slower] group-hover:scale-105"
-                            sizes="(max-width: 768px) 50vw, 25vw"
-                            unoptimized
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-zinc-100 rounded-full text-primary font-bold text-xl border border-primary/10">
-                            {brand.name.charAt(0)}
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-sm group-hover:text-primary transition-colors line-clamp-2">
-                          {brand.name}
-                        </h3>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div className="flex flex-col items-center justify-center h-full text-center gap-3">
+                    <div className="relative w-24 h-24 flex items-center justify-center">
+                      {brand.logo_url ? (
+                        <Image
+                          src={brand.logo_url}
+                          alt={brand.name}
+                          fill
+                          className="object-contain transition-transform duration-[--animate-duration-slower] group-hover:scale-105"
+                          sizes="(max-width: 768px) 33vw, (max-width: 1280px) 20vw, 15vw"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-zinc-100 rounded-full text-primary font-bold text-xl border border-primary/10">
+                          {brand.name.charAt(0)}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-sm group-hover:text-primary transition-colors line-clamp-2">
+                        {brand.name}
+                      </h3>
+                    </div>
+                  </div>
                 </Link>
               ))}
             </div>
