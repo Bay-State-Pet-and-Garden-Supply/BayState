@@ -460,8 +460,8 @@ class PlaywrightScraperBrowser:
                 if failure:
                     failure_text = getattr(failure, "errorText", None) or (failure.get("errorText") if isinstance(failure, dict) else "") or ""
                 self._last_failed_request = {
-                    "url": request.url,
-                    "method": request.method,
+                    "url": getattr(request, "url", ""),
+                    "method": getattr(request, "method", ""),
                     "error": failure_text,
                 }
 

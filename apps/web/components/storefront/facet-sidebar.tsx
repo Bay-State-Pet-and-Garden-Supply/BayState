@@ -37,10 +37,17 @@ interface FacetSidebarProps {
   brands: Brand[];
   petTypes: PetType[];
   categories?: CategorySummary[];
+  stockStatuses?: Array<{ id: string; label: string }>;
   dynamicFacets?: FacetDefinition[];
 }
 
-export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets = [] }: FacetSidebarProps) {
+export function FacetSidebar({
+  brands,
+  petTypes,
+  categories = [],
+  stockStatuses = [],
+  dynamicFacets = [],
+}: FacetSidebarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -58,8 +65,6 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
   const renderCategories = activeCategory 
     ? categories.filter((c) => c.parent_id === activeCategory.id)
     : categories.filter((c) => !c.parent_id);
-
-  const [searchQuery, setSearchQuery] = useState(currentSearch);
 
   // Internal search states for long lists
   const [brandSearch, setBrandSearch] = useState('');
@@ -153,13 +158,14 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
       {/* Active Filters Pills */}
       {activeFilters.length > 0 && (
         <div className="flex flex-wrap gap-2 pt-4 shrink-0">
-          {activeFilters.map((filter, index) => (
+          {activeFilters.map((filter) => (
             <div
-              key={`${filter.key}-${index}`}
+              key={`${filter.key}-${filter.value ?? filter.label}`}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-100 border border-zinc-200 text-[11px] font-bold text-zinc-600 hover:bg-zinc-200 transition-colors cursor-default"
             >
               <span className="capitalize">{filter.label}</span>
               <button
+                type="button"
                 onClick={() => removeFilter(filter.key, filter.value)}
                 className="hover:text-red-600 transition-colors p-0.5"
                 aria-label={`Remove ${filter.label} filter`}
@@ -175,26 +181,25 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
         <Accordion type="multiple" className="w-full">
 
           {/* Availability */}
-          <AccordionItem value="stock" className="border-none">
-            <AccordionTrigger className="text-sm font-bold hover:no-underline py-3">Availability</AccordionTrigger>
-            <AccordionContent className="space-y-3 pt-1 pb-4">
-              {[
-                { id: 'in_stock', label: 'In Stock' },
-                { id: 'pre_order', label: 'Pre-Order' }
-              ].map((status) => (
-                <div key={status.id} className="flex items-center space-x-3">
-                  <Checkbox
-                    id={`stock-${status.id}`}
-                    checked={currentStock === status.id}
-                    onCheckedChange={(checked) => updateFilter('stock', checked ? status.id : null)}
-                  />
-                  <Label htmlFor={`stock-${status.id}`} className="text-sm font-medium cursor-pointer leading-none">
-                    {status.label}
-                  </Label>
-                </div>
-              ))}
-            </AccordionContent>
-          </AccordionItem>
+          {stockStatuses.length > 0 && (
+            <AccordionItem value="stock" className="border-none">
+              <AccordionTrigger className="text-sm font-bold hover:no-underline py-3">Availability</AccordionTrigger>
+              <AccordionContent className="space-y-3 pt-1 pb-4">
+                {stockStatuses.map((status) => (
+                  <div key={status.id} className="flex items-center space-x-3">
+                    <Checkbox
+                      id={`stock-${status.id}`}
+                      checked={currentStock === status.id}
+                      onCheckedChange={(checked) => updateFilter('stock', checked ? status.id : null)}
+                    />
+                    <Label htmlFor={`stock-${status.id}`} className="text-sm font-medium cursor-pointer leading-none">
+                      {status.label}
+                    </Label>
+                  </div>
+                ))}
+              </AccordionContent>
+            </AccordionItem>
+          )}
 
           {/* Categories */}
           {categories.length > 0 && (
@@ -218,6 +223,7 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
                     <div className="flex flex-col space-y-2 mb-3 pb-3 border-b border-zinc-100">
                       {activeCategory.parent_id && activeCategory.ancestor_names && activeCategory.ancestor_slugs ? (
                         <button
+                          type="button"
                           onClick={() => {
                             const parentSlug = activeCategory.ancestor_slugs![activeCategory.ancestor_slugs!.length - 1];
                             updateFilter('category', parentSlug || null);
@@ -228,6 +234,7 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
                         </button>
                       ) : (
                         <button
+                          type="button"
                           onClick={() => updateFilter('category', null)}
                           className="flex items-center text-sm font-medium text-zinc-500 hover:text-primary transition-colors text-left"
                         >
@@ -248,6 +255,7 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
                         const slug = category.slug || category.name.toLowerCase();
                         return (
                           <button
+                            type="button"
                             key={category.id}
                             onClick={() => updateFilter('category', slug)}
                             className="block w-full text-left text-sm text-zinc-600 hover:text-primary hover:font-medium transition-colors border-l-2 border-transparent pl-2 ml-1"
@@ -321,6 +329,7 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
           )}
 
           {/* Brand */}
+          {brands.length > 0 && (
           <AccordionItem value="brand" className="border-t border-zinc-100">
             <AccordionTrigger className="text-sm font-bold hover:no-underline py-3">Brand</AccordionTrigger>
             <AccordionContent className="pt-1 pb-4">
@@ -361,6 +370,7 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
               </div>
             </AccordionContent>
           </AccordionItem>
+          )}
 
           {/* Dynamic Schema Facets */}
           {dynamicFacets.map((facet) => {
@@ -392,11 +402,11 @@ export function FacetSidebar({ brands, petTypes, categories = [], dynamicFacets 
                       return (
                         <div key={val.id} className="flex items-center space-x-3">
                           <Checkbox
-                            id={`facet-${val.id}`}
+                            id={`facet-${facet.slug}-${val.slug}`}
                             checked={isChecked}
                             onCheckedChange={() => toggleFacet(facet.slug, val.slug)}
                           />
-                          <Label htmlFor={`facet-${val.id}`} className="text-sm font-medium cursor-pointer leading-none">
+                          <Label htmlFor={`facet-${facet.slug}-${val.slug}`} className="text-sm font-medium cursor-pointer leading-none">
                             {val.value}
                           </Label>
                         </div>

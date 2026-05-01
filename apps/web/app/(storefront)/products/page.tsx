@@ -5,10 +5,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { getFilteredProducts } from '@/lib/products';
-import { getBrands, getNavCategories } from '@/lib/data';
-import { getPetTypes } from '@/lib/pet-types';
-import { getDynamicFacets } from '@/lib/facets';
+import { getAvailableProductFilters, getFilteredProducts } from '@/lib/products';
 import { ProductCard } from '@/components/storefront/product-card';
 import { FacetSidebar } from '@/components/storefront/facet-sidebar';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -36,24 +33,27 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const page = parseInt(params.page || '1', 10);
   const limit = 12;
   const offset = (page - 1) * limit;
+  const minPrice = params.minPrice ? parseFloat(params.minPrice) : undefined;
+  const maxPrice = params.maxPrice ? parseFloat(params.maxPrice) : undefined;
 
-  const [{ products, count }, brands, petTypes, categories, dynamicFacets] = await Promise.all([
+  const filterOptions = {
+    brandSlug: params.brand,
+    petTypeId: params.petTypeId,
+    categorySlug: params.category,
+    stockStatus: params.stock,
+    minPrice: minPrice !== undefined && Number.isFinite(minPrice) ? minPrice : undefined,
+    maxPrice: maxPrice !== undefined && Number.isFinite(maxPrice) ? maxPrice : undefined,
+    search: params.search,
+    facets: params.facets,
+  };
+
+  const [{ products, count }, availableFilters] = await Promise.all([
     getFilteredProducts({
-      brandSlug: params.brand,
-      petTypeId: params.petTypeId,
-      categorySlug: params.category,
-      stockStatus: params.stock,
-      minPrice: params.minPrice ? parseFloat(params.minPrice) : undefined,
-      maxPrice: params.maxPrice ? parseFloat(params.maxPrice) : undefined,
-      search: params.search,
-      facets: params.facets,
+      ...filterOptions,
       limit,
       offset,
     }),
-    getBrands(),
-    getPetTypes(),
-    getNavCategories(),
-    getDynamicFacets(),
+    getAvailableProductFilters(filterOptions),
   ]);
 
   const totalPages = Math.ceil(count / limit);
@@ -61,14 +61,11 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   // Build pagination URL preserving all current filters
   const buildPageUrl = (pageNum: number) => {
     const searchParamsObj = new URLSearchParams();
-    if (params.brand) searchParamsObj.set('brand', params.brand);
-    if (params.petTypeId) searchParamsObj.set('petTypeId', params.petTypeId);
-    if (params.category) searchParamsObj.set('category', params.category);
-    if (params.stock) searchParamsObj.set('stock', params.stock);
-    if (params.minPrice) searchParamsObj.set('minPrice', params.minPrice);
-    if (params.maxPrice) searchParamsObj.set('maxPrice', params.maxPrice);
-    if (params.search) searchParamsObj.set('search', params.search);
-    if (params.facets) searchParamsObj.set('facets', params.facets);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value && key !== 'page') {
+        searchParamsObj.set(key, value);
+      }
+    });
     searchParamsObj.set('page', String(pageNum));
     return `/products?${searchParamsObj.toString()}`;
   };
@@ -79,10 +76,11 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         {/* Filters Sidebar - Sticky/Pinned */}
         <aside className="w-full lg:w-72 flex-shrink-0 lg:sticky lg:top-24 h-auto lg:h-[calc(100vh-120px)] bg-zinc-50/50 rounded-lg p-4 lg:p-0 lg:bg-transparent">
           <FacetSidebar 
-            brands={brands} 
-            petTypes={petTypes} 
-            categories={categories} 
-            dynamicFacets={dynamicFacets}
+            brands={availableFilters.brands} 
+            petTypes={availableFilters.petTypes} 
+            categories={availableFilters.categories} 
+            stockStatuses={availableFilters.stockStatuses}
+            dynamicFacets={availableFilters.dynamicFacets}
           />
         </aside>
 

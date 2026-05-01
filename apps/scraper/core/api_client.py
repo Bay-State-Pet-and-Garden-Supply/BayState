@@ -227,8 +227,8 @@ class ScraperAPIClient:
         timeout: float = 30.0,
         max_retries: int | None = None,
     ):
-        self.api_url = api_url or os.environ.get("SCRAPER_API_URL", "")
-        self.api_key = api_key or os.environ.get("SCRAPER_API_KEY", "")
+        self.api_url = os.environ.get("SCRAPER_API_URL", "") if api_url is None else api_url
+        self.api_key = os.environ.get("SCRAPER_API_KEY", "") if api_key is None else api_key
         self.runner_name = runner_name or os.environ.get("RUNNER_NAME", "unknown-runner")
         self.timeout = timeout
         self.max_retries = max_retries if max_retries is not None else int(os.environ.get("SCRAPER_API_MAX_RETRIES", str(DEFAULT_MAX_RETRIES)))
