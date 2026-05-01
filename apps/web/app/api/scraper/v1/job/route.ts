@@ -15,6 +15,11 @@ import {
     pickNumber,
     sanitizeDiscoveryConfig,
 } from '@/lib/ai-scraping/discovery-config';
+import {
+    OFFICIAL_BRAND_EXTRACTION_TYPE,
+    OFFICIAL_BRAND_URL_DISCOVERY_TYPE,
+    isOfficialBrandJobType,
+} from '@/lib/official-brand-workflow';
 
 function getSupabaseAdmin(): SupabaseClient {
     const url = process.env.SUPABASE_URL;
@@ -61,6 +66,10 @@ function deriveRequestedScrapers(job: {
         return job.scrapers;
     }
 
+    if (isOfficialBrandJobType(job.type)) {
+        return ['official_brand'];
+    }
+
     if (job.type === 'discovery') {
         return ['ai_discovery'];
     }
@@ -84,7 +93,11 @@ function deriveRequestedScrapers(job: {
     return [];
 }
 
-function normalizeRunnerJobType(rawType: unknown): 'standard' | 'ai_search' {
+function normalizeRunnerJobType(rawType: unknown): 'standard' | 'ai_search' | typeof OFFICIAL_BRAND_URL_DISCOVERY_TYPE | typeof OFFICIAL_BRAND_EXTRACTION_TYPE {
+    if (rawType === OFFICIAL_BRAND_URL_DISCOVERY_TYPE || rawType === OFFICIAL_BRAND_EXTRACTION_TYPE) {
+        return rawType;
+    }
+
     if (rawType === 'ai_search' || rawType === 'discovery' || rawType === 'crawl4ai') {
         return 'ai_search';
     }
@@ -200,6 +213,17 @@ export async function GET(request: NextRequest) {
                 validation: config.validation,
                 login: toRecord(config.login),
                 credential_refs: config.credential_refs,
+            });
+        }
+
+        if (requestedScrapers.includes('official_brand') && !scrapers.some((scraper) => scraper.name === 'official_brand')) {
+            scrapers.push({
+                name: 'official_brand',
+                disabled: false,
+                options: {},
+                test_skus: [],
+                retries: 3,
+                credential_refs: [],
             });
         }
 

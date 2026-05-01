@@ -13,6 +13,13 @@ import {
 } from '@/lib/brand-registry';
 
 import { getLocalScraperConfigs } from '@/lib/admin/scrapers/configs';
+import {
+    OFFICIAL_BRAND_EXTRACTION_TYPE,
+    OFFICIAL_BRAND_URL_DISCOVERY_TYPE,
+    buildManualOfficialBrandCandidateRows,
+    normalizeOfficialBrandUrl,
+    persistOfficialBrandCandidateRows,
+} from '@/lib/official-brand-workflow';
 import type { ScraperConfig } from '@/lib/admin/scrapers/types';
 import type { 
     PlannedScrapeChunk, 
@@ -94,7 +101,7 @@ interface PostgrestLikeError {
     hint?: string;
 }
 
-type ScrapeJobInsertType = 'standard' | 'ai_search';
+type ScrapeJobInsertType = 'standard' | 'ai_search' | typeof OFFICIAL_BRAND_URL_DISCOVERY_TYPE | typeof OFFICIAL_BRAND_EXTRACTION_TYPE;
 
 
 function isLegacyJobTypeConstraintError(error: unknown): boolean {
@@ -919,14 +926,22 @@ export async function scrapeProducts(
     const chunkSize = options?.chunkSize ?? 50; // Default 50 SKUs per chunk
     const enrichmentMethod = options?.enrichment_method ?? 'scrapers';
     const isOfficialBrand = enrichmentMethod === 'official_brand';
-    const isDiscovery = isOfficialBrand;
+    const officialBrandPhase = isOfficialBrand
+        ? options?.officialBrandPhase ?? 'url_discovery'
+        : undefined;
+    const isOfficialBrandDiscovery = officialBrandPhase === 'url_discovery';
+    const isOfficialBrandExtraction = officialBrandPhase === 'extraction';
 
-    const effectiveScrapersRaw = isDiscovery ? [enrichmentMethod] : scrapers;
-    const jobType: ScrapeJobInsertType = isDiscovery ? 'ai_search' : 'standard';
+    const effectiveScrapersRaw = isOfficialBrand ? ['official_brand'] : scrapers;
+    const jobType: ScrapeJobInsertType = isOfficialBrandDiscovery
+        ? OFFICIAL_BRAND_URL_DISCOVERY_TYPE
+        : isOfficialBrandExtraction
+            ? OFFICIAL_BRAND_EXTRACTION_TYPE
+            : 'standard';
 
     // Resolve scraper display names to slugs if possible using local YAML configs
     let effectiveScrapers = effectiveScrapersRaw;
-    if (scrapers.length > 0 && !isDiscovery) {
+    if (scrapers.length > 0 && !isOfficialBrand) {
         const configs = await getLocalScraperConfigs();
         
         if (configs && configs.length > 0) {
@@ -948,9 +963,9 @@ export async function scrapeProducts(
 
     const supabase = await createClient();
     const scrapeContextItems = await loadScrapeContextItems(supabase, skus, {
-        preferCatalogContext: isDiscovery,
+        preferCatalogContext: isOfficialBrand,
         fallbackBrandHint: options?.cohortBrand,
-        useBrandRegistryFallback: isDiscovery,
+        useBrandRegistryFallback: isOfficialBrand,
     });
 
     // Inject cohort brand into context items that lack one
@@ -963,12 +978,45 @@ export async function scrapeProducts(
         });
     }
 
-    const standardSkuContext = isDiscovery ? undefined : buildStandardSkuContext(scrapeContextItems);
+    const standardSkuContext = isOfficialBrand ? undefined : buildStandardSkuContext(scrapeContextItems);
     const officialBrandCohort = compactOfficialBrandCohortContext(options?.officialBrandCohort);
+    const officialBrandUrlsBySku = isOfficialBrandExtraction ? options?.officialBrandUrlsBySku ?? {} : undefined;
+
+    if (isOfficialBrandExtraction) {
+        const missingUrlSkus = skus.filter((sku) => !toOptionalString(officialBrandUrlsBySku?.[sku]));
+        if (missingUrlSkus.length > 0) {
+            return {
+                success: false,
+                error: `Official Brand extraction requires a source URL for every SKU. Missing: ${missingUrlSkus.join(', ')}`,
+            };
+        }
+
+        const invalidUrlSkus = skus.filter((sku) => {
+            const url = toOptionalString(officialBrandUrlsBySku?.[sku]);
+            return !url || !normalizeOfficialBrandUrl(url);
+        });
+
+        if (invalidUrlSkus.length > 0) {
+            return {
+                success: false,
+                error: `Official Brand extraction has invalid source URLs for: ${invalidUrlSkus.join(', ')}`,
+            };
+        }
+    }
+
+    const officialBrandConfigItems = isOfficialBrand
+        ? scrapeContextItems.map((item) => {
+            const sourceUrl = officialBrandUrlsBySku ? toOptionalString(officialBrandUrlsBySku[item.sku]) : undefined;
+            return {
+                ...item,
+                ...(sourceUrl ? { source_url: sourceUrl, url_source: 'manual' } : {}),
+            };
+        })
+        : undefined;
 
     const nowIso = new Date().toISOString();
 
-    const plannedStandardJob = !isDiscovery
+    const plannedStandardJob = !isOfficialBrand
         ? await loadStandardScrapePlan(
             skus,
             effectiveScrapers,
@@ -993,15 +1041,17 @@ export async function scrapeProducts(
         runner_name: null,
         started_at: null,
         type,
-        config: isDiscovery ? {
+        config: isOfficialBrand ? {
+            phase: officialBrandPhase,
             ...(officialBrandCohort ? { cohort: officialBrandCohort } : {}),
-            items: scrapeContextItems,
+            items: officialBrandConfigItems ?? [],
         } : (standardSkuContext ? { sku_context: standardSkuContext } : null),
-        metadata: isDiscovery
+        metadata: isOfficialBrand
             ? {
                 source: 'pipeline',
                 mode: enrichmentMethod,
                 requested_job_type: enrichmentMethod,
+                official_brand_phase: officialBrandPhase,
                 stored_job_type: type,
             }
             : {
@@ -1009,7 +1059,7 @@ export async function scrapeProducts(
                 ...(plannedStandardJob?.metadata ?? {}),
             },
         items_processed: 0,
-        items_total: isDiscovery ? skus.length : plannedStandardJob?.plannedWorkUnits ?? skus.length,
+        items_total: isOfficialBrand ? skus.length : plannedStandardJob?.plannedWorkUnits ?? skus.length,
         updated_at: nowIso,
     });
 
@@ -1030,7 +1080,7 @@ export async function scrapeProducts(
 
     const plannedChunks = plannedStandardJob?.plannedChunkCount ?? Math.ceil(skus.length / chunkSize);
 
-    const chunkPlan = !isDiscovery
+    const chunkPlan = !isOfficialBrand
         ? plannedStandardJob
         : await buildLinearChunkPlan(skus, effectiveScrapers, chunkSize);
 
@@ -1051,7 +1101,24 @@ export async function scrapeProducts(
         return { success: false, error: chunkResult.error };
     }
 
-    if (!testMode) {
+    if (!testMode && isOfficialBrandExtraction && officialBrandUrlsBySku) {
+        try {
+            const rows = buildManualOfficialBrandCandidateRows({
+                urlsBySku: officialBrandUrlsBySku,
+                cohort: officialBrandCohort,
+                extractionJobId: job.id,
+                nowIso,
+            });
+            await persistOfficialBrandCandidateRows(supabase, rows);
+        } catch (candidateError) {
+            console.error('[Pipeline Scraping] Failed to persist manual Official Brand URLs:', candidateError);
+            await supabase.from('scrape_job_chunks').delete().eq('job_id', job.id);
+            await supabase.from('scrape_jobs').delete().eq('id', job.id);
+            return { success: false, error: 'Failed to persist Official Brand URL candidates' };
+        }
+    }
+
+    if (!testMode && !isOfficialBrandDiscovery) {
         const { error: statusError } = await supabase
             .from('products_ingestion')
             .update({

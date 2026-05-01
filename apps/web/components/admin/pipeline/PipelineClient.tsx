@@ -1033,6 +1033,7 @@ export function PipelineClient({
   const handleScrapeConfirm = async (
     scrapers: string[],
     enrichmentMethod: "scrapers" | "official_brand",
+    options?: { phase?: "url_discovery" | "extraction"; urlsBySku?: Record<string, string> },
   ) => {
     const skus = Array.from(selectedSkus);
     if (skus.length === 0) return;
@@ -1059,6 +1060,8 @@ export function PipelineClient({
             enrichmentMethod === "official_brand"
               ? officialBrandSelection.cohortId
               : cohortIdFilter || undefined,
+          ...(enrichmentMethod === "official_brand" && options?.phase ? { official_brand_phase: options.phase } : {}),
+          ...(enrichmentMethod === "official_brand" && options?.urlsBySku ? { urls_by_sku: options.urlsBySku } : {}),
         }),
       });
 
@@ -1600,6 +1603,7 @@ export function PipelineClient({
           allowed: officialBrandSelection.allowed,
           reason: officialBrandSelection.reason,
         }}
+        selectedSkus={Array.from(selectedSkus)}
       />
       {/* Manual Add Product Dialog */}
       {isManualAddOpen && (

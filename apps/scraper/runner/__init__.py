@@ -12,7 +12,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from core.api_client import JobConfig, normalize_selectors_payload
 from core.events import ScraperEvent, create_emitter, event_bus
 from core.settings_manager import settings
-from scrapers.ai_search import OfficialBrandScraper as AISearchScraper
+from scrapers.ai_search.official_brand_scraper import OfficialBrandScraper
 from scrapers.ai_search.search import normalize_search_provider
 from scrapers.cohort.processor import CohortProcessor
 from scrapers.executor.workflow_executor import WorkflowExecutor
@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 
 USE_COHORT_PROCESSING = os.getenv("USE_COHORT_PROCESSING", "true").lower() == "true"
 CohortProduct = Mapping[str, object]
+OFFICIAL_BRAND_URL_DISCOVERY_TYPE = "official_brand_url_discovery"
+OFFICIAL_BRAND_EXTRACTION_TYPE = "official_brand_extraction"
 
 
 class ConfigurationError(Exception):
@@ -549,12 +551,12 @@ def _run_sequential_job(
         results["telemetry"] = {"steps": [], "selectors": [], "extractions": []}
         return results
 
-    is_ai_search_job = job_config.job_type in {"ai_search", "discovery", "crawl4ai"} or any(
-        s.name in {"ai_search", "ai_discovery", "crawl4ai_discovery", "official_brand"} for s in job_config.scrapers
+    is_official_brand_job = job_config.job_type in {"ai_search", OFFICIAL_BRAND_URL_DISCOVERY_TYPE, OFFICIAL_BRAND_EXTRACTION_TYPE} or any(
+        s.name == "official_brand" for s in job_config.scrapers
     )
 
-    if is_ai_search_job:
-        return _run_ai_search_job(
+    if is_official_brand_job:
+        return _run_official_brand_job(
             job_config,
             skus,
             results,
@@ -1030,7 +1032,7 @@ def _run_sequential_job(
     return results
 
 
-def _run_ai_search_job(
+def _run_official_brand_job(
     job_config: JobConfig,
     skus: List[str],
     results: Dict[str, Any],
@@ -1056,14 +1058,20 @@ def _run_ai_search_job(
             return candidate
 
         logger.warning(
-            "[AI Search] Ignoring deprecated non-OpenAI model '%s' and defaulting to gpt-4o-mini",
+            "[Official Brand] Ignoring deprecated non-OpenAI model '%s' and defaulting to gpt-4o-mini",
             candidate,
         )
         return "gpt-4o-mini"
 
     search_cfg = job_config.job_config or {}
-    # AI Search is deprecated, but keep legacy result labels for empty discovery jobs.
-    scraper_name = "ai_search" if not job_config.scrapers and job_config.job_type in {"ai_search", "discovery"} else "official_brand"
+    scraper_name = "official_brand"
+    raw_phase = str(search_cfg.get("phase") or "").strip()
+    if job_config.job_type == OFFICIAL_BRAND_URL_DISCOVERY_TYPE or raw_phase == "url_discovery":
+        official_brand_phase = "url_discovery"
+    elif job_config.job_type == OFFICIAL_BRAND_EXTRACTION_TYPE or raw_phase == "extraction":
+        official_brand_phase = "extraction"
+    else:
+        official_brand_phase = "legacy_combined"
 
     max_concurrency = int(search_cfg.get("max_concurrency", job_config.max_workers) or job_config.max_workers)
     max_search_results = int(search_cfg.get("max_search_results", 5) or 5)
@@ -1074,7 +1082,7 @@ def _run_ai_search_job(
     llm_provider = "openai"
     if requested_llm_provider and requested_llm_provider != "openai":
         logger.warning(
-            "[AI Search] Ignoring deprecated LLM provider '%s' and routing this job to OpenAI",
+            "[Official Brand] Ignoring deprecated LLM provider '%s' and routing this job to OpenAI",
             requested_llm_provider,
         )
     requested_llm_model = str(search_cfg.get("llm_model") or runtime_credentials.get("llm_model") or "").strip()
@@ -1105,11 +1113,11 @@ def _run_ai_search_job(
     # Debug log credential extraction
     logger.debug(f"Job payload credentials available: {bool(runtime_credentials)}")
     if llm_api_key:
-        logger.debug(f"Resolved {llm_provider} LLM API key for AI Search: {llm_api_key[:4]}...")
+        logger.debug(f"Resolved {llm_provider} LLM API key for Official Brand: {llm_api_key[:4]}...")
     if runtime_serper:
         logger.debug(f"Setting SERPER_API_KEY from job payload: {runtime_serper[:4]}...")
 
-    if runtime_serper:
+    if runtime_serper and official_brand_phase != "extraction":
         os.environ["SERPER_API_KEY"] = runtime_serper
 
     item_context_by_sku: Dict[str, Dict[str, Any]] = {}
@@ -1170,6 +1178,10 @@ def _run_ai_search_job(
                 "official_domains": official_domains
                 if official_domains is not None
                 else (cohort_official_domains if cohort_official_domains is not None else search_cfg.get("official_domains")),
+                "source_url": item_context.get("source_url") if item_context.get("source_url") is not None else search_cfg.get("source_url"),
+                "known_url": item_context.get("known_url") if item_context.get("known_url") is not None else search_cfg.get("known_url"),
+                "url_source": item_context.get("url_source") if item_context.get("url_source") is not None else search_cfg.get("url_source"),
+                "candidate_id": item_context.get("candidate_id") if item_context.get("candidate_id") is not None else search_cfg.get("candidate_id"),
             }
         )
 
@@ -1192,6 +1204,7 @@ def _run_ai_search_job(
             "cache_enabled": cache_enabled,
             "extraction_strategy": extraction_strategy,
             "prefer_manufacturer": prefer_manufacturer,
+            "official_brand_phase": official_brand_phase,
         },
         scraper_name=scraper_name,
         phase="starting",
@@ -1209,19 +1222,23 @@ def _run_ai_search_job(
     results["scrapers_run"].append(scraper_name)
 
     async def _run() -> list[Any]:
-        scraper = AISearchScraper(
+        scraper = OfficialBrandScraper(
             headless=settings.browser_settings["headless"],
             llm_provider=llm_provider,
             llm_model=llm_model,
             llm_api_key=llm_api_key,
         )
+        if official_brand_phase == "url_discovery":
+            return await scraper.discover_product_urls_batch(items, max_concurrency=max_concurrency)
+        if official_brand_phase == "extraction":
+            return await scraper.extract_products_from_urls_batch(items, max_concurrency=max_concurrency)
         return await scraper.scrape_products_batch(items, max_concurrency=max_concurrency)
 
 
     try:
         batch_results = asyncio.run(_run())
     finally:
-        if runtime_serper:
+        if runtime_serper and official_brand_phase != "extraction":
             if previous_serper is None:
                 os.environ.pop("SERPER_API_KEY", None)
             else:
@@ -1231,6 +1248,78 @@ def _run_ai_search_job(
     error_counts: Dict[str, Dict[str, Any]] = {}
 
     for search_result in batch_results:
+        if official_brand_phase == "url_discovery" and isinstance(search_result, dict):
+            sku = str(search_result.get("sku") or "").strip()
+            results["skus_processed"] += 1
+            if not sku:
+                continue
+
+            if sku not in results["data"]:
+                results["data"][sku] = {}
+
+            selected_url = search_result.get("selected_url")
+            candidates = search_result.get("candidates") if isinstance(search_result.get("candidates"), list) else []
+            result_payload = {
+                "phase": "url_discovery",
+                "status": search_result.get("status") or ("found" if selected_url else "not_found"),
+                "selected_url": selected_url,
+                "url": selected_url,
+                "source_website": selected_url,
+                "candidates": candidates,
+                "confidence": search_result.get("confidence") or 0.0,
+                "selection_method": search_result.get("selection_method"),
+                "error": search_result.get("error"),
+                "scraped_at": datetime.now().isoformat(),
+            }
+            results["data"][sku][scraper_name] = result_payload
+
+            if selected_url:
+                _emit_runner_log(
+                    job_id=job_config.job_id,
+                    runner_name=runner_name,
+                    job_logging=job_logging,
+                    log_buffer=log_buffer,
+                    level="info",
+                    message=f"{scraper_name}/{sku}: Found official URL",
+                    details={"selected_url": selected_url, "candidate_count": len(candidates)},
+                    scraper_name=scraper_name,
+                    sku=sku,
+                    phase="url-discovery",
+                )
+            else:
+                error_type = "url_not_found"
+                message = str(search_result.get("error") or "Official Brand URL not found")
+                current_error = error_counts.get(error_type)
+                if current_error is None:
+                    error_counts[error_type] = {"error_type": error_type, "message": message, "count": 1}
+                else:
+                    current_error["count"] += 1
+                _emit_runner_log(
+                    job_id=job_config.job_id,
+                    runner_name=runner_name,
+                    job_logging=job_logging,
+                    log_buffer=log_buffer,
+                    level="warning",
+                    message=f"{scraper_name}/{sku}: {message}",
+                    details={"candidate_count": len(candidates)},
+                    scraper_name=scraper_name,
+                    sku=sku,
+                    phase="url-discovery",
+                )
+
+            _emit_job_progress(
+                job_logging=job_logging,
+                status="running",
+                progress=_progress_from_units(results["skus_processed"], max(1, len(items))),
+                message=f"Discovered URLs for {results['skus_processed']}/{len(items)} Official Brand items",
+                phase="url-discovery",
+                details={"scraper_name": scraper_name},
+                current_sku=sku,
+                items_processed=results["skus_processed"],
+                items_total=len(items),
+            )
+            continue
+
         sku = search_result.sku
         results["skus_processed"] += 1
         result_cost = float(search_result.cost_usd or 0.0)
@@ -1243,6 +1332,7 @@ def _run_ai_search_job(
 
         if search_result.success:
             results["data"][sku][scraper_name] = {
+                "phase": "extraction",
                 "title": search_result.product_name,
                 "brand": search_result.brand,
                 "weight": search_result.size_metrics,
@@ -1253,6 +1343,7 @@ def _run_ai_search_job(
                 "url": search_result.url,
                 "source_website": search_result.source_website,
                 "confidence": search_result.confidence,
+                "selection_method": search_result.selection_method,
                 "cost_usd": result_cost,
                 "scraped_at": datetime.now().isoformat(),
             }
@@ -1275,12 +1366,15 @@ def _run_ai_search_job(
             )
         else:
             results["data"][sku][scraper_name] = {
+                "phase": "extraction",
                 "error": search_result.error,
+                "url": search_result.url,
+                "source_website": search_result.source_website,
                 "cost_usd": result_cost,
                 "scraped_at": datetime.now().isoformat(),
             }
             error_type = "search_failed"
-            message = str(search_result.error or "AI Search failed")
+            message = str(search_result.error or "Official Brand failed")
             if "timeout" in message.lower():
                 error_type = "timeout"
             elif "rate limit" in message.lower():
@@ -1311,7 +1405,7 @@ def _run_ai_search_job(
             job_logging=job_logging,
             status="running",
             progress=_progress_from_units(results["skus_processed"], max(1, len(items))),
-            message=f"Processed {results['skus_processed']}/{len(items)} AI Search items",
+            message=f"Processed {results['skus_processed']}/{len(items)} Official Brand items",
             phase="scraping",
             details={"scraper_name": scraper_name},
             current_sku=sku,
@@ -1325,8 +1419,8 @@ def _run_ai_search_job(
         job_logging=job_logging,
         log_buffer=log_buffer,
         level="info",
-        message=f"AI Search job complete. Processed {results['skus_processed']} SKUs",
-        details={"scraper_name": scraper_name},
+        message=f"Official Brand job complete. Processed {results['skus_processed']} SKUs",
+        details={"scraper_name": scraper_name, "official_brand_phase": official_brand_phase},
         scraper_name=scraper_name,
         phase="completed",
         flush_immediately=True,
@@ -1335,7 +1429,7 @@ def _run_ai_search_job(
         job_logging=job_logging,
         status="completed",
         progress=100,
-        message="AI Search job completed",
+        message="Official Brand job completed",
         phase="complete",
         details={"scraper_name": scraper_name},
         items_processed=results["skus_processed"],
@@ -1344,6 +1438,7 @@ def _run_ai_search_job(
     results["logs"] = job_logging.snapshot() if job_logging else log_buffer
     results["telemetry"] = {"steps": [], "selectors": [], "extractions": []}
     results["extraction_strategy"] = extraction_strategy
+    results["official_brand_phase"] = official_brand_phase
     results["llm_cost"] = total_cost
     results["total_cost"] = total_cost
     results["ai_search_errors"] = list(error_counts.values())
@@ -1354,6 +1449,6 @@ __all__ = [
     "ConfigurationError",
     "create_emitter",
     "create_log_entry",
-    "AISearchScraper",
+    "OfficialBrandScraper",
     "run_job",
 ]

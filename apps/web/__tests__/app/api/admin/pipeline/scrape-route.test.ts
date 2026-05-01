@@ -251,6 +251,7 @@ describe('/api/admin/pipeline/scrape route', () => {
         expect(scrapeProducts).toHaveBeenCalledWith(['SKU-1'], {
             scrapers: [],
             enrichment_method: 'official_brand',
+            officialBrandPhase: 'url_discovery',
             testMode: false,
             cohortBrand: 'Miracle-Gro',
             officialBrandCohort: {

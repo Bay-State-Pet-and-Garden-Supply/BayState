@@ -44,6 +44,10 @@ export interface ScrapeOptions {
     jobType?: 'standard' | 'official_brand';
     /** Explicit enrichment method - takes precedence over jobType */
     enrichment_method?: 'scrapers' | 'official_brand';
+    /** Official Brand phase. Discovery is the default for Official Brand. */
+    officialBrandPhase?: 'url_discovery' | 'extraction';
+    /** Manual Official Brand extraction targets keyed by SKU. Bypasses URL discovery. */
+    officialBrandUrlsBySku?: Record<string, string>;
     /** Brand name from cohort assignment — injected into context items that lack a brand */
     cohortBrand?: string;
     /** Cohort-scoped context for Official Brand jobs */

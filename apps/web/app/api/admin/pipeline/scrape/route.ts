@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { scrapeProducts } from '@/lib/pipeline-scraping';
 import { createClient } from '@/lib/supabase/server';
+import {
+    normalizeOfficialBrandUrl,
+    officialBrandUrlMatchesDomains,
+} from '@/lib/official-brand-workflow';
 
 interface CohortBrandRecord {
     id?: string | null;
@@ -88,6 +92,23 @@ function toSingleBrandRecord(
     return Array.isArray(value) ? value[0] ?? null : value;
 }
 
+function toStringRecord(value: unknown): Record<string, string> | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return undefined;
+    }
+
+    const record: Record<string, string> = {};
+    Object.entries(value as Record<string, unknown>).forEach(([key, entry]) => {
+        const sku = toOptionalString(key);
+        const url = toOptionalString(entry);
+        if (sku && url) {
+            record[sku] = url;
+        }
+    });
+
+    return Object.keys(record).length > 0 ? record : undefined;
+}
+
 /**
  * POST /api/admin/pipeline/scrape
  * Creates scraper jobs for the given SKUs and transitions them to 'scraped' status.
@@ -106,12 +127,14 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { skus, scrapers, enrichment_method, testMode, cohort_id } = body as {
+        const { skus, scrapers, enrichment_method, testMode, cohort_id, official_brand_phase, urls_by_sku } = body as {
             skus: string[];
             scrapers: string[];
             enrichment_method?: 'scrapers' | 'official_brand';
             testMode?: boolean;
             cohort_id?: string;
+            official_brand_phase?: 'url_discovery' | 'extraction';
+            urls_by_sku?: Record<string, string>;
         };
 
         if (!skus || !Array.isArray(skus) || skus.length === 0) {
@@ -123,6 +146,10 @@ export async function POST(request: NextRequest) {
         }
 
         const enrichmentMethod = enrichment_method ?? 'scrapers';
+        const manualUrlsBySku = toStringRecord(urls_by_sku);
+        const officialBrandPhase = enrichmentMethod === 'official_brand'
+            ? official_brand_phase ?? (manualUrlsBySku ? 'extraction' : 'url_discovery')
+            : undefined;
         const supabase = await createClient();
 
         // Resolve cohort brand for context enrichment
@@ -244,11 +271,73 @@ export async function POST(request: NextRequest) {
                     { status: 400 }
                 );
             }
+
+            if (officialBrandPhase === 'extraction') {
+                if (!manualUrlsBySku) {
+                    return NextResponse.json(
+                        { error: 'Official Brand extraction requires urls_by_sku' },
+                        { status: 400 }
+                    );
+                }
+
+                const selectedSkuSet = new Set(skus);
+                const extraUrlSkus = Object.keys(manualUrlsBySku).filter((sku) => !selectedSkuSet.has(sku));
+                const missingUrlSkus = skus.filter((sku) => !manualUrlsBySku[sku]);
+                if (extraUrlSkus.length > 0 || missingUrlSkus.length > 0) {
+                    return NextResponse.json(
+                        {
+                            error: 'Official Brand extraction requires exactly one URL for each selected SKU',
+                            missing_skus: missingUrlSkus,
+                            extra_skus: extraUrlSkus,
+                        },
+                        { status: 400 }
+                    );
+                }
+
+                const allowedDomains = [
+                    ...(officialBrandCohort.officialDomains ?? []),
+                    ...(officialBrandCohort.preferredDomains ?? []),
+                    ...(officialBrandCohort.websiteUrl ? [officialBrandCohort.websiteUrl] : []),
+                ];
+                const invalidUrlSkus: string[] = [];
+                const domainMismatchSkus: string[] = [];
+
+                skus.forEach((sku) => {
+                    const url = manualUrlsBySku[sku];
+                    if (!normalizeOfficialBrandUrl(url)) {
+                        invalidUrlSkus.push(sku);
+                        return;
+                    }
+
+                    if (allowedDomains.length > 0 && !officialBrandUrlMatchesDomains(url, allowedDomains)) {
+                        domainMismatchSkus.push(sku);
+                    }
+                });
+
+                if (invalidUrlSkus.length > 0) {
+                    return NextResponse.json(
+                        { error: 'Official Brand extraction received invalid URLs', invalid_skus: invalidUrlSkus },
+                        { status: 400 }
+                    );
+                }
+
+                if (domainMismatchSkus.length > 0) {
+                    return NextResponse.json(
+                        {
+                            error: 'Manual Official Brand URLs must match the selected cohort brand domains',
+                            invalid_skus: domainMismatchSkus,
+                        },
+                        { status: 400 }
+                    );
+                }
+            }
         }
 
         const result = await scrapeProducts(skus, {
             scrapers,
             enrichment_method: enrichmentMethod,
+            officialBrandPhase,
+            officialBrandUrlsBySku: officialBrandPhase === 'extraction' ? manualUrlsBySku : undefined,
             testMode: testMode ?? false,
             cohortBrand,
             officialBrandCohort,

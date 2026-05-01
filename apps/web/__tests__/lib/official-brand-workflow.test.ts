@@ -1,0 +1,249 @@
+import {
+    normalizeOfficialBrandUrl,
+    normalizeOfficialBrandDomain,
+    officialBrandUrlMatchesDomains,
+    getOfficialBrandPhaseFromJob,
+    isOfficialBrandJobType,
+    buildManualOfficialBrandCandidateRows,
+    buildDiscoveryOfficialBrandCandidateRows,
+    buildExtractedOfficialBrandCandidateRows,
+    OFFICIAL_BRAND_URL_DISCOVERY_TYPE,
+    OFFICIAL_BRAND_EXTRACTION_TYPE,
+    OFFICIAL_BRAND_SOURCE_KEY,
+} from '@/lib/official-brand-workflow';
+
+describe('normalizeOfficialBrandUrl', () => {
+    it('returns null for empty input', () => {
+        expect(normalizeOfficialBrandUrl('')).toBeNull();
+        expect(normalizeOfficialBrandUrl('  ')).toBeNull();
+    });
+
+    it('normalizes a valid URL', () => {
+        const result = normalizeOfficialBrandUrl('https://example.com/product/123');
+        expect(result).not.toBeNull();
+        expect(result!.normalizedDomain).toBe('example.com');
+        expect(result!.normalizedUrl).toBe('https://example.com/product/123');
+    });
+
+    it('adds https when missing', () => {
+        const result = normalizeOfficialBrandUrl('example.com/product');
+        expect(result).not.toBeNull();
+        expect(result!.normalizedDomain).toBe('example.com');
+        expect(result!.url).toMatch(/^https:\/\//);
+    });
+
+    it('strips www from domain', () => {
+        const result = normalizeOfficialBrandUrl('https://www.example.com/product');
+        expect(result!.normalizedDomain).toBe('example.com');
+    });
+
+    it('strips trailing hash', () => {
+        const result = normalizeOfficialBrandUrl('https://example.com/page#section');
+        expect(result!.normalizedUrl).not.toContain('#section');
+    });
+
+    it('rejects invalid protocols', () => {
+        expect(normalizeOfficialBrandUrl('ftp://example.com')).toBeNull();
+    });
+});
+
+describe('normalizeOfficialBrandDomain', () => {
+    it('normalizes a clean domain', () => {
+        expect(normalizeOfficialBrandDomain('Example.COM')).toBe('example.com');
+    });
+
+    it('normalizes a URL to its hostname', () => {
+        expect(normalizeOfficialBrandDomain('https://www.Example.com/path')).toBe('example.com');
+    });
+
+    it('returns undefined for empty input', () => {
+        expect(normalizeOfficialBrandDomain('')).toBeUndefined();
+    });
+});
+
+describe('officialBrandUrlMatchesDomains', () => {
+    it('returns true when domain matches', () => {
+        expect(officialBrandUrlMatchesDomains('https://scottsmiraclegro.com/product', ['scottsmiraclegro.com'])).toBe(true);
+    });
+
+    it('returns false when domain does not match', () => {
+        expect(officialBrandUrlMatchesDomains('https://amazon.com/product', ['scottsmiraclegro.com'])).toBe(false);
+    });
+
+    it('returns false for empty domains', () => {
+        expect(officialBrandUrlMatchesDomains('https://example.com', [])).toBe(false);
+    });
+
+    it('matches subdomains', () => {
+        expect(officialBrandUrlMatchesDomains('https://shop.scottsmiraclegro.com/product', ['scottsmiraclegro.com'])).toBe(true);
+    });
+});
+
+describe('getOfficialBrandPhaseFromJob', () => {
+    it('detects url_discovery from type', () => {
+        expect(getOfficialBrandPhaseFromJob({ type: OFFICIAL_BRAND_URL_DISCOVERY_TYPE })).toBe('url_discovery');
+    });
+
+    it('detects extraction from type', () => {
+        expect(getOfficialBrandPhaseFromJob({ type: OFFICIAL_BRAND_EXTRACTION_TYPE })).toBe('extraction');
+    });
+
+    it('detects url_discovery from config.phase', () => {
+        expect(getOfficialBrandPhaseFromJob({ type: 'ai_search', config: { phase: 'url_discovery' } })).toBe('url_discovery');
+    });
+
+    it('detects extraction from metadata', () => {
+        expect(getOfficialBrandPhaseFromJob({ type: 'ai_search', metadata: { official_brand_phase: 'extraction' } })).toBe('extraction');
+    });
+
+    it('returns extraction for legacy official_brand jobs', () => {
+        expect(getOfficialBrandPhaseFromJob({ metadata: { requested_job_type: 'official_brand' } })).toBe('extraction');
+    });
+
+    it('returns null for standard jobs', () => {
+        expect(getOfficialBrandPhaseFromJob({ type: 'standard', scrapers: ['amazon'] })).toBeNull();
+    });
+});
+
+describe('isOfficialBrandJobType', () => {
+    it('returns true for discovery', () => {
+        expect(isOfficialBrandJobType(OFFICIAL_BRAND_URL_DISCOVERY_TYPE)).toBe(true);
+    });
+
+    it('returns true for extraction', () => {
+        expect(isOfficialBrandJobType(OFFICIAL_BRAND_EXTRACTION_TYPE)).toBe(true);
+    });
+
+    it('returns false for standard', () => {
+        expect(isOfficialBrandJobType('standard')).toBe(false);
+    });
+});
+
+describe('buildManualOfficialBrandCandidateRows', () => {
+    it('builds candidate rows from urls_by_sku', () => {
+        const rows = buildManualOfficialBrandCandidateRows({
+            urlsBySku: {
+                'SKU-1': 'https://example.com/product/a',
+                'SKU-2': 'https://example.com/product/b',
+            },
+            cohort: { id: 'cohort-1', brandId: 'brand-1', brandName: 'Acme' },
+            extractionJobId: 'job-extract-1',
+            nowIso: '2026-05-01T00:00:00Z',
+        });
+
+        expect(rows).toHaveLength(2);
+        expect(rows[0].sku).toBe('SKU-1');
+        expect(rows[0].candidate_source).toBe('manual');
+        expect(rows[0].selection_status).toBe('selected');
+        expect(rows[0].extraction_job_id).toBe('job-extract-1');
+        expect(rows[0].cohort_id).toBe('cohort-1');
+        expect(rows[0].normalized_domain).toBe('example.com');
+    });
+
+    it('filters out rows with invalid URLs', () => {
+        const rows = buildManualOfficialBrandCandidateRows({
+            urlsBySku: {
+                'SKU-1': 'https://example.com/product',
+                'SKU-2': '',
+            },
+            cohort: undefined,
+            extractionJobId: 'job-extract-1',
+            nowIso: '2026-05-01T00:00:00Z',
+        });
+
+        expect(rows).toHaveLength(1);
+        expect(rows[0].sku).toBe('SKU-1');
+    });
+});
+
+describe('buildDiscoveryOfficialBrandCandidateRows', () => {
+    it('builds candidate rows from discovery results', () => {
+        const rows = buildDiscoveryOfficialBrandCandidateRows({
+            jobId: 'job-disc-1',
+            resultsBySku: {
+                'SKU-1': {
+                    [OFFICIAL_BRAND_SOURCE_KEY]: {
+                        status: 'found',
+                        selected_url: 'https://example.com/product/a',
+                        confidence: 0.95,
+                        candidates: [
+                            { url: 'https://example.com/product/a', title: 'Product A', rank: 1, confidence: 0.95 },
+                            { url: 'https://amazon.com/product/a', title: 'Product A - Amazon', rank: 2, confidence: 0.2 },
+                        ],
+                    },
+                },
+            },
+            cohort: { id: 'cohort-1', brandId: 'brand-1', brandName: 'Acme' },
+            nowIso: '2026-05-01T00:00:00Z',
+        });
+
+        expect(rows).toHaveLength(2);
+        const selected = rows.find((r) => r.selection_status === 'selected');
+        expect(selected).toBeDefined();
+        expect(selected!.url).toContain('example.com');
+
+        const rejected = rows.find((r) => r.selection_status === 'candidate');
+        expect(rejected).toBeDefined();
+        expect(rejected!.url).toContain('amazon.com');
+    });
+
+    it('returns empty for SKUs with no official_brand data', () => {
+        const rows = buildDiscoveryOfficialBrandCandidateRows({
+            jobId: 'job-disc-1',
+            resultsBySku: {
+                'SKU-1': { some_other_source: { title: 'Other' } },
+            },
+            nowIso: '2026-05-01T00:00:00Z',
+        });
+
+        expect(rows).toHaveLength(0);
+    });
+});
+
+describe('buildExtractedOfficialBrandCandidateRows', () => {
+    it('builds extracted rows from extraction results', () => {
+        const rows = buildExtractedOfficialBrandCandidateRows({
+            jobId: 'job-extract-1',
+            resultsBySku: {
+                'SKU-1': {
+                    [OFFICIAL_BRAND_SOURCE_KEY]: {
+                        title: 'Product A',
+                        brand: 'Acme',
+                        url: 'https://example.com/product/a',
+                        source_website: 'https://example.com/product/a',
+                        confidence: 0.92,
+                    },
+                },
+            },
+            config: {
+                items: [{ sku: 'SKU-1', url_source: 'manual', source_url: 'https://example.com/product/a' }],
+            },
+            nowIso: '2026-05-01T00:00:00Z',
+        });
+
+        expect(rows).toHaveLength(1);
+        expect(rows[0].sku).toBe('SKU-1');
+        expect(rows[0].selection_status).toBe('extracted');
+        expect(rows[0].candidate_source).toBe('manual');
+    });
+
+    it('falls back to serper when url_source is absent', () => {
+        const rows = buildExtractedOfficialBrandCandidateRows({
+            jobId: 'job-extract-1',
+            resultsBySku: {
+                'SKU-1': {
+                    [OFFICIAL_BRAND_SOURCE_KEY]: {
+                        title: 'Product A',
+                        url: 'https://serper-result.com/p',
+                        source_website: 'https://serper-result.com/p',
+                    },
+                },
+            },
+            config: { items: [{ sku: 'SKU-1' }] },
+            nowIso: '2026-05-01T00:00:00Z',
+        });
+
+        expect(rows).toHaveLength(1);
+        expect(rows[0].candidate_source).toBe('serper');
+    });
+});

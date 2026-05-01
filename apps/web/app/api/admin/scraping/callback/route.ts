@@ -21,6 +21,12 @@ import {
 } from '@/lib/scraper-callback/test-job-utils';
 import type { ChunkTelemetry } from '@/lib/scraper-callback/test-job-utils';
 import { toScrapeJobLogRow } from '@/lib/scraper-logs';
+import {
+    buildDiscoveryOfficialBrandCandidateRows,
+    buildExtractedOfficialBrandCandidateRows,
+    getOfficialBrandPhaseFromJob,
+    persistOfficialBrandCandidateRows,
+} from '@/lib/official-brand-workflow';
 
 function getSupabaseAdmin(): SupabaseClient {
     const url = process.env.SUPABASE_URL;
@@ -387,7 +393,12 @@ export async function POST(request: NextRequest) {
             jobConfigRecord.cohort && typeof jobConfigRecord.cohort === 'object'
                 ? (jobConfigRecord.cohort as Record<string, unknown>)
                 : null;
-        const isOfficialBrandJob = requestedJobType === 'official_brand' || Boolean(cohortConfig);
+        const officialBrandPhase = getOfficialBrandPhaseFromJob({
+            type: existingJob.type,
+            metadata: priorMetadata,
+            config: jobConfigRecord,
+        });
+        const isOfficialBrandJob = Boolean(officialBrandPhase) || requestedJobType === 'official_brand' || Boolean(cohortConfig);
         let effectiveJobStatus = typeof updateData.status === 'string' ? updateData.status : payload.status;
 
         if (updateData.status === 'failed' && !isTestJob) {
@@ -464,10 +475,41 @@ export async function POST(request: NextRequest) {
                 }
             }
 
+            const persistenceTimestamp = new Date().toISOString();
+
             if (isTestJob) {
                 console.log(`[Callback] Test job ${payload.job_id} completed with ${skus.length} SKUs. Skipping products_ingestion persistence.`);
+            } else if (officialBrandPhase === 'url_discovery') {
+                const rows = buildDiscoveryOfficialBrandCandidateRows({
+                    jobId: payload.job_id,
+                    resultsBySku: transformedResults,
+                    cohort: cohortConfig ?? undefined,
+                    nowIso: persistenceTimestamp,
+                });
+                const candidateCount = await persistOfficialBrandCandidateRows(supabase, rows);
+
+                const { error: discoveryMetadataError } = await supabase
+                    .from('scrape_jobs')
+                    .update({
+                        metadata: {
+                            ...priorMetadata,
+                            crawl4ai: nextCrawl4AiMetadata,
+                            official_brand_discovery: {
+                                candidate_count: candidateCount,
+                                sku_count: Object.keys(transformedResults).length,
+                                updated_at: persistenceTimestamp,
+                            },
+                        },
+                    })
+                    .eq('id', payload.job_id);
+
+                if (discoveryMetadataError) {
+                    console.error('[Callback] Failed to persist Official Brand discovery metadata:', discoveryMetadataError);
+                    return NextResponse.json({ error: 'Failed to persist Official Brand discovery metadata' }, { status: 500 });
+                }
+
+                console.log(`[Callback] Persisted ${candidateCount} Official Brand URL candidates`);
             } else {
-                const persistenceTimestamp = new Date().toISOString();
                 const officialBrandFilter = isOfficialBrandJob
                     ? filterOfficialBrandResultsForPersistence(transformedResults, {
                         officialDomains: Array.isArray(cohortConfig?.officialDomains) ? (cohortConfig?.officialDomains as string[]) : undefined,
@@ -537,6 +579,20 @@ export async function POST(request: NextRequest) {
                             }
 
                             effectiveJobStatus = 'failed';
+                        }
+
+                        if (acceptedCount > 0) {
+                            try {
+                                const extractedRows = buildExtractedOfficialBrandCandidateRows({
+                                    jobId: payload.job_id,
+                                    resultsBySku: resultsToPersist,
+                                    config: jobConfigRecord,
+                                    nowIso: persistenceTimestamp,
+                                });
+                                await persistOfficialBrandCandidateRows(supabase, extractedRows);
+                            } catch (candidateError) {
+                                console.warn(`[Callback] Failed to mark Official Brand URL candidates as extracted for job ${payload.job_id}:`, candidateError);
+                            }
                         }
                     }
 
