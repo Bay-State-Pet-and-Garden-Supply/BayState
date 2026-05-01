@@ -98,19 +98,18 @@ def test_inventory_includes_brand_source_selector_prompt_decision_criteria() -> 
     assert value["temperature"] == 0.0
 
 
-def test_inventory_includes_validation_and_golden_regression_thresholds() -> None:
+def test_inventory_includes_validation_and_extraction_seed_metadata() -> None:
     entries = _entries_by_id()
     validation = entries["validation.extraction_thresholds"]
-    golden = entries["golden_dataset_regression.thresholds"]
+    extraction_seed = entries["official_brand_extraction_seed.dataset"]
 
     assert validation["source_file"] == "apps/scraper/scrapers/ai_search/validation.py"
     assert validation["value"]["default_confidence_threshold"] == 0.7
     assert validation["value"]["missing_sku_signal_confidence_floor"] == 0.83
-    assert golden["source_file"] == "apps/scraper/tests/unit/test_golden_dataset_regression.py"
-    assert golden["value"]["official_domain_detection_threshold"] == 0.7
-    assert golden["value"]["zero_retailer_selection_threshold"] == 0.3
-    assert golden["value"]["fixture_shape_validity_threshold"] == 0.98
-    assert golden["value"]["max_time_per_entry_ms"] == 200
+    assert extraction_seed["source_file"] == "apps/scraper/benchmarks/official_brand/fixtures/extraction_seed.json"
+    assert extraction_seed["value"]["entry_count"] == 10
+    assert extraction_seed["value"]["requires_reviewed_ground_truth"] is True
+    assert extraction_seed["value"]["live_benchmark_only"] is True
 
 
 def test_inventory_marks_new_signals_and_algorithm_rewrites_forbidden() -> None:

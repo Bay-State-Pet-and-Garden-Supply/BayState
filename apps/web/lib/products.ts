@@ -4,6 +4,8 @@ import {
   type ProductStorefrontSettingsRelation,
 } from '@/lib/product-storefront-settings';
 import type { Product, ProductGroup, ProductGroupMember } from '@/lib/types';
+import { buildTaxonomyNodes, type TaxonomyCategoryRecord } from '@/lib/taxonomy';
+import type { FacetDefinition } from '@/lib/facets';
 
 type ProductReadClient = Awaited<ReturnType<typeof createPublicClient>>;
 
@@ -13,6 +15,38 @@ const STOREFRONT_VISIBLE_STOCK_STATUSES = [
 ] satisfies Product['stock_status'][];
 
 type StorefrontVisibleStockStatus = (typeof STOREFRONT_VISIBLE_STOCK_STATUSES)[number];
+
+export interface ProductFilterOptions {
+  brands: Array<{ id: string; name: string; slug: string; logo_url: string | null }>;
+  petTypes: Array<{ id: string; name: string }>;
+  categories: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    parent_id: string | null;
+    depth: number;
+    breadcrumb: string;
+    ancestor_slugs: string[];
+    ancestor_names: string[];
+    is_leaf: boolean;
+  }>;
+  stockStatuses: Array<{ id: StorefrontVisibleStockStatus; label: string }>;
+  dynamicFacets: FacetDefinition[];
+}
+
+type ProductFilterQueryOptions = {
+  brandSlug?: string;
+  brandId?: string;
+  categoryId?: string;
+  categorySlug?: string;
+  petTypeId?: string;
+  stockStatus?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  search?: string;
+  featured?: boolean;
+  facets?: string;
+};
 
 function isStorefrontVisibleStockStatus(
   stockStatus: string | undefined
@@ -384,21 +418,199 @@ async function resolveFacetValueIds(
   return matchingValueIds;
 }
 
+export async function getAvailableProductFilters(
+  options?: ProductFilterQueryOptions
+): Promise<ProductFilterOptions> {
+  const supabase = createPublicClient();
+  const stockStatus = options?.stockStatus;
+
+  if (stockStatus === 'out_of_stock') {
+    return { brands: [], petTypes: [], categories: [], stockStatuses: [], dynamicFacets: [] };
+  }
+
+  // Resolve lookup values once - used to apply filters across all dimension queries
+  const [categoryIds, facetValueIds, brandId, featuredProductIds] = await Promise.all([
+    resolveCategoryIds(supabase, {
+      categoryId: options?.categoryId,
+      categorySlug: options?.categorySlug,
+    }),
+    resolveFacetValueIds(supabase, options?.facets),
+    (async () => {
+      if (options?.brandId) return options.brandId ?? undefined;
+      if (!options?.brandSlug) return undefined;
+      const { data } = await supabase.from('brands').select('id').eq('slug', options.brandSlug).single();
+      return data?.id ?? null;
+    })(),
+    resolveFeaturedProductIds(supabase, options?.featured),
+  ]);
+
+  if (
+    (categoryIds && categoryIds.length === 0) ||
+    (facetValueIds && facetValueIds.length === 0) ||
+    brandId === null ||
+    (featuredProductIds && featuredProductIds.length === 0)
+  ) {
+    return { brands: [], petTypes: [], categories: [], stockStatuses: [], dynamicFacets: [] };
+  }
+
+  // Build the complete select string with inner-join aliases required by the active
+  // filter dimensions.  Each dimension query only adds the joins it does NOT already
+  // satisfy through its own select (to avoid duplicate joins in the same query).
+  const makeSelect = (dimensionFields: string, addPetTypeJoin: boolean, addCategoryJoin: boolean, addFacetJoin: boolean) => {
+    let s = dimensionFields;
+    if (addPetTypeJoin && options?.petTypeId) s += ', product_pet_types!inner(pet_type_id)';
+    if (addCategoryJoin && categoryIds) s += ', category_filter:product_categories!inner(category_id)';
+    if (addFacetJoin && facetValueIds) s += ', facet_filter:product_facets!inner(facet_value_id)';
+    return s;
+  };
+
+  // Apply common WHERE predicates to a query builder
+  const applyFilters = (qb: ReturnType<ReturnType<typeof supabase.from>['select']>) => {
+    let q = qb;
+    if (options?.petTypeId) q = q.eq('product_pet_types.pet_type_id', options.petTypeId);
+    if (categoryIds) q = q.in('category_filter.category_id', categoryIds);
+    if (facetValueIds) q = q.in('facet_filter.facet_value_id', facetValueIds);
+    if (brandId) q = q.eq('brand_id', brandId);
+    if (isStorefrontVisibleStockStatus(stockStatus)) {
+      q = q.eq('stock_status', stockStatus);
+    } else {
+      q = q.in('stock_status', STOREFRONT_VISIBLE_STOCK_STATUSES);
+    }
+    if (options?.minPrice !== undefined) q = q.gte('price', options.minPrice);
+    if (options?.maxPrice !== undefined) q = q.lte('price', options.maxPrice);
+    if (options?.search) q = q.ilike('name', `%${options.search}%`);
+    if (featuredProductIds) q = q.in('id', featuredProductIds);
+    return q.order('id') as typeof q;
+  };
+
+  const
+    categoriesQuery = supabase
+      .from('categories')
+      .select('id, name, slug, parent_id, display_order, image_url, is_featured')
+      .order('display_order');
+  const
+    brandsQuery = applyFilters(
+      supabase.from('products').select(
+        makeSelect('stock_status, brand:brands!inner(id, name, slug, logo_url)', true, true, true)
+      )
+    );
+  const
+    petTypesQuery = applyFilters(
+      supabase.from('products').select(
+        makeSelect('product_pet_types!inner(pet_types!inner(id, name, display_order))', false, true, true)
+      )
+    );
+  const
+    productCategoriesQuery = applyFilters(
+      supabase.from('products').select(
+        makeSelect('category_filter:product_categories!inner(category_id)', true, false, true)
+      )
+    );
+  const
+    facetsQuery = applyFilters(
+      supabase.from('products').select(
+        makeSelect(
+          'facet_filter:product_facets!inner(facet_values!inner(id, value, slug, facet_definition_id, facet_definitions!inner(id, name, slug)))',
+          true, true, false
+        )
+      )
+    );
+
+  const [
+    categoriesResult,
+    brandsResult,
+    petTypesResult,
+    productCategoriesResult,
+    facetsResult,
+  ] = await Promise.all([categoriesQuery, brandsQuery, petTypesQuery, productCategoriesQuery, facetsQuery]);
+
+  if (brandsResult.error) console.error('Error fetching available brands:', brandsResult.error);
+  if (petTypesResult.error) console.error('Error fetching available pet types:', petTypesResult.error);
+  if (categoriesResult.error) console.error('Error fetching available categories:', categoriesResult.error);
+  if (productCategoriesResult.error) console.error('Error fetching available product categories:', productCategoriesResult.error);
+  if (facetsResult.error) console.error('Error fetching available facets:', facetsResult.error);
+
+  // ── Brands & stock statuses ──
+  const brandMap = new Map<string, ProductFilterOptions['brands'][number]>();
+  const stockStatusSet = new Set<StorefrontVisibleStockStatus>();
+  for (const row of (brandsResult.data || []) as Array<Record<string, unknown>>) {
+    const brandField = row.brand;
+    if (brandField) {
+      const brandRecord = (Array.isArray(brandField) ? (brandField as Array<Record<string, unknown>>)[0] : brandField) as Record<string, unknown>;
+      brandMap.set(brandRecord.id as string, brandRecord as unknown as ProductFilterOptions['brands'][number]);
+    }
+    const stock = row.stock_status as string | undefined;
+    if (isStorefrontVisibleStockStatus(stock)) stockStatusSet.add(stock);
+  }
+
+  // ── Pet types ──
+  const petTypeMap = new Map<string, { id: string; name: string; display_order: number | null }>();
+  for (const row of (petTypesResult.data || []) as Array<Record<string, unknown>>) {
+    const pptField = row.product_pet_types;
+    const ppt = pptField ? (Array.isArray(pptField) ? (pptField as Array<Record<string, unknown>>)[0] : pptField) as Record<string, unknown> : null;
+    const ptField = ppt ? ppt.pet_types : null;
+    const pt = ptField ? (Array.isArray(ptField) ? (ptField as Array<Record<string, unknown>>)[0] : ptField) as Record<string, unknown> : null;
+    if (pt) petTypeMap.set(pt.id as string, pt as unknown as { id: string; name: string; display_order: number | null });
+  }
+
+  // ── Categories ──
+  const productCategoryIds = new Set<string>();
+  for (const row of (productCategoriesResult.data || []) as Array<Record<string, unknown>>) {
+    const cfField = row.category_filter;
+    if (cfField) {
+      const cf = (Array.isArray(cfField) ? (cfField as Array<Record<string, unknown>>)[0] : cfField) as Record<string, unknown>;
+      const catId = cf['category_id'] as string | undefined;
+      if (catId) productCategoryIds.add(catId);
+    }
+  }
+  const categoryNodes = buildTaxonomyNodes((categoriesResult.data || []) as TaxonomyCategoryRecord[]);
+  const visibleCategoryIds = new Set<string>();
+  for (const category of categoryNodes) {
+    if (productCategoryIds.has(category.id)) {
+      visibleCategoryIds.add(category.id);
+      category.ancestor_ids.forEach((id) => { visibleCategoryIds.add(id); });
+    }
+  }
+
+  // ── Dynamic facets ──
+  const facetDefinitionMap = new Map<string, FacetDefinition>();
+  for (const row of (facetsResult.data || []) as Array<Record<string, unknown>>) {
+    const ffField = row.facet_filter;
+    if (!ffField) continue;
+    const ff = (Array.isArray(ffField) ? (ffField as Array<Record<string, unknown>>)[0] : ffField) as Record<string, unknown>;
+    const fvField = ff.facet_values;
+    if (!fvField) continue;
+    const fv = (Array.isArray(fvField) ? (fvField as Array<Record<string, unknown>>)[0] : fvField) as Record<string, unknown>;
+    const fdField = fv.facet_definitions;
+    if (!fdField) continue;
+    const fd = (Array.isArray(fdField) ? (fdField as Array<Record<string, unknown>>)[0] : fdField) as Record<string, unknown>;
+    const existing = facetDefinitionMap.get(fd.id as string) ?? { id: fd.id as string, name: fd.name as string, slug: fd.slug as string, values: [] as FacetDefinition['values'] };
+    if (!existing.values.some((v) => v.id === (fv.id as string))) {
+      existing.values.push({ id: fv.id as string, value: fv.value as string, slug: fv.slug as string });
+    }
+    facetDefinitionMap.set(fd.id as string, existing);
+  }
+
+  return {
+    brands: Array.from(brandMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
+    petTypes: Array.from(petTypeMap.values())
+      .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0) || a.name.localeCompare(b.name))
+      .map(({ id, name }) => ({ id, name })),
+    categories: categoryNodes.filter((c) => visibleCategoryIds.has(c.id)),
+    stockStatuses: ([
+      { id: 'in_stock' as const, label: 'In Stock' },
+      { id: 'pre_order' as const, label: 'Pre-Order' },
+    ]).filter((s) => stockStatusSet.has(s.id)),
+    dynamicFacets: Array.from(facetDefinitionMap.values())
+      .map((d) => ({ ...d, values: [...d.values].sort((a, b) => a.value.localeCompare(b.value)) }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  };
+}
+
 /**
  * Fetches products with optional filtering and pagination. * Uses products table which includes brand data.
  */
-export async function getFilteredProducts(options?: {
-  brandSlug?: string;
-  brandId?: string;
-  categoryId?: string;
-  categorySlug?: string;
-  petTypeId?: string;
-  stockStatus?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  search?: string;
-  featured?: boolean;
-  facets?: string;
+export async function getFilteredProducts(options?: ProductFilterQueryOptions & {
   limit?: number;
   offset?: number;
 }): Promise<{ products: Product[]; count: number }> {

@@ -12,6 +12,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from core.api_client import JobConfig, normalize_selectors_payload
 from core.events import ScraperEvent, create_emitter, event_bus
 from core.settings_manager import settings
+from scrapers.ai_search import OfficialBrandScraper as AISearchScraper
 from scrapers.ai_search.search import normalize_search_provider
 from scrapers.cohort.processor import CohortProcessor
 from scrapers.executor.workflow_executor import WorkflowExecutor
@@ -1061,8 +1062,8 @@ def _run_ai_search_job(
         return "gpt-4o-mini"
 
     search_cfg = job_config.job_config or {}
-    # AI Search is deprecated, always use OfficialBrandScraper for discovery/search jobs
-    scraper_name = "official_brand"
+    # AI Search is deprecated, but keep legacy result labels for empty discovery jobs.
+    scraper_name = "ai_search" if not job_config.scrapers and job_config.job_type in {"ai_search", "discovery"} else "official_brand"
 
     max_concurrency = int(search_cfg.get("max_concurrency", job_config.max_workers) or job_config.max_workers)
     max_search_results = int(search_cfg.get("max_search_results", 5) or 5)
@@ -1134,8 +1135,10 @@ def _run_ai_search_job(
             merged_context.setdefault("sku", candidate_sku)
             item_context_by_sku[candidate_sku] = merged_context
 
-    cohort_context = search_cfg.get("cohort") if isinstance(search_cfg.get("cohort"), dict) else {}
-    cohort_brand = cohort_context.get("brandName") if isinstance(cohort_context.get("brandName"), str) else None
+    raw_cohort_context = search_cfg.get("cohort")
+    cohort_context: Dict[str, Any] = raw_cohort_context if isinstance(raw_cohort_context, dict) else {}
+    raw_cohort_brand = cohort_context.get("brandName")
+    cohort_brand = raw_cohort_brand if isinstance(raw_cohort_brand, str) else None
     cohort_official_domains = (
         cohort_context.get("officialDomains")
         if isinstance(cohort_context.get("officialDomains"), list)
@@ -1150,14 +1153,23 @@ def _run_ai_search_job(
     items = []
     for sku in skus:
         item_context = item_context_by_sku.get(sku, {})
+        brand = item_context.get("brand")
+        preferred_domains = item_context.get("preferred_domains")
+        official_domains = item_context.get("official_domains")
         items.append(
             {
                 "sku": sku,
-                "product_name": item_context.get("product_name") if item_context.get("product_name") is not None else search_cfg.get("product_name"),
-                "brand": item_context.get("brand") if item_context.get("brand") is not None else (cohort_brand if cohort_brand is not None else search_cfg.get("brand")),
+                "product_name": item_context.get("product_name")
+                if item_context.get("product_name") is not None
+                else search_cfg.get("product_name"),
+                "brand": brand if brand is not None else (cohort_brand if cohort_brand is not None else search_cfg.get("brand")),
                 "category": item_context.get("category") if item_context.get("category") is not None else search_cfg.get("category"),
-                "preferred_domains": item_context.get("preferred_domains") if item_context.get("preferred_domains") is not None else (cohort_preferred_domains if cohort_preferred_domains is not None else search_cfg.get("preferred_domains")),
-                "official_domains": item_context.get("official_domains") if item_context.get("official_domains") is not None else (cohort_official_domains if cohort_official_domains is not None else search_cfg.get("official_domains")),
+                "preferred_domains": preferred_domains
+                if preferred_domains is not None
+                else (cohort_preferred_domains if cohort_preferred_domains is not None else search_cfg.get("preferred_domains")),
+                "official_domains": official_domains
+                if official_domains is not None
+                else (cohort_official_domains if cohort_official_domains is not None else search_cfg.get("official_domains")),
             }
         )
 
@@ -1197,8 +1209,7 @@ def _run_ai_search_job(
     results["scrapers_run"].append(scraper_name)
 
     async def _run() -> list[Any]:
-        from scrapers.ai_search import OfficialBrandScraper
-        scraper = OfficialBrandScraper(
+        scraper = AISearchScraper(
             headless=settings.browser_settings["headless"],
             llm_provider=llm_provider,
             llm_model=llm_model,
@@ -1343,5 +1354,6 @@ __all__ = [
     "ConfigurationError",
     "create_emitter",
     "create_log_entry",
+    "AISearchScraper",
     "run_job",
 ]
