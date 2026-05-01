@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Loader2, Search, CheckSquare, Square, Sparkles } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Loader2, Search, CheckSquare, Square, Sparkles, Link, Globe, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
     Dialog,
@@ -35,17 +36,30 @@ interface ScraperRecommendation {
     reason: string;
 }
 
+interface ManualUrlEntry {
+    sku: string;
+    url: string;
+    parsed: boolean;
+    error?: string;
+}
+
 interface ScraperSelectDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     selectedSkuCount: number;
-    onConfirm: (scrapers: string[], enrichmentMethod: 'scrapers' | 'official_brand') => void;
+    onConfirm: (
+        scrapers: string[],
+        enrichmentMethod: 'scrapers' | 'official_brand',
+        options?: { phase?: 'url_discovery' | 'extraction'; urlsBySku?: Record<string, string> }
+    ) => void;
     /** When provided, fetches and shows scraper recommendations for this brand */
     brandName?: string | null;
     officialBrandEligibility?: {
         allowed: boolean;
         reason?: string | null;
     };
+    /** SKUs currently selected in the pipeline table */
+    selectedSkus?: string[];
 }
 
 const CONFIDENCE_BADGE: Record<string, { label: string; className: string }> = {
@@ -62,6 +76,7 @@ export function ScraperSelectDialog({
     onConfirm,
     brandName,
     officialBrandEligibility,
+    selectedSkus,
 }: ScraperSelectDialogProps) {
     const [scrapers, setScrapers] = useState<ScraperOption[]>([]);
     const [selectedScrapers, setSelectedScrapers] = useState<Set<string>>(new Set());
@@ -71,6 +86,52 @@ export function ScraperSelectDialog({
     const [loadError, setLoadError] = useState<string | null>(null);
     const [recommendations, setRecommendations] = useState<Map<string, ScraperRecommendation>>(new Map());
     const [hasRecommendations, setHasRecommendations] = useState(false);
+    const [officialBrandMode, setOfficialBrandMode] = useState<'discover' | 'manual'>('discover');
+    const [manualUrlInput, setManualUrlInput] = useState('');
+
+    const parsedUrlEntries = useMemo<ManualUrlEntry[]>(() => {
+        if (!manualUrlInput.trim()) return [];
+        const entries: ManualUrlEntry[] = [];
+        const lines = manualUrlInput.trim().split('\n');
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+
+            const parts = trimmed.split(',', 2);
+            if (parts.length < 2) {
+                entries.push({ sku: '', url: trimmed, parsed: false, error: 'Missing SKU (format: SKU,URL)' });
+                continue;
+            }
+
+            const sku = parts[0].trim();
+            const url = parts[1].trim();
+            if (!sku) {
+                entries.push({ sku: '', url, parsed: false, error: 'SKU is empty' });
+                continue;
+            }
+            if (!url) {
+                entries.push({ sku, url, parsed: false, error: 'URL is empty' });
+                continue;
+            }
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                entries.push({ sku, url, parsed: false, error: 'URL must start with http:// or https://' });
+                continue;
+            }
+            entries.push({ sku, url, parsed: true });
+        }
+        return entries;
+    }, [manualUrlInput]);
+
+    const parsedUrlsBySku = useMemo<Record<string, string>>(() => {
+        const map: Record<string, string> = {};
+        parsedUrlEntries.filter((e) => e.parsed).forEach((e) => { map[e.sku] = e.url; });
+        return map;
+    }, [parsedUrlEntries]);
+
+    const manualUrlErrorCount = useMemo(() => parsedUrlEntries.filter((e) => !e.parsed).length, [parsedUrlEntries]);
+    const manualUrlMissingCount = useMemo(() => selectedSkus
+        ? selectedSkus.filter((sku) => !parsedUrlsBySku[sku]).length
+        : 0, [selectedSkus, parsedUrlsBySku]);
 
     const fetchScrapers = useCallback(async () => {
         setIsLoadingScrapers(true);
@@ -152,16 +213,28 @@ export function ScraperSelectDialog({
 
         setIsSubmitting(true);
         try {
-            await onConfirm(scraperSlugs, enrichmentMethod);
+            if (enrichmentMethod === 'official_brand') {
+                await onConfirm(scraperSlugs, enrichmentMethod, {
+                    phase: officialBrandMode === 'manual' ? 'extraction' : 'url_discovery',
+                    ...(officialBrandMode === 'manual' ? { urlsBySku: parsedUrlsBySku } : {}),
+                });
+            } else {
+                await onConfirm(scraperSlugs, enrichmentMethod);
+            }
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const isDiscovery = enrichmentMethod === 'official_brand';
+    const isDiscovery = enrichmentMethod === 'official_brand' && officialBrandMode === 'discover';
+    const isManualUrlMode = enrichmentMethod === 'official_brand' && officialBrandMode === 'manual';
     const canUseOfficialBrand = officialBrandEligibility?.allowed ?? true;
     const officialBrandReason = officialBrandEligibility?.reason ?? null;
-    const canSubmit = isDiscovery ? canUseOfficialBrand : selectedScrapers.size > 0;
+    const canSubmit = isDiscovery
+        ? canUseOfficialBrand
+        : isManualUrlMode
+            ? canUseOfficialBrand && parsedUrlEntries.some((e) => e.parsed) && manualUrlMissingCount === 0 && manualUrlErrorCount === 0
+            : selectedScrapers.size > 0;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -308,9 +381,75 @@ export function ScraperSelectDialog({
                 )}
 
                 {enrichmentMethod === 'official_brand' && (
-                    <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
-                        Official Brand uses high-fidelity manufacturer isolation to extract data
-                        directly from brand websites. Best for high-quality technical specs.
+                    <div className="space-y-3">
+                        <div className="flex flex-wrap gap-2">
+                            <Button
+                                variant={officialBrandMode === 'discover' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setOfficialBrandMode('discover')}
+                                className={officialBrandMode === 'discover' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
+                            >
+                                <Globe className="mr-1.5 h-3.5 w-3.5" />
+                                Discover URLs
+                            </Button>
+                            <Button
+                                variant={officialBrandMode === 'manual' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setOfficialBrandMode('manual')}
+                                className={officialBrandMode === 'manual' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
+                            >
+                                <Link className="mr-1.5 h-3.5 w-3.5" />
+                                Paste Official URLs
+                            </Button>
+                        </div>
+
+                        {officialBrandMode === 'discover' ? (
+                            <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+                                Searches Serper for official brand product URLs, then runs Crawl4AI
+                                extraction against discovered URLs.
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                <div className="rounded-md border border-purple-200 bg-purple-50 p-3 text-sm text-purple-700">
+                                    Paste one <strong>SKU,URL</strong> per line. The SKU must match a selected product above.
+                                    URLs are validated against the cohort brand domains before running extraction.
+                                </div>
+                                <Textarea
+                                    placeholder={`SKU-1,https://example.com/product/abc\nSKU-2,https://example.com/product/xyz`}
+                                    value={manualUrlInput}
+                                    onChange={(e) => setManualUrlInput(e.target.value)}
+                                    rows={4}
+                                    className="font-mono text-xs"
+                                />
+                                {parsedUrlEntries.length > 0 && (
+                                    <div className="space-y-1">
+                                        <p className="text-xs text-muted-foreground">
+                                            {Object.keys(parsedUrlsBySku).length} valid URL(s)
+                                            {manualUrlErrorCount > 0 && (
+                                                <span className="text-amber-600 ml-1">
+                                                    · {manualUrlErrorCount} error(s)
+                                                </span>
+                                            )}
+                                            {manualUrlMissingCount > 0 && (
+                                                <span className="text-amber-600 ml-1">
+                                                    · {manualUrlMissingCount} SKU(s) not in selection
+                                                </span>
+                                            )}
+                                        </p>
+                                        {manualUrlErrorCount > 0 && (
+                                            <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
+                                                {parsedUrlEntries.filter((e) => !e.parsed).map((e, i) => (
+                                                    <div key={i} className="flex items-start gap-1">
+                                                        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                                                        <span>{e.error}{e.sku ? ` for "${e.sku}"` : e.url ? `: ${e.url}` : ''}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
 

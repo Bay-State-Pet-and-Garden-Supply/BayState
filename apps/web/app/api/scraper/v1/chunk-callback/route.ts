@@ -17,6 +17,12 @@ import {
     persistScrapeJobLogs,
     updateScrapeJobLogSummary,
 } from '@/lib/scraper-log-persistence';
+import {
+    buildDiscoveryOfficialBrandCandidateRows,
+    buildExtractedOfficialBrandCandidateRows,
+    getOfficialBrandPhaseFromJob,
+    persistOfficialBrandCandidateRows,
+} from '@/lib/official-brand-workflow';
 function getSupabaseAdmin(): SupabaseClient {
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -61,6 +67,7 @@ export async function persistChunkResultsToPipeline(
         isOfficialBrandJob: boolean;
         officialDomains?: string[];
         preferredDomains?: string[];
+        jobConfig?: Record<string, unknown>;
     }
 ): Promise<string[]> {
     if (isTestJob) {
@@ -119,6 +126,20 @@ export async function persistChunkResultsToPipeline(
                 },
             })
             .eq('id', jobId);
+
+        if (persisted.length > 0) {
+            try {
+                const extractedRows = buildExtractedOfficialBrandCandidateRows({
+                    jobId,
+                    resultsBySku: resultsToPersist,
+                    config: officialBrandContext?.jobConfig,
+                    nowIso,
+                });
+                await persistOfficialBrandCandidateRows(supabase, extractedRows);
+            } catch (candidateError) {
+                console.warn(`[Chunk Callback] Failed to mark Official Brand URL candidates as extracted for job ${jobId}:`, candidateError);
+            }
+        }
     }
 
     if (missing.length > 0) {
@@ -129,6 +150,59 @@ export async function persistChunkResultsToPipeline(
 
     console.log(`[Chunk Callback] Updated ${persisted.length} products_ingestion rows for job ${jobId}`);
     return persisted;
+}
+
+export async function persistOfficialBrandDiscoveryResults(
+    supabase: SupabaseClient,
+    jobId: string,
+    aggregatedResults: ScrapedDataBySku,
+    isTestJob: boolean,
+    jobConfig?: Record<string, unknown>,
+): Promise<number> {
+    if (isTestJob) {
+        console.log(
+            `[Chunk Callback] Test discovery job ${jobId} - skipping Official Brand URL candidate persistence`
+        );
+        return 0;
+    }
+
+    const nowIso = new Date().toISOString();
+    const cohort = jobConfig?.cohort && typeof jobConfig.cohort === 'object' && !Array.isArray(jobConfig.cohort)
+        ? jobConfig.cohort as Record<string, unknown>
+        : undefined;
+    const rows = buildDiscoveryOfficialBrandCandidateRows({
+        jobId,
+        resultsBySku: aggregatedResults,
+        cohort,
+        nowIso,
+    });
+    const persistedCount = await persistOfficialBrandCandidateRows(supabase, rows);
+
+    const { data: metadataRow } = await supabase
+        .from('scrape_jobs')
+        .select('metadata')
+        .eq('id', jobId)
+        .single();
+
+    const priorMetadata = metadataRow?.metadata && typeof metadataRow.metadata === 'object'
+        ? (metadataRow.metadata as Record<string, unknown>)
+        : {};
+
+    await supabase
+        .from('scrape_jobs')
+        .update({
+            metadata: {
+                ...priorMetadata,
+                official_brand_discovery: {
+                    candidate_count: persistedCount,
+                    sku_count: Object.keys(aggregatedResults).length,
+                    updated_at: nowIso,
+                },
+            },
+        })
+        .eq('id', jobId);
+
+    return persistedCount;
 }
 
 export async function POST(request: NextRequest) {
@@ -187,7 +261,7 @@ export async function POST(request: NextRequest) {
         const jobId = chunk.job_id;
         const { data: updatedJobRecord } = await supabase
             .from('scrape_jobs')
-            .select('test_mode, config, metadata')
+            .select('test_mode, type, config, metadata')
             .eq('id', jobId)
             .single();
 
@@ -201,7 +275,12 @@ export async function POST(request: NextRequest) {
         const cohortRecord = configRecord.cohort && typeof configRecord.cohort === 'object'
             ? (configRecord.cohort as Record<string, unknown>)
             : {};
-        const isOfficialBrandJob = metadataRecord.requested_job_type === 'official_brand' || Boolean(configRecord.cohort);
+        const officialBrandPhase = getOfficialBrandPhaseFromJob({
+            type: updatedJobRecord?.type,
+            metadata: metadataRecord,
+            config: configRecord,
+        });
+        const isOfficialBrandJob = Boolean(officialBrandPhase) || metadataRecord.requested_job_type === 'official_brand' || Boolean(configRecord.cohort);
 
         const chunkIdempotency = await checkIdempotency(
             supabase,
@@ -226,12 +305,24 @@ export async function POST(request: NextRequest) {
             const chunkResultsBySku = mergeChunkResults([{ results: results.data }]);
             if (Object.keys(chunkResultsBySku).length > 0) {
                 try {
-                    await persistChunkResultsToPipeline(supabase, jobId, chunkResultsBySku, isTestJob, {
-                        isOfficialBrandJob,
-                        officialDomains: Array.isArray(cohortRecord.officialDomains) ? (cohortRecord.officialDomains as string[]) : undefined,
-                        preferredDomains: Array.isArray(cohortRecord.preferredDomains) ? (cohortRecord.preferredDomains as string[]) : undefined,
-                    });
-                    console.log(`[Chunk Callback] Persisted ${Object.keys(chunkResultsBySku).length} SKUs from chunk ${chunk.chunk_index}`);
+                    if (officialBrandPhase === 'url_discovery') {
+                        const persistedCandidates = await persistOfficialBrandDiscoveryResults(
+                            supabase,
+                            jobId,
+                            chunkResultsBySku,
+                            isTestJob,
+                            configRecord,
+                        );
+                        console.log(`[Chunk Callback] Persisted ${persistedCandidates} Official Brand URL candidates from chunk ${chunk.chunk_index}`);
+                    } else {
+                        await persistChunkResultsToPipeline(supabase, jobId, chunkResultsBySku, isTestJob, {
+                            isOfficialBrandJob,
+                            officialDomains: Array.isArray(cohortRecord.officialDomains) ? (cohortRecord.officialDomains as string[]) : undefined,
+                            preferredDomains: Array.isArray(cohortRecord.preferredDomains) ? (cohortRecord.preferredDomains as string[]) : undefined,
+                            jobConfig: configRecord,
+                        });
+                        console.log(`[Chunk Callback] Persisted ${Object.keys(chunkResultsBySku).length} SKUs from chunk ${chunk.chunk_index}`);
+                    }
                 } catch (persistError) {
                     effectiveChunkStatus = 'failed';
                     persistenceErrorMessage = persistError instanceof Error ? persistError.message : 'Failed to persist chunk results';

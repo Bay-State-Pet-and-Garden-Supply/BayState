@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 import os
-from typing import Any, List
+from typing import Any
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
@@ -290,6 +290,185 @@ class OfficialBrandScraper:
         )
         return None
 
+    async def discover_official_url_candidates(
+        self,
+        sku: str,
+        brand: str,
+        product_name: str | None = None,
+        official_domains: list[str] | None = None,
+        preferred_domains: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Discover and rank Official Brand URL candidates without extracting product data."""
+        normalized_official_domains = [
+            domain for domain in (self._normalize_domain(candidate) for candidate in (official_domains or [])) if domain
+        ]
+        normalized_preferred_domains = [
+            domain for domain in (self._normalize_domain(candidate) for candidate in (preferred_domains or [])) if domain
+        ]
+        targeted_domains = normalized_official_domains or normalized_preferred_domains
+
+        effective_brand = brand.strip() if brand and brand.lower() != "none" else ""
+        if effective_brand:
+            base_query = f"{effective_brand} {sku} official website"
+        elif product_name:
+            base_query = f"{product_name} {sku} official website"
+        else:
+            return {
+                "success": False,
+                "sku": sku,
+                "status": "error",
+                "error": "Missing Brand and Product Name",
+                "candidates": [],
+            }
+
+        exclusions = [
+            "amazon.com",
+            "ebay.com",
+            "walmart.com",
+            "target.com",
+            "chewy.com",
+            "petco.com",
+            "petsmart.com",
+            "homedepot.com",
+            "lowes.com",
+            "tractorsupply.com",
+        ]
+        query = self._query_builder.build_brand_focused_query(base_query, exclusions)
+        site_queries = self._query_builder.build_site_query_variants(
+            targeted_domains,
+            sku,
+            product_name,
+            effective_brand or None,
+            None,
+        )
+
+        results, error = await self._search_queries_until_match(
+            [*site_queries, query],
+            normalized_official_domains or normalized_preferred_domains,
+        )
+        if error:
+            return {
+                "success": False,
+                "sku": sku,
+                "status": "error",
+                "error": error,
+                "candidates": [],
+            }
+
+        if not results:
+            return {
+                "success": False,
+                "sku": sku,
+                "status": "not_found",
+                "error": "No search results found",
+                "candidates": [],
+            }
+
+        selected_url: str | None = None
+        selection_method: str | None = None
+        selected_confidence = 0.0
+        confidence_by_url: dict[str, float] = {}
+
+        if normalized_official_domains:
+            for result in results[:5]:
+                url = str(result.get("url") or "").strip()
+                if url and self._url_matches_domain_list(url, normalized_official_domains):
+                    selected_url = url
+                    selection_method = "official_domain"
+                    selected_confidence = 1.0
+                    break
+
+        if not selected_url and normalized_preferred_domains:
+            for result in results[:5]:
+                url = str(result.get("url") or "").strip()
+                if url and self._url_matches_domain_list(url, normalized_preferred_domains):
+                    selected_url = url
+                    selection_method = "preferred_domain"
+                    selected_confidence = 0.95
+                    break
+
+        if not selected_url:
+            for result in results:
+                if result.get("result_type") != "knowledge_graph":
+                    continue
+                kg_url = str(result.get("url") or "").strip()
+                if not kg_url:
+                    continue
+                if targeted_domains and not self._url_matches_domain_list(kg_url, targeted_domains):
+                    continue
+                selected_url = kg_url
+                selection_method = "knowledge_graph"
+                selected_confidence = 0.9
+                break
+
+        if not selected_url:
+            scored_results = []
+            scoring_context = effective_brand or product_name or ""
+            for result in results[:5]:
+                url = str(result.get("url") or "").strip()
+                snippet = str(result.get("description") or result.get("title") or "")
+                if not url:
+                    continue
+
+                context_with_domains = scoring_context
+                if preferred_domains:
+                    context_with_domains += f" (Preferred domains: {', '.join(preferred_domains)})"
+
+                score_data = await self._source_selector.score_snippet(url, snippet, context_with_domains)
+                confidence = float(score_data.get("confidence_score", 0.0) or 0.0)
+                confidence_by_url[url] = confidence
+                if score_data.get("is_official"):
+                    scored_results.append((url, confidence))
+
+            if scored_results:
+                scored_results.sort(key=lambda x: x[1], reverse=True)
+                selected_url = scored_results[0][0]
+                selection_method = "llm"
+                selected_confidence = scored_results[0][1]
+
+        candidates: list[dict[str, Any]] = []
+        seen_urls: set[str] = set()
+        for index, result in enumerate(results[:10], start=1):
+            url = str(result.get("url") or "").strip()
+            if not url or url in seen_urls:
+                continue
+            seen_urls.add(url)
+            candidate_confidence = confidence_by_url.get(url)
+            if selected_url and url == selected_url and selected_confidence:
+                candidate_confidence = selected_confidence
+
+            candidates.append(
+                {
+                    "url": url,
+                    "domain": self._normalize_domain(url),
+                    "title": result.get("title"),
+                    "snippet": result.get("description"),
+                    "result_type": result.get("result_type"),
+                    "rank": index,
+                    "confidence": candidate_confidence,
+                    "selection_method": selection_method if selected_url and url == selected_url else None,
+                }
+            )
+
+        if not selected_url:
+            return {
+                "success": False,
+                "sku": sku,
+                "status": "not_found",
+                "error": "Could not identify official brand URL",
+                "candidates": candidates,
+            }
+
+        return {
+            "success": True,
+            "sku": sku,
+            "status": "found",
+            "selected_url": selected_url,
+            "confidence": selected_confidence,
+            "selection_method": selection_method,
+            "candidates": candidates,
+        }
+
 
     async def extract_data(self, url: str, schema_path: str | None = None) -> dict[str, Any]:
         """Extract product data using a two-stage process.
@@ -453,3 +632,84 @@ class OfficialBrandScraper:
 
         tasks = [_scrape_single(p) for p in products]
         return list(await asyncio.gather(*tasks))
+
+    async def discover_product_urls_batch(
+        self,
+        products: list[dict[str, Any]],
+        max_concurrency: int = 4,
+    ) -> list[dict[str, Any]]:
+        """Discover Official Brand URLs for products without running Crawl4AI extraction."""
+        if not products:
+            return []
+
+        semaphore = asyncio.Semaphore(max(1, max_concurrency))
+
+        async def _discover_single(product: dict[str, Any]) -> dict[str, Any]:
+            async with semaphore:
+                sku = str(product.get("sku") or "").strip()
+                brand = str(product.get("brand") or "").strip()
+                product_name = str(product.get("product_name") or "").strip()
+                official_domains = product.get("official_domains")
+                preferred_domains = product.get("preferred_domains")
+
+                if not sku:
+                    return {"success": False, "sku": sku, "status": "error", "error": "Missing SKU", "candidates": []}
+
+                return await self.discover_official_url_candidates(
+                    sku,
+                    brand,
+                    product_name,
+                    official_domains=official_domains,
+                    preferred_domains=preferred_domains,
+                )
+
+        return list(await asyncio.gather(*(_discover_single(p) for p in products)))
+
+    async def extract_products_from_urls_batch(
+        self,
+        products: list[dict[str, Any]],
+        max_concurrency: int = 4,
+    ) -> list[AISearchResult]:
+        """Extract Official Brand product data from known URLs."""
+        if not products:
+            return []
+
+        semaphore = asyncio.Semaphore(max(1, max_concurrency))
+
+        async def _extract_single(product: dict[str, Any]) -> AISearchResult:
+            async with semaphore:
+                sku = str(product.get("sku") or "").strip()
+                brand = str(product.get("brand") or "").strip()
+                url = str(product.get("source_url") or product.get("known_url") or product.get("url") or "").strip()
+
+                if not sku:
+                    return AISearchResult(success=False, sku=sku, error="Missing SKU")
+                if not url:
+                    return AISearchResult(success=False, sku=sku, error="Missing source URL")
+
+                res = await self.extract_data(url)
+                if not res.get("success"):
+                    return AISearchResult(success=False, sku=sku, error=res.get("error", "Extraction failed"), url=url, source_website=url)
+
+                data = res.get("data")
+                if isinstance(data, list) and data and isinstance(data[0], dict):
+                    data = data[0]
+                if not isinstance(data, dict):
+                    return AISearchResult(success=False, sku=sku, error="Extraction returned unsupported payload", url=url, source_website=url)
+
+                return AISearchResult(
+                    success=True,
+                    sku=sku,
+                    product_name=data.get("name"),
+                    brand=data.get("brand") or brand,
+                    description=data.get("description"),
+                    images=data.get("images"),
+                    categories=data.get("categories"),
+                    url=url,
+                    source_website=url,
+                    confidence=1.0 if res.get("method") == "json_css" else 0.8,
+                    cost_usd=0.05,
+                    selection_method=str(product.get("url_source") or "known_url"),
+                )
+
+        return list(await asyncio.gather(*(_extract_single(p) for p in products)))

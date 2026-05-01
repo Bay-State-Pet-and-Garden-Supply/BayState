@@ -96,7 +96,7 @@ function createPollSupabase() {
   return mock;
 }
 
-function createJobSupabase() {
+function createJobSupabase(jobOverrides: Record<string, unknown> = {}) {
   return {
     from: jest.fn().mockReturnValue({
       select: jest.fn().mockReturnValue({
@@ -112,6 +112,7 @@ function createJobSupabase() {
               config: null,
               lease_token: null,
               lease_expires_at: null,
+              ...jobOverrides,
             },
             error: null,
           }),
@@ -195,5 +196,30 @@ describe('runner scraper config forwarding', () => {
       login: loginConfig,
       credential_refs: ['orgill'],
     });
+  });
+
+  it('synthesizes official_brand scraper config for AI jobs', async () => {
+    const { createClient } = jest.requireMock('@supabase/supabase-js') as {
+      createClient: { mockReturnValue: (value: unknown) => void };
+    };
+    createClient.mockReturnValue(createJobSupabase({
+      scrapers: ['official_brand'],
+      type: 'ai_search',
+      config: { items: [{ sku: 'SKU-1', brand: 'Acme' }] },
+    }));
+    const { GET } = await import('@/app/api/scraper/v1/job/route');
+
+    const response = await GET(createRequest('http://localhost/api/scraper/v1/job?job_id=job-123'));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.job_type).toBe('ai_search');
+    expect(body.scrapers).toEqual([
+      expect.objectContaining({
+        name: 'official_brand',
+        disabled: false,
+        credential_refs: [],
+      }),
+    ]);
   });
 });

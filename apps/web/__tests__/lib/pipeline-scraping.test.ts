@@ -145,6 +145,10 @@ describe('scrapeProducts', () => {
             }),
         };
 
+        const candidateBuilder = {
+            upsert: jest.fn().mockResolvedValue({ error: null }),
+        };
+
         return {
             from: jest.fn().mockImplementation((table: string) => {
                 if (table === 'scrape_jobs') return scrapeJobsBuilder;
@@ -153,6 +157,7 @@ describe('scrapeProducts', () => {
                 if (table === 'products') return productsBuilder;
                 if (table === 'brands') return brandsBuilder;
                 if (table === 'cohort_batches') return cohortBuilder;
+                if (table === 'official_brand_url_candidates') return candidateBuilder;
                 return scrapeJobsBuilder;
             }),
             _scrapeJobsBuilder: scrapeJobsBuilder,
@@ -161,6 +166,7 @@ describe('scrapeProducts', () => {
             _productsBuilder: productsBuilder,
             _brandsBuilder: brandsBuilder,
             _cohortBuilder: cohortBuilder,
+            _candidateBuilder: candidateBuilder,
         };
     };
 
@@ -633,5 +639,125 @@ describe('scrapeProducts', () => {
                 preferred_domains: ['arett.com'],
             },
         ]);
+    });
+
+    it('should create official_brand_url_discovery job when phase is url_discovery', async () => {
+        mockSupabase = makeSupabaseMock({
+            pipelineRows: [
+                {
+                    sku: 'SKU-1',
+                    cohort_id: 'cohort-1',
+                    input: { name: 'Test Product', price: 10.0 },
+                },
+            ],
+        });
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], {
+            enrichment_method: 'official_brand',
+            officialBrandPhase: 'url_discovery',
+            officialBrandCohort: {
+                id: 'cohort-1',
+                brandId: 'brand-1',
+                brandName: 'Test Brand',
+            },
+        });
+
+        expect(result.success).toBe(true);
+        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
+        expect(insertedPayload.type).toBe('official_brand_url_discovery');
+        expect(insertedPayload.config.phase).toBe('url_discovery');
+        expect(insertedPayload.metadata.official_brand_phase).toBe('url_discovery');
+    });
+
+    it('should create official_brand_extraction job when phase is extraction', async () => {
+        mockSupabase = makeSupabaseMock({
+            pipelineRows: [
+                {
+                    sku: 'SKU-1',
+                    cohort_id: 'cohort-1',
+                    input: { name: 'Test Product', price: 10.0 },
+                },
+            ],
+        });
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], {
+            enrichment_method: 'official_brand',
+            officialBrandPhase: 'extraction',
+            officialBrandUrlsBySku: { 'SKU-1': 'https://example.com/product' },
+            officialBrandCohort: {
+                id: 'cohort-1',
+                brandId: 'brand-1',
+                brandName: 'Test Brand',
+                officialDomains: ['example.com'],
+            },
+        });
+
+        expect(result.success).toBe(true);
+        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
+        expect(insertedPayload.type).toBe('official_brand_extraction');
+        expect(insertedPayload.config.phase).toBe('extraction');
+        expect(insertedPayload.config.items[0].source_url).toBe('https://example.com/product');
+        expect(insertedPayload.config.items[0].url_source).toBe('manual');
+    });
+
+    it('should persist URL candidates for manual extraction jobs', async () => {
+        mockSupabase = makeSupabaseMock({
+            pipelineRows: [
+                {
+                    sku: 'SKU-1',
+                    cohort_id: 'cohort-1',
+                    input: { name: 'Test Product', price: 10.0 },
+                },
+            ],
+        });
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], {
+            enrichment_method: 'official_brand',
+            officialBrandPhase: 'extraction',
+            officialBrandUrlsBySku: { 'SKU-1': 'https://example.com/product' },
+            officialBrandCohort: {
+                id: 'cohort-1',
+                brandId: 'brand-1',
+                brandName: 'Test Brand',
+            },
+        });
+
+        expect(result.success).toBe(true);
+        expect(mockSupabase._candidateBuilder.upsert).toHaveBeenCalledTimes(1);
+        const upsertedRows = mockSupabase._candidateBuilder.upsert.mock.calls[0][0];
+        expect(upsertedRows).toHaveLength(1);
+        expect(upsertedRows[0].sku).toBe('SKU-1');
+        expect(upsertedRows[0].candidate_source).toBe('manual');
+        expect(upsertedRows[0].selection_status).toBe('selected');
+    });
+
+    it('should error on extraction without urls_by_sku', async () => {
+        mockSupabase = makeSupabaseMock();
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], {
+            enrichment_method: 'official_brand',
+            officialBrandPhase: 'extraction',
+        });
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('requires a source URL for every SKU');
+    });
+
+    it('should error on extraction with invalid urls_by_sku', async () => {
+        mockSupabase = makeSupabaseMock();
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], {
+            enrichment_method: 'official_brand',
+            officialBrandPhase: 'extraction',
+            officialBrandUrlsBySku: { 'SKU-1': '' },
+        });
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('requires a source URL for every SKU');
     });
 });
