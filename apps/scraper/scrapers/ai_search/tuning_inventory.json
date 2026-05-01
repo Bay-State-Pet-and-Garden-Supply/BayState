@@ -5,7 +5,7 @@
   "source_files": {
     "scoring": "apps/scraper/scrapers/ai_search/scoring.py",
     "validation": "apps/scraper/scrapers/ai_search/validation.py",
-    "golden_regression": "apps/scraper/tests/unit/test_golden_dataset_regression.py"
+    "official_brand_extraction_seed": "apps/scraper/benchmarks/official_brand/fixtures/extraction_seed.json"
   },
   "entries": [
     {
@@ -249,13 +249,13 @@
       "value": {"min_path_segments_for_product_image": 2, "template_token_rejected": true, "bigcommerce_size_placeholder_replacement": "3840w"}
     },
     {
-      "id": "golden_dataset_regression.thresholds",
+      "id": "official_brand_extraction_seed.dataset",
       "status": "report-only",
-      "kind": "test_thresholds",
-      "source_file": "apps/scraper/tests/unit/test_golden_dataset_regression.py",
-      "source_symbol": "OFFICIAL_DOMAIN_DETECTION_THRESHOLD|ZERO_RETAILER_SELECTION_THRESHOLD|FIXTURE_SHAPE_VALIDITY_THRESHOLD|MAX_TIME_PER_ENTRY_MS",
-      "description": "Current golden dataset regression floors and performance budget.",
-      "value": {"official_domain_detection_threshold": 0.7, "zero_retailer_selection_threshold": 0.3, "fixture_shape_validity_threshold": 0.98, "max_time_per_entry_ms": 200}
+      "kind": "benchmark_dataset",
+      "source_file": "apps/scraper/benchmarks/official_brand/fixtures/extraction_seed.json",
+      "source_symbol": "official-brand-extraction-dataset-v1",
+      "description": "Curated seed rows for the new live Crawl4AI extraction benchmark. Raw golden/search-result datasets were retired as benchmark truth.",
+      "value": {"entry_count": 10, "requires_reviewed_ground_truth": true, "live_benchmark_only": true}
     },
     {
       "id": "forbidden.add_new_scoring_signals",

@@ -16,14 +16,20 @@ Commands:
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import click
+from dotenv import load_dotenv
 
 from .commands.audit import register_audit_commands
 from .commands.batch import register_batch_commands
 from .commands.cohort import register_cohort_commands
+from .commands.ai_search_benchmark import register_ai_search_benchmark_commands
 from .commands.official_brand_benchmark import register_official_brand_benchmark_commands
 
 __version__ = "0.1.0"
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
 
 
 @click.group()
@@ -61,6 +67,7 @@ register_audit_commands(audit)
 register_cohort_commands(cohort)
 register_batch_commands(batch)
 register_official_brand_benchmark_commands(benchmark)
+register_ai_search_benchmark_commands(benchmark)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,180 @@
+{
+  "schema_version": "official-brand-extraction-dataset-v1",
+  "source_notes": {
+    "origin": "Salvaged from the former golden_dataset_v3_extraction_pilot.json and related live manifest data.",
+    "curation": "Rows with challenge-blocked pages, empty required image ground truth, or placeholder descriptions were excluded.",
+    "purpose": "Seed dataset for the new live Crawl4AI extraction benchmark. This is intentionally small and strict; expand only with reviewed ground truth."
+  },
+  "entries": [
+    {
+      "sku": "850012047735",
+      "product_name": "The Honest Kitchen Grain Free Turkey & Chicken Clusters Dry Cat Food 1 lb",
+      "brand": "The Honest Kitchen",
+      "source_url": "https://www.thehonestkitchen.com/products/grain-free-turkey-and-chicken-whole-food-clusters-dry-cat-food",
+      "source_type": "official",
+      "category": "Cat Food Dry",
+      "difficulty": "hard",
+      "ground_truth": {
+        "brand": "The Honest Kitchen",
+        "name": "The Honest Kitchen Grain Free Turkey & Chicken Clusters Dry Cat Food 1 lb",
+        "description_contains": ["whole food clusters", "probiotics"],
+        "size_metrics": "1 lb",
+        "image_required": true,
+        "categories": ["Cat Food Dry", "Dry Cat Food", "Whole Food Clusters"]
+      }
+    },
+    {
+      "sku": "072318200618",
+      "product_name": "FirstMate Chicken Meal with Blueberries Formula Dry Cat Food 3.96lb",
+      "brand": "FirstMate",
+      "source_url": "https://firstmate.com/product/chicken-meal-with-blueberries-formula-for-cats/",
+      "source_type": "official",
+      "category": "Cat Food Dry",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "FirstMate",
+        "name": "FirstMate Chicken Meal with Blueberries Formula Dry Cat Food 3.96lb",
+        "description_contains": ["chicken", "blueberries"],
+        "size_metrics": "3.96 lb",
+        "image_required": true,
+        "categories": ["Cat Food Dry", "Dry Cat Food", "Limited Ingredient Diet"]
+      }
+    },
+    {
+      "sku": "045663976866",
+      "product_name": "Four Paws Wee-Wee Cat Pads 11x17 10ct",
+      "brand": "Four Paws",
+      "source_url": "https://www.fourpaws.com/products/wee-wee-cat-litter-box-system-pads",
+      "source_type": "official",
+      "category": "Cat Litter Accessories",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Four Paws",
+        "name": "Four Paws Wee-Wee Cat Pads 11x17 10ct",
+        "description_contains": ["cat litter box", "odor"],
+        "size_metrics": "10 count",
+        "image_required": true,
+        "categories": ["Cat Litter Accessories", "Cat Pads", "Litter Box Pads"]
+      }
+    },
+    {
+      "sku": "856595005308",
+      "product_name": "Etta Says Flavor Fusion Salmon & Sweet Potato 1.75 oz",
+      "brand": "Etta Says!",
+      "source_url": "https://www.thepetbeastro.com/etta-says-flavor-fusion-dog-treats-or-salmon-and-s.html",
+      "source_type": "retailer",
+      "category": "Dog Treats",
+      "difficulty": "medium",
+      "ground_truth": {
+        "brand": "Etta Says!",
+        "name": "Etta Says Flavor Fusion Salmon & Sweet Potato 1.75 oz",
+        "description_contains": ["salmon", "sweet potato"],
+        "size_metrics": "1.75 oz",
+        "image_required": true,
+        "categories": ["Dog Treats", "Dog Chews", "Salmon & Sweet Potato"]
+      }
+    },
+    {
+      "sku": "813347001018",
+      "product_name": "Stud Muffins Horse Treats 10 oz Tub",
+      "brand": "Stud Muffins",
+      "source_url": "https://www.bigdweb.com/stud-muffins-horse-treats-10-oz",
+      "source_type": "retailer",
+      "category": "Horse Treats",
+      "difficulty": "hard",
+      "ground_truth": {
+        "brand": "Stud Muffins",
+        "name": "Stud Muffins Horse Treats 10 oz Tub",
+        "description_contains": ["molasses", "oats"],
+        "size_metrics": "10 oz",
+        "image_required": true,
+        "categories": ["Horse Treats", "Horse Snacks", "Rewards"]
+      }
+    },
+    {
+      "sku": "813347003043",
+      "product_name": "Stud Muffins Horse Treats 45 oz Tub",
+      "brand": "Stud Muffins",
+      "source_url": "https://www.bigdweb.com/stud-muffins-horse-treat-45-oz-bag",
+      "source_type": "retailer",
+      "category": "Horse Treats",
+      "difficulty": "hard",
+      "ground_truth": {
+        "brand": "Stud Muffins",
+        "name": "Stud Muffins Horse Treats 45 oz Tub",
+        "description_contains": ["flax", "molasses"],
+        "size_metrics": "45 oz",
+        "image_required": true,
+        "categories": ["Horse Treats", "Horse Snacks", "Rewards"]
+      }
+    },
+    {
+      "sku": "072318100680",
+      "product_name": "FirstMate Grain-Free Chicken Meal with Blueberries 5 lb.",
+      "brand": "FirstMate",
+      "source_url": "https://firstmate.com/product/chicken-meal-with-blueberries-formula/",
+      "source_type": "official",
+      "category": "Dog Food Dry",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "FirstMate",
+        "name": "FirstMate Grain-Free Chicken Meal with Blueberries 5 lb.",
+        "description_contains": ["chicken", "blueberries"],
+        "size_metrics": "5 lb",
+        "image_required": true,
+        "categories": ["Dog Food Dry", "Dry Dog Food", "Limited Ingredient Diet"]
+      }
+    },
+    {
+      "sku": "4059433816098",
+      "product_name": "Schleich Clydesdale Gelding Horse Toy Figurine",
+      "brand": "Schleich",
+      "source_url": "https://us.schleich-s.com/products/clydesdale-gelding-13808-2",
+      "source_type": "official",
+      "category": "Collectible Animal Figurines",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Schleich",
+        "name": "Schleich Clydesdale Gelding Horse Toy Figurine",
+        "description_contains": ["Clydesdale", "horse"],
+        "size_metrics": "4.8 inch",
+        "image_required": true,
+        "categories": ["Collectible Animal Figurines", "Horse Figurines", "Farm World"]
+      }
+    },
+    {
+      "sku": "032247886598",
+      "product_name": "Scotts Nature Scapes Color Enhanced Mulch Deep Forest Brown 1.5 cu. ft.",
+      "brand": "Scotts",
+      "source_url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
+      "source_type": "official",
+      "category": "Garden > Mulch",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Scotts",
+        "name": "Scotts Nature Scapes Color Enhanced Mulch Deep Forest Brown 1.5 cu. ft.",
+        "description_contains": ["mulch", "color"],
+        "size_metrics": "1.5 cu. ft.",
+        "image_required": true,
+        "categories": ["Garden > Mulch", "Mulch", "Lawn & Garden"]
+      }
+    },
+    {
+      "sku": "095668480400",
+      "product_name": "Manna Pro Fresh Flakes Poultry Bedding 12 Lb",
+      "brand": "Manna Pro",
+      "source_url": "https://mannapro.com/products/fresh-flakes-poultry-bedding",
+      "source_type": "official",
+      "category": "Poultry Bedding",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Manna Pro",
+        "name": "Manna Pro Fresh Flakes Poultry Bedding 12 Lb",
+        "description_contains": ["bedding", "pine"],
+        "size_metrics": "12 lb",
+        "image_required": true,
+        "categories": ["Poultry Bedding", "Coop Bedding", "Pine Shavings"]
+      }
+    }
+  ]
+}

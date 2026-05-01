@@ -1,6 +1,8 @@
 # Official Brand Benchmark
 
-This benchmark validates Official Brand URL discovery in deterministic fixture mode.
+This package contains the new Official Brand benchmark assets.
+
+The current runnable benchmark validates Official Brand URL discovery in deterministic fixture mode.
 
 It exercises `OfficialBrandScraper.identify_official_url(...)` only (discovery-only),
 using cached search fixtures and no live API calls.
@@ -114,4 +116,29 @@ Example:
 - Discovery-only (official URL identification)
 - Fixture-only (deterministic, no network)
 
-Future extensions can add live mode and extraction metrics in separate commands.
+## Extraction Benchmark Seed
+
+The old golden/benchmark datasets were retired because they mixed source selection,
+retailer fallback behavior, scraped search results, and incomplete extraction truth.
+Useful reviewed rows were salvaged into:
+
+- `fixtures/extraction_seed.json`
+
+This seed is for the next live Crawl4AI extraction benchmark. It contains reviewed
+real product URLs, source type, and field-level ground truth signals:
+
+- expected brand
+- expected product name
+- description substrings
+- expected size metrics
+- required image presence
+- expected category hints
+
+Rows with challenge-blocked pages, dead URLs, empty image truth, or placeholder
+descriptions were intentionally excluded. Expand this file only with reviewed
+ground truth; do not reintroduce raw harvested Serper/golden datasets as benchmark
+truth.
+
+Future work should add a separate live extraction command that reads
+`fixtures/extraction_seed.json`, runs `Crawl4AIExtractor.extract(...)` against each
+`source_url`, and reports field-level extraction quality metrics.
