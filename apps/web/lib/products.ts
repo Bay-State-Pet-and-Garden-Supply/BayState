@@ -525,6 +525,8 @@ async function getFilteredProductIds(
     query = query.in('id', featuredProductIds);
   }
 
+  query = query.order('id');
+
   const { data, error } = await query.range(0, 9999);
 
   if (error) {
