@@ -21,13 +21,12 @@ from benchmarks.ai_search.metrics import (
     determine_failure_stage,
 )
 from scrapers.ai_search.crawl4ai_extractor import Crawl4AIExtractor
-from scrapers.ai_search.extraction_benchmark import load_extraction_fixture_page
-from scrapers.ai_search.fixture_search_client import FixtureSearchClient
 from scrapers.ai_search.matching import MatchingUtils
 from scrapers.ai_search.official_brand_scraper import OfficialBrandScraper
 from scrapers.ai_search.scoring import SearchScorer
 from scrapers.ai_search.search import SearchClient
 from scrapers.ai_search.validation import ExtractionValidator
+from benchmarks.search_fixtures import FixtureSearchClient
 
 logger = __import__("logging").getLogger(__name__)
 
@@ -73,7 +72,7 @@ class _NoopSourceSelector:
 
 
 def _load_page_fixture(page_fixtures_dir: Path, url: str) -> dict[str, Any] | None:
-    """Load a cached page fixture by URL hash using the extraction_benchmark format."""
+    """Load a cached page fixture by URL hash."""
     import hashlib
 
     cache_key = hashlib.sha256(url.encode()).hexdigest()
@@ -81,14 +80,14 @@ def _load_page_fixture(page_fixtures_dir: Path, url: str) -> dict[str, Any] | No
     if not fixture_path.exists():
         return None
     try:
-        page = load_extraction_fixture_page(fixture_path)
+        page = json.loads(fixture_path.read_text(encoding="utf-8"))
         return {
             "schema_version": 1,
-            "url": page.url,
-            "final_url": page.final_url,
-            "html": page.html,
-            "markdown": page.markdown,
-            "status_code": page.status_code,
+            "url": str(page.get("url") or ""),
+            "final_url": str(page.get("final_url") or page.get("url") or ""),
+            "html": str(page.get("html") or ""),
+            "markdown": str(page.get("markdown") or ""),
+            "status_code": page.get("status_code"),
         }
     except (json.JSONDecodeError, OSError, ValueError):
         return None
@@ -102,7 +101,7 @@ def _write_page_fixture(
     final_url: str,
     status_code: int | None,
 ) -> Path:
-    """Write a captured page fixture to disk in extraction_benchmark format."""
+    """Write a captured page fixture to disk."""
     import hashlib
 
     page_fixtures_dir.mkdir(parents=True, exist_ok=True)

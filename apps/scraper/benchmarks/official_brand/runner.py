@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 from benchmarks.official_brand.dataset import OfficialBrandBenchmarkEntry, load_dataset
 from benchmarks.official_brand.metrics import DiscoveryResultRow, summarize
 from benchmarks.official_brand.report import build_report, write_report
-from scrapers.ai_search.fixture_search_client import FixtureSearchClient
+from benchmarks.search_fixtures import FixtureSearchClient
 from scrapers.ai_search.official_brand_scraper import OfficialBrandScraper
 
 
