@@ -1,3 +1,4 @@
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { getUsers } from "@/lib/admin/users"
 import { CustomersClient } from "@/components/admin/customers/CustomersClient"
 
@@ -20,6 +21,8 @@ export default async function CustomersPage({
     })
 
     return (
-        <CustomersClient customers={users} count={count} />
+        <AdminPageShell title="Customers">
+            <CustomersClient customers={users} count={count} />
+        </AdminPageShell>
     )
 }

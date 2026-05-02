@@ -1,3 +1,4 @@
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { getUsers } from "@/lib/admin/users"
 import { AdminUsersClient } from "@/components/admin/users/AdminUsersClient"
 
@@ -13,6 +14,8 @@ export default async function AdminUsersPage({
     const { users, count } = await getUsers({ page, search, limit: 10 })
 
     return (
-        <AdminUsersClient users={users} count={count} />
+        <AdminPageShell title="Users">
+            <AdminUsersClient users={users} count={count} />
+        </AdminPageShell>
     )
 }

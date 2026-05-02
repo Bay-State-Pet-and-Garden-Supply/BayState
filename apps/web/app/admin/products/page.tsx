@@ -1,3 +1,4 @@
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { createClient } from '@/lib/supabase/server';
 import { AdminProductsClient } from '@/components/admin/products/AdminProductsClient';
 import { PublishedProduct } from '@/components/admin/products/ProductEditModal';
@@ -125,11 +126,13 @@ export default async function AdminProductsPage({
   });
 
   return (
-    <AdminProductsClient
-      initialProducts={clientProducts}
-      totalCount={count || 0}
-      brands={brands || []}
-      categories={categories || []}
-    />
+    <AdminPageShell title="Products">
+      <AdminProductsClient
+        initialProducts={clientProducts}
+        totalCount={count || 0}
+        brands={brands || []}
+        categories={categories || []}
+      />
+    </AdminPageShell>
   );
 }

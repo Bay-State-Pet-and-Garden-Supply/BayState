@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { Network } from 'lucide-react';
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { ScraperNetworkDashboard } from './scraper-network/scraper-network-dashboard';
 
 export const metadata: Metadata = {
@@ -9,8 +10,8 @@ export const metadata: Metadata = {
 
 export default async function ScraperNetworkPage() {
     return (
-        <div className="space-y-8">
+        <AdminPageShell title="Scraper Network">
             <ScraperNetworkDashboard />
-        </div>
+        </AdminPageShell>
     );
 }

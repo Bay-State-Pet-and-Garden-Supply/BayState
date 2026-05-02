@@ -6,6 +6,8 @@ import { SyncHistory, SyncHistorySkeleton } from '@/components/admin/b2b/sync-hi
 import { B2BFeed, B2BSyncJob } from '@/lib/b2b/types';
 import { getB2BFeeds, getSyncJobs } from '@/lib/b2b/sync-service';
 
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
+
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
@@ -42,16 +44,11 @@ export default async function B2BPage() {
   const [feeds, jobs] = await Promise.all([feedsData, jobsData]);
 
   return (
-    <div className="space-y-8 p-8 pt-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-none bg-[#008850]/10">
-          <Database className="h-5 w-5 text-[#008850]" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground font-black uppercase tracking-tight">B2B Data Feeds</h1>
-          <p className="text-sm text-muted-foreground">Monitor and manage distributor product data streams</p>
-        </div>
-      </div>
+    <AdminPageShell
+      title="B2B Data Feeds"
+      description="Monitor and manage distributor product data streams"
+      icon={<Database className="h-5 w-5" />}
+    >
 
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-foreground">Feed Status</h2>
@@ -66,7 +63,7 @@ export default async function B2BPage() {
            <SyncHistory jobs={jobs} feeds={feeds} />
         </Suspense>
       </div>
-    </div>
+    </AdminPageShell>
   );
 }
 

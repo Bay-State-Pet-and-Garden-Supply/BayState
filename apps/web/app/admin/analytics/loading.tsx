@@ -3,11 +3,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export default function AnalyticsLoading() {
   return (
-    <div className="space-y-6 p-6">
-      <div className="space-y-2">
-        <h1 className="admin-page-title">Analytics & reporting</h1>
-        <p className="admin-page-copy">Loading channel metrics and operational reporting.</p>
-      </div>
+    <div className="space-y-6">
+      <p className="text-sm text-muted-foreground">Loading channel metrics and operational reporting...</p>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[...Array(4)].map((_, i) => (

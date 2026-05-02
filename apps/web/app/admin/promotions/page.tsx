@@ -1,19 +1,13 @@
 import { getAllPromoCodes } from '@/lib/promo-codes';
 import { PromotionsClient } from './promotions-client';
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
 
 export default async function PromotionsPage() {
   const promoCodes = await getAllPromoCodes();
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground font-black uppercase tracking-tight">Promotions</h1>
-        <p className="text-muted-foreground">
-          Create and manage discount codes for your customers.
-        </p>
-      </div>
-
+    <AdminPageShell title="Promotions" description="Create and manage discount codes for your customers.">
       <PromotionsClient initialPromoCodes={promoCodes} />
-    </div>
+    </AdminPageShell>
   );
 }
