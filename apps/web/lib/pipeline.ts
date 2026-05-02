@@ -18,6 +18,9 @@ const CANONICAL_PERSISTED_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
 type StageBackedPipelineStage = Extract<
   PipelineStage,
   | "imported"
+  | "searching"
+  | "url_review"
+  | "extracting"
   | "scraping"
   | "scraped"
   | "consolidating"
@@ -33,6 +36,18 @@ const PIPELINE_STAGE_QUERY_SOURCE: Record<
   imported: {
     table: "products_ingestion",
     status: "imported",
+  },
+  searching: {
+    table: "products_ingestion",
+    status: "searching",
+  },
+  url_review: {
+    table: "products_ingestion",
+    status: "url_review",
+  },
+  extracting: {
+    table: "products_ingestion",
+    status: "extracting",
   },
   scraping: {
     table: "products_ingestion",
@@ -763,6 +778,9 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
 
   const countMap: Record<PersistedPipelineStatus, number> = {
     imported: 0,
+    searching: 0,
+    url_review: 0,
+    extracting: 0,
     scraping: 0,
     scraped: 0,
     consolidating: 0,
@@ -996,7 +1014,7 @@ export async function bulkDeleteProducts(
 /**
  * Clears scrape results and resets products back to 'imported' status.
  * This removes all scraped source data and consolidated data, allowing products
- * to be retried from scratch.
+ * to be retried from scratch, including Official Brand URL review/extraction.
  */
 export async function clearScrapeResultsAndResetStatus(
   skus: string[],
@@ -1030,7 +1048,7 @@ export async function clearScrapeResultsAndResetStatus(
     const auditPayload = {
       job_type: "clear_scrape_results",
       job_id: crypto.randomUUID(),
-      from_state: "scraped",
+      from_state: "scraped/url_review/extracting",
       to_state: "imported",
       actor_id: userId || null,
       actor_type: userId ? "user" : "system",

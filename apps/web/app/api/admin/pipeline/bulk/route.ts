@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { bulkUpdateStatus } from '@/lib/pipeline';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { PERSISTED_PIPELINE_STATUSES, isPersistedStatus } from '@/lib/pipeline/types';
+import { createClient } from '@/lib/supabase/server';
 
 const CANONICAL_PERSISTED_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
     status => `'${status}'`
@@ -17,11 +18,32 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { skus, toStatus, resetResults = false } = body as { 
-            skus: string[]; 
+        let { skus, toStatus, cohort_id, fromStatus, resetResults = false } = body as {
+            skus?: string[];
             toStatus: string;
+            cohort_id?: string;
+            fromStatus?: string;
             resetResults?: boolean;
         };
+
+        // If cohort_id is provided, resolve SKUs from the database
+        if (cohort_id && fromStatus) {
+            const supabase = await createClient();
+            const { data: rows, error: queryError } = await supabase
+                .from('products_ingestion')
+                .select('sku')
+                .eq('cohort_id', cohort_id)
+                .eq('pipeline_status', fromStatus);
+
+            if (queryError) {
+                return NextResponse.json(
+                    { error: `Failed to load cohort SKUs: ${queryError.message}` },
+                    { status: 500 }
+                );
+            }
+
+            skus = (rows ?? []).map((r: { sku?: string }) => r.sku).filter(Boolean) as string[];
+        }
 
         // Validate skus array
         if (!skus || !Array.isArray(skus) || skus.length === 0) {

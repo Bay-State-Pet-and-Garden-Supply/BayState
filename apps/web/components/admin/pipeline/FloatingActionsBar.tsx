@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Plus, Trash2, Search, Archive, Upload } from "lucide-react";
+import { Loader2, Plus, Trash2, Search, Archive, Upload, Globe } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type {
@@ -24,6 +24,9 @@ const BULK_ACTIONS: Record<
   }
 > = {
   imported: { label: "Scrape Selected", nextStage: "scraped" },
+  searching: { label: "", nextStage: null },
+  url_review: { label: "Return to Import", nextStage: "imported" },
+  extracting: { label: "", nextStage: null },
   scraped: {
     label: "Consolidate Selected",
     nextStage: null,
@@ -64,6 +67,8 @@ interface FloatingActionsBarProps {
   onResetStage?: (previousStage: PersistedPipelineStatus) => void;
   onConsolidate?: () => void;
   onOpenScrapeDialog?: () => void;
+  onDiscoverOfficialBrand?: () => void;
+  canDiscoverOfficialBrand?: boolean;
   onDelete?: () => void;
   actionState?: "upload" | "zip" | null;
   onUploadShopSite?: () => void;
@@ -81,6 +86,8 @@ export function FloatingActionsBar({
   onResetStage,
   onConsolidate,
   onOpenScrapeDialog,
+  onDiscoverOfficialBrand,
+  canDiscoverOfficialBrand,
   onDelete,
   actionState = null,
   onUploadShopSite,
@@ -183,6 +190,19 @@ export function FloatingActionsBar({
             >
               <Plus className="mr-1 h-3.5 w-3.5" />
               {bulkAction.secondaryAction}
+            </Button>
+          )}
+
+          {isImported && canDiscoverOfficialBrand && onDiscoverOfficialBrand && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onDiscoverOfficialBrand}
+              disabled={isLoading}
+              className="h-9 border border-border text-[10px] font-black uppercase tracking-widest text-blue-600 bg-background hover:bg-blue-50 rounded-none transition-all"
+            >
+              <Globe className="mr-1 h-3.5 w-3.5" />
+              Discover URLs
             </Button>
           )}
 

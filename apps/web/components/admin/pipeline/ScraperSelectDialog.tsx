@@ -1,12 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Loader2, Search, CheckSquare, Square, Sparkles, Link, Globe, AlertTriangle } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Loader2, CheckSquare, Square, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
     Dialog,
@@ -36,30 +34,13 @@ interface ScraperRecommendation {
     reason: string;
 }
 
-interface ManualUrlEntry {
-    sku: string;
-    url: string;
-    parsed: boolean;
-    error?: string;
-}
-
 interface ScraperSelectDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     selectedSkuCount: number;
-    onConfirm: (
-        scrapers: string[],
-        enrichmentMethod: 'scrapers' | 'official_brand',
-        options?: { phase?: 'url_discovery' | 'extraction'; urlsBySku?: Record<string, string> }
-    ) => void;
+    onConfirm: (scrapers: string[], enrichmentMethod: 'scrapers') => void;
     /** When provided, fetches and shows scraper recommendations for this brand */
     brandName?: string | null;
-    officialBrandEligibility?: {
-        allowed: boolean;
-        reason?: string | null;
-    };
-    /** SKUs currently selected in the pipeline table */
-    selectedSkus?: string[];
 }
 
 const CONFIDENCE_BADGE: Record<string, { label: string; className: string }> = {
@@ -75,63 +56,14 @@ export function ScraperSelectDialog({
     selectedSkuCount,
     onConfirm,
     brandName,
-    officialBrandEligibility,
-    selectedSkus,
 }: ScraperSelectDialogProps) {
     const [scrapers, setScrapers] = useState<ScraperOption[]>([]);
     const [selectedScrapers, setSelectedScrapers] = useState<Set<string>>(new Set());
-    const [enrichmentMethod, setEnrichmentMethod] = useState<'scrapers' | 'official_brand'>('scrapers');
     const [isLoadingScrapers, setIsLoadingScrapers] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [recommendations, setRecommendations] = useState<Map<string, ScraperRecommendation>>(new Map());
     const [hasRecommendations, setHasRecommendations] = useState(false);
-    const [officialBrandMode, setOfficialBrandMode] = useState<'discover' | 'manual'>('discover');
-    const [manualUrlInput, setManualUrlInput] = useState('');
-
-    const parsedUrlEntries = useMemo<ManualUrlEntry[]>(() => {
-        if (!manualUrlInput.trim()) return [];
-        const entries: ManualUrlEntry[] = [];
-        const lines = manualUrlInput.trim().split('\n');
-        for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed) continue;
-
-            const parts = trimmed.split(',', 2);
-            if (parts.length < 2) {
-                entries.push({ sku: '', url: trimmed, parsed: false, error: 'Missing SKU (format: SKU,URL)' });
-                continue;
-            }
-
-            const sku = parts[0].trim();
-            const url = parts[1].trim();
-            if (!sku) {
-                entries.push({ sku: '', url, parsed: false, error: 'SKU is empty' });
-                continue;
-            }
-            if (!url) {
-                entries.push({ sku, url, parsed: false, error: 'URL is empty' });
-                continue;
-            }
-            if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                entries.push({ sku, url, parsed: false, error: 'URL must start with http:// or https://' });
-                continue;
-            }
-            entries.push({ sku, url, parsed: true });
-        }
-        return entries;
-    }, [manualUrlInput]);
-
-    const parsedUrlsBySku = useMemo<Record<string, string>>(() => {
-        const map: Record<string, string> = {};
-        parsedUrlEntries.filter((e) => e.parsed).forEach((e) => { map[e.sku] = e.url; });
-        return map;
-    }, [parsedUrlEntries]);
-
-    const manualUrlErrorCount = useMemo(() => parsedUrlEntries.filter((e) => !e.parsed).length, [parsedUrlEntries]);
-    const manualUrlMissingCount = useMemo(() => selectedSkus
-        ? selectedSkus.filter((sku) => !parsedUrlsBySku[sku]).length
-        : 0, [selectedSkus, parsedUrlsBySku]);
 
     const fetchScrapers = useCallback(async () => {
         setIsLoadingScrapers(true);
@@ -182,7 +114,6 @@ export function ScraperSelectDialog({
         if (open) {
             fetchScrapers();
             void fetchRecommendations();
-            setEnrichmentMethod('scrapers');
             setIsSubmitting(false);
         }
     }, [open, fetchScrapers, fetchRecommendations]);
@@ -209,32 +140,17 @@ export function ScraperSelectDialog({
 
     const handleConfirm = async () => {
         const scraperSlugs = Array.from(selectedScrapers);
-        if (enrichmentMethod === 'scrapers' && scraperSlugs.length === 0) return;
+        if (scraperSlugs.length === 0) return;
 
         setIsSubmitting(true);
         try {
-            if (enrichmentMethod === 'official_brand') {
-                await onConfirm(scraperSlugs, enrichmentMethod, {
-                    phase: officialBrandMode === 'manual' ? 'extraction' : 'url_discovery',
-                    ...(officialBrandMode === 'manual' ? { urlsBySku: parsedUrlsBySku } : {}),
-                });
-            } else {
-                await onConfirm(scraperSlugs, enrichmentMethod);
-            }
+            await onConfirm(scraperSlugs, 'scrapers');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const isDiscovery = enrichmentMethod === 'official_brand' && officialBrandMode === 'discover';
-    const isManualUrlMode = enrichmentMethod === 'official_brand' && officialBrandMode === 'manual';
-    const canUseOfficialBrand = officialBrandEligibility?.allowed ?? true;
-    const officialBrandReason = officialBrandEligibility?.reason ?? null;
-    const canSubmit = isDiscovery
-        ? canUseOfficialBrand
-        : isManualUrlMode
-            ? canUseOfficialBrand && parsedUrlEntries.some((e) => e.parsed) && manualUrlMissingCount === 0 && manualUrlErrorCount === 0
-            : selectedScrapers.size > 0;
+    const canSubmit = selectedScrapers.size > 0;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -243,220 +159,109 @@ export function ScraperSelectDialog({
                     <DialogTitle className="text-2xl font-black uppercase tracking-tight">Start Scrape Jobs</DialogTitle>
                     <DialogDescription className="font-bold text-zinc-600">
                         {selectedSkuCount} product{selectedSkuCount !== 1 ? 's' : ''} selected.
-                        Choose scrapers and enrichment method.
+                        Choose scrapers for standard product page enrichment.
                     </DialogDescription>
                 </DialogHeader>
 
-                {/* Enrichment Method Toggle */}
+                {/* Scraper List */}
                 <div className="space-y-3">
-                    <Label className="text-sm font-medium">Enrichment Method</Label>
-                    <div className="flex flex-wrap gap-2">
-                        <Button
-                            variant={enrichmentMethod === 'scrapers' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setEnrichmentMethod('scrapers')}
-                            className={enrichmentMethod === 'scrapers' ? 'bg-primary hover:bg-primary/90' : ''}
-                        >
-                            <Search className="mr-1.5 h-3.5 w-3.5" />
-                            Standard
-                        </Button>
-                        <Button
-                            variant={enrichmentMethod === 'official_brand' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => {
-                                if (!canUseOfficialBrand) {
-                                    return;
-                                }
-                                setEnrichmentMethod('official_brand');
-                            }}
-                            disabled={!canUseOfficialBrand}
-                            className={enrichmentMethod === 'official_brand' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
-                        >
-                            <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                            Official Brand
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Scraper List (only shown for standard method) */}
-                {!isDiscovery && (
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <Label className="text-sm font-medium">Select Scrapers</Label>
-                            <div className="flex gap-2">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={selectAllScrapers}
-                                    className="h-7 px-2 text-xs"
-                                >
-                                    <CheckSquare className="mr-1 h-3 w-3" />
-                                    All
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={deselectAllScrapers}
-                                    className="h-7 px-2 text-xs"
-                                >
-                                    <Square className="mr-1 h-3 w-3" />
-                                    None
-                                </Button>
-                            </div>
+                    <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Select Scrapers</Label>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={selectAllScrapers}
+                                className="h-7 px-2 text-xs"
+                            >
+                                <CheckSquare className="mr-1 h-3 w-3" />
+                                All
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={deselectAllScrapers}
+                                className="h-7 px-2 text-xs"
+                            >
+                                <Square className="mr-1 h-3 w-3" />
+                                None
+                            </Button>
                         </div>
+                    </div>
 
-                        {isLoadingScrapers ? (
-                            <div className="flex items-center justify-center py-6">
-                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                                <span className="ml-2 text-sm text-muted-foreground">Loading scrapers...</span>
-                            </div>
-                        ) : loadError ? (
-                            <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                                {loadError}
-                                <Button variant="link" size="sm" onClick={fetchScrapers} className="ml-2 text-red-700 underline">
-                                    Retry
-                                </Button>
-                            </div>
-                        ) : (
-                            <div className="max-h-64 space-y-1 overflow-y-auto rounded-md border p-2">
-                                {scrapers.map((scraper) => {
-                                    const rec = recommendations.get(scraper.slug);
-                                    const confBadge = rec ? CONFIDENCE_BADGE[rec.confidence] : null;
-                                    return (
-                                        <label
-                                            key={scraper.slug}
-                                            className={`flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/50 ${
-                                                rec?.preselected ? 'bg-green-50/50 border border-green-200/50' : ''
-                                            }`}
-                                        >
-                                            <Checkbox
-                                                checked={selectedScrapers.has(scraper.slug)}
-                                                onCheckedChange={() => toggleScraper(scraper.slug)}
-                                            />
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="text-sm font-medium">{scraper.display_name}</span>
-                                                    {rec?.preselected && (
-                                                        <Sparkles className="h-3 w-3 text-green-600" />
-                                                    )}
+                    {isLoadingScrapers ? (
+                        <div className="flex items-center justify-center py-6">
+                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                            <span className="ml-2 text-sm text-muted-foreground">Loading scrapers...</span>
+                        </div>
+                    ) : loadError ? (
+                        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                            {loadError}
+                            <Button variant="link" size="sm" onClick={fetchScrapers} className="ml-2 text-red-700 underline">
+                                Retry
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="max-h-64 space-y-1 overflow-y-auto rounded-md border p-2">
+                            {scrapers.map((scraper) => {
+                                const rec = recommendations.get(scraper.slug);
+                                const confBadge = rec ? CONFIDENCE_BADGE[rec.confidence] : null;
+                                return (
+                                    <label
+                                        key={scraper.slug}
+                                        className={`flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/50 ${
+                                            rec?.preselected ? 'bg-green-50/50 border border-green-200/50' : ''
+                                        }`}
+                                    >
+                                        <Checkbox
+                                            checked={selectedScrapers.has(scraper.slug)}
+                                            onCheckedChange={() => toggleScraper(scraper.slug)}
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-sm font-medium">{scraper.display_name}</span>
+                                                {rec?.preselected && (
+                                                    <Sparkles className="h-3 w-3 text-green-600" />
+                                                )}
+                                            </div>
+                                            {scraper.domain && (
+                                                <div className="text-xs text-muted-foreground truncate">
+                                                    {scraper.domain}
                                                 </div>
-                                                {scraper.domain && (
-                                                    <div className="text-xs text-muted-foreground truncate">
-                                                        {scraper.domain}
-                                                    </div>
-                                                )}
-                                                {rec && rec.total_attempts > 0 && (
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {Math.round(rec.hit_rate * 100)}% hit rate ({rec.total_attempts} attempts)
-                                                    </div>
-                                                )}
-                                            </div>
-                                            {confBadge ? (
-                                                <Badge variant="outline" className={`text-xs shrink-0 ${confBadge.className}`}>
-                                                    {confBadge.label}
-                                                </Badge>
-                                            ) : (
-                                                <Badge variant="outline" className="text-xs shrink-0">
-                                                    {scraper.scraper_type}
-                                                </Badge>
                                             )}
-                                        </label>
-                                    );
-                                })}
-                                {scrapers.length === 0 && (
-                                    <p className="py-4 text-center text-sm text-muted-foreground">
-                                        No active scrapers found.
-                                    </p>
-                                )}
-                            </div>
-                        )}
-
-                        <p className="text-xs text-muted-foreground">
-                            {selectedScrapers.size} of {scrapers.length} scrapers selected
-                            {hasRecommendations && brandName && (
-                                <> · <Sparkles className="inline h-3 w-3 text-green-600" /> Recommendations for <strong>{brandName}</strong></>
-                            )}
-                        </p>
-                    </div>
-                )}
-
-                {enrichmentMethod === 'official_brand' && (
-                    <div className="space-y-3">
-                        <div className="flex flex-wrap gap-2">
-                            <Button
-                                variant={officialBrandMode === 'discover' ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setOfficialBrandMode('discover')}
-                                className={officialBrandMode === 'discover' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
-                            >
-                                <Globe className="mr-1.5 h-3.5 w-3.5" />
-                                Discover URLs
-                            </Button>
-                            <Button
-                                variant={officialBrandMode === 'manual' ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setOfficialBrandMode('manual')}
-                                className={officialBrandMode === 'manual' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
-                            >
-                                <Link className="mr-1.5 h-3.5 w-3.5" />
-                                Paste Official URLs
-                            </Button>
-                        </div>
-
-                        {officialBrandMode === 'discover' ? (
-                            <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
-                                Searches Serper for product URLs and saves candidates for human review before extraction.
-                            </div>
-                        ) : (
-                            <div className="space-y-2">
-                                <div className="rounded-md border border-purple-200 bg-purple-50 p-3 text-sm text-purple-700">
-                                    Paste one <strong>SKU,URL</strong> per line. The SKU must match a selected product above.
-                                    URLs are validated against the cohort brand domains before running extraction.
-                                </div>
-                                <Textarea
-                                    placeholder={`SKU-1,https://example.com/product/abc\nSKU-2,https://example.com/product/xyz`}
-                                    value={manualUrlInput}
-                                    onChange={(e) => setManualUrlInput(e.target.value)}
-                                    rows={4}
-                                    className="font-mono text-xs"
-                                />
-                                {parsedUrlEntries.length > 0 && (
-                                    <div className="space-y-1">
-                                        <p className="text-xs text-muted-foreground">
-                                            {Object.keys(parsedUrlsBySku).length} valid URL(s)
-                                            {manualUrlErrorCount > 0 && (
-                                                <span className="text-amber-600 ml-1">
-                                                    · {manualUrlErrorCount} error(s)
-                                                </span>
+                                            {rec && rec.total_attempts > 0 && (
+                                                <div className="text-xs text-muted-foreground">
+                                                    {Math.round(rec.hit_rate * 100)}% hit rate ({rec.total_attempts} attempts)
+                                                </div>
                                             )}
-                                            {manualUrlMissingCount > 0 && (
-                                                <span className="text-amber-600 ml-1">
-                                                    · {manualUrlMissingCount} SKU(s) not in selection
-                                                </span>
-                                            )}
-                                        </p>
-                                        {manualUrlErrorCount > 0 && (
-                                            <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
-                                                {parsedUrlEntries.filter((e) => !e.parsed).map((e, i) => (
-                                                    <div key={i} className="flex items-start gap-1">
-                                                        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-                                                        <span>{e.error}{e.sku ? ` for "${e.sku}"` : e.url ? `: ${e.url}` : ''}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                        </div>
+                                        {confBadge ? (
+                                            <Badge variant="outline" className={`text-xs shrink-0 ${confBadge.className}`}>
+                                                {confBadge.label}
+                                            </Badge>
+                                        ) : (
+                                            <Badge variant="outline" className="text-xs shrink-0">
+                                                {scraper.scraper_type}
+                                            </Badge>
                                         )}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                )}
+                                    </label>
+                                );
+                            })}
+                            {scrapers.length === 0 && (
+                                <p className="py-4 text-center text-sm text-muted-foreground">
+                                    No active scrapers found.
+                                </p>
+                            )}
+                        </div>
+                    )}
 
-                {!canUseOfficialBrand && officialBrandReason && (
-                    <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                        {officialBrandReason}
-                    </div>
-                )}
+                    <p className="text-xs text-muted-foreground">
+                        {selectedScrapers.size} of {scrapers.length} scrapers selected
+                        {hasRecommendations && brandName && (
+                            <> · <Sparkles className="inline h-3 w-3 text-green-600" /> Recommendations for <strong>{brandName}</strong></>
+                        )}
+                    </p>
+                </div>
 
                 <DialogFooter>
                     <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>

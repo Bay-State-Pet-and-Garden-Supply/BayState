@@ -1,5 +1,6 @@
 import { parseRegisterWorkbook } from "@/lib/admin/register-file";
 import { createClient } from "@/lib/supabase/server";
+import { assignProductsToCohorts } from "@/lib/admin/cohort-utils";
 
 export interface IntegraProduct {
   sku: string;
@@ -71,7 +72,7 @@ export async function analyzeIntegraSync(
  */
 export async function addToOnboarding(
   products: IntegraProduct[],
-): Promise<{ success: boolean; count: number }> {
+): Promise<{ success: boolean; count: number; cohorts?: { assigned: number; ungrouped: number; cohortCount: number; errors: string[] } }> {
   const supabase = await createClient();
 
   // Remove duplicate SKUs — Postgres will error if the same conflict target
@@ -108,5 +109,12 @@ export async function addToOnboarding(
     return { success: false, count: 0 };
   }
 
-  return { success: true, count: uniqueProducts.length };
+  let cohorts;
+  try {
+    cohorts = await assignProductsToCohorts(supabase, uniqueProducts.map(p => p.sku));
+  } catch (cohortError) {
+    console.warn("[integra-sync] cohort assignment failed (non-fatal):", cohortError);
+  }
+
+  return { success: true, count: uniqueProducts.length, cohorts };
 }

@@ -241,7 +241,7 @@ export function buildManualOfficialBrandCandidateRows(args: {
 }
 
 export function buildDiscoveryOfficialBrandCandidateRows(args: {
-    jobId: string;
+    jobId: string | null;
     resultsBySku: Record<string, Record<string, unknown>>;
     cohort?: OfficialBrandCohortLike;
     nowIso: string;

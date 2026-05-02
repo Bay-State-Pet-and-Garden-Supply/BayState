@@ -35,7 +35,7 @@ export async function processOnboardingAction(products: IntegraProduct[]) {
         const result = await addToOnboarding(products);
         if (result.success) {
             revalidatePath('/admin/pipeline');
-            return { success: true, count: result.count };
+            return { success: true, count: result.count, cohorts: result.cohorts };
         } else {
             return { success: false, error: 'Failed to add products to onboarding' };
         }

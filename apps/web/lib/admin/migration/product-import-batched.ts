@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@/lib/supabase/server';
+import { assignProductsToCohorts } from '@/lib/admin/cohort-utils';
 import {
     buildPipelineInputFromShopSiteProduct,
     generateUniqueSlug,
@@ -838,7 +839,7 @@ export async function syncExistingProductsIngestionInputFromShopSite({
 }: {
     supabase: SupabaseClient;
     shopSiteProducts: ShopSiteProduct[];
-}): Promise<{ updated: number }> {
+}): Promise<{ updated: number; cohorts?: { assigned: number; ungrouped: number; cohortCount: number; errors: string[] } }> {
     if (shopSiteProducts.length === 0) {
         return { updated: 0 };
     }
@@ -895,5 +896,12 @@ export async function syncExistingProductsIngestionInputFromShopSite({
         updated += updateRows.length;
     }
 
-    return { updated };
+    let cohorts;
+    try {
+        cohorts = await assignProductsToCohorts(supabase, shopSiteProducts.map(p => p.sku));
+    } catch (cohortError) {
+        console.warn("[product-import-batched] cohort assignment failed (non-fatal):", cohortError);
+    }
+
+    return { updated, cohorts };
 }
