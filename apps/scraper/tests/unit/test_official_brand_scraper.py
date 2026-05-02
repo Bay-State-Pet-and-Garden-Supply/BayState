@@ -14,6 +14,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from scrapers.ai_search.official_brand_scraper import OfficialBrandScraper
+from scrapers.providers.base import ProviderResponse
 
 
 @pytest.fixture
@@ -1526,3 +1527,624 @@ class TestScrapeProductsBatchMissingBrand:
         mock_query_builder.build_brand_focused_query.assert_called_once()
         base_query = mock_query_builder.build_brand_focused_query.call_args[0][0]
         assert "LV SEED ORGANIC WHEAT GRASS HARD RED" in base_query
+
+
+# =============================================================================
+# discover_official_url_candidates Result Keys Tests
+# =============================================================================
+
+
+@pytest.fixture
+def scraper_for_discovery() -> OfficialBrandScraper:
+    """Create a scraper for discover_official_url_candidates tests."""
+    with patch("scrapers.ai_search.official_brand_scraper.SearchClient"):
+        with patch("scrapers.ai_search.official_brand_scraper.BrandSourceSelector"):
+            return OfficialBrandScraper(
+                llm_provider="openai",
+                llm_model="gpt-4o-mini",
+                llm_api_key="test-key",
+            )
+
+
+class TestDiscoverOfficialUrlCandidatesResultKeys:
+    """Tests that discover_official_url_candidates returns expected new keys."""
+
+    @pytest.mark.asyncio
+    async def test_returns_predicted_name_on_success(
+        self, scraper_for_discovery: OfficialBrandScraper
+    ) -> None:
+        """When discovery succeeds, predicted_name should be in the result."""
+        from scrapers.ai_search.official_brand_scraper import DiscoveryResult, RankedUrlCandidate
+
+        # Mock the sub-methods to avoid real search/LLM calls
+        scraper_for_discovery._search_sku_for_names = AsyncMock(
+            return_value=[
+                {"url": "https://example.com/product/123", "title": "Product Title", "result_type": "organic"}
+            ]
+        )
+        scraper_for_discovery._consolidate_product_name = AsyncMock(
+            return_value="Consolidated Product Name"
+        )
+        scraper_for_discovery._search_by_predicted_name = AsyncMock(
+            return_value=[
+                {"url": "https://example.com/product/123", "title": "Product Title", "result_type": "organic"}
+            ]
+        )
+        scraper_for_discovery._rank_url_candidates = MagicMock(
+            return_value=DiscoveryResult(
+                sku="SKU-001",
+                predicted_name="Consolidated Product Name",
+                ranked_candidates=[
+                    RankedUrlCandidate(
+                        url="https://example.com/product/123",
+                        domain="example.com",
+                        rank=1,
+                        score=95.0,
+                        selection_tier="official_domain",
+                        appeared_in_phases=[1, 2],
+                        title="Product Title",
+                        snippet="Product description",
+                        confidence=0.95,
+                    )
+                ],
+                selected_url="https://example.com/product/123",
+                selection_method="official_domain",
+                fallback_urls=[],
+                phase1_result_count=1,
+                phase2_result_count=1,
+            )
+        )
+
+        result = await scraper_for_discovery.discover_official_url_candidates(
+            sku="SKU-001",
+            brand="TestBrand",
+            product_name="Test Product",
+            register_name="Raw Product Name",
+        )
+
+        assert result.get("success") is True
+        assert result.get("predicted_name") == "Consolidated Product Name"
+        assert result.get("fallback_urls") == []
+        assert result.get("phase1_result_count") == 1
+        assert result.get("phase2_result_count") == 1
+
+    @pytest.mark.asyncio
+    async def test_returns_predicted_name_on_not_found(
+        self, scraper_for_discovery: OfficialBrandScraper
+    ) -> None:
+        """When no URL is found, predicted_name should still be returned."""
+        from scrapers.ai_search.official_brand_scraper import DiscoveryResult
+
+        scraper_for_discovery._search_sku_for_names = AsyncMock(return_value=[])
+        scraper_for_discovery._consolidate_product_name = AsyncMock(
+            return_value="Predicted Name"
+        )
+        scraper_for_discovery._search_by_predicted_name = AsyncMock(return_value=[])
+        scraper_for_discovery._rank_url_candidates = MagicMock(
+            return_value=DiscoveryResult(
+                sku="SKU-001",
+                predicted_name="Predicted Name",
+                ranked_candidates=[],
+                selected_url=None,
+                selection_method="none",
+                fallback_urls=[],
+                phase1_result_count=0,
+                phase2_result_count=0,
+            )
+        )
+
+        result = await scraper_for_discovery.discover_official_url_candidates(
+            sku="SKU-001",
+            brand="TestBrand",
+        )
+
+        assert result.get("success") is False
+        assert result.get("status") == "not_found"
+        assert result.get("predicted_name") == "Predicted Name"
+        assert result.get("phase1_result_count") == 0
+        assert result.get("phase2_result_count") == 0
+
+    @pytest.mark.asyncio
+    async def test_returns_error_on_missing_context(
+        self, scraper_for_discovery: OfficialBrandScraper
+    ) -> None:
+        """When context is missing, should return error without calling sub-methods."""
+        result = await scraper_for_discovery.discover_official_url_candidates(
+            sku="",
+            brand="",
+        )
+
+        assert result.get("success") is False
+        assert result.get("status") == "error"
+        assert result.get("error") == "Missing context"
+        assert result.get("candidates") == []
+
+    @pytest.mark.asyncio
+    async def test_fallback_urls_included_in_result(
+        self, scraper_for_discovery: OfficialBrandScraper
+    ) -> None:
+        """fallback_urls should be populated when there are extra candidates."""
+        from scrapers.ai_search.official_brand_scraper import DiscoveryResult, RankedUrlCandidate
+
+        scraper_for_discovery._search_sku_for_names = AsyncMock(return_value=[])
+        scraper_for_discovery._consolidate_product_name = AsyncMock(return_value="Name")
+        scraper_for_discovery._search_by_predicted_name = AsyncMock(return_value=[])
+        scraper_for_discovery._rank_url_candidates = MagicMock(
+            return_value=DiscoveryResult(
+                sku="SKU-001",
+                predicted_name="Name",
+                ranked_candidates=[
+                    RankedUrlCandidate(
+                        url="https://a.com", domain="a.com", rank=1, score=90,
+                        selection_tier="organic", appeared_in_phases=[1],
+                        title="A", snippet=None, confidence=0.9,
+                    ),
+                    RankedUrlCandidate(
+                        url="https://b.com", domain="b.com", rank=2, score=80,
+                        selection_tier="organic", appeared_in_phases=[1],
+                        title="B", snippet=None, confidence=0.8,
+                    ),
+                    RankedUrlCandidate(
+                        url="https://c.com", domain="c.com", rank=3, score=70,
+                        selection_tier="organic", appeared_in_phases=[1],
+                        title="C", snippet=None, confidence=0.7,
+                    ),
+                    RankedUrlCandidate(
+                        url="https://d.com", domain="d.com", rank=4, score=60,
+                        selection_tier="organic", appeared_in_phases=[1],
+                        title="D", snippet=None, confidence=0.6,
+                    ),
+                ],
+                selected_url="https://a.com",
+                selection_method="organic",
+                fallback_urls=["https://b.com", "https://c.com", "https://d.com"],
+                phase1_result_count=4,
+                phase2_result_count=0,
+            )
+        )
+
+        result = await scraper_for_discovery.discover_official_url_candidates(
+            sku="SKU-001",
+            brand="Brand",
+        )
+
+        assert result.get("fallback_urls") == ["https://b.com", "https://c.com", "https://d.com"]
+
+
+# =============================================================================
+# extract_products_from_urls_batch Fallback Tests
+# =============================================================================
+
+
+class TestExtractionFallback:
+    """Tests for the fallback URL loop in extract_products_from_urls_batch."""
+
+    @pytest.mark.asyncio
+    async def test_extraction_fallback_tries_secondary_url(
+        self, scraper: OfficialBrandScraper
+    ) -> None:
+        """When primary URL fails, should try fallback URL and succeed."""
+        # Mock extract_data to fail on primary, succeed on fallback
+        async def _mock_extract_data(url: str, schema_path: str | None = None) -> dict:
+            if "primary" in url:
+                return {"success": False, "error": "Primary extraction failed"}
+            return {
+                "success": True,
+                "data": {"name": "Fallback Product", "brand": "TestBrand"},
+                "method": "llm",
+            }
+
+        scraper.extract_data = AsyncMock(side_effect=_mock_extract_data)
+
+        results = await scraper.extract_products_from_urls_batch(
+            [
+                {
+                    "sku": "SKU-001",
+                    "brand": "TestBrand",
+                    "source_url": "https://primary.com/product/123",
+                    "fallback_urls": ["https://fallback.com/product/123"],
+                    "known_url": "https://known.com/product/123",
+                    "url_source": "serper",
+                }
+            ]
+        )
+
+        assert len(results) == 1
+        assert results[0].success is True
+        assert results[0].url == "https://fallback.com/product/123"
+        assert results[0].product_name == "Fallback Product"
+
+    @pytest.mark.asyncio
+    async def test_extraction_fallback_exhausts_all_urls(
+        self, scraper: OfficialBrandScraper
+    ) -> None:
+        """When all URLs fail extraction, should return failure with last error."""
+        scraper.extract_data = AsyncMock(
+            return_value={"success": False, "error": "Extraction failed for all URLs"}
+        )
+
+        results = await scraper.extract_products_from_urls_batch(
+            [
+                {
+                    "sku": "SKU-001",
+                    "brand": "TestBrand",
+                    "source_url": "https://primary.com/product/123",
+                    "fallback_urls": [
+                        "https://fallback1.com/product/123",
+                        "https://fallback2.com/product/123",
+                    ],
+                    "url_source": "serper",
+                }
+            ]
+        )
+
+        assert len(results) == 1
+        assert results[0].success is False
+        assert results[0].error == "Extraction failed for all URLs"
+
+    @pytest.mark.asyncio
+    async def test_extraction_fallback_no_fallback_urls(
+        self, scraper: OfficialBrandScraper
+    ) -> None:
+        """When there are no fallback URLs and primary fails, should fail."""
+        scraper.extract_data = AsyncMock(
+            return_value={"success": False, "error": "Single URL failed"}
+        )
+
+        results = await scraper.extract_products_from_urls_batch(
+            [
+                {
+                    "sku": "SKU-001",
+                    "brand": "TestBrand",
+                    "source_url": "https://primary.com/product/123",
+                    "url_source": "serper",
+                }
+            ]
+        )
+
+        assert len(results) == 1
+        assert results[0].success is False
+
+    @pytest.mark.asyncio
+    async def test_extraction_fallback_respects_max_fallbacks(
+        self, scraper: OfficialBrandScraper
+    ) -> None:
+        """max_fallbacks should limit the total number of URLs tried."""
+        call_count = 0
+
+        async def _mock_extract_data(url: str, schema_path: str | None = None) -> dict:
+            nonlocal call_count
+            call_count += 1
+            return {"success": False, "error": f"Failed {call_count}"}
+
+        scraper.extract_data = AsyncMock(side_effect=_mock_extract_data)
+
+        results = await scraper.extract_products_from_urls_batch(
+            [
+                {
+                    "sku": "SKU-001",
+                    "brand": "TestBrand",
+                    "source_url": "https://primary.com/product/123",
+                    "fallback_urls": [
+                        "https://f1.com",
+                        "https://f2.com",
+                        "https://f3.com",
+                        "https://f4.com",
+                        "https://f5.com",
+                    ],
+                    "max_fallbacks": 2,
+                    "url_source": "serper",
+                }
+            ]
+        )
+
+        # With max_fallbacks=2, should only try primary + 1 fallback = 2 total
+        # But the code does [primary_url, *fallback_urls][:max_fallbacks], so with max_fallbacks=2:
+        # [primary, f1, f2, f3, f4, f5][:2] = [primary, f1]
+        assert call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_extraction_primary_succeeds_no_fallback_needed(
+        self, scraper: OfficialBrandScraper
+    ) -> None:
+        """When primary URL succeeds, fallback URLs should not be tried."""
+        scraper.extract_data = AsyncMock(
+            return_value={
+                "success": True,
+                "data": {"name": "Primary Product", "brand": "TestBrand"},
+                "method": "llm",
+            }
+        )
+
+        results = await scraper.extract_products_from_urls_batch(
+            [
+                {
+                    "sku": "SKU-001",
+                    "brand": "TestBrand",
+                    "source_url": "https://primary.com/product/123",
+                    "fallback_urls": ["https://fallback.com/product/123"],
+                    "url_source": "serper",
+                }
+            ]
+        )
+
+        assert len(results) == 1
+        assert results[0].success is True
+        assert results[0].url == "https://primary.com/product/123"
+        assert results[0].product_name == "Primary Product"
+        # extract_data should have been called only once (primary URL succeeded)
+        scraper.extract_data.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_extraction_skipped_for_missing_sku(
+        self, scraper: OfficialBrandScraper
+    ) -> None:
+        """When SKU is missing, should return error without calling extract_data."""
+        results = await scraper.extract_products_from_urls_batch(
+            [
+                {
+                    "sku": "",
+                    "brand": "TestBrand",
+                    "source_url": "https://example.com/product",
+                    "url_source": "serper",
+                }
+            ]
+        )
+
+        assert len(results) == 1
+        assert results[0].success is False
+        assert results[0].error == "Missing SKU"
+
+    @pytest.mark.asyncio
+    async def test_extraction_fallback_populates_selection_method(
+        self, scraper: OfficialBrandScraper
+    ) -> None:
+        """Successful extraction should use url_source for selection_method."""
+        scraper.extract_data = AsyncMock(
+            return_value={
+                "success": True,
+                "data": {"name": "Product"},
+                "method": "llm",
+            }
+        )
+
+        results = await scraper.extract_products_from_urls_batch(
+            [
+                {
+                    "sku": "SKU-001",
+                    "brand": "TestBrand",
+                    "source_url": "https://example.com/product",
+                    "url_source": "manual",
+                }
+            ]
+        )
+
+        assert results[0].success is True
+        assert results[0].selection_method == "manual"
+
+
+# =============================================================================
+# End-to-End discover_official_url_candidates Pipeline Test
+# =============================================================================
+
+
+class TestDiscoverOfficialUrlCandidatesE2E:
+    """End-to-end test of the Phase 1 → 1.5 → 2 → 3 pipeline.
+
+    Only mocks _search_client.search and create_llm_provider, not the
+    internal phase methods, to verify actual pipeline ordering and handoff.
+    """
+
+    @pytest.mark.asyncio
+    async def test_pipeline_completes_with_phase1_and_phase2(
+        self,
+    ) -> None:
+        """The full pipeline should produce candidates with correct phase counts."""
+        from scrapers.ai_search.official_brand_scraper import OfficialBrandScraper
+
+        # Mock the search client
+        mock_search = AsyncMock()
+
+        # Phase 1 search (SKU query): return one result
+        # Phase 2 searches (site queries + name query): return additional results
+        _call_count = 0
+
+        async def _search_side_effect(query: str) -> tuple[list[dict], None]:
+            nonlocal _call_count
+            _call_count += 1
+            if _call_count == 1:
+                # Phase 1: SKU search
+                return [
+                    {
+                        "url": "https://example.com/product/123",
+                        "title": "TestBrand Product 123",
+                        "description": "Official TestBrand product",
+                        "result_type": "organic",
+                    }
+                ], None
+            else:
+                # Phase 2: name/site queries
+                return [
+                    {
+                        "url": "https://example.com/product/123",
+                        "title": "TestBrand Product 123",
+                        "description": "Official TestBrand product",
+                        "result_type": "organic",
+                    },
+                    {
+                        "url": "https://preferred-store.com/product/123",
+                        "title": "Product at Preferred Store",
+                        "description": "Preferred store listing",
+                        "result_type": "organic",
+                    },
+                ], None
+
+        mock_search.search = AsyncMock(side_effect=_search_side_effect)
+
+        # Mock the LLM provider for Phase 1.5
+        mock_provider = MagicMock()
+        mock_provider.generate_text = AsyncMock(
+            return_value=ProviderResponse(
+                text='{"predicted_name": "TestBrand Product 123"}'
+            )
+        )
+
+        with patch(
+            "scrapers.ai_search.official_brand_scraper.SearchClient",
+            return_value=mock_search,
+        ):
+            with patch(
+                "scrapers.ai_search.official_brand_scraper.BrandSourceSelector",
+            ):
+                with patch(
+                    "scrapers.providers.factory.create_llm_provider",
+                    return_value=mock_provider,
+                ):
+                    scraper = OfficialBrandScraper(
+                        llm_provider="openai",
+                        llm_model="gpt-4o-mini",
+                        llm_api_key="test-key",
+                    )
+
+                    result = await scraper.discover_official_url_candidates(
+                        sku="12345",
+                        brand="TestBrand",
+                        register_name="Raw Product",
+                        preferred_domains=["preferred-store.com"],
+                    )
+
+        # Verify pipeline output
+        assert result.get("success") is True
+        assert result.get("status") == "found"
+        assert result.get("selected_url") is not None
+        assert result.get("predicted_name") == "TestBrand Product 123"
+        # phase1_result_count counts raw results before dedup
+        assert result.get("phase1_result_count", 0) >= 1
+        assert result.get("phase2_result_count", 0) >= 1
+        # Candidates should be deduplicated
+        assert len(result.get("candidates", [])) > 0
+        # Fallback URLs should be populated
+        assert "fallback_urls" in result
+
+        # Verify the LLM was actually called (Phase 1.5 ran)
+        mock_provider.generate_text.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_pipeline_skips_phase2_when_no_predicted_name(
+        self,
+    ) -> None:
+        """When no predicted name is available, Phase 2 should be skipped."""
+        from scrapers.ai_search.official_brand_scraper import OfficialBrandScraper
+
+        mock_search = AsyncMock()
+        mock_search.search = AsyncMock(
+            return_value=([
+                {
+                    "url": "https://example.com/product/123",
+                    "title": "TestBrand Product 123",
+                    "description": "Official TestBrand product",
+                    "result_type": "organic",
+                }
+            ], None)
+        )
+
+        # LLM provider returns empty predicted name
+        mock_provider = MagicMock()
+        mock_provider.generate_text = AsyncMock(
+            return_value=ProviderResponse(
+                text='{"predicted_name": ""}'
+            )
+        )
+
+        with patch(
+            "scrapers.ai_search.official_brand_scraper.SearchClient",
+            return_value=mock_search,
+        ):
+            with patch(
+                "scrapers.ai_search.official_brand_scraper.BrandSourceSelector",
+            ):
+                with patch(
+                    "scrapers.providers.factory.create_llm_provider",
+                    return_value=mock_provider,
+                ):
+                    scraper = OfficialBrandScraper(
+                        llm_provider="openai",
+                        llm_model="gpt-4o-mini",
+                        llm_api_key="test-key",
+                    )
+
+                    result = await scraper.discover_official_url_candidates(
+                        sku="12345",
+                        brand="TestBrand",
+                        # No register_name, no product_name, and LLM returned empty
+                    )
+
+        # Phase 2 should have been skipped (predicted is empty)
+        # Only Phase 1 results should be present
+        assert result.get("phase1_result_count", 0) >= 1
+        assert result.get("phase2_result_count", 0) == 0
+        # Pipeline should still run Phase 3 with Phase 1 results
+        assert len(result.get("candidates", [])) > 0
+        assert "predicted_name" in result
+
+    @pytest.mark.asyncio
+    async def test_pipeline_returns_correct_result_types(
+        self,
+    ) -> None:
+        """Original result_type from search results should be preserved."""
+        from scrapers.ai_search.official_brand_scraper import OfficialBrandScraper
+
+        mock_search = AsyncMock()
+
+        async def _search_side_effect(query: str) -> tuple[list[dict], None]:
+            return [
+                {
+                    "url": "https://example.com/product/123",
+                    "title": "TestBrand Product",
+                    "description": "Official product",
+                    "result_type": "organic",
+                },
+                {
+                    "url": "https://kg.example.com",
+                    "title": "TestBrand Knowledge Graph",
+                    "description": "Knowledge Graph entry",
+                    "result_type": "knowledge_graph",
+                },
+            ], None
+
+        mock_search.search = AsyncMock(side_effect=_search_side_effect)
+
+        mock_provider = MagicMock()
+        mock_provider.generate_text = AsyncMock(
+            return_value=ProviderResponse(
+                text='{"predicted_name": "TestBrand Product"}'
+            )
+        )
+
+        with patch(
+            "scrapers.ai_search.official_brand_scraper.SearchClient",
+            return_value=mock_search,
+        ):
+            with patch(
+                "scrapers.ai_search.official_brand_scraper.BrandSourceSelector",
+            ):
+                with patch(
+                    "scrapers.providers.factory.create_llm_provider",
+                    return_value=mock_provider,
+                ):
+                    scraper = OfficialBrandScraper(
+                        llm_provider="openai",
+                        llm_model="gpt-4o-mini",
+                        llm_api_key="test-key",
+                    )
+
+                    result = await scraper.discover_official_url_candidates(
+                        sku="12345",
+                        brand="TestBrand",
+                        register_name="TestBrand Product",
+                    )
+
+        # Check that result_type is preserved (not hardcoded to "organic")
+        result_types = {c.get("result_type") for c in result.get("candidates", [])}
+        assert "organic" in result_types
+        assert "knowledge_graph" in result_types

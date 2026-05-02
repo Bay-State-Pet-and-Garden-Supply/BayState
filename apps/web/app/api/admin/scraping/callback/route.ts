@@ -496,6 +496,7 @@ export async function POST(request: NextRequest) {
                             crawl4ai: nextCrawl4AiMetadata,
                             official_brand_discovery: {
                                 candidate_count: candidateCount,
+                                predicted_name_count: rows.filter((r) => r['predicted_name'] != null).length,
                                 sku_count: Object.keys(transformedResults).length,
                                 updated_at: persistenceTimestamp,
                             },

@@ -179,6 +179,7 @@ function getLeadingBrandHintCandidates(
 interface ScrapeContextItem {
     sku: string;
     product_name?: string;
+    register_name?: string;
     price?: number;
     brand?: string;
     category?: string;
@@ -200,6 +201,10 @@ function compactScrapeContextItem(item: ScrapeContextItem): ScrapeContextItem {
 
     if (item.product_name !== undefined) {
         compacted.product_name = item.product_name;
+    }
+
+    if (item.register_name !== undefined) {
+        compacted.register_name = item.register_name;
     }
 
     if (item.price !== undefined) {
@@ -867,6 +872,7 @@ async function loadScrapeContextItems(
             product_name: preferCatalogContext
                 ? catalogName ?? ingestionName
                 : ingestionName ?? catalogName,
+            register_name: ingestionName,
             price: toOptionalNumber(input?.price),
             brand: preferCatalogContext
                 ? catalogBrand ?? ingestionBrand ?? resolvedBrandName
@@ -1006,11 +1012,24 @@ export async function scrapeProducts(
 
     const officialBrandConfigItems = isOfficialBrand
         ? scrapeContextItems.map((item) => {
-            const sourceUrl = officialBrandUrlsBySku ? toOptionalString(officialBrandUrlsBySku[item.sku]) : undefined;
-            return {
-                ...item,
-                ...(sourceUrl ? { source_url: sourceUrl, url_source: 'manual' } : {}),
+            const sourceUrl = officialBrandUrlsBySku
+                ? toOptionalString(officialBrandUrlsBySku[item.sku])
+                : undefined;
+            const base: Record<string, unknown> = {
+                sku: item.sku,
+                register_name: item.register_name,
+                brand: item.brand,
+                official_domains: item.official_domains,
+                preferred_domains: item.preferred_domains,
             };
+            if (sourceUrl) {
+                base.source_url = sourceUrl;
+                base.url_source = 'manual';
+            }
+            if (isOfficialBrandExtraction && options?.officialBrandMaxFallbacks !== undefined) {
+                base.max_fallbacks = options.officialBrandMaxFallbacks;
+            }
+            return base;
         })
         : undefined;
 
