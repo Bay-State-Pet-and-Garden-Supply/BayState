@@ -5,14 +5,31 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  /* Heritage & Trust Brand Colors */
-  --color-brand-forest-green: oklch(35% 0.08 160);
-  --color-brand-warm-gray: oklch(25% 0.02 90);
-  --color-brand-cream: oklch(98% 0.01 90);
+  /* Heritage & Trust Brand Colors (from DESIGN.md) */
+  --color-brand-forest-green: oklch(35.53% 0.081 161.46); /* #14532D - Uniform Green */
+  --color-brand-burgundy: oklch(30.65% 0.147 24.32);     /* #760C19 - Signet Burgundy */
+  --color-brand-gold: oklch(87.87% 0.201 95.83);         /* #F6DB12 - Corner Callout Gold */
+  --color-ledger-charcoal: oklch(18.59% 0.016 20.34);    /* #211414 - Ledger Charcoal */
+  --color-feed-bag-cream: oklch(97.8% 0.04 90.35);       /* #FFF8D8 - Feed Bag Cream */
 
-  /* Legacy Brand Aliases (for backward compatibility) */
-  --color-brand-burgundy: var(--color-brand-warm-gray);
-  --color-brand-gold: var(--color-brand-cream);
+  /* Semantic UI Colors */
+  --color-background: var(--color-feed-bag-cream);
+  --color-foreground: var(--color-ledger-charcoal);
+  --color-primary: var(--color-brand-forest-green);
+  --color-primary-foreground: var(--color-feed-bag-cream);
+  --color-secondary: var(--color-brand-gold);
+  --color-secondary-foreground: var(--color-brand-burgundy);
+  --color-muted: oklch(94% 0.02 90.35);
+  --color-muted-foreground: oklch(45% 0.016 20.34);
+  --color-accent: var(--color-brand-gold);
+  --color-accent-foreground: var(--color-brand-burgundy);
+  --color-card: var(--color-feed-bag-cream);
+  --color-card-foreground: var(--color-ledger-charcoal);
+  --color-popover: var(--color-feed-bag-cream);
+  --color-popover-foreground: var(--color-ledger-charcoal);
+  --color-border: oklch(85% 0.016 20.34);
+  --color-input: oklch(90% 0.016 20.34);
+  --color-ring: var(--color-brand-forest-green);
 
   /* Pipeline Status Colors */
   --color-status-success: #10B981;
@@ -107,11 +124,11 @@
 
 :root {
   --radius: 0.25rem;
-  --background: oklch(98% 0.01 90);
+  --background: oklch(97.8% 0.04 90.35);
   --foreground: oklch(25% 0.02 90);
-  --card: oklch(98% 0.01 90);
+  --card: oklch(97.8% 0.04 90.35);
   --card-foreground: oklch(25% 0.02 90);
-  --popover: oklch(98% 0.01 90);
+  --popover: oklch(97.8% 0.04 90.35);
   --popover-foreground: oklch(25% 0.02 90);
   --primary: oklch(35% 0.08 160);
   --primary-foreground: oklch(98% 0.01 90);

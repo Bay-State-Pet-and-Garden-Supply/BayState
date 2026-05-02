@@ -44,7 +44,7 @@ interface AdminCardTitleProps {
 
 export function AdminCardTitle({ children, className }: AdminCardTitleProps) {
   return (
-    <h2 className={cn("text-lg font-semibold text-foreground", className)}>
+    <h2 className={cn("text-lg font-black uppercase tracking-tighter text-foreground", className)}>
       {children}
     </h2>
   );

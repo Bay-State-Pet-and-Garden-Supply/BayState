@@ -65,9 +65,9 @@ export function ProductListSidebar({
   }, [onSelectSku]);
 
   return (
-    <div className="w-96 min-w-[384px] max-w-[384px] border-r border-zinc-950 flex flex-col shrink-0 bg-zinc-50 overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-zinc-950 bg-white p-3">
-        <label className="flex shrink-0 items-center justify-center h-9 w-9 border border-zinc-950 bg-white shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-zinc-50 cursor-pointer transition-colors">
+    <div className="w-96 min-w-[384px] max-w-[384px] border-r border-border flex flex-col shrink-0 bg-muted/10 overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-border bg-card p-3">
+        <label className="flex shrink-0 items-center justify-center h-9 w-9 border border-border bg-background hover:bg-muted transition-colors cursor-pointer">
           <Checkbox
             checked={
               products.length > 0 &&
@@ -84,7 +84,7 @@ export function ProductListSidebar({
                 onDeselectAll?.(products.map((p) => p.sku));
               }
             }}
-            className="h-4 w-4 rounded-none border-2 border-zinc-950 accent-zinc-950 data-[state=checked]:bg-zinc-950 data-[state=checked]:text-white data-[state=indeterminate]:bg-zinc-950 data-[state=indeterminate]:text-white"
+            className="h-4 w-4 rounded-none border border-border accent-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground"
           />
         </label>
         <PipelineSearchField
@@ -99,7 +99,7 @@ export function ProductListSidebar({
             onFilterChange={onFilterChange}
             availableSources={availableSources}
             showSourceFilter={showSourceFilter}
-            className="h-9 w-9 shrink-0 p-0 border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+            className="h-9 w-9 shrink-0 p-0 border border-border"
           />
         ) : null}
       </div>

@@ -987,6 +987,7 @@ export async function scrapeProducts(
     const standardSkuContext = isOfficialBrand ? undefined : buildStandardSkuContext(scrapeContextItems);
     const officialBrandCohort = compactOfficialBrandCohortContext(options?.officialBrandCohort);
     const officialBrandUrlsBySku = isOfficialBrandExtraction ? options?.officialBrandUrlsBySku ?? {} : undefined;
+    const officialBrandUrlSourceBySku = isOfficialBrandExtraction ? options?.officialBrandUrlSourceBySku ?? {} : undefined;
 
     if (isOfficialBrandExtraction) {
         const missingUrlSkus = skus.filter((sku) => !toOptionalString(officialBrandUrlsBySku?.[sku]));
@@ -1024,7 +1025,7 @@ export async function scrapeProducts(
             };
             if (sourceUrl) {
                 base.source_url = sourceUrl;
-                base.url_source = 'manual';
+                base.url_source = officialBrandUrlSourceBySku?.[item.sku] ?? 'manual';
             }
             if (isOfficialBrandExtraction && options?.officialBrandMaxFallbacks !== undefined) {
                 base.max_fallbacks = options.officialBrandMaxFallbacks;
@@ -1124,6 +1125,7 @@ export async function scrapeProducts(
         try {
             const rows = buildManualOfficialBrandCandidateRows({
                 urlsBySku: officialBrandUrlsBySku,
+                candidateSourceBySku: officialBrandUrlSourceBySku,
                 cohort: officialBrandCohort,
                 extractionJobId: job.id,
                 nowIso,

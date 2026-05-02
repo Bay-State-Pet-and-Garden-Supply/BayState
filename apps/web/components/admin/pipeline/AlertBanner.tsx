@@ -115,14 +115,14 @@ export function AlertBanner({
       aria-live="polite"
       aria-atomic="true"
       className={cn(
-        "relative flex w-full items-start gap-4 rounded-none border-2 border-zinc-900 bg-background p-4 shadow-[4px_4px_0px_rgba(0,0,0,1)]",
+        "relative flex w-full items-start gap-4 rounded-none border border-border bg-background p-4",
         config.containerClass,
         className
       )}
     >
       <div
         className={cn(
-          "flex shrink-0 items-center justify-center rounded-none border-2 border-zinc-900 bg-white p-2 shadow-[2px_2px_0px_rgba(0,0,0,1)]",
+          "flex shrink-0 items-center justify-center rounded-none border border-border bg-background p-2",
           config.iconClass
         )}
       >
@@ -130,9 +130,9 @@ export function AlertBanner({
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-black uppercase tracking-tighter text-zinc-900">{title}</p>
+        <p className="text-sm font-black uppercase tracking-widest text-foreground">{title}</p>
         {message && (
-          <p className="mt-1 text-xs font-bold text-zinc-600 leading-tight uppercase tracking-tight">{message}</p>
+          <p className="mt-1 text-xs font-black text-muted-foreground/80 leading-tight uppercase tracking-widest">{message}</p>
         )}
 
         {actions && actions.length > 0 && (
@@ -143,7 +143,7 @@ export function AlertBanner({
                 size="sm"
                 variant={action.variant || "outline"}
                 onClick={action.onClick}
-                className="h-8 rounded-none border-2 border-zinc-900 text-[10px] font-black uppercase tracking-tight hover:bg-zinc-100 transition-all"
+                className="h-8 rounded-none border border-border text-[10px] font-black uppercase tracking-widest hover:bg-muted transition-all"
               >
                 {action.label}
               </Button>

@@ -54,18 +54,18 @@ export function ProgressBar({
 
   return (
     <div className={cn('w-full', className)}>
-      <div className="flex items-center justify-between text-[10px] mb-1 font-black uppercase tracking-tighter">
-        <span className="text-zinc-500">Progress</span>
-        <span className="text-zinc-950">
+      <div className="flex items-center justify-between text-[10px] mb-1 font-black uppercase tracking-widest">
+        <span className="text-muted-foreground">Progress</span>
+        <span className="text-ledger-charcoal">
           {clampedProgress}%
           {eta && status === 'running' && (
-            <span className="ml-2 text-zinc-500">{eta}</span>
+            <span className="ml-2 text-muted-foreground">{eta}</span>
           )}
         </span>
       </div>
       
       <div 
-        className="h-3 w-full overflow-hidden rounded-none bg-zinc-100 border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+        className="h-3 w-full overflow-hidden rounded-none bg-feed-bag-cream border border-ledger-charcoal"
         role="progressbar"
         aria-valuenow={clampedProgress}
         aria-valuemin={0}
@@ -74,7 +74,7 @@ export function ProgressBar({
       >
         <div
           className={cn(
-            'h-full rounded-none border-r border-zinc-950',
+            'h-full rounded-none border-r border-ledger-charcoal',
             progressColor,
             animated && 'transition-all duration-500 ease-out',
             isIndeterminate && 'animate-pulse',
@@ -90,3 +90,4 @@ export function ProgressBar({
     </div>
   );
 }
+

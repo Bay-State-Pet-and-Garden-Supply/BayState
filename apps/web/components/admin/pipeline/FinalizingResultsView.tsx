@@ -1788,7 +1788,7 @@ export function FinalizingResultsView({
 
   return (
     <>
-      <div className="flex h-full min-h-0 border-4 border-zinc-950 rounded-none bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)] overflow-hidden max-w-full m-1 mr-4 mb-4">
+      <div className="flex h-full min-h-0 border border-border rounded-none bg-card overflow-hidden max-w-full m-1 mr-4 mb-4">
         {/* Left Column: Product List */}
         <ProductListSidebar
           products={sortedProducts}
@@ -1811,7 +1811,7 @@ export function FinalizingResultsView({
 
         {/* Right Column: Editing Form */}
         <Sheet open={copilotOpen} onOpenChange={setCopilotOpen}>
-          <div className="flex-1 flex flex-col bg-white overflow-hidden">
+          <div className="flex-1 flex flex-col bg-card overflow-hidden">
             {selectedProduct ? (
               <>
                 {/* Header */}
@@ -1845,7 +1845,7 @@ export function FinalizingResultsView({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter text-zinc-950 hover:bg-zinc-100 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
+                        className="rounded-none border border-border font-black uppercase tracking-widest text-foreground hover:bg-feed-bag-cream transition-all"
                       >
                         <Sparkles className="mr-2 h-4 w-4 text-violet-500" />
                         Copilot
@@ -1856,9 +1856,9 @@ export function FinalizingResultsView({
 
               {hasPendingCopilotReview ? (
                 <div className="border-b bg-violet-50/60 px-4 py-3">
-                  <Alert className="border-violet-200 bg-violet-50 text-violet-950">
-                    <AlertTitle>Copilot changes are staged</AlertTitle>
-                    <AlertDescription>
+                  <Alert className="border-violet-200 bg-violet-50 text-violet-950 rounded-none">
+                    <AlertTitle className="font-black uppercase tracking-widest text-xs">Copilot changes are staged</AlertTitle>
+                    <AlertDescription className="font-black uppercase tracking-widest text-[10px]">
                       Review {pendingCopilotReview?.skus.length ?? 0} product
                       {(pendingCopilotReview?.skus.length ?? 0) === 1 ? "" : "s"}{" "}
                       in the Copilot panel before saving, approving, or
@@ -1893,12 +1893,12 @@ export function FinalizingResultsView({
                           }
                         }}
                         placeholder="Paste custom product image URL..."
-                        className="h-8 border border-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold text-xs"
+                        className="h-8 border border-border rounded-none focus-visible:ring-border font-bold text-xs"
                       />
                       <Button
                         onClick={addCustomImage}
                         size="sm"
-                        className="h-8 bg-zinc-950 text-white rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-zinc-800 font-black uppercase tracking-tighter text-[10px]"
+                        className="h-8 bg-foreground text-background rounded-none hover:bg-foreground/90 font-black uppercase tracking-widest text-[10px]"
                       >
                         Add
                       </Button>
@@ -1936,23 +1936,23 @@ export function FinalizingResultsView({
                 </div>
 
                 <div className="pt-4">
-                  <Separator className="mb-4" />
-                  <details className="group overflow-hidden rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
-                    <summary className="flex cursor-pointer items-center justify-between p-4 text-sm font-black uppercase tracking-tighter text-zinc-500 hover:bg-zinc-50 list-none">
+                  <Separator className="mb-4 bg-border" />
+                  <details className="group overflow-hidden rounded-none border border-border">
+                    <summary className="flex cursor-pointer items-center justify-between p-4 text-sm font-black uppercase tracking-widest text-zinc-500 hover:bg-feed-bag-cream list-none">
                       <div className="flex items-center gap-2">
                         <Package className="h-4 w-4" />
                         View Raw Scraped Data
                       </div>
                       <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
                     </summary>
-                    <div className="space-y-4 border-t border-zinc-950 bg-zinc-50 p-4">
+                    <div className="space-y-4 border-t border-border bg-feed-bag-cream p-4">
                       {Object.entries(selectedProduct.sources || {}).map(
                         ([source, data]) => (
                           <div key={source} className="space-y-2">
-                            <div className="text-xs font-black uppercase tracking-tighter text-zinc-950">
+                            <div className="text-xs font-black uppercase tracking-widest text-foreground">
                               {source}
                             </div>
-                            <pre className="overflow-x-auto rounded-none border border-zinc-950 bg-white p-3 text-[10px] font-bold">
+                            <pre className="overflow-x-auto rounded-none border border-border bg-card p-3 text-[10px] font-bold">
                               {JSON.stringify(data, null, 2)}
                             </pre>
                           </div>
@@ -1968,8 +1968,8 @@ export function FinalizingResultsView({
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-zinc-500">
               <Package className="mb-2 h-12 w-12 opacity-20" />
-              <h3 className="text-xl font-black uppercase tracking-tighter text-zinc-950">Select a product to review</h3>
-              <p className="text-sm font-black uppercase tracking-tighter mt-2">
+              <h3 className="text-xl font-black uppercase tracking-widest text-foreground">Select a product to review</h3>
+              <p className="text-sm font-black uppercase tracking-widest mt-2">
                 Products here have been consolidated by AI and are ready for
                 your final check.
               </p>
@@ -1980,7 +1980,7 @@ export function FinalizingResultsView({
           </div>
           <SheetContent
             side="right"
-            className="w-[450px] sm:w-[600px] p-0 border-l border-zinc-950 shadow-[-2px_0px_0px_rgba(0,0,0,1)] rounded-none overflow-y-auto"
+            className="w-[450px] sm:w-[600px] p-0 border-l border-border rounded-none overflow-y-auto"
           >
             <SheetHeader className="sr-only">
               <SheetTitle>Copilot</SheetTitle>

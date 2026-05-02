@@ -21,9 +21,9 @@ interface StatusBadgeProps {
 }
 
 const sizeConfig = {
-  sm: { badge: "text-[10px] px-1.5 py-0 font-black uppercase tracking-tighter", icon: "size-3" },
-  md: { badge: "text-xs px-2 py-0.5 font-black uppercase tracking-tighter", icon: "size-3.5" },
-  lg: { badge: "text-sm px-2.5 py-1 font-black uppercase tracking-tighter", icon: "size-4" },
+  sm: { badge: "text-[10px] px-1.5 py-0 font-black uppercase tracking-widest", icon: "size-3" },
+  md: { badge: "text-xs px-2 py-0.5 font-black uppercase tracking-widest", icon: "size-3.5" },
+  lg: { badge: "text-sm px-2.5 py-1 font-black uppercase tracking-widest", icon: "size-4" },
 };
 
 const statusConfig: Record<
@@ -68,7 +68,7 @@ export function StatusBadge({
 
   if (isLoading) {
     return (
-      <span className={cn("animate-pulse rounded-none bg-muted border border-zinc-950", sizeSettings.badge, className)} aria-hidden="true">
+      <span className={cn("animate-pulse rounded-none bg-muted border border-border", sizeSettings.badge, className)} aria-hidden="true">
         <span className="invisible">Loading</span>
       </span>
     );
@@ -79,7 +79,7 @@ export function StatusBadge({
       variant={config.variant} 
       className={cn(
         sizeSettings.badge, 
-        "gap-1.5 rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]", 
+        "gap-1.5 rounded-none border border-border", 
         className
       )}
     >

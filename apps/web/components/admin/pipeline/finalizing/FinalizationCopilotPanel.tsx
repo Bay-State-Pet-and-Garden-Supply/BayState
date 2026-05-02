@@ -695,7 +695,7 @@ export function FinalizationCopilotPanel({
       return (
         <div
           key={key}
-          className="rounded-none border border-zinc-950 bg-zinc-100 px-3 py-2 text-[10px] font-black uppercase tracking-tighter text-zinc-500 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+          className="rounded-none border border-border bg-feed-bag-cream px-3 py-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground"
         >
           {label}...
         </div>
@@ -706,7 +706,7 @@ export function FinalizationCopilotPanel({
       return (
         <div
           key={key}
-          className="rounded-none border border-red-600 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-tighter text-red-600 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+          className="rounded-none border border-red-600 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-red-600"
         >
           <div className="font-black">{label}</div>
           <div className="mt-1">{part.errorText}</div>
@@ -724,43 +724,43 @@ export function FinalizationCopilotPanel({
       return (
         <div
           key={key}
-          className="rounded-none border border-zinc-950 bg-white px-3 py-2 text-xs text-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+          className="rounded-none border border-border bg-card px-3 py-2 text-xs text-foreground"
         >
-          <div className="mb-2 font-black uppercase tracking-tighter">{label}</div>
+          <div className="mb-2 font-black uppercase tracking-widest">{label}</div>
           {summary && (
-            <div className="mb-2 whitespace-pre-wrap text-[10px] font-black uppercase tracking-tighter text-zinc-500">
+            <div className="mb-2 whitespace-pre-wrap text-[10px] font-black uppercase tracking-widest text-muted-foreground">
               {summary}
             </div>
           )}
           <div className="space-y-2">
             {part.output.products.length === 0 ? (
-              <span className="text-[10px] font-black uppercase tracking-tighter text-zinc-400">No matching products.</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">No matching products.</span>
             ) : (
               part.output.products.map((product) =>
                 isRecord(product) && typeof product.sku === "string" ? (
                   <div
                     key={product.sku}
-                    className="rounded-none border border-zinc-950 bg-zinc-50 px-3 py-2 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+                    className="rounded-none border border-border bg-feed-bag-cream px-3 py-2"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-black text-[10px] text-zinc-500 uppercase tracking-tighter">
+                      <span className="font-black text-[10px] text-muted-foreground uppercase tracking-widest">
                         {product.sku}
                       </span>
                       <div className="flex flex-wrap gap-1">
                         {product.selected === true && (
-                          <Badge variant="secondary" className="rounded-none border border-zinc-950 bg-zinc-950 text-white text-[8px] font-black uppercase tracking-tighter">Selected</Badge>
+                          <Badge variant="secondary" className="rounded-none border border-border bg-ledger-charcoal text-white text-[8px] font-black uppercase tracking-widest">Selected</Badge>
                         )}
                         {product.dirty === true && (
-                          <Badge variant="outline" className="rounded-none border border-zinc-950 bg-amber-100 text-amber-950 text-[8px] font-black uppercase tracking-tighter">Unsaved</Badge>
+                          <Badge variant="outline" className="rounded-none border border-border bg-amber-100 text-amber-950 text-[8px] font-black uppercase tracking-widest">Unsaved</Badge>
                         )}
                       </div>
                     </div>
-                    <div className="mt-1 text-[11px] font-black uppercase tracking-tighter">
+                    <div className="mt-1 text-[11px] font-black uppercase tracking-widest">
                       {typeof product.name === "string" && product.name
                         ? product.name
                         : "Untitled Product"}
                     </div>
-                    <div className="mt-1 text-[9px] font-black uppercase tracking-tighter text-zinc-500">
+                    <div className="mt-1 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
                       {typeof product.price === "string" && product.price
                         ? `$${product.price}`
                         : "No price"}
@@ -788,10 +788,10 @@ export function FinalizationCopilotPanel({
       return (
         <div
           key={key}
-          className="rounded-none border border-zinc-950 bg-white px-3 py-2 text-xs text-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+          className="rounded-none border border-border bg-card px-3 py-2 text-xs text-foreground"
         >
-          <div className="mb-1 font-black uppercase tracking-tighter">{label}</div>
-          <div className="whitespace-pre-wrap text-[10px] font-black uppercase tracking-tighter text-zinc-500">
+          <div className="mb-1 font-black uppercase tracking-widest">{label}</div>
+          <div className="whitespace-pre-wrap text-[10px] font-black uppercase tracking-widest text-muted-foreground">
             {summary}
           </div>
         </div>
@@ -806,16 +806,16 @@ export function FinalizationCopilotPanel({
       return (
         <div
           key={key}
-          className="rounded-none border border-zinc-950 bg-white px-3 py-2 text-xs text-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+          className="rounded-none border border-border bg-card px-3 py-2 text-xs text-foreground"
         >
-          <div className="mb-2 font-black uppercase tracking-tighter">{label}</div>
+          <div className="mb-2 font-black uppercase tracking-widest">{label}</div>
           <div className="flex flex-wrap gap-2">
             {part.output.brands.length === 0 ? (
-              <span className="text-[10px] font-black uppercase tracking-tighter text-zinc-400">No matching brands.</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">No matching brands.</span>
             ) : (
               part.output.brands.map((brand) =>
                 isRecord(brand) && typeof brand.name === "string" ? (
-                  <Badge key={String(brand.id)} variant="outline" className="rounded-none border border-zinc-950 bg-zinc-100 text-zinc-950 text-[9px] font-black uppercase tracking-tighter">
+                  <Badge key={String(brand.id)} variant="outline" className="rounded-none border border-border bg-feed-bag-cream text-foreground text-[9px] font-black uppercase tracking-widest">
                     {brand.name}
                   </Badge>
                 ) : null,
@@ -834,14 +834,14 @@ export function FinalizationCopilotPanel({
       return (
         <div
           key={key}
-          className="rounded-none border border-zinc-950 bg-white px-3 py-2 text-xs text-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+          className="rounded-none border border-border bg-card px-3 py-2 text-xs text-foreground"
         >
-          <div className="mb-2 font-black uppercase tracking-tighter">{label}</div>
+          <div className="mb-2 font-black uppercase tracking-widest">{label}</div>
           <div className="space-y-2">
             {part.output.sources.map((source) =>
               isRecord(source) && typeof source.label === "string" ? (
-                <div key={String(source.sourceKey)} className="text-[10px] font-black uppercase tracking-tighter text-zinc-500">
-                  <span className="text-zinc-950">{source.label}</span>
+                <div key={String(source.sourceKey)} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  <span className="text-foreground">{source.label}</span>
                   {" - "}
                   {typeof source.candidateCount === "number"
                     ? `${source.candidateCount} candidates`
@@ -862,10 +862,10 @@ export function FinalizationCopilotPanel({
       return (
         <div
           key={key}
-          className="rounded-none border border-zinc-950 bg-white px-3 py-2 text-xs text-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+          className="rounded-none border border-border bg-card px-3 py-2 text-xs text-foreground"
         >
-          <div className="mb-2 font-black uppercase tracking-tighter">{label}</div>
-          <pre className="overflow-x-auto rounded-none border border-zinc-950 bg-zinc-50 px-3 py-2 text-[10px] font-bold text-zinc-700">
+          <div className="mb-2 font-black uppercase tracking-widest">{label}</div>
+          <pre className="overflow-x-auto rounded-none border border-border bg-feed-bag-cream px-3 py-2 text-[10px] font-bold text-foreground/80">
             {JSON.stringify(part.output, null, 2)}
           </pre>
         </div>
@@ -875,10 +875,10 @@ export function FinalizationCopilotPanel({
     return (
       <div
         key={key}
-        className="rounded-none border border-zinc-950 bg-white px-3 py-2 text-xs text-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+        className="rounded-none border border-border bg-card px-3 py-2 text-xs text-foreground"
       >
-        <div className="mb-2 font-black uppercase tracking-tighter">{label}</div>
-        <pre className="overflow-x-auto rounded-none border border-zinc-950 bg-zinc-50 px-3 py-2 text-[10px] font-bold text-zinc-700">
+        <div className="mb-2 font-black uppercase tracking-widest">{label}</div>
+        <pre className="overflow-x-auto rounded-none border border-border bg-feed-bag-cream px-3 py-2 text-[10px] font-bold text-foreground/80">
           {JSON.stringify(part.output, null, 2)}
         </pre>
       </div>
@@ -886,36 +886,36 @@ export function FinalizationCopilotPanel({
   };
 
   return (
-    <div className="flex h-full min-h-[420px] flex-col bg-white">
-      <div className="border-b border-zinc-950 px-4 py-3 bg-white">
+    <div className="flex h-full min-h-[420px] flex-col bg-card">
+      <div className="border-b border-border px-4 py-3 bg-card">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-none border border-zinc-950 bg-zinc-950 text-white shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-none border border-border bg-ledger-charcoal text-white">
               <Sparkles className="h-4 w-4" />
             </div>
             <div>
-              <div className="text-sm font-black uppercase tracking-tighter text-zinc-950">Finalization Copilot</div>
-              <div className="text-[10px] font-black uppercase tracking-tighter text-zinc-500">
+              <div className="text-sm font-black uppercase tracking-widest text-foreground">Finalization Copilot</div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                 AI assistance for finalizing products.
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tighter rounded-none border border-zinc-950 bg-zinc-100 text-zinc-950">
+            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest rounded-none border border-border bg-feed-bag-cream text-foreground">
               {workspaceProductCount} in finalizing
             </Badge>
-            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tighter rounded-none border border-zinc-950 bg-zinc-100 text-zinc-950">
+            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest rounded-none border border-border bg-feed-bag-cream text-foreground">
               {dirtyProductCount} unsaved
             </Badge>
-            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tighter rounded-none border border-zinc-950 bg-zinc-950 text-white">
+            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest rounded-none border border-border bg-ledger-charcoal text-white">
               {selectedSku ?? "No Product Selected"}
             </Badge>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-none hover:bg-zinc-100 text-zinc-950"
+              className="h-8 w-8 rounded-none hover:bg-feed-bag-cream text-foreground"
               onClick={() => {
                 setMessages([]);
                 setInput("");
@@ -929,12 +929,12 @@ export function FinalizationCopilotPanel({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 bg-zinc-50/50">
+      <div className="flex-1 overflow-y-auto px-4 py-4 bg-feed-bag-cream/10">
         {hasPendingCopilotReview && (
-          <Alert className="mb-4 border border-zinc-950 bg-violet-50 text-violet-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)]">
-            <AlertTitle className="font-black uppercase tracking-tighter text-xs">Copilot changes are ready for review</AlertTitle>
+          <Alert className="mb-4 border border-border bg-violet-50 text-violet-950 rounded-none">
+            <AlertTitle className="font-black uppercase tracking-widest text-xs">Copilot changes are ready for review</AlertTitle>
             <AlertDescription className="space-y-3">
-              <p className="text-xs font-black uppercase tracking-tighter">
+              <p className="text-xs font-black uppercase tracking-widest">
                 {pendingCopilotReviewCount} product
                 {pendingCopilotReviewCount === 1 ? "" : "s"} have staged
                 copilot edits. Accept autosaves them; reject restores the
@@ -942,7 +942,7 @@ export function FinalizationCopilotPanel({
               </p>
               <div className="space-y-1">
                 {pendingCopilotSummaries.slice(-3).map((summary) => (
-                  <div key={summary} className="text-[10px] font-black uppercase tracking-tighter text-zinc-600">
+                  <div key={summary} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                     - {summary}
                   </div>
                 ))}
@@ -951,7 +951,7 @@ export function FinalizationCopilotPanel({
                 <Button
                   type="button"
                   size="sm"
-                  className="rounded-none border border-zinc-950 bg-zinc-950 text-white shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter text-[10px] hover:bg-zinc-800 active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
+                  className="rounded-none border border-border bg-ledger-charcoal text-white font-black uppercase tracking-widest text-[10px] hover:bg-ledger-charcoal/80 active:translate-x-[1px] active:translate-y-[1px]"
                   onClick={() => {
                     void onAcceptPendingCopilotReview();
                   }}
@@ -963,7 +963,7 @@ export function FinalizationCopilotPanel({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="rounded-none border border-zinc-950 bg-white text-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter text-[10px] hover:bg-zinc-100 active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
+                  className="rounded-none border border-border bg-card text-foreground font-black uppercase tracking-widest text-[10px] hover:bg-feed-bag-cream active:translate-x-[1px] active:translate-y-[1px]"
                   onClick={onRejectPendingCopilotReview}
                   disabled={reviewActionPending || status !== "ready"}
                 >
@@ -976,7 +976,7 @@ export function FinalizationCopilotPanel({
 
         {messages.length === 0 ? (
           <div className="space-y-4">
-            <div className="rounded-none border border-dashed border-zinc-300 bg-white px-4 py-5 text-sm font-black uppercase tracking-tighter text-zinc-400 text-center">
+            <div className="rounded-none border border-dashed border-border/20 bg-card px-4 py-5 text-sm font-black uppercase tracking-widest text-muted-foreground text-center">
               Ask the copilot to inspect the selected product, preview a scope
               across finalizing, and stage changes for review.
             </div>
@@ -987,7 +987,7 @@ export function FinalizationCopilotPanel({
                   key={prompt}
                   type="button"
                   variant="outline"
-                  className="h-auto justify-start whitespace-normal px-3 py-2 text-left text-xs font-black uppercase tracking-tighter rounded-none border border-zinc-950 bg-white shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-zinc-50 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
+                  className="h-auto justify-start whitespace-normal px-3 py-2 text-left text-xs font-black uppercase tracking-widest rounded-none border border-border bg-card hover:bg-feed-bag-cream active:translate-x-[1px] active:translate-y-[1px] transition-all"
                   disabled={
                     workspaceProductCount === 0
                     || hasPendingCopilotReview
@@ -1019,17 +1019,17 @@ export function FinalizationCopilotPanel({
                   }`}
                 >
                   {message.role !== "user" && (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-none border border-zinc-950 bg-zinc-950 text-white shadow-[1px_1px_0px_rgba(0,0,0,1)] shrink-0">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-none border border-border bg-ledger-charcoal text-white shrink-0">
                       <Bot className="h-4 w-4" />
                     </div>
                   )}
 
                   <div
                     className={cn(
-                      "max-w-[92%] rounded-none px-4 py-3 text-sm border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]",
+                      "max-w-[92%] rounded-none px-4 py-3 text-sm border border-border",
                       message.role === "user"
-                        ? "bg-zinc-950 text-white"
-                        : "bg-white text-zinc-950"
+                        ? "bg-ledger-charcoal text-white"
+                        : "bg-card text-foreground"
                     )}
                   >
                     <div className="space-y-3">
@@ -1054,7 +1054,7 @@ export function FinalizationCopilotPanel({
             ))}
 
             {error && (
-              <div className="rounded-none border border-red-600 bg-red-50 px-3 py-2 text-xs font-black uppercase tracking-tighter text-red-600 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+              <div className="rounded-none border border-red-600 bg-red-50 px-3 py-2 text-xs font-black uppercase tracking-widest text-red-600">
                 Something went wrong while talking to the copilot.
               </div>
             )}
@@ -1062,9 +1062,9 @@ export function FinalizationCopilotPanel({
         )}
       </div>
 
-      <div className="border-t border-zinc-950 px-4 py-4 bg-white">
+      <div className="border-t border-border px-4 py-4 bg-card">
         {(status === "submitted" || status === "streaming") && (
-          <div className="mb-3 flex items-center justify-between rounded-none border border-zinc-950 bg-zinc-100 px-3 py-2 text-[10px] font-black uppercase tracking-tighter text-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+          <div className="mb-3 flex items-center justify-between rounded-none border border-border bg-feed-bag-cream px-3 py-2 text-[10px] font-black uppercase tracking-widest text-foreground">
             <div className="flex items-center gap-2">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               {status === "submitted" ? "Submitting..." : "Working..."}
@@ -1075,7 +1075,7 @@ export function FinalizationCopilotPanel({
               variant="ghost" 
               size="sm" 
               onClick={stop}
-              className="h-6 px-2 rounded-none hover:bg-zinc-200 text-zinc-950 font-black uppercase tracking-tighter text-[9px]"
+              className="h-6 px-2 rounded-none hover:bg-feed-bag-cream text-foreground font-black uppercase tracking-widest text-[9px]"
             >
               <Square className="mr-1 h-3 w-3" />
               Stop
@@ -1099,11 +1099,11 @@ export function FinalizationCopilotPanel({
               || hasPendingCopilotReview
               || status !== "ready"
             }
-            className="min-h-28 resize-none rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold"
+            className="min-h-28 resize-none rounded-none border border-border focus-visible:ring-border font-bold"
           />
 
           <div className="flex items-center justify-between gap-3">
-            <div className="text-[10px] font-black uppercase tracking-tighter text-zinc-400 max-w-[70%]">
+            <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground max-w-[70%]">
               The copilot stages edits for review first. Accept autosaves the
               staged changes; reject restores the previous drafts.
             </div>
@@ -1117,7 +1117,7 @@ export function FinalizationCopilotPanel({
                 || !input.trim()
                 || status !== "ready"
               }
-              className="rounded-none border border-zinc-950 bg-zinc-950 text-white shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black uppercase tracking-tighter hover:bg-zinc-800 active:shadow-none active:translate-x-[1px] active:translate-y-[1px] transition-all"
+              className="rounded-none border border-border bg-ledger-charcoal text-white font-black uppercase tracking-widest hover:bg-ledger-charcoal/80 active:translate-x-[1px] active:translate-y-[1px] transition-all"
             >
               <SendHorizonal className="mr-2 h-4 w-4" />
               Send
@@ -1126,5 +1126,6 @@ export function FinalizationCopilotPanel({
         </div>
       </div>
     </div>
+
   );
 }

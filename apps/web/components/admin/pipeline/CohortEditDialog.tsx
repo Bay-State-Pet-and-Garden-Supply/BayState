@@ -84,14 +84,14 @@ export function CohortEditDialog({
   return (
     <>
       <Dialog open={open && !isEditingBrand} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[425px] border-4 border-zinc-900 shadow-[12px_12px_0px_rgba(0,0,0,1)] rounded-none p-0 bg-white">
-          <DialogHeader className="p-6 border-b-4 border-zinc-900 bg-zinc-50">
+        <DialogContent className="sm:max-w-[425px] border border-border rounded-none p-0 bg-card">
+          <DialogHeader className="p-6 border-b border-border bg-feed-bag-cream">
             <div className="flex items-center gap-4">
-              <div className="p-2 border-2 border-zinc-900 bg-white shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-                <Layers className="h-6 w-6 text-zinc-900" />
+              <div className="p-2 border border-border bg-card">
+                <Layers className="h-6 w-6 text-foreground" />
               </div>
               <div>
-                <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-zinc-900">
+                <DialogTitle className="text-2xl font-black uppercase tracking-widest text-foreground">
                   Edit Batch
                 </DialogTitle>
                 <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mt-1">
@@ -102,26 +102,26 @@ export function CohortEditDialog({
           </DialogHeader>
           <div className="p-6 space-y-8">
             <div className="grid gap-2">
-              <Label htmlFor="name" className="text-xs font-black uppercase tracking-widest text-zinc-900">Batch Name</Label>
+              <Label htmlFor="name" className="text-xs font-black uppercase tracking-widest text-foreground">Batch Name</Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. KONG Classic Dog Toy"
                 disabled={isLoading}
-                className="rounded-none border-2 border-zinc-900 focus-visible:ring-0 focus-visible:border-zinc-900 focus-visible:ring-offset-0 h-10"
+                className="rounded-none border border-border focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0 h-10"
               />
             </div>
             
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-black uppercase tracking-widest text-zinc-900">Brand Selection</Label>
+                <Label className="text-xs font-black uppercase tracking-widest text-foreground">Brand Selection</Label>
                 {selectedBrand && (
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-6 px-2 text-[10px] uppercase font-black tracking-tighter text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100"
+                    className="h-6 px-2 text-[10px] uppercase font-black tracking-widest text-zinc-500 hover:text-foreground hover:bg-feed-bag-cream"
                     onClick={() => setIsEditingBrand(true)}
                   >
                     <Edit2 className="h-3 w-3 mr-1" />
@@ -132,7 +132,7 @@ export function CohortEditDialog({
               <CohortBrandPicker
                 value={selectedBrand}
                 onAssign={async (brand) => setSelectedBrand(brand)}
-                triggerClassName="w-full h-10 rounded-none border-2 border-zinc-900 focus:ring-0"
+                triggerClassName="w-full h-10 rounded-none border border-border focus:ring-0"
                 emptyLabel="Select Brand from Registry"
               />
               <p className="text-[10px] font-bold text-zinc-500 uppercase leading-tight italic">
@@ -141,7 +141,7 @@ export function CohortEditDialog({
             </div>
 
             {!selectedBrand && (
-              <div className="p-4 border-2 border-dashed border-zinc-300 bg-zinc-50">
+              <div className="p-4 border border-dashed border-border bg-feed-bag-cream">
                 <div className="grid gap-2">
                   <Label htmlFor="brand" className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Manual Brand Name Fallback</Label>
                   <Input
@@ -150,7 +150,7 @@ export function CohortEditDialog({
                     onChange={(e) => setBrandName(e.target.value)}
                     placeholder="e.g. KONG"
                     disabled={isLoading}
-                    className="rounded-none border-2 border-zinc-200 focus-visible:ring-0 focus-visible:border-zinc-400 focus-visible:ring-offset-0 text-zinc-500 h-9 bg-white"
+                    className="rounded-none border border-border focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0 text-zinc-500 h-9 bg-card"
                   />
                   <p className="text-[10px] font-bold text-zinc-400 uppercase leading-tight italic">
                     Only used if no brand is selected from the registry above.
@@ -159,19 +159,19 @@ export function CohortEditDialog({
               </div>
             )}
           </div>
-          <DialogFooter className="p-6 border-t-2 border-zinc-900 flex-col sm:flex-row gap-4 bg-zinc-50">
+          <DialogFooter className="p-6 border-t border-border flex-col sm:flex-row gap-4 bg-feed-bag-cream">
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
-              className="rounded-none border-2 border-zinc-900 font-black uppercase tracking-tighter hover:bg-white transition-all order-2 sm:order-1"
+              className="rounded-none border border-border font-black uppercase tracking-widest hover:bg-card transition-all order-2 sm:order-1"
             >
               Cancel
             </Button>
             <Button 
               onClick={handleSave} 
               disabled={isLoading}
-              className="rounded-none bg-zinc-900 hover:bg-zinc-800 text-white font-black uppercase tracking-tighter shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all order-1 sm:order-2 min-w-[140px]"
+              className="rounded-none bg-foreground hover:bg-foreground/90 text-background font-black uppercase tracking-widest transition-all order-1 sm:order-2 min-w-[140px]"
             >
               {isLoading ? (
                 <>

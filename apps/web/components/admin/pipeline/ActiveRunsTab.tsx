@@ -158,6 +158,9 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
             // Preserve chunk data from last API fetch
             nextJob.chunks = existing.chunks;
             nextJob.chunkSummary = existing.chunkSummary;
+            nextJob.jobType = nextJob.jobType ?? existing.jobType;
+            nextJob.officialBrandPhase = nextJob.officialBrandPhase ?? existing.officialBrandPhase;
+            nextJob.cohortId = nextJob.cohortId ?? existing.cohortId;
           }
 
           if (
@@ -252,7 +255,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
   if (error) {
     return (
       <div
-        className={`rounded-none border border-zinc-950 bg-red-50 p-4 shadow-[1px_1px_0px_rgba(0,0,0,1)] ${className}`}
+        className={`rounded-none border border-ledger-charcoal bg-red-50 p-4 ${className}`}
       >
         <p className="text-sm font-black uppercase text-red-600">Error: {error}</p>
       </div>
