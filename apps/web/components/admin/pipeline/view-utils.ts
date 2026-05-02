@@ -3,7 +3,7 @@ export function formatPipelineBatchLabel(
   cohortName?: string | null,
 ): string {
   if (cohortId === "ungrouped") {
-    return "Ungrouped";
+    return "Ungrouped Products";
   }
 
   const trimmedName = cohortName?.trim();
@@ -11,5 +11,5 @@ export function formatPipelineBatchLabel(
     return trimmedName;
   }
 
-  return `Batch ${cohortId.slice(0, 8)}`;
+  return `Cohort ${cohortId.slice(0, 8)}`;
 }

@@ -5,7 +5,7 @@ import { validateStatusTransition } from '@/lib/pipeline';
 import type { PersistedPipelineStatus } from '@/lib/pipeline/types';
 
 describe('validateStatusTransition', () => {
-    const statuses: PersistedPipelineStatus[] = ['imported', 'scraping', 'scraped', 'consolidating', 'finalizing', 'exporting', 'failed'];
+    const statuses: PersistedPipelineStatus[] = ['imported', 'searching', 'url_review', 'extracting', 'scraping', 'scraped', 'consolidating', 'finalizing', 'exporting', 'failed'];
 
     it('allows same-status transitions for every canonical state', () => {
         statuses.forEach(status => {
@@ -14,6 +14,11 @@ describe('validateStatusTransition', () => {
     });
 
     it('allows canonical forward and retry/rework transitions', () => {
+        expect(validateStatusTransition('imported', 'searching')).toBe(true);
+        expect(validateStatusTransition('searching', 'url_review')).toBe(true);
+        expect(validateStatusTransition('url_review', 'extracting')).toBe(true);
+        expect(validateStatusTransition('url_review', 'scraping')).toBe(true);
+        expect(validateStatusTransition('extracting', 'scraped')).toBe(true);
         expect(validateStatusTransition('imported', 'scraping')).toBe(true);
         expect(validateStatusTransition('scraping', 'scraped')).toBe(true);
         expect(validateStatusTransition('scraped', 'consolidating')).toBe(true);
@@ -28,6 +33,9 @@ describe('validateStatusTransition', () => {
     it('rejects invalid canonical transitions', () => {
         expect(validateStatusTransition('imported', 'finalizing')).toBe(false);
         expect(validateStatusTransition('imported', 'failed')).toBe(false);
+        expect(validateStatusTransition('searching', 'scraped')).toBe(false);
+        expect(validateStatusTransition('url_review', 'finalizing')).toBe(false);
+        expect(validateStatusTransition('extracting', 'exporting')).toBe(false);
         expect(validateStatusTransition('scraped', 'exporting')).toBe(false);
         expect(validateStatusTransition('finalizing', 'imported')).toBe(false);
         expect(validateStatusTransition('exporting', 'imported')).toBe(false);
@@ -37,13 +45,16 @@ describe('validateStatusTransition', () => {
 
     it('enforces the full canonical transition matrix', () => {
         const validTargets: Record<PersistedPipelineStatus, PersistedPipelineStatus[]> = {
-            imported: ['imported', 'scraping'],
+            imported: ['imported', 'scraping', 'searching'],
+            searching: ['searching', 'url_review', 'imported', 'failed'],
+            url_review: ['url_review', 'extracting', 'scraping', 'imported', 'failed'],
+            extracting: ['extracting', 'scraped', 'url_review', 'failed'],
             scraping: ['scraping', 'scraped', 'failed', 'imported'],
             scraped: ['scraped', 'consolidating', 'finalizing', 'imported', 'failed'],
             consolidating: ['consolidating', 'finalizing', 'scraped', 'failed'],
             finalizing: ['finalizing', 'exporting', 'scraped', 'failed'],
             exporting: ['exporting', 'finalizing', 'failed'],
-            failed: ['failed', 'imported'],
+            failed: ['failed', 'imported', 'url_review'],
         };
 
         statuses.forEach(from => {

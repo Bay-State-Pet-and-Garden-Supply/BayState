@@ -138,13 +138,13 @@ export function FileUpload({
                                 )} />
                             </div>
                             <div className="space-y-1">
-                                <p className="text-sm text-gray-600">
+                                <div className="text-sm text-gray-600">
                                     {label || (
                                         <>
                                             <span className="font-semibold text-purple-600">Click to upload</span> or drag and drop
                                         </>
                                     )}
-                                </p>
+                                </div>
                                 {accept && (
                                     <p className="text-xs text-gray-500 uppercase">
                                         {accept.replace(/,/g, ', ')}

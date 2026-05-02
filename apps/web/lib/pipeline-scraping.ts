@@ -1139,21 +1139,27 @@ export async function scrapeProducts(
         }
     }
 
-    if (!testMode && !isOfficialBrandDiscovery) {
+    if (!testMode) {
+        const pipelineStatus = isOfficialBrandDiscovery
+            ? 'searching'
+            : isOfficialBrandExtraction
+                ? 'extracting'
+                : 'scraping';
+
         const { error: statusError } = await supabase
             .from('products_ingestion')
             .update({
-                pipeline_status: 'scraping',
+                pipeline_status: pipelineStatus,
                 updated_at: new Date().toISOString(),
                 error_message: null,
             })
             .in('sku', skus);
 
         if (statusError) {
-            console.error('[Pipeline Scraping] Failed to move products into scraping:', statusError);
+            console.error(`[Pipeline Scraping] Failed to move products into ${pipelineStatus}:`, statusError);
             await supabase.from('scrape_job_chunks').delete().eq('job_id', job.id);
             await supabase.from('scrape_jobs').delete().eq('id', job.id);
-            return { success: false, error: 'Failed to mark products as scraping' };
+            return { success: false, error: `Failed to mark products as ${pipelineStatus}` };
         }
     }
 

@@ -13,6 +13,9 @@ export const STATUS_COLORS = {
     FAILED: '#EF4444',
     WARNING: '#F59E0B',
     CONSOLIDATING: '#8B5CF6',
+    SEARCHING: '#6366F1',
+    URL_REVIEW: '#A855F7',
+    EXTRACTING: '#06B6D4',
     PUBLISHED: BRAND_COLORS.FOREST_GREEN,
 } as const;
 
@@ -20,6 +23,9 @@ type StatusColor = (typeof STATUS_COLORS)[keyof typeof STATUS_COLORS];
 
 export const PIPELINE_STATUS_COLORS: Record<PersistedPipelineStatus, StatusColor> = {
     imported: STATUS_COLORS.QUEUED,
+    searching: STATUS_COLORS.SEARCHING,
+    url_review: STATUS_COLORS.URL_REVIEW,
+    extracting: STATUS_COLORS.EXTRACTING,
     scraping: STATUS_COLORS.RUNNING,
     scraped: STATUS_COLORS.RUNNING,
     consolidating: STATUS_COLORS.CONSOLIDATING,
@@ -30,6 +36,9 @@ export const PIPELINE_STATUS_COLORS: Record<PersistedPipelineStatus, StatusColor
 
 export const PIPELINE_STATUS_LABELS: Record<PersistedPipelineStatus, string> = {
     imported: 'Imported',
+    searching: 'Searching',
+    url_review: 'URL Review',
+    extracting: 'Extracting',
     scraping: 'Scraping',
     scraped: 'Scraped',
     consolidating: 'Consolidating',
@@ -51,6 +60,9 @@ export const CSS_CUSTOM_PROPERTIES = {
         FAILED: '--color-status-failed',
         WARNING: '--color-status-warning',
         CONSOLIDATING: '--color-status-consolidating',
+        SEARCHING: '--color-status-searching',
+        URL_REVIEW: '--color-status-url-review',
+        EXTRACTING: '--color-status-extracting',
     } as const,
 } as const;
 
@@ -61,6 +73,9 @@ export function getStatusColor(status: PersistedPipelineStatus): StatusColor {
 export function getStatusCssVar(status: PersistedPipelineStatus): string {
     const statusToCssVar: Record<PersistedPipelineStatus, string> = {
         imported: CSS_CUSTOM_PROPERTIES.STATUS.QUEUED,
+        searching: CSS_CUSTOM_PROPERTIES.STATUS.SEARCHING,
+        url_review: CSS_CUSTOM_PROPERTIES.STATUS.URL_REVIEW,
+        extracting: CSS_CUSTOM_PROPERTIES.STATUS.EXTRACTING,
         scraping: CSS_CUSTOM_PROPERTIES.STATUS.RUNNING,
         scraped: CSS_CUSTOM_PROPERTIES.STATUS.RUNNING,
         consolidating: CSS_CUSTOM_PROPERTIES.STATUS.CONSOLIDATING,

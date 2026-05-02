@@ -65,7 +65,17 @@ export function IntegraImportDialog({
         try {
             const result = await processOnboardingAction(analysis.newProducts);
             if (result.success) {
-                toast.success(`Successfully added ${result.count} products to onboarding pipeline`);
+                let toastMessage = `Successfully added ${result.count} products to onboarding pipeline`;
+                if (result.cohorts) {
+                    toastMessage += ` (${result.cohorts.cohortCount} cohorts)`;
+                    if (result.cohorts.ungrouped > 0) {
+                        toastMessage += ` — ${result.cohorts.ungrouped} ungrouped`;
+                    }
+                    if (result.cohorts.errors.length > 0) {
+                        console.warn("Cohort assignment warnings:", result.cohorts.errors);
+                    }
+                }
+                toast.success(toastMessage);
                 onSuccess();
             } else {
                 toast.error(result.error || 'Failed to add products');
@@ -167,6 +177,9 @@ export function IntegraImportDialog({
 
                             {analysis.newProducts.length > 0 ? (
                                 <div className="space-y-6">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                        Products will be automatically grouped into cohorts by UPC prefix after import.
+                                    </p>
                                     <div className="bg-primary rounded-none p-6 text-primary-foreground">
                                         <div className="flex items-center gap-3 mb-2">
                                             <div className="h-2 w-2 rounded-none bg-primary-foreground animate-pulse" />

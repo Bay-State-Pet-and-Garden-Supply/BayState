@@ -177,6 +177,23 @@ export async function persistOfficialBrandDiscoveryResults(
         nowIso,
     });
     const persistedCount = await persistOfficialBrandCandidateRows(supabase, rows);
+    const skus = Array.from(new Set(Object.keys(aggregatedResults).filter(Boolean)));
+    let pipelineStatusUpdatedCount = 0;
+
+    if (skus.length > 0) {
+        const { data: statusRows, error: statusError } = await supabase
+            .from('products_ingestion')
+            .update({ pipeline_status: 'url_review', updated_at: nowIso })
+            .in('sku', skus)
+            .eq('pipeline_status', 'searching')
+            .select('sku');
+
+        if (statusError) {
+            console.warn(`[Chunk Callback] Failed to move Official Brand discovery SKUs to url_review for job ${jobId}:`, statusError);
+        } else {
+            pipelineStatusUpdatedCount = statusRows?.length ?? 0;
+        }
+    }
 
     const { data: metadataRow } = await supabase
         .from('scrape_jobs')
@@ -196,6 +213,9 @@ export async function persistOfficialBrandDiscoveryResults(
                 official_brand_discovery: {
                     candidate_count: persistedCount,
                     sku_count: Object.keys(aggregatedResults).length,
+                    pipeline_status_updated_count: pipelineStatusUpdatedCount,
+                    pipeline_status_from: 'searching',
+                    pipeline_status_to: 'url_review',
                     updated_at: nowIso,
                 },
             },
@@ -574,26 +594,34 @@ export async function POST(request: NextRequest) {
                             );
                         }
 
-                        const { error: pipelineStatusError } = await supabase
-                            .from('products_ingestion')
-                            .update({
+                        const failedStatusUpdate = officialBrandPhase === 'extraction'
+                            ? {
+                                pipeline_status: 'url_review',
+                                updated_at: completedAt,
+                            }
+                            : {
                                 pipeline_status: 'failed',
                                 error_message: terminalMessage,
                                 updated_at: completedAt,
-                            })
+                            };
+                        const failedStatusFrom = officialBrandPhase === 'extraction' ? 'extracting' : 'scraping';
+
+                        const { error: pipelineStatusError } = await supabase
+                            .from('products_ingestion')
+                            .update(failedStatusUpdate)
                             .in('sku', failedSkus)
-                            .eq('pipeline_status', 'scraping');
+                            .eq('pipeline_status', failedStatusFrom);
 
                         if (pipelineStatusError) {
                             console.error(
-                                `[Chunk Callback] Failed to mark scraping products as failed for job ${jobId}:`,
+                                `[Chunk Callback] Failed to update failed products for job ${jobId}:`,
                                 pipelineStatusError
                             );
                         }
                     }
                 }
 
-                // Revert any stuck SKUs to imported for production jobs that finished (completed or failed)
+                // Revert any stuck SKUs for production jobs that finished (completed or failed)
                 if (!isTestJob && (jobStatus === 'completed' || jobStatus === 'failed')) {
                     const jobSkus = Array.from(
                         new Set(
@@ -609,19 +637,21 @@ export async function POST(request: NextRequest) {
                     );
 
                     if (jobSkus.length > 0) {
+                        const stuckStatusFrom = officialBrandPhase === 'extraction' ? 'extracting' : 'scraping';
+                        const stuckStatusTo = officialBrandPhase === 'extraction' ? 'url_review' : 'imported';
                         const { error: resetStatusError } = await supabase
                             .from('products_ingestion')
                             .update({
-                                pipeline_status: 'imported',
+                                pipeline_status: stuckStatusTo,
                                 updated_at: new Date().toISOString(),
                             })
                             .in('sku', jobSkus)
-                            .eq('pipeline_status', 'scraping');
+                            .eq('pipeline_status', stuckStatusFrom);
 
                         if (resetStatusError) {
-                            console.error('[Chunk Callback] Failed to reset stuck SKUs to imported:', resetStatusError);
+                            console.error(`[Chunk Callback] Failed to reset stuck SKUs to ${stuckStatusTo}:`, resetStatusError);
                         } else {
-                            console.log(`[Chunk Callback] Job ${jobId}: Reverted any remaining 'scraping' SKUs to 'imported'`);
+                            console.log(`[Chunk Callback] Job ${jobId}: Reverted any remaining '${stuckStatusFrom}' SKUs to '${stuckStatusTo}'`);
                         }
                     }
                 }

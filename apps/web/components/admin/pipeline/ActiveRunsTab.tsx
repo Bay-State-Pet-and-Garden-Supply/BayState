@@ -43,9 +43,11 @@ import { useDocumentVisible } from "@/hooks/useDocumentVisible";
 
 interface ActiveRunsTabProps {
   className?: string;
+  /** Filter jobs to only show those matching this job type (e.g. 'official_brand_url_discovery') */
+  jobSubtype?: string;
 }
 
-export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
+export function ActiveRunsTab({ className, jobSubtype }: ActiveRunsTabProps) {
   const isDocumentVisible = useDocumentVisible();
   const router = useRouter();
   const [jobs, setJobs] = useState<ActiveJob[]>([]);
@@ -230,14 +232,24 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
 
   // Transform ActiveJob[] to TimelineJob[]
   const timelineJobs = useMemo(() => {
-    return jobs.map((job) => ({
+    const source = jobSubtype ? jobs.filter((j) => j.jobType === jobSubtype) : jobs;
+    return source.map((job) => ({
       id: job.id,
       name: `Job ${job.id.slice(0, 8)}`,
       startTime: new Date(job.createdAt),
       status: job.status,
       runner: job.scrapers.join(", "),
     }));
-  }, [jobs]);
+  }, [jobs, jobSubtype]);
+
+  const filteredJobs = useMemo(
+    () => (jobSubtype ? jobs.filter((j) => j.jobType === jobSubtype) : jobs),
+    [jobs, jobSubtype],
+  );
+  const filteredRecentJobs = useMemo(
+    () => (jobSubtype ? recentJobs.filter((j) => j.jobType === jobSubtype) : recentJobs),
+    [recentJobs, jobSubtype],
+  );
 
   const getJobLogCount = useCallback(
     (jobId: string) => logs.filter((l) => l.job_id === jobId).length,
@@ -262,7 +274,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
     );
   }
 
-  const hasNoData = jobs.length === 0 && recentJobs.length === 0;
+  const hasNoData = filteredJobs.length === 0 && filteredRecentJobs.length === 0;
 
   if (hasNoData) {
     return (
@@ -288,7 +300,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground">
-            {jobs.length} active job{jobs.length !== 1 ? "s" : ""}
+            {filteredJobs.length} active job{filteredJobs.length !== 1 ? "s" : ""}
           </span>
           <ConnectionIndicator isConnected={isRealtimeConnected} />
           <div className="flex items-center gap-2">
@@ -326,7 +338,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
       ) : (
         <>
           {/* Active Jobs */}
-          {jobs.map((job) => (
+          {filteredJobs.map((job) => (
             <JobCard
               key={job.id}
               job={job}
@@ -340,7 +352,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
           ))}
 
           {/* Recent Completed/Failed Jobs */}
-          {recentJobs.length > 0 && (
+          {filteredRecentJobs.length > 0 && (
             <div className="space-y-2 pt-2">
               <div className="flex items-center gap-2">
                 <div className="h-px flex-1 bg-border" />
@@ -350,7 +362,7 @@ export function ActiveRunsTab({ className }: ActiveRunsTabProps) {
                 <div className="h-px flex-1 bg-border" />
               </div>
 
-              {recentJobs.map((job) => (
+              {filteredRecentJobs.map((job) => (
                 <JobCard
                   key={job.id}
                   job={job}

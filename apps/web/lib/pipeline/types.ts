@@ -8,6 +8,9 @@ import type { Brand } from "@/lib/types";
 /** Canonical workflow states persisted in products_ingestion.pipeline_status. */
 export const PERSISTED_PIPELINE_STATUSES = [
   "imported",
+  "searching",
+  "url_review",
+  "extracting",
   "scraping",
   "scraped",
   "consolidating",
@@ -200,6 +203,21 @@ export const STAGE_CONFIG: Record<StageConfigKey, StageConfig> = {
     label: "Imported",
     color: "#6B7280",
     description: "Products imported into the system and waiting for scraping",
+  },
+  searching: {
+    label: "Searching",
+    color: "#6366F1",
+    description: "Official Brand SERP URL discovery in progress",
+  },
+  url_review: {
+    label: "URL Review",
+    color: "#A855F7",
+    description: "Review discovered Official Brand URLs before extraction",
+  },
+  extracting: {
+    label: "Extracting",
+    color: "#06B6D4",
+    description: "Official Brand product page extraction in progress",
   },
   scraping: {
     label: "Scraping",

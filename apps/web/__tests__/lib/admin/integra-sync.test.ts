@@ -2,6 +2,15 @@ jest.mock("@/lib/supabase/server", () => ({
   createClient: jest.fn(),
 }));
 
+jest.mock("@/lib/admin/cohort-utils", () => ({
+  assignProductsToCohorts: jest.fn().mockResolvedValue({
+    assigned: 2,
+    ungrouped: 0,
+    cohortCount: 1,
+    errors: [],
+  }),
+}));
+
 import { createClient } from "@/lib/supabase/server";
 import { addToOnboarding } from "@/lib/admin/integra-sync";
 
@@ -51,7 +60,7 @@ describe("addToOnboarding", () => {
       ]),
     );
 
-    expect(res).toEqual({ success: true, count: 2 });
+    expect(res).toEqual({ success: true, count: 2, cohorts: { assigned: 2, ungrouped: 0, cohortCount: 1, errors: [] } });
   });
 
   it("writes canonical imported onboarding rows without legacy status aliases", async () => {

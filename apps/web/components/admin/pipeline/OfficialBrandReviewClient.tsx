@@ -3,16 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Circle,
-  Keyboard,
-  Loader2,
-  PackageSearch,
-  Play,
-  RefreshCw,
-} from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronLeft, Circle, Keyboard, Loader2, PackageSearch, Play, RefreshCw } from "lucide-react";
 import { CandidateUrlPicker } from "./CandidateUrlPicker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -352,6 +343,28 @@ export function OfficialBrandReviewClient({
     }
   };
 
+  const handleReturnCohortToImport = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/admin/pipeline/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cohort_id: data.cohort.id, fromStatus: "url_review", toStatus: "imported" }),
+      });
+      if (res.ok) {
+        toast.success("Cohort returned to Imported");
+        await refreshData(true);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to return cohort");
+      }
+    } catch {
+      toast.error("Failed to return cohort");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleAddManualUrl = async (url: string): Promise<boolean> => {
     if (!activeEntry) {
       return false;
@@ -522,6 +535,17 @@ export function OfficialBrandReviewClient({
                 <Play className="h-4 w-4" />
               )}
               Start Extraction ({selectedSkus.length})
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => void handleReturnCohortToImport()}
+              disabled={isSaving || isStartingExtraction}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Return Cohort to Import
             </Button>
           </div>
         </div>

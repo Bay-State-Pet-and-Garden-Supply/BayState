@@ -37,6 +37,9 @@ export async function GET() {
         // Calculate counts by status
         const byStatus: Record<PersistedPipelineStatus, number> = {
             imported: 0,
+            searching: 0,
+            url_review: 0,
+            extracting: 0,
             scraping: 0,
             scraped: 0,
             consolidating: 0,

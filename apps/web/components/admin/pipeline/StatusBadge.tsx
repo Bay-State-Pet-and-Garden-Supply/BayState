@@ -28,9 +28,12 @@ const sizeConfig = {
 
 const statusConfig: Record<
   PipelineDisplayStatus,
-  { variant: "default" | "success" | "warning" | "destructive"; label: string; icon: React.ComponentType<{ className?: string }> }
+  { variant: "default" | "success" | "warning" | "destructive"; label: string; icon: React.ComponentType<{ className?: string }>; color?: string }
 > = {
   imported: { variant: "default", label: "Imported", icon: Package },
+  searching: { variant: "default", label: "Searching", icon: Loader2, color: "#6366F1" },
+  url_review: { variant: "default", label: "URL Review", icon: Globe, color: "#A855F7" },
+  extracting: { variant: "default", label: "Extracting", icon: Loader2, color: "#06B6D4" },
   scraping: { variant: "warning", label: "Scraping", icon: Loader2 },
   scraped: { variant: "success", label: "Scraped", icon: Sparkles },
   consolidating: { variant: "warning", label: "Consolidating", icon: Sparkles },
@@ -82,6 +85,7 @@ export function StatusBadge({
         "gap-1.5 rounded-none border border-border", 
         className
       )}
+      style={config.color ? { backgroundColor: config.color, color: "white" } : undefined}
     >
       {(status === "scraping" || status === "consolidating") && (
         <PulseDot className={sizeSettings.icon} />

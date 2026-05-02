@@ -246,6 +246,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const nowIso = new Date().toISOString();
+  const { error: statusError } = await supabase
+    .from("products_ingestion")
+    .update({ pipeline_status: "extracting", updated_at: nowIso })
+    .in("sku", skus)
+    .in("pipeline_status", ["url_review", "scraping"]);
+
+  if (statusError) {
+    console.error("[Official Brand Extract] Failed to move products into extracting:", statusError);
+    return NextResponse.json(
+      { error: "Failed to mark products as extracting" },
+      { status: 500 },
+    );
+  }
+
   return NextResponse.json({
     success: true,
     jobIds: result.jobIds,
