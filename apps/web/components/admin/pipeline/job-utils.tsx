@@ -28,6 +28,9 @@ import { progressUpdateFromJobRecord } from "@/lib/scraper-logs";
 
 export interface ActiveJob {
   id: string;
+  jobType?: string | null;
+  officialBrandPhase?: string | null;
+  cohortId?: string | null;
   skuCount: number;
   scrapers: string[];
   status: "pending" | "running" | "completed" | "failed" | "cancelled";
@@ -63,11 +66,11 @@ const LOG_LEVEL_CONFIG: Record<
   string,
   { icon: typeof Info; color: string; bgColor: string }
 > = {
-  debug: { icon: Bug, color: "text-zinc-500", bgColor: "bg-zinc-100" },
-  info: { icon: Info, color: "text-blue-950", bgColor: "bg-blue-100" },
+  debug: { icon: Bug, color: "text-muted-foreground", bgColor: "bg-muted/50" },
+  info: { icon: Info, color: "text-primary", bgColor: "bg-primary/5" },
   warning: {
     icon: AlertTriangle,
-    color: "text-zinc-950",
+    color: "text-foreground",
     bgColor: "bg-brand-gold",
   },
   error: { icon: AlertCircle, color: "text-white", bgColor: "bg-brand-burgundy" },
@@ -79,7 +82,7 @@ function LogLevelBadge({ level }: { level: string }) {
   const Icon = config.icon;
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-none border border-zinc-950 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)] ${config.bgColor} ${config.color}`}
+      className={`inline-flex items-center gap-1 rounded-none border border-border px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${config.bgColor} ${config.color}`}
     >
       <Icon className="h-2.5 w-2.5" />
       {level}
@@ -92,13 +95,13 @@ export function ConnectionIndicator({ isConnected }: { isConnected: boolean }) {
     <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
       {isConnected ? (
         <>
-          <div className="h-3 w-3 bg-brand-forest-green border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] animate-pulse" />
+          <div className="h-3 w-3 bg-brand-forest-green border border-border animate-pulse" />
           <span className="text-brand-forest-green">Connected</span>
         </>
       ) : (
         <>
-          <div className="h-3 w-3 bg-zinc-400 border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]" />
-          <span className="text-zinc-500">Offline</span>
+          <div className="h-3 w-3 bg-muted border border-border" />
+          <span className="text-muted-foreground">Offline</span>
         </>
       )}
     </div>
@@ -113,20 +116,20 @@ function JobLogPanel({ jobId, logs }: { jobId: string; logs: LogEntry[] }) {
 
   if (jobLogs.length === 0) {
     return (
-      <div className="px-2 py-4 text-xs text-zinc-500 font-black uppercase tracking-tighter text-center border-t border-zinc-950 bg-zinc-50">
+      <div className="px-2 py-4 text-xs text-muted-foreground font-black uppercase tracking-widest text-center border-t border-border bg-muted/10">
         No log entries yet — logs will stream in real time.
       </div>
     );
   }
 
   return (
-    <div className="border-t border-zinc-950 bg-zinc-50">
+    <div className="border-t border-border bg-muted/5">
       <ScrollArea className="max-h-64">
-        <div className="divide-y-2 divide-zinc-950/10">
+        <div className="divide-y divide-border/50">
           {jobLogs.map((log) => (
             <div
               key={log.id}
-              className="flex items-start gap-2 px-2 py-1.5 text-xs hover:bg-white transition-colors"
+              className="flex items-start gap-2 px-2 py-1.5 text-xs hover:bg-muted/30 transition-colors"
             >
               <LogLevelBadge level={log.level} />
               <span className="flex-1 text-zinc-900 font-mono break-all leading-relaxed">
@@ -148,6 +151,9 @@ export function toActiveJob(job: JobAssignment): ActiveJob {
 
   return {
     id: job.id,
+    jobType: null,
+    officialBrandPhase: null,
+    cohortId: null,
     skuCount: job.skus?.length ?? 0,
     scrapers: job.scrapers ?? [],
     status:
@@ -180,7 +186,7 @@ export function toActiveJob(job: JobAssignment): ActiveJob {
 function JobStatusBadge({ status }: { status: ActiveJob["status"] }) {
   const statusMap = {
     running: {
-      className: "bg-blue-100 text-blue-950",
+      className: "bg-primary/5 text-primary",
       icon: <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />,
       label: "Running",
     },
@@ -195,12 +201,12 @@ function JobStatusBadge({ status }: { status: ActiveJob["status"] }) {
       label: "Failed",
     },
     cancelled: {
-      className: "bg-zinc-500 text-white",
+      className: "bg-muted text-muted-foreground",
       icon: <XCircle className="mr-1.5 h-3 w-3" />,
       label: "Cancelled",
     },
     pending: {
-      className: "bg-brand-gold text-zinc-950",
+      className: "bg-brand-gold text-brand-burgundy",
       icon: <Clock className="mr-1.5 h-3 w-3" />,
       label: "Pending",
     },
@@ -210,7 +216,7 @@ function JobStatusBadge({ status }: { status: ActiveJob["status"] }) {
 
   return (
     <span
-      className={`inline-flex items-center rounded-none border border-zinc-950 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)] ${config.className}`}
+      className={`inline-flex items-center rounded-none border border-border px-2 py-0.5 text-[10px] font-black uppercase tracking-widest ${config.className}`}
     >
       {config.icon}
       {config.label}
@@ -237,22 +243,25 @@ export function JobCard({
 }) {
   const hasChunks = job.chunkSummary.total > 0;
   const isActive = job.status === "pending" || job.status === "running";
+  const reviewHref = job.cohortId
+    ? `/admin/pipeline/official-brand?cohort_id=${encodeURIComponent(job.cohortId)}`
+    : null;
 
   return (
-    <div className="rounded-none border-4 border-zinc-950 bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)] overflow-hidden">
+    <div className="rounded-none border border-border bg-card overflow-hidden">
       <div className="p-4 sm:p-5">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h3 className="font-black uppercase tracking-tighter text-zinc-950">
+              <h3 className="font-black uppercase tracking-widest text-foreground">
                 Job {job.id.slice(0, 8)}
               </h3>
               <JobStatusBadge status={job.status} />
             </div>
-            <p className="text-xs font-black uppercase tracking-tighter text-zinc-500 mt-1">
+            <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mt-1">
               {job.scrapers.join(", ")}
             </p>
-            <p className="text-[10px] font-black uppercase tracking-tighter text-zinc-400 mt-0.5">
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mt-0.5">
               {job.skuCount} SKUs • Started{" "}
               {new Date(job.createdAt).toLocaleString()}
               {job.completedAt && (
@@ -260,30 +269,30 @@ export function JobCard({
               )}
             </p>
             {typeof job.itemsTotal === "number" ? (
-              <p className="text-[10px] font-black uppercase tracking-tighter text-zinc-400 mt-0.5">
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mt-0.5">
                 {job.itemsTotal} Work Units
                 {job.chunkSummary.total > 0 ? ` • ${job.chunkSummary.total} Chunks` : ""}
               </p>
             ) : null}
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {job.runnerName ? (
-                <span className="rounded-none border border-zinc-950 bg-zinc-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                <span className="rounded-none border border-border bg-muted/30 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">
                   Runner: {job.runnerName}
                 </span>
               ) : null}
               {job.progressPhase ? (
-                <span className="rounded-none border border-zinc-950 bg-zinc-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                <span className="rounded-none border border-border bg-muted/30 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">
                   {job.progressPhase}
                 </span>
               ) : null}
               {job.currentSku ? (
-                <span className="font-mono text-[10px] font-bold text-zinc-950 bg-zinc-50 border border-zinc-200 px-1.5 py-0.5">
+                <span className="font-mono text-[10px] font-black text-foreground bg-muted border border-border px-1.5 py-0.5">
                   {job.currentSku}
                 </span>
               ) : null}
               {typeof job.itemsProcessed === "number" &&
               typeof job.itemsTotal === "number" ? (
-                <span className="text-[10px] font-black uppercase tracking-tighter text-zinc-500">
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                   {job.itemsProcessed}/{job.itemsTotal}
                 </span>
               ) : null}
@@ -308,20 +317,20 @@ export function JobCard({
           {(job.progressMessage || job.lastLogMessage) && (
             <div className="mt-2 space-y-1">
               {job.progressMessage ? (
-                <p className="text-xs font-bold text-zinc-900">
+                <p className="text-xs font-black text-foreground">
                   {job.progressMessage}
                 </p>
               ) : null}
               {job.lastLogMessage ? (
-                <div className="flex items-center gap-2 text-zinc-500">
+                <div className="flex items-center gap-2 text-muted-foreground">
                   {job.lastLogLevel ? (
                     <LogLevelBadge level={job.lastLogLevel} />
                   ) : null}
-                  <span className="line-clamp-1 text-[11px] font-medium">
+                  <span className="line-clamp-1 text-[11px] font-black uppercase tracking-widest opacity-80">
                     {job.lastLogMessage}
                   </span>
                   {job.lastLogAt ? (
-                    <span className="shrink-0 tabular-nums text-[10px] font-black uppercase tracking-tighter">
+                    <span className="shrink-0 tabular-nums text-[10px] font-black uppercase tracking-widest">
                       {new Date(job.lastLogAt).toLocaleTimeString()}
                     </span>
                   ) : null}
@@ -332,7 +341,7 @@ export function JobCard({
         </div>
 
         {/* Action Buttons */}
-        <div className="mt-2 flex items-center justify-between pt-2 border-t border-zinc-950/5">
+        <div className="mt-2 flex items-center justify-between pt-2 border-t border-border/50">
           <div className="flex items-center gap-2">
             {/* Chunks Toggle */}
             {hasChunks && (
@@ -340,7 +349,7 @@ export function JobCard({
                 variant="outline"
                 size="sm"
                 onClick={() => onTogglePanel("chunks")}
-                className={`text-[10px] h-7 gap-1.5 ${expandedPanel === "chunks" ? "bg-zinc-100" : ""}`}
+                className={`text-[10px] font-black uppercase tracking-widest h-7 gap-1.5 rounded-none ${expandedPanel === "chunks" ? "bg-muted" : ""}`}
               >
                 <Layers className="h-3.5 w-3.5" />
                 {job.chunkSummary.total} Chunks
@@ -357,13 +366,13 @@ export function JobCard({
               variant="outline"
               size="sm"
               onClick={() => onTogglePanel("logs")}
-              className={`text-[10px] h-7 gap-1.5 ${expandedPanel === "logs" ? "bg-zinc-100" : ""}`}
+              className={`text-[10px] font-black uppercase tracking-widest h-7 gap-1.5 rounded-none ${expandedPanel === "logs" ? "bg-muted" : ""}`}
             >
               Logs
               {logCount > 0 && (
                 <Badge
                   variant="secondary"
-                  className="ml-0.5 text-[9px] px-1.5 py-0 rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+                  className="ml-0.5 text-[9px] px-1.5 py-0 rounded-none border border-border"
                 >
                   {logCount}
                 </Badge>
@@ -377,13 +386,21 @@ export function JobCard({
           </div>
 
           <div className="flex items-center gap-2">
+            {job.officialBrandPhase === "url_discovery" && reviewHref ? (
+              <Button variant="outline" size="sm" asChild className="h-7 rounded-none text-[10px]">
+                <Link href={reviewHref}>
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Review Candidates
+                </Link>
+              </Button>
+            ) : null}
             {isActive && (
               <Button
                 variant="destructive"
                 size="sm"
                 onClick={() => onCancelClick(job.id)}
                 disabled={cancellingId === job.id}
-                className="h-7 w-7 p-0"
+                className="h-7 w-7 p-0 rounded-none"
               >
                 {cancellingId === job.id ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -392,7 +409,7 @@ export function JobCard({
                 )}
               </Button>
             )}
-            <Button variant="outline" size="sm" asChild className="h-7 w-7 p-0">
+            <Button variant="outline" size="sm" asChild className="h-7 w-7 p-0 rounded-none">
               <Link href={`/admin/scrapers/runs/${job.id}`}>
                 <ExternalLink className="h-3.5 w-3.5" />
               </Link>

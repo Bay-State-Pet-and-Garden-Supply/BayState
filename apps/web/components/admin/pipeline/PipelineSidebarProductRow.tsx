@@ -45,7 +45,7 @@ export function PipelineSidebarProductRow({
       data-sku={product.sku}
       className={cn(
         "cursor-pointer transition-colors relative min-w-0",
-        isFocused ? "bg-zinc-100" : "hover:bg-zinc-50"
+        isFocused ? "bg-feed-bag-cream" : "hover:bg-feed-bag-cream/50"
       )}
       onClick={() => onPreferredSkuChange(product.sku)}
     >
@@ -88,24 +88,24 @@ export function PipelineSidebarProductRow({
                   visibleProducts,
                 );
               }}
-              className="h-4 w-4 border-zinc-950 data-[state=checked]:bg-zinc-950 data-[state=checked]:border-zinc-950"
+              className="h-4 w-4 border-ledger-charcoal data-[state=checked]:bg-ledger-charcoal data-[state=checked]:border-ledger-charcoal"
             />
           </div>
           <div className="flex-1 min-w-0 overflow-hidden">
             <div className="flex justify-between items-start gap-2 min-w-0">
-              <div className="font-black text-[10px] text-zinc-500 truncate flex-1 uppercase tracking-tighter">
+              <div className="font-black text-[10px] text-muted-foreground truncate flex-1 uppercase tracking-widest">
                 {product.sku}
               </div>
               {price !== undefined && (
-                <div className="text-sm font-black text-zinc-950 shrink-0 uppercase tracking-tighter">
+                <div className="text-sm font-black text-ledger-charcoal shrink-0 uppercase tracking-widest">
                   ${Number(price).toFixed(2)}
                 </div>
               )}
             </div>
             <div
               className={cn(
-                "text-sm font-black uppercase tracking-tighter line-clamp-2 mt-0.5 break-all",
-                isFocused ? "text-zinc-950" : "text-zinc-700"
+                "text-sm font-black uppercase tracking-widest line-clamp-2 mt-0.5 break-all",
+                isFocused ? "text-ledger-charcoal" : "text-ledger-charcoal/80"
               )}
             >
               {name}
@@ -117,13 +117,13 @@ export function PipelineSidebarProductRow({
                   <Badge
                     key={key}
                     variant="secondary"
-                    className="text-[10px] px-1.5 py-0 font-black uppercase tracking-tighter bg-zinc-100 text-zinc-950 border border-zinc-950 truncate max-w-full"
+                    className="text-[10px] px-1.5 py-0 font-black uppercase tracking-widest bg-feed-bag-cream text-ledger-charcoal border border-ledger-charcoal truncate max-w-full rounded-none"
                   >
                     {key}
                   </Badge>
                 ))}
                 {sourceKeys.length === 0 && (
-                  <span className="text-[10px] text-zinc-500 shrink-0 font-black uppercase tracking-tighter">
+                  <span className="text-[10px] text-muted-foreground shrink-0 font-black uppercase tracking-widest">
                     —
                   </span>
                 )}
@@ -135,3 +135,4 @@ export function PipelineSidebarProductRow({
     </TableRow>
   );
 }
+

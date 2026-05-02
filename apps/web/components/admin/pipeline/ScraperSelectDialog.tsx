@@ -405,8 +405,7 @@ export function ScraperSelectDialog({
 
                         {officialBrandMode === 'discover' ? (
                             <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
-                                Searches Serper for official brand product URLs, then runs Crawl4AI
-                                extraction against discovered URLs.
+                                Searches Serper for product URLs and saves candidates for human review before extraction.
                             </div>
                         ) : (
                             <div className="space-y-2">

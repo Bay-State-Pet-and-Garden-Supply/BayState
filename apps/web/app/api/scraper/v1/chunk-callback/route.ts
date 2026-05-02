@@ -205,6 +205,53 @@ export async function persistOfficialBrandDiscoveryResults(
     return persistedCount;
 }
 
+function toOptionalString(value: unknown): string | null {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function normalizeSkuList(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return Array.from(
+        new Set(
+            value
+                .map((entry) => toOptionalString(entry))
+                .filter((entry): entry is string => Boolean(entry))
+        )
+    );
+}
+
+async function markOfficialBrandExtractionCandidatesFailed(
+    supabase: SupabaseClient,
+    jobId: string,
+    skus: string[],
+    errorMessage: string,
+    nowIso: string,
+): Promise<void> {
+    const targetSkus = Array.from(new Set(skus.filter(Boolean)));
+    if (targetSkus.length === 0) {
+        return;
+    }
+
+    const { error } = await supabase
+        .from('official_brand_url_candidates')
+        .update({
+            selection_status: 'failed',
+            extraction_job_id: jobId,
+            error_message: errorMessage,
+            updated_at: nowIso,
+        })
+        .eq('extraction_job_id', jobId)
+        .in('sku', targetSkus)
+        .in('selection_status', ['selected', 'failed']);
+
+    if (error) {
+        console.warn(`[Chunk Callback] Failed to mark Official Brand candidates as failed for job ${jobId}:`, error);
+    }
+}
+
 export async function POST(request: NextRequest) {
     console.log('[Chunk Callback] POST request received');
     try {
@@ -349,6 +396,16 @@ export async function POST(request: NextRequest) {
 
         if (error_message || persistenceErrorMessage) {
             updateData.error_message = persistenceErrorMessage || error_message;
+        }
+
+        if (effectiveChunkStatus === 'failed' && officialBrandPhase === 'extraction' && !isTestJob) {
+            await markOfficialBrandExtractionCandidatesFailed(
+                supabase,
+                jobId,
+                normalizeSkuList(chunk.skus),
+                persistenceErrorMessage || error_message || 'Official Brand extraction failed',
+                new Date().toISOString(),
+            );
         }
 
         const callbackLogs = Array.isArray(results?.logs)
@@ -507,6 +564,16 @@ export async function POST(request: NextRequest) {
                     );
 
                     if (failedSkus.length > 0) {
+                        if (officialBrandPhase === 'extraction') {
+                            await markOfficialBrandExtractionCandidatesFailed(
+                                supabase,
+                                jobId,
+                                failedSkus,
+                                terminalMessage,
+                                completedAt,
+                            );
+                        }
+
                         const { error: pipelineStatusError } = await supabase
                             .from('products_ingestion')
                             .update({

@@ -80,10 +80,10 @@ export function ImageCarousel({
     <div className="space-y-6">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground">
             Product Media
           </Label>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
             {selectedImages.length > 0
               ? `${currentImageIndex + 1} of ${selectedImages.length} selected`
               : "No images selected"}
@@ -91,7 +91,7 @@ export function ImageCarousel({
         </div>
 
         {/* Large Image Carousel */}
-        <div className="relative group rounded-none border border-zinc-950 bg-white overflow-hidden shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+        <div className="relative group rounded-none border border-border bg-card overflow-hidden">
           {selectedImages.length > 0 ? (
             <Carousel
               setApi={setCarouselApi}
@@ -103,7 +103,7 @@ export function ImageCarousel({
               <CarouselContent>
                 {selectedImages.map((url, index) => (
                   <CarouselItem key={url}>
-                    <div className="relative aspect-square flex items-center justify-center p-4 bg-white">
+                    <div className="relative aspect-square flex items-center justify-center p-4 bg-card">
                       <Dialog>
                         <DialogTrigger asChild>
                           <div className="relative w-full h-full cursor-zoom-in group/image">
@@ -112,14 +112,14 @@ export function ImageCarousel({
                               alt={`Product image ${index + 1}`}
                               className="w-full h-full object-contain"
                             />
-                            <div className="absolute inset-0 bg-zinc-950/0 group-hover/image:bg-zinc-950/5 transition-colors flex items-center justify-center opacity-0 group-hover/image:opacity-100">
-                              <div className="bg-white p-2 rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
-                                <Maximize2 className="h-5 w-5 text-zinc-950" />
+                            <div className="absolute inset-0 bg-foreground/0 group-hover/image:bg-foreground/5 transition-colors flex items-center justify-center opacity-0 group-hover/image:opacity-100">
+                              <div className="bg-card p-2 rounded-none border border-border">
+                                <Maximize2 className="h-5 w-5 text-foreground" />
                               </div>
                             </div>
                           </div>
                         </DialogTrigger>
-                        <DialogContent className="max-w-[95vw] sm:max-w-[95vw] max-h-[95vh] p-0 overflow-hidden bg-white/95 backdrop-blur-sm border border-zinc-950 shadow-2xl rounded-none">
+                        <DialogContent className="max-w-[95vw] sm:max-w-[95vw] max-h-[95vh] p-0 overflow-hidden bg-card/95 backdrop-blur-sm border border-border rounded-none">
                           <DialogTitle className="sr-only">
                             Zoomed product image {index + 1}
                           </DialogTitle>
@@ -129,8 +129,8 @@ export function ImageCarousel({
                               alt={`Product image ${index + 1} (Zoomed)`}
                               className="max-w-full max-h-full object-contain drop-shadow-2xl"
                             />
-                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-white px-4 py-2 rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
-                              <span className="text-xs font-black uppercase tracking-tighter text-zinc-950 truncate max-w-[300px]">
+                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-card px-4 py-2 rounded-none border border-border">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-foreground truncate max-w-[300px]">
                                 {url.split("/").pop()}
                               </span>
                             </div>
@@ -139,7 +139,7 @@ export function ImageCarousel({
                       </Dialog>
                       <button
                         onClick={() => onToggleImage(url)}
-                        className="absolute top-4 right-4 bg-white text-zinc-950 border border-zinc-950 rounded-none p-1.5 shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-zinc-100 transition-all z-20"
+                        className="absolute top-4 right-4 bg-card text-foreground border border-border rounded-none p-1.5 hover:bg-feed-bag-cream transition-all z-20"
                         title="Remove this image"
                       >
                         <X className="h-4 w-4" />
@@ -150,15 +150,15 @@ export function ImageCarousel({
               </CarouselContent>
               {selectedImages.length > 1 && (
                 <>
-                  <CarouselPrevious className="left-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white border border-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)]" />
-                  <CarouselNext className="right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white border border-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)]" />
+                  <CarouselPrevious className="left-2 opacity-0 group-hover:opacity-100 transition-opacity bg-card border border-border rounded-none shadow-none" />
+                  <CarouselNext className="right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-card border border-border rounded-none shadow-none" />
                 </>
               )}
             </Carousel>
           ) : (
-            <div className="aspect-square flex flex-col items-center justify-center text-zinc-400 bg-zinc-50 border border-zinc-950 border-dashed rounded-none m-2">
+            <div className="aspect-square flex flex-col items-center justify-center text-muted-foreground bg-feed-bag-cream border border-border border-dashed rounded-none m-2">
               <ImageIcon className="h-12 w-12 mb-2 opacity-20" />
-              <p className="text-sm font-black uppercase tracking-tighter">
+              <p className="text-[10px] font-black uppercase tracking-widest">
                 No images selected
               </p>
             </div>
@@ -175,8 +175,8 @@ export function ImageCarousel({
                 className={cn(
                   "group/thumb relative flex-shrink-0 w-16 h-16 rounded-none border overflow-hidden cursor-pointer transition-all",
                   currentImageIndex === index
-                    ? "border-zinc-950 ring-2 ring-zinc-950/10 scale-105 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
-                    : "border-zinc-200 opacity-60 hover:opacity-100 hover:border-zinc-950",
+                    ? "border-border ring-2 ring-border/10 scale-105"
+                    : "border-muted opacity-60 hover:opacity-100 hover:border-border",
                 )}
               >
                 <img
@@ -195,7 +195,7 @@ export function ImageCarousel({
                         moveImage(index, "left");
                       }}
                       className={cn(
-                        "pointer-events-auto bg-white border border-zinc-950 p-0.5 shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-zinc-100 disabled:opacity-0 transition-all",
+                        "pointer-events-auto bg-card border border-border p-0.5 hover:bg-feed-bag-cream disabled:opacity-0 transition-all",
                         index === 0 && "hidden",
                       )}
                     >
@@ -208,7 +208,7 @@ export function ImageCarousel({
                         moveImage(index, "right");
                       }}
                       className={cn(
-                        "pointer-events-auto bg-white border border-zinc-950 p-0.5 shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-zinc-100 disabled:opacity-0 transition-all",
+                        "pointer-events-auto bg-card border border-border p-0.5 hover:bg-feed-bag-cream disabled:opacity-0 transition-all",
                         index === selectedImages.length - 1 && "hidden",
                       )}
                     >

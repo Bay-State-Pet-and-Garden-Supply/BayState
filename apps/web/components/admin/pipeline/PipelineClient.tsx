@@ -8,6 +8,7 @@ import {
   useMemo,
   useTransition,
 } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -18,6 +19,7 @@ import {
   Layers,
   Tag,
   Edit2,
+  Globe,
 } from "lucide-react";
 import { StageTabs } from "./StageTabs";
 import { ProductTable } from "./ProductTable";
@@ -1067,12 +1069,27 @@ export function PipelineClient({
 
       if (res.ok) {
         const data = await res.json();
+        const isOfficialBrandDiscovery =
+          enrichmentMethod === "official_brand" && options?.phase === "url_discovery";
+        const reviewCohortId = officialBrandSelection.cohortId;
         toast.success(
-          isAdditionalScrape
-            ? `Started additional scrape for ${skus.length} product${skus.length > 1 ? "s" : ""}`
-            : `Created scrape job for ${skus.length} product${skus.length > 1 ? "s" : ""} with ${scrapers.length} scraper${scrapers.length !== 1 ? "s" : ""}`,
+          isOfficialBrandDiscovery
+            ? `Started Official Brand discovery for ${skus.length} product${skus.length > 1 ? "s" : ""}`
+            : isAdditionalScrape
+              ? `Started additional scrape for ${skus.length} product${skus.length > 1 ? "s" : ""}`
+              : `Created scrape job for ${skus.length} product${skus.length > 1 ? "s" : ""} with ${scrapers.length} scraper${scrapers.length !== 1 ? "s" : ""}`,
           {
-            description: `Job ID: ${data.jobIds?.[0]?.slice(0, 8) ?? "unknown"}...`,
+            description: isOfficialBrandDiscovery
+              ? `Candidates will be saved for review. Job ID: ${data.jobIds?.[0]?.slice(0, 8) ?? "unknown"}...`
+              : `Job ID: ${data.jobIds?.[0]?.slice(0, 8) ?? "unknown"}...`,
+            ...(isOfficialBrandDiscovery && reviewCohortId
+              ? {
+                  action: {
+                    label: "Review Candidates",
+                    onClick: () => router.push(`/admin/pipeline/official-brand?cohort_id=${encodeURIComponent(reviewCohortId)}`),
+                  },
+                }
+              : {}),
           },
         );
 
@@ -1104,6 +1121,14 @@ export function PipelineClient({
     product_line: productLineFilter,
     cohort_id: cohortIdFilter,
   };
+  const officialBrandReviewCohortId =
+    cohortIdFilter ||
+    (officialBrandSelection.allowed && officialBrandSelection.cohortId
+      ? officialBrandSelection.cohortId
+      : "");
+  const officialBrandReviewHref = officialBrandReviewCohortId
+    ? `/admin/pipeline/official-brand?cohort_id=${encodeURIComponent(officialBrandReviewCohortId)}`
+    : null;
   const applyFilterState = (newFilters: PipelineFiltersState) => {
     setSourceFilter(newFilters.source || "");
     setProductLineFilter(newFilters.product_line || "");
@@ -1114,7 +1139,7 @@ export function PipelineClient({
     <div className="flex flex-wrap items-center gap-2">
       {shellControlsBelongToRoute ? (
         <>
-          <div className="flex shrink-0 items-center justify-center h-8 w-8 border border-zinc-950 bg-white shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-zinc-50 transition-colors">
+          <div className="flex shrink-0 items-center justify-center h-8 w-8 border border-border bg-card hover:bg-muted/50 transition-colors">
             <Checkbox
               aria-label="Select all visible products"
               checked={
@@ -1140,7 +1165,7 @@ export function PipelineClient({
                   setSelectedSkus(next);
                 }
               }}
-              className="h-4 w-4 rounded-none border-2 border-zinc-950 accent-zinc-950 data-[state=checked]:bg-zinc-950 data-[state=checked]:text-white data-[state=indeterminate]:bg-zinc-950 data-[state=indeterminate]:text-white"
+              className="h-4 w-4 rounded-none border border-border accent-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground"
             />
           </div>
           <PipelineSearchField
@@ -1159,6 +1184,15 @@ export function PipelineClient({
           showSourceFilter={false}
           className="h-8"
         />
+      ) : null}
+
+      {officialBrandReviewHref ? (
+        <Button variant="outline" size="sm" asChild className="h-8">
+          <Link href={officialBrandReviewHref}>
+            <Globe className="h-4 w-4" />
+            Official Brand Candidates
+          </Link>
+        </Button>
       ) : null}
 
       {currentStage === "imported" && (
@@ -1414,8 +1448,8 @@ export function PipelineClient({
                   onSelectAllTotal={handleSelectAll}
                 />
               ) : (
-                <div className="border-4 border-zinc-950 shadow-[8px_8px_0px_rgba(0,0,0,1)] bg-white overflow-hidden">
-                  <Accordion type="multiple" className="divide-y-2 divide-zinc-950">
+                <div className="border border-border bg-card overflow-hidden rounded-[var(--surface-admin-radius)]">
+                  <Accordion type="multiple" className="divide-y divide-border">
                     {groupedProducts.cohortIds.map((cohortId) => {
                       const groupProducts =
                         groupedProducts.groups[cohortId] || [];
@@ -1429,7 +1463,7 @@ export function PipelineClient({
                           value={cohortId}
                           className="border-none"
                         >
-                          <div className="flex items-center hover:bg-zinc-100 bg-zinc-50 pr-2 group border-b border-zinc-950 last:border-b-0">
+                          <div className="flex items-center hover:bg-muted/30 bg-muted/10 pr-2 group border-b border-border last:border-b-0">
                             <div className="pl-4 flex items-center shrink-0">
                                <input
                                   type="checkbox"
@@ -1452,7 +1486,7 @@ export function PipelineClient({
                                       setSelectedSkus(next);
                                     }
                                   }}
-                                  className="h-4 w-4 rounded-none border-2 border-zinc-950 cursor-pointer accent-zinc-950"
+                                  className="h-4 w-4 rounded-none border border-border cursor-pointer accent-primary"
                                 />
                             </div>
 
@@ -1461,10 +1495,10 @@ export function PipelineClient({
                               className="flex-1 px-3 py-3 hover:no-underline [&[data-state=open]>div>svg]:rotate-90"
                             >
                               <div className="flex items-center gap-3 overflow-hidden">
-                                <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 text-zinc-950" />
+                                <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 text-foreground" />
                                 <div className="flex items-center gap-2 overflow-hidden">
                                   <Layers className="h-4 w-4 shrink-0 text-brand-forest-green" />
-                                  <span className="font-black text-base uppercase tracking-tighter text-zinc-950 truncate">
+                                  <span className="font-black text-base uppercase tracking-tighter text-foreground truncate">
                                     {formatPipelineBatchLabel(
                                       cohortId,
                                       groupedProducts.names[cohortId] || null,
@@ -1486,7 +1520,7 @@ export function PipelineClient({
                               )}
                               <Badge
                                 variant="secondary"
-                                className="bg-zinc-950 text-white rounded-none font-black uppercase text-[10px]"
+                                className="bg-foreground text-background rounded-none font-black uppercase text-[10px]"
                               >
                                 {groupProducts.length} items
                               </Badge>
@@ -1495,7 +1529,7 @@ export function PipelineClient({
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-7 border border-zinc-950 text-zinc-950 hover:bg-zinc-100 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all px-2 text-[10px] font-black uppercase tracking-tighter"
+                                    className="h-7 border border-border text-foreground hover:bg-muted rounded-none active:translate-x-[1px] active:translate-y-[1px] transition-all px-2 text-[10px] font-black uppercase tracking-widest"
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
@@ -1582,9 +1616,9 @@ export function PipelineClient({
             aria-live="polite"
             aria-busy={isLoading || isNavigating || isSearching}
           >
-            <div className="flex flex-col items-center gap-2 rounded-lg bg-background/80 px-8 py-6 border border-border shadow-sm backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-2 rounded-[var(--surface-admin-radius)] bg-background/80 px-8 py-6 border border-border shadow-md backdrop-blur-sm">
               <Activity className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
-              <p className="text-sm font-semibold">
+              <p className="text-sm font-black uppercase tracking-widest">
                 Updating Results...
               </p>
             </div>

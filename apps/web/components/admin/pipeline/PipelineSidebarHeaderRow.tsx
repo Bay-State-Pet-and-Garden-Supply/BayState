@@ -45,7 +45,7 @@ export function PipelineSidebarHeaderRow({
   return (
     <TableRow
       key={`header-${cohortId}`}
-      className="bg-zinc-200 hover:bg-zinc-300 border-b-4 border-zinc-950 min-w-0 cursor-pointer select-none sticky top-0 z-20"
+      className="bg-muted hover:bg-muted/80 border-b-4 border-ledger-charcoal min-w-0 cursor-pointer select-none sticky top-0 z-20"
       onClick={() => onToggleCollapse?.(cohortId)}
     >
       <TableCell className="p-0 max-w-0 w-full overflow-hidden">
@@ -54,7 +54,7 @@ export function PipelineSidebarHeaderRow({
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 text-zinc-950 hover:bg-zinc-400"
+              className="h-6 w-6 p-0 text-ledger-charcoal hover:bg-muted/50"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -79,28 +79,28 @@ export function PipelineSidebarHeaderRow({
                 }
               }}
               onClick={(e) => e.stopPropagation()}
-              className="h-4 w-4 border-zinc-950 data-[state=checked]:bg-zinc-950 data-[state=checked]:border-zinc-950"
+              className="h-4 w-4 border-ledger-charcoal data-[state=checked]:bg-ledger-charcoal data-[state=checked]:border-ledger-charcoal"
             />
           </div>
           <div className="flex flex-1 items-center gap-2 overflow-hidden min-w-0">
-            <div className="font-black text-[11px] uppercase tracking-tighter text-zinc-950 truncate">
+            <div className="font-black text-[11px] uppercase tracking-widest text-ledger-charcoal truncate">
               {formatPipelineBatchLabel(cohortId, cohortName || null)}
             </div>
             {cohortBrand && (
-              <Badge variant="outline" className="h-4 text-[9px] px-1 font-black border-brand-forest-green text-brand-forest-green bg-brand-forest-green/10 uppercase tracking-tighter shrink-0">
+              <Badge variant="outline" className="h-4 text-[9px] px-1 font-black border-brand-forest-green text-brand-forest-green bg-brand-forest-green/10 uppercase tracking-widest shrink-0 rounded-none">
                 {cohortBrand}
               </Badge>
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-auto">
-            <Badge variant="secondary" className="h-4 text-[9px] px-1 bg-zinc-950 text-white font-black uppercase tracking-tighter border-none">
+            <Badge variant="secondary" className="h-4 text-[9px] px-1 bg-ledger-charcoal text-white font-black uppercase tracking-widest border-none rounded-none">
               {groupProducts.length}
             </Badge>
             {cohortId !== "ungrouped" && onEditCohort && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 text-zinc-500 hover:text-zinc-950 hover:bg-zinc-400/50"
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-ledger-charcoal hover:bg-muted/50"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -120,3 +120,4 @@ export function PipelineSidebarHeaderRow({
     </TableRow>
   );
 }
+

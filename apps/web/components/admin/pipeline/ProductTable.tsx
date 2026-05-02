@@ -206,7 +206,7 @@ export function ProductTable({
         ),
         cell: ({ row }) => (
           <div 
-            className="font-mono text-[10px] text-zinc-950 font-black uppercase tracking-tight tabular-nums"
+            className="font-mono text-[10px] text-foreground font-black uppercase tracking-widest tabular-nums"
             role="gridcell"
             aria-label={String(row.getValue("sku"))}
           >
@@ -226,7 +226,7 @@ export function ProductTable({
           return (
             <div className="flex items-center gap-2 max-w-[300px]">
               <span
-                className="truncate font-black uppercase tracking-tight text-xs text-zinc-950"
+                className="truncate font-black uppercase tracking-widest text-xs text-foreground"
                 title={name}
               >
                 {name}
@@ -256,7 +256,7 @@ export function ProductTable({
         cell: ({ row }) => {
           const price = row.getValue("price") as number;
           return (
-            <div className="text-right font-black text-zinc-950 text-xs tabular-nums">
+            <div className="text-right font-black text-foreground text-xs tabular-nums">
               {price > 0 ? `$${price.toFixed(2)}` : "—"}
             </div>
           );
@@ -285,7 +285,7 @@ export function ProductTable({
                     {count > 0 ? (
                       <Badge
                         variant="secondary"
-                        className="text-[10px] px-1.5 py-0 rounded-none border border-zinc-950 bg-zinc-100 text-zinc-950 font-black uppercase tabular-nums"
+                        className="text-[10px] px-1.5 py-0 rounded-none border border-border bg-muted text-foreground font-black uppercase tracking-widest tabular-nums"
                       >
                         {count} source{count !== 1 ? "s" : ""}
                       </Badge>
@@ -451,7 +451,7 @@ export function ProductTable({
 
   return (
     <div
-      className="max-h-[600px] min-h-0 overflow-auto rounded-none outline-none focus-within:ring-1 focus-within:ring-zinc-950 p-1 pr-8 pb-8 [&_[data-slot=table-container]]:overflow-visible"
+      className="max-h-[600px] min-h-0 overflow-auto rounded-none outline-none focus-within:ring-1 focus-within:ring-border p-1 pr-8 pb-8 [&_[data-slot=table-container]]:overflow-visible"
       ref={containerRef}
       onKeyDown={handleKeyDown}
       tabIndex={0}
@@ -460,7 +460,7 @@ export function ProductTable({
       aria-rowcount={rows.length}
     >
       <Table className="table-fixed border-separate border-spacing-0">
-        <TableHeader className="sticky top-0 bg-zinc-50 z-20 shadow-[0_1px_0_0_rgba(0,0,0,1)]">
+        <TableHeader className="sticky top-0 bg-muted z-20 border-b border-border">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow
               key={headerGroup.id}
@@ -484,7 +484,7 @@ export function ProductTable({
                   <TableHead
                     key={header.id}
                     className={cn(
-                      "h-8 py-0 font-black uppercase tracking-tighter text-zinc-950 bg-inherit",
+                      "h-8 py-0 font-black uppercase tracking-widest text-foreground bg-inherit",
                       widthClass,
                     )}
                   >
@@ -523,11 +523,11 @@ export function ProductTable({
                   data-index={index}
                   data-state={isSelected && "selected"}
                   className={cn(
-                    "cursor-pointer transition-colors border-b border-zinc-200 h-8",
+                    "cursor-pointer transition-colors border-b border-border/10 h-8",
                     isSelected
-                      ? "bg-brand-forest-green/10"
-                      : "hover:bg-zinc-50",
-                    isFocused && "ring-2 ring-inset ring-zinc-950 bg-zinc-100",
+                      ? "bg-brand-gold/15 border-l-2 border-l-brand-gold"
+                      : "hover:bg-feed-bag-cream/50",
+                    isFocused && "ring-0 border-2 border-primary bg-feed-bag-cream",
                   )}
                   onClick={(e) => {
                     setFocusedIndex(index);
@@ -561,7 +561,7 @@ export function ProductTable({
             <TableRow>
               <TableCell
                 colSpan={columns.length}
-                className="h-16 text-center font-bold uppercase tracking-widest text-zinc-400"
+                className="h-16 text-center font-black uppercase tracking-widest text-zinc-400"
               >
                 No products in this step.
               </TableCell>

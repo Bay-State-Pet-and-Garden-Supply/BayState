@@ -306,11 +306,11 @@ export function ScrapedResultsView({
 
   // 5. Effects
   return (
-    <div className="flex h-full min-h-0 border-4 border-zinc-950 rounded-none overflow-hidden bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)] max-w-full m-1 mr-4 mb-4">
+    <div className="flex h-full min-h-0 border border-border rounded-none overflow-hidden bg-background max-w-full m-1 mr-4 mb-4">
       {/* Left Column: Product List */}
-      <div className="w-96 min-w-[384px] max-w-[384px] border-r border-zinc-950 flex flex-col shrink-0 bg-zinc-50 overflow-x-hidden">
-        <div className="flex items-center gap-2 border-b border-zinc-950 bg-white p-2">
-          <label className="flex shrink-0 items-center justify-center h-9 w-9 border border-zinc-950 bg-white shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-zinc-50 cursor-pointer transition-colors">
+      <div className="w-96 min-w-[384px] max-w-[384px] border-r border-border flex flex-col shrink-0 bg-background overflow-x-hidden">
+        <div className="flex items-center gap-2 border-b border-border bg-card p-2">
+          <label className="flex shrink-0 items-center justify-center h-9 w-9 border border-border bg-card hover:bg-muted cursor-pointer transition-colors">
             <Checkbox
               checked={
                 sortedProducts.length > 0 &&
@@ -327,7 +327,7 @@ export function ScrapedResultsView({
                   onDeselectAll?.(sortedProducts.map((p) => p.sku));
                 }
               }}
-              className="h-4 w-4 rounded-none border-2 border-zinc-950 accent-zinc-950 data-[state=checked]:bg-zinc-950 data-[state=checked]:text-white data-[state=indeterminate]:bg-zinc-950 data-[state=indeterminate]:text-white"
+              className="h-4 w-4 rounded-none border border-border accent-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground"
             />
           </label>
           <PipelineSearchField
@@ -342,7 +342,7 @@ export function ScrapedResultsView({
               onFilterChange={onFilterChange}
               availableSources={availableSources}
               showSourceFilter={true}
-              className="h-9 w-9 shrink-0 p-0 border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+              className="h-9 w-9 shrink-0 p-0 border border-border"
             />
           ) : null}
         </div>
@@ -363,23 +363,23 @@ export function ScrapedResultsView({
       </div>
 
       {/* Right Column: Scraped Details */}
-      <div className="flex-1 flex flex-col bg-white overflow-hidden">
+      <div className="flex-1 flex flex-col bg-card overflow-hidden">
         {selectedProduct ? (
           <>
             {/* Header & Source Switcher */}
-            <div className="bg-white border-b border-zinc-950 flex-shrink-0 z-10">
+            <div className="bg-card border-b border-border flex-shrink-0 z-10">
               <div className="p-2 sm:p-3 flex justify-between items-center">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Package className="h-5 w-5 text-zinc-500 shrink-0" />
+                  <Package className="h-5 w-5 text-muted-foreground shrink-0" />
                   <div className="min-w-0">
-                    <h2 className="text-xl font-black uppercase tracking-tighter text-zinc-950 line-clamp-1" title={selectedProduct.consolidated?.name || selectedProduct.input?.name || ""}>
+                    <h2 className="text-xl font-black uppercase tracking-tighter text-foreground line-clamp-1" title={selectedProduct.consolidated?.name || selectedProduct.input?.name || ""}>
                       {selectedProduct.consolidated?.name ||
                         selectedProduct.input?.name}
                     </h2>
-                    <div className="text-[10px] font-black uppercase tracking-tighter text-zinc-500 flex items-center gap-2">
-                      <span className="bg-zinc-100 border border-zinc-950 px-1.5 py-0.5 rounded-none">{selectedProduct.sku}</span>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                      <span className="bg-muted border border-border px-1.5 py-0.5 rounded-none">{selectedProduct.sku}</span>
                       <span>•</span>
-                      <span className="font-black text-zinc-950">
+                      <span className="font-black text-foreground">
                         ${Number(currentSourceData?.price || selectedProduct.input?.price || 0).toFixed(2)}
                       </span>
                     </div>
@@ -390,7 +390,7 @@ export function ScrapedResultsView({
                     variant="outline" 
                     size="sm" 
                     onClick={() => onRefresh(true)} 
-                    className="h-8 w-8 p-0 rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] flex items-center justify-center"
+                    className="h-8 w-8 p-0 rounded-none border border-border flex items-center justify-center"
                     title="Refresh Data"
                   >
                     <RotateCcw className="h-4 w-4" />
@@ -405,12 +405,12 @@ export function ScrapedResultsView({
                     onValueChange={setPreferredSource}
                     className="flex-1"
                   >
-                    <TabsList className="h-8 justify-start bg-zinc-100 rounded-none border border-zinc-950 p-0.5 w-fit">
+                    <TabsList className="h-8 justify-start bg-muted rounded-none border border-border p-0.5 w-fit">
                       {sourceKeys.map((key) => (
                         <TabsTrigger
                           key={key}
                           value={key}
-                          className="text-[10px] px-2 h-6 uppercase font-black tracking-tighter rounded-none data-[state=active]:bg-zinc-950 data-[state=active]:text-white data-[state=active]:shadow-none"
+                          className="text-[10px] px-2 h-6 uppercase font-black tracking-widest rounded-none data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-none"
                         >
                           {key}
                         </TabsTrigger>
@@ -420,7 +420,7 @@ export function ScrapedResultsView({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-red-600 h-8 px-3 hover:bg-red-50 font-black uppercase tracking-tighter text-[10px] rounded-none border border-transparent hover:border-red-600"
+                    className="text-destructive h-8 px-3 hover:bg-destructive/10 font-black uppercase tracking-widest text-[10px] rounded-none border border-transparent hover:border-destructive"
                     onClick={() => handleDeleteSourceClick(activeSource)}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
@@ -429,9 +429,9 @@ export function ScrapedResultsView({
                 </div>
               ) : (
                 <div className="px-2 sm:px-3 pb-2 sm:pb-3">
-                  <div className="flex items-center gap-2 text-amber-950 bg-amber-50 p-2 rounded-none border border-amber-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                  <div className="flex items-center gap-2 text-warning-foreground bg-warning/20 p-2 rounded-none border border-warning">
                     <AlertCircle className="h-4 w-4" />
-                    <span className="text-[10px] font-black uppercase tracking-tighter">
+                    <span className="text-[10px] font-black uppercase tracking-widest">
                       No results for this SKU yet.
                     </span>
                   </div>
@@ -448,7 +448,7 @@ export function ScrapedResultsView({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {/* Left side: Image Carousel */}
                     <div className="space-y-2">
-                      <div className="aspect-square rounded-none border border-zinc-950 bg-zinc-50 flex items-center justify-center overflow-hidden relative group shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                      <div className="aspect-square rounded-none border border-border bg-muted flex items-center justify-center overflow-hidden relative group">
                         {currentSourceData.images && currentSourceData.images.length > 0 ? (
                           <>
                             <img
@@ -470,9 +470,9 @@ export function ScrapedResultsView({
                                     );
                                   }}
                                   aria-label="Previous image"
-                                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-white hover:bg-zinc-100 p-1 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] opacity-0 group-hover:opacity-100 transition-opacity border border-zinc-950"
+                                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-card hover:bg-muted p-1 rounded-none opacity-0 group-hover:opacity-100 transition-opacity border border-border"
                                 >
-                                  <ChevronLeft className="h-4 w-4 text-zinc-950" aria-hidden="true" />
+                                  <ChevronLeft className="h-4 w-4 text-foreground" aria-hidden="true" />
                                 </button>
                                 <button
                                   onClick={(e) => {
@@ -482,13 +482,13 @@ export function ScrapedResultsView({
                                     );
                                   }}
                                   aria-label="Next image"
-                                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-white hover:bg-zinc-100 p-1 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] opacity-0 group-hover:opacity-100 transition-opacity border border-zinc-950"
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-card hover:bg-muted p-1 rounded-none opacity-0 group-hover:opacity-100 transition-opacity border border-border"
                                 >
-                                  <ChevronRight className="h-4 w-4 text-zinc-950" aria-hidden="true" />
+                                  <ChevronRight className="h-4 w-4 text-foreground" aria-hidden="true" />
                                 </button>
                                 
                                 {/* Image Counter Overlay */}
-                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-white px-1.5 py-0.5 rounded-none text-[9px] font-black uppercase tracking-tighter text-zinc-950 border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-card px-1.5 py-0.5 rounded-none text-[9px] font-black uppercase tracking-widest text-foreground border border-border">
                                   {currentImageIndex + 1} / {currentSourceData.images.length}
                                 </div>
                               </>
@@ -503,9 +503,9 @@ export function ScrapedResultsView({
                             onError={() => handleImageError(currentSourceData.image_url)}
                           />
                         ) : (
-                          <div className="flex flex-col items-center text-zinc-400">
+                          <div className="flex flex-col items-center text-muted-foreground">
                             <ImageIcon className="h-10 w-10 mb-1 opacity-20" />
-                            <span className="text-[10px] font-black uppercase tracking-tighter">No image available</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest">No image available</span>
                           </div>
                         )}
                         
@@ -514,9 +514,9 @@ export function ScrapedResultsView({
                             href={currentSourceData.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="absolute top-2 right-2 bg-white p-1.5 rounded-none opacity-0 group-hover:opacity-100 transition-opacity shadow-[1px_1px_0px_rgba(0,0,0,1)] border border-zinc-950"
+                            className="absolute top-2 right-2 bg-card p-1.5 rounded-none opacity-0 group-hover:opacity-100 transition-opacity border border-border"
                           >
-                            <ExternalLink className="h-3.5 w-3.5 text-zinc-950" />
+                            <ExternalLink className="h-3.5 w-3.5 text-foreground" />
                           </a>
                         )}
                       </div>
@@ -528,8 +528,8 @@ export function ScrapedResultsView({
                             <div
                               key={i}
                               onClick={() => setCurrentImageIndex(i)}
-                              className={`aspect-square w-12 rounded-none border overflow-hidden bg-zinc-50 cursor-pointer transition-all flex-shrink-0 ${
-                                currentImageIndex === i ? "border-zinc-950 ring-2 ring-zinc-950/10" : "border-zinc-200 opacity-60 hover:opacity-100 hover:border-zinc-950"
+                              className={`aspect-square w-12 rounded-none border overflow-hidden bg-muted cursor-pointer transition-all flex-shrink-0 ${
+                                currentImageIndex === i ? "border-primary ring-2 ring-primary/10" : "border-border opacity-60 hover:opacity-100 hover:border-primary"
                               }`}
                             >
                               <img
@@ -551,12 +551,12 @@ export function ScrapedResultsView({
                         <div className="flex justify-between items-baseline">
                           <Badge
                             variant="outline"
-                            className="bg-zinc-950 text-white border border-zinc-950 rounded-none font-black uppercase tracking-tighter text-[9px]"
+                            className="bg-foreground text-background border border-foreground rounded-none font-black uppercase tracking-widest text-[9px]"
                           >
                             {activeSource.toUpperCase()} RESULT
                           </Badge>
                           {currentSourceData.price && (
-                            <span className="text-2xl font-black text-zinc-950">
+                            <span className="text-2xl font-black text-foreground">
                               $
                               {typeof currentSourceData.price === "number"
                                 ? currentSourceData.price.toFixed(2)
@@ -564,16 +564,16 @@ export function ScrapedResultsView({
                             </span>
                           )}
                         </div>
-                        <h1 className="text-xl font-black uppercase tracking-tighter text-zinc-950 leading-tight">
+                        <h1 className="text-xl font-black uppercase tracking-widest text-foreground leading-tight">
                           {currentSourceData.title ||
                             currentSourceData.name ||
                             "Untitled Product"}
                         </h1>
                         <div className="flex flex-wrap items-center gap-y-1.5 gap-x-3">
                           {currentSourceData.brand && (
-                            <p className="text-[10px] font-black uppercase tracking-tighter text-zinc-500">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                               Brand:{" "}
-                              <span className="text-zinc-950">
+                              <span className="text-foreground">
                                 {currentSourceData.brand}
                               </span>
                             </p>
@@ -583,7 +583,7 @@ export function ScrapedResultsView({
                               href={currentSourceData.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-none text-[10px] font-black bg-zinc-100 text-zinc-950 border border-zinc-950 hover:bg-zinc-200 transition-colors uppercase tracking-tighter shadow-[1px_1px_0px_rgba(0,0,0,1)]"
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-none text-[10px] font-black bg-muted text-foreground border border-border hover:bg-accent transition-colors uppercase tracking-widest"
                             >
                               <ExternalLink className="h-3 w-3" />
                               View Source
@@ -592,26 +592,26 @@ export function ScrapedResultsView({
                         </div>
                       </div>
 
-                      <Separator className="h-0.5 bg-zinc-950" />
+                      <Separator className="h-0.5 bg-foreground" />
 
                       {/* Technical Specs Grid */}
-                      <div className="grid grid-cols-2 gap-2 text-sm bg-white p-2 rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                      <div className="grid grid-cols-2 gap-2 text-sm bg-card p-2 rounded-none border border-border">
                         <div className="space-y-2">
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-[9px] uppercase font-black text-zinc-500 tracking-tighter">
+                            <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">
                               Manufacturer Product #
                             </span>
-                            <span className="font-bold text-zinc-950 truncate uppercase tracking-tighter text-[11px]">
+                            <span className="font-bold text-foreground truncate uppercase tracking-widest text-[11px]">
                               {currentSourceData.manufacturer_part_number ||
                                 currentSourceData.item_number ||
                                 "N/A"}
                             </span>
                           </div>
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-[9px] uppercase font-black text-zinc-500 tracking-tighter">
+                            <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">
                               Weight / Size
                             </span>
-                            <span className="text-zinc-950 font-bold uppercase tracking-tighter text-[11px]">
+                            <span className="text-foreground font-bold uppercase tracking-widest text-[11px]">
                               {currentSourceData.weight ||
                                 currentSourceData.size ||
                                 currentSourceData.unit_of_measure ||
@@ -621,18 +621,18 @@ export function ScrapedResultsView({
                         </div>
                         <div className="space-y-2">
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-[9px] uppercase font-black text-zinc-500 tracking-tighter">
+                            <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">
                               UPC / Barcode
                             </span>
-                            <span className="text-zinc-950 font-bold uppercase tracking-tighter text-[11px]">
+                            <span className="text-foreground font-bold uppercase tracking-widest text-[11px]">
                               {currentSourceData.upc || "N/A"}
                             </span>
                           </div>
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-[9px] uppercase font-black text-zinc-500 tracking-tighter">
+                            <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">
                               Status
                             </span>
-                            <span className="text-zinc-950 truncate uppercase font-black text-[9px] tracking-tighter">
+                            <span className="text-foreground truncate uppercase font-black text-[9px] tracking-widest">
                               {currentSourceData.availability || "Unknown"}
                             </span>
                           </div>
@@ -640,12 +640,12 @@ export function ScrapedResultsView({
                       </div>
 
                       <div className="space-y-1.5">
-                        <h3 className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-foreground">
                           Description
                         </h3>
                         <div className="relative">
                           <div
-                            className={`text-xs leading-relaxed text-zinc-700 prose prose-sm max-w-none transition-all duration-300 ${
+                            className={`text-xs leading-relaxed text-muted-foreground prose prose-sm max-w-none transition-all duration-300 ${
                               isDescriptionExpanded ? "" : "line-clamp-4"
                             }`}
                           >
@@ -656,7 +656,7 @@ export function ScrapedResultsView({
                                 }}
                               />
                             ) : (
-                              <p className="italic text-[10px] font-black uppercase tracking-tighter text-zinc-500">
+                              <p className="italic text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                                 No description provided by source.
                               </p>
                             )}
@@ -665,7 +665,7 @@ export function ScrapedResultsView({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="mt-1.5 text-[9px] h-6 text-zinc-950 hover:bg-zinc-100 font-black uppercase tracking-tighter rounded-none border border-zinc-950"
+                              className="mt-1.5 text-[9px] h-6 text-foreground hover:bg-muted font-black uppercase tracking-widest rounded-none border border-border"
                               onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
                             >
                               {isDescriptionExpanded ? "Show Less" : "Show More"}
@@ -676,7 +676,7 @@ export function ScrapedResultsView({
 
                       {currentSourceData.url && (
                         <Button
-                          className="w-full h-9 bg-zinc-950 hover:bg-zinc-800 text-white rounded-none border-b border-r border-zinc-700 active:border-0 transition-all font-black uppercase tracking-tighter text-xs"
+                          className="w-full h-9 bg-foreground hover:bg-foreground/90 text-background rounded-none border-b border-r border-muted-foreground/30 active:border-0 transition-all font-black uppercase tracking-widest text-xs"
                           asChild
                         >
                           <a
@@ -696,11 +696,11 @@ export function ScrapedResultsView({
                   <div className="pt-2">
                     <Separator className="mb-2" />
                     <div className="space-y-2">
-                      <h3 className="text-[10px] font-black uppercase tracking-tighter text-zinc-500 flex items-center gap-2">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                         <Package className="h-3.5 w-3.5" />
                         Technical Details (Raw Data)
                       </h3>
-                      <div className="bg-zinc-50 rounded-none p-2 font-mono text-[9px] overflow-x-auto border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                      <div className="bg-muted rounded-none p-2 font-mono text-[9px] overflow-x-auto border border-border">
                         <pre className="font-bold">
                           {JSON.stringify(
                             currentSourceData,
@@ -718,12 +718,12 @@ export function ScrapedResultsView({
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center text-zinc-500">
+                <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
                   <Package className="h-12 w-12 mb-2 opacity-20" />
-                  <h3 className="text-lg font-black uppercase tracking-tighter text-zinc-950">
+                  <h3 className="text-lg font-black uppercase tracking-widest text-foreground">
                     No results for {activeSource}
                   </h3>
-                  <p className="text-[10px] font-black uppercase tracking-tighter mt-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest mt-1">
                     Try selecting a different source or re-scraping this
                     product.
                   </p>
@@ -732,10 +732,10 @@ export function ScrapedResultsView({
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-zinc-500">
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
             <Package className="h-12 w-12 mb-2 opacity-20" />
-            <h3 className="text-lg font-black uppercase tracking-tighter text-zinc-950">Select a product</h3>
-            <p className="text-[10px] font-black uppercase tracking-tighter mt-1">Choose a product from the list to view its scraped results.</p>
+            <h3 className="text-lg font-black uppercase tracking-widest text-foreground">Select a product</h3>
+            <p className="text-[10px] font-black uppercase tracking-widest mt-1">Choose a product from the list to view its scraped results.</p>
           </div>
         )}
       </div>

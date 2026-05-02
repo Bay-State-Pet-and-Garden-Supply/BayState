@@ -25,6 +25,9 @@ interface ChunkDetail {
 
 interface ActiveJob {
   id: string;
+  jobType: string | null;
+  officialBrandPhase: string | null;
+  cohortId: string | null;
   skuCount: number;
   scrapers: string[];
   status: "pending" | "running" | "completed" | "failed" | "cancelled";
@@ -54,6 +57,38 @@ interface ActiveJob {
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function toOptionalString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : null;
+}
+
+function getOfficialBrandPhase(job: { type?: unknown; config?: unknown; metadata?: unknown }): string | null {
+  if (job.type === "official_brand_url_discovery") {
+    return "url_discovery";
+  }
+
+  if (job.type === "official_brand_extraction") {
+    return "extraction";
+  }
+
+  const config = isRecord(job.config) ? job.config : {};
+  const metadata = isRecord(job.metadata) ? job.metadata : {};
+  return toOptionalString(config.phase) ?? toOptionalString(metadata.official_brand_phase);
+}
+
+function getCohortId(config: unknown): string | null {
+  if (!isRecord(config) || !isRecord(config.cohort)) {
+    return null;
+  }
+
+  return toOptionalString(config.cohort.id);
+}
+
 export async function GET() {
   const auth = await requireAdminAuth();
   if (!auth.authorized) {
@@ -66,7 +101,7 @@ export async function GET() {
   const { data: activeJobs, error: activeJobsError } = await supabase
     .from("scrape_jobs")
     .select(
-      "id, status, created_at, completed_at, updated_at, scrapers, skus, runner_name, heartbeat_at, progress_percent, progress_message, progress_phase, progress_updated_at, current_sku, items_processed, items_total, last_event_at, last_log_at, last_log_level, last_log_message",
+      "id, type, config, metadata, status, created_at, completed_at, updated_at, scrapers, skus, runner_name, heartbeat_at, progress_percent, progress_message, progress_phase, progress_updated_at, current_sku, items_processed, items_total, last_event_at, last_log_at, last_log_level, last_log_message",
     )
     .in("status", ["pending", "claimed", "running"])
     .order("created_at", { ascending: false })
@@ -85,7 +120,7 @@ export async function GET() {
   const { data: recentJobs, error: recentJobsError } = await supabase
     .from("scrape_jobs")
     .select(
-      "id, status, created_at, completed_at, updated_at, scrapers, skus, runner_name, heartbeat_at, progress_percent, progress_message, progress_phase, progress_updated_at, current_sku, items_processed, items_total, last_event_at, last_log_at, last_log_level, last_log_message",
+      "id, type, config, metadata, status, created_at, completed_at, updated_at, scrapers, skus, runner_name, heartbeat_at, progress_percent, progress_message, progress_phase, progress_updated_at, current_sku, items_processed, items_total, last_event_at, last_log_at, last_log_level, last_log_message",
     )
     .in("status", ["completed", "failed"])
     .gte("completed_at", oneHourAgo)
@@ -175,6 +210,13 @@ export async function GET() {
 
     return {
       id: job.id,
+      jobType: typeof job.type === "string" ? job.type : null,
+      officialBrandPhase: getOfficialBrandPhase({
+        type: job.type,
+        config: job.config,
+        metadata: job.metadata,
+      }),
+      cohortId: getCohortId(job.config),
       skuCount: Array.isArray(job.skus) ? job.skus.length : 0,
       scrapers: job.scrapers || [],
       status,

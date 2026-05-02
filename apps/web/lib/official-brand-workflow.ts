@@ -214,21 +214,29 @@ function buildCandidateRow(input: CandidateRowInput): CandidateRow | null {
 
 export function buildManualOfficialBrandCandidateRows(args: {
     urlsBySku: Record<string, string>;
+    candidateSourceBySku?: Record<string, 'manual' | 'serper'>;
     cohort?: OfficialBrandCohortLike;
     extractionJobId: string;
     nowIso: string;
 }): CandidateRow[] {
     return Object.entries(args.urlsBySku)
-        .map(([sku, url]) => buildCandidateRow({
-            sku,
-            url,
-            candidateSource: 'manual',
-            selectionStatus: 'selected',
-            cohort: args.cohort,
-            extractionJobId: args.extractionJobId,
-            metadata: { source: 'manual_url_mode' },
-            nowIso: args.nowIso,
-        }))
+        .map(([sku, url]) => {
+            const candidateSource = args.candidateSourceBySku?.[sku] ?? 'manual';
+            return buildCandidateRow({
+                sku,
+                url,
+                candidateSource,
+                selectionStatus: 'selected',
+                cohort: args.cohort,
+                extractionJobId: args.extractionJobId,
+                metadata: {
+                    source: candidateSource === 'manual'
+                        ? 'manual_url_mode'
+                        : 'official_brand_review_selection',
+                },
+                nowIso: args.nowIso,
+            });
+        })
         .filter((row): row is CandidateRow => Boolean(row));
 }
 

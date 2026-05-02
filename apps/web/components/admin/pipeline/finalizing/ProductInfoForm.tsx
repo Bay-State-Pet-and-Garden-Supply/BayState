@@ -19,26 +19,26 @@ export function ProductInfoForm({
   return (
     <div className="space-y-2 min-w-0">
       <div className="space-y-1">
-        <h3 className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">
+        <h3 className="text-[10px] font-black uppercase tracking-widest text-foreground">
           Product Info
         </h3>
-        <Separator className="h-1 bg-zinc-950" />
+        <Separator className="h-1 bg-foreground" />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="product-name" className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">Product Name</Label>
+        <Label htmlFor="product-name" className="text-[10px] font-black uppercase tracking-widest text-foreground">Product Name</Label>
         <Input
           id="product-name"
           value={formData.name}
           onChange={(e) => handleNameChange(e.target.value)}
           placeholder="e.g. Life Protection Formula Adult Chicken & Brown Rice Recipe 30 lb."
-          className="h-8 border border-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold text-xs"
+          className="h-8 border border-border rounded-none focus-visible:ring-primary font-black text-xs"
         />
       </div>
 
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="product-price" className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">Price</Label>
+          <Label htmlFor="product-price" className="text-[10px] font-black uppercase tracking-widest text-foreground">Price</Label>
           <Input
             id="product-price"
             type="number"
@@ -49,12 +49,12 @@ export function ProductInfoForm({
               handleInputChange("price", e.target.value)
             }
             placeholder="e.g. 24.99"
-            className="h-8 border border-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold text-xs"
+            className="h-8 border border-border rounded-none focus-visible:ring-primary font-black tabular-nums text-xs"
           />
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="product-weight" className="text-[10px] font-black uppercase tracking-tighter text-zinc-950">Weight (lbs)</Label>
+          <Label htmlFor="product-weight" className="text-[10px] font-black uppercase tracking-widest text-foreground">Weight (lbs)</Label>
           <Input
             id="product-weight"
             value={formData.weight}
@@ -62,7 +62,7 @@ export function ProductInfoForm({
               handleInputChange("weight", e.target.value)
             }
             placeholder="e.g. 30"
-            className="h-8 border border-zinc-950 rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] focus-visible:ring-zinc-950 font-bold text-xs"
+            className="h-8 border border-border rounded-none focus-visible:ring-primary font-black tabular-nums text-xs"
           />
         </div>
       </div>
