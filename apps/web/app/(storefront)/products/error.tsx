@@ -17,7 +17,7 @@ export default function ProductsError({ error, reset }: ErrorProps) {
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center p-6 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="mb-6 rounded-full bg-red-50 p-4 ring-1 ring-red-100">
+      <div className="mb-6 rounded-sm bg-red-50 p-4 ring-1 ring-red-100">
         <AlertCircle className="h-10 w-10 text-red-600" />
       </div>
       
@@ -30,7 +30,7 @@ export default function ProductsError({ error, reset }: ErrorProps) {
       </p>
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <Button onClick={reset} size="lg" className="gap-2 font-medium">
+        <Button onClick={reset} size="lg" className="gap-2 bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)] hover:bg-[oklch(65%_0.14_85)] font-semibold tracking-wide">
           <RefreshCw className="h-4 w-4" />
           Reload Catalog
         </Button>

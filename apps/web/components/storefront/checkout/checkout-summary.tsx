@@ -63,15 +63,15 @@ export function CheckoutSummary({
           {items.map((item) => (
             <li key={item.id} className="flex justify-between py-3">
               <div>
-                <p className="font-medium text-zinc-900">{item.name}</p>
-                <p className="text-sm text-zinc-700">Qty: {item.quantity}</p>
+                <p className="font-medium text-foreground">{item.name}</p>
+                <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
                 {item.pickup_only && (
                   <span className="inline-flex items-center text-xs text-amber-600 mt-1">
                     Pickup only
                   </span>
                 )}
               </div>
-              <p className="font-medium text-zinc-900">
+              <p className="font-medium text-foreground">
                 {formatCurrency(item.price * item.quantity)}
               </p>
             </li>
@@ -92,7 +92,7 @@ export function CheckoutSummary({
 
         <div className="space-y-2 border-t pt-4">
           <div className="flex justify-between text-sm">
-            <span className="text-zinc-700">Subtotal</span>
+            <span className="text-muted-foreground">Subtotal</span>
             <span className="font-medium">{formatCurrency(subtotal)}</span>
           </div>
           {discount > 0 && (
@@ -104,13 +104,13 @@ export function CheckoutSummary({
           {fulfillmentMethod === 'delivery' ? (
             <>
               <div className="flex justify-between text-sm">
-                <span className="text-zinc-700">Delivery</span>
+                <span className="text-muted-foreground">Delivery</span>
                 <span className="font-medium">
                   {deliveryQuote?.available ? formatCurrency(totalDeliveryFee) : 'Calculated at checkout'}
                 </span>
               </div>
               {servicesFee > 0 && (
-                <div className="flex justify-between text-sm text-zinc-600 pl-4">
+                <div className="flex justify-between text-sm text-muted-foreground pl-4">
                   <span>Delivery services</span>
                   <span className="font-medium">{formatCurrency(servicesFee)}</span>
                 </div>
@@ -118,12 +118,12 @@ export function CheckoutSummary({
             </>
           ) : (
             <div className="flex justify-between text-sm">
-              <span className="text-zinc-700">Shipping</span>
+              <span className="text-muted-foreground">Shipping</span>
               <span className="font-medium text-green-600">FREE</span>
             </div>
           )}
           <div className="flex justify-between text-sm">
-            <span className="text-zinc-700">Tax (6.25%)</span>
+            <span className="text-muted-foreground">Tax (6.25%)</span>
             <span className="font-medium">{formatCurrency(tax)}</span>
           </div>
           <div className="flex justify-between border-t pt-2 text-lg font-semibold">

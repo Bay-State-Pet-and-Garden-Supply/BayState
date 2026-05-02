@@ -33,7 +33,7 @@ export function CheckoutFulfillment({
             className={`flex items-center space-x-3 rounded-lg border p-4 transition-colors ${
               fulfillmentMethod === 'pickup'
                 ? 'border-primary bg-primary/5'
-                : 'hover:bg-zinc-50'
+                : 'hover:bg-muted'
             }`}
           >
             <RadioGroupItem value="pickup" id="pickup" />
@@ -41,7 +41,7 @@ export function CheckoutFulfillment({
               <Label htmlFor="pickup" className="font-medium cursor-pointer">
                 Store Pickup
               </Label>
-              <p className="text-sm text-zinc-600">
+              <p className="text-sm text-muted-foreground">
                 Pick up at our store - usually ready same day
               </p>
             </div>
@@ -50,7 +50,7 @@ export function CheckoutFulfillment({
             className={`flex items-center space-x-3 rounded-lg border p-4 transition-colors ${
               fulfillmentMethod === 'delivery'
                 ? 'border-primary bg-primary/5'
-                : 'hover:bg-zinc-50'
+                : 'hover:bg-muted'
             }`}
           >
             <RadioGroupItem value="delivery" id="delivery" />
@@ -58,7 +58,7 @@ export function CheckoutFulfillment({
               <Label htmlFor="delivery" className="font-medium cursor-pointer">
                 Local Delivery
               </Label>
-              <p className="text-sm text-zinc-600">
+              <p className="text-sm text-muted-foreground">
                 We deliver within 30 miles
               </p>
             </div>

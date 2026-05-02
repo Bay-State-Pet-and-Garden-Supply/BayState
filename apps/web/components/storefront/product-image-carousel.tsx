@@ -51,7 +51,7 @@ export function ProductImageCarousel({
 
     if (cleanImages.length === 0) {
         return (
-            <div className="aspect-square flex items-center justify-center rounded-xl bg-zinc-100 text-zinc-600">
+            <div className="aspect-square flex items-center justify-center rounded-xl bg-muted text-muted-foreground">
                 No image available
             </div>
         );
@@ -64,7 +64,7 @@ export function ProductImageCarousel({
                 <CarouselContent>
                     {cleanImages.map((image, index) => (
                         <CarouselItem key={index}>
-                            <div className="aspect-square overflow-hidden rounded-xl bg-zinc-100 relative">
+                            <div className="aspect-square overflow-hidden rounded-xl bg-muted relative">
                                 <Image
                                     src={image}
                                     alt={`${productName} - Image ${index + 1}`}
@@ -88,7 +88,7 @@ export function ProductImageCarousel({
                             key={index}
                             onClick={() => scrollTo(index)}
                             className={cn(
-                                'relative aspect-square w-20 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-100 ring-2 transition-all',
+                                'relative aspect-square w-20 flex-shrink-0 overflow-hidden rounded-lg bg-muted ring-2 transition-all',
                                 current === index
                                     ? 'ring-zinc-900 border-2 border-white'
                                     : 'ring-transparent hover:ring-zinc-300'

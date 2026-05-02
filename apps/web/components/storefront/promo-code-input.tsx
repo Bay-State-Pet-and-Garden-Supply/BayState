@@ -52,7 +52,7 @@ export function PromoCodeInput({
 
   if (appliedCode) {
     return (
-      <div className={`rounded-lg border border-green-200 bg-green-50 p-3 ${className}`}>
+      <div className={`rounded-sm border border-green-200 bg-green-50 p-3 ${className}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-green-600" />
@@ -69,7 +69,7 @@ export function PromoCodeInput({
           </div>
           <button
             onClick={onRemove}
-            className="rounded-full p-2 text-green-600 hover:bg-green-100 touch-manipulation"
+            className="rounded-sm p-2 text-green-600 hover:bg-green-100 touch-manipulation"
             aria-label="Remove promo code"
           >
             <X className="h-5 w-5" />
@@ -83,7 +83,7 @@ export function PromoCodeInput({
     <div className={className}>
       <form onSubmit={handleSubmit} className="flex gap-2">
         <div className="relative flex-1">
-          <Tag className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-700" />
+          <Tag className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="text"
             placeholder="Promo code"

@@ -271,12 +271,12 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
               </Link>
             )}
 
-              <h1 className="text-3xl font-extrabold text-zinc-900 leading-tight">
+              <h1 className="text-3xl font-bold text-foreground leading-tight">
                 {isGroupPage ? group?.name : product.name}
               </h1>
             
             {/* Trust Badges & Microdata */}
-            <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-500">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
                 <ShieldCheck className="h-4 w-4 text-green-600" />
                 Satisfaction Guaranteed
@@ -303,9 +303,9 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
           )}
 
           {/* Pricing & Stock Action Box */}
-          <div className="rounded-lg border border-zinc-100 bg-white p-6 shadow-sm">
+          <div className="rounded-sm border border-[oklch(85%_0.03_160)] bg-card p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-zinc-900">{formattedPrice}</h3>
+              <h3 className="text-xl font-bold text-foreground">{formattedPrice}</h3>
               {(product.stock_status !== 'out_of_stock' || !product.is_special_order) && (
                 <Badge className={`${stockStatusColor} text-sm px-3 py-1`}>
                   {stockStatusLabel}
@@ -314,7 +314,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
             </div>
             
             <div className="space-y-3 mb-6">
-              <p className="text-sm text-zinc-500">Standard delivery or in-store pickup available.</p>
+              <p className="text-sm text-muted-foreground">Standard delivery or in-store pickup available.</p>
             </div>
 
             {/* Urgency & Fulfillment Badges */}
@@ -326,7 +326,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                 </p>
               )}
               {product.minimum_quantity !== undefined && product.minimum_quantity !== null && product.minimum_quantity > 1 && (
-                <p className="text-zinc-600">
+                <p className="text-muted-foreground">
                   Minimum order quantity: {product.minimum_quantity}
                 </p>
               )}
@@ -355,29 +355,29 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
 
           {/* Product Description */}
           {product.description && (
-            <p className="text-base leading-relaxed text-zinc-700">
+            <p className="text-base leading-relaxed text-muted-foreground">
               {product.description}
             </p>
           )}
 
           {/* Expanded Product Details */}
           <div className="border-t pt-6">
-            <h2 className="mb-4 text-xl font-bold text-zinc-900">Product Details</h2>
+            <h2 className="mb-4 text-xl font-bold text-foreground">Product Details</h2>
             <dl className="space-y-3 text-sm">
-              <div className="grid grid-cols-3 border-b border-zinc-100 pb-2">
-                <dt className="text-zinc-500">Item Number</dt>
-                <dd className="font-medium text-zinc-900 col-span-2">{product.slug}</dd>
+              <div className="grid grid-cols-3 border-b border-[oklch(90%_0.02_160)] pb-2">
+                <dt className="text-muted-foreground">Item Number</dt>
+                <dd className="font-medium text-foreground col-span-2">{product.slug}</dd>
               </div>
               {product.brand && (
-                <div className="grid grid-cols-3 border-b border-zinc-100 pb-2">
-                  <dt className="text-zinc-500">Brand</dt>
-                  <dd className="font-medium text-zinc-900 col-span-2">{product.brand.name}</dd>
+                <div className="grid grid-cols-3 border-b border-[oklch(90%_0.02_160)] pb-2">
+                  <dt className="text-muted-foreground">Brand</dt>
+                  <dd className="font-medium text-foreground col-span-2">{product.brand.name}</dd>
                 </div>
               )}
               {product.weight !== null && product.weight !== undefined && (
-                <div className="grid grid-cols-3 border-b border-zinc-100 pb-2">
-                  <dt className="text-zinc-500">Weight</dt>
-                  <dd className="font-medium text-zinc-900 col-span-2">{product.weight} lbs</dd>
+                <div className="grid grid-cols-3 border-b border-[oklch(90%_0.02_160)] pb-2">
+                  <dt className="text-muted-foreground">Weight</dt>
+                  <dd className="font-medium text-foreground col-span-2">{product.weight} lbs</dd>
                 </div>
               )}
 
@@ -386,7 +386,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
           
           {/* Long Description (Rich Text) */}
           {product.long_description && (
-            <div className="border-t pt-6 prose prose-sm max-w-none text-zinc-700">
+            <div className="border-t pt-6 prose prose-sm max-w-none text-muted-foreground">
               <div dangerouslySetInnerHTML={{ __html: product.long_description }} />
             </div>
           )}

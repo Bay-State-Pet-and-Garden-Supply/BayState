@@ -24,9 +24,9 @@ export default async function PetsPage() {
 
     return (
         <div className="space-y-12">
-            <div className="border-b-8 border-zinc-900 pb-4">
-                <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase font-display leading-none text-zinc-900">My Pets</h1>
-                <p className="text-zinc-600 font-bold uppercase tracking-widest text-sm mt-2">
+            <div className="border-b border-[oklch(85%_0.03_160)] pb-4">
+                <h1 className="text-4xl md:text-6xl font-bold tracking-tight font-display leading-none text-foreground">My Pets</h1>
+                <p className="text-muted-foreground font-medium tracking-wide text-sm mt-2">
                     Tell us about your pets for personalized recommendations and care tips.
                 </p>
             </div>

@@ -28,9 +28,9 @@ export function ProductCard({ product }: ProductCardProps) {
         <WishlistButton productId={product.id} />
       </div>
       <Link href={`/products/${product.slug}`} className="block h-full">
-        <Card className="h-full flex flex-col cursor-pointer overflow-hidden rounded-none border-2 border-zinc-200 bg-white transition-all group-hover:border-zinc-900 group-hover:shadow-[4px_4px_0px_rgba(0,0,0,1)] group-hover:-translate-x-0.5 group-hover:-translate-y-0.5">
+        <Card className="h-full flex flex-col cursor-pointer overflow-hidden rounded-lg border border-[oklch(85%_0.03_160)] bg-card transition-all group-hover:border-[oklch(70%_0.04_160)] group-hover:shadow-md group-hover:-translate-y-0.5">
           <CardContent className="flex flex-1 flex-col p-0">
-            <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-white p-4 border-b border-zinc-100">
+            <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-card p-4 border-b border-[oklch(90%_0.02_160)]">
               {hasValidImage ? (
                 <div className="relative h-full w-full">
                   <Image
@@ -43,30 +43,30 @@ export function ProductCard({ product }: ProductCardProps) {
                   />
                 </div>
               ) : (
-                <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-zinc-50 text-zinc-300">
+                <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-muted text-muted-foreground">
                   <ImageIcon className="size-[--icon-size-2xl]" />
-                  <span className="text-xs font-black uppercase text-zinc-400">No Image</span>
+                  <span className="text-xs font-medium uppercase text-muted-foreground">No Image</span>
                 </div>
               )}
               
               <div className="absolute left-0 top-3 flex flex-col items-start gap-1">
                 {product.stock_status === 'out_of_stock' && !product.is_special_order && (
-                  <Badge className="rounded-none bg-red-600 hover:bg-red-700 text-white font-black uppercase text-[10px] px-2 py-0.5 shadow-sm border-r-2 border-b-2 border-black/20">
+                  <Badge className="rounded-md bg-red-600 hover:bg-red-700 text-white font-semibold uppercase text-[10px] px-2 py-0.5 shadow-sm">
                     Out of Stock
                   </Badge>
                 )}
                 {product.stock_status === 'pre_order' && (
-                  <Badge className="rounded-none bg-accent text-secondary hover:bg-accent/90 font-black uppercase text-[10px] px-2 py-0.5 border-r-2 border-b-2 border-black/20">
+                  <Badge className="rounded-md bg-primary text-primary-foreground hover:bg-primary/90 font-semibold uppercase text-[10px] px-2 py-0.5 shadow-sm">
                     Pre-Order
                   </Badge>
                 )}
                 {product.pickup_only && (
-                  <Badge className="rounded-none bg-zinc-900 text-white font-black uppercase text-[10px] px-2 py-0.5 border-r-2 border-b-2 border-white/20">
+                  <Badge className="rounded-md bg-[oklch(25%_0.02_90)] text-white font-semibold uppercase text-[10px] px-2 py-0.5 shadow-sm">
                     Pickup Only
                   </Badge>
                 )}
                 {product.is_special_order && (
-                  <Badge className="rounded-none bg-primary text-white font-black uppercase text-[10px] px-2 py-0.5 border-r-2 border-b-2 border-black/20">
+                  <Badge className="rounded-md bg-primary text-primary-foreground font-semibold uppercase text-[10px] px-2 py-0.5 shadow-sm">
                     Special Order
                   </Badge>
                 )}
@@ -75,18 +75,18 @@ export function ProductCard({ product }: ProductCardProps) {
 
             <div className="flex flex-1 flex-col p-4 pt-3">
               {product.brand && (
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-zinc-400 font-display">
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   {product.brand.name}
                 </p>
               )}
               
-              <h3 className="mb-2 line-clamp-2 text-sm font-bold uppercase tracking-tight text-zinc-800 leading-snug group-hover:text-primary transition-colors">
+              <h3 className="mb-2 line-clamp-2 text-sm font-semibold text-foreground leading-snug group-hover:text-primary transition-colors">
                 {product.name}
               </h3>
               
-              <div className="mt-auto flex flex-col gap-1 pt-2 border-t border-zinc-100">
+              <div className="mt-auto flex flex-col gap-1 pt-2 border-t border-[oklch(90%_0.02_160)]">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-black tracking-tighter text-zinc-900 font-display">
+                  <span className="text-xl font-bold tracking-tight text-foreground">
                     {formattedPrice}
                   </span>
                 </div>

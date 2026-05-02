@@ -31,34 +31,34 @@ export function CreateProfileCard({ userEmail, userName }: CreateProfileCardProp
   }
 
   return (
-    <div className="border-4 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(0,0,0,1)]">
-      <div className="bg-zinc-900 p-4 border-b-4 border-zinc-900 text-white flex items-center gap-3">
-        <UserPlus className="h-6 w-6 text-accent" />
+    <div className="border border-[oklch(85%_0.03_160)] bg-card shadow-md rounded-sm">
+      <div className="bg-[oklch(25%_0.02_90)] p-4 border-b border-[oklch(85%_0.03_160)] text-white flex items-center gap-3">
+        <UserPlus className="h-6 w-6 text-[oklch(72%_0.14_85)]" />
         <div className="flex flex-col">
-            <h2 className="text-2xl font-black uppercase tracking-tight font-display">Complete Your Profile</h2>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">We need to set up your profile to continue.</p>
+            <h2 className="text-2xl font-bold tracking-tight font-display">Complete Your Profile</h2>
+            <p className="text-xs font-medium tracking-wide text-white/70">We need to set up your profile to continue.</p>
         </div>
       </div>
       <div className="p-8 space-y-6">
-        <div className="space-y-3 bg-zinc-50 border-2 border-zinc-100 p-4">
-          <p className="text-xs font-black uppercase tracking-widest text-zinc-500">ACCOUNT DETAILS</p>
+        <div className="space-y-3 bg-muted border border-[oklch(90%_0.02_160)] p-4">
+          <p className="text-xs font-semibold text-muted-foreground">ACCOUNT DETAILS</p>
           <div className="grid gap-2">
-            <p className="text-sm font-bold"><span className="uppercase text-zinc-400 mr-2 text-[10px]">Email:</span> {userEmail}</p>
-            {userName && <p className="text-sm font-bold"><span className="uppercase text-zinc-400 mr-2 text-[10px]">Name:</span> {userName}</p>}
+            <p className="text-sm font-semibold"><span className="text-muted-foreground mr-2 text-[10px]">Email:</span> {userEmail}</p>
+            {userName && <p className="text-sm font-semibold"><span className="text-muted-foreground mr-2 text-[10px]">Name:</span> {userName}</p>}
           </div>
         </div>
 
         {error && (
-          <div className="flex items-center gap-3 p-4 border-2 border-red-600 bg-red-50 text-red-700 font-black uppercase tracking-tight text-xs">
+          <div className="flex items-center gap-3 p-4 border border-red-600 bg-red-50 text-red-700 font-medium text-sm rounded-sm">
             <AlertCircle className="h-5 w-5" />
             {error}
           </div>
         )}
 
-        <Button 
-          onClick={handleCreateProfile} 
+        <Button
+          onClick={handleCreateProfile}
           disabled={isPending}
-          className="w-full h-14 text-lg font-black uppercase tracking-widest border-b-4 border-black/20 rounded-none shadow-lg active:translate-y-1 active:border-b-0 transition-all"
+          className="w-full h-14 text-lg font-semibold tracking-wide bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)] hover:bg-[oklch(65%_0.14_85)]"
         >
           {isPending ? (
             <>

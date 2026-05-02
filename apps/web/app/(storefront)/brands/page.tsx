@@ -42,10 +42,10 @@ export default async function BrandsPage() {
         <h1 className="text-3xl font-bold tracking-tight text-primary mb-2">
           Our Brands
         </h1>
-        <h2 className="text-xl font-semibold text-zinc-700 mb-2">
+        <h2 className="text-xl font-semibold text-muted-foreground mb-2">
           Browse Brands
         </h2>
-        <p className="text-zinc-700">
+        <p className="text-muted-foreground">
           Browse our extensive collection of premium pet and garden brands.
         </p>
       </div>

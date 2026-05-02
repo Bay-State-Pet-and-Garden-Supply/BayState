@@ -22,9 +22,9 @@ export default async function ProfilePage() {
     if (!profile) {
         return (
             <div className="space-y-12">
-                <div className="border-b-8 border-zinc-900 pb-4">
-                    <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase font-display leading-none text-zinc-900">Profile</h1>
-                    <p className="text-zinc-600 font-bold uppercase tracking-widest text-sm mt-2">Manage your personal information.</p>
+                <div className="border-b border-[oklch(85%_0.03_160)] pb-4">
+                    <h1 className="text-4xl md:text-6xl font-bold tracking-tight font-display leading-none text-foreground">Profile</h1>
+                    <p className="text-muted-foreground font-medium tracking-wide text-sm mt-2">Manage your personal information.</p>
                 </div>
 
                 <CreateProfileCard 
@@ -37,16 +37,16 @@ export default async function ProfilePage() {
 
     return (
         <div className="space-y-12">
-            <div className="border-b-8 border-zinc-900 pb-4">
-                <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase font-display leading-none text-zinc-900">Profile</h1>
-                <p className="text-zinc-600 font-bold uppercase tracking-widest text-sm mt-2">Manage your personal information.</p>
+            <div className="border-b border-[oklch(85%_0.03_160)] pb-4">
+                <h1 className="text-4xl md:text-6xl font-bold tracking-tight font-display leading-none text-foreground">Profile</h1>
+                <p className="text-muted-foreground font-medium tracking-wide text-sm mt-2">Manage your personal information.</p>
             </div>
 
-            <div className="border-2 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(59,130,246,1)]">
-                <div className="bg-blue-600 p-4 border-b-2 border-zinc-900 text-white flex items-center justify-between">
+            <div className="border border-[oklch(85%_0.03_160)] bg-card shadow-sm">
+                <div className="bg-[oklch(38%_0.075_160)] p-4 border-b border-[oklch(85%_0.03_160)] text-white flex items-center justify-between">
                     <div className="flex flex-col">
-                        <h2 className="text-2xl font-black uppercase tracking-tight font-display">Personal Information</h2>
-                        <p className="text-xs font-bold uppercase tracking-widest text-blue-100">Update your name and contact details.</p>
+                        <h2 className="text-2xl font-semibold font-display">Personal Information</h2>
+                        <p className="text-xs font-medium tracking-wide text-primary-foreground/80">Update your name and contact details.</p>
                     </div>
                     <User className="h-6 w-6" />
                 </div>

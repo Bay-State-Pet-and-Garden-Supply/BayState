@@ -64,7 +64,7 @@ export function NewsletterSignup({
     return (
       <form onSubmit={handleSubmit} className={`flex gap-2 ${className}`}>
           <div className="relative flex-1">
-            <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-700" />
+            <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="email"
               placeholder="Enter your email"
@@ -79,7 +79,7 @@ export function NewsletterSignup({
               aria-label="Email address for newsletter"
             />
           </div>
-        <Button type="submit" disabled={!email.trim() || isLoading}>
+        <Button type="submit" disabled={!email.trim() || isLoading} className="bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)] hover:bg-[oklch(65%_0.14_85)] font-semibold tracking-wide">
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Subscribe'}
         </Button>
       </form>
@@ -88,16 +88,16 @@ export function NewsletterSignup({
 
   return (
     <div className={className}>
-      <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-700">
+      <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
         Stay Updated
       </h4>
-      <p id="newsletter-desc" className="mb-3 text-sm text-zinc-700">
+      <p id="newsletter-desc" className="mb-3 text-sm text-muted-foreground">
         Get exclusive deals and pet care tips delivered to your inbox.
       </p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div className="flex gap-3">
           <div className="relative flex-1">
-            <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-700" />
+            <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="email"
               placeholder="Enter your email"
@@ -113,7 +113,7 @@ export function NewsletterSignup({
               aria-describedby="newsletter-desc"
             />
           </div>
-          <Button type="submit" disabled={!email.trim() || isLoading}>
+          <Button type="submit" disabled={!email.trim() || isLoading} className="bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)] hover:bg-[oklch(65%_0.14_85)] font-semibold tracking-wide">
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Subscribe'}
           </Button>
         </div>
