@@ -41,6 +41,12 @@
       "sourceType": "github",
       "computedHash": "b5f892864e479f969820c353f44faeedc61981bf2d7a854367069a80e0a264e1"
     },
+    "fallow": {
+      "source": "fallow-rs/fallow-skills",
+      "sourceType": "github",
+      "skillPath": "fallow/skills/fallow/SKILL.md",
+      "computedHash": "41fe838b546ec589f1461e327878a5b7a928144a2317de3e8aa4482a43f4644d"
+    },
     "frontend-design-pro": {
       "source": "binjuhor/shadcn-lar",
       "sourceType": "github",
@@ -81,6 +87,12 @@
       "sourceType": "github",
       "computedHash": "f86d41cbe62c1224b77b673413a0141930a7d5d7054ea60a8192e354198cd71e"
     },
+    "supabase": {
+      "source": "supabase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/supabase/SKILL.md",
+      "computedHash": "5e179217b674b2c9617e54b09578b1119a315c784c22a9f22d940926de082d87"
+    },
     "tailwind-design-system": {
       "source": "wshobson/agents",
       "sourceType": "github",
@@ -105,6 +117,12 @@
       "source": "vercel/vercel",
       "sourceType": "github",
       "computedHash": "e05c669297e831880caba30e555d939febb0d42e222c871d72f0f314f01fad2c"
+    },
+    "vercel-cli-with-tokens": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/vercel-cli-with-tokens/SKILL.md",
+      "computedHash": "eb16b20dcbe6ce51e0372083d624e0847af1b09487ec99249227d5a8eddebfc0"
     }
   }
 }

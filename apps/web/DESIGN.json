@@ -1,0 +1,562 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-01T22:00:00Z",
+  "title": "Design System: Bay State Pet & Garden Supply",
+  "extensions": {
+    "colorMeta": {
+      "uniform-green": {
+        "role": "primary",
+        "displayName": "Uniform Green",
+        "canonical": "#14532D",
+        "tonalRamp": [
+          "#071a10",
+          "#0b2417",
+          "#0f2e1f",
+          "#133826",
+          "#17422e",
+          "#1c4d35",
+          "#20583d",
+          "#246345",
+          "#286e4d",
+          "#2d7955",
+          "#31845e",
+          "#369066",
+          "#3b9b6f",
+          "#40a778",
+          "#45b281",
+          "#4abe8b",
+          "#50ca94",
+          "#56d59e",
+          "#5ce1a8",
+          "#63ecb2"
+        ]
+      },
+      "shadow-pine": {
+        "role": "primary",
+        "displayName": "Shadow Pine",
+        "canonical": "#0B3D22",
+        "tonalRamp": [
+          "#040e08",
+          "#06170d",
+          "#072012",
+          "#092917",
+          "#0b321c",
+          "#0d3b21",
+          "#0f4426",
+          "#114d2b",
+          "#135630",
+          "#155f35",
+          "#17683a",
+          "#19713f",
+          "#1b7a44",
+          "#1d8349",
+          "#1f8c4e",
+          "#219553",
+          "#239e58",
+          "#25a85d",
+          "#27b162",
+          "#29ba67"
+        ]
+      },
+      "seedling-green": {
+        "role": "tertiary",
+        "displayName": "Seedling Green",
+        "canonical": "#16844D",
+        "tonalRamp": [
+          "#031a0d",
+          "#072816",
+          "#0b351f",
+          "#0f4328",
+          "#135131",
+          "#165b3a",
+          "#196643",
+          "#1c744c",
+          "#1f8055",
+          "#228f5e",
+          "#259d67",
+          "#28ab70",
+          "#2bb979",
+          "#2ec782",
+          "#31d58b",
+          "#34e394",
+          "#37f19d",
+          "#3affa6",
+          "#3dffaf",
+          "#40ffb8"
+        ]
+      },
+      "signet-burgundy": {
+        "role": "secondary",
+        "displayName": "Signet Burgundy",
+        "canonical": "#760C19",
+        "tonalRamp": [
+          "#170206",
+          "#2a030b",
+          "#3e0510",
+          "#510615",
+          "#65081a",
+          "#780a1f",
+          "#8c0c24",
+          "#9f0e29",
+          "#b3102e",
+          "#c61233",
+          "#d91539",
+          "#ec193e",
+          "#ee2d4e",
+          "#f0415f",
+          "#f25670",
+          "#f36b81",
+          "#f58092",
+          "#f695a3",
+          "#f8aab5",
+          "#f9bfc7"
+        ]
+      },
+      "burgundy-dark": {
+        "role": "secondary",
+        "displayName": "Burgundy Dark",
+        "canonical": "#4E0710",
+        "tonalRamp": [
+          "#0f0204",
+          "#1b0307",
+          "#28040a",
+          "#34050d",
+          "#410611",
+          "#4e0714",
+          "#5a0817",
+          "#670a1a",
+          "#740b1d",
+          "#800c20",
+          "#8d0d23",
+          "#991e31",
+          "#a62f40",
+          "#b24050",
+          "#bf5160",
+          "#cc6270",
+          "#d97380",
+          "#e68490",
+          "#f295a0",
+          "#ffa6b0"
+        ]
+      },
+      "corner-callout-gold": {
+        "role": "tertiary",
+        "displayName": "Corner Callout Gold",
+        "canonical": "#F6DB12",
+        "tonalRamp": [
+          "#332b02",
+          "#4d4104",
+          "#665705",
+          "#806d06",
+          "#998308",
+          "#b39909",
+          "#ccaf0b",
+          "#e6c50c",
+          "#f2d00f",
+          "#f4d624",
+          "#f5db3a",
+          "#f6df50",
+          "#f7e466",
+          "#f8e87c",
+          "#f9ed92",
+          "#faf1a8",
+          "#fbf5be",
+          "#fcf9d4",
+          "#fdfcea",
+          "#ffffff"
+        ]
+      },
+      "muted-gold": {
+        "role": "tertiary",
+        "displayName": "Muted Gold",
+        "canonical": "#E9B520",
+        "tonalRamp": [
+          "#302403",
+          "#483706",
+          "#604a08",
+          "#785d0b",
+          "#90700d",
+          "#a88310",
+          "#c09612",
+          "#d8a915",
+          "#e9b31c",
+          "#ebba36",
+          "#edc150",
+          "#efc86a",
+          "#f1cf84",
+          "#f3d69e",
+          "#f5ddb8",
+          "#f7e4d2",
+          "#f9ebec",
+          "#fbf2f6",
+          "#fdf9fb",
+          "#ffffff"
+        ]
+      },
+      "feed-bag-cream": {
+        "role": "neutral",
+        "displayName": "Feed Bag Cream",
+        "canonical": "#FFF8D8",
+        "tonalRamp": [
+          "#332e1d",
+          "#4d452c",
+          "#665c3a",
+          "#807349",
+          "#998a57",
+          "#b3a166",
+          "#ccb874",
+          "#e6cf83",
+          "#f9e392",
+          "#fae7a0",
+          "#fbebae",
+          "#fcefbc",
+          "#fdf3ca",
+          "#fdf7d8",
+          "#fefbe6",
+          "#fefff4",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff"
+        ]
+      },
+      "white-surface": {
+        "role": "neutral",
+        "displayName": "White Surface",
+        "canonical": "#FFFFFF",
+        "tonalRamp": [
+          "#333333",
+          "#4d4d4d",
+          "#666666",
+          "#808080",
+          "#999999",
+          "#b3b3b3",
+          "#cccccc",
+          "#e6e6e6",
+          "#f2f2f2",
+          "#f5f5f5",
+          "#f7f7f7",
+          "#fafafa",
+          "#fcfcfc",
+          "#fdfdfd",
+          "#fefefe",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff"
+        ]
+      },
+      "mulch-brown": {
+        "role": "neutral",
+        "displayName": "Mulch Brown",
+        "canonical": "#6B3A18",
+        "tonalRamp": [
+          "#150b05",
+          "#201109",
+          "#2b170c",
+          "#361d0f",
+          "#412313",
+          "#4c2916",
+          "#572f19",
+          "#62351d",
+          "#6d3a20",
+          "#784024",
+          "#834627",
+          "#8e4c2b",
+          "#99522e",
+          "#a45832",
+          "#af5e36",
+          "#ba643a",
+          "#c56a3e",
+          "#d07043",
+          "#db7647",
+          "#e67c4c"
+        ]
+      },
+      "ledger-charcoal": {
+        "role": "neutral",
+        "displayName": "Ledger Charcoal",
+        "canonical": "#211414",
+        "tonalRamp": [
+          "#080404",
+          "#0d0707",
+          "#120a0a",
+          "#170e0e",
+          "#1c1111",
+          "#211415",
+          "#261818",
+          "#2b1b1b",
+          "#301e1f",
+          "#352222",
+          "#3a2526",
+          "#3f2829",
+          "#442c2d",
+          "#492f30",
+          "#4e3334",
+          "#533637",
+          "#583a3b",
+          "#5d3d3f",
+          "#624142",
+          "#674446"
+        ]
+      },
+      "card-border": {
+        "role": "neutral",
+        "displayName": "Card Border",
+        "canonical": "#E7D8A8",
+        "tonalRamp": [
+          "#302a18",
+          "#484025",
+          "#605632",
+          "#786c3f",
+          "#90824c",
+          "#a89859",
+          "#c0ae66",
+          "#d8c473",
+          "#e7d582",
+          "#eadb93",
+          "#ede1a4",
+          "#f0e7b5",
+          "#f3edc6",
+          "#f6f3d7",
+          "#f9f9e8",
+          "#fcfff9",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Hero headlines and section anchors. Arvo slab-serif at heavy weight, uppercase, tight tracking. One per screen."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Product descriptions, footer text, admin body copy. Inter at 400 weight, 0.875–1rem, 65ch max line length."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Badges, buttons, category tags, status indicators, form labels. Inter at 900 weight, 0.625–0.75rem, uppercase, 0.15em+ letter-spacing."
+      },
+      "price": {
+        "displayName": "Price",
+        "purpose": "Product prices only. Arvo at 900 weight, 1.25rem, tight tracking. The only number in display type."
+      }
+    },
+    "shadows": [
+      {
+        "name": "stamp-sm",
+        "value": "1px 1px 0 rgba(0,0,0,1)",
+        "purpose": "Badges and small chips. Lightest stamp lift."
+      },
+      {
+        "name": "stamp-md",
+        "value": "4px 4px 0 rgba(0,0,0,1)",
+        "purpose": "Product cards on hover, dialogs, sheet panels. Primary interactive elevation."
+      },
+      {
+        "name": "stamp-lg",
+        "value": "8px 8px 0 rgba(0,0,0,1)",
+        "purpose": "Department cards on homepage. Heavy architectural cards that anchor the layout."
+      },
+      {
+        "name": "stamp-hero",
+        "value": "12px 12px 0 rgba(0,0,0,0.25)",
+        "purpose": "Hero text boxes over images. Larger offset with transparency so it doesn't overpower the image."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-quart",
+        "value": "cubic-bezier(0.25, 1, 0.5, 1)",
+        "purpose": "Default easing for hover transitions and state changes."
+      },
+      {
+        "name": "duration-fast",
+        "value": "150ms",
+        "purpose": "Hover transitions, focus rings, micro-interactions."
+      },
+      {
+        "name": "duration-default",
+        "value": "200ms",
+        "purpose": "Standard state transitions. Button hovers, badge changes."
+      },
+      {
+        "name": "duration-slow",
+        "value": "300ms",
+        "purpose": "Sheet openings, dialog entries, mega menu drops."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" },
+      { "name": "2xl", "value": "1536px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The main call-to-action button. Uniform Green background, cream text, square corners, heavy label typography.",
+      "html": "<button class=\"ds-btn-primary\">SHOP NOW</button>",
+      "css": ".ds-btn-primary { background: #14532D; color: #FFF8D8; padding: 0.75rem 1.5rem; height: 2.75rem; font-family: Inter, system-ui, sans-serif; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.15em; line-height: 1; border: 1px solid #211414; border-radius: 0; border-bottom: 2px solid rgba(0,0,0,0.2); display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; transition: background-color 200ms cubic-bezier(0.25, 1, 0.5, 1); } .ds-btn-primary:hover { background: #0B3D22; } .ds-btn-primary:active { transform: scale(0.98); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(20,83,45,0.5); outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.5; pointer-events: none; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Burgundy secondary action. Reserved for featured items and sale CTAs. Same squar    e typography as primary.",
+      "html": "<button class=\"ds-btn-secondary\">VIEW SALE</button>",
+      "css": ".ds-btn-secondary { background: #760C19; color: #FFF8D8; padding: 0.75rem 1.5rem; height: 2.75rem; font-family: Inter, system-ui, sans-serif; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.15em; line-height: 1; border: 1px solid #211414; border-radius: 0; border-bottom: 2px solid rgba(0,0,0,0.2); display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; transition: background-color 200ms cubic-bezier(0.25, 1, 0.5, 1); } .ds-btn-secondary:hover { background: #4E0710; } .ds-btn-secondary:active { transform: scale(0.98); } .ds-btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(118,12,25,0.5); outline-offset: 2px; } .ds-btn-secondary:disabled { opacity: 0.5; pointer-events: none; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Transparent background with green border. For secondary actions alongside a primary button.",
+      "html": "<button class=\"ds-btn-outline\">LEARN MORE</button>",
+      "css": ".ds-btn-outline { background: transparent; color: #14532D; padding: 0.75rem 1.5rem; height: 2.75rem; font-family: Inter, system-ui, sans-serif; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.15em; line-height: 1; border: 2px solid #14532D; border-radius: 0; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; transition: background-color 200ms cubic-bezier(0.25, 1, 0.5, 1), color 200ms cubic-bezier(0.25, 1, 0.5, 1); } .ds-btn-outline:hover { background: #14532D; color: #FFF8D8; } .ds-btn-outline:active { transform: scale(0.98); } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(20,83,45,0.5); outline-offset: 2px; } .ds-btn-outline:disabled { opacity: 0.5; pointer-events: none; }"
+    },
+    {
+      "name": "Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Stamped label for product status. Square, heavy uppercase, subtle 3D edge on right and bottom borders.",
+      "html": "<span class=\"ds-badge\">IN STOCK</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; justify-content: center; background: #14532D; color: #FFF8D8; padding: 0.125rem 0.5rem; font-family: Inter, system-ui, sans-serif; font-size: 0.625rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.15em; line-height: 1; border: 1px solid #211414; border-right-width: 2px; border-bottom-width: 2px; border-radius: 0; white-space: nowrap; } .ds-badge-sale { background: #F6DB12; color: #211414; } .ds-badge-out-of-stock { background: #EF4444; color: #FFFFFF; } .ds-badge-preorder { background: #E9B520; color: #211414; } .ds-badge-featured { background: #760C19; color: #FFF8D8; } .ds-badge-pickup { background: #211414; color: #FFFFFF; border-right-color: rgba(255,255,255,0.2); border-bottom-color: rgba(255,255,255,0.2); }"
+    },
+    {
+      "name": "Product Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Storefront product card — square, flat at rest, hard shadow on hover with translate shift.",
+      "html": "<div class=\"ds-product-card\"><div class=\"ds-product-card-image\"></div><div class=\"ds-product-card-body\"><span class=\"ds-product-card-brand\">PURINA</span><h3 class=\"ds-product-card-name\">Pro Plan Chicken & Rice</h3><span class=\"ds-product-card-price\">$54.99</span></div></div>",
+      "css": ".ds-product-card { background: #FFFFFF; border: 2px solid #E7D8A8; border-radius: 0; overflow: hidden; display: flex; flex-direction: column; cursor: pointer; transition: border-color 200ms cubic-bezier(0.25, 1, 0.5, 1), transform 200ms cubic-bezier(0.25, 1, 0.5, 1), box-shadow 200ms cubic-bezier(0.25, 1, 0.5, 1); } .ds-product-card:hover { border-color: #211414; box-shadow: 4px 4px 0 rgba(0,0,0,1); transform: translate(-2px, -2px); } .ds-product-card-image { aspect-ratio: 1; background: #FFF8D8; border-bottom: 2px solid #E7D8A8; } .ds-product-card-body { padding: 1rem; display: flex; flex-direction: column; gap: 0.25rem; } .ds-product-card-brand { font-family: Inter, system-ui, sans-serif; font-size: 0.625rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.2em; color: #6B3A18; } .ds-product-card-name { font-family: Inter, system-ui, sans-serif; font-size: 0.875rem; font-weight: 600; color: #211414; line-height: 1.3; margin: 0; transition: color 200ms; } .ds-product-card:hover .ds-product-card-name { color: #14532D; } .ds-product-card-price { font-family: Arvo, Georgia, serif; font-size: 1.25rem; font-weight: 900; color: #211414; letter-spacing: -0.05em; margin-top: auto; }"
+    },
+    {
+      "name": "Department Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Homepage department navigation card — colored background, heavy shadow, bold display type.",
+      "html": "<a class=\"ds-dept-card ds-dept-pet\"><h3 class=\"ds-dept-card-title\">Pet<br/>Supplies</h3><span class=\"ds-dept-card-cta\">Explore Department</span></a>",
+      "css": ".ds-dept-card { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 300px; padding: 1.5rem; border: 2px solid #211414; border-radius: 0; box-shadow: 6px 6px 0 rgba(0,0,0,1); cursor: pointer; transition: transform 200ms cubic-bezier(0.25, 1, 0.5, 1), box-shadow 200ms cubic-bezier(0.25, 1, 0.5, 1); text-decoration: none; position: relative; overflow: hidden; } .ds-dept-card:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 rgba(0,0,0,1); } .ds-dept-pet { background: #14532D; } .ds-dept-farm { background: #EF4444; } .ds-dept-garden { background: #16844D; } .ds-dept-home { background: #3B82F6; } .ds-dept-seasonal { background: #F59E0B; } .ds-dept-card-title { font-family: Arvo, Georgia, serif; font-size: 2.5rem; font-weight: 900; text-transform: uppercase; letter-spacing: -0.05em; line-height: 0.85; color: #FFFFFF; margin: 0 0 1rem 0; } .ds-dept-card-cta { font-family: Inter, system-ui, sans-serif; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.8); margin-top: 2rem; } .ds-dept-card::after { content: ''; display: block; height: 2px; width: 6rem; background: #F6DB12; box-shadow: 2px 2px 0 rgba(0,0,0,0.2); margin-top: 0.5rem; }"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Square text input with warm border, cream background. Focus ring in Uniform Green.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Search products...\" />",
+      "css": ".ds-input { width: 100%; height: 2.5rem; padding: 0.5rem 0.75rem; background: #FFF8D8; color: #211414; font-family: Inter, system-ui, sans-serif; font-size: 0.875rem; line-height: 1.5; border: 1px solid #E7D8A8; border-radius: 0; outline: none; transition: border-color 150ms cubic-bezier(0.25, 1, 0.5, 1), box-shadow 150ms cubic-bezier(0.25, 1, 0.5, 1); } .ds-input::placeholder { color: #E7D8A8; } .ds-input:hover { border-color: #6B3A18; } .ds-input:focus { border-color: #14532D; box-shadow: 0 0 0 3px rgba(20,83,45,0.5); } .ds-input[aria-invalid=\"true\"] { border-color: #EF4444; } .ds-input[aria-invalid=\"true\"]:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.3); } .ds-input:disabled { opacity: 0.5; background: #E7D8A8; cursor: not-allowed; }"
+    },
+    {
+      "name": "Section Heading",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Page section heading with thick bottom border, Arvo display type, uppercase.",
+      "html": "<div class=\"ds-section-heading\"><h2 class=\"ds-section-heading-title\">Featured Products</h2></div>",
+      "css": ".ds-section-heading { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 0.5rem; margin-bottom: 2rem; border-bottom: 4px solid #211414; } .ds-section-heading-title { font-family: Arvo, Georgia, serif; font-size: clamp(1.5rem, 4vw, 2.5rem); font-weight: 900; text-transform: uppercase; letter-spacing: -0.05em; color: #211414; line-height: 0.85; margin: 0; }"
+    },
+    {
+      "name": "Admin Metric Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Admin dashboard metric card with left accent bar, heavy stat number, subdued label.",
+      "html": "<div class=\"ds-metric-card ds-metric-success\"><div class=\"ds-metric-card-label\">ACTIVE PRODUCTS</div><div class=\"ds-metric-card-value\">1,247</div></div>",
+      "css": ".ds-metric-card { background: #FFFFFF; border: 1px solid #E7D8A8; border-left: 4px solid #6B7280; border-radius: 0; padding: 1.5rem; } .ds-metric-success { border-left-color: #16844D; } .ds-metric-warning { border-left-color: #F59E0B; } .ds-metric-danger { border-left-color: #EF4444; } .ds-metric-info { border-left-color: #3B82F6; } .ds-metric-card-label { font-family: Inter, system-ui, sans-serif; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: #6B3A18; margin-bottom: 0.25rem; } .ds-metric-card-value { font-family: Inter, system-ui, sans-serif; font-size: 2.25rem; font-weight: 900; text-transform: uppercase; letter-spacing: -0.05em; color: #211414; line-height: 1; }"
+    },
+    {
+      "name": "Campaign Banner",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Full-width promotional banner cycling across the top of the storefront.",
+      "html": "<div class=\"ds-campaign-banner\"><span class=\"ds-campaign-banner-text\">FREE LOCAL DELIVERY ON ORDERS OVER $75</span></div>",
+      "css": ".ds-campaign-banner { background: #14532D; color: #FFF8D8; text-align: center; padding: 0.5rem 1rem; font-family: Inter, system-ui, sans-serif; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; } .ds-campaign-banner-text { display: inline-block; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The General Store",
+    "overview": "This is a digital general store — warm, practical, and built from paper and wood, not glass and gradients. Every surface should feel like something you could touch: stamped badges, heavy card-stock cards, thick inked borders. The website is an extension of the physical store at 429 Winthrop Street, not a separate brand experiment.\n\nThe system is high-contrast and high-weight: bold slab-serif display type, near-black text on cream stock, and hard-offset shadows that feel physical rather than atmospheric. It's confident, not loud. Decisions that grab attention do so for reasons a store manager would recognize.\n\nWhat this system rejects: Shopify template farms with their hero sliders and \"curated collections.\" Chewy.com big-box polish and algorithmic cross-sells. Generic SaaS cream with ghost buttons and soft corners. Logo-first palettes that treat the website like a brand deck.",
+    "keyCharacteristics": [
+      "Stamped not floating — hard shadows, thick borders, square corners",
+      "Physical not digital — the palette evokes aprons, signage, paper bags, inked stamps",
+      "Weighted not whispered — font-black headings, uppercase labels, 4px–8px border separators",
+      "Semantic not decorative — accent colors signal meaning (sale, pre-order, pickup), not mood",
+      "Store-first — every design choice answers \"would this make sense on a shelf tag?\""
+    ],
+    "rules": [
+      {
+        "name": "The 60/25/10/5 Rule",
+        "body": "Cream and white hold 60% of the surface. Uniform Green carries 25%. Signet Burgundy takes 10%. Corner Callout Gold is limited to 5%. If gold appears on more than 5% of a screen, something is wrong.",
+        "section": "colors"
+      },
+      {
+        "name": "The Never Black Rule",
+        "body": "No #000, no #fff. Every neutral is tinted warm — Ledger Charcoal (#211414) for dark, Feed Bag Cream (#FFF8D8) for light.",
+        "section": "colors"
+      },
+      {
+        "name": "The Accent Is Earned Rule",
+        "body": "Corner Callout Gold and Signet Burgundy are never decorative. They appear only when there's a semantic reason — a sale, a feature, a status, a warning.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Display Per Screen Rule",
+        "body": "Arvo display text (font-black uppercase tracking-tighter) appears on at most one element per visible screen area. Two competing display elements dilute each other.",
+        "section": "typography"
+      },
+      {
+        "name": "The Label Is Never Quiet Rule",
+        "body": "All label text is font-black, uppercase, and tracked out by at least 0.15em. A label at font-medium or normal-case is a bug, not a choice.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Cards are flat at rest. Shadows appear only as a response to interaction (hover, focus, open). A card with a permanent shadow is visually dishonest.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No Blur Rule",
+        "body": "Shadows in this system have zero blur-radius. 0 4px 12px rgba(0,0,0,0.15) is the language of SaaS dashboards, not general stores.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Admin Is Border-Only Rule",
+        "body": "The admin portal conveys depth through borders and background color shifts, never shadows. data-ui-surface=\"admin\" strips all box-shadows.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use Uniform Green (#14532D) for headers, primary buttons, and the sidebar. It's the store apron — it goes where identity lives.",
+      "Do use Corner Callout Gold (#F6DB12) only when something needs attention — a sale badge, a promo strip, a rating star. If it appears without a semantic reason, remove it.",
+      "Do use rounded-none on product cards, badges, buttons, dialogs, and inputs. Square is the default. Round is the exception.",
+      "Do use hard-offset shadows (Xpx Ypx 0 rgba(0,0,0,1)) for interactive elevation. No blur, no spread — stamp, not glow.",
+      "Do use uppercase font-black tracking-tighter on section headings with a thick bottom border (border-b-4 or border-b-8 in #211414).",
+      "Do keep body text between 0.875rem and 1rem at a maximum of 65 characters per line.",
+      "Do use Feed Bag Cream (#FFF8D8) as the page background, never #FFFFFF or #000000.",
+      "Do pair Arvo display text with Inter body text. Never swap them."
+    ],
+    "donts": [
+      "Don't use Shopify template patterns — hero sliders with stock photography, 'curated collections' language, generic trust badges, soft rounded card grids.",
+      "Don't look like Chewy.com — no big-box e-commerce polish, no algorithmic recommendation carousels, no impersonal scale.",
+      "Don't use generic SaaS cream — no white-plus-gray palettes, no ghost buttons, no soft rounded corners as the personality.",
+      "Don't build logo-first palettes — the site follows real-world recognition (green uniforms, green storefront), not the logo's color balance.",
+      "Don't use border-left or border-right greater than 1px as a colored accent stripe on cards or list items. Use full borders, background tints, or leading numbers instead.",
+      "Don't use gradient text (background-clip: text). Every text element is a single solid color. Emphasis comes from weight and size.",
+      "Don't use glassmorphism or backdrop blurs decoratively.",
+      "Don't use the hero-metric template (big number + small label + supporting stats + gradient accent).",
+      "Don't build identical card grids with icon + heading + text repeated endlessly.",
+      "Don't use modals as the first solution. Exhaust inline expansion, sheets, and progressive disclosure first.",
+      "Don't animate layout properties (width, height, top, left). Use transform and opacity only.",
+      "Don't add shadows to admin surfaces. The admin is border-only.",
+      "Don't use #000 or #fff anywhere. Ledger Charcoal and Feed Bag Cream are the darkest and lightest values."
+    ]
+  }
+}
