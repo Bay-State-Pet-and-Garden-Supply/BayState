@@ -1,3 +1,4 @@
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { createClient } from '@/lib/supabase/server';
 import { getProductVariants, getProductOptions } from '@/lib/admin/variants';
 import { ProductVariantsClient } from '@/components/admin/products/variants/ProductVariantsClient';
@@ -26,7 +27,7 @@ export default async function ProductVariantsPage({ params }: { params: Promise<
   ]);
   
   return (
-    <div className="space-y-6">
+    <AdminPageShell title={product.name} description="Manage product options and variants">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
           <Link href="/admin/products">
@@ -36,11 +37,6 @@ export default async function ProductVariantsPage({ params }: { params: Promise<
         </Button>
       </div>
       
-      <div>
-        <h1 className="text-2xl font-bold font-black uppercase tracking-tight">{product.name}</h1>
-        <p className="text-muted-foreground">Manage product options and variants</p>
-      </div>
-      
       <ProductVariantsClient
         productId={id}
         productName={product.name}
@@ -48,6 +44,6 @@ export default async function ProductVariantsPage({ params }: { params: Promise<
         initialVariants={variants}
         initialOptions={options}
       />
-    </div>
+    </AdminPageShell>
   );
 }

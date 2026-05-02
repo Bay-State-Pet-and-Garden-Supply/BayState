@@ -1,3 +1,4 @@
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { SyncClient } from './SyncClient';
 import { Database } from 'lucide-react';
 
@@ -8,20 +9,12 @@ export const metadata = {
 
 export default function IntegraSyncPage() {
     return (
-        <div className="p-8 max-w-7xl mx-auto">
-            <div className="mb-8 flex items-center gap-3">
-                <div className="p-2 bg-orange-100 rounded-none">
-                    <Database className="h-8 w-8 text-orange-600" />
-                </div>
-                <div>
-                    <h1 className="text-3xl font-bold font-black uppercase tracking-tight">Integra Register Sync</h1>
-                    <p className="text-muted-foreground">
-                        Compare store register data with website catalog to identify new products.
-                    </p>
-                </div>
-            </div>
-
+        <AdminPageShell
+            title="Integra Register Sync"
+            description="Compare store register data with website catalog to identify new products."
+            icon={<Database className="h-5 w-5" />}
+        >
             <SyncClient />
-        </div>
+        </AdminPageShell>
     );
 }

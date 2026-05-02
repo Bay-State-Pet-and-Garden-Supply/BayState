@@ -1,3 +1,4 @@
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { createClient } from '@/lib/supabase/server';
 import { AdminCategoriesClient } from '@/components/admin/categories/AdminCategoriesClient';
 import { type Category } from '@/components/admin/categories/CategoryModal';
@@ -11,9 +12,11 @@ export default async function AdminCategoriesPage() {
     .order('name');
 
   return (
-    <AdminCategoriesClient
-      initialCategories={(categories || []) as Category[]}
-      totalCount={count || 0}
-    />
+    <AdminPageShell title="Categories">
+      <AdminCategoriesClient
+        initialCategories={(categories || []) as Category[]}
+        totalCount={count || 0}
+      />
+    </AdminPageShell>
   );
 }

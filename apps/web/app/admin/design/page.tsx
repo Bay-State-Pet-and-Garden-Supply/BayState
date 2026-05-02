@@ -1,3 +1,4 @@
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import {
     getCampaignBanner,
     getHomepageSettings,
@@ -16,19 +17,15 @@ export default async function DesignPage() {
     ]);
 
     return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight font-black uppercase tracking-tight">Site Design</h1>
-                <p className="text-muted-foreground">
-                    Customize banners, homepage sections, and site appearance
-                </p>
-            </div>
-
+        <AdminPageShell
+            title="Site Design"
+            description="Customize banners, homepage sections, and site appearance"
+        >
             <DesignTabs
                 initialBannerSettings={campaignBanner}
                 initialHomepageSettings={homepageSettings}
             />
-        </div>
+        </AdminPageShell>
     );
 }
 

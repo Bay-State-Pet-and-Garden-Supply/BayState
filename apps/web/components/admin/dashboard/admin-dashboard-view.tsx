@@ -34,15 +34,7 @@ export function AdminDashboardView() {
   ];
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-4xl font-black uppercase tracking-tighter text-zinc-950">Dashboard</h1>
-        <p className="text-zinc-600 text-xs font-bold uppercase tracking-widest">
-          Real-time overview of Bay State Pet & Garden Supply operations.
-        </p>
-      </div>
-
+    <div className="space-y-6">
       {/* Top Metrics */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
