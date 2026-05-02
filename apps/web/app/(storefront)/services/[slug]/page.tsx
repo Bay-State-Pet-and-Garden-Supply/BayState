@@ -56,10 +56,10 @@ export default async function ServiceDetailPage({
 
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Service Image/Icon Placeholder */}
-        <div className="flex aspect-square items-center justify-center rounded-xl bg-gradient-to-br from-blue-100 to-blue-200">
+        <div className="flex aspect-square items-center justify-center rounded-sm bg-gradient-to-br from-[oklch(92%_0.03_160)] to-[oklch(88%_0.04_160)]">
           <div className="text-center">
-            <Badge className="mb-4 bg-blue-600">Service</Badge>
-            <h2 className="text-2xl font-bold text-blue-900">{service.name}</h2>
+            <Badge className="mb-4 bg-primary">Service</Badge>
+            <h2 className="text-2xl font-bold text-primary">{service.name}</h2>
           </div>
         </div>
 
@@ -69,28 +69,28 @@ export default async function ServiceDetailPage({
             <Badge variant="outline" className="mb-4">
               Local Service
             </Badge>
-            <h1 className="text-3xl font-bold text-zinc-900">{service.name}</h1>
+            <h1 className="text-3xl font-bold text-foreground">{service.name}</h1>
           </div>
 
           {/* Price */}
           <div className="flex items-baseline gap-2">
             {formattedPrice ? (
               <>
-                <span className="text-3xl font-bold text-zinc-900">
+                <span className="text-3xl font-bold text-foreground">
                   {formattedPrice}
                 </span>
                 {service.unit && (
-                  <span className="text-lg text-zinc-700">/{service.unit}</span>
+                  <span className="text-lg text-muted-foreground">/{service.unit}</span>
                 )}
               </>
             ) : (
-              <span className="text-xl text-zinc-700">Contact for pricing</span>
+              <span className="text-xl text-muted-foreground">Contact for pricing</span>
             )}
           </div>
 
           {/* Description */}
           {service.description && (
-            <p className="text-lg text-zinc-700">{service.description}</p>
+            <p className="text-lg text-muted-foreground">{service.description}</p>
           )}
 
           {/* Reserve Button */}
@@ -100,22 +100,22 @@ export default async function ServiceDetailPage({
 
           {/* Service Details */}
           <div className="border-t pt-6">
-            <h2 className="mb-4 font-semibold text-zinc-900">How It Works</h2>
-            <ul className="space-y-3 text-sm text-zinc-700">
+            <h2 className="mb-4 font-semibold text-foreground">How It Works</h2>
+            <ul className="space-y-3 text-sm text-muted-foreground">
               <li className="flex items-start gap-3">
-                <Calendar className="mt-0.5 h-5 w-5 text-blue-500" />
+                <Calendar className="mt-0.5 h-5 w-5 text-primary" />
                 <span>Reserve online or walk in during business hours</span>
               </li>
               <li className="flex items-start gap-3">
-                <MapPin className="mt-0.5 h-5 w-5 text-blue-500" />
+                <MapPin className="mt-0.5 h-5 w-5 text-primary" />
                 <span>Visit our store at 429 Winthrop Street, Taunton MA</span>
               </li>
               <li className="flex items-start gap-3">
-                <Clock className="mt-0.5 h-5 w-5 text-blue-500" />
+                <Clock className="mt-0.5 h-5 w-5 text-primary" />
                 <span>Most services completed same-day</span>
               </li>
               <li className="flex items-start gap-3">
-                <Phone className="mt-0.5 h-5 w-5 text-blue-500" />
+                <Phone className="mt-0.5 h-5 w-5 text-primary" />
                 <span>Questions? Call us at (508) 821-3704</span>
               </li>
             </ul>

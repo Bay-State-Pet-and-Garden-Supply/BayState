@@ -287,13 +287,13 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
       <div className="w-full px-4 py-8">
         <button
           onClick={() => setStep('info')}
-          className="mb-6 inline-flex items-center text-sm text-zinc-700 hover:text-zinc-900"
+          className="mb-6 inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Checkout
         </button>
 
-        <h1 className="mb-8 text-3xl font-bold text-zinc-900">Complete Payment</h1>
+        <h1 className="mb-8 text-3xl font-bold text-foreground">Complete Payment</h1>
 
         {isCompletingPayment && (
           <div className="mb-6 flex items-center justify-center gap-3 rounded-lg bg-primary/10 p-4 text-primary">
@@ -352,13 +352,13 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
     <div className="w-full px-4 py-8">
       <Link
         href="/cart"
-        className="mb-6 inline-flex items-center text-sm text-zinc-700 hover:text-zinc-900"
+        className="mb-6 inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Cart
       </Link>
 
-      <h1 className="mb-8 text-3xl font-bold text-zinc-900">Checkout</h1>
+      <h1 className="mb-8 text-3xl font-bold text-foreground">Checkout</h1>
 
       <div className="grid gap-8 lg:grid-cols-2">
         <div className="space-y-6">
@@ -411,7 +411,7 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
                 <Button
                   type="submit"
                   size="lg"
-                  className="w-full h-14 text-lg"
+                  className="w-full h-14 text-lg bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)] hover:bg-[oklch(65%_0.14_85)] font-semibold tracking-wide"
                   disabled={isSubmitting || (fulfillmentMethod === 'delivery' && !deliveryQuote?.available)}
                 >
                   {isSubmitting ? (
@@ -427,7 +427,7 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
                   )}
                 </Button>
 
-                <p className="text-center text-xs text-zinc-700">
+                <p className="text-center text-xs text-muted-foreground">
                   {paymentMethod === 'pickup'
                     ? 'By placing this order, you agree to our terms of service. Payment will be collected at pickup.'
                     : 'Your payment is secured by Stripe. You will be charged after reviewing your order.'}

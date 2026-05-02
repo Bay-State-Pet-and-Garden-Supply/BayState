@@ -42,13 +42,13 @@ export default async function ServicesPage() {
 
       {/* Hero Section */}
       <section className="mb-12 text-center">
-        <div className="mb-4 inline-flex items-center justify-center rounded-full bg-blue-100 p-4">
-          <Wrench className="h-8 w-8 text-blue-700" />
+        <div className="mb-4 inline-flex items-center justify-center rounded-full bg-[oklch(92%_0.03_160)] p-4">
+          <Wrench className="h-8 w-8 text-primary" />
         </div>
-        <h1 className="mb-4 text-4xl font-bold tracking-tight text-zinc-900">
+        <h1 className="mb-4 text-4xl font-bold tracking-tight text-foreground">
           Local Services
         </h1>
-        <p className="mx-auto max-w-2xl text-lg text-zinc-700">
+        <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
           From propane refills to equipment rentals, we offer a range of
           services to help you get the job done. Stop by or reserve online.
         </p>
@@ -65,41 +65,41 @@ export default async function ServicesPage() {
 
               return (
                 <Link key={service.id} href={`/services/${service.slug}`}>
-                  <Card className="group h-full cursor-pointer border border-dashed border-zinc-200 bg-zinc-50 transition-all hover:border-blue-300 hover:bg-white hover:shadow-lg">
+                  <Card className="group h-full cursor-pointer border border-dashed border-[oklch(85%_0.03_160)] bg-[oklch(96%_0.01_90)] transition-all hover:border-[oklch(70%_0.04_160)] hover:bg-card hover:shadow-md">
                     <CardContent className="flex h-full min-h-[240px] flex-col p-6">
                       {/* Service Badge */}
                       <div className="mb-4">
-                        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 border-none">
+                        <Badge className="bg-[oklch(92%_0.03_160)] text-primary hover:bg-[oklch(88%_0.04_160)] border-none">
                           <Wrench className="mr-1.5 h-3.5 w-3.5" />
                           Service
                         </Badge>
                       </div>
 
                       {/* Service Info */}
-                      <h2 className="mb-2 text-xl font-semibold text-zinc-900 group-hover:text-blue-700">
+                      <h2 className="mb-2 text-xl font-semibold text-foreground group-hover:text-primary">
                         {service.name}
                       </h2>
                       {service.description && (
-                        <p className="mb-4 flex-1 text-sm text-zinc-700 line-clamp-3">
+                        <p className="mb-4 flex-1 text-sm text-muted-foreground line-clamp-3">
                           {service.description}
                         </p>
                       )}
 
                       {/* Price & CTA */}
                       <div className="mt-auto flex items-center justify-between">
-                        <div className="flex items-center gap-1 text-lg font-semibold text-zinc-900">
+                        <div className="flex items-center gap-1 text-lg font-semibold text-foreground">
                           {formattedPrice ? (
                             <>
-                              <DollarSign className="h-4 w-4 text-zinc-700" />
+                              <DollarSign className="h-4 w-4 text-muted-foreground" />
                               {formattedPrice}
                               {service.unit && (
-                                <span className="text-sm font-normal text-zinc-700">
+                                <span className="text-sm font-normal text-muted-foreground">
                                   /{service.unit}
                                 </span>
                               )}
                             </>
                           ) : (
-                            <span className="text-base text-zinc-700">
+                            <span className="text-base text-muted-foreground">
                               Contact for pricing
                             </span>
                           )}
@@ -107,7 +107,7 @@ export default async function ServicesPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="group-hover:bg-blue-50"
+                          className="group-hover:bg-[oklch(96%_0.01_90)]"
                         >
                           Reserve
                           <ArrowRight className="ml-1 h-4 w-4" />
@@ -131,13 +131,13 @@ export default async function ServicesPage() {
       </section>
 
       {/* Contact CTA */}
-      <section className="mt-12 rounded-xl bg-blue-600 p-8 text-center text-white">
+      <section className="mt-12 rounded-sm bg-primary p-8 text-center text-primary-foreground">
         <h2 className="mb-4 text-2xl font-semibold">Need Something Custom?</h2>
-        <p className="mx-auto mb-6 max-w-xl text-white">
+        <p className="mx-auto mb-6 max-w-xl text-primary-foreground/90">
           Don&apos;t see what you&apos;re looking for? Give us a call and
           we&apos;ll see how we can help.
         </p>
-        <Button size="lg" variant="secondary" className="h-12 px-8" asChild>
+        <Button size="lg" className="h-12 px-8 bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)] hover:bg-[oklch(65%_0.14_85)] font-semibold tracking-wide" asChild>
           <a href="tel:+15551234567">Call Us: (555) 123-4567</a>
         </Button>
       </section>

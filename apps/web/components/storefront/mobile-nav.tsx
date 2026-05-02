@@ -30,7 +30,7 @@ export function MobileNav() {
   const { openSearch } = useSearch();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white md:hidden" aria-label="Mobile">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card md:hidden" aria-label="Mobile">
       <div className="flex h-16 items-center justify-around">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
@@ -43,7 +43,7 @@ export function MobileNav() {
                 onClick={openSearch}
                 className={cn(
                   'flex h-14 w-14 flex-col items-center justify-center gap-1 rounded-lg transition-colors',
-                  'text-zinc-700 hover:text-zinc-700'
+                  'text-muted-foreground hover:text-muted-foreground'
                 )}
                 aria-label={item.label}
               >
@@ -60,8 +60,8 @@ export function MobileNav() {
               className={cn(
                 'flex h-14 w-14 flex-col items-center justify-center gap-1 rounded-lg transition-colors hover:underline underline-offset-4',
                 isActive
-                  ? 'text-zinc-900'
-                  : 'text-zinc-700 hover:text-zinc-700'
+                  ? 'text-foreground'
+                  : 'text-muted-foreground hover:text-muted-foreground'
               )}
               aria-label={item.label}
               aria-current={isActive ? 'page' : undefined}
@@ -72,7 +72,7 @@ export function MobileNav() {
           );
         })}
       </div>
-      <div className="h-safe-area-inset-bottom bg-white" />
+      <div className="h-safe-area-inset-bottom bg-card" />
     </nav>
   );
 }

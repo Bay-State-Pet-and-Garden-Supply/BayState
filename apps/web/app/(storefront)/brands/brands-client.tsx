@@ -77,7 +77,7 @@ export function BrandsClient({ brands }: BrandsClientProps) {
               key={letter}
               onClick={() => scrollToSection(letter)}
               className={cn(
-                "w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-zinc-100 hover:text-primary",
+                "w-8 h-8 flex items-center justify-center rounded-sm text-sm font-medium transition-colors hover:bg-muted hover:text-primary",
                 activeLetter === letter 
                   ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" 
                   : "text-muted-foreground"
@@ -104,7 +104,7 @@ export function BrandsClient({ brands }: BrandsClientProps) {
                 <Link 
                   href={`/products?brand=${brand.slug}`} 
                   key={brand.id} 
-                  className="group block h-full p-4 bg-white border border-zinc-200 hover:border-primary/50 hover:shadow-lg transition-all rounded-xl"
+                  className="group block h-full p-4 bg-card border border-[oklch(85%_0.03_160)] hover:border-primary/50 hover:shadow-md transition-all rounded-sm"
                 >
                   <div className="flex flex-col items-center justify-center h-full text-center gap-3">
                     <div className="relative w-24 h-24 flex items-center justify-center">
@@ -118,7 +118,7 @@ export function BrandsClient({ brands }: BrandsClientProps) {
                           unoptimized
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-zinc-100 rounded-full text-primary font-bold text-xl border border-primary/10">
+                        <div className="w-full h-full flex items-center justify-center bg-muted rounded-sm text-primary font-bold text-xl border border-primary/10">
                           {brand.name.charAt(0)}
                         </div>
                       )}

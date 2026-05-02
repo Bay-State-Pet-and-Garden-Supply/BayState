@@ -74,7 +74,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     <div className="w-full px-4 pt-4 pb-8">
       <div className="flex flex-col gap-8 lg:flex-row items-start">
         {/* Filters Sidebar - Sticky/Pinned */}
-        <aside className="w-full lg:w-72 flex-shrink-0 lg:sticky lg:top-24 h-auto lg:h-[calc(100vh-120px)] bg-zinc-50/50 rounded-lg p-4 lg:p-0 lg:bg-transparent">
+        <aside className="w-full lg:w-72 flex-shrink-0 lg:sticky lg:top-24 h-auto lg:h-[calc(100vh-120px)] bg-muted/50 rounded-sm p-4 lg:p-0 lg:bg-transparent">
           <FacetSidebar 
             brands={availableFilters.brands} 
             petTypes={availableFilters.petTypes} 
@@ -87,11 +87,11 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         {/* Product Grid */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold text-zinc-900">Products</h1>
-            <p className="text-sm text-zinc-500">{count} result{count !== 1 ? 's' : ''}</p>
+            <h1 className="text-3xl font-bold text-foreground">Products</h1>
+            <p className="text-sm text-muted-foreground">{count} result{count !== 1 ? 's' : ''}</p>
           </div>
           
-          <h2 className="text-2xl font-semibold text-zinc-900 mb-6 sr-only">Product Listing</h2>
+          <h2 className="text-2xl font-semibold text-foreground mb-6 sr-only">Product Listing</h2>
           {products.length > 0 ? (
             <>
               <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">

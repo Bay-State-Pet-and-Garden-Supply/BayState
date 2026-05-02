@@ -39,24 +39,24 @@ export default async function OrderConfirmationPage({
     <div className="container mx-auto px-4 py-8">
       <div className="mx-auto max-w-2xl text-center">
         {/* Success Icon */}
-        <div className="mb-6 inline-flex items-center justify-center rounded-full bg-green-100 p-4">
+        <div className="mb-6 inline-flex items-center justify-center rounded-sm bg-green-100 p-4">
           <CheckCircle className="h-12 w-12 text-green-600" />
         </div>
 
-        <h1 className="mb-2 text-3xl font-bold text-zinc-900">
+        <h1 className="mb-2 text-3xl font-bold text-foreground">
           Order Confirmed!
         </h1>
-        <p className="mb-2 text-lg text-zinc-700">
+        <p className="mb-2 text-lg text-muted-foreground">
           Thank you for your order, {order.customer_name.split(' ')[0]}!
         </p>
-        <p className="mb-8 text-2xl font-semibold text-zinc-900">
+        <p className="mb-8 text-2xl font-semibold text-foreground">
           Order #{order.order_number}
         </p>
 
         {/* Order Details Card */}
         <Card className="mb-8 text-left">
           <CardContent className="p-6">
-            <h2 className="mb-4 text-lg font-semibold text-zinc-900">
+            <h2 className="mb-4 text-lg font-semibold text-foreground">
               Order Summary
             </h2>
 
@@ -65,8 +65,8 @@ export default async function OrderConfirmationPage({
               {order.items?.map((item) => (
                 <li key={item.id} className="flex justify-between py-3">
                   <div>
-                    <p className="font-medium text-zinc-900">{item.item_name}</p>
-                    <p className="text-sm text-zinc-700">
+                    <p className="font-medium text-foreground">{item.item_name}</p>
+                    <p className="text-sm text-muted-foreground">
                       Qty: {item.quantity} × {formatCurrency(item.unit_price)}
                     </p>
                     {item.preorder_batch_id && (
@@ -75,7 +75,7 @@ export default async function OrderConfirmationPage({
                       </p>
                     )}
                   </div>
-                  <p className="font-medium text-zinc-900">
+                  <p className="font-medium text-foreground">
                     {formatCurrency(item.total_price)}
                   </p>
                 </li>
@@ -85,7 +85,7 @@ export default async function OrderConfirmationPage({
             {/* Totals */}
             <div className="mt-4 space-y-2 border-t pt-4">
               <div className="flex justify-between text-sm">
-                <span className="text-zinc-700">Subtotal</span>
+                <span className="text-muted-foreground">Subtotal</span>
                 <span>{formatCurrency(order.subtotal)}</span>
               </div>
               {order.discount_amount > 0 && (
@@ -96,12 +96,12 @@ export default async function OrderConfirmationPage({
               )}
               {isDelivery && order.delivery_fee > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-zinc-700">Delivery</span>
+                  <span className="text-muted-foreground">Delivery</span>
                   <span>{formatCurrency(order.delivery_fee)}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="text-zinc-700">Tax</span>
+                <span className="text-muted-foreground">Tax</span>
                 <span>{formatCurrency(order.tax)}</span>
               </div>
               <div className="flex justify-between border-t pt-2 text-lg font-semibold">
@@ -133,24 +133,24 @@ export default async function OrderConfirmationPage({
             {isDelivery ? (
               <div className="space-y-4">
                 <div>
-                  <p className="font-medium text-zinc-900">Delivery Address</p>
-                  <p className="text-sm text-zinc-700 mt-1">
+                  <p className="font-medium text-foreground">Delivery Address</p>
+                  <p className="text-sm text-muted-foreground mt-1">
                     Your order will be delivered to the address provided.
                   </p>
                 </div>
                 {order.delivery_distance_miles !== null && (
                   <div>
-                    <p className="text-sm text-zinc-600">
+                    <p className="text-sm text-muted-foreground">
                       Distance: {order.delivery_distance_miles.toFixed(1)} miles
                     </p>
                   </div>
                 )}
                 {order.delivery_services && order.delivery_services.length > 0 && (
                   <div>
-                    <p className="font-medium text-zinc-900">Delivery Services</p>
+                    <p className="font-medium text-foreground">Delivery Services</p>
                     <ul className="mt-1 space-y-1">
                       {order.delivery_services.map((service) => (
-                        <li key={service.service} className="text-sm text-zinc-700">
+                        <li key={service.service} className="text-sm text-muted-foreground">
                           • {service.service.replace(/_/g, ' ')} (+{formatCurrency(service.fee)})
                         </li>
                       ))}
@@ -159,8 +159,8 @@ export default async function OrderConfirmationPage({
                 )}
                 {order.delivery_notes && (
                   <div>
-                    <p className="font-medium text-zinc-900">Delivery Notes</p>
-                    <p className="text-sm text-zinc-700 mt-1">{order.delivery_notes}</p>
+                    <p className="font-medium text-foreground">Delivery Notes</p>
+                    <p className="text-sm text-muted-foreground mt-1">{order.delivery_notes}</p>
                   </div>
                 )}
               </div>
@@ -169,13 +169,13 @@ export default async function OrderConfirmationPage({
                 <div className="flex items-start gap-3">
                   <MapPin className="mt-0.5 h-5 w-5 text-blue-500" />
                   <div>
-                    <p className="font-medium text-zinc-900">Pickup Location</p>
-                    <p className="text-sm text-zinc-700">
+                    <p className="font-medium text-foreground">Pickup Location</p>
+                    <p className="text-sm text-muted-foreground">
                       429 Winthrop Street, Taunton, MA 02780
                     </p>
                   </div>
                 </div>
-                <p className="text-sm text-zinc-700">
+                <p className="text-sm text-muted-foreground">
                   We&apos;ll email you when your order is ready for pickup.
                 </p>
               </div>
@@ -186,15 +186,15 @@ export default async function OrderConfirmationPage({
         {/* What's Next */}
         <Card className="mb-8 text-left">
           <CardContent className="p-6">
-            <h2 className="mb-4 text-lg font-semibold text-zinc-900">
+            <h2 className="mb-4 text-lg font-semibold text-foreground">
               What&apos;s Next?
             </h2>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
                 <Mail className="mt-0.5 h-5 w-5 text-blue-500" />
                 <div>
-                  <p className="font-medium text-zinc-900">Confirmation Email</p>
-                  <p className="text-sm text-zinc-700">
+                  <p className="font-medium text-foreground">Confirmation Email</p>
+                  <p className="text-sm text-muted-foreground">
                     We&apos;ve sent a confirmation to {order.customer_email}
                   </p>
                 </div>
@@ -202,8 +202,8 @@ export default async function OrderConfirmationPage({
               <li className="flex items-start gap-3">
                 <Clock className="mt-0.5 h-5 w-5 text-blue-500" />
                 <div>
-                  <p className="font-medium text-zinc-900">Order Processing</p>
-                  <p className="text-sm text-zinc-700">
+                  <p className="font-medium text-foreground">Order Processing</p>
+                  <p className="text-sm text-muted-foreground">
                     {hasPreorderItems
                       ? "This is a pre-order. We'll prepare your order and email you with updates on when it will be ready."
                       : "We'll prepare your order and email you when it's ready"}
@@ -214,8 +214,8 @@ export default async function OrderConfirmationPage({
                 <li className="flex items-start gap-3">
                   <MapPin className="mt-0.5 h-5 w-5 text-blue-500" />
                   <div>
-                    <p className="font-medium text-zinc-900">Pickup</p>
-                    <p className="text-sm text-zinc-700">
+                    <p className="font-medium text-foreground">Pickup</p>
+                    <p className="text-sm text-muted-foreground">
                       Pick up at 429 Winthrop Street, Taunton, MA 02780
                     </p>
                   </div>
@@ -227,7 +227,7 @@ export default async function OrderConfirmationPage({
 
         {/* Actions */}
         <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
-          <Button size="lg" asChild>
+          <Button size="lg" asChild className="bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)] hover:bg-[oklch(65%_0.14_85)] font-semibold tracking-wide">
             <Link href="/products">Continue Shopping</Link>
           </Button>
           <Button size="lg" variant="outline" asChild>

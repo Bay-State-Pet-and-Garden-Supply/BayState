@@ -84,7 +84,7 @@ export function InlineSearch() {
                     onKeyDown={handleKeyDown}
                     placeholder="Search products, brands, or services..."
                     aria-label="Search"
-                    className="pl-10 pr-24 h-11 bg-white text-zinc-900 border-none shadow-lg focus-visible:ring-2 focus-visible:ring-primary/20 rounded-lg text-base"
+                    className="pl-10 pr-24 h-11 bg-card text-foreground border-none shadow-lg focus-visible:ring-2 focus-visible:ring-primary/20 rounded-lg text-base"
                   />
                 <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
                   {query && (
@@ -92,7 +92,7 @@ export function InlineSearch() {
                         type="button"
                         variant="ghost" 
                         size="icon" 
-                        className="h-9 w-9 text-zinc-400 hover:text-zinc-600"
+                        className="h-9 w-9 text-zinc-400 hover:text-muted-foreground"
                         onClick={() => setQuery('')}
                     >
                         <X className="h-4 w-4" />
@@ -100,7 +100,7 @@ export function InlineSearch() {
                   )}
                   <Button 
                     type="submit"
-                    className="h-9 px-3 text-xs bg-primary text-white hover:bg-primary/90 rounded-md"
+                    className="h-9 px-3 text-xs bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)] hover:bg-[oklch(65%_0.14_85)] font-semibold rounded-sm"
                   >
                     Search
                   </Button>
@@ -110,7 +110,7 @@ export function InlineSearch() {
             <Button
                 variant="ghost"
                 size="icon"
-                className="h-11 w-11 text-white hover:bg-white/20"
+                className="h-11 w-11 text-white hover:bg-card/20"
                 onClick={openSearch}
                 aria-label="Open search"
             >

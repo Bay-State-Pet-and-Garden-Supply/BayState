@@ -96,7 +96,7 @@ export function AddToCartButton({
 
         <Button
           size="lg"
-          className="h-14 flex-1 text-lg"
+          className="h-14 flex-1 text-lg bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)] hover:bg-[oklch(65%_0.14_85)] font-semibold tracking-wide"
           onClick={handleAddToCart}
           disabled={Boolean(isAdded || (isPreorderWithBatches && !selectedBatchId))}
         >

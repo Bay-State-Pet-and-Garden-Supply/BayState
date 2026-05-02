@@ -76,7 +76,7 @@ export default async function AboutPage() {
                         </h3>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-zinc-700">
+                        <p className="text-muted-foreground">
                             Stop by our store to see our full selection in person. Our friendly staff
                             is always happy to help you find what you need.
                         </p>
