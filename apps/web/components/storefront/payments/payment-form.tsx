@@ -96,7 +96,7 @@ function PaymentFormContent({
         )}
       </Button>
 
-      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+      <div className="flex items-center justify-center gap-2 text-xs text-zinc-500">
         <Shield className="h-4 w-4" />
         <span>Secured by Stripe</span>
       </div>
@@ -141,7 +141,7 @@ export function PaymentMethodSelector({
 }) {
   return (
     <div className="space-y-3">
-      <label className="text-sm font-medium text-muted-foreground">
+      <label className="text-sm font-medium text-zinc-700">
         Payment Method
       </label>
       <div className="grid gap-3">
@@ -152,19 +152,19 @@ export function PaymentMethodSelector({
           className={`flex items-center gap-3 rounded-lg border-2 p-4 text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
             selected === 'credit_card'
               ? 'border-primary bg-primary/5'
-              : 'border-[oklch(85%_0.03_160)] hover:border-zinc-300'
+              : 'border-zinc-200 hover:border-zinc-300'
           }`}
         >
           <div
             className={`flex h-10 w-10 items-center justify-center rounded-full ${
-              selected === 'credit_card' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
+              selected === 'credit_card' ? 'bg-primary text-white' : 'bg-zinc-100 text-zinc-600'
             }`}
           >
             <CreditCard className="h-5 w-5" />
           </div>
           <div className="flex-1">
-            <p className="font-medium text-foreground">Credit Card</p>
-            <p className="text-sm text-muted-foreground">Visa, Mastercard, Amex</p>
+            <p className="font-medium text-zinc-900">Credit Card</p>
+            <p className="text-sm text-zinc-500">Visa, Mastercard, Amex</p>
           </div>
           {selected === 'credit_card' && (
             <div className="h-3 w-3 rounded-full bg-primary" />
@@ -178,12 +178,12 @@ export function PaymentMethodSelector({
           className={`flex items-center gap-3 rounded-lg border-2 p-4 text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
             selected === 'pickup'
               ? 'border-primary bg-primary/5'
-              : 'border-[oklch(85%_0.03_160)] hover:border-zinc-300'
+              : 'border-zinc-200 hover:border-zinc-300'
           }`}
         >
           <div
             className={`flex h-10 w-10 items-center justify-center rounded-full ${
-              selected === 'pickup' ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
+              selected === 'pickup' ? 'bg-primary text-white' : 'bg-zinc-100 text-zinc-600'
             }`}
           >
             <svg
@@ -198,8 +198,8 @@ export function PaymentMethodSelector({
             </svg>
           </div>
           <div className="flex-1">
-            <p className="font-medium text-foreground">Pay at Pickup</p>
-            <p className="text-sm text-muted-foreground">Pay when you collect your order</p>
+            <p className="font-medium text-zinc-900">Pay at Pickup</p>
+            <p className="text-sm text-zinc-500">Pay when you collect your order</p>
           </div>
           {selected === 'pickup' && (
             <div className="h-3 w-3 rounded-full bg-primary" />

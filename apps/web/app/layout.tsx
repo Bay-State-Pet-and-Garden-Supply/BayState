@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Merriweather } from "next/font/google";
+import { Inter, Arvo } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -9,11 +9,11 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-const merriweather = Merriweather({
-  weight: ["300", "400", "700", "900"],
+const arvo = Arvo({
+  weight: ["400", "700"],
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-merriweather",
+  variable: "--font-arvo",
 });
 
 export const metadata: Metadata = {
@@ -64,7 +64,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${merriweather.variable} antialiased font-sans`}
+        className={`${inter.variable} ${arvo.variable} antialiased font-sans`}
       >
         {children}
         <Toaster duration={5000} closeButton />

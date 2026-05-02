@@ -26,25 +26,25 @@ export function EmptyState({
     <div
       className={cn(
         'flex flex-col items-center justify-center py-16 text-center px-6',
-        'border border-dashed border-[oklch(85%_0.03_160)] bg-muted rounded-sm',
+        'border-2 border-dashed border-zinc-200 bg-zinc-50 rounded-none',
         className
       )}
     >
-      <div className="flex h-24 w-24 items-center justify-center bg-muted border border-[oklch(85%_0.03_160)] mb-8 rotate-3 shadow-sm">
-        <Icon className="h-10 w-10 text-muted-foreground -rotate-3" />
+      <div className="flex h-24 w-24 items-center justify-center bg-zinc-100 border-2 border-zinc-200 mb-8 rotate-3 shadow-[4px_4px_0px_rgba(0,0,0,0.05)]">
+        <Icon className="h-10 w-10 text-zinc-400 -rotate-3" />
       </div>
-      <h2 className="mb-3 text-3xl font-bold tracking-tight text-foreground font-display">
+      <h2 className="mb-3 text-3xl font-black uppercase tracking-tighter text-zinc-900 font-display">
         {title}
       </h2>
-      <p className="mb-10 max-w-md text-muted-foreground font-medium leading-relaxed">
+      <p className="mb-10 max-w-md text-zinc-600 font-medium leading-relaxed">
         {description}
       </p>
       {actionHref ? (
-        <Button size="lg" asChild className="h-12 px-8 text-base font-semibold tracking-wide rounded-sm shadow-sm hover:shadow-md transition-all bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)] hover:bg-[oklch(65%_0.14_85)]">
+        <Button size="lg" asChild className="h-14 px-10 text-lg font-black uppercase tracking-widest border-b-2 border-black/20 rounded-none shadow-lg active:translate-y-1 active:border-b-0 transition-all">
           <Link href={actionHref}>{actionLabel}</Link>
         </Button>
       ) : onAction ? (
-        <Button size="lg" onClick={onAction} className="h-12 px-8 text-base font-semibold tracking-wide rounded-sm shadow-sm hover:shadow-md transition-all bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)] hover:bg-[oklch(65%_0.14_85)]">
+        <Button size="lg" onClick={onAction} className="h-14 px-10 text-lg font-black uppercase tracking-widest border-b-2 border-black/20 rounded-none shadow-lg active:translate-y-1 active:border-b-0 transition-all">
           {actionLabel}
         </Button>
       ) : null}

@@ -54,8 +54,8 @@ export function MobileNavDrawer({
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="w-full max-w-sm p-0 overflow-y-auto">
-        <SheetHeader className="border-b border-[oklch(85%_0.03_160)] px-4 py-4">
-          <SheetTitle className="text-lg font-semibold text-foreground">Menu</SheetTitle>
+        <SheetHeader className="border-b px-4 py-4">
+          <SheetTitle className="text-lg font-bold">Menu</SheetTitle>
         </SheetHeader>
 
         <nav className="flex flex-col py-4" aria-label="Mobile navigation">
@@ -71,7 +71,7 @@ export function MobileNavDrawer({
                   className={cn(
                     "flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium transition-colors",
                     isActive(item.href)
-                      ? "bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)]"
+                      ? "bg-primary text-primary-foreground"
                       : "hover:bg-muted"
                   )}
                 >
@@ -85,12 +85,12 @@ export function MobileNavDrawer({
           {/* Admin Link */}
           {(userRole === 'admin' || userRole === 'staff') && (
             <>
-              <div className="my-2 border-t border-[oklch(85%_0.03_160)]" />
+              <div className="my-2 border-t" />
               <div className="space-y-1 px-4">
                 <Link
                   href="/admin"
                   onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium text-destructive hover:bg-destructive/10"
+                  className="flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium text-red-600 hover:bg-red-50"
                 >
                   <User className="h-5 w-5" />
                   Admin Portal
@@ -100,9 +100,9 @@ export function MobileNavDrawer({
           )}
 
           {/* Categories Section */}
-          <div className="my-4 border-t border-[oklch(85%_0.03_160)]" />
+          <div className="my-4 border-t" />
           <div className="px-4 py-2">
-            <p className="text-xs font-semibold text-muted-foreground mb-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
               Shop by Department
             </p>
             <div className="space-y-4">
@@ -124,7 +124,7 @@ export function MobileNavDrawer({
           </div>
 
           {/* Quick Links */}
-          <div className="mt-8 border-t border-[oklch(85%_0.03_160)] pt-4">
+          <div className="mt-8 border-t pt-4">
             <div className="space-y-2 px-4">
               <Link
                 href="/cart"

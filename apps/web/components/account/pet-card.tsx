@@ -1,14 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import {
-    Pet,
+import { 
+    Pet, 
     PetType,
     PET_LIFE_STAGES,
     PET_SIZE_CLASSES,
     PET_SPECIAL_NEEDS,
     PET_ACTIVITY_LEVELS
 } from '@/lib/types'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -17,13 +18,13 @@ import {
     Cat,
     Fish,
     Bird,
-    Rabbit,
+    Rabbit, // For Small Animal
     Calendar,
     Scale,
     Pencil,
     Trash2,
     MoreVertical,
-    PawPrint
+    PawPrint // For Horse/Livestock fallback
 } from 'lucide-react'
 import { PetForm } from './pet-form'
 import { deletePet } from '@/lib/account/pets'
@@ -57,14 +58,14 @@ export function PetCard({ pet, petTypes }: PetCardProps) {
 
     const getIcon = (iconName: string | null) => {
         switch (iconName) {
-            case 'dog': return <Dog className="h-5 w-5" />
-            case 'cat': return <Cat className="h-5 w-5" />
-            case 'bird': return <Bird className="h-5 w-5" />
-            case 'fish': return <Fish className="h-5 w-5" />
-            case 'rabbit': return <Rabbit className="h-5 w-5" />
+            case 'dog': return <Dog className="h-6 w-6" />
+            case 'cat': return <Cat className="h-6 w-6" />
+            case 'bird': return <Bird className="h-6 w-6" />
+            case 'fish': return <Fish className="h-6 w-6" />
+            case 'rabbit': return <Rabbit className="h-6 w-6" />
             case 'horse':
-            case 'farm': return <PawPrint className="h-5 w-5" />
-            default: return <Dog className="h-5 w-5" />
+            case 'farm': return <PawPrint className="h-6 w-6" />
+            default: return <Dog className="h-6 w-6" />
         }
     }
 
@@ -92,34 +93,34 @@ export function PetCard({ pet, petTypes }: PetCardProps) {
 
     return (
         <>
-            <div className="border border-[oklch(85%_0.03_160)] bg-card shadow-sm flex flex-col overflow-hidden rounded-sm">
-                <div className="bg-primary p-4 border-b border-[oklch(85%_0.03_160)] flex flex-row items-center justify-between text-primary-foreground">
+            <div className="border-4 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(22,163,74,1)] flex flex-col overflow-hidden">
+                <div className="bg-green-600 p-4 border-b-4 border-zinc-900 flex flex-row items-center justify-between text-white">
                     <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-primary-foreground/20 rounded-sm text-primary-foreground">
+                        <div className="p-2 bg-white/20 border-2 border-white/20 text-white">
                             {getIcon(pet.pet_type?.icon || null)}
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold tracking-tight font-display">{pet.name}</h2>
-                            <p className="text-[11px] font-medium tracking-wide text-primary-foreground/80">
+                            <h2 className="text-xl font-black uppercase tracking-tight font-display">{pet.name}</h2>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-green-100">
                                 {pet.pet_type?.name}{pet.breed ? ` • ${pet.breed}` : ''}
                             </p>
                         </div>
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="hover:bg-primary-foreground/10 text-primary-foreground" aria-label="Open pet menu">
+                            <Button variant="ghost" size="icon" className="hover:bg-white/10 text-white" aria-label="Open pet menu">
                                 <MoreVertical className="h-5 w-5" />
                                 <span className="sr-only">Open menu</span>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40 rounded-sm border border-[oklch(85%_0.03_160)] shadow-md p-1">
-                            <DropdownMenuItem onClick={() => setOpen(true)} className="cursor-pointer rounded-sm text-sm">
+                        <DropdownMenuContent align="end" className="border-4 border-zinc-900 rounded-none shadow-[4px_4px_0px_rgba(0,0,0,1)] p-1">
+                            <DropdownMenuItem onClick={() => setOpen(true)} className="font-black uppercase text-xs tracking-widest focus:bg-zinc-100 cursor-pointer">
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
                                 onClick={() => setShowDeleteAlert(true)}
-                                className="cursor-pointer rounded-sm text-sm text-red-600 focus:text-red-700"
+                                className="text-red-600 focus:text-red-700 focus:bg-red-50 font-black uppercase text-xs tracking-widest cursor-pointer"
                             >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Delete
@@ -127,42 +128,42 @@ export function PetCard({ pet, petTypes }: PetCardProps) {
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
-                <div className="p-5 space-y-4 flex-1">
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="flex items-center text-sm text-muted-foreground">
-                            <Calendar className="mr-2 h-4 w-4 text-foreground" />
+                <div className="p-6 space-y-4 flex-1">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center text-xs font-bold uppercase tracking-tight text-zinc-500">
+                            <Calendar className="mr-2 h-4 w-4 text-zinc-900" />
                             {age || 'Age N/A'}
                         </div>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                            <Scale className="mr-2 h-4 w-4 text-foreground" />
+                        <div className="flex items-center text-xs font-bold uppercase tracking-tight text-zinc-500">
+                            <Scale className="mr-2 h-4 w-4 text-zinc-900" />
                             {pet.weight_lbs ? `${pet.weight_lbs} lbs` : 'Weight N/A'}
                         </div>
                     </div>
-
+                    
                     {pet.dietary_notes && (
-                        <div className="p-3 bg-muted border border-[oklch(90%_0.02_160)] rounded-sm text-sm leading-relaxed">
-                            <span className="font-semibold text-xs text-foreground block mb-1">Dietary Notes</span>
+                        <div className="p-3 bg-zinc-50 border-2 border-zinc-100 text-[10px] font-medium leading-relaxed">
+                            <span className="font-black uppercase tracking-widest block mb-1 text-zinc-900">Dietary Notes:</span>
                             {pet.dietary_notes}
                         </div>
                     )}
 
-                    <div className="pt-1 space-y-2">
+                    <div className="pt-2 space-y-3">
                         {(lifeStageLabel || sizeClassLabel || genderLabel) && (
                             <div className="flex flex-wrap items-center gap-2">
                                 {lifeStageLabel && (
-                                    <Badge variant="outline" className="text-[10px] font-medium tracking-wide">
-                                        {lifeStageLabel}
-                                    </Badge>
+                                    <div className="bg-zinc-100 border-2 border-zinc-200 px-2 py-1 text-[9px] font-black uppercase tracking-widest">
+                                        Stage: {lifeStageLabel}
+                                    </div>
                                 )}
                                 {sizeClassLabel && (
-                                    <Badge variant="outline" className="text-[10px] font-medium tracking-wide">
-                                        {sizeClassLabel}
-                                    </Badge>
+                                    <div className="bg-zinc-100 border-2 border-zinc-200 px-2 py-1 text-[9px] font-black uppercase tracking-widest">
+                                        Size: {sizeClassLabel}
+                                    </div>
                                 )}
                                 {genderLabel && (
-                                    <Badge variant="outline" className="text-[10px] font-medium tracking-wide">
+                                    <div className="bg-zinc-100 border-2 border-zinc-200 px-2 py-1 text-[9px] font-black uppercase tracking-widest">
                                         {genderLabel}
-                                    </Badge>
+                                    </div>
                                 )}
                             </div>
                         )}
@@ -170,14 +171,14 @@ export function PetCard({ pet, petTypes }: PetCardProps) {
                         {(activityLevelLabel || pet.is_fixed) && (
                             <div className="flex flex-wrap items-center gap-2">
                                 {activityLevelLabel && (
-                                    <Badge variant="outline" className="text-[10px] font-medium tracking-wide">
-                                        {activityLevelLabel}
-                                    </Badge>
+                                    <div className="bg-zinc-100 border-2 border-zinc-200 px-2 py-1 text-[9px] font-black uppercase tracking-widest">
+                                        Activity: {activityLevelLabel}
+                                    </div>
                                 )}
                                 {pet.is_fixed && (
-                                    <Badge className="text-[10px] font-medium tracking-wide bg-green-600 hover:bg-green-700 text-white">
+                                    <div className="bg-green-50 border-2 border-green-200 text-green-700 px-2 py-1 text-[9px] font-black uppercase tracking-widest">
                                         Fixed
-                                    </Badge>
+                                    </div>
                                 )}
                             </div>
                         )}
@@ -187,9 +188,9 @@ export function PetCard({ pet, petTypes }: PetCardProps) {
                                 {pet.special_needs.map(need => {
                                     const label = PET_SPECIAL_NEEDS.find(n => n.value === need)?.label || need
                                     return (
-                                        <Badge key={need} className="text-[10px] font-medium tracking-wide bg-[oklch(25%_0.02_90)] text-white hover:bg-[oklch(25%_0.02_90)]">
+                                        <div key={need} className="bg-zinc-900 text-white px-2 py-1 text-[9px] font-black uppercase tracking-widest">
                                             {label}
-                                        </Badge>
+                                        </div>
                                     )
                                 })}
                             </div>
@@ -199,10 +200,10 @@ export function PetCard({ pet, petTypes }: PetCardProps) {
             </div>
 
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="max-h-[90vh] overflow-y-auto rounded-sm border border-[oklch(85%_0.03_160)] shadow-lg p-0">
-                    <DialogHeader className="bg-[oklch(25%_0.02_90)] text-white p-6 border-b border-[oklch(85%_0.03_160)]">
-                        <DialogTitle className="text-xl font-bold tracking-tight font-display">Edit {pet.name}</DialogTitle>
-                        <DialogDescription className="text-white/70 text-sm">
+                <DialogContent className="max-h-[90vh] overflow-y-auto border-4 border-zinc-900 rounded-none shadow-[12px_12px_0px_rgba(0,0,0,1)] p-0">
+                    <DialogHeader className="bg-zinc-900 text-white p-6 border-b-4 border-zinc-900">
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tight font-display">Edit {pet.name}</DialogTitle>
+                        <DialogDescription className="text-zinc-400 font-bold uppercase tracking-widest text-[10px]">
                             Update your pet&apos;s details.
                         </DialogDescription>
                     </DialogHeader>
@@ -217,16 +218,16 @@ export function PetCard({ pet, petTypes }: PetCardProps) {
             </Dialog>
 
             <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
-                <AlertDialogContent className="rounded-sm border border-[oklch(85%_0.03_160)] shadow-lg">
+                <AlertDialogContent className="border-4 border-zinc-900 rounded-none shadow-[12px_12px_0px_rgba(0,0,0,1)]">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold tracking-tight font-display">Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-muted-foreground">
+                        <AlertDialogTitle className="text-2xl font-black uppercase tracking-tight font-display">Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription className="font-medium text-zinc-600">
                             This will remove {pet.name} from your profile. This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="gap-3">
-                        <AlertDialogCancel className="rounded-sm border border-[oklch(85%_0.03_160)] font-medium">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 rounded-sm font-medium">
+                    <AlertDialogFooter className="gap-4">
+                        <AlertDialogCancel className="border-2 border-zinc-900 rounded-none font-black uppercase tracking-tight">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 border-2 border-zinc-900 rounded-none font-black uppercase tracking-tight shadow-[4px_4px_0px_rgba(0,0,0,1)]">
                             Delete Pet
                         </AlertDialogAction>
                     </AlertDialogFooter>
@@ -234,4 +235,5 @@ export function PetCard({ pet, petTypes }: PetCardProps) {
             </AlertDialog>
         </>
     )
+
 }

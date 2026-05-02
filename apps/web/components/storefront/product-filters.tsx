@@ -72,9 +72,9 @@ export function ProductFilters({ brands, petTypes, categories = [] }: ProductFil
   const hasFilters = currentSearch || currentBrand || currentPetTypeId || currentCategory || currentStock || currentMinPrice || currentMaxPrice;
 
   return (
-    <div className="space-y-6 rounded-sm border border-[oklch(85%_0.03_160)] bg-card p-4">
+    <div className="space-y-6 rounded-lg border bg-white p-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-foreground">Filters</h2>
+        <h2 className="font-semibold text-zinc-900">Filters</h2>
         {hasFilters && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
             Clear all
@@ -100,20 +100,20 @@ export function ProductFilters({ brands, petTypes, categories = [] }: ProductFil
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                    className="h-9 w-9 text-zinc-500 hover:text-zinc-900"
                     onClick={clearSearch}
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 )}
-                <Button type="submit" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground" aria-label="Search">
+                <Button type="submit" variant="ghost" size="icon" className="h-9 w-9 text-zinc-500 hover:text-zinc-900" aria-label="Search">
                   <Search className="h-4 w-4" />
                 </Button>
               </div>
           </div>
         </form>
         {currentSearch && (
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs text-zinc-700">
             Showing results for &quot;{currentSearch}&quot;
           </p>
         )}

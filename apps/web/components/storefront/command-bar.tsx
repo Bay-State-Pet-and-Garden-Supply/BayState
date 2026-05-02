@@ -59,12 +59,12 @@ export function CommandBar({ isOpen, onClose }: CommandBarProps) {
     <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] md:hidden">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-[oklch(20%_0.02_90)]/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
 
       {/* Command Bar */}
-      <div className="relative w-full max-w-xl mx-4 rounded-lg bg-card shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-200">
+      <div className="relative w-full max-w-xl mx-4 rounded-xl bg-white shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -72,8 +72,8 @@ export function CommandBar({ isOpen, onClose }: CommandBarProps) {
           }}
         >
           {/* Search Input */}
-          <div className="flex items-center border-b border-[oklch(85%_0.03_160)] px-4">
-            <Search className="h-5 w-5 text-muted-foreground" />
+          <div className="flex items-center border-b px-4">
+            <Search className="h-5 w-5 text-zinc-700" />
             <Input
               ref={inputRef}
               type="text"
@@ -89,9 +89,9 @@ export function CommandBar({ isOpen, onClose }: CommandBarProps) {
             </Button>
           </div>
 
-          <div className="flex items-center justify-between border-t border-[oklch(85%_0.03_160)] px-4 py-3 text-sm">
-             <span className="text-muted-foreground">Press enter to search</span>
-             <Button type="submit" size="sm" className="bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)] hover:bg-[oklch(65%_0.14_85)] font-semibold">
+          <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
+             <span className="text-zinc-500">Press enter to search</span>
+             <Button type="submit" size="sm" className="bg-primary text-white">
                Search
              </Button>
           </div>

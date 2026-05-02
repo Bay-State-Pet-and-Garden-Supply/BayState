@@ -123,7 +123,7 @@ export function CartPreorderSummary({ className }: CartPreorderSummaryProps) {
       <CardContent className="flex flex-col gap-4">
         {/* Pickup Only Warning */}
         {hasPickupOnlyItems && (
-          <div className="rounded-sm border border-amber-200 bg-amber-50 p-4">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
               <div>
@@ -141,7 +141,7 @@ export function CartPreorderSummary({ className }: CartPreorderSummaryProps) {
         {groupTotals.map(({ batchId, batch, group, items: batchItems, totalQuantity, minimumQuantity, isValid }) => (
           <div
             key={batchId}
-            className={`rounded-sm border p-4 ${
+            className={`rounded-lg border p-4 ${
               isValid ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'
             }`}
           >
@@ -175,10 +175,10 @@ export function CartPreorderSummary({ className }: CartPreorderSummaryProps) {
             <ul className="mt-3 flex flex-col gap-3 border-t border-green-200/50 pt-3">
               {batchItems.map((item) => (
                 <li key={item.id} className="flex justify-between text-sm py-1">
-                  <span className="text-muted-foreground">
+                  <span className="text-zinc-700">
                     {item.name} × {item.quantity}
                   </span>
-                  <span className="text-foreground font-medium">
+                  <span className="text-zinc-900 font-medium">
                     {formatCurrency(item.price * item.quantity)}
                   </span>
                 </li>
@@ -196,9 +196,9 @@ export function CartPreorderSummary({ className }: CartPreorderSummaryProps) {
 
         {/* Standard Items */}
         {standardItems.length > 0 && (
-          <div className="rounded-sm border border-[oklch(85%_0.03_160)] p-4">
-            <p className="font-medium text-foreground">Standard Items</p>
-            <p className="text-sm text-muted-foreground mt-1">
+          <div className="rounded-lg border border-zinc-200 p-4">
+            <p className="font-medium text-zinc-800">Standard Items</p>
+            <p className="text-sm text-zinc-600 mt-1">
               {standardItems.length} {standardItems.length === 1 ? 'item' : 'items'} available for immediate shipping
             </p>
           </div>

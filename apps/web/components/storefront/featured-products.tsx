@@ -18,9 +18,9 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
 
   return (
     <section className="mb-12">
-      <div className="mb-8 flex items-center justify-between border-b border-[oklch(85%_0.03_160)] pb-3">
-        <h2 className="text-3xl font-bold text-foreground tracking-tight font-display">Featured products</h2>
-        <Button variant="ghost" asChild className="font-medium text-xs tracking-wide hover:underline">
+      <div className="mb-8 flex items-center justify-between border-b-4 border-zinc-900 pb-2">
+        <h2 className="text-3xl font-black text-zinc-900 uppercase tracking-tighter font-display">Featured products</h2>
+        <Button variant="ghost" asChild className="font-black uppercase text-xs tracking-widest hover:underline">
           <Link href="/products">
             View All
             <ArrowRight className="ml-2 h-4 w-4" />

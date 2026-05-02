@@ -31,16 +31,16 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     <div className="fixed inset-0 z-50">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-[oklch(20%_0.02_90)]/50"
+        className="absolute inset-0 bg-black/50"
         onClick={onClose}
       />
 
       {/* Drawer */}
-      <div className="absolute right-0 top-0 h-full w-full max-w-md bg-card shadow-lg">
+      <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl">
         <div className="flex h-full flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-[oklch(85%_0.03_160)] px-4 py-4">
-            <h2 className="text-lg font-semibold text-foreground">Shopping Cart</h2>
+          <div className="flex items-center justify-between border-b px-4 py-4">
+            <h2 className="text-lg font-semibold">Shopping Cart</h2>
             <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close cart">
               <X className="h-5 w-5" />
             </Button>
@@ -63,19 +63,19 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
               </div>
 
               {/* Footer */}
-              <div className="border-t border-[oklch(85%_0.03_160)] p-4">
+              <div className="border-t p-4">
                 <div className="mb-4 flex items-center justify-between">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span className="text-xl font-semibold text-foreground">{formattedSubtotal}</span>
+                  <span className="text-zinc-700">Subtotal</span>
+                  <span className="text-xl font-semibold">{formattedSubtotal}</span>
                 </div>
-                <Button className="w-full bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)] hover:bg-[oklch(65%_0.14_85)] font-semibold tracking-wide" size="lg" asChild>
+                <Button className="w-full" size="lg" asChild>
                   <Link href="/checkout" onClick={onClose}>
                     Checkout
                   </Link>
                 </Button>
                 <Button
                   variant="ghost"
-                  className="mt-2 w-full text-destructive hover:text-destructive/80"
+                  className="mt-2 w-full text-red-600 hover:text-red-700"
                   onClick={clearCart}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
@@ -85,11 +85,11 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             </>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
-              <ShoppingBag className="mb-4 h-16 w-16 text-muted-foreground" />
-              <h3 className="mb-2 text-lg font-medium text-foreground">
+              <ShoppingBag className="mb-4 h-16 w-16 text-secondary" />
+              <h3 className="mb-2 text-lg font-medium text-zinc-900">
                 Your cart is empty
               </h3>
-              <p className="mb-6 text-sm text-muted-foreground">
+              <p className="mb-6 text-sm text-zinc-700">
                 Start shopping to add items to your cart
               </p>
               <Button asChild onClick={onClose}>
@@ -115,7 +115,7 @@ function CartItemRow({ item, onRemove, onUpdateQuantity }: CartItemRowProps) {
   return (
     <li className="flex gap-4">
       {/* Image */}
-      <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-sm bg-muted">
+      <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-100">
         {item.imageUrl ? (
           <img
             src={formatImageUrl(item.imageUrl) || undefined}
@@ -123,7 +123,7 @@ function CartItemRow({ item, onRemove, onUpdateQuantity }: CartItemRowProps) {
             className="h-full w-full object-cover"
           />
         ) : (
-            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+            <div className="flex h-full w-full items-center justify-center text-zinc-700">
             <ShoppingBag className="h-8 w-8" />
           </div>
         )}
@@ -134,13 +134,13 @@ function CartItemRow({ item, onRemove, onUpdateQuantity }: CartItemRowProps) {
         <div className="flex justify-between">
           <Link
             href={`/products/${item.slug}`}
-            className="font-medium text-foreground hover:text-primary hover:underline underline-offset-4"
+            className="font-medium text-zinc-900 hover:text-zinc-700 hover:underline underline-offset-4"
           >
             {item.name}
           </Link>
           <button
             onClick={onRemove}
-            className="text-muted-foreground hover:text-destructive"
+            className="text-zinc-700 hover:text-red-600"
             aria-label="Remove item"
           >
             <X className="h-4 w-4" />
@@ -152,15 +152,15 @@ function CartItemRow({ item, onRemove, onUpdateQuantity }: CartItemRowProps) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => onUpdateQuantity(item.quantity - 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-[oklch(85%_0.03_160)] hover:bg-muted"
+              className="flex h-8 w-8 items-center justify-center rounded-full border hover:bg-zinc-50"
               aria-label="Decrease quantity"
             >
               <Minus className="h-3 w-3" />
             </button>
-            <span className="w-8 text-center font-medium text-foreground">{item.quantity}</span>
+            <span className="w-8 text-center font-medium">{item.quantity}</span>
             <button
               onClick={() => onUpdateQuantity(item.quantity + 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-[oklch(85%_0.03_160)] hover:bg-muted"
+              className="flex h-8 w-8 items-center justify-center rounded-full border hover:bg-zinc-50"
               aria-label="Increase quantity"
             >
               <Plus className="h-3 w-3" />
@@ -168,7 +168,7 @@ function CartItemRow({ item, onRemove, onUpdateQuantity }: CartItemRowProps) {
           </div>
 
           {/* Price */}
-          <span className="font-medium text-foreground">{formattedPrice}</span>
+          <span className="font-medium text-zinc-900">{formattedPrice}</span>
         </div>
       </div>
     </li>

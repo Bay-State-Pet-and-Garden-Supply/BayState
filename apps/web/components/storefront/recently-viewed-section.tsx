@@ -30,7 +30,7 @@ export function RecentlyViewedSection({ products }: RecentlyViewedSectionProps) 
       <div className="container mx-auto px-4 md:px-6">
         {/* Section Header */}
         <div className="flex items-center gap-2 mb-6">
-          <div className="p-2 bg-secondary/10 rounded-sm">
+          <div className="p-2 bg-secondary/10 rounded-full">
             <History className="w-5 h-5 text-secondary" />
           </div>
           <h2 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
