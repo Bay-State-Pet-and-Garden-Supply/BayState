@@ -39,6 +39,10 @@ interface CandidateRowInput {
     extractionJobId?: string | null;
     errorMessage?: string | null;
     metadata?: Record<string, unknown>;
+    predictedName?: string | null;
+    appearedInPhases?: number[] | null;
+    selectionTier?: string | null;
+    compositeScore?: number | null;
     nowIso: string;
 }
 
@@ -199,6 +203,10 @@ function buildCandidateRow(input: CandidateRowInput): CandidateRow | null {
         discovery_job_id: input.discoveryJobId ?? null,
         extraction_job_id: input.extractionJobId ?? null,
         error_message: input.errorMessage ?? null,
+        predicted_name: input.predictedName ?? null,
+        appeared_in_phases: input.appearedInPhases ?? null,
+        selection_tier: input.selectionTier ?? null,
+        composite_score: input.compositeScore ?? null,
         metadata: input.metadata ?? {},
         updated_at: input.nowIso,
     };
@@ -275,6 +283,12 @@ export function buildDiscoveryOfficialBrandCandidateRows(args: {
                         result_type: toOptionalString(candidateRecord.result_type),
                         selection_method: toOptionalString(candidateRecord.selection_method),
                     },
+                    predictedName: toOptionalString(source.predicted_name) ?? null,
+                    appearedInPhases: Array.isArray(candidateRecord.appeared_in_phases)
+                        ? candidateRecord.appeared_in_phases
+                        : null,
+                    selectionTier: toOptionalString(candidateRecord.selection_tier) ?? null,
+                    compositeScore: toOptionalNumber(candidateRecord.composite_score) ?? null,
                     nowIso: args.nowIso,
                 });
             })
@@ -292,6 +306,7 @@ export function buildDiscoveryOfficialBrandCandidateRows(args: {
                 confidence: toOptionalNumber(source.confidence),
                 discoveryJobId: args.jobId,
                 metadata: { source_status: toOptionalString(source.status) },
+                predictedName: toOptionalString(source.predicted_name) ?? null,
                 nowIso: args.nowIso,
             });
 
