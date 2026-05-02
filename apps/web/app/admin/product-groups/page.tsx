@@ -1,3 +1,4 @@
+import { AdminPageShell } from '@/components/admin/admin-page-shell'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -33,17 +34,17 @@ export default async function ProductGroupsPage() {
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold font-black uppercase tracking-tight">Product Groups</h1>
+    <AdminPageShell
+      title="Product Groups"
+      actions={
         <Button asChild>
           <Link href="/admin/product-groups/new">
             <Plus className="mr-2 h-4 w-4" />
             New Group
           </Link>
         </Button>
-      </div>
-
+      }
+    >
       {!groups || groups.length === 0 ? (
         <Card className="border border-zinc-950 rounded-none">
           <CardContent className="py-12 text-center">
@@ -103,6 +104,6 @@ export default async function ProductGroupsPage() {
           ))}
         </div>
       )}
-    </div>
+    </AdminPageShell>
   )
 }

@@ -1,3 +1,4 @@
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { createClient } from '@/lib/supabase/server';
 import { AdminProductLinesClient } from '@/components/admin/product-lines/AdminProductLinesClient';
 import { type ProductLine } from '@/components/admin/product-lines/ProductLineModal';
@@ -16,9 +17,11 @@ export default async function AdminProductLinesPage() {
 		.order('name');
 
 	return (
-		<AdminProductLinesClient
-			initialProductLines={(productLines || []) as ProductLine[]}
-			totalCount={count || 0}
-		/>
+		<AdminPageShell title="Product Lines">
+			<AdminProductLinesClient
+				initialProductLines={(productLines || []) as ProductLine[]}
+				totalCount={count || 0}
+			/>
+		</AdminPageShell>
 	);
 }

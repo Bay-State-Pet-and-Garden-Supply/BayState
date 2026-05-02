@@ -227,24 +227,22 @@ export function ScraperNetworkDashboard() {
   }));
 
   return (
-    <div className="space-y-10 pb-20">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b-4 border-zinc-900 pb-6">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[var(--surface-admin-border)] pb-4">
         <div>
-          <h1 className="text-4xl font-black uppercase tracking-tighter leading-none mb-2">
-            Scraper Network
-          </h1>
+
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-zinc-100 border-2 border-zinc-900 px-2 py-1 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-              <span className="text-[10px] font-black uppercase tracking-tight text-zinc-500">Realtime:</span>
+            <div className="flex items-center gap-2 bg-[var(--surface-admin-muted)] border border-[var(--surface-admin-border)] px-2 py-1">
+              <span className="text-[10px] font-semibold tracking-tight text-zinc-500">Realtime:</span>
               {isRealtimeConnected ? (
                 <div className="flex items-center gap-1.5">
-                  <div className="h-2 w-2 rounded-full bg-brand-forest-green border border-zinc-900" />
+                  <div className="h-2 w-2 rounded-sm bg-brand-forest-green border border-[var(--surface-admin-border)]" />
                   <span className="text-[10px] font-black uppercase tracking-tight text-brand-forest-green">Connected</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5">
-                  <div className="h-2 w-2 rounded-full bg-brand-burgundy border border-zinc-900 animate-pulse" />
+                  <div className="h-2 w-2 rounded-sm bg-brand-burgundy border border-[var(--surface-admin-border)] animate-pulse" />
                   <span className="text-[10px] font-black uppercase tracking-tight text-brand-burgundy">Disconnected</span>
                 </div>
               )}

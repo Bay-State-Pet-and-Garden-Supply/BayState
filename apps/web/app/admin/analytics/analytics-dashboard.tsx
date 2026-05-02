@@ -87,11 +87,6 @@ export function AnalyticsDashboard({
 
     return (
         <div className="space-y-10 pb-8">
-            <div className="space-y-2">
-                <h1 className="admin-page-title">Analytics & reporting</h1>
-                <p className="admin-page-copy">Track revenue, inventory drift, channel mix, and sync health without the extra visual noise.</p>
-            </div>
-
             <div className="admin-toolbar flex flex-col gap-4 p-4">
                 <span className="text-xs font-semibold tracking-[0.08em] text-zinc-500">Channel view</span>
                 <div className="flex flex-wrap gap-2">

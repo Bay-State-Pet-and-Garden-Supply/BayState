@@ -1,23 +1,24 @@
 import { getPages, deletePage } from './actions'
 import Link from 'next/link'
+import { AdminPageShell } from '@/components/admin/admin-page-shell'
 import { Plus, Edit, Trash, ExternalLink } from 'lucide-react'
 
 export default async function AdminPagesList() {
   const pages = await getPages()
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-black uppercase text-zinc-950">Content Pages</h1>
-        <Link 
-          href="/admin/pages/new" 
-          className="bg-primary text-white px-4 py-2 rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-primary/90 flex items-center gap-2 font-black uppercase text-sm"
-        >
-          <Plus size={16} />
-          Create New Page
-        </Link>
-      </div>
-
+    <AdminPageShell
+        title="Content Pages"
+        actions={
+            <Link 
+                href="/admin/pages/new" 
+                className="bg-primary text-white px-4 py-2 rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)] hover:bg-primary/90 flex items-center gap-2 font-black uppercase text-sm"
+            >
+                <Plus size={16} />
+                Create New Page
+            </Link>
+        }
+    >
       <div className="bg-card rounded-none shadow-[1px_1px_0px_rgba(0,0,0,1)] overflow-hidden border border-zinc-950">
         <table className="w-full">
           <thead className="bg-zinc-950 text-white">
@@ -83,7 +84,6 @@ export default async function AdminPagesList() {
           </tbody>
         </table>
       </div>
-    </div>
-
+    </AdminPageShell>
   )
 }

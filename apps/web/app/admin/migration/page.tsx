@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, ExternalLink, Github, Settings } from 'lucide-react';
@@ -9,13 +10,10 @@ export default async function AdminMigrationPage() {
     const migrationLogs = await getRecentMigrationLogs(10);
 
     return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight font-black uppercase tracking-tight">Data Migration</h1>
-                <p className="text-muted-foreground">
-                    This page is deprecated. ShopSite sync now runs through GitHub Actions on your local runner.
-                </p>
-            </div>
+        <AdminPageShell
+            title="Data Migration"
+            description="This page is deprecated. ShopSite sync now runs through GitHub Actions on your local runner."
+        >
 
             <Card className="border border-zinc-950 rounded-none">
                 <CardHeader>
@@ -64,6 +62,6 @@ export default async function AdminMigrationPage() {
             <div className="h-full">
                 <MigrationHistory initialLogs={migrationLogs} />
             </div>
-        </div>
+        </AdminPageShell>
     );
 }

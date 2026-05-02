@@ -1,3 +1,4 @@
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { Metadata } from 'next';
 import { CostTrackingDashboard } from '@/components/admin/costs/CostTrackingDashboard';
 
@@ -11,5 +12,9 @@ export const metadata: Metadata = {
 };
 
 export default function CostTrackingPage() {
-  return <CostTrackingDashboard />;
+  return (
+    <AdminPageShell title="Cost Tracking">
+      <CostTrackingDashboard />
+    </AdminPageShell>
+  );
 }
