@@ -60,6 +60,30 @@ class QueryBuilder:
         """Build the canonical follow-up query from a consolidated product name."""
         return self._clean_text(product_name)
 
+    def build_sku_discovery_query(self, sku: Optional[str], brand: Optional[str] = None) -> str:
+        """Build the Phase 1 SKU-discovery query."""
+        sku_clean = self._clean_text(sku)
+        if not sku_clean:
+            return ""
+        if brand and self.is_ambiguous_identifier(sku_clean):
+            return f"{self._clean_text(brand)} {sku_clean}"
+        return sku_clean
+
+    def build_name_discovery_query(
+        self,
+        predicted_name: Optional[str],
+        brand: Optional[str],
+        exclusions: list[str],
+    ) -> str:
+        """Build the Phase 2 product-name discovery query with exclusions."""
+        name_clean = self._clean_text(predicted_name)
+        brand_clean = self._clean_text(brand)
+        parts = [p for p in (name_clean, brand_clean) if p]
+        query = " ".join(parts)
+        if exclusions:
+            query += " " + " ".join([f"-site:{excl}" for excl in exclusions])
+        return query
+
     def is_ambiguous_identifier(self, sku: Optional[str]) -> bool:
         """Return True when an identifier-only query is likely too generic to stand on its own."""
         sku_clean = self._clean_text(sku)

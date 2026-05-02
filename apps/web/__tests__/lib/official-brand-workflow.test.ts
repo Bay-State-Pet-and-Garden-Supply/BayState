@@ -101,7 +101,7 @@ describe('getOfficialBrandPhaseFromJob', () => {
     });
 
     it('returns null for standard jobs', () => {
-        expect(getOfficialBrandPhaseFromJob({ type: 'standard', scrapers: ['amazon'] })).toBeNull();
+        expect(getOfficialBrandPhaseFromJob({ type: 'standard' })).toBeNull();
     });
 });
 
@@ -166,9 +166,26 @@ describe('buildDiscoveryOfficialBrandCandidateRows', () => {
                         status: 'found',
                         selected_url: 'https://example.com/product/a',
                         confidence: 0.95,
+                        predicted_name: 'Consolidated Product Name',
                         candidates: [
-                            { url: 'https://example.com/product/a', title: 'Product A', rank: 1, confidence: 0.95 },
-                            { url: 'https://amazon.com/product/a', title: 'Product A - Amazon', rank: 2, confidence: 0.2 },
+                            {
+                                url: 'https://example.com/product/a',
+                                title: 'Product A',
+                                rank: 1,
+                                confidence: 0.95,
+                                selection_tier: 'official_domain',
+                                appeared_in_phases: [1, 2],
+                                composite_score: 95.5,
+                            },
+                            {
+                                url: 'https://amazon.com/product/a',
+                                title: 'Product A - Amazon',
+                                rank: 2,
+                                confidence: 0.2,
+                                selection_tier: 'organic',
+                                appeared_in_phases: [1],
+                                composite_score: 12.3,
+                            },
                         ],
                     },
                 },
@@ -185,6 +202,46 @@ describe('buildDiscoveryOfficialBrandCandidateRows', () => {
         const rejected = rows.find((r) => r.selection_status === 'candidate');
         expect(rejected).toBeDefined();
         expect(rejected!.url).toContain('amazon.com');
+
+        // Assert new columns on selected row
+        expect(selected!.predicted_name).toBe('Consolidated Product Name');
+        expect(selected!.selection_tier).toBe('official_domain');
+        expect(selected!.appeared_in_phases).toEqual([1, 2]);
+        expect(selected!.composite_score).toBe(95.5);
+
+        // Assert new columns on rejected row
+        expect(rejected!.predicted_name).toBe('Consolidated Product Name');
+        expect(rejected!.selection_tier).toBe('organic');
+        expect(rejected!.appeared_in_phases).toEqual([1]);
+        expect(rejected!.composite_score).toBe(12.3);
+    });
+
+    it('handles null new columns gracefully', () => {
+        const rows = buildDiscoveryOfficialBrandCandidateRows({
+            jobId: 'job-disc-1',
+            resultsBySku: {
+                'SKU-1': {
+                    [OFFICIAL_BRAND_SOURCE_KEY]: {
+                        status: 'found',
+                        selected_url: 'https://example.com/product/a',
+                        confidence: 0.95,
+                        candidates: [
+                            { url: 'https://example.com/product/a', title: 'Product A', rank: 1, confidence: 0.95 },
+                        ],
+                    },
+                },
+            },
+            cohort: { id: 'cohort-1', brandId: 'brand-1', brandName: 'Acme' },
+            nowIso: '2026-05-01T00:00:00Z',
+        });
+
+        expect(rows).toHaveLength(1);
+        const row = rows[0];
+        // When missing from source, should default to null
+        expect(row.predicted_name).toBeNull();
+        expect(row.selection_tier).toBeNull();
+        expect(row.appeared_in_phases).toBeNull();
+        expect(row.composite_score).toBeNull();
     });
 
     it('returns empty for SKUs with no official_brand data', () => {
@@ -197,6 +254,31 @@ describe('buildDiscoveryOfficialBrandCandidateRows', () => {
         });
 
         expect(rows).toHaveLength(0);
+    });
+
+    it('includes predicted_name on selected row when URL not in candidates', () => {
+        const rows = buildDiscoveryOfficialBrandCandidateRows({
+            jobId: 'job-disc-1',
+            resultsBySku: {
+                'SKU-1': {
+                    [OFFICIAL_BRAND_SOURCE_KEY]: {
+                        status: 'found',
+                        selected_url: 'https://example.com/selected',
+                        confidence: 0.95,
+                        predicted_name: 'Predicted By LLM',
+                        candidates: [
+                            { url: 'https://example.com/candidate', title: 'Candidate', rank: 1, confidence: 0.5 },
+                        ],
+                    },
+                },
+            },
+            nowIso: '2026-05-01T00:00:00Z',
+        });
+
+        expect(rows).toHaveLength(2);
+        const selected = rows.find((r) => r.selection_status === 'selected');
+        expect(selected).toBeDefined();
+        expect(selected!.predicted_name).toBe('Predicted By LLM');
     });
 });
 
