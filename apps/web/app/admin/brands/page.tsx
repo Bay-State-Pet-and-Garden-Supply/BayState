@@ -1,3 +1,4 @@
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { createClient } from '@/lib/supabase/server';
 import { AdminBrandsClient } from '@/components/admin/brands/AdminBrandsClient';
 import { type Brand } from '@/components/admin/brands/types';
@@ -10,9 +11,11 @@ export default async function AdminBrandsPage() {
     .order('name');
 
   return (
-    <AdminBrandsClient
-      initialBrands={(brands || []) as Brand[]}
-      totalCount={count || 0}
-    />
+    <AdminPageShell title="Brands">
+      <AdminBrandsClient
+        initialBrands={(brands || []) as Brand[]}
+        totalCount={count || 0}
+      />
+    </AdminPageShell>
   );
 }

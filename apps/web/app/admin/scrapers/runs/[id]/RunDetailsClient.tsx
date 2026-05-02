@@ -206,8 +206,8 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 border-b-4 border-zinc-900">
-                <div className="p-6 border-r-4 border-zinc-900 space-y-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 border-b border-[var(--surface-admin-border)]">
+                <div className="p-6 border-b sm:border-b-0 sm:border-r border-[var(--surface-admin-border)] space-y-1">
                   <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Scraper Source</p>
                   <p className="text-2xl font-black uppercase tracking-tighter text-zinc-900">{run.scraper_name}</p>
                 </div>
@@ -217,11 +217,11 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3">
-                <div className="p-6 border-r-4 border-zinc-900 space-y-1">
+                <div className="p-6 border-b sm:border-b-0 sm:border-r border-[var(--surface-admin-border)] space-y-1">
                   <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Started At</p>
                   <p className="text-sm font-bold text-zinc-900">{format(new Date(run.created_at), 'MMM d, h:mm:ss a')}</p>
                 </div>
-                <div className="p-6 border-r-4 border-zinc-900 space-y-1">
+                <div className="p-6 border-b sm:border-b-0 sm:border-r border-[var(--surface-admin-border)] space-y-1">
                   <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Duration</p>
                   <p className="text-sm font-bold text-zinc-900">{formatDuration(run.created_at, run.completed_at)}</p>
                 </div>

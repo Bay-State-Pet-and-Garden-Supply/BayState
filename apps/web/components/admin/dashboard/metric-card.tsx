@@ -56,18 +56,7 @@ export function MetricCard({
   }
 
   return (
-    <Card className={cn('py-4 overflow-hidden relative', className)}>
-      {status && (
-        <div 
-          className={cn(
-            'absolute top-0 left-0 w-1 h-full', 
-            status === 'success' && 'bg-green-500',
-            status === 'warning' && 'bg-amber-500',
-            status === 'error' && 'bg-red-500',
-            status === 'info' && 'bg-blue-500'
-          )} 
-        />
-      )}
+    <Card className={cn('py-4 overflow-hidden relative', status && cn(status === 'success' && 'border-t-2 border-t-green-500', status === 'warning' && 'border-t-2 border-t-amber-500', status === 'error' && 'border-t-2 border-t-red-500', status === 'info' && 'border-t-2 border-t-blue-500'), className)}>
       <CardContent className="flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-muted-foreground truncate">

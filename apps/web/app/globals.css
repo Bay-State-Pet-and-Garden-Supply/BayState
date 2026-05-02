@@ -239,15 +239,59 @@
     @apply text-sm font-medium text-zinc-500 md:text-base;
   }
 
+  /* ── Admin Surface: positive design tokens + shadcn remap ── */
   [data-ui-surface="admin"] {
+    /* Admin surface tokens */
+    --surface-admin-bg: oklch(96% 0.01 90);
+    --surface-admin-card: oklch(98% 0.01 90);
+    --surface-admin-muted: oklch(94% 0.01 90);
+    --surface-admin-border: oklch(85% 0.03 160);
+    --surface-admin-text: oklch(20% 0.02 160);
+    --surface-admin-heading: oklch(15% 0.02 160);
+    --surface-admin-muted-text: oklch(45% 0.02 160);
+    --surface-admin-accent: oklch(35% 0.08 160);
+    --surface-admin-radius: 0.5rem;
+
+    /* shadcn variable remapping — all bg-card, text-muted-foreground, etc. use admin tokens */
+    --background: var(--surface-admin-bg);
+    --foreground: var(--surface-admin-heading);
+    --card: var(--surface-admin-card);
+    --card-foreground: var(--surface-admin-text);
+    --popover: var(--surface-admin-card);
+    --popover-foreground: var(--surface-admin-text);
+    --primary: var(--surface-admin-accent);
+    --primary-foreground: oklch(98% 0.01 90);
+    --secondary: var(--surface-admin-muted);
+    --secondary-foreground: var(--surface-admin-text);
+    --muted: var(--surface-admin-muted);
+    --muted-foreground: var(--surface-admin-muted-text);
+    --accent: var(--surface-admin-accent);
+    --accent-foreground: oklch(98% 0.01 90);
+    --destructive: oklch(45% 0.12 25);
+    --destructive-foreground: oklch(98% 0.01 90);
+    --border: var(--surface-admin-border);
+    --input: var(--surface-admin-border);
+    --ring: var(--surface-admin-accent);
+    --radius: var(--surface-admin-radius);
+    --sidebar: var(--surface-admin-accent);
+    --sidebar-foreground: oklch(98% 0.01 90);
+    --sidebar-primary: var(--surface-admin-accent);
+    --sidebar-primary-foreground: oklch(98% 0.01 90);
+    --sidebar-accent: oklch(30% 0.05 160);
+    --sidebar-accent-foreground: oklch(95% 0.02 90);
+    --sidebar-border: var(--surface-admin-border);
+    --sidebar-ring: var(--surface-admin-accent);
+
     background-color: var(--surface-admin-bg);
   }
 
+  /* Admin: button transforms suppressed */
   [data-ui-surface="admin"] [data-slot="button"]:hover,
   [data-ui-surface="admin"] [data-slot="button"]:active {
     transform: none !important;
   }
 
+  /* Admin: no shadows (positive rule — DESIGN.md Admin Is Border-Only) */
   [data-ui-surface="admin"] :is(
       [class^="shadow-["],
       [class*=" shadow-["],
@@ -268,72 +312,11 @@
     box-shadow: none;
   }
 
-  [data-ui-surface="admin"] :is([class~="rounded-none"], [class*=":rounded-none"]) {
-    border-radius: 0.5rem;
-  }
-
-  [data-ui-surface="admin"] :is([class~="font-black"], [class*=":font-black"]) {
-    font-weight: 600;
-  }
-
-  [data-ui-surface="admin"] :is([class~="uppercase"], [class*=":uppercase"]) {
-    text-transform: none;
-  }
-
+  /* Admin: restrained border widths (positive rule) */
   [data-ui-surface="admin"] :is(
-      [class~="tracking-tight"],
-      [class*=":tracking-tight"],
-      [class~="tracking-tighter"],
-      [class*=":tracking-tighter"],
-      [class~="tracking-widest"],
-      [class*=":tracking-widest"]
-    ) {
-    letter-spacing: normal;
-  }
-
-  [data-ui-surface="admin"] :is(
-      [class~="border-zinc-950"],
-      [class*=":border-zinc-950"],
-      [class~="border-zinc-900"],
-      [class*=":border-zinc-900"]
-    ) {
-    border-color: var(--surface-admin-border);
-  }
-
-  [data-ui-surface="admin"] :is(
-      [class~="border-4"],
-      [class*=":border-4"],
-      [class*="border-[4px]"],
-      [class~="border-2"],
-      [class*=":border-2"]
-    ) {
-    border-width: 1px;
-  }
-
-  [data-ui-surface="admin"] :is(
-      [class~="border-b-8"],
-      [class*=":border-b-8"],
-      [class~="border-b-4"],
-      [class*=":border-b-4"],
-      [class~="border-b-2"],
-      [class*=":border-b-2"]
-    ) {
-    border-bottom-width: 1px;
-  }
-
-  [data-ui-surface="admin"] :is(
-      [class~="border-t-4"],
-      [class*=":border-t-4"],
-      [class~="border-t-2"],
-      [class*=":border-t-2"],
-      [class~="border-r-4"],
-      [class*=":border-r-4"],
-      [class~="border-r-2"],
-      [class*=":border-r-2"],
-      [class~="border-l-4"],
-      [class*=":border-l-4"],
-      [class~="border-l-2"],
-      [class*=":border-l-2"]
+      [class*="border-2"], [class*="border-4"], [class*="border-8"],
+      [class*="border-[4px]"], [class*="border-[8px]"],
+      [class*=":border-2"], [class*=":border-4"], [class*=":border-8"]
     ) {
     border-width: 1px;
   }

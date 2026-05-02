@@ -1,16 +1,31 @@
 import { login } from './actions'
+import Image from 'next/image'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 
 export default function AdminLoginPage() {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-muted">
-      <Card className="border border-zinc-950 rounded-none">
+    <div className="w-full max-w-sm px-6">
+      <div className="mb-8 text-center">
+        <Image
+          src="/icon.png"
+          alt="Bay State app icon"
+          width={48}
+          height={48}
+          className="mx-auto mb-4 h-12 w-12 object-contain"
+        />
+        <h1 className="text-xl font-semibold text-foreground">
+          Bay State Pet &amp; Garden Supply
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Admin Portal
+        </p>
+      </div>
+      <Card className="rounded-[var(--surface-admin-radius)] border">
         <CardHeader>
-          <CardTitle>Admin Login</CardTitle>
-          <CardDescription>Sign in to the manager portal.</CardDescription>
+          <h2 className="text-lg font-semibold text-foreground">Sign In</h2>
         </CardHeader>
         <form action={login}>
           <CardContent className="space-y-4">

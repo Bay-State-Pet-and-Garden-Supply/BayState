@@ -1,3 +1,4 @@
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { createClient } from '@/lib/supabase/server';
 import { getProductImages } from '@/lib/admin/images';
 import { ProductImagesClient } from '@/components/admin/products/images/ProductImagesClient';
@@ -23,7 +24,7 @@ export default async function ProductImagesPage({ params }: { params: Promise<{ 
   const images = await getProductImages(id);
   
   return (
-    <div className="space-y-6">
+    <AdminPageShell title={product.name} description="Manage product images">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" asChild>
           <Link href="/admin/products">
@@ -33,17 +34,12 @@ export default async function ProductImagesPage({ params }: { params: Promise<{ 
         </Button>
       </div>
       
-      <div>
-        <h1 className="text-2xl font-bold font-black uppercase tracking-tight">{product.name}</h1>
-        <p className="text-muted-foreground">Manage product images</p>
-      </div>
-      
       <ProductImagesClient
         productId={id}
         productName={product.name}
         initialImages={images}
         legacyImages={product.images as string[] | null}
       />
-    </div>
+    </AdminPageShell>
   );
 }

@@ -1,9 +1,10 @@
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { CohortDashboardClient } from '@/components/admin/cohorts/CohortDashboardClient';
 
 export default function CohortDashboardPage() {
   return (
-    <div className="p-8">
+    <AdminPageShell title="Cohorts">
       <CohortDashboardClient />
-    </div>
+    </AdminPageShell>
   );
 }
