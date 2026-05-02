@@ -51,13 +51,13 @@ export default function CartPage() {
       <div className="mb-8">
         <Link
           href="/products"
-          className="mb-4 inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="mb-4 inline-flex items-center text-sm text-zinc-700 hover:text-zinc-900"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Continue Shopping
         </Link>
-        <h1 className="text-3xl font-bold text-foreground tracking-tight">Shopping Cart</h1>
-        <p className="mt-2 text-muted-foreground">
+        <h1 className="text-3xl font-bold text-zinc-900">Shopping Cart</h1>
+        <p className="mt-2 text-zinc-700">
           {itemCount} {itemCount === 1 ? 'item' : 'items'} in your cart
         </p>
       </div>
@@ -67,15 +67,15 @@ export default function CartPage() {
           <div className="lg:col-span-2">
             <FreeShippingBar subtotal={subtotal} className="mb-4" />
 
-            <div className="rounded-sm border border-[oklch(85%_0.03_160)] bg-card">
-              <ul className="divide-y divide-[oklch(90%_0.02_160)]">
+            <div className="rounded-lg border bg-white">
+              <ul className="divide-y">
                 {items.map((item) => {
                   const formattedPrice = formatCurrency(item.price);
                   const formattedTotal = formatCurrency(item.price * item.quantity);
 
                   return (
                     <li key={item.id} className="flex gap-4 p-4">
-                      <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-sm bg-muted relative">
+                      <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-100 relative">
                         {item.imageUrl ? (
                           <Image
                             src={item.imageUrl}
@@ -85,7 +85,7 @@ export default function CartPage() {
                             className="object-cover"
                           />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                          <div className="flex h-full w-full items-center justify-center text-zinc-700">
                             <ShoppingBag className="h-8 w-8" />
                           </div>
                         )}
@@ -96,17 +96,17 @@ export default function CartPage() {
                           <div>
                             <Link
                               href={`/products/${item.slug}`}
-                              className="font-medium text-foreground hover:text-primary transition-colors"
+                              className="font-medium text-zinc-900 hover:text-zinc-700"
                             >
                               {item.name}
                             </Link>
-                            <p className="mt-1 text-sm text-muted-foreground">
+                            <p className="mt-1 text-sm text-zinc-700">
                               {formattedPrice} each
                             </p>
                           </div>
                           <button
                             onClick={() => removeItem(item.id)}
-                            className="text-muted-foreground hover:text-red-600 transition-colors"
+                            className="text-zinc-700 hover:text-red-600"
                             aria-label="Remove item"
                           >
                             <X className="h-5 w-5" />
@@ -117,24 +117,24 @@ export default function CartPage() {
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                              className="flex h-9 w-9 items-center justify-center rounded-sm border border-[oklch(85%_0.03_160)] hover:bg-muted transition-colors"
+                              className="flex h-10 w-10 items-center justify-center rounded-lg border hover:bg-zinc-50"
                               aria-label="Decrease quantity"
                             >
                               <Minus className="h-4 w-4" />
                             </button>
-                            <span className="w-10 text-center font-medium tabular-nums">
+                            <span className="w-10 text-center font-medium">
                               {item.quantity}
                             </span>
                             <button
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                              className="flex h-9 w-9 items-center justify-center rounded-sm border border-[oklch(85%_0.03_160)] hover:bg-muted transition-colors"
+                              className="flex h-10 w-10 items-center justify-center rounded-lg border hover:bg-zinc-50"
                               aria-label="Increase quantity"
                             >
                               <Plus className="h-4 w-4" />
                             </button>
                           </div>
 
-                          <span className="text-lg font-semibold text-foreground tabular-nums">
+                          <span className="text-lg font-semibold text-zinc-900">
                             {formattedTotal}
                           </span>
                         </div>
@@ -161,8 +161,8 @@ export default function CartPage() {
             <div className="sticky top-24 space-y-6">
               <CartPreorderSummary />
 
-              <div className="rounded-sm border border-[oklch(85%_0.03_160)] bg-card p-6">
-                <h2 className="mb-4 text-lg font-semibold text-foreground">
+              <div className="rounded-lg border bg-white p-6">
+                <h2 className="mb-4 text-lg font-semibold text-zinc-900">
                   Order Summary
                 </h2>
 
@@ -178,18 +178,18 @@ export default function CartPage() {
 
                 <dl className="space-y-3 text-sm">
                   <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Subtotal</dt>
-                    <dd className="font-medium text-foreground tabular-nums">{formatCurrency(subtotal)}</dd>
+                    <dt className="text-zinc-700">Subtotal</dt>
+                    <dd className="font-medium text-zinc-900">{formatCurrency(subtotal)}</dd>
                   </div>
                   {discount > 0 && (
                     <div className="flex justify-between text-green-600">
                       <dt>Discount</dt>
-                      <dd className="font-medium tabular-nums">-{formatCurrency(discount)}</dd>
+                      <dd className="font-medium">-{formatCurrency(discount)}</dd>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Shipping</dt>
-                    <dd className="font-medium text-foreground">
+                    <dt className="text-zinc-700">Shipping</dt>
+                    <dd className="font-medium text-zinc-900">
                       {hasFreeShipping ? (
                         <span className="text-green-600">FREE</span>
                       ) : (
@@ -198,25 +198,25 @@ export default function CartPage() {
                     </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Tax</dt>
-                    <dd className="font-medium text-foreground">Calculated at checkout</dd>
+                    <dt className="text-zinc-700">Tax</dt>
+                    <dd className="font-medium text-zinc-900">Calculated at checkout</dd>
                   </div>
                 </dl>
 
-                <div className="mt-4 border-t border-[oklch(90%_0.02_160)] pt-4">
+                <div className="mt-4 border-t pt-4">
                   <div className="flex justify-between">
-                    <span className="text-lg font-semibold text-foreground">Estimated Total</span>
-                    <span className="text-lg font-semibold text-foreground tabular-nums">
+                    <span className="text-lg font-semibold text-zinc-900">Estimated Total</span>
+                    <span className="text-lg font-semibold text-zinc-900">
                       {formatCurrency(total)}
                     </span>
                   </div>
                 </div>
 
-                <Button className="mt-6 w-full bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)] hover:bg-[oklch(65%_0.14_85)] font-semibold tracking-wide" size="lg" asChild>
+                <Button className="mt-6 w-full" size="lg" asChild>
                   <Link href="/checkout">Proceed to Checkout</Link>
                 </Button>
 
-                <p className="mt-4 text-center text-xs text-muted-foreground">
+                <p className="mt-4 text-center text-xs text-zinc-700">
                   Tax calculated at checkout
                 </p>
               </div>

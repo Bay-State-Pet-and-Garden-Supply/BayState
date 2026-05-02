@@ -21,7 +21,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
 
   return (
     <Link href={`/services/${service.slug}`} className="block h-full">
-      <Card className="group h-full cursor-pointer border-2 border-dashed border-zinc-300 bg-muted transition-all hover:border-zinc-400 hover:shadow-lg">
+      <Card className="group h-full cursor-pointer border-2 border-dashed border-zinc-300 bg-zinc-50 transition-all hover:border-zinc-400 hover:shadow-lg">
           <CardContent className="flex h-full flex-col gap-4 p-4">
             {/* Service Badge */}
             <div>
@@ -32,19 +32,19 @@ export function ServiceCard({ service }: ServiceCardProps) {
 
             {/* Service Info */}
             <div className="flex flex-1 flex-col gap-2">
-              <h3 className="mb-0 text-sm font-medium text-foreground group-hover:text-muted-foreground group-hover:underline underline-offset-4">
+              <h3 className="mb-0 text-sm font-medium text-zinc-900 group-hover:text-zinc-700 group-hover:underline underline-offset-4">
                 {service.name}
               </h3>
               {service.description && (
-                <p className="mb-0 line-clamp-2 text-xs text-muted-foreground">
+                <p className="mb-0 line-clamp-2 text-xs text-zinc-700">
                   {service.description}
                 </p>
               )}
               <div className="mt-auto flex items-center justify-between gap-2">
-                <span className="text-lg font-semibold text-foreground">
+                <span className="text-lg font-semibold text-zinc-900">
                   {formattedPrice}
                   {service.unit && (
-                    <span className="text-sm font-normal text-muted-foreground">
+                    <span className="text-sm font-normal text-zinc-700">
                       /{service.unit}
                     </span>
                   )}

@@ -13,13 +13,13 @@ interface BuyAgainSectionProps {
 export function BuyAgainSection({ products }: BuyAgainSectionProps) {
     if (!products || products.length === 0) {
         return (
-            <div className="border border-dashed border-[oklch(85%_0.03_160)] p-12 text-center bg-muted rounded-sm">
-                <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="font-semibold text-xl text-foreground">No recurring purchases yet</h3>
-                <p className="text-sm font-medium text-muted-foreground mt-2 max-w-sm mx-auto">
+            <div className="border-4 border-dashed border-zinc-200 p-12 text-center bg-zinc-50">
+                <Package className="mx-auto h-12 w-12 text-zinc-300 mb-4" />
+                <h3 className="font-black uppercase tracking-tight text-xl text-zinc-900">No recurring purchases yet</h3>
+                <p className="text-sm font-medium text-zinc-600 mt-2 max-w-sm mx-auto">
                     Products you order multiple times will appear here for quick reordering.
                 </p>
-                <Button asChild variant="outline" className="mt-6 border border-[oklch(85%_0.03_160)] rounded-sm font-medium tracking-wide">
+                <Button asChild variant="outline" className="mt-6 border-2 border-zinc-900 rounded-none font-black uppercase tracking-tight">
                     <Link href="/products">Start Shopping</Link>
                 </Button>
             </div>
@@ -35,17 +35,18 @@ export function BuyAgainSection({ products }: BuyAgainSectionProps) {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-2">
-                <RotateCcw className="h-6 w-6 text-foreground" />
-                <h3 className="font-bold text-2xl tracking-tight font-display">Buy Again</h3>
+            <div className="flex items-center gap-2 border-l-8 border-accent pl-4">
+                <RotateCcw className="h-6 w-6 text-zinc-900" />
+                <h3 className="font-black text-2xl uppercase tracking-tighter font-display">Buy Again</h3>
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {products.map(product => {
                     const imageSrc = formatImageUrl(product.images?.[0])
+                    
                     return (
-                        <div key={product.id} className="border border-[oklch(85%_0.03_160)] bg-card shadow-sm hover:-translate-y-1 hover:shadow-md transition-all overflow-hidden flex flex-row rounded-sm">
-                            <div className="w-28 h-28 shrink-0 bg-card border-r border-[oklch(85%_0.03_160)] p-2">
+                        <div key={product.id} className="border-4 border-zinc-900 bg-white shadow-[4px_4px_0px_rgba(0,0,0,0.1)] hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] transition-all overflow-hidden flex flex-row">
+                            <div className="w-28 h-28 shrink-0 bg-white border-r-4 border-zinc-900 p-2">
                                 {imageSrc ? (
                                     <img
                                         src={imageSrc}
@@ -53,7 +54,7 @@ export function BuyAgainSection({ products }: BuyAgainSectionProps) {
                                         className="w-full h-full object-contain"
                                     />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs bg-muted rounded-sm">
+                                    <div className="w-full h-full flex items-center justify-center text-zinc-300 text-xs font-black uppercase bg-zinc-50">
                                         No img
                                     </div>
                                 )}
@@ -63,22 +64,22 @@ export function BuyAgainSection({ products }: BuyAgainSectionProps) {
                                 <div>
                                     <Link
                                         href={`/products/${product.slug}`}
-                                        className="font-semibold text-sm tracking-tight leading-tight line-clamp-2 hover:text-primary transition-colors"
+                                        className="font-black text-sm uppercase leading-tight line-clamp-2 hover:text-primary transition-colors"
                                     >
                                         {product.name}
                                     </Link>
-                                    <p className="text-[10px] font-medium tracking-wide text-muted-foreground mt-1">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mt-1">
                                         Ordered {product.order_count} times
                                     </p>
                                 </div>
-
+                
                                 <div className="flex items-center justify-between mt-3">
-                                    <span className="font-semibold text-lg tracking-tight">
+                                    <span className="font-black text-lg tracking-tighter">
                                         {formatCurrency(Number(product.price))}
                                     </span>
                                     <Button
                                         size="sm"
-                                        className="h-8 px-3 gap-2 bg-[oklch(25%_0.02_90)] text-white hover:bg-[oklch(25%_0.02_90)]/90 rounded-sm font-medium tracking-wide text-xs"
+                                        className="h-8 px-3 gap-2 bg-zinc-900 text-white hover:bg-zinc-800 rounded-none font-black uppercase text-xs"
                                         onClick={() => handleAddToCart(product.id)}
                                     >
                                         <ShoppingCart className="h-3 w-3" />
@@ -93,3 +94,4 @@ export function BuyAgainSection({ products }: BuyAgainSectionProps) {
         </div>
     )
 }
+

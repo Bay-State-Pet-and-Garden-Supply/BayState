@@ -4,9 +4,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 export function ProductCardSkeleton() {
   return (
     <div className="h-full">
-      <Card className="h-full border-[oklch(85%_0.03_160)] shadow-sm overflow-hidden bg-card">
+      <Card className="h-full border-zinc-200 shadow-sm overflow-hidden bg-white">
         <CardContent className="flex h-full flex-col p-0">
-          <div className="relative aspect-square w-full bg-muted">
+          <div className="relative aspect-square w-full bg-zinc-50">
             <Skeleton className="h-full w-full rounded-none" />
           </div>
 

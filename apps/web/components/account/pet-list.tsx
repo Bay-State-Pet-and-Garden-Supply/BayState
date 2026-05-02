@@ -35,10 +35,10 @@ export function PetList({ pets, petTypes }: PetListProps) {
                     className="border-dashed"
                 />
                 <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogContent className="max-h-[90vh] overflow-y-auto rounded-sm border border-[oklch(85%_0.03_160)] shadow-lg p-0">
-                        <DialogHeader className="bg-[oklch(25%_0.02_90)] text-white p-6 border-b border-[oklch(85%_0.03_160)]">
-                            <DialogTitle className="text-xl font-bold tracking-tight font-display">Add a Pet</DialogTitle>
-                            <DialogDescription className="text-white/70 text-sm">
+                    <DialogContent className="max-h-[90vh] overflow-y-auto border-4 border-zinc-900 rounded-none shadow-[12px_12px_0px_rgba(0,0,0,1)] p-0">
+                        <DialogHeader className="bg-zinc-900 text-white p-6 border-b-4 border-zinc-900">
+                            <DialogTitle className="text-2xl font-black uppercase tracking-tight font-display">Add a Pet</DialogTitle>
+                            <DialogDescription className="text-zinc-400 font-bold uppercase tracking-widest text-[10px]">
                                 Tell us about your pet to get personalized recommendations.
                             </DialogDescription>
                         </DialogHeader>
@@ -50,32 +50,33 @@ export function PetList({ pets, petTypes }: PetListProps) {
                         </div>
                     </DialogContent>
                 </Dialog>
+
             </>
         )
     }
 
     return (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {pets.map((pet) => (
                 <PetCard key={pet.id} pet={pet} petTypes={petTypes} />
             ))}
 
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
-                    <button className="flex h-full min-h-[200px] cursor-pointer flex-col items-center justify-center border border-dashed border-[oklch(85%_0.03_160)] bg-card hover:bg-muted transition-colors p-8 text-center group rounded-sm">
-                        <div className="bg-[oklch(72%_0.14_85)]/10 border border-[oklch(72%_0.14_85)]/30 p-3 rounded-sm mb-4 group-hover:bg-[oklch(72%_0.14_85)]/20 transition-colors">
-                            <Plus className="h-6 w-6 text-[oklch(55%_0.12_85)] group-hover:text-[oklch(45%_0.12_85)] transition-colors" />
+                    <div className="flex h-full min-h-[200px] cursor-pointer flex-col items-center justify-center border-4 border-dashed border-zinc-200 bg-zinc-50 hover:bg-zinc-100 transition-all shadow-[4px_4px_0px_rgba(0,0,0,0.05)] hover:shadow-[8px_8px_0px_rgba(0,0,0,0.1)] p-8 text-center group">
+                        <div className="bg-white border-2 border-zinc-200 p-4 shadow-sm mb-4 group-hover:border-zinc-900 transition-colors">
+                            <Plus className="h-8 w-8 text-zinc-400 group-hover:text-zinc-900 transition-colors" />
                         </div>
-                        <h3 className="font-semibold text-lg tracking-tight mb-1 font-display">Add a Pet</h3>
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground">
+                        <h3 className="font-black text-xl uppercase tracking-tight mb-1 font-display">Add a Pet</h3>
+                        <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">
                             Get better recommendations
                         </p>
-                    </button>
+                    </div>
                 </DialogTrigger>
-                <DialogContent className="max-h-[90vh] overflow-y-auto rounded-sm border border-[oklch(85%_0.03_160)] shadow-lg p-0">
-                    <DialogHeader className="bg-[oklch(25%_0.02_90)] text-white p-6 border-b border-[oklch(85%_0.03_160)]">
-                        <DialogTitle className="text-xl font-bold tracking-tight font-display">Add a Pet</DialogTitle>
-                        <DialogDescription className="text-white/70 text-sm">
+                <DialogContent className="max-h-[90vh] overflow-y-auto border-4 border-zinc-900 rounded-none shadow-[12px_12px_0px_rgba(0,0,0,1)] p-0">
+                    <DialogHeader className="bg-zinc-900 text-white p-6 border-b-4 border-zinc-900">
+                        <DialogTitle className="text-2xl font-black uppercase tracking-tight font-display">Add a Pet</DialogTitle>
+                        <DialogDescription className="text-zinc-400 font-bold uppercase tracking-widest text-[10px]">
                             Tell us about your pet to get personalized recommendations.
                         </DialogDescription>
                     </DialogHeader>
@@ -89,4 +90,5 @@ export function PetList({ pets, petTypes }: PetListProps) {
             </Dialog>
         </div>
     )
+
 }

@@ -32,7 +32,7 @@ export function AddServiceToCartButton({ service }: AddServiceToCartButtonProps)
 
   if (!service.price) {
     return (
-      <Button size="lg" className="h-14 flex-1 text-lg bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)] hover:bg-[oklch(65%_0.14_85)] font-semibold tracking-wide" asChild>
+      <Button size="lg" className="h-14 flex-1 text-lg" asChild>
         <a href="tel:+15551234567">
           <Calendar className="mr-2 h-5 w-5" />
           Call to Reserve
@@ -44,7 +44,7 @@ export function AddServiceToCartButton({ service }: AddServiceToCartButtonProps)
   return (
     <Button
       size="lg"
-      className="h-14 flex-1 text-lg bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)] hover:bg-[oklch(65%_0.14_85)] font-semibold tracking-wide"
+      className="h-14 flex-1 text-lg bg-blue-600 hover:bg-blue-700"
       onClick={handleAddToCart}
       disabled={isAdded}
     >

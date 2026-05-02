@@ -39,7 +39,7 @@ export function StatusBadge({ status, className, showIcon = true }: StatusBadgeP
         },
         completed: {
             label: 'Completed',
-            classes: 'bg-brand-forest-green text-white border-[oklch(85%_0.03_160)]',
+            classes: 'bg-brand-forest-green text-white border-zinc-950',
             icon: CheckCircle
         },
         cancelled: {
@@ -56,7 +56,7 @@ export function StatusBadge({ status, className, showIcon = true }: StatusBadgeP
 
     const statusConfig = config[normalizedStatus] || {
         label: status,
-        classes: 'bg-muted text-foreground border-[oklch(85%_0.03_160)]',
+        classes: 'bg-zinc-100 text-zinc-800 border-zinc-900',
         icon: Clock
     }
 

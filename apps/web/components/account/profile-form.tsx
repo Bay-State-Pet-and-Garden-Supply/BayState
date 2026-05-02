@@ -48,7 +48,7 @@ export function ProfileForm({ profile }: { profile: Profile }) {
     return (
         <div className="space-y-6">
             {message && (
-                <div className={`p-4 border font-semibold tracking-wide text-sm rounded-sm ${
+                <div className={`p-4 border-2 font-black uppercase tracking-tight text-sm ${
                     message.type === 'success' 
                         ? 'bg-green-50 border-green-600 text-green-700' 
                         : 'bg-red-50 border-red-600 text-red-700'
@@ -63,16 +63,16 @@ export function ProfileForm({ profile }: { profile: Profile }) {
                         name="fullName"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-xs font-medium tracking-wide text-muted-foreground">Full Name</FormLabel>
+                                <FormLabel className="text-xs font-black uppercase tracking-widest text-zinc-500">Full Name</FormLabel>
                                 <FormControl>
                                     <Input 
                                         placeholder="Your Name" 
                                         {...field} 
                                         disabled={loading} 
-                                        className="h-14 text-lg font-semibold border border-[oklch(85%_0.03_160)] rounded-sm focus-visible:ring-0 focus-visible:border-primary transition-all" 
+                                        className="h-14 text-lg font-bold border-2 border-zinc-900 rounded-none focus-visible:ring-0 focus-visible:border-primary transition-all" 
                                     />
                                 </FormControl>
-                                <FormMessage className="text-sm font-medium" />
+                                <FormMessage className="text-xs font-bold uppercase tracking-tight" />
                             </FormItem>
                         )}
                     />
@@ -82,16 +82,16 @@ export function ProfileForm({ profile }: { profile: Profile }) {
                         name="phone"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-xs font-medium tracking-wide text-muted-foreground">Phone Number</FormLabel>
+                                <FormLabel className="text-xs font-black uppercase tracking-widest text-zinc-500">Phone Number</FormLabel>
                                 <FormControl>
                                     <Input 
                                         placeholder="(555) 123-4567" 
                                         {...field} 
                                         disabled={loading} 
-                                        className="h-14 text-lg font-semibold border border-[oklch(85%_0.03_160)] rounded-sm focus-visible:ring-0 focus-visible:border-primary transition-all" 
+                                        className="h-14 text-lg font-bold border-2 border-zinc-900 rounded-none focus-visible:ring-0 focus-visible:border-primary transition-all" 
                                     />
                                 </FormControl>
-                                <FormMessage className="text-sm font-medium" />
+                                <FormMessage className="text-xs font-bold uppercase tracking-tight" />
                             </FormItem>
                         )}
                     />
@@ -100,7 +100,7 @@ export function ProfileForm({ profile }: { profile: Profile }) {
                         <Button 
                             type="submit" 
                             disabled={loading} 
-                            className="w-full sm:w-auto h-14 px-10 text-lg font-semibold tracking-wide rounded-sm shadow-sm bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)] hover:bg-[oklch(65%_0.14_85)]"
+                            className="w-full sm:w-auto h-14 px-10 text-lg font-black uppercase tracking-widest border-b-4 border-black/20 rounded-none shadow-lg active:translate-y-1 active:border-b-0 transition-all"
                         >
                             {loading ? "Saving..." : "Save Changes"}
                         </Button>

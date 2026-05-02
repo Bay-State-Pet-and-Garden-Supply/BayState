@@ -36,10 +36,10 @@ type StorefrontCategory = {
 };
 
 const desktopNavigationTriggerClassName =
-  "h-12 rounded-none bg-transparent px-4 text-sm font-medium text-white/80 hover:bg-card/10 hover:text-white focus:bg-card/10 focus:text-white data-[state=open]:bg-card data-[state=open]:text-zinc-950 data-[state=open]:hover:bg-card data-[state=open]:focus:bg-card";
+  "h-12 rounded-none bg-transparent px-4 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white focus:bg-white/10 focus:text-white data-[state=open]:bg-white data-[state=open]:text-zinc-950 data-[state=open]:hover:bg-white data-[state=open]:focus:bg-white";
 
 const desktopMegaMenuContentClassName =
-  "left-0 right-0 top-full z-[100] w-full overflow-hidden bg-card text-foreground shadow-[0_24px_48px_rgba(15,23,42,0.12)] md:w-full";
+  "left-0 right-0 top-full z-[100] w-full overflow-hidden bg-white text-zinc-900 shadow-[0_24px_48px_rgba(15,23,42,0.12)] md:w-full";
 
 function normalizeStorefrontUserRole(user: User | null): string | null {
   const metadataRoles = [
@@ -227,9 +227,9 @@ export function StorefrontHeader({
   return (
     <>
       <header 
-        className="max-md:hidden sticky top-0 z-50 w-full flex flex-col border-b border-[oklch(85%_0.03_160)]"
+        className="max-md:hidden sticky top-0 z-50 w-full flex flex-col border-b-2 border-zinc-900 shadow-md"
       >
-        <div className="bg-primary text-white border-b border-[oklch(85%_0.03_160)] shadow-sm">
+        <div className="bg-primary text-white border-b-4 border-zinc-900 shadow-[0_4px_0_rgba(0,0,0,1)]">
           <div className="container mx-auto flex h-20 items-center justify-between px-4">
             <Link 
               href="/" 
@@ -246,10 +246,10 @@ export function StorefrontHeader({
                 />
               </div>
               <div className="flex flex-col items-center">
-                <span className="font-bold leading-none text-white font-display group-hover:text-accent text-4xl">
+                <span className="font-black leading-none tracking-tighter text-white uppercase font-display group-hover:text-accent text-4xl">
                   Bay State
                 </span>
-                <span className="hidden sm:block text-xs font-medium leading-none text-white/80 tracking-wide mt-1 border-t border-white/20 pt-1 text-center w-full">
+                <span className="hidden sm:block text-xs font-black leading-none text-white/80 uppercase tracking-[0.2em] mt-1 border-t border-white/20 pt-1 text-center w-full">
                   Pet & Garden Supply
                 </span>
               </div>
@@ -261,16 +261,16 @@ export function StorefrontHeader({
 
             <div className="flex items-center gap-4 shrink-0">
               <UserMenu user={resolvedUser} userRole={resolvedUserRole} />
-              <div className="h-12 w-px bg-card/20 mx-2" />
+              <div className="h-12 w-px bg-white/20 mx-2" />
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative h-14 w-14 text-white hover:bg-[oklch(25%_0.02_90)] rounded-none border border-transparent hover:border-[oklch(85%_0.03_160)] transition-all group"
+                className="relative h-14 w-14 text-white hover:bg-zinc-900 rounded-none border-4 border-transparent hover:border-zinc-900 transition-all group"
                 aria-label={`Shopping cart, ${itemCount} items`}
                 onClick={() => setIsCartOpen(true)}
               >
                 <ShoppingCart className="h-7 w-7 group-hover:scale-110 transition-transform" />
-                <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center bg-primary-foreground text-[12px] font-bold text-primary border border-white/30 shadow-sm">
+                <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center bg-accent text-[12px] font-black text-secondary border-4 border-zinc-900 shadow-[2px_2px_0_rgba(0,0,0,1)]">
                   {itemCount}
                 </span>
               </Button>
@@ -278,7 +278,7 @@ export function StorefrontHeader({
           </div>
         </div>
 
-        <div className="relative border-b border-white/10 bg-[oklch(22%_0.02_160)] text-white/90 transition-all duration-300 ease-in-out">
+        <div className="relative border-b border-white/10 bg-zinc-950 text-white/90 transition-all duration-300 ease-in-out">
           <div className="container mx-auto flex h-12 items-center px-4 transition-all duration-300 ease-in-out" ref={containerRef}>
             <NavigationMenu className="flex w-full max-w-none" aria-label="Main Navigation" viewport={false}>
               
@@ -310,14 +310,14 @@ export function StorefrontHeader({
                         </NavigationMenuTrigger>
                         <NavigationMenuContent className={desktopMegaMenuContentClassName}>
                           <div className="container mx-auto grid grid-cols-[220px_minmax(0,1fr)] gap-10 px-4 py-8">
-                            <div className="flex flex-col gap-4 border-r border-[oklch(85%_0.03_160)] pr-8">
+                            <div className="flex flex-col gap-4 border-r border-zinc-200 pr-8">
                               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/70">
                                 Explore {parent.name}
                               </p>
                               <h3 className="text-3xl font-semibold tracking-tight text-zinc-950">
                                 {parent.name}
                               </h3>
-                              <p className="text-sm leading-6 text-muted-foreground">
+                              <p className="text-sm leading-6 text-zinc-600">
                                 {getCategorySummary(parent)}
                               </p>
                               <NavigationMenuLink asChild>
@@ -336,7 +336,7 @@ export function StorefrontHeader({
                                   <NavigationMenuLink asChild>
                                     <Link
                                       href={getCategoryHref(section.slug)}
-                                      className="mb-3 inline-flex items-center text-[15px] font-semibold text-[oklch(25%_0.02_90)] transition-colors hover:text-primary"
+                                      className="mb-3 inline-flex items-center text-[15px] font-semibold text-zinc-950 transition-colors hover:text-primary"
                                     >
                                       {section.name}
                                     </Link>
@@ -348,7 +348,7 @@ export function StorefrontHeader({
                                         <NavigationMenuLink key={child.id} asChild>
                                           <Link
                                             href={getCategoryHref(child.slug)}
-                                            className="block text-sm leading-6 text-muted-foreground transition-colors hover:text-zinc-950"
+                                            className="block text-sm leading-6 text-zinc-600 transition-colors hover:text-zinc-950"
                                           >
                                             {child.name}
                                           </Link>
@@ -371,14 +371,14 @@ export function StorefrontHeader({
                         </NavigationMenuTrigger>
                         <NavigationMenuContent className={desktopMegaMenuContentClassName}>
                           <div className="container mx-auto grid grid-cols-[220px_minmax(0,1fr)] gap-10 px-4 py-8">
-                            <div className="flex flex-col gap-4 border-r border-[oklch(85%_0.03_160)] pr-8">
+                            <div className="flex flex-col gap-4 border-r border-zinc-200 pr-8">
                               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/70">
                                 Browse by maker
                               </p>
                               <h3 className="text-3xl font-semibold tracking-tight text-zinc-950">
                                 Brands
                               </h3>
-                              <p className="text-sm leading-6 text-muted-foreground">
+                              <p className="text-sm leading-6 text-zinc-600">
                                 Shop trusted pet, farm, garden, and home brands carried at Bay State.
                               </p>
                               <NavigationMenuLink asChild>
@@ -396,7 +396,7 @@ export function StorefrontHeader({
                                 <NavigationMenuLink key={brand.id} asChild>
                                   <Link
                                     href={`/products?brand=${brand.slug}`}
-                                    className="block rounded-md px-3 py-2 text-sm font-medium text-[oklch(25%_0.02_90)] transition-colors hover:bg-[oklch(96%_0.01_90)] hover:text-[oklch(25%_0.02_90)]"
+                                    className="block rounded-md px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 hover:text-zinc-950"
                                   >
                                     {brand.name}
                                   </Link>
@@ -416,8 +416,8 @@ export function StorefrontHeader({
                     <NavigationMenuTrigger className={desktopNavigationTriggerClassName}>
                       More
                     </NavigationMenuTrigger>
-                    <NavigationMenuContent className="top-full z-[110] w-72 overflow-hidden rounded-b-xl border border-t-0 border-[oklch(85%_0.03_160)] bg-card text-foreground shadow-[0_16px_32px_rgba(15,23,42,0.16)] md:left-auto md:right-0">
-                      <div className="text-xs font-medium text-muted-foreground px-3 py-2">
+                    <NavigationMenuContent className="top-full z-[110] w-72 overflow-hidden rounded-b-xl border border-t-0 border-zinc-200 bg-white text-zinc-900 shadow-[0_16px_32px_rgba(15,23,42,0.16)] md:left-auto md:right-0">
+                      <div className="border-b border-zinc-100 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
                         Browse more
                       </div>
                       <div className="p-2">
@@ -425,7 +425,7 @@ export function StorefrontHeader({
                           <NavigationMenuLink key={item.id} asChild>
                             <Link
                               href={item.type === 'category' ? getCategoryHref(item.slug) : '/brands'}
-                              className="block rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-zinc-950"
+                              className="block rounded-md px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 hover:text-zinc-950"
                             >
                               {item.name}
                             </Link>
@@ -455,7 +455,7 @@ export function StorefrontHeader({
         </div>
       </header>
 
-      <header className="md:hidden sticky top-0 z-50 w-full border-b border-[oklch(85%_0.03_160)] bg-primary text-white shadow-sm flex h-20 items-center justify-between px-4">
+      <header className="md:hidden sticky top-0 z-50 w-full border-b-4 border-zinc-900 bg-primary text-white shadow-sm flex h-20 items-center justify-between px-4">
         <MobileNavDrawer
           categories={categories}
           petTypes={petTypes}
@@ -472,7 +472,7 @@ export function StorefrontHeader({
               className="object-contain"
             />
           </div>
-          <span className="font-bold text-white tracking-tight text-xl">
+          <span className="font-black text-white uppercase tracking-tighter text-xl">
             Bay State
           </span>
         </Link>
@@ -482,12 +482,12 @@ export function StorefrontHeader({
           <Button
             variant="ghost"
             size="icon"
-            className="relative h-12 w-12 text-white hover:bg-[oklch(25%_0.02_90)] rounded-none border border-transparent active:border-[oklch(85%_0.03_160)]"
+            className="relative h-12 w-12 text-white hover:bg-zinc-900 rounded-none border-2 border-transparent active:border-zinc-900"
             aria-label={`Shopping cart, ${itemCount} items`}
             onClick={() => setIsCartOpen(true)}
           >
             <ShoppingCart className="h-6 w-6" />
-            <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center bg-primary-foreground text-[10px] font-bold text-primary border border-white/30 shadow-sm">
+            <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center bg-accent text-[10px] font-black text-secondary border-2 border-zinc-900 shadow-[2px_2px_0_rgba(0,0,0,1)]">
               {itemCount}
             </span>
           </Button>

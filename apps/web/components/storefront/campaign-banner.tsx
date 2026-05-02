@@ -71,7 +71,7 @@ export function CampaignBanner({
         {messageCount > 1 && (
           <button
             onClick={goToPrev}
-            className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-[oklch(25%_0.02_90)]/10 transition-colors"
+            className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-black/10 transition-colors"
             aria-label="Previous message"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -101,7 +101,7 @@ export function CampaignBanner({
         {messageCount > 1 && (
           <button
             onClick={goToNext}
-            className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-[oklch(25%_0.02_90)]/10 transition-colors"
+            className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-black/10 transition-colors"
             aria-label="Next message"
           >
             <ChevronRight className="h-4 w-4" />
@@ -111,7 +111,7 @@ export function CampaignBanner({
         {/* Dismiss button */}
         <button
           onClick={() => setIsDismissed(true)}
-          className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-[oklch(25%_0.02_90)]/10 transition-colors"
+          className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/10 transition-colors"
           aria-label="Dismiss banner"
         >
           <X className="h-4 w-4" />

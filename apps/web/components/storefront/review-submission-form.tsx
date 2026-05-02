@@ -95,7 +95,7 @@ export function ReviewSubmissionForm({
     return (
       <Card className="w-full">
         <CardContent className="pt-6 text-center">
-          <p className="text-muted-foreground mb-4">
+          <p className="text-zinc-700 mb-4">
             Please sign in to share your experience with this product.
           </p>
           <Button asChild variant="outline">
@@ -116,7 +116,7 @@ export function ReviewSubmissionForm({
             <Star className="h-8 w-8 text-accent fill-accent" />
           </div>
           <h3 className="font-semibold text-lg mb-1">Thanks for your feedback!</h3>
-          <p className="text-muted-foreground">
+          <p className="text-zinc-700">
             You have already reviewed this product.
           </p>
         </CardContent>
@@ -132,7 +132,7 @@ export function ReviewSubmissionForm({
             <Star className="h-6 w-6 fill-primary" />
           </div>
           <h3 className="text-xl font-semibold mb-2 text-primary">Thank You!</h3>
-          <p className="text-muted-foreground max-w-xs mx-auto">
+          <p className="text-zinc-700 max-w-xs mx-auto">
             Your review is pending approval. We appreciate your feedback!
           </p>
         </CardContent>
@@ -170,7 +170,7 @@ export function ReviewSubmissionForm({
                     "h-8 w-8 transition-colors",
                     (hoverRating || rating) >= star
                       ? "fill-accent text-accent"
-                        : "text-muted-foreground fill-transparent"
+                        : "text-zinc-700 fill-transparent"
                   )}
                 />
               </button>
@@ -314,7 +314,7 @@ export function ReviewSubmissionForm({
 
         <div className="pt-4">
           <Button 
-            className="w-full md:w-auto bg-[oklch(72%_0.14_85)] text-[oklch(25%_0.02_90)] hover:bg-[oklch(65%_0.14_85)] font-semibold tracking-wide" 
+            className="w-full md:w-auto bg-primary text-primary-foreground hover:bg-primary/90" 
             onClick={handleSubmit}
             disabled={isPending || rating === 0}
             size="lg"

@@ -147,7 +147,7 @@ export function FacetSidebar({
   return (
     <div className="flex flex-col h-full lg:max-h-[calc(100vh-120px)]">
       <div className="flex items-center justify-between pb-4 border-b shrink-0">
-        <h2 className="text-xl font-bold text-foreground">Filters</h2>
+        <h2 className="text-xl font-bold text-zinc-900">Filters</h2>
         {hasFilters && (
           <Button variant="link" size="sm" onClick={() => router.push('/products')} className="h-auto p-0 text-primary">
             Clear All
@@ -161,7 +161,7 @@ export function FacetSidebar({
           {activeFilters.map((filter) => (
             <div
               key={`${filter.key}-${filter.value ?? filter.label}`}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted border border-[oklch(85%_0.03_160)] text-[11px] font-bold text-muted-foreground hover:bg-zinc-200 transition-colors cursor-default"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-100 border border-zinc-200 text-[11px] font-bold text-zinc-600 hover:bg-zinc-200 transition-colors cursor-default"
             >
               <span className="capitalize">{filter.label}</span>
               <button
@@ -203,7 +203,7 @@ export function FacetSidebar({
 
           {/* Categories */}
           {categories.length > 0 && (
-            <AccordionItem value="category" className="border-t border-[oklch(90%_0.02_160)]">
+            <AccordionItem value="category" className="border-t border-zinc-100">
               <AccordionTrigger className="text-sm font-bold hover:no-underline py-3">Category</AccordionTrigger>
               <AccordionContent className="pt-1 pb-4">
                 {filteredCategories.length > 10 && (
@@ -220,7 +220,7 @@ export function FacetSidebar({
                 <div className="space-y-3">
                   {/* Ancestors navigation */}
                   {activeCategory && (
-                    <div className="flex flex-col space-y-2 mb-3 pb-3 border-b border-[oklch(90%_0.02_160)]">
+                    <div className="flex flex-col space-y-2 mb-3 pb-3 border-b border-zinc-100">
                       {activeCategory.parent_id && activeCategory.ancestor_names && activeCategory.ancestor_slugs ? (
                         <button
                           type="button"
@@ -228,7 +228,7 @@ export function FacetSidebar({
                             const parentSlug = activeCategory.ancestor_slugs![activeCategory.ancestor_slugs!.length - 1];
                             updateFilter('category', parentSlug || null);
                           }}
-                          className="flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors text-left"
+                          className="flex items-center text-sm font-medium text-zinc-500 hover:text-primary transition-colors text-left"
                         >
                           <span className="mr-1.5 text-xs">&lt;</span> Back to {activeCategory.ancestor_names[activeCategory.ancestor_names.length - 1]}
                         </button>
@@ -236,13 +236,13 @@ export function FacetSidebar({
                         <button
                           type="button"
                           onClick={() => updateFilter('category', null)}
-                          className="flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors text-left"
+                          className="flex items-center text-sm font-medium text-zinc-500 hover:text-primary transition-colors text-left"
                         >
                           <span className="mr-1.5 text-xs">&lt;</span> Shop All Categories
                         </button>
                       )}
                       
-                      <div className="pt-1 font-bold text-sm text-foreground border-l-2 border-primary pl-2.5 ml-1">
+                      <div className="pt-1 font-bold text-sm text-zinc-900 border-l-2 border-primary pl-2.5 ml-1">
                         {activeCategory.name}
                       </div>
                     </div>
@@ -258,7 +258,7 @@ export function FacetSidebar({
                             type="button"
                             key={category.id}
                             onClick={() => updateFilter('category', slug)}
-                            className="block w-full text-left text-sm text-muted-foreground hover:text-primary hover:font-medium transition-colors border-l-2 border-transparent pl-2 ml-1"
+                            className="block w-full text-left text-sm text-zinc-600 hover:text-primary hover:font-medium transition-colors border-l-2 border-transparent pl-2 ml-1"
                           >
                             {category.name}
                           </button>
@@ -286,7 +286,7 @@ export function FacetSidebar({
 
           {/* Pet Type */}
           {petTypes.length > 0 && (
-            <AccordionItem value="petType" className="border-t border-[oklch(90%_0.02_160)]">
+            <AccordionItem value="petType" className="border-t border-zinc-100">
               <AccordionTrigger className="text-sm font-bold hover:no-underline py-3">Pet Type</AccordionTrigger>
               <AccordionContent className="pt-1 pb-4">
                 {petTypes.length > 10 && (
@@ -330,7 +330,7 @@ export function FacetSidebar({
 
           {/* Brand */}
           {brands.length > 0 && (
-          <AccordionItem value="brand" className="border-t border-[oklch(90%_0.02_160)]">
+          <AccordionItem value="brand" className="border-t border-zinc-100">
             <AccordionTrigger className="text-sm font-bold hover:no-underline py-3">Brand</AccordionTrigger>
             <AccordionContent className="pt-1 pb-4">
               {brands.length > 10 && (
@@ -380,7 +380,7 @@ export function FacetSidebar({
             const displayedValues = isExpanded ? filteredValues : filteredValues.slice(0, 6);
 
             return (
-              <AccordionItem key={facet.id} value={facet.slug} className="border-t border-[oklch(90%_0.02_160)]">
+              <AccordionItem key={facet.id} value={facet.slug} className="border-t border-zinc-100">
                 <AccordionTrigger className="text-sm font-bold hover:no-underline py-3">
                   {facet.name.replace(/_/g, ' ')}
                 </AccordionTrigger>
