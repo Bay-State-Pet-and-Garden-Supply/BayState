@@ -1164,26 +1164,33 @@ def _run_official_brand_job(
         brand = item_context.get("brand")
         preferred_domains = item_context.get("preferred_domains")
         official_domains = item_context.get("official_domains")
-        items.append(
-            {
-                "sku": sku,
-                "product_name": item_context.get("product_name")
-                if item_context.get("product_name") is not None
-                else search_cfg.get("product_name"),
-                "brand": brand if brand is not None else (cohort_brand if cohort_brand is not None else search_cfg.get("brand")),
-                "category": item_context.get("category") if item_context.get("category") is not None else search_cfg.get("category"),
-                "preferred_domains": preferred_domains
-                if preferred_domains is not None
-                else (cohort_preferred_domains if cohort_preferred_domains is not None else search_cfg.get("preferred_domains")),
-                "official_domains": official_domains
-                if official_domains is not None
-                else (cohort_official_domains if cohort_official_domains is not None else search_cfg.get("official_domains")),
-                "source_url": item_context.get("source_url") if item_context.get("source_url") is not None else search_cfg.get("source_url"),
-                "known_url": item_context.get("known_url") if item_context.get("known_url") is not None else search_cfg.get("known_url"),
-                "url_source": item_context.get("url_source") if item_context.get("url_source") is not None else search_cfg.get("url_source"),
-                "candidate_id": item_context.get("candidate_id") if item_context.get("candidate_id") is not None else search_cfg.get("candidate_id"),
-            }
-        )
+        register_name = item_context.get("register_name") or item_context.get("product_name")
+
+        base_item = {
+            "sku": sku,
+            "register_name": register_name,
+            "brand": brand if brand is not None else (cohort_brand if cohort_brand is not None else search_cfg.get("brand")),
+            "official_domains": official_domains
+            if official_domains is not None
+            else (cohort_official_domains if cohort_official_domains is not None else search_cfg.get("official_domains")),
+            "preferred_domains": preferred_domains
+            if preferred_domains is not None
+            else (cohort_preferred_domains if cohort_preferred_domains is not None else search_cfg.get("preferred_domains")),
+        }
+
+        if official_brand_phase == "extraction":
+            base_item["source_url"] = item_context.get("source_url") if item_context.get("source_url") is not None else search_cfg.get("source_url")
+            base_item["known_url"] = item_context.get("known_url") if item_context.get("known_url") is not None else search_cfg.get("known_url")
+            base_item["url_source"] = item_context.get("url_source") if item_context.get("url_source") is not None else search_cfg.get("url_source")
+            base_item["candidate_id"] = item_context.get("candidate_id") if item_context.get("candidate_id") is not None else search_cfg.get("candidate_id")
+            fallback_urls = item_context.get("fallback_urls")
+            if fallback_urls is not None:
+                base_item["fallback_urls"] = fallback_urls
+            max_fallbacks = item_context.get("max_fallbacks")
+            if max_fallbacks is not None:
+                base_item["max_fallbacks"] = max_fallbacks
+
+        items.append(base_item)
 
     _emit_runner_log(
         job_id=job_config.job_id,
@@ -1268,6 +1275,10 @@ def _run_official_brand_job(
                 "candidates": candidates,
                 "confidence": search_result.get("confidence") or 0.0,
                 "selection_method": search_result.get("selection_method"),
+                "predicted_name": search_result.get("predicted_name"),
+                "fallback_urls": search_result.get("fallback_urls"),
+                "phase1_result_count": search_result.get("phase1_result_count"),
+                "phase2_result_count": search_result.get("phase2_result_count"),
                 "error": search_result.get("error"),
                 "scraped_at": datetime.now().isoformat(),
             }

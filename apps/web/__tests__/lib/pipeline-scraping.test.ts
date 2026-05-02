@@ -323,10 +323,8 @@ describe('scrapeProducts', () => {
         expect(insertedPayload.config.items).toEqual([
             {
                 sku: 'SKU-1',
-                product_name: 'BENTLEY SEED BROCCOL I GREEN SPROUTING',
-                price: 2.49,
+                register_name: 'BENTLEY SEED BROCCOL I GREEN SPROUTING',
                 brand: 'Bentley Seed',
-                category: 'Seeds',
             },
         ]);
     });
@@ -368,6 +366,9 @@ describe('scrapeProducts', () => {
             officialDomains: ['scottsmiraclegro.com'],
             preferredDomains: ['homedepot.com'],
         });
+        // Official brand items should use register_name, not product_name
+        expect(insertedPayload.config.items[0].register_name).toBe('Miracle-Gro Potting Mix 25 Quart');
+        expect(insertedPayload.config.items[0].product_name).toBeUndefined();
     });
 
     it('should include per-sku input context in standard job config', async () => {
@@ -455,10 +456,8 @@ describe('scrapeProducts', () => {
         expect(insertedPayload.config.items).toEqual([
             {
                 sku: 'SKU-1',
-                product_name: 'Lake Valley Seed Organic Sage Broadleaf Heirloom',
-                price: 2.49,
+                register_name: 'LV SEED ORGANIC SAGE BROADLEAF HEIRLOOM',
                 brand: 'Lake Valley Seed',
-                category: 'Seeds',
             },
         ]);
     });
@@ -497,14 +496,46 @@ describe('scrapeProducts', () => {
         expect(insertedPayload.config.items).toEqual([
             {
                 sku: 'SKU-1',
-                product_name: 'Miracle-Gro Potting Mix 25 Quart',
-                price: 9.99,
+                register_name: 'MIRACLE-GRO POTTING MIX 25 QT',
                 brand: 'Miracle-Gro',
-                category: 'Garden > Potting Mix',
                 official_domains: ['scottsmiraclegro.com'],
                 preferred_domains: ['homedepot.com', 'lowes.com'],
             },
         ]);
+        // verify that with preferCatalogContext, register_name is still the raw ingestion name
+        expect(insertedPayload.config.items[0].register_name).toBe('MIRACLE-GRO POTTING MIX 25 QT');
+        expect(insertedPayload.config.items[0].product_name).toBeUndefined();
+    });
+
+    it('should use raw ingestion name as register_name regardless of preferCatalogContext', async () => {
+        mockSupabase = makeSupabaseMock({
+            pipelineRows: [
+                {
+                    sku: 'SKU-1',
+                    input: {
+                        name: 'RAW INGESTION NAME ALL CAPS',
+                        price: 5.99,
+                    },
+                },
+            ],
+            productRows: [
+                {
+                    sku: 'SKU-1',
+                    name: 'Pretty Catalog Name',
+                    brand: null,
+                },
+            ],
+        });
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], { enrichment_method: 'official_brand' });
+
+        expect(result.success).toBe(true);
+        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
+        // register_name should always be the raw ingestion name, even when preferCatalogContext is true
+        expect(insertedPayload.config.items[0].register_name).toBe('RAW INGESTION NAME ALL CAPS');
+        // product_name should not appear in official brand items
+        expect(insertedPayload.config.items[0].product_name).toBeUndefined();
     });
 
     it('should resolve brand via aliases when exact slug does not match', async () => {
@@ -538,8 +569,7 @@ describe('scrapeProducts', () => {
         expect(insertedPayload.config.items).toEqual([
             {
                 sku: 'SKU-1',
-                product_name: 'LV SEED ORGANIC WHEAT GRASS HARD RED',
-                price: 3.29,
+                register_name: 'LV SEED ORGANIC WHEAT GRASS HARD RED',
                 brand: 'Lake Valley Seed',
                 official_domains: ['lakevalleyseed.com'],
             },
@@ -580,10 +610,8 @@ describe('scrapeProducts', () => {
         expect(insertedPayload.config.items).toEqual([
             {
                 sku: 'SKU-1',
-                product_name: 'Widget 25 QT',
-                price: 9.99,
+                register_name: 'Widget 25 QT',
                 brand: 'Miracle-Gro',
-                category: 'Garden > Potting Mix',
                 official_domains: ['scottsmiraclegro.com'],
                 preferred_domains: ['homedepot.com', 'lowes.com'],
             },
@@ -631,10 +659,8 @@ describe('scrapeProducts', () => {
         expect(insertedPayload.config.items).toEqual([
             {
                 sku: 'SKU-1',
-                product_name: 'Tomato Jubilee 1943',
-                price: 2.49,
+                register_name: 'Tomato Jubilee 1943',
                 brand: 'Bentley Seed',
-                category: 'Vegetable Seeds',
                 official_domains: ['bentleyseeds.com'],
                 preferred_domains: ['arett.com'],
             },
@@ -700,6 +726,67 @@ describe('scrapeProducts', () => {
         expect(insertedPayload.config.phase).toBe('extraction');
         expect(insertedPayload.config.items[0].source_url).toBe('https://example.com/product');
         expect(insertedPayload.config.items[0].url_source).toBe('manual');
+        // Extraction items should still carry register_name
+        expect(insertedPayload.config.items[0].register_name).toBe('Test Product');
+    });
+
+    it('should forward officialBrandMaxFallbacks as max_fallbacks in extraction items', async () => {
+        mockSupabase = makeSupabaseMock({
+            pipelineRows: [
+                {
+                    sku: 'SKU-1',
+                    cohort_id: 'cohort-1',
+                    input: { name: 'Test Product', price: 10.0 },
+                },
+            ],
+        });
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], {
+            enrichment_method: 'official_brand',
+            officialBrandPhase: 'extraction',
+            officialBrandMaxFallbacks: 5,
+            officialBrandUrlsBySku: { 'SKU-1': 'https://example.com/product' },
+            officialBrandCohort: {
+                id: 'cohort-1',
+                brandId: 'brand-1',
+                brandName: 'Test Brand',
+            },
+        });
+
+        expect(result.success).toBe(true);
+        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
+        expect(insertedPayload.type).toBe('official_brand_extraction');
+        expect(insertedPayload.config.items[0].max_fallbacks).toBe(5);
+    });
+
+    it('should not include max_fallbacks in discovery items', async () => {
+        mockSupabase = makeSupabaseMock({
+            pipelineRows: [
+                {
+                    sku: 'SKU-1',
+                    cohort_id: 'cohort-1',
+                    input: { name: 'Test Product', price: 10.0 },
+                },
+            ],
+        });
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], {
+            enrichment_method: 'official_brand',
+            officialBrandPhase: 'url_discovery',
+            officialBrandMaxFallbacks: 5,
+            officialBrandCohort: {
+                id: 'cohort-1',
+                brandId: 'brand-1',
+                brandName: 'Test Brand',
+            },
+        });
+
+        expect(result.success).toBe(true);
+        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
+        // Discovery items should not have max_fallbacks
+        expect(insertedPayload.config.items[0].max_fallbacks).toBeUndefined();
     });
 
     it('should persist URL candidates for manual extraction jobs', async () => {

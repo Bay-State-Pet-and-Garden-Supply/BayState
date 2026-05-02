@@ -52,6 +52,8 @@ export interface ScrapeOptions {
     cohortBrand?: string;
     /** Cohort-scoped context for Official Brand jobs */
     officialBrandCohort?: OfficialBrandCohortContext;
+    /** Maximum fallback URLs to attempt during Official Brand extraction (default: 3) */
+    officialBrandMaxFallbacks?: number;
 }
 
 export interface ScrapeResult {
