@@ -202,6 +202,16 @@ const skuAssertionSchema = z.object({
   }).catchall(z.string().nullable().optional()),
 });
 
+// OCR config for image text extraction
+const ocrConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  max_images: z.number().min(1).max(10).default(2),
+  language: z.string().default('eng'),
+  preprocess: z.boolean().default(true),
+});
+
+export type OcrConfig = z.infer<typeof ocrConfigSchema>;
+
 // Full scraper config schema
 export const scraperConfigSchema = z.object({
   schema_version: schemaVersionSchema,
@@ -224,6 +234,7 @@ export const scraperConfigSchema = z.object({
   edge_case_skus: z.array(z.string()).optional(),
   test_assertions: z.array(skuAssertionSchema).optional(),
   ai_config: aiConfigSchema.optional(),
+  ocr_config: ocrConfigSchema.optional(),
 });
 
 // ============================================================================

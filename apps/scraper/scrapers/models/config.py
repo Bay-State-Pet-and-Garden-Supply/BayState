@@ -143,6 +143,19 @@ class ScraperConfig(BaseModel):
     # References to credential records (IDs) that should be fetched at runtime.
     credential_refs: list[str] = Field(default_factory=list, description="List of credential reference IDs to fetch on-demand")
 
+    class OCRConfig(BaseModel):
+        """Configuration for OCR extraction from product images.
+
+        Enables self-contained OCR using Tesseract to extract text from
+        product packaging images (front/back). The action runs after
+        process_images so authenticated images are available as data URLs.
+        """
+
+        enabled: bool = Field(False, description="Whether to enable OCR on product images")
+        max_images: int = Field(2, description="Maximum number of images to OCR (typically front + back)", ge=1, le=10)
+        language: str = Field("eng", description="Tesseract language code (e.g., 'eng', 'spa', 'fra')")
+        preprocess: bool = Field(True, description="Apply image preprocessing (contrast, sharpening) before OCR")
+
     class ProxyConfig(BaseModel):
         """Optional proxy configuration for scraper runtime."""
 
@@ -174,6 +187,7 @@ class ScraperConfig(BaseModel):
             return v
 
     proxy_config: Optional[ProxyConfig] = Field(None, description="Optional proxy configuration for outbound requests")
+    ocr_config: OCRConfig | None = Field(None, description="Optional OCR configuration for extracting text from product images")
     test_skus: list[str] | None = Field(None, description="List of SKUs to use for testing")
     fake_skus: list[str] | None = Field(None, description="List of fake SKUs for no-results validation")
     edge_case_skus: list[str] | None = Field(None, description="List of edge case SKUs for boundary testing")

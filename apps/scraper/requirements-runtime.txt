@@ -17,6 +17,10 @@ httpx>=0.25.0
 python-dotenv>=1.0.0
 pydantic>=2.0.0
 
+# OCR for product image text extraction
+pytesseract>=0.3.10
+Pillow>=10.0.0
+
 # Runtime integrations
 supabase>=2.0.0
 cryptography>=42.0.0

@@ -101,6 +101,11 @@ class RawScrapedProduct(BaseModel):
         default=None, description="Reference only - NOT used in final product"
     )
 
+    # OCR-extracted text from product packaging images
+    image_text: str | None = Field(
+        default=None, description="Text extracted from product images via OCR"
+    )
+
     # Metadata
     image_quality: int = Field(default=50, ge=0, le=100)
 
@@ -154,6 +159,8 @@ class RawScrapedProduct(BaseModel):
             "case_pack": self.case_pack,
             "ratings": self.ratings,
             "reviews_count": self.reviews_count,
+            # OCR text from packaging images
+            "image_text": self.image_text,
             # Scraped price stored for reference
             "scraped_price": self.scraped_price,
         }

@@ -108,6 +108,12 @@ workflows:
         - type: exclude_text
           text: noimage
       deduplicate: true
+  - action: ocr_images
+    name: Extract packaging text
+    params:
+      field: Image URLs
+      max_images: 2
+      output_field: Image Text
 ai_config: null
 anti_detection:
   enable_rate_limiting: false
@@ -151,6 +157,11 @@ normalization: null
 timeout: 30
 retries: 2
 image_quality: 40
+ocr_config:
+  enabled: true
+  max_images: 2
+  language: eng
+  preprocess: true
 credential_refs:
   - phillips
 test_skus:
