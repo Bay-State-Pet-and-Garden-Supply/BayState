@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from dataclasses import asdict
 from datetime import datetime, timezone
 import json
@@ -26,9 +25,7 @@ from scrapers.cohort.grouping import (
     get_cohort_summary,
     group_products_into_cohorts,
 )
-from scrapers.cohort.job_processor import BrowserProtocol, CohortJobProcessor, CohortJobResult
-from scrapers.cohort.processor import ProductRecord
-from scrapers.executor.workflow_executor import WorkflowExecutor
+from scrapers.cohort.job_processor import CohortJobResult
 from scrapers.models.config import ScraperConfig
 
 from .common import (
@@ -44,61 +41,22 @@ from .common import (
 logger = logging.getLogger(__name__)
 
 
-class VerboseWorkflowExecutor:
-    """Small wrapper that emits CLI progress around workflow execution."""
-
-    def __init__(self, executor: WorkflowExecutor, total_products: int) -> None:
-        self._executor: WorkflowExecutor = executor
-        self._total_products: int = total_products
-        self._processed_products: int = 0
-        self.browser: BrowserProtocol | None = cast(BrowserProtocol | None, executor.browser)
-
-    async def initialize(self) -> None:
-        click.echo("Initializing shared browser session...")
-        await self._executor.initialize()
-        self.browser = cast(BrowserProtocol | None, self._executor.browser)
-
-    async def execute_workflow(
-        self,
-        context: dict[str, object] | None = None,
-        quit_browser: bool = True,
-    ) -> dict[str, object]:
-        self._processed_products += 1
-        active_context = context or {}
-        sku = str(active_context.get("sku") or "unknown-sku")
-
-        click.echo(f"  [{self._processed_products}/{self._total_products}] Processing {sku}")
-        started_at = time.perf_counter()
-
-        try:
-            result = cast(
-                dict[str, object],
-                await self._executor.execute_workflow(context=active_context, quit_browser=quit_browser),
-            )
-        except Exception as exc:
-            duration = time.perf_counter() - started_at
-            click.secho(f"    FAILED in {duration:.2f}s: {exc}", fg="red")
-            raise
-
-        duration = time.perf_counter() - started_at
-        extracted = result.get("results")
-        extracted_fields = cast(dict[str, object], extracted) if isinstance(extracted, dict) else {}
-        field_count = len(extracted_fields)
-        click.secho(f"    OK in {duration:.2f}s ({field_count} fields)", fg="green")
-        return result
-
 def _select_products(
     *,
     config: ScraperConfig,
     product_line: str | None,
     upc_prefix: str | None,
     limit: int,
-) -> tuple[list[ProductRecord], int]:
+) -> tuple[list[dict[str, str]], int]:
+    """Select products from config test_skus, filtered by UPC prefix and limit."""
     selected_skus = normalize_sku_list(config.test_skus)
     available_count = len(selected_skus)
 
     if not selected_skus:
-        raise click.ClickException(f"Scraper '{config.name}' has no test_skus configured. Add test_skus to the YAML or pass a different config.")
+        raise click.ClickException(
+            f"Scraper '{config.name}' has no test_skus configured. "
+            "Add test_skus to the YAML or pass a different config."
+        )
 
     if upc_prefix:
         prefix = upc_prefix.strip()
@@ -108,11 +66,13 @@ def _select_products(
 
     if not selected_skus:
         prefix_details = f" with UPC prefix '{upc_prefix}'" if upc_prefix else ""
-        raise click.ClickException(f"No test SKUs matched scraper '{config.name}'{prefix_details}.")
+        raise click.ClickException(
+            f"No test SKUs matched scraper '{config.name}'{prefix_details}."
+        )
 
     limited_skus = selected_skus[:limit]
     line_name = product_line or (upc_prefix or f"{config.name}-batch")
-    products: list[ProductRecord] = [
+    products: list[dict[str, str]] = [
         {
             "sku": sku,
             "product_line": line_name,
@@ -129,7 +89,10 @@ def _serialize_grouping(result: CohortGroupingResult) -> dict[str, object]:
         "statistics": result.statistics,
         "warnings": result.warnings,
         "invalid_products": [dict(product) for product in result.invalid_products],
-        "cohorts": {cohort_key: [dict(product) for product in products] for cohort_key, products in result.cohorts.items()},
+        "cohorts": {
+            cohort_key: [dict(product) for product in products]
+            for cohort_key, products in result.cohorts.items()
+        },
     }
 
 
@@ -138,18 +101,18 @@ def _serialize_results(results: dict[str, CohortJobResult]) -> dict[str, object]
 
 
 def _build_summary(results: dict[str, CohortJobResult]) -> dict[str, int]:
-    products_processed = sum(result.products_processed for result in results.values())
-    products_succeeded = sum(result.products_succeeded for result in results.values())
-    products_failed = sum(result.products_failed for result in results.values())
+    products_processed = sum(r.products_processed for r in results.values())
+    products_succeeded = sum(r.products_succeeded for r in results.values())
+    products_failed = sum(r.products_failed for r in results.values())
 
     return {
         "batches_processed": len(results),
         "products_processed": products_processed,
         "products_succeeded": products_succeeded,
         "products_failed": products_failed,
-        "successful_batches": sum(1 for result in results.values() if result.status == "success"),
-        "partial_batches": sum(1 for result in results.values() if result.status == "partial"),
-        "failed_batches": sum(1 for result in results.values() if result.status == "failed"),
+        "successful_batches": sum(1 for r in results.values() if r.status == "success"),
+        "partial_batches": sum(1 for r in results.values() if r.status == "partial"),
+        "failed_batches": sum(1 for r in results.values() if r.status == "failed"),
     }
 
 
@@ -165,6 +128,7 @@ def _write_report(output_path: Path, report: object) -> None:
 
 
 def _runner_scraper_config_from_local(config: ScraperConfig) -> RunnerScraperConfig:
+    """Convert a local ScraperConfig model to the runner's ScraperConfig type."""
     return RunnerScraperConfig(
         name=config.name,
         display_name=getattr(config, "display_name", None),
@@ -184,8 +148,16 @@ def _runner_scraper_config_from_local(config: ScraperConfig) -> RunnerScraperCon
         },
         test_skus=list(config.test_skus) if config.test_skus else [],
         retries=config.retries if config.retries is not None else 2,
-        validation=config.validation.model_dump() if hasattr(getattr(config, "validation", None), "model_dump") else getattr(config, "validation", None),
-        login=config.login.model_dump() if hasattr(getattr(config, "login", None), "model_dump") else getattr(config, "login", None),
+        validation=(
+            config.validation.model_dump()
+            if hasattr(getattr(config, "validation", None), "model_dump")
+            else getattr(config, "validation", None)
+        ),
+        login=(
+            config.login.model_dump()
+            if hasattr(getattr(config, "login", None), "model_dump")
+            else getattr(config, "login", None)
+        ),
         credential_refs=list(config.credential_refs) if config.credential_refs else [],
     )
 
@@ -197,13 +169,20 @@ def _run_local_batch_through_runner(
     debug: bool,
     no_headless: bool,
 ) -> dict[str, object]:
+    """Execute a batch of SKUs through the canonical run_job() path.
+
+    This is the single execution path for all bsr batch test runs.
+    It uses the same code path as the production daemon (run_job()),
+    ensuring local results match production behavior.
+    """
     setup_structured_logging(debug=debug)
-    os_environ = __import__("os").environ
-    os_environ["USE_YAML_CONFIGS"] = "true"
+    import os as _os
+
+    _os.environ["USE_YAML_CONFIGS"] = "true"
 
     credential_client = ScraperAPIClient(
-        api_url=os_environ.get("SCRAPER_API_URL"),
-        api_key=os_environ.get("SCRAPER_API_KEY", ""),
+        api_url=_os.environ.get("SCRAPER_API_URL"),
+        api_key=_os.environ.get("SCRAPER_API_KEY", ""),
         runner_name="bsr-batch",
     )
 
@@ -252,15 +231,16 @@ def _run_local_batch_through_runner(
 def _cohort_results_from_runner_payload(
     *,
     runner_results: dict[str, object],
-    products: list[ProductRecord],
+    products: list[dict[str, str]],
 ) -> dict[str, CohortJobResult]:
+    """Convert flat run_job() results into per-SKU CohortJobResult entries."""
     raw_data = runner_results.get("data")
     runner_data = cast(dict[str, object], raw_data) if isinstance(raw_data, dict) else {}
     raw_logs = runner_results.get("logs")
     runner_logs = cast(list[dict[str, object]], raw_logs) if isinstance(raw_logs, list) else []
     processed: dict[str, CohortJobResult] = {}
 
-    def extract_runner_error(sku: str, scraper_name: str) -> str:
+    def _extract_runner_error(sku: str, scraper_name: str) -> str:
         for entry in runner_logs:
             if not isinstance(entry, dict):
                 continue
@@ -268,21 +248,18 @@ def _cohort_results_from_runner_payload(
                 continue
             if str(entry.get("level") or "").lower() not in {"error", "critical", "warning"}:
                 continue
-
             message = str(entry.get("message") or "").strip()
             if not message:
                 continue
             prefix = f"{scraper_name}/{sku}: "
             if prefix.strip() and message.startswith(prefix):
                 message = message[len(prefix) :]
-
             separator = " - "
             if separator in message:
-                left, right = message.split(separator, 1)
-                if left.endswith("Error"):
+                _left, right = message.split(separator, 1)
+                if _left.endswith("Error"):
                     return right.strip()
             return message
-
         return "Local runner returned no data"
 
     for product in products:
@@ -315,14 +292,12 @@ def _cohort_results_from_runner_payload(
             status = "failed"
             products_succeeded = 0
             products_failed = 1
-            error_message = str((scraper_payload or {}).get("error") or extract_runner_error(sku, str(product.get("scraper") or "")))
+            error_message = str(
+                (scraper_payload or {}).get("error")
+                or _extract_runner_error(sku, str(product.get("scraper") or ""))
+            )
             errors = [f"{sku}: {error_message}"]
-            result_payload = {
-                sku: {
-                    "success": False,
-                    "error": error_message,
-                }
-            }
+            result_payload = {sku: {"success": False, "error": error_message}}
 
         processed[sku] = CohortJobResult(
             cohort_id=sku,
@@ -342,12 +317,16 @@ def _cohort_results_from_runner_payload(
     return processed
 
 
+# ── Output helpers ──────────────────────────────────────────────────────
+
+
 def _print_grouping_details(grouping_result: CohortGroupingResult) -> None:
+    """Print cohort grouping visualization to the terminal."""
     click.echo()
     click.echo(get_cohort_summary(grouping_result))
 
     for cohort_key, products in grouping_result.cohorts.items():
-        skus = ", ".join(str(product.get("sku") or "unknown") for product in products)
+        skus = ", ".join(str(p.get("sku") or "unknown") for p in products)
         click.echo(f"  - {cohort_key}: {skus}")
 
     if grouping_result.warnings:
@@ -358,18 +337,28 @@ def _print_grouping_details(grouping_result: CohortGroupingResult) -> None:
 
 
 def _print_result_details(results: dict[str, CohortJobResult]) -> None:
+    """Print per-SKU scrape results with status colors."""
     click.echo()
     click.secho("Batch results:", bold=True)
 
     for cohort_key, result in results.items():
-        status_color = "green" if result.status == "success" else "yellow" if result.status == "partial" else "red"
+        status_color = (
+            "green"
+            if result.status == "success"
+            else "yellow"
+            if result.status == "partial"
+            else "red"
+        )
         click.secho(
-            f"- {cohort_key} [{result.status}] {result.products_succeeded}/{result.products_processed} succeeded",
+            f"- {cohort_key} [{result.status}] "
+            f"{result.products_succeeded}/{result.products_processed} succeeded",
             fg=status_color,
         )
 
         for sku, payload in result.results.items():
-            payload_dict = cast(dict[str, object], payload) if isinstance(payload, dict) else None
+            payload_dict = (
+                cast(dict[str, object], payload) if isinstance(payload, dict) else None
+            )
 
             if payload_dict and payload_dict.get("success") is False:
                 error_message = str(payload_dict.get("error") or "unknown error")
@@ -377,30 +366,16 @@ def _print_result_details(results: dict[str, CohortJobResult]) -> None:
                 continue
 
             extracted = payload_dict.get("results") if payload_dict else None
-            extracted_fields = sorted(cast(dict[str, object], extracted).keys()) if isinstance(extracted, dict) else []
+            extracted_fields = (
+                sorted(cast(dict[str, object], extracted).keys())
+                if isinstance(extracted, dict)
+                else []
+            )
             preview = ", ".join(extracted_fields[:5]) if extracted_fields else "no extracted fields"
             click.echo(f"    {sku}: OK ({preview})")
 
 
-async def _process_batch(
-    *,
-    config: ScraperConfig,
-    products: list[ProductRecord],
-    prefix_length: int,
-) -> dict[str, CohortJobResult]:
-    executor = WorkflowExecutor(
-        config,
-        headless=True,
-        timeout=config.timeout,
-        worker_id="cli-batch-test",
-        debug_mode=False,
-    )
-    verbose_executor = VerboseWorkflowExecutor(executor, total_products=len(products))
-    processor = CohortJobProcessor(
-        verbose_executor,
-        CohortGroupingConfig(prefix_length=prefix_length, skip_invalid_upcs=False),
-    )
-    return await processor.process_products(products, {"name": config.name}, mode="auto")
+# ── CLI commands ────────────────────────────────────────────────────────
 
 
 @click.command(name="validate")
@@ -448,7 +423,12 @@ def test_batch_command(
     debug: bool,
     no_headless: bool,
 ) -> None:
-    """Test a product batch end-to-end with full local output."""
+    """Test a product batch end-to-end with full local output.
+
+    All execution goes through the canonical run_job() path (same as
+    production daemon) for consistent results regardless of whether the
+    scraper requires login credentials.
+    """
 
     resolved_config_path = resolve_config_path(scraper, str(config) if config else None)
     validation_payload, is_valid = validate_scraper_config(
@@ -471,18 +451,18 @@ def test_batch_command(
             fg="yellow",
         )
 
+    # ── Select products ──────────────────────────────────────────────
     manual_skus = normalize_sku_list(sku.split(",") if sku else None)
     if manual_skus:
-        selected_products: list[ProductRecord] = [
+        products: list[dict[str, str]] = [
             {
-                "sku": selected_sku,
+                "sku": s,
                 "product_line": product_line or f"{scraper_config.name}-batch",
-                "product_name": f"{(product_line or scraper_config.name)} {index + 1}",
+                "product_name": f"{(product_line or scraper_config.name)} {i + 1}",
                 "scraper": scraper_config.name,
             }
-            for index, selected_sku in enumerate(manual_skus[:limit])
+            for i, s in enumerate(manual_skus[:limit])
         ]
-        products = selected_products
         available_count = len(manual_skus)
     else:
         products, available_count = _select_products(
@@ -491,6 +471,8 @@ def test_batch_command(
             upc_prefix=upc_prefix,
             limit=limit,
         )
+
+    # ── Cohort grouping visualization ─────────────────────────────────
     prefix_length = len(upc_prefix) if upc_prefix else 6
     grouping_config = CohortGroupingConfig(prefix_length=prefix_length, skip_invalid_upcs=False)
     grouping_result = group_products_into_cohorts(products, grouping_config)
@@ -505,25 +487,25 @@ def test_batch_command(
 
     _print_grouping_details(grouping_result)
 
+    # ── Execute (single path: run_job) ───────────────────────────────
     started_at = datetime.now(timezone.utc)
     click.echo()
     click.secho("Running cohort processing...", bold=True)
-    if scraper_config.requires_login():
-        click.echo("Login-enabled scraper detected; routing through runner local mode for credential fallback and debug logs.")
-        runner_results = _run_local_batch_through_runner(
-            config=scraper_config,
-            skus=[str(product["sku"]) for product in products],
-            debug=debug,
-            no_headless=no_headless,
-        )
-        processed_results = _cohort_results_from_runner_payload(
-            runner_results=runner_results,
-            products=products,
-        )
-    else:
-        processed_results = asyncio.run(_process_batch(config=scraper_config, products=products, prefix_length=prefix_length))
+
+    runner_results = _run_local_batch_through_runner(
+        config=scraper_config,
+        skus=[str(p["sku"]) for p in products],
+        debug=debug,
+        no_headless=no_headless,
+    )
+    processed_results = _cohort_results_from_runner_payload(
+        runner_results=runner_results,
+        products=products,
+    )
+
     finished_at = datetime.now(timezone.utc)
 
+    # ── Output ───────────────────────────────────────────────────────
     _print_result_details(processed_results)
 
     summary = _build_summary(processed_results)
@@ -532,7 +514,9 @@ def test_batch_command(
     click.secho("Summary", bold=True)
     click.echo(json.dumps({**summary, "duration_seconds": duration_seconds}, indent=2))
 
-    output_path = output or _default_output_path(scraper_config.name, product_line, upc_prefix)
+    output_path = output or _default_output_path(
+        scraper_config.name, product_line, upc_prefix
+    )
     report = {
         "batch": {
             "product_line": product_line,
@@ -556,5 +540,6 @@ def test_batch_command(
 
 
 def register_batch_commands(batch_group: click.Group) -> None:
+    """Register CLI commands onto the batch subcommand group."""
     batch_group.add_command(test_batch_command)
     batch_group.add_command(validate_batch_command)
