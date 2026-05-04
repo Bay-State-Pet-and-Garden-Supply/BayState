@@ -34,6 +34,7 @@ describe('pipeline status transition CRUD', () => {
     it('queries products by pipeline_status', async () => {
         const queryBuilder = createThenableBuilder({ data: [], error: null, count: 0 });
         (createClient as jest.Mock).mockResolvedValue({
+            rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
             from: jest.fn().mockReturnValue(queryBuilder),
         });
 
@@ -69,6 +70,9 @@ describe('pipeline status transition CRUD', () => {
         expect(queryBuilder.is).toHaveBeenCalledWith('exported_at', null);
         expect(counts).toEqual([
             { status: 'imported', count: 2 },
+            { status: 'searching', count: 0 },
+            { status: 'url_review', count: 0 },
+            { status: 'extracting', count: 0 },
             { status: 'scraping', count: 1 },
             { status: 'scraped', count: 1 },
             { status: 'consolidating', count: 1 },
@@ -103,7 +107,7 @@ describe('pipeline status transition CRUD', () => {
 
         expect(result).toEqual({
             success: false,
-            error: "Invalid status transition to 'imported'. Allowed persisted statuses: 'imported', 'scraping', 'scraped', 'consolidating', 'finalizing', 'exporting', 'failed' SKU(s): SKU-1",
+            error: "Invalid status transition to 'imported'. Allowed persisted statuses: 'imported', 'searching', 'url_review', 'extracting', 'scraping', 'scraped', 'consolidating', 'finalizing', 'exporting', 'failed' SKU(s): SKU-1",
             updatedCount: 0,
         });
         expect(updateBuilder.update).not.toHaveBeenCalled();

@@ -105,7 +105,7 @@ export function getBrandRegistryName(
     return toOptionalString(brand?.name);
 }
 
-export function getBrandRegistryOfficialDomains(
+function getBrandRegistryOfficialDomains(
     value: BrandRegistryRow | BrandRegistryRow[] | null | undefined
 ): string[] | undefined {
     const brand = getSingleBrandRecord(value);

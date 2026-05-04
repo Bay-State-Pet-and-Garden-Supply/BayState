@@ -43,15 +43,6 @@ function toStringArray(value: unknown): string[] {
   return Array.from(deduped.values());
 }
 
-export function formatSourceLabel(sourceKey: string): string {
-  return sourceKey
-    .replace(/^source:/i, "")
-    .split(/[_-]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 export function isValidCustomImageUrl(url: string): boolean {
   const trimmed = url.trim();
   if (!trimmed) return false;

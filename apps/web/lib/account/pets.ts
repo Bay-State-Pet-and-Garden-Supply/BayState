@@ -29,28 +29,6 @@ export async function getUserPets() {
 }
 
 /**
- * Fetch a single pet by ID
- */
-export async function getPetById(id: string) {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-        .from('user_pets')
-        .select(`
-      *,
-      pet_type:pet_types(*)
-    `)
-        .eq('id', id)
-        .single();
-
-    if (error) {
-        console.error('Error fetching pet:', error);
-        return null;
-    }
-
-    return data as Pet;
-}
-
-/**
  * Create a new pet profile
  */
 export async function createPet(petData: Partial<Pet>) {

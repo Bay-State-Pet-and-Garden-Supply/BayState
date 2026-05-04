@@ -46,7 +46,6 @@ import {
 import { cn } from "@/lib/utils";
 import { SHOPSITE_PAGES } from "@/lib/shopsite/constants";
 import {
-  formatSourceLabel,
   isValidCustomImageUrl,
 } from "./finalizing/finalizing-utils";
 import { ProductListSidebar } from "./finalizing/ProductListSidebar";

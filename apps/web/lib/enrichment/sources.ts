@@ -6,7 +6,7 @@
  */
 
 import { getLocalScraperConfigs } from '@/lib/admin/scrapers/configs';
-import type { EnrichmentSource, EnrichableField, SourceType } from './types';
+import type { EnrichmentSource, EnrichableField } from './types';
 
 /**
  * Static scraper source definitions.

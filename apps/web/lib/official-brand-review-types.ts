@@ -9,7 +9,7 @@ export const OFFICIAL_BRAND_SELECTION_STATUSES = [
 export type OfficialBrandSelectionStatus =
   (typeof OFFICIAL_BRAND_SELECTION_STATUSES)[number];
 
-export const OFFICIAL_BRAND_CANDIDATE_SOURCES = ["serper", "manual"] as const;
+const OFFICIAL_BRAND_CANDIDATE_SOURCES = ["serper", "manual"] as const;
 
 export type OfficialBrandCandidateSource =
   (typeof OFFICIAL_BRAND_CANDIDATE_SOURCES)[number];

@@ -4,20 +4,20 @@ export const OFFICIAL_BRAND_SOURCE_KEY = 'official_brand';
 export const OFFICIAL_BRAND_URL_DISCOVERY_TYPE = 'official_brand_url_discovery';
 export const OFFICIAL_BRAND_EXTRACTION_TYPE = 'official_brand_extraction';
 
-export type OfficialBrandPhase = 'url_discovery' | 'extraction';
-export type OfficialBrandJobType =
+type OfficialBrandPhase = 'url_discovery' | 'extraction';
+type OfficialBrandJobType =
     | 'standard'
     | 'ai_search'
     | typeof OFFICIAL_BRAND_URL_DISCOVERY_TYPE
     | typeof OFFICIAL_BRAND_EXTRACTION_TYPE;
 
-export interface NormalizedOfficialBrandUrl {
+interface NormalizedOfficialBrandUrl {
     url: string;
     normalizedUrl: string;
     normalizedDomain: string;
 }
 
-export interface OfficialBrandCohortLike {
+interface OfficialBrandCohortLike {
     id?: string;
     brandId?: string;
     brandName?: string;

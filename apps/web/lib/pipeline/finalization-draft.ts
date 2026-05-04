@@ -163,6 +163,7 @@ export function toFinalizationImageArray(value: unknown): string[] {
   return Array.from(deduped.values());
 }
 
+// fallow-ignore-next-line unused-export
 export function extractSelectedImageUrls(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
 

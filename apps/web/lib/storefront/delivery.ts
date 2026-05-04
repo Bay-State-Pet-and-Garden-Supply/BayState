@@ -1,5 +1,3 @@
-import type { DeliveryServiceOption, DELIVERY_SERVICE_OPTIONS } from '@/lib/types';
-
 // Store location (Taunton, MA) - configure via env or DB
 const STORE_LAT = parseFloat(process.env.STORE_LATITUDE || '42.3601');
 const STORE_LNG = parseFloat(process.env.STORE_LONGITUDE || '-71.0589');

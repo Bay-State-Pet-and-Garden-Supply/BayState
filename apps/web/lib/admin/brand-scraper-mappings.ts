@@ -120,7 +120,7 @@ export async function setBrandScraperMappings(
   }
 }
 
-export interface MergedScraperRecommendation {
+interface MergedScraperRecommendation {
   scraper_slug: string;
   scraper_name: string;
   hit_rate: number;

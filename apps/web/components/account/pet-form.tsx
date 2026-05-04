@@ -5,25 +5,17 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { format } from 'date-fns'
-import { CalendarIcon, Loader2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
     Form,
     FormControl,
-    FormDescription,
     FormField,
     FormItem,
     FormLabel,
     FormMessage,
 } from '@/components/ui/form'
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover'
 import {
     Select,
     SelectContent,
@@ -48,7 +40,6 @@ import {
 } from '@/lib/types'
 import { createPet, updatePet } from '@/lib/account/pets'
 import { toast } from 'sonner'
-
 import { BirthDatePicker } from './birth-date-picker'
 
 const petFormSchema = z.object({
@@ -460,4 +451,3 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
         </Form>
     )
 }
-

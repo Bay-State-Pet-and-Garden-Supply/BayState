@@ -18,7 +18,7 @@ interface FacetValue {
  * Fetch all available facet definitions and their values.
  * In a fully optimized system, this would be scoped to the current category/search result set.
  */
-export async function getDynamicFacets(): Promise<FacetDefinition[]> {
+async function getDynamicFacets(): Promise<FacetDefinition[]> {
   const supabase = createPublicClient();
 
   const { data: facetDefs, error: defError } = await supabase

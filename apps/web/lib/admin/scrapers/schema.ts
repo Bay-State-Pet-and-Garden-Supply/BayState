@@ -210,7 +210,7 @@ const ocrConfigSchema = z.object({
   preprocess: z.boolean().default(true),
 });
 
-export type OcrConfig = z.infer<typeof ocrConfigSchema>;
+type OcrConfig = z.infer<typeof ocrConfigSchema>;
 
 // Full scraper config schema
 export const scraperConfigSchema = z.object({

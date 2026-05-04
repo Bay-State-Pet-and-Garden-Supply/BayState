@@ -165,7 +165,16 @@ describe("pipeline queries", () => {
   });
 
   it("aggregates counts for all workflow tabs", async () => {
-    const plans: QueryPlan[] = PERSISTED_PIPELINE_STATUSES.map(status => 
+    const workflowTabs: PersistedPipelineStatus[] = [
+      "imported",
+      "scraping",
+      "scraped",
+      "consolidating",
+      "finalizing",
+      "exporting",
+      "failed",
+    ];
+    const plans: QueryPlan[] = workflowTabs.map(status =>
       createQueryPlan({ data: [], error: null, count: status.length })
     );
 

@@ -8,7 +8,7 @@ export interface ScraperRunner {
   created_at: string;
 }
 
-export interface ScrapeJob {
+interface ScrapeJob {
   status: string;
   created_at: string | null;
   completed_at: string | null;

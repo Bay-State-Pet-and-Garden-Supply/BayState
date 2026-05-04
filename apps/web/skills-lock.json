@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "fallow": {
+      "source": "fallow-rs/fallow-skills",
+      "sourceType": "github",
+      "skillPath": "fallow/skills/fallow/SKILL.md",
+      "computedHash": "884eb5ce3811b49fae3b2806d191ac0d7a282dab3bf46b1d40e4b53821c7d477"
+    },
     "impeccable": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",
