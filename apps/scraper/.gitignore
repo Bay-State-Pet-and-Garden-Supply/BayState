@@ -9,6 +9,8 @@ __pycache__/
 .data/
 .browser_storage_states/
 .sisyphus/
+.playwright-cli/
+.agents/skills/scraper-config-builder-workspace/
 baystate_scraper.egg-info/
 
 # Generated runtime outputs

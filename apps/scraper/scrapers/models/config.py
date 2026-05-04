@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # Scraper configuration models.
 # AI/Agentic features are deprecated for static scrapers and reserved for the Discovery agent.
@@ -63,16 +63,59 @@ class ValidationConfig(BaseModel):
     no_results_selectors: list[str] | None = Field(None, description="Selectors to detect 'no results' pages")
     no_results_text_patterns: list[str] | None = Field(None, description="Text patterns to detect 'no results' pages")
 
+    @field_validator("no_results_text_patterns", mode="before")
+    @classmethod
+    def coerce_no_results_patterns_to_strings(cls, v):
+        if v is None:
+            return v
+        return [str(item) for item in v]
+
 
 class NormalizationRule(BaseModel):
-    """Rule for normalizing extracted data."""
+    """Rule for normalizing extracted data.
+
+    Supports two formats:
+
+    1. **Legacy** (single action per rule):
+       ```yaml
+       normalization:
+         - field: Name
+           action: title_case
+           params: {}
+       ```
+
+    2. **New** (list of sub-rules, applied in sequence):
+       ```yaml
+       normalization:
+         - field: Name
+           rules:
+             - type: strip
+             - type: title_case
+       ```
+
+    Must provide exactly one of ``action`` or ``rules``.
+    """
 
     field: str = Field(..., description="Name of the field to normalize")
-    action: str = Field(
-        ...,
-        description="Normalization action (e.g., 'title_case', 'remove_prefix', 'trim')",
+    action: str | None = Field(None, description="Single normalization action (legacy format). Mutually exclusive with ``rules``.")
+    params: dict[str, Any] = Field(default_factory=dict, description="Parameters for the action (legacy format).")
+    rules: list[dict[str, Any]] | None = Field(
+        None,
+        description="List of sub-rule dicts with a ``type`` key and optional extra params. Mutually exclusive with ``action``.",
     )
-    params: dict[str, Any] = Field(default_factory=dict, description="Parameters for the action")
+
+    @model_validator(mode="after")
+    def _validate_exclusive_action_or_rules(self) -> NormalizationRule:
+        """Ensure exactly one of ``action`` or ``rules`` is supplied."""
+        has_action = self.action is not None
+        has_rules = self.rules is not None and len(self.rules) > 0
+
+        if has_action and has_rules:
+            raise ValueError("Cannot provide both 'action' and 'rules' in a NormalizationRule — they are mutually exclusive.")
+        if not has_action and not has_rules:
+            raise ValueError("Must provide either 'action' or 'rules' in a NormalizationRule.")
+
+        return self
 
 
 class SkuAssertion(BaseModel):
@@ -142,6 +185,13 @@ class ScraperConfig(BaseModel):
 
     # References to credential records (IDs) that should be fetched at runtime.
     credential_refs: list[str] = Field(default_factory=list, description="List of credential reference IDs to fetch on-demand")
+
+    @field_validator("credential_refs", mode="before")
+    @classmethod
+    def coerce_null_credential_refs(cls, v):
+        if v is None:
+            return []
+        return v
 
     class OCRConfig(BaseModel):
         """Configuration for OCR extraction from product images.

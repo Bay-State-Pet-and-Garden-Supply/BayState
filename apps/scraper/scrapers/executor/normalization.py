@@ -12,6 +12,16 @@ from scrapers.models.config import NormalizationRule
 
 logger = logging.getLogger(__name__)
 
+# Known action name aliases — maps short/schema-compatible names to the
+# canonical name used internally in _apply_normalization.
+_ACTION_ALIASES: dict[str, str] = {
+    "lower": "lowercase",
+    "upper": "uppercase",
+    "strip": "trim",
+    "title": "title_case",
+    "trim": "trim",
+}
+
 
 class NormalizationEngine:
     """Engine for normalizing extracted scraping results."""
@@ -32,11 +42,15 @@ class NormalizationEngine:
                 - params: dict - Optional parameters for the action
 
         Supported actions:
-        - title_case: Convert to title case
-        - lowercase: Convert to lowercase
-        - uppercase: Convert to uppercase
-        - trim/strip: Remove leading/trailing whitespace
+        - title_case / title: Convert to title case
+        - lowercase / lower: Convert to lowercase
+        - uppercase / upper: Convert to uppercase
+        - trim / strip: Remove leading/trailing whitespace
         - remove_prefix: Remove a prefix string (requires 'prefix' param)
+        - remove_suffix: Remove a suffix string (requires 'suffix' param)
+        - replace: Replace substring (requires 'old' and 'new' params)
+        - regex_replace: Regex substitution (requires 'pattern' and 'replacement')
+        - regex_extract: Extract match group by regex (requires 'pattern', optional 'group')
         - extract_weight: Extract weight value and convert to lbs
 
         Returns:
@@ -77,6 +91,9 @@ class NormalizationEngine:
         Returns:
             str: The normalized value
         """
+        # Resolve action name alias if present
+        action = _ACTION_ALIASES.get(action, action)
+
         if action == "title_case":
             return value.title()
         elif action == "lowercase":
@@ -155,6 +172,10 @@ class NormalizationEngine:
     ) -> dict[str, Any]:
         """Apply normalization rules using NormalizationRule model instances.
 
+        Supports both the legacy ``action``/``params`` format and the new
+        ``rules`` format (list of ``{type: ..., ...}`` sub-rules applied
+        sequentially to the same field).
+
         Args:
             results: Dictionary of extracted results to normalize
             rules: List of NormalizationRule objects
@@ -165,15 +186,28 @@ class NormalizationEngine:
         if not rules:
             return results
 
-        # Convert NormalizationRule objects to dict format
-        rule_dicts = []
+        # Expand NormalizationRule objects into flat dict list for normalize_results
+        rule_dicts: list[dict[str, Any]] = []
         for rule in rules:
-            rule_dicts.append(
-                {
-                    "field": rule.field,
-                    "action": rule.action,
-                    "params": rule.params,
-                }
-            )
+            if rule.rules:
+                # New format: expand sub-rules, each applied to the same field
+                for sub_rule in rule.rules:
+                    sub_params = {k: v for k, v in sub_rule.items() if k != "type"}
+                    rule_dicts.append(
+                        {
+                            "field": rule.field,
+                            "action": sub_rule.get("type", ""),
+                            "params": sub_params,
+                        }
+                    )
+            else:
+                # Legacy format: single action
+                rule_dicts.append(
+                    {
+                        "field": rule.field,
+                        "action": rule.action or "",
+                        "params": rule.params,
+                    }
+                )
 
         return self.normalize_results(results, rule_dicts)

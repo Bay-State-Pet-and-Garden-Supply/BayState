@@ -32,8 +32,11 @@ class ScraperConfigParser:
 
         return config_dict
 
-    def load_from_file(self, file_path: str | Path) -> ScraperConfig:
+    @classmethod
+    def load_from_file(cls, file_path: str | Path) -> ScraperConfig:
         """Load and parse a scraper configuration from a YAML file.
+
+        Can be called as a classmethod (preferred) or instance method (backward compat).
 
         Args:
             file_path: Path to the YAML configuration file
@@ -46,9 +49,16 @@ class ScraperConfigParser:
             yaml.YAMLError: If the YAML is malformed
             ValidationError: If the configuration doesn't match the schema
         """
-        # Respect runtime feature-flag: by default the runner uses API-published
-        # configs. Local YAML loading is only allowed when USE_YAML_CONFIGS is
-        # explicitly enabled via environment variable.
+        parser = cls()
+        return parser._load_from_file(file_path)
+
+    def _load_from_file(self, file_path: str | Path) -> ScraperConfig:
+        """Internal implementation of load_from_file.
+
+        Respects runtime feature-flag: by default the runner uses API-published
+        configs. Local YAML loading is only allowed when USE_YAML_CONFIGS is
+        explicitly enabled via environment variable.
+        """
         if not use_yaml_configs():
             raise RuntimeError("Local YAML config loading is disabled. Set USE_YAML_CONFIGS=true to enable.")
 

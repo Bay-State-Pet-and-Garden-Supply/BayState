@@ -145,7 +145,7 @@ class ExtractAction(BaseAction):
 
                 if selector_config.multiple:
                     elements = await self.ctx.find_elements_safe(
-                        selector_config.selector,
+                        selector_config,
                         timeout=timeout_ms,
                     )
                     values = []
@@ -163,7 +163,7 @@ class ExtractAction(BaseAction):
                     self.ctx.results[result_key] = deduplicated_values
                 else:
                     element = await self.ctx.find_element_safe(
-                        selector_config.selector,
+                        selector_config,
                         required=required,
                         timeout=timeout_ms,
                     )
