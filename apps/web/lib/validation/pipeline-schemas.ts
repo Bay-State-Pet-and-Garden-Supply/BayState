@@ -1,24 +1,12 @@
 import { z } from 'zod';
+import {
+    PERSISTED_PIPELINE_STATUSES,
+    PIPELINE_TABS,
+} from '@/lib/pipeline/types';
 
-export const PipelineStatusSchema = z.enum([
-    'imported',
-    'scraping',
-    'scraped',
-    'consolidating',
-    'finalizing',
-    'exporting',
-    'failed',
-]);
+export const PipelineStatusSchema = z.enum(PERSISTED_PIPELINE_STATUSES);
 
-const PipelineStageSchema = z.enum([
-    'imported',
-    'scraping',
-    'scraped',
-    'consolidating',
-    'finalizing',
-    'exporting',
-    'failed',
-]);
+const PipelineStageSchema = z.enum(PIPELINE_TABS);
 
 const PipelineProductInputSchema = z.object({
     name: z.string().optional(),

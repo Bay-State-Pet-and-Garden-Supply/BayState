@@ -1,44 +1,10 @@
-import { TextDecoder, TextEncoder } from 'util';
+import { PERSISTED_PIPELINE_STATUSES } from '@/lib/pipeline/types';
 
-global.TextEncoder = TextEncoder;
-global.TextDecoder = TextDecoder as never;
-
-if (typeof ReadableStream === 'undefined') {
-  const { ReadableStream } = require('stream/web');
-  global.ReadableStream = ReadableStream;
-}
-
-jest.mock('next/server', () => ({
-  NextRequest: class {
-    nextUrl: URL;
-
-    constructor(url: string) {
-      this.nextUrl = new URL(url);
-    }
-  },
-  NextResponse: class MockNextResponse {
-    body: unknown;
-    status: number;
-    headers: Map<string, string>;
-
-    constructor(body: unknown, init?: { status?: number; headers?: Record<string, string> }) {
-      this.body = body;
-      this.status = init?.status ?? 200;
-      this.headers = new Map(Object.entries(init?.headers ?? {}));
-    }
-
-    static json(body: unknown, init?: { status?: number }) {
-      return new this(body, {
-        ...init,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
-    async json() {
-      return this.body;
-    }
-  },
-}));
+const {
+  NextRequest,
+  createAdminClient,
+  requireAdminAuth,
+} = require('@/__tests__/helpers/admin-api-route-harness');
 
 jest.mock('exceljs', () => ({
   stream: {
@@ -55,18 +21,7 @@ jest.mock('exceljs', () => ({
   },
 }));
 
-jest.mock('@/lib/admin/api-auth', () => ({
-  requireAdminAuth: jest.fn(),
-}));
-
-jest.mock('@/lib/supabase/server', () => ({
-  createAdminClient: jest.fn(),
-}));
-
 const { GET, POST } = require('@/app/api/admin/pipeline/export/route');
-const { NextRequest } = require('next/server');
-const { createAdminClient } = require('@/lib/supabase/server');
-const { requireAdminAuth } = require('@/lib/admin/api-auth');
 
 function createSupabaseMock() {
   const queryBuilder = {
@@ -83,6 +38,11 @@ function createSupabaseMock() {
     queryBuilder,
   };
 }
+
+const CANONICAL_EXPORT_STATUS_MESSAGE = `Invalid status. Expected one of: ${[
+  ...PERSISTED_PIPELINE_STATUSES,
+  'all',
+].join(', ')}`;
 
 describe('pipeline export route compatibility boundary', () => {
   beforeEach(() => {
@@ -129,7 +89,7 @@ describe('pipeline export route compatibility boundary', () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: 'Invalid status. Expected one of: imported, scraping, scraped, consolidating, finalizing, exporting, failed, all',
+      error: CANONICAL_EXPORT_STATUS_MESSAGE,
     });
   });
 

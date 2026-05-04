@@ -15,6 +15,7 @@ import {
     BatchJobStatusSchema,
     SubmitBatchResponseSchema,
 } from '@/lib/validation';
+import { PERSISTED_PIPELINE_STATUSES } from '@/lib/pipeline/types';
 
 describe('Consolidation Schemas', () => {
     describe('ConsolidationResultSchema', () => {
@@ -81,8 +82,7 @@ describe('Consolidation Schemas', () => {
 
     describe('PipelineStatusSchema', () => {
         it('should accept valid pipeline statuses', () => {
-            const validStatuses = ['imported', 'scraping', 'scraped', 'consolidating', 'finalizing', 'exporting', 'failed'];
-            for (const status of validStatuses) {
+            for (const status of PERSISTED_PIPELINE_STATUSES) {
                 expect(PipelineStatusSchema.parse(status)).toBe(status);
             }
         });

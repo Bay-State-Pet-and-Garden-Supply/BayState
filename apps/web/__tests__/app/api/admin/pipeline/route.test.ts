@@ -1,46 +1,10 @@
-jest.mock('next/server', () => ({
-    NextRequest: class {
-        nextUrl: URL;
-        private readonly requestBody: unknown;
+import { PERSISTED_PIPELINE_STATUSES } from '@/lib/pipeline/types';
 
-        constructor(url: string, init?: { body?: unknown }) {
-            this.nextUrl = new URL(url);
-            this.requestBody = init?.body;
-        }
-
-        async json() {
-            if (typeof this.requestBody === 'string') {
-                return JSON.parse(this.requestBody);
-            }
-
-            return this.requestBody;
-        }
-    },
-    NextResponse: class {
-        body: unknown;
-        status: number;
-
-        constructor(body: unknown, init?: { status?: number }) {
-            this.body = body;
-            this.status = init?.status ?? 200;
-        }
-
-        static json(body: unknown, init?: { status?: number }) {
-            return new this(body, init);
-        }
-
-        async json() {
-            return this.body;
-        }
-    },
-}));
-
-import { NextRequest } from 'next/server';
-import { GET, POST } from '@/app/api/admin/pipeline/route';
-
-jest.mock('@/lib/admin/api-auth', () => ({
-    requireAdminAuth: jest.fn(),
-}));
+const {
+    NextRequest,
+    requireAdminAuth,
+} = require('@/__tests__/helpers/admin-api-route-harness');
+const { GET, POST } = require('@/app/api/admin/pipeline/route');
 
 jest.mock('@/lib/pipeline', () => ({
     getProductsByStatus: jest.fn(),
@@ -52,8 +16,11 @@ jest.mock('@/lib/pipeline', () => ({
     bulkUpdateStatus: jest.fn(),
 }));
 
-const { requireAdminAuth } = require('@/lib/admin/api-auth');
 const { getProductsByStatus, getSkusByStatus, getAvailableSources, bulkUpdateStatus } = require('@/lib/pipeline');
+
+const CANONICAL_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
+    (status) => `'${status}'`
+).join(', ');
 
 describe('/api/admin/pipeline route', () => {
     beforeEach(() => {
@@ -125,7 +92,7 @@ describe('/api/admin/pipeline route', () => {
         expect(response.status).toBe(400);
         expect(getProductsByStatus).not.toHaveBeenCalled();
         expect(payload).toEqual({
-            error: "Invalid status 'consolidated'. Allowed persisted statuses: 'imported', 'scraping', 'scraped', 'consolidating', 'finalizing', 'exporting', 'failed'",
+            error: `Invalid status 'consolidated'. Allowed persisted statuses: ${CANONICAL_STATUS_LIST}`,
         });
     });
 

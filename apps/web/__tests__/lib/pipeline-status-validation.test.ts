@@ -2,10 +2,13 @@
  * @jest-environment node
  */
 import { validateStatusTransition } from '@/lib/pipeline';
-import type { PersistedPipelineStatus } from '@/lib/pipeline/types';
+import {
+    PERSISTED_PIPELINE_STATUSES,
+    type PersistedPipelineStatus,
+} from '@/lib/pipeline/types';
 
 describe('validateStatusTransition', () => {
-    const statuses: PersistedPipelineStatus[] = ['imported', 'searching', 'url_review', 'extracting', 'scraping', 'scraped', 'consolidating', 'finalizing', 'exporting', 'failed'];
+    const statuses: PersistedPipelineStatus[] = [...PERSISTED_PIPELINE_STATUSES];
 
     it('allows same-status transitions for every canonical state', () => {
         statuses.forEach(status => {
