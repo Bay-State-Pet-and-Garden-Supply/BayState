@@ -12,8 +12,9 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
+import { getScraperRecommendationsWithMappings } from '@/lib/admin/brand-scraper-mappings';
 
-type RecommendationConfidence = 'high' | 'medium' | 'low' | 'untested';
+type RecommendationConfidence = 'high' | 'medium' | 'low' | 'untested' | 'mapped';
 
 interface ScraperRecommendation {
   /** Scraper slug (matches scraper_configs.slug) */
@@ -68,6 +69,8 @@ function buildReason(
       return `${scraperName} has limited or low success (${pct}% over ${totalAttempts} attempts).`;
     case 'untested':
       return `${scraperName} has not been tested for this brand yet.`;
+    case 'mapped':
+      return `${scraperName} is explicitly mapped for this brand.`;
   }
 }
 
@@ -76,6 +79,7 @@ const CONFIDENCE_SORT_ORDER: Record<RecommendationConfidence, number> = {
   medium: 1,
   low: 2,
   untested: 3,
+  mapped: 4,
 };
 
 /**
@@ -86,10 +90,28 @@ const CONFIDENCE_SORT_ORDER: Record<RecommendationConfidence, number> = {
  * as a fallback.
  */
 export async function getScraperRecommendations(
-  brandName: string
+  brandName: string,
+  brandId?: string
 ): Promise<ScraperRecommendation[]> {
   if (!brandName || brandName.trim().length === 0) {
     return [];
+  }
+
+  // Delegate to explicit mappings when brandId is provided
+  if (brandId) {
+    const merged = await getScraperRecommendationsWithMappings(brandName, brandId);
+    return merged.map((m) => ({
+      scraper_slug: m.scraper_slug,
+      scraper_name: m.scraper_name,
+      hit_rate: m.hit_rate,
+      total_attempts: m.total_attempts,
+      successful_extractions: m.successful_extractions,
+      confidence: m.confidence,
+      reason: m.reason,
+      avg_fields_extracted: m.avg_fields_extracted,
+      avg_images_found: m.avg_images_found,
+      preselected: m.preselected,
+    }));
   }
 
   const normalizedBrand = brandName.trim().toLowerCase();
