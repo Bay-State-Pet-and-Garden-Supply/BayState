@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
   const cohortIdParam = searchParams.get('cohort_id');
 
   let brandName: string | null = brandParam?.trim() || null;
+  let brandId: string | undefined;
 
   // Resolve brand from cohort if no direct brand param
   if (!brandName && cohortIdParam) {
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
 
     if (cohort) {
       brandName = cohort.brand_name || null;
+      brandId = cohort.brand_id || undefined;
 
       if (!brandName) {
         const brandRecord = Array.isArray(cohort.brands) ? cohort.brands[0] : cohort.brands;
@@ -44,7 +46,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const recommendations = await getScraperRecommendations(brandName);
+  const recommendations = await getScraperRecommendations(brandName, brandId);
 
   return NextResponse.json({
     brand: brandName,

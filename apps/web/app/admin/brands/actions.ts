@@ -5,6 +5,12 @@ import { revalidatePath } from 'next/cache';
 import * as z from 'zod';
 import type { ActionState } from '@/lib/types';
 import type { BrandActionState } from '@/components/admin/brands/types';
+import {
+  getBrandScraperMappings,
+  setBrandScraperMappings,
+  type MappingInput,
+  type BrandScraperMapping,
+} from '@/lib/admin/brand-scraper-mappings';
 
 const brandSchema = z.object({
     name: z.string().min(1, 'Name is required'),
@@ -133,4 +139,109 @@ export async function deleteBrand(id: string): Promise<ActionState> {
     revalidatePath('/products');
     revalidatePath('/', 'layout');
     return { success: true };
+}
+
+async function requireAdminOrStaff(): Promise<{ id: string; email?: string } | null> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return null;
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+    const role = profile?.role;
+    if (!role || (role !== 'admin' && role !== 'staff')) {
+        return null;
+    }
+
+    return { id: user.id, email: user.email };
+}
+
+export async function getAvailableScraperConfigsAction(): Promise<{
+    success: boolean;
+    scrapers?: { id: string; slug: string; name: string; display_name: string }[];
+    error?: string;
+}> {
+    const user = await requireAdminOrStaff();
+    if (!user) {
+        return { success: false, error: 'Forbidden: Admin or staff access required' };
+    }
+
+    try {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from('scraper_configs')
+            .select('id, slug, display_name')
+            .order('display_name', { ascending: true });
+
+        if (error) {
+            throw error;
+        }
+
+        return {
+            success: true,
+            scrapers: (data || []).map((c: { id: string; slug: string; display_name: string | null }) => ({
+                id: c.id,
+                slug: c.slug,
+                name: c.slug,
+                display_name: c.display_name || c.slug,
+            })),
+        };
+    } catch (err) {
+        console.error('Error fetching scraper configs:', err);
+        return { success: false, error: 'Failed to fetch scraper configs' };
+    }
+}
+
+export async function getBrandScraperMappingsAction(brandId: string): Promise<{
+    success: boolean;
+    mappings?: BrandScraperMapping[];
+    error?: string;
+}> {
+    const user = await requireAdminOrStaff();
+    if (!user) {
+        return { success: false, error: 'Forbidden: Admin or staff access required' };
+    }
+
+    try {
+        const mappings = await getBrandScraperMappings(brandId);
+        return { success: true, mappings };
+    } catch (err) {
+        console.error('Error fetching brand scraper mappings:', err);
+        return { success: false, error: 'Failed to fetch brand scraper mappings' };
+    }
+}
+
+const mappingSchema = z.array(z.object({
+    scraperConfigId: z.string().uuid(),
+    priority: z.number().int(),
+    notes: z.string().max(500).optional(),
+    isActive: z.boolean().optional().default(true),
+})).max(50);
+
+export async function updateBrandScraperMappings(
+    brandId: string,
+    mappings: MappingInput[]
+): Promise<ActionState> {
+    const user = await requireAdminOrStaff();
+    if (!user) {
+        return { success: false, error: 'Forbidden: Admin or staff access required' };
+    }
+
+    try {
+        const validatedMappings = mappingSchema.parse(mappings);
+        await setBrandScraperMappings(brandId, validatedMappings, user.id);
+        revalidatePath('/admin/brands');
+        return { success: true };
+    } catch (err) {
+        if (err instanceof z.ZodError) {
+            return { success: false, error: 'Validation failed: ' + err.issues[0].message };
+        }
+        console.error('Error updating brand scraper mappings:', err);
+        return { success: false, error: 'Failed to update brand scraper mappings' };
+    }
 }
