@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
-import AdminLoginPage from '@/app/admin/login/page';
+import AdminLoginPage from '@/app/admin/(auth)/login/page';
 
-jest.mock('@/app/admin/login/actions', () => ({
+jest.mock('@/app/admin/(auth)/login/actions', () => ({
   login: jest.fn(),
 }));
 

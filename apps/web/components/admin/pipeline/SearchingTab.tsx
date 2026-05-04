@@ -65,7 +65,7 @@ export function SearchingTab({ className }: SearchingTabProps) {
           No recent URL discoveries
         </h3>
         <p className="mt-1 max-w-md text-sm text-muted-foreground">
-          Select products in the Imported tab and choose "Discover Official Brand URLs" to start.
+          Select products in the Imported tab and choose &ldquo;Discover Official Brand URLs&rdquo; to start.
         </p>
         <Button
           variant="outline"

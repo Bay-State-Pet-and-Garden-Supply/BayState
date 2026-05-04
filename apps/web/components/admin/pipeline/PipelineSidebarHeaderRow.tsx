@@ -9,13 +9,14 @@ import { TableRow, TableCell } from "@/components/ui/table";
 import { formatPipelineBatchLabel } from "./view-utils";
 import { cn } from "@/lib/utils";
 import type { PipelineProduct } from "@/lib/pipeline/types";
+import type { Brand } from "@/lib/types";
 
 interface PipelineSidebarHeaderRowProps {
   cohortId: string;
   groupProducts: PipelineProduct[];
   cohortName?: string | null;
   cohortBrand?: string | null;
-  cohortBrandObject?: any;
+  cohortBrandObject?: Brand;
   selectedSkus: Set<string>;
   onSelectAll?: (skus: string[]) => void;
   onDeselectAll?: (skus: string[]) => void;
