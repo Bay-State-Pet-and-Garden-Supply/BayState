@@ -1,54 +1,13 @@
-import { TextEncoder, TextDecoder } from 'util';
+import { TextDecoder } from 'util';
 
-// Polyfills for Node environment
-global.TextEncoder = TextEncoder;
-global.TextDecoder = TextDecoder as any;
-
-if (typeof ReadableStream === 'undefined') {
-    // @ts-ignore
-    const { ReadableStream } = require('stream/web');
-    global.ReadableStream = ReadableStream;
-}
-
-// Mock next/server
-jest.mock('next/server', () => {
-    return {
-        NextRequest: class {
-            nextUrl: URL;
-            constructor(url: string) {
-                this.nextUrl = new URL(url);
-            }
-        },
-        NextResponse: class {
-            body: any;
-            headers: any;
-            status: number;
-            constructor(body: any, init: any) {
-                this.body = body;
-                this.headers = new Map(Object.entries(init?.headers || {}));
-                this.status = init?.status || 200;
-            }
-            static json(body: any, init?: any) {
-                return new (this as any)(body, { ...init, headers: { 'Content-Type': 'application/json' } });
-            }
-        }
-    };
-});
-
-// Mock dependencies
-jest.mock('@/lib/supabase/server', () => ({
-    createAdminClient: jest.fn(),
-}));
-
-jest.mock('@/lib/admin/api-auth', () => ({
-    requireAdminAuth: jest.fn(),
-}));
+const {
+    NextRequest,
+    createAdminClient,
+    requireAdminAuth,
+} = require('@/__tests__/helpers/admin-api-route-harness');
 
 // Require modules
 const { GET } = require('@/app/api/admin/pipeline/export/route');
-const { NextRequest } = require('next/server');
-const { createAdminClient } = require('@/lib/supabase/server');
-const { requireAdminAuth } = require('@/lib/admin/api-auth');
 
 describe('CSV Export API', () => {
     let mockSupabase: any;

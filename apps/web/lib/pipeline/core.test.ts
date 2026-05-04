@@ -11,13 +11,16 @@ import { PERSISTED_PIPELINE_STATUSES } from './types';
 describe('STATUS_TRANSITIONS', () => {
   it('matches the canonical persisted transition graph', () => {
     expect(STATUS_TRANSITIONS).toEqual({
-      imported: ['scraping'],
+      imported: ['scraping', 'searching'],
+      searching: ['url_review', 'imported', 'failed'],
+      url_review: ['extracting', 'scraping', 'imported', 'failed'],
+      extracting: ['scraped', 'url_review', 'failed'],
       scraping: ['scraped', 'failed', 'imported'],
       scraped: ['consolidating', 'finalizing', 'imported', 'failed'],
       consolidating: ['finalizing', 'scraped', 'failed'],
       finalizing: ['exporting', 'scraped', 'failed'],
       exporting: ['finalizing', 'failed'],
-      failed: ['imported'],
+      failed: ['imported', 'url_review'],
     });
   });
 });
@@ -28,6 +31,10 @@ describe('validateTransition', () => {
   });
 
   it('allows canonical forward, retry, and rework transitions', () => {
+    expect(validateTransition('imported', 'searching')).toBe(true);
+    expect(validateTransition('searching', 'url_review')).toBe(true);
+    expect(validateTransition('url_review', 'extracting')).toBe(true);
+    expect(validateTransition('extracting', 'scraped')).toBe(true);
     expect(validateTransition('imported', 'scraping')).toBe(true);
     expect(validateTransition('scraping', 'scraped')).toBe(true);
     expect(validateTransition('scraped', 'consolidating')).toBe(true);
@@ -39,7 +46,10 @@ describe('validateTransition', () => {
   it('rejects non-canonical transitions', () => {
     // Some examples of invalid transitions
     expect(validateTransition('imported', 'finalizing')).toBe(false);
-    expect(validateTransition('imported', 'exporting')).toBe(false);
+    expect(validateTransition('imported', 'failed')).toBe(false);
+    expect(validateTransition('searching', 'scraped')).toBe(false);
+    expect(validateTransition('url_review', 'finalizing')).toBe(false);
+    expect(validateTransition('extracting', 'exporting')).toBe(false);
     expect(validateTransition('scraped', 'exporting')).toBe(false);
     expect(validateTransition('exporting', 'imported')).toBe(false);
   });

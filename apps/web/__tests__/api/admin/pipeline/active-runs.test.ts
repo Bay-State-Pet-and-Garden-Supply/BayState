@@ -1,56 +1,9 @@
-import { TextEncoder, TextDecoder } from "util";
-
-global.TextEncoder = TextEncoder;
-global.TextDecoder = TextDecoder as any;
-
-if (typeof ReadableStream === "undefined") {
-  // @ts-ignore
-  const { ReadableStream } = require("stream/web");
-  global.ReadableStream = ReadableStream;
-}
-
-jest.mock("next/server", () => {
-  return {
-    NextRequest: class {
-      nextUrl: URL;
-      constructor(url: string) {
-        this.nextUrl = new URL(url);
-      }
-    },
-    NextResponse: class {
-      body: any;
-      headers: any;
-      status: number;
-      constructor(body: any, init: any) {
-        this.body = body;
-        this.headers = new Map(Object.entries(init?.headers || {}));
-        this.status = init?.status || 200;
-      }
-      static json(body: any, init?: any) {
-        return new (this as any)(body, {
-          ...init,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-      async json() {
-        return this.body;
-      }
-    },
-  };
-});
-
-jest.mock("@/lib/supabase/server", () => ({
-  createClient: jest.fn(),
-}));
-
-jest.mock("@/lib/admin/api-auth", () => ({
-  requireAdminAuth: jest.fn(),
-}));
-
+const {
+  NextRequest,
+  createClient,
+  requireAdminAuth,
+} = require('@/__tests__/helpers/admin-api-route-harness');
 const { GET } = require("@/app/api/admin/pipeline/active-runs/route");
-const { NextRequest } = require("next/server");
-const { createClient } = require("@/lib/supabase/server");
-const { requireAdminAuth } = require("@/lib/admin/api-auth");
 
 describe("Active Runs API", () => {
   let mockSupabase: any;
@@ -139,6 +92,9 @@ describe("Active Runs API", () => {
     const mockJobs = [
       {
         id: "job-1",
+        type: "official_brand_extraction",
+        config: { cohort: { id: 'cohort-1' } },
+        metadata: { official_brand_phase: 'manual_override' },
         status: "running",
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:01:00Z",
@@ -160,6 +116,9 @@ describe("Active Runs API", () => {
       },
       {
         id: "job-2",
+        type: null,
+        config: null,
+        metadata: null,
         status: "pending",
         created_at: "2024-01-15T09:00:00Z",
         updated_at: "2024-01-15T09:00:00Z",
@@ -205,6 +164,9 @@ describe("Active Runs API", () => {
 
     expect(json.jobs[0]).toEqual({
       id: "job-1",
+      jobType: 'official_brand_extraction',
+      officialBrandPhase: 'extraction',
+      cohortId: 'cohort-1',
       status: "running",
       createdAt: "2024-01-15T10:00:00Z",
       completedAt: null,
@@ -315,6 +277,9 @@ describe("Active Runs API", () => {
 
     expect(json.jobs[1]).toEqual({
       id: "job-2",
+      jobType: null,
+      officialBrandPhase: null,
+      cohortId: null,
       status: "pending",
       createdAt: "2024-01-15T09:00:00Z",
       completedAt: null,

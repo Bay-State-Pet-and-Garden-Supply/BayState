@@ -1,8 +1,12 @@
 import '@testing-library/jest-dom'
 import { TextEncoder, TextDecoder } from 'util';
-import { TransformStream as WebTransformStream } from 'stream/web';
+import { ReadableStream as WebReadableStream, TransformStream as WebTransformStream } from 'stream/web';
 
 Object.assign(global, { TextEncoder, TextDecoder });
+
+if (typeof global.ReadableStream === 'undefined') {
+  global.ReadableStream = WebReadableStream;
+}
 
 // Polyfill for TransformStream (required by Playwright MCP tests)
 if (typeof global.TransformStream === 'undefined') {

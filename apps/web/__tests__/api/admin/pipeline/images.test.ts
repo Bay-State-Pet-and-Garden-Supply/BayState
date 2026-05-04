@@ -1,58 +1,9 @@
-import { TextEncoder, TextDecoder } from 'util';
-
-global.TextEncoder = TextEncoder;
-global.TextDecoder = TextDecoder as any;
-
-if (typeof ReadableStream === 'undefined') {
-    const { ReadableStream } = require('stream/web');
-    global.ReadableStream = ReadableStream;
-}
-
-jest.mock('next/server', () => {
-    return {
-        NextRequest: class {
-            nextUrl: URL;
-            bodyUsed: boolean = false;
-            constructor(url: string) {
-                this.nextUrl = new URL(url);
-            }
-            async json() {
-                return {};
-            }
-        },
-        NextResponse: class {
-            body: any;
-            headers: any;
-            status: number;
-            constructor(body: any, init: any) {
-                this.body = body;
-                this.headers = new Map(Object.entries(init?.headers || {}));
-                this.status = init?.status || 200;
-            }
-            static json(body: any, init?: any) {
-                const response = new (this as any)(body, { ...init, headers: { 'Content-Type': 'application/json' } });
-                response._isJson = true;
-                return response;
-            }
-            async json() {
-                return typeof this.body === 'string' ? JSON.parse(this.body) : this.body;
-            }
-        }
-    };
-});
-
-jest.mock('@/lib/supabase/server', () => ({
-    createClient: jest.fn(),
-}));
-
-jest.mock('@/lib/admin/api-auth', () => ({
-    requireAdminAuth: jest.fn(),
-}));
-
+const {
+    NextRequest,
+    createClient,
+    requireAdminAuth,
+} = require('@/__tests__/helpers/admin-api-route-harness');
 const { GET, POST } = require('@/app/api/admin/pipeline/images/route');
-const { NextRequest } = require('next/server');
-const { createClient } = require('@/lib/supabase/server');
-const { requireAdminAuth } = require('@/lib/admin/api-auth');
 
 describe('Images Pipeline API', () => {
     let mockSupabase: any;
