@@ -152,7 +152,7 @@ export async function persistChunkResultsToPipeline(
     return persisted;
 }
 
-export async function persistOfficialBrandDiscoveryResults(
+async function persistOfficialBrandDiscoveryResults(
     supabase: SupabaseClient,
     jobId: string,
     aggregatedResults: ScrapedDataBySku,

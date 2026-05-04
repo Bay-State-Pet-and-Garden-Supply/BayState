@@ -145,7 +145,7 @@ export function groupCartByBatch(
 /**
  * Validate cart for checkout eligibility
  */
-export async function validateCartForCheckout(
+async function validateCartForCheckout(
   cartItems: CartItem[]
 ): Promise<ValidationResult> {
   const errors: ValidationError[] = [];
@@ -199,7 +199,7 @@ export async function validateCartForCheckout(
 /**
  * Get formatted validation error messages for display
  */
-export function formatValidationErrors(errors: ValidationError[]): string[] {
+function formatValidationErrors(errors: ValidationError[]): string[] {
   return errors.map(error => {
     switch (error.type) {
       case 'pickup_only':
@@ -217,7 +217,7 @@ export function formatValidationErrors(errors: ValidationError[]): string[] {
 /**
  * Get available delivery services for the cart
  */
-export function getAvailableDeliveryServices(
+function getAvailableDeliveryServices(
   cartItems: CartItem[],
   preorderGroups: Map<string, PreorderGroup>
 ): string[] {

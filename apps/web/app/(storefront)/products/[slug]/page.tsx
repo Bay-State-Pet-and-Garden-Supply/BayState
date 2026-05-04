@@ -15,19 +15,8 @@ import {
 } from '@/components/ui/breadcrumb';
 import { AddToCartButton } from '@/components/storefront/add-to-cart-button';
 import { ProductImageCarousel } from '@/components/storefront/product-image-carousel';
-import { ProductCard } from '@/components/storefront/product-card';
-import { ProductReviews } from '@/components/storefront/product-reviews';
-import { ReviewSubmissionForm } from '@/components/storefront/review-submission-form';
-import { ProductQA } from '@/components/storefront/product-qa';
-import { RecentlyViewedSection } from '@/components/storefront/recently-viewed-section';
 import { ProductViewTracker } from '@/components/storefront/product-view-tracker';
 import { ProductSizeSelector } from '@/components/storefront/product-size-selector';
-import { createClient } from '@/lib/supabase/server';
-import { getUserRole } from '@/lib/auth/roles';
-import { getRelatedProductsByPetType } from '@/lib/recommendations';
-import { getApprovedReviews, getProductReviewStats, hasUserReviewedProduct } from '@/lib/storefront/reviews';
-import { getProductQuestions } from '@/lib/storefront/questions';
-import { getRecentlyViewedProducts } from '@/lib/storefront/recently-viewed';
 import { getProductPreorderData } from '@/lib/storefront/preorder';
 import { formatCurrency } from '@/lib/utils';
 import type { Product } from '@/lib/types';
@@ -157,26 +146,10 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
     notFound();
   }
 
-  // Fetch additional data in parallel
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  const [userRole, relatedByPetType, reviews, reviewStats, questions, recentlyViewed, hasReviewed, preorderData, navCategories] = await Promise.all([
-    user ? getUserRole(user.id) : null,
-    getRelatedProductsByPetType(product.id, 4),
-    getApprovedReviews(product.id),
-    getProductReviewStats(product.id),
-    getProductQuestions(product.id),
-    getRecentlyViewedProducts(product.id, 6),
-    hasUserReviewedProduct(product.id),
+  const [preorderData, navCategories] = await Promise.all([
     getProductPreorderData(product.id),
     getNavCategories(),
   ]);
-
-  const isLoggedIn = !!user;
-
-  // Check if user is admin or staff
-  const canEditProducts = userRole === 'admin' || userRole === 'staff';
 
   const formattedPrice = formatCurrency(product.price);
 

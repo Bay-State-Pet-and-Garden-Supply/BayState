@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { ScrapeJob } from '@/types/scraper';
 
 export interface JobStats {
   totalJobs: number;

@@ -1,4 +1,4 @@
-import { createPet, deletePet, getPetById, getPetTypes, getUserPets, updatePet } from '@/lib/account/pets'
+import { createPet, deletePet, getPetTypes, getUserPets, updatePet } from '@/lib/account/pets'
 import { createClient } from '@/lib/supabase/server'
 
 // Mock Supabase client

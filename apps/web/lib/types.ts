@@ -313,7 +313,7 @@ export interface PreorderBatch {
 
 export type DeliveryServiceType = 'pallet_jack' | 'lift_gate' | 'forklift' | 'garage_placement';
 
-export interface DeliveryServiceOption {
+interface DeliveryServiceOption {
   service: DeliveryServiceType;
   fee: number;
   label: string;

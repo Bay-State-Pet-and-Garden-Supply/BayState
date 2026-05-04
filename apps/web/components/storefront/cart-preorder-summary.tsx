@@ -5,7 +5,6 @@ import { format } from 'date-fns'
 import { AlertCircle, Calendar, Package } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useCartStore, type CartItem } from '@/lib/cart-store'
-import { formatValidationErrors } from '@/lib/storefront/fulfillment'
 import type { PreorderBatch, PreorderGroup } from '@/lib/types'
 import { formatCurrency } from '@/lib/utils'
 
@@ -23,7 +22,6 @@ export function CartPreorderSummary({ className }: CartPreorderSummaryProps) {
   const items = useCartStore((state) => state.items)
   const [preorderData, setPreorderData] = useState<PreorderData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [errors, setErrors] = useState<string[]>([])
 
   useEffect(() => {
     async function fetchPreorderData() {
@@ -50,7 +48,6 @@ export function CartPreorderSummary({ className }: CartPreorderSummaryProps) {
 
         const data = await response.json()
         setPreorderData(data)
-        setErrors(data.errors || [])
       } catch {
         console.error('Failed to fetch preorder data')
       } finally {

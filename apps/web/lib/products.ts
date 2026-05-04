@@ -16,7 +16,7 @@ const STOREFRONT_VISIBLE_STOCK_STATUSES = [
 
 type StorefrontVisibleStockStatus = (typeof STOREFRONT_VISIBLE_STOCK_STATUSES)[number];
 
-export interface ProductFilterOptions {
+interface ProductFilterOptions {
   brands: Array<{ id: string; name: string; slug: string; logo_url: string | null }>;
   petTypes: Array<{ id: string; name: string }>;
   categories: Array<{

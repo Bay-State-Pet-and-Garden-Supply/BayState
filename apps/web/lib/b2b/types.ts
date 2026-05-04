@@ -15,12 +15,12 @@ export interface B2BProduct {
   source: 'BCI' | 'ORGILL' | 'PHILLIPS' | 'CENTRAL' | 'PFX';
 }
 
-export interface B2BInventoryUpdate {
+interface B2BInventoryUpdate {
   distributorSku: string;
   quantity: number;
 }
 
-export interface B2BPriceUpdate {
+interface B2BPriceUpdate {
   distributorSku: string;
   price: number;
   cost?: number;

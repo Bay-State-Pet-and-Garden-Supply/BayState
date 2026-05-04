@@ -9,7 +9,7 @@ const UNGROUPED_NAME = "Ungrouped Products";
  * Extract the first N digits from a SKU to use as a UPC prefix.
  * Returns empty string if SKU is non-numeric or shorter than prefix length.
  */
-export function extractUpcPrefix(
+function extractUpcPrefix(
   sku: string,
   prefixLength: number = DEFAULT_PREFIX_LENGTH,
 ): string {
@@ -27,7 +27,7 @@ export function extractUpcPrefix(
  * Group SKUs by their UPC prefix.
  * Non-numeric/short SKUs are grouped under the UNGROUPED sentinel.
  */
-export function groupSkusByPrefix(
+function groupSkusByPrefix(
   skus: string[],
   prefixLength: number = DEFAULT_PREFIX_LENGTH,
 ): Map<string, string[]> {
@@ -55,7 +55,7 @@ interface CohortBatch {
  * Find existing cohort batches by UPC prefix, or create new ones.
  * Returns a map of prefix -> cohort batch.
  */
-export async function ensureCohortBatches(
+async function ensureCohortBatches(
   supabase: SupabaseClient,
   prefixes: string[],
 ): Promise<Map<string, CohortBatch>> {
@@ -128,7 +128,7 @@ export async function ensureCohortBatches(
   return result;
 }
 
-export interface CohortAssignmentResult {
+interface CohortAssignmentResult {
   assigned: number;
   ungrouped: number;
   cohortCount: number;

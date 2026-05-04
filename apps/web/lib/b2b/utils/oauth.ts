@@ -52,6 +52,7 @@ export class OAuthClient {
     return this.fetchToken();
   }
 
+  // fallow-ignore-next-line unused-class-member
   async getAuthorizationHeader(): Promise<string | null> {
     const result = await this.getAccessToken();
     if (!result.success || !result.token) {
@@ -62,6 +63,7 @@ export class OAuthClient {
     return `${tokenType} ${result.token.accessToken}`;
   }
 
+  // fallow-ignore-next-line unused-class-member
   async testConnection(): Promise<boolean> {
     const result = await this.getAccessToken();
     return result.success;

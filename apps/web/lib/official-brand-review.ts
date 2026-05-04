@@ -57,7 +57,7 @@ interface CandidateRow {
   updated_at?: string | null;
 }
 
-export interface OfficialBrandCandidatesFilters {
+interface OfficialBrandCandidatesFilters {
   cohortId: string;
   status?: OfficialBrandSelectionStatus;
   discoveryJobId?: string;

@@ -32,6 +32,7 @@ export class B2BSFTPClient {
     this.config = config;
   }
 
+  // fallow-ignore-next-line unused-class-member
   async downloadFile(remotePath: string): Promise<SFTPDownloadResult> {
     let client: InstanceType<SFTPClientConstructor> | null = null;
 
@@ -66,6 +67,7 @@ export class B2BSFTPClient {
     }
   }
 
+  // fallow-ignore-next-line unused-class-member
   async testConnection(): Promise<boolean> {
     let client: InstanceType<SFTPClientConstructor> | null = null;
 
