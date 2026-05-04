@@ -94,8 +94,23 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const body = await request.json();
   const supabase = await createClient();
 
+  // Fetch current cohort to get upc_prefix and current name
+  const { data: currentCohort, error: fetchError } = await supabase
+    .from('cohort_batches')
+    .select('upc_prefix, name')
+    .eq('id', id)
+    .single();
+
+  if (fetchError || !currentCohort) {
+    return NextResponse.json(
+      { error: 'Cohort not found' },
+      { status: 404 }
+    );
+  }
+
   // Build update payload — only allow specific fields
   const updatePayload: Record<string, unknown> = {};
+  let brandNameForNaming: string | null = null;
 
   if ('brand_id' in body || 'brand_name' in body) {
     const brandId = toOptionalTrimmedString(body.brand_id);
@@ -104,9 +119,20 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (brandId) {
       updatePayload.brand_id = brandId;
       updatePayload.brand_name = null;
+
+      // Fetch brand name for automatic naming
+      const { data: brand } = await supabase
+        .from('brands')
+        .select('name')
+        .eq('id', brandId)
+        .single();
+      if (brand) {
+        brandNameForNaming = brand.name;
+      }
     } else if (brandName) {
       updatePayload.brand_id = null;
       updatePayload.brand_name = brandName;
+      brandNameForNaming = brandName;
     } else {
       updatePayload.brand_id = null;
       updatePayload.brand_name = null;
@@ -118,7 +144,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   }
 
   if ('name' in body) {
-    updatePayload.name = typeof body.name === 'string' ? body.name.trim() || null : null;
+    const providedName = typeof body.name === 'string' ? body.name.trim() || null : null;
+    // If name is explicitly provided but it matches the UPC prefix, and we have a brand name,
+    // we automatically upgrade it to include the brand.
+    if (providedName === currentCohort.upc_prefix && brandNameForNaming) {
+      updatePayload.name = `${brandNameForNaming} ${currentCohort.upc_prefix}`;
+    } else {
+      updatePayload.name = providedName;
+    }
+  } else if (brandNameForNaming && currentCohort.upc_prefix) {
+    // Automatically update name if brand is changed and name is not explicitly provided
+    updatePayload.name = `${brandNameForNaming} ${currentCohort.upc_prefix}`;
   }
 
   if (Object.keys(updatePayload).length === 0) {

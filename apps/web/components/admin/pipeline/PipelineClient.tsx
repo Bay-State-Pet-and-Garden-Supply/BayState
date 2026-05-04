@@ -284,6 +284,50 @@ export function PipelineClient({
     };
   }, [filteredProducts, groupedProducts.brandObjects, groupedProducts.brands, selectedSkus]);
 
+  const scrapeSelectionValidation = useMemo(() => {
+    if (currentStage !== "imported" || selectedSkus.size === 0) {
+      return { allowed: true, reason: null };
+    }
+
+    const selectedProducts = filteredProducts.filter((p) => selectedSkus.has(p.sku));
+    const unreadyCohorts: string[] = [];
+    const missingUrlCohorts: string[] = [];
+
+    const selectedCohortIds = new Set(selectedProducts.map(p => p.cohort_id || "ungrouped"));
+
+    selectedCohortIds.forEach(cohortId => {
+      if (cohortId === "ungrouped") {
+        unreadyCohorts.push("Ungrouped Products");
+        return;
+      }
+
+      const brand = groupedProducts.brandObjects[cohortId];
+      const brandName = groupedProducts.brands[cohortId] || `Batch ${cohortId.slice(0, 8)}`;
+
+      if (!brand?.id) {
+        unreadyCohorts.push(brandName);
+      } else if (!brand.website_url || !brand.website_url.trim()) {
+        missingUrlCohorts.push(brandName);
+      }
+    });
+
+    if (unreadyCohorts.length > 0) {
+      return {
+        allowed: false,
+        reason: `Missing Brand: ${unreadyCohorts.join(", ")}`,
+      };
+    }
+
+    if (missingUrlCohorts.length > 0) {
+      return {
+        allowed: false,
+        reason: `Missing Official URL: ${missingUrlCohorts.join(", ")}`,
+      };
+    }
+
+    return { allowed: true, reason: null };
+  }, [currentStage, selectedSkus, filteredProducts, groupedProducts.brandObjects, groupedProducts.brands]);
+
   // Reset source filter if the selected source is no longer available in the product set
   useEffect(() => {
     if (sourceFilter && sources.length > 0 && !sources.includes(sourceFilter)) {
@@ -1284,9 +1328,9 @@ export function PipelineClient({
   return (
     <div className="flex h-full flex-col min-h-0">
       {/* Stage Tabs & Inline Actions */}
-      <div className="shrink-0 mb-2">
+      <div className="shrink-0">
         {hideTabs ? (
-          <div className="flex flex-col gap-2 border-b border-border/50 pb-2 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-col gap-1 border-b border-border/50 pb-1 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
@@ -1324,13 +1368,11 @@ export function PipelineClient({
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 min-h-0 relative overflow-y-auto">
-        <div
-          className={cn(
-            "h-full transition-opacity",
-            (isLoading || isNavigating) && "opacity-50 pointer-events-none",
-          )}
-        >
+      <div className={cn(
+        "flex-1 min-h-0 relative overflow-hidden transition-opacity p-1 pr-4 pb-4",
+        (isLoading || isNavigating) && "opacity-50 pointer-events-none"
+      )}>
+        <div className="flex flex-col flex-1 h-full w-full min-h-0">
           {currentStage === "searching" ? (
             <SearchingTab />
           ) : currentStage === "extracting" ? (
@@ -1391,7 +1433,7 @@ export function PipelineClient({
               </AdminCard>
             </div>
           ) : currentStage === "url_review" ? (
-            <div className="p-1 pr-8 pb-8 min-h-0">
+            <div className="min-h-0">
               <UrlReviewWorkspace />
             </div>
           ) : currentStage === "scraped" ? (
@@ -1436,6 +1478,7 @@ export function PipelineClient({
               availableSources={sources}
               groupedProducts={groupedProducts}
               cohortBrands={groupedProducts.brands}
+              cohortBrandObjects={groupedProducts.brandObjects}
               onEditCohort={
                 canEditCohorts
                   ? (id, name, brandName) => {
@@ -1512,6 +1555,7 @@ export function PipelineClient({
               availableSources={sources}
               groupedProducts={groupedProducts}
               cohortBrands={groupedProducts.brands}
+              cohortBrandObjects={groupedProducts.brandObjects}
               onEditCohort={
                 canEditCohorts
                   ? (id, name, brandName) => {
@@ -1777,8 +1821,10 @@ export function PipelineClient({
           onResetStage={handleResetStage}
           onConsolidate={() => handleConsolidate(Array.from(selectedSkus))}
           onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
+          scrapeSelectionValidation={scrapeSelectionValidation}
           onDiscoverOfficialBrand={handleDiscoverOfficialBrand}
           canDiscoverOfficialBrand={canDiscoverOfficialBrand}
+          officialBrandSelectionReason={officialBrandSelection.reason}
           onDelete={handleDelete}
           actionState={currentStage === "exporting" ? exportActionState : null}
           onUploadShopSite={

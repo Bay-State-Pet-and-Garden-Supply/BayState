@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import type { PipelineProduct, PipelineStatus, PipelineStage } from '@/lib/pipeline/types';
 import {
     ChevronRight,

@@ -5,11 +5,16 @@ import {
   Package,
   Plus,
   Database,
+  Layers,
+  Edit2,
+  AlertCircle,
 } from "lucide-react";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { PipelineFilters } from "./PipelineFilters";
 import { PipelineSearchField } from "./PipelineSearchField";
 import { PipelineSidebarTable } from "./PipelineSidebarTable";
@@ -49,6 +54,7 @@ interface ImportedResultsViewProps {
     names?: Record<string, string>;
   };
   cohortBrands?: Record<string, string>;
+  cohortBrandObjects?: Record<string, any>;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
   onImportCsv?: () => void;
   onManualAdd?: () => void;
@@ -69,6 +75,7 @@ export function ImportedResultsView({
   isSearching = false,
   groupedProducts,
   cohortBrands = {},
+  cohortBrandObjects = {},
   onEditCohort,
   onImportCsv,
   onManualAdd,
@@ -80,47 +87,41 @@ export function ImportedResultsView({
   }, [products]);
 
   // 2. Primary Selection State
-  const [preferredSku, setPreferredSku] = useState<string | null>(
-    sortedProducts.length > 0 ? sortedProducts[0].sku : null,
-  );
+  const [preferredCohortId, setPreferredCohortId] = useState<string | null>(null);
 
-  const selectedProduct = useMemo(() => {
-    return sortedProducts.find((p) => p.sku === preferredSku) || null;
-  }, [sortedProducts, preferredSku]);
-
-  // track previous products to detect when a product is removed
-  const prevProductsRef = useRef<PipelineProduct[]>(sortedProducts);
-
-  // 4. Effects
-  // Intelligent selection: When products change, if the current selection is gone,
-  // select the next product that was after it.
+  // Initialize preferredCohortId when groupedProducts becomes available
   useEffect(() => {
-    const prevProducts = prevProductsRef.current;
-    if (prevProducts !== sortedProducts) {
-      const currentExists = sortedProducts.some((p) => p.sku === preferredSku);
-      if (!currentExists && preferredSku) {
-        // Current SKU was removed.
-        // Find where it was in the PREVIOUS list.
-        const prevIndex = prevProducts.findIndex((p) => p.sku === preferredSku);
-        if (prevIndex !== -1) {
-          // Select the product that is now at that same index (or the one before if it was last)
-          const nextIndex = Math.min(prevIndex, sortedProducts.length - 1);
-          if (nextIndex >= 0) {
-            setPreferredSku(sortedProducts[nextIndex].sku);
-          } else {
-            setPreferredSku(null);
-          }
-        }
-      } else if (!preferredSku && sortedProducts.length > 0) {
-        setPreferredSku(sortedProducts[0].sku);
-      }
-      prevProductsRef.current = sortedProducts;
+    if (groupedProducts && groupedProducts.cohortIds.length > 0 && !preferredCohortId) {
+      setPreferredCohortId(groupedProducts.cohortIds[0]);
     }
-  }, [sortedProducts, preferredSku]);
+  }, [groupedProducts, preferredCohortId]);
+
+  const activeCohortId = useMemo(() => {
+    return preferredCohortId;
+  }, [preferredCohortId]);
+
+  const cohortProducts = useMemo(() => {
+    if (!activeCohortId) return [];
+    if (groupedProducts && groupedProducts.groups[activeCohortId]) {
+      return groupedProducts.groups[activeCohortId];
+    }
+    return sortedProducts.filter(p => (p.cohort_id || "ungrouped") === activeCohortId);
+  }, [activeCohortId, groupedProducts, sortedProducts]);
+
+  const activeCohortName = activeCohortId && groupedProducts?.names?.[activeCohortId] ? groupedProducts.names[activeCohortId] : activeCohortId === "ungrouped" ? "Ungrouped Products" : `Cohort ${activeCohortId?.slice(0, 8)}`;
+  
+  const activeCohortBrand = activeCohortId ? cohortBrands[activeCohortId] : null;
+  const activeCohortBrandObject = activeCohortId ? cohortBrandObjects[activeCohortId] : null;
+  const hasWebsite = Boolean(activeCohortBrandObject?.website_url && activeCohortBrandObject.website_url.trim());
+
+  // Handle cohort change from sidebar
+  const handleCohortChange = (cohortId: string) => {
+    setPreferredCohortId(cohortId);
+  };
 
   // 5. Render logic
   return (
-    <div data-testid="product-table" className="flex h-full min-h-0 border border-border rounded-none overflow-hidden bg-card max-w-full m-1 mr-4 mb-4">
+    <div data-testid="product-table" className="flex flex-1 min-h-0 border border-border rounded-none overflow-hidden bg-card max-w-full">
       {/* Left Column: Product List */}
       <div className="w-96 min-w-[384px] max-w-[384px] border-r border-border flex flex-col shrink-0 bg-feed-bag-cream overflow-x-hidden">
         <div className="flex flex-col border-b border-border bg-card">
@@ -196,103 +197,112 @@ export function ImportedResultsView({
           products={sortedProducts}
           groupedProducts={groupedProducts}
           cohortBrands={cohortBrands}
+          cohortBrandObjects={cohortBrandObjects}
           selectedSkus={selectedSkus}
-          preferredSku={preferredSku}
+          preferredSku={null}
+          preferredCohortId={preferredCohortId}
           onSelectSku={onSelectSku}
           onSelectAll={onSelectAll}
           onDeselectAll={onDeselectAll}
-          onPreferredSkuChange={setPreferredSku}
+          onPreferredSkuChange={() => {}}
+          onPreferredCohortChange={handleCohortChange}
           variant="imported"
-          onEditCohort={onEditCohort}
         />
       </div>
 
-      {/* Right Column: Product Details */}
+      {/* Right Column: Cohort Summary */}
       <div className="flex-1 flex flex-col bg-card overflow-hidden">
-        {selectedProduct ? (
+        {activeCohortId && cohortProducts.length > 0 ? (
           <>
             {/* Header */}
             <div className="bg-card border-b border-border flex-shrink-0 z-10">
-              <div className="p-2 sm:p-3 flex justify-between items-center">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Package className="h-5 w-5 text-zinc-500 shrink-0" />
-                  <div className="min-w-0">
-                    <h2 className="text-xl font-black uppercase tracking-tighter text-foreground line-clamp-1" title={selectedProduct.input?.name || ""}>
-                      {selectedProduct.input?.name}
+              <div className="p-4 sm:p-6 flex justify-between items-start">
+                <div className="flex flex-col gap-2 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-5 w-5 text-primary shrink-0" />
+                    <h2 className="text-xl font-black uppercase tracking-tighter text-foreground line-clamp-1" title={activeCohortName}>
+                      {activeCohortName}
                     </h2>
-                    <div className="text-[10px] font-black uppercase tracking-tighter text-zinc-500 flex items-center gap-2">
-                      <span className="bg-feed-bag-cream border border-border px-1.5 py-0.5 rounded-none">{selectedProduct.sku}</span>
-                      <span>•</span>
-                      <span className="font-black text-foreground">
-                        ${Number(selectedProduct.input?.price || 0).toFixed(2)}
-                      </span>
+                    <div className="flex items-center gap-1">
+                      {activeCohortId && activeCohortId !== "ungrouped" && onEditCohort && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-ledger-charcoal hover:bg-muted/50 transition-colors"
+                          onClick={() => 
+                            onEditCohort(
+                              activeCohortId, 
+                              groupedProducts?.names?.[activeCohortId] || null, 
+                              activeCohortBrand || null
+                            )
+                          }
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {(!activeCohortBrand || !hasWebsite) && activeCohortId !== "ungrouped" && (
+                        <div className="inline-flex items-center gap-1.5 bg-brand-gold/10 border border-brand-gold px-2 py-0.5 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                          <AlertCircle className="h-3 w-3 text-brand-burgundy animate-pulse" />
+                          <span className="text-[9px] font-black uppercase tracking-widest text-brand-burgundy">
+                            Action Required: {!activeCohortBrand ? "Assign Brand" : "Add URL"}
+                          </span>
+                        </div>
+                      )}
                     </div>
+                    {activeCohortBrand && (
+                        <Badge variant="outline" className={cn(
+                          "font-black uppercase tracking-widest rounded-none",
+                          hasWebsite 
+                            ? "border-brand-forest-green text-brand-forest-green bg-brand-forest-green/10" 
+                            : "border-brand-gold text-brand-burgundy bg-brand-gold/10"
+                        )}>
+                            {activeCohortBrand}
+                        </Badge>
+                    )}
+                  </div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <span>{cohortProducts.length} Product{cohortProducts.length !== 1 ? 's' : ''}</span>
+                    {activeCohortId !== "ungrouped" && (
+                        <>
+                            <span>•</span>
+                            <span className="font-mono">{activeCohortId}</span>
+                        </>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Details Content */}
-            <div
-              key={preferredSku}
-              className="flex-1 overflow-y-auto p-4 sm:p-6"
-            >
-                <div className="max-w-2xl mx-auto space-y-6">
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs font-black uppercase tracking-tighter bg-foreground text-background px-2 py-0.5 rounded-none">Imported Data</span>
-                        </div>
-                        <h1 className="text-3xl font-black uppercase tracking-tighter text-foreground leading-tight">
-                            {selectedProduct.input?.name}
-                        </h1>
-                        <p className="text-2xl font-black text-foreground">
-                            ${Number(selectedProduct.input?.price || 0).toFixed(2)}
-                        </p>
+            {/* Details Content (Product Preview Grid) */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-muted/20">
+                <div className="max-w-4xl mx-auto space-y-4">
+                    <h3 className="text-xs font-black uppercase tracking-tighter text-foreground border-b border-border pb-2">Products in Cohort</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        {cohortProducts.map(product => (
+                            <div key={product.sku} className="p-3 bg-card border border-border flex flex-col gap-2 transition-colors">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground bg-muted px-1 py-0.5 rounded-none border border-border shrink-0">
+                                        {product.sku}
+                                    </div>
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-brand-forest-green shrink-0">
+                                        ${Number(product.input?.price || 0).toFixed(2)}
+                                    </div>
+                                </div>
+                                <div className="text-sm font-black uppercase tracking-tighter text-foreground line-clamp-2 leading-tight" title={product.input?.name}>
+                                    {product.input?.name}
+                                </div>
+                            </div>
+                        ))}
                     </div>
-
-                    <Separator className="h-1 bg-border" />
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 bg-feed-bag-cream border border-border">
-                            <h3 className="text-[10px] font-black uppercase tracking-tighter text-zinc-500 mb-2">Internal Identifier</h3>
-                            <p className="font-black uppercase tracking-tighter text-foreground">{selectedProduct.sku}</p>
-                        </div>
-                        {selectedProduct.product_line && (
-                            <div className="p-4 bg-feed-bag-cream border border-border">
-                                <h3 className="text-[10px] font-black uppercase tracking-tighter text-zinc-500 mb-2">Product Line</h3>
-                                <p className="font-black uppercase tracking-tighter text-foreground">{selectedProduct.product_line}</p>
-                            </div>
-                        )}
-                        {selectedProduct.cohort_id && (
-                             <div className="p-4 bg-feed-bag-cream border border-border">
-                                <h3 className="text-[10px] font-black uppercase tracking-tighter text-zinc-500 mb-2">Cohort ID</h3>
-                                <p className="font-black uppercase tracking-tighter text-foreground">{selectedProduct.cohort_id}</p>
-                            </div>
-                        )}
-                         {selectedProduct.cohort_brand_name && (
-                             <div className="p-4 bg-feed-bag-cream border border-border">
-                                <h3 className="text-[10px] font-black uppercase tracking-tighter text-zinc-500 mb-2">Brand</h3>
-                                <p className="font-black uppercase tracking-tighter text-foreground">{selectedProduct.cohort_brand_name}</p>
-                            </div>
-                        )}
-                    </div>
-
-                    {selectedProduct.input?.description && (
-                        <div className="space-y-2">
-                             <h3 className="text-xs font-black uppercase tracking-tighter text-foreground">Original Description</h3>
-                             <div className="p-4 bg-card border border-border text-sm font-medium leading-relaxed">
-                                {selectedProduct.input.description}
-                             </div>
-                        </div>
-                    )}
                 </div>
             </div>
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-zinc-500">
-            <Package className="h-12 w-12 mb-2 opacity-20" />
-            <h3 className="text-lg font-black uppercase tracking-tighter text-foreground">Select a product</h3>
-            <p className="text-[10px] font-black uppercase tracking-tighter mt-1">Choose a product from the list to view its imported details.</p>
+            <Layers className="h-12 w-12 mb-2 opacity-20" />
+            <h3 className="text-lg font-black uppercase tracking-tighter text-foreground">Select a cohort</h3>
+            <p className="text-[10px] font-black uppercase tracking-tighter mt-1">Choose a cohort from the list to view its contents.</p>
           </div>
         )}
       </div>

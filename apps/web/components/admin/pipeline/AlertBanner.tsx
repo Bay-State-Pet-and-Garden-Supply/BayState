@@ -42,23 +42,23 @@ const severityConfig: Record<
 > = {
   error: {
     containerClass:
-      "border-red-200 bg-red-50/80 dark:border-red-900/40 dark:bg-red-950/20",
-    iconBgClass: "bg-red-100 dark:bg-red-900/30",
-    iconClass: "text-red-600 dark:text-red-400",
+      "border-red-500/20 bg-red-500/[0.02] dark:border-red-500/10 dark:bg-red-500/[0.01]",
+    iconBgClass: "bg-red-500/10 dark:bg-red-500/20",
+    iconClass: "text-red-500",
     IconComponent: AlertCircle,
   },
   warning: {
     containerClass:
-      "border-yellow-200 bg-yellow-50/80 dark:border-yellow-900/40 dark:bg-yellow-950/20",
-    iconBgClass: "bg-yellow-100 dark:bg-yellow-900/30",
-    iconClass: "text-yellow-600 dark:text-yellow-400",
+      "border-amber-500/20 bg-amber-500/[0.02] dark:border-amber-500/10 dark:bg-amber-500/[0.01]",
+    iconBgClass: "bg-amber-500/10 dark:bg-amber-500/20",
+    iconClass: "text-amber-500",
     IconComponent: AlertTriangle,
   },
   info: {
     containerClass:
-      "border-blue-200 bg-blue-50/80 dark:border-blue-900/40 dark:bg-blue-950/20",
-    iconBgClass: "bg-blue-100 dark:bg-blue-900/30",
-    iconClass: "text-blue-600 dark:text-blue-400",
+      "border-blue-500/20 bg-blue-500/[0.02] dark:border-blue-500/10 dark:bg-blue-500/[0.01]",
+    iconBgClass: "bg-blue-500/10 dark:bg-blue-500/20",
+    iconClass: "text-blue-500",
     IconComponent: Info,
   },
 };

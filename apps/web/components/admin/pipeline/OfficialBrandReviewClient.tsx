@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { AlertTriangle, CheckCircle2, ChevronLeft, Circle, Keyboard, Loader2, PackageSearch, Play, RefreshCw } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronLeft, Circle, Keyboard, Loader2, PackageSearch, Play, RefreshCw } from "lucide-react";
 import { CandidateUrlPicker } from "./CandidateUrlPicker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import type {
 interface OfficialBrandReviewClientProps {
   initialData: CandidatesBySkuResponse;
   discoveryJobId?: string | null;
+  onBack?: () => void;
 }
 
 function summarizeSkus(skus: OfficialBrandSkuReview[]) {
@@ -114,6 +115,7 @@ function getSelectableCandidates(entry: OfficialBrandSkuReview) {
 export function OfficialBrandReviewClient({
   initialData,
   discoveryJobId,
+  onBack,
 }: OfficialBrandReviewClientProps) {
   const [data, setData] = useState(initialData);
   const [activeSku, setActiveSku] = useState<string | null>(() =>
@@ -131,10 +133,6 @@ export function OfficialBrandReviewClient({
   const activeEntry = activeIndex >= 0 ? data.skus[activeIndex] : null;
   const selectedSkus = useMemo(
     () => data.skus.filter(hasSelected).map((entry) => entry.sku),
-    [data.skus],
-  );
-  const needsReviewCount = useMemo(
-    () => data.skus.filter((entry) => !hasSelected(entry) && !hasExtracted(entry)).length,
     [data.skus],
   );
   const autoSelectionsToReview = useMemo(
@@ -451,20 +449,17 @@ export function OfficialBrandReviewClient({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [activeEntry, activeIndex, data.skus, isSaving, updateCandidateStatus]);
 
-  const summaryItems = [
-    { label: "Products", value: data.summary.total_skus },
-    { label: "Selected", value: data.summary.skus_with_selection },
-    { label: "Need Review", value: needsReviewCount },
-    { label: "Reviewed", value: data.summary.skus_reviewed },
-    { label: "Extracted", value: data.summary.skus_extracted },
-  ];
-
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
       <div className="shrink-0 rounded-none border border-border bg-card p-4">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
+              {onBack ? (
+                <Button variant="outline" size="icon" onClick={onBack} className="h-8 w-8">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              ) : null}
               <Badge variant="outline" className="bg-primary/5 text-primary">
                 Cohort
               </Badge>
@@ -475,25 +470,21 @@ export function OfficialBrandReviewClient({
                 Brand: {data.cohort.brand_name}
               </span>
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span className="font-black uppercase tracking-widest text-foreground">
-                Domains
-              </span>
-              {[...data.cohort.official_domains, ...data.cohort.preferred_domains].length > 0 ? (
-                [...data.cohort.official_domains, ...data.cohort.preferred_domains].map(
-                  (domain) => (
-                    <span key={domain} className="rounded-none border border-border bg-muted/20 px-2 py-1 font-mono">
-                      {domain}
-                    </span>
-                  ),
-                )
-              ) : (
-                <span>No configured domains</span>
-              )}
-            </div>
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-              <Keyboard className="h-3.5 w-3.5" />
-              Up/Down changes SKU, Left/Right changes URL.
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5">
+                <span className="font-black uppercase tracking-widest text-foreground">
+                  Domains:
+                </span>
+                <span className="font-mono">
+                  {[...data.cohort.official_domains, ...data.cohort.preferred_domains].length > 0
+                    ? [...data.cohort.official_domains, ...data.cohort.preferred_domains].join(", ")
+                    : "No configured domains"}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 border-l border-border pl-3 text-[10px] font-black uppercase tracking-widest">
+                <Keyboard className="h-3.5 w-3.5" />
+                <span>Up/Down: SKU • Left/Right: URL</span>
+              </div>
             </div>
           </div>
 
@@ -550,26 +541,11 @@ export function OfficialBrandReviewClient({
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-5">
-          {summaryItems.map((item) => (
-            <div
-              key={item.label}
-              className="rounded-none border border-border bg-muted/10 px-3 py-2"
-            >
-              <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                {item.label}
-              </div>
-              <div className="mt-1 text-lg font-black text-foreground">
-                {item.value}
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
 
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(260px,340px)_1fr]">
-        <aside className="min-h-0 rounded-none border border-border bg-card">
-          <div className="border-b border-border p-3">
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-none border border-border bg-card">
+          <div className="shrink-0 border-b border-border p-3">
             <h3 className="text-xs font-black uppercase tracking-widest text-foreground">
               Product Master List
             </h3>
@@ -577,7 +553,7 @@ export function OfficialBrandReviewClient({
               {data.skus.length} SKU{data.skus.length === 1 ? "" : "s"} in this cohort
             </p>
           </div>
-          <div className="max-h-[34rem] overflow-y-auto lg:max-h-none lg:h-full">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             {data.skus.length === 0 ? (
               <div className="p-4 text-sm text-muted-foreground">
                 No products found for this cohort.
@@ -590,6 +566,7 @@ export function OfficialBrandReviewClient({
                 return (
                   <button
                     key={entry.sku}
+                    ref={isActive ? (el) => el?.scrollIntoView({ block: "nearest", behavior: "smooth" }) : undefined}
                     type="button"
                     onClick={() => setActiveSku(entry.sku)}
                     className={cn(
@@ -624,7 +601,7 @@ export function OfficialBrandReviewClient({
           </div>
         </aside>
 
-        <section className="min-h-0 rounded-none border border-border bg-card">
+        <section className="min-h-0 overflow-hidden rounded-none border border-border bg-card">
           {activeEntry ? (
             <div className="flex h-full min-h-0 flex-col">
               <div className="shrink-0 border-b border-border p-4">
@@ -649,9 +626,6 @@ export function OfficialBrandReviewClient({
                       </p>
                     ) : null}
                   </div>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={reviewHref}>Open Cohort in Pipeline</Link>
-                  </Button>
                 </div>
               </div>
               <div className="min-h-0 flex-1 p-4">

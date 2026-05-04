@@ -25,7 +25,7 @@ export function StageTabs({
   };
 
   return (
-    <div className="space-y-1">
+    <div>
       <Tabs
         value={currentStage}
         onValueChange={(value) => {
@@ -34,7 +34,6 @@ export function StageTabs({
             onStageChange(nextStage);
           }
         }}
-        className="space-y-1"
       >
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 bg-transparent p-0 border-b border-border">
           {PIPELINE_TABS.map((stage, index) => {

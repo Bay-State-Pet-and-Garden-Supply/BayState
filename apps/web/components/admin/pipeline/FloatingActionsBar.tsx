@@ -3,11 +3,17 @@
 import { Loader2, Plus, Trash2, Search, Archive, Upload, Globe } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type {
   PersistedPipelineStatus,
   PipelineStage,
 } from "@/lib/pipeline/types";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 /**
  * Bulk action configuration for each pipeline stage.
@@ -69,6 +75,8 @@ interface FloatingActionsBarProps {
   onOpenScrapeDialog?: () => void;
   onDiscoverOfficialBrand?: () => void;
   canDiscoverOfficialBrand?: boolean;
+  officialBrandSelectionReason?: string | null;
+  scrapeSelectionValidation?: { allowed: boolean; reason: string | null };
   onDelete?: () => void;
   actionState?: "upload" | "zip" | null;
   onUploadShopSite?: () => void;
@@ -88,6 +96,8 @@ export function FloatingActionsBar({
   onOpenScrapeDialog,
   onDiscoverOfficialBrand,
   canDiscoverOfficialBrand,
+  officialBrandSelectionReason,
+  scrapeSelectionValidation,
   onDelete,
   actionState = null,
   onUploadShopSite,
@@ -109,7 +119,10 @@ export function FloatingActionsBar({
   const hasSecondaryAction =
     !!bulkAction.secondaryAction && !!onOpenScrapeDialog;
 
+  const isPrimaryDisabled = isLoading || (isImported && scrapeSelectionValidation?.allowed === false);
+
   const handlePrimaryAction = () => {
+    if (isPrimaryDisabled) return;
     if (isImported && onOpenScrapeDialog) {
       onOpenScrapeDialog();
     } else if (currentStage === "scraped" && onConsolidate) {
@@ -193,17 +206,35 @@ export function FloatingActionsBar({
             </Button>
           )}
 
-          {isImported && canDiscoverOfficialBrand && onDiscoverOfficialBrand && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onDiscoverOfficialBrand}
-              disabled={isLoading}
-              className="h-9 border border-border text-[10px] font-black uppercase tracking-widest text-blue-600 bg-background hover:bg-blue-50 rounded-none transition-all"
-            >
-              <Globe className="mr-1 h-3.5 w-3.5" />
-              Discover URLs
-            </Button>
+          {isImported && onDiscoverOfficialBrand && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="inline-block">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onDiscoverOfficialBrand}
+                    disabled={isLoading || !canDiscoverOfficialBrand}
+                    className={cn(
+                      "h-9 border border-border text-[10px] font-black uppercase tracking-widest bg-background rounded-none transition-all",
+                      canDiscoverOfficialBrand 
+                        ? "text-blue-600 hover:bg-blue-50" 
+                        : "text-muted-foreground opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    <Globe className="mr-1 h-3.5 w-3.5" />
+                    Discover URLs
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              {!canDiscoverOfficialBrand && officialBrandSelectionReason && (
+                <TooltipContent side="top" className="max-w-xs">
+                  <p className="font-black uppercase tracking-widest text-[10px]">
+                    {officialBrandSelectionReason}
+                  </p>
+                </TooltipContent>
+              )}
+            </Tooltip>
           )}
 
           {onDelete && (
@@ -262,23 +293,41 @@ export function FloatingActionsBar({
           )}
 
           {hasBulkAction && (
-            <Button
-              onClick={handlePrimaryAction}
-              disabled={isLoading}
-              className="h-9 bg-brand-forest-green border border-border px-6 text-[10px] font-black uppercase tracking-widest text-white hover:bg-brand-forest-green/90 rounded-none transition-all"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  {isImported && <Search className="mr-1 h-3.5 w-3.5" />}
-                  {bulkAction.label}
-                </>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="inline-block">
+                  <Button
+                    onClick={handlePrimaryAction}
+                    disabled={isPrimaryDisabled}
+                    className={cn(
+                      "h-9 border border-border px-6 text-[10px] font-black uppercase tracking-widest rounded-none transition-all",
+                      isPrimaryDisabled && isImported
+                        ? "bg-zinc-200 text-zinc-500 cursor-not-allowed border-dashed"
+                        : "bg-brand-forest-green text-white hover:bg-brand-forest-green/90"
+                    )}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        {isImported && <Search className="mr-1 h-3.5 w-3.5" />}
+                        {bulkAction.label}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              {isImported && scrapeSelectionValidation?.allowed === false && (
+                <TooltipContent side="top" className="max-w-xs bg-brand-burgundy border-zinc-950 text-white shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                  <p className="font-black uppercase tracking-widest text-[10px]">
+                    {scrapeSelectionValidation.reason}
+                  </p>
+                </TooltipContent>
               )}
-            </Button>
+            </Tooltip>
           )}
         </div>
       </div>

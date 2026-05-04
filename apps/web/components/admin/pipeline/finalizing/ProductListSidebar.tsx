@@ -30,6 +30,7 @@ interface ProductListSidebarProps {
     names?: Record<string, string>;
   };
   cohortBrands?: Record<string, string>;
+  cohortBrandObjects?: Record<string, any>;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
   selectedSkus?: Set<string>;
   onSelectSku?: (sku: string, selected: boolean, index?: number, isShiftClick?: boolean, visibleProducts?: PipelineProduct[]) => void;
@@ -49,6 +50,7 @@ export function ProductListSidebar({
   isLoading = false,
   groupedProducts,
   cohortBrands = {},
+  cohortBrandObjects = {},
   onEditCohort,
   selectedSkus = new Set(),
   onSelectSku,
@@ -110,6 +112,7 @@ export function ProductListSidebar({
           products={products}
           groupedProducts={groupedProducts}
           cohortBrands={cohortBrands}
+          cohortBrandObjects={cohortBrandObjects}
           selectedSkus={selectedSkus}
           preferredSku={selectedSku}
           onSelectSku={onSelectSku || (() => {})}

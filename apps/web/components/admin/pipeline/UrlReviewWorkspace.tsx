@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, ChevronRight, ChevronLeft, Globe, Loader2, PackageSearch } from "lucide-react";
+import { ChevronRight, ChevronLeft, Globe, Loader2, PackageSearch } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OfficialBrandReviewClient } from "./OfficialBrandReviewClient";
@@ -123,21 +123,8 @@ export function UrlReviewWorkspace() {
 
   if (openCohort && reviewData) {
     return (
-      <div className="flex h-full min-h-0 flex-col gap-3">
-        <div className="shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleBack}
-            className="h-8"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Cohort List
-          </Button>
-        </div>
-        <div className="min-h-0 flex-1">
-          <OfficialBrandReviewClient initialData={reviewData} />
-        </div>
+      <div className="flex h-full min-h-0 flex-col">
+        <OfficialBrandReviewClient initialData={reviewData} onBack={handleBack} />
       </div>
     );
   }

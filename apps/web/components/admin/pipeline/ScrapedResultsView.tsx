@@ -58,6 +58,7 @@ interface ScrapedResultsViewProps {
     names?: Record<string, string>;
   };
   cohortBrands?: Record<string, string>;
+  cohortBrandObjects?: Record<string, any>;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
 }
 
@@ -104,6 +105,7 @@ export function ScrapedResultsView({
   isSearching = false,
   groupedProducts,
   cohortBrands = {},
+  cohortBrandObjects = {},
   onEditCohort,
 }: ScrapedResultsViewProps) {
   // 1. Data Transformation & Memoized State
@@ -306,7 +308,7 @@ export function ScrapedResultsView({
 
   // 5. Effects
   return (
-    <div className="flex h-full min-h-0 border border-border rounded-none overflow-hidden bg-background max-w-full m-1 mr-4 mb-4">
+    <div className="flex flex-1 min-h-0 border border-border rounded-none overflow-hidden bg-background max-w-full">
       {/* Left Column: Product List */}
       <div className="w-96 min-w-[384px] max-w-[384px] border-r border-border flex flex-col shrink-0 bg-background overflow-x-hidden">
         <div className="flex items-center gap-2 border-b border-border bg-card p-2">
@@ -351,6 +353,7 @@ export function ScrapedResultsView({
           products={sortedProducts}
           groupedProducts={groupedProducts}
           cohortBrands={cohortBrands}
+          cohortBrandObjects={cohortBrandObjects}
           selectedSkus={selectedSkus}
           preferredSku={preferredSku}
           onSelectSku={onSelectSku}

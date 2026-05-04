@@ -12,6 +12,7 @@ interface AdminPageShellProps {
   className?: string;
   contentClassName?: string;
   fullHeight?: boolean;
+  compactHeader?: boolean;
 }
 
 export function AdminPageShell({
@@ -24,11 +25,12 @@ export function AdminPageShell({
   className,
   contentClassName,
   fullHeight,
+  compactHeader,
 }: AdminPageShellProps) {
   return (
     <div
       className={cn(
-        "flex flex-col gap-6",
+        compactHeader ? "flex flex-col gap-3" : "flex flex-col gap-6",
         fullHeight && "h-full min-h-0",
         className
       )}
@@ -39,11 +41,12 @@ export function AdminPageShell({
         icon={icon}
         meta={meta}
         actions={actions}
+        compact={compactHeader}
       />
       <div
         className={cn(
           "flex-1 min-h-0",
-          fullHeight && "overflow-hidden",
+          fullHeight ? "overflow-hidden" : "overflow-y-auto",
           contentClassName
         )}
       >

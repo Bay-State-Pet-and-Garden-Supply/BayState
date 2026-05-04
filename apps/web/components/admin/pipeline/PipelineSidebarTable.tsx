@@ -21,14 +21,17 @@ interface PipelineSidebarTableProps {
     names?: Record<string, string>;
   };
   cohortBrands?: Record<string, string>;
+  cohortBrandObjects?: Record<string, any>;
   
   // Selection
   selectedSkus: Set<string>;
   preferredSku: string | null;
+  preferredCohortId?: string | null;
   onSelectSku: (sku: string, isSelected: boolean, index?: number, isShiftClick?: boolean, visibleProducts?: PipelineProduct[]) => void;
   onSelectAll?: (skus: string[]) => void;
   onDeselectAll?: (skus: string[]) => void;
   onPreferredSkuChange: (sku: string) => void;
+  onPreferredCohortChange?: (cohortId: string) => void;
   
   // Customization
   variant: PipelineSidebarTableVariant;
@@ -44,12 +47,15 @@ export function PipelineSidebarTable({
   products,
   groupedProducts,
   cohortBrands = {},
+  cohortBrandObjects = {},
   selectedSkus,
   preferredSku,
+  preferredCohortId,
   onSelectSku,
   onSelectAll,
   onDeselectAll,
   onPreferredSkuChange,
+  onPreferredCohortChange,
   variant,
   onEditCohort,
   scrollContainerRef: externalRef,
@@ -90,7 +96,7 @@ export function PipelineSidebarTable({
 
   // Ensure preferredSku's cohort is expanded so it's visible in the virtualized list
   React.useEffect(() => {
-    if (preferredSku && groupedProducts) {
+    if (preferredSku && groupedProducts && variant !== "imported") {
       const cohortId = groupedProducts.cohortIds.find(cid => 
         groupedProducts.groups[cid]?.some(p => p.sku === preferredSku)
       );
@@ -102,13 +108,23 @@ export function PipelineSidebarTable({
         });
       }
     }
-  }, [preferredSku, groupedProducts]);
+  }, [preferredSku, groupedProducts, variant]);
 
   // Data flattening logic: handles cohort grouping and "ungrouped" fallback
   const flatItems = React.useMemo(() => {
     const isUngroupedOnly = !groupedProducts || 
       groupedProducts.cohortIds.length === 0 || 
       (groupedProducts.cohortIds.length === 1 && groupedProducts.cohortIds[0] === "ungrouped");
+
+    if (variant === "imported" && groupedProducts) {
+      const items: FlatItem[] = [];
+      groupedProducts.cohortIds.forEach((cohortId) => {
+        const groupProducts = groupedProducts.groups[cohortId] || [];
+        if (groupProducts.length === 0) return;
+        items.push({ type: 'header', cohortId, groupProducts });
+      });
+      return items;
+    }
 
     if (isUngroupedOnly) {
       return products.map((p, i) => ({ 
@@ -141,7 +157,7 @@ export function PipelineSidebarTable({
     });
 
     return items;
-  }, [groupedProducts, products, expandedCohortIds]);
+  }, [groupedProducts, products, expandedCohortIds, variant]);
 
   // Virtualization size estimation: 48px for headers, 110px for products
   const estimateSize = React.useCallback((index: number) => {
@@ -161,6 +177,8 @@ export function PipelineSidebarTable({
       ) {
         return;
       }
+
+      if (variant === "imported") return; // Skip for flat cohort view for now
 
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
@@ -222,17 +240,17 @@ export function PipelineSidebarTable({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [allProductItems, flatItems, preferredSku, selectedSkus, onPreferredSkuChange, onSelectSku]);
+  }, [allProductItems, flatItems, preferredSku, selectedSkus, onPreferredSkuChange, onSelectSku, variant]);
 
   // Programmatic scrolling: Scroll to preferred SKU when it changes
   React.useLayoutEffect(() => {
-    if (preferredSku && scrollContainerRef.current) {
+    if (variant !== "imported" && preferredSku && scrollContainerRef.current) {
       const index = flatItems.findIndex(item => item.type === 'product' && item.product.sku === preferredSku);
       if (index !== -1) {
         scrollContainerRef.current.scrollToIndex(index, { align: 'auto' });
       }
     }
-  }, [preferredSku, flatItems, scrollContainerRef]);
+  }, [preferredSku, flatItems, scrollContainerRef, variant]);
 
   const renderRow = React.useCallback((item: FlatItem) => {
     if (item.type === 'header') {
@@ -243,12 +261,15 @@ export function PipelineSidebarTable({
           groupProducts={item.groupProducts}
           cohortName={groupedProducts?.names?.[item.cohortId]}
           cohortBrand={cohortBrands[item.cohortId]}
+          cohortBrandObject={cohortBrandObjects[item.cohortId]}
           selectedSkus={selectedSkus}
           onSelectAll={onSelectAll}
           onDeselectAll={onDeselectAll}
           onEditCohort={onEditCohort}
-          isCollapsed={!expandedCohortIds.has(item.cohortId)}
-          onToggleCollapse={toggleCohortExpansion}
+          isCollapsed={variant === "imported" ? true : !expandedCohortIds.has(item.cohortId)}
+          onToggleCollapse={variant === "imported" ? onPreferredCohortChange : toggleCohortExpansion}
+          isActive={variant === "imported" && preferredCohortId === item.cohortId}
+          hideChevron={variant === "imported"}
         />
       );
     }
@@ -269,11 +290,13 @@ export function PipelineSidebarTable({
   }, [
     variant,
     preferredSku,
+    preferredCohortId,
     selectedSkus,
     onSelectSku,
     onSelectAll,
     onDeselectAll,
     onPreferredSkuChange,
+    onPreferredCohortChange,
     onEditCohort,
     groupedProducts,
     cohortBrands,

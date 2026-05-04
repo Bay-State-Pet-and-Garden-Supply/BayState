@@ -109,21 +109,21 @@ export function ActiveRunsTab({ className, jobSubtype }: ActiveRunsTabProps) {
     void fetchJobs();
   }, [fetchJobs]);
 
+  const hasActiveJobs = useMemo(
+    () => jobs.some((j) => j.status === "pending" || j.status === "running"),
+    [jobs],
+  );
+
   // Poll for chunk updates when active jobs exist (5s interval)
   useEffect(() => {
-    if (!isDocumentVisible) return;
-
-    const hasActiveJobs = jobs.some(
-      (j) => j.status === "pending" || j.status === "running",
-    );
-    if (!hasActiveJobs) return;
+    if (!isDocumentVisible || !hasActiveJobs) return;
 
     const interval = setInterval(() => {
       void fetchJobs();
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [fetchJobs, isDocumentVisible, jobs]);
+  }, [fetchJobs, isDocumentVisible, hasActiveJobs]);
 
   // Fallback polling when realtime is disconnected (slower)
   useEffect(() => {

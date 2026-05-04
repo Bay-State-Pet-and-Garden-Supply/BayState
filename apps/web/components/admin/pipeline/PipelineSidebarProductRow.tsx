@@ -44,7 +44,7 @@ export function PipelineSidebarProductRow({
       key={product.sku}
       data-sku={product.sku}
       className={cn(
-        "cursor-pointer transition-colors relative min-w-0",
+        "cursor-pointer transition-colors duration-300 ease-out relative min-w-0",
         isFocused ? "bg-feed-bag-cream" : "hover:bg-feed-bag-cream/50"
       )}
       onClick={() => onPreferredSkuChange(product.sku)}

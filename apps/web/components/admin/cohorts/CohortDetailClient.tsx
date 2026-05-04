@@ -218,6 +218,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
 
   const brandName = cohort.brand_name || cohort.brands?.name || null;
   const brand = cohort.brands;
+  const hasWebsite = Boolean(brand?.website_url && brand.website_url.trim());
   const configuredBrand = isConfiguredBrand(brand);
   const statusBadge = STATUS_BADGE_CONFIG[cohort.status] || STATUS_BADGE_CONFIG.pending;
 
@@ -247,8 +248,20 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
                 {statusBadge.label}
               </Badge>
             </div>
-            <p className="mt-1 text-xs font-bold uppercase tracking-widest text-zinc-600">
-              UPC Prefix: <code className="font-mono bg-zinc-950 text-white px-1 py-0.5">{cohort.upc_prefix}</code> · {members.length} products
+            <p className="mt-1 text-xs font-bold uppercase tracking-widest text-zinc-600 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span>UPC Prefix: <code className="font-mono bg-zinc-950 text-white px-1 py-0.5">{cohort.upc_prefix}</code></span>
+              <span>{members.length} products</span>
+              {cohort.brands?.website_url && (
+                <a
+                  href={cohort.brands.website_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-brand-forest-green hover:underline lowercase tracking-normal font-mono"
+                >
+                  <Globe className="h-3 w-3" />
+                  {cohort.brands.website_url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
+                </a>
+              )}
             </p>
           </div>
         </div>
@@ -290,8 +303,11 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-2">
                         <p className="font-black uppercase text-zinc-950 tracking-tight">{brandName}</p>
-                        <p className="text-[10px] font-bold uppercase tracking-wide text-zinc-600">
-                          {configuredBrand
+                        <p className={cn(
+                          "text-[10px] font-bold uppercase tracking-wide",
+                          hasWebsite ? "text-zinc-600" : "text-brand-burgundy font-black"
+                        )}>
+                          {hasWebsite
                             ? 'Scraper recommendations are active for this brand'
                             : 'Brand linked, but official site/domain guidance is still missing'}
                         </p>
@@ -319,7 +335,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
                               View Site
                             </a>
                           ) : (
-                            <span className="mt-1 block text-brand-burgundy">Missing</span>
+                            <span className="mt-1 block text-brand-gold font-black">Missing</span>
                           )}
                         </div>
                         <div className="rounded-none border border-zinc-200 bg-white px-3 py-2">
@@ -538,6 +554,19 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
                 <span className="text-[10px] font-black uppercase text-zinc-500">Updated</span>
                 <span className="text-xs font-bold uppercase text-zinc-950">{new Date(cohort.updated_at).toLocaleDateString()}</span>
               </div>
+              {cohort.brands?.website_url && (
+                <div className="flex flex-col gap-1 pt-2 border-t border-zinc-100">
+                  <span className="text-[10px] font-black uppercase text-zinc-500">Official Site</span>
+                  <a
+                    href={cohort.brands.website_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] font-bold text-brand-forest-green hover:underline break-all"
+                  >
+                    {cohort.brands.website_url}
+                  </a>
+                </div>
+              )}
               {cohort.scraper_config && (
                 <div className="flex justify-between items-center pt-2 border-t border-zinc-100">
                   <span className="text-[10px] font-black uppercase text-zinc-500">Config</span>
