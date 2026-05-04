@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
-import asyncio
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-import inspect
+import os
 from pathlib import Path
 import time
 from typing import Any, Literal, cast
 
 import click
 
+from core.api_client import JobConfig as RunnerJobConfig
+from core.api_client import ScraperAPIClient
+from core.api_client import ScraperConfig as RunnerScraperConfig
 from core.failure_classifier import FailureClassifier, FailureType
-from scrapers.executor.workflow_executor import WorkflowExecutor
+from runner import run_job
 from scrapers.models.config import ScraperConfig, SelectorConfig
 from validation.result_quality import canonicalize_product_payload, sanitize_product_payload
 
@@ -371,25 +373,75 @@ def _build_audit_cases(config: ScraperConfig, tier_limit: int | None) -> tuple[l
     return cases, missing_tiers
 
 
-def _safe_current_url(executor: WorkflowExecutor, payload_results: dict[str, Any] | None = None) -> str | None:
-    if payload_results:
-        for field_name in ("current_url", "validated_http_url"):
-            value = payload_results.get(field_name)
-            if isinstance(value, str) and value.strip():
-                return value.strip()
+def _build_audit_api_client() -> ScraperAPIClient | None:
+    api_url = str((os.environ.get('SCRAPER_API_URL') or '')).strip()
+    api_key = str((os.environ.get('SCRAPER_API_KEY') or '')).strip()
 
-    browser = getattr(executor, "browser", None)
-    page = getattr(browser, "page", None) if browser is not None else None
-    url = getattr(page, "url", None) if page is not None else None
+    if not api_url:
+        return None
 
-    if isinstance(url, str) and url.strip():
-        return url.strip()
-    return None
+    return ScraperAPIClient(
+        api_url=api_url,
+        api_key=api_key,
+        runner_name='cli-audit',
+    )
 
 
-def _looks_like_antibot(error_message: str, current_url: str | None) -> bool:
-    haystack = " ".join(part for part in [error_message.lower(), (current_url or "").lower()] if part)
-    return any(indicator in haystack for indicator in BLOCK_INDICATORS)
+def _runner_scraper_config_from_local(config: ScraperConfig) -> RunnerScraperConfig:
+    """Convert a local ScraperConfig model to the runner's ScraperConfig type."""
+    return RunnerScraperConfig(
+        name=config.name,
+        display_name=getattr(config, "display_name", None),
+        base_url=config.base_url,
+        search_url_template=getattr(config, "search_url_template", None),
+        selectors=[
+            selector.model_dump() if hasattr(selector, "model_dump") else selector
+            for selector in config.selectors
+        ],
+        options={
+            "workflows": [
+                workflow.model_dump() if hasattr(workflow, "model_dump") else workflow
+                for workflow in config.workflows
+            ],
+            "timeout": config.timeout,
+            "use_stealth": config.use_stealth,
+        },
+        test_skus=list(config.test_skus) if config.test_skus else [],
+        retries=config.retries if config.retries is not None else 2,
+        validation=(
+            config.validation.model_dump()
+            if hasattr(getattr(config, "validation", None), "model_dump")
+            else getattr(config, "validation", None)
+        ),
+        login=(
+            config.login.model_dump()
+            if hasattr(getattr(config, "login", None), "model_dump")
+            else getattr(config, "login", None)
+        ),
+        credential_refs=list(config.credential_refs) if config.credential_refs else [],
+    )
+
+
+def _extract_error_from_results(results: dict[str, Any], sku: str) -> str:
+    """Extract the most relevant error message from run_job() output."""
+    telemetry = results.get("telemetry", {})
+    steps = telemetry.get("steps", []) if isinstance(telemetry, dict) else []
+
+    for step in steps:
+        if isinstance(step, dict) and step.get("status") in ("failed", "error"):
+            error = step.get("error_message")
+            if isinstance(error, str) and error.strip():
+                return error.strip()
+
+    logs = results.get("logs", [])
+    if isinstance(logs, list):
+        for log in logs:
+            if isinstance(log, dict) and log.get("level") == "error":
+                msg = log.get("message", "")
+                if isinstance(msg, str) and msg.strip():
+                    return msg.strip()
+
+    return "Workflow failed during execution (no error details in telemetry)"
 
 
 def _classify_failure(
@@ -475,6 +527,11 @@ def _classify_failure(
         failure_type.value,
         "Inspect navigation flow, target availability, and timeout settings for this scraper.",
     )
+
+
+def _looks_like_antibot(error_message: str, current_url: str | None) -> bool:
+    haystack = " ".join(part for part in [error_message.lower(), (current_url or "").lower()] if part)
+    return any(indicator in haystack for indicator in BLOCK_INDICATORS)
 
 
 def _evaluate_successful_case(
@@ -723,35 +780,112 @@ def _evaluate_failed_case(
     )
 
 
-async def _execute_case(
+def _evaluate_run_job_result(
+    *,
+    config: ScraperConfig,
+    case: AuditCase,
+    results: dict[str, Any],
+    duration_seconds: float,
+    field_specs: dict[str, AuditFieldSpec],
+) -> AuditCaseResult:
+    """Evaluate the result from a run_job() call and produce an AuditCaseResult.
+
+    run_job() returns success data under results["data"][sku][scraper_name].
+    SKUs that complete with no product data or with workflow failures are
+    absent from results["data"].
+    """
+    sku_data = results.get("data", {}).get(case.sku, {}).get(config.name)
+    telemetry = results.get("telemetry", {})
+    steps = telemetry.get("steps", []) if isinstance(telemetry, dict) else []
+
+    has_failed_steps = any(
+        isinstance(s, dict) and s.get("status") in ("failed", "error")
+        for s in steps
+    )
+
+    if sku_data is not None:
+        # Successful extraction — wrap in format _evaluate_successful_case expects
+        reconstructed = {"success": True, "results": dict(sku_data)}
+        return _evaluate_successful_case(
+            config=config,
+            case=case,
+            payload=reconstructed,
+            duration_seconds=duration_seconds,
+            current_url=sku_data.get("url"),
+            field_specs=field_specs,
+        )
+
+    if has_failed_steps:
+        # Workflow failure — reconstruct error from telemetry
+        error_msg = _extract_error_from_results(results, case.sku)
+        return _evaluate_failed_case(
+            config=config,
+            case=case,
+            error=Exception(error_msg),
+            duration_seconds=duration_seconds,
+            current_url=None,
+        )
+
+    # No data found (workflow completed without extracting product data)
+    # Map to the no_results_found path _evaluate_successful_case handles
+    reconstructed = {"success": True, "results": {"no_results_found": True}}
+    return _evaluate_successful_case(
+        config=config,
+        case=case,
+        payload=reconstructed,
+        duration_seconds=duration_seconds,
+        current_url=None,
+        field_specs=field_specs,
+    )
+
+
+def _execute_case(
     *,
     config: ScraperConfig,
     case: AuditCase,
     field_specs: dict[str, AuditFieldSpec],
     headless: bool,
+    api_client: ScraperAPIClient | None,
 ) -> AuditCaseResult:
-    executor = WorkflowExecutor(
-        config,
-        headless=headless,
-        timeout=config.timeout,
-        worker_id=f"cli-audit-{config.name}",
-        debug_mode=False,
+    """Execute a single audit case through the canonical run_job() path.
+
+    Unlike the previous direct WorkflowExecutor usage, this delegates to
+    run_job() — the same code path used by the production daemon and the
+    ``bsr batch test`` runner. This ensures:
+
+    - JobLoggingSession is active
+    - Credential fetching via ScraperAPIClient works
+    - The assertion engine is wired up
+    - All event/telemetry infrastructure fires
+    """
+    from runner import settings as _runner_settings
+
+    _runner_settings.browser_settings["headless"] = headless
+
+    api_scraper = _runner_scraper_config_from_local(config)
+    job_config = RunnerJobConfig(
+        job_id=f"cli-audit-{config.name}-{case.sku}",
+        skus=[case.sku],
+        scrapers=[api_scraper],
+        test_mode=False,
+        max_workers=1,
+        job_type="standard",
     )
+
     started_at = time.perf_counter()
 
     try:
-        payload = await executor.execute_workflow(
-            context={"sku": case.sku, "audit_tier": case.tier},
-            quit_browser=False,
+        results = run_job(
+            job_config,
+            runner_name="cli-audit",
+            api_client=api_client,
         )
         duration_seconds = round(time.perf_counter() - started_at, 2)
-        payload_results = cast(dict[str, Any], payload.get("results")) if isinstance(payload.get("results"), dict) else {}
-        return _evaluate_successful_case(
+        return _evaluate_run_job_result(
             config=config,
             case=case,
-            payload=payload,
+            results=results,
             duration_seconds=duration_seconds,
-            current_url=_safe_current_url(executor, payload_results),
             field_specs=field_specs,
         )
     except Exception as error:
@@ -761,32 +895,32 @@ async def _execute_case(
             case=case,
             error=error,
             duration_seconds=duration_seconds,
-            current_url=_safe_current_url(executor),
+            current_url=None,
         )
-    finally:
-        browser = executor.browser
-        if browser is not None:
-            maybe_awaitable = browser.quit()
-            if inspect.isawaitable(maybe_awaitable):
-                await maybe_awaitable
 
 
-async def _run_scraper_audit(
+def _run_scraper_audit(
     *,
     config: ScraperConfig,
     cases: list[AuditCase],
     field_specs: dict[str, AuditFieldSpec],
     headless: bool,
+    api_client: ScraperAPIClient | None,
 ) -> list[AuditCaseResult]:
+    """Run all audit cases for a single scraper config."""
+    from runner import settings as _runner_settings
+    _runner_settings.browser_settings["headless"] = headless
+
     case_results: list[AuditCaseResult] = []
 
     for index, case in enumerate(cases, start=1):
         click.echo(f"    [{index}/{len(cases)}] {TIER_LABELS[case.tier]} -> {case.sku}")
-        case_result = await _execute_case(
+        case_result = _execute_case(
             config=config,
             case=case,
             field_specs=field_specs,
             headless=headless,
+            api_client=api_client,
         )
         color = "green"
         if case_result.severity == "warning":
@@ -1278,6 +1412,7 @@ def run_audit_command(
     click.echo(f"  Headless: {'yes' if headless else 'no'}")
 
     scraper_results: list[ScraperAuditResult] = []
+    audit_api_client = _build_audit_api_client()
 
     for config_path in resolved_config_paths:
         click.echo()
@@ -1296,14 +1431,17 @@ def run_audit_command(
         if missing_tiers:
             click.secho(f"  Missing tiers: {', '.join(missing_tiers)}", fg="yellow")
 
-        case_results = asyncio.run(
+        case_results = (
             _run_scraper_audit(
                 config=config,
                 cases=cases,
                 field_specs=field_specs,
                 headless=headless,
+                api_client=audit_api_client,
             )
-        ) if cases else []
+            if cases
+            else []
+        )
 
         scraper_result = _build_scraper_result(
             config=config,

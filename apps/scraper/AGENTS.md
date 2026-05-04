@@ -107,6 +107,38 @@ docker compose up -d                                              # Start runner
 ./run-dev.sh                            # Dev mode wrapper
 ./run-prod.sh                           # Production mode
 python cli/main.py --help               # CLI commands (or `bsr --help` after install)
+
+## LOCAL RUNNER (Canonical)
+
+**`python runner.py --local --config <path> --sku <sku>` is the canonical local runner.**
+It uses the exact same `run_job()` code path as the production daemon, ensuring
+what passes locally also passes in production.
+
+```bash
+# Basic local run
+python runner.py --local --config scrapers/configs/bentleyseeds.yaml --sku 051588001415
+
+# With test assertions
+python runner.py --local --config scrapers/configs/bentleyseeds.yaml --test-mode
+
+# Validate config only
+python runner.py --local --config scrapers/configs/bentleyseeds.yaml --validate
+
+# Visible browser for debugging
+python runner.py --local --config scrapers/configs/bentleyseeds.yaml --sku 051588001415 --no-headless
+```
+
+**Why this over `bsr batch test`:**
+- Single execution path (always `run_job()`) — no hidden branches
+- Built-in test mode with assertion engine
+- Production parity: same code as daemon.py
+- Documented, skill-integrated, predictable
+
+**`bsr batch test` and `bsr audit` are UX wrappers** — they provide rich CLI output
+(colors, progress bars, cohort visualization) but should delegate execution to
+`runner.py --local` internally. Do not rely on their raw `WorkflowExecutor` path
+for validation; it bypasses `JobLoggingSession`, credential fetching, and the
+assertion engine.
 ```
 
 ## TEST MODE & ASSERTION ENGINE
