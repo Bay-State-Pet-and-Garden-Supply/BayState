@@ -31,6 +31,10 @@ pydantic-settings>=2.0.0
 rich>=13.0.0
 structlog>=23.0.0
 
+# OCR for product image text extraction
+pytesseract>=0.3.10
+Pillow>=10.0.0
+
 # Supabase client for result storage
 supabase>=2.0.0
 cryptography>=42.0.0

@@ -28,6 +28,7 @@ export interface CanonicalProductSourceRecord extends SourceRecord {
     ratings?: number;
     reviews_count?: number;
     size_metrics?: Record<string, unknown>;
+    image_text?: string;
 }
 
 type ProductSourceMap = Record<string, CanonicalProductSourceRecord>;
@@ -90,6 +91,7 @@ const SOURCE_FIELD_ALIASES: Record<string, string> = {
     upc: 'upc',
     url: 'url',
     weight: 'weight',
+    image_text: 'image_text',
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {

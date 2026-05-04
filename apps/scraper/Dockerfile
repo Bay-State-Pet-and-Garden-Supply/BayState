@@ -26,6 +26,13 @@ WORKDIR /app
 ARG RUNNER_BUILD_ID=unknown
 ARG RUNNER_BUILD_SHA=unknown
 
+# Install Tesseract OCR for image text extraction
+# tesseract-ocr-eng is the English language data
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install only the dependencies needed by the runner image
 COPY apps/scraper/requirements-runtime.txt ./requirements-runtime.txt
 RUN pip install --no-cache-dir -r requirements-runtime.txt

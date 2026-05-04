@@ -82,6 +82,7 @@ class ResultCollector:
                     images=images,
                     scraped_price=result_data.get("Price"),
                     image_quality=image_quality,
+                    image_text=result_data.get("Image Text"),
                     features=result_data.get("Features"),
                     ingredients=result_data.get("Ingredients"),
                     dimensions=result_data.get("Dimensions"),
@@ -95,7 +96,7 @@ class ResultCollector:
                 product = result_data
                 data_for_db = product.to_db_dict()
 
-            has_data = any(data_for_db.get(field) for field in ["Name", "Brand", "ScrapedPrice", "Weight"])
+            has_data = any(data_for_db.get(field) for field in ["name", "brand", "scraped_price", "weight", "image_text"])
 
             if not has_data:
                 logger.debug(f"No data found for {sku} from {scraper_name}")
