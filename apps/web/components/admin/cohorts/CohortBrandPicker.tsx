@@ -109,6 +109,7 @@ export function CohortBrandPicker({
   }, []);
 
   const selectedLabel = value?.name ?? emptyLabel;
+  const hasWebsite = Boolean(value?.website_url && value.website_url.trim());
   const selectedConfigured = value ? isBrandConfigured(value) : false;
 
   return (
@@ -131,7 +132,9 @@ export function CohortBrandPicker({
             className={cn(
               'justify-between gap-2 rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]',
               value
-                ? 'bg-brand-forest-green/10 text-brand-forest-green hover:bg-brand-forest-green/20'
+                ? hasWebsite
+                  ? 'bg-brand-forest-green/10 text-brand-forest-green hover:bg-brand-forest-green/20'
+                  : 'bg-brand-gold/10 text-brand-burgundy hover:bg-brand-gold/20 border-brand-gold'
                 : 'border-dashed text-muted-foreground hover:border-brand-forest-green hover:text-brand-forest-green hover:bg-brand-forest-green/5',
               triggerClassName,
             )}
@@ -143,11 +146,11 @@ export function CohortBrandPicker({
               {value && (
                 <span className={cn(
                   'hidden rounded-none border px-1 py-0 text-[9px] font-black uppercase md:inline-flex',
-                  selectedConfigured
+                  hasWebsite
                     ? 'border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green'
-                    : 'border-brand-burgundy bg-brand-burgundy/10 text-brand-burgundy'
+                    : 'border-brand-gold bg-brand-gold/10 text-brand-burgundy'
                 )}>
-                  {selectedConfigured ? 'Configured' : 'Needs Site'}
+                  {hasWebsite ? 'Configured' : 'Needs Site'}
                 </span>
               )}
             </span>

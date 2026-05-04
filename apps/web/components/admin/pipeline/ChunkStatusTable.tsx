@@ -46,26 +46,26 @@ const STATUS_CONFIG = {
   pending: {
     label: "Pending",
     icon: Clock,
-    badgeClass: "bg-brand-gold text-brand-burgundy",
-    rowClass: "opacity-75",
+    badgeClass: "bg-brand-gold/10 text-brand-burgundy border-brand-gold/20",
+    rowClass: "opacity-80",
   },
   running: {
     label: "Running",
     icon: Loader2,
-    badgeClass: "bg-blue-100 text-blue-950",
-    rowClass: "bg-blue-50/30",
+    badgeClass: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+    rowClass: "",
   },
   completed: {
     label: "Done",
     icon: CheckCircle,
-    badgeClass: "bg-brand-forest-green text-white",
+    badgeClass: "bg-brand-forest-green/10 text-brand-forest-green border-brand-forest-green/20",
     rowClass: "",
   },
   failed: {
     label: "Failed",
     icon: XCircle,
-    badgeClass: "bg-brand-burgundy text-white",
-    rowClass: "bg-red-50/30",
+    badgeClass: "bg-brand-burgundy/10 text-brand-burgundy border-brand-burgundy/20",
+    rowClass: "",
   },
 } as const;
 
@@ -118,7 +118,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
     <TooltipProvider delayDuration={300}>
       <div className="border border-border bg-card overflow-hidden my-4 mx-1">
         {/* Header */}
-        <div className="grid grid-cols-[3.5rem_4rem_8rem_6.5rem_1fr_6rem_6rem_7rem] gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-foreground bg-feed-bag-cream border-b border-border">
+        <div className="grid grid-cols-[3.5rem_4rem_8rem_6.5rem_1fr_6rem_6rem_7rem] gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-muted/30 border-b border-border">
           <span>Chunk</span>
           <span>SKUs</span>
           <span>Site Group</span>
@@ -140,7 +140,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
             return (
               <div key={chunk.id}>
                 <div
-                  className={`grid grid-cols-[3.5rem_4rem_8rem_6.5rem_1fr_6rem_6rem_7rem] gap-2 px-4 py-2.5 text-xs items-center transition-colors hover:bg-feed-bag-cream/50 ${config.rowClass} ${isFailed ? "border-l border-l-brand-burgundy" : ""}`}
+                  className={`grid grid-cols-[3.5rem_4rem_8rem_6.5rem_1fr_6rem_6rem_7rem] gap-2 px-4 py-2.5 text-xs items-center transition-colors hover:bg-muted/30 ${config.rowClass}`}
                 >
                   {/* Chunk Index */}
                   <span className="font-mono font-bold text-foreground">

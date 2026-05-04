@@ -85,6 +85,7 @@ export default async function PipelinePage({ searchParams }: PageProps) {
             description="Manage product ingestion workflow from import through exporting."
             icon={<Activity className="h-5 w-5" />}
             fullHeight
+            compactHeader
         >
             <PipelineClient
                 initialProducts={initialProducts}

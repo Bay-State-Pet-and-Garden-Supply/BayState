@@ -120,6 +120,7 @@ interface FinalizingResultsViewProps {
     names?: Record<string, string>;
   };
   cohortBrands?: Record<string, string>;
+  cohortBrandObjects?: Record<string, any>;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
   selectedSkus?: Set<string>;
   onSelectSku?: (
@@ -197,6 +198,7 @@ export function FinalizingResultsView({
   availableSources = [],
   groupedProducts,
   cohortBrands = {},
+  cohortBrandObjects = {},
   onEditCohort,
   selectedSkus = new Set(),
   onSelectSku,
@@ -1788,7 +1790,7 @@ export function FinalizingResultsView({
 
   return (
     <>
-      <div className="flex h-full min-h-0 border border-border rounded-none bg-card overflow-hidden max-w-full m-1 mr-4 mb-4">
+      <div className="flex flex-1 min-h-0 border border-border rounded-none bg-card overflow-hidden max-w-full">
         {/* Left Column: Product List */}
         <ProductListSidebar
           products={sortedProducts}
@@ -1803,7 +1805,9 @@ export function FinalizingResultsView({
           showSourceFilter={false}
           groupedProducts={groupedProducts}
           cohortBrands={cohortBrands}
+          cohortBrandObjects={cohortBrandObjects}
           onEditCohort={onEditCohort}
+
           selectedSkus={selectedSkus}
           onSelectSku={onSelectSku}
           isLoading={isSearching}
@@ -1845,9 +1849,9 @@ export function FinalizingResultsView({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="rounded-none border border-border font-black uppercase tracking-widest text-foreground hover:bg-feed-bag-cream transition-all"
+                        className="rounded-none border border-border font-black uppercase tracking-widest text-foreground hover:bg-muted/50 transition-all"
                       >
-                        <Sparkles className="mr-2 h-4 w-4 text-violet-500" />
+                        <Sparkles className="mr-2 h-4 w-4 text-primary" />
                         Copilot
                       </Button>
                     </SheetTrigger>
@@ -1855,10 +1859,10 @@ export function FinalizingResultsView({
                 />
 
               {hasPendingCopilotReview ? (
-                <div className="border-b bg-violet-50/60 px-4 py-3">
-                  <Alert className="border-violet-200 bg-violet-50 text-violet-950 rounded-none">
+                <div className="border-b bg-primary/[0.02] px-4 py-3">
+                  <Alert className="border-primary/20 bg-card text-foreground rounded-none">
                     <AlertTitle className="font-black uppercase tracking-widest text-xs">Copilot changes are staged</AlertTitle>
-                    <AlertDescription className="font-black uppercase tracking-widest text-[10px]">
+                    <AlertDescription className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">
                       Review {pendingCopilotReview?.skus.length ?? 0} product
                       {(pendingCopilotReview?.skus.length ?? 0) === 1 ? "" : "s"}{" "}
                       in the Copilot panel before saving, approving, or
@@ -1938,14 +1942,14 @@ export function FinalizingResultsView({
                 <div className="pt-4">
                   <Separator className="mb-4 bg-border" />
                   <details className="group overflow-hidden rounded-none border border-border">
-                    <summary className="flex cursor-pointer items-center justify-between p-4 text-sm font-black uppercase tracking-widest text-zinc-500 hover:bg-feed-bag-cream list-none">
+                    <summary className="flex cursor-pointer items-center justify-between p-4 text-sm font-black uppercase tracking-widest text-zinc-500 hover:bg-muted/30 list-none">
                       <div className="flex items-center gap-2">
                         <Package className="h-4 w-4" />
                         View Raw Scraped Data
                       </div>
                       <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
                     </summary>
-                    <div className="space-y-4 border-t border-border bg-feed-bag-cream p-4">
+                    <div className="space-y-4 border-t border-border bg-muted/10 p-4">
                       {Object.entries(selectedProduct.sources || {}).map(
                         ([source, data]) => (
                           <div key={source} className="space-y-2">

@@ -49,6 +49,7 @@ export default async function OfficialBrandReviewPage({ searchParams }: PageProp
         description="Choose one product page URL per SKU before extraction."
         icon={<PackageSearch className="h-5 w-5" />}
         actions={<BackAction />}
+        compactHeader
       >
         <div className="rounded-none border border-border bg-card p-6">
           <h2 className="text-lg font-black uppercase tracking-tighter text-foreground">
@@ -76,6 +77,7 @@ export default async function OfficialBrandReviewPage({ searchParams }: PageProp
         icon={<PackageSearch className="h-5 w-5" />}
         actions={<BackAction />}
         fullHeight
+        compactHeader
       >
         <OfficialBrandReviewClient
           initialData={initialData}
@@ -91,6 +93,7 @@ export default async function OfficialBrandReviewPage({ searchParams }: PageProp
         description="Choose one product page URL per SKU before extraction."
         icon={<PackageSearch className="h-5 w-5" />}
         actions={<BackAction />}
+        compactHeader
       >
         <div className="rounded-none border border-brand-burgundy bg-brand-burgundy/5 p-6">
           <h2 className="text-lg font-black uppercase tracking-tighter text-brand-burgundy">

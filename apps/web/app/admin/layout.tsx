@@ -28,10 +28,12 @@ export default async function AdminLayout({
       </MobileSidebarDrawer>
       <main
         id="main-content"
-        className="flex h-full min-w-0 flex-1 flex-col overflow-y-auto bg-[var(--surface-admin-bg)] p-4 pb-0 md:p-8 md:pb-0"
+        className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-[var(--surface-admin-bg)]"
       >
-        <div className="max-w-[1600px] w-full mx-auto min-h-full flex flex-col">
-          {children}
+        <div className="flex-1 flex flex-col min-h-0 px-4 pt-2 pb-0 md:px-8 md:pt-4 md:pb-0">
+          <div className="max-w-[1600px] w-full mx-auto flex-1 flex flex-col min-h-0">
+            {children}
+          </div>
         </div>
       </main>
     </div>

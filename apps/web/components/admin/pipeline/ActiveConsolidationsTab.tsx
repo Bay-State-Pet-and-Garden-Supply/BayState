@@ -168,13 +168,13 @@ function AISettingsDialog() {
           {/* API Key Section */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 border-b border-border pb-1.5">
-              <Key className="h-4 w-4 text-brand-burgundy" />
+              <Key className="h-4 w-4 text-muted-foreground" />
               <h4 className="text-xs font-black uppercase tracking-tighter">
                 OpenAI API Key
               </h4>
             </div>
 
-            <div className="rounded-none border border-border bg-feed-bag-cream/30 p-2 sm:p-3">
+            <div className="rounded-none border border-border bg-muted/20 p-2 sm:p-3">
               {settings?.statuses.openai.configured ? (
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-green-600">
@@ -223,7 +223,7 @@ function AISettingsDialog() {
           {/* Model Selection Section */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 border-b border-border pb-1.5">
-              <LayoutGrid className="h-4 w-4 text-brand-burgundy" />
+              <LayoutGrid className="h-4 w-4 text-muted-foreground" />
               <h4 className="text-xs font-black uppercase tracking-tighter">
                 Model Parameters
               </h4>
@@ -295,7 +295,7 @@ function AISettingsDialog() {
             </div>
 
             <Button
-              className="w-full h-12 bg-brand-gold hover:bg-brand-gold/90 text-foreground font-black uppercase tracking-tighter rounded-none border border-border transition-all"
+              className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 font-black uppercase tracking-widest rounded-none border border-border transition-all"
               onClick={handleSaveDefaults}
               disabled={saving || !settings}
             >
@@ -523,9 +523,9 @@ export function ActiveConsolidationsTab({
   if (error) {
     return (
       <div
-        className={`rounded-none border border-destructive bg-destructive/5 p-3 ${className}`}
+        className={`rounded-none border border-destructive/20 bg-destructive/[0.02] p-3 ${className}`}
       >
-        <p className="text-sm font-black uppercase text-destructive tracking-tight">
+        <p className="text-sm font-bold uppercase text-destructive tracking-tight">
           Sync Failure: {error}
         </p>
       </div>
@@ -553,7 +553,7 @@ export function ActiveConsolidationsTab({
           size="sm"
           onClick={handleRecoverStranded}
           disabled={resettingStranded}
-          className="rounded-none border border-red-600 font-black uppercase text-[10px] h-8 transition-all text-red-600 hover:bg-red-50"
+          className="rounded-none border border-border font-black uppercase text-[10px] h-8 transition-all text-muted-foreground hover:text-destructive hover:bg-destructive/[0.02]"
         >
           {resettingStranded ? (
             <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
