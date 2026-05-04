@@ -1,4 +1,12 @@
+import path from 'node:path';
+import { createRequire } from 'node:module';
 import nextJest from 'next/jest.js';
+
+const require = createRequire(import.meta.url);
+
+const reactEntry = require.resolve('react').replaceAll('\\', '/');
+const reactDomEntry = require.resolve('react-dom').replaceAll('\\', '/');
+const reactDomDir = path.dirname(require.resolve('react-dom/package.json')).replaceAll('\\', '/');
 
 const createJestConfig = nextJest({
     // Provide the path to your Next.js app to load next.config.js and .env files in your test environment
@@ -12,9 +20,9 @@ const customJestConfig = {
     moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/$1',
         '^bun:test$': '<rootDir>/test-utils/bun-test.ts',
-        '^react$': '<rootDir>/node_modules/react',
-        '^react-dom$': '<rootDir>/node_modules/react-dom',
-        '^react-dom/(.*)$': '<rootDir>/node_modules/react-dom/$1',
+        '^react$': reactEntry,
+        '^react-dom$': reactDomEntry,
+        '^react-dom/(.*)$': `${reactDomDir}/$1`,
     },
     // Exclude Playwright tests - they should run via `npx playwright test` not Jest
     testPathIgnorePatterns: ['/node_modules/', '/.next/', '/a11y/', '/e2e/'],
