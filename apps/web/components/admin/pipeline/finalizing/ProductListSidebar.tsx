@@ -4,6 +4,7 @@ import * as React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { RefObject } from "react";
 import type { PipelineProduct } from "@/lib/pipeline/types";
+import type { Brand } from "@/lib/types";
 import {
   PipelineFilters,
   type PipelineFiltersState,
@@ -30,7 +31,7 @@ interface ProductListSidebarProps {
     names?: Record<string, string>;
   };
   cohortBrands?: Record<string, string>;
-  cohortBrandObjects?: Record<string, any>;
+  cohortBrandObjects?: Record<string, Brand>;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
   selectedSkus?: Set<string>;
   onSelectSku?: (sku: string, selected: boolean, index?: number, isShiftClick?: boolean, visibleProducts?: PipelineProduct[]) => void;

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Package } from "lucide-react";
 import type { PipelineProduct } from "@/lib/pipeline/types";
+import type { Brand } from "@/lib/types";
 import { VirtualizedPipelineTable, type VirtualizedPipelineTableHandle } from "./VirtualizedPipelineTable";
 import { PipelineSidebarHeaderRow } from "./PipelineSidebarHeaderRow";
 import { PipelineSidebarProductRow } from "./PipelineSidebarProductRow";
@@ -21,7 +22,7 @@ interface PipelineSidebarTableProps {
     names?: Record<string, string>;
   };
   cohortBrands?: Record<string, string>;
-  cohortBrandObjects?: Record<string, any>;
+  cohortBrandObjects?: Record<string, Brand>;
   
   // Selection
   selectedSkus: Set<string>;
@@ -252,7 +253,7 @@ export function PipelineSidebarTable({
     }
   }, [preferredSku, flatItems, scrollContainerRef, variant]);
 
-  const renderRow = React.useCallback((item: FlatItem) => {
+  const renderRow = (item: FlatItem) => {
     if (item.type === 'header') {
       return (
         <PipelineSidebarHeaderRow
@@ -287,22 +288,7 @@ export function PipelineSidebarTable({
         onPreferredSkuChange={onPreferredSkuChange}
       />
     );
-  }, [
-    variant,
-    preferredSku,
-    preferredCohortId,
-    selectedSkus,
-    onSelectSku,
-    onSelectAll,
-    onDeselectAll,
-    onPreferredSkuChange,
-    onPreferredCohortChange,
-    onEditCohort,
-    groupedProducts,
-    cohortBrands,
-    expandedCohortIds,
-    toggleCohortExpansion
-  ]);
+  };
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">

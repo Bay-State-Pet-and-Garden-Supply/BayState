@@ -18,7 +18,14 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        let { skus, toStatus, cohort_id, fromStatus, resetResults = false } = body as {
+        const { toStatus, cohort_id, fromStatus, resetResults = false } = body as {
+            skus?: string[];
+            toStatus: string;
+            cohort_id?: string;
+            fromStatus?: string;
+            resetResults?: boolean;
+        };
+        let { skus } = body as {
             skus?: string[];
             toStatus: string;
             cohort_id?: string;

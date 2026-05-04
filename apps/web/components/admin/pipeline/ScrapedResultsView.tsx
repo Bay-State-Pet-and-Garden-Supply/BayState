@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
+import type { Brand } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -58,7 +59,7 @@ interface ScrapedResultsViewProps {
     names?: Record<string, string>;
   };
   cohortBrands?: Record<string, string>;
-  cohortBrandObjects?: Record<string, any>;
+  cohortBrandObjects?: Record<string, Brand>;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
 }
 

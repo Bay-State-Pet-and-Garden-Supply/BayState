@@ -10,6 +10,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import type { PipelineProduct } from "@/lib/pipeline/types";
+import type { Brand } from "@/lib/types";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -54,7 +55,7 @@ interface ImportedResultsViewProps {
     names?: Record<string, string>;
   };
   cohortBrands?: Record<string, string>;
-  cohortBrandObjects?: Record<string, any>;
+  cohortBrandObjects?: Record<string, Brand>;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
   onImportCsv?: () => void;
   onManualAdd?: () => void;
@@ -92,7 +93,10 @@ export function ImportedResultsView({
   // Initialize preferredCohortId when groupedProducts becomes available
   useEffect(() => {
     if (groupedProducts && groupedProducts.cohortIds.length > 0 && !preferredCohortId) {
-      setPreferredCohortId(groupedProducts.cohortIds[0]);
+      const id = setTimeout(() => {
+        setPreferredCohortId(groupedProducts.cohortIds[0]);
+      }, 0);
+      return () => clearTimeout(id);
     }
   }, [groupedProducts, preferredCohortId]);
 

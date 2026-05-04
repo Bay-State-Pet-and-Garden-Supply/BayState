@@ -63,30 +63,20 @@ export default async function OfficialBrandReviewPage({ searchParams }: PageProp
     );
   }
 
+  let initialData: Awaited<ReturnType<typeof loadOfficialBrandCandidates>> | null = null;
+  let fetchErrorMessage: string | null = null;
+
   try {
     const supabase = await createClient();
-    const initialData = await loadOfficialBrandCandidates(supabase, {
+    initialData = await loadOfficialBrandCandidates(supabase, {
       cohortId,
       ...(discoveryJobId ? { discoveryJobId } : {}),
     });
-
-    return (
-      <AdminPageShell
-        title="Official Brand Review"
-        description="Choose one product page URL per SKU before extraction."
-        icon={<PackageSearch className="h-5 w-5" />}
-        actions={<BackAction />}
-        fullHeight
-        compactHeader
-      >
-        <OfficialBrandReviewClient
-          initialData={initialData}
-          discoveryJobId={discoveryJobId}
-        />
-      </AdminPageShell>
-    );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to load candidates";
+    fetchErrorMessage = error instanceof Error ? error.message : "Failed to load candidates";
+  }
+
+  if (fetchErrorMessage) {
     return (
       <AdminPageShell
         title="Official Brand Review"
@@ -99,9 +89,25 @@ export default async function OfficialBrandReviewPage({ searchParams }: PageProp
           <h2 className="text-lg font-black uppercase tracking-tighter text-brand-burgundy">
             Could Not Load Candidates
           </h2>
-          <p className="mt-1 text-sm text-foreground">{message}</p>
+          <p className="mt-1 text-sm text-foreground">{fetchErrorMessage}</p>
         </div>
       </AdminPageShell>
     );
   }
+
+  return (
+    <AdminPageShell
+      title="Official Brand Review"
+      description="Choose one product page URL per SKU before extraction."
+      icon={<PackageSearch className="h-5 w-5" />}
+      actions={<BackAction />}
+      fullHeight
+      compactHeader
+    >
+      <OfficialBrandReviewClient
+        initialData={initialData!}
+        discoveryJobId={discoveryJobId}
+      />
+    </AdminPageShell>
+  );
 }

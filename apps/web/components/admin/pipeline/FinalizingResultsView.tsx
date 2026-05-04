@@ -105,6 +105,7 @@ import {
   stagePendingCopilotDraftReview,
   type PendingCopilotDraftReview,
 } from "@/lib/pipeline/finalization-copilot-review";
+import type { Brand } from "@/lib/types";
 
 interface FinalizingResultsViewProps {
   products: PipelineProduct[];
@@ -120,7 +121,7 @@ interface FinalizingResultsViewProps {
     names?: Record<string, string>;
   };
   cohortBrands?: Record<string, string>;
-  cohortBrandObjects?: Record<string, any>;
+  cohortBrandObjects?: Record<string, Brand>;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
   selectedSkus?: Set<string>;
   onSelectSku?: (
@@ -130,12 +131,6 @@ interface FinalizingResultsViewProps {
     isShift?: boolean,
   ) => void;
   isSearching?: boolean;
-}
-
-interface Brand {
-  id: string;
-  name: string;
-  slug?: string | null;
 }
 
 interface PersistProductsResult extends ToolSummary {
