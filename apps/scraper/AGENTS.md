@@ -10,34 +10,43 @@ Python-based scraper executing YAML-defined workflows to extract product data. R
 ## STRUCTURE
 ```
 .
-├── scraper_backend/           # CORE ENGINE
-│   ├── api/                   # API client, Vercel endpoints
-│   ├── core/                  # Retry logic, health monitor, failure classifier
-│   ├── scrapers/
-│   │   ├── actions/handlers/  # 27 action handlers (click, extract, navigate)
-│   │   ├── executor/          # Workflow executor, browser manager
-│   │   ├── models/            # Config models, result schemas
-│   │   └── parser/            # YAML config parser
-│   ├── tests/                 # pytest unit tests
-│   └── utils/                 # Structured logging
-├── scrapers/ (root)           # AI discovery, retry metrics, runtime state
-├── config/                    # Sample scraper configs
+├── api/                       # Debug server, context endpoints
+├── core/                      # API client, retry logic, health monitor, failure classifier
+├── scrapers/
+│   ├── actions/handlers/      # 24 action handlers (click, extract, navigate)
+│   ├── ai_search/             # AI discovery, search providers
+│   ├── configs/               # Scraper YAML configs
+│   ├── executor/              # Workflow executor, browser manager
+│   ├── models/                # Config models, result schemas
+│   ├── parser/                # YAML config parser
+│   ├── providers/             # Provider implementations
+│   ├── tests/                 # Scraper-specific tests
+│   ├── utils/                 # Scraping utilities
+│   ├── runtime.py             # Runtime orchestration
+│   ├── ai_cost_tracker.py     # AI cost tracking
+│   └── ai_metrics.py          # AI search metrics
+├── tests/                     # pytest unit/integration tests
+├── utils/                     # Structured logging, debugging, proxies
+├── config/                    # Evaluation thresholds, settings
 ├── runner/                    # Job runner modules
 ├── cli/                       # CLI commands
-├── api/                       # Debug server, context endpoints
 ├── scripts/                   # Migrations, utilities
 ├── tools/                     # Config migration helpers
-└── .github/workflows/         # CI/CD: ci.yml, cd.yml, scrape.yml
+├── benchmarks/                # Benchmark suites
+├── docs/                      # Documentation
+├── daemon.py                  # Polling daemon
+├── runner.py                  # Runner entrypoint
+└── pytest.ini, ruff.toml, mypy.ini, requirements*.txt
 ```
 
 ## WHERE TO LOOK
 | Task | Location | Notes |
 |------|----------|-------|
 | **New Scraper Config** | Publish via BayStateApp Admin UI | Local YAML deprecated; API publishes to runners |
-| **Add Action Handler** | `scrapers/actions/handlers/` | 27 existing, inherit `BaseAction`, `@ActionRegistry.register()` |
+| **Add Action Handler** | `scrapers/actions/handlers/` | 24 existing, inherit `BaseAction`, `@ActionRegistry.register()` |
 | **crawl4ai Extraction** | `src/crawl4ai_engine/` | v0.3.0 engine → `src/crawl4ai_engine/AGENTS.md` |
 | **Fix Retry Logic** | `core/` | Exponential backoff, circuit breaker, failure classifier |
-| **Debug Job** | `api/debug.py` | Job state, browser contexts |
+| **Debug Job** | `api/debug_context.py` | Job state, browser contexts |
 | **Add CLI Command** | `cli/` | Click commands, entry in `__main__.py` |
 | **Official Brand Benchmark** | `benchmarks/official_brand/` | Discovery-only fixture benchmark; see `README.md` |
 | **Update Models** | `scrapers/models/` | Pydantic, validation rules |
@@ -48,7 +57,7 @@ Python-based scraper executing YAML-defined workflows to extract product data. R
 - BayStateScraper = Runner (stateless, polls for work)
 
 **Execution Flow:**
-1. `daemon.py` polls `GET /api/admin/scraping/pending-jobs`
+1. `daemon.py` claims work via `POST /api/scraper/v1/claim-chunk` or `POST /api/scraper/v1/claim-cohort`
 2. Fetches YAML config for vendor
 3. `executor/` loads workflow, spins up Playwright browser
 4. `actions/handlers/` execute step sequence
@@ -74,7 +83,7 @@ actions:
 ## CONVENTIONS
 | Aspect | Rule |
 |--------|------|
-| **Configs** | Publish via BayStateApp API. Local YAML in `configs/` is deprecated. |
+| **Configs** | Publish via BayStateApp API. Local YAML in `scrapers/configs/` is deprecated. |
 | **Handlers** | One action per file. Typed signatures. Return `ActionResult`. Async only. |
 | **Logging** | Structured JSON via `utils/logger.py`. Contextual job_id always. |
 | **Types** | Mypy checked. Non-blocking in CI. `| None` over `Optional`. |
@@ -88,7 +97,7 @@ actions:
 python daemon.py --env dev              # Local polling (localhost:3000)
 python -m pytest                        # Run test suite
 ruff check .                            # Lint check
-mypy scraper_backend/                   # Type check (warnings OK)
+mypy .                                   # Type check (warnings OK)
 
 # Docker
 docker build -f apps/scraper/Dockerfile -t baystate-scraper .      # Build image (from repo root)
@@ -97,7 +106,7 @@ docker compose up -d                                              # Start runner
 # Scripts
 ./run-dev.sh                            # Dev mode wrapper
 ./run-prod.sh                           # Production mode
-python cli/scraper_cli.py --help        # CLI commands
+python cli/main.py --help               # CLI commands (or `bsr --help` after install)
 ```
 
 ## TEST MODE & ASSERTION ENGINE
