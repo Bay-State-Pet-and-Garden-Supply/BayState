@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Loader2, Mail, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 interface NewsletterSignupProps {
   source?: string;
@@ -20,6 +21,8 @@ export function NewsletterSignup({
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isFooter = source === 'footer';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +56,7 @@ export function NewsletterSignup({
 
   if (isSuccess) {
     return (
-      <div className={`flex items-center gap-2 text-green-600 ${className}`}>
+      <div className={cn("flex items-center gap-2", isFooter ? "text-green-400" : "text-green-600", className)}>
         <CheckCircle className="h-5 w-5" />
         <span className="text-sm font-medium">Thanks for subscribing!</span>
       </div>
@@ -62,9 +65,9 @@ export function NewsletterSignup({
 
   if (compact) {
     return (
-      <form onSubmit={handleSubmit} className={`flex gap-2 ${className}`}>
+      <form onSubmit={handleSubmit} className={cn("flex gap-2", className)}>
           <div className="relative flex-1">
-            <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-700" />
+            <Mail className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2", isFooter ? "text-zinc-400" : "text-zinc-500")} />
             <Input
               type="email"
               placeholder="Enter your email"
@@ -73,7 +76,7 @@ export function NewsletterSignup({
                 setEmail(e.target.value);
                 setError(null);
               }}
-              className="pl-9"
+              className={cn("pl-9", isFooter && "bg-zinc-900/50 border-zinc-700 focus-visible:border-accent")}
               disabled={isLoading}
               required
               aria-label="Email address for newsletter"
@@ -88,16 +91,22 @@ export function NewsletterSignup({
 
   return (
     <div className={className}>
-      <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-700">
+      <h4 className={cn(
+        "mb-2 text-sm font-semibold uppercase tracking-wide",
+        isFooter ? "text-white" : "text-zinc-900"
+      )}>
         Stay Updated
       </h4>
-      <p id="newsletter-desc" className="mb-3 text-sm text-zinc-700">
+      <p id="newsletter-desc" className={cn(
+        "mb-3 text-sm",
+        isFooter ? "text-zinc-400" : "text-zinc-600"
+      )}>
         Get exclusive deals and pet care tips delivered to your inbox.
       </p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div className="flex gap-3">
           <div className="relative flex-1">
-            <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-700" />
+            <Mail className={cn("absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2", isFooter ? "text-zinc-400" : "text-zinc-500")} />
             <Input
               type="email"
               placeholder="Enter your email"
@@ -106,7 +115,7 @@ export function NewsletterSignup({
                 setEmail(e.target.value);
                 setError(null);
               }}
-              className="pl-9"
+              className={cn("pl-9", isFooter && "bg-zinc-900/50 border-zinc-700 focus-visible:border-accent")}
               disabled={isLoading}
               required
               aria-label="Email address for newsletter"

@@ -21,12 +21,12 @@ const buttonVariants = cva(
         link: "border-transparent text-brand-forest-green underline-offset-4 hover:underline active:scale-100 hover:translate-x-0 hover:translate-y-0",
       },
       size: {
-        default: "h-[--size-btn-height-default] px-4 py-2 has-[>svg]:px-3",
-        sm: "h-[--size-btn-height-sm] gap-1.5 px-3 has-[>svg]:px-2.5",
-        lg: "h-[--size-btn-height-lg] px-6 has-[>svg]:px-4",
-        icon: "size-[--size-btn-height-icon]",
-        "icon-sm": "size-[--size-btn-height-icon-sm]",
-        "icon-lg": "size-[--size-btn-height-icon-lg]",
+        default: "h-(--size-btn-height-default) px-4 py-2.5 has-[>svg]:px-3",
+        sm: "h-(--size-btn-height-sm) gap-1.5 px-3 py-2 has-[>svg]:px-2.5",
+        lg: "h-(--size-btn-height-lg) px-6 py-4 has-[>svg]:px-4",
+        icon: "w-(--size-btn-height-icon) h-(--size-btn-height-icon)",
+        "icon-sm": "w-(--size-btn-height-icon-sm) h-(--size-btn-height-icon-sm)",
+        "icon-lg": "w-(--size-btn-height-icon-lg) h-(--size-btn-height-icon-lg)",
       },
     },
     defaultVariants: {

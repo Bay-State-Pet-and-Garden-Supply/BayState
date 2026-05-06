@@ -144,18 +144,14 @@ const defaultSettings: SiteSettings = {
     headerLinks: [
       { label: 'Products', href: '/products' },
       { label: 'Brands', href: '/brands' },
-      { label: 'Services', href: '/services' },
       { label: 'About', href: '/about' },
     ],
     footerShopLinks: [
       { label: 'All Products', href: '/products' },
-      { label: 'Services', href: '/services' },
+
       { label: 'Brands', href: '/brands' },
     ],
-    footerServiceLinks: [
-      { label: 'Propane Refill', href: '/services/propane' },
-      { label: 'Equipment Rentals', href: '/services/rentals' },
-    ],
+    footerServiceLinks: [],
     footerLegalLinks: [
       { label: 'Shipping', href: '/shipping' },
       { label: 'Returns', href: '/returns' },

@@ -185,7 +185,7 @@ export function StorefrontHeader({
 
     const observer = new ResizeObserver((entries) => {
       const width = entries[0].contentRect.width;
-      const utilityWidth = 250; // Space for "Our Services" and spacer
+      const utilityWidth = 100; // Space for spacer margin
       const availableWidth = width - utilityWidth;
       
       let currentWidth = 0;
@@ -270,7 +270,7 @@ export function StorefrontHeader({
                 onClick={() => setIsCartOpen(true)}
               >
                 <ShoppingCart className="h-7 w-7 group-hover:scale-110 transition-transform" />
-                <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center bg-accent text-[12px] font-black text-secondary border-4 border-zinc-900 shadow-[2px_2px_0_rgba(0,0,0,1)]">
+                <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center bg-accent text-[12px] font-black text-accent-foreground border-4 border-zinc-900 shadow-[2px_2px_0_rgba(0,0,0,1)]">
                   {itemCount}
                 </span>
               </Button>
@@ -438,17 +438,7 @@ export function StorefrontHeader({
 
                 <NavigationMenuItem className="flex-1" />
 
-                {/* Utility Links */}
-                <NavigationMenuItem>
-                  <NavigationMenuLink asChild>
-                    <Link
-                      href="/services"
-                      className="group inline-flex h-12 w-max items-center justify-center px-4 text-sm font-medium text-white/70 transition-colors hover:text-white focus:text-white"
-                    >
-                      Our Services
-                    </Link>
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
+
               </NavigationMenuList>
             </NavigationMenu>
           </div>
@@ -487,7 +477,7 @@ export function StorefrontHeader({
             onClick={() => setIsCartOpen(true)}
           >
             <ShoppingCart className="h-6 w-6" />
-            <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center bg-accent text-[10px] font-black text-secondary border-2 border-zinc-900 shadow-[2px_2px_0_rgba(0,0,0,1)]">
+            <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center bg-accent text-[10px] font-black text-secondary-foreground border-2 border-zinc-900 shadow-[2px_2px_0_rgba(0,0,0,1)]">
               {itemCount}
             </span>
           </Button>
