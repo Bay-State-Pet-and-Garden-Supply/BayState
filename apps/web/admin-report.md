@@ -39,7 +39,7 @@ The admin surface is deliberately subdued compared to a customer-facing storefro
 ### Navigation Styling
 
 - **Sidebar**: Collapsible 80px/240px, dark green (`bg-brand-forest-green`), white text at various opacities (`text-white/55`, `text-white/72`, `text-white/78`). Active link inverts to white background with green text. Inactive links get `hover:bg-white/12`. Sections have either a title label (expanded) or a thin white divider (collapsed).
-- **Role gating**: Sections and items carry `adminOnly` flags; non-admin users (`staff`) only see the first two groups (Dashboard/Analytics + Products/Product Lines).
+- **Role gating**: Sections and items carry `adminOnly` flags; non-admin users (`staff`) only see the first two groups (Dashboard/Analytics + Products).
 - **Mobile**: A fixed hamburger button (rounded-full, white, shadow) opens a `Sheet` with the same sidebar content. Closes on route change via `queueMicrotask`.
 - **Footer**: User avatar circle + role badge + "Exit Portal" link back to storefront.
 

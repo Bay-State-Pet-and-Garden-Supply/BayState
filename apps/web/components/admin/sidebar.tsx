@@ -65,11 +65,7 @@ const navSections: NavSection[] = [
  label: "Products",
  icon: Package,
  },
- {
- href: "/admin/product-lines",
- label: "Product Lines",
- icon: GitBranch,
- },
+     
  ],
  },
  {
