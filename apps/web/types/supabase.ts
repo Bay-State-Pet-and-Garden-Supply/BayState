@@ -469,7 +469,6 @@ export type Database = {
           official_domains: string[]
           preferred_domains: string[]
           slug: string
-          website_url: string | null
         }
         Insert: {
           created_at?: string | null
@@ -480,7 +479,6 @@ export type Database = {
           official_domains?: string[]
           preferred_domains?: string[]
           slug: string
-          website_url?: string | null
         }
         Update: {
           created_at?: string | null
@@ -491,7 +489,6 @@ export type Database = {
           official_domains?: string[]
           preferred_domains?: string[]
           slug?: string
-          website_url?: string | null
         }
         Relationships: []
       }

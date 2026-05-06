@@ -5,7 +5,6 @@ import {
     brandHintToSlug,
     findBrandRegistryByHints,
     getBrandRegistryName,
-    getBrandRegistryPreferredDomains,
     loadBrandRegistryEntries,
     toBrandRegistryEntry,
     type BrandRegistryEntry,
@@ -43,10 +42,6 @@ function compactOfficialBrandCohortContext(
         brandId: cohort.brandId,
         brandName: cohort.brandName,
     };
-
-    if (cohort.websiteUrl) {
-        compacted.websiteUrl = cohort.websiteUrl;
-    }
 
     if (cohort.officialDomains && cohort.officialDomains.length > 0) {
         compacted.officialDomains = cohort.officialDomains;
@@ -94,31 +89,7 @@ interface ProductCatalogRow {
     }> | null;
 }
 
-interface PostgrestLikeError {
-    code?: string;
-    message?: string;
-    details?: string;
-    hint?: string;
-}
-
 type ScrapeJobInsertType = 'standard' | 'ai_search' | typeof OFFICIAL_BRAND_URL_DISCOVERY_TYPE | typeof OFFICIAL_BRAND_EXTRACTION_TYPE | 'deep_research';
-
-
-function isLegacyJobTypeConstraintError(error: unknown): boolean {
-    if (!error || typeof error !== 'object') {
-        return false;
-    }
-
-    const maybeError = error as PostgrestLikeError;
-    const code = typeof maybeError.code === 'string' ? maybeError.code : '';
-    const message = typeof maybeError.message === 'string' ? maybeError.message : '';
-    const details = typeof maybeError.details === 'string' ? maybeError.details : '';
-
-    return (
-        code === '23514' &&
-        (message.includes('scrape_jobs_type_check') || details.includes('scrape_jobs_type_check'))
-    );
-}
 
 /**
  * Options for scraping jobs.
@@ -321,7 +292,7 @@ async function loadCohortBrandRegistryEntries(
 
     const { data, error } = await supabase
         .from('cohort_batches')
-        .select('id, brand_name, brand_id, brands(id, name, slug, website_url, official_domains, preferred_domains)')
+        .select('id, brand_name, brand_id, brands(id, name, slug, official_domains, preferred_domains)')
         .in('id', normalizedCohortIds);
 
     if (error) {
@@ -723,7 +694,7 @@ async function loadScrapeContextItems(
             .in('sku', skus),
         supabase
             .from('products')
-            .select('sku, name, brand:brands(name, website_url, official_domains, preferred_domains), product_categories(category:categories(name))')
+            .select('sku, name, brand:brands(name, official_domains, preferred_domains), product_categories(category:categories(name))')
             .in('sku', skus),
     ]);
 
@@ -747,27 +718,21 @@ async function loadScrapeContextItems(
         }
     });
 
-    let brandRegistryLookup: { byId: Map<string, BrandRegistryEntry>; bySlug: Map<string, BrandRegistryEntry>; byAlias: Map<string, BrandRegistryEntry> } = {
+    let brandRegistryLookup: { byId: Map<string, BrandRegistryEntry>; bySlug: Map<string, BrandRegistryEntry> } = {
         byId: new Map(),
         bySlug: new Map(),
-        byAlias: new Map(),
     };
     let cohortBrandEntries = new Map<string, BrandRegistryEntry>();
 
     if (useBrandRegistryFallback) {
         const brandIds = new Set<string>();
         const brandSlugs = new Set<string>();
-        const brandAliases = new Set<string>();
         const cohortIds = new Set<string>();
 
         if (fallbackBrandHint) {
             const fallbackSlug = brandHintToSlug(fallbackBrandHint);
             if (fallbackSlug) {
                 brandSlugs.add(fallbackSlug);
-            }
-            const fallbackRaw = toOptionalString(fallbackBrandHint);
-            if (fallbackRaw) {
-                brandAliases.add(fallbackRaw);
             }
         }
 
@@ -785,10 +750,6 @@ async function loadScrapeContextItems(
                 if (slug) {
                     brandSlugs.add(slug);
                 }
-                const raw = toOptionalString(brandHint);
-                if (raw) {
-                    brandAliases.add(raw);
-                }
             });
 
             const hasExplicitBrandHint = explicitBrandHints.some((brandHint) => Boolean(toOptionalString(brandHint)));
@@ -798,7 +759,6 @@ async function loadScrapeContextItems(
                     if (slug) {
                         brandSlugs.add(slug);
                     }
-                    brandAliases.add(brandHint);
                 });
             }
 
@@ -811,7 +771,6 @@ async function loadScrapeContextItems(
         brandRegistryLookup = await loadBrandRegistryEntries(supabase, {
             brandIds: Array.from(brandIds),
             brandSlugs: Array.from(brandSlugs),
-            brandAliases: Array.from(brandAliases),
         });
         cohortBrandEntries = await loadCohortBrandRegistryEntries(supabase, Array.from(cohortIds));
     }
@@ -835,7 +794,6 @@ async function loadScrapeContextItems(
                 ...nameDerivedBrandHints,
             ],
             brandRegistryLookup.bySlug,
-            brandRegistryLookup.byAlias,
         );
         const cohortBrandEntry = (() => {
             const cohortId = toOptionalString(ingestion?.cohort_id);
@@ -850,7 +808,6 @@ async function loadScrapeContextItems(
         const catalogName = toOptionalString(product?.name);
         const ingestionBrand = toOptionalString(input?.brand);
         const catalogBrand = catalogBrandEntry?.name ?? getBrandRegistryName(product?.brand);
-        const catalogPreferredDomains = catalogBrandEntry?.preferredDomains ?? getBrandRegistryPreferredDomains(product?.brand);
         const ingestionCategory = toOptionalString(input?.category);
         const catalogCategory = getCatalogCategoryName(product?.product_categories);
         const resolvedBrandName = resolvedBrandEntry?.name;

@@ -37,7 +37,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   // Fetch cohort with brand join
   const { data: cohort, error } = await supabase
     .from('cohort_batches')
-    .select('*, brands(id, name, slug, logo_url, website_url, official_domains, preferred_domains)')
+    .select('*, brands(id, name, slug, logo_url, official_domains, preferred_domains)')
     .eq('id', id)
     .single();
 
@@ -168,7 +168,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     .from('cohort_batches')
     .update(updatePayload)
     .eq('id', id)
-    .select('*, brands(id, name, slug, logo_url, website_url, official_domains, preferred_domains)')
+    .select('*, brands(id, name, slug, logo_url, official_domains, preferred_domains)')
     .single();
 
   if (error) {

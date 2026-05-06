@@ -35,10 +35,8 @@ const brandSchema = z.object({
         .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must be lowercase letters, numbers, and hyphens'),
     logo_url: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
     description: z.string().max(500, 'Description is too long').optional(),
-    website_url: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
     official_domains: z.string().optional(),
     preferred_domains: z.string().optional(),
-    aliases: z.string().optional(),
 });
 
 type BrandFormValues = z.infer<typeof brandSchema>;
@@ -90,10 +88,8 @@ export function BrandModal({
             slug: brand?.slug ?? '',
             logo_url: brand?.logo_url ?? '',
             description: brand?.description ?? '',
-            website_url: brand?.website_url ?? '',
             official_domains: (brand?.official_domains ?? []).join(', '),
             preferred_domains: (brand?.preferred_domains ?? []).join(', '),
-            aliases: (brand?.aliases ?? []).join(', '),
         },
     });
 
@@ -181,10 +177,8 @@ export function BrandModal({
             formData.append('slug', data.slug.trim());
             formData.append('logo_url', (data.logo_url ?? '').trim());
             formData.append('description', (data.description ?? '').trim());
-            formData.append('website_url', (data.website_url ?? '').trim());
             formData.append('official_domains', (data.official_domains ?? '').trim());
             formData.append('preferred_domains', (data.preferred_domains ?? '').trim());
-            formData.append('aliases', (data.aliases ?? '').trim());
 
             const result = brand
                 ? await updateBrand(brand.id, formData)
@@ -327,19 +321,6 @@ export function BrandModal({
                         )}
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="website_url" className="text-xs font-black uppercase tracking-widest text-zinc-900">Official Website URL</Label>
-                        <Input
-                            id="website_url"
-                            {...register('website_url')}
-                            placeholder="https://brand.example"
-                            className="rounded-none border-2 border-zinc-900 focus-visible:ring-0 focus-visible:border-zinc-900 focus-visible:ring-offset-0"
-                        />
-                        {errors.website_url && (
-                            <p className="text-[10px] font-bold uppercase text-red-600">{errors.website_url.message}</p>
-                        )}
-                    </div>
-
                     <div className="p-4 border-2 border-zinc-900 bg-zinc-50 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
                         <h3 className="text-sm font-black uppercase tracking-widest text-zinc-900 mb-4 flex items-center gap-2">
                             <span className="w-3 h-3 bg-zinc-900" />
@@ -347,19 +328,6 @@ export function BrandModal({
                         </h3>
 
                         <div className="space-y-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="aliases" className="text-[10px] font-black uppercase tracking-wider text-zinc-600">Brand Aliases</Label>
-                                <Input
-                                    id="aliases"
-                                    {...register('aliases')}
-                                    placeholder="LV SEED, LAKEVALLEY"
-                                    className="rounded-none border-2 border-zinc-900 focus-visible:ring-0 focus-visible:border-zinc-900 focus-visible:ring-offset-0 bg-white"
-                                />
-                                <p className="text-[10px] font-bold text-zinc-500 uppercase leading-tight italic">
-                                    Alternative names used by suppliers.
-                                </p>
-                            </div>
-
                             <div className="space-y-2">
                                 <Label htmlFor="official_domains" className="text-[10px] font-black uppercase tracking-wider text-zinc-600">Official Domains</Label>
                                 <Input

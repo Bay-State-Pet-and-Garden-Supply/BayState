@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { normalizeOfficialBrandDomain } from "@/lib/official-brand-workflow";
+import { buildNormalizedDomainList } from "@/lib/official-brand-workflow";
 import type {
   CandidatesBySkuResponse,
   OfficialBrandCandidateReviewItem,
@@ -13,7 +13,6 @@ import type {
 interface BrandRelationRow {
   id?: string | null;
   name?: string | null;
-  website_url?: string | null;
   official_domains?: unknown;
   preferred_domains?: unknown;
 }
@@ -122,22 +121,7 @@ function toSingleBrand(value: CohortRow["brands"]): BrandRelationRow | null {
   return Array.isArray(value) ? value[0] ?? null : value;
 }
 
-function normalizeDomainList(...values: Array<unknown>): string[] {
-  const domains: string[] = [];
-  const seen = new Set<string>();
 
-  values.flatMap(toStringList).forEach((entry) => {
-    const normalized = normalizeOfficialBrandDomain(entry);
-    if (!normalized || seen.has(normalized)) {
-      return;
-    }
-
-    seen.add(normalized);
-    domains.push(normalized);
-  });
-
-  return domains;
-}
 
 function getProductName(input: unknown): string | null {
   if (!isRecord(input)) {
@@ -304,7 +288,7 @@ export async function loadOfficialBrandCandidates(
   const { data: cohortData, error: cohortError } = await supabase
     .from("cohort_batches")
     .select(
-      "id, name, brand_name, brand_id, brands(id, name, website_url, official_domains, preferred_domains)",
+      "id, name, brand_name, brand_id, brands(id, name, official_domains, preferred_domains)",
     )
     .eq("id", cohortId)
     .maybeSingle();
@@ -319,11 +303,10 @@ export async function loadOfficialBrandCandidates(
 
   const cohortRow = cohortData as CohortRow;
   const brand = toSingleBrand(cohortRow.brands);
-  const officialDomains = normalizeDomainList(
-    brand?.official_domains,
-    brand?.website_url ? [brand.website_url] : [],
+  const officialDomains = buildNormalizedDomainList(
+    toStringList(brand?.official_domains),
   );
-  const preferredDomains = normalizeDomainList(brand?.preferred_domains);
+  const preferredDomains = buildNormalizedDomainList(toStringList(brand?.preferred_domains));
   const cohort: OfficialBrandReviewCohort = {
     id: cohortId,
     name: toOptionalString(cohortRow.name),

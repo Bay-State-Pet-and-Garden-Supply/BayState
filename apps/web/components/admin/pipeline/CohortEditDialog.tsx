@@ -136,7 +136,7 @@ export function CohortEditDialog({
                 emptyLabel="Select Brand from Registry"
               />
               <p className="text-[10px] font-bold text-zinc-500 uppercase leading-tight italic">
-                Enables official domain tracking and fallback aliases for the scraper.
+                Enables official domain tracking for the scraper.
               </p>
             </div>
 

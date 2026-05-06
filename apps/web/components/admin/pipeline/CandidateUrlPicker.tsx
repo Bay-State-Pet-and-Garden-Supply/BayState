@@ -66,7 +66,7 @@ function formatScore(value: number | null): string {
 }
 
 function formatConfidence(value: number | null): string | null {
-  return value === null ? null : `${Math.round(value * 100)}% confidence`;
+  return value === null ? null : `${Math.round(value * 100)}% LLM confidence`;
 }
 
 function formatTier(value: string | null): string {
@@ -175,8 +175,8 @@ export function CandidateUrlPicker({
         </div>
       ) : (
         <>
-          {/* Candidate grid */}
-          <div className="flex shrink-0 items-center gap-2 max-h-28 overflow-y-auto">
+          {/* Candidate strip */}
+          <div className="flex shrink-0 items-center gap-2">
             <Button
               type="button"
               variant="ghost"
@@ -188,7 +188,7 @@ export function CandidateUrlPicker({
               <ChevronLeft className="h-4 w-4" />
             </Button>
 
-            <div className="grid min-w-0 flex-1 grid-cols-[repeat(auto-fill,minmax(110px,1fr))] gap-1.5">
+            <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-2 pt-0.5 scrollbar-thin">
               {selectableCandidates.map((candidate) => {
                 const domainBadge = getDomainBadge(
                   candidate,
@@ -204,7 +204,7 @@ export function CandidateUrlPicker({
                     type="button"
                     onClick={() => onSelectCandidate(candidate)}
                     className={cn(
-                      "flex flex-col items-start rounded-none border px-2 py-1.5 text-left transition-all",
+                      "flex shrink-0 w-32 flex-col items-start rounded-none border px-2 py-1.5 text-left transition-all",
                       isSelected
                         ? "border-primary bg-primary/[0.03] ring-1 ring-primary/20"
                         : "border-border/60 hover:border-border hover:bg-muted/20",
@@ -222,7 +222,7 @@ export function CandidateUrlPicker({
                       {candidate.normalized_domain}
                     </span>
                     <span className="text-[9px] font-medium text-muted-foreground/80">
-                      Score: {formatScore(candidate.composite_score)}
+                      Ranking: {formatScore(candidate.composite_score)}
                     </span>
                   </button>
                 );
@@ -367,7 +367,7 @@ function SelectedCandidateDetail({
       <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
         <span>{candidate.normalized_domain}</span>
         <span>{formatTier(candidate.selection_tier)}</span>
-        <span>{formatScore(candidate.composite_score)}</span>
+        <span>Ranking: {formatScore(candidate.composite_score)}</span>
         {formatConfidence(candidate.confidence) ? (
           <span>{formatConfidence(candidate.confidence)}</span>
         ) : null}

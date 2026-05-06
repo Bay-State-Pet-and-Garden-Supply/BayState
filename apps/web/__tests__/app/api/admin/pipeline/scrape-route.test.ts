@@ -133,7 +133,6 @@ describe('/api/admin/pipeline/scrape route', () => {
                 brands: {
                     id: 'brand-1',
                     name: 'Miracle-Gro',
-                    website_url: 'https://scottsmiraclegro.com',
                     official_domains: ['scottsmiraclegro.com'],
                     preferred_domains: [],
                 },
@@ -199,7 +198,6 @@ describe('/api/admin/pipeline/scrape route', () => {
                 brands: {
                     id: 'brand-1',
                     name: 'Miracle-Gro',
-                    website_url: 'https://www.scottsmiraclegro.com/en-us/brands/miracle-gro',
                     official_domains: ['scottsmiraclegro.com'],
                     preferred_domains: ['homedepot.com'],
                 },
@@ -258,7 +256,6 @@ describe('/api/admin/pipeline/scrape route', () => {
                 id: 'cohort-1',
                 brandId: 'brand-1',
                 brandName: 'Miracle-Gro',
-                websiteUrl: 'https://www.scottsmiraclegro.com/en-us/brands/miracle-gro',
                 officialDomains: ['scottsmiraclegro.com'],
                 preferredDomains: ['homedepot.com'],
             },
@@ -305,7 +302,6 @@ describe('/api/admin/pipeline/scrape route', () => {
                     brands: {
                         id: 'brand-1',
                         name: 'Test Brand',
-                        website_url: 'https://testbrand.com',
                         official_domains: ['testbrand.com'],
                         preferred_domains: [],
                     },
@@ -408,7 +404,6 @@ describe('/api/admin/pipeline/scrape route', () => {
                     brands: {
                         id: 'brand-1',
                         name: 'Brand Name Only',
-                        website_url: null,
                         official_domains: [],
                         preferred_domains: [],
                     },

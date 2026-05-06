@@ -14,7 +14,6 @@ interface StartExtractionRequest {
 interface BrandRelationRow {
   id?: string | null;
   name?: string | null;
-  website_url?: string | null;
   official_domains?: unknown;
   preferred_domains?: unknown;
 }
@@ -135,7 +134,7 @@ export async function POST(request: NextRequest) {
 
   const { data: cohortData, error: cohortError } = await supabase
     .from("cohort_batches")
-    .select("id, brand_name, brand_id, brands(id, name, website_url, official_domains, preferred_domains)")
+    .select("id, brand_name, brand_id, brands(id, name, official_domains, preferred_domains)")
     .eq("id", cohortId)
     .maybeSingle();
 
@@ -215,10 +214,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const officialDomains = normalizeDomainList(
-    brand?.official_domains,
-    brand?.website_url ? [brand.website_url] : [],
-  );
+  const officialDomains = normalizeDomainList(brand?.official_domains);
   const preferredDomains = normalizeDomainList(brand?.preferred_domains);
 
   const result = await scrapeProducts(skus, {
@@ -233,7 +229,6 @@ export async function POST(request: NextRequest) {
       id: cohortId,
       brandId,
       brandName,
-      ...(brand?.website_url ? { websiteUrl: brand.website_url } : {}),
       ...(officialDomains ? { officialDomains } : {}),
       ...(preferredDomains ? { preferredDomains } : {}),
     },

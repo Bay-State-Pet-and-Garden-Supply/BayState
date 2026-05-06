@@ -76,7 +76,7 @@ const PIPELINE_STAGE_QUERY_SOURCE: Record<
 };
 
 const COHORT_BRAND_RELATION_SELECT =
-  "id, name, slug, logo_url, description, website_url, official_domains, preferred_domains, aliases, created_at";
+  "id, name, slug, logo_url, description, official_domains, preferred_domains, created_at";
 const COHORT_BATCH_METADATA_SELECT =
   `id, name, brand_id, brand_name, brands(${COHORT_BRAND_RELATION_SELECT})`;
 

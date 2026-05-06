@@ -25,7 +25,6 @@ jest.mock('@/components/admin/brands/BrandModal', () => ({
       slug: string;
       logo_url: null;
       description: null;
-      website_url: null;
       official_domains: string[];
       preferred_domains: string[];
       created_at: string;
@@ -41,7 +40,6 @@ jest.mock('@/components/admin/brands/BrandModal', () => ({
           slug: (initialName ?? 'new-brand').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
           logo_url: null,
           description: null,
-          website_url: null,
           official_domains: [],
           preferred_domains: [],
           created_at: '2026-04-21T00:00:00.000Z',

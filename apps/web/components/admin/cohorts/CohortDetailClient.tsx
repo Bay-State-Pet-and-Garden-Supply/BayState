@@ -219,8 +219,8 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
 
   const brandName = cohort.brand_name || cohort.brands?.name || null;
   const brand = cohort.brands;
-  const hasWebsite = Boolean(brand?.website_url && brand.website_url.trim());
-  const configuredBrand = isConfiguredBrand(brand);
+  const officialDomains = (brand?.official_domains ?? []) as string[];
+  const hasConfiguredDomains = officialDomains.length > 0 || ((brand?.preferred_domains ?? []) as string[]).length > 0;
   const statusBadge = STATUS_BADGE_CONFIG[cohort.status] || STATUS_BADGE_CONFIG.pending;
 
   // Pipeline status breakdown
@@ -252,15 +252,15 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
             <p className="mt-1 text-xs font-bold uppercase tracking-widest text-zinc-600 flex flex-wrap items-center gap-x-3 gap-y-1">
               <span>UPC Prefix: <code className="font-mono bg-zinc-950 text-white px-1 py-0.5">{cohort.upc_prefix}</code></span>
               <span>{members.length} products</span>
-              {cohort.brands?.website_url && (
+              {officialDomains.length > 0 && (
                 <a
-                  href={cohort.brands.website_url}
+                  href={`https://${officialDomains[0]}`}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-brand-forest-green hover:underline lowercase tracking-normal font-mono"
                 >
                   <Globe className="h-3 w-3" />
-                  {cohort.brands.website_url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
+                  {officialDomains[0]}
                 </a>
               )}
             </p>
@@ -306,11 +306,11 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
                         <p className="font-black uppercase text-zinc-950 tracking-tight">{brandName}</p>
                         <p className={cn(
                           "text-[10px] font-bold uppercase tracking-wide",
-                          hasWebsite ? "text-zinc-600" : "text-brand-burgundy font-black"
+                          hasConfiguredDomains ? "text-zinc-600" : "text-brand-burgundy font-black"
                         )}>
-                          {hasWebsite
+                          {hasConfiguredDomains
                             ? 'Scraper recommendations are active for this brand'
-                            : 'Brand linked, but official site/domain guidance is still missing'}
+                            : 'Brand linked, but official/preferred domain guidance is still missing'}
                         </p>
                       </div>
                       {brand && (
@@ -329,12 +329,9 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
                     {brand && (
                       <div className="mt-4 grid gap-2 text-[10px] font-black uppercase tracking-wide text-zinc-600 sm:grid-cols-3">
                         <div className="rounded-none border border-zinc-200 bg-white px-3 py-2">
-                          <span className="block text-zinc-500">Official Site</span>
-                          {brand.website_url ? (
-                            <a href={brand.website_url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-brand-forest-green hover:underline">
-                              <Globe className="h-3 w-3" />
-                              View Site
-                            </a>
+                          <span className="block text-zinc-500">Official Domains</span>
+                          {officialDomains.length > 0 ? (
+                            <span className="mt-1 block text-xs text-zinc-950">{officialDomains[0]}</span>
                           ) : (
                             <span className="mt-1 block text-brand-gold font-black">Missing</span>
                           )}
@@ -555,16 +552,16 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
                 <span className="text-[10px] font-black uppercase text-zinc-500">Updated</span>
                 <span className="text-xs font-bold uppercase text-zinc-950">{new Date(cohort.updated_at).toLocaleDateString()}</span>
               </div>
-              {cohort.brands?.website_url && (
+              {officialDomains.length > 0 && (
                 <div className="flex flex-col gap-1 pt-2 border-t border-zinc-100">
-                  <span className="text-[10px] font-black uppercase text-zinc-500">Official Site</span>
+                  <span className="text-[10px] font-black uppercase text-zinc-500">Official Domain</span>
                   <a
-                    href={cohort.brands.website_url}
+                    href={`https://${officialDomains[0]}`}
                     target="_blank"
                     rel="noreferrer"
                     className="text-[11px] font-bold text-brand-forest-green hover:underline break-all"
                   >
-                    {cohort.brands.website_url}
+                    {officialDomains[0]}
                   </a>
                 </div>
               )}

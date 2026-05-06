@@ -7,6 +7,7 @@ import {
     buildManualOfficialBrandCandidateRows,
     buildDiscoveryOfficialBrandCandidateRows,
     buildExtractedOfficialBrandCandidateRows,
+    buildNormalizedDomainList,
     OFFICIAL_BRAND_URL_DISCOVERY_TYPE,
     OFFICIAL_BRAND_EXTRACTION_TYPE,
     OFFICIAL_BRAND_SOURCE_KEY,
@@ -58,6 +59,52 @@ describe('normalizeOfficialBrandDomain', () => {
 
     it('returns undefined for empty input', () => {
         expect(normalizeOfficialBrandDomain('')).toBeUndefined();
+    });
+});
+
+describe('buildNormalizedDomainList', () => {
+    it('merges domain lists into a normalized deduplicated list', () => {
+        const result = buildNormalizedDomainList(
+            ['gofromm.com', 'frommfamily.com'],
+            ['https://www.gofromm.com'],
+        );
+        // 'gofromm.com' appears twice (from both sources) but deduped to once
+        expect(result).toEqual(['gofromm.com', 'frommfamily.com']);
+    });
+
+    it('normalizes a full URL entry to bare domain', () => {
+        // Admins may paste a full URL into official_domains; normalize it to the bare domain.
+        const result = buildNormalizedDomainList(
+            [],
+            ['https://www.gofromm.com/path/to/site'],
+        );
+        expect(result).toEqual(['gofromm.com']);
+    });
+
+    it('normalizes bare domain string from a source list', () => {
+        const result = buildNormalizedDomainList(
+            [],
+            ['gofromm.com'],
+        );
+        expect(result).toEqual(['gofromm.com']);
+    });
+
+    it('returns empty array for empty sources', () => {
+        expect(buildNormalizedDomainList()).toEqual([]);
+        expect(buildNormalizedDomainList([])).toEqual([]);
+    });
+
+    it('skips null/undefined entries', () => {
+        const result = buildNormalizedDomainList(
+            ['gofromm.com', null, undefined],
+            [undefined, 'frommfamily.com', null],
+        );
+        expect(result).toEqual(['gofromm.com', 'frommfamily.com']);
+    });
+
+    it('handles null/undefined sources', () => {
+        const result = buildNormalizedDomainList(null, ['gofromm.com'], undefined);
+        expect(result).toEqual(['gofromm.com']);
     });
 });
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { toast } from "sonner";
 import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronLeft, Circle, Keyboard, Loader2, PackageSearch, Play, RefreshCw } from "lucide-react";
 import { CandidateUrlPicker } from "./CandidateUrlPicker";
@@ -147,8 +146,6 @@ export function OfficialBrandReviewClient({
       }),
     [data.skus],
   );
-
-  const reviewHref = `/admin/pipeline?cohort_id=${encodeURIComponent(data.cohort.id)}`;
 
   const refreshData = useCallback(
     async (silent = false) => {
@@ -471,11 +468,11 @@ export function OfficialBrandReviewClient({
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <span className="font-black uppercase tracking-widest text-foreground">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="shrink-0 font-black uppercase tracking-widest text-foreground">
                   Domains:
                 </span>
-                <span className="font-mono">
+                <span className="font-mono line-clamp-2 break-all">
                   {[...data.cohort.official_domains, ...data.cohort.preferred_domains].length > 0
                     ? [...data.cohort.official_domains, ...data.cohort.preferred_domains].join(", ")
                     : "No configured domains"}
