@@ -572,8 +572,22 @@ export async function getAvailableProductFilters(
       if (catId) productCategoryIds.add(catId);
     }
   }
+
   const categoryNodes = buildTaxonomyNodes((categoriesResult.data || []) as TaxonomyCategoryRecord[]);
   const visibleCategoryIds = new Set<string>();
+
+  // Ensure the explicitly filtered category and its ancestors are always visible
+  // so that the UI can resolve breadcrumbs/names even if the product set is empty
+  // or filtered out by other dimensions.
+  if (categoryIds && categoryIds.length > 0) {
+    const activeCategoryId = categoryIds[0];
+    const activeNode = categoryNodes.find(n => n.id === activeCategoryId);
+    if (activeNode) {
+      visibleCategoryIds.add(activeNode.id);
+      activeNode.ancestor_ids.forEach(id => visibleCategoryIds.add(id));
+    }
+  }
+
   for (const category of categoryNodes) {
     if (productCategoryIds.has(category.id)) {
       visibleCategoryIds.add(category.id);
