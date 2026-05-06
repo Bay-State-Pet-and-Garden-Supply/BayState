@@ -309,358 +309,60 @@ export function FinalizationCopilotPanel({
         return;
       }
 
-      const addToolError = (tool: ClientToolName, errorText: string) => {
-        void addToolOutput({
-          tool,
-          toolCallId: toolCall.toolCallId,
-          state: "output-error",
-          errorText,
-        });
+      // Handler map — keeps tool dispatch in sync with the type system.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const handlers: Record<ClientToolName, (input: any) => Promise<unknown>> = {
+        listWorkspaceProducts: onListWorkspaceProducts,
+        previewProductScope: onPreviewProductScope,
+        getProductSnapshot: onGetProductSnapshot,
+        inspectSourceData: onInspectSourceData,
+        listImageSources: onListImageSources,
+        setProductFields: onSetProductFields,
+        bulkSetProductFields: onBulkSetProductFields,
+        bulkTransformProductNames: onBulkTransformProductNames,
+        assignBrand: onAssignBrand,
+        bulkAssignBrand: onBulkAssignBrand,
+        createBrand: onCreateBrand,
+        setStorePages: onSetStorePages,
+        addStorePages: onAddStorePages,
+        removeStorePages: onRemoveStorePages,
+        bulkUpdateStorePages: onBulkUpdateStorePages,
+        replaceSelectedImages: onReplaceSelectedImages,
+        addSelectedImages: onAddSelectedImages,
+        removeSelectedImages: onRemoveSelectedImages,
+        restoreSavedDraft: onRestoreSavedDraft,
+        saveDraft: onSaveDraft,
+        saveProducts: onSaveProducts,
+        approveProduct: onApproveProduct,
+        approveProducts: onApproveProducts,
+        rejectProduct: onRejectProduct,
+        rejectProducts: onRejectProducts,
       };
 
-      const fail = (errorText: string) => {
-        switch (toolCall.toolName) {
-          case "listWorkspaceProducts":
-            addToolError("listWorkspaceProducts", errorText);
-            break;
-          case "previewProductScope":
-            addToolError("previewProductScope", errorText);
-            break;
-          case "getProductSnapshot":
-            addToolError("getProductSnapshot", errorText);
-            break;
-          case "inspectSourceData":
-            addToolError("inspectSourceData", errorText);
-            break;
-          case "listImageSources":
-            addToolError("listImageSources", errorText);
-            break;
-          case "setProductFields":
-            addToolError("setProductFields", errorText);
-            break;
-          case "bulkSetProductFields":
-            addToolError("bulkSetProductFields", errorText);
-            break;
-          case "bulkTransformProductNames":
-            addToolError("bulkTransformProductNames", errorText);
-            break;
-          case "assignBrand":
-            addToolError("assignBrand", errorText);
-            break;
-          case "bulkAssignBrand":
-            addToolError("bulkAssignBrand", errorText);
-            break;
-          case "createBrand":
-            addToolError("createBrand", errorText);
-            break;
-          case "setStorePages":
-            addToolError("setStorePages", errorText);
-            break;
-          case "addStorePages":
-            addToolError("addStorePages", errorText);
-            break;
-          case "removeStorePages":
-            addToolError("removeStorePages", errorText);
-            break;
-          case "bulkUpdateStorePages":
-            addToolError("bulkUpdateStorePages", errorText);
-            break;
-          case "replaceSelectedImages":
-            addToolError("replaceSelectedImages", errorText);
-            break;
-          case "addSelectedImages":
-            addToolError("addSelectedImages", errorText);
-            break;
-          case "removeSelectedImages":
-            addToolError("removeSelectedImages", errorText);
-            break;
-          case "restoreSavedDraft":
-            addToolError("restoreSavedDraft", errorText);
-            break;
-          case "saveDraft":
-            addToolError("saveDraft", errorText);
-            break;
-          case "saveProducts":
-            addToolError("saveProducts", errorText);
-            break;
-          case "approveProduct":
-            addToolError("approveProduct", errorText);
-            break;
-          case "approveProducts":
-            addToolError("approveProducts", errorText);
-            break;
-          case "rejectProduct":
-            addToolError("rejectProduct", errorText);
-            break;
-          case "rejectProducts":
-            addToolError("rejectProducts", errorText);
-            break;
-          default:
-            break;
-        }
-      };
+      const toolName = toolCall.toolName as string;
+      const handler = handlers[toolName as ClientToolName];
+
+      if (!handler) {
+        return;
+      }
 
       try {
-        switch (toolCall.toolName) {
-          case "listWorkspaceProducts": {
-            const output = await onListWorkspaceProducts(toolCall.input);
-            void addToolOutput({
-              tool: "listWorkspaceProducts",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "previewProductScope": {
-            const output = await onPreviewProductScope(toolCall.input);
-            void addToolOutput({
-              tool: "previewProductScope",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "getProductSnapshot": {
-            const output = await onGetProductSnapshot(toolCall.input);
-            void addToolOutput({
-              tool: "getProductSnapshot",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "inspectSourceData": {
-            const output = await onInspectSourceData(toolCall.input);
-            void addToolOutput({
-              tool: "inspectSourceData",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "listImageSources": {
-            const output = await onListImageSources(toolCall.input);
-            void addToolOutput({
-              tool: "listImageSources",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "setProductFields": {
-            const output = await onSetProductFields(toolCall.input);
-            void addToolOutput({
-              tool: "setProductFields",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "bulkSetProductFields": {
-            const output = await onBulkSetProductFields(toolCall.input);
-            void addToolOutput({
-              tool: "bulkSetProductFields",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "bulkTransformProductNames": {
-            const output = await onBulkTransformProductNames(toolCall.input);
-            void addToolOutput({
-              tool: "bulkTransformProductNames",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "assignBrand": {
-            const output = await onAssignBrand(toolCall.input);
-            void addToolOutput({
-              tool: "assignBrand",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "bulkAssignBrand": {
-            const output = await onBulkAssignBrand(toolCall.input);
-            void addToolOutput({
-              tool: "bulkAssignBrand",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "createBrand": {
-            const output = await onCreateBrand(toolCall.input);
-            void addToolOutput({
-              tool: "createBrand",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "setStorePages": {
-            const output = await onSetStorePages(toolCall.input);
-            void addToolOutput({
-              tool: "setStorePages",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "addStorePages": {
-            const output = await onAddStorePages(toolCall.input);
-            void addToolOutput({
-              tool: "addStorePages",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "removeStorePages": {
-            const output = await onRemoveStorePages(toolCall.input);
-            void addToolOutput({
-              tool: "removeStorePages",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "bulkUpdateStorePages": {
-            const output = await onBulkUpdateStorePages(toolCall.input);
-            void addToolOutput({
-              tool: "bulkUpdateStorePages",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "replaceSelectedImages": {
-            const output = await onReplaceSelectedImages(toolCall.input);
-            void addToolOutput({
-              tool: "replaceSelectedImages",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "addSelectedImages": {
-            const output = await onAddSelectedImages(toolCall.input);
-            void addToolOutput({
-              tool: "addSelectedImages",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "removeSelectedImages": {
-            const output = await onRemoveSelectedImages(toolCall.input);
-            void addToolOutput({
-              tool: "removeSelectedImages",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "restoreSavedDraft": {
-            const output = await onRestoreSavedDraft(toolCall.input);
-            void addToolOutput({
-              tool: "restoreSavedDraft",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "saveDraft": {
-            const output = await onSaveDraft(toolCall.input);
-            void addToolOutput({
-              tool: "saveDraft",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "saveProducts": {
-            const output = await onSaveProducts(toolCall.input);
-            void addToolOutput({
-              tool: "saveProducts",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "approveProduct": {
-            const output = await onApproveProduct(toolCall.input);
-            void addToolOutput({
-              tool: "approveProduct",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "approveProducts": {
-            const output = await onApproveProducts(toolCall.input);
-            void addToolOutput({
-              tool: "approveProducts",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "rejectProduct": {
-            const output = await onRejectProduct(toolCall.input);
-            void addToolOutput({
-              tool: "rejectProduct",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          case "rejectProducts": {
-            const output = await onRejectProducts(toolCall.input);
-            void addToolOutput({
-              tool: "rejectProducts",
-              toolCallId: toolCall.toolCallId,
-              output,
-            });
-            return;
-          }
-
-          default:
-            return;
-        }
+        const output = await handler(toolCall.input);
+        void addToolOutput({
+          tool: toolName as ClientToolName,
+          toolCallId: toolCall.toolCallId,
+          output,
+        });
       } catch (toolError) {
-        fail(
-          toolError instanceof Error
-            ? toolError.message
-            : "The copilot tool failed.",
-        );
+        void addToolOutput({
+          tool: toolName as ClientToolName,
+          toolCallId: toolCall.toolCallId,
+          state: "output-error",
+          errorText:
+            toolError instanceof Error
+              ? toolError.message
+              : "The copilot tool failed.",
+        });
       }
     },
   });

@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import {
   applyProductNameTransform,
   applySetProductFieldsToDraft,
+  buildFinalizationProductSnapshot,
   inspectFinalizationProductSource,
   listFinalizationProductImageSources,
   listWorkspaceProducts,
@@ -376,4 +377,92 @@ describe("finalization copilot workspace helpers", () => {
       inspectFinalizationProductSource(product, "source:missing", "all"),
     ).toThrow("Unknown source key: source:missing");
   });
+
+  it("applies stockStatus changes via setProductFields", () => {
+    const product = createProduct("SKU-ALPHA");
+    const draft = buildInitialFinalizationDraft(product);
+
+    const result = applySetProductFieldsToDraft(draft, {
+      stockStatus: "out_of_stock",
+    });
+
+    expect(result.updatedFields).toContain("stock status");
+    expect(result.draft.stockStatus).toBe("out_of_stock");
+  });
+
+  it("applies searchKeywords changes via setProductFields", () => {
+    const product = createProduct("SKU-ALPHA");
+    const draft = buildInitialFinalizationDraft(product);
+
+    const result = applySetProductFieldsToDraft(draft, {
+      searchKeywords: "  premium organic pet food  ",
+    });
+
+    expect(result.updatedFields).toContain("search keywords");
+    expect(result.draft.searchKeywords).toBe("premium organic pet food");
+  });
+
+  it("applies stockStatus and searchKeywords together with other fields", () => {
+    const product = createProduct("SKU-ALPHA");
+    const draft = buildInitialFinalizationDraft(product);
+
+    const result = applySetProductFieldsToDraft(draft, {
+      name: "Updated Product",
+      stockStatus: "pre_order",
+      searchKeywords: "new keywords",
+      price: 35,
+    });
+
+    expect(result.updatedFields).toEqual([
+      "name",
+      "price",
+      "stock status",
+      "search keywords",
+    ]);
+    expect(result.draft.name).toBe("Updated Product");
+    expect(result.draft.stockStatus).toBe("pre_order");
+    expect(result.draft.searchKeywords).toBe("new keywords");
+    expect(result.draft.price).toBe("35");
+  });
 });
+
+describe("buildFinalizationProductSnapshot", () => {
+  it("builds a complete snapshot from product, draft, and saved draft", () => {
+    const product = createProduct("SKU-SNAP");
+    const draft = buildInitialFinalizationDraft(product);
+    const savedDraft = buildInitialFinalizationDraft(product);
+
+    const snapshot = buildFinalizationProductSnapshot(product, draft, savedDraft);
+
+    expect(snapshot.sku).toBe("SKU-SNAP");
+    expect(snapshot.originalName).toBe("SKU-SNAP Imported");
+    expect(snapshot.confidenceScore).toBe(0.87);
+    expect(snapshot.sourceKeys).toEqual(["source:primary", "source:backup"]);
+    expect(snapshot.availableStorePages.length).toBeGreaterThan(0);
+    expect(snapshot.draft).toEqual(draft);
+    expect(snapshot.savedDraft).toEqual(savedDraft);
+  });
+
+  it("returns null originalName when input has no name", () => {
+    const product = createProduct("SKU-NONAME", {
+      input: {},
+    });
+    const draft = buildInitialFinalizationDraft(product);
+
+    const snapshot = buildFinalizationProductSnapshot(product, draft, draft);
+
+    expect(snapshot.originalName).toBeNull();
+  });
+
+  it("returns null confidenceScore when not available", () => {
+    const product = createProduct("SKU-NOCONF", {
+      confidence_score: undefined as unknown as number,
+    });
+    const draft = buildInitialFinalizationDraft(product);
+
+    const snapshot = buildFinalizationProductSnapshot(product, draft, draft);
+
+    expect(snapshot.confidenceScore).toBeNull();
+  });
+});
+
