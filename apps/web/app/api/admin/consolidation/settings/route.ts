@@ -58,19 +58,29 @@ export async function POST(req: NextRequest) {
       ...rawDefaults
     } = body;
 
-    // Handle standalone API key saves
+    // Build defaults to save
+    const nextDefaults: Partial<AIConsolidationDefaults> = defaults ?? rawDefaults;
+
+    // Save API keys if provided (do NOT return early — defaults may also need saving)
     if (openai_api_key && openai_api_key.trim()) {
       await setAIScrapingProviderSecret('openai', openai_api_key, auth.user.id);
-      return NextResponse.json({ message: 'OpenAI API key updated successfully' });
     }
 
     if (lmstudio_api_key && lmstudio_api_key.trim()) {
       await setAIScrapingProviderSecret('lmstudio', lmstudio_api_key, auth.user.id);
-      return NextResponse.json({ message: 'LM Studio API key updated successfully' });
     }
 
-    // Build defaults to save
-    const nextDefaults: Partial<AIConsolidationDefaults> = defaults ?? rawDefaults;
+    // If no defaults to save and we only saved a key, return key-only message
+    if (Object.keys(nextDefaults).length === 0) {
+      const savedKeys: string[] = [];
+      if (openai_api_key?.trim()) savedKeys.push('OpenAI');
+      if (lmstudio_api_key?.trim()) savedKeys.push('LM Studio');
+      return NextResponse.json({
+        message: savedKeys.length > 0
+          ? `${savedKeys.join(', ')} API key updated successfully`
+          : 'No changes to save',
+      });
+    }
 
     // Enforce provider-appropriate settings
     if (nextDefaults.llm_provider === 'lmstudio') {
