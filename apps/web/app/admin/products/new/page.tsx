@@ -5,13 +5,20 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { AdminPageShell } from '@/components/admin/admin-page-shell'
+import { Plus } from 'lucide-react'
 
 export default function AddProductPage() {
  return (
+  <AdminPageShell
+    title="Add New Product"
+    description="Create a new product record"
+    icon={<Plus className="h-5 w-5" />}
+  >
  <div className="max-w-2xl mx-auto">
  <Card className="border border-border rounded-none">
  <CardHeader>
- <CardTitle>Add New Product</CardTitle>
+ <CardTitle>Product Details</CardTitle>
  </CardHeader>
  <CardContent>
  <form action={createProduct} className="space-y-4">
@@ -41,5 +48,6 @@ export default function AddProductPage() {
  </CardContent>
  </Card>
  </div>
+ </AdminPageShell>
  )
 }

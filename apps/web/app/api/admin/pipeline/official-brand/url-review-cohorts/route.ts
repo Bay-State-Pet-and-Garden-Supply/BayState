@@ -85,10 +85,15 @@ export async function GET() {
     skuByCohort.set(cid, existing);
   });
 
+  const activeSkus = Array.from(
+    new Set(rawRows.map((row) => row.sku).filter(Boolean) as string[]),
+  );
+
   const { data: selectedCounts, error: selectedCountError } = await supabase
     .from("official_brand_url_candidates")
     .select("sku, cohort_id, selection_status")
     .in("cohort_id", cohortIds)
+    .in("sku", activeSkus)
     .in("selection_status", ["selected", "extracted", "candidate"]);
 
   if (selectedCountError) {

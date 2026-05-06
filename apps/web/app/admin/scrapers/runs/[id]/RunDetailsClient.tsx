@@ -116,29 +116,9 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
  };
 
  return (
- <div className="space-y-8 p-6 max-w-[1600px] mx-auto">
- {/* Header Section */}
- <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between border-b-8 border-border pb-8">
- <div className="space-y-4">
- <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-zinc-500">
- <Link href="/admin/scrapers/runs" className="hover:text-foreground transition-colors">
- Scraper Runs
- </Link>
- <span className="text-zinc-300">/</span>
- <span className="font-mono bg-muted px-2 py-0.5 border-2 border-border">
- {run.id.slice(0, 8)}
- </span>
- </div>
- <div className="space-y-1">
- <h1 className="text-6xl font-black uppercase tracking-tighter text-foreground leading-none">
- Run <span className="text-[#66161D]">Details</span>
- </h1>
- <p className="text-lg font-bold text-zinc-500 uppercase tracking-tight">
- Monitoring Scrape Job Execution & Batch Progress
- </p>
- </div>
- </div>
- <div className="flex flex-wrap gap-4">
+ <div className="space-y-8">
+ {/* Actions Section - Redesigned to fit better with Shell */}
+ <div className="flex flex-wrap items-center justify-end gap-4 border-b-8 border-border pb-6">
  {(status === 'completed' || status === 'failed' || status === 'cancelled') && (
  <Button
  variant="outline"
@@ -173,7 +153,6 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
  Back to Fleet
  </Link>
  </Button>
- </div>
  </div>
 
  <ConfirmationDialog
