@@ -11,6 +11,7 @@ interface CohortSummaryRow {
   product_count: number;
   skus_with_selection: number;
   skus_extracted: number;
+  candidate_count: number;
 }
 
 export async function GET() {
@@ -88,7 +89,7 @@ export async function GET() {
     .from("official_brand_url_candidates")
     .select("sku, cohort_id, selection_status")
     .in("cohort_id", cohortIds)
-    .in("selection_status", ["selected", "extracted"]);
+    .in("selection_status", ["selected", "extracted", "candidate"]);
 
   if (selectedCountError) {
     console.error("[URL Review Cohorts] Failed to load candidate counts:", selectedCountError);
@@ -97,6 +98,8 @@ export async function GET() {
 
   const selectedByCohort = new Map<string, Set<string>>();
   const extractedByCohort = new Map<string, Set<string>>();
+  const candidatesByCohort = new Map<string, number>();
+
   const rawCandidates = (selectedCounts ?? []) as Array<{
     sku?: string | null;
     cohort_id?: string | null;
@@ -115,6 +118,8 @@ export async function GET() {
       const set = extractedByCohort.get(cid) ?? new Set();
       set.add(sku);
       extractedByCohort.set(cid, set);
+    } else if (row.selection_status === "candidate") {
+      candidatesByCohort.set(cid, (candidatesByCohort.get(cid) ?? 0) + 1);
     }
   });
 
@@ -124,6 +129,7 @@ export async function GET() {
       const productsForCohort = skuByCohort.get(cid) ?? [];
       const selected = selectedByCohort.get(cid)?.size ?? 0;
       const extracted = extractedByCohort.get(cid)?.size ?? 0;
+      const candidateCount = candidatesByCohort.get(cid) ?? 0;
 
       return {
         cohort_id: cid,
@@ -132,6 +138,7 @@ export async function GET() {
         product_count: productsForCohort.length,
         skus_with_selection: selected,
         skus_extracted: extracted,
+        candidate_count: candidateCount,
       };
     })
     .filter((c) => c.product_count > 0)
