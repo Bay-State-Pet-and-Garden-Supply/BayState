@@ -88,7 +88,7 @@ apps/scraper/
 │   ├── providers/       # Search providers
 │   ├── ai_search/       # AI search integration
 │   ├── tests/           # Subset of tests
-│   └── ... (runtime.py, ai_cost_tracker.py, etc.)
+│   └── ... (runtime.py, etc.)
 ├── scripts/             # Migration/utility scripts
 ├── src/
 │   └── crawl4ai_engine/ # engine.py (22KB), anti_bot.py, metrics.py, retry.py, etc.

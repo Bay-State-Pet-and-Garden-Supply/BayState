@@ -46,7 +46,6 @@ class ExtractionMetrics:
     error_message: str | None = None
     llm_tokens_input: int = 0
     llm_tokens_output: int = 0
-    llm_cost_usd: float = 0.0
     anti_bot_triggered: bool = False
     anti_bot_strategy: str | None = None
     cache_hit: bool = False
@@ -79,31 +78,6 @@ class AntiBotMetrics:
         return self.failed_bypasses / self.total_attempts
 
 
-@dataclass
-class CostMetrics:
-    """Cost tracking metrics."""
-
-    total_extractions: int = 0
-    llm_extractions: int = 0
-    llm_free_extractions: int = 0
-    total_cost_usd: float = 0.0
-    llm_cost_usd: float = 0.0
-    average_cost_per_extraction: float = 0.0
-    cost_by_model: dict[str, float] = field(default_factory=lambda: defaultdict(float))
-    cost_by_site: dict[str, float] = field(default_factory=lambda: defaultdict(float))
-
-    def update(self, extraction: ExtractionMetrics) -> None:
-        """Update cost metrics with extraction data."""
-        self.total_extractions += 1
-
-        if extraction.mode == ExtractionMode.LLM:
-            self.llm_extractions += 1
-            self.llm_cost_usd += extraction.llm_cost_usd
-            self.total_cost_usd += extraction.llm_cost_usd
-        else:
-            self.llm_free_extractions += 1
-
-        self.average_cost_per_extraction = self.total_cost_usd / self.total_extractions if self.total_extractions > 0 else 0.0
 
 
 class Crawl4AIMetricsCollector:
@@ -140,7 +114,6 @@ class Crawl4AIMetricsCollector:
             }
         )
         self._anti_bot = AntiBotMetrics()
-        self._costs = CostMetrics()
         self._start_time = time.time()
 
     def record_extraction(
@@ -153,7 +126,6 @@ class Crawl4AIMetricsCollector:
         error_message: str | None = None,
         llm_tokens_input: int = 0,
         llm_tokens_output: int = 0,
-        llm_cost_usd: float = 0.0,
         anti_bot_triggered: bool = False,
         anti_bot_strategy: str | None = None,
         cache_hit: bool = False,
@@ -169,7 +141,6 @@ class Crawl4AIMetricsCollector:
             error_message: Error message if failed.
             llm_tokens_input: Number of input tokens for LLM mode.
             llm_tokens_output: Number of output tokens for LLM mode.
-            llm_cost_usd: Cost in USD for LLM extraction.
             anti_bot_triggered: Whether anti-bot detection was triggered.
             anti_bot_strategy: Strategy used to bypass anti-bot.
             cache_hit: Whether result was served from cache.
@@ -186,7 +157,6 @@ class Crawl4AIMetricsCollector:
             error_message=error_message,
             llm_tokens_input=llm_tokens_input,
             llm_tokens_output=llm_tokens_output,
-            llm_cost_usd=llm_cost_usd,
             anti_bot_triggered=anti_bot_triggered,
             anti_bot_strategy=anti_bot_strategy,
             cache_hit=cache_hit,
@@ -227,10 +197,6 @@ class Crawl4AIMetricsCollector:
                 self._anti_bot.strategies_used[anti_bot_strategy] += 1
                 self._anti_bot.by_site[site][anti_bot_strategy] += 1
 
-        # Update cost metrics
-        self._costs.update(extraction)
-        if llm_cost_usd > 0:
-            self._costs.cost_by_site[site] += llm_cost_usd
 
         return extraction
 
@@ -321,9 +287,6 @@ class Crawl4AIMetricsCollector:
         """Get anti-bot effectiveness metrics."""
         return self._anti_bot
 
-    def get_cost_metrics(self) -> CostMetrics:
-        """Get cost tracking metrics."""
-        return self._costs
 
     def get_summary(self) -> dict[str, Any]:
         """Get comprehensive metrics summary."""
@@ -352,12 +315,6 @@ class Crawl4AIMetricsCollector:
                 "success_rate": round(self._anti_bot.success_rate, 4),
                 "failure_rate": round(self._anti_bot.failure_rate, 4),
                 "strategies_used": dict(self._anti_bot.strategies_used),
-            },
-            "costs": {
-                "total_cost_usd": round(self._costs.total_cost_usd, 4),
-                "llm_cost_usd": round(self._costs.llm_cost_usd, 4),
-                "average_per_extraction": round(self._costs.average_cost_per_extraction, 6),
-                "by_site": dict(self._costs.cost_by_site),
             },
             "sites": self.get_site_stats(),
             "uptime_seconds": round(uptime_seconds, 2),
@@ -410,15 +367,6 @@ class Crawl4AIMetricsCollector:
         lines.append(f"# TYPE {prefix}_antibot_success_rate gauge")
         lines.append(f"{prefix}_antibot_success_rate {self._anti_bot.success_rate}")
 
-        # Cost metrics
-        lines.append(f"# HELP {prefix}_cost_usd_total Total cost in USD")
-        lines.append(f"# TYPE {prefix}_cost_usd_total counter")
-        lines.append(f'{prefix}_cost_usd_total{{type="llm"}} {self._costs.llm_cost_usd}')
-        lines.append(f'{prefix}_cost_usd_total{{type="total"}} {self._costs.total_cost_usd}')
-
-        lines.append(f"# HELP {prefix}_cost_average_usd Average cost per extraction")
-        lines.append(f"# TYPE {prefix}_cost_average_usd gauge")
-        lines.append(f"{prefix}_cost_average_usd {self._costs.average_cost_per_extraction}")
 
         return "\n".join(lines)
 
@@ -429,7 +377,6 @@ class Crawl4AIMetricsCollector:
         self._mode_counts.clear()
         self._site_stats.clear()
         self._anti_bot = AntiBotMetrics()
-        self._costs = CostMetrics()
         self._start_time = time.time()
 
 
@@ -475,7 +422,6 @@ if __name__ == "__main__":
         duration_ms=8000.0,
         llm_tokens_input=500,
         llm_tokens_output=200,
-        llm_cost_usd=0.015,
     )
 
     collector.record_extraction(

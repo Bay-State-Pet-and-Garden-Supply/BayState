@@ -80,7 +80,6 @@ def _build_per_sku_results(results: list[EvaluationResult]) -> list[dict[str, An
                 "success": result.success,
                 "passed": result.passed,
                 "accuracy": round(float(result.accuracy), 4),
-                "cost": round(float(result.cost), 6),
                 "timestamp": result.timestamp.isoformat(),
                 "extraction_time_ms": round(float(result.extraction_time_ms), 2) if result.extraction_time_ms is not None else None,
                 "error_message": result.error_message,
@@ -136,7 +135,6 @@ def _build_aggregate_metrics(results: list[EvaluationResult], field_breakdown: d
     failed_results = [result for result in results if not result.success]
 
     accuracies = [float(result.accuracy) for result in results]
-    costs = [float(result.cost) for result in results]
     extraction_times = [float(result.extraction_time_ms) for result in results if result.extraction_time_ms is not None]
 
     return {
@@ -146,8 +144,6 @@ def _build_aggregate_metrics(results: list[EvaluationResult], field_breakdown: d
         "passed_count": len(passed_results),
         "pass_rate": round(len(passed_results) / total_results, 4),
         "overall_accuracy": round(_safe_mean(accuracies), 4),
-        "average_cost": round(_safe_mean(costs), 6),
-        "total_cost": round(sum(costs), 6),
         "average_extraction_time_ms": round(_safe_mean(extraction_times), 2),
         "field_count": len(field_breakdown),
         "failed_extractions": [
@@ -175,8 +171,6 @@ def _build_recommendations(aggregate_metrics: dict[str, Any], field_breakdown: d
     if weak_field_names:
         recommendations.append(f"Prioritize field-level improvements for: {', '.join(weak_field_names)}.")
 
-    if aggregate_metrics["total_cost"] > 0 and aggregate_metrics["average_cost"] > 0.05:
-        recommendations.append("Review token usage or prompt length; average cost per evaluation exceeds $0.05.")
 
     if not recommendations:
         recommendations.append("Evaluation metrics meet target thresholds; continue monitoring with the current prompt version.")
@@ -204,8 +198,6 @@ def _format_percent(value: float) -> str:
     return f"{value * 100:.1f}%"
 
 
-def _format_currency(value: float) -> str:
-    return f"${value:.4f}"
 
 
 def _build_markdown(payload: dict[str, Any], json_path: Path) -> str:
@@ -228,8 +220,6 @@ def _build_markdown(payload: dict[str, Any], json_path: Path) -> str:
         f"| Success Rate | {_format_percent(aggregate['success_rate'])} |",
         f"| Pass Rate | {_format_percent(aggregate['pass_rate'])} |",
         f"| Overall Accuracy | {_format_percent(aggregate['overall_accuracy'])} |",
-        f"| Average Cost | {_format_currency(aggregate['average_cost'])} |",
-        f"| Total Cost | {_format_currency(aggregate['total_cost'])} |",
         f"| Avg Extraction Time (ms) | {aggregate['average_extraction_time_ms']:.2f} |",
         "",
         "## Per-Field Accuracy",
@@ -256,8 +246,8 @@ def _build_markdown(payload: dict[str, Any], json_path: Path) -> str:
             "",
             "## Per-SKU Details",
             "",
-            "| SKU | Success | Passed | Accuracy | Cost | Time (ms) | Error |",
-            "|-----|---------|--------|----------|------|-----------|-------|",
+            "| SKU | Success | Passed | Accuracy | Time (ms) | Error |",
+            "|-----|---------|--------|----------|-----------|-------|",
         ]
     )
 
@@ -265,12 +255,11 @@ def _build_markdown(payload: dict[str, Any], json_path: Path) -> str:
         error_message = (result["error_message"] or "-").replace("\n", " ")
         extraction_time = "-" if result["extraction_time_ms"] is None else f"{result['extraction_time_ms']:.2f}"
         lines.append(
-            "| {sku} | {success} | {passed} | {accuracy} | {cost} | {time} | {error} |".format(
+            "| {sku} | {success} | {passed} | {accuracy} | {time} | {error} |".format(
                 sku=result["sku"],
                 success="yes" if result["success"] else "no",
                 passed="yes" if result["passed"] else "no",
                 accuracy=_format_percent(result["accuracy"]),
-                cost=_format_currency(result["cost"]),
                 time=extraction_time,
                 error=error_message,
             )
@@ -376,7 +365,6 @@ def _normalize_weekly_result(item: ReviewedResult | EvaluationResult | dict[str,
             "success": item.success,
             "passed": item.passed,
             "accuracy": round(float(item.accuracy), 4),
-            "cost": round(float(item.cost), 6),
             "timestamp": item.timestamp.isoformat(),
             "review_date": item.timestamp.date().isoformat(),
             "error_message": item.error_message,
@@ -395,7 +383,6 @@ def _normalize_weekly_result(item: ReviewedResult | EvaluationResult | dict[str,
             "success": _derive_review_success(item),
             "passed": _derive_review_success(item),
             "accuracy": _derive_review_accuracy(item),
-            "cost": 0.0,
             "timestamp": item.review_date or datetime.now(timezone.utc).isoformat(),
             "review_date": item.review_date,
             "error_message": item.notes if not _derive_review_success(item) else None,
@@ -435,7 +422,6 @@ def _normalize_weekly_result(item: ReviewedResult | EvaluationResult | dict[str,
         "success": bool(payload.get("success", accuracy_value >= 0.8 if isinstance(accuracy_value, (int, float)) else False)),
         "passed": bool(payload.get("passed", payload.get("success", False))),
         "accuracy": round(float(accuracy_value or 0.0), 4),
-        "cost": round(float(payload.get("cost", 0.0) or 0.0), 6),
         "timestamp": str(payload.get("timestamp", payload.get("review_date", datetime.now(timezone.utc).isoformat()))),
         "review_date": str(payload.get("review_date", "")),
         "error_message": payload.get("error_message"),
@@ -477,8 +463,6 @@ def _summarize_weekly_metrics(normalized_results: list[dict[str, Any]], field_br
         "success_count": success_count,
         "success_rate": round(success_count / total_results, 4) if total_results else 0.0,
         "average_accuracy": round(_safe_mean(accuracies), 4),
-        "average_cost": round(_safe_mean(costs), 6),
-        "total_cost": round(sum(costs), 6),
         "field_count": len(field_breakdown),
     }
 
@@ -502,7 +486,6 @@ def _build_weekly_trends(
 
     success_delta = current_summary["success_rate"] - float(previous_summary.get("success_rate", 0.0)) if previous_summary else 0.0
     accuracy_delta = current_summary["average_accuracy"] - float(previous_summary.get("average_accuracy", 0.0)) if previous_summary else 0.0
-    avg_cost_delta = current_summary["average_cost"] - float(previous_summary.get("average_cost", 0.0)) if previous_summary else 0.0
     sku_delta = current_summary["skus_tested"] - int(previous_summary.get("skus_tested", 0)) if previous_summary else current_summary["skus_tested"]
 
     field_trends: dict[str, dict[str, Any]] = {}
@@ -522,14 +505,8 @@ def _build_weekly_trends(
             "skus_tested_delta": sku_delta,
             "success_rate_delta": round(success_delta, 4),
             "average_accuracy_delta": round(accuracy_delta, 4),
-            "average_cost_delta": round(avg_cost_delta, 6),
         },
         "field_accuracy_trends": field_trends,
-        "cost_trends": {
-            "previous_week": round(float(previous_summary.get("average_cost", 0.0)), 6) if previous_summary else 0.0,
-            "current_week": current_summary["average_cost"],
-            "delta": round(avg_cost_delta, 6),
-        },
     }
 
 
@@ -552,8 +529,6 @@ def _build_weekly_recommendations(summary: dict[str, Any], trends: dict[str, Any
         recommendations.append("Investigate week-over-week reliability regressions in extraction success.")
     if wow["average_accuracy_delta"] < 0:
         recommendations.append("Audit prompt or parser changes that lowered reviewed field accuracy this week.")
-    if wow["average_cost_delta"] > 0.01:
-        recommendations.append("Review token and retry usage; average cost increased materially week over week.")
 
     regressed_fields = [field_name for field_name, payload in trends["field_accuracy_trends"].items() if float(payload["delta"]) < 0]
     if regressed_fields:
@@ -580,7 +555,6 @@ def _build_weekly_payload(
         "summary": summary,
         "trends": trends,
         "field_accuracy_trends": trends["field_accuracy_trends"],
-        "cost_trends": trends["cost_trends"],
         "per_product_results": normalized_results,
         "recommendations": recommendations,
     }
@@ -601,7 +575,6 @@ def _build_weekly_markdown(payload: dict[str, Any], json_path: Path) -> str:
         f"- SKUs tested: {summary['skus_tested']}",
         f"- Success rate: {_format_percent(summary['success_rate'])}",
         f"- Average accuracy: {_format_percent(summary['average_accuracy'])}",
-        f"- Average cost: {_format_currency(summary['average_cost'])}",
         "",
         "## Trend Charts",
         "",
@@ -626,7 +599,6 @@ def _build_weekly_markdown(payload: dict[str, Any], json_path: Path) -> str:
                 f"- SKU volume delta: {trends['week_over_week']['skus_tested_delta']:+d}",
                 f"- Success rate delta: {_format_delta(trends['week_over_week']['success_rate_delta'])}",
                 f"- Accuracy delta: {_format_delta(trends['week_over_week']['average_accuracy_delta'])}",
-                f"- Average cost delta: {_format_numeric_delta(trends['week_over_week']['average_cost_delta'], decimals=4)}",
             ]
         )
     else:
@@ -651,8 +623,8 @@ def _build_weekly_markdown(payload: dict[str, Any], json_path: Path) -> str:
             "",
             "## Per-Product Results",
             "",
-            "| SKU | Success | Accuracy | Cost | Extracted Data | Reviewed Data | Notes |",
-            "|-----|---------|----------|------|----------------|---------------|-------|",
+            "| SKU | Success | Accuracy | Extracted Data | Reviewed Data | Notes |",
+            "|-----|---------|----------|----------------|---------------|-------|",
         ]
     )
     for result in payload["per_product_results"]:
@@ -660,11 +632,10 @@ def _build_weekly_markdown(payload: dict[str, Any], json_path: Path) -> str:
         reviewed = json.dumps(result["reviewed_data"], sort_keys=True)
         notes = (result.get("notes") or result.get("error_message") or "-").replace("\n", " ")
         lines.append(
-            "| {sku} | {success} | {accuracy} | {cost} | {extracted} | {reviewed} | {notes} |".format(
+            "| {sku} | {success} | {accuracy} | {extracted} | {reviewed} | {notes} |".format(
                 sku=result["sku"],
                 success="yes" if result["success"] else "no",
                 accuracy=_format_percent(result["accuracy"]),
-                cost=_format_currency(result["cost"]),
                 extracted=extracted,
                 reviewed=reviewed,
                 notes=notes,

@@ -22,9 +22,7 @@ Python-based scraper executing YAML-defined workflows to extract product data. R
 │   ├── providers/             # Provider implementations
 │   ├── tests/                 # Scraper-specific tests
 │   ├── utils/                 # Scraping utilities
-│   ├── runtime.py             # Runtime orchestration
-│   ├── ai_cost_tracker.py     # AI cost tracking
-│   └── ai_metrics.py          # AI search metrics
+│   └── runtime.py             # Runtime orchestration
 ├── tests/                     # pytest unit/integration tests
 ├── utils/                     # Structured logging, debugging, proxies
 ├── config/                    # Evaluation thresholds, settings

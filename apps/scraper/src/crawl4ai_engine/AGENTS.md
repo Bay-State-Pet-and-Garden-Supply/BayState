@@ -10,7 +10,7 @@ crawl4ai_engine/
 ├── retry.py               # CircuitBreaker + exponential backoff + error classification
 ├── callback.py            # HMAC-signed result submission to coordinator
 ├── config.py              # YAML config loading and hierarchical merging
-├── metrics.py             # Crawl4AIMetricsCollector — perf, cost, anti-bot stats
+├── metrics.py             # Crawl4AIMetricsCollector — perf, anti-bot stats
 ├── metrics_endpoint.py    # HTTP /metrics endpoint (Prometheus)
 ├── types.py               # Crawl config, result, engine setting types
 ├── strategies/            # Extraction strategy implementations
@@ -24,11 +24,11 @@ crawl4ai_engine/
 ```
 
 ## EXTRACTION MODES
-| Mode | Speed | Cost | When |
-|------|-------|------|------|
-| **LLM-Free** | 2-4s | $0 | Structured pages, e-commerce |
-| **LLM** | 8-15s | $0.01-0.05 | Complex/unstructured data |
-| **Auto** | 2-8s | Varies | Default — tries LLM-free first, falls back |
+| Mode | Speed | When |
+|------|-------|------|
+| **LLM-Free** | 2-4s | Structured pages, e-commerce |
+| **LLM** | 8-15s | Complex/unstructured data |
+| **Auto** | 2-8s | Default — tries LLM-free first, falls back |
 
 Fallback chain: LLM-free → LLM → Static selectors → Manual review
 
@@ -36,7 +36,7 @@ Fallback chain: LLM-free → LLM → Static selectors → Manual review
 - **Crawl4AIEngine**: Async context manager. Crawl execution, result normalization, fallback escalation.
 - **AntiBotConfigGenerator**: Browser fingerprint pools, UA rotation, proxy support, Chrome stealth flags.
 - **CircuitBreaker**: Failure threshold + cooldown. Prevents cascade failures.
-- **Crawl4AIMetricsCollector**: Thread-safe. Per-site performance, cost tracking, Prometheus export.
+- **Crawl4AIMetricsCollector**: Thread-safe. Per-site performance, anti-bot tracking, Prometheus export.
 
 ## INTEGRATION
 - Uses `AsyncWebCrawler` from crawl4ai library
