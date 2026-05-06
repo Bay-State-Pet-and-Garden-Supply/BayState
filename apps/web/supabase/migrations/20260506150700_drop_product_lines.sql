@@ -3,13 +3,10 @@
 
 BEGIN;
 
--- Drop trigger first
-DROP TRIGGER IF EXISTS update_product_lines_updated_at ON product_lines;
-
--- Drop function
-DROP FUNCTION IF EXISTS update_product_lines_updated_at();
-
--- Drop table
+-- Drop table and associated objects (triggers, etc)
 DROP TABLE IF EXISTS product_lines CASCADE;
+
+-- Drop function if it exists
+DROP FUNCTION IF EXISTS update_product_lines_updated_at();
 
 COMMIT;
