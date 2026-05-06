@@ -83,6 +83,13 @@ const SCRAPER_SOURCES: Omit<EnrichmentSource, 'status' | 'enabled' | 'lastFetchA
     requiresAuth: false,
     providesFields: ['name', 'description', 'images'],
   },
+  {
+    id: 'k9granolafactory',
+    displayName: 'K9 Granola Factory',
+    type: 'scraper',
+    requiresAuth: false,
+    providesFields: ['name', 'brand', 'images', 'description', 'ingredients', 'upc'],
+  },
 ];
 
 /**
