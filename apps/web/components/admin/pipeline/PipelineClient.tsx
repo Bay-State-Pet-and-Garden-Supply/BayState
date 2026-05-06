@@ -1013,12 +1013,18 @@ export function PipelineClient({
     const skus = Array.from(selectedSkus);
     if (skus.length === 0) return;
 
+    const isReset = nextStage === "imported";
+
     setIsLoading(true);
     try {
       const res = await fetch("/api/admin/pipeline/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ skus, toStatus: nextStage }),
+        body: JSON.stringify({
+          skus,
+          toStatus: nextStage,
+          resetResults: isReset,
+        }),
       });
 
       if (res.ok) {

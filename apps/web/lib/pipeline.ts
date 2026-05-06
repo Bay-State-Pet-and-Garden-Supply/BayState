@@ -878,6 +878,12 @@ export async function bulkUpdateStatus(
       updatePayload.confidence_score = null;
       updatePayload.error_message = null;
       updatePayload.retry_count = 0;
+
+      // Clear official brand candidates on reset to imported
+      await supabase
+        .from("official_brand_url_candidates")
+        .delete()
+        .in("sku", skus);
     } else if (targetStatus === "scraped") {
       updatePayload.consolidated = null;
       updatePayload.image_candidates = [];
@@ -1043,6 +1049,12 @@ export async function clearScrapeResultsAndResetStatus(
       console.error("Error clearing scrape results:", error);
       return { success: false, error: error.message, updatedCount: 0 };
     }
+
+    // Clear official brand candidates on reset to imported
+    await supabase
+      .from("official_brand_url_candidates")
+      .delete()
+      .in("sku", skus);
 
     // Log the action to audit_log
     const auditPayload = {
