@@ -113,12 +113,6 @@ const navSections: NavSection[] = [
  adminOnly: true,
  items: [
  {
- href: "/admin/costs",
- label: "Costs",
- icon: DollarSign,
- adminOnly: true,
- },
- {
  href: "/admin/settings",
  label: "Settings",
  icon: Settings,

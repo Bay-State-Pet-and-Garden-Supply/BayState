@@ -62,7 +62,6 @@ class EvaluationResult:
     success: bool
     field_comparisons: list[FieldComparison]
     accuracy: float  # Overall accuracy score 0.0 to 1.0
-    cost: float  # Cost in USD
     timestamp: datetime = field(default_factory=datetime.utcnow)
     error_message: str | None = None
     extraction_time_ms: float | None = None

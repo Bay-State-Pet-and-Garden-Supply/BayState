@@ -24,12 +24,3 @@ CREATE POLICY "authenticated_users_can_presence" ON realtime.messages
 
 -- Enable RLS on realtime.messages table (should already be enabled)
 ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY;
-
--- Verify the policies were created
-SELECT
-    policyname,
-    permname,
-    rolname
-FROM pg_policies
-WHERE tablename = 'messages'
-AND schemaname = 'realtime';
