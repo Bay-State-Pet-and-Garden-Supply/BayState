@@ -57,20 +57,18 @@ describe('validateConsolidationTaxonomy', () => {
     });
 
     it('validateRequiredConsolidationFields rejects blank required strings', () => {
+        const validBase = {
+            name: 'Valid Name',
+            brand: 'Valid Brand',
+            confidence_score: 0.8,
+        };
+
         expect(() =>
-            validateRequiredConsolidationFields({
-                name: '   ',
-                brand: 'Valid Brand',
-                confidence_score: 0.8,
-            })
+            validateRequiredConsolidationFields({ ...validBase, name: '   ' })
         ).toThrow('Invalid consolidation output: name is required');
         
         expect(() =>
-            validateRequiredConsolidationFields({
-                name: 'Valid Name',
-                brand: '',
-                confidence_score: 0.8,
-            })
+            validateRequiredConsolidationFields({ ...validBase, brand: '' })
         ).toThrow('Invalid consolidation output: brand is required');
     });
 
