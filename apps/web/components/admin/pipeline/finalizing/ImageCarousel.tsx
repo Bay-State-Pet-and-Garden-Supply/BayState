@@ -139,7 +139,7 @@ export function ImageCarousel({
                       </Dialog>
                       <button
                         onClick={() => onToggleImage(url)}
-                        className="absolute top-4 right-4 bg-card text-foreground border border-border rounded-none p-1.5 hover:bg-feed-bag-cream transition-all z-20"
+                        className="absolute top-4 right-4 bg-card text-foreground border border-border rounded-none p-1.5 hover:bg-muted transition-all z-20"
                         title="Remove this image"
                       >
                         <X className="h-4 w-4" />
@@ -156,7 +156,7 @@ export function ImageCarousel({
               )}
             </Carousel>
           ) : (
-            <div className="aspect-square flex flex-col items-center justify-center text-muted-foreground bg-feed-bag-cream border border-border border-dashed rounded-none m-2">
+            <div className="aspect-square flex flex-col items-center justify-center text-muted-foreground bg-muted border border-border border-dashed rounded-none m-2">
               <ImageIcon className="h-12 w-12 mb-2 opacity-20" />
               <p className="text-[10px] font-black uppercase tracking-widest">
                 No images selected
@@ -195,7 +195,7 @@ export function ImageCarousel({
                         moveImage(index, "left");
                       }}
                       className={cn(
-                        "pointer-events-auto bg-card border border-border p-0.5 hover:bg-feed-bag-cream disabled:opacity-0 transition-all",
+                        "pointer-events-auto bg-card border border-border p-0.5 hover:bg-muted disabled:opacity-0 transition-all",
                         index === 0 && "hidden",
                       )}
                     >
@@ -208,7 +208,7 @@ export function ImageCarousel({
                         moveImage(index, "right");
                       }}
                       className={cn(
-                        "pointer-events-auto bg-card border border-border p-0.5 hover:bg-feed-bag-cream disabled:opacity-0 transition-all",
+                        "pointer-events-auto bg-card border border-border p-0.5 hover:bg-muted disabled:opacity-0 transition-all",
                         index === selectedImages.length - 1 && "hidden",
                       )}
                     >

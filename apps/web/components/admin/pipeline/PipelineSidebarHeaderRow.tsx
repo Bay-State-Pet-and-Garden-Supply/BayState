@@ -57,8 +57,8 @@ export function PipelineSidebarHeaderRow({
         "group cursor-pointer select-none transition-all duration-500 ease-out",
         isActive ? "bg-primary/20 hover:bg-primary/30 border-b-4 border-foreground shadow-sm" : 
         isCollapsed 
-          ? "bg-muted/40 hover:bg-muted/60 border-b border-border shadow-none" 
-          : "bg-muted hover:bg-muted/80 border-b-4 border-foreground shadow-sm"
+          ? "bg-background hover:bg-muted/20 border-b border-border shadow-none" 
+          : "bg-card hover:bg-card/80 border-b-4 border-foreground shadow-sm"
       )}
       onClick={() => onToggleCollapse?.(cohortId)}
     >

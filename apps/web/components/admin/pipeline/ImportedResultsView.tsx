@@ -127,10 +127,10 @@ export function ImportedResultsView({
  return (
  <div data-testid="product-table" className="flex flex-1 min-h-0 border border-border rounded-none overflow-hidden bg-card max-w-full">
  {/* Left Column: Product List */}
- <div className="w-96 min-w-[384px] max-w-[384px] border-r border-border flex flex-col shrink-0 bg-feed-bag-cream overflow-x-hidden">
+ <div className="w-96 min-w-[384px] max-w-[384px] border-r border-border flex flex-col shrink-0 bg-background overflow-x-hidden">
  <div className="flex flex-col border-b border-border bg-card">
  <div className="flex items-center gap-2 p-2">
- <label className="flex shrink-0 items-center justify-center h-9 w-9 border border-border bg-card hover:bg-feed-bag-cream cursor-pointer transition-colors">
+ <label className="flex shrink-0 items-center justify-center h-9 w-9 border border-border bg-card hover:bg-muted cursor-pointer transition-colors">
  <Checkbox
  checked={
  sortedProducts.length > 0 &&
@@ -175,7 +175,7 @@ export function ImportedResultsView({
  size="sm"
  onClick={onImportCsv}
  disabled={isLoading}
- className="flex-1 h-8 border border-border text-foreground hover:bg-feed-bag-cream text-[10px] font-black uppercase tracking-tighter transition-all"
+ className="flex-1 h-8 border border-border text-foreground hover:bg-muted text-[10px] font-black uppercase tracking-tighter transition-all"
  >
  <Database className="mr-1.5 h-3.5 w-3.5" />
  Import CSV
@@ -187,7 +187,7 @@ export function ImportedResultsView({
  size="sm"
  onClick={onManualAdd}
  disabled={isLoading}
- className="flex-1 h-8 border border-border text-foreground hover:bg-feed-bag-cream text-[10px] font-black uppercase tracking-tighter transition-all"
+ className="flex-1 h-8 border border-border text-foreground hover:bg-muted text-[10px] font-black uppercase tracking-tighter transition-all"
  >
  <Plus className="mr-1.5 h-3.5 w-3.5" />
  Add Product
@@ -232,7 +232,7 @@ export function ImportedResultsView({
  <Button
  variant="ghost"
  size="sm"
- className="h-6 w-6 p-0 text-muted-foreground hover:text-ledger-charcoal hover:bg-muted/50 transition-colors"
+ className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
  onClick={() => 
  onEditCohort(
  activeCohortId, 
@@ -278,15 +278,15 @@ export function ImportedResultsView({
  </div>
 
  {/* Details Content (Product Preview Grid) */}
- <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-muted/20">
+ <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-background">
  <div className="max-w-4xl mx-auto space-y-4">
  <h3 className="text-xs font-black uppercase tracking-tighter text-foreground border-b border-border pb-2">Products in Cohort</h3>
  
  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
  {cohortProducts.map(product => (
- <div key={product.sku} className="p-3 bg-card border border-border flex flex-col gap-2 transition-colors">
+ <div key={product.sku} className="p-3 bg-card border border-border flex flex-col gap-2 transition-colors hover:border-foreground">
  <div className="flex items-start justify-between gap-2">
- <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground bg-muted px-1 py-0.5 rounded-none border border-border shrink-0">
+ <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground bg-background px-1 py-0.5 rounded-none border border-border shrink-0">
  {product.sku}
  </div>
  <div className="text-[10px] font-black uppercase tracking-widest text-brand-forest-green shrink-0">
@@ -303,7 +303,7 @@ export function ImportedResultsView({
  </div>
  </>
  ) : (
- <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-zinc-500">
+ <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
  <Layers className="h-12 w-12 mb-2 opacity-20" />
  <h3 className="text-lg font-black uppercase tracking-tighter text-foreground">Select a cohort</h3>
  <p className="text-[10px] font-black uppercase tracking-tighter mt-1">Choose a cohort from the list to view its contents.</p>

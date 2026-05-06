@@ -154,7 +154,7 @@ export function ManualAddProductDialog({
                         <Button
                             type="submit"
                             disabled={isSubmitting}
-                            className="bg-brand-forest-green hover:bg-brand-forest-green/90 text-white font-black uppercase tracking-widest text-xs h-10 px-6 rounded-none border border-brand-forest-green"
+                            className="bg-brand-forest-green hover:bg-brand-forest-green/90 text-background font-black uppercase tracking-widest text-xs h-10 px-6 rounded-none border border-brand-forest-green"
                         >
                             {isSubmitting ? (
                                 <>

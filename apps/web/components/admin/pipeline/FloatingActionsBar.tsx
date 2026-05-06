@@ -305,8 +305,8 @@ export function FloatingActionsBar({
  className={cn(
  "h-9 border border-border px-6 text-[10px] font-black uppercase tracking-widest rounded-none transition-all",
  isPrimaryDisabled && isImported
- ? "bg-muted text-zinc-500 cursor-not-allowed border-dashed"
- : "bg-brand-forest-green text-white hover:bg-brand-forest-green/90"
+ ? "bg-muted text-muted-foreground cursor-not-allowed border-dashed"
+ : "bg-brand-forest-green text-background hover:bg-brand-forest-green/90"
  )}
  >
  {isLoading ? (
@@ -324,7 +324,7 @@ export function FloatingActionsBar({
  </div>
  </TooltipTrigger>
  {isImported && scrapeSelectionValidation?.allowed === false && (
- <TooltipContent side="top" className="max-w-xs bg-brand-burgundy border-border text-white">
+ <TooltipContent side="top" className="max-w-xs bg-brand-burgundy border-border text-background">
  <p className="font-black uppercase tracking-widest text-[10px]">
  {scrapeSelectionValidation.reason}
  </p>

@@ -56,7 +56,7 @@ export function ProgressBar({
     <div className={cn('w-full', className)}>
       <div className="flex items-center justify-between text-[10px] mb-1 font-black uppercase tracking-widest">
         <span className="text-muted-foreground">Progress</span>
-        <span className="text-ledger-charcoal">
+        <span className="text-foreground">
           {clampedProgress}%
           {eta && status === 'running' && (
             <span className="ml-2 text-muted-foreground">{eta}</span>
@@ -65,7 +65,7 @@ export function ProgressBar({
       </div>
       
       <div 
-        className="h-3 w-full overflow-hidden rounded-none bg-feed-bag-cream border border-ledger-charcoal"
+        className="h-3 w-full overflow-hidden rounded-none bg-muted border border-border"
         role="progressbar"
         aria-valuenow={clampedProgress}
         aria-valuemin={0}
@@ -74,7 +74,7 @@ export function ProgressBar({
       >
         <div
           className={cn(
-            'h-full rounded-none border-r border-ledger-charcoal',
+            'h-full rounded-none border-r border-border',
             progressColor,
             animated && 'transition-all duration-500 ease-out',
             isIndeterminate && 'animate-pulse',

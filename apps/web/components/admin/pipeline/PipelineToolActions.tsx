@@ -47,7 +47,7 @@ export function PipelineToolActions({
                 variant="outline"
                 size="sm"
                 onClick={handleImport}
-                className="flex items-center gap-2 border-primary text-primary hover:bg-primary hover:text-white"
+                className="flex items-center gap-2 border-primary text-primary hover:bg-primary hover:text-background"
             >
                 <Upload className="h-4 w-4" />
                 <span className="hidden sm:inline">Import</span>

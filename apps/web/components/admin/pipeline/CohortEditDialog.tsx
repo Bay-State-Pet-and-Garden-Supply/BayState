@@ -85,7 +85,7 @@ export function CohortEditDialog({
     <>
       <Dialog open={open && !isEditingBrand} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[425px] border border-border rounded-none p-0 bg-card">
-          <DialogHeader className="p-6 border-b border-border bg-feed-bag-cream">
+          <DialogHeader className="p-6 border-b border-border bg-muted">
             <div className="flex items-center gap-4">
               <div className="p-2 border border-border bg-card">
                 <Layers className="h-6 w-6 text-foreground" />
@@ -94,7 +94,7 @@ export function CohortEditDialog({
                 <DialogTitle className="text-2xl font-black uppercase tracking-widest text-foreground">
                   Edit Batch
                 </DialogTitle>
-                <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mt-1">
+                <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">
                   Update the human-readable name and brand for this batch.
                 </DialogDescription>
               </div>
@@ -121,7 +121,7 @@ export function CohortEditDialog({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-6 px-2 text-[10px] uppercase font-black tracking-widest text-zinc-500 hover:text-foreground hover:bg-feed-bag-cream"
+                    className="h-6 px-2 text-[10px] uppercase font-black tracking-widest text-muted-foreground hover:text-foreground hover:bg-muted"
                     onClick={() => setIsEditingBrand(true)}
                   >
                     <Edit2 className="h-3 w-3 mr-1" />
@@ -135,31 +135,31 @@ export function CohortEditDialog({
                 triggerClassName="w-full h-10 rounded-none border border-border focus:ring-0"
                 emptyLabel="Select Brand from Registry"
               />
-              <p className="text-[10px] font-bold text-zinc-500 uppercase leading-tight italic">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase leading-tight italic">
                 Enables official domain tracking for the scraper.
               </p>
             </div>
 
             {!selectedBrand && (
-              <div className="p-4 border border-dashed border-border bg-feed-bag-cream">
+              <div className="p-4 border border-dashed border-border bg-muted">
                 <div className="grid gap-2">
-                  <Label htmlFor="brand" className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Manual Brand Name Fallback</Label>
+                  <Label htmlFor="brand" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Manual Brand Name Fallback</Label>
                   <Input
                     id="brand"
                     value={brandName}
                     onChange={(e) => setBrandName(e.target.value)}
                     placeholder="e.g. KONG"
                     disabled={isLoading}
-                    className="rounded-none border border-border focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0 text-zinc-500 h-9 bg-card"
+                    className="rounded-none border border-border focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0 text-muted-foreground h-9 bg-card"
                   />
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase leading-tight italic">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase leading-tight italic">
                     Only used if no brand is selected from the registry above.
                   </p>
                 </div>
               </div>
             )}
           </div>
-          <DialogFooter className="p-6 border-t border-border flex-col sm:flex-row gap-4 bg-feed-bag-cream">
+          <DialogFooter className="p-6 border-t border-border flex-col sm:flex-row gap-4 bg-muted">
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
