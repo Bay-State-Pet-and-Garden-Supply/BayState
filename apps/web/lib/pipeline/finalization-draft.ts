@@ -214,7 +214,10 @@ export function buildInitialFinalizationDraft(
     searchKeywords: toTrimmedString(consolidated.search_keywords ?? input.search_keywords),
     gtin: toTrimmedString(consolidated.gtin ?? input.gtin),
     productOnPages: parseProductOnPages(
-      consolidated.product_on_pages ?? input.product_on_pages,
+      consolidated.shopsite_pages ??
+        consolidated.product_on_pages ??
+        input.shopsite_pages ??
+        input.product_on_pages,
     ),
     isSpecialOrder: Boolean(
       consolidated.is_special_order ?? input.is_special_order,
@@ -284,6 +287,7 @@ export function buildConsolidatedPayloadFromDraft(
     stock_status: snapshot.stockStatus,
     is_special_order: snapshot.isSpecialOrder,
     weight: normalizeOptionalText(snapshot.weight),
+    shopsite_pages: snapshot.productOnPages,
     product_on_pages: snapshot.productOnPages,
     images: snapshot.selectedImages,
     search_keywords: normalizeOptionalText(snapshot.searchKeywords),

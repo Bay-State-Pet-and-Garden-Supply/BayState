@@ -151,6 +151,7 @@ describe('export tab actions', () => {
                 onDelete={() => {}}
                 onUploadShopSite={onUploadShopSite}
                 onDownloadZip={onDownloadZip}
+                showLegacyShopSiteActions
             />,
         );
 

@@ -37,6 +37,7 @@ interface MerchandisingClassificationProps {
   normalizeStorePages: (pages: string[]) => string[];
   addCustomSource: () => void;
   removeSource: (sourceKey: string) => void;
+  showLegacyShopSiteFields?: boolean;
 }
 
 export function MerchandisingClassification({
@@ -59,6 +60,7 @@ export function MerchandisingClassification({
   normalizeStorePages,
   addCustomSource,
   removeSource,
+  showLegacyShopSiteFields = false,
 }: MerchandisingClassificationProps) {
   return (
     <div className="space-y-4">
@@ -201,119 +203,132 @@ export function MerchandisingClassification({
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        <Label className="text-[10px] font-black uppercase tracking-widest text-foreground">Store Pages</Label>
-        <Popover
-          open={pagePopoverOpen}
-          onOpenChange={setPagePopoverOpen}
-        >
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={pagePopoverOpen}
-              className="h-auto min-h-[44px] w-full justify-between font-black uppercase tracking-widest rounded-none border border-border"
+      {showLegacyShopSiteFields ? (
+        <div className="space-y-1.5 border border-border bg-muted/10 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-foreground">
+              ShopSite Pages
+            </Label>
+            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+              Legacy / Optional Sink
+            </span>
+          </div>
+          <Popover
+            open={pagePopoverOpen}
+            onOpenChange={setPagePopoverOpen}
+          >
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={pagePopoverOpen}
+                className="h-auto min-h-[44px] w-full justify-between font-black uppercase tracking-widest rounded-none border border-border"
+              >
+                <div className="flex flex-wrap gap-1">
+                  {formData.productOnPages.length > 0 ? (
+                    formData.productOnPages.map((page) => (
+                      <div
+                        key={page}
+                        className="flex items-center gap-1 rounded-none border border-border bg-muted px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-foreground"
+                      >
+                        {page}
+                        <X
+                          className="h-2 w-2 cursor-pointer hover:text-muted-foreground"
+                          onPointerDown={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                          }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleInputChange(
+                              "productOnPages",
+                              normalizeStorePages(
+                                formData.productOnPages.filter(
+                                  (entry) => entry !== page,
+                                ),
+                              ),
+                            );
+                          }}
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-muted-foreground/50">
+                      Select ShopSite Pages
+                    </span>
+                  )}
+                </div>
+                <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-[var(--radix-popover-trigger-width)] p-0 rounded-none border border-border shadow-md"
+              align="start"
             >
-              <div className="flex flex-wrap gap-1">
-                {formData.productOnPages.length > 0 ? (
-                  formData.productOnPages.map((page) => (
-                    <div
-                      key={page}
-                      className="flex items-center gap-1 rounded-none border border-border bg-muted px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-foreground"
-                    >
-                      {page}
-                      <X
-                        className="h-2 w-2 cursor-pointer hover:text-muted-foreground"
-                        onPointerDown={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                        }}
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
+              <div className="flex flex-col">
+                <div className="flex items-center border-b border-border px-3 py-2">
+                  <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                  <input
+                    className="flex h-8 w-full rounded-none bg-transparent text-sm outline-none placeholder:text-muted-foreground font-black uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-50"
+                    placeholder="Search ShopSite pages..."
+                    value={pageSearch}
+                    onChange={(e) => setPageSearch(e.target.value)}
+                  />
+                </div>
+                <div className="max-h-[300px] overflow-y-auto p-1">
+                  {filteredPages.map((page) => {
+                    const isSelected =
+                      formData.productOnPages.includes(page);
+                    return (
+                      <button
+                        type="button"
+                        key={page}
+                        className={cn(
+                          "relative flex cursor-pointer select-none items-center rounded-none px-2 py-1.5 text-sm font-black uppercase tracking-widest outline-none hover:bg-foreground hover:text-background",
+                          isSelected
+                            && "bg-foreground text-background",
+                        )}
+                        onClick={() => {
+                          const pages = isSelected
+                            ? formData.productOnPages.filter(
+                                (entry) => entry !== page,
+                              )
+                            : [...formData.productOnPages, page];
                           handleInputChange(
                             "productOnPages",
-                            normalizeStorePages(
-                              formData.productOnPages.filter(
-                                (entry) => entry !== page,
-                              ),
-                            ),
+                            normalizeStorePages(pages),
                           );
                         }}
-                      />
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            isSelected ? "opacity-100" : "opacity-0",
+                          )}
+                        />
+                        {page}
+                      </button>
+                    );
+                  })}
+                  {filteredPages.length === 0 && (
+                    <div className="p-2 text-center text-xs font-black uppercase tracking-widest italic text-muted-foreground">
+                      No pages found.
                     </div>
-                  ))
-                ) : (
-                  <span className="text-muted-foreground/50">
-                    Select Store Pages
-                  </span>
-                )}
+                  )}
+                </div>
               </div>
-              <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            className="w-[var(--radix-popover-trigger-width)] p-0 rounded-none border border-border shadow-md"
-            align="start"
-          >
-            <div className="flex flex-col">
-              <div className="flex items-center border-b border-border px-3 py-2">
-                <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                <input
-                  className="flex h-8 w-full rounded-none bg-transparent text-sm outline-none placeholder:text-muted-foreground font-black uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="Search pages..."
-                  value={pageSearch}
-                  onChange={(e) => setPageSearch(e.target.value)}
-                />
-              </div>
-              <div className="max-h-[300px] overflow-y-auto p-1">
-                {filteredPages.map((page) => {
-                  const isSelected =
-                    formData.productOnPages.includes(page);
-                  return (
-                    <button
-                      type="button"
-                      key={page}
-                      className={cn(
-                        "relative flex cursor-pointer select-none items-center rounded-none px-2 py-1.5 text-sm font-black uppercase tracking-widest outline-none hover:bg-foreground hover:text-background",
-                        isSelected
-                          && "bg-foreground text-background",
-                      )}
-                      onClick={() => {
-                        const pages = isSelected
-                          ? formData.productOnPages.filter(
-                              (entry) => entry !== page,
-                            )
-                          : [...formData.productOnPages, page];
-                        handleInputChange(
-                          "productOnPages",
-                          normalizeStorePages(pages),
-                        );
-                      }}
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          isSelected ? "opacity-100" : "opacity-0",
-                        )}
-                      />
-                      {page}
-                    </button>
-                  );
-                })}
-                {filteredPages.length === 0 && (
-                  <div className="p-2 text-center text-xs font-black uppercase tracking-widest italic text-muted-foreground">
-                    No pages found.
-                  </div>
-                )}
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      ) : (
+        <div className="border border-dashed border-border bg-muted/10 p-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+          Storefront-first mode is hiding legacy ShopSite fields. Turn on Legacy / ShopSite in the pipeline header to edit page assignments and special-order flags.
+        </div>
+      )}
 
       <div className="space-y-3 border border-border p-3 bg-muted/10">
         <h4 className="text-[10px] font-black uppercase tracking-widest text-foreground">
@@ -459,22 +474,24 @@ export function MerchandisingClassification({
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="is-special-order"
-              checked={formData.isSpecialOrder}
-              onCheckedChange={(checked) =>
-                handleInputChange("isSpecialOrder", checked === true)
-              }
-              className="h-5 w-5 rounded-none border border-border data-[state=checked]:bg-foreground"
-            />
-            <Label
-              htmlFor="is-special-order"
-              className="text-sm font-black uppercase tracking-widest text-foreground cursor-pointer"
-            >
-              Special Order
-            </Label>
-          </div>
+          {showLegacyShopSiteFields ? (
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="is-special-order"
+                checked={formData.isSpecialOrder}
+                onCheckedChange={(checked) =>
+                  handleInputChange("isSpecialOrder", checked === true)
+                }
+                className="h-5 w-5 rounded-none border border-border data-[state=checked]:bg-foreground"
+              />
+              <Label
+                htmlFor="is-special-order"
+                className="text-sm font-black uppercase tracking-widest text-foreground cursor-pointer"
+              >
+                Special Order
+              </Label>
+            </div>
+          ) : null}
         </div>
       </details>
     </div>

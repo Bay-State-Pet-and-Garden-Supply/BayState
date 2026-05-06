@@ -113,12 +113,17 @@ export interface PipelineProduct {
     weight?: string | number;
     stock_status?: string;
     product_on_pages?: string[] | string;
+    shopsite_pages?: string[] | string;
     gtin?: string;
     availability?: string;
     minimum_quantity?: number | string;
     is_special_order?: boolean;
+    in_store_pickup?: boolean;
+    pickup_only?: boolean;
+    is_taxable?: boolean;
     search_keywords?: string;
     brand?: string;
+    legacy_filename?: string;
   } | null;
   /** Scraped data from multiple sources keyed by source ID */
   sources: Record<string, unknown>;
@@ -136,11 +141,16 @@ export interface PipelineProduct {
     weight?: string | number | null;
     stock_status?: string;
     product_on_pages?: string[] | string;
+    shopsite_pages?: string[] | string;
     is_special_order?: boolean;
+    is_taxable?: boolean;
+    in_store_pickup?: boolean;
+    pickup_only?: boolean;
     search_keywords?: string;
     gtin?: string;
     availability?: string;
     minimum_quantity?: number | string;
+    legacy_filename?: string;
   } | null;
   pipeline_status: PersistedPipelineStatus;
   exported_at?: string | null;
@@ -239,12 +249,12 @@ export const STAGE_CONFIG: Record<StageConfigKey, StageConfig> = {
   finalizing: {
     label: "Finalizing",
     color: "#F59E0B",
-    description: "Products awaiting final review before they move into export work",
+    description: "Products awaiting final review before storefront publication",
   },
   exporting: {
     label: "Exporting",
     color: "#008850",
-    description: "Approved products queued for downstream export workflows",
+    description: "Products published to the Supabase storefront and queued for optional downstream exports",
   },
   failed: {
     label: "Failed",
