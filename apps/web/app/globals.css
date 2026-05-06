@@ -249,24 +249,24 @@
   }
 
   .admin-page-title {
-    @apply text-3xl font-semibold text-zinc-950 md:text-4xl;
+    @apply text-3xl font-semibold text-foreground md:text-4xl;
   }
 
   .admin-page-copy {
-    @apply text-sm font-medium text-zinc-500 md:text-base;
+    @apply text-sm font-medium text-muted-foreground md:text-base;
   }
 
-  /* ── Admin Surface: positive design tokens + shadcn remap ── */
+  /* ── Admin Surface: dark design tokens + shadcn remap ── */
   [data-ui-surface="admin"] {
-    /* Admin surface tokens */
-    --surface-admin-bg: oklch(96% 0.01 90);
-    --surface-admin-card: oklch(98% 0.01 90);
-    --surface-admin-muted: oklch(94% 0.01 90);
-    --surface-admin-border: oklch(85% 0.03 160);
-    --surface-admin-text: oklch(20% 0.02 160);
-    --surface-admin-heading: oklch(15% 0.02 160);
-    --surface-admin-muted-text: oklch(45% 0.02 160);
-    --surface-admin-accent: oklch(35% 0.08 160);
+    /* Admin surface tokens - DARK THEME */
+    --surface-admin-bg: oklch(15% 0.02 160);
+    --surface-admin-card: oklch(18% 0.02 160);
+    --surface-admin-muted: oklch(22% 0.02 160);
+    --surface-admin-border: oklch(30% 0.03 160);
+    --surface-admin-text: oklch(95% 0.02 90);
+    --surface-admin-heading: oklch(98% 0.01 90);
+    --surface-admin-muted-text: oklch(75% 0.02 160);
+    --surface-admin-accent: oklch(45% 0.08 160);
     --surface-admin-radius: 0.5rem;
 
     /* shadcn variable remapping — all bg-card, text-muted-foreground, etc. use admin tokens */

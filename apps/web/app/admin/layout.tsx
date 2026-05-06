@@ -14,7 +14,7 @@ export default async function AdminLayout({
   return (
     <div
       data-ui-surface="admin"
-      className="fixed inset-0 flex min-h-screen overflow-hidden bg-[var(--surface-admin-bg)] text-zinc-950 selection:bg-primary selection:text-white"
+      className="fixed inset-0 flex min-h-screen overflow-hidden bg-[var(--surface-admin-bg)] text-foreground selection:bg-primary selection:text-white"
     >
       <AdminLayoutStyles />
       <SkipLink />
