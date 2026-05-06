@@ -55,10 +55,10 @@ export function PipelineSidebarHeaderRow({
       key={`header-${cohortId}`}
       className={cn(
         "group cursor-pointer select-none transition-all duration-500 ease-out",
-        isActive ? "bg-feed-bag-cream hover:bg-feed-bag-cream border-b-4 border-ledger-charcoal shadow-sm" : 
+        isActive ? "bg-primary/20 hover:bg-primary/30 border-b-4 border-foreground shadow-sm" : 
         isCollapsed 
           ? "bg-muted/40 hover:bg-muted/60 border-b border-border shadow-none" 
-          : "bg-muted hover:bg-muted/80 border-b-4 border-ledger-charcoal shadow-sm"
+          : "bg-muted hover:bg-muted/80 border-b-4 border-foreground shadow-sm"
       )}
       onClick={() => onToggleCollapse?.(cohortId)}
     >
@@ -69,7 +69,7 @@ export function PipelineSidebarHeaderRow({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 text-ledger-charcoal hover:bg-muted/50 transition-colors"
+                className="h-6 w-6 p-0 text-foreground hover:bg-muted/50 transition-colors"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -95,11 +95,11 @@ export function PipelineSidebarHeaderRow({
                 }
               }}
               onClick={(e) => e.stopPropagation()}
-              className="h-4 w-4 border-ledger-charcoal data-[state=checked]:bg-ledger-charcoal data-[state=checked]:border-ledger-charcoal"
+              className="h-4 w-4 border-foreground data-[state=checked]:bg-foreground data-[state=checked]:border-foreground"
             />
           </div>
           <div className="flex-1 flex items-center gap-2 overflow-hidden min-w-0">
-            <div className="font-black text-[11px] uppercase tracking-widest text-ledger-charcoal truncate shrink-0">
+            <div className="font-black text-[11px] uppercase tracking-widest text-foreground truncate shrink-0">
               {formatPipelineBatchLabel(cohortId, cohortName || null)}
             </div>
             {cohortBrand && (
@@ -114,14 +114,14 @@ export function PipelineSidebarHeaderRow({
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-auto">
-            <Badge variant="secondary" className="h-4 text-[9px] px-1 bg-ledger-charcoal text-white font-black uppercase tracking-widest border-none rounded-none">
+            <Badge variant="secondary" className="h-4 text-[9px] px-1 bg-foreground text-background font-black uppercase tracking-widest border-none rounded-none">
               {groupProducts.length}
             </Badge>
             {cohortId !== "ungrouped" && onEditCohort && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 text-muted-foreground hover:text-ledger-charcoal hover:bg-muted/50"
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();

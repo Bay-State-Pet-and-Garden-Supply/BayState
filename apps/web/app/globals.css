@@ -299,6 +299,11 @@
     --sidebar-border: var(--surface-admin-border);
     --sidebar-ring: var(--surface-admin-accent);
 
+    /* High-contrast brand overrides for dark surface */
+    --brand-burgundy: oklch(60% 0.15 25);
+    --brand-forest-green: oklch(65% 0.1 160);
+    --brand-gold: oklch(90% 0.15 95);
+
     background-color: var(--surface-admin-bg);
   }
 
