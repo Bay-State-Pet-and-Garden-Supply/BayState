@@ -25,9 +25,13 @@ const ABBREVIATION_MAP: Record<string, string> = {
 
 /**
  * Expand common distributor abbreviations in product names.
+ * Handles hyphenated and slash-separated forms (e.g., "Sm-Med", "Blk/Wht").
  */
 function expandAbbreviations(text: string): string {
-    return text.split(' ').map((word) => {
+    // Expose abbreviations joined by hyphens or slashes
+    const preprocessed = text.replace(/(?<=[a-zA-Z])[-\/](?=[a-zA-Z])/g, ' $& ');
+    const expanded = preprocessed.split(/\s+/).map((word) => {
+        if (word === '-' || word === '/') return word;
         const stripped = word.replace(/[^a-zA-Z]/g, '');
         const replacement = ABBREVIATION_MAP[stripped.toLowerCase()];
         if (replacement) {
@@ -35,6 +39,8 @@ function expandAbbreviations(text: string): string {
         }
         return word;
     }).join(' ');
+    // Tighten spaces around hyphens/slashes
+    return expanded.replace(/\s+([-\/])\s+/g, '$1').replace(/\s+/g, ' ');
 }
 function toTitleCasePreserveBrand(text: string): string {
     return text
@@ -205,6 +211,15 @@ export function normalizeConsolidationResult(
         normalized.name = name;
     }
 
+    // Enforce brand-at-start: if brand exists and name doesn't start with it, prepend
+    if (typeof normalized.brand === 'string' && typeof normalized.name === 'string') {
+        const brandLower = normalized.brand.toLowerCase();
+        const nameLower = normalized.name.toLowerCase();
+        if (!nameLower.startsWith(brandLower)) {
+            normalized.name = `${normalized.brand} ${normalized.name}`;
+        }
+    }
+
     if (typeof normalized.brand === 'string') {
         normalized.brand = normalizePlainText(normalized.brand.replace(/^brand\s*:\s*/i, ''));
     }
@@ -303,7 +318,7 @@ export function convertWeightToPounds(weight: string): string | null {
     let totalPounds = 0;
 
     // Try to match pounds and ounces pattern: "1 lb 8 oz" or "1lb 8oz"
-    const lbOzMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*lb\s+(?:and\s+)?(\d+(?:\.\d+)?)\s*oz$/i);
+    const lbOzMatch = trimmed.match(/\b(\d+(?:\.\d+)?)\s*lb\s+(?:and\s+)?(\d+(?:\.\d+)?)\s*oz\b/i);
     if (lbOzMatch) {
         const lbs = parseFloat(lbOzMatch[1]);
         const oz = parseFloat(lbOzMatch[2]);
@@ -312,7 +327,7 @@ export function convertWeightToPounds(weight: string): string | null {
     }
 
     // Try to match ounces only: "16 oz" or "16oz"
-    const ozMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*oz$/i);
+    const ozMatch = trimmed.match(/\b(\d+(?:\.\d+)?)\s*oz\b/i);
     if (ozMatch) {
         const oz = parseFloat(ozMatch[1]);
         totalPounds = oz / OZ_PER_LB;
@@ -320,7 +335,7 @@ export function convertWeightToPounds(weight: string): string | null {
     }
 
     // Try to match pounds only: "5 lb" or "5lb"
-    const lbMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*lb$/i);
+    const lbMatch = trimmed.match(/\b(\d+(?:\.\d+)?)\s*lb\b/i);
     if (lbMatch) {
         const lbs = parseFloat(lbMatch[1]);
         totalPounds = lbs;
@@ -328,7 +343,7 @@ export function convertWeightToPounds(weight: string): string | null {
     }
 
     // Try to match grams: "500 g" or "500g"
-    const gMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*g$/i);
+    const gMatch = trimmed.match(/\b(\d+(?:\.\d+)?)\s*g\b/i);
     if (gMatch) {
         const g = parseFloat(gMatch[1]);
         totalPounds = g / G_PER_LB;

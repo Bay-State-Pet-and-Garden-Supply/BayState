@@ -264,4 +264,186 @@ describe('/api/admin/pipeline/scrape route', () => {
             },
         });
     });
+
+    describe('deep_research enrichment method', () => {
+        beforeEach(() => {
+            // Restore default mock — clearAllMocks() does not reset implementations
+            (scrapeProducts as jest.Mock).mockResolvedValue({ success: true, jobIds: ['job-1'] });
+        });
+
+        it('accepts deep_research without requiring scrapers', async () => {
+            (scrapeProducts as jest.Mock).mockResolvedValue({
+                success: true,
+                jobIds: ['dr-job-1'],
+            });
+
+            const response = await POST(
+                new NextRequest('http://localhost/api/admin/pipeline/scrape', {
+                    body: JSON.stringify({
+                        skus: ['SKU-1'],
+                        enrichment_method: 'deep_research',
+                    }),
+                } as any),
+            );
+            const payload = await response.json();
+
+            expect(response.status).toBe(200);
+            expect(payload).toMatchObject({ success: true, jobIds: ['dr-job-1'] });
+            expect(scrapeProducts).toHaveBeenCalledWith(['SKU-1'],
+                expect.objectContaining({
+                    enrichment_method: 'deep_research',
+                }),
+            );
+        });
+
+        it('resolves cohort context and passes it as deepResearchCohort', async () => {
+            const cohortSingle = jest.fn().mockResolvedValue({
+                data: {
+                    id: 'cohort-1',
+                    brand_id: 'brand-1',
+                    brand_name: null,
+                    brands: {
+                        id: 'brand-1',
+                        name: 'Test Brand',
+                        website_url: 'https://testbrand.com',
+                        official_domains: ['testbrand.com'],
+                        preferred_domains: [],
+                    },
+                },
+                error: null,
+            });
+
+            (createClient as jest.Mock).mockResolvedValue({
+                from: jest.fn((table: string) => {
+                    if (table === 'cohort_batches') {
+                        return {
+                            select: jest.fn().mockReturnValue({
+                                eq: jest.fn().mockReturnValue({ single: cohortSingle }),
+                            }),
+                        };
+                    }
+
+                    throw new Error(`Unexpected table ${table}`);
+                }),
+            });
+
+            const response = await POST(
+                new NextRequest('http://localhost/api/admin/pipeline/scrape', {
+                    body: JSON.stringify({
+                        skus: ['SKU-1'],
+                        scrapers: [],
+                        enrichment_method: 'deep_research',
+                        cohort_id: 'cohort-1',
+                    }),
+                } as any),
+            );
+
+            expect(response.status).toBe(200);
+            expect(scrapeProducts).toHaveBeenCalledWith(['SKU-1'],
+                expect.objectContaining({
+                    enrichment_method: 'deep_research',
+                    cohortBrand: 'Test Brand',
+                    deepResearchCohort: expect.objectContaining({
+                        id: 'cohort-1',
+                        brandId: 'brand-1',
+                        brandName: 'Test Brand',
+                    }),
+                }),
+            );
+        });
+
+        it('omits deepResearchCohort when cohort brand data is incomplete', async () => {
+            // When brand_id or brand_name is missing, deepResearchCohort is silently omitted
+            const cohortSingle = jest.fn().mockResolvedValue({
+                data: {
+                    id: 'cohort-1',
+                    brand_id: null,
+                    brand_name: null,
+                    brands: null,
+                },
+                error: null,
+            });
+
+            (createClient as jest.Mock).mockResolvedValue({
+                from: jest.fn((table: string) => {
+                    if (table === 'cohort_batches') {
+                        return {
+                            select: jest.fn().mockReturnValue({
+                                eq: jest.fn().mockReturnValue({ single: cohortSingle }),
+                            }),
+                        };
+                    }
+
+                    throw new Error(`Unexpected table ${table}`);
+                }),
+            });
+
+            const response = await POST(
+                new NextRequest('http://localhost/api/admin/pipeline/scrape', {
+                    body: JSON.stringify({
+                        skus: ['SKU-1'],
+                        scrapers: [],
+                        enrichment_method: 'deep_research',
+                        cohort_id: 'cohort-1',
+                    }),
+                } as any),
+            );
+
+            // Should succeed without deepResearchCohort (no error for missing brand data)
+            expect(response.status).toBe(200);
+            expect(scrapeProducts).toHaveBeenCalledWith(['SKU-1'],
+                expect.not.objectContaining({
+                    deepResearchCohort: expect.anything(),
+                }),
+            );
+        });
+
+        it('skips official_brand strict validation for deep_research', async () => {
+            // Deep research should not require cohort brand to have domains configured
+            const cohortSingle = jest.fn().mockResolvedValue({
+                data: {
+                    id: 'cohort-1',
+                    brand_id: 'brand-1',
+                    brand_name: 'Brand Name Only',
+                    brands: {
+                        id: 'brand-1',
+                        name: 'Brand Name Only',
+                        website_url: null,
+                        official_domains: [],
+                        preferred_domains: [],
+                    },
+                },
+                error: null,
+            });
+
+            (createClient as jest.Mock).mockResolvedValue({
+                from: jest.fn((table: string) => {
+                    if (table === 'cohort_batches') {
+                        return {
+                            select: jest.fn().mockReturnValue({
+                                eq: jest.fn().mockReturnValue({ single: cohortSingle }),
+                            }),
+                        };
+                    }
+
+                    throw new Error(`Unexpected table ${table}`);
+                }),
+            });
+
+            const response = await POST(
+                new NextRequest('http://localhost/api/admin/pipeline/scrape', {
+                    body: JSON.stringify({
+                        skus: ['SKU-1'],
+                        scrapers: [],
+                        enrichment_method: 'deep_research',
+                        cohort_id: 'cohort-1',
+                    }),
+                } as any),
+            );
+
+            // Should succeed even without domains (official_brand would reject this)
+            expect(response.status).toBe(200);
+            expect(scrapeProducts).toHaveBeenCalled();
+        });
+    });
 });

@@ -76,6 +76,7 @@ interface FloatingActionsBarProps {
   onDiscoverOfficialBrand?: () => void;
   canDiscoverOfficialBrand?: boolean;
   officialBrandSelectionReason?: string | null;
+
   scrapeSelectionValidation?: { allowed: boolean; reason: string | null };
   onDelete?: () => void;
   actionState?: "upload" | "zip" | null;
@@ -236,6 +237,8 @@ export function FloatingActionsBar({
               )}
             </Tooltip>
           )}
+
+
 
           {onDelete && (
             <Button

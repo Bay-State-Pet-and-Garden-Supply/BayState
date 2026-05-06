@@ -2,8 +2,8 @@ import crypto from 'crypto';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { DEFAULT_AI_MODEL } from '@/lib/ai-scraping/models';
 
-type AIProvider = 'openai' | 'openai_compatible' | 'gemini' | 'serpapi' | 'brave';
-export type LLMProvider = 'openai' | 'openai_compatible' | 'gemini';
+type AIProvider = 'openai' | 'openai_compatible' | 'gemini' | 'lmstudio' | 'serpapi' | 'brave';
+export type LLMProvider = 'openai' | 'openai_compatible' | 'gemini' | 'lmstudio';
 
 interface BaseLLMDefaults {
   llm_provider: LLMProvider;
@@ -396,7 +396,18 @@ function logDecryptFailure(provider: AIProvider, error: unknown): void {
 }
 
 function normalizeLLMProvider(_provider?: unknown): LLMProvider {
-  void _provider;
+  if (_provider === 'openai' || _provider === 'openai_compatible') {
+    return _provider;
+  }
+  // gemini and other legacy providers fall back to openai for scraping
+  return 'openai';
+}
+
+function normalizeConsolidationProvider(_provider?: unknown): LLMProvider {
+  if (_provider === 'openai' || _provider === 'openai_compatible' || _provider === 'lmstudio') {
+    return _provider;
+  }
+  // gemini and other legacy providers fall back to openai for consolidation
   return 'openai';
 }
 
@@ -507,13 +518,19 @@ export async function upsertAIScrapingDefaults(partial: Partial<AIScrapingDefaul
 function normalizeConsolidationDefaults(raw: unknown): AIConsolidationDefaults {
   const value = (raw && typeof raw === 'object') ? (raw as Record<string, unknown>) : {};
 
-  const llmProvider = normalizeLLMProvider(value.llm_provider);
-  const llmModel = normalizeOpenAIModel(value.llm_model, getDefaultModelForProvider(llmProvider));
+  const llmProvider = normalizeConsolidationProvider(value.llm_provider);
+  // Use provided model for LM Studio (arbitrary names), OpenAI-enforce for others
+  const llmModel = llmProvider === 'lmstudio'
+    ? normalizeLLMModel(value.llm_model, getDefaultModelForProvider(llmProvider))
+    : normalizeOpenAIModel(value.llm_model, getDefaultModelForProvider(llmProvider));
   const llmBaseUrl = normalizeLLMBaseUrl(value.llm_base_url);
   const confidenceThreshold = Number.isFinite(value.confidence_threshold)
     ? Number(value.confidence_threshold)
     : DEFAULT_AI_CONSOLIDATION_DEFAULTS.confidence_threshold;
-  const llmSupportsBatchApi = true;
+  // Preserve the DB value; only force false for lmstudio, true for openai.
+  const llmSupportsBatchApi = llmProvider === 'lmstudio'
+    ? false
+    : value.llm_supports_batch_api !== false;
 
   return {
     llm_provider: llmProvider,
@@ -636,6 +653,7 @@ export async function getAIScrapingCredentialStatuses(): Promise<Record<AIProvid
     openai: { provider: 'openai', configured: false, last4: null, updated_at: null },
     openai_compatible: { provider: 'openai_compatible', configured: false, last4: null, updated_at: null },
     gemini: { provider: 'gemini', configured: false, last4: null, updated_at: null },
+    lmstudio: { provider: 'lmstudio', configured: false, last4: null, updated_at: null },
     serpapi: { provider: 'serpapi', configured: false, last4: null, updated_at: null },
     brave: { provider: 'brave', configured: false, last4: null, updated_at: null },
   };
@@ -646,6 +664,7 @@ export async function getAIScrapingCredentialStatuses(): Promise<Record<AIProvid
       provider !== 'openai'
       && provider !== 'openai_compatible'
       && provider !== 'gemini'
+      && provider !== 'lmstudio'
       && provider !== 'serpapi'
       && provider !== 'brave'
     ) {
@@ -740,13 +759,19 @@ export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRunti
 }
 
 export async function getAIConsolidationRuntimeConfig(): Promise<AIConsolidationRuntimeConfig> {
-  const [defaults, openai] = await Promise.all([
-    getAIConsolidationDefaults(),
+  const defaults = await getAIConsolidationDefaults();
+
+  // Load the selected provider's API key, plus OpenAI for fallback
+  const [selectedKey, openaiKey] = await Promise.all([
+    getAIScrapingProviderSecret(defaults.llm_provider),
     getAIScrapingProviderSecret('openai'),
   ]);
 
-  const resolvedOpenAI = resolveOpenAIApiKey(openai);
-  const llmApiKey = resolvedOpenAI;
+  const resolvedOpenAI = resolveOpenAIApiKey(openaiKey);
+  // For LM Studio, use the selected provider key; for others, prefer resolved OpenAI
+  const llmApiKey = defaults.llm_provider === 'lmstudio'
+    ? (selectedKey || resolvedOpenAI)
+    : resolvedOpenAI;
 
   return {
     llm_provider: defaults.llm_provider,

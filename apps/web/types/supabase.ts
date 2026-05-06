@@ -223,6 +223,75 @@ export type Database = {
           },
         ]
       }
+      batch_job_items: {
+        Row: {
+          attempt_count: number
+          batch_job_id: string
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          fallback_batch_id: string | null
+          id: string
+          parsed_result: Json | null
+          product_source: Json
+          request_payload: Json
+          response_payload: Json | null
+          sku: string
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          batch_job_id: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          fallback_batch_id?: string | null
+          id?: string
+          parsed_result?: Json | null
+          product_source?: Json
+          request_payload?: Json
+          response_payload?: Json | null
+          sku: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          batch_job_id?: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          fallback_batch_id?: string | null
+          id?: string
+          parsed_result?: Json | null
+          product_source?: Json
+          request_payload?: Json
+          response_payload?: Json | null
+          sku?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_job_items_batch_job_id_fkey"
+            columns: ["batch_job_id"]
+            isOneToOne: false
+            referencedRelation: "batch_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_job_items_fallback_batch_id_fkey"
+            columns: ["fallback_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       batch_jobs: {
         Row: {
           auto_apply: boolean | null
@@ -233,6 +302,7 @@ export type Database = {
           description: string | null
           error_file_id: string | null
           estimated_cost: number | null
+          execution_mode: string
           failed_requests: number | null
           failed_skus: string[] | null
           id: string
@@ -265,6 +335,7 @@ export type Database = {
           description?: string | null
           error_file_id?: string | null
           estimated_cost?: number | null
+          execution_mode?: string
           failed_requests?: number | null
           failed_skus?: string[] | null
           id?: string
@@ -297,6 +368,7 @@ export type Database = {
           description?: string | null
           error_file_id?: string | null
           estimated_cost?: number | null
+          execution_mode?: string
           failed_requests?: number | null
           failed_skus?: string[] | null
           id?: string

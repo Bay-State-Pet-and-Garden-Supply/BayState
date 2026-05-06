@@ -2,6 +2,24 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AIScrapingSettingsCard } from '@/components/admin/settings/AIScrapingSettingsCard';
 import { AIConsolidationSettingsCard } from '@/components/admin/settings/AIConsolidationSettingsCard';
 
+const mockConsolidationResponse = {
+  defaults: {
+    llm_provider: 'openai',
+    llm_model: 'gpt-4o-mini',
+    llm_base_url: null,
+    llm_supports_batch_api: true,
+    confidence_threshold: 0.7,
+  },
+  statuses: {
+    gemini: { provider: 'gemini', configured: true, last4: '2468', updated_at: null },
+    brave: { provider: 'brave', configured: true, last4: '1357', updated_at: null },
+    serpapi: { provider: 'serpapi', configured: true, last4: '9999', updated_at: null },
+    openai: { provider: 'openai', configured: true, last4: '1234', updated_at: null },
+    lmstudio: { provider: 'lmstudio', configured: false, last4: null, updated_at: null },
+  },
+  openai_fallback_status: { provider: 'openai', configured: true, last4: '1234', updated_at: null },
+};
+
 const mockSettingsResponse = {
   statuses: {
     gemini: { provider: 'gemini', configured: true, last4: '2468', updated_at: null },
@@ -28,9 +46,17 @@ const mockSettingsResponse = {
 
 describe('AI settings cards', () => {
   beforeEach(() => {
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockSettingsResponse),
+    global.fetch = jest.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/admin/consolidation/settings')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockConsolidationResponse),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(mockSettingsResponse),
+      });
     }) as jest.Mock;
   });
 
@@ -69,11 +95,9 @@ describe('AI settings cards', () => {
       expect(screen.getByLabelText('OpenAI API Key')).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/OpenAI batch pipeline/i)).toBeInTheDocument();
-    const consolidationModelCombobox = screen.getByRole('combobox', { name: 'OpenAI Model' });
-    expect(consolidationModelCombobox).toHaveTextContent('GPT-4o mini');
-    fireEvent.click(consolidationModelCombobox);
-    expect(screen.getByText('Higher quality reasoning for tougher extraction and enrichment cases.')).toBeInTheDocument();
+    // Provider options should be visible
+    expect(screen.getByText('OpenAI Batch')).toBeInTheDocument();
+    expect(screen.getByText('LM Studio Direct Chat')).toBeInTheDocument();
     expect(screen.getByText('OpenAI Batch Ready')).toBeInTheDocument();
   });
 });

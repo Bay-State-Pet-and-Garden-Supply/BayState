@@ -201,6 +201,23 @@ export function buildResponseSchema(
                 type: 'number',
                 description: 'Confidence score between 0.0 and 1.0',
             },
+            category: {
+                type: 'string',
+                description: 'Best-fit taxonomy category from the allowed list',
+                ...(categories.length > 0 ? { enum: categories } : {}),
+            },
+            description: {
+                type: 'string',
+                description: 'Short product description from highest-trust source',
+            },
+            long_description: {
+                type: 'string',
+                description: 'Extended product description when source-supported',
+            },
+            search_keywords: {
+                type: 'string',
+                description: 'Comma-separated search keywords from source data',
+            },
         },
         required: ['name', 'brand', 'weight', 'product_on_pages', 'confidence_score'],
         additionalProperties: false,

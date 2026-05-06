@@ -1067,7 +1067,29 @@ def _run_official_brand_job(
     scraper_name = "official_brand"
     raw_phase = str(search_cfg.get("phase") or "").strip()
     if job_config.job_type == OFFICIAL_BRAND_URL_DISCOVERY_TYPE or raw_phase == "url_discovery":
-        official_brand_phase = "url_discovery"
+        _emit_runner_log(
+            job_id=job_config.job_id,
+            runner_name=runner_name,
+            job_logging=job_logging,
+            log_buffer=log_buffer,
+            level="error",
+            message=(
+                "Official Brand URL discovery is now server-side. "
+                "Use the admin pipeline discovery endpoint. This job will be marked as failed."
+            ),
+            scraper_name="official_brand",
+            phase="failed",
+            flush_immediately=True,
+        )
+        results["skus_failed"] = len(skus)
+        results["skus_processed"] = len(skus)
+        results["error_message"] = (
+            "URL discovery is now server-side. "
+            "Use POST /api/admin/pipeline/official-brand/discover instead."
+        )
+        results["logs"] = job_logging.snapshot() if job_logging else log_buffer
+        results["telemetry"] = {"steps": [], "selectors": [], "extractions": []}
+        return results
     elif job_config.job_type == OFFICIAL_BRAND_EXTRACTION_TYPE or raw_phase == "extraction":
         official_brand_phase = "extraction"
     else:
@@ -1105,20 +1127,10 @@ def _run_official_brand_job(
     if llm_api_key is None:
         llm_api_key = runtime_llm_api_key
 
-    previous_serper = os.environ.get("SERPER_API_KEY")
-    runtime_serper = _get_optional_string(runtime_credentials, "serper_api_key")
-    if runtime_serper is None:
-        runtime_serper = _get_optional_string(runtime_credentials, "serpapi_api_key")
-
     # Debug log credential extraction
     logger.debug(f"Job payload credentials available: {bool(runtime_credentials)}")
     if llm_api_key:
         logger.debug(f"Resolved {llm_provider} LLM API key for Official Brand: {llm_api_key[:4]}...")
-    if runtime_serper:
-        logger.debug(f"Setting SERPER_API_KEY from job payload: {runtime_serper[:4]}...")
-
-    if runtime_serper and official_brand_phase != "extraction":
-        os.environ["SERPER_API_KEY"] = runtime_serper
 
     item_context_by_sku: Dict[str, Dict[str, Any]] = {}
 
@@ -1176,19 +1188,18 @@ def _run_official_brand_job(
             "preferred_domains": preferred_domains
             if preferred_domains is not None
             else (cohort_preferred_domains if cohort_preferred_domains is not None else search_cfg.get("preferred_domains")),
+            "source_url": item_context.get("source_url") if item_context.get("source_url") is not None else search_cfg.get("source_url"),
+            "known_url": item_context.get("known_url") if item_context.get("known_url") is not None else search_cfg.get("known_url"),
+            "url_source": item_context.get("url_source") if item_context.get("url_source") is not None else search_cfg.get("url_source"),
+            "candidate_id": item_context.get("candidate_id") if item_context.get("candidate_id") is not None else search_cfg.get("candidate_id"),
         }
 
-        if official_brand_phase == "extraction":
-            base_item["source_url"] = item_context.get("source_url") if item_context.get("source_url") is not None else search_cfg.get("source_url")
-            base_item["known_url"] = item_context.get("known_url") if item_context.get("known_url") is not None else search_cfg.get("known_url")
-            base_item["url_source"] = item_context.get("url_source") if item_context.get("url_source") is not None else search_cfg.get("url_source")
-            base_item["candidate_id"] = item_context.get("candidate_id") if item_context.get("candidate_id") is not None else search_cfg.get("candidate_id")
-            fallback_urls = item_context.get("fallback_urls")
-            if fallback_urls is not None:
-                base_item["fallback_urls"] = fallback_urls
-            max_fallbacks = item_context.get("max_fallbacks")
-            if max_fallbacks is not None:
-                base_item["max_fallbacks"] = max_fallbacks
+        fallback_urls = item_context.get("fallback_urls")
+        if fallback_urls is not None:
+            base_item["fallback_urls"] = fallback_urls
+        max_fallbacks = item_context.get("max_fallbacks")
+        if max_fallbacks is not None:
+            base_item["max_fallbacks"] = max_fallbacks
 
         items.append(base_item)
 
@@ -1235,102 +1246,17 @@ def _run_official_brand_job(
             llm_model=llm_model,
             llm_api_key=llm_api_key,
         )
-        if official_brand_phase == "url_discovery":
-            return await scraper.discover_product_urls_batch(items, max_concurrency=max_concurrency)
         if official_brand_phase == "extraction":
             return await scraper.extract_products_from_urls_batch(items, max_concurrency=max_concurrency)
         return await scraper.scrape_products_batch(items, max_concurrency=max_concurrency)
 
 
-    try:
-        batch_results = asyncio.run(_run())
-    finally:
-        if runtime_serper and official_brand_phase != "extraction":
-            if previous_serper is None:
-                os.environ.pop("SERPER_API_KEY", None)
-            else:
-                os.environ["SERPER_API_KEY"] = previous_serper
+    batch_results = asyncio.run(_run())
 
     total_cost = 0.0
     error_counts: Dict[str, Dict[str, Any]] = {}
 
     for search_result in batch_results:
-        if official_brand_phase == "url_discovery" and isinstance(search_result, dict):
-            sku = str(search_result.get("sku") or "").strip()
-            results["skus_processed"] += 1
-            if not sku:
-                continue
-
-            if sku not in results["data"]:
-                results["data"][sku] = {}
-
-            selected_url = search_result.get("selected_url")
-            candidates = search_result.get("candidates") if isinstance(search_result.get("candidates"), list) else []
-            result_payload = {
-                "phase": "url_discovery",
-                "status": search_result.get("status") or ("found" if selected_url else "not_found"),
-                "selected_url": selected_url,
-                "url": selected_url,
-                "source_website": selected_url,
-                "candidates": candidates,
-                "confidence": search_result.get("confidence") or 0.0,
-                "selection_method": search_result.get("selection_method"),
-                "predicted_name": search_result.get("predicted_name"),
-                "fallback_urls": search_result.get("fallback_urls"),
-                "phase1_result_count": search_result.get("phase1_result_count"),
-                "phase2_result_count": search_result.get("phase2_result_count"),
-                "error": search_result.get("error"),
-                "scraped_at": datetime.now().isoformat(),
-            }
-            results["data"][sku][scraper_name] = result_payload
-
-            if selected_url:
-                _emit_runner_log(
-                    job_id=job_config.job_id,
-                    runner_name=runner_name,
-                    job_logging=job_logging,
-                    log_buffer=log_buffer,
-                    level="info",
-                    message=f"{scraper_name}/{sku}: Found official URL",
-                    details={"selected_url": selected_url, "candidate_count": len(candidates)},
-                    scraper_name=scraper_name,
-                    sku=sku,
-                    phase="url-discovery",
-                )
-            else:
-                error_type = "url_not_found"
-                message = str(search_result.get("error") or "Official Brand URL not found")
-                current_error = error_counts.get(error_type)
-                if current_error is None:
-                    error_counts[error_type] = {"error_type": error_type, "message": message, "count": 1}
-                else:
-                    current_error["count"] += 1
-                _emit_runner_log(
-                    job_id=job_config.job_id,
-                    runner_name=runner_name,
-                    job_logging=job_logging,
-                    log_buffer=log_buffer,
-                    level="warning",
-                    message=f"{scraper_name}/{sku}: {message}",
-                    details={"candidate_count": len(candidates)},
-                    scraper_name=scraper_name,
-                    sku=sku,
-                    phase="url-discovery",
-                )
-
-            _emit_job_progress(
-                job_logging=job_logging,
-                status="running",
-                progress=_progress_from_units(results["skus_processed"], max(1, len(items))),
-                message=f"Discovered URLs for {results['skus_processed']}/{len(items)} Official Brand items",
-                phase="url-discovery",
-                details={"scraper_name": scraper_name},
-                current_sku=sku,
-                items_processed=results["skus_processed"],
-                items_total=len(items),
-            )
-            continue
-
         sku = search_result.sku
         results["skus_processed"] += 1
         result_cost = float(search_result.cost_usd or 0.0)

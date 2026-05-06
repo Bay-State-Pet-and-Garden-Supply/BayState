@@ -220,12 +220,20 @@ Sibling product context:
 - Use sibling product context only as consistency guidance when it is provided.
 - Keep supported naming and brand patterns aligned across related SKUs without inventing details from siblings.
 
+OCR Packaging Evidence (image_text):
+- When a source provides image_text (OCR extracted from product packaging photos), treat it as authoritative for the physical packaging text.
+- Match the packaging name, brand, and size/weight as closely as possible. Strip extraneous text: marketing taglines, legal disclaimers, address blocks, barcode numbers, URLs, social handles, and promotional callouts.
+- If image_text conflicts with marketplace or distributor titles on product name or brand, prefer the packaging evidence.
+- If image_text is missing a detail (e.g., weight), backfill from higher-trust structured sources, not marketplace listings.
+- Never fabricate packaging details not present in image_text.
+
 Product-name rules:
-- Exclude brand from the product name; put it only in brand.
-- Brand at start: "Blue Buffalo Dog Food" → "Dog Food"
-- Brand in middle: "Dog Food by Blue Buffalo" → "Dog Food"
-- Brand at end: "Dog Food Blue Buffalo" → "Dog Food"
-- Use case-insensitive brand matching.
+- Brand MUST be the first token in the product name, separated by a space. Never drop the brand from the name.
+- Example: brand "Blue Buffalo" + name "Dog Food" → "Blue Buffalo Dog Food"
+- If the source name already starts with the brand, keep it; do not duplicate the brand.
+- Use the brand spelling from the highest-trust source. Use case-insensitive brand matching to avoid duplication. No "Brand:" prefix in the name.
+- For consumable and food products, place the food-type descriptor directly before the size/weight: prefer "Dry Dog Food 30 lb." over "Dog Food 30 lb. Dry" or "Dog Food Dry 30 lb."
+- General pattern: [Brand] [Product-Type Descriptor] [Flavor/Variant if distinct and source-supported] [Size/Weight/Count]
 - Keep names in Title Case with size/weight/count at the end.
 - Never truncate words or use ellipses.
 - Never produce identical names for distinguishable variants; include source-supported differentiators and do not invent variant details.

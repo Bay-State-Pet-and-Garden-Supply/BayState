@@ -847,4 +847,135 @@ describe('scrapeProducts', () => {
         expect(result.success).toBe(false);
         expect(result.error).toContain('requires a source URL for every SKU');
     });
+
+    it('should create deep_research job with linear chunk plan and items config', async () => {
+        mockSupabase = makeSupabaseMock({
+            pipelineRows: [
+                {
+                    sku: 'SKU-1',
+                    cohort_id: 'cohort-1',
+                    input: {
+                        name: 'Deep Research Product',
+                        price: 19.99,
+                        brand: 'Test Brand',
+                    },
+                },
+            ],
+        });
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], {
+            enrichment_method: 'deep_research',
+            deepResearchCohort: {
+                id: 'cohort-1',
+                brandId: 'brand-1',
+                brandName: 'Test Brand',
+                websiteUrl: 'https://test-brand.com',
+                officialDomains: ['test-brand.com'],
+            },
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.jobIds).toHaveLength(1);
+
+        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
+        expect(insertedPayload.type).toBe('deep_research');
+        expect(insertedPayload.scrapers).toEqual(['deep_research']);
+        expect(insertedPayload.config).toBeDefined();
+        expect(insertedPayload.config.items).toBeDefined();
+        expect(insertedPayload.config.items).toEqual([
+            {
+                sku: 'SKU-1',
+                register_name: 'Deep Research Product',
+                brand: 'Test Brand',
+            },
+        ]);
+        expect(insertedPayload.config.cohort).toEqual({
+            id: 'cohort-1',
+            brandId: 'brand-1',
+            brandName: 'Test Brand',
+            websiteUrl: 'https://test-brand.com',
+            officialDomains: ['test-brand.com'],
+        });
+
+        // Verify linear chunk plan was used (like official_brand)
+        const insertedChunks = mockSupabase._scrapeUnitsBuilder.insert.mock.calls[0][0];
+        expect(insertedChunks).toHaveLength(1);
+        expect(insertedChunks[0]).toMatchObject({
+            chunk_index: 0,
+            skus: ['SKU-1'],
+            scrapers: ['deep_research'],
+            planned_work_units: 1,
+        });
+
+        // Verify pipeline status set to 'scraping' (deep_research uses same status as standard scrape)
+        expect(mockSupabase._productsIngestionBuilder.update).toHaveBeenCalledWith(expect.objectContaining({
+            pipeline_status: 'scraping',
+        }));
+    });
+
+    it('should create deep_research job with items config even without cohort', async () => {
+        mockSupabase = makeSupabaseMock({
+            pipelineRows: [
+                {
+                    sku: 'SKU-1',
+                    input: {
+                        name: 'Simple Product',
+                        price: 9.99,
+                    },
+                },
+            ],
+        });
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], {
+            enrichment_method: 'deep_research',
+        });
+
+        expect(result.success).toBe(true);
+
+        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
+        expect(insertedPayload.type).toBe('deep_research');
+        expect(insertedPayload.config.items).toBeDefined();
+        expect(insertedPayload.config.items[0].register_name).toBe('Simple Product');
+        // Cohort should not be present when not provided
+        expect(insertedPayload.config.cohort).toBeUndefined();
+    });
+
+    it('should treat deep_research similarly to official brand for context loading', async () => {
+        mockSupabase = makeSupabaseMock({
+            pipelineRows: [
+                {
+                    sku: 'SKU-1',
+                    input: {
+                        name: 'RAW PRODUCT NAME',
+                        price: 15.00,
+                    },
+                },
+            ],
+            productRows: [
+                {
+                    sku: 'SKU-1',
+                    name: 'Pretty Product Name',
+                    brand: { name: 'Catalog Brand' },
+                    product_categories: [{ category: { name: 'Catalog Category' } }],
+                },
+            ],
+        });
+        (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+
+        const result = await scrapeProducts(['SKU-1'], {
+            enrichment_method: 'deep_research',
+        });
+
+        expect(result.success).toBe(true);
+
+        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
+        // Deep research should use catalog context when available (like official_brand)
+        expect(insertedPayload.config.items[0].register_name).toBe('RAW PRODUCT NAME');
+        // product_name should not appear in items (items use register_name pattern)
+        expect(insertedPayload.config.items[0].product_name).toBeUndefined();
+        // brand should come from catalog when available
+        expect(insertedPayload.config.items[0].brand).toBe('Catalog Brand');
+    });
 });

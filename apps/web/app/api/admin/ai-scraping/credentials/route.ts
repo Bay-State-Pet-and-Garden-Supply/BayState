@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as {
       gemini_api_key?: string;
       openai_api_key?: string;
+      lmstudio_api_key?: string;
       serper_api_key?: string;
       serpapi_api_key?: string;
       defaults?: Partial<AIScrapingDefaults>;
@@ -84,6 +85,10 @@ export async function POST(request: NextRequest) {
 
     if (body.openai_api_key && body.openai_api_key.trim()) {
       tasks.push(setAIScrapingProviderSecret('openai', body.openai_api_key, auth.userId));
+    }
+
+    if (body.lmstudio_api_key && body.lmstudio_api_key.trim()) {
+      tasks.push(setAIScrapingProviderSecret('lmstudio', body.lmstudio_api_key, auth.userId));
     }
 
     const searchProviderKey = body.serper_api_key ?? body.serpapi_api_key;

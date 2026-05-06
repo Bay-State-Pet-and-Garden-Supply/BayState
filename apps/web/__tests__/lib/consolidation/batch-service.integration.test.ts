@@ -298,7 +298,7 @@ describe('consolidation batch integration behavior', () => {
         expect(results).toEqual([
             {
                 sku: '813347001025',
-                name: 'Stud Muffins Horse Treats 20 oz.',
+                name: 'Bubbacare Stud Muffins Horse Treats 20 oz.',
                 brand: 'Bubbacare',
                 weight: '1.25',
                 description: '',

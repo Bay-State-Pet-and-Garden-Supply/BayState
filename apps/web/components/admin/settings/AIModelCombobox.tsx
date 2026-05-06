@@ -7,30 +7,66 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { AI_MODEL_OPTIONS, getAIModelLabel } from '@/lib/ai-scraping/models';
 
+interface ModelOption {
+  id: string;
+  label?: string;
+}
+
 interface AIModelComboboxProps {
   id: string;
   value: string;
   onChange: (value: string) => void;
+  options?: ModelOption[];
+  placeholder?: string;
+  emptyLabel?: string;
+  searchPlaceholder?: string;
 }
 
 export function AIModelCombobox({
   id,
   value,
   onChange,
+  options,
+  placeholder,
+  emptyLabel,
+  searchPlaceholder,
 }: AIModelComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
 
+  const modelOptions = useMemo(() => {
+    if (options) {
+      return options.map((opt) => ({
+        value: opt.id,
+        label: opt.label ?? opt.id,
+        description: '',
+      }));
+    }
+    return AI_MODEL_OPTIONS;
+  }, [options]);
+
   const filteredOptions = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) {
-      return AI_MODEL_OPTIONS;
+      return modelOptions;
     }
 
-    return AI_MODEL_OPTIONS.filter((option) =>
+    return modelOptions.filter((option) =>
       `${option.label} ${option.value} ${option.description}`.toLowerCase().includes(query)
     );
-  }, [search]);
+  }, [search, modelOptions]);
+
+  const displayLabel = useMemo(() => {
+    if (options) {
+      const match = modelOptions.find((o) => o.value === value);
+      if (match) return match.label;
+      return placeholder || value;
+    }
+    return getAIModelLabel(value);
+  }, [options, modelOptions, value, placeholder]);
+
+  const emptyMessage = emptyLabel || (options ? 'No models found.' : 'No OpenAI models found.');
+  const searchText = searchPlaceholder || (options ? 'Search models...' : 'Search OpenAI models...');
 
   return (
     <Popover
@@ -51,7 +87,7 @@ export function AIModelCombobox({
           aria-expanded={open}
           className="w-full justify-between font-normal"
         >
-          <span className="truncate">{getAIModelLabel(value)}</span>
+          <span className="truncate">{displayLabel}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -61,7 +97,7 @@ export function AIModelCombobox({
             <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
             <input
               className="flex h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder="Search OpenAI models..."
+              placeholder={searchText}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
@@ -90,14 +126,16 @@ export function AIModelCombobox({
                   />
                   <span className="flex min-w-0 flex-col">
                     <span className="font-medium">{option.label}</span>
-                    <span className="text-xs text-muted-foreground">{option.description}</span>
+                    {option.description && (
+                      <span className="text-xs text-muted-foreground">{option.description}</span>
+                    )}
                   </span>
                 </button>
               );
             })}
             {filteredOptions.length === 0 && (
               <div className="p-4 text-center text-sm text-muted-foreground">
-                No OpenAI models found.
+                {emptyMessage}
               </div>
             )}
           </div>

@@ -74,14 +74,24 @@ async def run_official_brand_fixture_benchmark(
             start = time.perf_counter()
             error: str | None = None
             discovered_url: str | None = None
+            predicted_name: str | None = None
+            phase1_result_count = 0
+            phase2_result_count = 0
             try:
-                discovered_url = await scraper.identify_official_url(
+                discovery = await scraper.discover_official_url_candidates(
                     entry.sku,
                     entry.brand or "",
                     entry.product_name,
                     official_domains=entry.expected_official_domains,
                     preferred_domains=entry.preferred_domains,
+                    register_name=entry.product_name,
                 )
+                discovered_url = str(discovery.get("selected_url") or "").strip() or None
+                predicted_name = str(discovery.get("predicted_name") or "").strip() or None
+                phase1_result_count = int(discovery.get("phase1_result_count") or 0)
+                phase2_result_count = int(discovery.get("phase2_result_count") or 0)
+                if not discovery.get("success"):
+                    error = str(discovery.get("error") or "no_url_found")
             except Exception as exc:  # pragma: no cover - defensive
                 error = str(exc)
 
@@ -108,6 +118,9 @@ async def run_official_brand_fixture_benchmark(
                     error=error,
                     category=entry.category,
                     difficulty=entry.difficulty,
+                    predicted_name=predicted_name,
+                    phase1_result_count=phase1_result_count,
+                    phase2_result_count=phase2_result_count,
                 )
             )
 

@@ -43,18 +43,24 @@ describe('Active Consolidations API', () => {
             {
                 id: 'batch-1',
                 status: 'in_progress',
+                execution_mode: 'batch_api',
+                description: null,
                 created_at: '2024-01-15T10:00:00Z',
                 total_requests: 100,
                 completed_requests: 50,
                 failed_requests: 5,
+                metadata: null,
             },
             {
                 id: 'batch-2',
                 status: 'validating',
+                execution_mode: 'batch_api',
+                description: null,
                 created_at: '2024-01-15T09:00:00Z',
                 total_requests: 200,
                 completed_requests: 0,
                 failed_requests: 0,
+                metadata: null,
             },
         ];
 
@@ -73,23 +79,29 @@ describe('Active Consolidations API', () => {
         expect(json.jobs[0]).toEqual({
             id: 'batch-1',
             status: 'in_progress',
+            execution_mode: 'batch_api',
+            description: null,
             totalProducts: 100,
             processedCount: 55,
             successCount: 50,
             errorCount: 5,
             createdAt: '2024-01-15T10:00:00Z',
             progress: 55,
+            metadata: null,
         });
 
         expect(json.jobs[1]).toEqual({
             id: 'batch-2',
             status: 'validating',
+            execution_mode: 'batch_api',
+            description: null,
             totalProducts: 200,
             processedCount: 0,
             successCount: 0,
             errorCount: 0,
             createdAt: '2024-01-15T09:00:00Z',
             progress: 0,
+            metadata: null,
         });
     });
 
