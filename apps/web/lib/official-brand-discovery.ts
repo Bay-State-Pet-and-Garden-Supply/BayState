@@ -313,6 +313,13 @@ export async function runOfficialBrandDiscovery(args: {
       throw new Error(`Failed to load products: ${productsError.message}`);
     }
 
+    // Clear existing candidates for these SKUs to avoid accumulation on rerun
+    await supabase
+      .from('official_brand_url_candidates')
+      .delete()
+      .eq('cohort_id', args.cohortId)
+      .in('sku', args.skus);
+
     const products = (productsRaw ?? []) as Array<{
       sku?: string;
       input?: { name?: string } | null;
