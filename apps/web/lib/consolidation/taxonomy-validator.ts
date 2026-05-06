@@ -219,7 +219,7 @@ export function buildResponseSchema(
                 description: 'Comma-separated search keywords from source data',
             },
         },
-        required: ['name', 'brand', 'weight', 'product_on_pages', 'confidence_score'],
+        required: ['name', 'brand', 'weight', 'product_on_pages', 'confidence_score', 'category', 'description', 'long_description', 'search_keywords'],
         additionalProperties: false,
     };
 }
