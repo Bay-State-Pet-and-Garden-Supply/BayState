@@ -2164,6 +2164,8 @@ export async function applyConsolidationResults(
         duplicateNameGroups.set(row.name_key, group);
     }
 
+    const warnings: string[] = [];
+
     for (const group of duplicateNameGroups.values()) {
         if (group.length < 2) {
             continue;
@@ -2174,7 +2176,7 @@ export async function applyConsolidationResults(
                 ? group[0].next_fields.name
                 : 'duplicate consolidation name';
 
-        // Try to disambiguate using source variant fields before rejecting
+        // Try to disambiguate using source variant fields
         const disambiguated = tryDisambiguateDuplicateNames(group, existingBySku);
 
         if (disambiguated) {
@@ -2188,17 +2190,10 @@ export async function applyConsolidationResults(
             continue;
         }
 
-        // Could not disambiguate — reject all duplicates
-        const errorMessage = `duplicate finalized name "${duplicateName}" across SKUs ${group.map((row) => row.sku).join(', ')}`;
-
-        for (const row of group) {
-            row.outcome = 'rejected';
-            row.pipeline_status = 'scraped';
-            row.error_message = errorMessage;
-            row.next_fields = {};
-            if (errors.length < 10) {
-                errors.push(`${row.sku}: ${errorMessage}`);
-            }
+        // Could not disambiguate — warn but allow through (user can review in finalizing)
+        const warningMessage = `duplicate name "${duplicateName}" across SKUs ${group.map((row) => row.sku).join(', ')} — consider reviewing for flavor/color/material differences`;
+        if (warnings.length < 10) {
+            warnings.push(warningMessage);
         }
     }
 
@@ -2366,6 +2361,7 @@ export async function applyConsolidationResults(
         total: results.length,
         quality_metrics: qualityMetrics,
         errors: errors.length > 0 ? errors : undefined,
+        warnings: warnings.length > 0 ? warnings : undefined,
     };
 }
 

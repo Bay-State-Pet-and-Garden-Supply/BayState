@@ -925,7 +925,7 @@ describe('consolidation batch service', () => {
         );
     });
 
-    it('applyConsolidationResults rejects duplicate finalized names for separate SKUs', async () => {
+    it('applyConsolidationResults allows duplicate finalized names with warnings', async () => {
         const productsIngestionUpdateMaybeSingle = jest
             .fn()
             .mockResolvedValueOnce({ data: { sku: '095668302580' }, error: null })
@@ -1021,7 +1021,7 @@ describe('consolidation batch service', () => {
 
         (createAdminClient as jest.Mock).mockResolvedValue(supabaseMock);
 
-        await applyConsolidationResults([
+        const result = await applyConsolidationResults([
             {
                 sku: '095668302580',
                 name: 'Bite-size Nuggets Horse Treats 4 lb.',
@@ -1046,18 +1046,26 @@ describe('consolidation batch service', () => {
             },
         ]);
 
+        // Duplicate names are allowed with warnings instead of rejection
+        expect(result.status).toBe('applied');
+        expect(result.success_count).toBe(2);
+        expect(result.error_count).toBe(0);
+        expect(result.warnings?.length).toBeGreaterThan(0);
+        expect(result.warnings?.[0]).toContain('duplicate name');
+
+        // Both products should be finalized (not rejected)
         expect(productsIngestionUpdate).toHaveBeenNthCalledWith(
             1,
             expect.objectContaining({
-                pipeline_status: 'scraped',
-                error_message: expect.stringContaining('duplicate finalized name'),
+                pipeline_status: 'finalizing',
+                error_message: null,
             })
         );
         expect(productsIngestionUpdate).toHaveBeenNthCalledWith(
             2,
             expect.objectContaining({
-                pipeline_status: 'scraped',
-                error_message: expect.stringContaining('duplicate finalized name'),
+                pipeline_status: 'finalizing',
+                error_message: null,
             })
         );
     });

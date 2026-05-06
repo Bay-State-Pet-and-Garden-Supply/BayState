@@ -213,6 +213,7 @@ export interface ApplyResultsResponse {
         overwritten_field_count: number;
     };
     errors?: string[];
+    warnings?: string[];
 }
 
 type ParallelRunStatus = 'pending' | 'running' | 'completed' | 'failed';
