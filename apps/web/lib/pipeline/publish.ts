@@ -82,10 +82,11 @@ export async function publishToStorefront(sku: string) {
         );
 
         // Prepare product data for 'products' table
-        const productData = {
+        const productData: Record<string, unknown> = {
             sku,
             name,
             slug,
+            category: consolidated.category || input.category || null,
             description: consolidated.description || '',
             long_description: consolidated.long_description || null,
             price: consolidated.price ?? input.price ?? 0,
@@ -154,16 +155,6 @@ export async function publishToStorefront(sku: string) {
             if (!statusResult.success) {
                 return statusResult;
             }
-// Sync categories (DISABLED: Hierarchical categories do not align with ShopSite export categories)
-/*
-try {
-    const categoryValue = consolidated.category || input.category;
-    await syncProductCategoryLinks(supabase, existingProduct.id, categoryValue);
-} catch (categoryError) {
-    console.error(`[Publish] Error syncing categories for ${sku}:`, categoryError);
-    return { success: false, error: 'Failed to sync product categories in storefront' };
-}
-*/
             return { success: true, action: 'updated', productId: existingProduct.id };
         } else {
             // Insert new product

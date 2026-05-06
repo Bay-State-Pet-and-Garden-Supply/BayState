@@ -1,6 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import type { FinalizationDraft } from "@/lib/pipeline/finalization-draft";
@@ -65,6 +66,41 @@ export function ProductInfoForm({
             className="h-8 border border-border rounded-none focus-visible:ring-primary font-black tabular-nums text-xs"
           />
         </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="product-description" className="text-[10px] font-black uppercase tracking-widest text-foreground">Description</Label>
+        <Textarea
+          id="product-description"
+          value={formData.description}
+          onChange={(e) => handleInputChange("description", e.target.value)}
+          placeholder="Storefront product description..."
+          rows={3}
+          className="border border-border rounded-none focus-visible:ring-primary font-black text-xs resize-y min-h-[60px]"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="product-long-description" className="text-[10px] font-black uppercase tracking-widest text-foreground">Long Description</Label>
+        <Textarea
+          id="product-long-description"
+          value={formData.longDescription}
+          onChange={(e) => handleInputChange("longDescription", e.target.value)}
+          placeholder="Extended product description (optional)..."
+          rows={4}
+          className="border border-border rounded-none focus-visible:ring-primary font-black text-xs resize-y min-h-[80px]"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="product-search-keywords" className="text-[10px] font-black uppercase tracking-widest text-foreground">Search Keywords</Label>
+        <Input
+          id="product-search-keywords"
+          value={formData.searchKeywords}
+          onChange={(e) => handleInputChange("searchKeywords", e.target.value)}
+          placeholder="e.g. dog food, chicken recipe, large breed"
+          className="h-8 border border-border rounded-none focus-visible:ring-primary font-black text-xs"
+        />
       </div>
     </div>
   );

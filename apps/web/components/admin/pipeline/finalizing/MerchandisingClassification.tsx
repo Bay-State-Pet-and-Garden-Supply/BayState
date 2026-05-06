@@ -6,8 +6,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { FINALIZATION_STOCK_STATUS_VALUES } from "@/lib/pipeline/finalization-draft";
 import type { FinalizationDraft } from "@/lib/pipeline/finalization-draft";
 
 interface Brand {
@@ -309,6 +311,72 @@ export function MerchandisingClassification({
             </div>
           </PopoverContent>
         </Popover>
+      </div>
+
+      <div className="space-y-3 border border-border p-3 bg-muted/10">
+        <h4 className="text-[10px] font-black uppercase tracking-widest text-foreground">
+          Product Attributes
+        </h4>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="product-gtin" className="text-[10px] font-black uppercase tracking-widest text-foreground">GTIN / UPC</Label>
+            <Input
+              id="product-gtin"
+              value={formData.gtin}
+              onChange={(e) => handleInputChange("gtin", e.target.value)}
+              placeholder="e.g. 077234550182"
+              className="h-8 border border-border rounded-none focus-visible:ring-primary font-black tabular-nums text-xs"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="product-stock-status" className="text-[10px] font-black uppercase tracking-widest text-foreground">Stock Status</Label>
+            <Select
+              value={formData.stockStatus}
+              onValueChange={(value) => handleInputChange("stockStatus", value as FinalizationDraft["stockStatus"])}
+            >
+              <SelectTrigger
+                id="product-stock-status"
+                className="h-8 border border-border rounded-none focus-visible:ring-primary font-black text-xs"
+              >
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent className="rounded-none border-border">
+                {FINALIZATION_STOCK_STATUS_VALUES.map((status) => (
+                  <SelectItem
+                    key={status}
+                    value={status}
+                    className="font-black uppercase tracking-widest text-xs rounded-none"
+                  >
+                    {status.replace(/_/g, " ")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="product-minimum-quantity" className="text-[10px] font-black uppercase tracking-widest text-foreground">Min Qty</Label>
+            <Input
+              id="product-minimum-quantity"
+              type="number"
+              min="0"
+              step="1"
+              value={formData.minimumQuantity}
+              onChange={(e) => handleInputChange("minimumQuantity", e.target.value)}
+              placeholder="0"
+              className="h-8 border border-border rounded-none focus-visible:ring-primary font-black tabular-nums text-xs"
+            />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="product-category" className="text-[10px] font-black uppercase tracking-widest text-foreground">Category</Label>
+          <Input
+            id="product-category"
+            value={formData.category}
+            onChange={(e) => handleInputChange("category", e.target.value)}
+            placeholder="e.g. Horse Feed & Treats"
+            className="h-8 border border-border rounded-none focus-visible:ring-primary font-black text-xs"
+          />
+        </div>
       </div>
 
       <details className="group border border-border bg-muted/10">
