@@ -311,7 +311,7 @@ export function FinalizationCopilotPanel({
 
       // Handler map — keeps tool dispatch in sync with the type system.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const handlers: Record<ClientToolName, (input: any) => Promise<unknown>> = {
+      const handlers: Record<ClientToolName, (input: any) => Promise<any>> = {
         listWorkspaceProducts: onListWorkspaceProducts,
         previewProductScope: onPreviewProductScope,
         getProductSnapshot: onGetProductSnapshot,

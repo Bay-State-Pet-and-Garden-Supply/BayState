@@ -78,20 +78,20 @@ function createMockSupabase(options: {
   const productsResult = Promise.resolve({ data: activeProducts, error: null });
   const candidatesResult = Promise.resolve({ data: allCandidates, error: null });
 
-  const cohortChain = {
+  const cohortChain: any = {
     select: jest.fn(() => cohortChain),
     eq: jest.fn(() => cohortChain),
     maybeSingle: jest.fn(() => cohortResult),
   };
 
-  const productsChain = {
+  const productsChain: any = {
     select: jest.fn(() => productsChain),
     eq: jest.fn(() => productsChain),
     in: jest.fn(() => productsChain),
     order: jest.fn(() => productsResult),
   };
 
-  const candidatesChain = {
+  const candidatesChain: any = {
     select: jest.fn(() => candidatesChain),
     eq: jest.fn(() => candidatesChain),
     in: jest.fn(() => candidatesChain),
