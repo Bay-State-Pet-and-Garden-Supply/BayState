@@ -318,50 +318,20 @@ export async function loadOfficialBrandCandidates(
     preferred_domains: preferredDomains,
   };
 
-  const [productsResult, candidatesResult] = await Promise.all([
-    supabase
-      .from("products_ingestion")
-      .select("sku, cohort_id, input")
-      .eq("cohort_id", cohortId)
-      .order("sku", { ascending: true }),
-    (() => {
-      let query = supabase
-        .from("official_brand_url_candidates")
-        .select(
-          "id, sku, cohort_id, url, normalized_url, normalized_domain, selection_status, selection_tier, composite_score, confidence, rank, title, snippet, candidate_source, appeared_in_phases, predicted_name, discovery_job_id, extraction_job_id, error_message, reviewed_at, reviewed_by, updated_at",
-        )
-        .eq("cohort_id", cohortId);
-
-      if (filters.status) {
-        query = query.eq("selection_status", filters.status);
-      }
-
-      if (filters.discoveryJobId) {
-        query = query.eq("discovery_job_id", filters.discoveryJobId);
-      }
-
-      return query;
-    })(),
-  ]);
+  const productsResult = await supabase
+    .from("products_ingestion")
+    .select("sku, cohort_id, input")
+    .eq("cohort_id", cohortId)
+    .in("pipeline_status", ["url_review", "extracting"])
+    .order("sku", { ascending: true });
 
   if (productsResult.error) {
     throw new Error(`Failed to load cohort products: ${productsResult.error.message}`);
   }
 
-  if (candidatesResult.error) {
-    throw new Error(
-      `Failed to load Official Brand candidates: ${candidatesResult.error.message}`,
-    );
-  }
-
   const productRows = Array.isArray(productsResult.data)
     ? (productsResult.data as ProductRow[])
     : [];
-  const candidateRows = Array.isArray(candidatesResult.data)
-    ? (candidatesResult.data as CandidateRow[])
-    : [];
-  const predictedBySku = getPredictedNameBySku(candidateRows);
-
   const productsBySku = new Map<string, string | null>();
   productRows.forEach((row) => {
     const sku = toOptionalString(row.sku);
@@ -369,6 +339,41 @@ export async function loadOfficialBrandCandidates(
       productsBySku.set(sku, getProductName(row.input));
     }
   });
+
+  const activeSkus = Array.from(productsBySku.keys());
+  let candidateRows: CandidateRow[] = [];
+
+  if (activeSkus.length > 0) {
+    let query = supabase
+      .from("official_brand_url_candidates")
+      .select(
+        "id, sku, cohort_id, url, normalized_url, normalized_domain, selection_status, selection_tier, composite_score, confidence, rank, title, snippet, candidate_source, appeared_in_phases, predicted_name, discovery_job_id, extraction_job_id, error_message, reviewed_at, reviewed_by, updated_at",
+      )
+      .eq("cohort_id", cohortId)
+      .in("sku", activeSkus);
+
+    if (filters.status) {
+      query = query.eq("selection_status", filters.status);
+    }
+
+    if (filters.discoveryJobId) {
+      query = query.eq("discovery_job_id", filters.discoveryJobId);
+    }
+
+    const candidatesResult = await query;
+
+    if (candidatesResult.error) {
+      throw new Error(
+        `Failed to load Official Brand candidates: ${candidatesResult.error.message}`,
+      );
+    }
+
+    candidateRows = Array.isArray(candidatesResult.data)
+      ? (candidatesResult.data as CandidateRow[])
+      : [];
+  }
+
+  const predictedBySku = getPredictedNameBySku(candidateRows);
 
   const candidatesBySku = new Map<string, OfficialBrandCandidateReviewItem[]>();
   candidateRows.forEach((row) => {
@@ -382,9 +387,11 @@ export async function loadOfficialBrandCandidates(
     candidatesBySku.set(candidate.sku, existing);
   });
 
-  const allSkus = Array.from(
-    new Set([...productsBySku.keys(), ...candidatesBySku.keys()]),
-  ).sort((left, right) => left.localeCompare(right));
+  // Use products_ingestion as the authoritative SKU list. Stale candidate rows
+  // for inactive pipeline statuses must not resurrect ghost SKUs.
+  const allSkus = Array.from(productsBySku.keys()).sort((left, right) =>
+    left.localeCompare(right),
+  );
 
   const skus = allSkus.map((sku) => {
     const review = buildSkuReview({
