@@ -116,7 +116,7 @@ export async function getConsolidationConfig(
             ? (process.env.OPENAI_BASE_URL || null)
             : runtimeConfig.llm_base_url;
         const fallbackModel = isForcedOpenai
-            ? CONSOLIDATION_CONFIG.model
+            ? (runtimeConfig.llm_provider === 'openai' ? model : CONSOLIDATION_CONFIG.model)
             : model;
 
         return {

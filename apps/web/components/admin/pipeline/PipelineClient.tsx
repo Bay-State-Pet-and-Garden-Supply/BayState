@@ -164,13 +164,18 @@ export function PipelineClient({
   }, [canEditCohorts]);
 
   const filteredProducts = useMemo(() => {
-    if (!sourceFilter || currentStage !== "scraped") return products;
-    return products.filter((product) => {
-      const productSources = product.sources ?? {};
-      return Object.keys(productSources)
-        .filter((key) => !key.startsWith("_"))
-        .includes(sourceFilter);
-    });
+    let result = products;
+    if (sourceFilter && currentStage === "scraped") {
+      result = products.filter((product) => {
+        const productSources = product.sources ?? {};
+        return Object.keys(productSources)
+          .filter((key) => !key.startsWith("_"))
+          .includes(sourceFilter);
+      });
+    }
+
+    // Apply stable sort by SKU
+    return [...result].sort((a, b) => a.sku.localeCompare(b.sku));
   }, [products, sourceFilter, currentStage]);
 
   const groupedProducts = useMemo(() => {

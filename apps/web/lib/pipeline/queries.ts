@@ -75,7 +75,7 @@ async function queryProductsByStatus(
     .from<PipelineProduct>("products_ingestion")
     .select("*", { count: "exact" })
     .eq("pipeline_status", status)
-    .order("updated_at", { ascending: false })
+    .order("sku", { ascending: true })
     .range(offset, offset + limit - 1);
 
   if (error) {
