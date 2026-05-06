@@ -50,7 +50,11 @@ export async function getOpenAIClient(options?: ConsolidationConfigOptions): Pro
         return null;
     }
 
-    const apiKey = runtimeConfig.llm_api_key;
+    const apiKey = runtimeConfig.llm_api_key?.replace(/[\r\n\x00-\x1F\x7F-\x9F]/g, '');
+    if (!apiKey) {
+        console.error('[Consolidation] OpenAI API key is empty after sanitization');
+        return null;
+    }
     const baseURL = runtimeConfig.llm_base_url || undefined;
     const clientSignature = JSON.stringify({
         provider: runtimeConfig.llm_provider,
