@@ -74,12 +74,12 @@ export default async function ScraperWorkbenchLayout({
  </div>
 
 
- {/* Content area */}
- <div className="flex-1 min-h-0" data-testid="workbench-content">
- <div className="max-w-7xl mx-auto">
- {children}
- </div>
- </div>
+  {/* Content area */}
+  <div className="flex-1 min-h-0 overflow-y-auto px-8 pb-8" data-testid="workbench-content">
+    <div className="max-w-7xl mx-auto">
+      {children}
+    </div>
+  </div>
  </div>
  );
 }

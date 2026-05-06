@@ -232,24 +232,9 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
  );
 
  return (
- <div className="space-y-6 p-6">
- {/* Header */}
- <div className="flex items-center justify-between">
- <div className="flex items-center gap-3">
- <div className="flex h-10 w-10 items-center justify-center rounded-none border-4 border-border bg-brand-gold">
- <History className="h-5 w-5 text-foreground" />
- </div>
- <div>
- <h1 className="text-2xl font-black uppercase tracking-tighter text-foreground">Scraper Runs</h1>
- <div className="flex items-center gap-4">
- <p className="text-xs font-black uppercase tracking-tighter text-zinc-500">
- {totalCount} scrape job history
- </p>
- <ConnectionIndicator isConnected={isRealtimeConnected} />
- </div>
- </div>
- </div>
- <div className="flex gap-2">
+ <div className="space-y-6">
+ {/* Header Actions - Compact version as title is now in Shell */}
+ <div className="flex items-center justify-end gap-2">
  <div className="flex items-center gap-2 mr-4 bg-muted p-1 border-2 border-border">
  <Button
  variant={viewMode === "list" ? "default" : "ghost"}
@@ -286,7 +271,6 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
  <RotateCcw className={`mr-2 h-4 w-4 ${isPending || loadingChunks ? 'animate-spin' : ''}`} />
  Refresh
  </Button>
- </div>
  </div>
 
  {/* Stats Cards */}

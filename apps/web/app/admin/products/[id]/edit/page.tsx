@@ -7,6 +7,8 @@ import { normalizeProductStorefrontSettings } from '@/lib/product-storefront-set
 import { notFound } from 'next/navigation'
 import { PickupOnlyToggle } from './pickup-only-toggle'
 import { ProductEditForm } from '@/components/admin/products/ProductEditForm'
+import { AdminPageShell } from '@/components/admin/admin-page-shell'
+import { Package } from 'lucide-react'
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
  const { id } = await params
@@ -63,6 +65,11 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
  }
 
  return (
+ <AdminPageShell
+   title={`Edit Product: ${product.name}`}
+   description={`Edit details for ${product.sku}`}
+   icon={<Package className="h-5 w-5" />}
+ >
  <div className="max-w-4xl mx-auto space-y-6">
  <ProductEditForm product={formProduct} />
 
@@ -109,5 +116,6 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
  </CardContent>
  </Card>
  </div>
+ </AdminPageShell>
  )
 }

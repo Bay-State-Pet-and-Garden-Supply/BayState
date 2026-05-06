@@ -94,7 +94,7 @@ export function UrlReviewWorkspace() {
       const res = await fetch("/api/admin/pipeline/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cohort_id: cohortId, fromStatus: "url_review", toStatus: "imported" }),
+        body: JSON.stringify({ cohort_id: cohortId, fromStatus: "url_review", toStatus: "imported", resetResults: true }),
       });
       if (res.ok) {
         toast.success("Cohort returned to Imported");

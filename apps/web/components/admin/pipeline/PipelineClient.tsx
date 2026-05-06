@@ -1368,7 +1368,8 @@ export function PipelineClient({
 
       {/* Content Area */}
       <div className={cn(
-        "flex-1 min-h-0 relative overflow-hidden transition-opacity p-1 pr-4 pb-4",
+        "flex-1 min-h-0 relative transition-opacity p-1 pr-4 pb-4",
+        isLiveOperationalTab(currentStage) ? "overflow-y-auto" : "overflow-hidden",
         (isLoading || isNavigating) && "opacity-50 pointer-events-none"
       )}>
         <div className="flex flex-col flex-1 h-full w-full min-h-0">
