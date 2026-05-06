@@ -32,9 +32,12 @@ function resolveEffectiveProvider(
     configuredProvider: LLMProvider,
     options: ConsolidationConfigOptions | undefined
 ): LLMProvider {
-    void configuredProvider;
-    void options;
-    return 'openai';
+    // When forceProvider is provided, use it instead of the configured provider.
+    // This allows overriding to 'openai' for fallback even when lmstudio is configured.
+    if (options?.forceProvider) {
+        return options.forceProvider;
+    }
+    return configuredProvider;
 }
 
 /**
@@ -99,16 +102,27 @@ export async function getConsolidationConfig(
             options
         );
         const model = runtimeConfig.llm_model || CONSOLIDATION_CONFIG.model;
-        const apiKey = runtimeConfig.openai_api_key ?? runtimeConfig.llm_api_key;
+        // For forced fallback to OpenAI, use the openai_api_key and ignore selected provider key
+        const isForcedOpenai = options?.forceProvider === 'openai';
+        const apiKey = isForcedOpenai
+            ? (runtimeConfig.openai_api_key ?? runtimeConfig.llm_api_key)
+            : runtimeConfig.llm_api_key;
+        // For forced OpenAI, use default OpenAI base URL and model
+        const baseUrl = isForcedOpenai
+            ? (process.env.OPENAI_BASE_URL || null)
+            : runtimeConfig.llm_base_url;
+        const fallbackModel = isForcedOpenai
+            ? CONSOLIDATION_CONFIG.model
+            : model;
 
         return {
             ...CONSOLIDATION_CONFIG,
-            model,
+            model: fallbackModel,
             llm_provider: effectiveProvider,
             configured_llm_provider: runtimeConfig.llm_provider,
-            llm_base_url: runtimeConfig.llm_base_url,
+            llm_base_url: baseUrl,
             llm_api_key: apiKey ?? null,
-            llm_supports_batch_api: true,
+            llm_supports_batch_api: isForcedOpenai ? true : runtimeConfig.llm_supports_batch_api,
             confidence_threshold: runtimeConfig.confidence_threshold,
             routing_key: options?.routingKey ?? null,
         };

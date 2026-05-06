@@ -26,6 +26,9 @@ def _row_to_dict(row: DiscoveryResultRow) -> dict[str, Any]:
         "error": row.error,
         "category": row.category,
         "difficulty": row.difficulty,
+        "predicted_name": row.predicted_name,
+        "phase1_result_count": row.phase1_result_count,
+        "phase2_result_count": row.phase2_result_count,
     }
 
 

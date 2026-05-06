@@ -4,7 +4,7 @@ This package contains the new Official Brand benchmark assets.
 
 The current runnable benchmark validates Official Brand URL discovery in deterministic fixture mode.
 
-It exercises `OfficialBrandScraper.identify_official_url(...)` only (discovery-only),
+It exercises `OfficialBrandScraper.discover_official_url_candidates(...)` (discovery-only),
 using cached search fixtures and no live API calls.
 
 ## Run
@@ -31,6 +31,12 @@ The command writes:
 
 - `official-brand-benchmark.json`
 - `official-brand-benchmark.md`
+
+Each JSON entry now includes the selected URL plus discovery metadata such as:
+
+- `predicted_name`
+- `phase1_result_count`
+- `phase2_result_count`
 
 By default these are written under `reports/`.
 

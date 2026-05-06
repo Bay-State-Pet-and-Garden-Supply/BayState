@@ -6,6 +6,11 @@ function uuid(message: string = 'Invalid UUID') {
     return z.string().regex(uuidRegex, message);
 }
 
+export const BatchExecutionModeSchema = z.enum([
+    'batch_api',
+    'direct_chat_chunks',
+]);
+
 export const BatchJobStatusSchema = z.enum([
     'validating',
     'in_progress',
@@ -26,7 +31,7 @@ export const BatchMetadataSchema = z.object({
 const BatchStatusSchema = z.object({
     id: z.string().min(1, 'Invalid batch ID'),
     status: BatchJobStatusSchema,
-    provider: z.enum(['openai', 'openai_compatible', 'gemini']).optional(),
+    provider: z.enum(['openai', 'openai_compatible', 'gemini', 'lmstudio']).optional(),
     provider_batch_id: z.string().nullable().optional(),
     is_complete: z.boolean(),
     is_failed: z.boolean(),
@@ -43,7 +48,8 @@ const BatchStatusSchema = z.object({
 export const BatchJobSchema = z.object({
     id: z.string().min(1, 'Invalid batch job ID'),
     db_id: uuid('Invalid database batch job ID').optional(),
-    provider: z.enum(['openai', 'openai_compatible', 'gemini']),
+    provider: z.enum(['openai', 'openai_compatible', 'gemini', 'lmstudio']),
+    execution_mode: BatchExecutionModeSchema.optional(),
     provider_batch_id: z.string().nullable().optional(),
     provider_input_file_id: z.string().nullable().optional(),
     provider_output_file_id: z.string().nullable().optional(),

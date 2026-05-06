@@ -20,6 +20,9 @@ class DiscoveryResultRow:
     error: str | None
     category: str | None = None
     difficulty: str | None = None
+    predicted_name: str | None = None
+    phase1_result_count: int = 0
+    phase2_result_count: int = 0
 
 
 def _percentile(values: list[float], ratio: float) -> float:

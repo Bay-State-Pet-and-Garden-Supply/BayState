@@ -86,6 +86,10 @@ function deriveRequestedScrapers(job: {
         return ['official_brand'];
     }
 
+    if (job.type === 'deep_research') {
+        return ['deep_research'];
+    }
+
     if (job.type === 'discovery') {
         return ['ai_discovery'];
     }
@@ -106,8 +110,14 @@ function deriveRequestedScrapers(job: {
     return [];
 }
 
-function normalizeRunnerJobType(rawType: unknown): 'standard' | 'ai_search' | typeof OFFICIAL_BRAND_URL_DISCOVERY_TYPE | typeof OFFICIAL_BRAND_EXTRACTION_TYPE {
+const DEEP_RESEARCH_JOB_TYPE = 'deep_research' as const;
+
+function normalizeRunnerJobType(rawType: unknown): 'standard' | 'ai_search' | typeof OFFICIAL_BRAND_URL_DISCOVERY_TYPE | typeof OFFICIAL_BRAND_EXTRACTION_TYPE | typeof DEEP_RESEARCH_JOB_TYPE {
     if (rawType === OFFICIAL_BRAND_URL_DISCOVERY_TYPE || rawType === OFFICIAL_BRAND_EXTRACTION_TYPE) {
+        return rawType;
+    }
+
+    if (rawType === DEEP_RESEARCH_JOB_TYPE) {
         return rawType;
     }
 
@@ -304,6 +314,17 @@ export async function POST(request: NextRequest) {
         if (requestedScrapers.includes('official_brand') && !scrapers.some((scraper) => scraper.name === 'official_brand')) {
             scrapers.push({
                 name: 'official_brand',
+                disabled: false,
+                options: {},
+                test_skus: [],
+                retries: 3,
+                credential_refs: [],
+            });
+        }
+
+        if (requestedScrapers.includes('deep_research') && !scrapers.some((scraper) => scraper.name === 'deep_research')) {
+            scrapers.push({
+                name: 'deep_research',
                 disabled: false,
                 options: {},
                 test_skus: [],

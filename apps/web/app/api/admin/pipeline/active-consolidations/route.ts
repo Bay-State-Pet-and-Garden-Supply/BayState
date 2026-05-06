@@ -5,6 +5,7 @@ import { requireAdminAuth } from '@/lib/admin/api-auth';
 interface ActiveConsolidationJob {
     id: string;
     status: string;
+    execution_mode?: string;
     description: string | null;
     totalProducts: number;
     processedCount: number;
@@ -22,11 +23,11 @@ export async function GET() {
     }
 
     const supabase = await createClient();
-    const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const last24Hours = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
 
     const { data: jobs, error: jobsError } = await supabase
         .from('batch_jobs')
-        .select('id, status, description, created_at, total_requests, completed_requests, failed_requests, metadata')
+        .select('id, status, execution_mode, description, created_at, total_requests, completed_requests, failed_requests, metadata')
         .or(`status.not.in.(completed,failed,expired,cancelled),and(status.in.(completed,failed,expired,cancelled),created_at.gt.${last24Hours})`)
         .order('created_at', { ascending: false })
         .limit(15);
@@ -50,6 +51,7 @@ export async function GET() {
         return {
             id: job.id,
             status: job.status,
+            execution_mode: job.execution_mode || 'batch_api',
             description: job.description,
             totalProducts: total,
             processedCount,

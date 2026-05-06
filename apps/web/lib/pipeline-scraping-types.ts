@@ -41,9 +41,9 @@ export interface ScrapeOptions {
     maxAttempts?: number;
     /** Number of SKUs per chunk (default: 50) */
     chunkSize?: number;
-    jobType?: 'standard' | 'official_brand';
+    jobType?: 'standard' | 'official_brand' | 'deep_research';
     /** Explicit enrichment method - takes precedence over jobType */
-    enrichment_method?: 'scrapers' | 'official_brand';
+    enrichment_method?: 'scrapers' | 'official_brand' | 'deep_research';
     /** Official Brand phase. Discovery is the default for Official Brand. */
     officialBrandPhase?: 'url_discovery' | 'extraction';
     /** Official Brand extraction targets keyed by SKU. Bypasses URL discovery. */
@@ -54,6 +54,8 @@ export interface ScrapeOptions {
     cohortBrand?: string;
     /** Cohort-scoped context for Official Brand jobs */
     officialBrandCohort?: OfficialBrandCohortContext;
+    /** Cohort-scoped context for Deep Research jobs */
+    deepResearchCohort?: OfficialBrandCohortContext;
     /** Maximum fallback URLs to attempt during Official Brand extraction (default: 3) */
     officialBrandMaxFallbacks?: number;
 }

@@ -3,45 +3,45 @@ import {
     generateSystemPrompt,
 } from '@/lib/consolidation/prompt-builder';
 
-describe('brand exclusion in prompt-builder', () => {
+describe('brand placement in prompt-builder', () => {
     describe('generateSystemPrompt', () => {
-        it('contains brand exclusion instruction in system prompt', () => {
+        it('contains brand-first instruction in system prompt', () => {
             const categories = ['Dog', 'Cat'];
 
             const prompt = generateSystemPrompt(categories);
 
-            // System prompt should contain instruction to exclude brand names from product names
-            expect(prompt).toMatch(/exclude.*brand/i);
+            // System prompt should contain instruction to place brand at start of product names
+            expect(prompt).toMatch(/brand.*first|first.*brand/i);
+            expect(prompt).toMatch(/brand must be the first token/i);
         });
 
-        it('handles brand at start: "Blue Buffalo Dog Food" → excludes brand from name', () => {
+        it('handles brand at start: preserves brand when already first', () => {
             const categories = ['Dog', 'Cat'];
 
             const prompt = generateSystemPrompt(categories);
 
-            // Should instruct to handle brand at start of product name
-            expect(prompt).toMatch(/brand.*start|start.*brand/i);
-            expect(prompt).toMatch(/exclude.*brand.*from.*name|remove.*brand.*from.*name/i);
+            // Should instruct to keep brand at start and not duplicate
+            expect(prompt).toMatch(/source name already starts with the brand/i);
+            expect(prompt).toMatch(/do not duplicate the brand/i);
         });
 
-        it('handles brand in middle: "Dog Food by Blue Buffalo" → excludes brand from name', () => {
+        it('handles brand not at start: moves brand to beginning of name', () => {
             const categories = ['Dog', 'Cat'];
 
             const prompt = generateSystemPrompt(categories);
 
-            // Should instruct to handle brand in middle of product name
-            expect(prompt).toMatch(/brand.*middle|middle.*brand/i);
-            expect(prompt).toMatch(/exclude.*brand.*from.*name|remove.*brand.*from.*name/i);
+            // Should instruct brand MUST be first token
+            expect(prompt).toMatch(/brand must be the first token/i);
+            expect(prompt).toMatch(/never drop the brand/i);
         });
 
-        it('handles brand at end: "Dog Food Blue Buffalo" → excludes brand from name', () => {
+        it('provides brand-first example in prompt', () => {
             const categories = ['Dog', 'Cat'];
 
             const prompt = generateSystemPrompt(categories);
 
-            // Should instruct to handle brand at end of product name
-            expect(prompt).toMatch(/brand.*end|end.*brand/i);
-            expect(prompt).toMatch(/exclude.*brand.*from.*name|remove.*brand.*from.*name/i);
+            // Should show the brand-first example
+            expect(prompt).toContain('Blue Buffalo Dog Food');
         });
 
         it('handles case insensitive brand matching: "blue buffalo" matches "Blue Buffalo"', () => {
@@ -52,6 +52,25 @@ describe('brand exclusion in prompt-builder', () => {
             // Should instruct case-insensitive brand matching
             expect(prompt).toMatch(/case.*insensitive|insensitive|ignore.*case/i);
             expect(prompt).toMatch(/brand/i);
+        });
+
+        it('includes OCR packaging evidence guidance', () => {
+            const categories = ['Dog', 'Cat'];
+
+            const prompt = generateSystemPrompt(categories);
+
+            expect(prompt).toMatch(/OCR Packaging Evidence/i);
+            expect(prompt).toMatch(/image_text/i);
+            expect(prompt).toMatch(/strip extraneous text/i);
+        });
+
+        it('includes food-type ordering for consumable products', () => {
+            const categories = ['Dog', 'Cat'];
+
+            const prompt = generateSystemPrompt(categories);
+
+            expect(prompt).toMatch(/food-type descriptor/i);
+            expect(prompt).toMatch(/Dry Dog Food 30 lb/i);
         });
 
         it('instructs decimal size handling to preserve source-supported precision', () => {

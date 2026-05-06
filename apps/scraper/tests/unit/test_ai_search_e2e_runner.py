@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -39,7 +39,19 @@ async def test_runner_produces_passing_report_with_fixture_mode(tmp_path: Path) 
                         },
                         "search_fixtures": [
                             {
-                                "query": "site:acme.example SKU-1",
+                                "query": "SKU-1",
+                                "results": [
+                                    {
+                                        "url": "https://acme.example/products/widget",
+                                        "title": "Acme Widget",
+                                        "description": "Official widget",
+                                        "provider": "fixture",
+                                        "result_type": "organic",
+                                    }
+                                ],
+                            },
+                            {
+                                "query": "site:acme.example Acme Widget",
                                 "results": [
                                     {
                                         "url": "https://acme.example/products/widget",
@@ -63,7 +75,19 @@ async def test_runner_produces_passing_report_with_fixture_mode(tmp_path: Path) 
             {
                 "entries": [
                     {
-                        "query": "site:acme.example SKU-1",
+                        "query": "SKU-1",
+                        "results": [
+                            {
+                                "url": "https://acme.example/products/widget",
+                                "title": "Acme Widget",
+                                "description": "Official widget",
+                                "provider": "fixture",
+                                "result_type": "organic",
+                            }
+                        ],
+                    },
+                    {
+                        "query": "site:acme.example Acme Widget",
                         "results": [
                             {
                                 "url": "https://acme.example/products/widget",
@@ -143,7 +167,19 @@ async def test_runner_full_pipeline_with_page_fixture(tmp_path: Path) -> None:
                         },
                         "search_fixtures": [
                             {
-                                "query": "site:acme.example SKU-FIXTURE",
+                                "query": "SKU-FIXTURE",
+                                "results": [
+                                    {
+                                        "url": "https://acme.example/products/widget-pro",
+                                        "title": "Acme Widget Pro",
+                                        "description": "Premium widget",
+                                        "provider": "fixture",
+                                        "result_type": "organic",
+                                    }
+                                ],
+                            },
+                            {
+                                "query": "site:acme.example Acme Widget Pro",
                                 "results": [
                                     {
                                         "url": "https://acme.example/products/widget-pro",
@@ -277,7 +313,7 @@ async def test_shared_search_fixtures_work_for_multiple_entries(tmp_path: Path) 
             {
                 "entries": [
                     {
-                        "query": "site:alpha.example SKU-ALPHA",
+                        "query": "SKU-ALPHA",
                         "results": [
                             {
                                 "url": "https://alpha.example/products/alpha",
@@ -289,7 +325,31 @@ async def test_shared_search_fixtures_work_for_multiple_entries(tmp_path: Path) 
                         ],
                     },
                     {
-                        "query": "site:beta.example SKU-BETA",
+                        "query": "site:alpha.example Alpha Product",
+                        "results": [
+                            {
+                                "url": "https://alpha.example/products/alpha",
+                                "title": "Alpha Product",
+                                "description": "Official alpha product",
+                                "provider": "fixture",
+                                "result_type": "organic",
+                            }
+                        ],
+                    },
+                    {
+                        "query": "SKU-BETA",
+                        "results": [
+                            {
+                                "url": "https://beta.example/products/beta",
+                                "title": "Beta Product",
+                                "description": "Official beta product",
+                                "provider": "fixture",
+                                "result_type": "organic",
+                            }
+                        ],
+                    },
+                    {
+                        "query": "site:beta.example Beta Product",
                         "results": [
                             {
                                 "url": "https://beta.example/products/beta",
@@ -381,7 +441,19 @@ async def test_entry_without_ground_truth_skips_data_quality(tmp_path: Path) -> 
                         # ground_truth deliberately omitted
                         "search_fixtures": [
                             {
-                                "query": "site:nogt.example SKU-NO-GT",
+                                "query": "SKU-NO-GT",
+                                "results": [
+                                    {
+                                        "url": "https://nogt.example/products/item",
+                                        "title": "No Ground Truth Product",
+                                        "description": "Product without ground truth",
+                                        "provider": "fixture",
+                                        "result_type": "organic",
+                                    }
+                                ],
+                            },
+                            {
+                                "query": "site:nogt.example No Ground Truth Product",
                                 "results": [
                                     {
                                         "url": "https://nogt.example/products/item",
@@ -581,6 +653,70 @@ async def test_fixture_mode_passes_noop_source_selector(tmp_path: Path) -> None:
     assert isinstance(selector, _NoopSourceSelector), (
         f"Expected _NoopSourceSelector instance in fixture mode, got {type(selector).__name__}"
     )
+
+
+@pytest.mark.asyncio
+async def test_fixture_mode_uses_discovery_pipeline_for_url_selection(
+    tmp_path: Path,
+) -> None:
+    dataset_path = tmp_path / "dataset.json"
+    search_fixtures_path = tmp_path / "search_fixtures.json"
+    output_dir = tmp_path / "reports"
+    page_fixtures_dir = tmp_path / "page_fixtures"
+
+    dataset_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "ai-search-e2e-benchmark-dataset-v1",
+                "entries": [
+                    {
+                        "sku": "SKU-TEST",
+                        "product_name": "Test Product",
+                        "brand": "TestBrand",
+                        "expected_official_domains": ["test.example"],
+                        "expected_source_url": "https://test.example/product",
+                        "source_type": "official",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    search_fixtures_path.write_text(json.dumps({"entries": []}), encoding="utf-8")
+
+    from benchmarks.ai_search.runner import OfficialBrandScraper
+
+    with (
+        patch.object(
+            OfficialBrandScraper,
+            "discover_official_url_candidates",
+            new=AsyncMock(
+                return_value={
+                    "success": True,
+                    "selected_url": "https://test.example/product",
+                    "predicted_name": "Test Product",
+                    "phase1_result_count": 1,
+                    "phase2_result_count": 2,
+                }
+            ),
+        ),
+        patch.object(
+            OfficialBrandScraper,
+            "identify_official_url",
+            new=AsyncMock(side_effect=AssertionError("identify_official_url should not be called")),
+        ),
+    ):
+        report, _json_path, _md_path, _passed = await run_ai_search_e2e_benchmark(
+            dataset_path=dataset_path,
+            output_dir=output_dir,
+            mode="fixture",
+            search_fixtures_path=search_fixtures_path,
+            page_fixtures_dir=page_fixtures_dir,
+            data_quality_threshold=0.0,
+            max_concurrency=1,
+        )
+
+    assert report["entries"][0]["discovered_url"] == "https://test.example/product"
 
 
 @pytest.mark.asyncio

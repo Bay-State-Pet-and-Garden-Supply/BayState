@@ -61,12 +61,6 @@ if TYPE_CHECKING:
 class SearchScorer:
     """Handles scoring and filtering of search results."""
 
-    BRAND_DOMAIN_ALIASES = {
-        "scotts": {"scotts.com", "scottsmiraclegro.com"},
-        "scottsmiraclegro": {"scotts.com", "scottsmiraclegro.com", "miraclegro.com"},
-        "miraclegro": {"miraclegro.com", "scottsmiraclegro.com"},
-    }
-
     NOISY_QUERY_PARAMS = {
         "bvstate",
         "bvrrp",
@@ -359,15 +353,16 @@ class SearchScorer:
         """Check if domain is a marketplace listing source."""
         return self._domain_matches_candidates(domain, self.MARKETPLACES)
 
-    def is_brand_domain(self, domain: str, brand: Optional[str]) -> bool:
+    def is_brand_domain(self, domain: str, brand: Optional[str], official_domains: Optional[list[str]] = None) -> bool:
         """Check if domain matches the brand."""
+        if official_domains and self._domain_matches_candidates(domain, set(official_domains)):
+            return True
+
         brand_normalized = self._matching.normalize_token_text(brand)
         domain_normalized = self._matching.normalize_token_text(domain)
         if not brand_normalized or not domain_normalized:
             return False
-        alias_domains = self.BRAND_DOMAIN_ALIASES.get(brand_normalized, set())
-        if alias_domains and self._domain_matches_candidates(domain, alias_domains):
-            return True
+
         if brand_normalized in domain_normalized:
             return True
 
@@ -515,7 +510,7 @@ class SearchScorer:
 
         for candidate_text in (result.get("title"), result.get("description")):
             brand_hint = self._matching.infer_brand_prefix(str(candidate_text or ""), product_name, url)
-            if brand_hint and self.is_brand_domain(domain, brand_hint):
+            if brand_hint and self.is_brand_domain(domain, brand_hint, official_domains=None):
                 return brand_hint
 
         title = str(result.get("title") or "")
@@ -523,14 +518,14 @@ class SearchScorer:
             normalized_segment = self._matching.normalize_token_text(segment)
             if len(normalized_segment) < 4:
                 continue
-            if self.is_brand_domain(domain, segment):
+            if self.is_brand_domain(domain, segment, official_domains=None):
                 return segment
 
         return self.infer_brand_from_domain(domain, product_name)
 
-    def classify_source_domain(self, domain: str, brand: Optional[str]) -> str:
+    def classify_source_domain(self, domain: str, brand: Optional[str], official_domains: Optional[list[str]] = None) -> str:
         """Classify a source domain for ranking and validation."""
-        if domain and self.is_brand_domain(domain, brand):
+        if domain and self.is_brand_domain(domain, brand, official_domains=official_domains):
             return "official"
         if domain and self.is_major_retailer(domain):
             return "major_retailer"
@@ -645,12 +640,13 @@ class SearchScorer:
         sku: str,
         brand: Optional[str],
         product_name: Optional[str],
+        official_domains: Optional[list[str]] = None,
     ) -> str:
         """Classify a specific result URL for ranking policy."""
         url = str(result.get("url") or "")
         domain = self.domain_from_url(url)
         effective_brand = brand or self.infer_brand_from_result(result, product_name)
-        source_tier = self.classify_source_domain(domain, effective_brand)
+        source_tier = self.classify_source_domain(domain, effective_brand, official_domains=official_domains)
 
         combined = " ".join(
             [
@@ -744,6 +740,7 @@ class SearchScorer:
         category: Optional[str],
         prefer_manufacturer: bool = False,
         preferred_domains: Optional[list[str]] = None,
+        official_domains: Optional[list[str]] = None,
     ) -> float:
         """Score a search result for relevance."""
         url = str(result.get("url") or "")
@@ -755,7 +752,7 @@ class SearchScorer:
         expected_tokens = self._matching.tokenize_keywords(product_name)
         brand_tokens = self._matching.tokenize_keywords(brand)
         path_tokens = self._path_tokens(url)
-        source_class = self.classify_result_source(result, sku, brand, product_name)
+        source_class = self.classify_result_source(result, sku, brand, product_name, official_domains=official_domains)
         combined_tokens = self._matching.tokenize_keywords(combined)
 
         score = 0.0
@@ -806,7 +803,7 @@ class SearchScorer:
             score += 1.0
 
         effective_brand = brand or self.infer_brand_from_result(result, product_name)
-        source_tier = self.classify_source_domain(domain, effective_brand)
+        source_tier = self.classify_source_domain(domain, effective_brand, official_domains=official_domains)
         if source_class == "official_exact":
             # Official manufacturer PDPs are the gold-standard source.
             # The bonus must comfortably exceed major_retailer (2.5) to
@@ -1102,12 +1099,19 @@ class SearchScorer:
 class BrandSourceSelector:
     """Uses LLM to evaluate SERP snippets for official manufacturer authenticity."""
 
-    def __init__(self, api_key: str | None = None, model: str = "gpt-4o-mini"):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str = "gpt-4o-mini",
+        provider: str = "openai",
+        base_url: str | None = None,
+    ):
         self.model = model
         self.api_key = api_key
         self._provider = create_llm_provider(
-            provider="openai",
+            provider=provider,
             model=model,
+            base_url=base_url,
             api_key=api_key,
         )
 

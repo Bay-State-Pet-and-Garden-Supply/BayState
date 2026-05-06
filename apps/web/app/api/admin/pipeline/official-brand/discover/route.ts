@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
 import { runOfficialBrandDiscovery } from "@/lib/official-brand-discovery";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,31 @@ export async function POST(request: NextRequest) {
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 500 });
     }
-    return NextResponse.json({ success: true, sku_count: result.skuCount, candidate_count: result.candidateCount });
+
+    // Enrich response with per-SKU candidate breakdown
+    const supabase = await createClient();
+    const { data: candidateRows } = await supabase
+      .from("official_brand_url_candidates")
+      .select("sku, selection_status")
+      .eq("cohort_id", cohortId)
+      .in("sku", skus);
+
+    const candidatesPerSku: Record<string, number> = {};
+    if (Array.isArray(candidateRows)) {
+      for (const row of candidateRows) {
+        const sku = row.sku as string | undefined;
+        if (sku) {
+          candidatesPerSku[sku] = (candidatesPerSku[sku] ?? 0) + 1;
+        }
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      sku_count: result.skuCount,
+      candidate_count: result.candidateCount,
+      candidates_per_sku: candidatesPerSku,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Discovery failed";
     console.error("[Official Brand Discover]", error);

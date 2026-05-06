@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from scrapers.ai_search.llm_runtime import LOCAL_OPENAI_COMPATIBLE_API_KEY
 from scrapers.ai_search.official_brand_scraper import OfficialBrandScraper
 from scrapers.providers.base import ProviderResponse
 
@@ -232,6 +233,46 @@ class TestConsolidateProductNameFallback:
             )
 
         assert result == ""
+
+
+class TestConsolidateProductNameRuntime:
+    """Tests that runtime config is forwarded to the provider factory."""
+
+    @pytest.mark.asyncio
+    async def test_uses_runtime_provider_model_and_base_url(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """openai_compatible runtimes should preserve provider/model/base_url."""
+        monkeypatch.setenv("OPENAI_COMPATIBLE_BASE_URL", "http://localhost:1234/v1/")
+        monkeypatch.delenv("OPENAI_COMPATIBLE_API_KEY", raising=False)
+
+        with patch("scrapers.ai_search.official_brand_scraper.SearchClient"):
+            with patch("scrapers.ai_search.official_brand_scraper.BrandSourceSelector"):
+                scraper = OfficialBrandScraper(
+                    llm_provider="openai_compatible",
+                    llm_model="google/gemma-4-e4b",
+                )
+
+        mock_provider = _make_mock_provider(
+            json_response='{"predicted_name": "Local Gemma Product"}'
+        )
+        with patch(
+            "scrapers.providers.factory.create_llm_provider",
+            return_value=mock_provider,
+        ) as create_provider:
+            result = await scraper._consolidate_product_name(
+                register_name="RAW PRODUCT NAME",
+                brand="TestBrand",
+                search_titles=["Title 1"],
+            )
+
+        assert result == "Local Gemma Product"
+        create_provider.assert_called_once_with(
+            provider="openai_compatible",
+            model="google/gemma-4-e4b",
+            base_url="http://localhost:1234/v1",
+            api_key=LOCAL_OPENAI_COMPATIBLE_API_KEY,
+        )
 
 
 class TestConsolidateProductNameNoProvider:

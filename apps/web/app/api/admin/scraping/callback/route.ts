@@ -398,7 +398,10 @@ export async function POST(request: NextRequest) {
             metadata: priorMetadata,
             config: jobConfigRecord,
         });
-        const isOfficialBrandJob = Boolean(officialBrandPhase) || requestedJobType === 'official_brand' || Boolean(cohortConfig);
+        const isDeepResearchJob = requestedJobType === 'deep_research' || existingJob.type === 'deep_research';
+        const isOfficialBrandJob = !isDeepResearchJob && (
+            Boolean(officialBrandPhase) || requestedJobType === 'official_brand' || Boolean(cohortConfig)
+        );
         let effectiveJobStatus = typeof updateData.status === 'string' ? updateData.status : payload.status;
 
         if (updateData.status === 'failed' && !isTestJob) {

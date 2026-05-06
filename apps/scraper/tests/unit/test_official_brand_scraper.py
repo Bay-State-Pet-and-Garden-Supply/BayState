@@ -1546,6 +1546,61 @@ def scraper_for_discovery() -> OfficialBrandScraper:
             )
 
 
+class TestDiscoverySearchExceptionHandling:
+    """Tests for search exceptions inside the two-phase discovery helpers."""
+
+    @pytest.mark.asyncio
+    async def test_search_sku_for_names_returns_empty_on_search_exception(
+        self, scraper_for_discovery: OfficialBrandScraper
+    ) -> None:
+        scraper_for_discovery._search_client.search = AsyncMock(
+            side_effect=RuntimeError("cache miss")
+        )
+
+        results = await scraper_for_discovery._search_sku_for_names(
+            sku="SKU-001",
+            brand="TestBrand",
+            register_name="Raw Product Name",
+        )
+
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_search_by_predicted_name_continues_after_query_exception(
+        self, scraper_for_discovery: OfficialBrandScraper
+    ) -> None:
+        scraper_for_discovery._search_client.search = AsyncMock(
+            side_effect=[
+                RuntimeError("cache miss"),
+                (
+                    [
+                        {
+                            "url": "https://example.com/product/123",
+                            "title": "Product Title",
+                            "result_type": "organic",
+                        }
+                    ],
+                    None,
+                ),
+            ]
+        )
+
+        results = await scraper_for_discovery._search_by_predicted_name(
+            predicted_name="Product Title",
+            brand="TestBrand",
+            official_domains=["example.com"],
+            preferred_domains=None,
+        )
+
+        assert results == [
+            {
+                "url": "https://example.com/product/123",
+                "title": "Product Title",
+                "result_type": "organic",
+            }
+        ]
+
+
 class TestDiscoverOfficialUrlCandidatesResultKeys:
     """Tests that discover_official_url_candidates returns expected new keys."""
 

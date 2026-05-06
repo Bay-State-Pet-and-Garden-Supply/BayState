@@ -152,6 +152,12 @@ export async function persistChunkResultsToPipeline(
     return persisted;
 }
 
+/**
+ * @deprecated URL discovery no longer dispatches to the runner.
+ * Discovery runs server-side via runOfficialBrandDiscovery().
+ * This function is kept for backward compatibility with in-flight
+ * jobs created before the migration. Remove once all legacy jobs drain.
+ */
 async function persistOfficialBrandDiscoveryResults(
     supabase: SupabaseClient,
     jobId: string,
@@ -372,6 +378,10 @@ export async function POST(request: NextRequest) {
             const chunkResultsBySku = mergeChunkResults([{ results: results.data }]);
             if (Object.keys(chunkResultsBySku).length > 0) {
                 try {
+                    // DEPRECATED: URL discovery no longer dispatches to the runner.
+                    // This branch only handles in-flight jobs that were created before
+                    // the server-side migration. New discovery jobs run server-side via
+                    // POST /api/admin/pipeline/official-brand/discover.
                     if (officialBrandPhase === 'url_discovery') {
                         const persistedCandidates = await persistOfficialBrandDiscoveryResults(
                             supabase,
@@ -380,7 +390,7 @@ export async function POST(request: NextRequest) {
                             isTestJob,
                             configRecord,
                         );
-                        console.log(`[Chunk Callback] Persisted ${persistedCandidates} Official Brand URL candidates from chunk ${chunk.chunk_index}`);
+                        console.log(`[Chunk Callback] [DEPRECATED] Persisted ${persistedCandidates} Official Brand URL candidates from chunk ${chunk.chunk_index}`);
                     } else {
                         await persistChunkResultsToPipeline(supabase, jobId, chunkResultsBySku, isTestJob, {
                             isOfficialBrandJob,

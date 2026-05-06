@@ -257,18 +257,22 @@ async def _run_single_entry(
     )
 
     try:
-        discovered_url = await scraper.identify_official_url(
+        discovery = await scraper.discover_official_url_candidates(
             sku=entry.sku,
             brand=entry.brand,
             product_name=entry.product_name,
             official_domains=entry.expected_official_domains,
             preferred_domains=entry.expected_official_domains,
+            register_name=entry.product_name,
         )
-        search_success = True
+        discovered_url = str(discovery.get("selected_url") or "").strip() or None
+        search_success = bool(discovery.get("success"))
         url_selection_success = discovered_url is not None
         if discovered_url:
             domain_match = _domain_matches(_normalize_domain(discovered_url), entry.expected_official_domains)
             url_match = _url_matches(entry.expected_source_url, discovered_url)
+        elif discovery.get("error"):
+            search_error = str(discovery.get("error"))
     except Exception as exc:
         search_error = str(exc)
         search_success = False

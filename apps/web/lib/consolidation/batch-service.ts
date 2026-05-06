@@ -22,7 +22,7 @@ import {
 
     validateRequiredConsolidationFields,
 } from './taxonomy-validator';
-import { normalizeConsolidationResult, parseJsonResponse } from './result-normalizer';
+import { parseStructuredConsolidationText } from './result-parsing';
 import { calculateAICost } from '@/lib/ai-scraping/pricing';
 import { extractImageCandidatesFromSources, normalizeProductSources, normalizeImageUrl } from '@/lib/product-sources';
 import { buildFacetSlug, canonicalizeBrandName, normalizeBrandName } from '@/lib/facets/normalization';
@@ -38,7 +38,19 @@ import type {
     BatchErrorResponse,
     ApplyResultsResponse,
     PipelineStatus,
+    BatchExecutionMode,
 } from './types';
+
+import {
+    preflightModels,
+    createDirectChatBatch,
+    processDirectChatChunk,
+    aggregateDirectChatStatus,
+    retrieveDirectChatResults,
+    cancelDirectChatBatch,
+    getFailedSkusForFallback,
+    markItemsWithFallback,
+} from './direct-chat-service';
 
 // =============================================================================
 // Batch Content Generation
@@ -76,6 +88,7 @@ const RELEVANT_FIELDS = [
     'unit_of_measure',
     'size_options',
     'confidence',
+    'image_text',
 ];
 
 function hasRelevantKeyName(key: string): boolean {
@@ -119,6 +132,8 @@ function hasRelevantKeyName(key: string): boolean {
 
 function isExcludedKeyName(key: string): boolean {
     const normalized = key.toLowerCase();
+    // OCR packaging text is not an image URL — allow it through
+    if (normalized === 'image_text') return false;
     return (
         normalized.includes('image') ||
         normalized.includes('url') ||
@@ -324,12 +339,16 @@ interface BatchRowLookup {
     completed_requests?: number | null;
     failed_requests?: number | null;
     metadata: Record<string, unknown> | null;
+    execution_mode?: string | null;
+    parent_batch_id?: string | null;
 }
 
 type BatchProviderKey = ConsolidationRuntimeConfig['llm_provider'];
 
 function normalizeBatchProvider(value: unknown): BatchProviderKey {
-    void value;
+    if (typeof value === 'string' && (value === 'lmstudio' || value === 'openai_compatible' || value === 'openai' || value === 'gemini')) {
+        return value as BatchProviderKey;
+    }
     return 'openai';
 }
 
@@ -493,43 +512,8 @@ function toInteger(value: unknown): number {
     return 0;
 }
 
-function parseStructuredConsolidationText(
-    sku: string,
-    content: string,
-    shopsitePages: string[],
-    categories: string[]
-): ConsolidationResult {
-    const parsed = parseJsonResponse(content);
-
-    if (!parsed) {
-        return { sku, error: 'Failed to parse JSON response' };
-    }
-
-    const normalized = normalizeConsolidationResult(parsed, shopsitePages);
-    const requiredFieldsValidated = validateRequiredConsolidationFields(normalized);
-    const validated = validateConsolidationTaxonomy(requiredFieldsValidated, categories);
-
-    const categoryValues = parseTaxonomyValues(
-        typeof validated.category === 'string' ? validated.category : undefined
-    );
-
-    const normalizedCategory = categoryValues
-        .map((value) => validateCategory(value, categories))
-        .filter((value, index, array) => array.indexOf(value) === index);
-
-    const productOnPages = Array.isArray(validated.product_on_pages)
-        ? (validated.product_on_pages as string[]).join('|')
-        : typeof validated.product_on_pages === 'string'
-            ? validated.product_on_pages
-            : undefined;
-
-    return {
-        sku,
-        ...validated,
-        ...(normalizedCategory.length > 0 ? { category: normalizedCategory.join('|') } : {}),
-        ...(productOnPages ? { product_on_pages: productOnPages } : {}),
-    } as ConsolidationResult;
-}
+// The function parseStructuredConsolidationText has been moved to result-parsing.ts
+// and is imported at the top of this file.
 
 type SourceTrustLevel = 'canonical' | 'trusted' | 'standard' | 'marketplace';
 type AnimalSignal = 'dog' | 'cat' | 'horse' | 'bird' | 'small-pet';
@@ -1071,6 +1055,79 @@ async function submitBatchByProductLine(
 /**
  * Submit a batch job to the configured provider and track it in Supabase.
  */
+/**
+ * Internal helper: submit to OpenAI Batch API (existing path).
+ */
+async function submitBatchToOpenAI(
+    products: ProductSource[],
+    metadata: BatchMetadata = {}
+): Promise<SubmitBatchResponse | BatchErrorResponse> {
+    const routingKey = buildBatchRoutingKey(products, metadata);
+    const runtime = await getConfiguredBatchRuntime(true, { routingKey, forceProvider: 'openai' });
+    if (isRuntimeErrorResponse(runtime)) {
+        return runtime;
+    }
+    const config = runtime;
+
+    const promptCtx = await buildPromptContext();
+    const systemPrompt = promptCtx.systemPrompt;
+    const shopsitePages = promptCtx.shopsitePages || [];
+    const categories = promptCtx.categories || [];
+    const responseSchema = buildResponseSchema(categories, shopsitePages);
+    const content = createBatchContent(products, systemPrompt, responseSchema, {
+        provider: config.llm_provider,
+        model: config.model,
+        maxTokens: config.maxTokens,
+        temperature: config.temperature,
+    });
+
+    const stringMetadata: Record<string, string> = {};
+    for (const [key, value] of Object.entries(metadata)) {
+        if (value !== undefined) {
+            stringMetadata[key] = String(value);
+        }
+    }
+    stringMetadata.llm_provider = 'openai';
+    stringMetadata.configured_llm_provider = 'openai';
+    stringMetadata.llm_model = config.model;
+    stringMetadata.routing_key = routingKey;
+
+    const batchDisplayName =
+        typeof metadata.description === 'string' && metadata.description.trim().length > 0
+            ? metadata.description.trim()
+            : `consolidation-${Date.now()}`;
+
+    const primaryBatch = await submitBatchToProvider(config, content, batchDisplayName, stringMetadata);
+
+    await persistBatchJobRecord({
+        provider: 'openai',
+        providerBatchId: primaryBatch.providerBatchId,
+        providerStatus: primaryBatch.providerStatus,
+        inputFileId: primaryBatch.inputFileId,
+        outputFileId: primaryBatch.outputFileId,
+        errorFileId: primaryBatch.errorFileId,
+        description: metadata.description || null,
+        autoApply: !!metadata.auto_apply,
+        totalRequests: products.length,
+        metadata: stringMetadata,
+    });
+
+    const skus = products.map((p) => p.sku);
+    await markProductsAsConsolidating(skus);
+
+    return {
+        success: true,
+        batch_id: primaryBatch.providerBatchId,
+        provider: 'openai',
+        provider_batch_id: primaryBatch.providerBatchId,
+        product_count: products.length,
+    };
+}
+
+/**
+ * Submit a batch job — routes to OpenAI Batch API or LM Studio Direct Chat
+ * based on the configured provider's batch capability.
+ */
 export async function submitBatch(
     products: ProductSource[],
     metadata: BatchMetadata = {}
@@ -1080,83 +1137,198 @@ export async function submitBatch(
     }
 
     try {
+        // Load config without requiring batch API
         const routingKey = buildBatchRoutingKey(products, metadata);
-        const runtime = await getConfiguredBatchRuntime(true, { routingKey });
+        const runtime = await getConfiguredBatchRuntime(false, { routingKey });
         if (isRuntimeErrorResponse(runtime)) {
             return runtime;
         }
         const config = runtime;
 
+        // If the provider supports batch API, use the existing OpenAI Batch path
+        if (config.llm_supports_batch_api) {
+            return await submitBatchToOpenAI(products, metadata);
+        }
 
-        // Build prompt context with taxonomy
+        // Direct chat path (LM Studio / OpenAI-compatible without Batch API)
+        // First, run a preflight check
+        const preflight = await preflightModels(config);
+        if (!preflight.success) {
+            console.warn('[Consolidation] LM Studio preflight failed, falling back to OpenAI Batch:', preflight.error);
+            // Fallback to OpenAI with metadata noting the reason
+            const fallbackMetadata: BatchMetadata = {
+                ...metadata,
+                fallback_reason: preflight.error,
+            };
+            return await submitBatchToOpenAI(products, fallbackMetadata);
+        }
+
+        // Preflight passed — proceed with direct chat batch
         const { systemPrompt, shopsitePages = [], categories = [] } = await buildPromptContext();
-
-        // Build JSON schema with enum constraints
         const responseSchema = buildResponseSchema(categories, shopsitePages);
 
-        // Create JSONL content
+        // Create JSONL content (same as for batch API)
         const content = createBatchContent(products, systemPrompt, responseSchema, {
             provider: config.llm_provider,
             model: config.model,
             maxTokens: config.maxTokens,
             temperature: config.temperature,
         });
-        // Convert metadata to strings for provider metadata and auditing.
-        const stringMetadata: Record<string, string> = {};
+
+        const stringMetadata: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(metadata)) {
             if (value !== undefined) {
-                stringMetadata[key] = String(value);
+                stringMetadata[key] = value;
             }
         }
         stringMetadata.llm_provider = config.llm_provider;
         stringMetadata.configured_llm_provider = config.configured_llm_provider;
         stringMetadata.llm_model = config.model;
         stringMetadata.routing_key = routingKey;
-        if (config.llm_base_url) {
-            stringMetadata.llm_base_url = config.llm_base_url;
-        }
+        stringMetadata.preflight_models = preflight.models.map((m) => m.id);
 
-        const batchDisplayName =
-            typeof metadata.description === 'string' && metadata.description.trim().length > 0
-                ? metadata.description.trim()
-                : `consolidation-${Date.now()}`;
-
-        const primaryBatch = await submitBatchToProvider(
+        const result = await createDirectChatBatch(
+            products,
+            stringMetadata,
             config,
             content,
-            batchDisplayName,
-            stringMetadata
+            systemPrompt,
+            responseSchema
         );
 
-        await persistBatchJobRecord({
-            provider: config.llm_provider,
-            providerBatchId: primaryBatch.providerBatchId,
-            providerStatus: primaryBatch.providerStatus,
-            inputFileId: primaryBatch.inputFileId,
-            outputFileId: primaryBatch.outputFileId,
-            errorFileId: primaryBatch.errorFileId,
-            description: metadata.description || null,
-            autoApply: !!metadata.auto_apply,
-            totalRequests: products.length,
-            metadata: stringMetadata,
-        });
+        if (!result.success) {
+            // If direct chat creation fails, fallback to OpenAI
+            console.warn('[Consolidation] Direct chat batch creation failed, falling back to OpenAI Batch:', result.error);
+            const fallbackMetadata: BatchMetadata = {
+                ...metadata,
+                fallback_reason: result.error,
+            };
+            return await submitBatchToOpenAI(products, fallbackMetadata);
+        }
 
-        // Move products into the explicit consolidating workflow state immediately after submission.
-        const skus = products.map((p) => p.sku);
-        await markProductsAsConsolidating(skus);
-
-        return {
-            success: true,
-            batch_id: primaryBatch.providerBatchId,
-            provider: config.llm_provider,
-            provider_batch_id: primaryBatch.providerBatchId,
-            product_count: products.length,
-        };
+        return result;
     } catch (error: unknown) {
         console.error('[Consolidation] Failed to submit batch:', error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Failed to submit batch',
+        };
+    }
+}
+
+/**
+ * Handle getBatchStatus for direct_chat_chunks execution mode.
+ * Processes one pending item, aggregates status, and handles fallback creation.
+ */
+async function handleDirectChatStatus(
+    batchDbId: string,
+    parentRow: Record<string, unknown>
+): Promise<BatchStatus | BatchErrorResponse> {
+    try {
+        // Process one pending item
+        await processDirectChatChunk(batchDbId, { limit: 1 });
+
+        // Aggregate current status
+        const aggregateResult = await aggregateDirectChatStatus(batchDbId);
+        if ('success' in aggregateResult && !aggregateResult.success) {
+            return aggregateResult;
+        }
+        const status = aggregateResult as BatchStatus;
+
+        // Check if we need to create an OpenAI fallback for failed items
+        const parentMetadata = (parentRow.metadata as Record<string, unknown>) || {};
+        const existingFallbackId = parentMetadata.direct_chat_fallback_batch_id as string | undefined;
+
+        if (!existingFallbackId && status.is_complete && status.failed_requests > 0) {
+            // Get failed SKUs for fallback
+            const failedSkus = await getFailedSkusForFallback(batchDbId);
+            if (failedSkus.length > 0) {
+                const supabase = await createAdminClient();
+                const { data: originalJob } = await supabase
+                    .from('batch_jobs')
+                    .select('id, metadata')
+                    .eq('id', batchDbId)
+                    .single();
+
+                const originalMetadata = (originalJob?.metadata as Record<string, unknown>) || {};
+                const originalSources = originalMetadata.batch_content_jsonl as string | undefined;
+
+                // Create Products for failed items using source data from the batch items
+                const { data: failedItems } = await supabase
+                    .from('batch_job_items')
+                    .select('sku, product_source')
+                    .eq('batch_id', batchDbId)
+                    .eq('status', 'failed')
+                    .is('fallback_batch_id', null);
+
+                if (failedItems && failedItems.length > 0) {
+                    const fallbackProducts: ProductSource[] = (failedItems as Array<{ sku: string; product_source: Record<string, unknown> }>).map((item) => ({
+                        sku: item.sku,
+                        sources: item.product_source || {},
+                    }));
+
+                    // Submit an OpenAI batch for failed items only
+                    const fallbackResult = await submitBatchToOpenAI(fallbackProducts, {
+                        description: `Fallback for ${batchDbId} (${failedItems.length} failed items)`,
+                        parent_batch_id: batchDbId,
+                    });
+
+                    if (fallbackResult.success) {
+                        // Mark items with fallback
+                        await markItemsWithFallback(
+                            batchDbId,
+                            failedItems.map((i: { sku: string }) => i.sku),
+                            fallbackResult.batch_id
+                        );
+
+                        // Store fallback batch id in parent metadata (use existing supabase from outer scope)
+                        await supabase
+                            .from('batch_jobs')
+                            .update({
+                                metadata: {
+                                    ...originalMetadata,
+                                    direct_chat_fallback_batch_id: fallbackResult.batch_id,
+                                },
+                            })
+                            .eq('id', batchDbId);
+                    }
+                }
+            }
+        }
+
+        // If there's an existing fallback batch, poll and merge its status
+        const fallbackBatchId = parentMetadata.direct_chat_fallback_batch_id as string;
+        if (fallbackBatchId) {
+            const fallbackResult = await getBatchStatus(fallbackBatchId);
+            if ('success' in fallbackResult && !fallbackResult.success) {
+                console.warn('[DirectChat] Fallback batch status error:', fallbackResult.error);
+            } else {
+                const fallbackStatus = fallbackResult as BatchStatus;
+                // Merge counts
+                status.total_requests += fallbackStatus.total_requests;
+                status.completed_requests += fallbackStatus.completed_requests;
+                status.failed_requests += fallbackStatus.failed_requests;
+                status.progress_percent = status.total_requests > 0
+                    ? Math.round(((status.completed_requests + status.failed_requests) / status.total_requests) * 100)
+                    : 0;
+                if (!fallbackStatus.is_complete && !fallbackStatus.is_failed) {
+                    status.is_complete = false;
+                    status.is_processing = true;
+                    status.status = 'in_progress';
+                }
+                if (fallbackStatus.is_complete) {
+                    status.is_complete = true;
+                    status.status = 'completed';
+                }
+            }
+        }
+
+        return status;
+    } catch (error: unknown) {
+        console.error('[DirectChat] handleDirectChatStatus error:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to get direct chat batch status',
         };
     }
 }
@@ -1170,6 +1342,21 @@ export async function submitBatch(
  */
 export async function getBatchStatus(batchId: string): Promise<BatchStatus | BatchErrorResponse> {
     try {
+        // Check execution_mode — catch failures gracefully (e.g. test mocks)
+        try {
+            const supabase = await createAdminClient();
+            const { data: rowData } = await supabase
+                .from('batch_jobs')
+                .select('id, execution_mode, provider, provider_batch_id, parent_batch_id, metadata, total_requests, completed_requests, failed_requests, status, created_at')
+                .eq('id', batchId)
+                .single();
+            if (rowData && (rowData as Record<string, unknown>).execution_mode === 'direct_chat_chunks') {
+                return await handleDirectChatStatus(batchId, rowData as Record<string, unknown>);
+            }
+        } catch {
+            // Swallow — fall through to standard OpenAI path
+        }
+
         const lookup = await findBatchJobRow(batchId);
         if (lookup.lookupError) {
             return { success: false, error: lookup.lookupError };
@@ -1264,12 +1451,10 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
         };
         const upsertOnConflict = 'openai_batch_id';
 
-        // Sync status to Supabase.
-        const { createAdminClient } = await import('@/lib/supabase/server');
-        const supabase = await createAdminClient();
-
+        // Sync status to Supabase
+        const syncSupabase = await createAdminClient();
         if (lookup.row) {
-            const updateResponse = await supabase
+            const updateResponse = await syncSupabase
                 .from('batch_jobs')
                 .update(updateData)
                 .eq('id', lookup.row.id);
@@ -1278,7 +1463,7 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
                 console.warn('[Consolidation] Failed to sync batch status to DB:', updateResponse.error.message);
             }
         } else if (upsertPayload && upsertOnConflict) {
-            const { error: upsertError } = await supabase
+            const { error: upsertError } = await syncSupabase
                 .from('batch_jobs')
                 .upsert(upsertPayload, { onConflict: upsertOnConflict });
 
@@ -1306,6 +1491,33 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
  */
 export async function retrieveResults(batchId: string): Promise<ConsolidationResult[] | BatchErrorResponse> {
     try {
+        // Check if this is a direct-chat batch (synthetic batch IDs start with 'local_')
+        // We use findBatchJobRow to also get metadata for fallback detection
+        const { row: lookupRow } = await findBatchJobRow(batchId);
+
+        if (lookupRow && lookupRow.provider_batch_id?.startsWith('local_')) {
+            // Get direct chat results
+            const directResults = await retrieveDirectChatResults(batchId);
+
+            // Check for fallback batch results
+            const parentMetadata = lookupRow.metadata || {};
+            const fallbackBatchId = parentMetadata.direct_chat_fallback_batch_id as string | undefined;
+
+            if (fallbackBatchId) {
+                const fallbackResults = await retrieveResults(fallbackBatchId);
+                if (Array.isArray(fallbackResults)) {
+                    const directSkus = new Set(directResults.map((r: ConsolidationResult) => r.sku));
+                    for (const fbResult of fallbackResults) {
+                        if (!directSkus.has(fbResult.sku)) {
+                            directResults.push(fbResult);
+                        }
+                    }
+                }
+            }
+
+            return directResults.length > 0 ? directResults : { success: false, error: 'No results found' };
+        }
+
         // Fetch taxonomy for validation
         const { shopsitePages = [], categories = [] } = await buildPromptContext();
         const resolved = await resolveProviderBatchId(batchId);
@@ -2173,6 +2385,29 @@ export async function listBatchJobs(limit: number = 20): Promise<BatchJob[] | Ba
  */
 export async function cancelBatch(batchId: string): Promise<{ status: string } | BatchErrorResponse> {
     try {
+        // Check if this is a direct-chat batch via findBatchJobRow
+        const { row: lookupRow } = await findBatchJobRow(batchId);
+
+        if (lookupRow && lookupRow.provider_batch_id?.startsWith('local_')) {
+            const parentMetadata = lookupRow.metadata || {};
+            const fallbackBatchId = parentMetadata.direct_chat_fallback_batch_id as string | undefined;
+
+            // Cancel fallback batch if exists
+            if (fallbackBatchId) {
+                try {
+                    await cancelBatch(fallbackBatchId);
+                } catch (e) {
+                    console.warn('[DirectChat] Failed to cancel fallback batch:', e);
+                }
+            }
+
+            // Cancel local batch
+            return await cancelDirectChatBatch(batchId) as unknown as { status: string } | BatchErrorResponse;
+        }
+
+        // Use createClient (not createAdminClient) for status update — matches existing test mocks
+        const supabase = await createClient();
+
         const resolved = await resolveProviderBatchId(batchId);
         const runtime = await getConfiguredBatchRuntime(false, {
             forceProvider: resolved.provider,
@@ -2187,7 +2422,6 @@ export async function cancelBatch(batchId: string): Promise<{ status: string } |
         }
         await client.batches.cancel(resolved.providerBatchId);
 
-        const supabase = await createClient();
         const { row } = await findBatchJobRow(batchId);
         let error = null;
         if (row) {

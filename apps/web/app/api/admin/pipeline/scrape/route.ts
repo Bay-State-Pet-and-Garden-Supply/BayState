@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { scrapeProducts } from '@/lib/pipeline-scraping';
+import { runOfficialBrandDiscovery } from '@/lib/official-brand-discovery';
 import { createClient } from '@/lib/supabase/server';
 import {
     normalizeOfficialBrandUrl,
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
         const { skus, scrapers, enrichment_method, testMode, cohort_id, official_brand_phase, urls_by_sku } = body as {
             skus: string[];
             scrapers: string[];
-            enrichment_method?: 'scrapers' | 'official_brand';
+            enrichment_method?: 'scrapers' | 'official_brand' | 'deep_research';
             testMode?: boolean;
             cohort_id?: string;
             official_brand_phase?: 'url_discovery' | 'extraction';
@@ -141,11 +142,13 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'SKUs array is required' }, { status: 400 });
         }
 
-        if (!scrapers || !Array.isArray(scrapers)) {
+        const enrichmentMethod = enrichment_method ?? 'scrapers';
+
+        if (enrichmentMethod !== 'deep_research' && (!scrapers || !Array.isArray(scrapers))) {
             return NextResponse.json({ error: 'Scrapers array is required' }, { status: 400 });
         }
 
-        const enrichmentMethod = enrichment_method ?? 'scrapers';
+
         const manualUrlsBySku = toStringRecord(urls_by_sku);
         const officialBrandPhase = enrichmentMethod === 'official_brand'
             ? official_brand_phase ?? (manualUrlsBySku ? 'extraction' : 'url_discovery')
@@ -155,6 +158,16 @@ export async function POST(request: NextRequest) {
         // Resolve cohort brand for context enrichment
         let cohortBrand: string | undefined;
         let officialBrandCohort:
+            | {
+                id: string;
+                brandId: string;
+                brandName: string;
+                websiteUrl?: string;
+                officialDomains?: string[];
+                preferredDomains?: string[];
+            }
+            | undefined;
+        let deepResearchCohort:
             | {
                 id: string;
                 brandId: string;
@@ -222,6 +235,26 @@ export async function POST(request: NextRequest) {
                         ...(officialDomains ? { officialDomains } : {}),
                         ...(preferredDomains ? { preferredDomains } : {}),
                     };
+                }
+
+                if (enrichmentMethod === 'deep_research') {
+                    const brandId = toOptionalString(cohortRow.brand_id) ?? toOptionalString(brandRecord?.id);
+                    const brandName = cohortBrand;
+                    const websiteUrl = toOptionalString(brandRecord?.website_url);
+                    const officialDomains = toDomainList(brandRecord?.official_domains);
+                    const preferredDomains = toDomainList(brandRecord?.preferred_domains);
+
+                    // Deep Research cohort context is permissive — no strict validation
+                    if (cohortRow.id && brandId && brandName) {
+                        deepResearchCohort = {
+                            id: cohortRow.id,
+                            brandId,
+                            brandName,
+                            ...(websiteUrl ? { websiteUrl } : {}),
+                            ...(officialDomains ? { officialDomains } : {}),
+                            ...(preferredDomains ? { preferredDomains } : {}),
+                        };
+                    }
                 }
             }
         }
@@ -333,6 +366,23 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // -------------------------------------------------------------------
+        // DEPRECATED: Official Brand URL discovery now runs server-side.
+        // Runner-based URL discovery is deprecated; only extraction goes to runner.
+        // -------------------------------------------------------------------
+        if (officialBrandPhase === 'url_discovery') {
+            const discoveryResult = await runOfficialBrandDiscovery({ cohortId: cohort_id!, skus });
+            if (!discoveryResult.success) {
+                return NextResponse.json({ error: discoveryResult.error }, { status: 500 });
+            }
+            return NextResponse.json({
+                success: true,
+                sku_count: discoveryResult.skuCount,
+                candidate_count: discoveryResult.candidateCount,
+                note: 'URL discovery ran server-side. Extraction not started. Use POST /api/admin/pipeline/official-brand/discover to run discovery standalone.',
+            });
+        }
+
         const result = await scrapeProducts(skus, {
             scrapers,
             enrichment_method: enrichmentMethod,
@@ -341,6 +391,7 @@ export async function POST(request: NextRequest) {
             testMode: testMode ?? false,
             cohortBrand,
             officialBrandCohort,
+            ...(enrichmentMethod === 'deep_research' && deepResearchCohort ? { deepResearchCohort } : {}),
         });
 
         if (!result.success) {
@@ -354,7 +405,7 @@ export async function POST(request: NextRequest) {
             success: true,
             jobIds: result.jobIds,
             skuCount: skus.length,
-            scraperCount: scrapers.length,
+            scraperCount: scrapers?.length ?? 0,
         });
     } catch (error) {
         console.error('[Pipeline Scrape] Request failed:', error);

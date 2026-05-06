@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
-import { getBatchStatus, isOpenAIConfigured } from '@/lib/consolidation';
+import { getBatchStatus } from '@/lib/consolidation';
+import { getConsolidationConfig } from '@/lib/consolidation/openai-client';
 import { createClient } from '@/lib/supabase/server';
 
 /**
@@ -11,9 +12,10 @@ export async function POST() {
     const auth = await requireAdminAuth();
     if (!auth.authorized) return auth.response;
 
-    if (!(await isOpenAIConfigured())) {
+    const runtimeConfig = await getConsolidationConfig();
+    if (!runtimeConfig.llm_api_key) {
         return NextResponse.json(
-            { error: 'No configured LLM batch provider is available' },
+            { error: 'No configured LLM provider is available' },
             { status: 503 }
         );
     }

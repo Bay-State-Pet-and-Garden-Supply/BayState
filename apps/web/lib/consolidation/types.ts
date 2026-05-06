@@ -8,6 +8,17 @@
 import type { LLMProvider } from '@/lib/ai-scraping/credentials';
 
 // =============================================================================
+// Execution Mode
+// =============================================================================
+
+/**
+ * How a batch job is processed by the provider.
+ * - 'batch_api': Uses the provider's Batch API (e.g., OpenAI /v1/batches).
+ * - 'direct_chat_chunks': Sends individual /v1/chat/completions requests (LM Studio).
+ */
+export type BatchExecutionMode = 'batch_api' | 'direct_chat_chunks';
+
+// =============================================================================
 // Batch Job Types
 // =============================================================================
 
@@ -70,6 +81,7 @@ export interface BatchJob {
     provider_error_file_id?: string | null;
     openai_batch_id?: string | null;
     status: string;
+    execution_mode: BatchExecutionMode;
     description: string | null;
     auto_apply: boolean;
     total_requests: number;
@@ -142,12 +154,33 @@ export interface ConsolidationResult {
 // =============================================================================
 
 /**
+ * Per-SKU work item for a direct-chat consolidation batch.
+ */
+export interface BatchJobItem {
+    id: string;
+    batch_job_id: string;
+    sku: string;
+    status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+    request_payload: Record<string, unknown>;
+    response_payload: Record<string, unknown> | null;
+    parsed_result: Record<string, unknown> | null;
+    product_source: Record<string, unknown>;
+    error_message: string | null;
+    attempt_count: number;
+    fallback_batch_id: string | null;
+    started_at: string | null;
+    completed_at: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+/**
  * Response from submitting a batch job.
  */
 export interface SubmitBatchResponse {
     success: true;
     batch_id: string;
-    provider: 'openai' | 'openai_compatible' | 'gemini';
+    provider: LLMProvider;
     provider_batch_id: string;
     product_count: number;
     _batch_groups?: Array<{

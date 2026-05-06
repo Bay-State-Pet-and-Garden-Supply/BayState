@@ -19,6 +19,26 @@ def test_build_brand_focused_query():
     assert "-site:ebay.com" in query
 
 
+def test_brand_source_selector_preserves_runtime_provider_args():
+    """Local OpenAI-compatible runtimes should flow through unchanged."""
+    mock_factory = MagicMock(return_value=AsyncMock())
+
+    with patch("scrapers.ai_search.scoring.create_llm_provider", mock_factory, create=True):
+        BrandSourceSelector(
+            api_key="local-key",
+            model="google/gemma-4-e4b",
+            provider="openai_compatible",
+            base_url="http://localhost:1234/v1",
+        )
+
+    mock_factory.assert_called_once_with(
+        provider="openai_compatible",
+        model="google/gemma-4-e4b",
+        api_key="local-key",
+        base_url="http://localhost:1234/v1",
+    )
+
+
 @pytest.mark.asyncio
 async def test_brand_source_selector_score_snippet():
     """Test that score_snippet uses the provider/factory pattern and parses JSON response."""
