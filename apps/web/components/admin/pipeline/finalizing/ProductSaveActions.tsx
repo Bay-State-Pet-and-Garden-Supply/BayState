@@ -128,17 +128,17 @@ export function ProductSaveActions({
               disabled={saving || publishing || hasPendingCopilotReview}
             >
               {publishing ? (
-                "Queueing..."
+                "Publishing..."
               ) : (
                 <>
                   <CheckCircle className="mr-2 h-4 w-4" />
-                  Approve
+                  Publish
                 </>
               )}
             </Button>
           </div>
           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
-            Shortcuts: Save with Cmd/Ctrl+S. Approve with Cmd/Ctrl+Enter.
+            Shortcuts: Save with Cmd/Ctrl+S. Publish with Cmd/Ctrl+Enter.
           </p>
         </div>
       </div>

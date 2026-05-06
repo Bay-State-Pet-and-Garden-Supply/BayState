@@ -130,6 +130,7 @@ interface FinalizingResultsViewProps {
     isShift?: boolean,
   ) => void;
   isSearching?: boolean;
+  showLegacyShopSiteFields?: boolean;
 }
 
 interface PersistProductsResult extends ToolSummary {
@@ -197,6 +198,7 @@ export function FinalizingResultsView({
   selectedSkus = new Set(),
   onSelectSku,
   isSearching = false,
+  showLegacyShopSiteFields = false,
 }: FinalizingResultsViewProps) {
   const [copilotOpen, setCopilotOpen] = useState(false);
 
@@ -799,7 +801,7 @@ export function FinalizingResultsView({
             if (!publishRes.ok) {
               const data = await publishRes.json().catch(() => null);
               throw new Error(
-                data?.error || "Failed to move product into exporting",
+                data?.error || "Failed to publish product to storefront",
               );
             }
           }
@@ -857,7 +859,7 @@ export function FinalizingResultsView({
         const alreadyCurrentCount = successful.length - changedCount;
         const noun = successful.length === 1 ? "product" : "products";
         let summary = andPublish
-          ? `Approved ${successful.length} ${noun}.`
+          ? `Published ${successful.length} ${noun} to the storefront.`
           : changedCount > 0
             ? `Saved ${changedCount} ${changedCount === 1 ? "product" : "products"}.`
             : `All ${successful.length} matched drafts were already up to date.`;
@@ -1948,6 +1950,7 @@ export function FinalizingResultsView({
                       normalizeStorePages={normalizeStorePages}
                       addCustomSource={addCustomSource}
                       removeSource={removeSource}
+                      showLegacyShopSiteFields={showLegacyShopSiteFields}
                     />
                   </div>
                 </div>

@@ -55,7 +55,7 @@ const BULK_ACTIONS: Record<
  previousStage: "imported",
  },
  finalizing: {
- label: "Approve Selected",
+ label: "Publish Selected",
  nextStage: "exporting",
  resetLabel: "Return to Scraped",
  previousStage: "scraped",
@@ -82,6 +82,7 @@ interface FloatingActionsBarProps {
  actionState?: "upload" | "zip" | null;
  onUploadShopSite?: () => void;
  onDownloadZip?: () => void;
+ showLegacyShopSiteActions?: boolean;
 }
 
 export function FloatingActionsBar({
@@ -103,6 +104,7 @@ export function FloatingActionsBar({
  actionState = null,
  onUploadShopSite,
  onDownloadZip,
+ showLegacyShopSiteActions = false,
 }: FloatingActionsBarProps) {
  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
 
@@ -253,7 +255,7 @@ export function FloatingActionsBar({
  </Button>
  )}
 
- {isTerminalStage && onUploadShopSite && onDownloadZip && (
+ {isTerminalStage && showLegacyShopSiteActions && onUploadShopSite && onDownloadZip && (
  <>
  <Button
  variant="outline"

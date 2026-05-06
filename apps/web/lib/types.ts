@@ -16,6 +16,8 @@ export interface Brand {
 
 export type DiscountType = 'percentage' | 'fixed_amount' | 'free_shipping';
 
+export type ShopSiteSyncStatus = 'not_synced' | 'pending' | 'synced' | 'failed';
+
 export interface Product {
   id: string;
   sku?: string | null;
@@ -43,6 +45,9 @@ export interface Product {
   availability?: string | null;
   minimum_quantity?: number | null;
   shopsite_pages?: string[] | null;
+  shopsite_sync_status?: ShopSiteSyncStatus | null;
+  shopsite_last_synced_at?: string | null;
+  shopsite_last_sync_error?: string | null;
   brand?: Brand;
   primary_category?: Category;
   variants?: ProductVariant[];

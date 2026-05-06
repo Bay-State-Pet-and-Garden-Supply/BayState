@@ -51,6 +51,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
 import type { Brand } from "@/lib/types";
@@ -90,6 +91,7 @@ const LIVE_OPERATIONAL_TABS = new Set<PipelineStage>([
 ]);
 const WORKSPACE_TABS = new Set<PipelineStage>(["scraped", "url_review", "finalizing", "imported", "exporting"]);
 const EMPTY_SOURCES: string[] = [];
+const PIPELINE_LEGACY_FIELDS_STORAGE_KEY = "baystate.pipeline.show-legacy-shopsite-fields";
 
 function isLiveOperationalTab(stage: PipelineStage): boolean {
   return LIVE_OPERATIONAL_TABS.has(stage);
@@ -137,6 +139,9 @@ export function PipelineClient({
   const [exportActionState, setExportActionState] = useState<
     "upload" | "zip" | null
   >(null);
+  const [showLegacyShopSiteFields, setShowLegacyShopSiteFields] =
+    useState(false);
+  const [legacyPreferenceLoaded, setLegacyPreferenceLoaded] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [editingCohort, setEditingCohort] = useState<{
     id: string;
@@ -162,6 +167,31 @@ export function PipelineClient({
       setEditingCohort(null);
     }
   }, [canEditCohorts]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const storedPreference = window.localStorage.getItem(
+      PIPELINE_LEGACY_FIELDS_STORAGE_KEY,
+    );
+    if (storedPreference === "true") {
+      setShowLegacyShopSiteFields(true);
+    }
+    setLegacyPreferenceLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!legacyPreferenceLoaded || typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(
+      PIPELINE_LEGACY_FIELDS_STORAGE_KEY,
+      String(showLegacyShopSiteFields),
+    );
+  }, [legacyPreferenceLoaded, showLegacyShopSiteFields]);
 
   const filteredProducts = useMemo(() => {
     let result = products;
@@ -829,7 +859,7 @@ export function PipelineClient({
 
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || "Failed to download image ZIP");
+        throw new Error(payload.error || "Failed to download the ShopSite ZIP");
       }
 
       return response;
@@ -855,7 +885,7 @@ export function PipelineClient({
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
           throw new Error(
-            payload.error || "Failed to upload products to ShopSite",
+            payload.error || "Failed to sync products to ShopSite",
           );
         }
 
@@ -894,15 +924,15 @@ export function PipelineClient({
           toast.error(
             zipError instanceof Error
               ? zipError.message
-              : "Uploaded to ShopSite, but failed to download image ZIP",
+              : "Synced to ShopSite, but failed to download the ShopSite ZIP",
           );
         }
 
         setSelectedSkus(new Set());
         await refreshAll();
 
-        toast.success("Uploaded to ShopSite", {
-          description: `${uploadedCount} storefront product${uploadedCount === 1 ? "" : "s"} archived${marker ? ` and tagged ${marker}` : ""}${zipDownloaded ? "; image ZIP downloaded" : ""}`,
+        toast.success("ShopSite sync complete", {
+          description: `${uploadedCount} storefront product${uploadedCount === 1 ? "" : "s"} archived${marker ? ` and tagged ${marker}` : ""}${zipDownloaded ? "; ShopSite ZIP downloaded" : ""}`,
         });
 
         if (publishWarning) {
@@ -914,7 +944,7 @@ export function PipelineClient({
         toast.error(
           error instanceof Error
             ? error.message
-            : "Failed to upload products to ShopSite",
+            : "Failed to sync products to ShopSite",
         );
       } finally {
         setExportActionState(null);
@@ -940,14 +970,14 @@ export function PipelineClient({
         const response = await fetchPublishedImageZipResponse(skus);
         await downloadResponseToFile(response, "shopsite-images.zip");
 
-        toast.success("Image ZIP downloaded", {
+        toast.success("ShopSite ZIP downloaded", {
           description: `${exportCount} storefront product${exportCount === 1 ? "" : "s"}`,
         });
       } catch (error) {
         toast.error(
           error instanceof Error
             ? error.message
-            : "Failed to download image ZIP",
+            : "Failed to download the ShopSite ZIP",
         );
       } finally {
         setExportActionState(null);
@@ -1033,8 +1063,15 @@ export function PipelineClient({
       });
 
       if (res.ok) {
+        const payload = await res.json().catch(() => null);
+        const updatedCount =
+          typeof payload?.updatedCount === "number"
+            ? payload.updatedCount
+            : skus.length;
         toast.success(
-          `Moved ${skus.length} product${skus.length > 1 ? "s" : ""} to ${nextStage}`,
+          nextStage === "exporting"
+            ? `Published ${updatedCount} product${updatedCount === 1 ? "" : "s"} to the storefront`
+            : `Moved ${updatedCount} product${updatedCount === 1 ? "" : "s"} to ${nextStage}`,
         );
         setSelectedSkus(new Set());
         await refreshAll();
@@ -1255,6 +1292,8 @@ export function PipelineClient({
     ? `/admin/pipeline?stage=url_review&cohort_id=${encodeURIComponent(officialBrandReviewCohortId)}`
     : null;
   const canDiscoverOfficialBrand = currentStage === "imported" && officialBrandSelection.allowed && selectedSkus.size > 0;
+  const showLegacyShopSiteToggle =
+    currentStage === "finalizing" || currentStage === "exporting";
   const applyFilterState = (newFilters: PipelineFiltersState) => {
     setSourceFilter(newFilters.source || "");
     setProductLineFilter(newFilters.product_line || "");
@@ -1319,6 +1358,19 @@ export function PipelineClient({
             Official Brand Candidates
           </Link>
         </Button>
+      ) : null}
+
+      {showLegacyShopSiteToggle ? (
+        <label className="flex h-8 items-center gap-2 border border-border bg-card px-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+          <span className={cn(showLegacyShopSiteFields && "text-foreground")}>
+            Legacy / ShopSite
+          </span>
+          <Switch
+            checked={showLegacyShopSiteFields}
+            onCheckedChange={setShowLegacyShopSiteFields}
+            aria-label="Show legacy ShopSite fields"
+          />
+        </label>
       ) : null}
 
       {currentStage === "imported" && (
@@ -1527,6 +1579,7 @@ export function PipelineClient({
                 selectedSkus={selectedSkus}
                 onSelectSku={handleSelectSku}
                 isSearching={isSearching}
+                showLegacyShopSiteFields={showLegacyShopSiteFields}
               />
             </div>
           ) : currentStage === "imported" || currentStage === "exporting" || hideTabs ? (
@@ -1840,6 +1893,7 @@ export function PipelineClient({
           onDownloadZip={
             currentStage === "exporting" ? handleDownloadSelectedZip : undefined
           }
+          showLegacyShopSiteActions={showLegacyShopSiteFields}
         />
       )}
 

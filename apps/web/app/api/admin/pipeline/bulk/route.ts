@@ -3,6 +3,7 @@ import { bulkUpdateStatus } from '@/lib/pipeline';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { PERSISTED_PIPELINE_STATUSES, isPersistedStatus } from '@/lib/pipeline/types';
 import { createClient } from '@/lib/supabase/server';
+import { bulkPublishToStorefront } from '@/lib/pipeline/publish';
 
 const CANONICAL_PERSISTED_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
     status => `'${status}'`
@@ -82,6 +83,25 @@ export async function POST(request: NextRequest) {
                 { error: `Invalid status '${toStatus}'. Allowed persisted statuses: ${CANONICAL_PERSISTED_STATUS_LIST}` },
                 { status: 400 }
             );
+        }
+
+        if (toStatus === 'exporting') {
+            const publishResult = await bulkPublishToStorefront(skus, auth.user.id);
+            if (!publishResult.success && publishResult.successCount === 0) {
+                return NextResponse.json(
+                    { 
+                        error: 'Failed to publish products to storefront', 
+                        details: publishResult.errors 
+                    },
+                    { status: 500 }
+                );
+            }
+            
+            return NextResponse.json({
+                success: true,
+                updatedCount: publishResult.successCount,
+                errors: publishResult.errors.length > 0 ? publishResult.errors : undefined,
+            });
         }
 
         const result = await bulkUpdateStatus(skus, toStatus, auth.user.id, resetResults);
