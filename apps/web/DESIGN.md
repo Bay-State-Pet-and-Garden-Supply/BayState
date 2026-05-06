@@ -208,7 +208,7 @@ The admin surface suppresses shadows entirely — replacing them with thin `1px`
 
 **The No Blur Rule.** Shadows in this system have zero blur-radius. `0 4px 12px rgba(0,0,0,0.15)` is the language of SaaS dashboards, not general stores. If a shadow has a blur, it's in the wrong design system.
 
-**The Admin Is Border-Only Rule.** The admin portal conveys depth through borders and background color shifts, never shadows. `data-ui-surface="admin"` strips all box-shadows. A shadow in admin is a bug.
+**The Admin Is Dark & Border-Only Rule.** The admin portal is dark-themed to reduce eye strain during long sessions. It conveys depth through borders and background color shifts, never shadows. `data-ui-surface="admin"` strips all box-shadows. A shadow in admin is a bug.
 
 ## 5. Components
 

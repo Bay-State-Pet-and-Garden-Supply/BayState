@@ -528,8 +528,8 @@
         "section": "elevation"
       },
       {
-        "name": "The Admin Is Border-Only Rule",
-        "body": "The admin portal conveys depth through borders and background color shifts, never shadows. data-ui-surface=\"admin\" strips all box-shadows.",
+        "name": "The Admin Is Dark & Border-Only Rule",
+        "body": "The admin portal is dark-themed to reduce eye strain. It conveys depth through borders and background color shifts, never shadows. data-ui-surface=\"admin\" strips all box-shadows.",
         "section": "elevation"
       }
     ],
