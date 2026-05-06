@@ -33,12 +33,10 @@ describe('scrapeProducts', () => {
             name?: string | null;
             brand?: {
                 name?: string | null;
-                website_url?: string | null;
                 official_domains?: string[];
                 preferred_domains?: string[];
             } | Array<{
                 name?: string | null;
-                website_url?: string | null;
                 official_domains?: string[];
                 preferred_domains?: string[];
             }> | null;
@@ -50,10 +48,8 @@ describe('scrapeProducts', () => {
             id?: string;
             name?: string | null;
             slug?: string | null;
-            website_url?: string | null;
             official_domains?: string[];
             preferred_domains?: string[];
-            aliases?: string[];
         }>;
         cohortRows?: Array<{
             id: string;
@@ -63,7 +59,6 @@ describe('scrapeProducts', () => {
                 id?: string;
                 name?: string | null;
                 slug?: string | null;
-                website_url?: string | null;
                 official_domains?: string[];
                 preferred_domains?: string[];
             } | null;
@@ -117,18 +112,7 @@ describe('scrapeProducts', () => {
 
                 return Promise.resolve({ data: [], error: null });
             }),
-            overlaps: jest.fn().mockImplementation((column: string, values: string[]) => {
-                const rows = options?.brandRows ?? [];
-                if (column === 'aliases') {
-                    return Promise.resolve({
-                        data: rows.filter((row) =>
-                            row.aliases && row.aliases.some((a: string) => values.includes(a))
-                        ),
-                        error: null,
-                    });
-                }
-                return Promise.resolve({ data: [], error: null });
-            }),
+            overlaps: jest.fn().mockResolvedValue({ data: [], error: null }),
         };
 
         const cohortBuilder = {
@@ -346,11 +330,11 @@ describe('scrapeProducts', () => {
 
         const result = await scrapeProducts(['SKU-1'], {
             enrichment_method: 'official_brand',
+            officialBrandPhase: 'extraction',
             officialBrandCohort: {
                 id: 'cohort-1',
                 brandId: 'brand-1',
                 brandName: 'Miracle-Gro',
-                websiteUrl: 'https://www.scottsmiraclegro.com/en-us/brands/miracle-gro',
                 officialDomains: ['scottsmiraclegro.com'],
                 preferredDomains: ['homedepot.com'],
             },
@@ -362,7 +346,6 @@ describe('scrapeProducts', () => {
             id: 'cohort-1',
             brandId: 'brand-1',
             brandName: 'Miracle-Gro',
-            websiteUrl: 'https://www.scottsmiraclegro.com/en-us/brands/miracle-gro',
             officialDomains: ['scottsmiraclegro.com'],
             preferredDomains: ['homedepot.com'],
         });
@@ -448,7 +431,7 @@ describe('scrapeProducts', () => {
 
         expect(result.success).toBe(true);
         expect(mockSupabase._productsBuilder.select).toHaveBeenCalledWith(
-            'sku, name, brand:brands(name, website_url, official_domains, preferred_domains), product_categories(category:categories(name))'
+            'sku, name, brand:brands(name, official_domains, preferred_domains), product_categories(category:categories(name))'
         );
         expect(mockSupabase._productsBuilder.in).toHaveBeenCalledWith('sku', ['SKU-1']);
 
@@ -479,7 +462,6 @@ describe('scrapeProducts', () => {
                     name: 'Miracle-Gro Potting Mix 25 Quart',
                     brand: {
                         name: 'Miracle-Gro',
-                        website_url: 'https://www.scottsmiraclegro.com/en-us/brands/miracle-gro',
                         official_domains: ['scottsmiraclegro.com'],
                         preferred_domains: ['homedepot.com', 'lowes.com'],
                     },
@@ -538,13 +520,13 @@ describe('scrapeProducts', () => {
         expect(insertedPayload.config.items[0].product_name).toBeUndefined();
     });
 
-    it('should resolve brand via aliases when exact slug does not match', async () => {
+    it('should resolve brand via slug when brand hint matches', async () => {
         mockSupabase = makeSupabaseMock({
             pipelineRows: [
                 {
                     sku: 'SKU-1',
                     input: {
-                        name: 'LV SEED ORGANIC WHEAT GRASS HARD RED',
+                        name: 'LAKE VALLEY SEED ORGANIC WHEAT GRASS HARD RED',
                         price: 3.29,
                     },
                 },
@@ -554,9 +536,7 @@ describe('scrapeProducts', () => {
                     id: 'brand-lvs',
                     name: 'Lake Valley Seed',
                     slug: 'lake-valley-seed',
-                    website_url: 'https://lakevalleyseed.com',
                     official_domains: ['lakevalleyseed.com'],
-                    aliases: ['LV SEED'],
                 },
             ],
         });
@@ -569,7 +549,7 @@ describe('scrapeProducts', () => {
         expect(insertedPayload.config.items).toEqual([
             {
                 sku: 'SKU-1',
-                register_name: 'LV SEED ORGANIC WHEAT GRASS HARD RED',
+                register_name: 'LAKE VALLEY SEED ORGANIC WHEAT GRASS HARD RED',
                 brand: 'Lake Valley Seed',
                 official_domains: ['lakevalleyseed.com'],
             },
@@ -595,7 +575,6 @@ describe('scrapeProducts', () => {
                     id: 'brand-1',
                     name: 'Miracle-Gro',
                     slug: 'miracle-gro',
-                    website_url: 'https://www.scottsmiraclegro.com/en-us/brands/miracle-gro',
                     official_domains: ['scottsmiraclegro.com'],
                     preferred_domains: ['homedepot.com', 'lowes.com'],
                 },
@@ -640,7 +619,6 @@ describe('scrapeProducts', () => {
                         id: 'brand-bentley',
                         name: 'Bentley Seed',
                         slug: 'bentley-seed',
-                        website_url: 'https://bentleyseeds.com',
                         official_domains: ['bentleyseeds.com'],
                         preferred_domains: ['arett.com'],
                     },
@@ -689,11 +667,8 @@ describe('scrapeProducts', () => {
             },
         });
 
-        expect(result.success).toBe(true);
-        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
-        expect(insertedPayload.type).toBe('official_brand_url_discovery');
-        expect(insertedPayload.config.phase).toBe('url_discovery');
-        expect(insertedPayload.metadata.official_brand_phase).toBe('url_discovery');
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('discovery now runs server-side');
     });
 
     it('should create official_brand_extraction job when phase is extraction', async () => {
@@ -783,10 +758,8 @@ describe('scrapeProducts', () => {
             },
         });
 
-        expect(result.success).toBe(true);
-        const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
-        // Discovery items should not have max_fallbacks
-        expect(insertedPayload.config.items[0].max_fallbacks).toBeUndefined();
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('discovery now runs server-side');
     });
 
     it('should persist URL candidates for manual extraction jobs', async () => {
@@ -870,7 +843,6 @@ describe('scrapeProducts', () => {
                 id: 'cohort-1',
                 brandId: 'brand-1',
                 brandName: 'Test Brand',
-                websiteUrl: 'https://test-brand.com',
                 officialDomains: ['test-brand.com'],
             },
         });
@@ -894,7 +866,6 @@ describe('scrapeProducts', () => {
             id: 'cohort-1',
             brandId: 'brand-1',
             brandName: 'Test Brand',
-            websiteUrl: 'https://test-brand.com',
             officialDomains: ['test-brand.com'],
         });
 

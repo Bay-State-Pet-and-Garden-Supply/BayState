@@ -5,11 +5,6 @@ export const OFFICIAL_BRAND_URL_DISCOVERY_TYPE = 'official_brand_url_discovery';
 export const OFFICIAL_BRAND_EXTRACTION_TYPE = 'official_brand_extraction';
 
 type OfficialBrandPhase = 'url_discovery' | 'extraction';
-type OfficialBrandJobType =
-    | 'standard'
-    | 'ai_search'
-    | typeof OFFICIAL_BRAND_URL_DISCOVERY_TYPE
-    | typeof OFFICIAL_BRAND_EXTRACTION_TYPE;
 
 interface NormalizedOfficialBrandUrl {
     url: string;
@@ -93,6 +88,35 @@ export function normalizeOfficialBrandDomain(value: string): string | undefined 
             ?.trim();
         return fallback || undefined;
     }
+}
+
+/**
+ * Build a deduplicated, normalized list of domains from multiple source arrays
+ * and optional extra domain strings.
+ *
+ * Each source value is normalized via {@link normalizeOfficialBrandDomain}.
+ * Duplicates (after normalization) are removed. Use this instead of ad-hoc
+ * domain merging in discovery, review, and extraction paths.
+ */
+export function buildNormalizedDomainList(
+    ...sources: Array<Array<string | undefined | null> | undefined | null>
+): string[] {
+    const seen = new Set<string>();
+    const result: string[] = [];
+
+    for (const source of sources) {
+        if (!source) continue;
+        for (const entry of source) {
+            if (!entry) continue;
+            const normalized = normalizeOfficialBrandDomain(entry);
+            if (normalized && !seen.has(normalized)) {
+                seen.add(normalized);
+                result.push(normalized);
+            }
+        }
+    }
+
+    return result;
 }
 
 export function normalizeOfficialBrandUrl(value: string): NormalizedOfficialBrandUrl | null {

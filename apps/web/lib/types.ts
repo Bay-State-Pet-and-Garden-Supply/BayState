@@ -9,10 +9,8 @@ export interface Brand {
   slug: string;
   logo_url: string | null;
   description?: string | null;
-  website_url?: string | null;
   official_domains?: string[];
   preferred_domains?: string[];
-  aliases?: string[];
   created_at?: string;
 }
 

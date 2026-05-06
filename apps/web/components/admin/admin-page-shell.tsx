@@ -31,7 +31,7 @@ export function AdminPageShell({
     <div
       className={cn(
         compactHeader ? "flex flex-col gap-3" : "flex flex-col gap-6",
-        fullHeight && "h-full min-h-0",
+        "flex-1 h-full min-h-0",
         className
       )}
     >

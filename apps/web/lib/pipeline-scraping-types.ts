@@ -21,7 +21,6 @@ export interface OfficialBrandCohortContext {
     id: string;
     brandId: string;
     brandName: string;
-    websiteUrl?: string;
     officialDomains?: string[];
     preferredDomains?: string[];
 }

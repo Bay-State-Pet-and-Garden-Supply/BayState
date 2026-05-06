@@ -11,8 +11,7 @@ export function isConfiguredBrand(brand: CohortBrandInfo | null | undefined): bo
   const preferredDomains = brand.preferred_domains ?? [];
 
   return Boolean(
-    (brand.website_url && brand.website_url.trim())
-      || officialDomains.length > 0
+    officialDomains.length > 0
       || preferredDomains.length > 0
   );
 }

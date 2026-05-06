@@ -264,15 +264,14 @@ export function PipelineClient({
     }
 
     const hasConfiguredDomains = Boolean(
-      (brand.website_url && brand.website_url.trim())
-        || (brand.official_domains && brand.official_domains.length > 0)
+      (brand.official_domains && brand.official_domains.length > 0)
         || (brand.preferred_domains && brand.preferred_domains.length > 0),
     );
 
     if (!hasConfiguredDomains) {
       return {
         allowed: false,
-        reason: "Official Brand requires the cohort brand to have an official website or domain preferences configured.",
+        reason: "Official Brand requires the cohort brand to have official or preferred domains configured.",
       };
     }
 
@@ -306,7 +305,10 @@ export function PipelineClient({
 
       if (!brand?.id) {
         unreadyCohorts.push(brandName);
-      } else if (!brand.website_url || !brand.website_url.trim()) {
+      } else if (
+        (!brand.official_domains || brand.official_domains.length === 0)
+        && (!brand.preferred_domains || brand.preferred_domains.length === 0)
+      ) {
         missingUrlCohorts.push(brandName);
       }
     });
@@ -321,7 +323,7 @@ export function PipelineClient({
     if (missingUrlCohorts.length > 0) {
       return {
         allowed: false,
-        reason: `Missing Official URL: ${missingUrlCohorts.join(", ")}`,
+        reason: `Missing Brand Domains: ${missingUrlCohorts.join(", ")}`,
       };
     }
 
@@ -829,15 +831,6 @@ export function PipelineClient({
     },
     [],
   );
-
-  const selectedExportSkus = useMemo(
-    () => Array.from(selectedSkus),
-    [selectedSkus],
-  );
-  const selectedExportCount = selectedExportSkus.length;
-  const scopedExportCount =
-    selectedExportCount > 0 ? selectedExportCount : totalCount;
-  const hasExportableProducts = scopedExportCount > 0;
 
   const uploadPublishedProducts = useCallback(
     async (skus?: string[]) => {

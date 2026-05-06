@@ -28,8 +28,7 @@ function isBrandConfigured(brand: CohortBrandOption): boolean {
   const preferredDomains = brand.preferred_domains ?? [];
 
   return Boolean(
-    (brand.website_url && brand.website_url.trim())
-      || officialDomains.length > 0
+    officialDomains.length > 0
       || preferredDomains.length > 0
   );
 }
@@ -80,7 +79,7 @@ export function CohortBrandPicker({
     }
 
     return brands.filter((brand) => {
-      return `${brand.name} ${brand.slug} ${brand.website_url ?? ''}`.toLowerCase().includes(query);
+      return `${brand.name} ${brand.slug}`.toLowerCase().includes(query);
     });
   }, [brands, search]);
 
@@ -109,8 +108,7 @@ export function CohortBrandPicker({
   }, []);
 
   const selectedLabel = value?.name ?? emptyLabel;
-  const hasWebsite = Boolean(value?.website_url && value.website_url.trim());
-  const selectedConfigured = value ? isBrandConfigured(value) : false;
+  const hasConfiguredDomains = Boolean((value?.official_domains?.length ?? 0) > 0 || (value?.preferred_domains?.length ?? 0) > 0);
 
   return (
     <>
@@ -132,7 +130,7 @@ export function CohortBrandPicker({
             className={cn(
               'justify-between gap-2 rounded-none border border-zinc-950 shadow-[1px_1px_0px_rgba(0,0,0,1)]',
               value
-                ? hasWebsite
+                ? hasConfiguredDomains
                   ? 'bg-brand-forest-green/10 text-brand-forest-green hover:bg-brand-forest-green/20'
                   : 'bg-brand-gold/10 text-brand-burgundy hover:bg-brand-gold/20 border-brand-gold'
                 : 'border-dashed text-muted-foreground hover:border-brand-forest-green hover:text-brand-forest-green hover:bg-brand-forest-green/5',
@@ -146,11 +144,11 @@ export function CohortBrandPicker({
               {value && (
                 <span className={cn(
                   'hidden rounded-none border px-1 py-0 text-[9px] font-black uppercase md:inline-flex',
-                  hasWebsite
+                  hasConfiguredDomains
                     ? 'border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green'
                     : 'border-brand-gold bg-brand-gold/10 text-brand-burgundy'
                 )}>
-                  {hasWebsite ? 'Configured' : 'Needs Site'}
+                  {hasConfiguredDomains ? 'Configured' : 'Needs Domains'}
                 </span>
               )}
             </span>
@@ -215,8 +213,8 @@ export function CohortBrandPicker({
                             </span>
                           </span>
                           <span className="truncate text-[9px] font-bold text-zinc-400 uppercase tracking-widest">{brand.slug}</span>
-                          {brand.website_url && (
-                            <span className="truncate text-[9px] italic text-zinc-500">{brand.website_url}</span>
+                          {brand.official_domains && brand.official_domains.length > 0 && (
+                            <span className="truncate text-[9px] italic text-zinc-500">{brand.official_domains[0]}</span>
                           )}
                         </span>
                       </button>

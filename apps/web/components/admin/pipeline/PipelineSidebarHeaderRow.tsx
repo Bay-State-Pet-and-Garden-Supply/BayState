@@ -48,7 +48,7 @@ export function PipelineSidebarHeaderRow({
 }: PipelineSidebarHeaderRowProps) {
   const allSelected = groupProducts.length > 0 && groupProducts.every((p) => selectedSkus.has(p.sku));
   const someSelected = groupProducts.some((p) => selectedSkus.has(p.sku)) && !allSelected;
-  const hasWebsite = Boolean(cohortBrandObject?.website_url && cohortBrandObject.website_url.trim());
+  const hasConfiguredDomains = Boolean(cohortBrandObject?.official_domains && cohortBrandObject.official_domains.length > 0);
 
   return (
     <TableRow
@@ -105,8 +105,8 @@ export function PipelineSidebarHeaderRow({
             {cohortBrand && (
               <Badge variant="outline" className={cn(
                 "h-4 text-[9px] px-1 font-black uppercase tracking-widest shrink-0 rounded-none",
-                hasWebsite 
-                  ? "border-brand-forest-green text-brand-forest-green bg-brand-forest-green/10" 
+                hasConfiguredDomains
+                  ? "border-brand-forest-green text-brand-forest-green bg-brand-forest-green/10"
                   : "border-brand-gold text-brand-burgundy bg-brand-gold/10"
               )}>
                 {cohortBrand}

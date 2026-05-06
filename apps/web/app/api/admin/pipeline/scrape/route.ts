@@ -11,7 +11,6 @@ import {
 interface CohortBrandRecord {
     id?: string | null;
     name?: string | null;
-    website_url?: string | null;
     official_domains?: string[] | null;
     preferred_domains?: string[] | null;
 }
@@ -162,7 +161,6 @@ export async function POST(request: NextRequest) {
                 id: string;
                 brandId: string;
                 brandName: string;
-                websiteUrl?: string;
                 officialDomains?: string[];
                 preferredDomains?: string[];
             }
@@ -172,7 +170,6 @@ export async function POST(request: NextRequest) {
                 id: string;
                 brandId: string;
                 brandName: string;
-                websiteUrl?: string;
                 officialDomains?: string[];
                 preferredDomains?: string[];
             }
@@ -181,7 +178,7 @@ export async function POST(request: NextRequest) {
         if (cohort_id) {
             const { data: cohort } = await supabase
                 .from('cohort_batches')
-                .select('id, brand_name, brand_id, brands(id, name, website_url, official_domains, preferred_domains)')
+                .select('id, brand_name, brand_id, brands(id, name, official_domains, preferred_domains)')
                 .eq('id', cohort_id)
                 .single();
 
@@ -203,14 +200,7 @@ export async function POST(request: NextRequest) {
 
                     const brandId = toOptionalString(cohortRow.brand_id) ?? toOptionalString(brandRecord?.id);
                     const brandName = cohortBrand;
-                    const websiteUrl = toOptionalString(brandRecord?.website_url);
-                    const officialDomains = (() => {
-                        const merged = [
-                            ...(Array.isArray(brandRecord?.official_domains) ? brandRecord.official_domains : []),
-                            ...(websiteUrl ? [websiteUrl] : []),
-                        ];
-                        return toDomainList(merged);
-                    })();
+                    const officialDomains = toDomainList(brandRecord?.official_domains);
                     const preferredDomains = toDomainList(brandRecord?.preferred_domains);
 
                     if (!brandId || !brandName) {
@@ -220,9 +210,9 @@ export async function POST(request: NextRequest) {
                         );
                     }
 
-                    if (!websiteUrl && !officialDomains?.length && !preferredDomains?.length) {
+                    if (!officialDomains?.length && !preferredDomains?.length) {
                         return NextResponse.json(
-                            { error: 'Official Brand requires the cohort brand to have website or domain preferences configured' },
+                            { error: 'Official Brand requires the cohort brand to have domain preferences configured' },
                             { status: 400 }
                         );
                     }
@@ -231,7 +221,6 @@ export async function POST(request: NextRequest) {
                         id: cohortRow.id,
                         brandId,
                         brandName,
-                        ...(websiteUrl ? { websiteUrl } : {}),
                         ...(officialDomains ? { officialDomains } : {}),
                         ...(preferredDomains ? { preferredDomains } : {}),
                     };
@@ -240,7 +229,6 @@ export async function POST(request: NextRequest) {
                 if (enrichmentMethod === 'deep_research') {
                     const brandId = toOptionalString(cohortRow.brand_id) ?? toOptionalString(brandRecord?.id);
                     const brandName = cohortBrand;
-                    const websiteUrl = toOptionalString(brandRecord?.website_url);
                     const officialDomains = toDomainList(brandRecord?.official_domains);
                     const preferredDomains = toDomainList(brandRecord?.preferred_domains);
 
@@ -250,7 +238,6 @@ export async function POST(request: NextRequest) {
                             id: cohortRow.id,
                             brandId,
                             brandName,
-                            ...(websiteUrl ? { websiteUrl } : {}),
                             ...(officialDomains ? { officialDomains } : {}),
                             ...(preferredDomains ? { preferredDomains } : {}),
                         };
@@ -330,7 +317,6 @@ export async function POST(request: NextRequest) {
                 const allowedDomains = [
                     ...(officialBrandCohort.officialDomains ?? []),
                     ...(officialBrandCohort.preferredDomains ?? []),
-                    ...(officialBrandCohort.websiteUrl ? [officialBrandCohort.websiteUrl] : []),
                 ];
                 const invalidUrlSkus: string[] = [];
                 const domainMismatchSkus: string[] = [];

@@ -116,7 +116,7 @@ export function ImportedResultsView({
   
   const activeCohortBrand = activeCohortId ? cohortBrands[activeCohortId] : null;
   const activeCohortBrandObject = activeCohortId ? cohortBrandObjects[activeCohortId] : null;
-  const hasWebsite = Boolean(activeCohortBrandObject?.website_url && activeCohortBrandObject.website_url.trim());
+  const hasConfiguredDomains = Boolean(activeCohortBrandObject?.official_domains && activeCohortBrandObject.official_domains.length > 0);
 
   // Handle cohort change from sidebar
   const handleCohortChange = (cohortId: string) => {
@@ -244,11 +244,11 @@ export function ImportedResultsView({
                           <Edit2 className="h-3.5 w-3.5" />
                         </Button>
                       )}
-                      {(!activeCohortBrand || !hasWebsite) && activeCohortId !== "ungrouped" && (
+                      {(!activeCohortBrand || !hasConfiguredDomains) && activeCohortId !== "ungrouped" && (
                         <div className="inline-flex items-center gap-1.5 bg-brand-gold/10 border border-brand-gold px-2 py-0.5 shadow-[1px_1px_0px_rgba(0,0,0,1)]">
                           <AlertCircle className="h-3 w-3 text-brand-burgundy animate-pulse" />
                           <span className="text-[9px] font-black uppercase tracking-widest text-brand-burgundy">
-                            Action Required: {!activeCohortBrand ? "Assign Brand" : "Add URL"}
+                            Action Required: {!activeCohortBrand ? "Assign Brand" : "Add Domains"}
                           </span>
                         </div>
                       )}
@@ -256,8 +256,8 @@ export function ImportedResultsView({
                     {activeCohortBrand && (
                         <Badge variant="outline" className={cn(
                           "font-black uppercase tracking-widest rounded-none",
-                          hasWebsite 
-                            ? "border-brand-forest-green text-brand-forest-green bg-brand-forest-green/10" 
+                          hasConfiguredDomains
+                            ? "border-brand-forest-green text-brand-forest-green bg-brand-forest-green/10"
                             : "border-brand-gold text-brand-burgundy bg-brand-gold/10"
                         )}>
                             {activeCohortBrand}

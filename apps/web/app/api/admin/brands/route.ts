@@ -10,7 +10,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('brands')
-    .select('id, name, slug, logo_url, description, website_url, official_domains, preferred_domains, aliases, created_at')
+    .select('id, name, slug, logo_url, description, official_domains, preferred_domains, created_at')
     .order('name', { ascending: true });
 
   if (error) {
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   if (!auth.authorized) return auth.response;
 
   try {
-    const { name, slug: requestedSlug, logo_url, description, website_url, official_domains, preferred_domains, aliases } = await request.json();
+    const { name, slug: requestedSlug, logo_url, description, official_domains, preferred_domains } = await request.json();
     if (!name || typeof name !== 'string') {
       return NextResponse.json({ error: 'Brand name is required' }, { status: 400 });
     }
@@ -57,12 +57,10 @@ export async function POST(request: Request) {
         slug,
         logo_url: typeof logo_url === 'string' && logo_url.trim().length > 0 ? logo_url.trim() : null,
         description: typeof description === 'string' && description.trim().length > 0 ? description.trim() : null,
-        website_url: typeof website_url === 'string' && website_url.trim().length > 0 ? website_url.trim() : null,
         official_domains: normalizeValues(official_domains, true),
         preferred_domains: normalizeValues(preferred_domains, true),
-        aliases: normalizeValues(aliases, false),
       }])
-      .select('id, name, slug, logo_url, description, website_url, official_domains, preferred_domains, aliases, created_at')
+      .select('id, name, slug, logo_url, description, official_domains, preferred_domains, created_at')
       .single();
 
     if (error) {
