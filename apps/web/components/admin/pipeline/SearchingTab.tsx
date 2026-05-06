@@ -14,6 +14,7 @@ interface CohortSummary {
   product_count: number;
   skus_with_selection: number;
   skus_extracted: number;
+  candidate_count: number;
 }
 
 interface UrlReviewCohortsResponse {
@@ -112,6 +113,7 @@ export function SearchingTab({ className }: SearchingTabProps) {
                 </div>
                 <div className="mt-1 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                   <span>{cohort.product_count} products</span>
+                  <span className="text-primary">{cohort.candidate_count} SERP results</span>
                   <span>{cohort.skus_with_selection} selected</span>
                   <span>{cohort.skus_extracted} extracted</span>
                   {remaining > 0 ? (
