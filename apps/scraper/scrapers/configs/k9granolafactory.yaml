@@ -1,0 +1,93 @@
+schema_version: "1.0"
+name: k9granolafactory
+display_name: K9 Granola Factory
+base_url: https://www.k9granolafactory.com
+scraper_type: static
+use_stealth: true
+
+test_skus:
+  - "878803003364"
+  - "878803002909"
+  - "878803002916"
+fake_skus:
+  - "FAKE12345XYZ"
+
+selectors:
+  - name: Name
+    selector: "h1.lh2.mb2.h2"
+    required: true
+    fallback_selectors:
+      - "h1"
+      - ".product-title"
+  - name: Brand
+    selector: "h1"
+  - name: Description
+    selector: "li.description.rte"
+  - name: "Image URLs"
+    selector: "img.product__image, img.product-single__photo"
+    attribute: "src"
+    multiple: true
+  - name: Ingredients
+    selector: "p:contains('Ingredients:')"
+    fallback_selectors:
+      - "li.description.rte p:has-text('Ingredients:')"
+  - name: RawJSON
+    selector: "script.product-json"
+  - name: search_result_link
+    selector: "article.product-listing a[href*='/products/']"
+    attribute: "href"
+
+workflows:
+  - action: navigate
+    params:
+      url: "https://www.k9granolafactory.com/search?q={sku}"
+  - action: wait_for
+    params:
+      selector:
+        - "article.product-listing"
+        - "div.a-center p:has-text('did not yield any results')"
+      timeout: 10
+  - action: check_no_results
+  - action: conditional_skip
+    params:
+      if_flag: no_results_found
+  - action: extract_single
+    params:
+      field: search_result_link
+      selector_id: search_result_link
+  - action: click
+    params:
+      selector: "article.product-listing a[href*='/products/']"
+  - action: wait_for
+    params:
+      selector: ["h1.lh2.mb2.h2", "script.product-json"]
+      timeout: 15
+  - action: extract
+    params:
+      fields: [Name, Brand, "Image URLs", Description, Ingredients]
+  - action: extract_single
+    name: Extract Raw JSON
+    params:
+      field: RawJSON
+      selector: RawJSON
+  - action: extract_from_json
+    name: Parse UPC from JSON
+    params:
+      source_field: RawJSON
+      json_path: "variants.0.barcode"
+      target_field: UPC
+  - action: transform_value
+    params:
+      field: Brand
+      transformations:
+        - type: replace
+          pattern: "^.*$"
+          replacement: "K9 Granola Factory"
+
+validation:
+  no_results_selectors:
+    - "div.a-center p:has-text('did not yield any results')"
+  no_results_text_patterns:
+    - "did not yield any results"
+
+test_assertions: []
