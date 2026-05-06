@@ -130,6 +130,8 @@ export interface PipelineProduct {
     price?: number;
     images?: string[];
     brand_id?: string;
+    brand?: string;
+    category?: string;
     is_featured?: boolean;
     weight?: string | number | null;
     stock_status?: string;

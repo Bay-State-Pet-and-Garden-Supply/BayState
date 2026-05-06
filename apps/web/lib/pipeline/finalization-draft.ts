@@ -18,6 +18,8 @@ export interface FinalizationDraft {
   price: string;
   weight: string;
   brandId: string;
+  brandName: string;
+  category: string;
   stockStatus: FinalizationStockStatus;
   availability: string;
   minimumQuantity: string;
@@ -38,6 +40,8 @@ export const EMPTY_FINALIZATION_DRAFT: FinalizationDraft = {
   price: "",
   weight: "",
   brandId: "none",
+  brandName: "",
+  category: "",
   stockStatus: "in_stock",
   availability: "in stock",
   minimumQuantity: "0",
@@ -58,6 +62,8 @@ export const finalizationDraftSchema = z.object({
   price: z.string(),
   weight: z.string(),
   brandId: z.string(),
+  brandName: z.string(),
+  category: z.string(),
   stockStatus: z.enum(["in_stock", "out_of_stock", "pre_order"]),
   availability: z.string(),
   minimumQuantity: z.string(),
@@ -198,6 +204,8 @@ export function buildInitialFinalizationDraft(
     price: toTrimmedString(consolidated.price ?? input.price),
     weight: toTrimmedString(consolidated.weight ?? input.weight),
     brandId: toTrimmedString(consolidated.brand_id) || "none",
+    brandName: toTrimmedString(consolidated.brand ?? ""),
+    category: toTrimmedString(consolidated.category ?? ""),
     stockStatus: toFinalizationStockStatus(consolidated.stock_status ?? input.stock_status),
     availability:
       toTrimmedString(consolidated.availability ?? input.availability) ||
@@ -245,6 +253,8 @@ export function createPersistedFinalizationDraftSnapshot(
     price: draft.price.trim(),
     weight: draft.weight.trim(),
     brandId: draft.brandId || "none",
+    brandName: draft.brandName.trim(),
+    category: draft.category.trim(),
     stockStatus: draft.stockStatus,
     availability: draft.availability.trim() || "in stock",
     minimumQuantity: String(parseNonNegativeInt(draft.minimumQuantity)),
@@ -269,6 +279,8 @@ export function buildConsolidatedPayloadFromDraft(
     long_description: normalizeOptionalText(snapshot.longDescription),
     price: parseNonNegativeFloat(snapshot.price),
     brand_id: snapshot.brandId === "none" ? null : snapshot.brandId,
+    brand: normalizeOptionalText(snapshot.brandName),
+    category: normalizeOptionalText(snapshot.category),
     stock_status: snapshot.stockStatus,
     is_special_order: snapshot.isSpecialOrder,
     weight: normalizeOptionalText(snapshot.weight),

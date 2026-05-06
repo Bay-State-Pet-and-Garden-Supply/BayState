@@ -13,6 +13,8 @@ const draftA: FinalizationDraft = {
   price: "1.99",
   weight: "",
   brandId: "none",
+  brandName: "",
+  category: "",
   customSourceUrl: "",
   sources: {},
   stockStatus: "in_stock",
