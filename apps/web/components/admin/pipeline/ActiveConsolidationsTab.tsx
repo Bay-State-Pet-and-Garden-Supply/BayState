@@ -424,12 +424,21 @@ export function ActiveConsolidationsTab({
         const data = await res.json();
         const successCount = data.success_count ?? 0;
         const errorCount = data.error_count ?? 0;
-        toast.success(
-          `Applied ${successCount} product${successCount !== 1 ? "s" : ""}` +
-            (errorCount > 0
-              ? ` (${errorCount} error${errorCount !== 1 ? "s" : ""})`
-              : ""),
-        );
+        const applyErrors: string[] = data.errors ?? [];
+        if (applyErrors.length > 0) {
+          console.error("[Consolidation Apply] Per-product errors:", applyErrors.join("\n"));
+          toast.error(
+            `Applied ${successCount} product${successCount !== 1 ? "s" : ""} (${errorCount} error${errorCount !== 1 ? "s" : ""})\n${applyErrors.join("\n")}`,
+            { duration: 10000 },
+          );
+        } else {
+          toast.success(
+            `Applied ${successCount} product${successCount !== 1 ? "s" : ""}` +
+              (errorCount > 0
+                ? ` (${errorCount} error${errorCount !== 1 ? "s" : ""})`
+                : ""),
+          );
+        }
         await Promise.all([fetchJobs(), fetchHistory()]);
       } else {
         const data = await res.json();
