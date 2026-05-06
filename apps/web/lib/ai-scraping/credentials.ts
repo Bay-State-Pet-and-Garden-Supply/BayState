@@ -520,7 +520,7 @@ function normalizeConsolidationDefaults(raw: unknown): AIConsolidationDefaults {
 
   const llmProvider = normalizeConsolidationProvider(value.llm_provider);
   // Use provided model for LM Studio (arbitrary names), OpenAI-enforce for others
-  const llmModel = llmProvider === 'lmstudio'
+  const llmModel = (llmProvider === 'lmstudio' || llmProvider === 'openai_compatible')
     ? normalizeLLMModel(value.llm_model, getDefaultModelForProvider(llmProvider))
     : normalizeOpenAIModel(value.llm_model, getDefaultModelForProvider(llmProvider));
   const llmBaseUrl = normalizeLLMBaseUrl(value.llm_base_url);

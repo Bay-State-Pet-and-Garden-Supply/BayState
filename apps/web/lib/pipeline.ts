@@ -243,7 +243,7 @@ export async function getProductsByStatus(
       `*, cohort_batches(${COHORT_BATCH_METADATA_SELECT})`,
       { count: "exact" },
     )
-    .order("updated_at", { ascending: false })
+    .order("sku", { ascending: true })
     .eq("pipeline_status", status)
     .is("exported_at", null);
 
@@ -398,7 +398,7 @@ export async function getProductsByStage(
   let query = supabase
     .from(querySource.table)
     .select("*", { count: "exact" })
-    .order("updated_at", { ascending: false });
+    .order("sku", { ascending: true });
 
   if (querySource.status) {
     query = query.eq("pipeline_status", querySource.status);
@@ -493,7 +493,7 @@ export async function getSkusByStatus(
   let query = supabase
     .from("products_ingestion")
     .select("sku", { count: "exact" })
-    .order("updated_at", { ascending: false })
+    .order("sku", { ascending: true })
     .eq("pipeline_status", status)
     .is("exported_at", null);
 
@@ -562,7 +562,7 @@ export async function getSkusByStage(
   let query = supabase
     .from(querySource.table)
     .select("sku", { count: "exact" })
-    .order("updated_at", { ascending: false });
+    .order("sku", { ascending: true });
 
   if (querySource.status) {
     query = query.eq("pipeline_status", querySource.status);
