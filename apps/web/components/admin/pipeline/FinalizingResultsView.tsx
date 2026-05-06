@@ -557,6 +557,24 @@ export function FinalizingResultsView({
     [notifyPendingCopilotReview, selectedSku, updateDraftForSku],
   );
 
+  const handleBrandChange = useCallback(
+    (brandId: string, brandName: string) => {
+      if (!selectedSku) {
+        return;
+      }
+      if (pendingCopilotReviewRef.current) {
+        notifyPendingCopilotReview("editing the draft manually");
+        return;
+      }
+      updateDraftForSku(selectedSku, (prev) => ({
+        ...prev,
+        brandId,
+        brandName,
+      }));
+    },
+    [notifyPendingCopilotReview, selectedSku, updateDraftForSku],
+  );
+
   const handleCreateBrand = async () => {
     if (!brandSearch.trim()) return;
     if (pendingCopilotReviewRef.current) {
@@ -566,7 +584,7 @@ export function FinalizingResultsView({
     setCreatingBrand(true);
     try {
       const brand = await createBrandRecord(brandSearch);
-      handleInputChange("brandId", brand.id);
+      handleBrandChange(brand.id, brand.name);
       setBrandSearch("");
       setBrandPopoverOpen(false);
       toast.success(`Brand "${brand.name}" created`);
@@ -1913,6 +1931,7 @@ export function FinalizingResultsView({
                     <MerchandisingClassification
                       formData={formData}
                       handleInputChange={handleInputChange}
+                      handleBrandChange={handleBrandChange}
                       brands={brands}
                       filteredBrands={filteredBrands}
                       brandSearch={brandSearch}

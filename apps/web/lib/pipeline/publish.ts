@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server';
-import { syncProductCategoryLinks } from '@/lib/product-category-sync';
 import {
     buildProductImageStorageFolder,
     replaceInlineImageDataUrls,
@@ -86,7 +85,6 @@ export async function publishToStorefront(sku: string) {
             sku,
             name,
             slug,
-            category: consolidated.category || input.category || null,
             description: consolidated.description || '',
             long_description: consolidated.long_description || null,
             price: consolidated.price ?? input.price ?? 0,

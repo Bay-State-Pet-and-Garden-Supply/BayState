@@ -20,6 +20,7 @@ interface Brand {
 interface MerchandisingClassificationProps {
   formData: FinalizationDraft;
   handleInputChange: <K extends keyof FinalizationDraft>(field: K, value: FinalizationDraft[K]) => void;
+  handleBrandChange: (brandId: string, brandName: string) => void;
   brands: Brand[];
   filteredBrands: Brand[];
   brandSearch: string;
@@ -41,6 +42,7 @@ interface MerchandisingClassificationProps {
 export function MerchandisingClassification({
   formData,
   handleInputChange,
+  handleBrandChange,
   brands,
   filteredBrands,
   brandSearch,
@@ -112,7 +114,7 @@ export function MerchandisingClassification({
                         && "bg-foreground text-background",
                     )}
                     onClick={() => {
-                      handleInputChange("brandId", "none");
+                      handleBrandChange("none", "");
                       setBrandPopoverOpen(false);
                       setBrandSearch("");
                     }}
@@ -137,7 +139,7 @@ export function MerchandisingClassification({
                           && "bg-foreground text-background",
                       )}
                       onClick={() => {
-                        handleInputChange("brandId", brand.id);
+                        handleBrandChange(brand.id, brand.name);
                         setBrandPopoverOpen(false);
                         setBrandSearch("");
                       }}
