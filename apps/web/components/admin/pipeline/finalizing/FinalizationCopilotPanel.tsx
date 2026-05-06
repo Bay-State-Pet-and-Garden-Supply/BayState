@@ -397,7 +397,7 @@ export function FinalizationCopilotPanel({
       return (
         <div
           key={key}
-          className="rounded-none border border-border bg-feed-bag-cream px-3 py-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground"
+          className="rounded-none border border-border bg-muted px-3 py-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground"
         >
           {label}...
         </div>
@@ -442,7 +442,7 @@ export function FinalizationCopilotPanel({
                 isRecord(product) && typeof product.sku === "string" ? (
                   <div
                     key={product.sku}
-                    className="rounded-none border border-border bg-feed-bag-cream px-3 py-2"
+                    className="rounded-none border border-border bg-muted px-3 py-2"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-black text-[10px] text-muted-foreground uppercase tracking-widest">
@@ -450,7 +450,7 @@ export function FinalizationCopilotPanel({
                       </span>
                       <div className="flex flex-wrap gap-1">
                         {product.selected === true && (
-                          <Badge variant="secondary" className="rounded-none border border-border bg-ledger-charcoal text-white text-[8px] font-black uppercase tracking-widest">Selected</Badge>
+                          <Badge variant="secondary" className="rounded-none border border-border bg-foreground text-background text-[8px] font-black uppercase tracking-widest">Selected</Badge>
                         )}
                         {product.dirty === true && (
                           <Badge variant="outline" className="rounded-none border border-border bg-amber-100 text-amber-950 text-[8px] font-black uppercase tracking-widest">Unsaved</Badge>
@@ -517,7 +517,7 @@ export function FinalizationCopilotPanel({
             ) : (
               part.output.brands.map((brand) =>
                 isRecord(brand) && typeof brand.name === "string" ? (
-                  <Badge key={String(brand.id)} variant="outline" className="rounded-none border border-border bg-feed-bag-cream text-foreground text-[9px] font-black uppercase tracking-widest">
+                  <Badge key={String(brand.id)} variant="outline" className="rounded-none border border-border bg-muted text-foreground text-[9px] font-black uppercase tracking-widest">
                     {brand.name}
                   </Badge>
                 ) : null,
@@ -567,7 +567,7 @@ export function FinalizationCopilotPanel({
           className="rounded-none border border-border bg-card px-3 py-2 text-xs text-foreground"
         >
           <div className="mb-2 font-black uppercase tracking-widest">{label}</div>
-          <pre className="overflow-x-auto rounded-none border border-border bg-feed-bag-cream px-3 py-2 text-[10px] font-bold text-foreground/80">
+          <pre className="overflow-x-auto rounded-none border border-border bg-muted px-3 py-2 text-[10px] font-bold text-foreground/80">
             {JSON.stringify(part.output, null, 2)}
           </pre>
         </div>
@@ -580,7 +580,7 @@ export function FinalizationCopilotPanel({
         className="rounded-none border border-border bg-card px-3 py-2 text-xs text-foreground"
       >
         <div className="mb-2 font-black uppercase tracking-widest">{label}</div>
-        <pre className="overflow-x-auto rounded-none border border-border bg-feed-bag-cream px-3 py-2 text-[10px] font-bold text-foreground/80">
+        <pre className="overflow-x-auto rounded-none border border-border bg-muted px-3 py-2 text-[10px] font-bold text-foreground/80">
           {JSON.stringify(part.output, null, 2)}
         </pre>
       </div>
@@ -592,7 +592,7 @@ export function FinalizationCopilotPanel({
       <div className="border-b border-border px-4 py-3 bg-card">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-none border border-border bg-ledger-charcoal text-white">
+            <div className="flex h-9 w-9 items-center justify-center rounded-none border border-border bg-foreground text-background">
               <Sparkles className="h-4 w-4" />
             </div>
             <div>
@@ -604,20 +604,20 @@ export function FinalizationCopilotPanel({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest rounded-none border border-border bg-feed-bag-cream text-foreground">
+            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest rounded-none border border-border bg-muted text-foreground">
               {workspaceProductCount} in finalizing
             </Badge>
-            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest rounded-none border border-border bg-feed-bag-cream text-foreground">
+            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest rounded-none border border-border bg-muted text-foreground">
               {dirtyProductCount} unsaved
             </Badge>
-            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest rounded-none border border-border bg-ledger-charcoal text-white">
+            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest rounded-none border border-border bg-foreground text-background">
               {selectedSku ?? "No Product Selected"}
             </Badge>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-none hover:bg-feed-bag-cream text-foreground"
+              className="h-8 w-8 rounded-none hover:bg-muted text-foreground"
               onClick={() => {
                 setMessages([]);
                 setInput("");
@@ -631,7 +631,7 @@ export function FinalizationCopilotPanel({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 bg-feed-bag-cream/10">
+      <div className="flex-1 overflow-y-auto px-4 py-4 bg-muted/10">
         {hasPendingCopilotReview && (
           <Alert className="mb-4 border border-border bg-violet-50 text-violet-950 rounded-none">
             <AlertTitle className="font-black uppercase tracking-widest text-xs">Copilot changes are ready for review</AlertTitle>
@@ -653,7 +653,7 @@ export function FinalizationCopilotPanel({
                 <Button
                   type="button"
                   size="sm"
-                  className="rounded-none border border-border bg-ledger-charcoal text-white font-black uppercase tracking-widest text-[10px] hover:bg-ledger-charcoal/80 active:translate-x-[1px] active:translate-y-[1px]"
+                  className="rounded-none border border-border bg-foreground text-background font-black uppercase tracking-widest text-[10px] hover:bg-foreground/80 active:translate-x-[1px] active:translate-y-[1px]"
                   onClick={() => {
                     void onAcceptPendingCopilotReview();
                   }}
@@ -665,7 +665,7 @@ export function FinalizationCopilotPanel({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="rounded-none border border-border bg-card text-foreground font-black uppercase tracking-widest text-[10px] hover:bg-feed-bag-cream active:translate-x-[1px] active:translate-y-[1px]"
+                  className="rounded-none border border-border bg-card text-foreground font-black uppercase tracking-widest text-[10px] hover:bg-muted active:translate-x-[1px] active:translate-y-[1px]"
                   onClick={onRejectPendingCopilotReview}
                   disabled={reviewActionPending || status !== "ready"}
                 >
@@ -689,7 +689,7 @@ export function FinalizationCopilotPanel({
                   key={prompt}
                   type="button"
                   variant="outline"
-                  className="h-auto justify-start whitespace-normal px-3 py-2 text-left text-xs font-black uppercase tracking-widest rounded-none border border-border bg-card hover:bg-feed-bag-cream active:translate-x-[1px] active:translate-y-[1px] transition-all"
+                  className="h-auto justify-start whitespace-normal px-3 py-2 text-left text-xs font-black uppercase tracking-widest rounded-none border border-border bg-card hover:bg-muted active:translate-x-[1px] active:translate-y-[1px] transition-all"
                   disabled={
                     workspaceProductCount === 0
                     || hasPendingCopilotReview
@@ -721,7 +721,7 @@ export function FinalizationCopilotPanel({
                   }`}
                 >
                   {message.role !== "user" && (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-none border border-border bg-ledger-charcoal text-white shrink-0">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-none border border-border bg-foreground text-background shrink-0">
                       <Bot className="h-4 w-4" />
                     </div>
                   )}
@@ -730,7 +730,7 @@ export function FinalizationCopilotPanel({
                     className={cn(
                       "max-w-[92%] rounded-none px-4 py-3 text-sm border border-border",
                       message.role === "user"
-                        ? "bg-ledger-charcoal text-white"
+                        ? "bg-foreground text-background"
                         : "bg-card text-foreground"
                     )}
                   >
@@ -766,7 +766,7 @@ export function FinalizationCopilotPanel({
 
       <div className="border-t border-border px-4 py-4 bg-card">
         {(status === "submitted" || status === "streaming") && (
-          <div className="mb-3 flex items-center justify-between rounded-none border border-border bg-feed-bag-cream px-3 py-2 text-[10px] font-black uppercase tracking-widest text-foreground">
+          <div className="mb-3 flex items-center justify-between rounded-none border border-border bg-muted px-3 py-2 text-[10px] font-black uppercase tracking-widest text-foreground">
             <div className="flex items-center gap-2">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               {status === "submitted" ? "Submitting..." : "Working..."}
@@ -777,7 +777,7 @@ export function FinalizationCopilotPanel({
               variant="ghost" 
               size="sm" 
               onClick={stop}
-              className="h-6 px-2 rounded-none hover:bg-feed-bag-cream text-foreground font-black uppercase tracking-widest text-[9px]"
+              className="h-6 px-2 rounded-none hover:bg-muted text-foreground font-black uppercase tracking-widest text-[9px]"
             >
               <Square className="mr-1 h-3 w-3" />
               Stop
@@ -819,7 +819,7 @@ export function FinalizationCopilotPanel({
                 || !input.trim()
                 || status !== "ready"
               }
-              className="rounded-none border border-border bg-ledger-charcoal text-white font-black uppercase tracking-widest hover:bg-ledger-charcoal/80 active:translate-x-[1px] active:translate-y-[1px] transition-all"
+              className="rounded-none border border-border bg-foreground text-background font-black uppercase tracking-widest hover:bg-foreground/80 active:translate-x-[1px] active:translate-y-[1px] transition-all"
             >
               <SendHorizonal className="mr-2 h-4 w-4" />
               Send

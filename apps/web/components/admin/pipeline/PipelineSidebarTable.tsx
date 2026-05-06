@@ -304,7 +304,7 @@ export function PipelineSidebarTable({
           }}
         />
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-zinc-500">
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
           <Package className="h-12 w-12 mb-4 opacity-20" />
           <p className="text-sm font-black uppercase tracking-tighter">No products found</p>
         </div>

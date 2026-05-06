@@ -307,7 +307,7 @@ export function ImageSelectionWorkspace({
             <button
               onClick={handleMoveToFinalizing}
               disabled={isFinalizing || selectedUrls.length === 0}
-              className="px-4 py-2 text-xs font-black uppercase tracking-widest text-white bg-primary border border-primary rounded-none hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 text-xs font-black uppercase tracking-widest text-background bg-primary border border-primary rounded-none hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isFinalizing && <Loader2 className="h-4 w-4 animate-spin" />}
               Move to Finalizing

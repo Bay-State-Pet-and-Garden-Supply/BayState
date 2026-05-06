@@ -108,7 +108,7 @@ function BatchHistoryCard({
               size="sm"
               onClick={() => onApply(job.openai_batch_id || job.id)}
               disabled={applyingId === (job.openai_batch_id || job.id)}
-              className="rounded-none border border-border bg-brand-burgundy hover:bg-brand-burgundy/90 text-white font-black uppercase text-[10px] h-7 px-3 active:translate-x-[1px] active:translate-y-[1px] transition-all tracking-widest"
+              className="rounded-none border border-border bg-brand-burgundy hover:bg-brand-burgundy/90 text-background font-black uppercase text-[10px] h-7 px-3 active:translate-x-[1px] active:translate-y-[1px] transition-all tracking-widest"
             >
               {applyingId === (job.openai_batch_id || job.id) ? (
                 <Loader2 className="mr-1 h-3 w-3 animate-spin" />

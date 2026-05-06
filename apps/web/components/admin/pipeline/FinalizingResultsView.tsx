@@ -1955,7 +1955,7 @@ export function FinalizingResultsView({
                 <div className="pt-4">
                   <Separator className="mb-4 bg-border" />
                   <details className="group overflow-hidden rounded-none border border-border">
-                    <summary className="flex cursor-pointer items-center justify-between p-4 text-sm font-black uppercase tracking-widest text-zinc-500 hover:bg-muted/30 list-none">
+                    <summary className="flex cursor-pointer items-center justify-between p-4 text-sm font-black uppercase tracking-widest text-muted-foreground hover:bg-muted/30 list-none">
                       <div className="flex items-center gap-2">
                         <Package className="h-4 w-4" />
                         View Raw Scraped Data
@@ -1983,7 +1983,7 @@ export function FinalizingResultsView({
             </div>
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-zinc-500">
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
               <Package className="mb-2 h-12 w-12 opacity-20" />
               <h3 className="text-xl font-black uppercase tracking-widest text-foreground">Select a product to review</h3>
               <p className="text-sm font-black uppercase tracking-widest mt-2">

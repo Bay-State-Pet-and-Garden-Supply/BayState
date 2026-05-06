@@ -170,7 +170,7 @@ export function ConsolidationJobCard({
             size="sm"
             onClick={() => onApply(job.id)}
             disabled={applyingId === job.id}
-            className="h-10 px-6 rounded-none border border-border bg-brand-burgundy hover:bg-brand-burgundy/90 text-white font-black uppercase tracking-widest active:translate-x-[2px] active:translate-y-[2px] transition-all"
+            className="h-10 px-6 rounded-none border border-border bg-brand-burgundy hover:bg-brand-burgundy/90 text-background font-black uppercase tracking-widest active:translate-x-[2px] active:translate-y-[2px] transition-all"
           >
             {applyingId === job.id ? (
               <>

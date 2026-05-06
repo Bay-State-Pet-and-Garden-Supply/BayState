@@ -267,7 +267,7 @@ export function ActiveRunsTab({ className, jobSubtype }: ActiveRunsTabProps) {
   if (error) {
     return (
       <div
-        className={`rounded-none border border-ledger-charcoal bg-red-50 p-4 ${className}`}
+        className={`rounded-none border border-border bg-red-50 p-4 ${className}`}
       >
         <p className="text-sm font-black uppercase text-red-600">Error: {error}</p>
       </div>

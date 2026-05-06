@@ -290,7 +290,7 @@ export function ProductTable({
                         {count} source{count !== 1 ? "s" : ""}
                       </Badge>
                     ) : (
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                         —
                       </span>
                     )}
@@ -319,7 +319,7 @@ export function ProductTable({
                 const confidence = row.getValue("confidence_score") as number;
                 if (confidence === undefined || confidence === null)
                   return (
-                    <div className="text-center text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                    <div className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                       —
                     </div>
                   );
@@ -351,7 +351,7 @@ export function ProductTable({
           <DataTableColumnHeader column={column} title="Updated" />
         ),
         cell: ({ row }) => (
-          <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-tight text-right tabular-nums">
+          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight text-right tabular-nums">
             {formatDate(row.getValue("updated_at"))}
           </div>
         ),
@@ -460,7 +460,7 @@ export function ProductTable({
       aria-rowcount={rows.length}
     >
       <Table className="table-fixed border-separate border-spacing-0">
-        <TableHeader className="sticky top-0 bg-muted z-20 border-b border-border">
+        <TableHeader className="sticky top-0 bg-background z-20 border-b border-border shadow-sm">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow
               key={headerGroup.id}
@@ -525,9 +525,9 @@ export function ProductTable({
                   className={cn(
                     "cursor-pointer transition-colors border-b border-border/10 h-8",
                     isSelected
-                      ? "bg-brand-gold/15 border-l-2 border-l-brand-gold"
-                      : "hover:bg-feed-bag-cream/50",
-                    isFocused && "ring-0 border-2 border-primary bg-feed-bag-cream",
+                      ? "bg-brand-gold/15"
+                      : "hover:bg-muted/30",
+                    isFocused && "bg-card relative z-10",
                   )}
                   onClick={(e) => {
                     setFocusedIndex(index);
@@ -561,7 +561,7 @@ export function ProductTable({
             <TableRow>
               <TableCell
                 colSpan={columns.length}
-                className="h-16 text-center font-black uppercase tracking-widest text-zinc-400"
+                className="h-16 text-center font-black uppercase tracking-widest text-muted-foreground"
               >
                 No products in this step.
               </TableCell>

@@ -274,7 +274,7 @@ export function IntegraImportDialog({
                                 onClick={handleAnalyze}
                                 disabled={!file || isBusy}
                                 size="lg"
-                                className="bg-primary hover:bg-primary/90 text-white transition-all active:scale-[0.98] px-8 font-black uppercase tracking-widest text-xs h-11 rounded-none border border-primary"
+                                className="bg-primary hover:bg-primary/90 text-background transition-all active:scale-[0.98] px-8 font-black uppercase tracking-widest text-xs h-11 rounded-none border border-primary"
                             >
                                 {isAnalyzing ? (
                                     <>
@@ -293,7 +293,7 @@ export function IntegraImportDialog({
                                 onClick={handleAddToOnboarding}
                                 disabled={isProcessing}
                                 size="lg"
-                                className="bg-brand-forest-green hover:bg-brand-forest-green/90 text-white transition-all active:scale-[0.98] px-8 font-black uppercase tracking-widest text-xs h-11 rounded-none border border-brand-forest-green"
+                                className="bg-brand-forest-green hover:bg-brand-forest-green/90 text-background transition-all active:scale-[0.98] px-8 font-black uppercase tracking-widest text-xs h-11 rounded-none border border-brand-forest-green"
                             >
                                 {isProcessing ? (
                                     <>
@@ -311,7 +311,7 @@ export function IntegraImportDialog({
                             <Button
                                 onClick={onCancel}
                                 size="lg"
-                                className="bg-primary text-white hover:bg-primary/90 font-black uppercase tracking-widest text-xs px-8 h-11 rounded-none border border-primary"
+                                className="bg-primary text-background hover:bg-primary/90 font-black uppercase tracking-widest text-xs px-8 h-11 rounded-none border border-primary"
                             >
                                 Done
                             </Button>

@@ -157,7 +157,7 @@ export function ScraperSelectDialog({
             <DialogContent className="max-w-lg p-6 gap-6">
                 <DialogHeader className="space-y-2">
                     <DialogTitle className="text-2xl font-black uppercase tracking-tight">Start Scrape Jobs</DialogTitle>
-                    <DialogDescription className="font-bold text-zinc-600">
+                    <DialogDescription className="font-bold text-muted-foreground">
                         {selectedSkuCount} product{selectedSkuCount !== 1 ? 's' : ''} selected.
                         Choose scrapers for standard product page enrichment.
                     </DialogDescription>
@@ -270,7 +270,7 @@ export function ScraperSelectDialog({
                     <Button
                         onClick={handleConfirm}
                         disabled={!canSubmit || isSubmitting}
-                        className="bg-primary hover:bg-primary/90 text-white"
+                        className="bg-primary hover:bg-primary/90 text-background"
                     >
                         {isSubmitting ? (
                             <>

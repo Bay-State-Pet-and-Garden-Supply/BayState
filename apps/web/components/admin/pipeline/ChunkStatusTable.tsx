@@ -108,7 +108,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
 
   if (sortedChunks.length === 0) {
     return (
-      <div className="px-4 py-6 text-[10px] font-black uppercase tracking-widest text-zinc-500 text-center border-t border-border bg-feed-bag-cream">
+      <div className="px-4 py-6 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-center border-t border-border bg-muted">
         No chunks created for this job yet.
       </div>
     );
@@ -148,7 +148,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
                   </span>
 
                   {/* SKU Count */}
-                  <span className="tabular-nums font-black uppercase tracking-widest text-zinc-500">
+                  <span className="tabular-nums font-black uppercase tracking-widest text-muted-foreground">
                     {chunk.skuCount}
                   </span>
 
@@ -156,7 +156,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
                     <div className="truncate font-black uppercase tracking-widest text-foreground">
                       {chunk.siteGroupLabel ?? "Default"}
                     </div>
-                    <div className="truncate text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                    <div className="truncate text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                       {chunk.plannedWorkUnits} work units
                     </div>
                   </div>
@@ -176,13 +176,13 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
                   <div className="flex items-center gap-2 min-w-0">
                     {chunk.claimedBy ? (
                       <>
-                        <Server className="h-3 w-3 text-zinc-400 shrink-0" />
+                        <Server className="h-3 w-3 text-muted-foreground shrink-0" />
                         <span className="truncate font-bold text-foreground">
                           {chunk.claimedBy}
                         </span>
                       </>
                     ) : (
-                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 italic">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground italic">
                         Unclaimed
                       </span>
                     )}
@@ -191,7 +191,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
                   {/* Claimed Time */}
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span className="tabular-nums text-[10px] font-black uppercase tracking-widest text-zinc-500 cursor-default">
+                      <span className="tabular-nums text-[10px] font-black uppercase tracking-widest text-muted-foreground cursor-default">
                         {formatRelativeTime(chunk.claimedAt)}
                       </span>
                     </TooltipTrigger>
@@ -203,14 +203,14 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
                   </Tooltip>
 
                   {/* Duration */}
-                  <span className="tabular-nums text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                  <span className="tabular-nums text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                     {formatDuration(chunk.startedAt, chunk.completedAt)}
                   </span>
 
                   {/* Result */}
                   <div className="text-right tabular-nums font-black uppercase tracking-widest text-[10px]">
                     {chunk.status === "pending" ? (
-                      <span className="text-zinc-400">—</span>
+                      <span className="text-muted-foreground">—</span>
                     ) : (
                       <span
                         className={
@@ -288,7 +288,7 @@ export function ChunkSummaryLine({
   }
 
   return (
-    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
       {parts.join(" · ")}
     </span>
   );

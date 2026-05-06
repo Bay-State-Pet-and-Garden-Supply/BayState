@@ -238,7 +238,7 @@ export function PipelineProductDetail({
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-ledger-charcoal/55">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/55">
         <div className="rounded-none bg-card p-8">
           <div className="h-8 w-8 animate-spin rounded-none border border-blue-600 border-t-transparent" />
         </div>
@@ -248,7 +248,7 @@ export function PipelineProductDetail({
 
   if (!product) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-ledger-charcoal/55">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/55">
         <div className="rounded-none bg-card p-8">
           <p className="text-red-600">Product not found</p>
           <Button onClick={onClose} className="mt-4 rounded-none">
@@ -273,17 +273,17 @@ export function PipelineProductDetail({
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className="fixed inset-0 z-50 flex items-center justify-center bg-ledger-charcoal/55 p-4"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/55 p-4"
     >
-      <div className="max-h-[95vh] w-full max-w-4xl overflow-y-auto rounded-none bg-card border border-ledger-charcoal">
+      <div className="max-h-[95vh] w-full max-w-4xl overflow-y-auto rounded-none bg-card border border-border">
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-ledger-charcoal bg-card px-6 py-4">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-6 py-4">
           <div className="flex items-center gap-3">
             <Package className="h-6 w-6 text-muted-foreground" />
             <div>
-              <h2 id="modal-title" className="text-lg font-black uppercase tracking-widest text-ledger-charcoal">Edit Product</h2>
+              <h2 id="modal-title" className="text-lg font-black uppercase tracking-widest text-foreground">Edit Product</h2>
               <div className="flex items-center gap-2 text-sm text-muted-foreground font-mono tabular-nums">
-                <span className="bg-feed-bag-cream px-1.5 py-0.5 rounded-none border border-ledger-charcoal/10">{sku}</span>
+                <span className="bg-muted px-1.5 py-0.5 rounded-none border border-border/10">{sku}</span>
                 <span>•</span>
                 <span className="font-black text-primary tracking-widest uppercase">${Number(price || 0).toFixed(2)}</span>
               </div>
@@ -291,7 +291,7 @@ export function PipelineProductDetail({
           </div>
           <button
             onClick={onClose}
-            className="rounded-none p-2 hover:bg-feed-bag-cream border border-transparent hover:border-ledger-charcoal/10"
+            className="rounded-none p-2 hover:bg-muted border border-transparent hover:border-border/10"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -313,13 +313,13 @@ export function PipelineProductDetail({
         {/* Form Content */}
         <div className="p-6 space-y-8">
           {/* Stage */}
-          <div className="flex items-center gap-4 p-4 rounded-none bg-feed-bag-cream/50 border border-ledger-charcoal">
-            <Label className="w-32 font-black uppercase tracking-widest text-ledger-charcoal">Product Stage</Label>
+          <div className="flex items-center gap-4 p-4 rounded-none bg-muted/50 border border-border">
+            <Label className="w-32 font-black uppercase tracking-widest text-foreground">Product Stage</Label>
             <Select value={pipelineStatus} onValueChange={(v) => setPipelineStatus(v as PipelineStatus)}>
-              <SelectTrigger className="w-full bg-background rounded-none border-ledger-charcoal" aria-label="Product Stage">
+              <SelectTrigger className="w-full bg-background rounded-none border-border" aria-label="Product Stage">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="rounded-none border-ledger-charcoal">
+              <SelectContent className="rounded-none border-border">
                 {pipelineStatusOptions.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>
                     {opt.label}
@@ -332,40 +332,40 @@ export function PipelineProductDetail({
           <div className="grid gap-8 lg:grid-cols-2">
             {/* Left Column: Core Fields */}
             <div className="space-y-6">
-              <div className="space-y-4 rounded-none border border-ledger-charcoal bg-card p-5">
-                <h3 className="text-sm font-black uppercase tracking-widest text-ledger-charcoal mb-2">Core Information</h3>
+              <div className="space-y-4 rounded-none border border-border bg-card p-5">
+                <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-2">Core Information</h3>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-xs font-black uppercase tracking-widest text-ledger-charcoal">Product Name *</Label>
+                  <Label htmlFor="name" className="text-xs font-black uppercase tracking-widest text-foreground">Product Name *</Label>
                   <Input
                     id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Enter product name"
-                    className="rounded-none border-ledger-charcoal"
+                    className="rounded-none border-border"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="weight" className="text-xs font-black uppercase tracking-widest text-ledger-charcoal">Weight (lb)</Label>
+                    <Label htmlFor="weight" className="text-xs font-black uppercase tracking-widest text-foreground">Weight (lb)</Label>
                     <Input
                       id="weight"
                       value={weight}
                       onChange={(e) => setWeight(e.target.value)}
                       placeholder="e.g. 30"
-                      className="rounded-none border-ledger-charcoal"
+                      className="rounded-none border-border"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="brand" className="text-xs font-black uppercase tracking-widest text-ledger-charcoal">Brand</Label>
+                  <Label htmlFor="brand" className="text-xs font-black uppercase tracking-widest text-foreground">Brand</Label>
                   <Select value={brandId} onValueChange={setBrandId}>
-                    <SelectTrigger aria-label="Brand" className="rounded-none border-ledger-charcoal">
+                    <SelectTrigger aria-label="Brand" className="rounded-none border-border">
                       <SelectValue placeholder="Select a brand" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-none border-ledger-charcoal">
+                    <SelectContent className="rounded-none border-border">
                       <SelectItem value="none">No brand</SelectItem>
                       {brands.map((brand) => (
                         <SelectItem key={brand.id} value={brand.id}>
@@ -377,14 +377,14 @@ export function PipelineProductDetail({
                 </div>
               </div>
 
-              <div className="space-y-4 rounded-none border border-ledger-charcoal bg-card p-5">
-                <h3 className="text-sm font-black uppercase tracking-widest text-ledger-charcoal mb-2">ShopSite Pages</h3>
-                <div className="flex flex-wrap gap-2 p-3 rounded-none border border-ledger-charcoal/20 bg-feed-bag-cream/30 min-h-[80px]">
+              <div className="space-y-4 rounded-none border border-border bg-card p-5">
+                <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-2">ShopSite Pages</h3>
+                <div className="flex flex-wrap gap-2 p-3 rounded-none border border-border/20 bg-muted/30 min-h-[80px]">
                     {SHOPSITE_PAGES.map(page => (
                         <Badge
                             key={page}
                             variant={productOnPages.includes(page) ? "default" : "outline"}
-                            className="cursor-pointer select-none transition-colors rounded-none border-ledger-charcoal font-black uppercase tracking-widest"
+                            className="cursor-pointer select-none transition-colors rounded-none border-border font-black uppercase tracking-widest"
                             onClick={() => togglePage(page)}
                         >
                             {page}
@@ -396,26 +396,26 @@ export function PipelineProductDetail({
 
             {/* Right Column: Description & Images */}
             <div className="space-y-6">
-              <div className="space-y-4 rounded-none border border-ledger-charcoal bg-card p-5">
-                <h3 className="text-sm font-black uppercase tracking-widest text-ledger-charcoal mb-2">Display Content</h3>
+              <div className="space-y-4 rounded-none border border-border bg-card p-5">
+                <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-2">Display Content</h3>
                 <div className="space-y-2">
-                    <Label htmlFor="description" className="text-xs font-black uppercase tracking-widest text-ledger-charcoal">Product Description</Label>
+                    <Label htmlFor="description" className="text-xs font-black uppercase tracking-widest text-foreground">Product Description</Label>
                     <Textarea
                     id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Storefront description"
                     rows={8}
-                    className="rounded-none border-ledger-charcoal"
+                    className="rounded-none border-border"
                     />
                 </div>
               </div>
 
               {imageCandidates.length > 0 && (
-                <div className="space-y-4 rounded-none border border-ledger-charcoal bg-card p-5">
+                <div className="space-y-4 rounded-none border border-border bg-card p-5">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-ledger-charcoal">Product Images</h3>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-feed-bag-cream px-2 py-0.5 rounded-none border border-ledger-charcoal/10">
+                    <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Product Images</h3>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-muted px-2 py-0.5 rounded-none border border-border/10">
                       {selectedImages.length} selected
                     </span>
                   </div>
@@ -431,18 +431,18 @@ export function PipelineProductDetail({
           </div>
 
           {/* Source Data (Read-only) */}
-          <details className="group rounded-none border border-ledger-charcoal bg-feed-bag-cream/30 overflow-hidden">
-            <summary className="cursor-pointer font-black text-xs uppercase tracking-widest text-ledger-charcoal p-4 hover:bg-feed-bag-cream transition-colors flex items-center gap-2">
+          <details className="group rounded-none border border-border bg-muted/30 overflow-hidden">
+            <summary className="cursor-pointer font-black text-xs uppercase tracking-widest text-foreground p-4 hover:bg-muted transition-colors flex items-center gap-2">
               <Info className="h-4 w-4" />
               Technical Source Data (Read-only)
             </summary>
-            <div className="p-4 border-t border-ledger-charcoal bg-background/50 space-y-4">
+            <div className="p-4 border-t border-border bg-background/50 space-y-4">
               {/* Input Data */}
               <div>
-                <h4 className="text-[10px] font-black text-ledger-charcoal mb-2 uppercase tracking-widest">
+                <h4 className="text-[10px] font-black text-foreground mb-2 uppercase tracking-widest">
                   Original ShopSite Input
                 </h4>
-                <pre className="rounded-none bg-feed-bag-cream/50 p-4 text-[11px] font-mono overflow-x-auto leading-relaxed border border-ledger-charcoal/10">
+                <pre className="rounded-none bg-muted/50 p-4 text-[11px] font-mono overflow-x-auto leading-relaxed border border-border/10">
                   {JSON.stringify(product.input, null, 2)}
                 </pre>
               </div>
@@ -450,10 +450,10 @@ export function PipelineProductDetail({
               {/* Scraped Sources */}
               {Object.keys(product.sources || {}).length > 0 && (
                 <div>
-                  <h4 className="text-[10px] font-black text-ledger-charcoal mb-2 uppercase tracking-widest">
+                  <h4 className="text-[10px] font-black text-foreground mb-2 uppercase tracking-widest">
                     Multi-Source Scraped Data
                   </h4>
-                  <pre className="rounded-none bg-feed-bag-cream/50 p-4 text-[11px] font-mono overflow-x-auto leading-relaxed border border-ledger-charcoal/10">
+                  <pre className="rounded-none bg-muted/50 p-4 text-[11px] font-mono overflow-x-auto leading-relaxed border border-border/10">
                     {JSON.stringify(product.sources, null, 2)}
                   </pre>
                 </div>
@@ -463,8 +463,8 @@ export function PipelineProductDetail({
         </div>
 
         {/* Footer Actions */}
-        <div className="sticky bottom-0 flex items-center justify-between border-t border-ledger-charcoal bg-feed-bag-cream/80 backdrop-blur-sm px-6 py-4">
-          <p className="text-[10px] text-ledger-charcoal uppercase tracking-widest font-black hidden sm:block">
+        <div className="sticky bottom-0 flex items-center justify-between border-t border-border bg-background/80 backdrop-blur-sm px-6 py-4">
+          <p className="text-[10px] text-foreground uppercase tracking-widest font-black hidden sm:block">
             Esc to close • Ctrl+S to save
           </p>
           <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -475,7 +475,7 @@ export function PipelineProductDetail({
               variant="outline"
               onClick={() => handleSave(false)}
               disabled={saving}
-              className="flex-1 sm:flex-none rounded-none border-ledger-charcoal font-black uppercase tracking-widest"
+              className="flex-1 sm:flex-none rounded-none border-border font-black uppercase tracking-widest"
             >
               <Save className="mr-2 h-4 w-4" />
               {saving ? 'Saving…' : 'Save Draft'}
