@@ -37,6 +37,23 @@ function buildInstructions(context: FinalizationCopilotContext): string {
   const sourceKeys = Object.keys(selectedProduct?.sources ?? {});
   const dirtyCount = context.workspace.dirtySkus.length;
 
+  const draftSummary = context.selectedDraft
+    ? [
+        `name: ${context.selectedDraft.name || "(empty)"}`,
+        `price: ${context.selectedDraft.price || "(empty)"}`,
+        `brandId: ${context.selectedDraft.brandId}`,
+        `brandName: ${context.selectedDraft.brandName || "(none)"}`,
+        `stockStatus: ${context.selectedDraft.stockStatus}`,
+        `availability: ${context.selectedDraft.availability || "(empty)"}`,
+        `images: ${context.selectedDraft.selectedImages.length} selected`,
+        `pages: ${context.selectedDraft.productOnPages.join(", ") || "(none)"}`,
+        `isSpecialOrder: ${context.selectedDraft.isSpecialOrder}`,
+        `minimumQuantity: ${context.selectedDraft.minimumQuantity}`,
+        `searchKeywords: ${context.selectedDraft.searchKeywords || "(empty)"}`,
+        `gtin: ${context.selectedDraft.gtin || "(empty)"}`,
+      ].join("\n")
+    : "No product selected.";
+
   return `You are Bay State's finalization copilot for product approvals.
 
 You help admins make last-minute, approval-time product changes with precision across either the currently selected product or the full finalizing workspace.
@@ -53,11 +70,8 @@ Selected product context:
 - Confidence score: ${typeof selectedProduct?.confidence_score === "number" ? selectedProduct.confidence_score : "Unknown"}
 - Source keys: ${sourceKeys.length > 0 ? sourceKeys.join(", ") : "None"}
 
-Current selected draft JSON:
-${JSON.stringify(context.selectedDraft, null, 2)}
-
-Last saved selected draft JSON:
-${JSON.stringify(context.selectedSavedDraft, null, 2)}
+Current draft summary:
+${draftSummary}
 
 Rules:
 - Use listWorkspaceProducts to inspect the full workspace before making claims about multiple products.
@@ -77,7 +91,18 @@ Rules:
 - Use approveProduct or approveProducts only when the user explicitly wants approval/exporting and there are no staged copilot edits waiting for review.
 - Use rejectProduct or rejectProducts only when the user explicitly wants to send products back to scraped and there are no staged copilot edits waiting for review.
 - Never assume "all products" from a vague request; only use scope.type="all" when the user explicitly asks for all finalizing products.
-- After any tool calls, briefly summarize what changed, the scope that changed, and mention any unresolved ambiguity.`;
+- After any tool calls, briefly summarize what changed, the scope that changed, and mention any unresolved ambiguity.
+
+Image workflow rules:
+- When the user asks to change, replace, or set images, ALWAYS call listImageSources first to discover available image URLs from each scraped source.
+- Use the image URLs from listImageSources output (the "candidates" arrays) as arguments to replaceSelectedImages, addSelectedImages, or removeSelectedImages. Never fabricate image URLs.
+- If the user provides explicit image URLs, you may use those directly without calling listImageSources.
+- If the user says something like "use the images from [source name]", call listImageSources, find the matching source, and use its candidate URLs.
+
+Field mapping reference:
+- stockStatus accepts "in_stock", "out_of_stock", or "pre_order" (use setProductFields to change it).
+- searchKeywords is a free-text field for search optimization (use setProductFields to change it).
+- All editable fields via setProductFields: name, description, longDescription, price, weight, stockStatus, availability, minimumQuantity, searchKeywords, gtin, isSpecialOrder.`;
 }
 
 export const finalizationCopilotAgent = new ToolLoopAgent({

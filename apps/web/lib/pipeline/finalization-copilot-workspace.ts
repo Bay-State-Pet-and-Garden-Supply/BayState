@@ -327,11 +327,14 @@ export function applySetProductFieldsToDraft(
     longDescription?: string;
     price?: number;
     weight?: string;
+    stockStatus?: "in_stock" | "out_of_stock" | "pre_order";
     availability?: string;
     isSpecialOrder?: boolean;
     minimumQuantity?: number | string;
+    searchKeywords?: string;
     gtin?: string;
-  },): { draft: FinalizationDraft; updatedFields: string[] } {
+  },
+): { draft: FinalizationDraft; updatedFields: string[] } {
   const updatedFields: string[] = [];
   const next = { ...draft };
 
@@ -355,6 +358,10 @@ export function applySetProductFieldsToDraft(
     next.weight = input.weight.trim();
     updatedFields.push("weight");
   }
+  if (input.stockStatus !== undefined) {
+    next.stockStatus = input.stockStatus;
+    updatedFields.push("stock status");
+  }
   if (input.availability !== undefined) {
     next.availability = input.availability.trim();
     updatedFields.push("availability");
@@ -366,6 +373,10 @@ export function applySetProductFieldsToDraft(
   if (input.minimumQuantity !== undefined) {
     next.minimumQuantity = String(input.minimumQuantity);
     updatedFields.push("minimum quantity");
+  }
+  if (input.searchKeywords !== undefined) {
+    next.searchKeywords = input.searchKeywords.trim();
+    updatedFields.push("search keywords");
   }
   if (input.gtin !== undefined) {
     next.gtin = input.gtin.trim();
