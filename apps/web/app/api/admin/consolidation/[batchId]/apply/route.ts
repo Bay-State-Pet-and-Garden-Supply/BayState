@@ -24,6 +24,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         const result = await applyResults(batchId);
 
         if ('success' in result && !result.success) {
+            console.error('[Consolidation API] Apply failed:', result.error);
             return NextResponse.json({ error: result.error }, { status: 500 });
         }
 

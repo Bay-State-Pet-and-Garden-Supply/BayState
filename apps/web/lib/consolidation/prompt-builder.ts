@@ -238,6 +238,9 @@ Product-name rules:
 - Never truncate words or use ellipses.
 - Never produce identical names for distinguishable variants; include source-supported differentiators and do not invent variant details.
 - Same product, different colors: "Motorsport Container Red 5 Gal.", "Motorsport Container White 5 Gal.", "Motorsport Container Yellow 5 Gal."
+- Same product line, different flavors/scents: "SPOT BAMBONE Coffee Wood Bacon 7 in.", "SPOT BAMBONE Coffee Wood Chicken 7 in." — flavor MUST be included when sources show different flavors for different SKUs.
+- Same product line, different materials: "SPOT BAMBONE Eco Knot Bone 7.5 in.", "SPOT BAMBONE Bambone Knot Bone 7.5 in." — material/type MUST be included when sources show different materials.
+- If two SKUs have different flavor, color, scent, or material in their source data, the name MUST include that differentiator. Do not omit it.
 - Remove special characters like TM, R, and C marks.
 - Use unit periods: lb., oz., ct., in., ft., gal., qt., pt., pk., sq. ft.
 - Expand common abbreviations like Sm, Md, Lg, Blk, Wht, Brn, Grn, Rd, Bl, Yl, Org, Pnk, Prpl, Gry, Asst, Asstd, Med, Lrg, Sml.

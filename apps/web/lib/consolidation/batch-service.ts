@@ -778,6 +778,69 @@ function extractSelectedImageUrls(value: unknown): string[] {
     return Array.from(new Set(urls));
 }
 
+// =============================================================================
+// Duplicate Name Disambiguation
+// =============================================================================
+
+const DISAMBIGUATOR_FIELDS = ['flavor', 'color', 'scent', 'material', 'variant', 'style', 'pattern'];
+const SIZE_PATTERN = /(\d+(?:\.\d+)?\s*(?:lb\.|oz\.|in\.|ft\.|gal\.|qt\.|pt\.|pk\.|ct\.|sq\. ft\.|L))\s*$/i;
+
+function findFieldInSources(sources: Record<string, unknown>, field: string): string | null {
+    const normalizedSources = normalizeProductSources(sources);
+    for (const sourcePayload of Object.values(normalizedSources)) {
+        if (sourcePayload && typeof sourcePayload === 'object') {
+            const value = (sourcePayload as Record<string, unknown>)[field];
+            if (typeof value === 'string' && value.trim().length > 0) {
+                return value.trim();
+            }
+        }
+    }
+    return null;
+}
+
+function insertDifferentiator(name: string, differentiator: string): string {
+    // Try to insert before size/weight at the end so the pattern stays:
+    // [Brand] [Product] [Differentiator] [Size]
+    const match = name.match(SIZE_PATTERN);
+    if (match && match.index !== undefined && match.index > 0) {
+        const sizePart = match[0].trim();
+        const prefix = name.slice(0, match.index).trim();
+        return `${prefix} ${differentiator} ${sizePart}`;
+    }
+    // No size found at end — append
+    return `${name} ${differentiator}`;
+}
+
+function tryDisambiguateDuplicateNames(
+    group: Array<{ sku: string; next_fields: Record<string, unknown>; name_key?: string }>,
+    existingBySku: Map<string, { consolidated: Record<string, unknown>; sources: Record<string, unknown>; input: Record<string, unknown>; imageCandidates: string[]; selectedImages: string[] }>
+): Map<string, string> | null {
+    for (const field of DISAMBIGUATOR_FIELDS) {
+        const values = new Map<string, string>();
+
+        for (const row of group) {
+            const record = existingBySku.get(row.sku);
+            const value = record ? findFieldInSources(record.sources, field) : null;
+            if (value) {
+                values.set(row.sku, value);
+            }
+        }
+
+        // All SKUs must have this field and values must actually differ
+        if (values.size === group.length && new Set(values.values()).size > 1) {
+            const result = new Map<string, string>();
+            for (const row of group) {
+                const currentName = row.next_fields.name as string;
+                const differentiator = values.get(row.sku)!;
+                result.set(row.sku, insertDifferentiator(currentName, differentiator));
+            }
+            return result;
+        }
+    }
+
+    return null;
+}
+
 /**
  * Create a JSONL batch file content for product consolidation.
  */
@@ -2087,6 +2150,9 @@ export async function applyConsolidationResults(
         }
     }
 
+    // =========================================================================
+    // Duplicate name detection with source-based disambiguation
+    // =========================================================================
     const duplicateNameGroups = new Map<string, PendingConsolidationRow[]>();
     for (const row of updateRows) {
         if (row.outcome !== 'finalized' || !row.name_key) {
@@ -2107,6 +2173,22 @@ export async function applyConsolidationResults(
             typeof group[0]?.next_fields.name === 'string'
                 ? group[0].next_fields.name
                 : 'duplicate consolidation name';
+
+        // Try to disambiguate using source variant fields before rejecting
+        const disambiguated = tryDisambiguateDuplicateNames(group, existingBySku);
+
+        if (disambiguated) {
+            for (const row of group) {
+                const newName = disambiguated.get(row.sku);
+                if (newName && typeof row.next_fields.name === 'string') {
+                    row.next_fields.name = newName;
+                    row.name_key = normalizeLookupKey(newName);
+                }
+            }
+            continue;
+        }
+
+        // Could not disambiguate — reject all duplicates
         const errorMessage = `duplicate finalized name "${duplicateName}" across SKUs ${group.map((row) => row.sku).join(', ')}`;
 
         for (const row of group) {
@@ -2264,6 +2346,10 @@ export async function applyConsolidationResults(
         if (metadataUpdateError) {
             errors.push(`batch metadata update failed: ${metadataUpdateError.message}`);
         }
+    }
+
+    if (errors.length > 0) {
+        console.error('[Consolidation Apply] Per-product errors:', errors.join('\n'));
     }
 
     const qualityMetrics = {
