@@ -77,8 +77,8 @@ export function CommandBar({ isOpen, onClose }: CommandBarProps) {
             <Input
               ref={inputRef}
               type="text"
-              placeholder="Search products, services..."
-              aria-label="Search products, services, and brands"
+              placeholder="Search products..."
+              aria-label="Search products and brands"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}

@@ -1,12 +1,12 @@
 import { Facebook, Instagram, Twitter } from 'lucide-react';
 import Link from 'next/link';
-import { NewsletterSignup } from '@/components/storefront/newsletter-signup';
+
 
 export function StorefrontFooter() {
   return (
     <footer className="bg-zinc-900 text-zinc-300 border-t-4 border-primary">
       <div className="container mx-auto px-4 py-16">
-        <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-12 sm:grid-cols-2">
           <div>
             <h3 className="mb-4 text-2xl font-black text-white uppercase tracking-tighter font-display">
               Bay State Pet & Garden
@@ -61,15 +61,6 @@ export function StorefrontFooter() {
               </li>
               <li>
                 <Link
-                  href="/services"
-                  className="hover:text-accent transition-colors flex items-center"
-                >
-                  <span className="w-2 h-2 rounded-full bg-accent/50 mr-2 inline-block"></span>
-                  Services
-                </Link>
-              </li>
-              <li>
-                <Link
                   href="/brands"
                   className="hover:text-accent transition-colors flex items-center"
                 >
@@ -80,63 +71,35 @@ export function StorefrontFooter() {
             </ul>
           </div>
 
-          <div>
-            <h4 className="mb-6 text-sm font-bold uppercase tracking-widest text-white">
-              Services
-            </h4>
-            <ul className="space-y-4">
-              <li>
-                <Link
-                  href="/services/propane-refill"
-                  className="hover:text-accent transition-colors flex items-center"
-                >
-                  <span className="w-2 h-2 rounded-full bg-accent/50 mr-2 inline-block"></span>
-                  Propane Refill
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/services/equipment-rentals"
-                  className="hover:text-accent transition-colors flex items-center"
-                >
-                  <span className="w-2 h-2 rounded-full bg-accent/50 mr-2 inline-block"></span>
-                  Equipment Rentals
-                </Link>
-              </li>
-            </ul>
-          </div>
 
-          <div>
-            <h4 className="mb-6 text-sm font-bold uppercase tracking-widest text-white">
-              Contact & Hours
-            </h4>
-            <ul className="space-y-3 text-sm">
-              <li className="flex flex-col mb-4">
-                <span className="font-semibold text-white">Address:</span>
-                <span className="text-zinc-400">429 Winthrop Street<br/>Taunton, MA 02780</span>
-              </li>
-              <li className="flex flex-col mb-4">
-                <span className="font-semibold text-white">Store Hours:</span>
-                <span className="text-zinc-400">Mon - Fri: 8:00 am - 7:00 pm<br/>Sat: 8:00 am - 6:00 pm<br/>Sun: 8:00 am - 5:00 pm</span>
-              </li>
-              <li className="flex gap-2">
-                <a href="mailto:sales@baystatepet.com" className="text-accent hover:underline underline-offset-4 font-medium">
-                  sales@baystatepet.com
-                </a>
-              </li>
-              <li className="flex gap-2">
-                <a href="tel:+15088213704" className="text-accent hover:underline underline-offset-4 font-medium">
-                  (508) 821-3704
-                </a>
-              </li>
-            </ul>
-          </div>
+
+
         </div>
 
         <div className="mt-16 border-t border-zinc-800 pt-8">
           <div className="grid gap-8 lg:grid-cols-2 items-center">
             <div className="bg-zinc-800/50 p-6 rounded-lg">
-              <NewsletterSignup source="footer" />
+              <h4 className="mb-4 text-sm font-bold uppercase tracking-widest text-white">
+                Contact & Hours
+              </h4>
+              <div className="grid gap-6 sm:grid-cols-2">
+                <div className="text-sm">
+                  <p className="font-semibold text-white mb-1">Address:</p>
+                  <p className="text-zinc-400">429 Winthrop Street<br/>Taunton, MA 02780</p>
+                  <div className="mt-3 flex flex-col gap-1">
+                    <a href="mailto:sales@baystatepet.com" className="text-accent hover:underline underline-offset-4 font-medium w-fit">
+                      sales@baystatepet.com
+                    </a>
+                    <a href="tel:+15088213704" className="text-accent hover:underline underline-offset-4 font-medium w-fit">
+                      (508) 821-3704
+                    </a>
+                  </div>
+                </div>
+                <div className="text-sm">
+                  <p className="font-semibold text-white mb-1">Store Hours:</p>
+                  <p className="text-zinc-400">Mon - Fri: 8:00 am - 7:00 pm<br/>Sat: 8:00 am - 6:00 pm<br/>Sun: 8:00 am - 5:00 pm</p>
+                </div>
+              </div>
             </div>
             
             <div className="flex flex-col items-center justify-center lg:items-end">

@@ -24,7 +24,6 @@ interface MobileNavDrawerProps {
 const navItems = [
   { href: '/products', label: 'Products', icon: ShoppingBag },
   { href: '/brands', label: 'Brands', icon: Package },
-  { href: '/services', label: 'Services', icon: Wrench },
   { href: '/about', label: 'About', icon: Info },
 ];
 

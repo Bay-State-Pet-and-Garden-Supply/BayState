@@ -179,22 +179,7 @@ export default async function HomePage() {
         <PetRecommendations />
         <FeaturedProducts products={featuredProducts} />
 
-        <section className="mt-16 border-2 border-zinc-900 bg-zinc-900 p-12 text-center text-white bg-[url('/images/services-bg.jpg')] bg-cover bg-center relative overflow-hidden shadow-[8px_8px_0px_rgba(0,0,0,0.2)]">
-          <div className="absolute inset-0 bg-black/80"></div>
-          <div className="relative z-10 flex flex-col items-center">
-            <h2 className="mb-4 text-5xl font-black uppercase tracking-tighter font-display">Local Services</h2>
-            <p className="mx-auto mb-10 max-w-xl text-zinc-200 text-lg font-bold uppercase tracking-wide">
-              Propane refills, equipment rentals, and more. Stop by or reserve online.
-            </p>
-            <Button
-              size="lg"
-              className="h-16 px-12 text-xl font-black uppercase rounded-none bg-accent text-secondary hover:bg-accent/90 border-b-2 border-black/20"
-              asChild
-            >
-              <Link href="/services">View All Services</Link>
-            </Button>
-          </div>
-        </section>
+
       </div>
     </div>
   );

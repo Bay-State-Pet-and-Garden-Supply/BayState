@@ -44,7 +44,7 @@ export function UserMenu({ user, userRole }: { user: User | null; userRole: stri
                         <span className="text-[10px] uppercase font-black tracking-[0.1em] opacity-70 leading-none mb-1">Account</span>
                         <span className="text-sm font-bold leading-none tracking-tight">{displayName}</span>
                     </div>
-                    <div className="h-10 w-10 rounded-full bg-accent text-secondary flex items-center justify-center font-black border-2 border-primary shadow-[2px_2px_0px_rgba(0,0,0,0.2)] group-hover:shadow-[4px_4px_0px_rgba(0,0,0,0.2)] group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-all overflow-hidden">
+                    <div className="h-10 w-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-black border-2 border-primary shadow-[2px_2px_0px_rgba(0,0,0,0.2)] group-hover:shadow-[4px_4px_0px_rgba(0,0,0,0.2)] group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-all overflow-hidden">
                         {user.user_metadata?.avatar_url ? (
                             <img src={user.user_metadata.avatar_url} alt={displayName} className="h-full w-full object-cover" />
                         ) : (

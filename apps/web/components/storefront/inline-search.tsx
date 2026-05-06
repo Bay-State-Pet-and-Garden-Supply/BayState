@@ -82,7 +82,7 @@ export function InlineSearch() {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Search products, brands, or services..."
+                    placeholder="Search products or brands..."
                     aria-label="Search"
                     className="pl-10 pr-24 h-11 bg-white text-zinc-900 border-none shadow-lg focus-visible:ring-2 focus-visible:ring-primary/20 rounded-lg text-base"
                   />
