@@ -7,7 +7,7 @@ Object.assign(global, {
 });
 
 if (typeof global.ReadableStream === 'undefined') {
-    global.ReadableStream = ReadableStream;
+    global.ReadableStream = ReadableStream as any;
 }
 
 type MockNextRequestInit = {

@@ -1047,11 +1047,12 @@ describe('consolidation batch service', () => {
         ]);
 
         // Duplicate names are allowed with warnings instead of rejection
-        expect(result.status).toBe('applied');
-        expect(result.success_count).toBe(2);
-        expect(result.error_count).toBe(0);
-        expect(result.warnings?.length).toBeGreaterThan(0);
-        expect(result.warnings?.[0]).toContain('duplicate name');
+        const appliedResult = result as any;
+        expect(appliedResult.status).toBe('applied');
+        expect(appliedResult.success_count).toBe(2);
+        expect(appliedResult.error_count).toBe(0);
+        expect(appliedResult.warnings?.length).toBeGreaterThan(0);
+        expect(appliedResult.warnings?.[0]).toContain('duplicate name');
 
         // Both products should be finalized (not rejected)
         expect(productsIngestionUpdate).toHaveBeenNthCalledWith(

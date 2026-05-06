@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { createFinalizationCopilotTools } from "@/lib/tools/finalization-copilot";
 
-const mockServices = {
+const mockServices: any = {
   searchBrands: jest.fn(async () => []),
 };
 
@@ -10,25 +10,25 @@ describe("finalization copilot tool definitions", () => {
 
   describe("setProductFields", () => {
     it("accepts a valid field update", () => {
-      const schema = tools.setProductFields.inputSchema;
+      const schema = tools.setProductFields.inputSchema as any;
       const result = schema.safeParse({ name: "New Product Name" });
       expect(result.success).toBe(true);
     });
 
     it("accepts stockStatus field", () => {
-      const schema = tools.setProductFields.inputSchema;
+      const schema = tools.setProductFields.inputSchema as any;
       const result = schema.safeParse({ stockStatus: "out_of_stock" });
       expect(result.success).toBe(true);
     });
 
     it("accepts searchKeywords field", () => {
-      const schema = tools.setProductFields.inputSchema;
+      const schema = tools.setProductFields.inputSchema as any;
       const result = schema.safeParse({ searchKeywords: "pet food organic" });
       expect(result.success).toBe(true);
     });
 
     it("accepts multiple fields at once", () => {
-      const schema = tools.setProductFields.inputSchema;
+      const schema = tools.setProductFields.inputSchema as any;
       const result = schema.safeParse({
         name: "Updated Feed",
         price: 29.99,
@@ -40,19 +40,19 @@ describe("finalization copilot tool definitions", () => {
     });
 
     it("rejects empty updates (no fields provided)", () => {
-      const schema = tools.setProductFields.inputSchema;
+      const schema = tools.setProductFields.inputSchema as any;
       const result = schema.safeParse({});
       expect(result.success).toBe(false);
     });
 
     it("rejects invalid stockStatus values", () => {
-      const schema = tools.setProductFields.inputSchema;
+      const schema = tools.setProductFields.inputSchema as any;
       const result = schema.safeParse({ stockStatus: "discontinued" });
       expect(result.success).toBe(false);
     });
 
     it("rejects negative prices", () => {
-      const schema = tools.setProductFields.inputSchema;
+      const schema = tools.setProductFields.inputSchema as any;
       const result = schema.safeParse({ price: -5 });
       expect(result.success).toBe(false);
     });
@@ -60,7 +60,7 @@ describe("finalization copilot tool definitions", () => {
 
   describe("replaceSelectedImages", () => {
     it("accepts a valid image URL list", () => {
-      const schema = tools.replaceSelectedImages.inputSchema;
+      const schema = tools.replaceSelectedImages.inputSchema as any;
       const result = schema.safeParse({
         images: ["https://cdn.example.com/img1.jpg", "https://cdn.example.com/img2.jpg"],
       });
@@ -68,7 +68,7 @@ describe("finalization copilot tool definitions", () => {
     });
 
     it("rejects an empty image list", () => {
-      const schema = tools.replaceSelectedImages.inputSchema;
+      const schema = tools.replaceSelectedImages.inputSchema as any;
       const result = schema.safeParse({ images: [] });
       expect(result.success).toBe(false);
     });
@@ -76,7 +76,7 @@ describe("finalization copilot tool definitions", () => {
 
   describe("bulkTransformProductNames", () => {
     it("accepts a valid suffix transform", () => {
-      const schema = tools.bulkTransformProductNames.inputSchema;
+      const schema = tools.bulkTransformProductNames.inputSchema as any;
       const result = schema.safeParse({
         scope: { type: "all" },
         mode: "suffix",
@@ -86,7 +86,7 @@ describe("finalization copilot tool definitions", () => {
     });
 
     it("rejects replace mode without find text", () => {
-      const schema = tools.bulkTransformProductNames.inputSchema;
+      const schema = tools.bulkTransformProductNames.inputSchema as any;
       const result = schema.safeParse({
         scope: { type: "all" },
         mode: "replace",
@@ -97,7 +97,7 @@ describe("finalization copilot tool definitions", () => {
     });
 
     it("rejects prefix mode with empty value", () => {
-      const schema = tools.bulkTransformProductNames.inputSchema;
+      const schema = tools.bulkTransformProductNames.inputSchema as any;
       const result = schema.safeParse({
         scope: { type: "all" },
         mode: "prefix",
@@ -130,13 +130,13 @@ describe("finalization copilot tool definitions", () => {
 
   describe("scope schemas", () => {
     it("accepts selected scope", () => {
-      const schema = tools.previewProductScope.inputSchema;
+      const schema = tools.previewProductScope.inputSchema as any;
       const result = schema.safeParse({ scope: { type: "selected" } });
       expect(result.success).toBe(true);
     });
 
     it("accepts sku_list scope", () => {
-      const schema = tools.previewProductScope.inputSchema;
+      const schema = tools.previewProductScope.inputSchema as any;
       const result = schema.safeParse({
         scope: { type: "sku_list", skus: ["SKU-1", "SKU-2"] },
       });
@@ -144,7 +144,7 @@ describe("finalization copilot tool definitions", () => {
     });
 
     it("rejects sku_list scope with empty list", () => {
-      const schema = tools.previewProductScope.inputSchema;
+      const schema = tools.previewProductScope.inputSchema as any;
       const result = schema.safeParse({
         scope: { type: "sku_list", skus: [] },
       });
@@ -152,7 +152,7 @@ describe("finalization copilot tool definitions", () => {
     });
 
     it("rejects query scope with no search parameters", () => {
-      const schema = tools.previewProductScope.inputSchema;
+      const schema = tools.previewProductScope.inputSchema as any;
       const result = schema.safeParse({
         scope: { type: "query" },
       });
