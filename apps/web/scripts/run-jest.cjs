@@ -7,7 +7,7 @@ function unique(values) {
 }
 
 function findRealNodeExecutable() {
-  const candidates = [];
+  const candidates = [process.execPath];
 
   if (process.platform === "win32") {
     const programFiles = unique([process.env.ProgramFiles, process.env["ProgramW6432"]]);
@@ -22,12 +22,30 @@ function findRealNodeExecutable() {
   } else {
     const home = process.env.HOME;
     if (home) {
-      candidates.push(path.join(home, ".nvm", "versions", "node", "v24.12.0", "bin", "node"));
+      // Look for any NVM installed node versions
+      const nvmDir = path.join(home, ".nvm", "versions", "node");
+      if (fs.existsSync(nvmDir)) {
+        try {
+          const versions = fs.readdirSync(nvmDir);
+          for (const version of versions) {
+            candidates.push(path.join(nvmDir, version, "bin", "node"));
+          }
+        } catch (e) {
+          // Ignore readdir errors
+        }
+      }
     }
 
-    const whichResult = spawnSync("which", ["node"], { encoding: "utf8" });
+    // Search all node instances in PATH
+    const whichResult = spawnSync("which", ["-a", "node"], { encoding: "utf8" });
     if (whichResult.status === 0) {
       candidates.push(...whichResult.stdout.split(/\r?\n/));
+    } else {
+      // Fallback if which -a is not supported or fails
+      const paths = (process.env.PATH || "").split(path.delimiter);
+      for (const p of paths) {
+        candidates.push(path.join(p, "node"));
+      }
     }
   }
 
@@ -36,8 +54,19 @@ function findRealNodeExecutable() {
       return false;
     }
 
+    try {
+      // Basic check to see if it's a real file and not a directory
+      const stats = fs.statSync(candidate);
+      if (!stats.isFile()) return false;
+    } catch (e) {
+      return false;
+    }
+
     const normalized = candidate.replace(/\\/g, "/").toLowerCase();
-    return !normalized.includes("/bun-node-") && !normalized.endsWith("/bun.exe");
+    // Filter out Bun shims and the bun executable itself
+    return !normalized.includes("/bun-node-") && 
+           !normalized.endsWith("/bun.exe") && 
+           !normalized.endsWith("/bun");
   });
 }
 
