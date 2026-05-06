@@ -44,8 +44,8 @@ export function PipelineSidebarProductRow({
       key={product.sku}
       data-sku={product.sku}
       className={cn(
-        "cursor-pointer transition-colors duration-300 ease-out relative min-w-0",
-        isFocused ? "bg-feed-bag-cream" : "hover:bg-feed-bag-cream/50"
+        "cursor-pointer transition-colors duration-300 ease-out relative min-w-0 border-b border-border",
+        isFocused ? "bg-muted" : "hover:bg-muted/50"
       )}
       onClick={() => onPreferredSkuChange(product.sku)}
     >
@@ -88,7 +88,7 @@ export function PipelineSidebarProductRow({
                   visibleProducts,
                 );
               }}
-              className="h-4 w-4 border-ledger-charcoal data-[state=checked]:bg-ledger-charcoal data-[state=checked]:border-ledger-charcoal"
+              className="h-4 w-4 border-foreground data-[state=checked]:bg-foreground data-[state=checked]:border-foreground"
             />
           </div>
           <div className="flex-1 min-w-0 overflow-hidden">
@@ -97,7 +97,7 @@ export function PipelineSidebarProductRow({
                 {product.sku}
               </div>
               {price !== undefined && (
-                <div className="text-sm font-black text-ledger-charcoal shrink-0 uppercase tracking-widest">
+                <div className="text-sm font-black text-foreground shrink-0 uppercase tracking-widest">
                   ${Number(price).toFixed(2)}
                 </div>
               )}
@@ -105,7 +105,7 @@ export function PipelineSidebarProductRow({
             <div
               className={cn(
                 "text-sm font-black uppercase tracking-widest line-clamp-2 mt-0.5 break-all",
-                isFocused ? "text-ledger-charcoal" : "text-ledger-charcoal/80"
+                isFocused ? "text-foreground" : "text-foreground/80"
               )}
             >
               {name}
@@ -117,7 +117,7 @@ export function PipelineSidebarProductRow({
                   <Badge
                     key={key}
                     variant="secondary"
-                    className="text-[10px] px-1.5 py-0 font-black uppercase tracking-widest bg-feed-bag-cream text-ledger-charcoal border border-ledger-charcoal truncate max-w-full rounded-none"
+                    className="text-[10px] px-1.5 py-0 font-black uppercase tracking-widest bg-muted text-foreground border border-border truncate max-w-full rounded-none"
                   >
                     {key}
                   </Badge>

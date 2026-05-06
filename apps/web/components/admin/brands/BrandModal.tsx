@@ -234,19 +234,19 @@ export function BrandModal({
 
     return (
         <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-4 border-zinc-900 shadow-[12px_12px_0px_rgba(0,0,0,1)] rounded-none p-0 bg-white">
-                <DialogHeader className="p-6 border-b-4 border-zinc-900 bg-zinc-50">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-4 border-border shadow-[12px_12px_0px_rgba(0,0,0,1)] rounded-none p-0 bg-card">
+                <DialogHeader className="p-6 border-b-4 border-border bg-muted">
                     <div className="flex items-center gap-4">
-                        <div className="p-2 border-2 border-zinc-900 bg-white shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-                            <Tag className="h-6 w-6 text-zinc-900" />
+                        <div className="p-2 border-2 border-border bg-card shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                            <Tag className="h-6 w-6 text-foreground" />
                         </div>
                         <div>
-                            <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-zinc-900">
+                            <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-foreground">
                                 {isEditing ? 'Edit Brand' : 'New Brand'}
                             </DialogTitle>
                             {isEditing && (
-                                <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 mt-1">
-                                    Slug: <span className="text-zinc-900">{brand.slug}</span>
+                                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-1">
+                                    Slug: <span className="text-foreground">{brand.slug}</span>
                                 </p>
                             )}
                         </div>
@@ -267,13 +267,13 @@ export function BrandModal({
                 <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <Label htmlFor="name" className="text-xs font-black uppercase tracking-widest text-zinc-900">Brand Name *</Label>
+                            <Label htmlFor="name" className="text-xs font-black uppercase tracking-widest text-foreground">Brand Name *</Label>
                             <Input
                                 id="name"
                                 {...register('name')}
                                 placeholder="e.g. Blue Buffalo"
                                 autoFocus
-                                className="rounded-none border-2 border-zinc-900 focus-visible:ring-0 focus-visible:border-zinc-900 focus-visible:ring-offset-0"
+                                className="rounded-none border-2 border-border focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0"
                             />
                             {errors.name && (
                                 <p className="text-[10px] font-bold uppercase text-red-600">{errors.name.message}</p>
@@ -281,12 +281,12 @@ export function BrandModal({
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="slug" className="text-xs font-black uppercase tracking-widest text-zinc-900">Slug *</Label>
+                            <Label htmlFor="slug" className="text-xs font-black uppercase tracking-widest text-foreground">Slug *</Label>
                             <Input
                                 id="slug"
                                 {...register('slug')}
                                 placeholder="e.g. blue-buffalo"
-                                className="rounded-none border-2 border-zinc-900 focus-visible:ring-0 focus-visible:border-zinc-900 focus-visible:ring-offset-0"
+                                className="rounded-none border-2 border-border focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0"
                             />
                             {errors.slug && (
                                 <p className="text-[10px] font-bold uppercase text-red-600">{errors.slug.message}</p>
@@ -295,12 +295,12 @@ export function BrandModal({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="logo_url" className="text-xs font-black uppercase tracking-widest text-zinc-900">Logo URL</Label>
+                        <Label htmlFor="logo_url" className="text-xs font-black uppercase tracking-widest text-foreground">Logo URL</Label>
                         <Input
                             id="logo_url"
                             {...register('logo_url')}
                             placeholder="https://example.com/logo.png"
-                            className="rounded-none border-2 border-zinc-900 focus-visible:ring-0 focus-visible:border-zinc-900 focus-visible:ring-offset-0"
+                            className="rounded-none border-2 border-border focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0"
                         />
                         {errors.logo_url && (
                             <p className="text-[10px] font-bold uppercase text-red-600">{errors.logo_url.message}</p>
@@ -308,48 +308,48 @@ export function BrandModal({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="description" className="text-xs font-black uppercase tracking-widest text-zinc-900">Description</Label>
+                        <Label htmlFor="description" className="text-xs font-black uppercase tracking-widest text-foreground">Description</Label>
                         <Textarea
                             id="description"
                             {...register('description')}
                             placeholder="Optional description"
                             rows={3}
-                            className="rounded-none border-2 border-zinc-900 focus-visible:ring-0 focus-visible:border-zinc-900 focus-visible:ring-offset-0 min-h-[100px]"
+                            className="rounded-none border-2 border-border focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0 min-h-[100px]"
                         />
                         {errors.description && (
                             <p className="text-[10px] font-bold uppercase text-red-600">{errors.description.message}</p>
                         )}
                     </div>
 
-                    <div className="p-4 border-2 border-zinc-900 bg-zinc-50 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-zinc-900 mb-4 flex items-center gap-2">
-                            <span className="w-3 h-3 bg-zinc-900" />
+                    <div className="p-4 border-2 border-border bg-muted shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                        <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-4 flex items-center gap-2">
+                            <span className="w-3 h-3 bg-foreground" />
                             AI Scraper Settings
                         </h3>
 
                         <div className="space-y-6">
                             <div className="space-y-2">
-                                <Label htmlFor="official_domains" className="text-[10px] font-black uppercase tracking-wider text-zinc-600">Official Domains</Label>
+                                <Label htmlFor="official_domains" className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Official Domains</Label>
                                 <Input
                                     id="official_domains"
                                     {...register('official_domains')}
                                     placeholder="scottsmiraclegro.com, mannapro.com"
-                                    className="rounded-none border-2 border-zinc-900 focus-visible:ring-0 focus-visible:border-zinc-900 focus-visible:ring-offset-0 bg-white"
+                                    className="rounded-none border-2 border-border focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0 bg-card"
                                 />
-                                <p className="text-[10px] font-bold text-zinc-500 uppercase leading-tight italic">
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase leading-tight italic">
                                     URLs <strong>must</strong> match one of these domains.
                                 </p>
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="preferred_domains" className="text-[10px] font-black uppercase tracking-wider text-zinc-600">Preferred Domains</Label>
+                                <Label htmlFor="preferred_domains" className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Preferred Domains</Label>
                                 <Input
                                     id="preferred_domains"
                                     {...register('preferred_domains')}
                                     placeholder="homedepot.com, chewy.com"
-                                    className="rounded-none border-2 border-zinc-900 focus-visible:ring-0 focus-visible:border-zinc-900 focus-visible:ring-offset-0 bg-white"
+                                    className="rounded-none border-2 border-border focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0 bg-card"
                                 />
-                                <p className="text-[10px] font-bold text-zinc-500 uppercase leading-tight italic">
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase leading-tight italic">
                                     Priority search domains (retailers, etc).
                                 </p>
                             </div>
@@ -357,14 +357,14 @@ export function BrandModal({
                     </div>
 
                     {isEditing && (
-                        <div className="p-4 border-2 border-zinc-900 bg-zinc-50 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
-                            <h3 className="text-sm font-black uppercase tracking-widest text-zinc-900 mb-4 flex items-center gap-2">
+                        <div className="p-4 border-2 border-border bg-muted shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                            <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-4 flex items-center gap-2">
                                 <Pin className="h-4 w-4" />
                                 Scraper Defaults
                             </h3>
 
                             {scrapersLoading && (
-                                <div className="flex items-center gap-2 text-xs font-bold uppercase text-zinc-500">
+                                <div className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                     Loading scrapers...
                                 </div>
@@ -382,36 +382,36 @@ export function BrandModal({
                             {!scrapersLoading && !scrapersError && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-600">
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                                             Available Scrapers
                                         </h4>
-                                        <div className="border-2 border-zinc-900 bg-white max-h-[240px] overflow-y-auto">
+                                        <div className="border-2 border-border bg-card max-h-[240px] overflow-y-auto">
                                             {availableScrapers.length === 0 ? (
-                                                <p className="p-3 text-[10px] font-bold uppercase text-zinc-400">
+                                                <p className="p-3 text-[10px] font-bold uppercase text-muted-foreground">
                                                     No scrapers found.
                                                 </p>
                                             ) : (
                                                 availableScrapers.map((scraper) => (
                                                     <label
                                                         key={scraper.id}
-                                                        className="flex items-center gap-2 p-2 border-b border-zinc-200 last:border-b-0 cursor-pointer hover:bg-zinc-50"
+                                                        className="flex items-center gap-2 p-2 border-b border-border last:border-b-0 cursor-pointer hover:bg-muted"
                                                     >
                                                         <Checkbox
                                                             checked={assignedSlugs.has(scraper.id)}
                                                             onCheckedChange={() => toggleScraper(scraper.id)}
                                                         />
                                                         <div className="flex-1 min-w-0">
-                                                            <p className="text-xs font-bold text-zinc-900 truncate">
+                                                            <p className="text-xs font-bold text-foreground truncate">
                                                                 {scraper.display_name || scraper.name}
                                                             </p>
-                                                            <p className="text-[10px] font-bold uppercase text-zinc-400 truncate">
+                                                            <p className="text-[10px] font-bold uppercase text-muted-foreground truncate">
                                                                 {scraper.slug}
                                                             </p>
                                                         </div>
                                                         {assignedSlugs.has(scraper.id) ? (
-                                                            <Pin className="h-3 w-3 text-zinc-900 shrink-0" />
+                                                            <Pin className="h-3 w-3 text-foreground shrink-0" />
                                                         ) : (
-                                                            <Sparkles className="h-3 w-3 text-zinc-300 shrink-0" />
+                                                            <Sparkles className="h-3 w-3 text-muted shrink-0" />
                                                         )}
                                                     </label>
                                                 ))
@@ -420,12 +420,12 @@ export function BrandModal({
                                     </div>
 
                                     <div className="space-y-2">
-                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-600">
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                                             Assigned Scrapers ({scraperMappings.length})
                                         </h4>
-                                        <div className="border-2 border-zinc-900 bg-white max-h-[240px] overflow-y-auto">
+                                        <div className="border-2 border-border bg-card max-h-[240px] overflow-y-auto">
                                             {scraperMappings.length === 0 ? (
-                                                <p className="p-3 text-[10px] font-bold uppercase text-zinc-400">
+                                                <p className="p-3 text-[10px] font-bold uppercase text-muted-foreground">
                                                     No scrapers assigned. Check scrapers on the left to assign them.
                                                 </p>
                                             ) : (
@@ -436,19 +436,19 @@ export function BrandModal({
                                                     return (
                                                         <div
                                                             key={mapping.scraperConfigId}
-                                                            className="p-2 border-b border-zinc-200 last:border-b-0 space-y-2"
+                                                            className="p-2 border-b border-border last:border-b-0 space-y-2"
                                                         >
                                                             <div className="flex items-center justify-between gap-2">
                                                                 <div className="flex items-center gap-2 min-w-0">
-                                                                    <Pin className="h-3 w-3 text-zinc-900 shrink-0" />
-                                                                    <span className="text-xs font-bold text-zinc-900 truncate">
+                                                                    <Pin className="h-3 w-3 text-foreground shrink-0" />
+                                                                    <span className="text-xs font-bold text-foreground truncate">
                                                                         {scraper?.display_name || scraper?.name || mapping.scraperConfigId}
                                                                     </span>
                                                                 </div>
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => removeMapping(mapping.scraperConfigId)}
-                                                                    className="shrink-0 p-1 hover:bg-red-50 text-zinc-400 hover:text-red-600 transition-colors"
+                                                                    className="shrink-0 p-1 hover:bg-red-900/20 text-muted-foreground hover:text-red-500 transition-colors"
                                                                     title="Remove"
                                                                 >
                                                                     <Trash2 className="h-3 w-3" />
@@ -456,7 +456,7 @@ export function BrandModal({
                                                             </div>
                                                             <div className="grid grid-cols-2 gap-2">
                                                                 <div>
-                                                                    <Label className="text-[9px] font-black uppercase tracking-wider text-zinc-500">
+                                                                    <Label className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">
                                                                         Priority
                                                                     </Label>
                                                                     <Input
@@ -467,7 +467,7 @@ export function BrandModal({
                                                                                 priority: parseInt(e.target.value, 10) || 0,
                                                                             })
                                                                         }
-                                                                        className="h-7 rounded-none border-2 border-zinc-900 text-xs focus-visible:ring-0 focus-visible:border-zinc-900 focus-visible:ring-offset-0 bg-white"
+                                                                        className="h-7 rounded-none border-2 border-border text-xs focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0 bg-card"
                                                                     />
                                                                 </div>
                                                                 <div className="flex items-end pb-1">
@@ -480,7 +480,7 @@ export function BrandModal({
                                                                                 })
                                                                             }
                                                                         />
-                                                                        <span className="text-[10px] font-bold uppercase text-zinc-600">
+                                                                        <span className="text-[10px] font-bold uppercase text-muted-foreground">
                                                                             {mapping.isActive ? 'Active' : 'Inactive'}
                                                                         </span>
                                                                     </div>
@@ -494,7 +494,7 @@ export function BrandModal({
                                                                         notes: e.target.value,
                                                                     })
                                                                 }
-                                                                className="h-7 rounded-none border-2 border-zinc-900 text-xs focus-visible:ring-0 focus-visible:border-zinc-900 focus-visible:ring-offset-0 bg-white"
+                                                                className="h-7 rounded-none border-2 border-border text-xs focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0 bg-card"
                                                             />
                                                         </div>
                                                     );
@@ -507,10 +507,10 @@ export function BrandModal({
                         </div>
                     )}
 
-                    <DialogFooter className="flex-col sm:flex-row gap-4 pt-6 border-t-2 border-zinc-900">
-                        <div className="flex-1 text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center">
-                            <span className="bg-zinc-200 px-1 py-0.5 border border-zinc-400 mr-1">Esc</span> close • 
-                            <span className="bg-zinc-200 px-1 py-0.5 border border-zinc-400 mx-1">Ctrl+S</span> save
+                    <DialogFooter className="flex-col sm:flex-row gap-4 pt-6 border-t-2 border-border">
+                        <div className="flex-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center">
+                            <span className="bg-muted px-1 py-0.5 border border-border mr-1 text-foreground">Esc</span> close • 
+                            <span className="bg-muted px-1 py-0.5 border border-border mx-1 text-foreground">Ctrl+S</span> save
                         </div>
                         <div className="flex items-center gap-4">
                             <Button 
@@ -518,14 +518,14 @@ export function BrandModal({
                                 variant="outline" 
                                 onClick={onClose} 
                                 disabled={isSubmitting}
-                                className="rounded-none border-2 border-zinc-900 font-black uppercase tracking-tighter hover:bg-zinc-100 transition-all"
+                                className="rounded-none border-2 border-border font-black uppercase tracking-tighter hover:bg-muted transition-all"
                             >
                                 Cancel
                             </Button>
                             <Button 
                                 type="submit" 
                                 disabled={isSubmitting} 
-                                className="bg-zinc-900 hover:bg-zinc-800 text-white font-black uppercase tracking-tighter shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all rounded-none min-w-[140px]"
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-tighter shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all rounded-none min-w-[140px]"
                             >
                                 {isSubmitting ? (
                                     <>

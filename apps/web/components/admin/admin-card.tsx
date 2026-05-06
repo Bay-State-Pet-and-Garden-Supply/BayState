@@ -17,7 +17,7 @@ export function AdminCard({
       className={cn(
         "rounded-[var(--surface-admin-radius)] border flex flex-col gap-4",
         variant === "surface" && "bg-[var(--surface-admin-card)] border-[var(--surface-admin-border)] p-4 sm:p-6",
-        variant === "panel" && "bg-white border-[var(--surface-admin-border)] p-4 sm:p-6",
+        variant === "panel" && "bg-[var(--surface-admin-card)] border-[var(--surface-admin-border)] p-4 sm:p-6",
         className
       )}
     >
