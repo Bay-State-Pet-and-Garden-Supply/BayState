@@ -87,7 +87,18 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         {/* Product Grid */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold text-zinc-900">Products</h1>
+            <h1 className="text-3xl font-bold text-zinc-900">
+              {params.category ? (
+                availableFilters.categories.find(c => c.slug === params.category)?.breadcrumb || 
+                params.category.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+              ) : params.brand ? (
+                availableFilters.brands.find(b => b.slug === params.brand)?.name || params.brand
+              ) : params.search ? (
+                `Search: ${params.search}`
+              ) : (
+                "Products"
+              )}
+            </h1>
             <p className="text-sm text-zinc-500">{count} result{count !== 1 ? 's' : ''}</p>
           </div>
           
