@@ -1905,6 +1905,8 @@ export function PipelineClient({
         />
       )}
 
+      {/* Floating Bulk Actions Bar */}
+      {!isLiveOperationalTab(currentStage) && (
         <FloatingActionsBar
           selectedCount={selectedSkus.size}
           totalCount={totalCount}
