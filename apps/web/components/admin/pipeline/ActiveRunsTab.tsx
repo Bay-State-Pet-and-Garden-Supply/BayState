@@ -269,7 +269,7 @@ export function ActiveRunsTab({ className, jobSubtype }: ActiveRunsTabProps) {
       <div
         className={`rounded-none border border-border bg-red-50 p-4 ${className}`}
       >
-        <p className="text-sm font-black uppercase text-red-600">Error: {error}</p>
+        <p className="text-sm font-semibold text-red-600">Error: {error}</p>
       </div>
     );
   }
@@ -282,7 +282,7 @@ export function ActiveRunsTab({ className, jobSubtype }: ActiveRunsTabProps) {
         className={`flex flex-col items-center justify-center py-12 text-center ${className}`}
       >
         <Play className="h-12 w-12 text-gray-300 mb-4" />
-        <h3 className="text-lg font-black uppercase tracking-tighter text-foreground">
+        <h3 className="text-lg font-semibold text-foreground">
           No active scraper jobs
         </h3>
         <p className="text-sm text-muted-foreground mt-1">

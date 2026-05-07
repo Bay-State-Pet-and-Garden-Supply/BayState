@@ -54,9 +54,9 @@ const statusConfig = {
 export function RunBatchesTable({ chunks, selectedChunkId, onSelectChunk }: RunBatchesTableProps) {
  if (chunks.length === 0) {
  return (
- <div className="flex flex-col items-center justify-center p-12 border-4 border-border bg-muted">
+ <div className="flex flex-col items-center justify-center p-12 border border-border rounded-lg bg-muted">
  <Package className="h-12 w-12 text-zinc-300 mb-4" />
- <h3 className="text-xl font-black uppercase tracking-tighter">No Batches Found</h3>
+ <h3 className="text-xl font-semibold">No Batches Found</h3>
  <p className="text-zinc-500 font-medium mt-1">This run hasn&apos;t been split into chunks yet.</p>
  </div>
  );
@@ -65,7 +65,7 @@ export function RunBatchesTable({ chunks, selectedChunkId, onSelectChunk }: RunB
  return (
  <div className="space-y-4">
  <div className="flex items-center justify-between">
- <h3 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-2">
+ <h3 className="text-2xl font-semibold flex items-center gap-2">
  <Package className="h-6 w-6" />
  Execution Batches ({chunks.length})
  </h3>
@@ -81,15 +81,15 @@ export function RunBatchesTable({ chunks, selectedChunkId, onSelectChunk }: RunB
  )}
  </div>
 
- <div className="overflow-x-auto border-4 border-border bg-card">
+ <div className="overflow-x-auto border border-border rounded-lg bg-card">
  <table className="w-full text-left border-collapse">
  <thead>
  <tr className="border-b-4 border-border bg-muted">
- <th className="px-4 py-3 text-xs font-black uppercase tracking-widest text-zinc-600 border-r-4 border-border">#</th>
- <th className="px-4 py-3 text-xs font-black uppercase tracking-widest text-zinc-600 border-r-4 border-border">Status</th>
- <th className="px-4 py-3 text-xs font-black uppercase tracking-widest text-zinc-600 border-r-4 border-border">Progress</th>
- <th className="px-4 py-3 text-xs font-black uppercase tracking-widest text-zinc-600 border-r-4 border-border">Runner</th>
- <th className="px-4 py-3 text-xs font-black uppercase tracking-widest text-zinc-600">Actions</th>
+ <th className="px-4 py-3 text-xs font-semibold text-zinc-600 border-r-4 border-border">#</th>
+ <th className="px-4 py-3 text-xs font-semibold text-zinc-600 border-r-4 border-border">Status</th>
+ <th className="px-4 py-3 text-xs font-semibold text-zinc-600 border-r-4 border-border">Progress</th>
+ <th className="px-4 py-3 text-xs font-semibold text-zinc-600 border-r-4 border-border">Runner</th>
+ <th className="px-4 py-3 text-xs font-semibold text-zinc-600">Actions</th>
  </tr>
  </thead>
  <tbody>
@@ -112,7 +112,7 @@ export function RunBatchesTable({ chunks, selectedChunkId, onSelectChunk }: RunB
  <td className="px-4 py-4 border-r-4 border-border">
  <div className="flex items-center gap-2">
  <div className={`h-2 w-2 rounded-full ${status.dot}`} />
- <span className="font-black text-xs uppercase tracking-tight text-foreground">
+ <span className="font-bold text-xs uppercase tracking-tight text-foreground">
  {status.label}
  </span>
  </div>
@@ -124,7 +124,7 @@ export function RunBatchesTable({ chunks, selectedChunkId, onSelectChunk }: RunB
  </td>
  <td className="px-4 py-4 border-r-4 border-border">
  <div className="space-y-1">
- <div className="flex justify-between text-[10px] font-black uppercase tracking-tighter">
+ <div className="flex justify-between text-[10px] font-semibold">
  <span>{chunk.work_units_processed} / {chunk.planned_work_units} SKUs</span>
  <span>{progress}%</span>
  </div>
@@ -156,7 +156,7 @@ export function RunBatchesTable({ chunks, selectedChunkId, onSelectChunk }: RunB
  variant={isSelected ? "default" : "outline"}
  size="sm"
  onClick={() => onSelectChunk(isSelected ? null : chunk.id)}
- className={`h-8 w-full border-2 border-border font-black uppercase tracking-tighter text-[10px] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all ${
+ className={`h-8 w-full border-2 border-border font-semibold text-[10px] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all ${
  isSelected ? 'bg-zinc-900 text-white' : 'bg-card text-foreground'
  }`}
  >
@@ -172,23 +172,23 @@ export function RunBatchesTable({ chunks, selectedChunkId, onSelectChunk }: RunB
  </div>
  
  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
- <div className="border-4 border-border bg-card p-4">
- <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Completed Batches</p>
- <p className="text-2xl font-black text-foreground">
+ <div className="border border-border rounded-lg bg-card p-4">
+ <p className="text-[10px] font-semibold text-zinc-500">Completed Batches</p>
+ <p className="text-2xl font-bold text-foreground">
  {chunks.filter(c => c.status === 'completed').length} / {chunks.length}
  </p>
  </div>
- <div className="border-4 border-border bg-card p-4">
- <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Success Rate</p>
- <p className="text-2xl font-black text-foreground">
+ <div className="border border-border rounded-lg bg-card p-4">
+ <p className="text-[10px] font-semibold text-zinc-500">Success Rate</p>
+ <p className="text-2xl font-bold text-foreground">
  {chunks.length > 0 
  ? Math.round((chunks.filter(c => c.status === 'completed').length / chunks.length) * 100) 
  : 0}%
  </p>
  </div>
- <div className="border-4 border-border bg-card p-4">
- <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Failed Batches</p>
- <p className="text-2xl font-black text-red-600">
+ <div className="border border-border rounded-lg bg-card p-4">
+ <p className="text-[10px] font-semibold text-zinc-500">Failed Batches</p>
+ <p className="text-2xl font-bold text-red-600">
  {chunks.filter(c => c.status === 'failed').length}
  </p>
  </div>

@@ -27,7 +27,7 @@ export function AccountSidebar() {
                         key={item.href}
                         href={item.href}
                         className={cn(
-                            "flex items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest transition-all flex-shrink-0",
+                            "flex items-center gap-3 px-4 py-3 text-xs font-semibold transition-all flex-shrink-0",
                             isActive 
                                 ? "bg-zinc-900 text-white md:-ml-1 md:border-l-8 md:border-primary" 
                                 : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50",
@@ -42,7 +42,7 @@ export function AccountSidebar() {
             <form action={signOutAction} className="flex-shrink-0 md:mt-8">
                 <button 
                     type="submit" 
-                    className="flex w-full items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-widest text-red-600 hover:bg-red-50 transition-colors whitespace-nowrap min-h-[48px] border-t-2 md:border-t-4 border-zinc-100 md:border-zinc-900"
+                    className="flex w-full items-center gap-3 px-4 py-3 text-xs font-semibold text-primary hover:bg-muted transition-colors whitespace-nowrap min-h-[48px] border-t-2 md:border-t-4 border-zinc-100 md:border-zinc-900"
                 >
                     <LogOut className="h-4 w-4" />
                     Sign Out

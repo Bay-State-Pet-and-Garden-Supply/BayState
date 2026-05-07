@@ -108,7 +108,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
 
   if (sortedChunks.length === 0) {
     return (
-      <div className="px-4 py-6 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-center border-t border-border bg-muted">
+      <div className="px-4 py-6 text-[10px] font-semibold text-muted-foreground text-center border-t border-border bg-muted">
         No chunks created for this job yet.
       </div>
     );
@@ -118,7 +118,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
     <TooltipProvider delayDuration={300}>
       <div className="border border-border bg-card overflow-hidden my-4 mx-1">
         {/* Header */}
-        <div className="grid grid-cols-[3.5rem_4rem_8rem_6.5rem_1fr_6rem_6rem_7rem] gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-muted/30 border-b border-border">
+        <div className="grid grid-cols-[3.5rem_4rem_8rem_6.5rem_1fr_6rem_6rem_7rem] gap-2 px-4 py-2.5 text-[10px] font-semibold text-muted-foreground bg-muted/30 border-b border-border">
           <span>Chunk</span>
           <span>SKUs</span>
           <span>Site Group</span>
@@ -148,15 +148,15 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
                   </span>
 
                   {/* SKU Count */}
-                  <span className="tabular-nums font-black uppercase tracking-widest text-muted-foreground">
+                  <span className="tabular-nums font-semibold text-muted-foreground">
                     {chunk.skuCount}
                   </span>
 
                   <div className="min-w-0">
-                    <div className="truncate font-black uppercase tracking-widest text-foreground">
+                    <div className="truncate font-semibold text-foreground">
                       {chunk.siteGroupLabel ?? "Default"}
                     </div>
-                    <div className="truncate text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    <div className="truncate text-[10px] font-semibold text-muted-foreground">
                       {chunk.plannedWorkUnits} work units
                     </div>
                   </div>
@@ -164,7 +164,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
                   {/* Status Badge */}
                   <Badge
                     variant="secondary"
-                    className={`inline-flex w-fit items-center gap-1.5 text-[9px] px-1.5 py-0.5 font-black uppercase tracking-widest rounded-none border border-border ${config.badgeClass}`}
+                    className={`inline-flex w-fit items-center gap-1.5 text-[9px] px-1.5 py-0.5 font-semibold rounded-none border border-border ${config.badgeClass}`}
                   >
                     <StatusIcon
                       className={`h-3 w-3 ${isRunning ? "animate-spin" : ""}`}
@@ -182,7 +182,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
                         </span>
                       </>
                     ) : (
-                      <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground italic">
+                      <span className="text-[10px] font-semibold text-muted-foreground italic">
                         Unclaimed
                       </span>
                     )}
@@ -191,33 +191,33 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
                   {/* Claimed Time */}
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span className="tabular-nums text-[10px] font-black uppercase tracking-widest text-muted-foreground cursor-default">
+                      <span className="tabular-nums text-[10px] font-semibold text-muted-foreground cursor-default">
                         {formatRelativeTime(chunk.claimedAt)}
                       </span>
                     </TooltipTrigger>
                     {chunk.claimedAt && (
-                      <TooltipContent side="top" className="rounded-none border border-border bg-card text-[10px] font-black uppercase tracking-widest">
+                      <TooltipContent side="top" className="rounded-none border border-border bg-card text-[10px] font-semibold">
                         {new Date(chunk.claimedAt).toLocaleString()}
                       </TooltipContent>
                     )}
                   </Tooltip>
 
                   {/* Duration */}
-                  <span className="tabular-nums text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  <span className="tabular-nums text-[10px] font-semibold text-muted-foreground">
                     {formatDuration(chunk.startedAt, chunk.completedAt)}
                   </span>
 
                   {/* Result */}
-                  <div className="text-right tabular-nums font-black uppercase tracking-widest text-[10px]">
+                  <div className="text-right tabular-nums font-semibold text-[10px]">
                     {chunk.status === "pending" ? (
                       <span className="text-muted-foreground">—</span>
                     ) : (
                       <span
                         className={
                           chunk.skusFailed > 0
-                            ? "text-brand-burgundy font-black"
+                            ? "text-brand-burgundy font-bold"
                             : chunk.status === "completed"
-                              ? "text-brand-forest-green font-black"
+                              ? "text-brand-forest-green font-bold"
                               : "text-foreground"
                         }
                       >
@@ -288,7 +288,7 @@ export function ChunkSummaryLine({
   }
 
   return (
-    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+    <span className="text-[10px] font-semibold text-muted-foreground">
       {parts.join(" · ")}
     </span>
   );

@@ -48,10 +48,10 @@ export function ProfileForm({ profile }: { profile: Profile }) {
     return (
         <div className="space-y-6">
             {message && (
-                <div className={`p-4 border-2 font-black uppercase tracking-tight text-sm ${
+                <div className={`p-4 border-2 font-semibold text-sm ${
                     message.type === 'success' 
-                        ? 'bg-green-50 border-green-600 text-green-700' 
-                        : 'bg-red-50 border-red-600 text-red-700'
+                        ? 'bg-muted border-primary text-foreground' 
+                        : 'bg-muted border-primary text-foreground'
                     }`}>
                     {message.text}
                 </div>
@@ -63,13 +63,13 @@ export function ProfileForm({ profile }: { profile: Profile }) {
                         name="fullName"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-xs font-black uppercase tracking-widest text-zinc-500">Full Name</FormLabel>
+                                <FormLabel className="text-xs font-semibold text-zinc-500">Full Name</FormLabel>
                                 <FormControl>
                                     <Input 
                                         placeholder="Your Name" 
                                         {...field} 
                                         disabled={loading} 
-                                        className="h-14 text-lg font-bold border-2 border-zinc-900 rounded-none focus-visible:ring-0 focus-visible:border-primary transition-all" 
+                                        className="h-14 text-lg font-bold border border-zinc-200 rounded-lg rounded-none focus-visible:ring-0 focus-visible:border-primary transition-all" 
                                     />
                                 </FormControl>
                                 <FormMessage className="text-xs font-bold uppercase tracking-tight" />
@@ -82,13 +82,13 @@ export function ProfileForm({ profile }: { profile: Profile }) {
                         name="phone"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-xs font-black uppercase tracking-widest text-zinc-500">Phone Number</FormLabel>
+                                <FormLabel className="text-xs font-semibold text-zinc-500">Phone Number</FormLabel>
                                 <FormControl>
                                     <Input 
                                         placeholder="(555) 123-4567" 
                                         {...field} 
                                         disabled={loading} 
-                                        className="h-14 text-lg font-bold border-2 border-zinc-900 rounded-none focus-visible:ring-0 focus-visible:border-primary transition-all" 
+                                        className="h-14 text-lg font-bold border border-zinc-200 rounded-lg rounded-none focus-visible:ring-0 focus-visible:border-primary transition-all" 
                                     />
                                 </FormControl>
                                 <FormMessage className="text-xs font-bold uppercase tracking-tight" />
@@ -100,7 +100,7 @@ export function ProfileForm({ profile }: { profile: Profile }) {
                         <Button 
                             type="submit" 
                             disabled={loading} 
-                            className="w-full sm:w-auto h-14 px-10 text-lg font-black uppercase tracking-widest border-b-4 border-black/20 rounded-none shadow-lg active:translate-y-1 active:border-b-0 transition-all"
+                            className="w-full sm:w-auto h-14 px-10 text-lg font-semibold border-b-4 border-black/20 rounded-none shadow-lg active:translate-y-1 active:border-b-0 transition-all"
                         >
                             {loading ? "Saving..." : "Save Changes"}
                         </Button>

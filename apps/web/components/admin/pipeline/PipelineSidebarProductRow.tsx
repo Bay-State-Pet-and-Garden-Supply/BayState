@@ -93,18 +93,18 @@ export function PipelineSidebarProductRow({
           </div>
           <div className="flex-1 min-w-0 overflow-hidden">
             <div className="flex justify-between items-start gap-2 min-w-0">
-              <div className="font-black text-[10px] text-muted-foreground truncate flex-1 uppercase tracking-widest">
+              <div className="font-bold text-[10px] text-muted-foreground truncate flex-1 uppercase tracking-widest">
                 {product.sku}
               </div>
               {price !== undefined && (
-                <div className="text-sm font-black text-foreground shrink-0 uppercase tracking-widest">
+                <div className="text-sm font-bold text-foreground shrink-0 uppercase tracking-widest">
                   ${Number(price).toFixed(2)}
                 </div>
               )}
             </div>
             <div
               className={cn(
-                "text-sm font-black uppercase tracking-widest line-clamp-2 mt-0.5 break-all",
+                "text-sm font-semibold line-clamp-2 mt-0.5 break-all",
                 isFocused ? "text-foreground" : "text-foreground/80"
               )}
             >
@@ -117,13 +117,13 @@ export function PipelineSidebarProductRow({
                   <Badge
                     key={key}
                     variant="secondary"
-                    className="text-[10px] px-1.5 py-0 font-black uppercase tracking-widest bg-muted text-foreground border border-border truncate max-w-full rounded-none"
+                    className="text-[10px] px-1.5 py-0 font-semibold bg-muted text-foreground border border-border truncate max-w-full rounded-none"
                   >
                     {key}
                   </Badge>
                 ))}
                 {sourceKeys.length === 0 && (
-                  <span className="text-[10px] text-muted-foreground shrink-0 font-black uppercase tracking-widest">
+                  <span className="text-[10px] text-muted-foreground shrink-0 font-semibold">
                     —
                   </span>
                 )}

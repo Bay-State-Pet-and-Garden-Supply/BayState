@@ -58,7 +58,7 @@ export default async function ServiceDetailPage({
         {/* Service Image/Icon Placeholder */}
         <div className="flex aspect-square items-center justify-center rounded-xl bg-gradient-to-br from-blue-100 to-blue-200">
           <div className="text-center">
-            <Badge className="mb-4 bg-blue-600">Service</Badge>
+            <Badge className="mb-4 bg-primary">Service</Badge>
             <h2 className="text-2xl font-bold text-blue-900">{service.name}</h2>
           </div>
         </div>

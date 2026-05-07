@@ -20,26 +20,26 @@ export function ProductInfoForm({
   return (
     <div className="space-y-2 min-w-0">
       <div className="space-y-1">
-        <h3 className="text-[10px] font-black uppercase tracking-widest text-foreground">
+        <h3 className="text-[10px] font-semibold text-foreground">
           Product Info
         </h3>
         <Separator className="h-1 bg-foreground" />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="product-name" className="text-[10px] font-black uppercase tracking-widest text-foreground">Product Name</Label>
+        <Label htmlFor="product-name" className="text-[10px] font-semibold text-foreground">Product Name</Label>
         <Input
           id="product-name"
           value={formData.name}
           onChange={(e) => handleNameChange(e.target.value)}
           placeholder="e.g. Life Protection Formula Adult Chicken & Brown Rice Recipe 30 lb."
-          className="h-8 border border-border rounded-none focus-visible:ring-primary font-black text-xs"
+          className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
         />
       </div>
 
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="product-price" className="text-[10px] font-black uppercase tracking-widest text-foreground">Price</Label>
+          <Label htmlFor="product-price" className="text-[10px] font-semibold text-foreground">Price</Label>
           <Input
             id="product-price"
             type="number"
@@ -50,12 +50,12 @@ export function ProductInfoForm({
               handleInputChange("price", e.target.value)
             }
             placeholder="e.g. 24.99"
-            className="h-8 border border-border rounded-none focus-visible:ring-primary font-black tabular-nums text-xs"
+            className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold tabular-nums text-xs"
           />
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="product-weight" className="text-[10px] font-black uppercase tracking-widest text-foreground">Weight (lbs)</Label>
+          <Label htmlFor="product-weight" className="text-[10px] font-semibold text-foreground">Weight (lbs)</Label>
           <Input
             id="product-weight"
             value={formData.weight}
@@ -63,43 +63,43 @@ export function ProductInfoForm({
               handleInputChange("weight", e.target.value)
             }
             placeholder="e.g. 30"
-            className="h-8 border border-border rounded-none focus-visible:ring-primary font-black tabular-nums text-xs"
+            className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold tabular-nums text-xs"
           />
         </div>
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="product-description" className="text-[10px] font-black uppercase tracking-widest text-foreground">Description</Label>
+        <Label htmlFor="product-description" className="text-[10px] font-semibold text-foreground">Description</Label>
         <Textarea
           id="product-description"
           value={formData.description}
           onChange={(e) => handleInputChange("description", e.target.value)}
           placeholder="Storefront product description..."
           rows={3}
-          className="border border-border rounded-none focus-visible:ring-primary font-black text-xs resize-y min-h-[60px]"
+          className="border border-border rounded-none focus-visible:ring-primary font-bold text-xs resize-y min-h-[60px]"
         />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="product-long-description" className="text-[10px] font-black uppercase tracking-widest text-foreground">Long Description</Label>
+        <Label htmlFor="product-long-description" className="text-[10px] font-semibold text-foreground">Long Description</Label>
         <Textarea
           id="product-long-description"
           value={formData.longDescription}
           onChange={(e) => handleInputChange("longDescription", e.target.value)}
           placeholder="Extended product description (optional)..."
           rows={4}
-          className="border border-border rounded-none focus-visible:ring-primary font-black text-xs resize-y min-h-[80px]"
+          className="border border-border rounded-none focus-visible:ring-primary font-bold text-xs resize-y min-h-[80px]"
         />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="product-search-keywords" className="text-[10px] font-black uppercase tracking-widest text-foreground">Search Keywords</Label>
+        <Label htmlFor="product-search-keywords" className="text-[10px] font-semibold text-foreground">Search Keywords</Label>
         <Input
           id="product-search-keywords"
           value={formData.searchKeywords}
           onChange={(e) => handleInputChange("searchKeywords", e.target.value)}
           placeholder="e.g. dog food, chicken recipe, large breed"
-          className="h-8 border border-border rounded-none focus-visible:ring-primary font-black text-xs"
+          className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
         />
       </div>
     </div>

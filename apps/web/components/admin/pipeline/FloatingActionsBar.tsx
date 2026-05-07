@@ -153,17 +153,17 @@ export function FloatingActionsBar({
  <div className="flex items-center gap-3 rounded-none border border-border bg-background p-2.5">
  {/* Selection Count */}
  <div className="flex items-center gap-3 border-r border-border pr-4">
- <div className="flex h-8 w-8 items-center justify-center rounded-none border border-border bg-foreground text-xs font-black text-background tabular-nums">
+ <div className="flex h-8 w-8 items-center justify-center rounded-none border border-border bg-foreground text-xs font-bold text-background tabular-nums">
  {selectedCount}
  </div>
  <div className="flex flex-col">
- <span className="text-[10px] font-black uppercase tracking-widest text-foreground leading-none">
+ <span className="text-[10px] font-semibold text-foreground leading-none">
  {selectedCount === 1 ? "Product" : "Products"}
  </span>
  <button
  type="button"
  onClick={onClearSelection}
- className="text-[9px] font-black text-muted-foreground hover:text-destructive text-left transition-colors uppercase tracking-widest"
+ className="text-[9px] font-bold text-muted-foreground hover:text-destructive text-left transition-colors uppercase tracking-widest"
  >
  Clear
  </button>
@@ -178,7 +178,7 @@ export function FloatingActionsBar({
  size="sm"
  onClick={onSelectAll}
  disabled={isLoading}
- className="h-9 px-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:bg-muted hover:text-foreground rounded-none"
+ className="h-9 px-3 text-[10px] font-semibold text-muted-foreground hover:bg-muted hover:text-foreground rounded-none"
  >
  Select All {totalCount}
  </Button>
@@ -190,7 +190,7 @@ export function FloatingActionsBar({
  size="sm"
  onClick={handleResetAction}
  disabled={isLoading}
- className="h-9 border border-border text-[10px] font-black uppercase tracking-widest text-foreground bg-background hover:bg-muted rounded-none transition-all"
+ className="h-9 border border-border text-[10px] font-semibold text-foreground bg-background hover:bg-muted rounded-none transition-all"
  >
  {bulkAction.resetLabel}
  </Button>
@@ -202,7 +202,7 @@ export function FloatingActionsBar({
  size="sm"
  onClick={() => onOpenScrapeDialog?.()}
  disabled={isLoading}
- className="h-9 border border-border text-[10px] font-black uppercase tracking-widest text-brand-forest-green bg-background hover:bg-brand-forest-green/5 rounded-none transition-all"
+ className="h-9 border border-border text-[10px] font-semibold text-brand-forest-green bg-background hover:bg-brand-forest-green/5 rounded-none transition-all"
  >
  <Plus className="mr-1 h-3.5 w-3.5" />
  {bulkAction.secondaryAction}
@@ -219,7 +219,7 @@ export function FloatingActionsBar({
  onClick={onDiscoverOfficialBrand}
  disabled={isLoading || !canDiscoverOfficialBrand}
  className={cn(
- "h-9 border border-border text-[10px] font-black uppercase tracking-widest bg-background rounded-none transition-all",
+ "h-9 border border-border text-[10px] font-semibold bg-background rounded-none transition-all",
  canDiscoverOfficialBrand 
  ? "text-blue-600 hover:bg-blue-50" 
  : "text-muted-foreground opacity-50 cursor-not-allowed"
@@ -232,7 +232,7 @@ export function FloatingActionsBar({
  </TooltipTrigger>
  {!canDiscoverOfficialBrand && officialBrandSelectionReason && (
  <TooltipContent side="top" className="max-w-xs">
- <p className="font-black uppercase tracking-widest text-[10px]">
+ <p className="font-semibold text-[10px]">
  {officialBrandSelectionReason}
  </p>
  </TooltipContent>
@@ -248,7 +248,7 @@ export function FloatingActionsBar({
  size="sm"
  onClick={onDelete}
  disabled={isLoading}
- className="h-9 border border-destructive text-[10px] font-black uppercase tracking-widest text-destructive bg-background hover:bg-destructive/5 rounded-none transition-all"
+ className="h-9 border border-destructive text-[10px] font-semibold text-destructive bg-background hover:bg-destructive/5 rounded-none transition-all"
  >
  <Trash2 className="mr-1 h-3.5 w-3.5" />
  Delete
@@ -262,7 +262,7 @@ export function FloatingActionsBar({
  size="sm"
  onClick={onUploadShopSite}
  disabled={isLoading || actionState !== null}
- className="h-9 border border-border text-[10px] font-black uppercase tracking-widest text-foreground bg-background hover:bg-muted rounded-none transition-all"
+ className="h-9 border border-border text-[10px] font-semibold text-foreground bg-background hover:bg-muted rounded-none transition-all"
  >
  {actionState === "upload" ? (
  <>
@@ -280,7 +280,7 @@ export function FloatingActionsBar({
  size="sm"
  onClick={onDownloadZip}
  disabled={isLoading || actionState !== null}
- className="h-9 bg-foreground px-5 text-[10px] font-black uppercase tracking-widest text-background hover:bg-foreground/90 rounded-none transition-all"
+ className="h-9 bg-foreground px-5 text-[10px] font-semibold text-background hover:bg-foreground/90 rounded-none transition-all"
  >
  {actionState === "zip" ? (
  <>
@@ -305,7 +305,7 @@ export function FloatingActionsBar({
  onClick={handlePrimaryAction}
  disabled={isPrimaryDisabled}
  className={cn(
- "h-9 border border-border px-6 text-[10px] font-black uppercase tracking-widest rounded-none transition-all",
+ "h-9 border border-border px-6 text-[10px] font-semibold rounded-none transition-all",
  isPrimaryDisabled && isImported
  ? "bg-muted text-muted-foreground cursor-not-allowed border-dashed"
  : "bg-brand-forest-green text-background hover:bg-brand-forest-green/90"
@@ -327,7 +327,7 @@ export function FloatingActionsBar({
  </TooltipTrigger>
  {isImported && scrapeSelectionValidation?.allowed === false && (
  <TooltipContent side="top" className="max-w-xs bg-brand-burgundy border-border text-background">
- <p className="font-black uppercase tracking-widest text-[10px]">
+ <p className="font-semibold text-[10px]">
  {scrapeSelectionValidation.reason}
  </p>
  </TooltipContent>

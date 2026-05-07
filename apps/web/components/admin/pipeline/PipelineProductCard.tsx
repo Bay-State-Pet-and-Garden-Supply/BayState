@@ -143,14 +143,14 @@ export function PipelineProductCard({
                     <div className="flex-1 min-w-0 pr-16">
                         <div className="flex items-center gap-1.5 mb-1">
                             <Package className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground truncate">{product.sku}</span>
+                            <span className="text-[10px] font-semibold text-muted-foreground truncate">{product.sku}</span>
                         </div>
 
-                        <p className="font-black uppercase tracking-tighter text-foreground truncate mb-1" title={registerName}>
+                        <p className="font-semibold text-foreground truncate mb-1" title={registerName}>
                             {registerName}
                         </p>
 
-                        <span className="font-black tabular-nums text-brand-forest-green">{formatCurrency(price)}</span>
+                        <span className="font-bold tabular-nums text-brand-forest-green">{formatCurrency(price)}</span>
                     </div>
                 </div>
             </div>
@@ -211,7 +211,7 @@ export function PipelineProductCard({
                         ) : (
                             <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
                                 <ImageIcon className="h-10 w-10 text-muted-foreground/40" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">No Image</span>
+                                <span className="text-[10px] font-semibold">No Image</span>
                             </div>
                         )}
 
@@ -221,7 +221,7 @@ export function PipelineProductCard({
 
                         {confidenceScore !== undefined && confidenceScore > 0 && (
                             <div className="absolute top-12 right-3 z-10">
-                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-none text-[10px] font-black uppercase tracking-widest bg-card/90 backdrop-blur-sm border border-border ${getConfidenceColor(confidenceScore)}`}>
+                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-none text-[10px] font-semibold bg-card/90 backdrop-blur-sm border border-border ${getConfidenceColor(confidenceScore)}`}>
                                     <TrendingUp className="h-2.5 w-2.5" />
                                     {(confidenceScore * 100).toFixed(0)}%
                                 </span>
@@ -231,19 +231,19 @@ export function PipelineProductCard({
 
                     <div className="flex flex-1 flex-col p-4 bg-card">
                         <div className="flex items-center gap-2 mb-2">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-muted px-1.5 py-0.5 rounded-none border border-border">{product.sku}</span>
+                            <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-none border border-border">{product.sku}</span>
                         </div>
 
-                        <h3 className="mb-2 line-clamp-2 min-h-[2.5rem] text-sm font-black uppercase tracking-tighter leading-tight text-foreground group-hover:text-primary transition-colors" title={cleanName || registerName}>
+                        <h3 className="mb-2 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-tight text-foreground group-hover:text-primary transition-colors" title={cleanName || registerName}>
                             {cleanName || registerName}
                         </h3>
 
                         <div className="mt-auto pt-2 flex items-center justify-between border-t border-border">
-                            <span className="text-lg font-black uppercase tracking-tighter tabular-nums text-foreground">
+                            <span className="text-lg font-semibold tabular-nums text-foreground">
                                 {formatCurrency(price)}
                             </span>
 
-                            <div className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="text-xs font-semibold text-primary flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                 Review <ChevronRight className="h-3 w-3" />
                             </div>
                         </div>
@@ -288,15 +288,15 @@ export function PipelineProductCard({
                 <div className="flex-1 min-w-0 pr-20">
                     <div className="flex items-center gap-1.5 mb-2">
                         <Package className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground truncate">{product.sku}</span>
+                        <span className="text-[10px] font-semibold text-muted-foreground truncate">{product.sku}</span>
                     </div>
 
                     <div className="space-y-1 mb-2">
-                        <p className="font-black uppercase tracking-tighter text-foreground truncate" title={cleanName || registerName}>
+                        <p className="font-semibold text-foreground truncate" title={cleanName || registerName}>
                             {cleanName || registerName}
                         </p>
                         {cleanName && registerName !== cleanName && (
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground truncate" title={registerName}>
+                            <p className="text-[10px] font-semibold text-muted-foreground truncate" title={registerName}>
                                 Original: {registerName}
                             </p>
                         )}
@@ -306,12 +306,12 @@ export function PipelineProductCard({
                     {hasScrapedData && (
                         <div className="flex items-center gap-1 mb-3">
                             <Database className="h-3 w-3 text-foreground" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-foreground">Enriched</span>
+                            <span className="text-[10px] font-semibold text-foreground">Enriched</span>
                         </div>
                     )}
 
                     <div className="flex items-center justify-between pt-2 border-t border-border">
-                        <span className="font-black uppercase tracking-tighter tabular-nums text-brand-forest-green">{formatCurrency(price)}</span>
+                        <span className="font-semibold tabular-nums text-brand-forest-green">{formatCurrency(price)}</span>
                         <div className="flex items-center gap-1">
                             {showEnrichButton && onEnrich && (
                                 <button
@@ -344,7 +344,7 @@ export function PipelineProductCard({
                                     e.stopPropagation();
                                     onView(product.sku);
                                 }}
-                                className="flex items-center justify-center h-9 px-4 rounded-none text-foreground hover:bg-muted font-black uppercase tracking-widest transition-colors border border-transparent hover:border-border"
+                                className="flex items-center justify-center h-9 px-4 rounded-none text-foreground hover:bg-muted font-semibold transition-colors border border-transparent hover:border-border"
                                 aria-label="Review product"
                             >
                                 Review <ChevronRight className="h-4 w-4 ml-1" />

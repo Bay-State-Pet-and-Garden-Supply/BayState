@@ -140,10 +140,10 @@ export function CohortBrandPicker({
  >
  <span className={cn('flex min-w-0 items-center gap-1.5', className)}>
  <Tag className="h-3.5 w-3.5 shrink-0" />
- <span className="truncate text-xs font-black uppercase tracking-tight">{selectedLabel}</span>
+ <span className="truncate text-xs font-semibold">{selectedLabel}</span>
  {value && (
  <span className={cn(
- 'hidden rounded-none border px-1 py-0 text-[9px] font-black uppercase md:inline-flex',
+ 'hidden rounded-none border px-1 py-0 text-[9px] font-semibold md:inline-flex',
  hasConfiguredDomains
  ? 'border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green'
  : 'border-brand-gold bg-brand-gold/10 text-brand-burgundy'
@@ -170,7 +170,7 @@ export function CohortBrandPicker({
  {value && (
  <button
  type="button"
- className="flex w-full items-center px-4 py-2 text-left text-[10px] font-black uppercase text-brand-burgundy hover:bg-brand-burgundy/5 border-b border-zinc-100"
+ className="flex w-full items-center px-4 py-2 text-left text-[10px] font-semibold text-brand-burgundy hover:bg-brand-burgundy/5 border-b border-zinc-100"
  onClick={() => void assignBrand(null)}
  disabled={isSubmitting}
  >
@@ -181,7 +181,7 @@ export function CohortBrandPicker({
  {loadingBrands ? (
  <div className="p-8 text-center">
  <div className="animate-spin inline-block w-4 h-4 border-2 border-border border-t-transparent mb-2"></div>
- <div className="text-[10px] font-black uppercase text-zinc-500">Loading...</div>
+ <div className="text-[10px] font-semibold text-zinc-500">Loading...</div>
  </div>
  ) : filteredBrands.length > 0 ? (
  <div className="divide-y divide-zinc-100">
@@ -202,9 +202,9 @@ export function CohortBrandPicker({
  <Check className={cn('mr-3 mt-0.5 h-4 w-4 shrink-0 text-foreground', selected ? 'opacity-100' : 'opacity-0')} />
  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
  <span className="flex items-center gap-2">
- <span className="truncate text-xs font-black uppercase tracking-tight text-foreground">{brand.name}</span>
+ <span className="truncate text-xs font-semibold text-foreground">{brand.name}</span>
  <span className={cn(
- 'rounded-none border px-1 py-0 text-[8px] font-black uppercase',
+ 'rounded-none border px-1 py-0 text-[8px] font-semibold',
  configured
  ? 'border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green'
  : 'border-brand-burgundy bg-brand-burgundy/10 text-brand-burgundy'
@@ -222,7 +222,7 @@ export function CohortBrandPicker({
  })}
  </div>
  ) : (
- <div className="p-8 text-center text-[10px] font-black uppercase text-zinc-400">No brands found.</div>
+ <div className="p-8 text-center text-[10px] font-semibold text-zinc-400">No brands found.</div>
  )}
  </div>
  {search.trim() && !exactMatch && (
@@ -231,7 +231,7 @@ export function CohortBrandPicker({
  type="button"
  variant="ghost"
  size="sm"
- className="w-full justify-start text-[10px] font-black uppercase tracking-tight hover:bg-zinc-900 hover:text-white rounded-none border border-transparent hover:border-border transition-all"
+ className="w-full justify-start text-[10px] font-semibold hover:bg-zinc-900 hover:text-white rounded-none border border-transparent hover:border-border transition-all"
  onClick={() => createBrand(search.trim())}
  >
  <Plus className="mr-2 h-3.5 w-3.5" />

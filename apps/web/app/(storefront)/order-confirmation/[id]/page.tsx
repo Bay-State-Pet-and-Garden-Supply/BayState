@@ -40,7 +40,7 @@ export default async function OrderConfirmationPage({
       <div className="mx-auto max-w-2xl text-center">
         {/* Success Icon */}
         <div className="mb-6 inline-flex items-center justify-center rounded-full bg-green-100 p-4">
-          <CheckCircle className="h-12 w-12 text-green-600" />
+          <CheckCircle className="h-12 w-12 text-primary" />
         </div>
 
         <h1 className="mb-2 text-3xl font-bold text-zinc-900">
@@ -70,7 +70,7 @@ export default async function OrderConfirmationPage({
                       Qty: {item.quantity} × {formatCurrency(item.unit_price)}
                     </p>
                     {item.preorder_batch_id && (
-                      <p className="text-xs text-blue-600 mt-1">
+                      <p className="text-xs text-primary mt-1">
                         Pre-order item
                       </p>
                     )}
@@ -89,7 +89,7 @@ export default async function OrderConfirmationPage({
                 <span>{formatCurrency(order.subtotal)}</span>
               </div>
               {order.discount_amount > 0 && (
-                <div className="flex justify-between text-sm text-green-600">
+                <div className="flex justify-between text-sm text-primary">
                   <span>Discount</span>
                   <span>-{formatCurrency(order.discount_amount)}</span>
                 </div>

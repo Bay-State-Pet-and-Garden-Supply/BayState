@@ -251,7 +251,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
             {/* Trust Badges & Microdata */}
             <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-500">
               <span className="flex items-center gap-1">
-                <ShieldCheck className="h-4 w-4 text-green-600" />
+                <ShieldCheck className="h-4 w-4 text-primary" />
                 Satisfaction Guaranteed
               </span>
               <span>•</span>
@@ -293,7 +293,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
             {/* Urgency & Fulfillment Badges */}
             <div className="flex flex-col gap-2 mb-6 text-sm">
               {product.quantity !== undefined && product.quantity > 0 && product.quantity <= (product.low_stock_threshold || 5) && (
-                <p className="text-orange-600 font-medium flex items-center gap-1.5">
+                <p className="text-primary font-medium flex items-center gap-1.5">
                   <Info className="h-4 w-4" />
                   Only {product.quantity} left in stock - order soon.
                 </p>

@@ -839,6 +839,7 @@ def _run_sequential_job(
                             "weight": extracted_data.get("Weight"),
                             "description": extracted_data.get("Description"),
                             "images": images,
+                            "image_text": extracted_data.get("Image Text"),
                             "availability": extracted_data.get("Availability"),
                             "category": extracted_data.get("Category"),
                             "item_number": extracted_data.get("ItemNumber")

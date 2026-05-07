@@ -105,7 +105,7 @@ function StatusBadge({ status }: { status: CohortBatch["status"] }) {
 
  return (
  <span
- className={`inline-flex items-center gap-1 rounded-none px-2 py-0.5 text-[10px] font-black uppercase tracking-tight border border-border ${config.bgColor} ${config.color}`}
+ className={`inline-flex items-center gap-1 rounded-none px-2 py-0.5 text-[10px] font-semibold border border-border ${config.bgColor} ${config.color}`}
  >
  <Icon className={`h-3 w-3 ${status === "processing" ? "animate-spin" : ""}`} />
  {config.label}
@@ -131,8 +131,8 @@ function StatCard({
  <CardContent className="p-6">
  <div className="flex items-center justify-between">
  <div>
- <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-1">{title}</p>
- <p className="text-3xl font-black tracking-tighter text-foreground">{value}</p>
+ <p className="text-[10px] font-semibold text-zinc-500 mb-1">{title}</p>
+ <p className="text-3xl font-bold tracking-tighter text-foreground">{value}</p>
  </div>
  <div className={`rounded-none border border-border p-3 ${color}`}>
  <Icon className="h-5 w-5 text-white" />
@@ -261,7 +261,7 @@ export function CohortDashboardClient() {
  <div className="flex items-start gap-3">
  <AlertCircle className="h-5 w-5 text-brand-burgundy shrink-0" />
  <div>
- <h3 className="font-black uppercase tracking-tight text-brand-burgundy">Error Loading Cohorts</h3>
+ <h3 className="font-semibold text-brand-burgundy">Error Loading Cohorts</h3>
  <p className="text-sm font-bold text-brand-burgundy/80 mt-1">{error}</p>
  <Button
  variant="outline"
@@ -282,7 +282,7 @@ export function CohortDashboardClient() {
  <div className="space-y-6 h-full flex flex-col">
  <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 shrink-0">
  <div>
- <h1 className="text-4xl font-black uppercase tracking-tighter text-foreground">
+ <h1 className="text-4xl font-semibold text-foreground">
  Cohort Monitoring
  </h1>
  <p className="mt-1 text-xs font-bold uppercase tracking-widest text-zinc-600">
@@ -360,7 +360,7 @@ export function CohortDashboardClient() {
  <Card className="rounded-none border border-dashed border-zinc-300 flex-1">
  <CardContent className="flex flex-col items-center justify-center h-full text-center">
  <Package className="h-12 w-12 text-zinc-300 mb-4" />
- <h3 className="text-lg font-black uppercase text-zinc-400">
+ <h3 className="text-lg font-semibold text-zinc-400">
  No cohorts found
  </h3>
  </CardContent>
@@ -392,7 +392,7 @@ export function CohortDashboardClient() {
  <div className="flex items-start justify-between">
  <div className="flex-1">
  <div className="flex items-center gap-2 mb-2 min-w-0">
- <h3 className="font-black uppercase tracking-tight text-foreground truncate flex-1 min-w-0" title={cohort.name || cohort.product_line || `Cohort ${cohort.id.slice(0, 8)}`}>
+ <h3 className="font-semibold text-foreground truncate flex-1 min-w-0" title={cohort.name || cohort.product_line || `Cohort ${cohort.id.slice(0, 8)}`}>
  {cohort.name || cohort.product_line || `Cohort ${cohort.id.slice(0, 8)}`}
  </h3>
  <StatusBadge status={cohort.status} />
@@ -419,7 +419,7 @@ export function CohortDashboardClient() {
 
  {cohort.scraper_config && (
  <div className="mt-2">
- <Badge variant="outline" className="rounded-none border border-border font-black uppercase text-[10px]">
+ <Badge variant="outline" className="rounded-none border border-border font-semibold text-[10px]">
  Config: {cohort.scraper_config}
  </Badge>
  </div>
@@ -427,7 +427,7 @@ export function CohortDashboardClient() {
 
  {hasBrand && (
  <div className="mt-1">
- <Badge variant="outline" className={`rounded-none font-black uppercase text-[10px] gap-1 ${configuredBrand ? 'border border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green' : 'border border-brand-burgundy bg-brand-burgundy/10 text-brand-burgundy'}`}>
+ <Badge variant="outline" className={`rounded-none font-semibold text-[10px] gap-1 ${configuredBrand ? 'border border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green' : 'border border-brand-burgundy bg-brand-burgundy/10 text-brand-burgundy'}`}>
  <Sparkles className="h-3 w-3" />
  {configuredBrand ? 'Recommendations ready' : 'Brand needs site setup'}
  </Badge>
@@ -435,7 +435,7 @@ export function CohortDashboardClient() {
  )}
 
  {cohort.status === "failed" && metadataErrorText && (
- <div className="mt-2 rounded-none border border-brand-burgundy bg-brand-burgundy/10 p-2 text-[10px] text-brand-burgundy font-black uppercase">
+ <div className="mt-2 rounded-none border border-brand-burgundy bg-brand-burgundy/10 p-2 text-[10px] text-brand-burgundy font-semibold">
  <strong>Error:</strong>{" "}
  {metadataErrorText}
  </div>

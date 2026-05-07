@@ -376,14 +376,14 @@ export function ScrapedResultsView({
                 <div className="flex items-center gap-2 min-w-0">
                   <Package className="h-5 w-5 text-muted-foreground shrink-0" />
                   <div className="min-w-0">
-                    <h2 className="text-xl font-black uppercase tracking-tighter text-foreground line-clamp-1" title={selectedProduct.consolidated?.name || selectedProduct.input?.name || ""}>
+                    <h2 className="text-xl font-semibold text-foreground line-clamp-1" title={selectedProduct.consolidated?.name || selectedProduct.input?.name || ""}>
                       {selectedProduct.consolidated?.name ||
                         selectedProduct.input?.name}
                     </h2>
-                    <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <div className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">
                       <span className="bg-muted border border-border px-1.5 py-0.5 rounded-none">{selectedProduct.sku}</span>
                       <span>•</span>
-                      <span className="font-black text-foreground">
+                      <span className="font-bold text-foreground">
                         ${Number(currentSourceData?.price || selectedProduct.input?.price || 0).toFixed(2)}
                       </span>
                     </div>
@@ -414,7 +414,7 @@ export function ScrapedResultsView({
                         <TabsTrigger
                           key={key}
                           value={key}
-                          className="text-[10px] px-2 h-6 uppercase font-black tracking-widest rounded-none data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-none"
+                          className="text-[10px] px-2 h-6 font-semibold rounded-none data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-none"
                         >
                           {key}
                         </TabsTrigger>
@@ -424,7 +424,7 @@ export function ScrapedResultsView({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-destructive h-8 px-3 hover:bg-destructive/10 font-black uppercase tracking-widest text-[10px] rounded-none border border-transparent hover:border-destructive"
+                    className="text-destructive h-8 px-3 hover:bg-destructive/10 font-semibold text-[10px] rounded-none border border-transparent hover:border-destructive"
                     onClick={() => handleDeleteSourceClick(activeSource)}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
@@ -435,7 +435,7 @@ export function ScrapedResultsView({
                 <div className="px-2 sm:px-3 pb-2 sm:pb-3">
                   <div className="flex items-center gap-2 text-warning-foreground bg-warning/20 p-2 rounded-none border border-warning">
                     <AlertCircle className="h-4 w-4" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">
+                    <span className="text-[10px] font-semibold">
                       No results for this SKU yet.
                     </span>
                   </div>
@@ -492,7 +492,7 @@ export function ScrapedResultsView({
                                 </button>
                                 
                                 {/* Image Counter Overlay */}
-                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-card px-1.5 py-0.5 rounded-none text-[9px] font-black uppercase tracking-widest text-foreground border border-border">
+                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-card px-1.5 py-0.5 rounded-none text-[9px] font-semibold text-foreground border border-border">
                                   {currentImageIndex + 1} / {currentSourceData.images.length}
                                 </div>
                               </>
@@ -509,7 +509,7 @@ export function ScrapedResultsView({
                         ) : (
                           <div className="flex flex-col items-center text-muted-foreground">
                             <ImageIcon className="h-10 w-10 mb-1 opacity-20" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">No image available</span>
+                            <span className="text-[10px] font-semibold">No image available</span>
                           </div>
                         )}
                         
@@ -555,12 +555,12 @@ export function ScrapedResultsView({
                         <div className="flex justify-between items-baseline">
                           <Badge
                             variant="outline"
-                            className="bg-foreground text-background border border-foreground rounded-none font-black uppercase tracking-widest text-[9px]"
+                            className="bg-foreground text-background border border-foreground rounded-none font-semibold text-[9px]"
                           >
                             {activeSource.toUpperCase()} RESULT
                           </Badge>
                           {currentSourceData.price && (
-                            <span className="text-2xl font-black text-foreground">
+                            <span className="text-2xl font-bold text-foreground">
                               $
                               {typeof currentSourceData.price === "number"
                                 ? currentSourceData.price.toFixed(2)
@@ -568,14 +568,14 @@ export function ScrapedResultsView({
                             </span>
                           )}
                         </div>
-                        <h1 className="text-xl font-black uppercase tracking-widest text-foreground leading-tight">
+                        <h1 className="text-xl font-semibold text-foreground leading-tight">
                           {currentSourceData.title ||
                             currentSourceData.name ||
                             "Untitled Product"}
                         </h1>
                         <div className="flex flex-wrap items-center gap-y-1.5 gap-x-3">
                           {currentSourceData.brand && (
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                            <p className="text-[10px] font-semibold text-muted-foreground">
                               Brand:{" "}
                               <span className="text-foreground">
                                 {currentSourceData.brand}
@@ -587,7 +587,7 @@ export function ScrapedResultsView({
                               href={currentSourceData.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-none text-[10px] font-black bg-muted text-foreground border border-border hover:bg-accent transition-colors uppercase tracking-widest"
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-none text-[10px] font-bold bg-muted text-foreground border border-border hover:bg-accent transition-colors uppercase tracking-widest"
                             >
                               <ExternalLink className="h-3 w-3" />
                               View Source
@@ -602,7 +602,7 @@ export function ScrapedResultsView({
                       <div className="grid grid-cols-2 gap-2 text-sm bg-card p-2 rounded-none border border-border">
                         <div className="space-y-2">
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">
+                            <span className="text-[9px] font-semibold text-muted-foreground tracking-widest">
                               Manufacturer Product #
                             </span>
                             <span className="font-bold text-foreground truncate uppercase tracking-widest text-[11px]">
@@ -612,7 +612,7 @@ export function ScrapedResultsView({
                             </span>
                           </div>
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">
+                            <span className="text-[9px] font-semibold text-muted-foreground tracking-widest">
                               Weight / Size
                             </span>
                             <span className="text-foreground font-bold uppercase tracking-widest text-[11px]">
@@ -625,7 +625,7 @@ export function ScrapedResultsView({
                         </div>
                         <div className="space-y-2">
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">
+                            <span className="text-[9px] font-semibold text-muted-foreground tracking-widest">
                               UPC / Barcode
                             </span>
                             <span className="text-foreground font-bold uppercase tracking-widest text-[11px]">
@@ -633,10 +633,10 @@ export function ScrapedResultsView({
                             </span>
                           </div>
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-[9px] uppercase font-black text-muted-foreground tracking-widest">
+                            <span className="text-[9px] font-semibold text-muted-foreground tracking-widest">
                               Status
                             </span>
-                            <span className="text-foreground truncate uppercase font-black text-[9px] tracking-widest">
+                            <span className="text-foreground truncate font-semibold text-[9px] tracking-widest">
                               {currentSourceData.availability || "Unknown"}
                             </span>
                           </div>
@@ -644,7 +644,7 @@ export function ScrapedResultsView({
                       </div>
 
                       <div className="space-y-1.5">
-                        <h3 className="text-[10px] font-black uppercase tracking-widest text-foreground">
+                        <h3 className="text-[10px] font-semibold text-foreground">
                           Description
                         </h3>
                         <div className="relative">
@@ -660,7 +660,7 @@ export function ScrapedResultsView({
                                 }}
                               />
                             ) : (
-                              <p className="italic text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                              <p className="italic text-[10px] font-semibold text-muted-foreground">
                                 No description provided by source.
                               </p>
                             )}
@@ -669,7 +669,7 @@ export function ScrapedResultsView({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="mt-1.5 text-[9px] h-6 text-foreground hover:bg-muted font-black uppercase tracking-widest rounded-none border border-border"
+                              className="mt-1.5 text-[9px] h-6 text-foreground hover:bg-muted font-semibold rounded-none border border-border"
                               onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
                             >
                               {isDescriptionExpanded ? "Show Less" : "Show More"}
@@ -680,7 +680,7 @@ export function ScrapedResultsView({
 
                       {currentSourceData.url && (
                         <Button
-                          className="w-full h-9 bg-foreground hover:bg-foreground/90 text-background rounded-none border-b border-r border-muted-foreground/30 active:border-0 transition-all font-black uppercase tracking-widest text-xs"
+                          className="w-full h-9 bg-foreground hover:bg-foreground/90 text-background rounded-none border-b border-r border-muted-foreground/30 active:border-0 transition-all font-semibold text-xs"
                           asChild
                         >
                           <a
@@ -700,7 +700,7 @@ export function ScrapedResultsView({
                   <div className="pt-2">
                     <Separator className="mb-2" />
                     <div className="space-y-2">
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                      <h3 className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">
                         <Package className="h-3.5 w-3.5" />
                         Technical Details (Raw Data)
                       </h3>
@@ -724,10 +724,10 @@ export function ScrapedResultsView({
               ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
                   <Package className="h-12 w-12 mb-2 opacity-20" />
-                  <h3 className="text-lg font-black uppercase tracking-widest text-foreground">
+                  <h3 className="text-lg font-semibold text-foreground">
                     No results for {activeSource}
                   </h3>
-                  <p className="text-[10px] font-black uppercase tracking-widest mt-1">
+                  <p className="text-[10px] font-semibold mt-1">
                     Try selecting a different source or re-scraping this
                     product.
                   </p>
@@ -738,8 +738,8 @@ export function ScrapedResultsView({
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
             <Package className="h-12 w-12 mb-2 opacity-20" />
-            <h3 className="text-lg font-black uppercase tracking-widest text-foreground">Select a product</h3>
-            <p className="text-[10px] font-black uppercase tracking-widest mt-1">Choose a product from the list to view its scraped results.</p>
+            <h3 className="text-lg font-semibold text-foreground">Select a product</h3>
+            <p className="text-[10px] font-semibold mt-1">Choose a product from the list to view its scraped results.</p>
           </div>
         )}
       </div>

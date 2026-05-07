@@ -17,8 +17,8 @@ export default function ProductsError({ error, reset }: ErrorProps) {
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center p-6 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="mb-6 rounded-full bg-red-50 p-4 ring-1 ring-red-100">
-        <AlertCircle className="h-10 w-10 text-red-600" />
+      <div className="mb-6 rounded-full bg-muted p-4 ring-1 ring-red-100">
+        <AlertCircle className="h-10 w-10 text-primary" />
       </div>
       
       <h2 className="mb-3 text-2xl font-bold tracking-tight text-foreground">

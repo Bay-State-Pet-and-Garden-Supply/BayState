@@ -175,7 +175,7 @@ export function ImportedResultsView({
  size="sm"
  onClick={onImportCsv}
  disabled={isLoading}
- className="flex-1 h-8 border border-border text-foreground hover:bg-muted text-[10px] font-black uppercase tracking-tighter transition-all"
+ className="flex-1 h-8 border border-border text-foreground hover:bg-muted text-[10px] font-semibold transition-all"
  >
  <Database className="mr-1.5 h-3.5 w-3.5" />
  Import CSV
@@ -187,7 +187,7 @@ export function ImportedResultsView({
  size="sm"
  onClick={onManualAdd}
  disabled={isLoading}
- className="flex-1 h-8 border border-border text-foreground hover:bg-muted text-[10px] font-black uppercase tracking-tighter transition-all"
+ className="flex-1 h-8 border border-border text-foreground hover:bg-muted text-[10px] font-semibold transition-all"
  >
  <Plus className="mr-1.5 h-3.5 w-3.5" />
  Add Product
@@ -224,7 +224,7 @@ export function ImportedResultsView({
  <div className="flex flex-col gap-2 min-w-0">
  <div className="flex items-center gap-2">
  <Layers className="h-5 w-5 text-primary shrink-0" />
- <h2 className="text-xl font-black uppercase tracking-tighter text-foreground line-clamp-1" title={activeCohortName}>
+ <h2 className="text-xl font-semibold text-foreground line-clamp-1" title={activeCohortName}>
  {activeCohortName}
  </h2>
  <div className="flex items-center gap-1">
@@ -247,7 +247,7 @@ export function ImportedResultsView({
  {(!activeCohortBrand || !hasConfiguredDomains) && activeCohortId !== "ungrouped" && (
  <div className="inline-flex items-center gap-1.5 bg-brand-gold/10 border border-brand-gold px-2 py-0.5">
  <AlertCircle className="h-3 w-3 text-brand-burgundy animate-pulse" />
- <span className="text-[9px] font-black uppercase tracking-widest text-brand-burgundy">
+ <span className="text-[9px] font-semibold text-brand-burgundy">
  Action Required: {!activeCohortBrand ? "Assign Brand" : "Add Domains"}
  </span>
  </div>
@@ -255,7 +255,7 @@ export function ImportedResultsView({
  </div>
  {activeCohortBrand && (
  <Badge variant="outline" className={cn(
- "font-black uppercase tracking-widest rounded-none",
+ "font-semibold rounded-none",
  hasConfiguredDomains
  ? "border-brand-forest-green text-brand-forest-green bg-brand-forest-green/10"
  : "border-brand-gold text-brand-burgundy bg-brand-gold/10"
@@ -264,7 +264,7 @@ export function ImportedResultsView({
  </Badge>
  )}
  </div>
- <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+ <div className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">
  <span>{cohortProducts.length} Product{cohortProducts.length !== 1 ? 's' : ''}</span>
  {activeCohortId !== "ungrouped" && (
  <>
@@ -280,20 +280,20 @@ export function ImportedResultsView({
  {/* Details Content (Product Preview Grid) */}
  <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-background">
  <div className="max-w-4xl mx-auto space-y-4">
- <h3 className="text-xs font-black uppercase tracking-tighter text-foreground border-b border-border pb-2">Products in Cohort</h3>
+ <h3 className="text-xs font-semibold text-foreground border-b border-border pb-2">Products in Cohort</h3>
  
  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
  {cohortProducts.map(product => (
  <div key={product.sku} className="p-3 bg-card border border-border flex flex-col gap-2 transition-colors hover:border-foreground">
  <div className="flex items-start justify-between gap-2">
- <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground bg-background px-1 py-0.5 rounded-none border border-border shrink-0">
+ <div className="text-[9px] font-semibold text-muted-foreground bg-background px-1 py-0.5 rounded-none border border-border shrink-0">
  {product.sku}
  </div>
- <div className="text-[10px] font-black uppercase tracking-widest text-brand-forest-green shrink-0">
+ <div className="text-[10px] font-semibold text-brand-forest-green shrink-0">
  ${Number(product.input?.price || 0).toFixed(2)}
  </div>
  </div>
- <div className="text-sm font-black uppercase tracking-tighter text-foreground line-clamp-2 leading-tight" title={product.input?.name}>
+ <div className="text-sm font-semibold text-foreground line-clamp-2 leading-tight" title={product.input?.name}>
  {product.input?.name}
  </div>
  </div>
@@ -305,8 +305,8 @@ export function ImportedResultsView({
  ) : (
  <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
  <Layers className="h-12 w-12 mb-2 opacity-20" />
- <h3 className="text-lg font-black uppercase tracking-tighter text-foreground">Select a cohort</h3>
- <p className="text-[10px] font-black uppercase tracking-tighter mt-1">Choose a cohort from the list to view its contents.</p>
+ <h3 className="text-lg font-semibold text-foreground">Select a cohort</h3>
+ <p className="text-[10px] font-semibold mt-1">Choose a cohort from the list to view its contents.</p>
  </div>
  )}
  </div>

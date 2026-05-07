@@ -124,7 +124,7 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
  variant="outline"
  onClick={handleRetry}
  disabled={isRetrying}
- className="border-4 border-border font-black uppercase tracking-tighter hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+ className="border border-border rounded-lg font-semibold hover:-translate-y-1 hover:shadow-md transition-all"
  >
  <RotateCcw className={cn("mr-2 h-5 w-5", isRetrying && "animate-spin")} />
  Retry Run
@@ -136,7 +136,7 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
  variant="destructive"
  onClick={() => setConfirmCancelOpen(true)}
  disabled={isCancelling}
- className="border-4 border-border font-black uppercase tracking-tighter hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+ className="border border-border rounded-lg font-semibold hover:-translate-y-1 hover:shadow-md transition-all"
  >
  <XCircle className="mr-2 h-5 w-5" />
  Terminate
@@ -146,7 +146,7 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
  <Button 
  variant="outline" 
  asChild 
- className="border-4 border-border font-black uppercase tracking-tighter hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+ className="border border-border rounded-lg font-semibold hover:-translate-y-1 hover:shadow-md transition-all"
  >
  <Link href="/admin/scrapers/runs">
  <ArrowLeft className="mr-2 h-5 w-5" />
@@ -170,15 +170,15 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
  {/* Main Status Card */}
  <div className="lg:col-span-8 space-y-6">
- <Card className="border-4 border-border rounded-none bg-card overflow-hidden">
+ <Card className="border border-border rounded-lg rounded-none bg-card overflow-hidden">
  <div className={`h-4 ${config.color.replace('text', 'bg')}`} />
  <CardHeader className="border-b-4 border-border bg-muted">
  <div className="flex items-center justify-between">
- <CardTitle className="flex items-center gap-3 text-2xl font-black uppercase tracking-tighter">
+ <CardTitle className="flex items-center gap-3 text-2xl font-semibold">
  <Activity className="h-6 w-6" />
  Execution Status
  </CardTitle>
- <Badge className={`px-4 py-1 text-sm font-black uppercase tracking-widest border-2 border-border ${config.variant === 'destructive' ? 'bg-red-600' : 'bg-zinc-900'} text-white rounded-none`}>
+ <Badge className={`px-4 py-1 text-sm font-semibold border-2 border-border ${config.variant === 'destructive' ? 'bg-red-600' : 'bg-zinc-900'} text-white rounded-none`}>
  <StatusIcon className={`mr-2 h-4 w-4 ${status === 'running' || status === 'claimed' ? 'animate-spin' : ''}`} />
  {config.label}
  </Badge>
@@ -187,25 +187,25 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
  <CardContent className="p-0">
  <div className="grid grid-cols-1 sm:grid-cols-2 border-b border-[var(--surface-admin-border)]">
  <div className="p-6 border-b sm:border-b-0 sm:border-r border-[var(--surface-admin-border)] space-y-1">
- <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Scraper Source</p>
- <p className="text-2xl font-black uppercase tracking-tighter text-foreground">{run.scraper_name}</p>
+ <p className="text-[10px] font-semibold text-zinc-500">Scraper Source</p>
+ <p className="text-2xl font-semibold text-foreground">{run.scraper_name}</p>
  </div>
  <div className="p-6 space-y-1">
- <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Active Runner</p>
- <p className="text-2xl font-black uppercase tracking-tighter text-foreground">{run.runner_name || 'PENDING ASSIGNMENT'}</p>
+ <p className="text-[10px] font-semibold text-zinc-500">Active Runner</p>
+ <p className="text-2xl font-semibold text-foreground">{run.runner_name || 'PENDING ASSIGNMENT'}</p>
  </div>
  </div>
  <div className="grid grid-cols-1 sm:grid-cols-3">
  <div className="p-6 border-b sm:border-b-0 sm:border-r border-[var(--surface-admin-border)] space-y-1">
- <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Started At</p>
+ <p className="text-[10px] font-semibold text-zinc-500">Started At</p>
  <p className="text-sm font-bold text-foreground">{format(new Date(run.created_at), 'MMM d, h:mm:ss a')}</p>
  </div>
  <div className="p-6 border-b sm:border-b-0 sm:border-r border-[var(--surface-admin-border)] space-y-1">
- <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Duration</p>
+ <p className="text-[10px] font-semibold text-zinc-500">Duration</p>
  <p className="text-sm font-bold text-foreground">{formatDuration(run.created_at, run.completed_at)}</p>
  </div>
  <div className="p-6 space-y-1">
- <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Job ID</p>
+ <p className="text-[10px] font-semibold text-zinc-500">Job ID</p>
  <p className="text-xs font-mono font-bold text-zinc-400 break-all">{run.id}</p>
  </div>
  </div>
@@ -213,9 +213,9 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
  </Card>
 
  {/* Progress Section */}
- <Card className="border-4 border-border rounded-none bg-card">
+ <Card className="border border-border rounded-lg rounded-none bg-card">
  <CardHeader className="border-b-4 border-border bg-muted py-4">
- <CardTitle className="text-lg font-black uppercase tracking-tighter flex items-center gap-2">
+ <CardTitle className="text-lg font-semibold flex items-center gap-2">
  <BarChart3 className="h-5 w-5" />
  Fleet Progress
  </CardTitle>
@@ -224,16 +224,16 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
  <div className="space-y-4">
  <div className="flex justify-between items-end">
  <div className="space-y-1">
- <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Batch Completion</p>
- <p className="text-3xl font-black text-foreground">{completedChunks} / {totalChunks} <span className="text-zinc-400 text-lg uppercase tracking-tighter">Chunks</span></p>
+ <p className="text-[10px] font-semibold text-zinc-500">Batch Completion</p>
+ <p className="text-3xl font-bold text-foreground">{completedChunks} / {totalChunks} <span className="text-zinc-400 text-lg uppercase tracking-tighter">Chunks</span></p>
  </div>
  <div className="text-right">
- <p className="text-4xl font-black text-foreground">{chunkProgress}%</p>
+ <p className="text-4xl font-bold text-foreground">{chunkProgress}%</p>
  </div>
  </div>
  <Progress 
  value={chunkProgress} 
- className="h-6 border-4 border-border rounded-none bg-muted" 
+ className="h-6 border border-border rounded-lg rounded-none bg-muted" 
  />
  </div>
 
@@ -241,7 +241,7 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
  <div className="flex items-center gap-3 text-zinc-100">
  <Zap className="h-5 w-5 text-amber-400 fill-amber-400" />
  <div className="flex-1">
- <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Active Phase</p>
+ <p className="text-[10px] font-semibold text-zinc-500">Active Phase</p>
  <p className="text-sm font-bold uppercase tracking-tight">
  {initialProgress?.phase || run.progress_phase || 'Awaiting Signal...'}
  {initialProgress?.current_sku ? ` • Processing SKU: ${initialProgress.current_sku}` : ''}
@@ -255,32 +255,32 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
 
  {/* Sidebar Metrics */}
  <div className="lg:col-span-4 space-y-6">
- <div className="border-4 border-border bg-[#66161D] text-white p-6 space-y-1">
- <p className="text-[10px] font-black uppercase tracking-widest text-red-300">Total Work Units</p>
+ <div className="border border-border rounded-lg bg-[#66161D] text-white p-6 space-y-1">
+ <p className="text-[10px] font-semibold text-red-300">Total Work Units</p>
  <div className="flex items-center gap-3">
  <Package className="h-8 w-8 text-red-400" />
- <p className="text-5xl font-black tracking-tighter">{run.total_skus}</p>
+ <p className="text-5xl font-bold tracking-tighter">{run.total_skus}</p>
  </div>
  </div>
 
- <div className="border-4 border-border bg-emerald-600 text-white p-6 space-y-1">
- <p className="text-[10px] font-black uppercase tracking-widest text-emerald-200">Items Discovered</p>
+ <div className="border border-border rounded-lg bg-emerald-600 text-white p-6 space-y-1">
+ <p className="text-[10px] font-semibold text-emerald-200">Items Discovered</p>
  <div className="flex items-center gap-3">
  <Boxes className="h-8 w-8 text-emerald-300" />
- <p className="text-5xl font-black tracking-tighter">{run.items_found}</p>
+ <p className="text-5xl font-bold tracking-tighter">{run.items_found}</p>
  </div>
  </div>
 
- <Card className="border-4 border-border rounded-none bg-card h-fit">
+ <Card className="border border-border rounded-lg rounded-none bg-card h-fit">
  <CardHeader className="border-b-4 border-border bg-muted py-4">
- <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+ <CardTitle className="text-sm font-semibold flex items-center gap-2">
  <Server className="h-4 w-4" />
  Infrastructure
  </CardTitle>
  </CardHeader>
  <CardContent className="p-6 space-y-4">
  <div className="space-y-1">
- <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Lease Status</p>
+ <p className="text-[10px] font-semibold text-zinc-500">Lease Status</p>
  <div className="flex items-center gap-2">
  <div className={`h-2 w-2 rounded-full ${run.lease_expires_at && new Date(run.lease_expires_at) > new Date() ? 'bg-emerald-500' : 'bg-red-500'}`} />
  <p className="text-sm font-bold text-foreground uppercase">
@@ -289,7 +289,7 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
  </div>
  </div>
  <div className="space-y-1 pt-2 border-t-2 border-zinc-100">
- <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Heartbeat</p>
+ <p className="text-[10px] font-semibold text-zinc-500">Heartbeat</p>
  <p className="text-sm font-bold text-foreground">
  {run.heartbeat_at ? format(new Date(run.heartbeat_at), 'h:mm:ss a') : 'N/A'}
  </p>
@@ -304,7 +304,7 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
  <div className="border-4 border-red-600 bg-red-50 p-6 flex gap-4 items-start">
  <AlertCircle className="h-8 w-8 text-red-600 shrink-0" />
  <div className="space-y-1">
- <h3 className="text-xl font-black uppercase tracking-tighter text-red-700 leading-none">Job Error Termination</h3>
+ <h3 className="text-xl font-semibold text-red-700 leading-none">Job Error Termination</h3>
  <p className="text-red-900 font-mono text-sm font-bold bg-card/50 p-2 border border-red-200 mt-2">{run.error_message}</p>
  </div>
  </div>
@@ -313,7 +313,7 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
  {/* Batches Overview Grid */}
  {chunks.length > 0 && (
  <div className="space-y-4">
- <h3 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-2">
+ <h3 className="text-2xl font-semibold flex items-center gap-2">
  <Boxes className="h-6 w-6" />
  Batch Overview
  </h3>
@@ -341,7 +341,7 @@ export function RunDetailsClient({ run, logs, chunks }: RunDetailsClientProps) {
  selectedChunkId={selectedChunkId}
  onSelectChunk={setSelectedChunkId}
  chunks={chunks.map(c => ({ id: c.id, chunk_index: c.chunk_index }))}
- className="border-4 border-border bg-card rounded-none overflow-hidden"
+ className="border border-border rounded-lg bg-card rounded-none overflow-hidden"
  />
  </div>
  </div>

@@ -35,9 +35,9 @@ export function PetList({ pets, petTypes }: PetListProps) {
                     className="border-dashed"
                 />
                 <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogContent className="max-h-[90vh] overflow-y-auto border-4 border-zinc-900 rounded-none shadow-[12px_12px_0px_rgba(0,0,0,1)] p-0">
+                    <DialogContent className="max-h-[90vh] overflow-y-auto border-4 border-zinc-900 rounded-none shadow-sm p-0">
                         <DialogHeader className="bg-zinc-900 text-white p-6 border-b-4 border-zinc-900">
-                            <DialogTitle className="text-2xl font-black uppercase tracking-tight font-display">Add a Pet</DialogTitle>
+                            <DialogTitle className="text-2xl font-semibold font-display">Add a Pet</DialogTitle>
                             <DialogDescription className="text-zinc-400 font-bold uppercase tracking-widest text-[10px]">
                                 Tell us about your pet to get personalized recommendations.
                             </DialogDescription>
@@ -63,19 +63,19 @@ export function PetList({ pets, petTypes }: PetListProps) {
 
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
-                    <div className="flex h-full min-h-[200px] cursor-pointer flex-col items-center justify-center border-4 border-dashed border-zinc-200 bg-zinc-50 hover:bg-zinc-100 transition-all shadow-[4px_4px_0px_rgba(0,0,0,0.05)] hover:shadow-[8px_8px_0px_rgba(0,0,0,0.1)] p-8 text-center group">
+                    <div className="flex h-full min-h-[200px] cursor-pointer flex-col items-center justify-center border-4 border-dashed border-zinc-200 bg-zinc-50 hover:bg-zinc-100 transition-all shadow-sm hover:shadow-sm p-8 text-center group">
                         <div className="bg-white border-2 border-zinc-200 p-4 shadow-sm mb-4 group-hover:border-zinc-900 transition-colors">
                             <Plus className="h-8 w-8 text-zinc-400 group-hover:text-zinc-900 transition-colors" />
                         </div>
-                        <h3 className="font-black text-xl uppercase tracking-tight mb-1 font-display">Add a Pet</h3>
+                        <h3 className="font-bold text-xl uppercase tracking-tight mb-1 font-display">Add a Pet</h3>
                         <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">
                             Get better recommendations
                         </p>
                     </div>
                 </DialogTrigger>
-                <DialogContent className="max-h-[90vh] overflow-y-auto border-4 border-zinc-900 rounded-none shadow-[12px_12px_0px_rgba(0,0,0,1)] p-0">
+                <DialogContent className="max-h-[90vh] overflow-y-auto border-4 border-zinc-900 rounded-none shadow-sm p-0">
                     <DialogHeader className="bg-zinc-900 text-white p-6 border-b-4 border-zinc-900">
-                        <DialogTitle className="text-2xl font-black uppercase tracking-tight font-display">Add a Pet</DialogTitle>
+                        <DialogTitle className="text-2xl font-semibold font-display">Add a Pet</DialogTitle>
                         <DialogDescription className="text-zinc-400 font-bold uppercase tracking-widest text-[10px]">
                             Tell us about your pet to get personalized recommendations.
                         </DialogDescription>

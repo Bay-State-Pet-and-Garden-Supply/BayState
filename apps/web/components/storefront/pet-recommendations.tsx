@@ -29,11 +29,11 @@ export async function PetRecommendations() {
       <div className="mb-8 flex items-center justify-between border-b-4 border-zinc-900 pb-2">
         <div className="flex items-center gap-3">
           <Heart className="h-6 w-6 text-rose-600 fill-rose-600" />
-          <h2 className="text-3xl font-black text-zinc-900 uppercase tracking-tighter font-display">
+          <h2 className="text-3xl font-bold text-zinc-900 uppercase tracking-tighter font-display">
             For {petNamesDisplay}
           </h2>
         </div>
-        <Button variant="ghost" asChild className="font-black uppercase text-xs tracking-widest hover:underline">
+        <Button variant="ghost" asChild className="font-semibold text-xs tracking-widest hover:underline">
           <Link href="/account/pets">
             Manage Pets
             <ArrowRight className="ml-2 h-4 w-4" />

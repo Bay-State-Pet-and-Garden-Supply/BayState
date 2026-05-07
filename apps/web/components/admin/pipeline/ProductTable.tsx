@@ -206,7 +206,7 @@ export function ProductTable({
         ),
         cell: ({ row }) => (
           <div 
-            className="font-mono text-[10px] text-foreground font-black uppercase tracking-widest tabular-nums"
+            className="font-mono text-[10px] text-foreground font-semibold tabular-nums"
             role="gridcell"
             aria-label={String(row.getValue("sku"))}
           >
@@ -226,7 +226,7 @@ export function ProductTable({
           return (
             <div className="flex items-center gap-2 max-w-[300px]">
               <span
-                className="truncate font-black uppercase tracking-widest text-xs text-foreground"
+                className="truncate font-semibold text-xs text-foreground"
                 title={name}
               >
                 {name}
@@ -256,7 +256,7 @@ export function ProductTable({
         cell: ({ row }) => {
           const price = row.getValue("price") as number;
           return (
-            <div className="text-right font-black text-foreground text-xs tabular-nums">
+            <div className="text-right font-bold text-foreground text-xs tabular-nums">
               {price > 0 ? `$${price.toFixed(2)}` : "—"}
             </div>
           );
@@ -285,7 +285,7 @@ export function ProductTable({
                     {count > 0 ? (
                       <Badge
                         variant="secondary"
-                        className="text-[10px] px-1.5 py-0 rounded-none border border-border bg-muted text-foreground font-black uppercase tracking-widest tabular-nums"
+                        className="text-[10px] px-1.5 py-0 rounded-none border border-border bg-muted text-foreground font-semibold tabular-nums"
                       >
                         {count} source{count !== 1 ? "s" : ""}
                       </Badge>
@@ -329,7 +329,7 @@ export function ProductTable({
                     <Badge
                       variant="outline"
                       className={cn(
-                        "text-[10px] px-1.5 py-0 rounded-none border font-black uppercase tabular-nums",
+                        "text-[10px] px-1.5 py-0 rounded-none border font-semibold tabular-nums",
                         confidence >= 0.8
                           ? "border-brand-forest-green text-brand-forest-green bg-brand-forest-green/10"
                           : confidence >= 0.5
@@ -484,7 +484,7 @@ export function ProductTable({
                   <TableHead
                     key={header.id}
                     className={cn(
-                      "h-8 py-0 font-black uppercase tracking-widest text-foreground bg-inherit",
+                      "h-8 py-0 font-semibold text-foreground bg-inherit",
                       widthClass,
                     )}
                   >
@@ -561,7 +561,7 @@ export function ProductTable({
             <TableRow>
               <TableCell
                 colSpan={columns.length}
-                className="h-16 text-center font-black uppercase tracking-widest text-muted-foreground"
+                className="h-16 text-center font-semibold text-muted-foreground"
               >
                 No products in this step.
               </TableCell>

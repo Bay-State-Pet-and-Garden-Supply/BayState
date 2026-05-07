@@ -239,7 +239,7 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
  <Button
  variant={viewMode === "list" ? "default" : "ghost"}
  size="sm"
- className="rounded-none h-8 font-black uppercase tracking-tighter text-[10px]"
+ className="rounded-none h-8 font-semibold text-[10px]"
  onClick={() => setViewMode("list")}
  >
  List
@@ -247,13 +247,13 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
  <Button
  variant={viewMode === "timeline" ? "default" : "ghost"}
  size="sm"
- className="rounded-none h-8 font-black uppercase tracking-tighter text-[10px]"
+ className="rounded-none h-8 font-semibold text-[10px]"
  onClick={() => setViewMode("timeline")}
  >
  Timeline
  </Button>
  </div>
- <Button variant="outline" asChild className="rounded-none border-2 border-border font-black uppercase tracking-tighter hover:translate-x-[2px] hover:translate-y-[2px] hover: transition-all">
+ <Button variant="outline" asChild className="rounded-none border-2 border-border font-semibold hover:-translate-y-1 hover: transition-all">
  <Link href="/admin/scrapers/network">
  <Play className="mr-2 h-4 w-4" />
  Runners
@@ -266,7 +266,7 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
  void fetchActiveJobDetails();
  }} 
  disabled={isPending || loadingChunks}
- className="rounded-none border-2 border-border font-black uppercase tracking-tighter hover:translate-x-[2px] hover:translate-y-[2px] hover: transition-all"
+ className="rounded-none border-2 border-border font-semibold hover:-translate-y-1 hover: transition-all"
  >
  <RotateCcw className={`mr-2 h-4 w-4 ${isPending || loadingChunks ? 'animate-spin' : ''}`} />
  Refresh
@@ -275,39 +275,39 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
 
  {/* Stats Cards */}
  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
- <Card className="rounded-none border-4 border-border">
+ <Card className="rounded-none border border-border rounded-lg">
  <CardHeader className="pb-2">
- <CardTitle className="text-xs font-black uppercase tracking-tighter text-zinc-500">Total Jobs</CardTitle>
+ <CardTitle className="text-xs font-semibold text-zinc-500">Total Jobs</CardTitle>
  </CardHeader>
  <CardContent>
- <div className="text-3xl font-black uppercase tracking-tighter text-foreground">{totalCount}</div>
+ <div className="text-3xl font-semibold text-foreground">{totalCount}</div>
  </CardContent>
  </Card>
 
- <Card className="rounded-none border-4 border-border">
+ <Card className="rounded-none border border-border rounded-lg">
  <CardHeader className="pb-2">
- <CardTitle className="text-xs font-black uppercase tracking-tighter text-zinc-500">Running</CardTitle>
+ <CardTitle className="text-xs font-semibold text-zinc-500">Running</CardTitle>
  </CardHeader>
  <CardContent>
- <div className="text-3xl font-black uppercase tracking-tighter text-blue-700">{runningCount}</div>
+ <div className="text-3xl font-semibold text-blue-700">{runningCount}</div>
  </CardContent>
  </Card>
 
- <Card className="rounded-none border-4 border-border">
+ <Card className="rounded-none border border-border rounded-lg">
  <CardHeader className="pb-2">
- <CardTitle className="text-xs font-black uppercase tracking-tighter text-zinc-500">Completed</CardTitle>
+ <CardTitle className="text-xs font-semibold text-zinc-500">Completed</CardTitle>
  </CardHeader>
  <CardContent>
- <div className="text-3xl font-black uppercase tracking-tighter text-brand-forest-green">{completedCount}</div>
+ <div className="text-3xl font-semibold text-brand-forest-green">{completedCount}</div>
  </CardContent>
  </Card>
 
- <Card className="rounded-none border-4 border-border">
+ <Card className="rounded-none border border-border rounded-lg">
  <CardHeader className="pb-2">
- <CardTitle className="text-xs font-black uppercase tracking-tighter text-zinc-500">Failed</CardTitle>
+ <CardTitle className="text-xs font-semibold text-zinc-500">Failed</CardTitle>
  </CardHeader>
  <CardContent>
- <div className="text-3xl font-black uppercase tracking-tighter text-brand-burgundy">{failedCount}</div>
+ <div className="text-3xl font-semibold text-brand-burgundy">{failedCount}</div>
  </CardContent>
  </Card>
  </div>
@@ -323,8 +323,8 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
  ) : (
  <div className="space-y-4">
  {runs.length === 0 ? (
- <Card className="rounded-none border-4 border-border py-12 text-center">
- <p className="font-black uppercase tracking-tighter text-zinc-500">No scraper runs found.</p>
+ <Card className="rounded-none border border-border rounded-lg py-12 text-center">
+ <p className="font-semibold text-zinc-500">No scraper runs found.</p>
  </Card>
  ) : (
  runs.map((run) => (

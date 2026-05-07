@@ -12,7 +12,7 @@ export default async function AdminPagesList() {
  actions={
  <Link 
  href="/admin/pages/new" 
- className="bg-primary text-white px-4 py-2 rounded-none border border-border hover:bg-primary/90 flex items-center gap-2 font-black uppercase text-sm"
+ className="bg-primary text-white px-4 py-2 rounded-none border border-border hover:bg-primary/90 flex items-center gap-2 font-semibold text-sm"
  >
  <Plus size={16} />
  Create New Page
@@ -23,11 +23,11 @@ export default async function AdminPagesList() {
  <table className="w-full">
  <thead className="bg-zinc-950 text-white">
  <tr>
- <th className="px-6 py-3 text-left text-xs font-black uppercase tracking-wider">Title</th>
- <th className="px-6 py-3 text-left text-xs font-black uppercase tracking-wider">Slug</th>
- <th className="px-6 py-3 text-left text-xs font-black uppercase tracking-wider">Status</th>
- <th className="px-6 py-3 text-left text-xs font-black uppercase tracking-wider">Last Updated</th>
- <th className="px-6 py-3 text-right text-xs font-black uppercase tracking-wider">Actions</th>
+ <th className="px-6 py-3 text-left text-xs font-semibold">Title</th>
+ <th className="px-6 py-3 text-left text-xs font-semibold">Slug</th>
+ <th className="px-6 py-3 text-left text-xs font-semibold">Status</th>
+ <th className="px-6 py-3 text-left text-xs font-semibold">Last Updated</th>
+ <th className="px-6 py-3 text-right text-xs font-semibold">Actions</th>
  </tr>
  </thead>
  <tbody className="divide-y-2 divide-zinc-950">
@@ -36,7 +36,7 @@ export default async function AdminPagesList() {
  <td className="px-6 py-4 whitespace-nowrap font-bold text-foreground">{page.title}</td>
  <td className="px-6 py-4 whitespace-nowrap text-muted-foreground">/{page.slug}</td>
  <td className="px-6 py-4 whitespace-nowrap">
- <span className={`px-2 inline-flex text-xs leading-5 font-black uppercase rounded-none border border-border ${ page.is_published ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }`}>
+ <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-none border border-border ${ page.is_published ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }`}>
  {page.is_published ? 'Published' : 'Draft'}
  </span>
  </td>

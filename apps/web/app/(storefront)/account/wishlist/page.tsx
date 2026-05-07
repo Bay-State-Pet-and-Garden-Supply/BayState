@@ -11,8 +11,8 @@ export default async function WishlistPage() {
 
     return (
         <div className="space-y-12">
-            <div className="border-b-8 border-zinc-900 pb-4">
-                <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase font-display leading-none text-zinc-900">Wishlist</h1>
+            <div className="border-b border-zinc-200 pb-4">
+                <h1 className="text-4xl md:text-6xl font-bold tracking-tighter uppercase font-display leading-none text-zinc-900">Wishlist</h1>
                 <p className="text-zinc-600 font-bold uppercase tracking-widest text-sm mt-2">Save items to buy later.</p>
             </div>
 

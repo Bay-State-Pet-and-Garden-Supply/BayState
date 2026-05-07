@@ -141,7 +141,7 @@ export function UrlReviewWorkspace() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <PackageSearch className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-black uppercase tracking-tighter text-foreground">
+        <h3 className="text-lg font-semibold text-foreground">
           No Cohorts Awaiting Review
         </h3>
         <p className="mt-1 max-w-md text-sm text-muted-foreground">
@@ -155,7 +155,7 @@ export function UrlReviewWorkspace() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-black uppercase tracking-tighter text-foreground">
+          <h3 className="text-base font-semibold text-foreground">
             {cohorts.length} Cohort{cohorts.length !== 1 ? "s" : ""} in Review
           </h3>
           <p className="text-sm text-muted-foreground">
@@ -184,7 +184,7 @@ export function UrlReviewWorkspace() {
                 <Globe className="h-5 w-5 shrink-0 text-primary" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-black uppercase tracking-tight text-foreground">
+                    <span className="text-sm font-semibold text-foreground">
                       {cohort.name ?? `Batch ${cohort.cohort_id.slice(0, 8)}`}
                     </span>
                     {cohort.brand_name ? (
@@ -193,7 +193,7 @@ export function UrlReviewWorkspace() {
                       </Badge>
                     ) : null}
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  <div className="mt-1 flex flex-wrap gap-2 text-[10px] font-semibold text-muted-foreground">
                     <span>{cohort.product_count} products</span>
                     <span>{cohort.skus_with_selection} selected</span>
                     <span>{cohort.skus_extracted} extracted</span>

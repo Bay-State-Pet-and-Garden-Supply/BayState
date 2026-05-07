@@ -21,6 +21,7 @@ FIELD_ALIASES = {
     "image_urls": "images",
     "images": "images",
     "image_url": "images",
+    "image_text": "image_text",
     "description": "description",
     "weight": "weight",
     "category": "category",

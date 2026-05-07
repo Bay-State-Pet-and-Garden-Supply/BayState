@@ -148,7 +148,7 @@ function AISettingsDialog() {
         <Button
           variant="outline"
           size="sm"
-          className="rounded-none border border-border font-black uppercase text-[10px] h-8 transition-all"
+          className="rounded-none border border-border font-semibold text-[10px] h-8 transition-all"
         >
           <Settings className="mr-2 h-4 w-4" />
           AI Config
@@ -156,10 +156,10 @@ function AISettingsDialog() {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] rounded-none border border-border bg-card">
         <DialogHeader>
-          <DialogTitle className="font-black uppercase tracking-tighter text-xl text-foreground">
+          <DialogTitle className="font-semibold text-xl text-foreground">
             Consolidation Engine
           </DialogTitle>
-          <DialogDescription className="text-[10px] font-black uppercase text-muted-foreground">
+          <DialogDescription className="text-[10px] font-semibold text-muted-foreground">
             Configure OpenAI credentials and model parameters.
           </DialogDescription>
         </DialogHeader>
@@ -169,7 +169,7 @@ function AISettingsDialog() {
           <div className="space-y-4">
             <div className="flex items-center gap-2 border-b border-border pb-1.5">
               <Key className="h-4 w-4 text-muted-foreground" />
-              <h4 className="text-xs font-black uppercase tracking-tighter">
+              <h4 className="text-xs font-semibold">
                 OpenAI API Key
               </h4>
             </div>
@@ -177,13 +177,13 @@ function AISettingsDialog() {
             <div className="rounded-none border border-border bg-muted/20 p-2 sm:p-3">
               {settings?.statuses.openai.configured ? (
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-green-600">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-green-600">
                     <CheckCircle className="h-3.5 w-3.5" />
                     <span>
                       Active (Ends in {settings.statuses.openai.last4})
                     </span>
                   </div>
-                  <span className="text-[9px] font-black uppercase text-muted-foreground">
+                  <span className="text-[9px] font-semibold text-muted-foreground">
                     Refreshed{" "}
                     {settings.statuses.openai.updated_at
                       ? new Date(
@@ -193,7 +193,7 @@ function AISettingsDialog() {
                   </span>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-destructive mb-4">
+                <div className="flex items-center gap-1.5 text-[10px] font-semibold text-destructive mb-4">
                   <AlertTriangle className="h-3.5 w-3.5" />
                   <span>Not Configured</span>
                 </div>
@@ -210,7 +210,7 @@ function AISettingsDialog() {
                 <Button
                   size="sm"
                   variant="default"
-                  className="h-9 px-4 text-xs font-black uppercase rounded-none border border-border bg-foreground text-background transition-all"
+                  className="h-9 px-4 text-xs font-semibold rounded-none border border-border bg-foreground text-background transition-all"
                   onClick={handleSaveKey}
                   disabled={saving || !openaiKey}
                 >
@@ -224,7 +224,7 @@ function AISettingsDialog() {
           <div className="space-y-4">
             <div className="flex items-center gap-2 border-b border-border pb-1.5">
               <LayoutGrid className="h-4 w-4 text-muted-foreground" />
-              <h4 className="text-xs font-black uppercase tracking-tighter">
+              <h4 className="text-xs font-semibold">
                 Model Parameters
               </h4>
             </div>
@@ -233,13 +233,13 @@ function AISettingsDialog() {
               <div className="space-y-1.5">
                 <Label
                   htmlFor="model"
-                  className="text-[10px] font-black uppercase text-muted-foreground"
+                  className="text-[10px] font-semibold text-muted-foreground"
                 >
                   LLM Model
                 </Label>
                 <select
                   id="model"
-                  className="flex h-9 w-full rounded-none border border-border bg-transparent px-3 py-1 text-xs font-black uppercase focus-visible:outline-none focus-visible:ring-0"
+                  className="flex h-9 w-full rounded-none border border-border bg-transparent px-3 py-1 text-xs font-semibold focus-visible:outline-none focus-visible:ring-0"
                   value={settings?.defaults.llm_model || DEFAULT_AI_MODEL}
                   onChange={(e) =>
                     setSettings((prev) =>
@@ -265,7 +265,7 @@ function AISettingsDialog() {
               <div className="space-y-1.5">
                 <Label
                   htmlFor="confidence"
-                  className="text-[10px] font-black uppercase text-muted-foreground"
+                  className="text-[10px] font-semibold text-muted-foreground"
                 >
                   Min Confidence
                 </Label>
@@ -275,7 +275,7 @@ function AISettingsDialog() {
                   step="0.05"
                   min="0"
                   max="1"
-                  className="h-9 text-xs font-black uppercase rounded-none border border-border"
+                  className="h-9 text-xs font-semibold rounded-none border border-border"
                   value={settings?.defaults.confidence_threshold || 0.7}
                   onChange={(e) =>
                     setSettings((prev) =>
@@ -295,7 +295,7 @@ function AISettingsDialog() {
             </div>
 
             <Button
-              className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 font-black uppercase tracking-widest rounded-none border border-border transition-all"
+              className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 font-semibold rounded-none border border-border transition-all"
               onClick={handleSaveDefaults}
               disabled={saving || !settings}
             >
@@ -550,7 +550,7 @@ export function ActiveConsolidationsTab({
           size="sm"
           onClick={handleSyncAll}
           disabled={syncingAll}
-          className="rounded-none border border-border font-black uppercase text-[10px] h-8 transition-all"
+          className="rounded-none border border-border font-semibold text-[10px] h-8 transition-all"
         >
           <RefreshCw
             className={`mr-2 h-3.5 w-3.5 ${syncingAll ? "animate-spin" : ""}`}
@@ -562,7 +562,7 @@ export function ActiveConsolidationsTab({
           size="sm"
           onClick={handleRecoverStranded}
           disabled={resettingStranded}
-          className="rounded-none border border-border font-black uppercase text-[10px] h-8 transition-all text-muted-foreground hover:text-destructive hover:bg-destructive/[0.02]"
+          className="rounded-none border border-border font-semibold text-[10px] h-8 transition-all text-muted-foreground hover:text-destructive hover:bg-destructive/[0.02]"
         >
           {resettingStranded ? (
             <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
@@ -579,7 +579,7 @@ export function ActiveConsolidationsTab({
             if (!showHistory) fetchHistory();
           }}
           className={cn(
-            "rounded-none border border-border font-black uppercase text-[10px] h-8 transition-all",
+            "rounded-none border border-border font-semibold text-[10px] h-8 transition-all",
             showHistory ? "bg-foreground text-background" : "bg-card text-foreground",
           )}
         >
@@ -592,10 +592,10 @@ export function ActiveConsolidationsTab({
       {jobs.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed border-border rounded-none">
           <LayoutGrid className="h-12 w-12 text-muted-foreground/30 mb-4" />
-          <h3 className="text-lg font-black uppercase tracking-tighter text-muted-foreground">
+          <h3 className="text-lg font-semibold text-muted-foreground">
             Queue Empty
           </h3>
-          <p className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-tight mt-1">
+          <p className="text-[10px] font-semibold text-muted-foreground/60 tracking-tight mt-1">
             No active consolidation jobs detected
           </p>
         </div>

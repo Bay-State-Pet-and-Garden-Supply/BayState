@@ -281,11 +281,11 @@ export function PipelineProductDetail({
           <div className="flex items-center gap-3">
             <Package className="h-6 w-6 text-muted-foreground" />
             <div>
-              <h2 id="modal-title" className="text-lg font-black uppercase tracking-widest text-foreground">Edit Product</h2>
+              <h2 id="modal-title" className="text-lg font-semibold text-foreground">Edit Product</h2>
               <div className="flex items-center gap-2 text-sm text-muted-foreground font-mono tabular-nums">
                 <span className="bg-muted px-1.5 py-0.5 rounded-none border border-border/10">{sku}</span>
                 <span>•</span>
-                <span className="font-black text-primary tracking-widest uppercase">${Number(price || 0).toFixed(2)}</span>
+                <span className="font-bold text-primary tracking-widest uppercase">${Number(price || 0).toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -314,7 +314,7 @@ export function PipelineProductDetail({
         <div className="p-6 space-y-8">
           {/* Stage */}
           <div className="flex items-center gap-4 p-4 rounded-none bg-muted/50 border border-border">
-            <Label className="w-32 font-black uppercase tracking-widest text-foreground">Product Stage</Label>
+            <Label className="w-32 font-semibold text-foreground">Product Stage</Label>
             <Select value={pipelineStatus} onValueChange={(v) => setPipelineStatus(v as PipelineStatus)}>
               <SelectTrigger className="w-full bg-background rounded-none border-border" aria-label="Product Stage">
                 <SelectValue />
@@ -333,10 +333,10 @@ export function PipelineProductDetail({
             {/* Left Column: Core Fields */}
             <div className="space-y-6">
               <div className="space-y-4 rounded-none border border-border bg-card p-5">
-                <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-2">Core Information</h3>
+                <h3 className="text-sm font-semibold text-foreground mb-2">Core Information</h3>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-xs font-black uppercase tracking-widest text-foreground">Product Name *</Label>
+                  <Label htmlFor="name" className="text-xs font-semibold text-foreground">Product Name *</Label>
                   <Input
                     id="name"
                     value={name}
@@ -348,7 +348,7 @@ export function PipelineProductDetail({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="weight" className="text-xs font-black uppercase tracking-widest text-foreground">Weight (lb)</Label>
+                    <Label htmlFor="weight" className="text-xs font-semibold text-foreground">Weight (lb)</Label>
                     <Input
                       id="weight"
                       value={weight}
@@ -360,7 +360,7 @@ export function PipelineProductDetail({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="brand" className="text-xs font-black uppercase tracking-widest text-foreground">Brand</Label>
+                  <Label htmlFor="brand" className="text-xs font-semibold text-foreground">Brand</Label>
                   <Select value={brandId} onValueChange={setBrandId}>
                     <SelectTrigger aria-label="Brand" className="rounded-none border-border">
                       <SelectValue placeholder="Select a brand" />
@@ -378,13 +378,13 @@ export function PipelineProductDetail({
               </div>
 
               <div className="space-y-4 rounded-none border border-border bg-card p-5">
-                <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-2">ShopSite Pages</h3>
+                <h3 className="text-sm font-semibold text-foreground mb-2">ShopSite Pages</h3>
                 <div className="flex flex-wrap gap-2 p-3 rounded-none border border-border/20 bg-muted/30 min-h-[80px]">
                     {SHOPSITE_PAGES.map(page => (
                         <Badge
                             key={page}
                             variant={productOnPages.includes(page) ? "default" : "outline"}
-                            className="cursor-pointer select-none transition-colors rounded-none border-border font-black uppercase tracking-widest"
+                            className="cursor-pointer select-none transition-colors rounded-none border-border font-semibold"
                             onClick={() => togglePage(page)}
                         >
                             {page}
@@ -397,9 +397,9 @@ export function PipelineProductDetail({
             {/* Right Column: Description & Images */}
             <div className="space-y-6">
               <div className="space-y-4 rounded-none border border-border bg-card p-5">
-                <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-2">Display Content</h3>
+                <h3 className="text-sm font-semibold text-foreground mb-2">Display Content</h3>
                 <div className="space-y-2">
-                    <Label htmlFor="description" className="text-xs font-black uppercase tracking-widest text-foreground">Product Description</Label>
+                    <Label htmlFor="description" className="text-xs font-semibold text-foreground">Product Description</Label>
                     <Textarea
                     id="description"
                     value={description}
@@ -414,8 +414,8 @@ export function PipelineProductDetail({
               {imageCandidates.length > 0 && (
                 <div className="space-y-4 rounded-none border border-border bg-card p-5">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Product Images</h3>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-muted px-2 py-0.5 rounded-none border border-border/10">
+                    <h3 className="text-sm font-semibold text-foreground">Product Images</h3>
+                    <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-none border border-border/10">
                       {selectedImages.length} selected
                     </span>
                   </div>
@@ -432,14 +432,14 @@ export function PipelineProductDetail({
 
           {/* Source Data (Read-only) */}
           <details className="group rounded-none border border-border bg-muted/30 overflow-hidden">
-            <summary className="cursor-pointer font-black text-xs uppercase tracking-widest text-foreground p-4 hover:bg-muted transition-colors flex items-center gap-2">
+            <summary className="cursor-pointer font-bold text-xs uppercase tracking-widest text-foreground p-4 hover:bg-muted transition-colors flex items-center gap-2">
               <Info className="h-4 w-4" />
               Technical Source Data (Read-only)
             </summary>
             <div className="p-4 border-t border-border bg-background/50 space-y-4">
               {/* Input Data */}
               <div>
-                <h4 className="text-[10px] font-black text-foreground mb-2 uppercase tracking-widest">
+                <h4 className="text-[10px] font-bold text-foreground mb-2 uppercase tracking-widest">
                   Original ShopSite Input
                 </h4>
                 <pre className="rounded-none bg-muted/50 p-4 text-[11px] font-mono overflow-x-auto leading-relaxed border border-border/10">
@@ -450,7 +450,7 @@ export function PipelineProductDetail({
               {/* Scraped Sources */}
               {Object.keys(product.sources || {}).length > 0 && (
                 <div>
-                  <h4 className="text-[10px] font-black text-foreground mb-2 uppercase tracking-widest">
+                  <h4 className="text-[10px] font-bold text-foreground mb-2 uppercase tracking-widest">
                     Multi-Source Scraped Data
                   </h4>
                   <pre className="rounded-none bg-muted/50 p-4 text-[11px] font-mono overflow-x-auto leading-relaxed border border-border/10">
@@ -464,24 +464,24 @@ export function PipelineProductDetail({
 
         {/* Footer Actions */}
         <div className="sticky bottom-0 flex items-center justify-between border-t border-border bg-background/80 backdrop-blur-sm px-6 py-4">
-          <p className="text-[10px] text-foreground uppercase tracking-widest font-black hidden sm:block">
+          <p className="text-[10px] text-foreground uppercase tracking-widest font-bold hidden sm:block">
             Esc to close • Ctrl+S to save
           </p>
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <Button variant="ghost" onClick={onClose} disabled={saving} className="flex-1 sm:flex-none rounded-none font-black uppercase tracking-widest">
+            <Button variant="ghost" onClick={onClose} disabled={saving} className="flex-1 sm:flex-none rounded-none font-semibold">
               Cancel
             </Button>
             <Button
               variant="outline"
               onClick={() => handleSave(false)}
               disabled={saving}
-              className="flex-1 sm:flex-none rounded-none border-border font-black uppercase tracking-widest"
+              className="flex-1 sm:flex-none rounded-none border-border font-semibold"
             >
               <Save className="mr-2 h-4 w-4" />
               {saving ? 'Saving…' : 'Save Draft'}
             </Button>
             {pipelineStatus !== 'exporting' && (
-              <Button onClick={() => handleSave(true)} disabled={saving} className="flex-1 sm:flex-none rounded-none font-black uppercase tracking-widest">
+              <Button onClick={() => handleSave(true)} disabled={saving} className="flex-1 sm:flex-none rounded-none font-semibold">
                 <CheckCircle className="mr-2 h-4 w-4" />
                 {saving ? 'Saving…' : 'Save & Move to Exporting'}
               </Button>

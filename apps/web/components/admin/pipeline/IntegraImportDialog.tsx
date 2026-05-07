@@ -100,8 +100,8 @@ export function IntegraImportDialog({
                             <Database className="h-5 w-5" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black uppercase tracking-tighter text-foreground">Integra Register Sync</h2>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Onboarding Pipeline</p>
+                            <h2 className="text-xl font-semibold text-foreground">Integra Register Sync</h2>
+                            <p className="text-[10px] font-semibold text-muted-foreground">Onboarding Pipeline</p>
                         </div>
                     </div>
                     <button
@@ -118,11 +118,11 @@ export function IntegraImportDialog({
                     {!analysis ? (
                         <div className="space-y-8 animate-in fade-in duration-500">
                             <div className="max-w-2xl">
-                                <h3 className="text-lg font-black uppercase tracking-tighter text-foreground mb-2">Upload Inventory Export</h3>
+                                <h3 className="text-lg font-semibold text-foreground mb-2">Upload Inventory Export</h3>
                                 <p className="text-sm text-foreground leading-relaxed">
                                     Upload your Excel export from the Integra system. We&apos;ll cross-reference it with the website catalog to find missing items.
                                 </p>
-                                <div className="mt-4 flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-foreground">
+                                <div className="mt-4 flex items-center gap-4 text-[10px] font-semibold text-foreground">
                                     <div className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-none border border-border">
                                         <FileText className="h-3.5 w-3.5" />
                                         <span>.xlsx or .xls</span>
@@ -143,10 +143,10 @@ export function IntegraImportDialog({
                                     selectedFile={file}
                                     label={
                                         <div className="py-4">
-                                            <p className="text-sm font-black uppercase tracking-widest text-foreground">
+                                            <p className="text-sm font-semibold text-foreground">
                                                 <span className="text-primary underline decoration-primary/20 underline-offset-4 hover:decoration-primary transition-colors">Click to upload</span> or drag and drop
                                             </p>
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-2">Excel spreadsheet up to 20MB</p>
+                                            <p className="text-[10px] font-semibold text-muted-foreground mt-2">Excel spreadsheet up to 20MB</p>
                                         </div>
                                     }
                                 />
@@ -157,35 +157,35 @@ export function IntegraImportDialog({
                             {/* Stats Cards */}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                                 <div className="relative overflow-hidden rounded-none border border-border bg-card p-6">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Total in File</p>
-                                    <h4 className="text-4xl font-black uppercase tracking-tighter text-foreground">{analysis.totalInFile}</h4>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-2">Unique SKUs analyzed</p>
+                                    <p className="text-[10px] font-semibold text-muted-foreground mb-1">Total in File</p>
+                                    <h4 className="text-4xl font-semibold text-foreground">{analysis.totalInFile}</h4>
+                                    <p className="text-[10px] font-semibold text-muted-foreground mt-2">Unique SKUs analyzed</p>
                                 </div>
 
                                 <div className="relative overflow-hidden rounded-none border border-brand-forest-green/20 bg-brand-forest-green/5 p-6">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-brand-forest-green mb-1">Live on Store</p>
-                                    <h4 className="text-4xl font-black uppercase tracking-tighter text-brand-forest-green">{analysis.existingOnWebsite}</h4>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-brand-forest-green mt-2">Already in catalog</p>
+                                    <p className="text-[10px] font-semibold text-brand-forest-green mb-1">Live on Store</p>
+                                    <h4 className="text-4xl font-semibold text-brand-forest-green">{analysis.existingOnWebsite}</h4>
+                                    <p className="text-[10px] font-semibold text-brand-forest-green mt-2">Already in catalog</p>
                                 </div>
 
                                 <div className="relative overflow-hidden rounded-none border border-primary/20 bg-primary/5 p-6">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">New Products</p>
-                                    <h4 className="text-4xl font-black uppercase tracking-tighter text-primary">{analysis.newProducts.length}</h4>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-primary mt-2">Ready to onboard</p>
+                                    <p className="text-[10px] font-semibold text-primary mb-1">New Products</p>
+                                    <h4 className="text-4xl font-semibold text-primary">{analysis.newProducts.length}</h4>
+                                    <p className="text-[10px] font-semibold text-primary mt-2">Ready to onboard</p>
                                 </div>
                             </div>
 
                             {analysis.newProducts.length > 0 ? (
                                 <div className="space-y-6">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                    <p className="text-[10px] font-semibold text-muted-foreground">
                                         Products will be automatically grouped into cohorts by UPC prefix after import.
                                     </p>
                                     <div className="bg-primary rounded-none p-6 text-primary-foreground">
                                         <div className="flex items-center gap-3 mb-2">
                                             <div className="h-2 w-2 rounded-none bg-primary-foreground animate-pulse" />
-                                            <h3 className="text-lg font-black uppercase tracking-tighter">Import Selection</h3>
+                                            <h3 className="text-lg font-semibold">Import Selection</h3>
                                         </div>
-                                        <p className="text-sm font-black uppercase tracking-widest opacity-90">
+                                        <p className="text-sm font-semibold opacity-90">
                                             Found <span className="underline underline-offset-4">{analysis.newProducts.length}</span> items not in the live store.
                                         </p>
                                     </div>
@@ -195,9 +195,9 @@ export function IntegraImportDialog({
                                             <Table>
                                                 <TableHeader className="bg-muted/30 sticky top-0 backdrop-blur-md border-b border-border z-10">
                                                     <TableRow>
-                                                        <TableHead className="px-6 py-4 font-black text-[10px] uppercase tracking-widest">SKU</TableHead>
-                                                        <TableHead className="px-6 py-4 font-black text-[10px] uppercase tracking-widest">Product Name</TableHead>
-                                                        <TableHead className="px-6 py-4 text-right font-black text-[10px] uppercase tracking-widest">List Price</TableHead>
+                                                        <TableHead className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest">SKU</TableHead>
+                                                        <TableHead className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest">Product Name</TableHead>
+                                                        <TableHead className="px-6 py-4 text-right font-bold text-[10px] uppercase tracking-widest">List Price</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
@@ -207,16 +207,16 @@ export function IntegraImportDialog({
                                                                 <span className="font-mono text-foreground bg-muted px-2 py-1 rounded-none text-xs border border-border/50">{product.sku}</span>
                                                             </TableCell>
                                                             <TableCell className="px-6 py-4">
-                                                                <span className="text-muted-foreground font-black uppercase tracking-widest text-[10px] group-hover:text-foreground">{product.name}</span>
+                                                                <span className="text-muted-foreground font-semibold text-[10px] group-hover:text-foreground">{product.name}</span>
                                                             </TableCell>
-                                                            <TableCell className="px-6 py-4 text-right font-black tabular-nums text-foreground">
+                                                            <TableCell className="px-6 py-4 text-right font-bold tabular-nums text-foreground">
                                                                 {formatCurrency(product.price)}
                                                             </TableCell>
                                                         </TableRow>
                                                     ))}
                                                     {analysis.newProducts.length > 50 && (
                                                         <TableRow>
-                                                            <TableCell colSpan={3} className="px-6 py-8 text-center text-muted-foreground text-[10px] font-black uppercase tracking-widest italic bg-muted/10">
+                                                            <TableCell colSpan={3} className="px-6 py-8 text-center text-muted-foreground text-[10px] font-semibold italic bg-muted/10">
                                                                 Showing first 50 of {analysis.newProducts.length} products found in the export.
                                                             </TableCell>
                                                         </TableRow>
@@ -232,7 +232,7 @@ export function IntegraImportDialog({
                                                 setAnalysis(null);
                                                 setFile(null);
                                             }}
-                                            className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors py-2 px-4 rounded-none hover:bg-muted"
+                                            className="text-[10px] font-semibold text-muted-foreground hover:text-primary transition-colors py-2 px-4 rounded-none hover:bg-muted"
                                         >
                                             Upload Different File
                                         </button>
@@ -243,7 +243,7 @@ export function IntegraImportDialog({
                                     <div className="h-20 w-20 rounded-none bg-brand-forest-green/10 flex items-center justify-center mb-6">
                                         <CheckCircle className="w-10 h-10 text-brand-forest-green" />
                                     </div>
-                                    <h3 className="text-2xl font-black uppercase tracking-tighter text-foreground">Database is Synchronized</h3>
+                                    <h3 className="text-2xl font-semibold text-foreground">Database is Synchronized</h3>
                                     <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto leading-relaxed">
                                         Excellent! Every product found in this export is already present in your website catalog.
                                     </p>
@@ -255,7 +255,7 @@ export function IntegraImportDialog({
 
                 {/* Footer Actions */}
                 <div className="flex items-center justify-between gap-3 border-t border-border bg-muted/30 px-8 py-5 flex-shrink-0">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    <p className="text-[10px] font-semibold text-muted-foreground">
                         Supported formats: CSV, XLSX, XLS
                     </p>
                     <div className="flex items-center gap-3">
@@ -264,7 +264,7 @@ export function IntegraImportDialog({
                             variant="ghost"
                             onClick={onCancel}
                             disabled={isBusy}
-                            className="text-muted-foreground font-black uppercase tracking-widest text-[10px] hover:bg-muted"
+                            className="text-muted-foreground font-semibold text-[10px] hover:bg-muted"
                         >
                             Cancel
                         </Button>
@@ -274,7 +274,7 @@ export function IntegraImportDialog({
                                 onClick={handleAnalyze}
                                 disabled={!file || isBusy}
                                 size="lg"
-                                className="bg-primary hover:bg-primary/90 text-background transition-all active:scale-[0.98] px-8 font-black uppercase tracking-widest text-xs h-11 rounded-none border border-primary"
+                                className="bg-primary hover:bg-primary/90 text-background transition-all active:scale-[0.98] px-8 font-semibold text-xs h-11 rounded-none border border-primary"
                             >
                                 {isAnalyzing ? (
                                     <>
@@ -293,7 +293,7 @@ export function IntegraImportDialog({
                                 onClick={handleAddToOnboarding}
                                 disabled={isProcessing}
                                 size="lg"
-                                className="bg-brand-forest-green hover:bg-brand-forest-green/90 text-background transition-all active:scale-[0.98] px-8 font-black uppercase tracking-widest text-xs h-11 rounded-none border border-brand-forest-green"
+                                className="bg-brand-forest-green hover:bg-brand-forest-green/90 text-background transition-all active:scale-[0.98] px-8 font-semibold text-xs h-11 rounded-none border border-brand-forest-green"
                             >
                                 {isProcessing ? (
                                     <>
@@ -311,7 +311,7 @@ export function IntegraImportDialog({
                             <Button
                                 onClick={onCancel}
                                 size="lg"
-                                className="bg-primary text-background hover:bg-primary/90 font-black uppercase tracking-widest text-xs px-8 h-11 rounded-none border border-primary"
+                                className="bg-primary text-background hover:bg-primary/90 font-semibold text-xs px-8 h-11 rounded-none border border-primary"
                             >
                                 Done
                             </Button>

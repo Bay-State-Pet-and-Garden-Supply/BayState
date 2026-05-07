@@ -78,7 +78,7 @@ function SheetContent({
       <DialogPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 gap-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all duration-300 ease-in-out outline-none",
+          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 gap-4 shadow-sm transition-all duration-300 ease-in-out outline-none",
           positionClasses[side],
           animationClasses[side],
           className
@@ -130,7 +130,7 @@ function SheetTitle({
   return (
     <DialogPrimitive.Title
       data-slot="sheet-title"
-      className={cn("text-lg leading-none font-black uppercase tracking-tight", className)}
+      className={cn("text-lg leading-none font-semibold", className)}
       {...props}
     />
   )

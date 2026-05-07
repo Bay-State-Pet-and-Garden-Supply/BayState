@@ -80,10 +80,10 @@ export function ImageCarousel({
     <div className="space-y-6">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground">
+          <Label className="text-sm font-semibold text-muted-foreground">
             Product Media
           </Label>
-          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+          <span className="text-[10px] font-semibold text-muted-foreground">
             {selectedImages.length > 0
               ? `${currentImageIndex + 1} of ${selectedImages.length} selected`
               : "No images selected"}
@@ -130,7 +130,7 @@ export function ImageCarousel({
                               className="max-w-full max-h-full object-contain drop-shadow-2xl"
                             />
                             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-card px-4 py-2 rounded-none border border-border">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-foreground truncate max-w-[300px]">
+                              <span className="text-[10px] font-semibold text-foreground truncate max-w-[300px]">
                                 {url.split("/").pop()}
                               </span>
                             </div>
@@ -158,7 +158,7 @@ export function ImageCarousel({
           ) : (
             <div className="aspect-square flex flex-col items-center justify-center text-muted-foreground bg-muted border border-border border-dashed rounded-none m-2">
               <ImageIcon className="h-12 w-12 mb-2 opacity-20" />
-              <p className="text-[10px] font-black uppercase tracking-widest">
+              <p className="text-[10px] font-semibold">
                 No images selected
               </p>
             </div>

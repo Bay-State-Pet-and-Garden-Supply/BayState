@@ -37,7 +37,7 @@ The site should feel like the uniforms, the signage, and the physical aisles —
 
 4. **Green owns the room, burgundy remembers, gold whispers.** Palette hierarchy follows real-world recognition: forest green (~25% of surface) carries the identity, burgundy and gold are heritage accents (~10% and 5% respectively), cream and white hold the background (~60%).
 
-5. **Bold matters, noise doesn't.** The storefront's aggressive aesthetic (thick borders, hard shadows, uppercase typography) is intentional — it signals confidence and physical presence. But boldness serves legibility, not decoration. Every design choice that grabs attention should do so for a reason a store manager would recognize.
+5. **Practical over decorative.** The storefront's clean aesthetic (subtle borders, soft shadows, readable typography) is intentional — it signals reliability and ease of use. It should be easy to read and navigate without overwhelming the user. Every design choice that grabs attention should do so for a reason a store manager would recognize.
 
 ## Accessibility & Inclusion
 

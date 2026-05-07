@@ -157,7 +157,7 @@ export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: Run
  {/* Status Card */}
  <Card className={cn(isEmbedded && "border-2 border-border rounded-none")}>
  <CardHeader className={cn(isEmbedded && "pb-2")}>
- <CardTitle className={cn("text-sm font-medium", isEmbedded && "text-xs font-black uppercase tracking-tighter")}>
+ <CardTitle className={cn("text-sm font-medium", isEmbedded && "text-xs font-semibold")}>
  Status
  </CardTitle>
  </CardHeader>
@@ -178,7 +178,7 @@ export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: Run
  {/* Last Seen Card */}
  <Card className={cn(isEmbedded && "border-2 border-border rounded-none")}>
  <CardHeader className={cn(isEmbedded && "pb-2")}>
- <CardTitle className={cn("text-sm font-medium", isEmbedded && "text-xs font-black uppercase tracking-tighter")}>
+ <CardTitle className={cn("text-sm font-medium", isEmbedded && "text-xs font-semibold")}>
  Last Seen
  </CardTitle>
  </CardHeader>
@@ -190,7 +190,7 @@ export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: Run
  {/* Region Card */}
  <Card className={cn(isEmbedded && "border-2 border-border rounded-none")}>
  <CardHeader className={cn(isEmbedded && "pb-2")}>
- <CardTitle className={cn("text-sm font-medium", isEmbedded && "text-xs font-black uppercase tracking-tighter")}>
+ <CardTitle className={cn("text-sm font-medium", isEmbedded && "text-xs font-semibold")}>
  Region
  </CardTitle>
  </CardHeader>
@@ -207,7 +207,7 @@ export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: Run
  <CardHeader className={cn("pb-2", isEmbedded && "pb-2")}>
  <CardTitle className={cn(
  "text-sm font-medium flex items-center justify-between",
- isEmbedded && "text-xs font-black uppercase tracking-tighter"
+ isEmbedded && "text-xs font-semibold"
  )}>
  Version
  {runner.build_check_reason === 'current' ? (

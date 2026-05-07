@@ -20,8 +20,8 @@ export function PipelineHeader({
       <div className="flex items-center gap-2">
         <Icon className="h-6 w-6 text-primary" />
         <div>
-          <h1 className="text-xl font-black uppercase tracking-tighter text-foreground">{title}</h1>
-          <p className="text-[10px] font-black uppercase text-muted-foreground">{subtitle}</p>
+          <h1 className="text-xl font-semibold text-foreground">{title}</h1>
+          <p className="text-[10px] font-semibold text-muted-foreground">{subtitle}</p>
         </div>
       </div>
       {actions && <div className="flex flex-wrap items-center gap-1.5">{actions}</div>}

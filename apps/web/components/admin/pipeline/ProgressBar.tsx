@@ -54,7 +54,7 @@ export function ProgressBar({
 
   return (
     <div className={cn('w-full', className)}>
-      <div className="flex items-center justify-between text-[10px] mb-1 font-black uppercase tracking-widest">
+      <div className="flex items-center justify-between text-[10px] mb-1 font-semibold">
         <span className="text-muted-foreground">Progress</span>
         <span className="text-foreground">
           {clampedProgress}%

@@ -234,14 +234,14 @@ export function BrandModal({
 
     return (
         <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-4 border-border shadow-[12px_12px_0px_rgba(0,0,0,1)] rounded-none p-0 bg-card">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border border-border rounded-lg shadow-sm rounded-none p-0 bg-card">
                 <DialogHeader className="p-6 border-b-4 border-border bg-muted">
                     <div className="flex items-center gap-4">
-                        <div className="p-2 border-2 border-border bg-card shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                        <div className="p-2 border-2 border-border bg-card shadow-sm">
                             <Tag className="h-6 w-6 text-foreground" />
                         </div>
                         <div>
-                            <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-foreground">
+                            <DialogTitle className="text-2xl font-semibold text-foreground">
                                 {isEditing ? 'Edit Brand' : 'New Brand'}
                             </DialogTitle>
                             {isEditing && (
@@ -267,7 +267,7 @@ export function BrandModal({
                 <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <Label htmlFor="name" className="text-xs font-black uppercase tracking-widest text-foreground">Brand Name *</Label>
+                            <Label htmlFor="name" className="text-xs font-semibold text-foreground">Brand Name *</Label>
                             <Input
                                 id="name"
                                 {...register('name')}
@@ -281,7 +281,7 @@ export function BrandModal({
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="slug" className="text-xs font-black uppercase tracking-widest text-foreground">Slug *</Label>
+                            <Label htmlFor="slug" className="text-xs font-semibold text-foreground">Slug *</Label>
                             <Input
                                 id="slug"
                                 {...register('slug')}
@@ -295,7 +295,7 @@ export function BrandModal({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="logo_url" className="text-xs font-black uppercase tracking-widest text-foreground">Logo URL</Label>
+                        <Label htmlFor="logo_url" className="text-xs font-semibold text-foreground">Logo URL</Label>
                         <Input
                             id="logo_url"
                             {...register('logo_url')}
@@ -308,7 +308,7 @@ export function BrandModal({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="description" className="text-xs font-black uppercase tracking-widest text-foreground">Description</Label>
+                        <Label htmlFor="description" className="text-xs font-semibold text-foreground">Description</Label>
                         <Textarea
                             id="description"
                             {...register('description')}
@@ -321,15 +321,15 @@ export function BrandModal({
                         )}
                     </div>
 
-                    <div className="p-4 border-2 border-border bg-muted shadow-[4px_4px_0px_rgba(0,0,0,1)]">
-                        <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-4 flex items-center gap-2">
+                    <div className="p-4 border-2 border-border bg-muted shadow-sm">
+                        <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
                             <span className="w-3 h-3 bg-foreground" />
                             AI Scraper Settings
                         </h3>
 
                         <div className="space-y-6">
                             <div className="space-y-2">
-                                <Label htmlFor="official_domains" className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Official Domains</Label>
+                                <Label htmlFor="official_domains" className="text-[10px] font-semibold text-muted-foreground">Official Domains</Label>
                                 <Input
                                     id="official_domains"
                                     {...register('official_domains')}
@@ -342,7 +342,7 @@ export function BrandModal({
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="preferred_domains" className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Preferred Domains</Label>
+                                <Label htmlFor="preferred_domains" className="text-[10px] font-semibold text-muted-foreground">Preferred Domains</Label>
                                 <Input
                                     id="preferred_domains"
                                     {...register('preferred_domains')}
@@ -357,8 +357,8 @@ export function BrandModal({
                     </div>
 
                     {isEditing && (
-                        <div className="p-4 border-2 border-border bg-muted shadow-[4px_4px_0px_rgba(0,0,0,1)]">
-                            <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-4 flex items-center gap-2">
+                        <div className="p-4 border-2 border-border bg-muted shadow-sm">
+                            <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
                                 <Pin className="h-4 w-4" />
                                 Scraper Defaults
                             </h3>
@@ -382,7 +382,7 @@ export function BrandModal({
                             {!scrapersLoading && !scrapersError && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                        <h4 className="text-[10px] font-semibold text-muted-foreground">
                                             Available Scrapers
                                         </h4>
                                         <div className="border-2 border-border bg-card max-h-[240px] overflow-y-auto">
@@ -420,7 +420,7 @@ export function BrandModal({
                                     </div>
 
                                     <div className="space-y-2">
-                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                        <h4 className="text-[10px] font-semibold text-muted-foreground">
                                             Assigned Scrapers ({scraperMappings.length})
                                         </h4>
                                         <div className="border-2 border-border bg-card max-h-[240px] overflow-y-auto">
@@ -456,7 +456,7 @@ export function BrandModal({
                                                             </div>
                                                             <div className="grid grid-cols-2 gap-2">
                                                                 <div>
-                                                                    <Label className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">
+                                                                    <Label className="text-[9px] font-semibold text-muted-foreground">
                                                                         Priority
                                                                     </Label>
                                                                     <Input
@@ -508,7 +508,7 @@ export function BrandModal({
                     )}
 
                     <DialogFooter className="flex-col sm:flex-row gap-4 pt-6 border-t-2 border-border">
-                        <div className="flex-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center">
+                        <div className="flex-1 text-[10px] font-semibold text-muted-foreground flex items-center">
                             <span className="bg-muted px-1 py-0.5 border border-border mr-1 text-foreground">Esc</span> close • 
                             <span className="bg-muted px-1 py-0.5 border border-border mx-1 text-foreground">Ctrl+S</span> save
                         </div>
@@ -518,14 +518,14 @@ export function BrandModal({
                                 variant="outline" 
                                 onClick={onClose} 
                                 disabled={isSubmitting}
-                                className="rounded-none border-2 border-border font-black uppercase tracking-tighter hover:bg-muted transition-all"
+                                className="rounded-none border-2 border-border font-semibold hover:bg-muted transition-all"
                             >
                                 Cancel
                             </Button>
                             <Button 
                                 type="submit" 
                                 disabled={isSubmitting} 
-                                className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-tighter shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all rounded-none min-w-[140px]"
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-sm active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all rounded-none min-w-[140px]"
                             >
                                 {isSubmitting ? (
                                     <>

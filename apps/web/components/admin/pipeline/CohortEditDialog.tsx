@@ -91,7 +91,7 @@ export function CohortEditDialog({
                 <Layers className="h-6 w-6 text-foreground" />
               </div>
               <div>
-                <DialogTitle className="text-2xl font-black uppercase tracking-widest text-foreground">
+                <DialogTitle className="text-2xl font-semibold text-foreground">
                   Edit Batch
                 </DialogTitle>
                 <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">
@@ -102,7 +102,7 @@ export function CohortEditDialog({
           </DialogHeader>
           <div className="p-6 space-y-8">
             <div className="grid gap-2">
-              <Label htmlFor="name" className="text-xs font-black uppercase tracking-widest text-foreground">Batch Name</Label>
+              <Label htmlFor="name" className="text-xs font-semibold text-foreground">Batch Name</Label>
               <Input
                 id="name"
                 value={name}
@@ -115,13 +115,13 @@ export function CohortEditDialog({
             
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-black uppercase tracking-widest text-foreground">Brand Selection</Label>
+                <Label className="text-xs font-semibold text-foreground">Brand Selection</Label>
                 {selectedBrand && (
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-6 px-2 text-[10px] uppercase font-black tracking-widest text-muted-foreground hover:text-foreground hover:bg-muted"
+                    className="h-6 px-2 text-[10px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted"
                     onClick={() => setIsEditingBrand(true)}
                   >
                     <Edit2 className="h-3 w-3 mr-1" />
@@ -143,7 +143,7 @@ export function CohortEditDialog({
             {!selectedBrand && (
               <div className="p-4 border border-dashed border-border bg-muted">
                 <div className="grid gap-2">
-                  <Label htmlFor="brand" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Manual Brand Name Fallback</Label>
+                  <Label htmlFor="brand" className="text-[10px] font-semibold text-muted-foreground">Manual Brand Name Fallback</Label>
                   <Input
                     id="brand"
                     value={brandName}
@@ -164,14 +164,14 @@ export function CohortEditDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
-              className="rounded-none border border-border font-black uppercase tracking-widest hover:bg-card transition-all order-2 sm:order-1"
+              className="rounded-none border border-border font-semibold hover:bg-card transition-all order-2 sm:order-1"
             >
               Cancel
             </Button>
             <Button 
               onClick={handleSave} 
               disabled={isLoading}
-              className="rounded-none bg-foreground hover:bg-foreground/90 text-background font-black uppercase tracking-widest transition-all order-1 sm:order-2 min-w-[140px]"
+              className="rounded-none bg-foreground hover:bg-foreground/90 text-background font-semibold transition-all order-1 sm:order-2 min-w-[140px]"
             >
               {isLoading ? (
                 <>

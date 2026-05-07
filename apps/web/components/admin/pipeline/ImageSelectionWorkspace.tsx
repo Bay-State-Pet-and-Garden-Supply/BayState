@@ -152,7 +152,7 @@ export function ImageSelectionWorkspace({
       <div className="fixed inset-0 bg-background/80 flex items-center justify-center z-50 backdrop-blur-sm">
         <div className="bg-card rounded-none border border-border p-8 flex items-center gap-4">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <span className="text-sm font-black uppercase tracking-widest">Loading product images…</span>
+          <span className="text-sm font-semibold">Loading product images…</span>
         </div>
       </div>
     );
@@ -166,11 +166,11 @@ export function ImageSelectionWorkspace({
             <div className="mx-auto h-12 w-12 rounded-none bg-destructive/10 flex items-center justify-center mb-4">
               <ImageOff className="h-6 w-6 text-destructive" />
             </div>
-            <h3 className="text-lg font-black uppercase tracking-tighter text-foreground mb-2">Error Loading Product</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Error Loading Product</h3>
             <p className="text-sm text-muted-foreground mb-4">{error}</p>
             <button
               onClick={onClose}
-              className="px-4 py-2 text-xs font-black uppercase tracking-widest text-muted-foreground bg-background border border-border rounded-none hover:bg-muted transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-muted-foreground bg-background border border-border rounded-none hover:bg-muted transition-colors"
             >
               Close
             </button>
@@ -190,8 +190,8 @@ export function ImageSelectionWorkspace({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border bg-muted/30">
           <div>
-            <h2 className="text-xl font-black uppercase tracking-tighter text-foreground">Image Selection</h2>
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">
+            <h2 className="text-xl font-semibold text-foreground">Image Selection</h2>
+            <p className="text-[10px] font-semibold text-muted-foreground mt-1">
               Select images for <span className="text-foreground tabular-nums">{productName}</span>
             </p>
           </div>
@@ -209,7 +209,7 @@ export function ImageSelectionWorkspace({
           {!hasImages ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <ImageOff className="h-12 w-12 text-muted/30 mb-4" />
-              <h3 className="text-lg font-black uppercase tracking-tighter text-foreground">No Image Candidates</h3>
+              <h3 className="text-lg font-semibold text-foreground">No Image Candidates</h3>
               <p className="text-sm text-muted-foreground mt-1">
                 This product has no image candidates available for selection.
               </p>
@@ -218,14 +218,14 @@ export function ImageSelectionWorkspace({
             <>
               {/* Selection Counter */}
               <div className="flex items-center justify-between mb-4">
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                <p className="text-[10px] font-semibold text-muted-foreground">
                   <span className="text-foreground">{selectedUrls.length}</span>
                   {' of '}
                   <span>{MAX_IMAGES}</span>
                   {' images selected'}
                 </p>
                 {selectedUrls.length >= MAX_IMAGES && (
-                  <p className="text-[10px] font-black uppercase tracking-widest text-brand-burgundy bg-brand-burgundy/5 px-2 py-1 border border-brand-burgundy/20">
+                  <p className="text-[10px] font-semibold text-brand-burgundy bg-brand-burgundy/5 px-2 py-1 border border-brand-burgundy/20">
                     Maximum selection reached
                   </p>
                 )}
@@ -286,20 +286,20 @@ export function ImageSelectionWorkspace({
 
         {/* Footer */}
         <div className="flex items-center justify-between p-6 border-t border-border bg-muted/30">
-          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+          <p className="text-[10px] font-semibold text-muted-foreground">
             Select up to {MAX_IMAGES} images for this product.
           </p>
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-xs font-black uppercase tracking-widest text-muted-foreground bg-background border border-border rounded-none hover:bg-muted transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-muted-foreground bg-background border border-border rounded-none hover:bg-muted transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSaveSelections}
               disabled={isSaving || selectedUrls.length === 0}
-              className="px-4 py-2 text-xs font-black uppercase tracking-widest text-foreground bg-background border border-border rounded-none hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 text-xs font-semibold text-foreground bg-background border border-border rounded-none hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
               Save Selections
@@ -307,7 +307,7 @@ export function ImageSelectionWorkspace({
             <button
               onClick={handleMoveToFinalizing}
               disabled={isFinalizing || selectedUrls.length === 0}
-              className="px-4 py-2 text-xs font-black uppercase tracking-widest text-background bg-primary border border-primary rounded-none hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 text-xs font-semibold text-background bg-primary border border-primary rounded-none hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isFinalizing && <Loader2 className="h-4 w-4 animate-spin" />}
               Move to Finalizing
