@@ -74,6 +74,7 @@ interface FloatingActionsBarProps {
  onConsolidate?: () => void;
  onOpenScrapeDialog?: () => void;
  onDiscoverOfficialBrand?: () => void;
+ onAssignBrand?: () => void;
  canDiscoverOfficialBrand?: boolean;
  officialBrandSelectionReason?: string | null;
 
@@ -97,6 +98,7 @@ export function FloatingActionsBar({
  onConsolidate,
  onOpenScrapeDialog,
  onDiscoverOfficialBrand,
+ onAssignBrand,
  canDiscoverOfficialBrand,
  officialBrandSelectionReason,
  scrapeSelectionValidation,
@@ -238,6 +240,19 @@ export function FloatingActionsBar({
  </TooltipContent>
  )}
  </Tooltip>
+ )}
+
+ {isImported && onAssignBrand && (
+ <Button
+ variant="outline"
+ size="sm"
+ onClick={onAssignBrand}
+ disabled={isLoading}
+ className="h-9 border border-border text-[10px] font-semibold text-brand-forest-green bg-background hover:bg-brand-forest-green/5 rounded-none transition-all"
+ >
+ <Tag className="mr-1 h-3.5 w-3.5" />
+ Set Brand
+ </Button>
  )}
 
 
