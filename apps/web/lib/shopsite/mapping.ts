@@ -345,9 +345,7 @@ export function preparePipelineRowsForShopSiteExport(
         `${brandFolder}/${imageStem}${index === 0 ? "" : `-${index + 1}`}.jpg`,
     );
 
-    const gtin =
-      coalesceString(consolidated.gtin, input.gtin) ??
-      (/^\d{8,}$/.test(row.sku) ? row.sku : null);
+    const gtin = row.sku;
 
     return {
       sku: row.sku,

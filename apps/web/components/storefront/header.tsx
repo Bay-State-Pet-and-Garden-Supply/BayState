@@ -25,6 +25,7 @@ import { User } from "@supabase/supabase-js";
 import { UserMenu } from "@/components/auth/user-menu";
 import { createClient } from "@/lib/supabase/client";
 import type { CampaignBannerSettings } from "@/lib/settings";
+import { useUIStore } from "@/lib/storefront/ui-store";
 
 type StorefrontCategory = {
   id: string;
@@ -89,7 +90,7 @@ export function StorefrontHeader({
   campaignBanner?: CampaignBannerSettings;
 }) {
   const itemCount = useCartStore((state) => state.getItemCount());
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const { isCartDrawerOpen, openCartDrawer, closeCartDrawer } = useUIStore();
 
   const hasServerProvidedAuth = user !== undefined || userRole !== undefined;
   const [clientUser, setClientUser] = useState<User | null>(null);
@@ -227,31 +228,23 @@ export function StorefrontHeader({
   return (
     <>
       <header 
-        className="max-md:hidden sticky top-0 z-50 w-full flex flex-col border-b-2 border-zinc-900 shadow-md"
+        className="max-md:hidden sticky top-0 z-50 w-full flex flex-col border-b-2 border-brand-burgundy shadow-md"
       >
-        <div className="bg-primary text-white border-b-4 border-zinc-900 shadow-sm">
+        <div className="bg-primary text-white border-b-4 border-brand-burgundy shadow-sm">
           <div className="container mx-auto flex h-20 items-center justify-between px-4">
             <Link 
               href="/" 
-              className="flex items-center group shrink-0 gap-3"
+              className="flex items-center group shrink-0"
             >
-              <div className="h-16 w-32 relative">
+              <div className="h-16 w-48 relative">
                 <Image
                   src="/logo.png"
                   alt="Bay State Pet & Garden Supply Logo"
-                  width={128}
+                  width={192}
                   height={64}
                   className="object-contain w-full h-full"
                   priority
                 />
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="font-bold leading-none tracking-tighter text-white uppercase font-display group-hover:text-accent text-4xl">
-                  Bay State
-                </span>
-                <span className="hidden sm:block text-xs font-bold leading-none text-white/80 uppercase tracking-[0.2em] mt-1 border-t border-white/20 pt-1 text-center w-full">
-                  Pet & Garden Supply
-                </span>
               </div>
             </Link>
 
@@ -267,10 +260,10 @@ export function StorefrontHeader({
                 size="icon"
                 className="relative h-14 w-14 text-white hover:bg-zinc-900 rounded-none border-4 border-transparent hover:border-zinc-900 transition-all group"
                 aria-label={`Shopping cart, ${itemCount} items`}
-                onClick={() => setIsCartOpen(true)}
+                onClick={openCartDrawer}
               >
                 <ShoppingCart className="h-7 w-7 group-hover:scale-110 transition-transform" />
-                <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center bg-accent text-[12px] font-bold text-accent-foreground border-4 border-zinc-900 shadow-sm">
+                <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center bg-accent text-[12px] font-bold text-accent-foreground border-4 border-brand-burgundy shadow-sm">
                   {itemCount}
                 </span>
               </Button>
@@ -278,7 +271,7 @@ export function StorefrontHeader({
           </div>
         </div>
 
-        <div className="relative border-b border-white/10 bg-zinc-950 text-white/90 transition-all duration-300 ease-in-out">
+        <div className="relative border-t border-brand-burgundy/50 bg-brand-forest-dark text-white/90 transition-all duration-300 ease-in-out">
           <div className="container mx-auto flex h-12 items-center px-4 transition-all duration-300 ease-in-out" ref={containerRef}>
             <NavigationMenu className="flex w-full max-w-none" aria-label="Main Navigation" viewport={false}>
               
@@ -445,36 +438,35 @@ export function StorefrontHeader({
         </div>
       </header>
 
-      <header className="md:hidden sticky top-0 z-50 w-full border-b-4 border-zinc-900 bg-primary text-white shadow-sm flex h-20 items-center justify-between px-4">
-        <MobileNavDrawer
-          categories={categories}
-          petTypes={petTypes}
-          brands={brands}
-          userRole={resolvedUserRole}
-        />
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="h-12 w-12 relative">
+      <header className="md:hidden sticky top-0 z-50 w-full border-b-4 border-brand-burgundy bg-primary text-white shadow-sm h-16 flex items-center px-4">
+        <div className="flex-1 flex justify-start">
+          <MobileNavDrawer
+            categories={categories}
+            petTypes={petTypes}
+            brands={brands}
+            userRole={resolvedUserRole}
+          />
+        </div>
+        
+        <Link href="/" className="flex items-center group">
+          <div className="h-10 w-24 relative">
             <Image
               src="/logo.png"
               alt="Bay State Logo"
               fill
-              sizes="48px"
+              sizes="96px"
               className="object-contain"
             />
           </div>
-          <span className="font-bold text-white uppercase tracking-tighter text-xl">
-            Bay State
-          </span>
         </Link>
 
-        <div className="flex items-center gap-2">
-          <InlineSearch />
+        <div className="flex-1 flex justify-end">
           <Button
             variant="ghost"
             size="icon"
             className="relative h-12 w-12 text-white hover:bg-zinc-900 rounded-none border-2 border-transparent active:border-zinc-900"
             aria-label={`Shopping cart, ${itemCount} items`}
-            onClick={() => setIsCartOpen(true)}
+            onClick={openCartDrawer}
           >
             <ShoppingCart className="h-6 w-6" />
             <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center bg-accent text-[10px] font-bold text-secondary-foreground border border-zinc-200 rounded-lg shadow-sm">
@@ -485,7 +477,7 @@ export function StorefrontHeader({
       </header>
 
 
-      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      <CartDrawer isOpen={isCartDrawerOpen} onClose={closeCartDrawer} />
     </>
   );
 }

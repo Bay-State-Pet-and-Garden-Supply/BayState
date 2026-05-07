@@ -214,7 +214,7 @@ export async function publishToStorefront(sku: string) {
       ),
       shopsite_pages: resolveShopSitePages(consolidated, input),
       published_at: new Date().toISOString(),
-      gtin: coalesceString(consolidated.gtin, input.gtin),
+      gtin: coalesceString(consolidated.gtin, input.gtin, sku),
       availability:
         coalesceString(consolidated.availability, input.availability) ??
         DEFAULT_AVAILABILITY_TEXT,
