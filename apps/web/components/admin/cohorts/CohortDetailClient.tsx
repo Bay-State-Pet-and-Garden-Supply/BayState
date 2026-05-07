@@ -657,6 +657,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  <div className="flex items-center gap-2">
  <span className="text-[10px] font-bold uppercase text-zinc-500">Assign Brand:</span>
  <CohortBrandPicker
+ value={null}
  onAssign={handleBulkAssignBrand}
  triggerClassName="h-9 w-[200px] justify-between text-xs"
  emptyLabel="Select Brand..."
