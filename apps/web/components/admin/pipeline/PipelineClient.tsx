@@ -1322,11 +1322,7 @@ export function PipelineClient({
     product_line: productLineFilter,
     cohort_id: cohortIdFilter,
   };
-  const officialBrandReviewCohortId =
-    cohortIdFilter ||
-    (officialBrandSelection.allowed && officialBrandSelection.cohortId
-      ? officialBrandSelection.cohortId
-      : "");
+  const officialBrandReviewCohortId = cohortIdFilter;
   const officialBrandReviewHref = officialBrandReviewCohortId
     ? `/admin/pipeline?stage=url_review&cohort_id=${encodeURIComponent(officialBrandReviewCohortId)}`
     : null;

@@ -98,13 +98,9 @@ import type {
   SetStorePagesInput,
   ToolSummary,
 } from "@/lib/tools/finalization-copilot";
-import {
-  filterPendingCopilotDraftReview,
-  restorePendingCopilotDraftReview,
-  stagePendingCopilotDraftReview,
-  type PendingCopilotDraftReview,
-} from "@/lib/pipeline/finalization-copilot-review";
+import { filterPendingCopilotDraftReview, restorePendingCopilotDraftReview, stagePendingCopilotDraftReview, type PendingCopilotDraftReview } from "@/lib/pipeline/finalization-copilot-review";
 import type { Brand } from "@/lib/types";
+import type { TaxonomyCategoryNode } from "@/lib/taxonomy";
 
 interface FinalizingResultsViewProps {
   products: PipelineProduct[];
@@ -235,6 +231,11 @@ export function FinalizingResultsView({
   const [pageSearch, setPageSearch] = useState("");
   const [pagePopoverOpen, setPagePopoverOpen] = useState(false);
 
+  // Categories state
+  const [categories, setCategories] = useState<TaxonomyCategoryNode[]>([]);
+  const [categorySearch, setCategorySearch] = useState("");
+  const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
+
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [rejecting, setRejecting] = useState(false);
@@ -328,6 +329,15 @@ export function FinalizingResultsView({
   }, [pageSearch]);
   const validStorePages = useMemo(() => new Set<string>(SHOPSITE_PAGES), []);
 
+  const filteredCategories = useMemo(() => {
+    if (!categorySearch.trim()) return categories;
+    const search = categorySearch.toLowerCase();
+    return categories.filter((c) => 
+      c.name.toLowerCase().includes(search) || 
+      c.breadcrumb.toLowerCase().includes(search)
+    );
+  }, [categories, categorySearch]);
+
   const createBrandRecord = useCallback(async (name: string) => {
     const trimmedName = name.trim();
     if (!trimmedName) {
@@ -405,15 +415,23 @@ export function FinalizingResultsView({
     }
   }, [sortedProducts, preferredSku]);
 
-  // Fetch brands
+  // Fetch brands and categories
   useEffect(() => {
     async function fetchData() {
       try {
-        const brandsRes = await fetch("/api/admin/brands");
+        const [brandsRes, categoriesRes] = await Promise.all([
+          fetch("/api/admin/brands"),
+          fetch("/api/admin/categories"),
+        ]);
 
         if (brandsRes.ok) {
           const data = await brandsRes.json();
           setBrands(data.brands || []);
+        }
+
+        if (categoriesRes.ok) {
+          const data = await categoriesRes.json();
+          setCategories(data.categories || []);
         }
       } catch (err) {
         console.error("Failed to fetch reference data:", err);
@@ -1948,6 +1966,11 @@ export function FinalizingResultsView({
                       setPagePopoverOpen={setPagePopoverOpen}
                       filteredPages={filteredPages}
                       normalizeStorePages={normalizeStorePages}
+                      categorySearch={categorySearch}
+                      setCategorySearch={setCategorySearch}
+                      categoryPopoverOpen={categoryPopoverOpen}
+                      setCategoryPopoverOpen={setCategoryPopoverOpen}
+                      filteredCategories={filteredCategories}
                       addCustomSource={addCustomSource}
                       removeSource={removeSource}
                       showLegacyShopSiteFields={showLegacyShopSiteFields}

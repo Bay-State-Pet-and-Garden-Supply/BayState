@@ -169,7 +169,7 @@ export class ShopSiteClient {
         const boundary = `---------------------------ShopSiteUpload_${Date.now().toString(36)}`;
         const parts: Buffer[] = [];
         const append = (value: string | Buffer) => {
-            parts.push(typeof value === 'string' ? Buffer.from(value, 'latin1') : value);
+            parts.push(typeof value === 'string' ? Buffer.from(value, 'utf8') : value);
         };
         const appendField = (name: string, value: string) => {
             append(`--${boundary}\r\n`);
@@ -188,7 +188,7 @@ export class ShopSiteClient {
         append(`--${boundary}\r\n`);
         append('Content-Disposition: form-data; name="Desktop" filename="drive:\\dirpath\\shopsite-products.xml"\r\n');
         append('Content-Type: text/xml\r\n\r\n');
-        append(Buffer.from(xml, 'latin1'));
+        append(Buffer.from(xml, 'utf8'));
         append(`\r\n--${boundary}--\r\n`);
 
         const body = Buffer.concat(parts);
