@@ -89,6 +89,17 @@ describe('buildSiteConstrainedQueries', () => {
     ]);
   });
 
+  it('preserves paths in site: queries', () => {
+    const result = buildSiteConstrainedQueries(
+      ['gofromm.com/products', 'example.com/site/path'],
+      'Fromm Gold',
+    );
+    expect(result).toEqual([
+      'site:gofromm.com/products Fromm Gold',
+      'site:example.com/site/path Fromm Gold',
+    ]);
+  });
+
   it('returns empty when no domains', () => {
     expect(buildSiteConstrainedQueries([], 'query')).toEqual([]);
   });
@@ -163,6 +174,18 @@ describe('getSelectionTier', () => {
 
   it('returns organic when no domain matches', () => {
     expect(getSelectionTier('https://amazon.com/product', ['gofromm.com'], [])).toBe(
+      'organic',
+    );
+  });
+
+  it('matches specific paths for official domains', () => {
+    expect(getSelectionTier('https://example.com/products/sku123', ['example.com/products'], [])).toBe(
+      'official_domain',
+    );
+  });
+
+  it('rejects specific paths for official domains if outside root', () => {
+    expect(getSelectionTier('https://example.com/blog/article', ['example.com/products'], [])).toBe(
       'organic',
     );
   });

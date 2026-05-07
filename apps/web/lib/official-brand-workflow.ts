@@ -91,6 +91,38 @@ export function normalizeOfficialBrandDomain(value: string): string | undefined 
 }
 
 /**
+ * Normalizes a URL or domain string for use as a Google 'site:' operator root.
+ * Keeps the path if present (e.g. "domain.com/products") to narrow searches,
+ * but removes protocol, 'www.', and trailing slashes.
+ */
+export function normalizeOfficialBrandSearchRoot(value: string): string | undefined {
+    const trimmed = value.trim().toLowerCase();
+    if (!trimmed) {
+        return undefined;
+    }
+
+    const withProtocol = trimmed.includes('://') ? trimmed : `https://${trimmed}`;
+
+    try {
+        const url = new URL(withProtocol);
+        let host = url.hostname.toLowerCase();
+        if (host.startsWith('www.')) {
+            host = host.slice(4);
+        }
+
+        const path = url.pathname.replace(/\/$/, '');
+        return path && path !== '/' ? `${host}${path}` : host;
+    } catch {
+        // Fallback for malformed strings or simple "domain.com/path" inputs
+        return trimmed
+            .replace(/^https?:\/\//, '')
+            .replace(/^www\./, '')
+            .replace(/\/$/, '')
+            ?.trim() || undefined;
+    }
+}
+
+/**
  * Build a deduplicated, normalized list of domains from multiple source arrays
  * and optional extra domain strings.
  *
@@ -108,7 +140,7 @@ export function buildNormalizedDomainList(
         if (!source) continue;
         for (const entry of source) {
             if (!entry) continue;
-            const normalized = normalizeOfficialBrandDomain(entry);
+            const normalized = normalizeOfficialBrandSearchRoot(entry);
             if (normalized && !seen.has(normalized)) {
                 seen.add(normalized);
                 result.push(normalized);
@@ -153,19 +185,22 @@ export function officialBrandUrlMatchesDomains(
     url: string,
     domainCandidates: Array<string | undefined> | undefined,
 ): boolean {
-    const normalizedUrl = normalizeOfficialBrandUrl(url);
-    if (!normalizedUrl || !domainCandidates || domainCandidates.length === 0) {
+    const searchRoot = normalizeOfficialBrandSearchRoot(url);
+    const domain = normalizeOfficialBrandDomain(url);
+    if (!searchRoot || !domain || !domainCandidates || domainCandidates.length === 0) {
         return false;
     }
 
-    const configuredDomains = domainCandidates
-        .map((candidate) => (candidate ? normalizeOfficialBrandDomain(candidate) : undefined))
+    const configured = domainCandidates
+        .map((candidate) => (candidate ? normalizeOfficialBrandSearchRoot(candidate) : undefined))
         .filter((candidate): candidate is string => Boolean(candidate));
 
-    return configuredDomains.some(
-        (configured) => normalizedUrl.normalizedDomain === configured
-            || normalizedUrl.normalizedDomain.endsWith(`.${configured}`),
-    );
+    return configured.some((off) => {
+        if (off.includes('/')) {
+            return searchRoot === off || searchRoot.startsWith(off + '/');
+        }
+        return domain === off || domain.endsWith(`.${off}`);
+    });
 }
 
 export function getOfficialBrandPhaseFromJob(job: {
