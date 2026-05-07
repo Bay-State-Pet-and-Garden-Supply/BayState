@@ -72,7 +72,7 @@ function cdataWrap(text: string): string {
 
 function xmlElement(tag: string, value: string | null | undefined): string {
     if (value === null || value === undefined || value === '') {
-        return `    <${tag} />`;
+        return `    <${tag}></${tag}>`;
     }
 
     return `    <${tag}>${escapeXml(value)}</${tag}>`;
@@ -80,7 +80,7 @@ function xmlElement(tag: string, value: string | null | undefined): string {
 
 function xmlCdataElement(tag: string, value: string | null | undefined): string {
     if (value === null || value === undefined || value === '') {
-        return `    <${tag} />`;
+        return `    <${tag}></${tag}>`;
     }
 
     return `    <${tag}>${cdataWrap(value)}</${tag}>`;
@@ -131,19 +131,20 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
     const productOnPages = product.shopsite_pages ?? [];
 
     lines.push('  <Product>');
+    lines.push(xmlElement('SKU', product.sku));
     lines.push(xmlElement('Name', product.name));
     lines.push(xmlElement('Price', formatPrice(product.price)));
-    lines.push('    <SaleAmount/>');
-    lines.push(xmlElement('ProductDisabled', 'uncheck'));
-    lines.push(xmlElement('Taxable', product.is_taxable !== false ? 'checked' : 'uncheck'));
-    lines.push(xmlElement('MinimumQuantity', String(product.minimum_quantity ?? 0)));
-    lines.push(xmlElement('SKU', product.sku));
-    lines.push(xmlLiteralElement('Graphic', primaryImage, 'none'));
-    lines.push(xmlLiteralElement('MoreInformationGraphic', primaryImage, 'none'));
+    lines.push('    <SaleAmount></SaleAmount>');
 
     if (description) {
         lines.push(xmlCdataElement('ProductDescription', description));
     }
+
+    lines.push(xmlElement('ProductDisabled', 'uncheck'));
+    lines.push(xmlElement('Taxable', product.is_taxable !== false ? 'checked' : 'uncheck'));
+    lines.push(xmlElement('MinimumQuantity', String(product.minimum_quantity ?? 0)));
+    lines.push(xmlLiteralElement('Graphic', primaryImage, 'none'));
+    lines.push(xmlLiteralElement('MoreInformationGraphic', primaryImage, 'none'));
 
     if (product.weight != null && product.weight !== '') {
         lines.push(xmlElement('Weight', String(product.weight)));
@@ -180,7 +181,7 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
     }
 
     if (product.gtin) {
-        lines.push(xmlElement('Google_GTIN', product.gtin));
+        lines.push(xmlElement('GoogleGTIN', product.gtin));
     }
 
     if (productOnPages.length > 0) {
@@ -190,7 +191,7 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
         }
         lines.push('    </ProductOnPages>');
     } else {
-        lines.push('    <ProductOnPages/>');
+        lines.push('    <ProductOnPages></ProductOnPages>');
     }
 
     for (let index = 0; index < additionalImages.length; index += 1) {
@@ -208,13 +209,9 @@ export function generateShopSiteXml(
     const lines: string[] = [];
     const newProductTag = options.newProductTag ?? buildShopSiteNewProductTag(options.markerDate);
 
-    lines.push('<?xml version="1.0" encoding="ISO-8859-1"?>');
+    lines.push('<?xml version="1.0" encoding="UTF-8"?>');
     lines.push(`<!DOCTYPE ShopSiteProducts PUBLIC "${SHOPSITE_DOCTYPE_PUBLIC}" "${SHOPSITE_DOCTYPE_URL}">`);
     lines.push(`<ShopSiteProducts version="${SHOPSITE_XML_VERSION}">`);
-    lines.push('<Response>');
-    lines.push('  <ResponseCode>1</ResponseCode>');
-    lines.push('  <ResponseDescription>success</ResponseDescription>');
-    lines.push('</Response>');
     lines.push('<Products>');
 
     for (const product of products) {
@@ -233,13 +230,9 @@ function* generateShopSiteXmlStream(
 ): Generator<string> {
     const newProductTag = options.newProductTag ?? buildShopSiteNewProductTag(options.markerDate);
 
-    yield '<?xml version="1.0" encoding="ISO-8859-1"?>\n';
+    yield '<?xml version="1.0" encoding="UTF-8"?>\n';
     yield `<!DOCTYPE ShopSiteProducts PUBLIC "${SHOPSITE_DOCTYPE_PUBLIC}" "${SHOPSITE_DOCTYPE_URL}">\n`;
     yield `<ShopSiteProducts version="${SHOPSITE_XML_VERSION}">\n`;
-    yield '<Response>\n';
-    yield '  <ResponseCode>1</ResponseCode>\n';
-    yield '  <ResponseDescription>success</ResponseDescription>\n';
-    yield '</Response>\n';
     yield '<Products>\n';
 
     for (const product of products) {
