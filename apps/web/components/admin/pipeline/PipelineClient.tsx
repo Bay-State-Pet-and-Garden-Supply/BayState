@@ -82,6 +82,10 @@ const CohortEditDialog = dynamic(
   () => import("./CohortEditDialog").then((mod) => mod.CohortEditDialog),
   { ssr: false },
 );
+const BulkAssignBrandDialog = dynamic(
+  () => import("./BulkAssignBrandDialog").then((mod) => mod.BulkAssignBrandDialog),
+  { ssr: false },
+);
 
 const LIVE_OPERATIONAL_TABS = new Set<PipelineStage>([
   "searching",

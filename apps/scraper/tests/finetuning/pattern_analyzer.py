@@ -193,7 +193,6 @@ class FailurePatternAnalyzer:
         records: list[FailureRecord] = []
         records.extend(self._load_evaluation_failures(cutoff=cutoff))
         records.extend(self._load_weekly_review_failures(cutoff=cutoff))
-        records.extend(self._load_ai_metrics_failures(cutoff=cutoff))
         records.extend(self._load_extraction_log_failures(cutoff=cutoff))
         return [record for record in records if record.timestamp >= cutoff]
 
@@ -325,55 +324,7 @@ class FailurePatternAnalyzer:
             )
         return records
 
-    def _load_ai_metrics_failures(self, cutoff: datetime) -> list[FailureRecord]:
-        records: list[FailureRecord] = []
-        try:
-            from scrapers.ai_metrics import _collector  # pyright: ignore[reportPrivateUsage]
-        except Exception:
-            return records
 
-        metrics = getattr(_collector, "_metrics", [])
-        if not isinstance(metrics, list):
-            return records
-
-        for metric in metrics:
-            success = bool(getattr(metric, "success", True))
-            if success:
-                continue
-
-            timestamp = self._parse_ts(getattr(metric, "timestamp", None))
-            if timestamp is None or timestamp < cutoff:
-                continue
-
-            details = getattr(metric, "details", {})
-            details_map = details if isinstance(details, dict) else {}
-            error_message = str(details_map.get("error") or details_map.get("error_message") or "")
-            missing_fields_raw = details_map.get("missing_fields", [])
-            missing_fields = tuple(str(item) for item in missing_fields_raw) if isinstance(missing_fields_raw, list) else ()
-            duration_seconds = self._coerce_float(getattr(metric, "duration_seconds", 0.0))
-            extraction_time_ms = duration_seconds * 1000.0 if duration_seconds is not None else None
-
-            record = FailureRecord(
-                timestamp=timestamp,
-                sku=str(details_map.get("sku") or "unknown"),
-                failure_type=self._infer_failure_type(
-                    error_message=error_message,
-                    missing_fields=missing_fields,
-                    confidence=self._coerce_float(details_map.get("confidence")),
-                    product_score=self._coerce_float(details_map.get("product_score")),
-                    brand_score=self._coerce_float(details_map.get("brand_score")),
-                ),
-                error_message=error_message,
-                missing_fields=missing_fields,
-                category=self._extract_category(details_map),
-                source_website=str(details_map.get("source_website") or "unknown"),
-                sku_format=self._sku_format(str(details_map.get("sku") or "")),
-                confidence=self._coerce_float(details_map.get("confidence")),
-                extraction_time_ms=extraction_time_ms,
-            )
-            records.append(record)
-
-        return records
 
     def _load_extraction_log_failures(self, cutoff: datetime) -> list[FailureRecord]:
         records: list[FailureRecord] = []

@@ -283,21 +283,38 @@ export function ImportedResultsView({
  <h3 className="text-xs font-semibold text-foreground border-b border-border pb-2">Products in Cohort</h3>
  
  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
- {cohortProducts.map(product => (
- <div key={product.sku} className="p-3 bg-card border border-border flex flex-col gap-2 transition-colors hover:border-foreground">
- <div className="flex items-start justify-between gap-2">
- <div className="text-[9px] font-semibold text-muted-foreground bg-background px-1 py-0.5 rounded-none border border-border shrink-0">
- {product.sku}
- </div>
- <div className="text-[10px] font-semibold text-brand-forest-green shrink-0">
- ${Number(product.input?.price || 0).toFixed(2)}
- </div>
- </div>
- <div className="text-sm font-semibold text-foreground line-clamp-2 leading-tight" title={product.input?.name}>
- {product.input?.name}
- </div>
- </div>
- ))}
+ {cohortProducts.map(product => {
+   const isSelected = selectedSkus.has(product.sku);
+   return (
+     <div 
+       key={product.sku} 
+       onClick={() => onSelectSku(product.sku, !isSelected)}
+       className={cn(
+         "p-3 bg-card border flex flex-col gap-2 transition-colors cursor-pointer group relative",
+         isSelected ? "border-foreground bg-accent/50" : "border-border hover:border-foreground"
+       )}
+     >
+       <div className="flex items-start justify-between gap-2">
+         <div className="flex items-center gap-2">
+           <Checkbox 
+             checked={isSelected} 
+             onCheckedChange={(checked) => onSelectSku(product.sku, !!checked)}
+             onClick={(e) => e.stopPropagation()}
+           />
+           <div className="text-[9px] font-semibold text-muted-foreground bg-background px-1 py-0.5 rounded-none border border-border shrink-0">
+             {product.sku}
+           </div>
+         </div>
+         <div className="text-[10px] font-semibold text-brand-forest-green shrink-0">
+           ${Number(product.input?.price || 0).toFixed(2)}
+         </div>
+       </div>
+       <div className="text-sm font-semibold text-foreground line-clamp-2 leading-tight" title={product.input?.name}>
+         {product.input?.name}
+       </div>
+     </div>
+   );
+ })}
  </div>
  </div>
  </div>
