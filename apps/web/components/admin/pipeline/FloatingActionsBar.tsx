@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Plus, Trash2, Search, Archive, Upload, Globe } from "lucide-react";
+import { Loader2, Plus, Trash2, Search, Archive, Upload, Globe, Tag } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
