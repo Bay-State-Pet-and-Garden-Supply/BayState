@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
  Table,
@@ -117,6 +118,8 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  const [loadingRecs, setLoadingRecs] = useState(false);
  const [error, setError] = useState<string | null>(null);
  const [editingBrand, setEditingBrand] = useState<CohortBrandInfo | null>(null);
+ const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
+ const [isAssigningBrand, setIsAssigningBrand] = useState(false);
 
  const fetchCohort = useCallback(async () => {
  try {
@@ -193,6 +196,38 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  } catch (err) {
  toast.error(err instanceof Error ? err.message : "Failed to assign brand");
  }
+ };
+
+ const handleBulkAssignBrand = async (brand: CohortBrandInfo | null) => {
+   if (selectedSkus.size === 0 || !brand) return;
+   
+   setIsAssigningBrand(true);
+   try {
+     const response = await fetch("/api/admin/pipeline/bulk/brand", {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({
+         skus: Array.from(selectedSkus),
+         brandId: brand.id
+       }),
+     });
+
+     if (!response.ok) {
+       const data = await response.json();
+       throw new Error(data.error || "Failed to assign brand");
+     }
+
+     toast.success(`Assigned ${brand.name} to ${selectedSkus.size} products`, {
+       description: "Products are being re-grouped into brand-specific cohorts."
+     });
+     
+     setSelectedSkus(new Set());
+     await fetchCohort();
+   } catch (err) {
+     toast.error(err instanceof Error ? err.message : "Failed to assign brand");
+   } finally {
+     setIsAssigningBrand(false);
+   }
  };
 
  if (loading) {
@@ -404,6 +439,19 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  <Table>
  <TableHeader className="bg-muted sticky top-0 z-10">
  <TableRow className="border-b border-border">
+ <TableHead className="w-[40px] px-2">
+ <Checkbox 
+ checked={members.length > 0 && selectedSkus.size === members.length}
+ onCheckedChange={(checked) => {
+ if (checked) {
+ setSelectedSkus(new Set(members.map(m => m.product_sku)));
+ } else {
+ setSelectedSkus(new Set());
+ }
+ }}
+ aria-label="Select all"
+ />
+ </TableHead>
  <TableHead className="font-semibold text-foreground text-xs w-[120px]">SKU</TableHead>
  <TableHead className="font-semibold text-foreground text-xs">Product Name</TableHead>
  <TableHead className="font-semibold text-foreground text-xs w-[150px]">Pipeline Status</TableHead>
@@ -421,6 +469,18 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
 
  return (
  <TableRow key={member.product_sku} className="border-b border-border">
+ <TableCell className="px-2">
+ <Checkbox 
+ checked={selectedSkus.has(member.product_sku)}
+ onCheckedChange={(checked) => {
+ const next = new Set(selectedSkus);
+ if (checked) next.add(member.product_sku);
+ else next.delete(member.product_sku);
+ setSelectedSkus(next);
+ }}
+ aria-label={`Select product ${member.product_sku}`}
+ />
+ </TableCell>
  <TableCell className="font-mono text-sm bg-muted w-[120px]">
  {member.product_sku}
  </TableCell>
@@ -575,6 +635,44 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  </Card>
  </div>
  </div>
+
+ {selectedSkus.size > 0 && (
+ <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+ <div className="flex items-center gap-4 rounded-none border border-border bg-background p-3 shadow-xl">
+ <div className="flex items-center gap-3 border-r border-border pr-4">
+ <div className="flex h-8 w-8 items-center justify-center rounded-none border border-border bg-foreground text-xs font-bold text-background tabular-nums">
+ {selectedSkus.size}
+ </div>
+ <span className="text-xs font-bold uppercase tracking-tight text-foreground">Selected</span>
+ <Button 
+ variant="ghost" 
+ size="sm" 
+ onClick={() => setSelectedSkus(new Set())}
+ className="text-[10px] font-bold text-muted-foreground hover:text-brand-burgundy uppercase"
+ >
+ Clear
+ </Button>
+ </div>
+ 
+ <div className="flex items-center gap-2">
+ <span className="text-[10px] font-bold uppercase text-zinc-500">Assign Brand:</span>
+ <CohortBrandPicker
+ onAssign={handleBulkAssignBrand}
+ triggerClassName="h-9 w-[200px] justify-between text-xs"
+ emptyLabel="Select Brand..."
+ />
+ </div>
+ 
+ {isAssigningBrand && (
+ <div className="flex items-center gap-2 text-brand-forest-green">
+ <Loader2 className="h-4 w-4 animate-spin" />
+ <span className="text-[10px] font-bold uppercase">Processing...</span>
+ </div>
+ )}
+ </div>
+ </div>
+ )}
+
  {editingBrand && (
  <BrandModal
  brand={editingBrand}

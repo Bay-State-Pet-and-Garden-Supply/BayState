@@ -1,15 +1,15 @@
 import type { SupabaseClient } from "@/lib/supabase/server";
 
-const DEFAULT_PREFIX_LENGTH = 6;
-const WRITE_BATCH_SIZE = 100;
-const UNGROUPED_PREFIX = "UNGROUPED";
-const UNGROUPED_NAME = "Ungrouped Products";
+export const DEFAULT_PREFIX_LENGTH = 6;
+export const WRITE_BATCH_SIZE = 100;
+export const UNGROUPED_PREFIX = "UNGROUPED";
+export const UNGROUPED_NAME = "Ungrouped Products";
 
 /**
  * Extract the first N digits from a SKU to use as a UPC prefix.
  * Returns empty string if SKU is non-numeric or shorter than prefix length.
  */
-function extractUpcPrefix(
+export function extractUpcPrefix(
   sku: string,
   prefixLength: number = DEFAULT_PREFIX_LENGTH,
 ): string {
@@ -27,7 +27,7 @@ function extractUpcPrefix(
  * Group SKUs by their UPC prefix.
  * Non-numeric/short SKUs are grouped under the UNGROUPED sentinel.
  */
-function groupSkusByPrefix(
+export function groupSkusByPrefix(
   skus: string[],
   prefixLength: number = DEFAULT_PREFIX_LENGTH,
 ): Map<string, string[]> {
