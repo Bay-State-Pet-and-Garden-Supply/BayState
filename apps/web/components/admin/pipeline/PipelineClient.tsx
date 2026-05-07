@@ -138,8 +138,43 @@ export function PipelineClient({
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isScrapeDialogOpen, setIsScrapeDialogOpen] = useState(false);
+  const [isBulkAssignBrandOpen, setIsBulkAssignBrandOpen] = useState(false);
   const [isManualAddOpen, setIsManualAddOpen] = useState(false);
   const [isIntegraImportOpen, setIsIntegraImportOpen] = useState(false);
+
+  // Handle bulk brand assignment
+  const handleBulkAssignBrand = async (brandId: string | null) => {
+    const skus = Array.from(selectedSkus);
+    if (skus.length === 0) return;
+
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/admin/pipeline/bulk/brand", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          skus,
+          brandId,
+        }),
+      });
+
+      if (res.ok) {
+        toast.success(
+          `Assigned brand to ${skus.length} product${skus.length > 1 ? "s" : ""}`,
+          { description: "Products are being re-grouped into brand-specific cohorts." }
+        );
+        setSelectedSkus(new Set());
+        await refreshAll();
+      } else {
+        const error = await res.json();
+        toast.error(error.error || "Failed to assign brand");
+      }
+    } catch {
+      toast.error("Failed to assign brand");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   const [exportActionState, setExportActionState] = useState<
     "upload" | "zip" | null
   >(null);
@@ -1870,8 +1905,6 @@ export function PipelineClient({
         />
       )}
 
-      {/* Floating Bulk Actions Bar */}
-      {!isLiveOperationalTab(currentStage) && (
         <FloatingActionsBar
           selectedCount={selectedSkus.size}
           totalCount={totalCount}
@@ -1883,6 +1916,7 @@ export function PipelineClient({
           onResetStage={handleResetStage}
           onConsolidate={() => handleConsolidate(Array.from(selectedSkus))}
           onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
+          onAssignBrand={() => setIsBulkAssignBrandOpen(true)}
           scrapeSelectionValidation={scrapeSelectionValidation}
           onDiscoverOfficialBrand={handleDiscoverOfficialBrand}
           canDiscoverOfficialBrand={canDiscoverOfficialBrand}
@@ -1900,6 +1934,13 @@ export function PipelineClient({
           showLegacyShopSiteActions={showLegacyShopSiteFields}
         />
       )}
+
+      <BulkAssignBrandDialog
+        open={isBulkAssignBrandOpen}
+        onOpenChange={setIsBulkAssignBrandOpen}
+        selectedCount={selectedSkus.size}
+        onConfirm={handleBulkAssignBrand}
+      />
 
       <CohortEditDialog
         open={editingCohort !== null}
