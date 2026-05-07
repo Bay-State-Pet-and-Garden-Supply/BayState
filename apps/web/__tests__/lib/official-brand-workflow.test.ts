@@ -1,6 +1,7 @@
 import {
     normalizeOfficialBrandUrl,
     normalizeOfficialBrandDomain,
+    normalizeOfficialBrandSearchRoot,
     officialBrandUrlMatchesDomains,
     getOfficialBrandPhaseFromJob,
     isOfficialBrandJobType,
@@ -62,6 +63,28 @@ describe('normalizeOfficialBrandDomain', () => {
     });
 });
 
+describe('normalizeOfficialBrandSearchRoot', () => {
+    it('normalizes a clean domain', () => {
+        expect(normalizeOfficialBrandSearchRoot('Example.COM')).toBe('example.com');
+    });
+
+    it('preserves path in URL', () => {
+        expect(normalizeOfficialBrandSearchRoot('https://www.Example.com/products')).toBe('example.com/products');
+    });
+
+    it('strips trailing slash', () => {
+        expect(normalizeOfficialBrandSearchRoot('https://example.com/products/')).toBe('example.com/products');
+    });
+
+    it('handles bare domain with path', () => {
+        expect(normalizeOfficialBrandSearchRoot('example.com/path')).toBe('example.com/path');
+    });
+
+    it('returns undefined for empty input', () => {
+        expect(normalizeOfficialBrandSearchRoot('')).toBeUndefined();
+    });
+});
+
 describe('buildNormalizedDomainList', () => {
     it('merges domain lists into a normalized deduplicated list', () => {
         const result = buildNormalizedDomainList(
@@ -72,13 +95,13 @@ describe('buildNormalizedDomainList', () => {
         expect(result).toEqual(['gofromm.com', 'frommfamily.com']);
     });
 
-    it('normalizes a full URL entry to bare domain', () => {
-        // Admins may paste a full URL into official_domains; normalize it to the bare domain.
+    it('normalizes a full URL entry while preserving path', () => {
+        // Admins may paste a full URL into official_domains; normalize it but keep the path for better site: targeting.
         const result = buildNormalizedDomainList(
             [],
             ['https://www.gofromm.com/path/to/site'],
         );
-        expect(result).toEqual(['gofromm.com']);
+        expect(result).toEqual(['gofromm.com/path/to/site']);
     });
 
     it('normalizes bare domain string from a source list', () => {
@@ -123,6 +146,18 @@ describe('officialBrandUrlMatchesDomains', () => {
 
     it('matches subdomains', () => {
         expect(officialBrandUrlMatchesDomains('https://shop.scottsmiraclegro.com/product', ['scottsmiraclegro.com'])).toBe(true);
+    });
+
+    it('matches specific paths', () => {
+        expect(officialBrandUrlMatchesDomains('https://example.com/products/sku123', ['example.com/products'])).toBe(true);
+    });
+
+    it('rejects paths outside root', () => {
+        expect(officialBrandUrlMatchesDomains('https://example.com/blog/article', ['example.com/products'])).toBe(false);
+    });
+
+    it('matches exact root path', () => {
+        expect(officialBrandUrlMatchesDomains('https://example.com/products', ['example.com/products'])).toBe(true);
     });
 });
 

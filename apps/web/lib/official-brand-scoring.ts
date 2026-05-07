@@ -1,4 +1,7 @@
-import { normalizeOfficialBrandDomain } from '@/lib/official-brand-workflow';
+import {
+  normalizeOfficialBrandDomain,
+  normalizeOfficialBrandSearchRoot,
+} from '@/lib/official-brand-workflow';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -93,7 +96,7 @@ export function buildSiteConstrainedQueries(domains: string[], query: string): s
   const cleanQuery = query.trim();
   if (!cleanQuery || domains.length === 0) return [];
   return domains
-    .map((d) => normalizeOfficialBrandDomain(d))
+    .map((d) => normalizeOfficialBrandSearchRoot(d))
     .filter(Boolean)
     .map((normalized) => `site:${normalized} ${cleanQuery}`);
 }
@@ -138,25 +141,22 @@ export function getSelectionTier(
   officialDomains: string[],
   preferredDomains: string[],
 ): 'official_domain' | 'preferred_domain' | 'organic' {
-  const normalizedDomain = normalizeOfficialBrandDomain(url);
-  if (!normalizedDomain) return 'organic';
+  const urlSearchRoot = normalizeOfficialBrandSearchRoot(url);
+  const domain = normalizeOfficialBrandDomain(url);
 
-  const normalizedOfficial = officialDomains
-    .map((d) => normalizeOfficialBrandDomain(d))
-    .filter(Boolean) as string[];
-  const normalizedPreferred = preferredDomains
-    .map((d) => normalizeOfficialBrandDomain(d))
-    .filter(Boolean) as string[];
+  const checkMatch = (off: string) => {
+    if (!urlSearchRoot || !domain) return false;
+    if (off.includes('/')) {
+      return urlSearchRoot === off || urlSearchRoot.startsWith(off + '/');
+    }
+    return domain === off || domain.endsWith(`.${off}`);
+  };
 
-  if (
-    normalizedOfficial.some((d) => normalizedDomain === d || normalizedDomain.endsWith(`.${d}`))
-  ) {
+  if (officialDomains.some(checkMatch)) {
     return 'official_domain';
   }
 
-  if (
-    normalizedPreferred.some((d) => normalizedDomain === d || normalizedDomain.endsWith(`.${d}`))
-  ) {
+  if (preferredDomains.some(checkMatch)) {
     return 'preferred_domain';
   }
 
@@ -191,13 +191,21 @@ export function rankCandidates(
   const scored: Array<
     ScoredCandidate & { sortTier: number }
   > = candidates.map((c, i) => {
+    const urlSearchRoot = normalizeOfficialBrandSearchRoot(c.url);
     const domain = normalDomain(c.url);
-    const inOfficial =
-      domain !== undefined &&
-      normalizedOfficial.some((d) => domain === d || domain.endsWith(`.${d}`));
-    const inPreferred =
-      domain !== undefined &&
-      normalizedPreferred.some((d) => domain === d || domain.endsWith(`.${d}`));
+
+    const checkMatch = (off: string) => {
+      if (!urlSearchRoot || !domain) return false;
+      if (off.includes('/')) {
+        // Path-aware match: must be exact or a subpath
+        return urlSearchRoot === off || urlSearchRoot.startsWith(off + '/');
+      }
+      // Domain-only match: exact or subdomain
+      return domain === off || domain.endsWith(`.${off}`);
+    };
+
+    const inOfficial = normalizedOfficial.some(checkMatch);
+    const inPreferred = !inOfficial && normalizedPreferred.some(checkMatch);
 
     // --- Tier ---
     let tier: ScoredCandidate['selection_tier'];
