@@ -52,7 +52,7 @@ export function MobileNavDrawer({
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-full max-w-sm p-0 overflow-y-auto">
+      <SheetContent side="left" className="w-full max-w-sm p-0 overflow-y-auto">
         <SheetHeader className="border-b px-4 py-4">
           <SheetTitle className="text-lg font-bold">Menu</SheetTitle>
         </SheetHeader>

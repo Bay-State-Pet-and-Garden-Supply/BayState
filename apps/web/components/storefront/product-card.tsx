@@ -28,7 +28,7 @@ export function ProductCard({ product }: ProductCardProps) {
         <WishlistButton productId={product.id} />
       </div>
       <Link href={`/products/${product.slug}`} className="block h-full">
-        <Card className="h-full flex flex-col cursor-pointer overflow-hidden rounded-lg border border-zinc-200 bg-white transition-all group-hover:border-primary group-hover:shadow-md group-hover:-translate-y-1">
+        <Card className="h-full flex flex-col cursor-pointer overflow-hidden rounded-lg border border-brand-burgundy/10 bg-white transition-all group-hover:border-brand-burgundy group-hover:shadow-md group-hover:-translate-y-1">
           <CardContent className="flex flex-1 flex-col p-0">
             <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-white p-4 border-b border-zinc-100">
               {hasValidImage ? (
@@ -61,7 +61,7 @@ export function ProductCard({ product }: ProductCardProps) {
                   </Badge>
                 )}
                 {product.pickup_only && (
-                  <Badge className="rounded-md bg-zinc-900 text-white font-semibold text-[10px] px-2 py-1 shadow-sm">
+                  <Badge className="rounded-md bg-brand-burgundy text-white font-semibold text-[10px] px-2 py-1 shadow-sm">
                     Pickup Only
                   </Badge>
                 )}

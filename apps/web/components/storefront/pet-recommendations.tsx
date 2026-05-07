@@ -4,6 +4,7 @@ import { ProductCard } from './product-card';
 import { Button } from '@/components/ui/button';
 import { getPersonalizedProducts } from '@/lib/recommendations';
 import { createClient } from '@/lib/supabase/server';
+import { toTitleCase } from '@/lib/utils';
 
 export async function PetRecommendations() {
   const supabase = await createClient();
@@ -26,14 +27,14 @@ export async function PetRecommendations() {
 
   return (
     <section className="mb-12">
-      <div className="mb-8 flex items-center justify-between border-b-4 border-zinc-900 pb-2">
-        <div className="flex items-center gap-3">
-          <Heart className="h-6 w-6 text-rose-600 fill-rose-600" />
-          <h2 className="text-3xl font-bold text-zinc-900 uppercase tracking-tighter font-display">
-            For {petNamesDisplay}
+      <div className="mb-8 flex items-center justify-between border-b-2 border-primary/20 pb-4">
+        <div className="flex items-center gap-4">
+          <Heart className="h-8 w-8 text-rose-600 fill-rose-600" />
+          <h2 className="text-4xl sm:text-6xl font-bold text-zinc-900 tracking-tighter font-display">
+            For {toTitleCase(petNamesDisplay)}
           </h2>
         </div>
-        <Button variant="ghost" asChild className="font-semibold text-xs tracking-widest hover:underline">
+        <Button variant="outline" asChild className="font-bold border-2 border-brand-burgundy text-brand-burgundy rounded-none px-6">
           <Link href="/account/pets">
             Manage Pets
             <ArrowRight className="ml-2 h-4 w-4" />

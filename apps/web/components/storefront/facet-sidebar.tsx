@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { toTitleCase } from '@/lib/utils';
 import {
   Accordion,
   AccordionContent,
@@ -163,7 +164,7 @@ export function FacetSidebar({
               key={`${filter.key}-${filter.value ?? filter.label}`}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-100 border border-zinc-200 text-[11px] font-bold text-zinc-600 hover:bg-zinc-200 transition-colors cursor-default"
             >
-              <span className="capitalize">{filter.label}</span>
+              <span>{toTitleCase(filter.label)}</span>
               <button
                 type="button"
                 onClick={() => removeFilter(filter.key, filter.value)}
@@ -260,7 +261,7 @@ export function FacetSidebar({
                             onClick={() => updateFilter('category', slug)}
                             className="block w-full text-left text-sm text-zinc-600 hover:text-primary hover:font-medium transition-colors border-l-2 border-transparent pl-2 ml-1"
                           >
-                            {category.name}
+                            {toTitleCase(category.name)}
                           </button>
                         );
                       })}
@@ -309,7 +310,7 @@ export function FacetSidebar({
                         onCheckedChange={(checked) => updateFilter('petTypeId', checked ? pet.id : null)}
                       />
                       <Label htmlFor={`pet-${pet.id}`} className="text-sm font-medium cursor-pointer leading-none">
-                        {pet.name}
+                        {toTitleCase(pet.name)}
                       </Label>
                     </div>
                   ))}
@@ -353,7 +354,7 @@ export function FacetSidebar({
                       onCheckedChange={(checked) => updateFilter('brand', checked ? brand.slug : null)}
                     />
                     <Label htmlFor={`brand-${brand.id}`} className="text-sm font-medium cursor-pointer leading-none">
-                      {brand.name}
+                      {toTitleCase(brand.name)}
                     </Label>
                   </div>
                 ))}
@@ -382,7 +383,7 @@ export function FacetSidebar({
             return (
               <AccordionItem key={facet.id} value={facet.slug} className="border-t border-zinc-100">
                 <AccordionTrigger className="text-sm font-bold hover:no-underline py-3">
-                  {facet.name.replace(/_/g, ' ')}
+                  {toTitleCase(facet.name.replace(/_/g, ' '))}
                 </AccordionTrigger>
                 <AccordionContent className="pt-1 pb-4">
                   {facet.values.length > 8 && (
@@ -407,7 +408,7 @@ export function FacetSidebar({
                             onCheckedChange={() => toggleFacet(facet.slug, val.slug)}
                           />
                           <Label htmlFor={`facet-${facet.slug}-${val.slug}`} className="text-sm font-medium cursor-pointer leading-none">
-                            {val.value}
+                            {toTitleCase(val.value)}
                           </Label>
                         </div>
                       );

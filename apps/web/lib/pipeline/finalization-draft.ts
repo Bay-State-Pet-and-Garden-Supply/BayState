@@ -212,7 +212,7 @@ export function buildInitialFinalizationDraft(
       "in stock",
     minimumQuantity: toTrimmedString(consolidated.minimum_quantity ?? input.minimum_quantity) || "0",
     searchKeywords: toTrimmedString(consolidated.search_keywords ?? input.search_keywords),
-    gtin: toTrimmedString(consolidated.gtin ?? input.gtin),
+    gtin: product.sku,
     productOnPages: parseProductOnPages(
       consolidated.shopsite_pages ??
         consolidated.product_on_pages ??

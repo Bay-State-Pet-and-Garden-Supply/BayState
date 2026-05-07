@@ -26,21 +26,21 @@ export default async function AccountPage() {
 
     return (
         <div className="space-y-12">
-            <div className="border-b border-zinc-200 pb-4">
-                <h1 className="text-4xl md:text-6xl font-bold tracking-tighter uppercase font-display leading-none">Account Dashboard</h1>
-                <p className="text-zinc-600 font-bold uppercase tracking-widest text-sm mt-2">Welcome back, {profile?.full_name || user.email}</p>
+            <div className="border-b-2 border-brand-burgundy pb-4">
+                <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-zinc-900 font-display leading-tight">Account Dashboard</h1>
+                <p className="text-zinc-600 font-medium text-sm mt-2">Welcome back, {profile?.full_name || user.email}</p>
             </div>
 
             <BuyAgainSection products={frequentProducts} />
 
             {petRecommendations.length > 0 && (
-                <section className="border border-zinc-200 rounded-lg bg-white shadow-sm">
-                    <div className="bg-muted p-4 border-b border-zinc-200 text-foreground flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                <section className="border border-zinc-200 rounded-lg bg-white shadow-sm overflow-hidden">
+                    <div className="bg-brand-forest-dark p-4 border-b-2 border-brand-burgundy text-white flex items-center justify-between">
+                        <div className="flex items-center gap-3">
                             <Heart className="h-6 w-6 text-accent fill-accent" />
-                            <h2 className="text-2xl font-semibold text-white font-display">Recommended for Your Pets</h2>
+                            <h2 className="text-2xl font-bold font-display">Recommended for Your Pets</h2>
                         </div>
-                        <Button variant="outline" size="sm" className="bg-white text-primary border border-zinc-200 rounded-sm font-semibold text-xs" asChild>
+                        <Button variant="outline" size="sm" className="bg-white text-primary border border-zinc-200 rounded-md font-semibold text-xs" asChild>
                             <Link href="/products">
                                 View More
                                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -56,9 +56,9 @@ export default async function AccountPage() {
             )}
 
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                <div className="border border-zinc-200 rounded-lg bg-white shadow-sm flex flex-col">
-                    <div className="bg-muted p-4 border-b border-zinc-200 text-foreground flex items-center justify-between text-white">
-                        <h2 className="text-xl font-semibold font-display">Profile</h2>
+                <div className="border border-zinc-200 rounded-lg bg-white shadow-sm flex flex-col overflow-hidden">
+                    <div className="bg-brand-forest-dark p-4 border-b-2 border-brand-burgundy text-white flex items-center justify-between">
+                        <h2 className="text-xl font-bold font-display">Profile</h2>
                         <User className="h-5 w-5" />
                     </div>
                     <div className="p-6 space-y-6 flex-1">
@@ -70,15 +70,15 @@ export default async function AccountPage() {
                             <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Email</span>
                             <span className="truncate font-bold">{user.email}</span>
                         </div>
-                        <Button asChild variant="outline" className="w-full border border-zinc-200 rounded-sm font-semibold hover:bg-zinc-100 mt-auto">
+                        <Button asChild variant="outline" className="w-full border border-zinc-200 rounded-md font-semibold hover:bg-zinc-50 mt-auto">
                             <Link href="/account/profile">Edit Profile</Link>
                         </Button>
                     </div>
                 </div>
 
-                <div className="border border-zinc-200 rounded-lg bg-white shadow-sm flex flex-col">
-                    <div className="bg-muted p-4 border-b border-zinc-200 text-foreground flex items-center justify-between text-white">
-                        <h2 className="text-xl font-semibold font-display">My Pets</h2>
+                <div className="border border-zinc-200 rounded-lg bg-white shadow-sm flex flex-col overflow-hidden">
+                    <div className="bg-brand-forest-dark p-4 border-b-2 border-brand-burgundy text-white flex items-center justify-between">
+                        <h2 className="text-xl font-bold font-display">My Pets</h2>
                         <Dog className="h-5 w-5" />
                     </div>
                     <div className="p-6 space-y-6 flex-1">
@@ -96,15 +96,15 @@ export default async function AccountPage() {
                                 <p>Add pets to get personalized product recommendations.</p>
                             )}
                         </div>
-                        <Button asChild variant="outline" className="w-full border border-zinc-200 rounded-sm font-semibold hover:bg-zinc-100 mt-auto">
+                        <Button asChild variant="outline" className="w-full border border-zinc-200 rounded-md font-semibold hover:bg-zinc-50 mt-auto">
                             <Link href="/account/pets">{pets.length > 0 ? 'Manage Pets' : 'Add a Pet'}</Link>
                         </Button>
                     </div>
                 </div>
 
-                <div className="border border-zinc-200 rounded-lg bg-white shadow-sm flex flex-col">
-                    <div className="bg-muted p-4 border-b border-zinc-200 text-foreground flex items-center justify-between text-white">
-                        <h2 className="text-xl font-semibold font-display">Recent Orders</h2>
+                <div className="border border-zinc-200 rounded-lg bg-white shadow-sm flex flex-col overflow-hidden">
+                    <div className="bg-brand-forest-dark p-4 border-b-2 border-brand-burgundy text-white flex items-center justify-between">
+                        <h2 className="text-xl font-bold font-display">Recent Orders</h2>
                         <Package className="h-5 w-5" />
                     </div>
                     <div className="p-6 space-y-6 flex-1">
@@ -126,7 +126,7 @@ export default async function AccountPage() {
                         ) : (
                             <div className="flex flex-col items-center justify-center py-6 text-center">
                                 <p className="font-bold text-zinc-500 uppercase text-xs tracking-widest">No orders yet</p>
-                                <Button asChild variant="outline" className="mt-4 border border-zinc-200 rounded-sm font-semibold hover:bg-zinc-100">
+                                <Button asChild variant="outline" className="mt-4 border border-zinc-200 rounded-md font-semibold hover:bg-zinc-50">
                                     <Link href="/products">Start Shopping</Link>
                                 </Button>
                             </div>
@@ -134,14 +134,14 @@ export default async function AccountPage() {
                     </div>
                 </div>
 
-                <div className="border border-zinc-200 rounded-lg bg-white shadow-sm flex flex-col">
-                    <div className="bg-muted p-4 border-b border-zinc-200 text-foreground flex items-center justify-between text-white">
-                        <h2 className="text-xl font-semibold font-display">Addresses</h2>
+                <div className="border border-zinc-200 rounded-lg bg-white shadow-sm flex flex-col overflow-hidden">
+                    <div className="bg-brand-forest-dark p-4 border-b-2 border-brand-burgundy text-white flex items-center justify-between">
+                        <h2 className="text-xl font-bold font-display">Addresses</h2>
                         <MapPin className="h-5 w-5" />
                     </div>
                     <div className="p-6 space-y-6 flex-1">
                         <p className="text-sm font-medium text-zinc-600">Manage your shipping and billing addresses for faster checkout.</p>
-                        <Button asChild variant="outline" className="w-full border border-zinc-200 rounded-sm font-semibold hover:bg-zinc-100 mt-auto">
+                        <Button asChild variant="outline" className="w-full border border-zinc-200 rounded-md font-semibold hover:bg-zinc-50 mt-auto">
                             <Link href="/account/addresses">Manage Addresses</Link>
                         </Button>
                     </div>

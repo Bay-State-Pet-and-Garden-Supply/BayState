@@ -37,3 +37,12 @@ export function formatImageUrl(url?: string | null): string | null {
   
   return `https://www.baystatepet.com/media/${trimmedUrl}`;
 }
+
+export function toTitleCase(str: string): string {
+  if (!str) return str;
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}

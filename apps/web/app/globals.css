@@ -7,13 +7,14 @@
 @theme inline {
   /* Heritage & Trust Brand Colors (from DESIGN.md) */
   --color-brand-forest-green: oklch(35.53% 0.081 161.46); /* #14532D - Uniform Green */
+  --color-brand-forest-dark: oklch(20% 0.05 160);        /* Deep Forest - Shadow Pine */
   --color-brand-burgundy: oklch(30.65% 0.147 24.32);     /* #760C19 - Signet Burgundy */
   --color-brand-gold: oklch(87.87% 0.201 95.83);         /* #F6DB12 - Corner Callout Gold */
   --color-ledger-charcoal: oklch(18.59% 0.016 20.34);    /* #211414 - Ledger Charcoal */
-  --color-feed-bag-cream: oklch(97.8% 0.04 90.35);       /* #FFF8D8 - Feed Bag Cream */
+  --color-feed-bag-cream: oklch(98.5% 0.01 90);       /* #FAF9F2 - Toned down Cream */
 
   /* Semantic UI Colors */
-  --color-background: var(--color-feed-bag-cream);
+  --color-background: oklch(100% 0 0);
   --color-foreground: var(--color-ledger-charcoal);
   --color-primary: var(--color-brand-forest-green);
   --color-primary-foreground: var(--color-feed-bag-cream);
@@ -27,7 +28,7 @@
   --color-card-foreground: var(--color-ledger-charcoal);
   --color-popover: var(--color-feed-bag-cream);
   --color-popover-foreground: var(--color-ledger-charcoal);
-  --color-border: oklch(85% 0.016 20.34);
+  --color-border: oklch(92% 0.015 90);
   --color-input: oklch(90% 0.016 20.34);
   --color-ring: var(--color-brand-forest-green);
 
@@ -124,11 +125,11 @@
 
 :root {
   --radius: 0.25rem;
-  --background: oklch(97.8% 0.04 90.35);
+  --background: oklch(100% 0 0);
   --foreground: oklch(25% 0.02 90);
-  --card: oklch(97.8% 0.04 90.35);
+  --card: oklch(100% 0 0);
   --card-foreground: oklch(25% 0.02 90);
-  --popover: oklch(97.8% 0.04 90.35);
+  --popover: oklch(100% 0 0);
   --popover-foreground: oklch(25% 0.02 90);
   --primary: oklch(35% 0.08 160);
   --primary-foreground: oklch(98% 0.01 90);

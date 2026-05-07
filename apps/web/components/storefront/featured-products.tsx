@@ -3,6 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import { type Product } from '@/lib/data';
 import { ProductCard } from './product-card';
 import { Button } from '@/components/ui/button';
+import { toTitleCase } from '@/lib/utils';
 
 interface FeaturedProductsProps {
   products: Product[];
@@ -18,8 +19,10 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
 
   return (
     <section className="mb-12">
-      <div className="mb-8 flex items-center justify-between border-b-4 border-zinc-900 pb-2">
-        <h2 className="text-3xl font-bold text-zinc-900 uppercase tracking-tighter font-display">Featured products</h2>
+      <div className="mb-8 flex items-center justify-between border-b-2 border-primary/20 pb-4">
+        <h2 className="text-4xl sm:text-6xl font-bold text-zinc-900 tracking-tighter font-display">
+          {toTitleCase('Featured products')}
+        </h2>
         <Button variant="ghost" asChild className="font-semibold text-xs tracking-widest hover:underline">
           <Link href="/products">
             View All

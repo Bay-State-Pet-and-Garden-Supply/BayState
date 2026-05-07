@@ -9,11 +9,11 @@ colors:
   burgundy-dark: "#4E0710"
   corner-callout-gold: "#F6DB12"
   muted-gold: "#E9B520"
-  feed-bag-cream: "#FFF8D8"
+  feed-bag-cream: "#FAF9F2"
   white-surface: "#FFFFFF"
   mulch-brown: "#6B3A18"
   ledger-charcoal: "#211414"
-  card-border: "#E7D8A8"
+  card-border: "#E8E6D9"
 typography:
   display:
     fontFamily: "Arvo, Georgia, serif"
@@ -151,15 +151,15 @@ The palette follows the physical store — green uniforms and signage dominate, 
 - **Muted Gold** (`#E9B520`): Borders, icons, subtle highlights, pre-order badges.
 
 ### Neutral
-- **Feed Bag Cream** (`#FFF8D8`): Page background, softer page sections. Warm paper-bag stock.
-- **White Surface** (`#FFFFFF`): Product cards, form fields, modals, dropdown panels. Clean contrast against the cream background.
+- **White Surface** (`#FFFFFF`): Primary wall color. Page background, product cards, form fields. Clean and bright.
+- **Feed Bag Cream** (`#FAF9F2`): Softer page sections and accents. Toned down, cleaner cream.
 - **Ledger Charcoal** (`#211414`): Main body text. Warm near-black.
-- **Card Border** (`#E7D8A8`): Card borders on cream backgrounds.
+- **Card Border** (`#E8E6D9`): Card borders on cream backgrounds. Subtle and less yellow.
 - **Mulch Brown** (`#6B3A18`): Footer detail text, rustic accents.
 
 ### Named Rules
 
-**The 60/25/10/5 Rule.** Cream and white hold 60% of the surface. Uniform Green carries 25%. Signet Burgundy takes 10%. Corner Callout Gold is limited to 5%.
+**The Architecture Rule.** White holds 70% of the surface (walls). Uniform Green (`#14532D`) carries 20% (furniture/registers). Signet Burgundy (`#760C19`) defines 10% of structural lines (doorframes/borders). Gold is an occasional spark.
 
 **The Accent Is Earned Rule.** Corner Callout Gold and Signet Burgundy are never decorative. They appear only when there's a semantic reason.
 
@@ -191,7 +191,7 @@ This system uses **soft ambient elevation.** Surfaces are flat at rest, with sub
 
 ### Buttons
 - **Shape:** Rounded (`rounded-sm` or `rounded-md`).
-- **Primary:** Uniform Green (`#14532D`) background, Feed Bag Cream (`#FFF8D8`) text. Normal or semibold font weight.
+- **Primary:** Uniform Green (`#14532D`) background, Feed Bag Cream (`#FAF9F2`) text. Normal or semibold font weight.
 - **Hover:** Background shifts to Shadow Pine (`#0B3D22`).
 - **Secondary:** Signet Burgundy (`#760C19`) background.
 
@@ -199,7 +199,7 @@ This system uses **soft ambient elevation.** Surfaces are flat at rest, with sub
 - **Corner Style:** Rounded (`rounded-lg`).
 - **Background:** White (`#FFFFFF`) on storefront.
 - **Shadow Strategy:** `shadow-sm` at rest. `shadow-md` on hover if interactive.
-- **Border:** `1px solid` in Card Border (`#E7D8A8`) or subtle gray.
+- **Border:** `1px solid` in Card Border (`#E8E6D9`) or subtle gray.
 
 ### Inputs
 - **Style:** Rounded (`rounded-sm`), full-width. Border `1px solid`.
