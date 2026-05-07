@@ -360,7 +360,7 @@ export function LogViewer({
                 variant="ghost" 
                 size="sm" 
                 onClick={scrollToBottom}
-                className="h-6 text-[10px] font-black uppercase tracking-tighter"
+                className="h-6 text-[10px] font-semibold"
               >
                 Scroll to Bottom
               </Button>

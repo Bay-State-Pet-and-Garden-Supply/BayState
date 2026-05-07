@@ -1361,7 +1361,7 @@ export function PipelineClient({
       ) : null}
 
       {showLegacyShopSiteToggle ? (
-        <label className="flex h-8 items-center gap-2 border border-border bg-card px-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+        <label className="flex h-8 items-center gap-2 border border-border bg-card px-3 text-[10px] font-semibold text-muted-foreground">
           <span className={cn(showLegacyShopSiteFields && "text-foreground")}>
             Legacy / ShopSite
           </span>
@@ -1402,10 +1402,10 @@ export function PipelineClient({
                   style={{ backgroundColor: stageConfig.color }}
                 />
                 <div>
-                  <h1 className="text-lg font-black uppercase tracking-tighter text-foreground">
+                  <h1 className="text-lg font-semibold text-foreground">
                     {stageConfig.label}
                   </h1>
-                  <p className="text-[10px] font-black uppercase text-muted-foreground">
+                  <p className="text-[10px] font-semibold text-muted-foreground">
                     {stageConfig.description}
                   </p>
                 </div>
@@ -1703,7 +1703,7 @@ export function PipelineClient({
                                 <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 text-foreground" />
                                 <div className="flex items-center gap-2 overflow-hidden">
                                   <Layers className="h-4 w-4 shrink-0 text-brand-forest-green" />
-                                  <span className="font-black text-base uppercase tracking-tighter text-foreground truncate">
+                                  <span className="font-bold text-base uppercase tracking-tighter text-foreground truncate">
                                     {formatPipelineBatchLabel(
                                       cohortId,
                                       groupedProducts.names[cohortId] || null,
@@ -1717,7 +1717,7 @@ export function PipelineClient({
                               {groupedProducts.brands[cohortId] && (
                                 <Badge
                                   variant="outline"
-                                  className="rounded-none border border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green font-black uppercase text-[10px] gap-1"
+                                  className="rounded-none border border-brand-forest-green bg-brand-forest-green/10 text-brand-forest-green font-semibold text-[10px] gap-1"
                                 >
                                   <Tag className="h-3 w-3" />
                                   {groupedProducts.brands[cohortId]}
@@ -1725,7 +1725,7 @@ export function PipelineClient({
                               )}
                               <Badge
                                 variant="secondary"
-                                className="bg-foreground text-background rounded-none font-black uppercase text-[10px]"
+                                className="bg-foreground text-background rounded-none font-semibold text-[10px]"
                               >
                                 {groupProducts.length} items
                               </Badge>
@@ -1734,7 +1734,7 @@ export function PipelineClient({
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-7 border border-border text-foreground hover:bg-muted rounded-none active:translate-x-[1px] active:translate-y-[1px] transition-all px-2 text-[10px] font-black uppercase tracking-widest"
+                                    className="h-7 border border-border text-foreground hover:bg-muted rounded-none active:translate-x-[1px] active:translate-y-[1px] transition-all px-2 text-[10px] font-semibold"
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
@@ -1763,7 +1763,7 @@ export function PipelineClient({
 
                           <AccordionContent className="pt-0">
                             {cohortId === "ungrouped" && (
-                              <div className="px-4 py-2 bg-muted/30 border-b border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                              <div className="px-4 py-2 bg-muted/30 border-b border-border text-[10px] font-semibold text-muted-foreground">
                                 Products without a valid numeric SKU cannot be
                                 auto-grouped into cohorts.
                               </div>
@@ -1829,7 +1829,7 @@ export function PipelineClient({
           >
             <div className="flex flex-col items-center gap-2 rounded-[var(--surface-admin-radius)] bg-background/80 px-8 py-6 border border-border shadow-md backdrop-blur-sm">
               <Activity className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
-              <p className="text-sm font-black uppercase tracking-widest">
+              <p className="text-sm font-semibold">
                 Updating Results...
               </p>
             </div>

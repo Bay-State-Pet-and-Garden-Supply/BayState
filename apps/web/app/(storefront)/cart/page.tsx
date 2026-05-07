@@ -106,7 +106,7 @@ export default function CartPage() {
                           </div>
                           <button
                             onClick={() => removeItem(item.id)}
-                            className="text-zinc-700 hover:text-red-600"
+                            className="text-zinc-700 hover:text-primary"
                             aria-label="Remove item"
                           >
                             <X className="h-5 w-5" />
@@ -147,7 +147,7 @@ export default function CartPage() {
               <div className="border-t p-4">
                 <Button
                   variant="ghost"
-                  className="text-red-600 hover:text-red-700"
+                  className="text-primary hover:text-primary"
                   onClick={clearCart}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
@@ -182,7 +182,7 @@ export default function CartPage() {
                     <dd className="font-medium text-zinc-900">{formatCurrency(subtotal)}</dd>
                   </div>
                   {discount > 0 && (
-                    <div className="flex justify-between text-green-600">
+                    <div className="flex justify-between text-primary">
                       <dt>Discount</dt>
                       <dd className="font-medium">-{formatCurrency(discount)}</dd>
                     </div>
@@ -191,7 +191,7 @@ export default function CartPage() {
                     <dt className="text-zinc-700">Shipping</dt>
                     <dd className="font-medium text-zinc-900">
                       {hasFreeShipping ? (
-                        <span className="text-green-600">FREE</span>
+                        <span className="text-primary">FREE</span>
                       ) : (
                         'Calculated at checkout'
                       )}

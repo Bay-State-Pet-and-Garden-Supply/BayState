@@ -156,7 +156,7 @@ export function ScraperSelectDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-lg p-6 gap-6">
                 <DialogHeader className="space-y-2">
-                    <DialogTitle className="text-2xl font-black uppercase tracking-tight">Start Scrape Jobs</DialogTitle>
+                    <DialogTitle className="text-2xl font-semibold">Start Scrape Jobs</DialogTitle>
                     <DialogDescription className="font-bold text-muted-foreground">
                         {selectedSkuCount} product{selectedSkuCount !== 1 ? 's' : ''} selected.
                         Choose scrapers for standard product page enrichment.

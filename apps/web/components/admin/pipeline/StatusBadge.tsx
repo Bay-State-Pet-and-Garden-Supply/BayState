@@ -21,9 +21,9 @@ interface StatusBadgeProps {
 }
 
 const sizeConfig = {
-  sm: { badge: "text-[10px] px-1.5 py-0 font-black uppercase tracking-widest", icon: "size-3" },
-  md: { badge: "text-xs px-2 py-0.5 font-black uppercase tracking-widest", icon: "size-3.5" },
-  lg: { badge: "text-sm px-2.5 py-1 font-black uppercase tracking-widest", icon: "size-4" },
+  sm: { badge: "text-[10px] px-1.5 py-0 font-semibold", icon: "size-3" },
+  md: { badge: "text-xs px-2 py-0.5 font-semibold", icon: "size-3.5" },
+  lg: { badge: "text-sm px-2.5 py-1 font-semibold", icon: "size-4" },
 };
 
 const statusConfig: Record<

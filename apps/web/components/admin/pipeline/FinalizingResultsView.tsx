@@ -1863,7 +1863,7 @@ export function FinalizingResultsView({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="rounded-none border border-border font-black uppercase tracking-widest text-foreground hover:bg-muted/50 transition-all"
+                        className="rounded-none border border-border font-semibold text-foreground hover:bg-muted/50 transition-all"
                       >
                         <Sparkles className="mr-2 h-4 w-4 text-primary" />
                         Copilot
@@ -1875,8 +1875,8 @@ export function FinalizingResultsView({
               {hasPendingCopilotReview ? (
                 <div className="border-b bg-primary/[0.02] px-4 py-3">
                   <Alert className="border-primary/20 bg-card text-foreground rounded-none">
-                    <AlertTitle className="font-black uppercase tracking-widest text-xs">Copilot changes are staged</AlertTitle>
-                    <AlertDescription className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">
+                    <AlertTitle className="font-semibold text-xs">Copilot changes are staged</AlertTitle>
+                    <AlertDescription className="font-semibold text-[10px] text-muted-foreground">
                       Review {pendingCopilotReview?.skus.length ?? 0} product
                       {(pendingCopilotReview?.skus.length ?? 0) === 1 ? "" : "s"}{" "}
                       in the Copilot panel before saving, approving, or
@@ -1916,7 +1916,7 @@ export function FinalizingResultsView({
                       <Button
                         onClick={addCustomImage}
                         size="sm"
-                        className="h-8 bg-foreground text-background rounded-none hover:bg-foreground/90 font-black uppercase tracking-widest text-[10px]"
+                        className="h-8 bg-foreground text-background rounded-none hover:bg-foreground/90 font-semibold text-[10px]"
                       >
                         Add
                       </Button>
@@ -1958,7 +1958,7 @@ export function FinalizingResultsView({
                 <div className="pt-4">
                   <Separator className="mb-4 bg-border" />
                   <details className="group overflow-hidden rounded-none border border-border">
-                    <summary className="flex cursor-pointer items-center justify-between p-4 text-sm font-black uppercase tracking-widest text-muted-foreground hover:bg-muted/30 list-none">
+                    <summary className="flex cursor-pointer items-center justify-between p-4 text-sm font-semibold text-muted-foreground hover:bg-muted/30 list-none">
                       <div className="flex items-center gap-2">
                         <Package className="h-4 w-4" />
                         View Raw Scraped Data
@@ -1969,7 +1969,7 @@ export function FinalizingResultsView({
                       {Object.entries(selectedProduct.sources || {}).map(
                         ([source, data]) => (
                           <div key={source} className="space-y-2">
-                            <div className="text-xs font-black uppercase tracking-widest text-foreground">
+                            <div className="text-xs font-semibold text-foreground">
                               {source}
                             </div>
                             <pre className="overflow-x-auto rounded-none border border-border bg-card p-3 text-[10px] font-bold">
@@ -1988,8 +1988,8 @@ export function FinalizingResultsView({
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
               <Package className="mb-2 h-12 w-12 opacity-20" />
-              <h3 className="text-xl font-black uppercase tracking-widest text-foreground">Select a product to review</h3>
-              <p className="text-sm font-black uppercase tracking-widest mt-2">
+              <h3 className="text-xl font-semibold text-foreground">Select a product to review</h3>
+              <p className="text-sm font-semibold mt-2">
                 Products here have been consolidated by AI and are ready for
                 your final check.
               </p>

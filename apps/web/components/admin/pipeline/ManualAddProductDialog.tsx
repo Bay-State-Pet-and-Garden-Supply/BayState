@@ -74,7 +74,7 @@ export function ManualAddProductDialog({
                 <div className="flex items-center justify-between border-b border-border px-6 py-4 bg-muted/30">
                     <div className="flex items-center gap-2">
                         <Package className="h-5 w-5 text-brand-forest-green" />
-                        <h2 className="text-lg font-black uppercase tracking-tighter text-foreground">Add New Product</h2>
+                        <h2 className="text-lg font-semibold text-foreground">Add New Product</h2>
                     </div>
                     <button
                         onClick={onCancel}
@@ -89,7 +89,7 @@ export function ManualAddProductDialog({
                 <form onSubmit={handleSubmit(onSubmit)}>
                     <div className="space-y-5 p-6">
                         <div className="space-y-2">
-                            <Label htmlFor="sku" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">SKU / Item Number</Label>
+                            <Label htmlFor="sku" className="text-[10px] font-semibold text-muted-foreground">SKU / Item Number</Label>
                             <Input
                                 id="sku"
                                 placeholder="e.g. 12345"
@@ -100,13 +100,13 @@ export function ManualAddProductDialog({
                                 {...register('sku')}
                             />
                             {errors.sku ? (
-                                <p id="sku-error" className="text-[10px] font-black uppercase tracking-widest text-destructive">{errors.sku.message}</p>
+                                <p id="sku-error" className="text-[10px] font-semibold text-destructive">{errors.sku.message}</p>
                             ) : (
-                                <p id="sku-hint" className="text-[10px] font-black uppercase tracking-widest text-foreground/80">Unique identifier used for the product.</p>
+                                <p id="sku-hint" className="text-[10px] font-semibold text-foreground/80">Unique identifier used for the product.</p>
                             )}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Product Name</Label>
+                            <Label htmlFor="name" className="text-[10px] font-semibold text-muted-foreground">Product Name</Label>
                             <Input
                                 id="name"
                                 placeholder="e.g. Dog Food 20lb"
@@ -117,11 +117,11 @@ export function ManualAddProductDialog({
                                 {...register('name')}
                             />
                             {errors.name && (
-                                <p id="name-error" className="text-[10px] font-black uppercase tracking-widest text-destructive">{errors.name.message}</p>
+                                <p id="name-error" className="text-[10px] font-semibold text-destructive">{errors.name.message}</p>
                             )}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="price" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Price (Optional)</Label>
+                            <Label htmlFor="price" className="text-[10px] font-semibold text-muted-foreground">Price (Optional)</Label>
                             <Input
                                 id="price"
                                 type="number"
@@ -134,9 +134,9 @@ export function ManualAddProductDialog({
                                 {...register('price')}
                             />
                             {errors.price ? (
-                                <p id="price-error" className="text-[10px] font-black uppercase tracking-widest text-destructive">{errors.price.message}</p>
+                                <p id="price-error" className="text-[10px] font-semibold text-destructive">{errors.price.message}</p>
                             ) : (
-                                <p id="price-hint" className="text-[10px] font-black uppercase tracking-widest text-foreground/80">Base retail price before any discounts.</p>
+                                <p id="price-hint" className="text-[10px] font-semibold text-foreground/80">Base retail price before any discounts.</p>
                             )}
                         </div>
                     </div>
@@ -147,14 +147,14 @@ export function ManualAddProductDialog({
                             variant="ghost"
                             onClick={onCancel}
                             disabled={isSubmitting}
-                            className="font-black uppercase tracking-widest text-xs h-10 rounded-none"
+                            className="font-semibold text-xs h-10 rounded-none"
                         >
                             Cancel
                         </Button>
                         <Button
                             type="submit"
                             disabled={isSubmitting}
-                            className="bg-brand-forest-green hover:bg-brand-forest-green/90 text-background font-black uppercase tracking-widest text-xs h-10 px-6 rounded-none border border-brand-forest-green"
+                            className="bg-brand-forest-green hover:bg-brand-forest-green/90 text-background font-semibold text-xs h-10 px-6 rounded-none border border-brand-forest-green"
                         >
                             {isSubmitting ? (
                                 <>

@@ -30,10 +30,10 @@ export default async function HomePage() {
       {(!heroSlides || heroSlides.length === 0) && (
         <section className="mb-12 bg-primary text-white py-16 text-center shadow-md">
           <div className="container mx-auto px-4">
-            <h1 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl uppercase drop-shadow-md text-accent font-display">
+            <h1 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl drop-shadow-md text-accent font-display">
               Baby Chicks Are Here!
             </h1>
-            <p className="mx-auto mb-8 max-w-2xl text-xl font-medium uppercase tracking-wider">
+            <p className="mx-auto mb-8 max-w-2xl text-xl font-medium tracking-wider">
               Pick up in store today, or pre-order!
             </p>
             <Button size="lg" className="bg-accent text-secondary hover:bg-accent/90 text-lg font-bold px-8 py-6 rounded-none shadow-lg border-b-2 border-black/20" asChild>
@@ -47,93 +47,93 @@ export default async function HomePage() {
 
       <div className="container mx-auto px-4">
         <section className="my-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Link href="/products?category=seasonal" className="group border-[4px] border-zinc-900 overflow-hidden relative aspect-[627/376] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none shadow-[8px_8px_0px_rgba(0,0,0,1)] bg-zinc-100">
+          <Link href="/products?category=seasonal" className="group border border-zinc-200 rounded-lg overflow-hidden relative aspect-[627/376] transition-all hover:-translate-y-1 hover:shadow-md shadow-sm bg-zinc-100">
             <Image src="/images/legacy/img1.png" alt="Winter Essentials" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
-            <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-4">
-              <h3 className="text-white text-xl sm:text-2xl font-black uppercase tracking-widest leading-none font-display">Winter Essentials</h3>
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+              <h3 className="text-white text-xl sm:text-2xl font-semibold leading-none font-display">Winter Essentials</h3>
             </div>
           </Link>
 
           <div className="flex flex-col gap-6">
-            <Link href="/products?category=farm" className="group border-[4px] border-zinc-900 overflow-hidden relative aspect-[627/174] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none shadow-[8px_8px_0px_rgba(255,183,0,1)] bg-zinc-100">
+            <Link href="/products?category=farm" className="group border border-zinc-200 rounded-lg overflow-hidden relative aspect-[627/174] transition-all hover:-translate-y-1 hover:shadow-md shadow-sm bg-zinc-100">
                <Image src="/images/legacy/img2.png" alt="Bee Nuc Pre-Order" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
-               <div className="absolute top-2 right-2 bg-zinc-900 p-2">
-                 <h3 className="text-white text-xs sm:text-sm font-black uppercase tracking-widest leading-none font-display">Bee Nuc Pre-Order</h3>
+               <div className="absolute top-2 right-2 bg-card p-3 shadow-md rounded-bl-lg">
+                 <h3 className="text-foreground text-sm sm:text-base font-bold leading-none font-display">Bee Nuc Pre-Order</h3>
                </div>
             </Link>
 
-            <Link href="/products?category=home" className="group border-[4px] border-zinc-900 overflow-hidden relative aspect-[627/174] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none shadow-[8px_8px_0px_rgba(220,38,38,1)] bg-zinc-100">
+            <Link href="/products?category=home" className="group border border-zinc-200 rounded-lg overflow-hidden relative aspect-[627/174] transition-all hover:-translate-y-1 hover:shadow-md shadow-sm bg-zinc-100">
               <Image src="/images/legacy/img3.png" alt="Wood Pellets Sale" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
-              <div className="absolute top-2 right-2 bg-red-600 p-2">
-                <h3 className="text-white text-xs sm:text-sm font-black uppercase tracking-widest leading-none font-display">Wood Pellets Sale</h3>
+              <div className="absolute top-2 right-2 bg-card p-3 shadow-md rounded-bl-lg">
+                <h3 className="text-foreground text-sm sm:text-base font-bold leading-none font-display">Wood Pellets Sale</h3>
               </div>
             </Link>
           </div>
         </section>
 
-        <section className="mb-12 border-[4px] border-zinc-900 relative overflow-hidden shadow-[8px_8px_0px_rgba(37,99,235,1)] aspect-[1280/230] bg-zinc-100 transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none block">
+        <section className="mb-12 border border-zinc-200 rounded-lg relative overflow-hidden shadow-sm aspect-[1280/230] bg-zinc-100 transition-all hover:-translate-y-1 hover:shadow-md block">
           <Link href="/products?category=gift-shop" className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 group">
             <Image src="/images/legacy/img4.png" alt="Country Gift Shop" fill className="object-cover -z-10" />
-            <h2 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tighter text-white uppercase drop-shadow-[2px_2px_4px_rgba(0,0,0,0.8)] font-display group-hover:scale-105 transition-transform">
+            <h2 className="text-3xl sm:text-5xl md:text-6xl font-bold tracking-tighter text-white drop-shadow-sm font-display group-hover:scale-105 transition-transform">
               Country Gift Shop
             </h2>
           </Link>
         </section>
 
         <section className="mb-16">
-          <div className="flex justify-between items-end mb-8 border-b-8 border-zinc-900 pb-2">
-            <h2 className="text-4xl sm:text-6xl font-black text-zinc-900 uppercase tracking-tighter font-display">
+          <div className="flex justify-between items-end mb-8 border-b-2 border-primary/20 pb-4">
+            <h2 className="text-4xl sm:text-6xl font-bold text-zinc-900 tracking-tighter font-display">
               Shop by Department
             </h2>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <Link href="/products?category=pet-supplies" className="group border-2 border-zinc-900 bg-primary h-[300px] transition-all hover:-translate-x-1 hover:-translate-y-1 shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] relative overflow-hidden">
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-primary group-hover:bg-primary/95 transition-colors">
-                <h3 className="text-5xl font-black uppercase leading-[0.85] tracking-tighter text-white font-display mb-4">
+            <Link href="/products?category=pet-supplies" className="group border border-primary/20 rounded-xl bg-gradient-to-b from-white to-primary/5 h-[300px] transition-all hover:-translate-y-1 shadow-sm hover:shadow-md relative overflow-hidden flex flex-col items-center justify-center text-center p-6 hover:border-primary">
+              <div className="flex flex-col items-center justify-center h-full">
+                <h3 className="text-4xl font-semibold leading-tight tracking-tight text-foreground font-display mb-4 group-hover:text-primary transition-colors">
                   Pet<br/>Supplies
                 </h3>
-                <div className="h-2 w-24 bg-accent mt-2 shadow-[2px_2px_0px_rgba(0,0,0,0.2)]"></div>
-                <span className="mt-8 text-white/80 font-bold uppercase tracking-[0.2em] text-xs">Explore Department →</span>
+                <div className="h-1 w-12 bg-secondary mt-4 transition-all group-hover:w-24 group-hover:bg-secondary"></div>
+                <span className="mt-8 text-primary font-semibold uppercase tracking-widest text-xs opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">Explore Department &rarr;</span>
               </div>
             </Link>
 
-            <Link href="/products?category=farm" className="group border-2 border-zinc-900 bg-red-600 h-[300px] transition-all hover:-translate-x-1 hover:-translate-y-1 shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] relative overflow-hidden">
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-red-600 group-hover:bg-red-700 transition-colors">
-                <h3 className="text-5xl font-black uppercase leading-[0.85] tracking-tighter text-white font-display mb-4">
+            <Link href="/products?category=farm" className="group border border-primary/20 rounded-xl bg-gradient-to-b from-white to-primary/5 h-[300px] transition-all hover:-translate-y-1 shadow-sm hover:shadow-md relative overflow-hidden flex flex-col items-center justify-center text-center p-6 hover:border-primary">
+              <div className="flex flex-col items-center justify-center h-full">
+                <h3 className="text-4xl font-semibold leading-tight tracking-tight text-foreground font-display mb-4 group-hover:text-primary transition-colors">
                   Farm &<br/>Livestock
                 </h3>
-                <div className="h-2 w-24 bg-accent mt-2 shadow-[2px_2px_0px_rgba(0,0,0,0.2)]"></div>
-                <span className="mt-8 text-white/80 font-bold uppercase tracking-[0.2em] text-xs">Explore Department →</span>
+                <div className="h-1 w-12 bg-secondary mt-4 transition-all group-hover:w-24 group-hover:bg-secondary"></div>
+                <span className="mt-8 text-primary font-semibold uppercase tracking-widest text-xs opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">Explore Department &rarr;</span>
               </div>
             </Link>
 
-            <Link href="/products?category=lawn-garden" className="group border-2 border-zinc-900 bg-green-600 h-[300px] transition-all hover:-translate-x-1 hover:-translate-y-1 shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] relative overflow-hidden">
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-green-600 group-hover:bg-green-700 transition-colors">
-                <h3 className="text-5xl font-black uppercase leading-[0.85] tracking-tighter text-white font-display mb-4">
+            <Link href="/products?category=lawn-garden" className="group border border-primary/20 rounded-xl bg-gradient-to-b from-white to-primary/5 h-[300px] transition-all hover:-translate-y-1 shadow-sm hover:shadow-md relative overflow-hidden flex flex-col items-center justify-center text-center p-6 hover:border-primary">
+              <div className="flex flex-col items-center justify-center h-full">
+                <h3 className="text-4xl font-semibold leading-tight tracking-tight text-foreground font-display mb-4 group-hover:text-primary transition-colors">
                   Lawn &<br/>Garden
                 </h3>
-                <div className="h-2 w-24 bg-accent mt-2 shadow-[2px_2px_0px_rgba(0,0,0,0.2)]"></div>
-                <span className="mt-8 text-white/80 font-bold uppercase tracking-[0.2em] text-xs">Explore Department →</span>
+                <div className="h-1 w-12 bg-secondary mt-4 transition-all group-hover:w-24 group-hover:bg-secondary"></div>
+                <span className="mt-8 text-primary font-semibold uppercase tracking-widest text-xs opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">Explore Department &rarr;</span>
               </div>
             </Link>
 
-            <Link href="/products?category=home" className="group border-2 border-zinc-900 bg-blue-600 h-[300px] transition-all hover:-translate-x-1 hover:-translate-y-1 shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] relative overflow-hidden">
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-blue-600 group-hover:bg-blue-700 transition-colors">
-                <h3 className="text-5xl font-black uppercase leading-[0.85] tracking-tighter text-white font-display mb-4">
+            <Link href="/products?category=home" className="group border border-primary/20 rounded-xl bg-gradient-to-b from-white to-primary/5 h-[300px] transition-all hover:-translate-y-1 shadow-sm hover:shadow-md relative overflow-hidden flex flex-col items-center justify-center text-center p-6 hover:border-primary">
+              <div className="flex flex-col items-center justify-center h-full">
+                <h3 className="text-4xl font-semibold leading-tight tracking-tight text-foreground font-display mb-4 group-hover:text-primary transition-colors">
                   Home &<br/>Fuel
                 </h3>
-                <div className="h-2 w-24 bg-accent mt-2 shadow-[2px_2px_0px_rgba(0,0,0,0.2)]"></div>
-                <span className="mt-8 text-white/80 font-bold uppercase tracking-[0.2em] text-xs">Explore Department →</span>
+                <div className="h-1 w-12 bg-secondary mt-4 transition-all group-hover:w-24 group-hover:bg-secondary"></div>
+                <span className="mt-8 text-primary font-semibold uppercase tracking-widest text-xs opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">Explore Department &rarr;</span>
               </div>
             </Link>
 
-            <Link href="/products?category=seasonal" className="group border-2 border-zinc-900 bg-orange-600 h-[300px] transition-all hover:-translate-x-1 hover:-translate-y-1 shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_rgba(0,0,0,1)] relative overflow-hidden">
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-orange-600 group-hover:bg-orange-700 transition-colors">
-                <h3 className="text-5xl font-black uppercase leading-[0.85] tracking-tighter text-white font-display mb-4">
+            <Link href="/products?category=seasonal" className="group border border-primary/20 rounded-xl bg-gradient-to-b from-white to-primary/5 h-[300px] transition-all hover:-translate-y-1 shadow-sm hover:shadow-md relative overflow-hidden flex flex-col items-center justify-center text-center p-6 hover:border-primary">
+              <div className="flex flex-col items-center justify-center h-full">
+                <h3 className="text-4xl font-semibold leading-tight tracking-tight text-foreground font-display mb-4 group-hover:text-primary transition-colors">
                   Seasonal<br/>Shoppe
                 </h3>
-                <div className="h-2 w-24 bg-accent mt-2 shadow-[2px_2px_0px_rgba(0,0,0,0.2)]"></div>
-                <span className="mt-8 text-white/80 font-bold uppercase tracking-[0.2em] text-xs">Explore Department →</span>
+                <div className="h-1 w-12 bg-secondary mt-4 transition-all group-hover:w-24 group-hover:bg-secondary"></div>
+                <span className="mt-8 text-primary font-semibold uppercase tracking-widest text-xs opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">Explore Department &rarr;</span>
               </div>
             </Link>
           </div>
@@ -141,11 +141,11 @@ export default async function HomePage() {
 
         {brands && brands.length > 0 && (
           <section className="mb-16">
-            <div className="flex justify-between items-end mb-8 border-b-2 border-zinc-900 pb-4">
-              <h2 className="text-3xl font-black text-zinc-900 uppercase tracking-tighter font-display">
+            <div className="flex justify-between items-end mb-8 border-b-2 border-primary/20 pb-4">
+              <h2 className="text-3xl font-bold text-zinc-900 tracking-tighter font-display">
                 300+ Brands in Stock!
               </h2>
-              <Link href="/brands" className="text-primary hover:underline font-black uppercase text-sm flex items-center">
+              <Link href="/brands" className="text-primary hover:underline font-semibold text-sm flex items-center">
                 shop all <ArrowRight className="ml-1 w-4 h-4" />
               </Link>
             </div>
@@ -154,7 +154,7 @@ export default async function HomePage() {
                 <Link
                   key={brand.id}
                   href={`/products?brand=${brand.slug}`}
-                  className="flex items-center justify-center p-4 bg-white border border-zinc-200 hover:border-zinc-900 transition-colors grayscale hover:grayscale-0"
+                  className="flex items-center justify-center p-4 bg-white border border-zinc-200 hover:border-primary transition-colors grayscale hover:grayscale-0"
                 >
                   {brand.logo_url ? (
                     <Image

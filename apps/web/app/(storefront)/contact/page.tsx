@@ -68,7 +68,7 @@ export default async function ContactPage() {
                                 href="https://maps.google.com/?q=429+Winthrop+Street+Taunton+MA+02780"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-sm text-blue-700 hover:underline"
+                                className="text-sm text-foreground hover:underline"
                             >
                                 Get Directions
                             </a>

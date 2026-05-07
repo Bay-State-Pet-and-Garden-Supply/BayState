@@ -93,34 +93,34 @@ export function PetCard({ pet, petTypes }: PetCardProps) {
 
     return (
         <>
-            <div className="border-4 border-zinc-900 bg-white shadow-[8px_8px_0px_rgba(22,163,74,1)] flex flex-col overflow-hidden">
-                <div className="bg-green-600 p-4 border-b-4 border-zinc-900 flex flex-row items-center justify-between text-white">
+            <div className="border border-zinc-200 rounded-lg bg-white shadow-sm flex flex-col overflow-hidden">
+                <div className="bg-zinc-50 p-4 border-b border-zinc-200 flex flex-row items-center justify-between text-zinc-900">
                     <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-white/20 border-2 border-white/20 text-white">
+                        <div className="p-2 bg-white border border-zinc-200 text-zinc-900 shadow-sm rounded-md">
                             {getIcon(pet.pet_type?.icon || null)}
                         </div>
                         <div>
-                            <h2 className="text-xl font-black uppercase tracking-tight font-display">{pet.name}</h2>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-green-100">
+                            <h2 className="text-xl font-semibold font-display">{pet.name}</h2>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
                                 {pet.pet_type?.name}{pet.breed ? ` • ${pet.breed}` : ''}
                             </p>
                         </div>
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="hover:bg-white/10 text-white" aria-label="Open pet menu">
+                            <Button variant="ghost" size="icon" className="hover:bg-zinc-200 text-zinc-500" aria-label="Open pet menu">
                                 <MoreVertical className="h-5 w-5" />
                                 <span className="sr-only">Open menu</span>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="border-4 border-zinc-900 rounded-none shadow-[4px_4px_0px_rgba(0,0,0,1)] p-1">
-                            <DropdownMenuItem onClick={() => setOpen(true)} className="font-black uppercase text-xs tracking-widest focus:bg-zinc-100 cursor-pointer">
+                        <DropdownMenuContent align="end" className="border border-zinc-200 rounded-lg rounded-none shadow-sm p-1">
+                            <DropdownMenuItem onClick={() => setOpen(true)} className="font-semibold text-xs tracking-widest focus:bg-zinc-100 cursor-pointer">
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
                                 onClick={() => setShowDeleteAlert(true)}
-                                className="text-red-600 focus:text-red-700 focus:bg-red-50 font-black uppercase text-xs tracking-widest cursor-pointer"
+                                className="text-primary focus:text-primary focus:bg-muted font-semibold text-xs tracking-widest cursor-pointer"
                             >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Delete
@@ -142,7 +142,7 @@ export function PetCard({ pet, petTypes }: PetCardProps) {
                     
                     {pet.dietary_notes && (
                         <div className="p-3 bg-zinc-50 border-2 border-zinc-100 text-[10px] font-medium leading-relaxed">
-                            <span className="font-black uppercase tracking-widest block mb-1 text-zinc-900">Dietary Notes:</span>
+                            <span className="font-semibold block mb-1 text-zinc-900">Dietary Notes:</span>
                             {pet.dietary_notes}
                         </div>
                     )}
@@ -151,17 +151,17 @@ export function PetCard({ pet, petTypes }: PetCardProps) {
                         {(lifeStageLabel || sizeClassLabel || genderLabel) && (
                             <div className="flex flex-wrap items-center gap-2">
                                 {lifeStageLabel && (
-                                    <div className="bg-zinc-100 border-2 border-zinc-200 px-2 py-1 text-[9px] font-black uppercase tracking-widest">
+                                    <div className="bg-zinc-100 border-2 border-zinc-200 px-2 py-1 text-[9px] font-semibold">
                                         Stage: {lifeStageLabel}
                                     </div>
                                 )}
                                 {sizeClassLabel && (
-                                    <div className="bg-zinc-100 border-2 border-zinc-200 px-2 py-1 text-[9px] font-black uppercase tracking-widest">
+                                    <div className="bg-zinc-100 border-2 border-zinc-200 px-2 py-1 text-[9px] font-semibold">
                                         Size: {sizeClassLabel}
                                     </div>
                                 )}
                                 {genderLabel && (
-                                    <div className="bg-zinc-100 border-2 border-zinc-200 px-2 py-1 text-[9px] font-black uppercase tracking-widest">
+                                    <div className="bg-zinc-100 border-2 border-zinc-200 px-2 py-1 text-[9px] font-semibold">
                                         {genderLabel}
                                     </div>
                                 )}
@@ -171,12 +171,12 @@ export function PetCard({ pet, petTypes }: PetCardProps) {
                         {(activityLevelLabel || pet.is_fixed) && (
                             <div className="flex flex-wrap items-center gap-2">
                                 {activityLevelLabel && (
-                                    <div className="bg-zinc-100 border-2 border-zinc-200 px-2 py-1 text-[9px] font-black uppercase tracking-widest">
+                                    <div className="bg-zinc-100 border-2 border-zinc-200 px-2 py-1 text-[9px] font-semibold">
                                         Activity: {activityLevelLabel}
                                     </div>
                                 )}
                                 {pet.is_fixed && (
-                                    <div className="bg-green-50 border-2 border-green-200 text-green-700 px-2 py-1 text-[9px] font-black uppercase tracking-widest">
+                                    <div className="bg-muted border-2 border-green-200 text-foreground px-2 py-1 text-[9px] font-semibold">
                                         Fixed
                                     </div>
                                 )}
@@ -188,7 +188,7 @@ export function PetCard({ pet, petTypes }: PetCardProps) {
                                 {pet.special_needs.map(need => {
                                     const label = PET_SPECIAL_NEEDS.find(n => n.value === need)?.label || need
                                     return (
-                                        <div key={need} className="bg-zinc-900 text-white px-2 py-1 text-[9px] font-black uppercase tracking-widest">
+                                        <div key={need} className="bg-zinc-900 text-white px-2 py-1 text-[9px] font-semibold">
                                             {label}
                                         </div>
                                     )
@@ -200,9 +200,9 @@ export function PetCard({ pet, petTypes }: PetCardProps) {
             </div>
 
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="max-h-[90vh] overflow-y-auto border-4 border-zinc-900 rounded-none shadow-[12px_12px_0px_rgba(0,0,0,1)] p-0">
+                <DialogContent className="max-h-[90vh] overflow-y-auto border border-zinc-200 rounded-lg rounded-none shadow-sm p-0">
                     <DialogHeader className="bg-zinc-900 text-white p-6 border-b-4 border-zinc-900">
-                        <DialogTitle className="text-2xl font-black uppercase tracking-tight font-display">Edit {pet.name}</DialogTitle>
+                        <DialogTitle className="text-2xl font-semibold font-display">Edit {pet.name}</DialogTitle>
                         <DialogDescription className="text-zinc-400 font-bold uppercase tracking-widest text-[10px]">
                             Update your pet&apos;s details.
                         </DialogDescription>
@@ -218,16 +218,16 @@ export function PetCard({ pet, petTypes }: PetCardProps) {
             </Dialog>
 
             <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
-                <AlertDialogContent className="border-4 border-zinc-900 rounded-none shadow-[12px_12px_0px_rgba(0,0,0,1)]">
+                <AlertDialogContent className="border border-zinc-200 rounded-lg rounded-none shadow-sm">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-2xl font-black uppercase tracking-tight font-display">Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle className="text-2xl font-semibold font-display">Are you sure?</AlertDialogTitle>
                         <AlertDialogDescription className="font-medium text-zinc-600">
                             This will remove {pet.name} from your profile. This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="gap-4">
-                        <AlertDialogCancel className="border-2 border-zinc-900 rounded-none font-black uppercase tracking-tight">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 border-2 border-zinc-900 rounded-none font-black uppercase tracking-tight shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                        <AlertDialogCancel className="border border-zinc-200 rounded-lg rounded-none font-semibold">Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-primary hover:bg-primary/90 border border-zinc-200 rounded-lg rounded-none font-semibold shadow-sm">
                             Delete Pet
                         </AlertDialogAction>
                     </AlertDialogFooter>

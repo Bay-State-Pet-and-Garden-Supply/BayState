@@ -103,7 +103,7 @@ function HitRateBar({ rate }: { rate: number; }) {
  style={{ width: `${pct}%` }}
  />
  </div>
- <span className="text-[10px] font-black text-foreground">{pct}%</span>
+ <span className="text-[10px] font-bold text-foreground">{pct}%</span>
  </div>
  );
 }
@@ -209,7 +209,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  <div className="flex items-start gap-3">
  <AlertCircle className="h-5 w-5 text-brand-burgundy shrink-0" />
  <div>
- <h3 className="font-black uppercase tracking-tight text-brand-burgundy">Error Loading Cohort</h3>
+ <h3 className="font-semibold text-brand-burgundy">Error Loading Cohort</h3>
  <p className="text-sm font-bold text-brand-burgundy/80 mt-1">{error || "Cohort not found"}</p>
  </div>
  </div>
@@ -242,10 +242,10 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  </Button>
  <div>
  <div className="flex items-center gap-3">
- <h1 className="text-3xl font-black uppercase tracking-tighter text-foreground">
+ <h1 className="text-3xl font-semibold text-foreground">
  {cohort.product_line || `Cohort ${cohort.id.slice(0, 8)}`}
  </h1>
- <Badge className={`rounded-none border border-border font-black uppercase text-[10px] ${statusBadge.className}`}>
+ <Badge className={`rounded-none border border-border font-semibold text-[10px] ${statusBadge.className}`}>
  {statusBadge.label}
  </Badge>
  </div>
@@ -286,7 +286,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  {/* Brand Assignment Card */}
  <Card className="rounded-none border border-border">
  <CardHeader className="bg-muted border-b border-border">
- <CardTitle className="flex items-center gap-2 text-lg font-black uppercase tracking-tight text-foreground">
+ <CardTitle className="flex items-center gap-2 text-lg font-semibold text-foreground">
  <Tag className="h-5 w-5" />
  Brand Assignment
  </CardTitle>
@@ -303,10 +303,10 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  <div className="rounded-none border border-border bg-muted p-4">
  <div className="flex items-start justify-between gap-3">
  <div className="space-y-2">
- <p className="font-black uppercase text-foreground tracking-tight">{brandName}</p>
+ <p className="font-semibold text-foreground tracking-tight">{brandName}</p>
  <p className={cn(
  "text-[10px] font-bold uppercase tracking-wide",
- hasConfiguredDomains ? "text-zinc-600" : "text-brand-burgundy font-black"
+ hasConfiguredDomains ? "text-zinc-600" : "text-brand-burgundy font-bold"
  )}>
  {hasConfiguredDomains
  ? 'Scraper recommendations are active for this brand'
@@ -318,7 +318,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  type="button"
  variant="outline"
  size="sm"
- className="rounded-none border border-border font-black uppercase"
+ className="rounded-none border border-border font-semibold"
  onClick={() => setEditingBrand(brand)}
  >
  <Pencil className="mr-1 h-3.5 w-3.5" />
@@ -327,13 +327,13 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  )}
  </div>
  {brand && (
- <div className="mt-4 grid gap-2 text-[10px] font-black uppercase tracking-wide text-zinc-600 sm:grid-cols-3">
+ <div className="mt-4 grid gap-2 text-[10px] font-semibold text-zinc-600 sm:grid-cols-3">
  <div className="rounded-none border border-border bg-card px-3 py-2">
  <span className="block text-zinc-500">Official Domains</span>
  {officialDomains.length > 0 ? (
  <span className="mt-1 block text-xs text-foreground">{officialDomains[0]}</span>
  ) : (
- <span className="mt-1 block text-brand-gold font-black">Missing</span>
+ <span className="mt-1 block text-brand-gold font-bold">Missing</span>
  )}
  </div>
  <div className="rounded-none border border-border bg-card px-3 py-2">
@@ -362,7 +362,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  {/* Pipeline Status Breakdown */}
  <Card className="rounded-none border border-border">
  <CardHeader className="bg-muted border-b border-border">
- <CardTitle className="flex items-center gap-2 text-lg font-black uppercase tracking-tight text-foreground">
+ <CardTitle className="flex items-center gap-2 text-lg font-semibold text-foreground">
  <BarChart3 className="h-5 w-5" />
  Pipeline Status
  </CardTitle>
@@ -374,8 +374,8 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  const badge = STATUS_BADGE_CONFIG[status] || STATUS_BADGE_CONFIG.pending;
  return (
  <div key={status} className="flex items-center gap-2 bg-muted border border-border px-2 py-1">
- <Badge className={`rounded-none border border-border font-black uppercase text-[10px] ${badge.className}`}>{badge.label}</Badge>
- <span className="text-sm font-black text-foreground">{count}</span>
+ <Badge className={`rounded-none border border-border font-semibold text-[10px] ${badge.className}`}>{badge.label}</Badge>
+ <span className="text-sm font-bold text-foreground">{count}</span>
  </div>
  );
  })}
@@ -389,7 +389,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  {/* Member Products Table */}
  <Card className="rounded-none border border-border flex-1 flex flex-col min-h-0">
  <CardHeader className="bg-muted border-b border-border shrink-0">
- <CardTitle className="flex items-center gap-2 text-lg font-black uppercase tracking-tight text-foreground">
+ <CardTitle className="flex items-center gap-2 text-lg font-semibold text-foreground">
  <Package className="h-5 w-5" />
  Products ({members.length})
  </CardTitle>
@@ -404,9 +404,9 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  <Table>
  <TableHeader className="bg-muted sticky top-0 z-10">
  <TableRow className="border-b border-border">
- <TableHead className="font-black uppercase text-foreground text-xs w-[120px]">SKU</TableHead>
- <TableHead className="font-black uppercase text-foreground text-xs">Product Name</TableHead>
- <TableHead className="font-black uppercase text-foreground text-xs w-[150px]">Pipeline Status</TableHead>
+ <TableHead className="font-semibold text-foreground text-xs w-[120px]">SKU</TableHead>
+ <TableHead className="font-semibold text-foreground text-xs">Product Name</TableHead>
+ <TableHead className="font-semibold text-foreground text-xs w-[150px]">Pipeline Status</TableHead>
  </TableRow>
  </TableHeader>
  <TableBody>
@@ -435,11 +435,11 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  </TableCell>
  <TableCell className="w-[150px]">
  {badge ? (
- <Badge className={`text-[10px] font-black uppercase rounded-none border border-border ${badge.className}`}>
+ <Badge className={`text-[10px] font-semibold rounded-none border border-border ${badge.className}`}>
  {badge.label}
  </Badge>
  ) : (
- <span className="text-zinc-400 text-[10px] font-black uppercase">
+ <span className="text-zinc-400 text-[10px] font-semibold">
  Not tracked
  </span>
  )}
@@ -459,7 +459,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  <div className="w-full lg:w-80 space-y-6 shrink-0">
  <Card className="rounded-none border border-border">
  <CardHeader className="bg-muted border-b border-border">
- <CardTitle className="flex items-center gap-2 text-lg font-black uppercase tracking-tight text-foreground">
+ <CardTitle className="flex items-center gap-2 text-lg font-semibold text-foreground">
  <Sparkles className="h-5 w-5" />
  Scrapers
  </CardTitle>
@@ -499,11 +499,11 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  {rec.preselected && (
  <Zap className="h-3.5 w-3.5 text-brand-forest-green fill-brand-forest-green" />
  )}
- <span className="font-black uppercase tracking-tight text-sm text-foreground">
+ <span className="font-semibold text-sm text-foreground">
  {rec.scraper_name}
  </span>
  </div>
- <Badge className={`text-[9px] font-black uppercase rounded-none border border-border ${conf.className}`}>
+ <Badge className={`text-[9px] font-semibold rounded-none border border-border ${conf.className}`}>
  {conf.label}
  </Badge>
  </div>
@@ -514,7 +514,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  </p>
  {rec.total_attempts > 0 && (
  <div className="pt-1 border-t border-border">
- <p className="text-[9px] font-black uppercase text-zinc-500">
+ <p className="text-[9px] font-semibold text-zinc-500">
  {rec.successful_extractions}/{rec.total_attempts} hits ·{" "}
  {rec.avg_fields_extracted.toFixed(1)} fields ·{" "}
  {rec.avg_images_found.toFixed(1)} imgs
@@ -533,28 +533,28 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  {/* Cohort Info */}
  <Card className="rounded-none border border-border">
  <CardHeader className="bg-muted border-b border-border">
- <CardTitle className="text-lg font-black uppercase tracking-tight text-foreground">Details</CardTitle>
+ <CardTitle className="text-lg font-semibold text-foreground">Details</CardTitle>
  </CardHeader>
  <CardContent className="pt-6 space-y-4">
  <div className="flex justify-between items-center pb-2 border-b border-zinc-100">
- <span className="text-[10px] font-black uppercase text-zinc-500">ID</span>
+ <span className="text-[10px] font-semibold text-zinc-500">ID</span>
  <code className="font-mono text-[10px] bg-muted px-1">{cohort.id.slice(0, 12)}...</code>
  </div>
  <div className="flex justify-between items-center pb-2 border-b border-zinc-100">
- <span className="text-[10px] font-black uppercase text-zinc-500">UPC Prefix</span>
- <code className="font-mono text-xs font-black bg-zinc-950 text-white px-1">{cohort.upc_prefix}</code>
+ <span className="text-[10px] font-semibold text-zinc-500">UPC Prefix</span>
+ <code className="font-mono text-xs font-bold bg-zinc-950 text-white px-1">{cohort.upc_prefix}</code>
  </div>
  <div className="flex justify-between items-center pb-2 border-b border-zinc-100">
- <span className="text-[10px] font-black uppercase text-zinc-500">Created</span>
+ <span className="text-[10px] font-semibold text-zinc-500">Created</span>
  <span className="text-xs font-bold uppercase text-foreground">{new Date(cohort.created_at).toLocaleDateString()}</span>
  </div>
  <div className="flex justify-between items-center">
- <span className="text-[10px] font-black uppercase text-zinc-500">Updated</span>
+ <span className="text-[10px] font-semibold text-zinc-500">Updated</span>
  <span className="text-xs font-bold uppercase text-foreground">{new Date(cohort.updated_at).toLocaleDateString()}</span>
  </div>
  {officialDomains.length > 0 && (
  <div className="flex flex-col gap-1 pt-2 border-t border-zinc-100">
- <span className="text-[10px] font-black uppercase text-zinc-500">Official Domain</span>
+ <span className="text-[10px] font-semibold text-zinc-500">Official Domain</span>
  <a
  href={`https://${officialDomains[0]}`}
  target="_blank"
@@ -567,8 +567,8 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  )}
  {cohort.scraper_config && (
  <div className="flex justify-between items-center pt-2 border-t border-zinc-100">
- <span className="text-[10px] font-black uppercase text-zinc-500">Config</span>
- <Badge variant="outline" className="rounded-none border border-border text-[9px] font-black uppercase">{cohort.scraper_config}</Badge>
+ <span className="text-[10px] font-semibold text-zinc-500">Config</span>
+ <Badge variant="outline" className="rounded-none border border-border text-[9px] font-semibold">{cohort.scraper_config}</Badge>
  </div>
  )}
  </CardContent>

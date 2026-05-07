@@ -165,7 +165,7 @@ export function CandidateUrlPicker({
     <div className="flex h-full min-h-0 flex-col gap-3">
       {skuReview.candidates.length === 0 ? (
         <div className="rounded-none border border-dashed border-border bg-muted/10 p-6">
-          <h3 className="text-sm font-black uppercase tracking-widest text-foreground">
+          <h3 className="text-sm font-semibold text-foreground">
             No Candidates Found
           </h3>
           <p className="mt-2 max-w-prose text-sm text-muted-foreground">
@@ -212,13 +212,13 @@ export function CandidateUrlPicker({
                   >
                     <span
                       className={cn(
-                        "inline-block rounded-none px-1 py-0 text-[8px] font-black uppercase tracking-widest leading-tight",
+                        "inline-block rounded-none px-1 py-0 text-[8px] font-semibold leading-tight",
                         isSelected ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
                       )}
                     >
                       {domainBadge.label}
                     </span>
-                    <span className="mt-1 w-full truncate text-[10px] font-black uppercase tracking-tight text-foreground">
+                    <span className="mt-1 w-full truncate text-[10px] font-semibold text-foreground">
                       {candidate.normalized_domain}
                     </span>
                     <span className="text-[9px] font-medium text-muted-foreground/80">
@@ -265,7 +265,7 @@ export function CandidateUrlPicker({
               <button
                 type="button"
                 onClick={() => setShowInactive((s) => !s)}
-                className="text-[10px] font-black uppercase tracking-widest text-muted-foreground underline-offset-2 hover:underline"
+                className="text-[10px] font-semibold text-muted-foreground underline-offset-2 hover:underline"
               >
                 {showInactive ? "Hide" : "Show"} Inactive ({inactiveCandidates.length})
               </button>
@@ -364,7 +364,7 @@ function SelectedCandidateDetail({
         </div>
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-semibold text-muted-foreground">
         <span>{candidate.normalized_domain}</span>
         <span>{formatTier(candidate.selection_tier)}</span>
         <span>Ranking: {formatScore(candidate.composite_score)}</span>
@@ -378,7 +378,7 @@ function SelectedCandidateDetail({
       </div>
 
       {candidate.title ? (
-        <h4 className="mt-3 text-sm font-black text-foreground">
+        <h4 className="mt-3 text-sm font-bold text-foreground">
           {candidate.title}
         </h4>
       ) : null}

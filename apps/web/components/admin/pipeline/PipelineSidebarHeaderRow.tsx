@@ -99,12 +99,12 @@ export function PipelineSidebarHeaderRow({
             />
           </div>
           <div className="flex-1 flex items-center gap-2 overflow-hidden min-w-0">
-            <div className="font-black text-[11px] uppercase tracking-widest text-foreground truncate shrink-0">
+            <div className="font-bold text-[11px] uppercase tracking-widest text-foreground truncate shrink-0">
               {formatPipelineBatchLabel(cohortId, cohortName || null)}
             </div>
             {cohortBrand && (
               <Badge variant="outline" className={cn(
-                "h-4 text-[9px] px-1 font-black uppercase tracking-widest shrink-0 rounded-none",
+                "h-4 text-[9px] px-1 font-semibold shrink-0 rounded-none",
                 hasConfiguredDomains
                   ? "border-brand-forest-green text-brand-forest-green bg-brand-forest-green/10"
                   : "border-brand-gold text-brand-burgundy bg-brand-gold/10"
@@ -114,7 +114,7 @@ export function PipelineSidebarHeaderRow({
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-auto">
-            <Badge variant="secondary" className="h-4 text-[9px] px-1 bg-foreground text-background font-black uppercase tracking-widest border-none rounded-none">
+            <Badge variant="secondary" className="h-4 text-[9px] px-1 bg-foreground text-background font-semibold border-none rounded-none">
               {groupProducts.length}
             </Badge>
             {cohortId !== "ungrouped" && onEditCohort && (

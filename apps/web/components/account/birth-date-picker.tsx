@@ -54,12 +54,12 @@ export function BirthDatePicker({ value, onChange, className }: BirthDatePickerP
     return (
         <div className={cn("grid grid-cols-3 gap-2", className)}>
             <div className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Year</span>
+                <span className="text-[10px] font-semibold text-zinc-500">Year</span>
                 <Select value={year} onValueChange={setYear}>
-                    <SelectTrigger className="h-12 border-2 border-zinc-900 rounded-none font-bold focus:ring-0">
+                    <SelectTrigger className="h-12 border border-zinc-200 rounded-lg rounded-none font-bold focus:ring-0">
                         <SelectValue placeholder="Year" />
                     </SelectTrigger>
-                    <SelectContent className="border-2 border-zinc-900 rounded-none shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                    <SelectContent className="border border-zinc-200 rounded-lg rounded-none shadow-sm">
                         {years.map((y) => (
                             <SelectItem key={y} value={y.toString()} className="font-bold">
                                 {y}
@@ -70,12 +70,12 @@ export function BirthDatePicker({ value, onChange, className }: BirthDatePickerP
             </div>
 
             <div className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Month</span>
+                <span className="text-[10px] font-semibold text-zinc-500">Month</span>
                 <Select value={month} onValueChange={setMonth}>
-                    <SelectTrigger className="h-12 border-2 border-zinc-900 rounded-none font-bold focus:ring-0">
+                    <SelectTrigger className="h-12 border border-zinc-200 rounded-lg rounded-none font-bold focus:ring-0">
                         <SelectValue placeholder="Month" />
                     </SelectTrigger>
-                    <SelectContent className="border-2 border-zinc-900 rounded-none shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                    <SelectContent className="border border-zinc-200 rounded-lg rounded-none shadow-sm">
                         {months.map((m) => (
                             <SelectItem key={m.value} value={m.value.toString()} className="font-bold">
                                 {m.label}
@@ -86,12 +86,12 @@ export function BirthDatePicker({ value, onChange, className }: BirthDatePickerP
             </div>
 
             <div className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Day</span>
+                <span className="text-[10px] font-semibold text-zinc-500">Day</span>
                 <Select value={day} onValueChange={setDay}>
-                    <SelectTrigger className="h-12 border-2 border-zinc-900 rounded-none font-bold focus:ring-0">
+                    <SelectTrigger className="h-12 border border-zinc-200 rounded-lg rounded-none font-bold focus:ring-0">
                         <SelectValue placeholder="Day" />
                     </SelectTrigger>
-                    <SelectContent className="border-2 border-zinc-900 rounded-none shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                    <SelectContent className="border border-zinc-200 rounded-lg rounded-none shadow-sm">
                         {days.map((d) => (
                             <SelectItem key={d} value={d.toString()} className="font-bold">
                                 {d}

@@ -52,7 +52,7 @@ export default async function OfficialBrandReviewPage({ searchParams }: PageProp
         compactHeader
       >
         <div className="rounded-none border border-border bg-card p-6">
-          <h2 className="text-lg font-black uppercase tracking-tighter text-foreground">
+          <h2 className="text-lg font-semibold text-foreground">
             Missing Cohort
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -86,7 +86,7 @@ export default async function OfficialBrandReviewPage({ searchParams }: PageProp
         compactHeader
       >
         <div className="rounded-none border border-brand-burgundy bg-brand-burgundy/5 p-6">
-          <h2 className="text-lg font-black uppercase tracking-tighter text-brand-burgundy">
+          <h2 className="text-lg font-semibold text-brand-burgundy">
             Could Not Load Candidates
           </h2>
           <p className="mt-1 text-sm text-foreground">{fetchErrorMessage}</p>

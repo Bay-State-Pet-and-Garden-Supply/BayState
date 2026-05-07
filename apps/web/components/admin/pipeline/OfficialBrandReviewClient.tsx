@@ -460,7 +460,7 @@ export function OfficialBrandReviewClient({
               <Badge variant="outline" className="bg-primary/5 text-primary">
                 Cohort
               </Badge>
-              <h2 className="text-xl font-black uppercase tracking-tighter text-foreground">
+              <h2 className="text-xl font-semibold text-foreground">
                 {data.cohort.name ?? `Batch ${data.cohort.id.slice(0, 8)}`}
               </h2>
               <span className="text-sm font-bold text-muted-foreground">
@@ -469,7 +469,7 @@ export function OfficialBrandReviewClient({
             </div>
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               <div className="flex items-center gap-1.5 min-w-0">
-                <span className="shrink-0 font-black uppercase tracking-widest text-foreground">
+                <span className="shrink-0 font-semibold text-foreground">
                   Domains:
                 </span>
                 <span className="font-mono line-clamp-2 break-all">
@@ -478,7 +478,7 @@ export function OfficialBrandReviewClient({
                     : "No configured domains"}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 border-l border-border pl-3 text-[10px] font-black uppercase tracking-widest">
+              <div className="flex items-center gap-1.5 border-l border-border pl-3 text-[10px] font-semibold">
                 <Keyboard className="h-3.5 w-3.5" />
                 <span>Up/Down: SKU • Left/Right: URL</span>
               </div>
@@ -543,7 +543,7 @@ export function OfficialBrandReviewClient({
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(260px,340px)_1fr]">
         <aside className="flex min-h-0 flex-col overflow-hidden rounded-none border border-border bg-card">
           <div className="shrink-0 border-b border-border p-3">
-            <h3 className="text-xs font-black uppercase tracking-widest text-foreground">
+            <h3 className="text-xs font-semibold text-foreground">
               Product Master List
             </h3>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -574,17 +574,17 @@ export function OfficialBrandReviewClient({
                     <StatusIcon className={cn("mt-0.5 h-4 w-4 shrink-0", status.className)} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-black text-foreground">
+                        <span className="font-mono text-xs font-bold text-foreground">
                           {entry.sku}
                         </span>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                        <span className="text-[10px] font-semibold text-muted-foreground">
                           {status.label}
                         </span>
                       </div>
                       <p className="mt-1 line-clamp-2 text-sm font-bold leading-5 text-foreground">
                         {entry.product_name ?? "Unnamed product"}
                       </p>
-                      <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                      <p className="mt-1 text-[10px] font-semibold text-muted-foreground">
                         {entry.candidate_count} candidate{entry.candidate_count === 1 ? "" : "s"}
                       </p>
                     </div>
@@ -614,7 +614,7 @@ export function OfficialBrandReviewClient({
                         <Badge variant="warning">Needs Review</Badge>
                       ) : null}
                     </div>
-                    <h3 className="mt-3 text-xl font-black tracking-tight text-foreground">
+                    <h3 className="mt-3 text-xl font-bold tracking-tight text-foreground">
                       {activeEntry.product_name ?? "Unnamed product"}
                     </h3>
                     {activeEntry.predicted_name ? (
@@ -654,7 +654,7 @@ export function OfficialBrandReviewClient({
             <div className="flex h-full items-center justify-center p-8 text-center">
               <div>
                 <PackageSearch className="mx-auto h-10 w-10 text-muted-foreground" />
-                <h3 className="mt-3 text-lg font-black uppercase tracking-tighter text-foreground">
+                <h3 className="mt-3 text-lg font-semibold text-foreground">
                   No Active SKU
                 </h3>
                 <p className="mt-1 text-sm text-muted-foreground">

@@ -28,7 +28,7 @@ export function ChunkStatusGrid({ chunks, selectedChunkId, onSelectChunk }: Chun
 
  return (
  <TooltipProvider delayDuration={0}>
- <div className="flex flex-wrap gap-1.5 p-4 border-4 border-border bg-card">
+ <div className="flex flex-wrap gap-1.5 p-4 border border-border rounded-lg bg-card">
  {chunks.map((chunk) => {
  const isSelected = selectedChunkId === chunk.id;
  const status = chunk.status;
@@ -48,7 +48,7 @@ export function ChunkStatusGrid({ chunks, selectedChunkId, onSelectChunk }: Chun
  />
  </TooltipTrigger>
  <TooltipContent side="top" className="rounded-none border-2 border-border bg-card p-2">
- <div className="text-[10px] font-black uppercase tracking-tighter space-y-1">
+ <div className="text-[10px] font-semibold space-y-1">
  <p className="text-foreground">Batch #{chunk.chunk_index}</p>
  <p className={cn(
  "px-1 py-0.5 inline-block",

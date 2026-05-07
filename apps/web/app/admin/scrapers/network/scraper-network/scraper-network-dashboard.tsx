@@ -238,12 +238,12 @@ export function ScraperNetworkDashboard() {
  {isRealtimeConnected ? (
  <div className="flex items-center gap-1.5">
  <div className="h-2 w-2 rounded-sm bg-brand-forest-green border border-[var(--surface-admin-border)]" />
- <span className="text-[10px] font-black uppercase tracking-tight text-brand-forest-green">Connected</span>
+ <span className="text-[10px] font-semibold text-brand-forest-green">Connected</span>
  </div>
  ) : (
  <div className="flex items-center gap-1.5">
  <div className="h-2 w-2 rounded-sm bg-brand-burgundy border border-[var(--surface-admin-border)] animate-pulse" />
- <span className="text-[10px] font-black uppercase tracking-tight text-brand-burgundy">Disconnected</span>
+ <span className="text-[10px] font-semibold text-brand-burgundy">Disconnected</span>
  </div>
  )}
  </div>
@@ -261,7 +261,7 @@ export function ScraperNetworkDashboard() {
  </div>
  <Button 
  onClick={() => setShowAddRunnerModal(true)} 
- className="bg-brand-burgundy text-white border-4 border-border hover:translate-x-[2px] hover:translate-y-[2px] hover: transition-all rounded-none font-black uppercase tracking-tighter h-12 px-6"
+ className="bg-brand-burgundy text-white border border-border rounded-lg hover:-translate-y-1 hover: transition-all rounded-none font-semibold h-12 px-6"
  >
  <Plus className="mr-2 h-5 w-5" />
  Add Runner
@@ -270,48 +270,48 @@ export function ScraperNetworkDashboard() {
 
  {/* Network Overview Cards */}
  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
- <div className="bg-card border-4 border-border p-4">
+ <div className="bg-card border border-border rounded-lg p-4">
  <div className="flex items-center justify-between mb-2">
- <p className="text-[10px] font-black uppercase tracking-tight text-zinc-500">Total Runners</p>
+ <p className="text-[10px] font-semibold text-zinc-500">Total Runners</p>
  <Server className="h-4 w-4 text-zinc-400" />
  </div>
- <p className="text-3xl font-black leading-none">{stats.totalRunners}</p>
+ <p className="text-3xl font-bold leading-none">{stats.totalRunners}</p>
  </div>
- <div className="bg-card border-4 border-border p-4">
+ <div className="bg-card border border-border rounded-lg p-4">
  <div className="flex items-center justify-between mb-2">
- <p className="text-[10px] font-black uppercase tracking-tight text-zinc-500">Online</p>
+ <p className="text-[10px] font-semibold text-zinc-500">Online</p>
  <Activity className="h-4 w-4 text-brand-forest-green" />
  </div>
- <p className="text-3xl font-black leading-none text-brand-forest-green">{stats.online}</p>
+ <p className="text-3xl font-bold leading-none text-brand-forest-green">{stats.online}</p>
  </div>
- <div className="bg-card border-4 border-border p-4">
+ <div className="bg-card border border-border rounded-lg p-4">
  <div className="flex items-center justify-between mb-2">
- <p className="text-[10px] font-black uppercase tracking-tight text-zinc-500">Busy</p>
+ <p className="text-[10px] font-semibold text-zinc-500">Busy</p>
  <Clock className="h-4 w-4 text-brand-gold" />
  </div>
- <p className="text-3xl font-black leading-none text-brand-gold">{stats.busy}</p>
+ <p className="text-3xl font-bold leading-none text-brand-gold">{stats.busy}</p>
  </div>
- <div className="bg-card border-4 border-border p-4">
+ <div className="bg-card border border-border rounded-lg p-4">
  <div className="flex items-center justify-between mb-2">
- <p className="text-[10px] font-black uppercase tracking-tight text-zinc-500">Disabled</p>
+ <p className="text-[10px] font-semibold text-zinc-500">Disabled</p>
  <ShieldAlert className="h-4 w-4 text-orange-500" />
  </div>
- <p className="text-3xl font-black leading-none text-orange-600">{stats.disabled}</p>
+ <p className="text-3xl font-bold leading-none text-orange-600">{stats.disabled}</p>
  </div>
- <div className="bg-card border-4 border-border p-4">
+ <div className="bg-card border border-border rounded-lg p-4">
  <div className="flex items-center justify-between mb-2">
- <p className="text-[10px] font-black uppercase tracking-tight text-zinc-500">Offline</p>
+ <p className="text-[10px] font-semibold text-zinc-500">Offline</p>
  <AlertCircle className="h-4 w-4 text-brand-burgundy" />
  </div>
- <p className="text-3xl font-black leading-none text-brand-burgundy">{stats.offline}</p>
+ <p className="text-3xl font-bold leading-none text-brand-burgundy">{stats.offline}</p>
  </div>
  </div>
 
  {/* Network Health (Distribution) */}
- <div className="bg-card border-4 border-border">
+ <div className="bg-card border border-border rounded-lg">
  <div className="p-4 border-b-4 border-border bg-muted">
- <h3 className="text-lg font-black uppercase tracking-tighter">Network Health</h3>
- <p className="text-[10px] font-black uppercase tracking-tight text-zinc-500">
+ <h3 className="text-lg font-semibold">Network Health</h3>
+ <p className="text-[10px] font-semibold text-zinc-500">
  Distribution of runners by current status
  </p>
  </div>
@@ -320,11 +320,11 @@ export function ScraperNetworkDashboard() {
  <div className="grid gap-6 md:grid-cols-2">
  <div className="space-y-2">
  <div className="flex items-center justify-between">
- <span className="text-[10px] font-black uppercase tracking-tight flex items-center gap-2">
+ <span className="text-[10px] font-semibold flex items-center gap-2">
  <div className="h-2 w-2 bg-brand-forest-green border border-border" />
  Online
  </span>
- <span className="text-[10px] font-black uppercase tracking-tight">
+ <span className="text-[10px] font-semibold">
  {stats.online} / {stats.totalRunners}
  </span>
  </div>
@@ -337,11 +337,11 @@ export function ScraperNetworkDashboard() {
  </div>
  <div className="space-y-2">
  <div className="flex items-center justify-between">
- <span className="text-[10px] font-black uppercase tracking-tight flex items-center gap-2">
+ <span className="text-[10px] font-semibold flex items-center gap-2">
  <div className="h-2 w-2 bg-brand-gold border border-border" />
  Busy
  </span>
- <span className="text-[10px] font-black uppercase tracking-tight">
+ <span className="text-[10px] font-semibold">
  {stats.busy} / {stats.totalRunners}
  </span>
  </div>
@@ -354,11 +354,11 @@ export function ScraperNetworkDashboard() {
  </div>
  <div className="space-y-2">
  <div className="flex items-center justify-between">
- <span className="text-[10px] font-black uppercase tracking-tight flex items-center gap-2">
+ <span className="text-[10px] font-semibold flex items-center gap-2">
  <div className="h-2 w-2 bg-orange-500 border border-border" />
  Disabled
  </span>
- <span className="text-[10px] font-black uppercase tracking-tight">
+ <span className="text-[10px] font-semibold">
  {stats.disabled} / {stats.totalRunners}
  </span>
  </div>
@@ -371,11 +371,11 @@ export function ScraperNetworkDashboard() {
  </div>
  <div className="space-y-2">
  <div className="flex items-center justify-between">
- <span className="text-[10px] font-black uppercase tracking-tight flex items-center gap-2">
+ <span className="text-[10px] font-semibold flex items-center gap-2">
  <div className="h-2 w-2 bg-brand-burgundy border border-border" />
  Offline
  </span>
- <span className="text-[10px] font-black uppercase tracking-tight">
+ <span className="text-[10px] font-semibold">
  {stats.offline} / {stats.totalRunners}
  </span>
  </div>
@@ -398,8 +398,8 @@ export function ScraperNetworkDashboard() {
  {/* Runner Grid */}
  <div className="space-y-4">
  <div className="flex items-center justify-between">
- <h2 className="text-2xl font-black uppercase tracking-tighter">Active Runners</h2>
- <Badge variant="outline" className="border-2 border-border font-black uppercase tracking-tight">
+ <h2 className="text-2xl font-semibold">Active Runners</h2>
+ <Badge variant="outline" className="border-2 border-border font-semibold">
  {runnersArray.length} Total
  </Badge>
  </div>
@@ -425,7 +425,7 @@ export function ScraperNetworkDashboard() {
  </div>
  ) : (
  <div className="bg-muted border-4 border-dashed border-border p-12 text-center">
- <p className="font-black uppercase tracking-tighter text-zinc-400">
+ <p className="font-semibold text-zinc-400">
  No runners currently connected. Start scraper runner instances to see them here.
  </p>
  </div>
@@ -434,9 +434,9 @@ export function ScraperNetworkDashboard() {
 
  {/* Add Runner Modal */}
  <Dialog open={showAddRunnerModal} onOpenChange={handleCloseModal}>
- <DialogContent className="sm:max-w-lg border-4 border-border rounded-none p-8">
+ <DialogContent className="sm:max-w-lg border border-border rounded-lg rounded-none p-8">
  <DialogHeader className="mb-6">
- <DialogTitle className="flex items-center gap-2 text-2xl font-black uppercase tracking-tighter">
+ <DialogTitle className="flex items-center gap-2 text-2xl font-semibold">
  <Key className="h-6 w-6" />
  {createdApiKey ? "Runner Created" : "Add New Runner"}
  </DialogTitle>
@@ -451,11 +451,11 @@ export function ScraperNetworkDashboard() {
  <div className="space-y-4">
  <div className="border-2 border-border bg-muted p-4 space-y-3">
  <div>
- <Label className="text-[10px] font-black uppercase tracking-tight text-zinc-500">Runner Name</Label>
- <p className="font-black uppercase tracking-tight">{createdRunnerName}</p>
+ <Label className="text-[10px] font-semibold text-zinc-500">Runner Name</Label>
+ <p className="font-semibold">{createdRunnerName}</p>
  </div>
  <div>
- <Label className="text-[10px] font-black uppercase tracking-tight text-zinc-500">API Key</Label>
+ <Label className="text-[10px] font-semibold text-zinc-500">API Key</Label>
  <div className="flex items-center gap-2 mt-1">
  <code className="flex-1 border-2 border-border bg-card px-2 py-1 text-xs font-mono break-all">
  {createdApiKey}
@@ -475,7 +475,7 @@ export function ScraperNetworkDashboard() {
  Use this API key to authenticate your runner. Store it securely.
  </p>
  <div className="border-2 border-border bg-muted p-4 space-y-2">
- <Label className="text-[10px] font-black uppercase tracking-tight text-zinc-500">One-line installer</Label>
+ <Label className="text-[10px] font-semibold text-zinc-500">One-line installer</Label>
  <div className="flex items-center gap-2">
  <code className="flex-1 border-2 border-border bg-card px-2 py-1 text-xs font-mono break-all">
  {installCommand}
@@ -494,7 +494,7 @@ export function ScraperNetworkDashboard() {
  ) : (
  <div className="space-y-4 py-4">
  <div className="space-y-2">
- <Label htmlFor="runner-name" className="font-black uppercase text-xs">Runner Name</Label>
+ <Label htmlFor="runner-name" className="font-semibold text-xs">Runner Name</Label>
  <Input
  id="runner-name"
  placeholder="e.g., macbook-air, server-us-east"
@@ -508,7 +508,7 @@ export function ScraperNetworkDashboard() {
  </p>
  </div>
  <div className="space-y-2">
- <Label htmlFor="runner-description" className="font-black uppercase text-xs">Description (Optional)</Label>
+ <Label htmlFor="runner-description" className="font-semibold text-xs">Description (Optional)</Label>
  <Input
  id="runner-description"
  placeholder="e.g., Production runner on MacBook Air"
@@ -525,7 +525,7 @@ export function ScraperNetworkDashboard() {
  {createdApiKey ? (
  <Button 
  onClick={handleCloseModal}
- className="bg-zinc-900 text-white border-2 border-border rounded-none font-black uppercase tracking-tight"
+ className="bg-zinc-900 text-white border-2 border-border rounded-none font-semibold"
  >
  Done
  </Button>
@@ -535,14 +535,14 @@ export function ScraperNetworkDashboard() {
  variant="outline" 
  onClick={handleCloseModal} 
  disabled={isCreatingRunner}
- className="border-2 border-border rounded-none font-black uppercase tracking-tight"
+ className="border-2 border-border rounded-none font-semibold"
  >
  Cancel
  </Button>
  <Button 
  onClick={handleCreateRunner} 
  disabled={isCreatingRunner || !newRunnerName.trim()}
- className="bg-brand-forest-green text-white border-2 border-border rounded-none font-black uppercase tracking-tight"
+ className="bg-brand-forest-green text-white border-2 border-border rounded-none font-semibold"
  >
  {isCreatingRunner ? "Creating..." : "Create Runner"}
  </Button>

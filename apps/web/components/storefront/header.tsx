@@ -39,7 +39,7 @@ const desktopNavigationTriggerClassName =
   "h-12 rounded-none bg-transparent px-4 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white focus:bg-white/10 focus:text-white data-[state=open]:bg-white data-[state=open]:text-zinc-950 data-[state=open]:hover:bg-white data-[state=open]:focus:bg-white";
 
 const desktopMegaMenuContentClassName =
-  "left-0 right-0 top-full z-[100] w-full overflow-hidden bg-white text-zinc-900 shadow-[0_24px_48px_rgba(15,23,42,0.12)] md:w-full";
+  "left-0 right-0 top-full z-[100] w-full overflow-hidden bg-white text-zinc-900 shadow-md md:w-full";
 
 function normalizeStorefrontUserRole(user: User | null): string | null {
   const metadataRoles = [
@@ -229,7 +229,7 @@ export function StorefrontHeader({
       <header 
         className="max-md:hidden sticky top-0 z-50 w-full flex flex-col border-b-2 border-zinc-900 shadow-md"
       >
-        <div className="bg-primary text-white border-b-4 border-zinc-900 shadow-[0_4px_0_rgba(0,0,0,1)]">
+        <div className="bg-primary text-white border-b-4 border-zinc-900 shadow-sm">
           <div className="container mx-auto flex h-20 items-center justify-between px-4">
             <Link 
               href="/" 
@@ -246,10 +246,10 @@ export function StorefrontHeader({
                 />
               </div>
               <div className="flex flex-col items-center">
-                <span className="font-black leading-none tracking-tighter text-white uppercase font-display group-hover:text-accent text-4xl">
+                <span className="font-bold leading-none tracking-tighter text-white uppercase font-display group-hover:text-accent text-4xl">
                   Bay State
                 </span>
-                <span className="hidden sm:block text-xs font-black leading-none text-white/80 uppercase tracking-[0.2em] mt-1 border-t border-white/20 pt-1 text-center w-full">
+                <span className="hidden sm:block text-xs font-bold leading-none text-white/80 uppercase tracking-[0.2em] mt-1 border-t border-white/20 pt-1 text-center w-full">
                   Pet & Garden Supply
                 </span>
               </div>
@@ -270,7 +270,7 @@ export function StorefrontHeader({
                 onClick={() => setIsCartOpen(true)}
               >
                 <ShoppingCart className="h-7 w-7 group-hover:scale-110 transition-transform" />
-                <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center bg-accent text-[12px] font-black text-accent-foreground border-4 border-zinc-900 shadow-[2px_2px_0_rgba(0,0,0,1)]">
+                <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center bg-accent text-[12px] font-bold text-accent-foreground border-4 border-zinc-900 shadow-sm">
                   {itemCount}
                 </span>
               </Button>
@@ -416,7 +416,7 @@ export function StorefrontHeader({
                     <NavigationMenuTrigger className={desktopNavigationTriggerClassName}>
                       More
                     </NavigationMenuTrigger>
-                    <NavigationMenuContent className="top-full z-[110] w-72 overflow-hidden rounded-b-xl border border-t-0 border-zinc-200 bg-white text-zinc-900 shadow-[0_16px_32px_rgba(15,23,42,0.16)] md:left-auto md:right-0">
+                    <NavigationMenuContent className="top-full z-[110] w-72 overflow-hidden rounded-b-xl border border-t-0 border-zinc-200 bg-white text-zinc-900 shadow-md md:left-auto md:right-0">
                       <div className="border-b border-zinc-100 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
                         Browse more
                       </div>
@@ -462,7 +462,7 @@ export function StorefrontHeader({
               className="object-contain"
             />
           </div>
-          <span className="font-black text-white uppercase tracking-tighter text-xl">
+          <span className="font-bold text-white uppercase tracking-tighter text-xl">
             Bay State
           </span>
         </Link>
@@ -477,7 +477,7 @@ export function StorefrontHeader({
             onClick={() => setIsCartOpen(true)}
           >
             <ShoppingCart className="h-6 w-6" />
-            <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center bg-accent text-[10px] font-black text-secondary-foreground border-2 border-zinc-900 shadow-[2px_2px_0_rgba(0,0,0,1)]">
+            <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center bg-accent text-[10px] font-bold text-secondary-foreground border border-zinc-200 rounded-lg shadow-sm">
               {itemCount}
             </span>
           </Button>

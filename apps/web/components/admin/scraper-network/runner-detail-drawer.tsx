@@ -92,7 +92,7 @@ export function RunnerDetailDrawer({
  className="sm:max-w-2xl border-l-4 border-border p-0 flex flex-col rounded-none"
  >
  <SheetHeader className="p-6 border-b-4 border-border bg-muted space-y-1">
- <SheetTitle className="text-2xl font-black uppercase tracking-tighter">
+ <SheetTitle className="text-2xl font-semibold">
  {isLoading ? 'Loading...' : runner?.name || 'Runner Details'}
  </SheetTitle>
  <SheetDescription className="font-mono text-xs text-zinc-500">
@@ -102,14 +102,14 @@ export function RunnerDetailDrawer({
  <div className="flex-1 overflow-y-auto p-6 bg-card">
  {isLoading ? (
  <div className="flex flex-col items-center justify-center h-64 space-y-4">
- <div className="animate-spin rounded-none h-12 w-12 border-4 border-border border-t-transparent"></div>
- <p className="font-black uppercase tracking-tighter text-sm">Synchronizing...</p>
+ <div className="animate-spin rounded-none h-12 w-12 border border-border rounded-lg border-t-transparent"></div>
+ <p className="font-semibold text-sm">Synchronizing...</p>
  </div>
  ) : runner ? (
  <RunnerDetailClient runner={runner} isEmbedded={true} />
  ) : (
  <div className="text-center py-12 border-4 border-dashed border-border">
- <p className="font-black uppercase tracking-tighter text-zinc-400">
+ <p className="font-semibold text-zinc-400">
  Runner not found or failed to load.
  </p>
  </div>

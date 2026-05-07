@@ -8,7 +8,7 @@ export function StorefrontFooter() {
       <div className="container mx-auto px-4 py-16">
         <div className="grid gap-12 sm:grid-cols-2">
           <div>
-            <h3 className="mb-4 text-2xl font-black text-white uppercase tracking-tighter font-display">
+            <h3 className="mb-4 text-2xl font-bold text-white uppercase tracking-tighter font-display">
               Bay State Pet & Garden
             </h3>
             <p className="text-zinc-400 mb-6 border-l-2 border-accent pl-3 text-xs uppercase font-bold tracking-widest">

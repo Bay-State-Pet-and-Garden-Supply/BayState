@@ -130,9 +130,9 @@ export function AlertBanner({
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-black uppercase tracking-widest text-foreground">{title}</p>
+        <p className="text-sm font-semibold text-foreground">{title}</p>
         {message && (
-          <p className="mt-1 text-xs font-black text-muted-foreground/80 leading-tight uppercase tracking-widest">{message}</p>
+          <p className="mt-1 text-xs font-bold text-muted-foreground/80 leading-tight uppercase tracking-widest">{message}</p>
         )}
 
         {actions && actions.length > 0 && (
@@ -143,7 +143,7 @@ export function AlertBanner({
                 size="sm"
                 variant={action.variant || "outline"}
                 onClick={action.onClick}
-                className="h-8 rounded-none border border-border text-[10px] font-black uppercase tracking-widest hover:bg-muted transition-all"
+                className="h-8 rounded-none border border-border text-[10px] font-semibold hover:bg-muted transition-all"
               >
                 {action.label}
               </Button>

@@ -41,10 +41,10 @@ export function UserMenu({ user, userRole }: { user: User | null; userRole: stri
             <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 group outline-none focus:outline-none">
                     <div className="hidden lg:flex flex-col items-end text-white/90 group-hover:text-white transition-colors">
-                        <span className="text-[10px] uppercase font-black tracking-[0.1em] opacity-70 leading-none mb-1">Account</span>
+                        <span className="text-[10px] font-semibold tracking-[0.1em] opacity-70 leading-none mb-1">Account</span>
                         <span className="text-sm font-bold leading-none tracking-tight">{displayName}</span>
                     </div>
-                    <div className="h-10 w-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-black border-2 border-primary shadow-[2px_2px_0px_rgba(0,0,0,0.2)] group-hover:shadow-[4px_4px_0px_rgba(0,0,0,0.2)] group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-all overflow-hidden">
+                    <div className="h-10 w-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-bold border-2 border-primary shadow-sm group-hover:shadow-sm group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-all overflow-hidden">
                         {user.user_metadata?.avatar_url ? (
                             <img src={user.user_metadata.avatar_url} alt={displayName} className="h-full w-full object-cover" />
                         ) : (
@@ -53,8 +53,8 @@ export function UserMenu({ user, userRole }: { user: User | null; userRole: stri
                     </div>
                 </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-none border-2 border-zinc-900 shadow-[8px_8px_0px_rgba(0,0,0,0.1)] p-2">
-                <DropdownMenuLabel className="font-black uppercase tracking-widest text-[10px] text-zinc-400 py-2 px-2">
+            <DropdownMenuContent align="end" className="w-56 rounded-none border border-zinc-200 rounded-lg shadow-sm p-2">
+                <DropdownMenuLabel className="font-semibold text-[10px] text-zinc-400 py-2 px-2">
                     Account Dashboard
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-zinc-100" />
@@ -86,7 +86,7 @@ export function UserMenu({ user, userRole }: { user: User | null; userRole: stri
                 
                 <DropdownMenuItem asChild className="cursor-pointer focus:bg-zinc-100 rounded-none py-3">
                     <form action={signOutAction} className="w-full">
-                        <button type="submit" className="flex w-full items-center gap-2 font-black uppercase tracking-widest text-[10px] text-zinc-500 hover:text-zinc-900 transition-colors">
+                        <button type="submit" className="flex w-full items-center gap-2 font-semibold text-[10px] text-zinc-500 hover:text-zinc-900 transition-colors">
                             <LogOut className="h-4 w-4" />
                             Sign Out
                         </button>

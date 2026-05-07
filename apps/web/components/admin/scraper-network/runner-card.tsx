@@ -69,7 +69,7 @@ export function RunnerCard({
  const currentStatus = statusConfig[runner.status] || statusConfig.offline;
 
  return (
- <Card className="border-4 border-border p-4 flex flex-col gap-4 bg-card rounded-none">
+ <Card className="border border-border rounded-lg p-4 flex flex-col gap-4 bg-card rounded-none">
  {/* Header */}
  <div className="flex justify-between items-start">
  <div className="flex items-center gap-3">
@@ -81,7 +81,7 @@ export function RunnerCard({
  title={currentStatus.label}
  />
  <div className="min-w-0">
- <h3 className="font-black uppercase tracking-tighter text-lg leading-none truncate" title={runner.name}>
+ <h3 className="font-semibold text-lg leading-none truncate" title={runner.name}>
  {runner.name}
  </h3>
  <p className="font-mono text-[10px] text-zinc-500 mt-1 truncate">
@@ -103,25 +103,25 @@ export function RunnerCard({
  <DropdownMenuContent align="end" className="border-2 border-border rounded-none p-1">
  <DropdownMenuItem 
  onClick={() => onUpdate(runner.id)} 
- className="font-black uppercase tracking-tight text-xs focus:bg-brand-gold focus:text-brand-burgundy cursor-pointer"
+ className="font-semibold text-xs focus:bg-brand-gold focus:text-brand-burgundy cursor-pointer"
  >
  <RefreshCw className="mr-2 h-3.5 w-3.5" /> Update
  </DropdownMenuItem>
  <DropdownMenuItem 
  onClick={() => onRotateApiKey(runner.id)} 
- className="font-black uppercase tracking-tight text-xs focus:bg-brand-gold focus:text-brand-burgundy cursor-pointer"
+ className="font-semibold text-xs focus:bg-brand-gold focus:text-brand-burgundy cursor-pointer"
  >
  <Key className="mr-2 h-3.5 w-3.5" /> Rotate API Key
  </DropdownMenuItem>
  <DropdownMenuItem 
  onClick={() => onRename(runner.id)} 
- className="font-black uppercase tracking-tight text-xs focus:bg-brand-gold focus:text-brand-burgundy cursor-pointer"
+ className="font-semibold text-xs focus:bg-brand-gold focus:text-brand-burgundy cursor-pointer"
  >
  <Edit2 className="mr-2 h-3.5 w-3.5" /> Rename
  </DropdownMenuItem>
  <DropdownMenuItem 
  onClick={() => onDelete(runner.id)} 
- className="font-black uppercase tracking-tight text-xs focus:bg-brand-burgundy focus:text-white text-brand-burgundy cursor-pointer"
+ className="font-semibold text-xs focus:bg-brand-burgundy focus:text-white text-brand-burgundy cursor-pointer"
  >
  <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
  </DropdownMenuItem>
@@ -133,14 +133,14 @@ export function RunnerCard({
  {/* Metrics Grid */}
  <div className="grid grid-cols-2 gap-2">
  <div className="bg-muted border-2 border-border p-2">
- <p className="text-[9px] font-black uppercase text-zinc-500 leading-none mb-1">Active Jobs</p>
- <p className="font-black text-xl leading-none">{runner.active_jobs}</p>
+ <p className="text-[9px] font-semibold text-zinc-500 leading-none mb-1">Active Jobs</p>
+ <p className="font-bold text-xl leading-none">{runner.active_jobs}</p>
  </div>
  <div className="bg-muted border-2 border-border p-2 overflow-hidden">
- <p className="text-[9px] font-black uppercase text-zinc-500 leading-none mb-1">Version</p>
+ <p className="text-[9px] font-semibold text-zinc-500 leading-none mb-1">Version</p>
  <div className="flex items-center gap-1">
  <Cpu className="h-3 w-3 shrink-0" />
- <p className="font-black text-xs leading-none truncate">{runner.version || "?.?.?"}</p>
+ <p className="font-bold text-xs leading-none truncate">{runner.version || "?.?.?"}</p>
  </div>
  </div>
  </div>
@@ -157,7 +157,7 @@ export function RunnerCard({
  />
  <Label 
  htmlFor={`runner-enabled-${runner.id}`} 
- className="font-black uppercase text-[10px] cursor-pointer select-none"
+ className="font-semibold text-[10px] cursor-pointer select-none"
  >
  {isEnabled ? "Enabled" : "Disabled"}
  </Label>

@@ -94,7 +94,7 @@ export function TimelineView({
             ))}
           </div>
           {jobs.length > 50 && (
-            <Badge variant="secondary" className="rounded-none border border-border font-black uppercase tracking-widest">
+            <Badge variant="secondary" className="rounded-none border border-border font-semibold">
               Showing 50 of {jobs.length} jobs
             </Badge>
           )}
@@ -104,12 +104,12 @@ export function TimelineView({
           <div className="min-w-[600px]">
             <div className="border-b border-border bg-muted/30 px-4 py-2">
               <div className="grid grid-cols-[200px_1fr] gap-4">
-                <span className="text-[10px] font-black uppercase tracking-widest text-foreground">Job</span>
+                <span className="text-[10px] font-semibold text-foreground">Job</span>
                 <div className="relative h-6">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <div
                       key={i}
-                      className="absolute top-0 text-[10px] font-black uppercase tracking-widest text-muted-foreground"
+                      className="absolute top-0 text-[10px] font-semibold text-muted-foreground"
                       style={{ left: `${i * 25}%` }}
                     >
                       {formatDuration(timeRangeMs - (i * timeRangeMs) / 4)}
@@ -153,17 +153,17 @@ export function TimelineView({
                     </TooltipTrigger>
                     <TooltipContent side="right" className="rounded-none border border-border bg-popover text-popover-foreground shadow-none">
                       <div className="space-y-1.5">
-                        <p className="font-black uppercase tracking-widest text-foreground">{job.name}</p>
+                        <p className="font-semibold text-foreground">{job.name}</p>
                         <div className="flex flex-col gap-1">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                          <p className="text-[10px] font-semibold text-muted-foreground">
                             Status: <span className="text-foreground">{job.status}</span>
                           </p>
                           {job.runner && (
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                            <p className="text-[10px] font-semibold text-muted-foreground">
                               Runner: <span className="text-foreground">{job.runner}</span>
                             </p>
                           )}
-                          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                          <p className="text-[10px] font-semibold text-muted-foreground">
                             Duration:{' '}
                             <span className="text-foreground">
                               {formatDuration(

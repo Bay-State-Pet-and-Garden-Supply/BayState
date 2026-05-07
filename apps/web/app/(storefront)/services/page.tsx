@@ -43,7 +43,7 @@ export default async function ServicesPage() {
       {/* Hero Section */}
       <section className="mb-12 text-center">
         <div className="mb-4 inline-flex items-center justify-center rounded-full bg-blue-100 p-4">
-          <Wrench className="h-8 w-8 text-blue-700" />
+          <Wrench className="h-8 w-8 text-foreground" />
         </div>
         <h1 className="mb-4 text-4xl font-bold tracking-tight text-zinc-900">
           Local Services
@@ -76,7 +76,7 @@ export default async function ServicesPage() {
                       </div>
 
                       {/* Service Info */}
-                      <h2 className="mb-2 text-xl font-semibold text-zinc-900 group-hover:text-blue-700">
+                      <h2 className="mb-2 text-xl font-semibold text-zinc-900 group-hover:text-primary">
                         {service.name}
                       </h2>
                       {service.description && (
@@ -107,7 +107,7 @@ export default async function ServicesPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="group-hover:bg-blue-50"
+                          className="group-hover:bg-muted"
                         >
                           Reserve
                           <ArrowRight className="ml-1 h-4 w-4" />
@@ -131,7 +131,7 @@ export default async function ServicesPage() {
       </section>
 
       {/* Contact CTA */}
-      <section className="mt-12 rounded-xl bg-blue-600 p-8 text-center text-white">
+      <section className="mt-12 rounded-xl bg-primary p-8 text-center text-white">
         <h2 className="mb-4 text-2xl font-semibold">Need Something Custom?</h2>
         <p className="mx-auto mb-6 max-w-xl text-white">
           Don&apos;t see what you&apos;re looking for? Give us a call and

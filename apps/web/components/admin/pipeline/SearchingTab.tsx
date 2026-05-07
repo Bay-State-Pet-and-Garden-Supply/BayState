@@ -62,7 +62,7 @@ export function SearchingTab({ className }: SearchingTabProps) {
     return (
       <div className={cn("flex flex-col items-center justify-center py-16 text-center", className)}>
         <Search className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-black uppercase tracking-tighter text-foreground">
+        <h3 className="text-lg font-semibold text-foreground">
           No recent URL discoveries
         </h3>
         <p className="mt-1 max-w-md text-sm text-muted-foreground">
@@ -82,7 +82,7 @@ export function SearchingTab({ className }: SearchingTabProps) {
   return (
     <div className={cn("space-y-4", className)}>
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-black uppercase tracking-tighter text-foreground">
+        <h3 className="text-base font-semibold text-foreground">
           Recent Brand URL Discoveries
         </h3>
         <Button variant="outline" size="sm" onClick={() => void fetchCohorts()}>
@@ -102,7 +102,7 @@ export function SearchingTab({ className }: SearchingTabProps) {
               <Search className="h-5 w-5 shrink-0 text-primary" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-black uppercase tracking-tight text-foreground">
+                  <span className="text-sm font-semibold text-foreground">
                     {cohort.name ?? `Batch ${cohort.cohort_id.slice(0, 8)}`}
                   </span>
                   {cohort.brand_name ? (
@@ -111,7 +111,7 @@ export function SearchingTab({ className }: SearchingTabProps) {
                     </Badge>
                   ) : null}
                 </div>
-                <div className="mt-1 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                <div className="mt-1 flex flex-wrap gap-2 text-[10px] font-semibold text-muted-foreground">
                   <span>{cohort.product_count} products</span>
                   <span className="text-primary">{cohort.candidate_count} SERP results</span>
                   <span>{cohort.skus_with_selection} selected</span>
