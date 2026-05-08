@@ -4,7 +4,8 @@ import {
   type UIMessage,
   stepCountIs,
 } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
+import { createDeepSeek } from "@ai-sdk/deepseek";
+import { getDeepSeekBaseURL } from "@/lib/ai-scraping/deepseek";
 import { getAIConsolidationRuntimeConfig } from "@/lib/ai-scraping/credentials";
 import { DEFAULT_AI_MODEL } from "@/lib/ai-scraping/models";
 import { createClient } from "@/lib/supabase/server";
@@ -19,10 +20,13 @@ import {
 
 const FINALIZATION_COPILOT_MODEL = DEFAULT_AI_MODEL;
 const FINALIZATION_COPILOT_MISSING_KEY_ERROR =
-  "OpenAI API key is not configured. Save it in Admin -> Settings -> AI Scraping Settings before using Finalization Copilot.";
+  "DeepSeek API key is not configured. Save it in Admin -> Settings -> AI Scraping Settings before using Finalization Copilot.";
 
 function buildFinalizationCopilotModel(apiKey: string, modelId: string, baseURL?: string) {
-  return createOpenAI({ apiKey, baseURL })(modelId);
+  return createDeepSeek({
+    apiKey,
+    ...(baseURL ? { baseURL: getDeepSeekBaseURL(baseURL) } : {}),
+  })(modelId);
 }
 
 function toRecord(value: unknown): Record<string, unknown> {
@@ -43,10 +47,12 @@ function buildInstructions(context: FinalizationCopilotContext): string {
         `price: ${context.selectedDraft.price || "(empty)"}`,
         `brandId: ${context.selectedDraft.brandId}`,
         `brandName: ${context.selectedDraft.brandName || "(none)"}`,
+        `category: ${context.selectedDraft.category || "(empty)"}`,
         `stockStatus: ${context.selectedDraft.stockStatus}`,
         `availability: ${context.selectedDraft.availability || "(empty)"}`,
         `images: ${context.selectedDraft.selectedImages.length} selected`,
         `pages: ${context.selectedDraft.productOnPages.join(", ") || "(none)"}`,
+        `sourceCount: ${Object.keys(context.selectedDraft.sources).length}`,
         `isSpecialOrder: ${context.selectedDraft.isSpecialOrder}`,
         `minimumQuantity: ${context.selectedDraft.minimumQuantity}`,
         `searchKeywords: ${context.selectedDraft.searchKeywords || "(empty)"}`,
@@ -85,6 +91,7 @@ Rules:
 - Use bulkAssignBrand only when the same brand should be applied to every targeted product.
 - Use bulkUpdateStorePages only when the same page change should apply across the full scope.
 - Use createBrand only when the requested brand does not already exist.
+- Use addSourceUrl or removeSource when the user wants to add or remove custom product source URLs from the selected draft.
 - Draft-edit tools stage changes for human review. After staging edits, tell the user to review them. Accepting staged changes autosaves; rejecting staged changes restores the prior draft.
 - Do not call saveDraft, saveProducts, approveProduct, approveProducts, rejectProduct, or rejectProducts in the same response after staging draft edits.
 - Use saveDraft or saveProducts only when the user wants to save and there are no staged copilot edits waiting for review.
@@ -102,7 +109,8 @@ Image workflow rules:
 Field mapping reference:
 - stockStatus accepts "in_stock", "out_of_stock", or "pre_order" (use setProductFields to change it).
 - searchKeywords is a free-text field for search optimization (use setProductFields to change it).
-- All editable fields via setProductFields: name, description, longDescription, price, weight, stockStatus, availability, minimumQuantity, searchKeywords, gtin, isSpecialOrder.`;
+- setProductFields can directly edit: name, description, longDescription, price, weight, category, stockStatus, availability, minimumQuantity, searchKeywords, gtin, isSpecialOrder.
+- Other editable draft fields are handled by dedicated tools: brand assignment, ShopSite pages, selected images, and custom source URLs.`;
 }
 
 export const finalizationCopilotAgent = new ToolLoopAgent({
@@ -116,20 +124,21 @@ export const finalizationCopilotAgent = new ToolLoopAgent({
     "You are Bay State's finalization copilot. Use tools to inspect and update selected products or explicit workspace scopes safely.",
   prepareCall: async ({ options, ...settings }) => {
     const runtimeConfig = await getAIConsolidationRuntimeConfig();
-    const openaiApiKey = (
-      runtimeConfig.openai_api_key ?? runtimeConfig.llm_api_key
+    const deepseekApiKey = (
+      runtimeConfig.deepseek_api_key ?? runtimeConfig.llm_api_key
     )?.trim();
-    if (!openaiApiKey) {
+    if (!deepseekApiKey) {
       throw new Error(FINALIZATION_COPILOT_MISSING_KEY_ERROR);
     }
     const modelId = runtimeConfig.llm_model?.trim() || FINALIZATION_COPILOT_MODEL;
     const baseURL = runtimeConfig.llm_base_url?.trim();
 
+
     const supabase = await createClient();
 
     return {
       ...settings,
-      model: buildFinalizationCopilotModel(openaiApiKey, modelId, baseURL),
+      model: buildFinalizationCopilotModel(deepseekApiKey, modelId, baseURL),
       instructions: buildInstructions(options),
       tools: createFinalizationCopilotTools({
         searchBrands: async (query) => {

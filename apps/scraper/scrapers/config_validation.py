@@ -36,8 +36,8 @@ def validate_config() -> ValidationReport:
     """Validate all required configuration environment variables.
 
     Checks:
-    - OPENAI_API_KEY: exists, not empty, starts with "sk-"
-    - AI_SEARCH_PROVIDER: optional, one of auto/serper/gemini
+    - DEEPSEEK_API_KEY: exists, not empty
+    - AI_SEARCH_PROVIDER: optional, one of auto/serper
     - SERPER_API_KEY: required only when provider resolves to serper
     - SERPAPI_API_KEY and BRAVE_API_KEY: deprecated and ignored
     - SCRAPER_API_URL: exists, valid URL format
@@ -49,23 +49,19 @@ def validate_config() -> ValidationReport:
     errors: list[str] = []
     warnings: list[str] = []
 
-    # Validate OPENAI_API_KEY
-    openai_key = os.environ.get("OPENAI_API_KEY")
-    if not openai_key:
-        errors.append("OPENAI_API_KEY is not set")
-    elif not openai_key.strip():
-        errors.append("OPENAI_API_KEY is empty")
-    elif not openai_key.startswith("sk-"):
-        errors.append("OPENAI_API_KEY must start with 'sk-'")
-    else:
-        # Check for minimum length (OpenAI keys are typically 40+ chars)
-        if len(openai_key) < 40:
-            warnings.append("OPENAI_API_KEY may be truncated or invalid")
+    # Validate DEEPSEEK_API_KEY
+    deepseek_key = os.environ.get("DEEPSEEK_API_KEY")
+    if not deepseek_key:
+        errors.append("DEEPSEEK_API_KEY is not set")
+    elif not deepseek_key.strip():
+        errors.append("DEEPSEEK_API_KEY is empty")
+    elif len(deepseek_key) < 20:
+        warnings.append("DEEPSEEK_API_KEY may be truncated or invalid")
 
     # Validate search provider credentials
     provider = str(os.environ.get("AI_SEARCH_PROVIDER") or "auto").strip().lower() or "auto"
-    if provider not in {"auto", "serper", "gemini", "serpapi", "brave"}:
-        errors.append("AI_SEARCH_PROVIDER must be one of: auto, serper, gemini")
+    if provider not in {"auto", "serper", "serpapi", "brave"}:
+        errors.append("AI_SEARCH_PROVIDER must be one of: auto, serper")
         provider = "auto"
 
     effective_provider = "serper" if provider in {"serpapi", "brave"} else provider

@@ -1,4 +1,4 @@
-"""Helpers for OpenAI-first LLM runtime configuration."""
+"""Helpers for DeepSeek-first LLM runtime configuration."""
 
 from __future__ import annotations
 
@@ -8,10 +8,12 @@ from typing import Literal
 
 from openai import AsyncOpenAI
 
-LLMProvider = Literal["openai", "openai_compatible"]
-DEFAULT_LLM_MODEL = "gpt-4o-mini"
+LLMProvider = Literal["deepseek", "openai", "openai_compatible"]
+DEFAULT_LLM_MODEL = "deepseek-chat"
+DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 DEFAULT_OPENAI_COMPATIBLE_MODEL = "google/gemma-3-12b-it"
 LOCAL_OPENAI_COMPATIBLE_API_KEY = "baystate-local"
+DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
 
 
 def _normalize_optional_string(value: str | None) -> str | None:
@@ -32,11 +34,13 @@ def _normalize_base_url(value: str | None) -> str | None:
 
 def normalize_llm_provider(value: str | None) -> LLMProvider:
     normalized = (_normalize_optional_string(value) or "").lower()
+    if normalized == "deepseek":
+        return "deepseek"
     if normalized == "openai":
         return "openai"
     if normalized == "openai_compatible":
         return "openai_compatible"
-    return "openai"
+    return "deepseek"
 
 
 @dataclass(frozen=True)
@@ -59,21 +63,24 @@ def resolve_llm_runtime(
     api_key: str | None = None,
 ) -> LLMRuntimeConfig:
     normalized_provider = normalize_llm_provider(provider)
-    default_model = DEFAULT_LLM_MODEL
+
     if normalized_provider == "openai_compatible":
         default_model = DEFAULT_OPENAI_COMPATIBLE_MODEL
-    normalized_model = _normalize_optional_string(model) or default_model
-
-    # Always attempt to resolve base_url and api_key from specialized env vars or provided args
-    if normalized_provider == "openai_compatible":
+        normalized_model = _normalize_optional_string(model) or default_model
         normalized_base_url = _normalize_base_url(base_url or os.getenv("OPENAI_COMPATIBLE_BASE_URL"))
         normalized_api_key = _normalize_optional_string(api_key or os.getenv("OPENAI_COMPATIBLE_API_KEY"))
         if normalized_base_url and normalized_api_key is None:
             normalized_api_key = LOCAL_OPENAI_COMPATIBLE_API_KEY
-    else:
-        # Default openai provider can also use a custom base_url (e.g. OpenAI-compatible endpoint)
+    elif normalized_provider == "openai":
+        default_model = DEFAULT_OPENAI_MODEL
+        normalized_model = _normalize_optional_string(model) or default_model
         normalized_base_url = _normalize_base_url(base_url or os.getenv("OPENAI_BASE_URL"))
         normalized_api_key = _normalize_optional_string(api_key or os.getenv("OPENAI_API_KEY"))
+    else:
+        default_model = DEFAULT_LLM_MODEL
+        normalized_model = _normalize_optional_string(model) or default_model
+        normalized_base_url = _normalize_base_url(base_url or os.getenv("DEEPSEEK_BASE_URL") or DEFAULT_DEEPSEEK_BASE_URL)
+        normalized_api_key = _normalize_optional_string(api_key or os.getenv("DEEPSEEK_API_KEY"))
 
     return LLMRuntimeConfig(
         provider=normalized_provider,
@@ -87,8 +94,6 @@ def create_async_openai_client(runtime: LLMRuntimeConfig) -> AsyncOpenAI | None:
     if runtime.api_key is None:
         return None
 
-    # If base_url is None, AsyncOpenAI will naturally use official OpenAI endpoints
-    # or pick up OPENAI_BASE_URL from the environment automatically.
     return AsyncOpenAI(
         api_key=runtime.api_key,
         base_url=runtime.base_url,

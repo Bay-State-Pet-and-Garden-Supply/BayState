@@ -116,6 +116,7 @@ const setProductFieldsInputSchema = z
     longDescription: z.string().optional(),
     price: z.number().min(0).optional(),
     weight: z.string().optional(),
+    category: z.string().optional(),
     stockStatus: z.enum(FINALIZATION_STOCK_STATUS_VALUES).optional(),
     availability: z.string().optional(),
     minimumQuantity: z.number().int().min(0).optional(),
@@ -240,6 +241,18 @@ export type RemoveSelectedImagesInput = z.infer<
   typeof removeSelectedImagesInputSchema
 >;
 
+const addSourceUrlInputSchema = z.object({
+  url: z.string().url(),
+});
+
+export type AddSourceUrlInput = z.infer<typeof addSourceUrlInputSchema>;
+
+const removeSourceInputSchema = z.object({
+  sourceKey: z.string().min(1),
+});
+
+export type RemoveSourceInput = z.infer<typeof removeSourceInputSchema>;
+
 const restoreSavedDraftInputSchema = noteInputSchema;
 export type RestoreSavedDraftInput = z.infer<
   typeof restoreSavedDraftInputSchema
@@ -338,7 +351,7 @@ export function createFinalizationCopilotTools(
 
     setProductFields: tool({
       description:
-        "Update one or more editable product fields such as the name, descriptions, price, weight, stock status, availability text, minimum quantity, search keywords, GTIN, or the special-order flag.",
+        "Update one or more editable product fields such as the name, descriptions, price, weight, category, stock status, availability text, minimum quantity, search keywords, GTIN, or the special-order flag.",
       inputSchema: setProductFieldsInputSchema,
       outputSchema: toolSummarySchema,
     }),
@@ -424,6 +437,20 @@ export function createFinalizationCopilotTools(
       description:
         "Remove one or more image URLs from the current selected images.",
       inputSchema: removeSelectedImagesInputSchema,
+      outputSchema: toolSummarySchema,
+    }),
+
+    addSourceUrl: tool({
+      description:
+        "Add a custom source URL to the selected product draft. Use this when the user wants to attach another authoritative source page for review.",
+      inputSchema: addSourceUrlInputSchema,
+      outputSchema: toolSummarySchema,
+    }),
+
+    removeSource: tool({
+      description:
+        "Remove a source entry from the selected product draft by source key.",
+      inputSchema: removeSourceInputSchema,
       outputSchema: toolSummarySchema,
     }),
 

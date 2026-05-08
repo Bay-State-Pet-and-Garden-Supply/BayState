@@ -10,8 +10,8 @@ jest.mock('@/lib/tools/finalization-copilot', () => ({
   createFinalizationCopilotTools: jest.fn(),
 }));
 
-jest.mock('@ai-sdk/openai', () => ({
-  createOpenAI: jest.fn(({ apiKey }: { apiKey: string }) =>
+jest.mock('@ai-sdk/deepseek', () => ({
+  createDeepSeek: jest.fn(({ apiKey }: { apiKey: string }) =>
     (modelId: string) => ({
       apiKey,
       modelId,
@@ -19,7 +19,7 @@ jest.mock('@ai-sdk/openai', () => ({
   ),
 }));
 
-import { createOpenAI } from '@ai-sdk/openai';
+import { createDeepSeek } from '@ai-sdk/deepseek';
 import { getAIConsolidationRuntimeConfig } from '@/lib/ai-scraping/credentials';
 import { finalizationCopilotAgent } from '@/lib/agents/finalization-copilot-agent';
 import { createClient } from '@/lib/supabase/server';
@@ -63,15 +63,15 @@ describe('finalizationCopilotAgent', () => {
     (createFinalizationCopilotTools as jest.Mock).mockReturnValue({});
   });
 
-  it('builds the OpenAI model with the consolidation runtime config', async () => {
+  it('builds the DeepSeek model with the consolidation runtime config', async () => {
     (getAIConsolidationRuntimeConfig as jest.Mock).mockResolvedValue({
-      llm_provider: 'openai',
-      llm_model: 'gpt-4o',
+      llm_provider: 'deepseek',
+      llm_model: 'deepseek-chat',
       llm_base_url: null,
-      llm_api_key: 'openai-live-key',
-      openai_api_key: 'openai-live-key',
+      llm_api_key: 'deepseek-live-key',
+      deepseek_api_key: 'deepseek-live-key',
       confidence_threshold: 0.7,
-      llm_supports_batch_api: true,
+      llm_supports_batch_api: false,
     });
 
     const prepareCall = (finalizationCopilotAgent as any).settings.prepareCall as (
@@ -87,22 +87,22 @@ describe('finalizationCopilotAgent', () => {
     });
 
     expect(getAIConsolidationRuntimeConfig).toHaveBeenCalled();
-    expect(createOpenAI).toHaveBeenCalledWith({ apiKey: 'openai-live-key' });
+    expect(createDeepSeek).toHaveBeenCalledWith({ apiKey: 'deepseek-live-key' });
     expect(result.model).toEqual({
-      apiKey: 'openai-live-key',
-      modelId: 'gpt-4o',
+      apiKey: 'deepseek-live-key',
+      modelId: 'deepseek-chat',
     });
   });
 
-  it('fails fast when the OpenAI key is missing', async () => {
+  it('fails fast when the DeepSeek key is missing', async () => {
     (getAIConsolidationRuntimeConfig as jest.Mock).mockResolvedValue({
-      llm_provider: 'openai',
-      llm_model: 'gpt-4o-mini',
+      llm_provider: 'deepseek',
+      llm_model: 'deepseek-chat',
       llm_base_url: null,
       llm_api_key: null,
-      openai_api_key: undefined,
+      deepseek_api_key: undefined,
       confidence_threshold: 0.7,
-      llm_supports_batch_api: true,
+      llm_supports_batch_api: false,
     });
 
     const prepareCall = (finalizationCopilotAgent as any).settings.prepareCall as (
@@ -118,7 +118,7 @@ describe('finalizationCopilotAgent', () => {
         options: context,
       })
     ).rejects.toThrow(
-      'OpenAI API key is not configured. Save it in Admin -> Settings -> AI Scraping Settings before using Finalization Copilot.'
+      'DeepSeek API key is not configured. Save it in Admin -> Settings -> AI Scraping Settings before using Finalization Copilot.'
     );
   });
 });

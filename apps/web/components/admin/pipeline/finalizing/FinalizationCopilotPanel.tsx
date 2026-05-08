@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import type { FinalizationCopilotUIMessage } from "@/lib/agents/finalization-copilot-agent";
 import type {
   AddSelectedImagesInput,
+  AddSourceUrlInput,
   ApproveProductInput,
   AssignBrandInput,
   BulkAssignBrandInput,
@@ -47,6 +48,7 @@ import type {
   ProductSnapshotOutput,
   RejectProductInput,
   RemoveSelectedImagesInput,
+  RemoveSourceInput,
   RemoveStorePagesInput,
   ReplaceSelectedImagesInput,
   RestoreSavedDraftInput,
@@ -86,6 +88,8 @@ const TOOL_LABELS: Record<string, string> = {
   replaceSelectedImages: "Replacing images",
   addSelectedImages: "Adding images",
   removeSelectedImages: "Removing images",
+  addSourceUrl: "Adding source",
+  removeSource: "Removing source",
   restoreSavedDraft: "Restoring saved draft",
   saveDraft: "Saving draft",
   saveProducts: "Saving products",
@@ -207,6 +211,8 @@ interface FinalizationCopilotPanelProps {
   onRemoveSelectedImages: (
     input: RemoveSelectedImagesInput,
   ) => Promise<ToolSummary>;
+  onAddSourceUrl: (input: AddSourceUrlInput) => Promise<ToolSummary>;
+  onRemoveSource: (input: RemoveSourceInput) => Promise<ToolSummary>;
   onRestoreSavedDraft: (
     input: RestoreSavedDraftInput,
   ) => Promise<ToolSummary>;
@@ -243,6 +249,8 @@ type ClientToolName =
   | "replaceSelectedImages"
   | "addSelectedImages"
   | "removeSelectedImages"
+  | "addSourceUrl"
+  | "removeSource"
   | "restoreSavedDraft"
   | "saveDraft"
   | "saveProducts"
@@ -280,6 +288,8 @@ export function FinalizationCopilotPanel({
   onReplaceSelectedImages,
   onAddSelectedImages,
   onRemoveSelectedImages,
+  onAddSourceUrl,
+  onRemoveSource,
   onRestoreSavedDraft,
   onSaveDraft,
   onSaveProducts,
@@ -330,6 +340,8 @@ export function FinalizationCopilotPanel({
         replaceSelectedImages: onReplaceSelectedImages,
         addSelectedImages: onAddSelectedImages,
         removeSelectedImages: onRemoveSelectedImages,
+        addSourceUrl: onAddSourceUrl,
+        removeSource: onRemoveSource,
         restoreSavedDraft: onRestoreSavedDraft,
         saveDraft: onSaveDraft,
         saveProducts: onSaveProducts,

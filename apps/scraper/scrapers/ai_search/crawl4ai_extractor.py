@@ -94,7 +94,7 @@ class Crawl4AIExtractor:
         cache_enabled: bool = True,
         extraction_strategy: str = "llm",
         prompt_version: str = "v1",
-        llm_provider: str = "openai",
+        llm_provider: str = "deepseek",
         llm_base_url: str | None = None,
         llm_api_key: str | None = None,
     ):
@@ -722,7 +722,7 @@ class Crawl4AIExtractor:
                                 from crawl4ai import LLMConfig
                                 from crawl4ai.extraction_strategy import LLMExtractionStrategy
 
-                                if self._llm_runtime.provider not in ("openai", "gemini") or self._llm_runtime.api_key:
+                                if self._llm_runtime.provider not in ("deepseek", "openai") or self._llm_runtime.api_key:
                                     instruction = build_extraction_instruction(sku, brand, product_name, self.prompt_version)
                                     llm_strategy = LLMExtractionStrategy(
                                         llm_config=LLMConfig(
@@ -800,12 +800,8 @@ class Crawl4AIExtractor:
                     from crawl4ai import LLMConfig
                     from crawl4ai.extraction_strategy import LLMExtractionStrategy
 
-                    if self._llm_runtime.provider == "openai" and not self._llm_runtime.api_key:
-                        logger.info("[AI Search] OpenAI API key missing, using fallback extractor instead of LLM second pass")
-                        return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
-
-                    if self._llm_runtime.provider == "gemini" and not self._llm_runtime.api_key:
-                        logger.info("[AI Search] Gemini API key missing, using fallback extractor instead of LLM second pass")
+                    if self._llm_runtime.provider in {"deepseek", "openai"} and not self._llm_runtime.api_key:
+                        logger.info("[AI Search] Hosted LLM API key missing, using fallback extractor instead of LLM second pass")
                         return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
 
                     if self._llm_runtime.provider == "openai_compatible" and not self._llm_runtime.base_url:

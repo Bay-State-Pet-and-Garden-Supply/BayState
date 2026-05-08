@@ -1049,20 +1049,20 @@ def _run_official_brand_job(
         trimmed = raw_value.strip()
         return trimmed if trimmed else None
 
-    def _normalize_openai_model(raw_value: str | None) -> str:
+    def _normalize_deepseek_model(raw_value: str | None) -> str:
         candidate = str(raw_value or "").strip()
         if not candidate:
-            return "gpt-4o-mini"
+            return "deepseek-chat"
 
         lowered = candidate.lower()
-        if lowered.startswith(("gpt-", "o1", "o3", "o4")):
+        if lowered.startswith("deepseek-"):
             return candidate
 
         logger.warning(
-            "[Official Brand] Ignoring deprecated non-OpenAI model '%s' and defaulting to gpt-4o-mini",
+            "[Official Brand] Ignoring deprecated non-DeepSeek model '%s' and defaulting to deepseek-chat",
             candidate,
         )
-        return "gpt-4o-mini"
+        return "deepseek-chat"
 
     search_cfg = job_config.job_config or {}
     scraper_name = "official_brand"
@@ -1101,15 +1101,15 @@ def _run_official_brand_job(
     max_steps = int(search_cfg.get("max_steps", 15) or 15)
     confidence_threshold = float(search_cfg.get("confidence_threshold", 0.7) or 0.7)
     runtime_credentials: Dict[str, Any] = job_config.ai_credentials or {}
-    requested_llm_provider = str(search_cfg.get("llm_provider") or runtime_credentials.get("llm_provider") or "openai").strip().lower()
-    llm_provider = "openai"
-    if requested_llm_provider and requested_llm_provider != "openai":
+    requested_llm_provider = str(search_cfg.get("llm_provider") or runtime_credentials.get("llm_provider") or "deepseek").strip().lower()
+    llm_provider = "deepseek"
+    if requested_llm_provider and requested_llm_provider != "deepseek":
         logger.warning(
-            "[Official Brand] Ignoring deprecated LLM provider '%s' and routing this job to OpenAI",
+            "[Official Brand] Ignoring deprecated LLM provider '%s' and routing this job to DeepSeek",
             requested_llm_provider,
         )
     requested_llm_model = str(search_cfg.get("llm_model") or runtime_credentials.get("llm_model") or "").strip()
-    llm_model = _normalize_openai_model(requested_llm_model)
+    llm_model = _normalize_deepseek_model(requested_llm_model)
     search_provider = normalize_search_provider(str(search_cfg.get("search_provider", os.environ.get("AI_SEARCH_PROVIDER", "auto")) or "auto").strip().lower())
     if search_provider == "auto":
         search_provider = "serper"
@@ -1120,9 +1120,9 @@ def _run_official_brand_job(
 
     runtime_provider = _get_optional_string(runtime_credentials, "llm_provider")
     runtime_llm_api_key = _get_optional_string(runtime_credentials, "llm_api_key")
-    llm_base_url = None
+    llm_base_url = _get_optional_string(runtime_credentials, "llm_base_url")
 
-    llm_api_key = _get_optional_string(runtime_credentials, "openai_api_key")
+    llm_api_key = _get_optional_string(runtime_credentials, "deepseek_api_key")
     if llm_api_key is None and runtime_provider == llm_provider:
         llm_api_key = runtime_llm_api_key
     if llm_api_key is None:
@@ -1246,6 +1246,7 @@ def _run_official_brand_job(
             llm_provider=llm_provider,
             llm_model=llm_model,
             llm_api_key=llm_api_key,
+            llm_base_url=llm_base_url,
         )
         if official_brand_phase == "extraction":
             return await scraper.extract_products_from_urls_batch(items, max_concurrency=max_concurrency)

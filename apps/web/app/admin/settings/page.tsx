@@ -9,7 +9,7 @@ export default function AdminSettingsPage() {
   return (
     <AdminPageShell
       title="Settings"
-      description="Manage shared credentials and OpenAI-powered external integrations."
+      description="Manage shared credentials and DeepSeek-powered external integrations."
       icon={<Settings className="h-5 w-5" />}
       contentClassName="space-y-6"
     >
@@ -17,9 +17,10 @@ export default function AdminSettingsPage() {
         <Brain className="h-4 w-4" />
         <AlertTitle>External AI stack finalized</AlertTitle>
         <AlertDescription>
-          Scraping and consolidation now run on OpenAI, with Serper handling
-          discovery search. Legacy Gemini, Brave Search, and SerpAPI credentials
-          are deprecated across the active admin flow.
+          Scraping, consolidation, and Finalization Copilot now run on DeepSeek,
+          with Serper handling discovery search. Legacy Gemini, OpenAI, Brave
+          Search, and SerpAPI credentials are deprecated across the active admin
+          flow.
         </AlertDescription>
       </Alert>
 

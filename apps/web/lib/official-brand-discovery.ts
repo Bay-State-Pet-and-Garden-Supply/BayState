@@ -1,7 +1,11 @@
-import OpenAI from 'openai';
+import { Output, generateText } from 'ai';
+import { createDeepSeek } from '@ai-sdk/deepseek';
+import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { getDeepSeekBaseURL } from '@/lib/ai-scraping/deepseek';
 import { getAIScrapingRuntimeCredentials } from '@/lib/ai-scraping/credentials';
 import type { AIScrapingRuntimeCredentials } from '@/lib/ai-scraping/credentials';
+import { DEFAULT_AI_MODEL } from '@/lib/ai-scraping/models';
 import {
   buildDiscoveryOfficialBrandCandidateRows,
   persistOfficialBrandCandidateRows,
@@ -19,6 +23,29 @@ import {
 } from '@/lib/official-brand-scoring';
 
 const MAX_SCORED_CANDIDATES = 5;
+
+type HostedLanguageModel = ReturnType<ReturnType<typeof createDeepSeek>>;
+
+const consolidateNameSchema = z.object({
+  predicted_name: z.string().trim().min(1).nullable().optional(),
+});
+
+const candidateScoreSchema = z.object({
+  is_official: z.boolean(),
+  confidence_score: z.number().min(0).max(1),
+  reason: z.string(),
+});
+
+function buildOfficialBrandModel(
+  apiKey: string,
+  modelId: string,
+  baseURL?: string | null,
+): HostedLanguageModel {
+  return createDeepSeek({
+    apiKey,
+    ...(baseURL ? { baseURL: getDeepSeekBaseURL(baseURL) } : {}),
+  })(modelId);
+}
 
 interface SkuResult {
   official_brand: {
@@ -175,46 +202,22 @@ async function serperSearchPhase2(
 // ---------------------------------------------------------------------------
 
 async function consolidateName(
-  openai: OpenAI,
+  model: HostedLanguageModel,
   productName: string,
   brandName: string,
   titles: string[],
 ): Promise<string | null> {
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+    const { output } = await generateText({
+      model,
       temperature: 0,
-      messages: [
-        {
-          role: 'system',
-          content:
-            'Extract the full official product name from the raw product name, brand, and search result titles. Return the canonical name.',
-        },
-        {
-          role: 'user',
-          content: `Brand: ${brandName}\nRaw product name: ${productName}\nSearch results:\n${titles.join('\n')}`,
-        },
-      ],
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'consolidated_name',
-          schema: {
-            type: 'object',
-            properties: {
-              predicted_name: { type: 'string' },
-            },
-            required: ['predicted_name'],
-          },
-        },
-      },
+      system:
+        'Extract the full official product name from the raw product name, brand, and search result titles. Return the canonical name.',
+      prompt: `Brand: ${brandName}\nRaw product name: ${productName}\nSearch results:\n${titles.join('\n')}`,
+      output: Output.object({ schema: consolidateNameSchema }),
     });
 
-    const content = response.choices?.[0]?.message?.content;
-    if (!content) return null;
-
-    const parsed = JSON.parse(content) as { predicted_name?: string };
-    return parsed.predicted_name ?? null;
+    return output.predicted_name?.trim() || null;
   } catch {
     return null;
   }
@@ -225,43 +228,20 @@ async function consolidateName(
 // ---------------------------------------------------------------------------
 
 async function scoreCandidate(
-  openai: OpenAI,
+  model: HostedLanguageModel,
   productName: string,
   brandName: string,
   candidate: SerperCandidate,
 ): Promise<{ confidence: number }> {
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+    const { output } = await generateText({
+      model,
       temperature: 0,
-      messages: [
-        {
-          role: 'user',
-          content: `Product: ${productName}\nBrand: ${brandName}\nURL: ${candidate.url}\nTitle: ${candidate.title}\nSnippet: ${candidate.snippet}\n\nDoes this URL appear to be an official product page? Return is_official (bool), confidence_score (0-1 float), and reason (string).`,
-        },
-      ],
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'url_score',
-          schema: {
-            type: 'object',
-            properties: {
-              is_official: { type: 'boolean' },
-              confidence_score: { type: 'number' },
-              reason: { type: 'string' },
-            },
-            required: ['is_official', 'confidence_score', 'reason'],
-          },
-        },
-      },
+      prompt: `Product: ${productName}\nBrand: ${brandName}\nURL: ${candidate.url}\nTitle: ${candidate.title}\nSnippet: ${candidate.snippet}\n\nDoes this URL appear to be an official product page? Return is_official (bool), confidence_score (0-1 float), and reason (string).`,
+      output: Output.object({ schema: candidateScoreSchema }),
     });
 
-    const content = response.choices?.[0]?.message?.content;
-    if (!content) return { confidence: 0 };
-
-    const parsed = JSON.parse(content) as { confidence_score?: number };
-    return { confidence: parsed.confidence_score ?? 0 };
+    return { confidence: output.confidence_score ?? 0 };
   } catch {
     return { confidence: 0 };
   }
@@ -289,8 +269,7 @@ export async function runOfficialBrandDiscovery(args: {
 
   let credentials: AIScrapingRuntimeCredentials;
   let serperApiKey: string;
-  let hasOpenAI: boolean;
-  let openaiClient: OpenAI | null;
+  let model: HostedLanguageModel | null;
   let rows: ReturnType<typeof buildDiscoveryOfficialBrandCandidateRows>;
 
   try {
@@ -301,8 +280,11 @@ export async function runOfficialBrandDiscovery(args: {
     }
 
     serperApiKey = credentials.serper_api_key;
-    hasOpenAI = Boolean(credentials.openai_api_key);
-    openaiClient = hasOpenAI ? new OpenAI({ apiKey: credentials.openai_api_key }) : null;
+    const deepseekApiKey = credentials.deepseek_api_key ?? credentials.llm_api_key;
+    const modelId = credentials.llm_model?.trim() || DEFAULT_AI_MODEL;
+    model = deepseekApiKey
+      ? buildOfficialBrandModel(deepseekApiKey, modelId, credentials.llm_base_url)
+      : null;
 
     const { data: productsRaw, error: productsError } = await supabase
       .from('products_ingestion')
@@ -396,10 +378,10 @@ export async function runOfficialBrandDiscovery(args: {
       // Phase 1.5: LLM name consolidation from Phase 1 search titles
       // --------------------------------------------------------------------
       let predictedName: string | null = null;
-      if (openaiClient && phase1Results.length > 0) {
+      if (model && phase1Results.length > 0) {
         const titles = phase1Results.map((c) => `${c.title} — ${c.url}`);
         predictedName = await consolidateName(
-          openaiClient,
+          model,
           productName,
           brandName,
           titles,
@@ -434,11 +416,11 @@ export async function runOfficialBrandDiscovery(args: {
 
       const confidenceScores = new Map<number, number>();
       const topN = merged.slice(0, MAX_SCORED_CANDIDATES);
-      if (openaiClient) {
+      if (model) {
         for (let i = 0; i < merged.length; i++) {
           if (topN.includes(merged[i])) {
             const result = await scoreCandidate(
-              openaiClient,
+              model,
               productName,
               brandName,
               merged[i],

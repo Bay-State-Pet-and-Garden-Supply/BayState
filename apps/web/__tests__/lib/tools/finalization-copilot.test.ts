@@ -27,11 +27,18 @@ describe("finalization copilot tool definitions", () => {
       expect(result.success).toBe(true);
     });
 
+    it("accepts category field", () => {
+      const schema = tools.setProductFields.inputSchema as any;
+      const result = schema.safeParse({ category: "Dog > Food > Dry Food" });
+      expect(result.success).toBe(true);
+    });
+
     it("accepts multiple fields at once", () => {
       const schema = tools.setProductFields.inputSchema as any;
       const result = schema.safeParse({
         name: "Updated Feed",
         price: 29.99,
+        category: "Dog > Food > Dry Food",
         stockStatus: "in_stock",
         searchKeywords: "feed organic natural",
         isSpecialOrder: true,
@@ -71,6 +78,26 @@ describe("finalization copilot tool definitions", () => {
       const schema = tools.replaceSelectedImages.inputSchema as any;
       const result = schema.safeParse({ images: [] });
       expect(result.success).toBe(false);
+    });
+  });
+
+  describe("source tools", () => {
+    it("accepts a valid source URL", () => {
+      const schema = tools.addSourceUrl.inputSchema as any;
+      const result = schema.safeParse({ url: "https://example.com/product/source" });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects an invalid source URL", () => {
+      const schema = tools.addSourceUrl.inputSchema as any;
+      const result = schema.safeParse({ url: "not-a-url" });
+      expect(result.success).toBe(false);
+    });
+
+    it("accepts a source key for removal", () => {
+      const schema = tools.removeSource.inputSchema as any;
+      const result = schema.safeParse({ sourceKey: "custom:example.com" });
+      expect(result.success).toBe(true);
     });
   });
 
@@ -181,6 +208,8 @@ describe("finalization copilot tool definitions", () => {
       "replaceSelectedImages",
       "addSelectedImages",
       "removeSelectedImages",
+      "addSourceUrl",
+      "removeSource",
       "restoreSavedDraft",
       "saveDraft",
       "saveProducts",

@@ -78,6 +78,7 @@ import {
 } from "@/lib/pipeline/finalization-draft";
 import type {
   AddSelectedImagesInput,
+  AddSourceUrlInput,
   AssignBrandInput,
   BulkAssignBrandInput,
   BulkTransformProductNamesInput,
@@ -90,6 +91,7 @@ import type {
   PreviewProductScopeInput,
   ProductSnapshotInput,
   RemoveSelectedImagesInput,
+  RemoveSourceInput,
   RemoveStorePagesInput,
   ReplaceSelectedImagesInput,
   ScopedProductActionInput,
@@ -1702,6 +1704,98 @@ export function FinalizingResultsView({
     [normalizeSelectedImages, handleInputChange, selectedSku, stageCopilotDraftReview],
   );
 
+  const handleCopilotAddSourceUrl = useCallback(
+    async ({ url }: AddSourceUrlInput): Promise<ToolSummary> => {
+      const currentSku = selectedProductRef.current?.sku;
+      if (!currentSku) {
+        throw new Error("Select a product before updating sources.");
+      }
+
+      let normalizedUrl: string;
+      try {
+        normalizedUrl = new URL(url).toString();
+      } catch {
+        throw new Error("Provide a valid source URL.");
+      }
+
+      const currentSources = draftsRef.current[currentSku]?.sources ?? {};
+      const existingSourceKey = Object.entries(currentSources).find(([, sourceData]) => {
+        if (!sourceData || typeof sourceData !== "object" || Array.isArray(sourceData)) {
+          return false;
+        }
+
+        return (sourceData as { url?: unknown }).url === normalizedUrl;
+      })?.[0];
+
+      if (existingSourceKey) {
+        return {
+          summary: `Source ${existingSourceKey} is already attached to ${currentSku}.`,
+        };
+      }
+
+      const hostname = new URL(normalizedUrl).hostname.replace(/^www\./, "");
+      const baseSourceKey = `custom:${hostname}`;
+      let sourceKey = baseSourceKey;
+      let collisionIndex = 2;
+      while (sourceKey in currentSources) {
+        sourceKey = `${baseSourceKey}-${collisionIndex}`;
+        collisionIndex += 1;
+      }
+
+      const review = stageCopilotDraftReview(
+        [currentSku],
+        `Prepared a custom source URL for ${currentSku}: ${normalizedUrl}.`,
+      );
+
+      updateDraftForSku(currentSku, (prev) => ({
+        ...prev,
+        sources: {
+          ...prev.sources,
+          [sourceKey]: {
+            url: normalizedUrl,
+            scraped_at: new Date().toISOString(),
+            _is_custom: true,
+          },
+        },
+        customSourceUrl: "",
+      }));
+
+      return review;
+    },
+    [stageCopilotDraftReview, updateDraftForSku],
+  );
+
+  const handleCopilotRemoveSource = useCallback(
+    async ({ sourceKey }: RemoveSourceInput): Promise<ToolSummary> => {
+      const currentSku = selectedProductRef.current?.sku;
+      if (!currentSku) {
+        throw new Error("Select a product before updating sources.");
+      }
+
+      const currentSources = draftsRef.current[currentSku]?.sources ?? {};
+      if (!(sourceKey in currentSources)) {
+        throw new Error(`Unknown source key: ${sourceKey}`);
+      }
+
+      const review = stageCopilotDraftReview(
+        [currentSku],
+        `Prepared removal of source ${sourceKey} for ${currentSku}.`,
+      );
+
+      updateDraftForSku(currentSku, (prev) => {
+        const nextSources = { ...prev.sources };
+        delete nextSources[sourceKey];
+        return {
+          ...prev,
+          sources: nextSources,
+        };
+      });
+
+      return review;
+    },
+    [stageCopilotDraftReview, updateDraftForSku],
+  );
+
   const handleCopilotRestoreSavedDraft = useCallback(
     async (): Promise<ToolSummary> => {
       const currentSku = selectedProductRef.current?.sku;
@@ -1810,6 +1904,8 @@ export function FinalizingResultsView({
       onReplaceSelectedImages={handleCopilotReplaceSelectedImages}
       onAddSelectedImages={handleCopilotAddSelectedImages}
       onRemoveSelectedImages={handleCopilotRemoveSelectedImages}
+      onAddSourceUrl={handleCopilotAddSourceUrl}
+      onRemoveSource={handleCopilotRemoveSource}
       onRestoreSavedDraft={handleCopilotRestoreSavedDraft}
       onSaveDraft={handleCopilotSaveDraft}
       onSaveProducts={handleCopilotSaveProducts}

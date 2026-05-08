@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = (await request.json()) as {
+      deepseek_api_key?: string;
       gemini_api_key?: string;
       openai_api_key?: string;
       lmstudio_api_key?: string;
@@ -78,6 +79,10 @@ export async function POST(request: NextRequest) {
     };
 
     const tasks: Array<Promise<unknown>> = [];
+
+    if (body.deepseek_api_key && body.deepseek_api_key.trim()) {
+      tasks.push(setAIScrapingProviderSecret('deepseek', body.deepseek_api_key, auth.userId));
+    }
 
     if (body.gemini_api_key && body.gemini_api_key.trim()) {
       tasks.push(setAIScrapingProviderSecret('gemini', body.gemini_api_key, auth.userId));

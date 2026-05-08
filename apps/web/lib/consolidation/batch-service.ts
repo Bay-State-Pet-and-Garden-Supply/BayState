@@ -346,10 +346,10 @@ interface BatchRowLookup {
 type BatchProviderKey = ConsolidationRuntimeConfig['llm_provider'];
 
 function normalizeBatchProvider(value: unknown): BatchProviderKey {
-    if (typeof value === 'string' && (value === 'lmstudio' || value === 'openai_compatible' || value === 'openai' || value === 'gemini')) {
+    if (typeof value === 'string' && (value === 'deepseek' || value === 'lmstudio' || value === 'openai_compatible' || value === 'openai' || value === 'gemini')) {
         return value as BatchProviderKey;
     }
-    return 'openai';
+    return 'deepseek';
 }
 
 function buildBatchRoutingKey(products: ProductSource[], metadata: BatchMetadata): string {
@@ -1187,8 +1187,77 @@ async function submitBatchToOpenAI(
     };
 }
 
+async function submitDirectChatBatchToRuntime(
+    products: ProductSource[],
+    metadata: BatchMetadata,
+    config: ConsolidationRuntimeConfig,
+    routingKey: string,
+    preflightModelsList: string[]
+): Promise<SubmitBatchResponse | BatchErrorResponse> {
+    const { systemPrompt, shopsitePages = [], categories = [] } = await buildPromptContext();
+    const responseSchema = buildResponseSchema(categories, shopsitePages);
+
+    const content = createBatchContent(products, systemPrompt, responseSchema, {
+        provider: config.llm_provider,
+        model: config.model,
+        maxTokens: config.maxTokens,
+        temperature: config.temperature,
+    });
+
+    const stringMetadata: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(metadata)) {
+        if (value !== undefined) {
+            stringMetadata[key] = value;
+        }
+    }
+    stringMetadata.llm_provider = config.llm_provider;
+    stringMetadata.configured_llm_provider = config.configured_llm_provider;
+    stringMetadata.llm_model = config.model;
+    stringMetadata.routing_key = routingKey;
+    stringMetadata.preflight_models = preflightModelsList;
+
+    return createDirectChatBatch(
+        products,
+        stringMetadata,
+        config,
+        content,
+        systemPrompt,
+        responseSchema
+    );
+}
+
+async function submitDeepSeekFallbackBatch(
+    products: ProductSource[],
+    metadata: BatchMetadata,
+    routingKey: string
+): Promise<SubmitBatchResponse | BatchErrorResponse> {
+    const runtime = await getConfiguredBatchRuntime(false, {
+        routingKey,
+        forceProvider: 'deepseek',
+    });
+    if (isRuntimeErrorResponse(runtime)) {
+        return runtime;
+    }
+
+    const preflight = await preflightModels(runtime);
+    if (!preflight.success) {
+        return {
+            success: false,
+            error: preflight.error,
+        };
+    }
+
+    return submitDirectChatBatchToRuntime(
+        products,
+        metadata,
+        runtime,
+        routingKey,
+        preflight.models.map((model) => model.id)
+    );
+}
+
 /**
- * Submit a batch job — routes to OpenAI Batch API or LM Studio Direct Chat
+ * Submit a batch job — routes to OpenAI Batch API or direct chat
  * based on the configured provider's batch capability.
  */
 export async function submitBatch(
@@ -1213,60 +1282,42 @@ export async function submitBatch(
             return await submitBatchToOpenAI(products, metadata);
         }
 
-        // Direct chat path (LM Studio / OpenAI-compatible without Batch API)
-        // First, run a preflight check
         const preflight = await preflightModels(config);
         if (!preflight.success) {
-            console.warn('[Consolidation] LM Studio preflight failed, falling back to OpenAI Batch:', preflight.error);
-            // Fallback to OpenAI with metadata noting the reason
-            const fallbackMetadata: BatchMetadata = {
-                ...metadata,
-                fallback_reason: preflight.error,
-            };
-            return await submitBatchToOpenAI(products, fallbackMetadata);
-        }
-
-        // Preflight passed — proceed with direct chat batch
-        const { systemPrompt, shopsitePages = [], categories = [] } = await buildPromptContext();
-        const responseSchema = buildResponseSchema(categories, shopsitePages);
-
-        // Create JSONL content (same as for batch API)
-        const content = createBatchContent(products, systemPrompt, responseSchema, {
-            provider: config.llm_provider,
-            model: config.model,
-            maxTokens: config.maxTokens,
-            temperature: config.temperature,
-        });
-
-        const stringMetadata: Record<string, unknown> = {};
-        for (const [key, value] of Object.entries(metadata)) {
-            if (value !== undefined) {
-                stringMetadata[key] = value;
+            if (config.llm_provider === 'lmstudio') {
+                console.warn('[Consolidation] LM Studio preflight failed, falling back to DeepSeek:', preflight.error);
+                const fallbackMetadata: BatchMetadata = {
+                    ...metadata,
+                    fallback_reason: preflight.error,
+                };
+                return await submitDeepSeekFallbackBatch(products, fallbackMetadata, routingKey);
             }
-        }
-        stringMetadata.llm_provider = config.llm_provider;
-        stringMetadata.configured_llm_provider = config.configured_llm_provider;
-        stringMetadata.llm_model = config.model;
-        stringMetadata.routing_key = routingKey;
-        stringMetadata.preflight_models = preflight.models.map((m) => m.id);
 
-        const result = await createDirectChatBatch(
+            return {
+                success: false,
+                error: preflight.error,
+            };
+        }
+
+        const result = await submitDirectChatBatchToRuntime(
             products,
-            stringMetadata,
+            metadata,
             config,
-            content,
-            systemPrompt,
-            responseSchema
+            routingKey,
+            preflight.models.map((model) => model.id)
         );
 
         if (!result.success) {
-            // If direct chat creation fails, fallback to OpenAI
-            console.warn('[Consolidation] Direct chat batch creation failed, falling back to OpenAI Batch:', result.error);
-            const fallbackMetadata: BatchMetadata = {
-                ...metadata,
-                fallback_reason: result.error,
-            };
-            return await submitBatchToOpenAI(products, fallbackMetadata);
+            if (config.llm_provider === 'lmstudio') {
+                console.warn('[Consolidation] Direct chat batch creation failed, falling back to DeepSeek:', result.error);
+                const fallbackMetadata: BatchMetadata = {
+                    ...metadata,
+                    fallback_reason: result.error,
+                };
+                return await submitDeepSeekFallbackBatch(products, fallbackMetadata, routingKey);
+            }
+
+            return result;
         }
 
         return result;
@@ -1330,11 +1381,15 @@ async function handleDirectChatStatus(
                         sources: item.product_source || {},
                     }));
 
-                    // Submit an OpenAI batch for failed items only
-                    const fallbackResult = await submitBatchToOpenAI(fallbackProducts, {
-                        description: `Fallback for ${batchDbId} (${failedItems.length} failed items)`,
-                        parent_batch_id: batchDbId,
-                    });
+                    // Submit a DeepSeek fallback batch for failed items only
+                    const fallbackResult = await submitDeepSeekFallbackBatch(
+                        fallbackProducts,
+                        {
+                            description: `Fallback for ${batchDbId} (${failedItems.length} failed items)`,
+                            parent_batch_id: batchDbId,
+                        },
+                        batchDbId
+                    );
 
                     if (fallbackResult.success) {
                         // Mark items with fallback
