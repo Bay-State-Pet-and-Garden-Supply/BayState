@@ -459,7 +459,7 @@ export async function getAvailableProductFilters(
     brandId === null ||
     (featuredProductIds && featuredProductIds.length === 0)
   ) {
-    return { brands: [], petTypes: [], categories: [], stockStatuses: [], dynamicFacets: [] };
+    return { brands: [], petTypes: [], categories: [], stockStatuses: [], dynamicFacets: [], hasSpecialOrder: false };
   }
 
   // Build the complete select string with inner-join aliases required by the active
