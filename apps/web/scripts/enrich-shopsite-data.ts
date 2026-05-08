@@ -1,13 +1,11 @@
 import fs from 'fs';
 import readline from 'readline';
-import { generateObject } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
+import { Output, generateText } from 'ai';
+import { createDeepSeek } from '@ai-sdk/deepseek';
 import { z } from 'zod';
 
-// Ensure you have process.env.DEEPSEEK_API_KEY set
-const deepseek = createOpenAI({
-  baseURL: 'https://api.deepseek.com/v1',
-  apiKey: process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY,
+const deepseek = createDeepSeek({
+  apiKey: process.env.DEEPSEEK_API_KEY,
 });
 
 const XML_PATH = 'temp/web_inventory050726.xml';
@@ -86,13 +84,15 @@ async function runEnrichment() {
     console.log(`[${i+1}/${batchSize}] Inferring for: ${product.name} (SKU: ${product.sku})`);
     
     try {
-      const { object } = await generateObject({
+      const enrichmentSchema = z.object({
+        predictedCategory: z.string().describe(`Choose the best fit from this list: ${validCategories.join(', ')}. If none fit perfectly, invent a broad 1-2 word category.`),
+        predictedType: z.string().describe(`Choose the best fit from this list: ${validProductTypes.join(', ')}. If none fit perfectly, invent a broad 1-2 word product type.`),
+        confidence: z.number().min(0).max(1).describe('Confidence score from 0.0 to 1.0')
+      });
+
+      const { output } = await generateText({
         model: deepseek('deepseek-chat'),
-        schema: z.object({
-          predictedCategory: z.string().describe(`Choose the best fit from this list: ${validCategories.join(', ')}. If none fit perfectly, invent a broad 1-2 word category.`),
-          predictedType: z.string().describe(`Choose the best fit from this list: ${validProductTypes.join(', ')}. If none fit perfectly, invent a broad 1-2 word product type.`),
-          confidence: z.number().min(0).max(1).describe('Confidence score from 0.0 to 1.0')
-        }),
+        output: Output.object({ schema: enrichmentSchema }),
         prompt: `
           Analyze the following product and categorize it.
           Product Name: ${product.name}
@@ -105,9 +105,9 @@ async function runEnrichment() {
 
       enrichmentResults[product.sku] = {
         name: product.name,
-        predictedCategory: product.missingCategory ? object.predictedCategory : null,
-        predictedType: product.missingType ? object.predictedType : null,
-        confidence: object.confidence
+        predictedCategory: product.missingCategory ? output.predictedCategory : null,
+        predictedType: product.missingType ? output.predictedType : null,
+        confidence: output.confidence
       };
       
     } catch (e) {

@@ -1,9 +1,10 @@
 import crypto from 'crypto';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { getDeepSeekBaseURL, getDeepSeekOpenAICompatibleBaseURL } from '@/lib/ai-scraping/deepseek';
 import { DEFAULT_AI_MODEL } from '@/lib/ai-scraping/models';
 
-type AIProvider = 'openai' | 'openai_compatible' | 'gemini' | 'lmstudio' | 'serpapi' | 'brave';
-export type LLMProvider = 'openai' | 'openai_compatible' | 'gemini' | 'lmstudio';
+type AIProvider = 'deepseek' | 'openai' | 'openai_compatible' | 'gemini' | 'lmstudio' | 'serpapi' | 'brave';
+export type LLMProvider = 'deepseek' | 'openai' | 'openai_compatible' | 'gemini' | 'lmstudio';
 
 interface BaseLLMDefaults {
   llm_provider: LLMProvider;
@@ -34,6 +35,7 @@ export interface AIScrapingRuntimeCredentials {
   llm_model: string;
   llm_base_url?: string;
   llm_api_key?: string;
+  deepseek_api_key?: string;
   openai_api_key?: string;
   serper_api_key?: string;
   serpapi_api_key?: string;
@@ -44,6 +46,7 @@ interface AIConsolidationRuntimeConfig {
   llm_model: string;
   llm_base_url: string | null;
   llm_api_key: string | null;
+  deepseek_api_key?: string;
   openai_api_key?: string;
   confidence_threshold: number;
   llm_supports_batch_api: boolean;
@@ -53,7 +56,7 @@ const AI_DEFAULTS_SETTINGS_KEY = 'ai_scraping_defaults';
 const AI_CONSOLIDATION_DEFAULTS_SETTINGS_KEY = 'ai_consolidation_defaults';
 const AI_PROVIDER_COMPAT_SETTINGS_KEY_PREFIX = 'ai_provider_credentials_compat_';
 const ENCRYPTION_KEY_ENV_NAME = 'AI_CREDENTIALS_ENCRYPTION_KEY';
-const SITE_SETTINGS_COMPATIBLE_PROVIDERS = ['gemini', 'openai_compatible'] as const;
+const SITE_SETTINGS_COMPATIBLE_PROVIDERS = ['deepseek', 'gemini', 'openai_compatible'] as const;
 const ENCRYPTION_KEY_HELP =
   'Set AI_CREDENTIALS_ENCRYPTION_KEY to a 32-byte UTF-8 string or base64-encoded 32-byte key (example: `openssl rand -base64 32`).';
 
@@ -61,8 +64,10 @@ let hasLoggedMissingEncryptionKey = false;
 let hasLoggedInvalidEncryptionKeyLength = false;
 const loggedDecryptFailures = new Set<AIProvider>();
 
+const LEGACY_OPENAI_MODEL = 'gpt-4o-mini';
+
 const DEFAULT_AI_SCRAPING_DEFAULTS: AIScrapingDefaults = {
-  llm_provider: 'openai',
+  llm_provider: 'deepseek',
   llm_model: DEFAULT_AI_MODEL,
   llm_base_url: null,
   max_search_results: 5,
@@ -71,15 +76,18 @@ const DEFAULT_AI_SCRAPING_DEFAULTS: AIScrapingDefaults = {
 };
 
 const DEFAULT_AI_CONSOLIDATION_DEFAULTS: AIConsolidationDefaults = {
-  llm_provider: 'openai',
+  llm_provider: 'deepseek',
   llm_model: DEFAULT_AI_MODEL,
   llm_base_url: null,
   confidence_threshold: 0.7,
-  llm_supports_batch_api: true,
+  llm_supports_batch_api: false,
 };
 
 function getDefaultModelForProvider(provider: LLMProvider): string {
-  void provider;
+  if (provider === 'openai') {
+    return LEGACY_OPENAI_MODEL;
+  }
+
   return DEFAULT_AI_MODEL;
 }
 
@@ -192,7 +200,7 @@ interface StoredProviderSecretRecord {
 }
 
 function usesSiteSettingsProviderCompat(provider: AIProvider): provider is typeof SITE_SETTINGS_COMPATIBLE_PROVIDERS[number] {
-  return provider === 'gemini' || provider === 'openai_compatible';
+  return SITE_SETTINGS_COMPATIBLE_PROVIDERS.includes(provider as typeof SITE_SETTINGS_COMPATIBLE_PROVIDERS[number]);
 }
 
 function getProviderCompatSettingKey(provider: typeof SITE_SETTINGS_COMPATIBLE_PROVIDERS[number]): string {
@@ -396,19 +404,21 @@ function logDecryptFailure(provider: AIProvider, error: unknown): void {
 }
 
 function normalizeLLMProvider(_provider?: unknown): LLMProvider {
-  if (_provider === 'openai' || _provider === 'openai_compatible') {
+  if (_provider === 'deepseek' || _provider === 'openai_compatible') {
     return _provider;
   }
-  // gemini and other legacy providers fall back to openai for scraping
-  return 'openai';
+
+  // OpenAI, Gemini, and other legacy providers now route to DeepSeek.
+  return 'deepseek';
 }
 
 function normalizeConsolidationProvider(_provider?: unknown): LLMProvider {
-  if (_provider === 'openai' || _provider === 'openai_compatible' || _provider === 'lmstudio') {
+  if (_provider === 'deepseek' || _provider === 'openai_compatible' || _provider === 'lmstudio') {
     return _provider;
   }
-  // gemini and other legacy providers fall back to openai for consolidation
-  return 'openai';
+
+  // OpenAI, Gemini, and other legacy providers now route to DeepSeek.
+  return 'deepseek';
 }
 
 function normalizeLLMModel(value: unknown, fallback: string): string {
@@ -420,12 +430,9 @@ function normalizeLLMModel(value: unknown, fallback: string): string {
   return trimmed.length > 0 ? trimmed : fallback;
 }
 
-function normalizeOpenAIModel(value: unknown, fallback: string): string {
+function normalizeDeepSeekModel(value: unknown, fallback: string): string {
   const model = normalizeLLMModel(value, fallback);
-  const lowered = model.toLowerCase();
-  return lowered.startsWith('gpt-') || lowered.startsWith('o1') || lowered.startsWith('o3') || lowered.startsWith('o4')
-    ? model
-    : fallback;
+  return model.toLowerCase().startsWith('deepseek-') ? model : fallback;
 }
 
 function resolveOpenAIApiKey(apiKey: string | null | undefined): string | null {
@@ -440,20 +447,40 @@ function resolveOpenAIApiKey(apiKey: string | null | undefined): string | null {
   return null;
 }
 
-function normalizeLLMBaseUrl(value: unknown): string | null {
-  if (typeof value !== 'string') {
-    return process.env.OPENAI_BASE_URL || null;
+function resolveDeepSeekApiKey(apiKey: string | null | undefined): string | null {
+  if (apiKey && apiKey.trim()) {
+    return apiKey.trim();
   }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : (process.env.OPENAI_BASE_URL || null);
+
+  if (process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_API_KEY.trim()) {
+    return process.env.DEEPSEEK_API_KEY.trim();
+  }
+
+  return null;
+}
+
+function normalizeLLMBaseUrl(value: unknown, provider: LLMProvider): string | null {
+  if (typeof value === 'string' && value.trim()) {
+    return provider === 'deepseek'
+      ? getDeepSeekBaseURL(value)
+      : value.trim().replace(/\/+$/, '');
+  }
+
+  if (provider === 'deepseek') {
+    return process.env.DEEPSEEK_BASE_URL ? getDeepSeekBaseURL(process.env.DEEPSEEK_BASE_URL) : null;
+  }
+
+  return process.env.OPENAI_BASE_URL || null;
 }
 
 function normalizeDefaults(raw: unknown): AIScrapingDefaults {
   const value = (raw && typeof raw === 'object') ? (raw as Record<string, unknown>) : {};
 
   const llmProvider = normalizeLLMProvider(value.llm_provider);
-  const llmModel = normalizeOpenAIModel(value.llm_model, getDefaultModelForProvider(llmProvider));
-  const llmBaseUrl = normalizeLLMBaseUrl(value.llm_base_url);
+  const llmModel = llmProvider === 'openai_compatible'
+    ? normalizeLLMModel(value.llm_model, getDefaultModelForProvider(llmProvider))
+    : normalizeDeepSeekModel(value.llm_model, getDefaultModelForProvider(llmProvider));
+  const llmBaseUrl = normalizeLLMBaseUrl(value.llm_base_url, llmProvider);
   const maxSearchResults = Number.isFinite(value.max_search_results) ? Number(value.max_search_results) : DEFAULT_AI_SCRAPING_DEFAULTS.max_search_results;
   const maxSteps = Number.isFinite(value.max_steps) ? Number(value.max_steps) : DEFAULT_AI_SCRAPING_DEFAULTS.max_steps;
   const confidenceThreshold = Number.isFinite(value.confidence_threshold)
@@ -481,7 +508,7 @@ export async function getAIScrapingDefaults(): Promise<AIScrapingDefaults> {
   if (error || !data) {
     return {
       ...DEFAULT_AI_SCRAPING_DEFAULTS,
-      llm_base_url: process.env.OPENAI_BASE_URL || null,
+      llm_base_url: process.env.DEEPSEEK_BASE_URL ? getDeepSeekBaseURL(process.env.DEEPSEEK_BASE_URL) : null,
     };
   }
 
@@ -519,16 +546,14 @@ function normalizeConsolidationDefaults(raw: unknown): AIConsolidationDefaults {
   const value = (raw && typeof raw === 'object') ? (raw as Record<string, unknown>) : {};
 
   const llmProvider = normalizeConsolidationProvider(value.llm_provider);
-  // Use provided model for LM Studio (arbitrary names), OpenAI-enforce for others
   const llmModel = (llmProvider === 'lmstudio' || llmProvider === 'openai_compatible')
     ? normalizeLLMModel(value.llm_model, getDefaultModelForProvider(llmProvider))
-    : normalizeOpenAIModel(value.llm_model, getDefaultModelForProvider(llmProvider));
-  const llmBaseUrl = normalizeLLMBaseUrl(value.llm_base_url);
+    : normalizeDeepSeekModel(value.llm_model, getDefaultModelForProvider(llmProvider));
+  const llmBaseUrl = normalizeLLMBaseUrl(value.llm_base_url, llmProvider);
   const confidenceThreshold = Number.isFinite(value.confidence_threshold)
     ? Number(value.confidence_threshold)
     : DEFAULT_AI_CONSOLIDATION_DEFAULTS.confidence_threshold;
-  // Preserve the DB value; only force false for lmstudio, true for openai.
-  const llmSupportsBatchApi = llmProvider === 'lmstudio'
+  const llmSupportsBatchApi = llmProvider === 'lmstudio' || llmProvider === 'deepseek'
     ? false
     : value.llm_supports_batch_api !== false;
 
@@ -552,7 +577,7 @@ export async function getAIConsolidationDefaults(): Promise<AIConsolidationDefau
   if (error || !data) {
     return {
       ...DEFAULT_AI_CONSOLIDATION_DEFAULTS,
-      llm_base_url: process.env.OPENAI_BASE_URL || null,
+      llm_base_url: process.env.DEEPSEEK_BASE_URL ? getDeepSeekBaseURL(process.env.DEEPSEEK_BASE_URL) : null,
     };
   }
 
@@ -650,6 +675,7 @@ export async function getAIScrapingCredentialStatuses(): Promise<Record<AIProvid
   }
 
   const statuses: Record<AIProvider, AICredentialStatus> = {
+    deepseek: { provider: 'deepseek', configured: false, last4: null, updated_at: null },
     openai: { provider: 'openai', configured: false, last4: null, updated_at: null },
     openai_compatible: { provider: 'openai_compatible', configured: false, last4: null, updated_at: null },
     gemini: { provider: 'gemini', configured: false, last4: null, updated_at: null },
@@ -661,7 +687,8 @@ export async function getAIScrapingCredentialStatuses(): Promise<Record<AIProvid
   for (const row of data || []) {
     const provider = row.provider as AIProvider;
     if (
-      provider !== 'openai'
+      provider !== 'deepseek'
+      && provider !== 'openai'
       && provider !== 'openai_compatible'
       && provider !== 'gemini'
       && provider !== 'lmstudio'
@@ -724,31 +751,33 @@ async function getAIScrapingProviderSecret(provider: AIProvider): Promise<string
   );
 }
 
-async function getAIProviderSecret(provider: AIProvider): Promise<string | null> {
-  return getAIScrapingProviderSecret(provider);
-}
-
 export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRuntimeCredentials> {
-  const [defaults, openai, legacySearchKey] = await Promise.all([
-    getAIScrapingDefaults(),
-    getAIScrapingProviderSecret('openai'),
+  const defaults = await getAIScrapingDefaults();
+  const [selectedKey, deepseekKey, legacySearchKey] = await Promise.all([
+    getAIScrapingProviderSecret(defaults.llm_provider as AIProvider),
+    getAIScrapingProviderSecret('deepseek'),
     getAIScrapingProviderSecret('serpapi'),
   ]);
 
-  const resolvedOpenAI = resolveOpenAIApiKey(openai);
-  const llmApiKey = resolvedOpenAI;
+  const resolvedDeepSeek = resolveDeepSeekApiKey(deepseekKey);
+  const llmApiKey = defaults.llm_provider === 'openai_compatible'
+    ? selectedKey
+    : resolvedDeepSeek;
 
   const credentials: AIScrapingRuntimeCredentials = {
     llm_provider: defaults.llm_provider,
     llm_model: defaults.llm_model,
-    llm_base_url: defaults.llm_base_url || undefined,
+    llm_base_url:
+      defaults.llm_provider === 'deepseek'
+        ? getDeepSeekOpenAICompatibleBaseURL(defaults.llm_base_url)
+        : defaults.llm_base_url || undefined,
   };
 
   if (llmApiKey) {
     credentials.llm_api_key = llmApiKey;
   }
-  if (resolvedOpenAI) {
-    credentials.openai_api_key = resolvedOpenAI;
+  if (defaults.llm_provider === 'deepseek' && resolvedDeepSeek) {
+    credentials.deepseek_api_key = resolvedDeepSeek;
   }
   if (legacySearchKey) {
     credentials.serper_api_key = legacySearchKey;
@@ -761,23 +790,26 @@ export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRunti
 export async function getAIConsolidationRuntimeConfig(): Promise<AIConsolidationRuntimeConfig> {
   const defaults = await getAIConsolidationDefaults();
 
-  // Load the selected provider's API key, plus OpenAI for fallback
-  const [selectedKey, openaiKey] = await Promise.all([
-    getAIScrapingProviderSecret(defaults.llm_provider),
+  const [selectedKey, deepseekKey, openaiKey] = await Promise.all([
+    getAIScrapingProviderSecret(defaults.llm_provider as AIProvider),
+    getAIScrapingProviderSecret('deepseek'),
     getAIScrapingProviderSecret('openai'),
   ]);
 
+  const resolvedDeepSeek = resolveDeepSeekApiKey(deepseekKey);
   const resolvedOpenAI = resolveOpenAIApiKey(openaiKey);
-  // For LM Studio, use the selected provider key; for others, prefer resolved OpenAI
-  const llmApiKey = defaults.llm_provider === 'lmstudio'
-    ? (selectedKey || resolvedOpenAI)
-    : resolvedOpenAI;
+  const llmApiKey = defaults.llm_provider === 'lmstudio' || defaults.llm_provider === 'openai_compatible'
+    ? selectedKey
+    : resolvedDeepSeek;
 
   return {
     llm_provider: defaults.llm_provider,
     llm_model: defaults.llm_model,
-    llm_base_url: defaults.llm_base_url,
+    llm_base_url: defaults.llm_provider === 'deepseek'
+      ? getDeepSeekOpenAICompatibleBaseURL(defaults.llm_base_url)
+      : defaults.llm_base_url,
     llm_api_key: llmApiKey,
+    ...(resolvedDeepSeek ? { deepseek_api_key: resolvedDeepSeek } : {}),
     ...(resolvedOpenAI ? { openai_api_key: resolvedOpenAI } : {}),
     confidence_threshold: defaults.confidence_threshold,
     llm_supports_batch_api: defaults.llm_supports_batch_api,

@@ -19,6 +19,7 @@ describe('AI scraping credentials compatibility', () => {
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
     process.env.AI_CREDENTIALS_ENCRYPTION_KEY = '12345678901234567890123456789012';
     delete process.env.GEMINI_API_KEY;
+    delete process.env.DEEPSEEK_API_KEY;
     delete process.env.OPENAI_API_KEY;
   });
 
@@ -27,10 +28,11 @@ describe('AI scraping credentials compatibility', () => {
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
     delete process.env.AI_CREDENTIALS_ENCRYPTION_KEY;
     delete process.env.GEMINI_API_KEY;
+    delete process.env.DEEPSEEK_API_KEY;
     delete process.env.OPENAI_API_KEY;
   });
 
-  it('stores Gemini credentials in site_settings compatibility storage when the provider constraint is stale', async () => {
+  it('stores DeepSeek credentials in site_settings compatibility storage when the provider constraint is stale', async () => {
     const aiCredentialUpsert = jest.fn().mockResolvedValue({
       error: {
         message:
@@ -59,13 +61,13 @@ describe('AI scraping credentials compatibility', () => {
 
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-    await setAIScrapingProviderSecret('gemini', 'AIza-test-key-1234', 'user-1');
+    await setAIScrapingProviderSecret('deepseek', 'deepseek-live-key-1234', 'user-1');
 
     expect(siteSettingsUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        key: 'ai_provider_credentials_compat_gemini',
+        key: 'ai_provider_credentials_compat_deepseek',
         value: expect.objectContaining({
-          provider: 'gemini',
+          provider: 'deepseek',
           last4: '1234',
         }),
       }),
@@ -76,10 +78,10 @@ describe('AI scraping credentials compatibility', () => {
     warnSpy.mockRestore();
   });
 
-  it('reads Gemini status from the compatibility fallback store without changing active OpenAI runtime defaults', async () => {
-    const encrypted = encryptSecret('gemini-live-key-9876');
+  it('reads DeepSeek status from the compatibility fallback store without changing active runtime defaults', async () => {
+    const encrypted = encryptSecret('deepseek-live-key-9876');
     const compatValue = {
-      provider: 'gemini',
+      provider: 'deepseek',
       encrypted_value: encrypted.encryptedValue,
       iv: encrypted.iv,
       auth_tag: encrypted.authTag,
@@ -124,7 +126,7 @@ describe('AI scraping credentials compatibility', () => {
                   in: () => Promise.resolve({
                     data: [
                       {
-                        key: 'ai_provider_credentials_compat_gemini',
+                        key: 'ai_provider_credentials_compat_deepseek',
                         value: compatValue,
                         updated_at: '2026-04-06T20:00:00.000Z',
                       },
@@ -142,7 +144,7 @@ describe('AI scraping credentials compatibility', () => {
                         key === 'ai_scraping_defaults'
                           ? {
                               value: {
-                                llm_provider: 'openai',
+                                llm_provider: 'deepseek',
                                 llm_model: DEFAULT_AI_MODEL,
                                 llm_base_url: null,
                                 max_search_results: 5,
@@ -165,7 +167,7 @@ describe('AI scraping credentials compatibility', () => {
                   eq: (_field: string, key: string) => ({
                     maybeSingle: jest.fn().mockResolvedValue({
                       data:
-                        key === 'ai_provider_credentials_compat_gemini'
+                        key === 'ai_provider_credentials_compat_deepseek'
                           ? {
                               value: compatValue,
                               updated_at: '2026-04-06T20:00:00.000Z',
@@ -187,8 +189,8 @@ describe('AI scraping credentials compatibility', () => {
     });
 
     const statuses = await getAIScrapingCredentialStatuses();
-    expect(statuses.gemini).toEqual({
-      provider: 'gemini',
+    expect(statuses.deepseek).toEqual({
+      provider: 'deepseek',
       configured: true,
       last4: '9876',
       updated_at: '2026-04-06T20:00:00.000Z',
@@ -196,13 +198,13 @@ describe('AI scraping credentials compatibility', () => {
 
     const runtime = await getAIScrapingRuntimeCredentials();
     expect(runtime.llm_model).toBe(DEFAULT_AI_MODEL);
-    expect(runtime.llm_api_key).toBeUndefined();
+    expect(runtime.deepseek_api_key).toBe('deepseek-live-key-9876');
   });
 
-  it('normalizes deprecated Gemini defaults back to OpenAI runtime defaults', async () => {
-    const encrypted = encryptSecret('gemini-live-key-9876');
+  it('normalizes deprecated Gemini defaults back to DeepSeek runtime defaults', async () => {
+    const encrypted = encryptSecret('deepseek-live-key-9876');
     const compatValue = {
-      provider: 'gemini',
+      provider: 'deepseek',
       encrypted_value: encrypted.encryptedValue,
       iv: encrypted.iv,
       auth_tag: encrypted.authTag,
@@ -260,7 +262,7 @@ describe('AI scraping credentials compatibility', () => {
                   eq: (_field: string, key: string) => ({
                     maybeSingle: jest.fn().mockResolvedValue({
                       data:
-                        key === 'ai_provider_credentials_compat_gemini'
+                        key === 'ai_provider_credentials_compat_deepseek'
                           ? {
                               value: compatValue,
                               updated_at: '2026-04-06T20:00:00.000Z',
@@ -282,8 +284,8 @@ describe('AI scraping credentials compatibility', () => {
     });
 
     const runtime = await getAIScrapingRuntimeCredentials();
-    expect(runtime).toEqual({
-      llm_provider: 'openai',
+    expect(runtime).toMatchObject({
+      llm_provider: 'deepseek',
       llm_model: DEFAULT_AI_MODEL,
     });
   });

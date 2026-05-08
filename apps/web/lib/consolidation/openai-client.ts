@@ -3,7 +3,10 @@ import type { LLMProvider } from '@/lib/ai-scraping/credentials';
 import {
     getAIConsolidationRuntimeConfig,
 } from '@/lib/ai-scraping/credentials';
+import { getDeepSeekOpenAICompatibleBaseURL } from '@/lib/ai-scraping/deepseek';
 import { DEFAULT_AI_MODEL } from '@/lib/ai-scraping/models';
+
+const LEGACY_OPENAI_MODEL = 'gpt-4o-mini';
 
 // We cache the client but only if the effective connection settings haven't changed.
 let lastClientSignature: string | null = null;
@@ -32,12 +35,41 @@ function resolveEffectiveProvider(
     configuredProvider: LLMProvider,
     options: ConsolidationConfigOptions | undefined
 ): LLMProvider {
-    // When forceProvider is provided, use it instead of the configured provider.
-    // This allows overriding to 'openai' for fallback even when lmstudio is configured.
     if (options?.forceProvider) {
         return options.forceProvider;
     }
     return configuredProvider;
+}
+
+function resolveProviderModel(
+    provider: LLMProvider,
+    configuredProvider: LLMProvider,
+    configuredModel: string
+): string {
+    if (provider === 'deepseek' && configuredProvider !== 'deepseek') {
+        return CONSOLIDATION_CONFIG.model;
+    }
+
+    if (provider === 'openai' && configuredProvider !== 'openai') {
+        return LEGACY_OPENAI_MODEL;
+    }
+
+    return configuredModel || CONSOLIDATION_CONFIG.model;
+}
+
+function resolveProviderBaseUrl(
+    provider: LLMProvider,
+    configuredBaseUrl: string | null
+): string | null {
+    if (provider === 'deepseek') {
+        return getDeepSeekOpenAICompatibleBaseURL(configuredBaseUrl);
+    }
+
+    if (provider === 'openai') {
+        return process.env.OPENAI_BASE_URL || null;
+    }
+
+    return configuredBaseUrl;
 }
 
 /**
@@ -46,13 +78,13 @@ function resolveEffectiveProvider(
 export async function getOpenAIClient(options?: ConsolidationConfigOptions): Promise<OpenAI | null> {
     const runtimeConfig = await getConsolidationConfig(options);
     if (!runtimeConfig.llm_api_key) {
-        console.error('[Consolidation] OpenAI API key not set in environment or runtime credentials');
+        console.error('[Consolidation] LLM API key not set in environment or runtime credentials');
         return null;
     }
 
     const apiKey = runtimeConfig.llm_api_key?.replace(/[\r\n\x00-\x1F\x7F-\x9F]/g, '');
     if (!apiKey) {
-        console.error('[Consolidation] OpenAI API key is empty after sanitization');
+        console.error('[Consolidation] LLM API key is empty after sanitization');
         return null;
     }
     const baseURL = runtimeConfig.llm_base_url || undefined;
@@ -105,41 +137,47 @@ export async function getConsolidationConfig(
             runtimeConfig.llm_provider,
             options
         );
-        const model = runtimeConfig.llm_model || CONSOLIDATION_CONFIG.model;
-        // For forced fallback to OpenAI, use the openai_api_key and ignore selected provider key
-        const isForcedOpenai = options?.forceProvider === 'openai';
-        const apiKey = isForcedOpenai
-            ? (runtimeConfig.openai_api_key ?? runtimeConfig.llm_api_key)
-            : runtimeConfig.llm_api_key;
-        // For forced OpenAI, use default OpenAI base URL and model
-        const baseUrl = isForcedOpenai
-            ? (process.env.OPENAI_BASE_URL || null)
-            : runtimeConfig.llm_base_url;
-        const fallbackModel = isForcedOpenai
-            ? (runtimeConfig.llm_provider === 'openai' ? model : CONSOLIDATION_CONFIG.model)
-            : model;
+        const model = resolveProviderModel(
+            effectiveProvider,
+            runtimeConfig.llm_provider,
+            runtimeConfig.llm_model || CONSOLIDATION_CONFIG.model,
+        );
+        const apiKey = effectiveProvider === 'deepseek'
+            ? (runtimeConfig.deepseek_api_key ?? runtimeConfig.llm_api_key)
+            : effectiveProvider === 'openai'
+                ? (runtimeConfig.openai_api_key ?? null)
+                : runtimeConfig.llm_api_key;
+        const baseUrl = resolveProviderBaseUrl(
+            effectiveProvider,
+            runtimeConfig.llm_base_url,
+        );
 
         return {
             ...CONSOLIDATION_CONFIG,
-            model: fallbackModel,
+            model,
             llm_provider: effectiveProvider,
             configured_llm_provider: runtimeConfig.llm_provider,
             llm_base_url: baseUrl,
             llm_api_key: apiKey ?? null,
-            llm_supports_batch_api: isForcedOpenai ? true : runtimeConfig.llm_supports_batch_api,
+            llm_supports_batch_api:
+                effectiveProvider === 'deepseek' || effectiveProvider === 'lmstudio'
+                    ? false
+                    : effectiveProvider === 'openai'
+                        ? true
+                        : runtimeConfig.llm_supports_batch_api,
             confidence_threshold: runtimeConfig.confidence_threshold,
             routing_key: options?.routingKey ?? null,
         };
     } catch (err) {
         console.error('[Consolidation] Failed to load config from DB, using hardcoded defaults:', err);
-        const baseUrl = process.env.OPENAI_BASE_URL || null;
+        const baseUrl = getDeepSeekOpenAICompatibleBaseURL(null);
         return {
             ...CONSOLIDATION_CONFIG,
-            llm_provider: 'openai' as const,
-            configured_llm_provider: 'openai' as const,
+            llm_provider: 'deepseek' as const,
+            configured_llm_provider: 'deepseek' as const,
             llm_base_url: baseUrl,
             llm_api_key: null,
-            llm_supports_batch_api: true,
+            llm_supports_batch_api: false,
             confidence_threshold: 0.7,
             routing_key: options?.routingKey ?? null,
         };

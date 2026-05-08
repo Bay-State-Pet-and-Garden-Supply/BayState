@@ -20,7 +20,7 @@ function isUuid(value: string): boolean {
 }
 
 function normalizeProvider(value: unknown): LLMProvider | null {
-    if (value === 'openai' || value === 'openai_compatible') {
+    if (value === 'deepseek' || value === 'openai' || value === 'openai_compatible') {
         return value === 'openai_compatible' ? 'openai' : value;
     }
 

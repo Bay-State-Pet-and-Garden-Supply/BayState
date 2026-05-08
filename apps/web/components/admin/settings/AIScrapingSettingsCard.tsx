@@ -16,7 +16,7 @@ import { Loader2, Bot, Save, RefreshCw } from "lucide-react";
 import { AIModelCombobox } from "@/components/admin/settings/AIModelCombobox";
 import { DEFAULT_AI_MODEL } from "@/lib/ai-scraping/models";
 
-type ProviderName = "gemini" | "openai" | "serpapi";
+type ProviderName = "deepseek" | "gemini" | "serpapi";
 
 interface ProviderStatus {
  provider: string;
@@ -26,7 +26,7 @@ interface ProviderStatus {
 }
 
 interface ScrapingDefaults {
- llm_provider: "openai";
+ llm_provider: "deepseek";
  llm_model: string;
  llm_base_url: string | null;
  max_search_results: number;
@@ -40,7 +40,7 @@ interface ApiResponse {
 }
 
 const DEFAULTS: ScrapingDefaults = {
- llm_provider: "openai",
+ llm_provider: "deepseek",
  llm_model: DEFAULT_AI_MODEL,
  llm_base_url: null,
  max_search_results: 5,
@@ -49,14 +49,14 @@ const DEFAULTS: ScrapingDefaults = {
 };
 
 const EMPTY_STATUSES: Record<ProviderName, ProviderStatus> = {
- gemini: {
- provider: "gemini",
+ deepseek: {
+ provider: "deepseek",
  configured: false,
  last4: null,
  updated_at: null,
  },
- openai: {
- provider: "openai",
+ gemini: {
+ provider: "gemini",
  configured: false,
  last4: null,
  updated_at: null,
@@ -74,7 +74,7 @@ export function AIScrapingSettingsCard() {
  const [saving, setSaving] = useState(false);
  const [error, setError] = useState<string | null>(null);
  const [geminiApiKey, setGeminiApiKey] = useState("");
- const [openaiApiKey, setOpenaiApiKey] = useState("");
+ const [deepseekApiKey, setDeepseekApiKey] = useState("");
  const [serperApiKey, setSerperApiKey] = useState("");
  const [statuses, setStatuses] =
  useState<Record<ProviderName, ProviderStatus>>(EMPTY_STATUSES);
@@ -94,19 +94,19 @@ export function AIScrapingSettingsCard() {
 
  const data = (await res.json()) as ApiResponse;
  setStatuses({
+ deepseek: data.statuses.deepseek ?? EMPTY_STATUSES.deepseek,
  gemini: data.statuses.gemini ?? EMPTY_STATUSES.gemini,
- openai: data.statuses.openai ?? EMPTY_STATUSES.openai,
  serpapi: data.statuses.serpapi ?? EMPTY_STATUSES.serpapi,
  });
  setDefaults({
  ...DEFAULTS,
  ...data.defaults,
- llm_provider: "openai",
+ llm_provider: "deepseek",
  });
  setInitialDefaults({
  ...DEFAULTS,
  ...data.defaults,
- llm_provider: "openai",
+ llm_provider: "deepseek",
  });
  } catch (e) {
  setError(e instanceof Error ? e.message : "Unknown error");
@@ -122,14 +122,14 @@ export function AIScrapingSettingsCard() {
  const hasChanges = useMemo(() => {
  return (
  geminiApiKey.trim().length > 0 ||
- openaiApiKey.trim().length > 0 ||
+ deepseekApiKey.trim().length > 0 ||
  serperApiKey.trim().length > 0 ||
  defaults.llm_model !== initialDefaults.llm_model ||
  defaults.max_search_results !== initialDefaults.max_search_results ||
  defaults.max_steps !== initialDefaults.max_steps ||
  defaults.confidence_threshold !== initialDefaults.confidence_threshold
  );
- }, [defaults, geminiApiKey, openaiApiKey, serperApiKey, initialDefaults]);
+ }, [defaults, geminiApiKey, deepseekApiKey, serperApiKey, initialDefaults]);
 
  const onSave = async () => {
  setSaving(true);
@@ -138,11 +138,11 @@ export function AIScrapingSettingsCard() {
  try {
  const payload = {
  gemini_api_key: geminiApiKey.trim() || undefined,
- openai_api_key: openaiApiKey.trim() || undefined,
+ deepseek_api_key: deepseekApiKey.trim() || undefined,
  serper_api_key: serperApiKey.trim() || undefined,
  defaults: {
  ...defaults,
- llm_provider: "openai" as const,
+ llm_provider: "deepseek" as const,
  },
  };
 
@@ -165,22 +165,22 @@ export function AIScrapingSettingsCard() {
  };
 
  setStatuses({
+ deepseek: body.statuses.deepseek ?? EMPTY_STATUSES.deepseek,
  gemini: body.statuses.gemini ?? EMPTY_STATUSES.gemini,
- openai: body.statuses.openai ?? EMPTY_STATUSES.openai,
  serpapi: body.statuses.serpapi ?? EMPTY_STATUSES.serpapi,
  });
  setDefaults({
  ...DEFAULTS,
  ...body.defaults,
- llm_provider: "openai",
+ llm_provider: "deepseek",
  });
  setInitialDefaults({
  ...DEFAULTS,
  ...body.defaults,
- llm_provider: "openai",
+ llm_provider: "deepseek",
  });
  setGeminiApiKey("");
- setOpenaiApiKey("");
+ setDeepseekApiKey("");
  setSerperApiKey("");
  } catch (e) {
  setError(e instanceof Error ? e.message : "Unknown error");
@@ -200,9 +200,10 @@ export function AIScrapingSettingsCard() {
  <CardTitle>AI Scraping Settings</CardTitle>
  <CardDescription>
  Configure the shared provider keys used across admin tooling:
- OpenAI powers AI Search, Crawl4AI enrichment, consolidation, and
- Finalization Copilot; Serper powers discovery; Gemini remains
- available for migration and testing workflows.
+ DeepSeek powers AI Search, Crawl4AI enrichment, official brand
+ discovery, consolidation, and Finalization Copilot; Serper powers
+ discovery; Gemini remains available only for legacy migration and
+ testing workflows.
  </CardDescription>
  </div>
  </div>
@@ -233,22 +234,22 @@ export function AIScrapingSettingsCard() {
  <div className="text-xs text-muted-foreground">
  {statuses.gemini.configured
  ? `Configured (ending in ${statuses.gemini.last4 ?? "****"})`
- : "Optional for Gemini migration and testing flows"}
+ : "Optional for legacy Gemini migration and testing flows"}
  </div>
  </div>
 
  <div className="space-y-2">
- <Label htmlFor="openai-api-key">OpenAI API Key</Label>
+ <Label htmlFor="deepseek-api-key">DeepSeek API Key</Label>
  <Input
- id="openai-api-key"
+ id="deepseek-api-key"
  type="password"
- value={openaiApiKey}
- onChange={(e) => setOpenaiApiKey(e.target.value)}
+ value={deepseekApiKey}
+ onChange={(e) => setDeepseekApiKey(e.target.value)}
  placeholder="sk-..."
  />
  <div className="text-xs text-muted-foreground">
- {statuses.openai.configured
- ? `Configured (ending in ${statuses.openai.last4 ?? "****"})`
+ {statuses.deepseek.configured
+ ? `Configured (ending in ${statuses.deepseek.last4 ?? "****"})`
  : "Required for AI scraping, consolidation, and Finalization Copilot"}
  </div>
  </div>
@@ -272,7 +273,7 @@ export function AIScrapingSettingsCard() {
 
  <div className="grid gap-4 md:grid-cols-3">
  <div className="space-y-2">
- <Label htmlFor="scraping-ai-model">OpenAI Model</Label>
+ <Label htmlFor="scraping-ai-model">DeepSeek Model</Label>
  <AIModelCombobox
  id="scraping-ai-model"
  value={defaults.llm_model}
@@ -310,10 +311,10 @@ export function AIScrapingSettingsCard() {
  </div>
 
  <div className="rounded-md border bg-muted/40 p-4 text-sm text-muted-foreground">
- Legacy Gemini scraping settings are deprecated. Active scraper
- jobs, consolidation, and Finalization Copilot now use OpenAI,
- while Serper handles discovery. Keep a Gemini key only if you
- still need Gemini migration or testing workflows.
+ Legacy Gemini and OpenAI scraping settings are deprecated. Active
+ scraper jobs, consolidation, and Finalization Copilot now use
+ DeepSeek, while Serper handles discovery. Keep a Gemini key only
+ if you still need legacy migration or testing workflows.
  </div>
 
  <div className="flex items-center justify-between border-t pt-4">
@@ -324,9 +325,9 @@ export function AIScrapingSettingsCard() {
  Gemini {statuses.gemini.configured ? "Available" : "Optional"}
  </Badge>
  <Badge
- variant={statuses.openai.configured ? "default" : "secondary"}
+ variant={statuses.deepseek.configured ? "default" : "secondary"}
  >
- OpenAI {statuses.openai.configured ? "Ready" : "Missing"}
+ DeepSeek {statuses.deepseek.configured ? "Ready" : "Missing"}
  </Badge>
  <Badge
  variant={statuses.serpapi.configured ? "default" : "secondary"}

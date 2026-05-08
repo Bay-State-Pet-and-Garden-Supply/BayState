@@ -19,12 +19,23 @@ def create_llm_provider(
         api_key=api_key,
     )
 
+    if runtime.provider == "deepseek":
+        if not runtime.api_key:
+            return None
+        return OpenAIProvider(
+            model=runtime.model,
+            api_key=runtime.api_key,
+            base_url=runtime.base_url,
+            provider_name=runtime.provider,
+        )
+
     if runtime.provider == "openai":
         if not runtime.api_key:
             return None
         return OpenAIProvider(
             model=runtime.model,
             api_key=runtime.api_key,
+            base_url=runtime.base_url,
             provider_name=runtime.provider,
         )
 

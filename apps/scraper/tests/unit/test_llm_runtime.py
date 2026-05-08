@@ -6,12 +6,12 @@ from scrapers.ai_search.llm_runtime import (
 )
 
 
-def test_resolve_llm_runtime_maps_legacy_gemini_provider_to_openai() -> None:
-    runtime = resolve_llm_runtime(provider="gemini", api_key="gemini-test-key")
+def test_resolve_llm_runtime_maps_legacy_gemini_provider_to_deepseek() -> None:
+    runtime = resolve_llm_runtime(provider="gemini", api_key="deepseek-test-key")
 
-    assert runtime.provider == "openai"
+    assert runtime.provider == "deepseek"
     assert runtime.model == DEFAULT_LLM_MODEL
-    assert runtime.api_key == "gemini-test-key"
+    assert runtime.api_key == "deepseek-test-key"
 
 
 def test_resolve_llm_runtime_openai_compatible_uses_local_defaults(

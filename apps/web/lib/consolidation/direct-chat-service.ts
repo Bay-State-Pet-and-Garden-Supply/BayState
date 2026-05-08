@@ -1,7 +1,7 @@
 /**
  * Direct Chat Service
  *
- * Handles LM Studio (or any OpenAI-compatible) consolidation via individual
+ * Handles DeepSeek, LM Studio, or any OpenAI-compatible consolidation via individual
  * /v1/chat/completions requests instead of the Batch API.
  *
  * Architecture:
@@ -12,7 +12,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
-import type { ConsolidationRuntimeConfig } from './openai-client';
+import { getConsolidationConfig, type ConsolidationRuntimeConfig } from './openai-client';
 import { buildPromptContext, buildUserPrompt } from './prompt-builder';
 import { buildOpenAIResponseFormat, buildResponseSchema } from './taxonomy-validator';
 import { parseStructuredConsolidationText } from './result-parsing';
@@ -32,14 +32,14 @@ import crypto from 'crypto';
 // =============================================================================
 
 /**
- * Preflight check — calls GET /v1/models to verify LM Studio is reachable.
+ * Preflight check — calls GET /v1/models to verify the configured LLM endpoint is reachable.
  */
 export async function preflightModels(
     runtimeConfig: ConsolidationRuntimeConfig
 ): Promise<{ success: true; models: Array<{ id: string }> } | { success: false; error: string }> {
     const baseUrl = runtimeConfig.llm_base_url?.replace(/\/+$/, '');
     if (!baseUrl) {
-        return { success: false, error: 'LM Studio base URL is not configured' };
+        return { success: false, error: 'LLM base URL is not configured' };
     }
 
     const apiKey = runtimeConfig.llm_api_key || '';
@@ -61,7 +61,7 @@ export async function preflightModels(
 
         if (!response.ok) {
             const text = await response.text().catch(() => '');
-            return { success: false, error: `LM Studio preflight failed (${response.status}): ${text.slice(0, 200)}` };
+            return { success: false, error: `LLM preflight failed (${response.status}): ${text.slice(0, 200)}` };
         }
 
         const data = await response.json() as { data?: Array<{ id: string }> } | Array<{ id: string }>;
@@ -70,7 +70,7 @@ export async function preflightModels(
         return { success: true, models };
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Unknown preflight error';
-        return { success: false, error: `LM Studio unreachable: ${message}` };
+        return { success: false, error: `LLM endpoint unreachable: ${message}` };
     }
 }
 
@@ -96,7 +96,7 @@ export async function createDirectChatBatch(
 
     const supabase = await createAdminClient();
     const batchId = crypto.randomUUID();
-    const providerBatchId = `local_${crypto.randomUUID()}`;
+    const providerBatchId = `direct_${crypto.randomUUID()}`;
     const model = runtimeConfig.model;
 
     // Parse the JSONL content into individual request payloads
@@ -111,7 +111,7 @@ export async function createDirectChatBatch(
     // Insert batch_jobs parent row
     const { error: insertError } = await supabase.from('batch_jobs').insert({
         id: batchId,
-        provider: 'lmstudio',
+        provider: runtimeConfig.llm_provider,
         provider_batch_id: providerBatchId,
         provider_input_file_id: null,
         provider_output_file_id: null,
@@ -205,7 +205,7 @@ export async function createDirectChatBatch(
     return {
         success: true,
         batch_id: batchId,
-        provider: 'lmstudio',
+        provider: runtimeConfig.llm_provider,
         provider_batch_id: providerBatchId,
         product_count: products.length,
     };
@@ -240,8 +240,12 @@ export async function processDirectChatChunk(
     }
 
     const parentMetadata = (parentRow.metadata as Record<string, unknown>) || {};
-    const llmBaseUrl = parentMetadata.llm_base_url as string || '';
-    const llmModel = parentMetadata.llm_model as string || '';
+    const provider = (parentRow.provider as ConsolidationRuntimeConfig['llm_provider'] | null) ?? null;
+    const runtimeConfig = await getConsolidationConfig(
+        provider ? { forceProvider: provider } : undefined,
+    );
+    const llmBaseUrl = runtimeConfig.llm_base_url || String(parentMetadata.llm_base_url || '');
+    const llmModel = String(parentMetadata.llm_model || runtimeConfig.model || '');
 
     // Claim pending items atomically using a subquery
     const { data: claimedItems, error: claimError } = await supabase
@@ -296,9 +300,9 @@ export async function processDirectChatChunk(
 
     // Get shopsite pages and categories for parsing
     const { shopsitePages = [], categories = [] } = await buildPromptContext();
-    const apiKey = parentMetadata.llm_api_key as string || '';
+    const apiKey = runtimeConfig.llm_api_key || '';
 
-    // Build OpenAI-compatible client for LM Studio
+    // Build an OpenAI-compatible client for the configured endpoint
     const client = new (await import('openai')).default({
         apiKey: apiKey || 'lm-studio',
         baseURL: llmBaseUrl || undefined,
@@ -449,7 +453,7 @@ export async function aggregateDirectChatStatus(
     // Build BatchStatus
     const status: BatchStatus = {
         id: String(parent.id),
-        provider: (parent.provider || 'lmstudio') as BatchStatus['provider'],
+        provider: (parent.provider || 'deepseek') as BatchStatus['provider'],
         provider_batch_id: parent.provider_batch_id,
         status: aggregateStatus as BatchStatus['status'],
         is_complete: isComplete,

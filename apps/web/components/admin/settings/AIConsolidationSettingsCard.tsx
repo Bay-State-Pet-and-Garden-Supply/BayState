@@ -10,7 +10,7 @@ import { Loader2, Layers, Save, RefreshCw, Cpu } from 'lucide-react';
 import { AIModelCombobox } from '@/components/admin/settings/AIModelCombobox';
 import { DEFAULT_AI_MODEL } from '@/lib/ai-scraping/models';
 
-type LLMProvider = 'openai' | 'lmstudio';
+type LLMProvider = 'deepseek' | 'lmstudio';
 
 interface ProviderStatus {
  provider: string;
@@ -30,7 +30,7 @@ interface ConsolidationDefaults {
 interface SettingsApiResponse {
  defaults: ConsolidationDefaults;
  statuses: Record<string, ProviderStatus>;
- openai_fallback_status?: ProviderStatus;
+ deepseek_fallback_status?: ProviderStatus;
 }
 
 interface ModelOption {
@@ -39,10 +39,10 @@ interface ModelOption {
 }
 
 const DEFAULTS: ConsolidationDefaults = {
- llm_provider: 'openai',
+ llm_provider: 'deepseek',
  llm_model: DEFAULT_AI_MODEL,
  llm_base_url: null,
- llm_supports_batch_api: true,
+ llm_supports_batch_api: false,
  confidence_threshold: 0.7,
 };
 
@@ -54,20 +54,16 @@ const EMPTY_STATUS: ProviderStatus = {
 };
 
 export function AIConsolidationSettingsCard() {
- // Loading state
  const [loading, setLoading] = useState(true);
  const [saving, setSaving] = useState(false);
  const [error, setError] = useState<string | null>(null);
  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
- // Provider selection
- const [provider, setProvider] = useState<LLMProvider>('openai');
+ const [provider, setProvider] = useState<LLMProvider>('deepseek');
 
- // OpenAI fields
- const [openaiApiKey, setOpenaiApiKey] = useState('');
- const [openaiStatus, setOpenaiStatus] = useState<ProviderStatus>(EMPTY_STATUS);
+ const [deepseekApiKey, setDeepseekApiKey] = useState('');
+ const [deepseekStatus, setDeepseekStatus] = useState<ProviderStatus>(EMPTY_STATUS);
 
- // LM Studio fields
  const [lmstudioBaseUrl, setLmstudioBaseUrl] = useState('');
  const [lmstudioApiKey, setLmstudioApiKey] = useState('');
  const [lmstudioStatus, setLmstudioStatus] = useState<ProviderStatus>(EMPTY_STATUS);
@@ -76,7 +72,6 @@ export function AIConsolidationSettingsCard() {
  const [modelError, setModelError] = useState<string | null>(null);
  const [modelsFetchedOnce, setModelsFetchedOnce] = useState(false);
 
- // Shared defaults
  const [defaults, setDefaults] = useState<ConsolidationDefaults>(DEFAULTS);
  const [initialDefaults, setInitialDefaults] = useState<ConsolidationDefaults>(DEFAULTS);
 
@@ -91,23 +86,22 @@ export function AIConsolidationSettingsCard() {
  }
 
  const data = (await res.json()) as SettingsApiResponse;
-
  const merged: ConsolidationDefaults = {
  ...DEFAULTS,
  ...data.defaults,
+ llm_provider: data.defaults?.llm_provider === 'lmstudio' ? 'lmstudio' : 'deepseek',
  };
 
  setDefaults(merged);
  setInitialDefaults({ ...merged });
- setProvider(merged.llm_provider ?? 'openai');
-
- // Set statuses
- setOpenaiStatus(data.statuses?.openai ?? EMPTY_STATUS);
+ setProvider(merged.llm_provider);
+ setDeepseekStatus(data.statuses?.deepseek ?? EMPTY_STATUS);
  setLmstudioStatus(data.statuses?.lmstudio ?? EMPTY_STATUS);
 
- // Pre-fill LM Studio fields from saved config
- if (merged.llm_base_url) {
+ if (merged.llm_provider === 'lmstudio' && merged.llm_base_url) {
  setLmstudioBaseUrl(merged.llm_base_url.replace(/\/v1\/?$/, ''));
+ } else {
+ setLmstudioBaseUrl('');
  }
  } catch (e) {
  setError(e instanceof Error ? e.message : 'Unknown error');
@@ -120,28 +114,29 @@ export function AIConsolidationSettingsCard() {
  void fetchConfig();
  }, []);
 
- const openaiFallbackConfigured = useMemo(() => {
- // If this is the initial defaults fetch, check the explicit fallback status
- return openaiStatus.configured;
- }, [openaiStatus.configured]);
+ const deepseekFallbackConfigured = useMemo(() => {
+ return deepseekStatus.configured;
+ }, [deepseekStatus.configured]);
 
  const hasChanges = useMemo(() => {
- if (provider === 'openai') {
+ if (provider === 'deepseek') {
  return (
- openaiApiKey.trim().length > 0 ||
+ provider !== initialDefaults.llm_provider ||
+ deepseekApiKey.trim().length > 0 ||
  defaults.llm_model !== initialDefaults.llm_model ||
  defaults.confidence_threshold !== initialDefaults.confidence_threshold
  );
  }
 
- // LM Studio
  return (
+ provider !== initialDefaults.llm_provider ||
  lmstudioApiKey.trim().length > 0 ||
+ deepseekApiKey.trim().length > 0 ||
  defaults.llm_model !== initialDefaults.llm_model ||
- (lmstudioBaseUrl.trim() && lmstudioBaseUrl.trim() !== (initialDefaults.llm_base_url?.replace(/\/v1\/?$/, '') ?? '')) ||
+ lmstudioBaseUrl.trim() !== (initialDefaults.llm_base_url?.replace(/\/v1\/?$/, '') ?? '') ||
  defaults.confidence_threshold !== initialDefaults.confidence_threshold
  );
- }, [provider, defaults, initialDefaults, openaiApiKey, lmstudioApiKey, lmstudioBaseUrl]);
+ }, [provider, defaults, initialDefaults, deepseekApiKey, lmstudioApiKey, lmstudioBaseUrl]);
 
  const onSave = async () => {
  setSaving(true);
@@ -149,13 +144,13 @@ export function AIConsolidationSettingsCard() {
  setSuccessMsg(null);
 
  try {
- if (provider === 'openai') {
+ if (provider === 'deepseek') {
  const payload: Record<string, unknown> = {};
- if (openaiApiKey.trim()) {
- payload.openai_api_key = openaiApiKey.trim();
+ if (deepseekApiKey.trim()) {
+ payload.deepseek_api_key = deepseekApiKey.trim();
  }
  payload.defaults = {
- llm_provider: 'openai',
+ llm_provider: 'deepseek',
  llm_model: defaults.llm_model,
  confidence_threshold: defaults.confidence_threshold,
  };
@@ -171,23 +166,18 @@ export function AIConsolidationSettingsCard() {
  throw new Error(body?.error || 'Failed to save settings');
  }
 
- const body = (await res.json()) as { defaults?: ConsolidationDefaults; message?: string };
-
- // Refetch to get updated state
+ const body = (await res.json()) as { message?: string };
  await fetchConfig();
- setOpenaiApiKey('');
- setSuccessMsg(body?.message || 'OpenAI consolidation settings saved');
+ setDeepseekApiKey('');
+ setSuccessMsg(body?.message || 'DeepSeek consolidation settings saved');
  } else {
- // LM Studio save
  const payload: Record<string, unknown> = {};
  if (lmstudioApiKey.trim()) {
  payload.lmstudio_api_key = lmstudioApiKey.trim();
  }
- if (openaiApiKey.trim()) {
- payload.openai_api_key = openaiApiKey.trim();
+ if (deepseekApiKey.trim()) {
+ payload.deepseek_api_key = deepseekApiKey.trim();
  }
-
- // Always send the base URL if it changed
  payload.defaults = {
  llm_provider: 'lmstudio',
  llm_model: defaults.llm_model,
@@ -206,12 +196,10 @@ export function AIConsolidationSettingsCard() {
  throw new Error(body?.error || 'Failed to save settings');
  }
 
- const body = (await res.json()) as { defaults?: ConsolidationDefaults; message?: string };
-
- // Refetch to get updated state
+ const body = (await res.json()) as { message?: string };
  await fetchConfig();
  setLmstudioApiKey('');
- setOpenaiApiKey('');
+ setDeepseekApiKey('');
  setSuccessMsg(body?.message || 'LM Studio consolidation settings saved');
  }
  } catch (e) {
@@ -231,11 +219,9 @@ export function AIConsolidationSettingsCard() {
  setModelError(null);
 
  try {
- // Try GET first (uses saved config), fall back to POST (runtime credentials)
  let res = await fetch('/api/admin/consolidation/models');
 
  if (res.status === 400) {
- // POST with runtime credentials
  res = await fetch('/api/admin/consolidation/models', {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
@@ -255,7 +241,6 @@ export function AIConsolidationSettingsCard() {
  setLmstudioModels(data.models ?? []);
  setModelsFetchedOnce(true);
 
- // If current model is not in the list, clear it
  if (data.models.length > 0 && !data.models.find((m) => m.id === defaults.llm_model)) {
  setDefaults((prev) => ({ ...prev, llm_model: data.models[0].id }));
  }
@@ -266,12 +251,11 @@ export function AIConsolidationSettingsCard() {
  }
  };
 
- // Auto-fetch models when switching to LM Studio if base URL is set
  useEffect(() => {
  if (provider === 'lmstudio' && lmstudioBaseUrl.trim() && !modelsFetchedOnce && !isLoadingModels) {
  void fetchLmStudioModels();
  }
- }, [provider]);
+ }, [provider, lmstudioBaseUrl, modelsFetchedOnce, isLoadingModels]);
 
  return (
  <Card>
@@ -283,9 +267,9 @@ export function AIConsolidationSettingsCard() {
  <div>
  <CardTitle>AI Consolidation Settings</CardTitle>
  <CardDescription>
- Configure the AI provider for product consolidation. Records are submitted in batches and
- normalized for ShopSite export. OpenAI Batch is the default. LM Studio Direct Chat is
- available for local LLM inference.
+ Configure the AI provider for product consolidation. DeepSeek is the default hosted
+ provider for consolidation and copilot workflows. LM Studio remains available for
+ self-hosted inference, with DeepSeek as the hosted fallback.
  </CardDescription>
  </div>
  </div>
@@ -304,19 +288,18 @@ export function AIConsolidationSettingsCard() {
  <div className="rounded-md bg-green-50 p-3 text-sm text-green-700">{successMsg}</div>
  )}
 
- {/* Provider Selector */}
  <div className="space-y-3">
  <Label>AI Provider</Label>
  <div className="flex gap-3">
  <button
  type="button"
  className={`flex flex-1 items-center gap-3 rounded-md border-2 p-4 text-left transition-colors ${
- provider === 'openai'
+ provider === 'deepseek'
  ? 'border-brand-forest-green bg-brand-forest-green/5'
  : 'border-muted bg-background hover:border-muted-foreground/30'
  }`}
  onClick={() => {
- setProvider('openai');
+ setProvider('deepseek');
  setModelError(null);
  }}
  >
@@ -324,9 +307,9 @@ export function AIConsolidationSettingsCard() {
  <Layers className="h-4 w-4 text-emerald-700" />
  </div>
  <div>
- <div className="font-medium">OpenAI Batch</div>
+ <div className="font-medium">DeepSeek Hosted</div>
  <div className="text-xs text-muted-foreground">
- Async batch processing via OpenAI API
+ Hosted direct chat via DeepSeek API
  </div>
  </div>
  </button>
@@ -355,29 +338,28 @@ export function AIConsolidationSettingsCard() {
  </div>
  </div>
 
- {/* Provider-specific Fields */}
- {provider === 'openai' ? (
+ {provider === 'deepseek' ? (
  <div className="grid gap-4 md:grid-cols-2">
  <div className="space-y-2">
- <Label htmlFor="consolidation-openai-key">OpenAI API Key</Label>
+ <Label htmlFor="consolidation-deepseek-key">DeepSeek API Key</Label>
  <Input
- id="consolidation-openai-key"
+ id="consolidation-deepseek-key"
  type="password"
- value={openaiApiKey}
- onChange={(e) => setOpenaiApiKey(e.target.value)}
+ value={deepseekApiKey}
+ onChange={(e) => setDeepseekApiKey(e.target.value)}
  placeholder="sk-..."
  />
  <div className="text-xs text-muted-foreground">
- {openaiStatus.configured
- ? `Configured (ending in ${openaiStatus.last4 ?? '****'})`
- : 'Required for batch consolidation'}
+ {deepseekStatus.configured
+ ? `Configured (ending in ${deepseekStatus.last4 ?? '****'})`
+ : 'Required for hosted consolidation'}
  </div>
  </div>
 
  <div className="space-y-2">
- <Label htmlFor="consolidation-openai-model">Model</Label>
+ <Label htmlFor="consolidation-deepseek-model">Model</Label>
  <AIModelCombobox
- id="consolidation-openai-model"
+ id="consolidation-deepseek-model"
  value={defaults.llm_model}
  onChange={(value) =>
  setDefaults((prev) => ({ ...prev, llm_model: value }))
@@ -386,11 +368,11 @@ export function AIConsolidationSettingsCard() {
  </div>
 
  <div className="space-y-2">
- <Label htmlFor="consolidation-openai-confidence">
+ <Label htmlFor="consolidation-deepseek-confidence">
  Confidence Threshold
  </Label>
  <Input
- id="consolidation-openai-confidence"
+ id="consolidation-deepseek-confidence"
  type="number"
  min={0}
  max={1}
@@ -407,14 +389,13 @@ export function AIConsolidationSettingsCard() {
 
  <div className="flex items-end space-y-2">
  <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground w-full">
- <span className="font-medium text-emerald-600">Batch API</span> — Products are
- submitted as a batch and processed asynchronously by OpenAI. Best for large
- product sets.
+ <span className="font-medium text-emerald-600">Hosted direct chat</span> —
+ Consolidation jobs run asynchronously through Bay State&apos;s synthetic batch layer,
+ backed by DeepSeek chat completions.
  </div>
  </div>
  </div>
  ) : (
- /* LM Studio section */
  <div className="space-y-4">
  <div className="grid gap-4 md:grid-cols-2">
  <div className="space-y-2">
@@ -456,7 +437,6 @@ export function AIConsolidationSettingsCard() {
  </div>
  </div>
 
- {/* Model Fetch Row */}
  <div className="space-y-2">
  <Label>Model</Label>
  <div className="flex gap-2">
@@ -503,7 +483,6 @@ export function AIConsolidationSettingsCard() {
  )}
  </div>
 
- {/* Confidence Threshold */}
  <div className="grid gap-4 md:grid-cols-2">
  <div className="space-y-2">
  <Label htmlFor="consolidation-lmstudio-confidence">
@@ -527,47 +506,45 @@ export function AIConsolidationSettingsCard() {
 
  <div className="flex items-end space-y-2">
  <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground w-full">
- <span className="font-medium text-violet-600">Direct Chat</span> — Each product
- is sent as a chat completion. Processes one at a time via status polling. Slower
- but keeps data on your infrastructure.
+ <span className="font-medium text-violet-600">Direct chat</span> — Each product
+ is sent as a chat completion and tracked asynchronously through Bay State&apos;s
+ consolidation queue.
  </div>
  </div>
  </div>
 
- {/* Fallback notice */}
  <div className="rounded-md border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-800">
  <strong>Automatic Fallback:</strong> If LM Studio is unreachable when a batch is
- submitted, the system will automatically fall back to OpenAI Batch API using the
- saved OpenAI key.{' '}
- {openaiFallbackConfigured ? (
+ submitted, the system will automatically fall back to DeepSeek using the saved
+ DeepSeek key.{' '}
+ {deepseekFallbackConfigured ? (
  <span className="text-emerald-700">
- OpenAI fallback key is configured (ending in {openaiStatus.last4}).
+ DeepSeek fallback key is configured (ending in {deepseekStatus.last4}).
  </span>
  ) : (
  <span className="text-red-600">
- No OpenAI fallback key is configured. Add one below or batches will fail if LM
- Studio is offline.
+ No DeepSeek fallback key is configured. Add one below or consolidation will fail
+ if LM Studio is offline.
  </span>
  )}
  </div>
 
- {/* OpenAI Fallback Key Input */}
  <div className="border-t pt-4">
  <div className="grid gap-4 md:grid-cols-2">
  <div className="space-y-2">
- <Label htmlFor="consolidation-openai-fallback-key">
- OpenAI Fallback API Key
+ <Label htmlFor="consolidation-deepseek-fallback-key">
+ DeepSeek Fallback API Key
  </Label>
  <Input
- id="consolidation-openai-fallback-key"
+ id="consolidation-deepseek-fallback-key"
  type="password"
- value={openaiApiKey}
- onChange={(e) => setOpenaiApiKey(e.target.value)}
+ value={deepseekApiKey}
+ onChange={(e) => setDeepseekApiKey(e.target.value)}
  placeholder="sk-... (optional, for fallback)"
  />
  <div className="text-xs text-muted-foreground">
- {openaiFallbackConfigured
- ? `Configured (ending in ${openaiStatus.last4 ?? '****'})`
+ {deepseekFallbackConfigured
+ ? `Configured (ending in ${deepseekStatus.last4 ?? '****'})`
  : 'Recommended for automatic fallback if LM Studio is offline'}
  </div>
  </div>
@@ -576,37 +553,28 @@ export function AIConsolidationSettingsCard() {
  </div>
  )}
 
- {/* Save & Refresh */}
  <div className="flex items-center justify-between border-t pt-4">
  <div className="flex flex-wrap gap-2">
  <Badge
  variant={
- (provider === 'openai' && openaiStatus.configured) ||
+ (provider === 'deepseek' && deepseekStatus.configured) ||
  (provider === 'lmstudio' && lmstudioStatus.configured)
  ? 'default'
  : 'secondary'
  }
  >
- {provider === 'openai' ? 'OpenAI Batch' : 'LM Studio Direct'}
- {' '}
- {provider === 'openai'
- ? openaiStatus.configured
+ {provider === 'deepseek' ? 'DeepSeek Hosted' : 'LM Studio Direct'}{' '}
+ {provider === 'deepseek'
+ ? deepseekStatus.configured
  ? 'Ready'
  : 'Not Configured'
  : lmstudioStatus.configured
  ? 'Ready'
  : 'Not Configured'}
  </Badge>
- {provider === 'lmstudio' && (
  <Badge variant="outline">
- Batch API: Disabled
+ Processing: Synthetic async
  </Badge>
- )}
- {provider === 'openai' && (
- <Badge variant="outline">
- Batch API: Enabled
- </Badge>
- )}
  </div>
  <div className="flex gap-2">
  <Button variant="outline" onClick={fetchConfig} disabled={loading || saving}>

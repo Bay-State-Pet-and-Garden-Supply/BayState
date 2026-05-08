@@ -4,19 +4,19 @@ interface AIModelOption {
   description: string;
 }
 
-export const DEFAULT_AI_MODEL = 'gpt-4o-mini';
-export const AI_MODEL_VALUES = [DEFAULT_AI_MODEL, 'gpt-4o'] as const;
+export const DEFAULT_AI_MODEL = 'deepseek-chat';
+export const AI_MODEL_VALUES = [DEFAULT_AI_MODEL, 'deepseek-reasoner'] as const;
 
 export const AI_MODEL_OPTIONS: AIModelOption[] = [
   {
     value: DEFAULT_AI_MODEL,
-    label: 'GPT-4o mini',
-    description: 'Cost-efficient default for Bay State AI scraping and consolidation.',
+    label: 'DeepSeek Chat',
+    description: 'Cost-efficient default for Bay State scraping, consolidation, and copilot flows.',
   },
   {
-    value: 'gpt-4o',
-    label: 'GPT-4o',
-    description: 'Higher quality reasoning for tougher extraction and enrichment cases.',
+    value: 'deepseek-reasoner',
+    label: 'DeepSeek Reasoner',
+    description: 'Higher-effort reasoning for harder product cleanup and research tasks.',
   },
 ];
 

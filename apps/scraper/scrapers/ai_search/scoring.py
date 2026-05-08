@@ -1102,8 +1102,8 @@ class BrandSourceSelector:
     def __init__(
         self,
         api_key: str | None = None,
-        model: str = "gpt-4o-mini",
-        provider: str = "openai",
+        model: str = "deepseek-chat",
+        provider: str = "deepseek",
         base_url: str | None = None,
     ):
         self.model = model

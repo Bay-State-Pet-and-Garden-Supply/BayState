@@ -106,8 +106,8 @@ describe('POST /api/scraper/v1/poll', () => {
         };
         (createClient as jest.Mock).mockReturnValue(mockSupabase);
         (getAIScrapingDefaults as jest.Mock).mockResolvedValue({
-            llm_provider: 'openai',
-            llm_model: 'gpt-4o-mini',
+            llm_provider: 'deepseek',
+            llm_model: 'deepseek-chat',
             llm_base_url: null,
             max_search_results: 5,
             max_steps: 15,
@@ -258,8 +258,8 @@ describe('POST /api/scraper/v1/poll', () => {
         });
 
         (getAIScrapingDefaults as jest.Mock).mockResolvedValue({
-            llm_provider: 'openai',
-            llm_model: 'gpt-4o-mini',
+            llm_provider: 'deepseek',
+            llm_model: 'deepseek-chat',
             llm_base_url: null,
             max_search_results: 7,
             max_steps: 20,
@@ -267,10 +267,10 @@ describe('POST /api/scraper/v1/poll', () => {
         });
 
         (getAIScrapingRuntimeCredentials as jest.Mock).mockResolvedValue({
-            llm_provider: 'openai',
-            llm_model: 'gpt-4o-mini',
-            llm_api_key: 'openai-test-key',
-            openai_api_key: 'openai-test-key',
+            llm_provider: 'deepseek',
+            llm_model: 'deepseek-chat',
+            llm_api_key: 'deepseek-test-key',
+            deepseek_api_key: 'deepseek-test-key',
             serper_api_key: 'serper-test-key',
         });
 
@@ -319,28 +319,28 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(res.status).toBe(200);
 
         const data = await res.json();
-        expect(data.job.ai_credentials.llm_provider).toBe('openai');
-        expect(data.job.ai_credentials.llm_model).toBe('gpt-4o-mini');
-        expect(data.job.ai_credentials.llm_api_key).toBe('openai-test-key');
-        expect(data.job.ai_credentials.openai_api_key).toBe('openai-test-key');
+        expect(data.job.ai_credentials.llm_provider).toBe('deepseek');
+        expect(data.job.ai_credentials.llm_model).toBe('deepseek-chat');
+        expect(data.job.ai_credentials.llm_api_key).toBe('deepseek-test-key');
+        expect(data.job.ai_credentials.deepseek_api_key).toBe('deepseek-test-key');
         expect(data.job.ai_credentials.serper_api_key).toBe('serper-test-key');
         expect(data.job.job_config.max_search_results).toBe(7);
         expect(data.job.job_config.max_steps).toBe(20);
         expect(data.job.job_config.confidence_threshold).toBe(0.82);
-        expect(data.job.job_config.llm_provider).toBe('openai');
-        expect(data.job.job_config.llm_model).toBe('gpt-4o-mini');
+        expect(data.job.job_config.llm_provider).toBe('deepseek');
+        expect(data.job.job_config.llm_model).toBe('deepseek-chat');
         expect(data.job.job_config.llm_base_url).toBeUndefined();
     });
 
-    it('normalizes deprecated Gemini discovery settings back to OpenAI defaults', async () => {
+    it('normalizes deprecated Gemini discovery settings back to DeepSeek defaults', async () => {
         (validateRunnerAuth as jest.Mock).mockResolvedValue({
             runnerName: 'test-runner',
             allowedScrapers: null,
         });
 
         (getAIScrapingDefaults as jest.Mock).mockResolvedValue({
-            llm_provider: 'openai',
-            llm_model: 'gpt-4o-mini',
+            llm_provider: 'deepseek',
+            llm_model: 'deepseek-chat',
             llm_base_url: null,
             max_search_results: 6,
             max_steps: 18,
@@ -348,10 +348,10 @@ describe('POST /api/scraper/v1/poll', () => {
         });
 
         (getAIScrapingRuntimeCredentials as jest.Mock).mockResolvedValue({
-            llm_provider: 'openai',
-            llm_model: 'gpt-4o-mini',
-            llm_api_key: 'openai-test-key',
-            openai_api_key: 'openai-test-key',
+            llm_provider: 'deepseek',
+            llm_model: 'deepseek-chat',
+            llm_api_key: 'deepseek-test-key',
+            deepseek_api_key: 'deepseek-test-key',
             serper_api_key: 'serper-test-key',
         });
 
@@ -403,12 +403,12 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(res.status).toBe(200);
 
         const data = await res.json();
-        expect(data.job.ai_credentials.llm_provider).toBe('openai');
-        expect(data.job.ai_credentials.llm_model).toBe('gpt-4o-mini');
-        expect(data.job.ai_credentials.llm_api_key).toBe('openai-test-key');
-        expect(data.job.ai_credentials.openai_api_key).toBe('openai-test-key');
-        expect(data.job.job_config.llm_provider).toBe('openai');
-        expect(data.job.job_config.llm_model).toBe('gpt-4o-mini');
+        expect(data.job.ai_credentials.llm_provider).toBe('deepseek');
+        expect(data.job.ai_credentials.llm_model).toBe('deepseek-chat');
+        expect(data.job.ai_credentials.llm_api_key).toBe('deepseek-test-key');
+        expect(data.job.ai_credentials.deepseek_api_key).toBe('deepseek-test-key');
+        expect(data.job.job_config.llm_provider).toBe('deepseek');
+        expect(data.job.job_config.llm_model).toBe('deepseek-chat');
     });
 
     it('preserves shared discovery keys and strips unsupported ones from discovery job config', async () => {
@@ -468,7 +468,7 @@ describe('POST /api/scraper/v1/poll', () => {
         expect(data.job.job_config.max_search_results).toBe(6);
         expect(data.job.job_config.max_steps).toBe(12);
         expect(data.job.job_config.confidence_threshold).toBe(0.9);
-        expect(data.job.job_config.llm_model).toBe('gpt-4o');
+        expect(data.job.job_config.llm_model).toBe('deepseek-chat');
         expect(data.job.job_config.search_provider).toBe('serper');
         expect(data.job.job_config.cache_enabled).toBe(false);
         expect(data.job.job_config.extraction_strategy).toBe('auto');

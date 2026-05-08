@@ -6,7 +6,7 @@ from scrapers.config_validation import ValidationReport, print_validation_report
 
 
 def _set_required_base_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-" + ("x" * 48))
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "deepseek-" + ("x" * 32))
     monkeypatch.setenv("SCRAPER_API_URL", "https://baystate.example.com")
     monkeypatch.setenv("SCRAPER_API_KEY", "bsr_" + ("y" * 24))
 
@@ -64,7 +64,7 @@ def test_validate_config_allows_auto_mode_without_search_keys(monkeypatch: pytes
 
 
 def test_validate_config_reports_invalid_provider_and_invalid_url(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("OPENAI_API_KEY", "not-an-openai-key")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "short")
     monkeypatch.setenv("AI_SEARCH_PROVIDER", "duckduckgo")
     monkeypatch.setenv("SERPER_API_KEY", "short")
     monkeypatch.setenv("SCRAPER_API_URL", "not-a-url")
@@ -73,11 +73,11 @@ def test_validate_config_reports_invalid_provider_and_invalid_url(monkeypatch: p
     report = validate_config()
 
     assert report.is_valid is False
-    assert "OPENAI_API_KEY must start with 'sk-'" in report.errors
-    assert "AI_SEARCH_PROVIDER must be one of: auto, serper, gemini" in report.errors
+    assert "AI_SEARCH_PROVIDER must be one of: auto, serper" in report.errors
     assert "SCRAPER_API_URL is not a valid URL format" in report.errors
     assert "SCRAPER_API_KEY may be truncated or invalid" in report.warnings
     assert "SERPER_API_KEY may be truncated or invalid" in report.warnings
+    assert "DEEPSEEK_API_KEY may be truncated or invalid" in report.warnings
 
 
 def test_validation_report_to_dict_and_print(capsys: pytest.CaptureFixture[str]) -> None:

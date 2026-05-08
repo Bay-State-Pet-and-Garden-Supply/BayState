@@ -65,8 +65,8 @@ export function AIModelCombobox({
     return getAIModelLabel(value);
   }, [options, modelOptions, value, placeholder]);
 
-  const emptyMessage = emptyLabel || (options ? 'No models found.' : 'No OpenAI models found.');
-  const searchText = searchPlaceholder || (options ? 'Search models...' : 'Search OpenAI models...');
+  const emptyMessage = emptyLabel || 'No AI models found.';
+  const searchText = searchPlaceholder || 'Search AI models...';
 
   return (
     <Popover

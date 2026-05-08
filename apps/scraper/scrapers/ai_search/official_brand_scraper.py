@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 
 from scrapers.ai_search.llm_runtime import resolve_llm_runtime
 from scrapers.ai_search.models import AISearchResult
+from scrapers.ai_search.scoring import BrandSourceSelector
+from scrapers.ai_search.search import SearchClient
 from src.crawl4ai_engine.engine import Crawl4AIEngine
 
 
@@ -34,14 +36,16 @@ class OfficialBrandScraper:
     def __init__(
         self,
         headless: bool = True,
-        llm_provider: str = "openai",
-        llm_model: str = "gpt-4o-mini",
+        llm_provider: str = "deepseek",
+        llm_model: str = "deepseek-chat",
         llm_api_key: str | None = None,
+        llm_base_url: str | None = None,
     ):
         self.headless = headless
         self._llm_runtime = resolve_llm_runtime(
             provider=llm_provider,
             model=llm_model,
+            base_url=llm_base_url,
             api_key=llm_api_key,
         )
 

@@ -106,8 +106,8 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
 
         (createClient as jest.Mock).mockReturnValue(mockSupabase);
         (getAIScrapingDefaults as jest.Mock).mockResolvedValue({
-            llm_provider: 'openai',
-            llm_model: 'gpt-4o-mini',
+            llm_provider: 'deepseek',
+            llm_model: 'deepseek-chat',
             llm_base_url: null,
             max_search_results: 5,
             max_steps: 15,
@@ -162,7 +162,7 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
             allowedScrapers: null,
         });
         (getAIScrapingRuntimeCredentials as jest.Mock).mockResolvedValue({
-            openai_api_key: 'openai-test-key',
+            deepseek_api_key: 'deepseek-test-key',
             serper_api_key: 'serper-test-key',
         });
         mockSupabase.rpc.mockResolvedValue({
@@ -203,7 +203,7 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
             site_domain: 'bradley.example.com',
             planned_work_units: 1,
             ai_credentials: {
-                openai_api_key: 'openai-test-key',
+                deepseek_api_key: 'deepseek-test-key',
                 serper_api_key: 'serper-test-key',
             },
         });
@@ -235,18 +235,18 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
             allowedScrapers: null,
         });
         (getAIScrapingDefaults as jest.Mock).mockResolvedValue({
-            llm_provider: 'openai',
-            llm_model: 'gpt-4o-mini',
+            llm_provider: 'deepseek',
+            llm_model: 'deepseek-chat',
             llm_base_url: null,
             max_search_results: 6,
             max_steps: 12,
             confidence_threshold: 0.9,
         });
         (getAIScrapingRuntimeCredentials as jest.Mock).mockResolvedValue({
-            llm_provider: 'openai',
-            llm_model: 'gpt-4o-mini',
-            llm_api_key: 'openai-test-key',
-            openai_api_key: 'openai-test-key',
+            llm_provider: 'deepseek',
+            llm_model: 'deepseek-chat',
+            llm_api_key: 'deepseek-test-key',
+            deepseek_api_key: 'deepseek-test-key',
         });
         mockSupabase.rpc.mockResolvedValue({
             data: [{
@@ -269,13 +269,13 @@ describe('POST /api/scraper/v1/claim-chunk', () => {
 
         expect(res.status).toBe(200);
         const data = await res.json();
-        expect(data.chunk.ai_credentials.llm_provider).toBe('openai');
+        expect(data.chunk.ai_credentials.llm_provider).toBe('deepseek');
         expect(data.chunk.job_config).toMatchObject({
             max_search_results: 6,
             max_steps: 12,
             confidence_threshold: 0.9,
-            llm_provider: 'openai',
-            llm_model: 'gpt-4o-mini',
+            llm_provider: 'deepseek',
+            llm_model: 'deepseek-chat',
         });
         expect(data.chunk.job_config.llm_base_url).toBeUndefined();
     });

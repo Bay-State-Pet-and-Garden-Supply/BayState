@@ -4,42 +4,44 @@ import { AIConsolidationSettingsCard } from '@/components/admin/settings/AIConso
 
 const mockConsolidationResponse = {
   defaults: {
-    llm_provider: 'openai',
-    llm_model: 'gpt-4o-mini',
+    llm_provider: 'deepseek',
+    llm_model: 'deepseek-chat',
     llm_base_url: null,
-    llm_supports_batch_api: true,
+    llm_supports_batch_api: false,
     confidence_threshold: 0.7,
   },
   statuses: {
+    deepseek: { provider: 'deepseek', configured: true, last4: '1234', updated_at: null },
     gemini: { provider: 'gemini', configured: true, last4: '2468', updated_at: null },
     brave: { provider: 'brave', configured: true, last4: '1357', updated_at: null },
     serpapi: { provider: 'serpapi', configured: true, last4: '9999', updated_at: null },
-    openai: { provider: 'openai', configured: true, last4: '1234', updated_at: null },
+    openai: { provider: 'openai', configured: true, last4: '0000', updated_at: null },
     lmstudio: { provider: 'lmstudio', configured: false, last4: null, updated_at: null },
   },
-  openai_fallback_status: { provider: 'openai', configured: true, last4: '1234', updated_at: null },
+  deepseek_fallback_status: { provider: 'deepseek', configured: true, last4: '1234', updated_at: null },
 };
 
 const mockSettingsResponse = {
   statuses: {
+    deepseek: { provider: 'deepseek', configured: true, last4: '1234', updated_at: null },
     gemini: { provider: 'gemini', configured: true, last4: '2468', updated_at: null },
     brave: { provider: 'brave', configured: true, last4: '1357', updated_at: null },
     serpapi: { provider: 'serpapi', configured: true, last4: '9999', updated_at: null },
-    openai: { provider: 'openai', configured: true, last4: '1234', updated_at: null },
+    openai: { provider: 'openai', configured: true, last4: '0000', updated_at: null },
   },
   defaults: {
-    llm_provider: 'openai',
-    llm_model: 'gpt-4o-mini',
+    llm_provider: 'deepseek',
+    llm_model: 'deepseek-chat',
     llm_base_url: null,
     max_search_results: 5,
     max_steps: 15,
     confidence_threshold: 0.7,
   },
   consolidationDefaults: {
-    llm_provider: 'openai',
-    llm_model: 'gpt-4o-mini',
+    llm_provider: 'deepseek',
+    llm_model: 'deepseek-chat',
     llm_base_url: null,
-    llm_supports_batch_api: true,
+    llm_supports_batch_api: false,
     confidence_threshold: 0.7,
   },
 };
@@ -64,40 +66,40 @@ describe('AI settings cards', () => {
     jest.resetAllMocks();
   });
 
-  it('renders OpenAI scraping settings with deprecated legacy discovery providers hidden', async () => {
+  it('renders DeepSeek scraping settings with deprecated legacy discovery providers hidden', async () => {
     render(<AIScrapingSettingsCard />);
 
     await waitFor(() => {
       expect(screen.getByLabelText('Gemini API Key (Optional)')).toBeInTheDocument();
     });
 
-    expect(screen.getByLabelText('OpenAI API Key')).toBeInTheDocument();
+    expect(screen.getByLabelText('DeepSeek API Key')).toBeInTheDocument();
     expect(screen.getByLabelText('Serper API Key')).toBeInTheDocument();
     expect(screen.queryByLabelText('Brave Search API Key')).not.toBeInTheDocument();
     expect(
-      screen.getByText(/Legacy Gemini scraping settings are deprecated/i)
+      screen.getByText(/Legacy Gemini and OpenAI scraping settings are deprecated/i)
     ).toBeInTheDocument();
-    const scrapingModelCombobox = screen.getByRole('combobox', { name: 'OpenAI Model' });
-    expect(scrapingModelCombobox).toHaveTextContent('GPT-4o mini');
+    const scrapingModelCombobox = screen.getByRole('combobox', { name: 'DeepSeek Model' });
+    expect(scrapingModelCombobox).toHaveTextContent('DeepSeek Chat');
     fireEvent.click(scrapingModelCombobox);
-    expect(screen.getByText('GPT-4o')).toBeInTheDocument();
+    expect(screen.getByText('DeepSeek Reasoner')).toBeInTheDocument();
     expect(screen.getByText('Gemini Available')).toBeInTheDocument();
-    expect(screen.getByText('OpenAI Ready')).toBeInTheDocument();
+    expect(screen.getByText('DeepSeek Ready')).toBeInTheDocument();
     expect(
-      screen.getByText(/Finalization Copilot now use OpenAI/i)
+      screen.getByText(/Finalization Copilot now use DeepSeek/i)
     ).toBeInTheDocument();
   });
 
-  it('renders OpenAI consolidation messaging', async () => {
+  it('renders DeepSeek consolidation messaging', async () => {
     render(<AIConsolidationSettingsCard />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText('OpenAI API Key')).toBeInTheDocument();
+      expect(screen.getByLabelText('DeepSeek API Key')).toBeInTheDocument();
     });
 
-    // Provider options should be visible
-    expect(screen.getByText('OpenAI Batch')).toBeInTheDocument();
+    expect(screen.getByText('DeepSeek Hosted')).toBeInTheDocument();
     expect(screen.getByText('LM Studio Direct Chat')).toBeInTheDocument();
-    expect(screen.getByText('OpenAI Batch Ready')).toBeInTheDocument();
+    expect(screen.getByText('DeepSeek Hosted Ready')).toBeInTheDocument();
+    expect(screen.getByText('Processing: Synthetic async')).toBeInTheDocument();
   });
 });

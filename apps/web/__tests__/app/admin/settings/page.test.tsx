@@ -20,10 +20,10 @@ describe('Admin Settings Page', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Settings');
     expect(screen.getByText('External AI stack finalized')).toBeInTheDocument();
     expect(
-      screen.getByText(/Scraping and consolidation now run on OpenAI/i)
+      screen.getByText(/Scraping, consolidation, and Finalization Copilot now run on DeepSeek/i)
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Legacy Gemini, Brave Search, and SerpAPI credentials are deprecated/i)
+      screen.getByText(/Legacy Gemini, OpenAI, Brave Search, and SerpAPI credentials are deprecated/i)
     ).toBeInTheDocument();
   });
 });

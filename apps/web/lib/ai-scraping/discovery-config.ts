@@ -1,4 +1,5 @@
 import type { AIScrapingDefaults, LLMProvider } from '@/lib/ai-scraping/credentials';
+import { DEFAULT_AI_MODEL } from '@/lib/ai-scraping/models';
 
 export const DISCOVERY_CONFIG_KEYS = new Set([
   'product_name',
@@ -41,9 +42,26 @@ export function pickNumber(value: unknown, fallback: number): number {
 }
 
 export function normalizeDiscoveryLLMProvider(_provider?: unknown, _fallback?: unknown): LLMProvider {
-  void _provider;
-  void _fallback;
-  return 'openai';
+  const requested = pickNonEmptyString(_provider)?.toLowerCase();
+  const fallback = pickNonEmptyString(_fallback)?.toLowerCase();
+
+  if (requested === 'openai_compatible') {
+    return 'openai_compatible';
+  }
+
+  if (requested === 'deepseek' || requested === 'openai' || requested === 'gemini') {
+    return 'deepseek';
+  }
+
+  if (fallback === 'openai_compatible') {
+    return 'openai_compatible';
+  }
+
+  if (fallback === 'deepseek' || fallback === 'openai' || fallback === 'gemini') {
+    return 'deepseek';
+  }
+
+  return 'deepseek';
 }
 
 function pickNonEmptyString(value: unknown): string | null {
@@ -55,12 +73,22 @@ function pickNonEmptyString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function normalizeDiscoveryOpenAIModel(value: unknown, fallback: string): string {
+function normalizeDiscoveryModel(
+  provider: LLMProvider,
+  value: unknown,
+  fallback: string,
+): string {
   const model = pickNonEmptyString(value) ?? fallback;
-  const lowered = model.toLowerCase();
-  return lowered.startsWith('gpt-') || lowered.startsWith('o1') || lowered.startsWith('o3') || lowered.startsWith('o4')
-    ? model
-    : fallback;
+
+  if (provider === 'openai_compatible') {
+    return model;
+  }
+
+  if (model.toLowerCase().startsWith('deepseek-')) {
+    return model;
+  }
+
+  return DEFAULT_AI_MODEL;
 }
 
 function normalizeDiscoverySearchProvider(value: unknown): 'auto' | 'serper' | null {
@@ -111,8 +139,8 @@ export function sanitizeDiscoveryConfig(
   normalized.confidence_threshold = pickNumber(config.confidence_threshold, defaults.confidence_threshold);
 
   const llmProvider = normalizeDiscoveryLLMProvider(config.llm_provider, defaults.llm_provider);
-  const llmModel = normalizeDiscoveryOpenAIModel(config.llm_model, defaults.llm_model);
-  const llmBaseUrl = null;
+  const llmModel = normalizeDiscoveryModel(llmProvider, config.llm_model, defaults.llm_model);
+  const llmBaseUrl = pickNonEmptyString(config.llm_base_url) ?? defaults.llm_base_url ?? null;
 
   normalized.llm_provider = llmProvider;
   normalized.llm_model = llmModel;

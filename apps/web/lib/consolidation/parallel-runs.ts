@@ -24,11 +24,11 @@ interface RegisterParallelRunParams {
 }
 
 function normalizeProvider(value: unknown): LLMProvider {
-    if (value === 'gemini' || value === 'openai_compatible' || value === 'lmstudio') {
+    if (value === 'deepseek' || value === 'gemini' || value === 'openai_compatible' || value === 'lmstudio' || value === 'openai') {
         return value;
     }
 
-    return 'openai';
+    return 'deepseek';
 }
 
 function normalizeRecord(value: unknown): Record<string, unknown> {

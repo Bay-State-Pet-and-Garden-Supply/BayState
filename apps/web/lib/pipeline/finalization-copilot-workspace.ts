@@ -327,6 +327,7 @@ export function applySetProductFieldsToDraft(
     longDescription?: string;
     price?: number;
     weight?: string;
+    category?: string;
     stockStatus?: "in_stock" | "out_of_stock" | "pre_order";
     availability?: string;
     isSpecialOrder?: boolean;
@@ -357,6 +358,10 @@ export function applySetProductFieldsToDraft(
   if (input.weight !== undefined) {
     next.weight = input.weight.trim();
     updatedFields.push("weight");
+  }
+  if (input.category !== undefined) {
+    next.category = input.category.trim();
+    updatedFields.push("category");
   }
   if (input.stockStatus !== undefined) {
     next.stockStatus = input.stockStatus;
