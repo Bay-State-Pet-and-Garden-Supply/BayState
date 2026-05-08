@@ -37,6 +37,10 @@ interface BatchImportResult {
         skippedSelfLinks: number;
         skippedMissing: number;
     };
+    groupStats: {
+        groupsCreated: number;
+        linksCreated: number;
+    };
 }
 
 const BATCH_SIZE = 100;
@@ -356,6 +360,15 @@ export async function importShopSiteProductsBatched({
         productIdBySku,
     );
 
+    // Phase 5.5: Subproduct Grouping
+    console.log('[Batch Import] Phase 5.5: Linking subproducts into groups...');
+    const groupStats = await syncProductGroupsBatched(
+        supabase,
+        validProducts,
+        importedProductIdBySku,
+        productIdBySku,
+    );
+
     // Phase 6: Cleanup (Purge disabled/removed products)
     // Only purge if we successfully processed a significant number of products (full sync safety)
     if (canPurgeMissingProducts && created + updated > 100 && deletedCount === 0) {
@@ -393,6 +406,7 @@ export async function importShopSiteProductsBatched({
         deleted: deletedCount,
         errors,
         crossSellStats,
+        groupStats,
     };
 }
 
@@ -638,6 +652,76 @@ async function ensureFacetValuesBulk(
     return facetValueIdMap;
 }
 
+async function syncProductGroupsBatched(
+    supabase: SupabaseClient,
+    products: Array<{ product: ShopSiteProduct; transformed: TransformedShopSiteProduct }>,
+    importedProductIdBySku: Map<string, string>,
+    allProductIdBySku: Map<string, string>,
+) {
+    const parentProducts = products.filter(p => p.transformed.subproducts.length > 0);
+    if (parentProducts.length === 0) return { groupsCreated: 0, linksCreated: 0 };
+
+    let groupsCreated = 0;
+    let linksCreated = 0;
+
+    for (const { product, transformed } of parentProducts) {
+        const parentId = importedProductIdBySku.get(product.sku);
+        if (!parentId) continue;
+
+        // 1. Ensure product_group exists for this parent
+        // Use parent's slug as the group slug
+        const { data: group, error: groupError } = await supabase
+            .from('product_groups')
+            .upsert({
+                slug: transformed.slug,
+                name: transformed.name,
+                description: transformed.description,
+                default_product_id: parentId,
+            }, { onConflict: 'slug' })
+            .select('id')
+            .single();
+
+        if (groupError || !group) {
+            console.error(`[Batch Import] Failed to create product group for ${product.sku}:`, groupError);
+            continue;
+        }
+
+        groupsCreated++;
+
+        // 2. Link all subproducts (including the parent if it's in the list)
+        const subproductSkus = transformed.subproducts;
+        const linksToInsert = [];
+
+        for (let i = 0; i < subproductSkus.length; i++) {
+            const childSku = subproductSkus[i];
+            const childProductId = allProductIdBySku.get(childSku) || importedProductIdBySku.get(childSku);
+            
+            if (childProductId) {
+                linksToInsert.push({
+                    group_id: group.id,
+                    product_id: childProductId,
+                    sort_order: i,
+                    is_default: childProductId === parentId,
+                });
+            }
+        }
+
+        if (linksToInsert.length > 0) {
+            const { error: linkError } = await supabase
+                .from('product_group_products')
+                .upsert(linksToInsert, { onConflict: 'group_id, product_id' });
+
+            if (linkError) {
+                console.error(`[Batch Import] Failed to link subproducts for group ${transformed.slug}:`, linkError);
+            } else {
+                linksCreated += linksToInsert.length;
+            }
+        }
+    }
+
+    return { groupsCreated, linksCreated };
+}
+
 async function deleteAndInsertRelations<T extends { product_id: string }>(
     supabase: SupabaseClient,
     table: string,
@@ -775,6 +859,7 @@ function buildProductRecord(
         size: _size,
         color: _color,
         packaging_type: _packagingType,
+        subproducts: _subproducts,
         ...productFields
     } = transformed;
 

@@ -61,6 +61,7 @@ export interface ShopSiteStorefrontProductRecord {
   size: string | null;
   color: string | null;
   packaging_type: string | null;
+  subproducts: string[];
 }
 
 export interface ShopSitePipelineInput {
@@ -91,6 +92,7 @@ export interface ShopSitePipelineInput {
   is_special_order?: boolean;
   in_store_pickup?: boolean;
   legacy_filename?: string | null;
+  subproduct_skus?: string[];
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -447,6 +449,9 @@ export function transformShopSiteProductToStorefrontRecord(
     size: normalizeGenericFacetValue(product.size),
     color: normalizeGenericFacetValue(product.color),
     packaging_type: normalizeGenericFacetValue(product.packagingType),
+    subproducts: (product.subproducts || [])
+      .map((sp) => sp.sku)
+      .filter((sku): sku is string => !!sku),
   };
 }
 
@@ -482,6 +487,7 @@ export function buildPipelineInputFromTransformedShopSiteProduct(
     is_special_order: transformed.is_special_order,
     in_store_pickup: transformed.in_store_pickup,
     legacy_filename: options.legacyFilename?.trim() || null,
+    subproduct_skus: transformed.subproducts.length > 0 ? transformed.subproducts : undefined,
   };
 }
 

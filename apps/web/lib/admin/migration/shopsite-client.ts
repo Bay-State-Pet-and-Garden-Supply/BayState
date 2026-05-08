@@ -672,6 +672,20 @@ export class ShopSiteClient {
             const moreInfoText = this.extractXmlValue(productXml, 'MoreInformationText');
             const searchKeywords = this.extractXmlValue(productXml, 'SearchKeywords');
             const googleProductCategory = this.extractXmlValue(productXml, 'GoogleProductCategory');
+            const subproducts: ShopSiteSubproduct[] = [];
+            const subproductsBlock = this.extractXmlValue(productXml, 'Subproducts');
+            if (subproductsBlock) {
+                const subproductMatches = subproductsBlock.match(/<Subproduct>([\s\S]*?)<\/Subproduct>/gi);
+                if (subproductMatches) {
+                    for (const subproductXml of subproductMatches) {
+                        const sName = this.extractXmlValue(subproductXml, 'Name');
+                        const sSku = this.extractXmlValue(subproductXml, 'SKU');
+                        if (sSku) {
+                            subproducts.push({ name: sName || '', sku: sSku });
+                        }
+                    }
+                }
+            }
 
             // Categorization from ProductOnPages
             const shopsitePages: string[] = [];
@@ -722,6 +736,7 @@ export class ShopSiteClient {
                 color,
                 packagingType,
                 crossSellSkus,
+                subproducts: subproducts.length > 0 ? subproducts : undefined,
                 isDisabled,
                 fileName,
                 moreInfoText,

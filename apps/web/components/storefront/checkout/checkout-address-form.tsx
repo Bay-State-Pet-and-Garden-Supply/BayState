@@ -1,16 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Package, Info, Truck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Package } from 'lucide-react';
 import { DELIVERY_SERVICE_OPTIONS, type DeliveryServiceType } from '@/lib/types';
 import { getDeliveryQuote, type DeliveryFeeBreakdown } from '@/lib/storefront/delivery';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 
 interface DeliveryQuote {
   distanceMiles: number;
@@ -64,10 +62,9 @@ export function CheckoutAddressForm({
 }: CheckoutAddressFormProps) {
   const [localLoadingQuote, setLocalLoadingQuote] = useState(false);
 
-  // Calculate delivery quote when address changes
   const calculateDeliveryQuote = useCallback(async () => {
     const fullAddress = `${deliveryAddress.street}, ${deliveryAddress.city}, ${deliveryAddress.state} ${deliveryAddress.zip}`;
-    if (!fullAddress.trim() || !deliveryAddress.zip) {
+    if (!fullAddress.trim() || !deliveryAddress.zip || deliveryAddress.zip.length < 5) {
       onQuoteChange(null);
       return;
     }
@@ -89,7 +86,6 @@ export function CheckoutAddressForm({
     }
   }, [deliveryAddress, selectedServices, onQuoteChange]);
 
-  // Debounce delivery quote calculation
   useEffect(() => {
     const timer = setTimeout(calculateDeliveryQuote, 500);
     return () => clearTimeout(timer);
@@ -98,121 +94,144 @@ export function CheckoutAddressForm({
   const isLoading = localLoadingQuote || loadingQuote;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Package className="h-5 w-5" />
-          Delivery Address
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="street">Street Address *</Label>
-          <Input
-            id="street"
-            placeholder="123 Main St"
-            value={deliveryAddress.street}
-            onChange={(e) => onAddressChange('street', e.target.value)}
-            className="h-12"
-            aria-describedby="street-help"
-          />
-          <p id="street-help" className="text-sm text-muted-foreground">
-            Full street address including apartment/unit number.
-          </p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-2 sm:col-span-1">
-            <Label htmlFor="city">City *</Label>
+    <div className="space-y-8 animate-in fade-in slide-in-from-top-2 duration-500">
+      <div className="space-y-4">
+        <h3 className="text-lg font-bold flex items-center gap-2">
+          <Package className="h-5 w-5 text-primary" />
+          Delivery Details
+        </h3>
+        
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="street" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Street Address *</Label>
             <Input
-              id="city"
-              placeholder="Worcester"
-              value={deliveryAddress.city}
-              onChange={(e) => onAddressChange('city', e.target.value)}
-              className="h-12"
+              id="street"
+              placeholder="123 Main St"
+              value={deliveryAddress.street}
+              onChange={(e) => onAddressChange('street', e.target.value)}
+              className="h-12 rounded-lg"
             />
           </div>
-          <div className="space-y-2 sm:col-span-1">
-            <Label htmlFor="state">State</Label>
-            <Input
-              id="state"
-              placeholder="MA"
-              value={deliveryAddress.state}
-              onChange={(e) => onAddressChange('state', e.target.value)}
-              className="h-12"
-            />
-          </div>
-          <div className="space-y-2 sm:col-span-1">
-            <Label htmlFor="zip">ZIP Code *</Label>
-            <Input
-              id="zip"
-              placeholder="01602"
-              value={deliveryAddress.zip}
-              onChange={(e) => onAddressChange('zip', e.target.value)}
-              className="h-12"
-            />
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-2 sm:col-span-1">
+              <Label htmlFor="city" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">City *</Label>
+              <Input
+                id="city"
+                placeholder="Worcester"
+                value={deliveryAddress.city}
+                onChange={(e) => onAddressChange('city', e.target.value)}
+                className="h-12 rounded-lg"
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-1">
+              <Label htmlFor="state" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">State</Label>
+              <Input
+                id="state"
+                placeholder="MA"
+                value={deliveryAddress.state}
+                onChange={(e) => onAddressChange('state', e.target.value)}
+                className="h-12 rounded-lg"
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-1">
+              <Label htmlFor="zip" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">ZIP Code *</Label>
+              <Input
+                id="zip"
+                placeholder="01602"
+                value={deliveryAddress.zip}
+                onChange={(e) => onAddressChange('zip', e.target.value)}
+                className="h-12 rounded-lg"
+              />
+            </div>
           </div>
         </div>
+      </div>
 
-        {isLoading && (
-          <div className="flex items-center gap-2 text-sm text-zinc-600">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Calculating delivery options...
-          </div>
-        )}
+      {isLoading && (
+        <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg text-sm font-medium">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          Calculating delivery costs for your location...
+        </div>
+      )}
 
-        {deliveryQuote && (
-          <div className={`rounded-lg border p-4 ${deliveryQuote.available ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
-            {deliveryQuote.available ? (
-              <>
+      {deliveryQuote && !isLoading && (
+        <div className={cn(
+          "rounded-xl border-2 p-5 transition-all",
+          deliveryQuote.available 
+            ? "border-green-200 bg-green-50/50 shadow-sm shadow-green-100" 
+            : "border-red-200 bg-red-50/50"
+        )}>
+          {deliveryQuote.available ? (
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 flex items-center justify-center rounded-full bg-green-100 text-green-600 flex-shrink-0">
+                <Truck className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-green-800">Delivery Available</span>
-                  <span className="font-bold text-green-800">{formatCurrency(deliveryQuote.fee)}</span>
+                  <span className="font-bold text-green-900">Delivery Available</span>
+                  <span className="font-bold text-green-900 text-lg">{formatCurrency(deliveryQuote.fee)}</span>
                 </div>
-                <p className="text-sm text-green-700 mt-1">
-                  {deliveryQuote.distanceMiles.toFixed(1)} miles from store
+                <p className="text-sm text-green-700">
+                  Estimated distance: {deliveryQuote.distanceMiles.toFixed(1)} miles
                 </p>
-              </>
-            ) : (
-              <p className="font-medium text-red-800">
-                {deliveryQuote.formatted || 'Delivery not available to this address'}
-              </p>
-            )}
-          </div>
-        )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 flex items-center justify-center rounded-full bg-red-100 text-red-600 flex-shrink-0">
+                <Info className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-red-900">Delivery Restricted</p>
+                <p className="text-sm text-red-700">
+                  {deliveryQuote.formatted || 'Delivery is not available to this address. Please choose Store Pickup.'}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
-        {deliveryQuote?.available && (
-          <div className="space-y-3">
-            <Label>Delivery Services (optional)</Label>
+      {deliveryQuote?.available && (
+        <div className="space-y-4">
+          <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Additional Services</Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {DELIVERY_SERVICE_OPTIONS.map((option) => (
-              <div key={option.service} className="flex items-center space-x-3">
+              <div 
+                key={option.service} 
+                onClick={() => onServiceToggle(option.service)}
+                className={cn(
+                  "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
+                  selectedServices.has(option.service) 
+                    ? "border-primary bg-primary/5 ring-1 ring-primary" 
+                    : "border-border hover:bg-muted/30"
+                )}
+              >
                 <Checkbox
                   id={`service-${option.service}`}
                   checked={selectedServices.has(option.service)}
                   onCheckedChange={() => onServiceToggle(option.service)}
                 />
-                <Label htmlFor={`service-${option.service}`} className="text-sm cursor-pointer">
-                  {option.label}
-                </Label>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">{option.label}</p>
+                  <p className="text-[10px] text-muted-foreground">+{formatCurrency(option.fee)}</p>
+                </div>
               </div>
             ))}
           </div>
-        )}
-
-        <div className="space-y-2">
-          <Label htmlFor="delivery_notes">Delivery Notes</Label>
-          <Textarea
-            id="delivery_notes"
-            value={deliveryNotes}
-            onChange={(e) => onNotesChange(e.target.value)}
-            placeholder="Gate code, leave at door, etc."
-            className="min-h-[80px]"
-            aria-describedby="delivery-notes-help"
-          />
-          <p id="delivery-notes-help" className="text-sm text-muted-foreground">
-            Optional instructions for the driver (e.g., gate code, drop-off location).
-          </p>
         </div>
-      </CardContent>
-    </Card>
+      )}
+
+      <div className="space-y-2">
+        <Label htmlFor="delivery_notes" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Delivery Instructions</Label>
+        <Textarea
+          id="delivery_notes"
+          value={deliveryNotes}
+          onChange={(e) => onNotesChange(e.target.value)}
+          placeholder="Gate code, drop-off location, etc."
+          className="min-h-[100px] rounded-lg p-4"
+        />
+      </div>
+    </div>
   );
 }

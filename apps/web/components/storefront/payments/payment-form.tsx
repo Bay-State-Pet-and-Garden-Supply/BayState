@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import {
   Elements,
@@ -9,9 +9,8 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, CreditCard, Shield } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { Loader2, CreditCard, Shield, Banknote } from 'lucide-react';
+import { formatCurrency, cn } from '@/lib/utils';
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder'
@@ -64,7 +63,7 @@ function PaymentFormContent({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="rounded-lg border p-4">
+      <div className="rounded-xl border border-border p-6 bg-white shadow-inner">
         <PaymentElement
           options={{
             layout: 'tabs',
@@ -73,32 +72,32 @@ function PaymentFormContent({
       </div>
 
       {message && (
-        <div className="rounded-md bg-red-50 p-4 text-sm text-red-600">
+        <div className="rounded-lg bg-red-50 p-4 text-sm font-medium text-red-600 border border-red-100">
           {message}
         </div>
       )}
 
       <Button
         type="submit"
-        className="w-full h-14 text-lg"
+        className="w-full h-16 text-xl font-bold"
         disabled={!stripe || isProcessing}
       >
         {isProcessing ? (
           <>
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            <Loader2 className="mr-2 h-6 w-6 animate-spin" />
             Processing...
           </>
         ) : (
           <>
-            <CreditCard className="mr-2 h-5 w-5" />
+            <CreditCard className="mr-2 h-6 w-6" />
             Pay {formatCurrency(amount)}
           </>
         )}
       </Button>
 
-      <div className="flex items-center justify-center gap-2 text-xs text-zinc-500">
+      <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
         <Shield className="h-4 w-4" />
-        <span>Secured by Stripe</span>
+        <span>Secured by Stripe SSL Encryption</span>
       </div>
     </form>
   );
@@ -117,9 +116,9 @@ export function PaymentForm({
       colorBackground: 'hsl(var(--card))',
       colorText: 'hsl(var(--foreground))',
       colorDanger: 'hsl(var(--destructive))',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      spacingUnit: '4px',
-      borderRadius: '8px',
+      fontFamily: 'Arvo, serif',
+      spacingUnit: '5px',
+      borderRadius: '12px',
     },
   };
 
@@ -140,71 +139,74 @@ export function PaymentMethodSelector({
   disabled?: boolean;
 }) {
   return (
-    <div className="space-y-3">
-      <label className="text-sm font-medium text-zinc-700">
-        Payment Method
+    <div className="space-y-4">
+      <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+        Select Payment Method
       </label>
-      <div className="grid gap-3">
-        <button
-          type="button"
-          onClick={() => onSelect('credit_card')}
-          disabled={disabled}
-          className={`flex items-center gap-3 rounded-lg border-2 p-4 text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div
+          onClick={() => !disabled && onSelect('credit_card')}
+          className={cn(
+            "relative flex cursor-pointer flex-col gap-4 rounded-xl border-2 p-6 transition-all",
             selected === 'credit_card'
-              ? 'border-primary bg-primary/5'
-              : 'border-zinc-200 hover:border-zinc-300'
-          }`}
-        >
-          <div
-            className={`flex h-10 w-10 items-center justify-center rounded-full ${
-              selected === 'credit_card' ? 'bg-primary text-white' : 'bg-zinc-100 text-zinc-600'
-            }`}
-          >
-            <CreditCard className="h-5 w-5" />
-          </div>
-          <div className="flex-1">
-            <p className="font-medium text-zinc-900">Credit Card</p>
-            <p className="text-sm text-zinc-500">Visa, Mastercard, Amex</p>
-          </div>
-          {selected === 'credit_card' && (
-            <div className="h-3 w-3 rounded-full bg-primary" />
+              ? "border-primary bg-primary/5 ring-1 ring-primary"
+              : "border-border bg-card hover:border-zinc-300",
+            disabled && "opacity-50 cursor-not-allowed"
           )}
-        </button>
+        >
+          <div className="flex items-center justify-between">
+            <div className={cn(
+              "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
+              selected === 'credit_card' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+            )}>
+              <CreditCard className="h-5 w-5" />
+            </div>
+            <div className={cn(
+              "h-5 w-5 rounded-full border-2 flex items-center justify-center",
+              selected === 'credit_card' ? "border-primary" : "border-muted"
+            )}>
+              {selected === 'credit_card' && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
+            </div>
+          </div>
+          <div>
+            <p className="text-base font-bold">Credit / Debit Card</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Pay securely via Stripe.
+            </p>
+          </div>
+        </div>
 
-        <button
-          type="button"
-          onClick={() => onSelect('pickup')}
-          disabled={disabled}
-          className={`flex items-center gap-3 rounded-lg border-2 p-4 text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+        <div
+          onClick={() => !disabled && onSelect('pickup')}
+          className={cn(
+            "relative flex cursor-pointer flex-col gap-4 rounded-xl border-2 p-6 transition-all",
             selected === 'pickup'
-              ? 'border-primary bg-primary/5'
-              : 'border-zinc-200 hover:border-zinc-300'
-          }`}
-        >
-          <div
-            className={`flex h-10 w-10 items-center justify-center rounded-full ${
-              selected === 'pickup' ? 'bg-primary text-white' : 'bg-zinc-100 text-zinc-600'
-            }`}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
-          </div>
-          <div className="flex-1">
-            <p className="font-medium text-zinc-900">Pay at Pickup</p>
-            <p className="text-sm text-zinc-500">Pay when you collect your order</p>
-          </div>
-          {selected === 'pickup' && (
-            <div className="h-3 w-3 rounded-full bg-primary" />
+              ? "border-primary bg-primary/5 ring-1 ring-primary"
+              : "border-border bg-card hover:border-zinc-300",
+            disabled && "opacity-50 cursor-not-allowed"
           )}
-        </button>
+        >
+          <div className="flex items-center justify-between">
+            <div className={cn(
+              "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
+              selected === 'pickup' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+            )}>
+              <Banknote className="h-5 w-5" />
+            </div>
+            <div className={cn(
+              "h-5 w-5 rounded-full border-2 flex items-center justify-center",
+              selected === 'pickup' ? "border-primary" : "border-muted"
+            )}>
+              {selected === 'pickup' && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
+            </div>
+          </div>
+          <div>
+            <p className="text-base font-bold">Pay at Pickup</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Cash or card at the store.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
