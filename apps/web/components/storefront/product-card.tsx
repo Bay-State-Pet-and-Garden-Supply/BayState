@@ -3,7 +3,7 @@ import Image from 'next/image';
 import { type Product } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { WishlistButton } from './wishlist-button';
+import { FavoritesButton } from './favorites-button';
 import { cn, formatCurrency, formatImageUrl } from '@/lib/utils';
 import { ImageIcon } from 'lucide-react';
 
@@ -25,7 +25,7 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <div className="group relative h-full">
       <div className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-        <WishlistButton productId={product.id} />
+        <FavoritesButton productId={product.id} />
       </div>
       <Link href={`/products/${product.slug}`} className="block h-full">
         <Card className="h-full flex flex-col cursor-pointer overflow-hidden rounded-lg border border-brand-burgundy/10 bg-white transition-all group-hover:border-brand-burgundy group-hover:shadow-md group-hover:-translate-y-1">

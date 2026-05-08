@@ -73,6 +73,13 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'pickup' | 'credit_card'>('pickup');
+  
+  // Auto-switch payment method based on fulfillment
+  useEffect(() => {
+    if (fulfillmentMethod === 'delivery' && paymentMethod === 'pickup') {
+      setPaymentMethod('credit_card');
+    }
+  }, [fulfillmentMethod, paymentMethod]);
 
   // Calculate totals
   const discountedSubtotal = Math.max(0, subtotal - discount);
@@ -251,7 +258,7 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
     }
   };
 
-  if (items.length === 0) {
+  if (items.length === 0 && !isSubmitting && !isCompletingPayment) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <EmptyState
@@ -267,20 +274,7 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
 
   return (
     <div className="min-h-screen bg-muted/20">
-      {/* Header */}
-      <header className="bg-white border-b border-border sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="font-display text-2xl text-primary font-bold">
-            Bay State
-          </Link>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
-            <ShieldCheck className="h-4 w-4 text-green-600" />
-            Secure Checkout
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 py-8 lg:py-12">
+      <main className="max-w-7xl mx-auto px-4 pt-4 pb-8 lg:pt-6 lg:pb-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           {/* Left Column: Checkout Steps */}
           <div className="lg:col-span-8 space-y-4">
@@ -397,6 +391,7 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
                         selected={paymentMethod}
                         onSelect={setPaymentMethod}
                         disabled={isSubmitting}
+                        fulfillmentMethod={fulfillmentMethod}
                       />
 
                       {error && (
@@ -405,31 +400,43 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
                         </div>
                       )}
 
-                      <div className="flex flex-col sm:flex-row gap-4">
-                        <Button 
-                          onClick={handlePlaceOrder} 
-                          size="lg" 
-                          className="h-14 px-8 text-lg font-bold"
-                          disabled={isSubmitting}
-                        >
-                          {isSubmitting ? (
-                            <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing...</>
-                          ) : (
-                            paymentMethod === 'pickup' ? 'Complete Order' : 'Review & Pay'
-                          )}
-                        </Button>
-                        <Button variant="ghost" onClick={() => goToStep('fulfillment')} className="h-14 font-semibold" disabled={isSubmitting}>
-                          Back to Fulfillment
-                        </Button>
-                      </div>
+                      {!clientSecret && (
+                        <div className="flex flex-col sm:flex-row gap-4">
+                          <Button 
+                            onClick={handlePlaceOrder} 
+                            size="lg" 
+                            className="h-14 px-8 text-lg font-bold"
+                            disabled={isSubmitting}
+                          >
+                            {isSubmitting ? (
+                              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing...</>
+                            ) : (
+                              paymentMethod === 'pickup' ? 'Complete Order' : 'Review & Pay'
+                            )}
+                          </Button>
+                          <Button variant="ghost" onClick={() => goToStep('fulfillment')} className="h-14 font-semibold" disabled={isSubmitting}>
+                            Back to Fulfillment
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {isCompletingPayment && (
-                    <div className="fixed inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
-                      <div className="h-16 w-16 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-                      <p className="text-xl font-display font-bold">Completing your order...</p>
-                      <p className="text-muted-foreground">Please do not close this window.</p>
+                  {(isCompletingPayment || (isSubmitting && paymentMethod === 'pickup')) && (
+                    <div className="fixed inset-0 z-[100] bg-white/90 backdrop-blur-md flex flex-col items-center justify-center gap-6">
+                      <div className="relative">
+                        <div className="h-20 w-20 rounded-full border-4 border-primary/20" />
+                        <div className="absolute top-0 h-20 w-20 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <ShoppingBag className="h-8 w-8 text-primary animate-pulse" />
+                        </div>
+                      </div>
+                      <div className="text-center space-y-2">
+                        <p className="text-2xl font-display font-bold text-zinc-900">
+                          {isCompletingPayment ? 'Completing your order...' : 'Processing your order...'}
+                        </p>
+                        <p className="text-muted-foreground font-medium">Please do not refresh or close this window.</p>
+                      </div>
                     </div>
                   )}
                 </div>

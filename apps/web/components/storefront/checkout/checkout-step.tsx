@@ -26,7 +26,7 @@ export function CheckoutStep({
   return (
     <div className={cn(
       "overflow-hidden border-b border-border last:border-0 transition-all duration-300",
-      isOpen ? "bg-white pb-8" : "bg-transparent py-6"
+      isOpen ? "bg-white py-8" : "bg-transparent py-6"
     )}>
       <div className="flex items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-4">

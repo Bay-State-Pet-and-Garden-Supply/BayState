@@ -383,7 +383,7 @@ export async function createTRPCContext(request: Request): Promise<MobileApiCont
 
           return !error
         },
-        listWishlist: async (userId) => {
+        listFavorites: async (userId) => {
           const { data, error } = await userClient
             .from('wishlists')
             .select('products!inner(id, name, slug, price, images, stock_status)')
@@ -429,7 +429,7 @@ export async function createTRPCContext(request: Request): Promise<MobileApiCont
               images: parseImages(product.images),
             }))
         },
-        toggleWishlist: async (userId, productId) => {
+        toggleFavorites: async (userId, productId) => {
           const { data: existing, error: existingError } = await userClient
             .from('wishlists')
             .select('product_id')

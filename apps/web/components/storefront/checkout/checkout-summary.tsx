@@ -181,18 +181,6 @@ export function CheckoutSummary({
         </div>
       </div>
 
-      {/* Trust Badges */}
-      <div className="flex flex-col items-center justify-center gap-4 px-2">
-        <div className="flex items-center gap-4 text-muted-foreground opacity-60 grayscale transition-all hover:grayscale-0 hover:opacity-100">
-           {/* Placeholder for secure payment icons */}
-           <div className="h-6 w-10 bg-zinc-200 rounded animate-pulse" />
-           <div className="h-6 w-10 bg-zinc-200 rounded animate-pulse" />
-           <div className="h-6 w-10 bg-zinc-200 rounded animate-pulse" />
-        </div>
-        <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest font-bold">
-          Secure encrypted checkout
-        </p>
-      </div>
     </div>
   );
 }

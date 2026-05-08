@@ -77,6 +77,15 @@ export function StorefrontFooter() {
                   Brands
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/account/favorites"
+                  className="hover:text-accent transition-colors flex items-center"
+                >
+                  <span className="w-2 h-2 rounded-full bg-accent/50 mr-2 inline-block"></span>
+                  Favorites
+                </Link>
+              </li>
             </ul>
           </div>
 

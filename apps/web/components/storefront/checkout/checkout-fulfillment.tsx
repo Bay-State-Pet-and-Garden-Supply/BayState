@@ -23,8 +23,8 @@ export function CheckoutFulfillment({
         onValueChange={(value: 'pickup' | 'delivery') => onMethodChange(value)}
         className="grid grid-cols-1 md:grid-cols-2 gap-4"
       >
-        <div
-          onClick={() => onMethodChange('pickup')}
+        <Label
+          htmlFor="pickup"
           className={cn(
             "relative flex cursor-pointer flex-col gap-4 rounded-xl border-2 p-6 transition-all",
             fulfillmentMethod === 'pickup'
@@ -34,34 +34,30 @@ export function CheckoutFulfillment({
         >
           <div className="flex items-center justify-between">
             <div className={cn(
-              "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
-              fulfillmentMethod === 'pickup' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+              "flex h-12 w-12 items-center justify-center rounded-full transition-all duration-300",
+              fulfillmentMethod === 'pickup' 
+                ? "bg-brand-forest-green text-white shadow-md scale-110" 
+                : "bg-muted text-muted-foreground"
             )}>
-              <Store className="h-5 w-5" />
+              <Store className="h-6 w-6" />
             </div>
             <RadioGroupItem value="pickup" id="pickup" className="sr-only" />
-            <div className={cn(
-              "h-5 w-5 rounded-full border-2 flex items-center justify-center",
-              fulfillmentMethod === 'pickup' ? "border-primary" : "border-muted"
-            )}>
-              {fulfillmentMethod === 'pickup' && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
-            </div>
           </div>
           <div>
-            <Label htmlFor="pickup" className="text-base font-bold cursor-pointer">
+            <div className="text-base font-bold">
               Store Pickup
-            </Label>
-            <p className="text-sm text-muted-foreground mt-1">
+            </div>
+            <p className="text-sm text-muted-foreground mt-1 font-normal">
               Pick up at Taunton, MA. Usually ready in 2-4 hours.
             </p>
             <p className="text-xs font-bold text-green-600 mt-2 uppercase tracking-wider">
               Free
             </p>
           </div>
-        </div>
+        </Label>
 
-        <div
-          onClick={() => !hasPickupOnlyItems && onMethodChange('delivery')}
+        <Label
+          htmlFor="delivery"
           className={cn(
             "relative flex cursor-pointer flex-col gap-4 rounded-xl border-2 p-6 transition-all",
             fulfillmentMethod === 'delivery'
@@ -72,24 +68,20 @@ export function CheckoutFulfillment({
         >
           <div className="flex items-center justify-between">
             <div className={cn(
-              "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
-              fulfillmentMethod === 'delivery' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+              "flex h-12 w-12 items-center justify-center rounded-full transition-all duration-300",
+              fulfillmentMethod === 'delivery' 
+                ? "bg-brand-forest-green text-white shadow-md scale-110" 
+                : "bg-muted text-muted-foreground"
             )}>
-              <Truck className="h-5 w-5" />
+              <Truck className="h-6 w-6" />
             </div>
             <RadioGroupItem value="delivery" id="delivery" className="sr-only" disabled={hasPickupOnlyItems} />
-            <div className={cn(
-              "h-5 w-5 rounded-full border-2 flex items-center justify-center",
-              fulfillmentMethod === 'delivery' ? "border-primary" : "border-muted"
-            )}>
-              {fulfillmentMethod === 'delivery' && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
-            </div>
           </div>
           <div>
-            <Label htmlFor="delivery" className="text-base font-bold cursor-pointer">
+            <div className="text-base font-bold">
               Local Delivery
-            </Label>
-            <p className="text-sm text-muted-foreground mt-1">
+            </div>
+            <p className="text-sm text-muted-foreground mt-1 font-normal">
               Delivery within 30 miles of our store.
             </p>
             {hasPickupOnlyItems ? (
@@ -102,7 +94,7 @@ export function CheckoutFulfillment({
               </p>
             )}
           </div>
-        </div>
+        </Label>
       </RadioGroup>
     </div>
   );

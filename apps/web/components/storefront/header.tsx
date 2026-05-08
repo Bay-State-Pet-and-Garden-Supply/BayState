@@ -6,6 +6,7 @@ import Image from "next/image";
 import {
   ShoppingCart,
   ChevronDownIcon,
+  Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InlineSearch } from "@/components/storefront/inline-search";
@@ -256,6 +257,16 @@ export function StorefrontHeader({
             <div className="flex items-center gap-4 shrink-0">
               <UserMenu user={resolvedUser} userRole={resolvedUserRole} />
               <div className="h-12 w-px bg-white/20 mx-2" />
+              <Link href="/account/favorites">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative h-14 w-14 text-white hover:bg-zinc-900 rounded-none border-4 border-transparent hover:border-zinc-900 transition-all group"
+                  aria-label="View Favorites"
+                >
+                  <Heart className="h-7 w-7 group-hover:scale-110 transition-transform" />
+                </Button>
+              </Link>
               <Button
                 variant="ghost"
                 size="icon"
@@ -461,7 +472,17 @@ export function StorefrontHeader({
           </div>
         </Link>
 
-        <div className="flex-1 flex justify-end">
+        <div className="flex-1 flex justify-end items-center gap-2">
+          <Link href="/account/favorites">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative h-12 w-12 text-white hover:bg-zinc-900 rounded-none border-2 border-transparent active:border-zinc-900"
+              aria-label="View Favorites"
+            >
+              <Heart className="h-6 w-6" />
+            </Button>
+          </Link>
           <Button
             variant="ghost"
             size="icon"

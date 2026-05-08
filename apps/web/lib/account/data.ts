@@ -22,7 +22,7 @@ export async function getAddresses(): Promise<Address[]> {
     return data as Address[]
 }
 
-export async function getWishlist(): Promise<ProductSummary[]> {
+export async function getFavorites(): Promise<ProductSummary[]> {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return []
@@ -40,7 +40,7 @@ export async function getWishlist(): Promise<ProductSummary[]> {
         .order('created_at', { ascending: false })
 
     if (error) {
-        console.error('Error fetching wishlist:', error)
+        console.error('Error fetching favorites:', error)
         return []
     }
 

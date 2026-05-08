@@ -103,6 +103,17 @@ export function FacetSidebar({
   const buildFilterUrl = (overrides: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
 
+    // If we're on a brand page but navigating to a category route, 
+    // we need to move the brand slug into the query params.
+    if (activeBrandSlug && overrides.brand === undefined && !params.has('brand')) {
+      params.set('brand', activeBrandSlug);
+    }
+    
+    // Similarly for category pages being pivoted to brand routes.
+    if (activeCategorySlug && overrides.category === undefined && !params.has('category')) {
+      params.set('category', activeCategorySlug);
+    }
+
     for (const [key, value] of Object.entries(overrides)) {
       if (value) {
         params.set(key, value);
@@ -320,7 +331,7 @@ export function FacetSidebar({
                         type="button"
                         onClick={() => {
                           const parentSlug = activeCategory.ancestor_slugs![activeCategory.ancestor_slugs!.length - 1];
-                          router.push(parentSlug ? getCategoryUrl(parentSlug) : '/products');
+                          updateFilter('category', parentSlug || null);
                         }}
                         className="flex items-center text-sm font-medium text-zinc-500 hover:text-primary transition-colors text-left"
                       >
@@ -338,7 +349,7 @@ export function FacetSidebar({
                           <button
                             type="button"
                             key={category.id}
-                            onClick={() => router.push(getCategoryUrl(slug))}
+                            onClick={() => updateFilter('category', slug)}
                             className="block w-full text-left text-sm text-zinc-600 hover:text-primary hover:font-medium transition-colors border-l-2 border-transparent pl-3"
                           >
                             {toTitleCase(category.name)}
@@ -433,7 +444,7 @@ export function FacetSidebar({
                       checked={currentBrand === brand.slug}
                       onCheckedChange={(checked) => {
                         if (checked) {
-                          router.push(getBrandUrl(brand.slug));
+                          updateFilter('brand', brand.slug);
                         } else if (isOnBrandPage) {
                           router.push('/products');
                         } else {
