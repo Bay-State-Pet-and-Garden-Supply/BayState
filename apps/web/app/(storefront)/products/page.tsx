@@ -34,6 +34,7 @@ interface ProductsPageProps {
     limit?: string;
     facets?: string;
     sort?: string;
+    specialOrder?: string;
   }>;
 }
 
