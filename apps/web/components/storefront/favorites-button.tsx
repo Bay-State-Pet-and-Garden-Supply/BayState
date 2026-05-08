@@ -2,11 +2,11 @@
 
 import { Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { toggleWishlistAction } from '@/lib/account/actions'
+import { toggleFavoriteAction } from '@/lib/account/actions'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
-export function WishlistButton({ productId, initialState = false }: { productId: string, initialState?: boolean }) {
+export function FavoritesButton({ productId, initialState = false }: { productId: string, initialState?: boolean }) {
     const [active, setActive] = useState(initialState)
 
     async function onClick(e: React.MouseEvent) {
@@ -20,7 +20,7 @@ export function WishlistButton({ productId, initialState = false }: { productId:
         try {
             // Note: Action toggles based on DB state, so if sync is off, it might flip wrong way?
             // Best to verify action response 'added' or 'removed'.
-            const res = await toggleWishlistAction(productId)
+            const res = await toggleFavoriteAction(productId)
 
             if (res.error) {
                 setActive(!newState) // Revert
@@ -43,7 +43,7 @@ export function WishlistButton({ productId, initialState = false }: { productId:
             onClick={onClick}
         >
             <Heart className={cn("h-5 w-5 transition-colors", active ? "fill-red-500 text-red-500" : "text-zinc-700")} />
-            <span className="sr-only">Wishlist</span>
+            <span className="sr-only">Favorites</span>
         </Button>
     )
 }

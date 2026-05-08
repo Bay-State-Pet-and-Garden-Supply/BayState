@@ -4,23 +4,39 @@ import { ProductSummary } from '@/lib/account/types'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Trash2, ShoppingCart, HeartOff } from 'lucide-react'
-import { toggleWishlistAction } from '@/lib/account/actions'
+import { toggleFavoriteAction } from '@/lib/account/actions'
 import { formatCurrency, formatImageUrl } from '@/lib/utils'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useCartStore } from '@/lib/cart-store'
+import { toast } from 'sonner'
 
-export function WishlistGrid({ items }: { items: ProductSummary[] }) {
+export function FavoritesGrid({ items }: { items: ProductSummary[] }) {
 
     async function handleRemove(id: string) {
         // Optimistic update could happen here but server revalidation handles it
-        if (!confirm('Remove this item from your wishlist?')) return
-        await toggleWishlistAction(id)
+        if (!confirm('Remove this item from your favorites?')) return
+        await toggleFavoriteAction(id)
+        toast.success('Removed from favorites')
+    }
+
+    const addItem = useCartStore(state => state.addItem)
+
+    function handleAddToCart(product: ProductSummary) {
+        addItem({
+            id: product.id,
+            name: product.name,
+            slug: product.slug,
+            price: Number(product.price),
+            imageUrl: formatImageUrl(product.images?.[0]) || null,
+        })
+        toast.success('Added to cart')
     }
 
     if (!items || items.length === 0) {
         return (
             <EmptyState
                 icon={HeartOff}
-                title="Your wishlist is empty"
+                title="Your favorites list is empty"
                 description="Save items you want to buy later. Heart icon on products adds them here."
                 actionLabel="Browse Products"
                 actionHref="/products"
@@ -60,7 +76,11 @@ export function WishlistGrid({ items }: { items: ProductSummary[] }) {
                             </h3>
 
                             <div className="flex gap-3 mt-auto">
-                                <Button className="flex-1 h-12 gap-2 bg-brand-forest-dark text-white hover:bg-brand-forest-green rounded-md font-bold text-xs uppercase tracking-widest border-b-4 border-black/20" size="sm">
+                                <Button 
+                                    className="flex-1 h-12 gap-2 bg-brand-forest-dark text-white hover:bg-brand-forest-green rounded-md font-bold text-xs uppercase tracking-widest border-b-4 border-black/20" 
+                                    size="sm"
+                                    onClick={() => handleAddToCart(product)}
+                                >
                                     <ShoppingCart className="h-4 w-4" /> Add to Cart
                                 </Button>
                                 <Button

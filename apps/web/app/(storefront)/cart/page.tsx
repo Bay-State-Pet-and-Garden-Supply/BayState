@@ -47,7 +47,7 @@ export default function CartPage() {
   };
 
   return (
-    <div className="w-full px-4 py-8">
+    <div className="w-full px-4 pt-2 pb-8">
       <div className="mb-8">
         <Link
           href="/products"

@@ -12,7 +12,7 @@ const items = [
     { href: '/account/pets', label: 'My Pets', icon: Dog },
     { href: '/account/addresses', label: 'Addresses', icon: MapPin },
     { href: '/account/orders', label: 'Orders', icon: Package },
-    { href: '/account/wishlist', label: 'Wishlist', icon: Heart },
+    { href: '/account/favorites', label: 'Favorites', icon: Heart },
 ]
 
 export function AccountSidebar() {

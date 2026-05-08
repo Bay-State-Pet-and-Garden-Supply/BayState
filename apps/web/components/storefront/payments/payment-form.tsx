@@ -133,11 +133,14 @@ export function PaymentMethodSelector({
   selected,
   onSelect,
   disabled,
+  fulfillmentMethod = 'pickup',
 }: {
   selected: 'pickup' | 'credit_card';
   onSelect: (method: 'pickup' | 'credit_card') => void;
   disabled?: boolean;
+  fulfillmentMethod?: 'pickup' | 'delivery';
 }) {
+  const isDelivery = fulfillmentMethod === 'delivery';
   return (
     <div className="space-y-4">
       <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -156,16 +159,12 @@ export function PaymentMethodSelector({
         >
           <div className="flex items-center justify-between">
             <div className={cn(
-              "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
-              selected === 'credit_card' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+              "flex h-12 w-12 items-center justify-center rounded-full transition-all duration-300",
+              selected === 'credit_card' 
+                ? "bg-brand-forest-green text-white shadow-md scale-110" 
+                : "bg-muted text-muted-foreground"
             )}>
-              <CreditCard className="h-5 w-5" />
-            </div>
-            <div className={cn(
-              "h-5 w-5 rounded-full border-2 flex items-center justify-center",
-              selected === 'credit_card' ? "border-primary" : "border-muted"
-            )}>
-              {selected === 'credit_card' && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
+              <CreditCard className="h-6 w-6" />
             </div>
           </div>
           <div>
@@ -177,33 +176,29 @@ export function PaymentMethodSelector({
         </div>
 
         <div
-          onClick={() => !disabled && onSelect('pickup')}
+          onClick={() => !disabled && !isDelivery && onSelect('pickup')}
           className={cn(
             "relative flex cursor-pointer flex-col gap-4 rounded-xl border-2 p-6 transition-all",
             selected === 'pickup'
               ? "border-primary bg-primary/5 ring-1 ring-primary"
               : "border-border bg-card hover:border-zinc-300",
-            disabled && "opacity-50 cursor-not-allowed"
+            (disabled || isDelivery) && "opacity-50 cursor-not-allowed grayscale"
           )}
         >
           <div className="flex items-center justify-between">
             <div className={cn(
-              "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
-              selected === 'pickup' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+              "flex h-12 w-12 items-center justify-center rounded-full transition-all duration-300",
+              selected === 'pickup' 
+                ? "bg-brand-forest-green text-white shadow-md scale-110" 
+                : "bg-muted text-muted-foreground"
             )}>
-              <Banknote className="h-5 w-5" />
-            </div>
-            <div className={cn(
-              "h-5 w-5 rounded-full border-2 flex items-center justify-center",
-              selected === 'pickup' ? "border-primary" : "border-muted"
-            )}>
-              {selected === 'pickup' && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
+              <Banknote className="h-6 w-6" />
             </div>
           </div>
           <div>
             <p className="text-base font-bold">Pay at Pickup</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Cash or card at the store.
+              {isDelivery ? 'Not available for delivery orders.' : 'Cash or card at the store.'}
             </p>
           </div>
         </div>

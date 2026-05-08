@@ -140,6 +140,13 @@ export function MobileNavDrawer({
               >
                 My Account
               </Link>
+              <Link
+                href="/account/favorites"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+              >
+                Favorites
+              </Link>
             </div>
           </div>
         </nav>

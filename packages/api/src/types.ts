@@ -241,8 +241,8 @@ export interface MobileApiContext {
       }) => Promise<Address | null>
       deleteAddress: (userId: string, id: string) => Promise<boolean>
       setDefaultAddress: (userId: string, id: string) => Promise<boolean>
-      listWishlist: (userId: string) => Promise<ProductSummary[]>
-      toggleWishlist: (userId: string, productId: string) => Promise<'added' | 'removed'>
+      listFavorites: (userId: string) => Promise<ProductSummary[]>
+      toggleFavorites: (userId: string, productId: string) => Promise<'added' | 'removed'>
       listOrders: (options: { userId?: string; customerEmail?: string; limit?: number; offset?: number }) => Promise<{ orders: Order[]; count: number }>
       getOrderById: (id: string) => Promise<Order | null>
     }
