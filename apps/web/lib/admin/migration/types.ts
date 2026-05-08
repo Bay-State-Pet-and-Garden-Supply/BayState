@@ -22,6 +22,11 @@ export type ShopSiteConfig = z.infer<typeof ShopSiteConfigSchema>;
 // ShopSite Data Types (parsed from XML)
 // ============================================================================
 
+export interface ShopSiteSubproduct {
+    name: string;
+    sku: string;
+}
+
 export interface ShopSiteProduct {
     sku: string;
     name: string;
@@ -58,6 +63,8 @@ export interface ShopSiteProduct {
     color?: string;                   // <ProductField29>
     packagingType?: string;           // <ProductField30>
     crossSellSkus?: string[];         // <ProductField32> - pipe-delimited related SKUs
+    // Subproducts (parent-child relationship)
+    subproducts?: ShopSiteSubproduct[];
     // Status fields
     isDisabled?: boolean;             // Parsed from ShopSite ProductDisabled checkbox values.
     // SEO and content

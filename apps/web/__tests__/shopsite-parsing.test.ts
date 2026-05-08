@@ -259,6 +259,30 @@ describe('ShopSite XML Parsing', () => {
             expect(products[0].additionalImages).toEqual(['real-image.jpg']);
         });
 
+        it('should parse subproducts (parent-child links)', () => {
+            const xml = `
+                <Product>
+                    <SKU>PARENT-001</SKU>
+                    <Name>Parent Product</Name>
+                    <Subproducts>
+                        <Subproduct>
+                            <Name>Child Small</Name>
+                            <SKU>CHILD-S-001</SKU>
+                        </Subproduct>
+                        <Subproduct>
+                            <Name>Child Large</Name>
+                            <SKU>CHILD-L-001</SKU>
+                        </Subproduct>
+                    </Subproducts>
+                </Product>
+            `;
+            const products = (client as any).parseProductsXml(xml);
+            expect(products).toHaveLength(1);
+            expect(products[0].subproducts).toHaveLength(2);
+            expect(products[0].subproducts[0]).toEqual({ name: 'Child Small', sku: 'CHILD-S-001' });
+            expect(products[0].subproducts[1]).toEqual({ name: 'Child Large', sku: 'CHILD-L-001' });
+        });
+
         it('should parse corrected ProductFields and keep blank values deterministic', () => {
             const products = (client as any).parseProductsXml(CORRECTED_FIELD_FIXTURE);
             const directPetProduct = products.find((product: { sku: string; }) => product.sku === 'DIRECT-PET-001');
