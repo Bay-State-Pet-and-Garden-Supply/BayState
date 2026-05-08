@@ -48,10 +48,10 @@ export function ProfileForm({ profile }: { profile: Profile }) {
     return (
         <div className="space-y-6">
             {message && (
-                <div className={`p-4 border-2 font-semibold text-sm ${
+                <div className={`p-4 border-l-4 font-bold text-sm uppercase tracking-widest ${
                     message.type === 'success' 
-                        ? 'bg-muted border-primary text-foreground' 
-                        : 'bg-muted border-primary text-foreground'
+                        ? 'bg-green-50 border-brand-forest-green text-brand-forest-green' 
+                        : 'bg-red-50 border-brand-burgundy text-brand-burgundy'
                     }`}>
                     {message.text}
                 </div>
@@ -63,16 +63,16 @@ export function ProfileForm({ profile }: { profile: Profile }) {
                         name="fullName"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-xs font-semibold text-zinc-500">Full Name</FormLabel>
+                                <FormLabel className="text-xs font-bold uppercase tracking-widest text-zinc-500">Full Name</FormLabel>
                                 <FormControl>
                                     <Input 
                                         placeholder="Your Name" 
                                         {...field} 
                                         disabled={loading} 
-                                        className="h-14 text-lg font-bold border border-zinc-200 rounded-lg rounded-none focus-visible:ring-0 focus-visible:border-primary transition-all" 
+                                        className="h-14 text-lg font-bold border border-zinc-200 rounded-md focus-visible:ring-2 focus-visible:ring-brand-forest-green focus-visible:border-transparent transition-all px-6" 
                                     />
                                 </FormControl>
-                                <FormMessage className="text-xs font-bold uppercase tracking-tight" />
+                                <FormMessage className="text-xs font-bold uppercase tracking-tight text-brand-burgundy" />
                             </FormItem>
                         )}
                     />
@@ -82,16 +82,16 @@ export function ProfileForm({ profile }: { profile: Profile }) {
                         name="phone"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-xs font-semibold text-zinc-500">Phone Number</FormLabel>
+                                <FormLabel className="text-xs font-bold uppercase tracking-widest text-zinc-500">Phone Number</FormLabel>
                                 <FormControl>
                                     <Input 
                                         placeholder="(555) 123-4567" 
                                         {...field} 
                                         disabled={loading} 
-                                        className="h-14 text-lg font-bold border border-zinc-200 rounded-lg rounded-none focus-visible:ring-0 focus-visible:border-primary transition-all" 
+                                        className="h-14 text-lg font-bold border border-zinc-200 rounded-md focus-visible:ring-2 focus-visible:ring-brand-forest-green focus-visible:border-transparent transition-all px-6" 
                                     />
                                 </FormControl>
-                                <FormMessage className="text-xs font-bold uppercase tracking-tight" />
+                                <FormMessage className="text-xs font-bold uppercase tracking-tight text-brand-burgundy" />
                             </FormItem>
                         )}
                     />
@@ -100,7 +100,7 @@ export function ProfileForm({ profile }: { profile: Profile }) {
                         <Button 
                             type="submit" 
                             disabled={loading} 
-                            className="w-full sm:w-auto h-14 px-10 text-lg font-semibold border-b-4 border-black/20 rounded-none shadow-lg active:translate-y-1 active:border-b-0 transition-all"
+                            className="w-full sm:w-auto h-14 px-12 text-lg font-bold bg-brand-forest-dark hover:bg-brand-forest-green text-white border-b-4 border-black/20 rounded-md shadow-lg active:translate-y-1 active:border-b-0 transition-all font-display uppercase tracking-widest"
                         >
                             {loading ? "Saving..." : "Save Changes"}
                         </Button>

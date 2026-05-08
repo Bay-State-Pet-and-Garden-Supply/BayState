@@ -158,7 +158,7 @@ export default function CartPage() {
           </div>
 
           <div className="lg:col-span-1">
-            <div className="sticky top-24 space-y-6">
+            <div className="sticky top-36 space-y-6">
               <CartPreorderSummary />
 
               <div className="rounded-lg border bg-white p-6">

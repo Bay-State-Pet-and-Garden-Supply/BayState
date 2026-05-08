@@ -16,9 +16,9 @@ export default async function OrdersPage() {
 
     return (
         <div className="space-y-12">
-            <div className="border-b border-zinc-200 pb-4">
-                <h1 className="text-4xl md:text-6xl font-bold tracking-tighter uppercase font-display leading-none text-zinc-900">Order History</h1>
-                <p className="text-zinc-600 font-bold uppercase tracking-widest text-sm mt-2">View and manage your past orders.</p>
+            <div className="border-b-2 border-brand-burgundy pb-4">
+                <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-zinc-900 font-display leading-tight">Order History</h1>
+                <p className="text-zinc-600 font-medium text-sm mt-2">View and manage your past orders.</p>
             </div>
 
             {orders.length === 0 ? (
@@ -33,23 +33,23 @@ export default async function OrdersPage() {
                 <div className="grid gap-8">
                     {orders.map((order) => (
                         <div key={order.id} className="border border-zinc-200 rounded-lg bg-white shadow-sm overflow-hidden">
-                            <div className="bg-muted p-4 border-b border-zinc-200 text-foreground flex flex-col sm:flex-row sm:items-center justify-between text-white gap-4">
+                            <div className="bg-brand-forest-dark p-4 border-b-2 border-brand-burgundy text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                 <div className="space-y-1">
-                                    <h2 className="text-xl font-semibold font-display">Order #{order.order_number}</h2>
-                                    <p className="text-xs font-bold uppercase tracking-widest text-red-100">
+                                    <h2 className="text-xl font-bold font-display">Order #{order.order_number}</h2>
+                                    <p className="text-xs font-bold uppercase tracking-widest text-zinc-200/80">
                                         Placed on {formatDate(order.created_at)}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-6">
-                                    <span className="text-2xl font-bold tracking-tighter">{formatCurrency(Number(order.total))}</span>
+                                    <span className="text-2xl font-bold tracking-tight">{formatCurrency(Number(order.total))}</span>
                                     <StatusBadge status={order.status} className="border border-white/20 bg-white/10 text-white font-semibold text-[10px]" />
                                 </div>
                             </div>
                             <div className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                                <div className="text-xs font-semibold text-zinc-400">
-                                    <span>Order ID: {order.id}</span>
+                                <div className="text-xs font-semibold text-zinc-500">
+                                    <span>ID: {order.id}</span>
                                 </div>
-                                <Button asChild variant="outline" className="w-full sm:w-auto border border-zinc-200 rounded-sm font-semibold hover:bg-zinc-100">
+                                <Button asChild variant="outline" className="w-full sm:w-auto border border-zinc-200 rounded-md font-semibold hover:bg-zinc-50">
                                     <Link href={`/account/orders/${order.id}`}>
                                         View Details
                                         <ChevronRight className="ml-2 h-4 w-4" />

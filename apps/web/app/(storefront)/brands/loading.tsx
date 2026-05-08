@@ -5,7 +5,7 @@ export default function Loading() {
   return (
     <div className="flex flex-col lg:flex-row gap-8 relative">
       <aside className="lg:w-16 flex-shrink-0">
-        <div className="sticky top-24 flex lg:flex-col flex-wrap gap-2 justify-center lg:justify-start py-4 lg:py-0">
+        <div className="sticky top-36 flex lg:flex-col flex-wrap gap-2 justify-center lg:justify-start py-4 lg:py-0">
           {Array.from({ length: 26 }).map((_, i) => (
             <Skeleton key={i} className="w-8 h-8 rounded-md" />
           ))}

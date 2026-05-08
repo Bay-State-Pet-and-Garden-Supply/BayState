@@ -22,9 +22,9 @@ export default async function ProfilePage() {
     if (!profile) {
         return (
             <div className="space-y-12">
-                <div className="border-b border-zinc-200 pb-4">
-                    <h1 className="text-4xl md:text-6xl font-bold tracking-tighter uppercase font-display leading-none text-zinc-900">Profile</h1>
-                    <p className="text-zinc-600 font-bold uppercase tracking-widest text-sm mt-2">Manage your personal information.</p>
+                <div className="border-b-2 border-brand-burgundy pb-4">
+                    <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-zinc-900 font-display leading-tight">Profile</h1>
+                    <p className="text-zinc-600 font-medium text-sm mt-2">Manage your personal information.</p>
                 </div>
 
                 <CreateProfileCard 
@@ -37,16 +37,16 @@ export default async function ProfilePage() {
 
     return (
         <div className="space-y-12">
-            <div className="border-b border-zinc-200 pb-4">
-                <h1 className="text-4xl md:text-6xl font-bold tracking-tighter uppercase font-display leading-none text-zinc-900">Profile</h1>
-                <p className="text-zinc-600 font-bold uppercase tracking-widest text-sm mt-2">Manage your personal information.</p>
+            <div className="border-b-2 border-brand-burgundy pb-4">
+                <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-zinc-900 font-display leading-tight">Profile</h1>
+                <p className="text-zinc-600 font-medium text-sm mt-2">Manage your personal information.</p>
             </div>
 
-            <div className="border border-zinc-200 rounded-lg bg-white shadow-sm">
-                <div className="bg-muted p-4 border-b border-zinc-200 text-foreground text-white flex items-center justify-between">
+            <div className="border border-zinc-200 rounded-lg bg-white shadow-sm overflow-hidden">
+                <div className="bg-brand-forest-dark p-4 border-b-2 border-brand-burgundy text-white flex items-center justify-between">
                     <div className="flex flex-col">
-                        <h2 className="text-2xl font-semibold font-display">Personal Information</h2>
-                        <p className="text-xs font-bold uppercase tracking-widest text-blue-100">Update your name and contact details.</p>
+                        <h2 className="text-2xl font-bold font-display">Personal Information</h2>
+                        <p className="text-xs font-bold uppercase tracking-widest text-zinc-200/80">Update your name and contact details.</p>
                     </div>
                     <User className="h-6 w-6" />
                 </div>
