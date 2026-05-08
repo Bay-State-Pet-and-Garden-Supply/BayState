@@ -32,13 +32,13 @@ export function PetList({ pets, petTypes }: PetListProps) {
                     description="Tell us about your pets to get personalized recommendations and care tips."
                     actionLabel="Add a Pet"
                     onAction={() => setOpen(true)}
-                    className="border-dashed"
+                    className="border-dashed border-2 border-zinc-200 bg-white"
                 />
                 <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogContent className="max-h-[90vh] overflow-y-auto border-4 border-zinc-900 rounded-none shadow-sm p-0">
-                        <DialogHeader className="bg-zinc-900 text-white p-6 border-b-4 border-zinc-900">
-                            <DialogTitle className="text-2xl font-semibold font-display">Add a Pet</DialogTitle>
-                            <DialogDescription className="text-zinc-400 font-bold uppercase tracking-widest text-[10px]">
+                    <DialogContent className="max-h-[90vh] overflow-y-auto border border-zinc-200 rounded-lg shadow-sm p-0 overflow-hidden">
+                        <DialogHeader className="bg-brand-forest-dark text-white p-6 border-b-2 border-brand-burgundy">
+                            <DialogTitle className="text-2xl font-bold font-display">Add a Pet</DialogTitle>
+                            <DialogDescription className="text-zinc-200/80 font-bold uppercase tracking-widest text-[10px]">
                                 Tell us about your pet to get personalized recommendations.
                             </DialogDescription>
                         </DialogHeader>
@@ -63,20 +63,20 @@ export function PetList({ pets, petTypes }: PetListProps) {
 
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
-                    <div className="flex h-full min-h-[200px] cursor-pointer flex-col items-center justify-center border-4 border-dashed border-zinc-200 bg-zinc-50 hover:bg-zinc-100 transition-all shadow-sm hover:shadow-sm p-8 text-center group">
-                        <div className="bg-white border-2 border-zinc-200 p-4 shadow-sm mb-4 group-hover:border-zinc-900 transition-colors">
-                            <Plus className="h-8 w-8 text-zinc-400 group-hover:text-zinc-900 transition-colors" />
+                    <div className="flex h-full min-h-[240px] cursor-pointer flex-col items-center justify-center border-2 border-dashed border-zinc-200 bg-zinc-50 hover:bg-zinc-100 transition-all rounded-lg p-8 text-center group">
+                        <div className="bg-white border border-zinc-200 p-4 shadow-sm mb-4 group-hover:border-brand-burgundy transition-all rounded-full">
+                            <Plus className="h-8 w-8 text-zinc-400 group-hover:text-brand-burgundy transition-colors" />
                         </div>
-                        <h3 className="font-bold text-xl uppercase tracking-tight mb-1 font-display">Add a Pet</h3>
+                        <h3 className="font-bold text-xl tracking-tight mb-1 font-display">Add a Pet</h3>
                         <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">
                             Get better recommendations
                         </p>
                     </div>
                 </DialogTrigger>
-                <DialogContent className="max-h-[90vh] overflow-y-auto border-4 border-zinc-900 rounded-none shadow-sm p-0">
-                    <DialogHeader className="bg-zinc-900 text-white p-6 border-b-4 border-zinc-900">
-                        <DialogTitle className="text-2xl font-semibold font-display">Add a Pet</DialogTitle>
-                        <DialogDescription className="text-zinc-400 font-bold uppercase tracking-widest text-[10px]">
+                <DialogContent className="max-h-[90vh] overflow-y-auto border border-zinc-200 rounded-lg shadow-sm p-0 overflow-hidden">
+                    <DialogHeader className="bg-brand-forest-dark text-white p-6 border-b-2 border-brand-burgundy">
+                        <DialogTitle className="text-2xl font-bold font-display">Add a Pet</DialogTitle>
+                        <DialogDescription className="text-zinc-200/80 font-bold uppercase tracking-widest text-[10px]">
                             Tell us about your pet to get personalized recommendations.
                         </DialogDescription>
                     </DialogHeader>

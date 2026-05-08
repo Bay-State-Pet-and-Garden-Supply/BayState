@@ -34,7 +34,7 @@ export function BrandsClient({ brands }: BrandsClientProps) {
   const scrollToSection = (letter: string) => {
     const element = document.getElementById(`brand-section-${letter}`);
     if (element) {
-      const offset = 120; 
+      const offset = 160; 
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - offset;
 
@@ -57,7 +57,7 @@ export function BrandsClient({ brands }: BrandsClientProps) {
         });
       },
       {
-        rootMargin: '-120px 0px -80% 0px' 
+        rootMargin: '-160px 0px -80% 0px' 
       }
     );
 
@@ -72,7 +72,7 @@ export function BrandsClient({ brands }: BrandsClientProps) {
   return (
     <div className="flex flex-col lg:flex-row gap-8 relative">
       <aside className="lg:w-16 flex-shrink-0">
-        <div className="sticky top-24 flex lg:flex-col flex-wrap gap-2 justify-center lg:justify-start bg-background/95 backdrop-blur py-4 lg:py-0 z-10 border-b lg:border-none">
+        <div className="sticky top-36 flex lg:flex-col flex-wrap gap-2 justify-center lg:justify-start bg-background/95 backdrop-blur py-4 lg:py-0 z-10 border-b lg:border-none">
           {letters.map((letter) => (
             <button
               key={letter}
@@ -92,7 +92,7 @@ export function BrandsClient({ brands }: BrandsClientProps) {
 
       <div className="flex-1 space-y-12">
         {letters.map((letter) => (
-          <div key={letter} id={`brand-section-${letter}`} className="scroll-mt-24">
+          <div key={letter} id={`brand-section-${letter}`} className="scroll-mt-40">
             <div className="flex items-center gap-4 mb-6 border-b pb-2">
               <h2 className="text-2xl font-bold text-primary">{letter}</h2>
               <span className="text-sm text-muted-foreground">

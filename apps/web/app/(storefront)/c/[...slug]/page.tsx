@@ -157,7 +157,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
     <div className="w-full px-4 pt-4 pb-8">
       <div className="flex flex-col gap-8 lg:flex-row items-start">
         {/* Filters Sidebar - Sticky/Pinned */}
-        <aside className="w-full lg:w-72 flex-shrink-0 lg:sticky lg:top-24 h-auto lg:h-[calc(100vh-120px)] bg-zinc-50/50 rounded-lg p-4 lg:p-0 lg:bg-transparent">
+        <aside className="w-full lg:w-72 flex-shrink-0 lg:sticky lg:top-36 h-auto lg:h-[calc(100vh-170px)] bg-zinc-50/50 rounded-lg p-4 lg:p-0 lg:bg-transparent">
           <FacetSidebar
             brands={availableFilters.brands}
             petTypes={availableFilters.petTypes}

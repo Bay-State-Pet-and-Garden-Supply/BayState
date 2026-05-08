@@ -264,7 +264,7 @@ export function StorefrontHeader({
                 onClick={openCartDrawer}
               >
                 <ShoppingCart className="h-7 w-7 group-hover:scale-110 transition-transform" />
-                <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center bg-accent text-[12px] font-bold text-accent-foreground border-4 border-brand-burgundy shadow-sm">
+                <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center bg-accent text-[12px] font-bold text-accent-foreground border-2 border-primary rounded-full shadow-sm">
                   {itemCount}
                 </span>
               </Button>
@@ -470,7 +470,7 @@ export function StorefrontHeader({
             onClick={openCartDrawer}
           >
             <ShoppingCart className="h-6 w-6" />
-            <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center bg-accent text-[10px] font-bold text-secondary-foreground border border-zinc-200 rounded-lg shadow-sm">
+            <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center bg-accent text-[10px] font-bold text-secondary-foreground border-2 border-primary rounded-full shadow-sm">
               {itemCount}
             </span>
           </Button>

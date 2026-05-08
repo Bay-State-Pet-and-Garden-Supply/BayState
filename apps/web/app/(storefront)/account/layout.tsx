@@ -17,7 +17,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
             <div className="container mx-auto py-4 md:py-8 px-4 md:px-6">
                 <div className="flex flex-col md:flex-row gap-4 md:gap-8">
                     <aside className="w-full md:w-64 shrink-0">
-                        <div className="md:sticky md:top-24">
+                        <div className="md:sticky md:top-36">
                             <AccountSidebar />
                         </div>
                     </aside>

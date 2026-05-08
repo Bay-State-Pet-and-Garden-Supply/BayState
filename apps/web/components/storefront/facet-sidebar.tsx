@@ -223,7 +223,7 @@ export function FacetSidebar({
   const filteredPetTypes = petTypes.filter(p => p.name.toLowerCase().includes(petTypeSearch.toLowerCase()));
 
   return (
-    <div className="flex flex-col h-full lg:max-h-[calc(100vh-120px)]">
+    <div className="flex flex-col h-full lg:max-h-[calc(100vh-170px)]">
       <div className="flex items-center justify-between pb-4 border-b shrink-0">
         <h2 className="text-xl font-bold text-zinc-900">Filters</h2>
         {hasFilters && (
