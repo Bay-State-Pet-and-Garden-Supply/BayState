@@ -118,27 +118,6 @@ export function AdminProductsClient({
 
     return (
         <div className="flex flex-col gap-6 pb-20">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
-                        <Package className="size-6 text-primary" />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                        <h1 className="text-3xl font-bold tracking-tight">Products</h1>
-                        <p className="text-muted-foreground">
-                            {searchParams.get('search') ? `Found ${totalCount} matches` : `${totalCount} published products total`}
-                        </p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" asChild>
-                        <Link href="/admin/data/products">
-                            View All Data
-                        </Link>
-                    </Button>
-                </div>
-            </div>
-
             {/* Toolbar & Filters */}
             <div className="flex flex-col gap-4 rounded-xl border bg-card p-4 shadow-sm">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center">

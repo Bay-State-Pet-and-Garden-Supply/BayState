@@ -12,6 +12,7 @@ type ProductReadClient = Awaited<ReturnType<typeof createPublicClient>>;
 const STOREFRONT_VISIBLE_STOCK_STATUSES = [
   'in_stock',
   'pre_order',
+  'out_of_stock',
 ] satisfies Product['stock_status'][];
 
 type StorefrontVisibleStockStatus = (typeof STOREFRONT_VISIBLE_STOCK_STATUSES)[number];
@@ -32,6 +33,7 @@ interface ProductFilterOptions {
   }>;
   stockStatuses: Array<{ id: StorefrontVisibleStockStatus; label: string }>;
   dynamicFacets: FacetDefinition[];
+  hasSpecialOrder: boolean;
 }
 
 type ProductFilterQueryOptions = {
@@ -46,6 +48,8 @@ type ProductFilterQueryOptions = {
   search?: string;
   featured?: boolean;
   facets?: string;
+  sort?: string;
+  isSpecialOrder?: boolean;
 };
 
 function isStorefrontVisibleStockStatus(
@@ -433,10 +437,6 @@ export async function getAvailableProductFilters(
   const supabase = createPublicClient();
   const stockStatus = options?.stockStatus;
 
-  if (stockStatus === 'out_of_stock') {
-    return { brands: [], petTypes: [], categories: [], stockStatuses: [], dynamicFacets: [] };
-  }
-
   // Resolve lookup values once - used to apply filters across all dimension queries
   const [categoryIds, facetValueIds, brandId, featuredProductIds] = await Promise.all([
     resolveCategoryIds(supabase, {
@@ -489,6 +489,7 @@ export async function getAvailableProductFilters(
     if (options?.maxPrice !== undefined) q = q.lte('price', options.maxPrice);
     if (options?.search) q = q.ilike('name', `%${options.search}%`);
     if (featuredProductIds) q = q.in('id', featuredProductIds);
+    if (options?.isSpecialOrder !== undefined) q = q.eq('is_special_order', options.isSpecialOrder);
     return q.order('id') as typeof q;
   };
 
@@ -500,7 +501,7 @@ export async function getAvailableProductFilters(
   const
     brandsQuery = applyFilters(
       supabase.from('products').select(
-        makeSelect('stock_status, brand:brands!inner(id, name, slug, logo_url)', true, true, true)
+        makeSelect('stock_status, is_special_order, brand:brands!inner(id, name, slug, logo_url)', true, true, true)
       )
     );
   const
@@ -539,9 +540,10 @@ export async function getAvailableProductFilters(
   if (productCategoriesResult.error) console.error('Error fetching available product categories:', productCategoriesResult.error);
   if (facetsResult.error) console.error('Error fetching available facets:', facetsResult.error);
 
-  // ── Brands & stock statuses ──
+  // ── Brands & stock statuses & special order ──
   const brandMap = new Map<string, ProductFilterOptions['brands'][number]>();
   const stockStatusSet = new Set<StorefrontVisibleStockStatus>();
+  let hasSpecialOrder = false;
   for (const row of (brandsResult.data || []) as Array<Record<string, unknown>>) {
     const brandField = row.brand;
     if (brandField) {
@@ -550,6 +552,7 @@ export async function getAvailableProductFilters(
     }
     const stock = row.stock_status as string | undefined;
     if (isStorefrontVisibleStockStatus(stock)) stockStatusSet.add(stock);
+    if (row.is_special_order) hasSpecialOrder = true;
   }
 
   // ── Pet types ──
@@ -623,10 +626,12 @@ export async function getAvailableProductFilters(
     stockStatuses: ([
       { id: 'in_stock' as const, label: 'In Stock' },
       { id: 'pre_order' as const, label: 'Pre-Order' },
+      { id: 'out_of_stock' as const, label: 'Out of Stock' },
     ]).filter((s) => stockStatusSet.has(s.id)),
     dynamicFacets: Array.from(facetDefinitionMap.values())
       .map((d) => ({ ...d, values: [...d.values].sort((a, b) => a.value.localeCompare(b.value)) }))
       .sort((a, b) => a.name.localeCompare(b.name)),
+    hasSpecialOrder,
   };
 }
 
@@ -639,10 +644,6 @@ export async function getFilteredProducts(options?: ProductFilterQueryOptions & 
 }): Promise<{ products: Product[]; count: number }> {
   const supabase = createPublicClient();
   const stockStatus = options?.stockStatus;
-
-  if (stockStatus === 'out_of_stock') {
-    return { products: [], count: 0 };
-  }
 
   const categoryIds = await resolveCategoryIds(supabase, {
     categoryId: options?.categoryId,
@@ -727,6 +728,9 @@ export async function getFilteredProducts(options?: ProductFilterQueryOptions & 
   if (options?.search) {
     query = query.ilike('name', `%${options.search}%`);
   }
+  if (options?.isSpecialOrder !== undefined) {
+    query = query.eq('is_special_order', options.isSpecialOrder);
+  }
 
   const featuredProductIds = await resolveFeaturedProductIds(supabase, options?.featured);
   if (featuredProductIds) {
@@ -737,7 +741,31 @@ export async function getFilteredProducts(options?: ProductFilterQueryOptions & 
     query = query.in('id', featuredProductIds);
   }
 
-  query = query.order('created_at', { ascending: false });
+  // Apply sorting
+  const sort = options?.sort || 'relevance';
+  switch (sort) {
+    case 'relevance':
+      // Manual relevance: Featured first, then in-stock, then newest
+      query = query
+        .order('created_at', { ascending: false }) // Fallback
+        .order('stock_status', { ascending: true }) // in_stock < out_of_stock
+        // We can't easily order by a joined table's column (is_featured) in a simple order call here
+        // without complex syntax, so we'll stick to stock and date for now.
+      break;
+    case 'price-low':
+      query = query.order('price', { ascending: true });
+      break;
+    case 'price-high':
+      query = query.order('price', { ascending: false });
+      break;
+    case 'name-asc':
+      query = query.order('name', { ascending: true });
+      break;
+    case 'newest':
+    default:
+      query = query.order('created_at', { ascending: false });
+      break;
+  }
 
   const limit = options?.limit || 12;
   const offset = options?.offset || 0;

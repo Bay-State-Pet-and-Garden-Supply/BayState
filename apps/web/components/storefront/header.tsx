@@ -26,6 +26,7 @@ import { UserMenu } from "@/components/auth/user-menu";
 import { createClient } from "@/lib/supabase/client";
 import type { CampaignBannerSettings } from "@/lib/settings";
 import { useUIStore } from "@/lib/storefront/ui-store";
+import { getCategoryUrl, getBrandUrl } from "@/lib/urls";
 
 type StorefrontCategory = {
   id: string;
@@ -58,7 +59,7 @@ function normalizeStorefrontUserRole(user: User | null): string | null {
 }
 
 function getCategoryHref(slug: string | null): string {
-  return slug ? `/products?category=${slug}` : "/products";
+  return getCategoryUrl(slug);
 }
 
 function getCategorySummary(category: StorefrontCategory): string {
@@ -388,7 +389,7 @@ export function StorefrontHeader({
                               {brands.slice(0, 20).map((brand) => (
                                 <NavigationMenuLink key={brand.id} asChild>
                                   <Link
-                                    href={`/products?brand=${brand.slug}`}
+                                    href={getBrandUrl(brand.slug)}
                                     className="block rounded-md px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 hover:text-zinc-950"
                                   >
                                     {brand.name}

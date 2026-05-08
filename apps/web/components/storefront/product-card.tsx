@@ -4,7 +4,7 @@ import { type Product } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { WishlistButton } from './wishlist-button';
-import { formatCurrency, formatImageUrl } from '@/lib/utils';
+import { cn, formatCurrency, formatImageUrl } from '@/lib/utils';
 import { ImageIcon } from 'lucide-react';
 
 interface ProductCardProps {
@@ -32,7 +32,10 @@ export function ProductCard({ product }: ProductCardProps) {
           <CardContent className="flex flex-1 flex-col p-0">
             <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-white p-4 border-b border-zinc-100">
               {hasValidImage ? (
-                <div className="relative h-full w-full">
+                <div className={cn(
+                  "relative h-full w-full transition-all duration-300",
+                  product.stock_status === 'out_of_stock' && "grayscale opacity-60"
+                )}>
                   <Image
                     src={imageSrc!}
                     alt={product.name}
@@ -51,12 +54,12 @@ export function ProductCard({ product }: ProductCardProps) {
               
               <div className="absolute left-0 top-3 flex flex-col items-start gap-1">
                 {product.stock_status === 'out_of_stock' && !product.is_special_order && (
-                  <Badge className="rounded-md bg-destructive text-destructive-foreground font-semibold text-[10px] px-2 py-1 shadow-sm">
+                  <Badge className="rounded-md bg-zinc-100 text-zinc-600 border border-zinc-200 font-semibold text-[10px] px-2 py-1 shadow-none">
                     Out of Stock
                   </Badge>
                 )}
                 {product.stock_status === 'pre_order' && (
-                  <Badge className="rounded-md bg-accent text-accent-foreground font-semibold text-[10px] px-2 py-1 shadow-sm">
+                  <Badge className="rounded-md bg-amber-50 text-amber-700 border border-amber-100 font-semibold text-[10px] px-2 py-1 shadow-none">
                     Pre-Order
                   </Badge>
                 )}

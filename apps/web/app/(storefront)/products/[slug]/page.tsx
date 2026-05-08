@@ -21,6 +21,7 @@ import { getProductPreorderData } from '@/lib/storefront/preorder';
 import { formatCurrency } from '@/lib/utils';
 import type { Product } from '@/lib/types';
 import { getNavCategories } from '@/lib/data';
+import { getCategoryUrl, getBrandUrl } from '@/lib/urls';
 
 interface ProductDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -210,7 +211,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
             <Fragment key={category.id}>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbLink href={`/products?category=${category.slug}`} className="capitalize">
+                <BreadcrumbLink href={getCategoryUrl(category.slug)} className="capitalize">
                   {category.name}
                 </BreadcrumbLink>
               </BreadcrumbItem>
@@ -237,7 +238,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
           <div className="space-y-2">
             {product.brand && (
               <Link
-                href={`/products?brand=${product.brand.slug}`}
+                href={getBrandUrl(product.brand.slug)}
                 className="text-sm font-bold uppercase tracking-widest text-primary hover:underline"
               >
                 {product.brand.name}

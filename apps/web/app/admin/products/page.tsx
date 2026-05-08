@@ -1,4 +1,5 @@
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { Package } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { AdminProductsClient } from '@/components/admin/products/AdminProductsClient';
 import { PublishedProduct } from '@/components/admin/products/ProductEditModal';
@@ -126,7 +127,12 @@ export default async function AdminProductsPage({
   });
 
   return (
-    <AdminPageShell title="Products">
+    <AdminPageShell 
+      title="Storefront Products"
+      description="Manage published products in the storefront."
+      icon={<Package className="h-5 w-5" />}
+      compactHeader
+    >
       <AdminProductsClient
         initialProducts={clientProducts}
         totalCount={count || 0}

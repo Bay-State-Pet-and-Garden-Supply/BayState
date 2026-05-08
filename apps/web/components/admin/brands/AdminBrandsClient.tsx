@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Pencil, Trash2, ExternalLink, Plus, Tag } from 'lucide-react';
+import { getBrandUrl } from '@/lib/urls';
 import { Button } from '@/components/ui/button';
 import { DataTable, type Column } from '@/components/admin/data-table';
 import { toast } from 'sonner';
@@ -173,7 +174,7 @@ export function AdminBrandsClient({ initialBrands, totalCount }: AdminBrandsClie
                 <Pencil className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="sm" asChild>
-                <Link href={`/products?brand=${brand.slug}`} target="_blank">
+                <Link href={getBrandUrl(brand.slug)} target="_blank">
                     <ExternalLink className="h-4 w-4" />
                 </Link>
             </Button>
@@ -191,14 +192,7 @@ export function AdminBrandsClient({ initialBrands, totalCount }: AdminBrandsClie
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Tag className="h-8 w-8 text-purple-600" />
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Brands</h1>
-                        <p className="text-muted-foreground">{totalCount} brands</p>
-                    </div>
-                </div>
+            <div className="flex items-center justify-end">
                 <Button onClick={handleCreate}>
                     <Plus className="mr-2 h-4 w-4" /> Add Brand
                 </Button>
