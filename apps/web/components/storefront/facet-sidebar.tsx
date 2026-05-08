@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { toTitleCase } from '@/lib/utils';
+import { toTitleCase, cn } from '@/lib/utils';
 import {
   Accordion,
   AccordionContent,
@@ -103,53 +103,49 @@ export function FacetSidebar({
   const buildFilterUrl = (overrides: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
 
-    // If we're on a brand page but navigating to a category route, 
-    // we need to move the brand slug into the query params.
-    if (activeBrandSlug && overrides.brand === undefined && !params.has('brand')) {
-      params.set('brand', activeBrandSlug);
-    }
-    
-    // Similarly for category pages being pivoted to brand routes.
-    if (activeCategorySlug && overrides.category === undefined && !params.has('category')) {
-      params.set('category', activeCategorySlug);
+    // 1. Gather all active filters into a unified state
+    const filters: Record<string, string | null> = {
+      category: activeCategorySlug || params.get('category'),
+      brand: activeBrandSlug || params.get('brand'),
+      petTypeId: params.get('petTypeId'),
+      stock: params.get('stock'),
+      search: params.get('search'),
+      facets: params.get('facets'),
+      specialOrder: params.get('specialOrder'),
+      sort: params.get('sort'),
+    };
+
+    // 2. Apply overrides
+    for (const [key, value] of Object.entries(overrides)) {
+      filters[key] = value;
     }
 
-    for (const [key, value] of Object.entries(overrides)) {
-      if (value) {
-        params.set(key, value);
-      } else {
-        params.delete(key);
+    // 3. Construct the new query string (excluding path-based keys)
+    const newParams = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) {
+      if (value && key !== 'category' && key !== 'brand') {
+        newParams.set(key, value);
       }
     }
-    params.delete('page');
+    
+    // Always reset page on filter change
+    newParams.delete('page');
 
-    // If navigating to a specific category, use the /c/ route
-    if (overrides.category !== undefined) {
-      const catSlug = overrides.category;
-      // Remove category from query params since it's in the URL path
-      params.delete('category');
-      const qs = params.toString();
-      return catSlug ? `${getCategoryUrl(catSlug)}${qs ? `?${qs}` : ''}` : '/products';
+    // 4. Determine the optimal route based on priority: Category > Brand > Root
+    const qs = newParams.toString();
+    const queryPart = qs ? `?${qs}` : '';
+
+    if (filters.category) {
+      // If we have a brand too, it must go in the query string
+      if (filters.brand) newParams.set('brand', filters.brand);
+      return `${getCategoryUrl(filters.category)}${newParams.toString() ? `?${newParams.toString()}` : ''}`;
     }
 
-    // If navigating to a specific brand, use the /b/ route
-    if (overrides.brand !== undefined) {
-      const brandSlug = overrides.brand;
-      // Remove brand from query params since it's in the URL path
-      params.delete('brand');
-      const qs = params.toString();
-      return brandSlug ? `${getBrandUrl(brandSlug)}${qs ? `?${qs}` : ''}` : '/products';
+    if (filters.brand) {
+      return `${getBrandUrl(filters.brand)}${queryPart}`;
     }
 
-    // For other filters, stay on the current page
-    let basePath = pathname;
-    // On /products with legacy query params, stay on /products
-    if (!isOnCategoryPage && !isOnBrandPage) {
-      basePath = '/products';
-    }
-
-    const qs = params.toString();
-    return `${basePath}${qs ? `?${qs}` : ''}`;
+    return `/products${queryPart}`;
   };
 
   const updateFilter = (key: string, value: string | null) => {
@@ -206,25 +202,13 @@ export function FacetSidebar({
     if (key === 'facets' && value) {
       const newFacets = currentFacetsList.filter(f => f !== value);
       updateFilter('facets', newFacets.length > 0 ? newFacets.join(',') : null);
-    } else if (key === 'category' && isOnCategoryPage) {
-      // On a category page, removing the category = go to /products
-      router.push('/products');
-    } else if (key === 'brand' && isOnBrandPage) {
-      // On a brand page, removing the brand = go to /products
-      router.push('/products');
     } else {
       updateFilter(key, null);
     }
   };
 
   const clearAllFilters = () => {
-    if (isOnCategoryPage && activeCategorySlug) {
-      router.push(getCategoryUrl(activeCategorySlug));
-    } else if (isOnBrandPage && activeBrandSlug) {
-      router.push(getBrandUrl(activeBrandSlug));
-    } else {
-      router.push('/products');
-    }
+    router.push('/products');
   };
 
   const filteredBrands = brands.filter(b => b.name.toLowerCase().includes(brandSearch.toLowerCase()));
@@ -250,7 +234,12 @@ export function FacetSidebar({
           {activeFilters.map((filter) => (
             <div
               key={`${filter.key}-${filter.value ?? filter.label}`}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-100 border border-zinc-200 text-[11px] font-bold text-zinc-600 hover:bg-zinc-200 transition-colors cursor-default"
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold transition-colors cursor-default",
+                filter.key === 'stock' && filter.label === 'Out of Stock'
+                  ? "bg-red-50 border-red-100 text-red-600 hover:bg-red-100"
+                  : "bg-zinc-100 border-zinc-200 text-zinc-600 hover:bg-zinc-200"
+              )}
             >
               <span>{toTitleCase(filter.label)}</span>
               <button

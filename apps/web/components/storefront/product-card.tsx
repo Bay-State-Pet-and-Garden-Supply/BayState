@@ -54,7 +54,7 @@ export function ProductCard({ product }: ProductCardProps) {
               
               <div className="absolute left-0 top-3 flex flex-col items-start gap-1">
                 {product.stock_status === 'out_of_stock' && !product.is_special_order && (
-                  <Badge className="rounded-md bg-zinc-100 text-zinc-600 border border-zinc-200 font-semibold text-[10px] px-2 py-1 shadow-none">
+                  <Badge className="rounded-md bg-red-50 text-red-600 border border-red-100 font-semibold text-[10px] px-2 py-1 shadow-none">
                     Out of Stock
                   </Badge>
                 )}
