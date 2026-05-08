@@ -13,6 +13,7 @@ import {
 import { ShoppingBag, Package, Wrench, Info, User, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useMemo } from 'react';
+import { getCategoryUrl } from '@/lib/urls';
 
 interface MobileNavDrawerProps {
   categories: Array<{ id: string; name: string; slug: string | null; parent_id?: string | null }>;
@@ -110,7 +111,7 @@ export function MobileNavDrawer({
                   {topLevel.map((cat) => (
                     <Link
                       key={cat.id}
-                      href={`/products?category=${cat.slug}`}
+                      href={getCategoryUrl(cat.slug)}
                       onClick={() => setIsOpen(false)}
                       className="block rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
                     >

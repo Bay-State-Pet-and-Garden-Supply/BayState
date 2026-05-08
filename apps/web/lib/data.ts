@@ -82,6 +82,48 @@ export async function getPetTypesNav() {
   return data || [];
 }
 
+/**
+ * Fetches a single category by its slug.
+ */
+export async function getCategoryBySlug(slug: string): Promise<TaxonomyCategoryRecord | null> {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id, name, slug, parent_id, description, display_order, image_url, is_featured')
+    .eq('slug', slug)
+    .single();
+
+  if (error || !data) {
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching category by slug:', error);
+    }
+    return null;
+  }
+
+  return data as TaxonomyCategoryRecord;
+}
+
+/**
+ * Fetches a single brand by its slug.
+ */
+export async function getBrandBySlug(slug: string): Promise<Brand | null> {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from('brands')
+    .select('*')
+    .eq('slug', slug)
+    .single();
+
+  if (error || !data) {
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching brand by slug:', error);
+    }
+    return null;
+  }
+
+  return data;
+}
+
 // Re-export product functions from lib/products.ts for backward compatibility
 // This ensures existing imports continue to work
 export {

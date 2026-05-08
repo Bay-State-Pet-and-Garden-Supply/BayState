@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Brand } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { getBrandUrl } from '@/lib/urls';
 
 interface BrandsClientProps {
   brands: Brand[];
@@ -102,7 +103,7 @@ export function BrandsClient({ brands }: BrandsClientProps) {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
               {groupedBrands[letter].map((brand) => (
                 <Link 
-                  href={`/products?brand=${brand.slug}`} 
+                  href={getBrandUrl(brand.slug)} 
                   key={brand.id} 
                   className="group block h-full p-4 bg-white border border-zinc-200 hover:border-primary/50 hover:shadow-lg transition-all rounded-xl"
                 >

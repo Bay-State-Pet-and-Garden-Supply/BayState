@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 import { type Brand } from '@/lib/types';
 import { type FacetDefinition } from '@/lib/facets';
@@ -16,6 +16,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { getCategoryUrl, getBrandUrl } from '@/lib/urls';
 
 interface PetType {
   id: string;
@@ -40,6 +41,11 @@ interface FacetSidebarProps {
   categories?: CategorySummary[];
   stockStatuses?: Array<{ id: string; label: string }>;
   dynamicFacets?: FacetDefinition[];
+  /** When rendered inside a /c/[slug] page, this is the active category slug */
+  activeCategorySlug?: string;
+  /** When rendered inside a /b/[slug] page, this is the active brand slug */
+  activeBrandSlug?: string;
+  hasSpecialOrder?: boolean;
 }
 
 export function FacetSidebar({
@@ -48,15 +54,26 @@ export function FacetSidebar({
   categories = [],
   stockStatuses = [],
   dynamicFacets = [],
+  activeCategorySlug,
+  activeBrandSlug,
+  hasSpecialOrder = false,
 }: FacetSidebarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  // Determine if we're on a category or brand page (slug-based routes)
+  const isOnCategoryPage = pathname.startsWith('/c/');
+  const isOnBrandPage = pathname.startsWith('/b/');
+
+  // For /c/ pages, category comes from the route; for /products, from query params
+  const currentCategory = activeCategorySlug || searchParams.get('category') || '';
+  const currentBrand = activeBrandSlug || searchParams.get('brand') || '';
 
   const currentSearch = searchParams.get('search') || '';
-  const currentBrand = searchParams.get('brand') || '';
   const currentPetTypeId = searchParams.get('petTypeId') || '';
-  const currentCategory = searchParams.get('category') || '';
   const currentStock = searchParams.get('stock') || '';
+  const currentSpecialOrder = searchParams.get('specialOrder') === 'true';
 
   const currentFacetsRaw = searchParams.get('facets') || '';
   const currentFacetsList = currentFacetsRaw ? currentFacetsRaw.split(',') : [];
@@ -72,19 +89,60 @@ export function FacetSidebar({
   const [categorySearch, setCategorySearch] = useState('');
   const [petTypeSearch, setPetTypeSearch] = useState('');
   const [facetSearches, setFacetSearches] = useState<Record<string, string>>({});
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
-  // "Show More" states
-  const [expandedFacets, setExpandedFacets] = useState<Record<string, boolean>>({});
+  const toggleExpanded = (section: string) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
 
-  const updateFilter = (key: string, value: string | null) => {
+  /**
+   * Builds a URL preserving current filter context.
+   * When on a /c/ or /b/ page, filters are applied as query params on that page.
+   * When on /products, category/brand are also query params.
+   */
+  const buildFilterUrl = (overrides: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (value) {
-      params.set(key, value);
-    } else {
-      params.delete(key);
+
+    for (const [key, value] of Object.entries(overrides)) {
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
     }
     params.delete('page');
-    router.push(`/products?${params.toString()}`);
+
+    // If navigating to a specific category, use the /c/ route
+    if (overrides.category !== undefined) {
+      const catSlug = overrides.category;
+      // Remove category from query params since it's in the URL path
+      params.delete('category');
+      const qs = params.toString();
+      return catSlug ? `${getCategoryUrl(catSlug)}${qs ? `?${qs}` : ''}` : '/products';
+    }
+
+    // If navigating to a specific brand, use the /b/ route
+    if (overrides.brand !== undefined) {
+      const brandSlug = overrides.brand;
+      // Remove brand from query params since it's in the URL path
+      params.delete('brand');
+      const qs = params.toString();
+      return brandSlug ? `${getBrandUrl(brandSlug)}${qs ? `?${qs}` : ''}` : '/products';
+    }
+
+    // For other filters, stay on the current page
+    let basePath = pathname;
+    // On /products with legacy query params, stay on /products
+    if (!isOnCategoryPage && !isOnBrandPage) {
+      basePath = '/products';
+    }
+
+    const qs = params.toString();
+    return `${basePath}${qs ? `?${qs}` : ''}`;
+  };
+
+  const updateFilter = (key: string, value: string | null) => {
+    router.push(buildFilterUrl({ [key]: value }));
   };
 
   const toggleFacet = (facetSlug: string, valueSlug: string) => {
@@ -96,7 +154,7 @@ export function FacetSidebar({
     updateFilter('facets', newFacets.length > 0 ? newFacets.join(',') : null);
   };
 
-  const hasFilters = currentSearch || currentBrand || currentPetTypeId || currentCategory || currentStock || currentFacetsRaw;
+  const hasFilters = currentSearch || currentBrand || currentPetTypeId || currentCategory || currentStock || currentSpecialOrder || currentFacetsRaw;
 
   // Build active filters list for pills
   const activeFilters = [];
@@ -105,19 +163,22 @@ export function FacetSidebar({
     const labels: Record<string, string> = { in_stock: 'In Stock', out_of_stock: 'Out of Stock', pre_order: 'Pre-Order' };
     activeFilters.push({ key: 'stock', label: labels[currentStock] || currentStock, value: null });
   }
-  if (currentCategory) {
+  if (currentCategory && !isOnCategoryPage) {
     const categoryLabel = categories.find((category) => category.slug === currentCategory)?.breadcrumb
       || categories.find((category) => category.slug === currentCategory)?.name
       || currentCategory;
     activeFilters.push({ key: 'category', label: `Category: ${categoryLabel}`, value: null });
   }
-  if (currentBrand) {
+  if (currentBrand && !isOnBrandPage) {
     const brandName = brands.find(b => b.slug === currentBrand)?.name || currentBrand;
     activeFilters.push({ key: 'brand', label: `Brand: ${brandName}`, value: null });
   }
   if (currentPetTypeId) {
     const petName = petTypes.find(p => p.id === currentPetTypeId)?.name || 'Pet';
     activeFilters.push({ key: 'petTypeId', label: `Pet: ${petName}`, value: null });
+  }
+  if (currentSpecialOrder) {
+    activeFilters.push({ key: 'specialOrder', label: 'Special Order', value: null });
   }
   currentFacetsList.forEach(f => {
     const [facetSlug, valSlug] = f.split(':');
@@ -134,8 +195,24 @@ export function FacetSidebar({
     if (key === 'facets' && value) {
       const newFacets = currentFacetsList.filter(f => f !== value);
       updateFilter('facets', newFacets.length > 0 ? newFacets.join(',') : null);
+    } else if (key === 'category' && isOnCategoryPage) {
+      // On a category page, removing the category = go to /products
+      router.push('/products');
+    } else if (key === 'brand' && isOnBrandPage) {
+      // On a brand page, removing the brand = go to /products
+      router.push('/products');
     } else {
       updateFilter(key, null);
+    }
+  };
+
+  const clearAllFilters = () => {
+    if (isOnCategoryPage && activeCategorySlug) {
+      router.push(getCategoryUrl(activeCategorySlug));
+    } else if (isOnBrandPage && activeBrandSlug) {
+      router.push(getBrandUrl(activeBrandSlug));
+    } else {
+      router.push('/products');
     }
   };
 
@@ -150,7 +227,7 @@ export function FacetSidebar({
       <div className="flex items-center justify-between pb-4 border-b shrink-0">
         <h2 className="text-xl font-bold text-zinc-900">Filters</h2>
         {hasFilters && (
-          <Button variant="link" size="sm" onClick={() => router.push('/products')} className="h-auto p-0 text-primary">
+          <Button variant="link" size="sm" onClick={clearAllFilters} className="h-auto p-0 text-primary">
             Clear All
           </Button>
         )}
@@ -179,7 +256,11 @@ export function FacetSidebar({
       )}
 
       <div className="flex-1 overflow-y-auto pr-2 py-4 scrollbar-thin scrollbar-thumb-zinc-200">
-        <Accordion type="multiple" className="w-full">
+        <Accordion 
+          type="multiple" 
+          defaultValue={["stock", "category", "petType", "brand", ...dynamicFacets.map(f => f.slug)]} 
+          className="w-full"
+        >
 
           {/* Availability */}
           {stockStatuses.length > 0 && (
@@ -198,6 +279,19 @@ export function FacetSidebar({
                     </Label>
                   </div>
                 ))}
+
+                {hasSpecialOrder && (
+                  <div className="flex items-center space-x-3 pt-2 border-t border-zinc-50">
+                    <Checkbox
+                      id="special-order"
+                      checked={currentSpecialOrder}
+                      onCheckedChange={(checked) => updateFilter('specialOrder', checked ? 'true' : null)}
+                    />
+                    <Label htmlFor="special-order" className="text-sm font-medium cursor-pointer leading-none">
+                      Special Order
+                    </Label>
+                  </div>
+                )}
               </AccordionContent>
             </AccordionItem>
           )}
@@ -220,59 +314,45 @@ export function FacetSidebar({
                 )}
                 <div className="space-y-3">
                   {/* Ancestors navigation */}
-                  {activeCategory && (
-                    <div className="flex flex-col space-y-2 mb-3 pb-3 border-b border-zinc-100">
-                      {activeCategory.parent_id && activeCategory.ancestor_names && activeCategory.ancestor_slugs ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const parentSlug = activeCategory.ancestor_slugs![activeCategory.ancestor_slugs!.length - 1];
-                            updateFilter('category', parentSlug || null);
-                          }}
-                          className="flex items-center text-sm font-medium text-zinc-500 hover:text-primary transition-colors text-left"
-                        >
-                          <span className="mr-1.5 text-xs">&lt;</span> Back to {activeCategory.ancestor_names[activeCategory.ancestor_names.length - 1]}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => updateFilter('category', null)}
-                          className="flex items-center text-sm font-medium text-zinc-500 hover:text-primary transition-colors text-left"
-                        >
-                          <span className="mr-1.5 text-xs">&lt;</span> Shop All Categories
-                        </button>
-                      )}
-                      
-                      <div className="pt-1 font-bold text-sm text-zinc-900 border-l-2 border-primary pl-2.5 ml-1">
-                        {activeCategory.name}
-                      </div>
+                  {activeCategory?.parent_id && activeCategory.ancestor_names && activeCategory.ancestor_slugs && (
+                    <div className="flex flex-col space-y-2 mb-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const parentSlug = activeCategory.ancestor_slugs![activeCategory.ancestor_slugs!.length - 1];
+                          router.push(parentSlug ? getCategoryUrl(parentSlug) : '/products');
+                        }}
+                        className="flex items-center text-sm font-medium text-zinc-500 hover:text-primary transition-colors text-left"
+                      >
+                        <span className="mr-1.5 text-xs">&lt;</span> Back to {activeCategory.ancestor_names[activeCategory.ancestor_names.length - 1]}
+                      </button>
                     </div>
                   )}
 
                   {/* Children / Siblings List */}
                   {filteredCategories.length > 0 ? (
-                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1 pl-1">
-                      {(expandedFacets['category'] ? filteredCategories : filteredCategories.slice(0, 8)).map((category) => {
+                    <div className="space-y-2 pr-1 pl-1">
+                      {(expandedSections['category'] ? filteredCategories : filteredCategories.slice(0, 10)).map((category) => {
                         const slug = category.slug || category.name.toLowerCase();
                         return (
                           <button
                             type="button"
                             key={category.id}
-                            onClick={() => updateFilter('category', slug)}
-                            className="block w-full text-left text-sm text-zinc-600 hover:text-primary hover:font-medium transition-colors border-l-2 border-transparent pl-2 ml-1"
+                            onClick={() => router.push(getCategoryUrl(slug))}
+                            className="block w-full text-left text-sm text-zinc-600 hover:text-primary hover:font-medium transition-colors border-l-2 border-transparent pl-3"
                           >
                             {toTitleCase(category.name)}
                           </button>
                         );
                       })}
-                      {filteredCategories.length > 8 && (
+                      {filteredCategories.length > 10 && (
                         <Button
-                          variant="ghost"
+                          variant="link"
                           size="sm"
-                          className="h-auto p-0 text-xs text-primary font-bold hover:bg-transparent pl-3 mt-2"
-                          onClick={() => setExpandedFacets(prev => ({ ...prev, category: !prev.category }))}
+                          className="h-auto p-0 pt-1 text-primary text-xs font-bold hover:no-underline"
+                          onClick={() => toggleExpanded('category')}
                         >
-                          {expandedFacets['category'] ? 'Show Less' : `+ Show ${filteredCategories.length - 8} More`}
+                          {expandedSections['category'] ? 'Show Less' : `Show ${filteredCategories.length - 10} More`}
                         </Button>
                       )}
                     </div>
@@ -301,8 +381,8 @@ export function FacetSidebar({
                     />
                   </div>
                 )}
-                <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                  {(expandedFacets['petType'] ? filteredPetTypes : filteredPetTypes.slice(0, 8)).map((pet) => (
+                <div className="space-y-3 pr-1">
+                  {(expandedSections['petType'] ? filteredPetTypes : filteredPetTypes.slice(0, 10)).map((pet) => (
                     <div key={pet.id} className="flex items-center space-x-3">
                       <Checkbox
                         id={`pet-${pet.id}`}
@@ -314,14 +394,14 @@ export function FacetSidebar({
                       </Label>
                     </div>
                   ))}
-                  {filteredPetTypes.length > 8 && (
+                  {filteredPetTypes.length > 10 && (
                     <Button
-                      variant="ghost"
+                      variant="link"
                       size="sm"
-                      className="h-auto p-0 text-xs text-primary font-bold hover:bg-transparent"
-                      onClick={() => setExpandedFacets(prev => ({ ...prev, petType: !prev.petType }))}
+                      className="h-auto p-0 pt-1 text-primary text-xs font-bold hover:no-underline"
+                      onClick={() => toggleExpanded('petType')}
                     >
-                      {expandedFacets['petType'] ? 'Show Less' : `+ Show ${filteredPetTypes.length - 8} More`}
+                      {expandedSections['petType'] ? 'Show Less' : `Show ${filteredPetTypes.length - 10} More`}
                     </Button>
                   )}
                 </div>
@@ -345,27 +425,35 @@ export function FacetSidebar({
                   />
                 </div>
               )}
-              <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                {(expandedFacets['brand'] ? filteredBrands : filteredBrands.slice(0, 8)).map((brand) => (
+              <div className="space-y-3 pr-1">
+                {(expandedSections['brand'] ? filteredBrands : filteredBrands.slice(0, 10)).map((brand) => (
                   <div key={brand.id} className="flex items-center space-x-3">
                     <Checkbox
                       id={`brand-${brand.id}`}
                       checked={currentBrand === brand.slug}
-                      onCheckedChange={(checked) => updateFilter('brand', checked ? brand.slug : null)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          router.push(getBrandUrl(brand.slug));
+                        } else if (isOnBrandPage) {
+                          router.push('/products');
+                        } else {
+                          updateFilter('brand', null);
+                        }
+                      }}
                     />
                     <Label htmlFor={`brand-${brand.id}`} className="text-sm font-medium cursor-pointer leading-none">
                       {toTitleCase(brand.name)}
                     </Label>
                   </div>
                 ))}
-                {filteredBrands.length > 8 && (
+                {filteredBrands.length > 10 && (
                   <Button
-                    variant="ghost"
+                    variant="link"
                     size="sm"
-                    className="h-auto p-0 text-xs text-primary font-bold hover:bg-transparent"
-                    onClick={() => setExpandedFacets(prev => ({ ...prev, brand: !prev.brand }))}
+                    className="h-auto p-0 pt-1 text-primary text-xs font-bold hover:no-underline"
+                    onClick={() => toggleExpanded('brand')}
                   >
-                    {expandedFacets['brand'] ? 'Show Less' : `+ Show ${filteredBrands.length - 8} More`}
+                    {expandedSections['brand'] ? 'Show Less' : `Show ${filteredBrands.length - 10} More`}
                   </Button>
                 )}
               </div>
@@ -377,8 +465,6 @@ export function FacetSidebar({
           {dynamicFacets.map((facet) => {
             const facetSearch = facetSearches[facet.slug] || '';
             const filteredValues = facet.values.filter(v => v.value.toLowerCase().includes(facetSearch.toLowerCase()));
-            const isExpanded = expandedFacets[facet.slug];
-            const displayedValues = isExpanded ? filteredValues : filteredValues.slice(0, 6);
 
             return (
               <AccordionItem key={facet.id} value={facet.slug} className="border-t border-zinc-100">
@@ -397,8 +483,8 @@ export function FacetSidebar({
                       />
                     </div>
                   )}
-                  <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                    {displayedValues.map((val) => {
+                  <div className="space-y-3 pr-1">
+                    {(expandedSections[facet.slug] ? filteredValues : filteredValues.slice(0, 10)).map((val) => {
                       const isChecked = currentFacetsList.includes(`${facet.slug}:${val.slug}`);
                       return (
                         <div key={val.id} className="flex items-center space-x-3">
@@ -413,14 +499,14 @@ export function FacetSidebar({
                         </div>
                       );
                     })}
-                    {filteredValues.length > 6 && (
+                    {filteredValues.length > 10 && (
                       <Button
-                        variant="ghost"
+                        variant="link"
                         size="sm"
-                        className="h-auto p-0 text-xs text-primary font-bold hover:bg-transparent"
-                        onClick={() => setExpandedFacets(prev => ({ ...prev, [facet.slug]: !prev[facet.slug] }))}
+                        className="h-auto p-0 pt-1 text-primary text-xs font-bold hover:no-underline"
+                        onClick={() => toggleExpanded(facet.slug)}
                       >
-                        {isExpanded ? 'Show Less' : `+ Show ${filteredValues.length - 6} More`}
+                        {expandedSections[facet.slug] ? 'Show Less' : `Show ${filteredValues.length - 10} More`}
                       </Button>
                     )}
                   </div>

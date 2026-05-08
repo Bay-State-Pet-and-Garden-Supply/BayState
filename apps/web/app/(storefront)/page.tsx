@@ -8,6 +8,7 @@ import { HeroCarousel } from '@/components/storefront/hero-carousel';
 import { UnderConstructionBanner } from '@/components/storefront/under-construction-banner';
 import { getFeaturedProducts, getBrands } from '@/lib/data';
 import { getHomepageSettings } from '@/lib/settings';
+import { getCategoryUrl, getBrandUrl } from '@/lib/urls';
 
 export default async function HomePage() {
   const [featuredProducts, homepageSettings, brands] = await Promise.all([
@@ -37,7 +38,7 @@ export default async function HomePage() {
               Pick up in store today, or pre-order!
             </p>
             <Button size="lg" className="bg-accent text-secondary hover:bg-accent/90 text-lg font-bold px-8 py-6 rounded-none shadow-lg border-b-2 border-black/20" asChild>
-              <Link href="/products?category=farm">
+              <Link href={getCategoryUrl('farm-animal')}>
                 Shop Now
               </Link>
             </Button>
@@ -47,7 +48,7 @@ export default async function HomePage() {
 
       <div className="container mx-auto px-4">
         <section className="my-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Link href="/products?category=seasonal" className="group border border-zinc-200 rounded-lg overflow-hidden relative aspect-[627/376] transition-all hover:-translate-y-1 hover:shadow-md shadow-sm bg-zinc-100">
+          <Link href={getCategoryUrl('lawn-garden-seasonal-outdoor-utility')} className="group border border-zinc-200 rounded-lg overflow-hidden relative aspect-[627/376] transition-all hover:-translate-y-1 hover:shadow-md shadow-sm bg-zinc-100">
             <Image src="/images/legacy/img1.png" alt="Winter Essentials" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
               <h3 className="text-white text-xl sm:text-2xl font-semibold leading-none font-display">Winter Essentials</h3>
@@ -55,14 +56,14 @@ export default async function HomePage() {
           </Link>
 
           <div className="flex flex-col gap-6">
-            <Link href="/products?category=farm" className="group border border-zinc-200 rounded-lg overflow-hidden relative aspect-[627/174] transition-all hover:-translate-y-1 hover:shadow-md shadow-sm bg-zinc-100">
+            <Link href={getCategoryUrl('farm-animal')} className="group border border-zinc-200 rounded-lg overflow-hidden relative aspect-[627/174] transition-all hover:-translate-y-1 hover:shadow-md shadow-sm bg-zinc-100">
                <Image src="/images/legacy/img2.png" alt="Bee Nuc Pre-Order" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
                <div className="absolute top-2 right-2 bg-card p-3 shadow-md rounded-bl-lg">
                  <h3 className="text-foreground text-sm sm:text-base font-bold leading-none font-display">Bee Nuc Pre-Order</h3>
                </div>
             </Link>
 
-            <Link href="/products?category=home" className="group border border-zinc-200 rounded-lg overflow-hidden relative aspect-[627/174] transition-all hover:-translate-y-1 hover:shadow-md shadow-sm bg-zinc-100">
+            <Link href={getCategoryUrl('home')} className="group border border-zinc-200 rounded-lg overflow-hidden relative aspect-[627/174] transition-all hover:-translate-y-1 hover:shadow-md shadow-sm bg-zinc-100">
               <Image src="/images/legacy/img3.png" alt="Wood Pellets Sale" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
               <div className="absolute top-2 right-2 bg-card p-3 shadow-md rounded-bl-lg">
                 <h3 className="text-foreground text-sm sm:text-base font-bold leading-none font-display">Wood Pellets Sale</h3>
@@ -72,7 +73,7 @@ export default async function HomePage() {
         </section>
 
         <section className="mb-12 border border-zinc-200 rounded-lg relative overflow-hidden shadow-sm aspect-[1280/230] bg-zinc-100 transition-all hover:-translate-y-1 hover:shadow-md block">
-          <Link href="/products?category=gift-shop" className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 group">
+          <Link href={getCategoryUrl('home')} className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 group">
             <Image src="/images/legacy/img4.png" alt="Country Gift Shop" fill className="object-cover -z-10" />
             <h2 className="text-3xl sm:text-5xl md:text-6xl font-bold tracking-tighter text-white drop-shadow-sm font-display group-hover:scale-105 transition-transform">
               Country Gift Shop
@@ -87,7 +88,7 @@ export default async function HomePage() {
             </h2>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <Link href="/products?category=pet-supplies" className="group border border-primary/20 rounded-xl bg-gradient-to-b from-white to-primary/5 h-[300px] transition-all hover:-translate-y-1 shadow-sm hover:shadow-md relative overflow-hidden flex flex-col items-center justify-center text-center p-6 hover:border-primary">
+            <Link href={getCategoryUrl('dog')} className="group border border-primary/20 rounded-xl bg-gradient-to-b from-white to-primary/5 h-[300px] transition-all hover:-translate-y-1 shadow-sm hover:shadow-md relative overflow-hidden flex flex-col items-center justify-center text-center p-6 hover:border-primary">
               <div className="flex flex-col items-center justify-center h-full">
                 <h3 className="text-4xl font-semibold leading-tight tracking-tight text-foreground font-display mb-4 group-hover:text-primary transition-colors">
                   Pet<br/>Supplies
@@ -97,7 +98,7 @@ export default async function HomePage() {
               </div>
             </Link>
 
-            <Link href="/products?category=farm" className="group border border-primary/20 rounded-xl bg-gradient-to-b from-white to-primary/5 h-[300px] transition-all hover:-translate-y-1 shadow-sm hover:shadow-md relative overflow-hidden flex flex-col items-center justify-center text-center p-6 hover:border-primary">
+            <Link href={getCategoryUrl('farm-animal')} className="group border border-primary/20 rounded-xl bg-gradient-to-b from-white to-primary/5 h-[300px] transition-all hover:-translate-y-1 shadow-sm hover:shadow-md relative overflow-hidden flex flex-col items-center justify-center text-center p-6 hover:border-primary">
               <div className="flex flex-col items-center justify-center h-full">
                 <h3 className="text-4xl font-semibold leading-tight tracking-tight text-foreground font-display mb-4 group-hover:text-primary transition-colors">
                   Farm &<br/>Livestock
@@ -107,7 +108,7 @@ export default async function HomePage() {
               </div>
             </Link>
 
-            <Link href="/products?category=lawn-garden" className="group border border-primary/20 rounded-xl bg-gradient-to-b from-white to-primary/5 h-[300px] transition-all hover:-translate-y-1 shadow-sm hover:shadow-md relative overflow-hidden flex flex-col items-center justify-center text-center p-6 hover:border-primary">
+            <Link href={getCategoryUrl('lawn-garden')} className="group border border-primary/20 rounded-xl bg-gradient-to-b from-white to-primary/5 h-[300px] transition-all hover:-translate-y-1 shadow-sm hover:shadow-md relative overflow-hidden flex flex-col items-center justify-center text-center p-6 hover:border-primary">
               <div className="flex flex-col items-center justify-center h-full">
                 <h3 className="text-4xl font-semibold leading-tight tracking-tight text-foreground font-display mb-4 group-hover:text-primary transition-colors">
                   Lawn &<br/>Garden
@@ -117,7 +118,7 @@ export default async function HomePage() {
               </div>
             </Link>
 
-            <Link href="/products?category=home" className="group border border-primary/20 rounded-xl bg-gradient-to-b from-white to-primary/5 h-[300px] transition-all hover:-translate-y-1 shadow-sm hover:shadow-md relative overflow-hidden flex flex-col items-center justify-center text-center p-6 hover:border-primary">
+            <Link href={getCategoryUrl('home')} className="group border border-primary/20 rounded-xl bg-gradient-to-b from-white to-primary/5 h-[300px] transition-all hover:-translate-y-1 shadow-sm hover:shadow-md relative overflow-hidden flex flex-col items-center justify-center text-center p-6 hover:border-primary">
               <div className="flex flex-col items-center justify-center h-full">
                 <h3 className="text-4xl font-semibold leading-tight tracking-tight text-foreground font-display mb-4 group-hover:text-primary transition-colors">
                   Home &<br/>Fuel
@@ -127,7 +128,7 @@ export default async function HomePage() {
               </div>
             </Link>
 
-            <Link href="/products?category=seasonal" className="group border border-primary/20 rounded-xl bg-gradient-to-b from-white to-primary/5 h-[300px] transition-all hover:-translate-y-1 shadow-sm hover:shadow-md relative overflow-hidden flex flex-col items-center justify-center text-center p-6 hover:border-primary">
+            <Link href={getCategoryUrl('lawn-garden-seasonal-outdoor-utility')} className="group border border-primary/20 rounded-xl bg-gradient-to-b from-white to-primary/5 h-[300px] transition-all hover:-translate-y-1 shadow-sm hover:shadow-md relative overflow-hidden flex flex-col items-center justify-center text-center p-6 hover:border-primary">
               <div className="flex flex-col items-center justify-center h-full">
                 <h3 className="text-4xl font-semibold leading-tight tracking-tight text-foreground font-display mb-4 group-hover:text-primary transition-colors">
                   Seasonal<br/>Shoppe
@@ -153,7 +154,7 @@ export default async function HomePage() {
               {brands.slice(0, 10).map((brand) => (
                 <Link
                   key={brand.id}
-                  href={`/products?brand=${brand.slug}`}
+                  href={getBrandUrl(brand.slug)}
                   className="flex items-center justify-center p-4 bg-white border border-zinc-200 hover:border-primary transition-colors grayscale hover:grayscale-0"
                 >
                   {brand.logo_url ? (

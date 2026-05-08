@@ -101,7 +101,7 @@ const defaultSettings: SiteSettings = {
         title: 'Baby Chicks',
         subtitle: 'In stock today',
         imageUrl: '/images/legacy/baby-chicks-are-here-s-ider.png',
-        linkUrl: '/products?category=farm',
+        linkUrl: '/c/farm-animal',
         linkText: 'Shop Now'
       },
       {
@@ -109,7 +109,7 @@ const defaultSettings: SiteSettings = {
         title: 'Mulch & Loam',
         subtitle: 'In stock now',
         imageUrl: '/images/legacy/in-stock-mulch-slider.png',
-        linkUrl: '/products?category=lawn-garden',
+        linkUrl: '/c/lawn-garden',
         linkText: 'Shop Now'
       },
       {
@@ -117,7 +117,7 @@ const defaultSettings: SiteSettings = {
         title: 'Seed Starting Supplies',
         subtitle: 'Get ready for spring',
         imageUrl: '/images/legacy/seed-starting-supplies.png',
-        linkUrl: '/products?category=lawn-garden',
+        linkUrl: '/c/lawn-garden',
         linkText: 'Shop Now'
       },
       {
@@ -125,7 +125,7 @@ const defaultSettings: SiteSettings = {
         title: 'Jonathan Green',
         subtitle: 'Lawn Care',
         imageUrl: '/images/legacy/choose-jonathan-green.png',
-        linkUrl: '/products?brand=jonathan-green',
+        linkUrl: '/b/jonathan-green',
         linkText: 'Shop Now'
       },
       {
@@ -133,7 +133,7 @@ const defaultSettings: SiteSettings = {
         title: 'Budget Friendly',
         subtitle: 'Pet Supplies',
         imageUrl: '/images/legacy/budget-friendly-pet-supplies.png',
-        linkUrl: '/products?category=pet-supplies',
+        linkUrl: '/c/dog',
         linkText: 'Shop Now'
       }
     ],

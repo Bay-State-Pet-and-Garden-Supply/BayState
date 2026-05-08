@@ -155,6 +155,21 @@ const nextConfig: NextConfig = {
         destination: '/admin/scrapers/list',
         permanent: true,
       },
+      // ── Storefront: legacy query-param URLs → canonical slug URLs ──
+      // /products?category=dog-food → /c/dog-food (301 permanent)
+      {
+        source: '/products',
+        has: [{ type: 'query', key: 'category', value: '(?<slug>.+)' }],
+        destination: '/c/:slug',
+        permanent: true,
+      },
+      // /products?brand=purina → /b/purina (301 permanent)
+      {
+        source: '/products',
+        has: [{ type: 'query', key: 'brand', value: '(?<slug>.+)' }],
+        destination: '/b/:slug',
+        permanent: true,
+      },
     ];
   },
 
