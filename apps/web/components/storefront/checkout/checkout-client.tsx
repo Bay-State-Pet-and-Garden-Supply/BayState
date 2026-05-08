@@ -349,6 +349,7 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
                       onNotesChange={setDeliveryNotes}
                       onQuoteChange={setDeliveryQuote}
                       deliveryQuote={deliveryQuote}
+                      loadingQuote={false}
                     />
                   )}
 

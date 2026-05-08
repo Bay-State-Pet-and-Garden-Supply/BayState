@@ -7,6 +7,7 @@
 
 import {
     ShopSiteProduct,
+    ShopSiteSubproduct,
     ShopSiteOrder,
     ShopSiteOrderItem,
     ShopSiteCustomer,
