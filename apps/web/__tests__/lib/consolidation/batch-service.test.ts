@@ -895,6 +895,14 @@ describe('consolidation batch service', () => {
                 if (table === 'brands') {
                     return {
                         select: jest.fn().mockResolvedValue({ data: [], error: null }),
+                        insert: jest.fn().mockReturnValue({
+                            select: jest.fn().mockReturnValue({
+                                single: jest.fn().mockResolvedValue({
+                                    data: { id: 'brand-bubbacare' },
+                                    error: null,
+                                }),
+                            }),
+                        }),
                     };
                 }
                 throw new Error(`Unexpected table: ${table}`);
@@ -919,8 +927,7 @@ describe('consolidation batch service', () => {
 
         expect(productsIngestionUpdate).toHaveBeenCalledWith(
             expect.objectContaining({
-                pipeline_status: 'scraped',
-                error_message: expect.stringContaining('higher-trust source'),
+                pipeline_status: 'finalizing',
             })
         );
     });

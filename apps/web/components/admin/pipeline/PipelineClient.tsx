@@ -797,10 +797,14 @@ export function PipelineClient({
 
         if (res.ok) {
           const data = await res.json();
+          const completed = data.completed_item_count ?? 0;
+          const failed = data.failed_item_count ?? 0;
           toast.success(
-            `Submitted ${data.product_count} product${data.product_count !== 1 ? "s" : ""} for AI consolidation`,
+            `Consolidated ${completed} of ${data.product_count} product${data.product_count !== 1 ? "s" : ""}`,
             {
-              description: `Batch ID: ${data.batch_id?.slice(0, 12) ?? "unknown"}...`,
+              description: failed > 0
+                ? `${failed} failed. Open Consolidating to review.`
+                : `Job ${data.batch_id?.slice(0, 12) ?? "unknown"} is ready to review.`,
             },
           );
           setSelectedSkus(new Set());

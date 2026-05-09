@@ -20,6 +20,8 @@ export {
     applyResults,
     listBatchJobs,
     cancelBatch,
+    processBatchQueue,
+    processAllQueues,
 } from './batch-service';
 
 // OpenAI Client

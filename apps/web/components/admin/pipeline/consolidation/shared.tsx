@@ -9,9 +9,22 @@ import {
 // Types
 // ============================================================================
 
+export interface ConsolidationJobItemActivity {
+ sku: string;
+ status: string;
+ error_message?: string | null;
+ updated_at?: string | null;
+ started_at?: string | null;
+ completed_at?: string | null;
+ created_at?: string | null;
+}
+
 export interface ConsolidationJob {
  id: string;
  status: string;
+ execution_mode?: string;
+ provider?: string | null;
+ provider_batch_id?: string | null;
  description: string | null;
  totalProducts: number;
  processedCount: number;
@@ -19,11 +32,18 @@ export interface ConsolidationJob {
  errorCount: number;
  createdAt: string;
  progress: number;
+ pendingCount?: number;
+ runningCount?: number;
+ recentItems?: ConsolidationJobItemActivity[];
  metadata: Record<string, unknown> | null;
 }
 
 export interface BatchHistoryJob {
  id: string;
+ db_id?: string | null;
+ provider?: string | null;
+ provider_batch_id?: string | null;
+ execution_mode?: string | null;
  openai_batch_id: string | null;
  status: string;
  description: string | null;
@@ -59,6 +79,12 @@ const STATUS_CONFIG: Record<
  },
  in_progress: {
  label: "In Progress",
+ color: "text-brand-burgundy",
+ bgColor: "bg-brand-burgundy/10",
+ icon: Loader2,
+ },
+ running: {
+ label: "Running",
  color: "text-brand-burgundy",
  bgColor: "bg-brand-burgundy/10",
  icon: Loader2,
@@ -102,7 +128,7 @@ const STATUS_CONFIG: Record<
 export function StatusBadge({ status }: { status: string }) {
  const config = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
  const Icon = config.icon;
- const isAnimated = status === "in_progress" || status === "finalizing";
+ const isAnimated = status === "in_progress" || status === "running" || status === "finalizing";
 
  return (
  <span

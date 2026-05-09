@@ -1,5 +1,5 @@
 import {
-    buildOpenAIResponseFormat,
+    buildJSONResponseFormat,
     buildResponseSchema,
     validateConsolidationTaxonomy,
     validateRequiredConsolidationFields,
@@ -19,20 +19,13 @@ describe('validateConsolidationTaxonomy', () => {
         expect(result.some_other_field).toBe('value');
     });
 
-    it('buildOpenAIResponseFormat wraps the raw response schema', () => {
-        const rawSchema = buildResponseSchema(['Dog > Food > Dry Food'], ['Food']);
-        const responseFormat = buildOpenAIResponseFormat(rawSchema) as {
-            json_schema?: {
-                strict?: boolean;
-                schema?: Record<string, unknown>;
-            };
-        };
+    it('buildJSONResponseFormat returns DeepSeek-compatible json_object type', () => {
+        const responseFormat = buildJSONResponseFormat() as { type?: string };
 
-        expect(responseFormat.json_schema?.strict).toBe(true);
-        expect(responseFormat.json_schema?.schema).toEqual(rawSchema);
+        expect(responseFormat.type).toBe('json_object');
     });
 
-    it('buildResponseSchema does not contain keywords unsupported by OpenAI Structured Outputs (strict mode)', () => {
+    it('buildResponseSchema does not contain unsupported keywords for JSON mode', () => {
         const rootSchema = buildResponseSchema(['Dog > Food > Dry Food'], ['Page 1']) as any;
         const properties = rootSchema.properties || {};
 

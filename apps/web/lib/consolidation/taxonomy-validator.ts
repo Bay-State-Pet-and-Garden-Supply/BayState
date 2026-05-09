@@ -224,15 +224,8 @@ export function buildResponseSchema(
     };
 }
 
-export function buildOpenAIResponseFormat(schema: object): object {
-    return {
-        type: 'json_schema',
-        json_schema: {
-            name: 'product_consolidation',
-            strict: true,
-            schema,
-        },
-    };
+export function buildJSONResponseFormat(): object {
+    return { type: 'json_object' };
 }
 
 /**

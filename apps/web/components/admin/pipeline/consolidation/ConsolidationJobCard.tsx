@@ -1,8 +1,8 @@
 import {
-  Brain,
   Loader2,
   XCircle,
   RefreshCw,
+  Trash2,
   AlertTriangle,
   Zap,
   Cpu,
@@ -26,10 +26,12 @@ interface ConsolidationJobCardProps {
   job: ConsolidationJob;
   onCancel: (id: string) => void;
   onApply: (id: string) => void;
-  onSyncStatus: (id: string) => void;
+  onRefresh: (id: string) => void;
+  onDelete: (id: string) => void;
   cancellingId: string | null;
+  deletingId: string | null;
   applyingId: string | null;
-  syncingId: string | null;
+  refreshingId: string | null;
 }
 
 // ============================================================================
@@ -40,13 +42,17 @@ export function ConsolidationJobCard({
   job,
   onCancel,
   onApply,
-  onSyncStatus,
+  onRefresh,
+  onDelete,
   cancellingId,
+  deletingId,
   applyingId,
-  syncingId,
+  refreshingId,
 }: ConsolidationJobCardProps) {
   const llmModel = job.metadata?.llm_model as string | undefined;
-  const llmProvider = job.metadata?.llm_provider as string | undefined;
+  const executionMode = job.execution_mode || undefined;
+  const pendingCount = job.pendingCount ?? Math.max(job.totalProducts - job.processedCount, 0);
+  const runningCount = job.runningCount ?? 0;
 
   return (
     <div className="rounded-none border border-border bg-card p-5 transition-colors hover:bg-accent/5">
@@ -54,13 +60,18 @@ export function ConsolidationJobCard({
         <div className="flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold text-base text-foreground">
-              {job.description || `Batch ${job.id.slice(0, 8)}`}
+              {job.description || `Job ${job.id.slice(0, 8)}`}
             </h3>
             <StatusBadge status={job.status} />
             {llmModel && (
               <Badge variant="secondary" className="rounded-none border border-border bg-muted font-semibold text-[10px] h-5 tracking-widest">
                 <Cpu className="mr-1 h-3 w-3" />
                 {llmModel}
+              </Badge>
+            )}
+            {executionMode === 'direct_chat_chunks' && (
+              <Badge variant="outline" className="rounded-none border border-border bg-violet-50 text-violet-700 font-semibold text-[10px] h-5 tracking-widest">
+                Direct Chat
               </Badge>
             )}
           </div>
@@ -81,13 +92,13 @@ export function ConsolidationJobCard({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onSyncStatus(job.id)}
-            disabled={syncingId === job.id}
-            title="Refresh status"
+            onClick={() => onRefresh(job.id)}
+            disabled={refreshingId === job.id}
+            title="Refresh status (read-only)"
             className="h-8 w-8 p-0 hover:bg-muted"
           >
             <RefreshCw
-              className={`h-4 w-4 ${syncingId === job.id ? "animate-spin" : ""}`}
+              className={`h-4 w-4 ${refreshingId === job.id ? "animate-spin" : ""}`}
             />
           </Button>
           {!isTerminalStatus(job.status) && (
@@ -108,11 +119,48 @@ export function ConsolidationJobCard({
               )}
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onDelete(job.id)}
+            disabled={deletingId === job.id}
+            className="h-8 rounded-none border border-border text-[10px] font-semibold text-muted-foreground hover:bg-destructive/5 hover:text-destructive tracking-widest"
+          >
+            {deletingId === job.id ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                Delete
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-none border border-border bg-muted/20 p-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold text-foreground">Current state</p>
+            <p className="mt-0.5 text-[10px] font-semibold text-muted-foreground">
+              {pendingCount > 0 && !isTerminalStatus(job.status)
+                ? `${pendingCount} product${pendingCount === 1 ? "" : "s"} still waiting. Newly submitted jobs run automatically; refresh to check progress.`
+                : isTerminalStatus(job.status)
+                  ? "This job is finished. Review errors or apply successful results."
+                  : "No queued products remain."}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-[10px] font-semibold sm:grid-cols-4">
+            <span className="rounded-none border border-border bg-background px-2 py-1 text-muted-foreground">Pending <b className="text-foreground">{pendingCount}</b></span>
+            <span className="rounded-none border border-border bg-background px-2 py-1 text-muted-foreground">Running <b className="text-foreground">{runningCount}</b></span>
+            <span className="rounded-none border border-border bg-background px-2 py-1 text-muted-foreground">Done <b className="text-status-success">{job.successCount}</b></span>
+            <span className="rounded-none border border-border bg-background px-2 py-1 text-muted-foreground">Failed <b className={job.errorCount > 0 ? "text-destructive" : "text-foreground"}>{job.errorCount}</b></span>
+          </div>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="rounded-none border border-border p-3 bg-muted/20">
           <p className="text-2xl font-bold text-foreground">
             {job.totalProducts}
@@ -149,10 +197,35 @@ export function ConsolidationJobCard({
         </div>
       )}
 
+      {job.recentItems && job.recentItems.length > 0 && (
+        <div className="mt-4 rounded-none border border-border bg-background">
+          <div className="border-b border-border px-3 py-2">
+            <p className="text-[10px] font-semibold tracking-widest text-muted-foreground">RECENT ITEM ACTIVITY</p>
+          </div>
+          <div className="divide-y divide-border">
+            {job.recentItems.map((item) => (
+              <div key={`${item.sku}-${item.updated_at || item.created_at || item.status}`} className="flex flex-col gap-1 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-foreground">{item.sku}</span>
+                  <StatusBadge status={item.status} />
+                </div>
+                {item.error_message ? (
+                  <span className="max-w-[52ch] truncate text-[10px] font-semibold text-destructive">{item.error_message}</span>
+                ) : (
+                  <span className="text-[10px] font-semibold text-muted-foreground">
+                    {item.completed_at ? `Completed ${formatTimestamp(item.completed_at)}` : item.started_at ? `Started ${formatTimestamp(item.started_at)}` : "Waiting"}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Progress Bar */}
       <div className="mt-5 space-y-1.5">
         <div className="flex items-center justify-between text-[10px] font-semibold text-muted-foreground tracking-widest">
-          <span>Pipeline Progress</span>
+          <span>Queue Progress</span>
           <span className="text-foreground">{job.progress}%</span>
         </div>
         <div className="h-3 w-full rounded-none border border-border bg-muted overflow-hidden">
