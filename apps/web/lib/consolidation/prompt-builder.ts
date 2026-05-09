@@ -197,14 +197,20 @@ async function getCategories() {
  * Includes taxonomy constraints and formatting rules.
  */
 export function generateSystemPrompt(categories: string[]): string {
-    const schemaConstraintInstruction =
-        categories.length > 0
-            ? 'The response schema already constrains allowed category and product_on_pages values. Use only exact schema values.'
-            : 'Use only exact source-supported category and product_on_pages values.';
+    const MAX_PROMPT_CATEGORIES = 50;
+    const displayedCategories = categories.slice(0, MAX_PROMPT_CATEGORIES);
+    const categorySuffix =
+        categories.length > MAX_PROMPT_CATEGORIES
+            ? `\n... and ${categories.length - MAX_PROMPT_CATEGORIES} more categories (use exact name from allowed list)`
+            : '';
+    const allowedCategoriesStr = displayedCategories.length > 0
+        ? displayedCategories.join('\n')
+        : '(none configured)';
+    const allowedPagesStr = SHOPSITE_PAGES.join('\n');
 
     return `You consolidate multi-source product data into one ShopSite export-ready product record.
 
-${schemaConstraintInstruction} Never invent ShopSite page names.
+Use only exact source-supported category and product_on_pages values. Never invent ShopSite page names.
 
 Prioritize outputs that are ready for ShopSite export: name, brand, weight, and product_on_pages.
 
@@ -253,7 +259,26 @@ Field rules:
 - product_on_pages: never use service-only pages such as #Services for a physical retail product unless the trusted source clearly describes a service, rental, refill, pickup, or delivery offering.
 - confidence_score: 0.80-1.00 means ready for immediate ShopSite export, 0.50-0.79 means usable with review, and below 0.50 means key fields remain uncertain.
 
-Return valid JSON only through the response schema. Every required string field must be non-empty.`;
+Output contract — respond with valid JSON matching this structure:
+{
+  "name": "string (required) — product name with brand as first token",
+  "brand": "string (required) — brand name exactly as in highest-trust source",
+  "weight": "string (required) — numeric weight in pounds, no units. null if no trustworthy weight",
+  "product_on_pages": "string (required) — one or more pipe-separated ShopSite page names",
+  "confidence_score": "number (required) — 0.0 to 1.0. 0.80+ = export-ready",
+  "category": "string (required) — best-fit taxonomy category from allowed list",
+  "description": "string (required) — short product description from highest-trust source",
+  "long_description": "string (required) — extended description when source-supported",
+  "search_keywords": "string (required) — comma-separated keywords from source data"
+}
+
+Allowed product_on_pages values (use exact names, pipe-separated for multiple):
+${allowedPagesStr}
+
+Allowed category values (use exactly one):
+${allowedCategoriesStr}${categorySuffix}
+
+Every required field must be non-empty.`;
 }
 
 /**

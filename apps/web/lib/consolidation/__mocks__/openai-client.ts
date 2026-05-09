@@ -59,7 +59,6 @@ export const CONSOLIDATION_CONFIG = {
     model: 'gpt-4o-mini',
     maxTokens: 1024,
     temperature: 0.1,
-    completionWindow: '24h' as const,
 } as const;
 
 /**

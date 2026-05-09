@@ -5,27 +5,13 @@ import {
   LayoutGrid,
   Loader2,
   RefreshCw,
-  AlertTriangle,
   History,
   Settings,
-  CheckCircle,
   LifeBuoy,
-  Key,
-  Save,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import { ConsolidationJobCard } from "@/components/admin/pipeline/consolidation";
 import { BatchHistorySection } from "@/components/admin/pipeline/consolidation";
@@ -34,279 +20,13 @@ import type {
   BatchHistoryJob,
 } from "@/components/admin/pipeline/consolidation";
 import { useDocumentVisible } from "@/hooks/useDocumentVisible";
-import { DEFAULT_AI_MODEL } from "@/lib/ai-scraping/models";
-
-// ... (AISettings interface stays the same)
 
 // ============================================================================
 // Types
 // ============================================================================
 
-interface AISettings {
-  defaults: {
-    llm_provider?: "openai";
-    llm_model: string;
-    llm_base_url?: string | null;
-    llm_supports_batch_api?: boolean;
-    confidence_threshold: number;
-  };
-  statuses: {
-    openai: {
-      configured: boolean;
-      last4: string | null;
-      updated_at: string | null;
-    };
-  };
-}
-
 interface ActiveConsolidationsTabProps {
   className?: string;
-}
-
-// ============================================================================
-// AI Settings Dialog
-// ============================================================================
-
-function AISettingsDialog() {
-  const [settings, setSettings] = useState<AISettings | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [openaiKey, setOpenaiKey] = useState("");
-
-  const fetchSettings = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/consolidation/settings");
-      if (res.ok) {
-        const data = await res.json();
-        setSettings(data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch AI settings", err);
-    }
-  }, []);
-
-  const handleSaveDefaults = async () => {
-    if (!settings) return;
-    setSaving(true);
-    try {
-      const res = await fetch("/api/admin/consolidation/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...settings.defaults,
-          llm_provider: "openai",
-          llm_base_url: null,
-          llm_supports_batch_api: true,
-        }),
-      });
-      if (res.ok) {
-        toast.success("Defaults saved");
-        await fetchSettings();
-      } else {
-        toast.error("Failed to save defaults");
-      }
-    } catch {
-      toast.error("Failed to save defaults");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSaveKey = async () => {
-    if (!openaiKey.trim()) {
-      toast.error("API key cannot be empty");
-      return;
-    }
-    setSaving(true);
-    try {
-      const res = await fetch("/api/admin/consolidation/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ openai_api_key: openaiKey }),
-      });
-      if (res.ok) {
-        toast.success("OpenAI API Key updated");
-        setOpenaiKey("");
-        await fetchSettings();
-      } else {
-        toast.error("Failed to update API Key");
-      }
-    } catch {
-      toast.error("Failed to update API Key");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  useEffect(() => {
-    if (open) fetchSettings();
-  }, [open, fetchSettings]);
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="rounded-none border border-border font-semibold text-[10px] h-8 transition-all"
-        >
-          <Settings className="mr-2 h-4 w-4" />
-          AI Config
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] rounded-none border border-border bg-card">
-        <DialogHeader>
-          <DialogTitle className="font-semibold text-xl text-foreground">
-            Consolidation Engine
-          </DialogTitle>
-          <DialogDescription className="text-[10px] font-semibold text-muted-foreground">
-            Configure OpenAI credentials and model parameters.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="grid gap-6 py-4">
-          {/* API Key Section */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 border-b border-border pb-1.5">
-              <Key className="h-4 w-4 text-muted-foreground" />
-              <h4 className="text-xs font-semibold">
-                OpenAI API Key
-              </h4>
-            </div>
-
-            <div className="rounded-none border border-border bg-muted/20 p-2 sm:p-3">
-              {settings?.statuses.openai.configured ? (
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-green-600">
-                    <CheckCircle className="h-3.5 w-3.5" />
-                    <span>
-                      Active (Ends in {settings.statuses.openai.last4})
-                    </span>
-                  </div>
-                  <span className="text-[9px] font-semibold text-muted-foreground">
-                    Refreshed{" "}
-                    {settings.statuses.openai.updated_at
-                      ? new Date(
-                          settings.statuses.openai.updated_at,
-                        ).toLocaleDateString()
-                      : "N/A"}
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5 text-[10px] font-semibold text-destructive mb-4">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  <span>Not Configured</span>
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                <Input
-                  type="password"
-                  placeholder="sk-..."
-                  value={openaiKey}
-                  onChange={(e) => setOpenaiKey(e.target.value)}
-                  className="h-9 text-xs rounded-none border border-border"
-                />
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="h-9 px-4 text-xs font-semibold rounded-none border border-border bg-foreground text-background transition-all"
-                  onClick={handleSaveKey}
-                  disabled={saving || !openaiKey}
-                >
-                  Apply
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Model Selection Section */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 border-b border-border pb-1.5">
-              <LayoutGrid className="h-4 w-4 text-muted-foreground" />
-              <h4 className="text-xs font-semibold">
-                Model Parameters
-              </h4>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="model"
-                  className="text-[10px] font-semibold text-muted-foreground"
-                >
-                  LLM Model
-                </Label>
-                <select
-                  id="model"
-                  className="flex h-9 w-full rounded-none border border-border bg-transparent px-3 py-1 text-xs font-semibold focus-visible:outline-none focus-visible:ring-0"
-                  value={settings?.defaults.llm_model || DEFAULT_AI_MODEL}
-                  onChange={(e) =>
-                    setSettings((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            defaults: {
-                              ...prev.defaults,
-                              llm_model: e.target.value as
-                                | "gpt-4o-mini"
-                                | "gpt-4o",
-                            },
-                          }
-                        : null,
-                    )
-                  }
-                >
-                  <option value="gpt-4o-mini">GPT-4o Mini (Cheap)</option>
-                  <option value="gpt-4o">GPT-4o (HD)</option>
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="confidence"
-                  className="text-[10px] font-semibold text-muted-foreground"
-                >
-                  Min Confidence
-                </Label>
-                <Input
-                  id="confidence"
-                  type="number"
-                  step="0.05"
-                  min="0"
-                  max="1"
-                  className="h-9 text-xs font-semibold rounded-none border border-border"
-                  value={settings?.defaults.confidence_threshold || 0.7}
-                  onChange={(e) =>
-                    setSettings((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            defaults: {
-                              ...prev.defaults,
-                              confidence_threshold: parseFloat(e.target.value),
-                            },
-                          }
-                        : null,
-                    )
-                  }
-                />
-              </div>
-            </div>
-
-            <Button
-              className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 font-semibold rounded-none border border-border transition-all"
-              onClick={handleSaveDefaults}
-              disabled={saving || !settings}
-            >
-              <Save className="mr-2 h-4 w-4" />
-              Save Global Defaults
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
 }
 
 // ============================================================================
@@ -327,8 +47,8 @@ export function ActiveConsolidationsTab({
     string | null
   >(null);
   const [applyingId, setApplyingId] = useState<string | null>(null);
-  const [syncingId, setSyncingId] = useState<string | null>(null);
-  const [syncingAll, setSyncingAll] = useState(false);
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
 
   // Fetch active consolidation jobs
@@ -398,14 +118,14 @@ export function ActiveConsolidationsTab({
         method: "DELETE",
       });
       if (res.ok) {
-        toast.success("Batch cancelled");
+        toast.success("Job cancelled");
         await Promise.all([fetchJobs(), fetchHistory()]);
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to cancel batch");
+        toast.error(data.error || "Failed to cancel job");
       }
     } catch {
-      toast.error("Failed to cancel batch");
+      toast.error("Failed to cancel job");
     } finally {
       setCancellingId(null);
     }
@@ -451,9 +171,9 @@ export function ActiveConsolidationsTab({
     }
   };
 
-  // Sync status for a single batch from the configured provider
-  const handleSyncStatus = async (batchId: string) => {
-    setSyncingId(batchId);
+  // Refresh status for a single job (read-only)
+  const handleRefreshJob = async (batchId: string) => {
+    setRefreshingId(batchId);
     try {
       const res = await fetch(`/api/admin/consolidation/${batchId}`);
       if (res.ok) {
@@ -461,36 +181,41 @@ export function ActiveConsolidationsTab({
         await Promise.all([fetchJobs(), fetchHistory()]);
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to sync status");
+        toast.error(data.error || "Failed to refresh status");
       }
     } catch {
-      toast.error("Failed to sync status");
+      toast.error("Failed to refresh status");
     } finally {
-      setSyncingId(null);
+      setRefreshingId(null);
     }
   };
 
-  // Sync all active batches
-  const handleSyncAll = async () => {
-    setSyncingAll(true);
+  const handleDeleteJob = async (batchId: string) => {
+    if (!window.confirm("Delete this consolidation job? Products still in consolidating will be returned to scraped.")) return;
+
+    setDeletingId(batchId);
     try {
-      const res = await fetch("/api/admin/consolidation/sync", {
-        method: "POST",
+      const res = await fetch(`/api/admin/consolidation/${batchId}?delete=true`, {
+        method: "DELETE",
       });
       if (res.ok) {
-        const data = await res.json();
-        toast.success(
-          `Synced ${data.synced_count ?? 0} batch${(data.synced_count ?? 0) !== 1 ? "es" : ""}`,
-        );
+        toast.success("Consolidation deleted");
         await Promise.all([fetchJobs(), fetchHistory()]);
       } else {
-        toast.error("Failed to sync batches");
+        const data = await res.json();
+        toast.error(data.error || "Failed to delete consolidation");
       }
     } catch {
-      toast.error("Failed to sync batches");
+      toast.error("Failed to delete consolidation");
     } finally {
-      setSyncingAll(false);
+      setDeletingId(null);
     }
+  };
+
+  // Refresh all jobs (read-only — just re-fetch)
+  const handleRefreshAll = async () => {
+    await Promise.all([fetchJobs(), fetchHistory()]);
+    toast.success("Queue refreshed");
   };
 
   const [resettingStranded, setResettingStranded] = useState(false);
@@ -535,7 +260,7 @@ export function ActiveConsolidationsTab({
         className={`rounded-none border border-destructive/20 bg-destructive/[0.02] p-3 ${className}`}
       >
         <p className="text-sm font-bold uppercase text-destructive tracking-tight">
-          Sync Failure: {error}
+          Queue Failure: {error}
         </p>
       </div>
     );
@@ -544,18 +269,23 @@ export function ActiveConsolidationsTab({
   return (
     <div className={`space-y-3 ${className}`}>
       <div className="flex justify-end gap-2 border-b border-border pb-2">
-        <AISettingsDialog />
         <Button
           variant="outline"
           size="sm"
-          onClick={handleSyncAll}
-          disabled={syncingAll}
+          onClick={() => window.open('/admin/settings', '_blank')}
           className="rounded-none border border-border font-semibold text-[10px] h-8 transition-all"
         >
-          <RefreshCw
-            className={`mr-2 h-3.5 w-3.5 ${syncingAll ? "animate-spin" : ""}`}
-          />
-          Status Sync
+          <Settings className="mr-2 h-4 w-4" />
+          AI Settings
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefreshAll}
+          className="rounded-none border border-border font-semibold text-[10px] h-8 transition-all"
+        >
+          <RefreshCw className="mr-2 h-3.5 w-3.5" />
+          Refresh
         </Button>
         <Button
           variant="outline"
@@ -588,6 +318,11 @@ export function ActiveConsolidationsTab({
         </Button>
       </div>
 
+      <div className="rounded-none border border-border bg-muted/20 px-4 py-3 text-[10px] font-semibold text-muted-foreground tracking-tight">
+        <span className="text-foreground">DeepSeek consolidation</span>: clicking Consolidate on the scraped tab submits and runs the job.
+        This tab is only for reviewing progress, applying completed results, deleting jobs, and recovery.
+      </div>
+
       {/* Active Jobs */}
       {jobs.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed border-border rounded-none">
@@ -607,10 +342,12 @@ export function ActiveConsolidationsTab({
               job={job}
               onCancel={handleCancelClick}
               onApply={handleApply}
-              onSyncStatus={handleSyncStatus}
+              onRefresh={handleRefreshJob}
+              onDelete={handleDeleteJob}
               cancellingId={cancellingId}
+              deletingId={deletingId}
               applyingId={applyingId}
-              syncingId={syncingId}
+              refreshingId={refreshingId}
             />
           ))}
         </div>
@@ -634,9 +371,9 @@ export function ActiveConsolidationsTab({
           if (!open) setPendingCancelBatchId(null);
         }}
         onConfirm={handleConfirmCancel}
-        title="Abort Consolidation"
-        description="This will immediately terminate the LLM process. This action is irreversible."
-        confirmLabel="Abort Process"
+        title="Abort Queue Job"
+        description="This will cancel the queue job and stop processing remaining items."
+        confirmLabel="Abort Job"
         variant="destructive"
         isLoading={!!cancellingId}
       />

@@ -24,7 +24,7 @@ interface RegisterParallelRunParams {
 }
 
 function normalizeProvider(value: unknown): LLMProvider {
-    if (value === 'deepseek' || value === 'gemini' || value === 'openai_compatible' || value === 'lmstudio' || value === 'openai') {
+    if (value === 'deepseek' || value === 'openai_compatible' || value === 'lmstudio' || value === 'openai') {
         return value;
     }
 

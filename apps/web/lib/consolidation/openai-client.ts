@@ -1,12 +1,9 @@
 import OpenAI from 'openai';
-import type { LLMProvider } from '@/lib/ai-scraping/credentials';
 import {
     getAIConsolidationRuntimeConfig,
 } from '@/lib/ai-scraping/credentials';
 import { getDeepSeekOpenAICompatibleBaseURL } from '@/lib/ai-scraping/deepseek';
 import { DEFAULT_AI_MODEL } from '@/lib/ai-scraping/models';
-
-const LEGACY_OPENAI_MODEL = 'gpt-4o-mini';
 
 // We cache the client but only if the effective connection settings haven't changed.
 let lastClientSignature: string | null = null;
@@ -16,69 +13,31 @@ export interface ConsolidationRuntimeConfig {
     model: string;
     maxTokens: number;
     temperature: number;
-    completionWindow: '24h';
-    llm_provider: LLMProvider;
-    configured_llm_provider: LLMProvider;
     llm_base_url: string | null;
     llm_api_key: string | null;
-    llm_supports_batch_api: boolean;
     confidence_threshold: number;
     routing_key: string | null;
 }
 
 interface ConsolidationConfigOptions {
     routingKey?: string;
-    forceProvider?: LLMProvider;
 }
 
-function resolveEffectiveProvider(
-    configuredProvider: LLMProvider,
-    options: ConsolidationConfigOptions | undefined
-): LLMProvider {
-    if (options?.forceProvider) {
-        return options.forceProvider;
-    }
-    return configuredProvider;
-}
-
-function resolveProviderModel(
-    provider: LLMProvider,
-    configuredProvider: LLMProvider,
-    configuredModel: string
-): string {
-    if (provider === 'deepseek' && configuredProvider !== 'deepseek') {
-        return CONSOLIDATION_CONFIG.model;
-    }
-
-    if (provider === 'openai' && configuredProvider !== 'openai') {
-        return LEGACY_OPENAI_MODEL;
-    }
-
+function resolveProviderModel(configuredModel: string): string {
     return configuredModel || CONSOLIDATION_CONFIG.model;
 }
 
-function resolveProviderBaseUrl(
-    provider: LLMProvider,
-    configuredBaseUrl: string | null
-): string | null {
-    if (provider === 'deepseek') {
-        return getDeepSeekOpenAICompatibleBaseURL(configuredBaseUrl);
-    }
-
-    if (provider === 'openai') {
-        return process.env.OPENAI_BASE_URL || null;
-    }
-
-    return configuredBaseUrl;
+function resolveProviderBaseUrl(configuredBaseUrl: string | null): string | null {
+    return getDeepSeekOpenAICompatibleBaseURL(configuredBaseUrl);
 }
 
 /**
- * Get the OpenAI-compatible client instance for the current effective provider.
+ * Get the OpenAI-compatible client instance for DeepSeek.
  */
 export async function getOpenAIClient(options?: ConsolidationConfigOptions): Promise<OpenAI | null> {
     const runtimeConfig = await getConsolidationConfig(options);
     if (!runtimeConfig.llm_api_key) {
-        console.error('[Consolidation] LLM API key not set in environment or runtime credentials');
+        console.error('[Consolidation] LLM API key not set');
         return null;
     }
 
@@ -88,11 +47,7 @@ export async function getOpenAIClient(options?: ConsolidationConfigOptions): Pro
         return null;
     }
     const baseURL = runtimeConfig.llm_base_url || undefined;
-    const clientSignature = JSON.stringify({
-        provider: runtimeConfig.llm_provider,
-        apiKey,
-        baseURL,
-    });
+    const clientSignature = JSON.stringify({ apiKey, baseURL });
 
     if (clientSignature !== lastClientSignature || !openaiClient) {
         lastClientSignature = clientSignature;
@@ -105,25 +60,31 @@ export async function getOpenAIClient(options?: ConsolidationConfigOptions): Pro
 /**
  * Check if an LLM provider is configured for consolidation.
  */
-export async function isOpenAIConfigured(options?: ConsolidationConfigOptions): Promise<boolean> {
-    const runtimeConfig = await getConsolidationConfig(options);
+export async function isOpenAIConfigured(): Promise<boolean> {
+    const runtimeConfig = await getConsolidationConfig();
     return !!runtimeConfig.llm_api_key;
 }
 
 /**
- * Model configuration for batch consolidation.
+ * Model configuration for consolidation.
  * These are defaults; use getConsolidationConfig() for runtime settings.
  */
 export const CONSOLIDATION_CONFIG = {
     /** Model to use for consolidation */
     model: DEFAULT_AI_MODEL,
-    /** Maximum tokens per response */
-    maxTokens: 1024,
+    /** Maximum tokens per response for normal chat models */
+    maxTokens: 2048,
+    /** Reasoner spends completion budget on reasoning before final JSON. */
+    reasonerMaxTokens: 4096,
     /** Temperature for responses (low = more deterministic) */
     temperature: 0.1,
-    /** Batch completion window */
-    completionWindow: '24h' as const,
 } as const;
+
+function resolveMaxTokensForModel(model: string): number {
+    return model === 'deepseek-reasoner'
+        ? CONSOLIDATION_CONFIG.reasonerMaxTokens
+        : CONSOLIDATION_CONFIG.maxTokens;
+}
 
 /**
  * Get runtime consolidation configuration, merging defaults with DB settings.
@@ -133,38 +94,16 @@ export async function getConsolidationConfig(
 ): Promise<ConsolidationRuntimeConfig> {
     try {
         const runtimeConfig = await getAIConsolidationRuntimeConfig();
-        const effectiveProvider = resolveEffectiveProvider(
-            runtimeConfig.llm_provider,
-            options
-        );
-        const model = resolveProviderModel(
-            effectiveProvider,
-            runtimeConfig.llm_provider,
-            runtimeConfig.llm_model || CONSOLIDATION_CONFIG.model,
-        );
-        const apiKey = effectiveProvider === 'deepseek'
-            ? (runtimeConfig.deepseek_api_key ?? runtimeConfig.llm_api_key)
-            : effectiveProvider === 'openai'
-                ? (runtimeConfig.openai_api_key ?? null)
-                : runtimeConfig.llm_api_key;
-        const baseUrl = resolveProviderBaseUrl(
-            effectiveProvider,
-            runtimeConfig.llm_base_url,
-        );
+        const model = resolveProviderModel(runtimeConfig.llm_model || CONSOLIDATION_CONFIG.model);
+        const apiKey = runtimeConfig.deepseek_api_key ?? runtimeConfig.llm_api_key;
+        const baseUrl = resolveProviderBaseUrl(runtimeConfig.llm_base_url);
 
         return {
-            ...CONSOLIDATION_CONFIG,
             model,
-            llm_provider: effectiveProvider,
-            configured_llm_provider: runtimeConfig.llm_provider,
+            maxTokens: resolveMaxTokensForModel(model),
+            temperature: CONSOLIDATION_CONFIG.temperature,
             llm_base_url: baseUrl,
             llm_api_key: apiKey ?? null,
-            llm_supports_batch_api:
-                effectiveProvider === 'deepseek' || effectiveProvider === 'lmstudio'
-                    ? false
-                    : effectiveProvider === 'openai'
-                        ? true
-                        : runtimeConfig.llm_supports_batch_api,
             confidence_threshold: runtimeConfig.confidence_threshold,
             routing_key: options?.routingKey ?? null,
         };
@@ -172,12 +111,11 @@ export async function getConsolidationConfig(
         console.error('[Consolidation] Failed to load config from DB, using hardcoded defaults:', err);
         const baseUrl = getDeepSeekOpenAICompatibleBaseURL(null);
         return {
-            ...CONSOLIDATION_CONFIG,
-            llm_provider: 'deepseek' as const,
-            configured_llm_provider: 'deepseek' as const,
+            model: CONSOLIDATION_CONFIG.model,
+            maxTokens: resolveMaxTokensForModel(CONSOLIDATION_CONFIG.model),
+            temperature: CONSOLIDATION_CONFIG.temperature,
             llm_base_url: baseUrl,
             llm_api_key: null,
-            llm_supports_batch_api: false,
             confidence_threshold: 0.7,
             routing_key: options?.routingKey ?? null,
         };

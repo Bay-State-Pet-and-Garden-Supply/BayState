@@ -15,7 +15,7 @@ import {
 } from './openai-client';
 import { buildPromptContext, buildUserPrompt } from './prompt-builder';
 import {
-    buildOpenAIResponseFormat,
+    buildJSONResponseFormat,
     buildResponseSchema,
     validateCategory,
     validateConsolidationTaxonomy,
@@ -45,11 +45,11 @@ import {
     preflightModels,
     createDirectChatBatch,
     processDirectChatChunk,
+    getDirectChatStatusSnapshot,
     aggregateDirectChatStatus,
     retrieveDirectChatResults,
     cancelDirectChatBatch,
-    getFailedSkusForFallback,
-    markItemsWithFallback,
+
 } from './direct-chat-service';
 
 // =============================================================================
@@ -333,7 +333,7 @@ function isUuid(value: string): boolean {
 
 interface BatchRowLookup {
     id: string;
-    provider: ConsolidationRuntimeConfig['llm_provider'];
+    provider: string;
     provider_batch_id: string | null;
     total_requests?: number | null;
     completed_requests?: number | null;
@@ -343,12 +343,13 @@ interface BatchRowLookup {
     parent_batch_id?: string | null;
 }
 
-type BatchProviderKey = ConsolidationRuntimeConfig['llm_provider'];
+type BatchProviderKey = 'deepseek' | 'openai_compatible';
 
 function normalizeBatchProvider(value: unknown): BatchProviderKey {
-    if (typeof value === 'string' && (value === 'deepseek' || value === 'lmstudio' || value === 'openai_compatible' || value === 'openai' || value === 'gemini')) {
-        return value as BatchProviderKey;
+    if (typeof value === 'string' && value === 'deepseek') {
+        return 'deepseek';
     }
+    // All legacy providers (openai, gemini, lmstudio) and unknown values normalize to deepseek
     return 'deepseek';
 }
 
@@ -467,13 +468,13 @@ async function findBatchJobRow(
 }
 
 async function resolveProviderBatchId(batchIdentifier: string): Promise<{
-    provider: BatchProviderKey;
+    provider: string;
     providerBatchId: string;
 }> {
     if (!isUuid(batchIdentifier)) {
         const { row } = await findBatchJobRow(batchIdentifier);
         return {
-            provider: row?.provider ?? 'openai',
+            provider: row?.provider ?? 'deepseek',
             providerBatchId: row?.provider_batch_id ?? batchIdentifier,
         };
     }
@@ -481,7 +482,7 @@ async function resolveProviderBatchId(batchIdentifier: string): Promise<{
     const { row } = await findBatchJobRow(batchIdentifier);
     if (!row) {
         return {
-            provider: 'openai',
+            provider: 'deepseek',
             providerBatchId: batchIdentifier,
         };
     }
@@ -860,7 +861,7 @@ export function createBatchContent(
     const model = config?.model || CONSOLIDATION_CONFIG.model;
     const maxTokens = config?.maxTokens || CONSOLIDATION_CONFIG.maxTokens;
     const temperature = config?.temperature || CONSOLIDATION_CONFIG.temperature;
-    const openAIResponseFormat = responseSchema ? buildOpenAIResponseFormat(responseSchema) : undefined;
+    const jsonResponseFormat = buildJSONResponseFormat();
 
     for (const product of products) {
         // Filter sources to only include relevant fields
@@ -894,7 +895,7 @@ export function createBatchContent(
                 ],
                 max_tokens: maxTokens,
                 temperature: temperature,
-                ...(openAIResponseFormat ? { response_format: openAIResponseFormat } : {}),
+                response_format: jsonResponseFormat,
             },
         };
 
@@ -905,23 +906,14 @@ export function createBatchContent(
 }
 
 async function getConfiguredBatchRuntime(
-    requireBatchApi: boolean,
     options?: {
         routingKey?: string;
-        forceProvider?: BatchProviderKey;
     }
 ): Promise<ConsolidationRuntimeConfig | BatchErrorResponse> {
     const config = await getConsolidationConfig(options);
 
-    if (requireBatchApi && !config.llm_supports_batch_api) {
-        return {
-            success: false,
-            error: 'Selected LLM endpoint does not support the Batch API required for consolidation',
-        };
-    }
-
     if (!config.llm_api_key) {
-        return { success: false, error: 'LLM provider not configured' };
+        return { success: false, error: 'LLM API key not configured' };
     }
 
     return config;
@@ -937,102 +929,6 @@ function isSubmitBatchResponse(
     value: SubmitBatchResponse | BatchErrorResponse
 ): value is SubmitBatchResponse {
     return value.success === true;
-}
-
-async function submitBatchToProvider(
-    runtime: ConsolidationRuntimeConfig,
-    content: string,
-    displayName: string,
-    metadata: Record<string, string>
-): Promise<{
-    providerBatchId: string;
-    providerStatus: string;
-    inputFileId: string | null;
-    outputFileId: string | null;
-    errorFileId: string | null;
-}> {
-    const client = await getOpenAIClient({ forceProvider: runtime.llm_provider });
-    if (!client) {
-        throw new Error('LLM provider not configured');
-    }
-
-    const blob = new Blob([content], { type: 'application/jsonl' });
-    const file = new File([blob], 'batch.jsonl', { type: 'application/jsonl' });
-    const fileResponse = await client.files.create({
-        file,
-        purpose: 'batch',
-    });
-
-    const batch = await client.batches.create({
-        input_file_id: fileResponse.id,
-        endpoint: '/v1/chat/completions',
-        completion_window: runtime.completionWindow,
-        metadata,
-    });
-
-    return {
-        providerBatchId: batch.id,
-        providerStatus: batch.status,
-        inputFileId: fileResponse.id,
-        outputFileId: batch.output_file_id ?? null,
-        errorFileId: batch.error_file_id ?? null,
-    };
-}
-
-async function markProductsAsConsolidating(skus: string[]): Promise<void> {
-    if (skus.length === 0) return;
-
-    try {
-        const supabase = await createAdminClient();
-        const { error } = await supabase
-            .from('products_ingestion')
-            .update({
-                pipeline_status: 'consolidating',
-                updated_at: new Date().toISOString(),
-            })
-            .in('sku', skus);
-
-        if (error) {
-            console.error('[Consolidation] Failed to mark products as consolidating:', error);
-        }
-    } catch (err) {
-        console.error('[Consolidation] Unexpected error marking products as consolidating:', err);
-    }
-}
-
-async function persistBatchJobRecord(payload: {
-    provider: BatchProviderKey;
-    providerBatchId: string;
-    providerStatus: string;
-    inputFileId: string | null;
-    outputFileId: string | null;
-    errorFileId: string | null;
-    description: string | null;
-    autoApply: boolean;
-    totalRequests: number;
-    metadata: Record<string, string>;
-}): Promise<void> {
-    const supabase = await createClient();
-    const { error } = await supabase.from('batch_jobs').insert({
-        provider: payload.provider,
-        provider_batch_id: payload.providerBatchId,
-        provider_input_file_id: payload.inputFileId,
-        provider_output_file_id: payload.outputFileId,
-        provider_error_file_id: payload.errorFileId,
-        openai_batch_id: payload.providerBatchId,
-        status: payload.providerStatus,
-        description: payload.description,
-        auto_apply: payload.autoApply,
-        total_requests: payload.totalRequests,
-        input_file_id: payload.inputFileId,
-        output_file_id: payload.outputFileId,
-        error_file_id: payload.errorFileId,
-        metadata: payload.metadata,
-    });
-
-    if (error) {
-        console.error('[Consolidation] Failed to track batch in database:', error);
-    }
 }
 
 // =============================================================================
@@ -1118,75 +1014,6 @@ async function submitBatchByProductLine(
 /**
  * Submit a batch job to the configured provider and track it in Supabase.
  */
-/**
- * Internal helper: submit to OpenAI Batch API (existing path).
- */
-async function submitBatchToOpenAI(
-    products: ProductSource[],
-    metadata: BatchMetadata = {}
-): Promise<SubmitBatchResponse | BatchErrorResponse> {
-    const routingKey = buildBatchRoutingKey(products, metadata);
-    const runtime = await getConfiguredBatchRuntime(true, { routingKey, forceProvider: 'openai' });
-    if (isRuntimeErrorResponse(runtime)) {
-        return runtime;
-    }
-    const config = runtime;
-
-    const promptCtx = await buildPromptContext();
-    const systemPrompt = promptCtx.systemPrompt;
-    const shopsitePages = promptCtx.shopsitePages || [];
-    const categories = promptCtx.categories || [];
-    const responseSchema = buildResponseSchema(categories, shopsitePages);
-    const content = createBatchContent(products, systemPrompt, responseSchema, {
-        provider: config.llm_provider,
-        model: config.model,
-        maxTokens: config.maxTokens,
-        temperature: config.temperature,
-    });
-
-    const stringMetadata: Record<string, string> = {};
-    for (const [key, value] of Object.entries(metadata)) {
-        if (value !== undefined) {
-            stringMetadata[key] = String(value);
-        }
-    }
-    stringMetadata.llm_provider = 'openai';
-    stringMetadata.configured_llm_provider = 'openai';
-    stringMetadata.llm_model = config.model;
-    stringMetadata.routing_key = routingKey;
-
-    const batchDisplayName =
-        typeof metadata.description === 'string' && metadata.description.trim().length > 0
-            ? metadata.description.trim()
-            : `consolidation-${Date.now()}`;
-
-    const primaryBatch = await submitBatchToProvider(config, content, batchDisplayName, stringMetadata);
-
-    await persistBatchJobRecord({
-        provider: 'openai',
-        providerBatchId: primaryBatch.providerBatchId,
-        providerStatus: primaryBatch.providerStatus,
-        inputFileId: primaryBatch.inputFileId,
-        outputFileId: primaryBatch.outputFileId,
-        errorFileId: primaryBatch.errorFileId,
-        description: metadata.description || null,
-        autoApply: !!metadata.auto_apply,
-        totalRequests: products.length,
-        metadata: stringMetadata,
-    });
-
-    const skus = products.map((p) => p.sku);
-    await markProductsAsConsolidating(skus);
-
-    return {
-        success: true,
-        batch_id: primaryBatch.providerBatchId,
-        provider: 'openai',
-        provider_batch_id: primaryBatch.providerBatchId,
-        product_count: products.length,
-    };
-}
-
 async function submitDirectChatBatchToRuntime(
     products: ProductSource[],
     metadata: BatchMetadata,
@@ -1198,7 +1025,7 @@ async function submitDirectChatBatchToRuntime(
     const responseSchema = buildResponseSchema(categories, shopsitePages);
 
     const content = createBatchContent(products, systemPrompt, responseSchema, {
-        provider: config.llm_provider,
+        provider: 'deepseek',
         model: config.model,
         maxTokens: config.maxTokens,
         temperature: config.temperature,
@@ -1210,8 +1037,7 @@ async function submitDirectChatBatchToRuntime(
             stringMetadata[key] = value;
         }
     }
-    stringMetadata.llm_provider = config.llm_provider;
-    stringMetadata.configured_llm_provider = config.configured_llm_provider;
+    stringMetadata.llm_provider = 'deepseek';
     stringMetadata.llm_model = config.model;
     stringMetadata.routing_key = routingKey;
     stringMetadata.preflight_models = preflightModelsList;
@@ -1221,44 +1047,12 @@ async function submitDirectChatBatchToRuntime(
         stringMetadata,
         config,
         content,
-        systemPrompt,
-        responseSchema
-    );
-}
-
-async function submitDeepSeekFallbackBatch(
-    products: ProductSource[],
-    metadata: BatchMetadata,
-    routingKey: string
-): Promise<SubmitBatchResponse | BatchErrorResponse> {
-    const runtime = await getConfiguredBatchRuntime(false, {
-        routingKey,
-        forceProvider: 'deepseek',
-    });
-    if (isRuntimeErrorResponse(runtime)) {
-        return runtime;
-    }
-
-    const preflight = await preflightModels(runtime);
-    if (!preflight.success) {
-        return {
-            success: false,
-            error: preflight.error,
-        };
-    }
-
-    return submitDirectChatBatchToRuntime(
-        products,
-        metadata,
-        runtime,
-        routingKey,
-        preflight.models.map((model) => model.id)
+        systemPrompt
     );
 }
 
 /**
- * Submit a batch job — routes to OpenAI Batch API or direct chat
- * based on the configured provider's batch capability.
+ * Submit a batch job — routes to direct chat (the only consolidation path).
  */
 export async function submitBatch(
     products: ProductSource[],
@@ -1269,58 +1063,27 @@ export async function submitBatch(
     }
 
     try {
-        // Load config without requiring batch API
         const routingKey = buildBatchRoutingKey(products, metadata);
-        const runtime = await getConfiguredBatchRuntime(false, { routingKey });
+        const runtime = await getConfiguredBatchRuntime({ routingKey });
         if (isRuntimeErrorResponse(runtime)) {
             return runtime;
         }
-        const config = runtime;
 
-        // If the provider supports batch API, use the existing OpenAI Batch path
-        if (config.llm_supports_batch_api) {
-            return await submitBatchToOpenAI(products, metadata);
-        }
-
-        const preflight = await preflightModels(config);
+        const preflight = await preflightModels(runtime);
         if (!preflight.success) {
-            if (config.llm_provider === 'lmstudio') {
-                console.warn('[Consolidation] LM Studio preflight failed, falling back to DeepSeek:', preflight.error);
-                const fallbackMetadata: BatchMetadata = {
-                    ...metadata,
-                    fallback_reason: preflight.error,
-                };
-                return await submitDeepSeekFallbackBatch(products, fallbackMetadata, routingKey);
-            }
-
             return {
                 success: false,
                 error: preflight.error,
             };
         }
 
-        const result = await submitDirectChatBatchToRuntime(
+        return await submitDirectChatBatchToRuntime(
             products,
             metadata,
-            config,
+            runtime,
             routingKey,
             preflight.models.map((model) => model.id)
         );
-
-        if (!result.success) {
-            if (config.llm_provider === 'lmstudio') {
-                console.warn('[Consolidation] Direct chat batch creation failed, falling back to DeepSeek:', result.error);
-                const fallbackMetadata: BatchMetadata = {
-                    ...metadata,
-                    fallback_reason: result.error,
-                };
-                return await submitDeepSeekFallbackBatch(products, fallbackMetadata, routingKey);
-            }
-
-            return result;
-        }
-
-        return result;
     } catch (error: unknown) {
         console.error('[Consolidation] Failed to submit batch:', error);
         return {
@@ -1331,119 +1094,17 @@ export async function submitBatch(
 }
 
 /**
- * Handle getBatchStatus for direct_chat_chunks execution mode.
- * Processes one pending item, aggregates status, and handles fallback creation.
+/**
+ * Read-only status helper for direct_chat_chunks jobs.
+ * Does NOT process items or call DeepSeek.
  */
-async function handleDirectChatStatus(
-    batchDbId: string,
-    parentRow: Record<string, unknown>
+async function getDirectChatStatusReadOnly(
+    batchDbId: string
 ): Promise<BatchStatus | BatchErrorResponse> {
     try {
-        // Process one pending item
-        await processDirectChatChunk(batchDbId, { limit: 1 });
-
-        // Aggregate current status
-        const aggregateResult = await aggregateDirectChatStatus(batchDbId);
-        if ('success' in aggregateResult && !aggregateResult.success) {
-            return aggregateResult;
-        }
-        const status = aggregateResult as BatchStatus;
-
-        // Check if we need to create an OpenAI fallback for failed items
-        const parentMetadata = (parentRow.metadata as Record<string, unknown>) || {};
-        const existingFallbackId = parentMetadata.direct_chat_fallback_batch_id as string | undefined;
-
-        if (!existingFallbackId && status.is_complete && status.failed_requests > 0) {
-            // Get failed SKUs for fallback
-            const failedSkus = await getFailedSkusForFallback(batchDbId);
-            if (failedSkus.length > 0) {
-                const supabase = await createAdminClient();
-                const { data: originalJob } = await supabase
-                    .from('batch_jobs')
-                    .select('id, metadata')
-                    .eq('id', batchDbId)
-                    .single();
-
-                const originalMetadata = (originalJob?.metadata as Record<string, unknown>) || {};
-                const originalSources = originalMetadata.batch_content_jsonl as string | undefined;
-
-                // Create Products for failed items using source data from the batch items
-                const { data: failedItems } = await supabase
-                    .from('batch_job_items')
-                    .select('sku, product_source')
-                    .eq('batch_id', batchDbId)
-                    .eq('status', 'failed')
-                    .is('fallback_batch_id', null);
-
-                if (failedItems && failedItems.length > 0) {
-                    const fallbackProducts: ProductSource[] = (failedItems as Array<{ sku: string; product_source: Record<string, unknown> }>).map((item) => ({
-                        sku: item.sku,
-                        sources: item.product_source || {},
-                    }));
-
-                    // Submit a DeepSeek fallback batch for failed items only
-                    const fallbackResult = await submitDeepSeekFallbackBatch(
-                        fallbackProducts,
-                        {
-                            description: `Fallback for ${batchDbId} (${failedItems.length} failed items)`,
-                            parent_batch_id: batchDbId,
-                        },
-                        batchDbId
-                    );
-
-                    if (fallbackResult.success) {
-                        // Mark items with fallback
-                        await markItemsWithFallback(
-                            batchDbId,
-                            failedItems.map((i: { sku: string }) => i.sku),
-                            fallbackResult.batch_id
-                        );
-
-                        // Store fallback batch id in parent metadata (use existing supabase from outer scope)
-                        await supabase
-                            .from('batch_jobs')
-                            .update({
-                                metadata: {
-                                    ...originalMetadata,
-                                    direct_chat_fallback_batch_id: fallbackResult.batch_id,
-                                },
-                            })
-                            .eq('id', batchDbId);
-                    }
-                }
-            }
-        }
-
-        // If there's an existing fallback batch, poll and merge its status
-        const fallbackBatchId = parentMetadata.direct_chat_fallback_batch_id as string;
-        if (fallbackBatchId) {
-            const fallbackResult = await getBatchStatus(fallbackBatchId);
-            if ('success' in fallbackResult && !fallbackResult.success) {
-                console.warn('[DirectChat] Fallback batch status error:', fallbackResult.error);
-            } else {
-                const fallbackStatus = fallbackResult as BatchStatus;
-                // Merge counts
-                status.total_requests += fallbackStatus.total_requests;
-                status.completed_requests += fallbackStatus.completed_requests;
-                status.failed_requests += fallbackStatus.failed_requests;
-                status.progress_percent = status.total_requests > 0
-                    ? Math.round(((status.completed_requests + status.failed_requests) / status.total_requests) * 100)
-                    : 0;
-                if (!fallbackStatus.is_complete && !fallbackStatus.is_failed) {
-                    status.is_complete = false;
-                    status.is_processing = true;
-                    status.status = 'in_progress';
-                }
-                if (fallbackStatus.is_complete) {
-                    status.is_complete = true;
-                    status.status = 'completed';
-                }
-            }
-        }
-
-        return status;
+        return await getDirectChatStatusSnapshot(batchDbId);
     } catch (error: unknown) {
-        console.error('[DirectChat] handleDirectChatStatus error:', error);
+        console.error('[DirectChat] getDirectChatStatusReadOnly error:', error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Failed to get direct chat batch status',
@@ -1460,137 +1121,47 @@ async function handleDirectChatStatus(
  */
 export async function getBatchStatus(batchId: string): Promise<BatchStatus | BatchErrorResponse> {
     try {
-        // Check execution_mode — catch failures gracefully (e.g. test mocks)
-        try {
-            const supabase = await createAdminClient();
-            const { data: rowData } = await supabase
+        // Read-only path: load from local DB, never call provider APIs
+        const supabase = await createAdminClient();
+
+        // Try to load batch_jobs row directly
+        const { data: rowData, error: rowError } = await supabase
+            .from('batch_jobs')
+            .select('*')
+            .eq('id', batchId)
+            .single();
+
+        if (rowError || !rowData) {
+            // Fallback: try finding by provider_batch_id or openai_batch_id
+            const lookup = await findBatchJobRow(batchId);
+            if (lookup.lookupError) {
+                return { success: false, error: lookup.lookupError };
+            }
+            if (!lookup.row) {
+                return { success: false, error: 'Batch job not found' };
+            }
+
+            const { data: foundRow } = await supabase
                 .from('batch_jobs')
-                .select('id, execution_mode, provider, provider_batch_id, parent_batch_id, metadata, total_requests, completed_requests, failed_requests, status, created_at')
-                .eq('id', batchId)
+                .select('*')
+                .eq('id', lookup.row.id)
                 .single();
-            if (rowData && (rowData as Record<string, unknown>).execution_mode === 'direct_chat_chunks') {
-                return await handleDirectChatStatus(batchId, rowData as Record<string, unknown>);
+
+            if (!foundRow) {
+                return { success: false, error: 'Batch job data not found' };
             }
-        } catch {
-            // Swallow — fall through to standard OpenAI path
+
+            // Use the found row for status
+            return buildBatchJobStatusFromRow(foundRow as Record<string, unknown>);
         }
 
-        const lookup = await findBatchJobRow(batchId);
-        if (lookup.lookupError) {
-            return { success: false, error: lookup.lookupError };
+        // Use the direct-chat read-only snapshot if applicable
+        if ((rowData as Record<string, unknown>).execution_mode === 'direct_chat_chunks') {
+            return await getDirectChatStatusSnapshot(batchId);
         }
 
-        const resolved = await resolveProviderBatchId(batchId);
-        const runtime = await getConfiguredBatchRuntime(false, {
-            forceProvider: resolved.provider,
-        });
-        if (isRuntimeErrorResponse(runtime)) {
-            return runtime;
-        }
-
-        const client = await getOpenAIClient({ forceProvider: resolved.provider });
-        if (!client) {
-            return { success: false, error: 'LLM provider not configured' };
-        }
-
-        const batch = await client.batches.retrieve(resolved.providerBatchId);
-        const requestCounts = batch.request_counts || { total: 0, completed: 0, failed: 0 };
-
-        const status: BatchStatus = {
-            id: batch.id,
-            provider: resolved.provider,
-            provider_batch_id: batch.id,
-            status: batch.status as BatchStatus['status'],
-            is_complete: batch.status === 'completed',
-            is_failed: ['failed', 'expired', 'cancelled'].includes(batch.status),
-            is_processing: ['validating', 'in_progress', 'finalizing'].includes(batch.status),
-            total_requests: requestCounts.total || 0,
-            completed_requests: requestCounts.completed || 0,
-            failed_requests: requestCounts.failed || 0,
-            progress_percent:
-                requestCounts.total > 0
-                    ? ((requestCounts.completed + (requestCounts.failed || 0)) / requestCounts.total) * 100
-                    : 0,
-            prompt_tokens: (batch as unknown as { usage?: { prompt_tokens?: number } }).usage?.prompt_tokens,
-            completion_tokens: (batch as unknown as { usage?: { completion_tokens?: number } }).usage?.completion_tokens,
-            total_tokens: (batch as unknown as { usage?: { total_tokens?: number } }).usage?.total_tokens,
-            created_at: batch.created_at,
-            completed_at: batch.completed_at,
-            metadata: (batch.metadata || {}) as BatchMetadata,
-        };
-
-        const promptTokens = (batch as unknown as { usage?: { prompt_tokens?: number } }).usage?.prompt_tokens || 0;
-        const completionTokens = (batch as unknown as { usage?: { completion_tokens?: number } }).usage?.completion_tokens || 0;
-        const totalTokens = (batch as unknown as { usage?: { total_tokens?: number } }).usage?.total_tokens || 0;
-        const batchMetadata =
-            batch.metadata && typeof batch.metadata === 'object'
-                ? (batch.metadata as Record<string, unknown>)
-                : {};
-        const costModel =
-            typeof batch.model === 'string' && batch.model.trim().length > 0
-                ? batch.model.trim()
-                : typeof batchMetadata.llm_model === 'string' && batchMetadata.llm_model.trim().length > 0
-                    ? batchMetadata.llm_model.trim()
-                    : CONSOLIDATION_CONFIG.model;
-
-        const estimatedCost = calculateAICost(
-            costModel,
-            promptTokens,
-            completionTokens,
-            true
-        );
-
-        const updateData: Record<string, unknown> = {
-            provider: resolved.provider,
-            provider_batch_id: batch.id,
-            provider_input_file_id: batch.input_file_id ?? null,
-            provider_output_file_id: batch.output_file_id ?? null,
-            provider_error_file_id: batch.error_file_id ?? null,
-            status: batch.status,
-            total_requests: requestCounts.total || 0,
-            completed_requests: requestCounts.completed || 0,
-            failed_requests: requestCounts.failed || 0,
-            prompt_tokens: promptTokens,
-            completion_tokens: completionTokens,
-            total_tokens: totalTokens,
-            estimated_cost: estimatedCost,
-            output_file_id: batch.output_file_id ?? null,
-            error_file_id: batch.error_file_id ?? null,
-        };
-
-        if (batch.completed_at) {
-            updateData.completed_at = new Date(batch.completed_at * 1000).toISOString();
-        }
-
-        const upsertPayload: Record<string, unknown> = {
-            ...updateData,
-            openai_batch_id: batch.id,
-            input_file_id: batch.input_file_id ?? null,
-        };
-        const upsertOnConflict = 'openai_batch_id';
-
-        // Sync status to Supabase
-        const syncSupabase = await createAdminClient();
-        if (lookup.row) {
-            const updateResponse = await syncSupabase
-                .from('batch_jobs')
-                .update(updateData)
-                .eq('id', lookup.row.id);
-
-            if (updateResponse.error) {
-                console.warn('[Consolidation] Failed to sync batch status to DB:', updateResponse.error.message);
-            }
-        } else if (upsertPayload && upsertOnConflict) {
-            const { error: upsertError } = await syncSupabase
-                .from('batch_jobs')
-                .upsert(upsertPayload, { onConflict: upsertOnConflict });
-
-            if (upsertError) {
-                console.warn('[Consolidation] Failed to sync batch status to DB:', upsertError.message);
-            }
-        }
-
-        return status;
+        // Legacy/historical jobs: build status from stored DB row counts
+        return buildBatchJobStatusFromRow(rowData as Record<string, unknown>);
     } catch (error: unknown) {
         console.error('[Consolidation] Failed to get batch status:', error);
         return {
@@ -1598,6 +1169,181 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
             error: error instanceof Error ? error.message : 'Failed to get batch status',
         };
     }
+}
+
+/**
+ * Build a BatchStatus from a batch_jobs row without calling any provider API.
+ */
+function buildBatchJobStatusFromRow(row: Record<string, unknown>): BatchStatus {
+    const totalRequests = Number(row.total_requests) || 0;
+    const completedRequests = Number(row.completed_requests) || 0;
+    const failedRequests = Number(row.failed_requests) || 0;
+    const totalTerminal = completedRequests + failedRequests;
+    const statusValue = String(row.status || 'pending');
+
+    return {
+        id: String(row.id),
+        provider: (row.provider as BatchStatus['provider']) || 'deepseek',
+        provider_batch_id: String(row.provider_batch_id || row.openai_batch_id || ''),
+        status: statusValue as BatchStatus['status'],
+        is_complete: ['completed', 'failed', 'expired', 'cancelled'].includes(statusValue),
+        is_failed: ['failed', 'expired', 'cancelled'].includes(statusValue),
+        is_processing: ['validating', 'in_progress', 'pending', 'finalizing'].includes(statusValue),
+        total_requests: totalRequests,
+        completed_requests: completedRequests,
+        failed_requests: failedRequests,
+        progress_percent: totalRequests > 0 ? Math.round((totalTerminal / totalRequests) * 100) : 0,
+        prompt_tokens: Number(row.prompt_tokens) || undefined,
+        completion_tokens: Number(row.completion_tokens) || undefined,
+        total_tokens: Number(row.total_tokens) || undefined,
+        created_at: row.created_at ? new Date(String(row.created_at)).getTime() / 1000 : undefined,
+        completed_at: row.completed_at ? new Date(String(row.completed_at)).getTime() / 1000 : null,
+        metadata: (row.metadata as BatchMetadata) || {},
+    };
+}
+
+// =============================================================================
+// Explicit Queue Processing
+// =============================================================================
+
+export interface ProcessBatchQueueResult {
+    processed: number;
+    completed: number;
+    failed: number;
+    batch_id: string;
+    status: BatchStatus;
+}
+
+/**
+ * Explicitly process pending items in a direct-chat consolidation job.
+ * This is the only mutating path — it calls DeepSeek and persists results.
+ */
+export async function processBatchQueue(
+    batchId: string,
+    options?: { limit?: number; timeoutMs?: number }
+): Promise<ProcessBatchQueueResult | BatchErrorResponse> {
+    try {
+        const supabase = await createAdminClient();
+
+        // Resolve the batch job ID
+        let jobId = batchId;
+        const { data: rowData } = await supabase
+            .from('batch_jobs')
+            .select('id, execution_mode')
+            .eq('id', batchId)
+            .maybeSingle();
+
+        if (!rowData) {
+            // Try finding by provider_batch_id or openai_batch_id
+            const lookup = await findBatchJobRow(batchId);
+            if (lookup.lookupError || !lookup.row) {
+                return { success: false, error: lookup.lookupError || 'Batch job not found' };
+            }
+            jobId = lookup.row.id;
+        }
+
+        // Verify execution mode
+        let executionMode: string | null | undefined;
+        if (rowData) {
+            executionMode = (rowData as Record<string, unknown>).execution_mode as string;
+        } else {
+            const { data: fullRow } = await supabase
+                .from('batch_jobs')
+                .select('execution_mode')
+                .eq('id', jobId)
+                .single();
+            executionMode = fullRow?.execution_mode;
+        }
+
+        const isDirectChat = executionMode === 'direct_chat_chunks';
+        if (!isDirectChat) {
+            return { success: false, error: 'Only direct-chat jobs support explicit queue processing' };
+        }
+
+        // Process chunk
+        const chunkResult = await processDirectChatChunk(jobId, { limit: options?.limit, timeoutMs: options?.timeoutMs });
+
+        // Persist aggregate status
+        const aggregateResult = await aggregateDirectChatStatus(jobId);
+        if ('success' in aggregateResult && !aggregateResult.success) {
+            return { success: false, error: aggregateResult.error };
+        }
+
+        return {
+            processed: chunkResult.processed,
+            completed: chunkResult.completed,
+            failed: chunkResult.failed,
+            batch_id: jobId,
+            status: aggregateResult as BatchStatus,
+        };
+    } catch (error: unknown) {
+        console.error('[Consolidation] processBatchQueue error:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to process batch queue',
+        };
+    }
+}
+
+/**
+ * Legacy alias: processBatchQueue for the /api/admin/consolidation/sync route.
+ * Processes a chunk across all active direct-chat jobs.
+ */
+export async function processAllQueues(options?: { limit?: number }): Promise<{
+    processed_job_count: number;
+    processed_item_count: number;
+    completed_item_count: number;
+    failed_item_count: number;
+    errors: string[];
+}> {
+    const supabase = await createAdminClient();
+    const limit = options?.limit ?? 5;
+    const errors: string[] = [];
+    let processedJobCount = 0;
+    let processedItemCount = 0;
+    let completedItemCount = 0;
+    let failedItemCount = 0;
+
+    // Find active direct-chat jobs
+    const { data: activeJobs } = await supabase
+        .from('batch_jobs')
+        .select('id')
+        .eq('execution_mode', 'direct_chat_chunks')
+        .in('status', ['pending', 'in_progress']);
+
+    if (!activeJobs || activeJobs.length === 0) {
+        return {
+            processed_job_count: 0,
+            processed_item_count: 0,
+            completed_item_count: 0,
+            failed_item_count: 0,
+            errors: [],
+        };
+    }
+
+    for (const job of activeJobs) {
+        try {
+            const result = await processBatchQueue(job.id, { limit });
+            if ('success' in result) {
+                errors.push(`${job.id}: ${result.error}`);
+            } else {
+                processedJobCount++;
+                processedItemCount += result.processed;
+                completedItemCount += result.completed;
+                failedItemCount += result.failed;
+            }
+        } catch (err) {
+            errors.push(`${job.id}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        }
+    }
+
+    return {
+        processed_job_count: processedJobCount,
+        processed_item_count: processedItemCount,
+        completed_item_count: completedItemCount,
+        failed_item_count: failedItemCount,
+        errors,
+    };
 }
 
 // =============================================================================
@@ -1609,11 +1355,17 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
  */
 export async function retrieveResults(batchId: string): Promise<ConsolidationResult[] | BatchErrorResponse> {
     try {
-        // Check if this is a direct-chat batch (synthetic batch IDs start with 'local_')
-        // We use findBatchJobRow to also get metadata for fallback detection
+        // Check if this is a direct-chat batch (synthetic IDs start with 'local_' or 'direct_',
+        // or execution_mode is 'direct_chat_chunks')
         const { row: lookupRow } = await findBatchJobRow(batchId);
 
-        if (lookupRow && lookupRow.provider_batch_id?.startsWith('local_')) {
+        const isDirectChat = lookupRow && (
+            lookupRow.execution_mode === 'direct_chat_chunks' ||
+            lookupRow.provider_batch_id?.startsWith('local_') ||
+            lookupRow.provider_batch_id?.startsWith('direct_')
+        );
+
+        if (isDirectChat) {
             // Get direct chat results
             const directResults = await retrieveDirectChatResults(batchId);
 
@@ -1639,16 +1391,14 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
         // Fetch taxonomy for validation
         const { shopsitePages = [], categories = [] } = await buildPromptContext();
         const resolved = await resolveProviderBatchId(batchId);
-        const runtime = await getConfiguredBatchRuntime(false, {
-            forceProvider: resolved.provider,
-        });
+        const runtime = await getConfiguredBatchRuntime();
         if (isRuntimeErrorResponse(runtime)) {
             return runtime;
         }
 
         const results: ConsolidationResult[] = [];
 
-        const client = await getOpenAIClient({ forceProvider: resolved.provider });
+        const client = await getOpenAIClient();
         if (!client) {
             return { success: false, error: 'LLM provider not configured' };
         }
@@ -2105,16 +1855,8 @@ export async function applyConsolidationResults(
                 );
             }
 
-            const preferredTrustedBrand = getPreferredTrustedBrand(existingRecord?.sources || {});
-            if (
-                preferredTrustedBrand
-                && normalizedBrand
-                && normalizeLookupKey(preferredTrustedBrand.brand) !== normalizeLookupKey(normalizedBrand)
-            ) {
-                gateErrors.push(
-                    `brand "${normalizedBrand}" conflicts with higher-trust source "${preferredTrustedBrand.source}" brand "${preferredTrustedBrand.brand}"`
-                );
-            }
+            // Brand conflicts with higher-trust sources are intentionally allowed through.
+            // Human reviewers resolve any disagreements during finalizing.
 
             const outputAnimalSignals = collectOutputAnimalSignals(nextFields);
             const expectedAnimalSignals = collectExpectedAnimalSignals(
@@ -2522,10 +2264,16 @@ export async function listBatchJobs(limit: number = 20): Promise<BatchJob[] | Ba
  */
 export async function cancelBatch(batchId: string): Promise<{ status: string } | BatchErrorResponse> {
     try {
-        // Check if this is a direct-chat batch via findBatchJobRow
+        // Check if this is a direct-chat batch (synthetic IDs or execution_mode)
         const { row: lookupRow } = await findBatchJobRow(batchId);
 
-        if (lookupRow && lookupRow.provider_batch_id?.startsWith('local_')) {
+        const isDirectChat = lookupRow && (
+            lookupRow.execution_mode === 'direct_chat_chunks' ||
+            lookupRow.provider_batch_id?.startsWith('local_') ||
+            lookupRow.provider_batch_id?.startsWith('direct_')
+        );
+
+        if (isDirectChat) {
             const parentMetadata = lookupRow.metadata || {};
             const fallbackBatchId = parentMetadata.direct_chat_fallback_batch_id as string | undefined;
 
@@ -2546,14 +2294,12 @@ export async function cancelBatch(batchId: string): Promise<{ status: string } |
         const supabase = await createClient();
 
         const resolved = await resolveProviderBatchId(batchId);
-        const runtime = await getConfiguredBatchRuntime(false, {
-            forceProvider: resolved.provider,
-        });
+        const runtime = await getConfiguredBatchRuntime();
         if (isRuntimeErrorResponse(runtime)) {
             return runtime;
         }
 
-        const client = await getOpenAIClient({ forceProvider: resolved.provider });
+        const client = await getOpenAIClient();
         if (!client) {
             return { success: false, error: 'LLM provider not configured' };
         }

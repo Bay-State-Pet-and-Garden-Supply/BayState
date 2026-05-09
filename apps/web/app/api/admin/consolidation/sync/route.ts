@@ -1,14 +1,20 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
-import { getBatchStatus } from '@/lib/consolidation';
 import { getConsolidationConfig } from '@/lib/consolidation/openai-client';
-import { createClient } from '@/lib/supabase/server';
+import { processAllQueues } from '@/lib/consolidation';
+
+function clampLimit(value: unknown): number {
+    const parsed = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(parsed)) return 5;
+    return Math.min(25, Math.max(1, Math.trunc(parsed)));
+}
 
 /**
  * POST /api/admin/consolidation/sync
- * Sync status of all non-terminal provider batch jobs.
+ * Compatibility route name: explicitly processes local DeepSeek queue jobs.
+ * This is not a remote provider status sync.
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
     const auth = await requireAdminAuth();
     if (!auth.authorized) return auth.response;
 
@@ -20,47 +26,28 @@ export async function POST() {
         );
     }
 
+    let body: { limit?: unknown } = {};
     try {
-        const supabase = await createClient();
+        body = await request.json();
+    } catch {
+        body = {};
+    }
 
-        const { data: activeBatches, error: fetchError } = await supabase
-            .from('batch_jobs')
-            .select('id, provider, provider_batch_id, openai_batch_id, status')
-            .not('status', 'in', '(completed,failed,expired,cancelled)')
-            .order('created_at', { ascending: false });
-
-        if (fetchError) {
-            return NextResponse.json({ error: fetchError.message }, { status: 500 });
-        }
-
-        if (!activeBatches || activeBatches.length === 0) {
-            return NextResponse.json({ synced_count: 0, message: 'No active batches to sync' });
-        }
-
-        let syncedCount = 0;
-        const errors: string[] = [];
-
-        for (const batch of activeBatches) {
-            const batchId = batch.provider_batch_id || batch.openai_batch_id || batch.id;
-            try {
-                const status = await getBatchStatus(batchId);
-                if (!('success' in status && !status.success)) {
-                    syncedCount++;
-                }
-            } catch (err) {
-                errors.push(`${batchId}: ${err instanceof Error ? err.message : 'Unknown error'}`);
-            }
-        }
+    try {
+        const result = await processAllQueues({ limit: clampLimit(body.limit) });
 
         return NextResponse.json({
-            synced_count: syncedCount,
-            total_checked: activeBatches.length,
-            errors: errors.length > 0 ? errors : undefined,
+            ...result,
+            // Deprecated alias retained for existing callers during UI/API migration.
+            synced_count: result.processed_job_count,
+            message: result.processed_job_count === 0
+                ? 'No active queue jobs to process'
+                : `Processed ${result.processed_item_count} queue item${result.processed_item_count === 1 ? '' : 's'}`,
         });
     } catch (error) {
-        console.error('[Consolidation Sync API] Error:', error);
+        console.error('[Consolidation Queue API] Process queue error:', error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Failed to sync batches' },
+            { error: error instanceof Error ? error.message : 'Failed to process queue' },
             { status: 500 }
         );
     }

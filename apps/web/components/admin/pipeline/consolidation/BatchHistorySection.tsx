@@ -45,6 +45,14 @@ function BatchHistoryCard({
     | Record<string, number>
     | undefined;
   const llmModel = metadata.llm_model as string | undefined;
+  const llmProvider = metadata.llm_provider as string | undefined;
+  const dbId = job.db_id as string | undefined;
+  const providerBatchId = job.provider_batch_id as string | undefined;
+  const executionMode = job.execution_mode as string | undefined;
+  const openaiBatchId = job.openai_batch_id as string | undefined;
+  const applyId = executionMode === 'direct_chat_chunks'
+    ? (dbId || job.id)
+    : (providerBatchId || openaiBatchId || dbId || job.id);
   const isApplied = !!applySummary;
   const canApply = job.status === "completed" && !isApplied;
 
@@ -55,11 +63,16 @@ function BatchHistoryCard({
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={job.status} />
             <span className="text-sm font-semibold text-foreground truncate">
-              {job.description || `Batch ${job.id.slice(0, 8)}`}
+              {job.description || `Job ${job.id.slice(0, 8)}`}
             </span>
             {llmModel && (
               <Badge variant="secondary" className="rounded-none border border-border bg-muted font-semibold text-[9px] h-4 tracking-widest">
                 {llmModel}
+              </Badge>
+            )}
+            {llmProvider && (
+              <Badge variant="secondary" className="rounded-none border border-border bg-emerald-50 text-emerald-700 font-semibold text-[9px] h-4 tracking-widest">
+                {llmProvider === 'deepseek' ? 'DeepSeek' : llmProvider}
               </Badge>
             )}
             {job.auto_apply && (
@@ -106,11 +119,11 @@ function BatchHistoryCard({
             <Button
               variant="default"
               size="sm"
-              onClick={() => onApply(job.openai_batch_id || job.id)}
-              disabled={applyingId === (job.openai_batch_id || job.id)}
+              onClick={() => onApply(applyId)}
+              disabled={applyingId === applyId}
               className="rounded-none border border-border bg-brand-burgundy hover:bg-brand-burgundy/90 text-background font-semibold text-[10px] h-7 px-3 active:translate-x-[1px] active:translate-y-[1px] transition-all tracking-widest"
             >
-              {applyingId === (job.openai_batch_id || job.id) ? (
+              {applyingId === applyId ? (
                 <Loader2 className="mr-1 h-3 w-3 animate-spin" />
               ) : (
                 <Zap className="mr-1 h-3 w-3 fill-current" />
@@ -138,9 +151,9 @@ function BatchHistoryCard({
         <div className="mt-3 space-y-3 border-t border-dashed border-border pt-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[10px] font-semibold text-muted-foreground tracking-widest">
             <div className="flex flex-col gap-1">
-              <span>Batch ID</span>
+              <span>Job ID</span>
               <span className="font-mono text-foreground normal-case text-xs">
-                {job.openai_batch_id || job.id}
+                {applyId}
               </span>
             </div>
             {job.completed_at && (
@@ -222,14 +235,14 @@ export function BatchHistorySection({
       <div className="flex items-center gap-2 border-t border-border pt-4">
         <History className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-semibold text-muted-foreground">
-          Recent Batches
+          Recent Consolidation Jobs
         </h3>
         <span className="text-[10px] font-semibold text-muted-foreground tracking-widest">Last 20</span>
       </div>
 
       {historyJobs.length === 0 ? (
         <p className="text-sm font-semibold text-muted-foreground text-center py-4 tracking-widest">
-          No batch history yet
+          No consolidation history yet
         </p>
       ) : (
         historyJobs.map((job) => (

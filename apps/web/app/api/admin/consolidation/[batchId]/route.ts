@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
+import { createAdminClient } from '@/lib/supabase/server';
 import { getBatchStatus, cancelBatch, retrieveResults, isOpenAIConfigured } from '@/lib/consolidation';
 
 interface RouteContext {
@@ -8,16 +9,16 @@ interface RouteContext {
 
 /**
  * GET /api/admin/consolidation/[batchId]
- * Get the status of a provider batch job.
+ * Read local consolidation queue job status. This endpoint does not process items.
  */
-export async function GET(request: NextRequest, context: RouteContext) {
+export async function GET(_request: Request, context: RouteContext) {
     const auth = await requireAdminAuth();
     if (!auth.authorized) return auth.response;
 
     const { batchId } = await context.params;
 
     if (!(await isOpenAIConfigured())) {
-        return NextResponse.json({ error: 'No configured LLM batch provider is available' }, { status: 503 });
+        return NextResponse.json({ error: 'No configured LLM provider is available' }, { status: 503 });
     }
 
     try {
@@ -52,19 +53,53 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 /**
  * DELETE /api/admin/consolidation/[batchId]
- * Cancel a provider batch job.
+ * Cancel a local consolidation queue job.
  */
-export async function DELETE(request: NextRequest, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
     const auth = await requireAdminAuth();
     if (!auth.authorized) return auth.response;
 
     const { batchId } = await context.params;
+    const url = new URL(request.url);
+    const shouldDelete = url.searchParams.get('delete') === 'true';
 
     if (!(await isOpenAIConfigured())) {
-        return NextResponse.json({ error: 'No configured LLM batch provider is available' }, { status: 503 });
+        return NextResponse.json({ error: 'No configured LLM provider is available' }, { status: 503 });
     }
 
     try {
+        if (shouldDelete) {
+            const supabase = await createAdminClient();
+            const { data: items } = await supabase
+                .from('batch_job_items')
+                .select('sku')
+                .eq('batch_job_id', batchId);
+
+            const skus = Array.from(new Set((items || []).map((item) => item.sku).filter(Boolean)));
+            if (skus.length > 0) {
+                await supabase
+                    .from('products_ingestion')
+                    .update({
+                        pipeline_status: 'scraped',
+                        error_message: null,
+                        updated_at: new Date().toISOString(),
+                    })
+                    .in('sku', skus)
+                    .eq('pipeline_status', 'consolidating');
+            }
+
+            const { error: deleteError } = await supabase
+                .from('batch_jobs')
+                .delete()
+                .eq('id', batchId);
+
+            if (deleteError) {
+                return NextResponse.json({ error: deleteError.message }, { status: 500 });
+            }
+
+            return NextResponse.json({ status: 'deleted', reset_count: skus.length });
+        }
+
         const result = await cancelBatch(batchId);
 
         if ('success' in result && !result.success) {
@@ -73,9 +108,9 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
         return NextResponse.json({ status: 'cancelled' });
     } catch (error) {
-        console.error('[Consolidation API] Cancel error:', error);
+        console.error('[Consolidation API] Delete/cancel error:', error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Failed to cancel batch' },
+            { error: error instanceof Error ? error.message : 'Failed to update queue job' },
             { status: 500 }
         );
     }

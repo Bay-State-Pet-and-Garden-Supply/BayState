@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { createClient } from '@/lib/supabase/server';
-import { isOpenAIConfigured, submitBatch } from '@/lib/consolidation';
+import { getBatchStatus, isOpenAIConfigured, processBatchQueue, submitBatch } from '@/lib/consolidation';
 import type { ProductSource } from '@/lib/consolidation';
 import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
 
@@ -61,13 +61,38 @@ export async function POST(request: NextRequest) {
         }
 
         const result = await submitBatch(productsWithSources, {
-            description: description || `Consolidation batch for ${productsWithSources.length} products`,
+            description: description || `Consolidation job for ${productsWithSources.length} products`,
             auto_apply: auto_apply || false,
         });
 
         if (!result.success) {
             return NextResponse.json({ error: result.error }, { status: 500 });
         }
+
+        let processedItemCount = 0;
+        let completedItemCount = 0;
+        let failedItemCount = 0;
+        const chunkSize = 5;
+        const maxIterations = Math.ceil(productsWithSources.length / chunkSize) + 2;
+
+        for (let iteration = 0; iteration < maxIterations; iteration += 1) {
+            const processResult = await processBatchQueue(result.batch_id, { limit: chunkSize });
+            if ('success' in processResult && !processResult.success) {
+                return NextResponse.json({ error: processResult.error }, { status: 500 });
+            }
+
+            if ('processed' in processResult) {
+                processedItemCount += processResult.processed;
+                completedItemCount += processResult.completed;
+                failedItemCount += processResult.failed;
+
+                if (processResult.processed === 0 || processResult.status.is_complete || processResult.status.is_failed) {
+                    break;
+                }
+            }
+        }
+
+        const status = await getBatchStatus(result.batch_id);
 
         return NextResponse.json({
             success: true,
@@ -76,6 +101,10 @@ export async function POST(request: NextRequest) {
             provider_batch_id: result.provider_batch_id,
             product_count: result.product_count,
             skipped_count: skus.length - productsWithSources.length,
+            processed_item_count: processedItemCount,
+            completed_item_count: completedItemCount,
+            failed_item_count: failedItemCount,
+            status: 'success' in status ? null : status,
         });
     } catch (error) {
         console.error('[Consolidation API] Submit error:', error);

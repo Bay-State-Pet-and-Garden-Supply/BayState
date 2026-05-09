@@ -1,4 +1,4 @@
-import { getBatchStatus, retrieveResults, submitBatch } from './batch-service';
+import { getBatchStatus, processBatchQueue, retrieveResults, submitBatch } from './batch-service';
 import type { BatchStatus, ConsolidationResult, ProductSource } from './types';
 
 type TwoPhaseSelection = 'phase1' | 'both';
@@ -19,6 +19,12 @@ interface TwoPhaseConsolidationConfig {
     phaseSelection?: TwoPhaseSelection;
     consistencyRules?: TwoPhaseConsistencyRule[];
     maxSiblingsInContext?: number;
+    /**
+     * How many items to process per polling cycle when getBatchStatus is read-only
+     * and this service advances the queue itself.
+     * Default: 5
+     */
+    processChunkSize?: number;
     batchMetadata?: {
         description?: string;
         auto_apply?: boolean;
@@ -66,6 +72,7 @@ interface TwoPhaseConsolidationDependencies {
     submitBatchFn?: typeof submitBatch;
     getBatchStatusFn?: typeof getBatchStatus;
     retrieveResultsFn?: typeof retrieveResults;
+    processBatchFn?: typeof processBatchQueue;
     sleep?: (ms: number) => Promise<void>;
     pollIntervalMs?: number;
     maxPollAttempts?: number;
@@ -114,6 +121,7 @@ export class TwoPhaseConsolidationService {
     private readonly submitBatchFn: typeof submitBatch;
     private readonly getBatchStatusFn: typeof getBatchStatus;
     private readonly retrieveResultsFn: typeof retrieveResults;
+    private readonly processBatchFn: typeof processBatchQueue;
     private readonly sleep: (ms: number) => Promise<void>;
     private readonly pollIntervalMs: number;
     private readonly maxPollAttempts: number;
@@ -122,6 +130,7 @@ export class TwoPhaseConsolidationService {
         this.submitBatchFn = dependencies.submitBatchFn ?? submitBatch;
         this.getBatchStatusFn = dependencies.getBatchStatusFn ?? getBatchStatus;
         this.retrieveResultsFn = dependencies.retrieveResultsFn ?? retrieveResults;
+        this.processBatchFn = dependencies.processBatchFn ?? processBatchQueue;
         this.sleep = dependencies.sleep ?? ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)));
         this.pollIntervalMs = dependencies.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
         this.maxPollAttempts = dependencies.maxPollAttempts ?? DEFAULT_MAX_POLL_ATTEMPTS;
@@ -159,6 +168,8 @@ export class TwoPhaseConsolidationService {
         }
 
         const batchId = submitResponse.batch_id;
+        const chunkSize = config.processChunkSize ?? 5;
+
         for (let attempt = 0; attempt < this.maxPollAttempts; attempt += 1) {
             const status = await this.getBatchStatusFn(batchId);
             if ('success' in status && status.success === false) {
@@ -176,6 +187,16 @@ export class TwoPhaseConsolidationService {
 
             if (status.is_complete) {
                 return this.resolveBatchResults(batchId);
+            }
+
+            // Advance the queue: getBatchStatus is now read-only, so we explicitly
+            // process pending items so the batch can make progress.
+            try {
+                await this.processBatchFn(batchId, { limit: chunkSize });
+            } catch {
+                // Swallow processing errors in the polling loop — the next
+                // iteration will re-evaluate the status and surface failures.
+                // This also keeps mocks that omit processBatchFn working.
             }
 
             await this.sleep(this.pollIntervalMs);

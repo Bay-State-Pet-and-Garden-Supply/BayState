@@ -1,7 +1,7 @@
 /**
  * Direct Chat Service
  *
- * Handles DeepSeek, LM Studio, or any OpenAI-compatible consolidation via individual
+ * Handles DeepSeek consolidation via individual
  * /v1/chat/completions requests instead of the Batch API.
  *
  * Architecture:
@@ -14,7 +14,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { getConsolidationConfig, type ConsolidationRuntimeConfig } from './openai-client';
 import { buildPromptContext, buildUserPrompt } from './prompt-builder';
-import { buildOpenAIResponseFormat, buildResponseSchema } from './taxonomy-validator';
+import { buildJSONResponseFormat } from './taxonomy-validator';
 import { parseStructuredConsolidationText } from './result-parsing';
 import { normalizeProductSources } from '@/lib/product-sources';
 import type {
@@ -26,6 +26,57 @@ import type {
     BatchErrorResponse,
 } from './types';
 import crypto from 'crypto';
+
+// =============================================================================
+// Retry Helpers
+// =============================================================================
+
+const MAX_RETRY_ATTEMPTS = 3;
+const BASE_RETRY_DELAY_MS = 250;
+
+function isRetryableError(error: unknown): boolean {
+    if (error instanceof Error) {
+        const msg = error.message.toLowerCase();
+        // Network/timeout errors
+        if (
+            msg.includes('timeout') ||
+            msg.includes('econnrefused') ||
+            msg.includes('enotfound') ||
+            msg.includes('econnreset') ||
+            msg.includes('etimedout') ||
+            msg.includes('abort') ||
+            msg.includes('econnaborted')
+        ) {
+            return true;
+        }
+        // Rate limiting / server errors
+        if (
+            msg.includes('429') ||
+            msg.includes('rate limit') ||
+            msg.includes('too many requests') ||
+            msg.includes('503') ||
+            msg.includes('502') ||
+            msg.includes('500') ||
+            msg.includes('408') ||
+            msg.includes('service unavailable') ||
+            msg.includes('internal server error') ||
+            msg.includes('bad gateway')
+        ) {
+            return true;
+        }
+    }
+    // Check for HTTP status codes on the error object
+    const statusCode = (error as { status?: number })?.status || (error as { statusCode?: number })?.statusCode;
+    if (typeof statusCode === 'number') {
+        return statusCode === 429 || statusCode === 408 || statusCode === 503 ||
+               statusCode === 502 || statusCode === 500;
+    }
+    return false;
+}
+
+async function delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 // =============================================================================
 // Preflight
@@ -87,8 +138,7 @@ export async function createDirectChatBatch(
     metadata: Record<string, unknown>,
     runtimeConfig: ConsolidationRuntimeConfig,
     content: string,
-    systemPrompt: string,
-    responseSchema: object
+    systemPrompt: string
 ): Promise<SubmitBatchResponse | BatchErrorResponse> {
     if (products.length === 0) {
         return { success: false, error: 'No products to consolidate' };
@@ -106,12 +156,12 @@ export async function createDirectChatBatch(
     }
 
     // Build the response format used for these requests
-    const openAIResponseFormat = responseSchema ? buildOpenAIResponseFormat(responseSchema) : undefined;
+    const jsonResponseFormat = buildJSONResponseFormat();
 
     // Insert batch_jobs parent row
     const { error: insertError } = await supabase.from('batch_jobs').insert({
         id: batchId,
-        provider: runtimeConfig.llm_provider,
+        provider: 'deepseek',
         provider_batch_id: providerBatchId,
         provider_input_file_id: null,
         provider_output_file_id: null,
@@ -162,7 +212,7 @@ export async function createDirectChatBatch(
                 ],
                 max_tokens: runtimeConfig.maxTokens,
                 temperature: runtimeConfig.temperature,
-                ...(openAIResponseFormat ? { response_format: openAIResponseFormat } : {}),
+                ...(jsonResponseFormat ? { response_format: jsonResponseFormat } : {}),
             };
         }
 
@@ -172,7 +222,7 @@ export async function createDirectChatBatch(
         }
 
         return {
-            batch_id: batchId,
+            batch_job_id: batchId,
             sku: product.sku,
             status: 'pending',
             request_payload: requestPayload,
@@ -205,7 +255,7 @@ export async function createDirectChatBatch(
     return {
         success: true,
         batch_id: batchId,
-        provider: runtimeConfig.llm_provider,
+        provider: 'deepseek',
         provider_batch_id: providerBatchId,
         product_count: products.length,
     };
@@ -240,10 +290,7 @@ export async function processDirectChatChunk(
     }
 
     const parentMetadata = (parentRow.metadata as Record<string, unknown>) || {};
-    const provider = (parentRow.provider as ConsolidationRuntimeConfig['llm_provider'] | null) ?? null;
-    const runtimeConfig = await getConsolidationConfig(
-        provider ? { forceProvider: provider } : undefined,
-    );
+    const runtimeConfig = await getConsolidationConfig();
     const llmBaseUrl = runtimeConfig.llm_base_url || String(parentMetadata.llm_base_url || '');
     const llmModel = String(parentMetadata.llm_model || runtimeConfig.model || '');
 
@@ -255,7 +302,7 @@ export async function processDirectChatChunk(
             started_at: new Date().toISOString(),
             attempt_count: supabase.rpc('increment', { x: 1 }) as unknown as number, // bypass type — handled via raw
         })
-        .eq('batch_id', batchDbId)
+        .eq('batch_job_id', batchDbId)
         .eq('status', 'pending')
         .limit(limit)
         .select();
@@ -267,7 +314,7 @@ export async function processDirectChatChunk(
         const { data: pending } = await supabase
             .from('batch_job_items')
             .select('*')
-            .eq('batch_id', batchDbId)
+            .eq('batch_job_id', batchDbId)
             .eq('status', 'pending')
             .limit(limit);
 
@@ -317,47 +364,65 @@ export async function processDirectChatChunk(
         const requestPayload = item.request_payload as Record<string, unknown>;
         const responsePayload: Record<string, unknown> = {};
 
-        try {
-            const chatParams: Record<string, unknown> = {
-                model: (requestPayload.model as string) || llmModel,
-                messages: requestPayload.messages,
-                max_tokens: (requestPayload.max_tokens as number) || 1024,
-                temperature: (requestPayload.temperature as number) || 0.1,
-            };
-            if (requestPayload.response_format) {
-                chatParams.response_format = requestPayload.response_format;
+        const chatParams: Record<string, unknown> = {
+            model: (requestPayload.model as string) || llmModel,
+            messages: requestPayload.messages,
+            max_tokens: (requestPayload.max_tokens as number) || 1024,
+            temperature: (requestPayload.temperature as number) || 0.1,
+        };
+        if (requestPayload.response_format) {
+            chatParams.response_format = requestPayload.response_format;
+        }
+
+        // Retry loop for transient API errors AND invalid/empty model output.
+        let lastError: unknown;
+        let response: Record<string, unknown> | null = null;
+        let parsed: ConsolidationResult | null = null;
+
+        for (let attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+            try {
+                response = await client.chat.completions.create(chatParams as never) as unknown as Record<string, unknown>;
+                lastError = null;
+
+                const choices = (response as { choices?: Array<{ message?: { content?: string }; finish_reason?: string }> }).choices;
+                const choice = choices?.[0];
+                const content = choice?.message?.content || '';
+                const usage = (response as { usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } }).usage;
+
+                responsePayload.raw_response = content;
+                responsePayload.model = (response as { model?: string }).model;
+                responsePayload.usage = usage;
+                responsePayload.finish_reason = choice?.finish_reason;
+
+                parsed = parseStructuredConsolidationText(item.sku, content, shopsitePages, categories);
+
+                if (!content.trim() || parsed.error) {
+                    lastError = new Error(
+                        !content.trim()
+                            ? 'DeepSeek returned an empty response'
+                            : parsed.error
+                    );
+
+                    if (attempt < MAX_RETRY_ATTEMPTS) {
+                        await delay(BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1));
+                        continue;
+                    }
+                }
+
+                break;
+            } catch (err: unknown) {
+                lastError = err;
+                if (!isRetryableError(err) || attempt === MAX_RETRY_ATTEMPTS) {
+                    break;
+                }
+                await delay(BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1));
             }
-            const response = await client.chat.completions.create(chatParams as never);
+        }
 
-            const choice = response.choices?.[0];
-            const content = choice?.message?.content || '';
-            const usage = response.usage;
-
-            responsePayload.raw_response = content;
-            responsePayload.model = response.model;
-            responsePayload.usage = usage;
-
-            // Parse the response
-            const parsed = parseStructuredConsolidationText(item.sku, content, shopsitePages, categories);
-
-            const promptTokens = usage?.prompt_tokens || 0;
-            const completionTokens = usage?.completion_tokens || 0;
-
-            // Update item as completed
-            await supabase
-                .from('batch_job_items')
-                .update({
-                    status: 'completed',
-                    response_payload: responsePayload as Record<string, unknown>,
-                    parsed_result: parsed as unknown as Record<string, unknown>,
-                    error_message: null,
-                    completed_at: new Date().toISOString(),
-                })
-                .eq('id', item.id);
-
-            completed++;
-        } catch (err: unknown) {
-            const errorMessage = err instanceof Error ? err.message : 'Unknown error during direct chat completion';
+        if (lastError || !response || !parsed || parsed.error) {
+            const errorMessage = lastError instanceof Error
+                ? lastError.message
+                : parsed?.error || 'Unknown error during direct chat completion';
 
             responsePayload.error = errorMessage;
 
@@ -366,13 +431,29 @@ export async function processDirectChatChunk(
                 .update({
                     status: 'failed',
                     response_payload: responsePayload as Record<string, unknown>,
+                    parsed_result: parsed as unknown as Record<string, unknown> | null,
                     error_message: errorMessage,
                     completed_at: new Date().toISOString(),
                 })
                 .eq('id', item.id);
 
             failed++;
+            continue;
         }
+
+        // Update item as completed only after parse succeeds.
+        await supabase
+            .from('batch_job_items')
+            .update({
+                status: 'completed',
+                response_payload: responsePayload as Record<string, unknown>,
+                parsed_result: parsed as unknown as Record<string, unknown>,
+                error_message: null,
+                completed_at: new Date().toISOString(),
+            })
+            .eq('id', item.id);
+
+        completed++;
     }
 
     return { processed: items.length, completed, failed };
@@ -383,7 +464,100 @@ export async function processDirectChatChunk(
 // =============================================================================
 
 /**
+ * Read-only snapshot of direct-chat batch status.
+ * Loads local batch_jobs + batch_job_items, calculates counts/status.
+ * Does NOT call DeepSeek, does NOT update DB rows.
+ */
+export async function getDirectChatStatusSnapshot(
+    batchDbId: string
+): Promise<BatchStatus | BatchErrorResponse> {
+    const supabase = await createAdminClient();
+
+    // Load parent
+    const { data: parent, error: parentError } = await supabase
+        .from('batch_jobs')
+        .select('*')
+        .eq('id', batchDbId)
+        .single();
+
+    if (parentError || !parent) {
+        return { success: false, error: parentError?.message || 'Batch not found' };
+    }
+
+    // Load all items
+    const { data: items, error: itemsError } = await supabase
+        .from('batch_job_items')
+        .select('*')
+        .eq('batch_job_id', batchDbId);
+
+    if (itemsError) {
+        return { success: false, error: itemsError.message };
+    }
+
+    const totalRequests = parent.total_requests || items?.length || 0;
+    const completedCount = (items || []).filter((i: BatchJobItem) => i.status === 'completed').length;
+    const failedCount = (items || []).filter((i: BatchJobItem) => i.status === 'failed').length;
+    const runningCount = (items || []).filter((i: BatchJobItem) => i.status === 'running').length;
+    const pendingCount = (items || []).filter((i: BatchJobItem) => i.status === 'pending').length;
+    const cancelledCount = (items || []).filter((i: BatchJobItem) => i.status === 'cancelled').length;
+
+    const totalTerminal = completedCount + failedCount + cancelledCount;
+    const progressPercent = totalRequests > 0 ? Math.round((totalTerminal / totalRequests) * 100) : 0;
+
+    // Determine aggregate status
+    let aggregateStatus: string;
+    if (pendingCount > 0 || runningCount > 0) {
+        aggregateStatus = 'in_progress';
+    } else if (failedCount > 0 && completedCount === 0 && cancelledCount === 0) {
+        aggregateStatus = 'failed';
+    } else if (totalTerminal >= totalRequests) {
+        aggregateStatus = 'completed';
+    } else {
+        aggregateStatus = parent.status || 'pending';
+    }
+
+    // Aggregate tokens
+    const promptTokens = (items || []).reduce(
+        (sum: number, i: BatchJobItem) => sum + (((i.response_payload as Record<string, unknown>)?.usage as Record<string, unknown>)?.prompt_tokens as number || 0),
+        0
+    );
+    const completionTokens = (items || []).reduce(
+        (sum: number, i: BatchJobItem) => sum + (((i.response_payload as Record<string, unknown>)?.usage as Record<string, unknown>)?.completion_tokens as number || 0),
+        0
+    );
+
+    const isComplete = aggregateStatus === 'completed';
+    const isFailed = aggregateStatus === 'failed';
+    const isProcessing = aggregateStatus === 'in_progress' || aggregateStatus === 'pending';
+
+    const parentMetadata = (parent.metadata as Record<string, unknown>) || {};
+    const parentCreatedAt = parent.created_at ? new Date(parent.created_at).getTime() / 1000 : undefined;
+
+    return {
+        id: String(parent.id),
+        provider: (parent.provider || 'deepseek') as BatchStatus['provider'],
+        provider_batch_id: parent.provider_batch_id,
+        status: aggregateStatus as BatchStatus['status'],
+        is_complete: isComplete,
+        is_failed: isFailed,
+        is_processing: isProcessing,
+        total_requests: totalRequests,
+        completed_requests: completedCount,
+        failed_requests: failedCount,
+        progress_percent: progressPercent,
+        prompt_tokens: promptTokens || undefined,
+        completion_tokens: completionTokens || undefined,
+        total_tokens: (promptTokens + completionTokens) || undefined,
+        created_at: parentCreatedAt,
+        completed_at: aggregateStatus === 'completed' ? Date.now() / 1000 : null,
+        metadata: parentMetadata as BatchStatus['metadata'],
+    };
+    // NOTE: No DB writes — this is read-only
+}
+
+/**
  * Aggregate item-level statuses into a batch-level BatchStatus.
+ * Persists updated counts to the batch_jobs row.
  */
 export async function aggregateDirectChatStatus(
     batchDbId: string
@@ -405,7 +579,7 @@ export async function aggregateDirectChatStatus(
     const { data: items, error: itemsError } = await supabase
         .from('batch_job_items')
         .select('*')
-        .eq('batch_id', batchDbId);
+        .eq('batch_job_id', batchDbId);
 
     if (itemsError) {
         return { success: false, error: itemsError.message };
@@ -502,7 +676,7 @@ export async function retrieveDirectChatResults(
     const { data: items } = await supabase
         .from('batch_job_items')
         .select('*')
-        .eq('batch_id', batchDbId);
+        .eq('batch_job_id', batchDbId);
 
     if (!items) return [];
 
@@ -548,7 +722,7 @@ export async function cancelDirectChatBatch(
     const { error: itemsErr } = await supabase
         .from('batch_job_items')
         .update({ status: 'cancelled' })
-        .eq('batch_id', batchDbId)
+        .eq('batch_job_id', batchDbId)
         .in('status', ['pending', 'running']);
 
     if (itemsErr) {
@@ -562,44 +736,4 @@ export async function cancelDirectChatBatch(
 // Fallback helpers
 // =============================================================================
 
-/**
- * Get SKUs of failed items that haven't already been sent to a fallback batch.
- */
-export async function getFailedSkusForFallback(
-    batchDbId: string
-): Promise<Array<{ sku: string; product_source: Record<string, unknown> }>> {
-    const supabase = await createAdminClient();
-
-    const { data: items } = await supabase
-        .from('batch_job_items')
-        .select('sku, product_source')
-        .eq('batch_id', batchDbId)
-        .eq('status', 'failed')
-        .is('fallback_batch_id', null);
-
-    if (!items) return [];
-
-    return items.map((item: { sku: string; product_source: unknown }) => ({
-        sku: item.sku,
-        product_source: (item.product_source as Record<string, unknown>) || {},
-    }));
-}
-
-/**
- * Mark items as having a fallback batch assigned.
- */
-export async function markItemsWithFallback(
-    batchDbId: string,
-    skus: string[],
-    fallbackBatchId: string
-): Promise<void> {
-    if (skus.length === 0) return;
-
-    const supabase = await createAdminClient();
-    await supabase
-        .from('batch_job_items')
-        .update({ fallback_batch_id: fallbackBatchId })
-        .eq('batch_id', batchDbId)
-        .in('sku', skus)
-        .eq('status', 'failed');
-}
+/** Fallback helpers removed — item-level retry replaces them */
