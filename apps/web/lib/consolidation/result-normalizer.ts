@@ -6,7 +6,6 @@
  * Ported from BayStateTools.
  */
 
-import { parseShopSitePages, SHOPSITE_PAGES } from '@/lib/shopsite/constants';
 
 /**
  * Common abbreviations found in distributor product names.
@@ -195,8 +194,7 @@ function normalizeStringUnits(text: string): string {
  * Applies all normalization rules to the name field.
  */
 export function normalizeConsolidationResult(
-    data: Record<string, unknown>,
-    validPages: readonly string[] = SHOPSITE_PAGES
+    data: Record<string, unknown>
 ): Record<string, unknown> {
     const normalized = { ...data };
 
@@ -228,10 +226,6 @@ export function normalizeConsolidationResult(
         normalized.description = normalizeStringUnits(normalizePlainText(normalized.description));
     }
 
-    if (typeof normalized.long_description === 'string') {
-        normalized.long_description = normalizeStringUnits(normalizePlainText(normalized.long_description));
-    }
-
     if (typeof normalized.search_keywords === 'string') {
         normalized.search_keywords = normalizeSearchKeywords(normalized.search_keywords);
     }
@@ -244,16 +238,6 @@ export function normalizeConsolidationResult(
         if (converted !== null) {
             normalized.weight = converted;
         }
-    }
-
-    // Validate product_on_pages against valid ShopSite pages
-    if ('product_on_pages' in normalized) {
-        const allowedPages = new Set(validPages);
-        const normalizedPages = parseShopSitePages(normalized.product_on_pages);
-        normalized.product_on_pages =
-            allowedPages.size > 0
-                ? normalizedPages.filter((page) => allowedPages.has(page))
-                : normalizedPages;
     }
 
     return normalized;

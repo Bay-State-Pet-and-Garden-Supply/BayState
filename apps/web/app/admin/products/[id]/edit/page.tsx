@@ -22,7 +22,6 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
  slug,
  sku,
  description,
- long_description,
  price,
  weight,
  brand_id,

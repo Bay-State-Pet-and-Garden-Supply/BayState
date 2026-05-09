@@ -44,7 +44,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { SHOPSITE_PAGES } from "@/lib/shopsite/constants";
+
 import {
   isValidCustomImageUrl,
 } from "./finalizing/finalizing-utils";
@@ -83,7 +83,6 @@ import type {
   BulkAssignBrandInput,
   BulkTransformProductNamesInput,
   BulkSetProductFieldsInput,
-  BulkStorePagesInput,
   CreateBrandInput,
   InspectSourceDataInput,
   ListImageSourcesInput,
@@ -92,12 +91,10 @@ import type {
   ProductSnapshotInput,
   RemoveSelectedImagesInput,
   RemoveSourceInput,
-  RemoveStorePagesInput,
   ReplaceSelectedImagesInput,
   ScopedProductActionInput,
   ScopedRejectProductInput,
   SetProductFieldsInput,
-  SetStorePagesInput,
   ToolSummary,
 } from "@/lib/tools/finalization-copilot";
 import { filterPendingCopilotDraftReview, restorePendingCopilotDraftReview, stagePendingCopilotDraftReview, type PendingCopilotDraftReview } from "@/lib/pipeline/finalization-copilot-review";
@@ -128,7 +125,6 @@ interface FinalizingResultsViewProps {
     isShift?: boolean,
   ) => void;
   isSearching?: boolean;
-  showLegacyShopSiteFields?: boolean;
 }
 
 interface PersistProductsResult extends ToolSummary {
@@ -196,7 +192,6 @@ export function FinalizingResultsView({
   selectedSkus = new Set(),
   onSelectSku,
   isSearching = false,
-  showLegacyShopSiteFields = false,
 }: FinalizingResultsViewProps) {
   const [copilotOpen, setCopilotOpen] = useState(false);
 
@@ -229,9 +224,6 @@ export function FinalizingResultsView({
   const [creatingBrand, setCreatingBrand] = useState(false);
   const [brandPopoverOpen, setBrandPopoverOpen] = useState(false);
 
-  // Store Pages (Product Pages) state
-  const [pageSearch, setPageSearch] = useState("");
-  const [pagePopoverOpen, setPagePopoverOpen] = useState(false);
 
   // Categories state
   const [categories, setCategories] = useState<TaxonomyCategoryNode[]>([]);
@@ -324,12 +316,6 @@ export function FinalizingResultsView({
     return brands.filter((b) => b.name.toLowerCase().includes(search));
   }, [brands, brandSearch]);
 
-  const filteredPages = useMemo(() => {
-    if (!pageSearch.trim()) return [...SHOPSITE_PAGES];
-    const search = pageSearch.toLowerCase();
-    return SHOPSITE_PAGES.filter((p) => p.toLowerCase().includes(search));
-  }, [pageSearch]);
-  const validStorePages = useMemo(() => new Set<string>(SHOPSITE_PAGES), []);
 
   const filteredCategories = useMemo(() => {
     if (!categorySearch.trim()) return categories;
@@ -735,16 +721,6 @@ export function FinalizingResultsView({
     toast.success(`Removed source: ${sourceKey}`);
   };
 
-  const normalizeStorePages = useCallback(
-    (pages: string[]) => {
-      const requestedPages = new Set(
-        pages.map((page) => page.trim()).filter((page) => validStorePages.has(page)),
-      );
-
-      return SHOPSITE_PAGES.filter((page) => requestedPages.has(page));
-    },
-    [validStorePages],
-  );
 
   const normalizeSelectedImages = useCallback((images: string[]) => {
     return toFinalizationImageArray(
@@ -1530,112 +1506,6 @@ export function FinalizingResultsView({
     [resolveScopeSkus, setDrafts, stageCopilotDraftReview],
   );
 
-  const handleCopilotSetStorePages = useCallback(
-    async ({ pages }: SetStorePagesInput): Promise<ToolSummary> => {
-      const currentSku = selectedProductRef.current?.sku;
-      if (!currentSku) {
-        throw new Error("Select a product before updating store pages.");
-      }
-      const nextPages = normalizeStorePages(pages);
-      if (nextPages.length === 0) {
-        throw new Error("Provide at least one valid ShopSite page.");
-      }
-
-      const review = stageCopilotDraftReview(
-        [currentSku],
-        `Prepared ShopSite pages for ${currentSku}: ${nextPages.join(", ")}.`,
-      );
-      handleInputChange("productOnPages", nextPages);
-      return review;
-    },
-    [normalizeStorePages, handleInputChange, stageCopilotDraftReview],
-  );
-
-  const handleCopilotAddStorePages = useCallback(
-    async ({ pages }: SetStorePagesInput): Promise<ToolSummary> => {
-      if (!selectedSku) {
-        throw new Error("Select a product before updating store pages.");
-      }
-      const nextPages = normalizeStorePages([
-        ...(selectedSku ? draftsRef.current[selectedSku]?.productOnPages ?? [] : []),
-        ...pages,
-      ]);
-      const review = stageCopilotDraftReview(
-        [selectedSku],
-        `Prepared added ShopSite pages for ${selectedSku}: ${normalizeStorePages(
-          pages,
-        ).join(", ")}.`,
-      );
-      handleInputChange("productOnPages", nextPages);
-
-      return review;
-    },
-    [normalizeStorePages, handleInputChange, selectedSku, stageCopilotDraftReview],
-  );
-
-  const handleCopilotRemoveStorePages = useCallback(
-    async ({ pages }: RemoveStorePagesInput): Promise<ToolSummary> => {
-      if (!selectedSku) {
-        throw new Error("Select a product before updating store pages.");
-      }
-      const pagesToRemove = new Set(
-        normalizeStorePages(pages).map((page) => page.trim()),
-      );
-      const nextPages = (
-        selectedSku ? draftsRef.current[selectedSku]?.productOnPages ?? [] : []
-      ).filter(
-        (page) => !pagesToRemove.has(page),
-      );
-      const review = stageCopilotDraftReview(
-        [selectedSku],
-        `Prepared removed ShopSite pages for ${selectedSku}: ${Array.from(
-          pagesToRemove,
-        ).join(", ")}.`,
-      );
-      handleInputChange("productOnPages", nextPages);
-
-      return review;
-    },
-    [normalizeStorePages, handleInputChange, selectedSku, stageCopilotDraftReview],
-  );
-
-  const handleCopilotBulkUpdateStorePages = useCallback(
-    async ({ scope, mode, pages }: BulkStorePagesInput): Promise<ToolSummary> => {
-      const normalizedPages = normalizeStorePages(pages);
-      const normalizedPageSet = new Set<string>(normalizedPages);
-      if (normalizedPages.length === 0) {
-        throw new Error("Provide at least one valid ShopSite page.");
-      }
-
-      const matchedSkus = resolveScopeSkus(scope);
-      const nextDrafts = { ...draftsRef.current };
-
-      matchedSkus.forEach((sku) => {
-        const currentPages = nextDrafts[sku]?.productOnPages ?? [];
-        nextDrafts[sku] = {
-          ...(nextDrafts[sku] ?? EMPTY_FINALIZATION_DRAFT),
-          productOnPages:
-            mode === "replace"
-              ? normalizedPages
-              : mode === "add"
-                ? normalizeStorePages([...currentPages, ...normalizedPages])
-                : currentPages.filter((page) => !normalizedPageSet.has(page)),
-        };
-      });
-
-      setDrafts(nextDrafts);
-
-      return stageCopilotDraftReview(
-        matchedSkus,
-        `Prepared ${
-          mode === "replace" ? "updated" : mode === "add" ? "added" : "removed"
-        } ShopSite pages for ${matchedSkus.length} product${
-          matchedSkus.length === 1 ? "" : "s"
-        }.`,
-      );
-    },
-    [normalizeStorePages, resolveScopeSkus, setDrafts, stageCopilotDraftReview],
-  );
 
   const handleCopilotReplaceSelectedImages = useCallback(
     async ({ images }: ReplaceSelectedImagesInput): Promise<ToolSummary> => {
@@ -1897,10 +1767,6 @@ export function FinalizingResultsView({
       onAssignBrand={handleCopilotAssignBrand}
       onBulkAssignBrand={handleCopilotBulkAssignBrand}
       onCreateBrand={handleCopilotCreateBrand}
-      onSetStorePages={handleCopilotSetStorePages}
-      onAddStorePages={handleCopilotAddStorePages}
-      onRemoveStorePages={handleCopilotRemoveStorePages}
-      onBulkUpdateStorePages={handleCopilotBulkUpdateStorePages}
       onReplaceSelectedImages={handleCopilotReplaceSelectedImages}
       onAddSelectedImages={handleCopilotAddSelectedImages}
       onRemoveSelectedImages={handleCopilotRemoveSelectedImages}
@@ -2056,12 +1922,6 @@ export function FinalizingResultsView({
                       setBrandPopoverOpen={setBrandPopoverOpen}
                       creatingBrand={creatingBrand}
                       handleCreateBrand={handleCreateBrand}
-                      pageSearch={pageSearch}
-                      setPageSearch={setPageSearch}
-                      pagePopoverOpen={pagePopoverOpen}
-                      setPagePopoverOpen={setPagePopoverOpen}
-                      filteredPages={filteredPages}
-                      normalizeStorePages={normalizeStorePages}
                       categorySearch={categorySearch}
                       setCategorySearch={setCategorySearch}
                       categoryPopoverOpen={categoryPopoverOpen}
@@ -2069,7 +1929,6 @@ export function FinalizingResultsView({
                       filteredCategories={filteredCategories}
                       addCustomSource={addCustomSource}
                       removeSource={removeSource}
-                      showLegacyShopSiteFields={showLegacyShopSiteFields}
                     />
                   </div>
                 </div>

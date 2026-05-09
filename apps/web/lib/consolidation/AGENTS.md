@@ -20,6 +20,8 @@ The consolidation pipeline processes `products_ingestion` records through DeepSe
 ├── result-normalizer.ts      # Transform LLM outputs to DB schema
 ├── taxonomy-validator.ts      # Validate categories/pet types, build JSON response format
 ├── result-parsing.ts         # Parse structured LLM JSON responses
+├── category-domain.ts        # Product domain classifier + field applicability matrix
+├── detail-enrichment.ts      # Post-consolidation deterministic field extraction
 ├── two-phase-service.ts      # Two-phase consistency pass across siblings
 ├── consistency-rules.ts       # Consistency validation rules
 ├── parallel-runs.ts          # Cross-provider parallel run tracking (legacy)
@@ -37,13 +39,15 @@ The consolidation pipeline processes `products_ingestion` records through DeepSe
 | **Apply results** | `batch-service.ts` | `applyResults(batchId)` → upserts to `products_ingestion.consolidated` |
 | **Prompt Building** | `prompt-builder.ts` | `buildPromptContext()` + `generateSystemPrompt(categories)` |
 | **Taxonomy Validation** | `taxonomy-validator.ts` | `validateCategory()`, `buildJSONResponseFormat()` |
+| **Domain Classification** | `category-domain.ts` | `classifyProductDomain(category)` → pet_food/pet_product/garden/hardware/general |
+| **Detail Enrichment** | `detail-enrichment.ts` | `enrichProductDetails()` — deterministic post-consolidation field extraction |
 | **Result Parsing** | `result-parsing.ts` | `parseStructuredConsolidationText()` |
 | **LLM Config** | `llm-client.ts` | `getConsolidationConfig()`, `getLLMClient()` |
 | **Pricing** | `lib/ai-scraping/pricing.ts` | `calculateAICost()` — DeepSeek entries in pricing catalog |
 
 ## DATA FLOW
 1. **Trigger**: User clicks "Consolidate" in Pipeline UI → POST `/api/admin/consolidation/submit`
-2. **Build Prompt**: `buildPromptContext()` loads categories, ShopSite pages → `generateSystemPrompt()` produces system prompt with compact output contract
+2. **Build Prompt**: `buildPromptContext()` loads categories → `generateSystemPrompt()` produces system prompt with compact output contract
 3. **Create Content**: `createBatchContent()` builds JSONL with one request per SKU
 4. **Submit**: `submitBatch()` → `submitDirectChatBatchToRuntime()` → `createDirectChatBatch()`
    - Inserts `batch_jobs` row with `execution_mode: 'direct_chat_chunks'`
@@ -52,7 +56,12 @@ The consolidation pipeline processes `products_ingestion` records through DeepSe
    - `getBatchStatus()` → `handleDirectChatStatus()` → `processDirectChatChunk()` (processes 1 item per poll cycle)
    - Each item: calls DeepSeek `/v1/chat/completions` with retry logic (3 attempts, exponential backoff)
    - Parses response via `parseStructuredConsolidationText()` → stores in `parsed_result`
-6. **Apply**: User clicks "Apply" → `retrieveResults()` → `applyConsolidationResults()` → upserts `products_ingestion.consolidated`
+6. **Apply**: User clicks "Apply" → `retrieveResults()` → `applyConsolidationResults()` → **detail enrichment** → upserts `products_ingestion.consolidated`
+   - After core fields (name, brand, category, etc.) are resolved, `enrichProductDetails()` runs:
+     a. Classifies the product domain from the assigned category (pet_food, pet_product, garden, etc.)
+     b. Determines which detail fields are applicable for that domain
+     c. Extracts applicable fields from structured source data and pattern matching
+     d. Merges enriched fields into the consolidated record (no additional LLM call)
 
 ## PROMPT BUILDING
 - **System prompt**: Includes source trust rules, product-name rules, field rules, and a compact output contract (JSON structure with all required fields)
@@ -65,11 +74,9 @@ The consolidation pipeline processes `products_ingestion` records through DeepSe
   "name": "string (required)",
   "brand": "string (required)",
   "weight": "string (required)",
-  "product_on_pages": "string (required)",
   "confidence_score": "number (required) 0.0-1.0",
   "category": "string (required)",
   "description": "string (required)",
-  "long_description": "string (required)",
   "search_keywords": "string (required)"
 }
 ```

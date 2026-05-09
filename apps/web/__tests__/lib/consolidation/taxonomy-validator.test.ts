@@ -26,7 +26,7 @@ describe('validateConsolidationTaxonomy', () => {
     });
 
     it('buildResponseSchema does not contain unsupported keywords for JSON mode', () => {
-        const rootSchema = buildResponseSchema(['Dog > Food > Dry Food'], ['Page 1']) as any;
+        const rootSchema = buildResponseSchema(['Dog > Food > Dry Food']) as any;
         const properties = rootSchema.properties || {};
 
         // Helper to check for unsupported keywords in an object

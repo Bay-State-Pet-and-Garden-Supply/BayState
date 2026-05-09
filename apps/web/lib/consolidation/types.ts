@@ -139,12 +139,10 @@ export interface ConsolidationResult {
     name?: string;
     brand?: string;
     description?: string;
-    long_description?: string;
     search_keywords?: string;
     weight?: string;
     price?: string;
     category?: string;
-    product_on_pages?: string;
     confidence_score?: number;
     error?: string;
 }

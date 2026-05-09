@@ -547,7 +547,6 @@ export function buildConsolidationSourcesPayload(
             'brand',
             'price',
             'description',
-            'long_description',
             'category',
 
             'weight',
@@ -559,21 +558,6 @@ export function buildConsolidationSourcesPayload(
             'is_taxable',
         ].forEach(copyScalarField);
 
-        if (Array.isArray(rawInput.product_on_pages)) {
-            const normalizedPages = rawInput.product_on_pages
-                .filter((entry): entry is string => typeof entry === 'string')
-                .map((entry) => entry.trim())
-                .filter((entry) => entry.length > 0);
-
-            if (normalizedPages.length > 0) {
-                shopSiteInputSource.product_on_pages = Array.from(new Set(normalizedPages));
-            }
-        } else if (typeof rawInput.product_on_pages === 'string' && rawInput.product_on_pages.trim()) {
-            shopSiteInputSource.product_on_pages = rawInput.product_on_pages
-                .split('|')
-                .map((entry) => entry.trim())
-                .filter((entry) => entry.length > 0);
-        }
 
         if (Object.keys(shopSiteInputSource).length > 0) {
             payload.shopsite_input = shopSiteInputSource;

@@ -51,7 +51,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
 import type { Brand } from "@/lib/types";
@@ -95,7 +94,6 @@ const LIVE_OPERATIONAL_TABS = new Set<PipelineStage>([
 ]);
 const WORKSPACE_TABS = new Set<PipelineStage>(["scraped", "url_review", "finalizing", "imported", "exporting"]);
 const EMPTY_SOURCES: string[] = [];
-const PIPELINE_LEGACY_FIELDS_STORAGE_KEY = "baystate.pipeline.show-legacy-shopsite-fields";
 
 function isLiveOperationalTab(stage: PipelineStage): boolean {
   return LIVE_OPERATIONAL_TABS.has(stage);
@@ -178,8 +176,6 @@ export function PipelineClient({
   const [exportActionState, setExportActionState] = useState<
     "upload" | "zip" | null
   >(null);
-  const [showLegacyShopSiteFields, setShowLegacyShopSiteFields] =
-    useState(false);
   const [legacyPreferenceLoaded, setLegacyPreferenceLoaded] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [editingCohort, setEditingCohort] = useState<{
@@ -212,25 +208,8 @@ export function PipelineClient({
       return;
     }
 
-    const storedPreference = window.localStorage.getItem(
-      PIPELINE_LEGACY_FIELDS_STORAGE_KEY,
-    );
-    if (storedPreference === "true") {
-      setShowLegacyShopSiteFields(true);
-    }
     setLegacyPreferenceLoaded(true);
   }, []);
-
-  useEffect(() => {
-    if (!legacyPreferenceLoaded || typeof window === "undefined") {
-      return;
-    }
-
-    window.localStorage.setItem(
-      PIPELINE_LEGACY_FIELDS_STORAGE_KEY,
-      String(showLegacyShopSiteFields),
-    );
-  }, [legacyPreferenceLoaded, showLegacyShopSiteFields]);
 
   const filteredProducts = useMemo(() => {
     let result = products;
@@ -1331,8 +1310,6 @@ export function PipelineClient({
     ? `/admin/pipeline?stage=url_review&cohort_id=${encodeURIComponent(officialBrandReviewCohortId)}`
     : null;
   const canDiscoverOfficialBrand = currentStage === "imported" && officialBrandSelection.allowed && selectedSkus.size > 0;
-  const showLegacyShopSiteToggle =
-    currentStage === "finalizing" || currentStage === "exporting";
   const applyFilterState = (newFilters: PipelineFiltersState) => {
     setSourceFilter(newFilters.source || "");
     setProductLineFilter(newFilters.product_line || "");
@@ -1399,18 +1376,7 @@ export function PipelineClient({
         </Button>
       ) : null}
 
-      {showLegacyShopSiteToggle ? (
-        <label className="flex h-8 items-center gap-2 border border-border bg-card px-3 text-[10px] font-semibold text-muted-foreground">
-          <span className={cn(showLegacyShopSiteFields && "text-foreground")}>
-            Legacy / ShopSite
-          </span>
-          <Switch
-            checked={showLegacyShopSiteFields}
-            onCheckedChange={setShowLegacyShopSiteFields}
-            aria-label="Show legacy ShopSite fields"
-          />
-        </label>
-      ) : null}
+
 
       {currentStage === "imported" && (
         <>
@@ -1618,7 +1584,6 @@ export function PipelineClient({
                 selectedSkus={selectedSkus}
                 onSelectSku={handleSelectSku}
                 isSearching={isSearching}
-                showLegacyShopSiteFields={showLegacyShopSiteFields}
               />
             </div>
           ) : currentStage === "imported" || currentStage === "exporting" || hideTabs ? (
@@ -1933,7 +1898,7 @@ export function PipelineClient({
           onDownloadZip={
             currentStage === "exporting" ? handleDownloadSelectedZip : undefined
           }
-          showLegacyShopSiteActions={showLegacyShopSiteFields}
+          showLegacyShopSiteActions={false}
         />
       )}
 

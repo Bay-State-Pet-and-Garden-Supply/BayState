@@ -688,19 +688,6 @@ export class ShopSiteClient {
                 }
             }
 
-            // Categorization from ProductOnPages
-            const shopsitePages: string[] = [];
-            const pagesBlock = this.extractXmlValue(productXml, 'ProductOnPages');
-            if (pagesBlock) {
-                const pageMatches = pagesBlock.match(/<Name>([\s\S]*?)<\/Name>/gi);
-                if (pageMatches) {
-                    for (const pageNameTag of pageMatches) {
-                        const name = pageNameTag.replace(/<\/?Name>/gi, '').trim();
-                        if (name) shopsitePages.push(name);
-                    }
-                }
-            }
-
             // Ordering controls
             const minQtyRaw = this.extractXmlValue(productXml, 'MinimumQuantity');
             const minimumQuantity = minQtyRaw ? parseInt(minQtyRaw, 10) : undefined;
@@ -745,7 +732,6 @@ export class ShopSiteClient {
                 minimumQuantity,
                 outOfStockLimit,
                 googleProductCategory,
-                shopsitePages,
                 rawXml: includeRawXml ? productXml : undefined,
             });
 

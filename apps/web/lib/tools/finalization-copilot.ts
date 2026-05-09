@@ -38,7 +38,6 @@ const productSnapshotSchema = z.object({
   originalName: z.string().nullable(),
   confidenceScore: z.number().nullable(),
   sourceKeys: z.array(z.string()),
-  availableStorePages: z.array(z.string()),
   draft: finalizationDraftSchema,
   savedDraft: finalizationDraftSchema,
 });
@@ -113,7 +112,6 @@ const setProductFieldsInputSchema = z
   .object({
     name: z.string().optional(),
     description: z.string().optional(),
-    longDescription: z.string().optional(),
     price: z.number().min(0).optional(),
     weight: z.string().optional(),
     category: z.string().optional(),
@@ -123,6 +121,17 @@ const setProductFieldsInputSchema = z
     searchKeywords: z.string().optional(),
     gtin: z.string().optional(),
     isSpecialOrder: z.boolean().optional(),
+    petType: z.string().optional(),
+    lifeStage: z.string().optional(),
+    petSize: z.string().optional(),
+    specialDiet: z.string().optional(),
+    healthFeature: z.string().optional(),
+    foodForm: z.string().optional(),
+    flavor: z.string().optional(),
+    productFeature: z.string().optional(),
+    size: z.string().optional(),
+    color: z.string().optional(),
+    packagingType: z.string().optional(),
   })
   .refine(
     (value) => Object.values(value).some((entry) => entry !== undefined),
@@ -130,6 +139,7 @@ const setProductFieldsInputSchema = z
       message: "Provide at least one field to update.",
     },
   );
+
 
 export type SetProductFieldsInput = z.infer<typeof setProductFieldsInputSchema>;
 
@@ -193,29 +203,6 @@ const createBrandInputSchema = z.object({
 
 export type CreateBrandInput = z.infer<typeof createBrandInputSchema>;
 
-const setStorePagesInputSchema = z.object({
-  pages: z.array(z.string()).min(1),
-});
-
-export type SetStorePagesInput = z.infer<typeof setStorePagesInputSchema>;
-
-const bulkStorePagesInputSchema = z.object({
-  scope: finalizationProductScopeSchema,
-  mode: z.enum(["replace", "add", "remove"]),
-  pages: z.array(z.string()).min(1),
-});
-
-export type BulkStorePagesInput = z.infer<typeof bulkStorePagesInputSchema>;
-
-const addStorePagesInputSchema = z.object({
-  pages: z.array(z.string()).min(1),
-});
-
-const removeStorePagesInputSchema = z.object({
-  pages: z.array(z.string()).min(1),
-});
-
-export type RemoveStorePagesInput = z.infer<typeof removeStorePagesInputSchema>;
 
 const replaceSelectedImagesInputSchema = z.object({
   images: z.array(z.string()).min(1),
@@ -317,7 +304,7 @@ export function createFinalizationCopilotTools(
 
     getProductSnapshot: tool({
       description:
-        "Read the current draft, last saved draft, available store pages, and source keys for a specific product. If sku is omitted, use the currently selected product.",
+        "Read the current draft, last saved draft, and source keys for a specific product. If sku is omitted, use the currently selected product.",
       inputSchema: productSnapshotInputSchema,
       outputSchema: productSnapshotSchema,
     }),
@@ -391,33 +378,6 @@ export function createFinalizationCopilotTools(
       outputSchema: toolSummarySchema,
     }),
 
-    setStorePages: tool({
-      description:
-        "Replace the current ShopSite page assignment with an exact page list.",
-      inputSchema: setStorePagesInputSchema,
-      outputSchema: toolSummarySchema,
-    }),
-
-    bulkUpdateStorePages: tool({
-      description:
-        "Replace, add, or remove ShopSite page assignments across multiple products. Use previewProductScope first and prefer exact sku_list scope for narrow edits.",
-      inputSchema: bulkStorePagesInputSchema,
-      outputSchema: toolSummarySchema,
-    }),
-
-    addStorePages: tool({
-      description:
-        "Add one or more ShopSite pages to the current page assignment without removing existing pages.",
-      inputSchema: addStorePagesInputSchema,
-      outputSchema: toolSummarySchema,
-    }),
-
-    removeStorePages: tool({
-      description:
-        "Remove one or more ShopSite pages from the current page assignment.",
-      inputSchema: removeStorePagesInputSchema,
-      outputSchema: toolSummarySchema,
-    }),
 
     replaceSelectedImages: tool({
       description:

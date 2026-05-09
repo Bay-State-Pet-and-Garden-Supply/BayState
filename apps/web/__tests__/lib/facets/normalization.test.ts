@@ -62,9 +62,9 @@ describe('facet normalization', () => {
 
     it('normalizes generic facet definitions and dedupes pipe-delimited values', () => {
         expect(getGenericFacetDefinition('ProductField19')).toEqual({
-            name: 'pet_size',
-            slug: 'pet-size',
-            description: 'Normalized ProductField19 values for pet size filtering.',
+            name: 'breed_size',
+            slug: 'breed-size',
+            description: 'Normalized ProductField19 values for breed size filtering.',
         });
 
         expect(normalizeGenericFacetValue(' small breed | SMALL BREED | extra small '))
@@ -82,5 +82,23 @@ describe('facet normalization', () => {
                 slug: 'high-protein',
             },
         ]);
+    });
+
+    it('maps canonical facet fields correctly', () => {
+        expect(getGenericFacetDefinition('ProductField18')).toEqual({
+            name: 'life_stage',
+            slug: 'life-stage',
+            description: 'Normalized ProductField18 values for life stage filtering.',
+        });
+        expect(getGenericFacetDefinition('ProductField20')).toEqual({
+            name: 'diet_type',
+            slug: 'diet-type',
+            description: 'Normalized ProductField20 values for diet type filtering.',
+        });
+        expect(getGenericFacetDefinition('ProductField21')).toEqual({
+            name: 'health_focus',
+            slug: 'health-focus',
+            description: 'Normalized ProductField21 values for health focus filtering.',
+        });
     });
 });

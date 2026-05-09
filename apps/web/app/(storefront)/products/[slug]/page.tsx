@@ -357,13 +357,6 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
 
             </dl>
           </div>
-          
-          {/* Long Description (Rich Text) */}
-          {product.long_description && (
-            <div className="border-t pt-6 prose prose-sm max-w-none text-zinc-700">
-              <div dangerouslySetInnerHTML={{ __html: product.long_description }} />
-            </div>
-          )}
         </div>
       </div>
     </div>

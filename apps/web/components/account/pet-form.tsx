@@ -51,7 +51,7 @@ const petFormSchema = z.object({
         message: 'Weight must be a number',
     }).optional(),
     dietary_notes: z.string().max(500).optional(),
-    life_stage: z.enum(['puppy', 'kitten', 'juvenile', 'adult', 'senior']).optional(),
+    life_stage: z.enum(['puppy', 'kitten', 'juvenile', 'adult', 'senior', 'chick', 'layer', 'starter-grower', 'all-life-stages']).optional(),
     size_class: z.enum(['small', 'medium', 'large', 'giant']).optional(),
     special_needs: z.array(z.string()),
     gender: z.enum(['male', 'female']).optional(),

@@ -244,6 +244,9 @@ describe('importShopSiteProducts pet-type canonical mapping', () => {
             pet_types: [
                 { id: 'pet-type-dog', name: 'Dog' },
                 { id: 'pet-type-cat', name: 'Cat' },
+                { id: 'pet-type-horse', name: 'Horse' },
+                { id: 'pet-type-poultry', name: 'Chicken & Poultry' },
+                { id: 'pet-type-livestock', name: 'Farm & Livestock' },
             ],
         });
 
@@ -263,6 +266,33 @@ describe('importShopSiteProducts pet-type canonical mapping', () => {
                 pet_type_id: 'pet-type-dog',
             }),
         ]);
+    });
+
+    it('recognizes Horse, Chicken & Poultry, and Farm & Livestock pet types', async () => {
+        const { supabase, state } = createMockSupabase({
+            pet_types: [
+                { id: 'pet-type-horse', name: 'Horse' },
+                { id: 'pet-type-poultry', name: 'Chicken & Poultry' },
+                { id: 'pet-type-livestock', name: 'Farm & Livestock' },
+            ],
+        });
+
+        const result = await importShopSiteProducts({
+            supabase,
+            shopSiteProducts: [
+                buildShopSiteProduct({ sku: 'DIRECT-HORSE', name: 'Horse Feed', petTypeName: 'Horse' }),
+                buildShopSiteProduct({ sku: 'DIRECT-CHICKEN', name: 'Chicken Feed', petTypeName: 'Chicken & Poultry' }),
+                buildShopSiteProduct({ sku: 'DIRECT-LIVESTOCK', name: 'Goat Feed', petTypeName: 'Farm & Livestock' }),
+            ],
+        });
+
+        expect(result).toMatchObject({ success: true, created: 3, failed: 0 });
+        const horsePetTypes = state.product_pet_types.filter(pt => pt.pet_type_id === 'pet-type-horse');
+        const poultryPetTypes = state.product_pet_types.filter(pt => pt.pet_type_id === 'pet-type-poultry');
+        const livestockPetTypes = state.product_pet_types.filter(pt => pt.pet_type_id === 'pet-type-livestock');
+        expect(horsePetTypes).toHaveLength(1);
+        expect(poultryPetTypes).toHaveLength(1);
+        expect(livestockPetTypes).toHaveLength(1);
     });
 
     it('falls back to inferred pet types only when PF17 is blank or unrecognized', async () => {

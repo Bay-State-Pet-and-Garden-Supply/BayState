@@ -4,7 +4,6 @@ import {
   extractImageCandidatesFromSourcePayload,
   normalizeProductSources,
 } from "@/lib/product-sources";
-import { SHOPSITE_PAGES } from "@/lib/shopsite/constants";
 import {
   FINALIZATION_STOCK_STATUS_VALUES,
   finalizationCopilotProductSchema,
@@ -20,7 +19,6 @@ export const finalizationWorkspaceProductSummarySchema = z.object({
   sourceKeys: z.array(z.string()),
   hasBrand: z.boolean(),
   selectedImageCount: z.number().int().min(0),
-  storePageCount: z.number().int().min(0),
   selected: z.boolean(),
   dirty: z.boolean(),
 });
@@ -183,7 +181,6 @@ export function buildWorkspaceProductSummary(
     sourceKeys,
     hasBrand: Boolean(draft?.brandId && draft.brandId !== "none"),
     selectedImageCount: draft?.selectedImages.length ?? 0,
-    storePageCount: draft?.productOnPages.length ?? 0,
     selected: selectedSku === product.sku,
     dirty: isDraftDirty(draft, savedDraft),
   };
@@ -205,7 +202,6 @@ function matchesWorkspaceQuery(
     summary.name ?? "",
     getSearchableBrandText(product, draft),
     draft?.description ?? "",
-    draft?.longDescription ?? "",
     draft?.gtin ?? "",
     ...summary.sourceKeys,
   ];
@@ -265,8 +261,7 @@ export function listWorkspaceProducts(
     }
 
     if (input.description) {
-      const desc =
-        (draft?.description ?? "") + " " + (draft?.longDescription ?? "");
+      const desc = draft?.description ?? "";
       if (!desc.toLowerCase().includes(input.description.toLowerCase())) {
         return false;
       }
@@ -324,7 +319,6 @@ export function applySetProductFieldsToDraft(
   input: {
     name?: string;
     description?: string;
-    longDescription?: string;
     price?: number;
     weight?: string;
     category?: string;
@@ -334,6 +328,17 @@ export function applySetProductFieldsToDraft(
     minimumQuantity?: number | string;
     searchKeywords?: string;
     gtin?: string;
+    petType?: string;
+    lifeStage?: string;
+    petSize?: string;
+    specialDiet?: string;
+    healthFeature?: string;
+    foodForm?: string;
+    flavor?: string;
+    productFeature?: string;
+    size?: string;
+    color?: string;
+    packagingType?: string;
   },
 ): { draft: FinalizationDraft; updatedFields: string[] } {
   const updatedFields: string[] = [];
@@ -346,10 +351,6 @@ export function applySetProductFieldsToDraft(
   if (input.description !== undefined) {
     next.description = input.description.trim();
     updatedFields.push("description");
-  }
-  if (input.longDescription !== undefined) {
-    next.longDescription = input.longDescription.trim();
-    updatedFields.push("long description");
   }
   if (input.price !== undefined) {
     next.price = String(input.price);
@@ -387,9 +388,54 @@ export function applySetProductFieldsToDraft(
     next.gtin = input.gtin.trim();
     updatedFields.push("GTIN");
   }
+  if (input.petType !== undefined) {
+    next.petType = input.petType.trim();
+    updatedFields.push("pet type");
+  }
+  if (input.lifeStage !== undefined) {
+    next.lifeStage = input.lifeStage.trim();
+    updatedFields.push("life stage");
+  }
+  if (input.petSize !== undefined) {
+    next.petSize = input.petSize.trim();
+    updatedFields.push("pet size");
+  }
+  if (input.specialDiet !== undefined) {
+    next.specialDiet = input.specialDiet.trim();
+    updatedFields.push("special diet");
+  }
+  if (input.healthFeature !== undefined) {
+    next.healthFeature = input.healthFeature.trim();
+    updatedFields.push("health feature");
+  }
+  if (input.foodForm !== undefined) {
+    next.foodForm = input.foodForm.trim();
+    updatedFields.push("food form");
+  }
+  if (input.flavor !== undefined) {
+    next.flavor = input.flavor.trim();
+    updatedFields.push("flavor");
+  }
+  if (input.productFeature !== undefined) {
+    next.productFeature = input.productFeature.trim();
+    updatedFields.push("product feature");
+  }
+  if (input.size !== undefined) {
+    next.size = input.size.trim();
+    updatedFields.push("size");
+  }
+  if (input.color !== undefined) {
+    next.color = input.color.trim();
+    updatedFields.push("color");
+  }
+  if (input.packagingType !== undefined) {
+    next.packagingType = input.packagingType.trim();
+    updatedFields.push("packaging type");
+  }
 
   return { draft: next, updatedFields };
 }
+
 
 function joinNameSegments(left: string, right: string): string {
   return [left.trim(), right.trim()].filter(Boolean).join(" ").trim();
@@ -524,7 +570,6 @@ export function buildFinalizationProductSnapshot(
     originalName: toTrimmedString(toRecord(product.input).name),
     confidenceScore: product.confidence_score ?? null,
     sourceKeys: Object.keys(normalizeProductSources(product.sources || {})),
-    availableStorePages: [...SHOPSITE_PAGES],
     draft,
     savedDraft,
   };

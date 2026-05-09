@@ -51,6 +51,7 @@ import {
     cancelDirectChatBatch,
 
 } from './direct-chat-service';
+import { enrichProductDetails } from './detail-enrichment';
 
 // =============================================================================
 // Batch Content Generation
@@ -66,10 +67,8 @@ const RELEVANT_FIELDS = [
     'size',
     'attributes',
     'description',
-    'long_description',
     'category',
     'categories',
-    'product_on_pages',
     'flavor',
     'color',
     'unit',
@@ -196,8 +195,6 @@ function getPromptTextLimit(fieldName: string): number {
             return 80;
         case 'description':
             return 360;
-        case 'long_description':
-            return 520;
         case 'specifications':
             return 360;
         case 'dimensions':
@@ -704,7 +701,6 @@ function collectExpectedAnimalSignals(
 function collectOutputAnimalSignals(nextFields: Record<string, unknown>): Set<AnimalSignal> {
     const detected = new Set<AnimalSignal>();
     collectAnimalSignalsFromValue(nextFields.category, detected);
-    collectAnimalSignalsFromValue(nextFields.product_on_pages, detected);
     return detected;
 }
 
@@ -1021,8 +1017,8 @@ async function submitDirectChatBatchToRuntime(
     routingKey: string,
     preflightModelsList: string[]
 ): Promise<SubmitBatchResponse | BatchErrorResponse> {
-    const { systemPrompt, shopsitePages = [], categories = [] } = await buildPromptContext();
-    const responseSchema = buildResponseSchema(categories, shopsitePages);
+    const { systemPrompt, categories = [] } = await buildPromptContext();
+    const responseSchema = buildResponseSchema(categories);
 
     const content = createBatchContent(products, systemPrompt, responseSchema, {
         provider: 'deepseek',
@@ -1389,7 +1385,7 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
         }
 
         // Fetch taxonomy for validation
-        const { shopsitePages = [], categories = [] } = await buildPromptContext();
+        const { categories = [] } = await buildPromptContext();
         const resolved = await resolveProviderBatchId(batchId);
         const runtime = await getConfiguredBatchRuntime();
         if (isRuntimeErrorResponse(runtime)) {
@@ -1445,7 +1441,6 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
                             parseStructuredConsolidationText(
                                 sku,
                                 content,
-                                shopsitePages,
                                 categories
                             )
                         );
@@ -1781,9 +1776,6 @@ export async function applyConsolidationResults(
                 ...(typeof result.description === 'string' && result.description.trim()
                     ? { description: result.description.trim() }
                     : {}),
-                ...(typeof result.long_description === 'string' && result.long_description.trim()
-                    ? { long_description: result.long_description.trim() }
-                    : {}),
                 ...(typeof result.search_keywords === 'string' && result.search_keywords.trim()
                     ? { search_keywords: result.search_keywords.trim() }
                     : {}),
@@ -1818,15 +1810,24 @@ export async function applyConsolidationResults(
                 }
             }
 
-            // Handle product_on_pages (stored as array in consolidated jsonb)
-            {
-                const pages = result.product_on_pages
-                    ? parseShopSitePages(result.product_on_pages)
-                    : parseShopSitePages(existingRecord?.input.product_on_pages);
-                if (pages.length > 0) {
-                    nextFields.product_on_pages = pages;
+            // ── Detail enrichment ────────────────────────────────────────
+            // After the LLM assigns a category, deterministically extract
+            // applicable product detail fields (pet_type, flavor, food_form,
+            // etc.) from structured source data and pattern matching.
+            // This is free — no additional LLM call.
+            const enrichment = enrichProductDetails({
+                consolidated: nextFields,
+                sources: existingRecord?.sources || {},
+                input: existingRecord?.input || {},
+            });
+
+            for (const [key, value] of Object.entries(enrichment.fields)) {
+                // Only populate fields that aren't already set by the LLM
+                if (!(key in nextFields) || nextFields[key] === undefined || nextFields[key] === null || nextFields[key] === '') {
+                    nextFields[key] = value;
                 }
             }
+
 
             const gateErrors: string[] = [];
 
@@ -1835,7 +1836,6 @@ export async function applyConsolidationResults(
                     name: nextFields.name,
                     brand: nextFields.brand,
                     description: nextFields.description,
-                    long_description: nextFields.long_description,
                     search_keywords: nextFields.search_keywords,
                     confidence_score: result.confidence_score,
                 });
@@ -1871,13 +1871,6 @@ export async function applyConsolidationResults(
                 gateErrors.push(
                     `taxonomy/pages target ${unexpectedAnimalSignals.join(', ')} but trusted source evidence supports ${summarizeAnimalSignals(expectedAnimalSignals)}`
                 );
-            }
-
-            const pages = Array.isArray(nextFields.product_on_pages)
-                ? (nextFields.product_on_pages as string[])
-                : [];
-            if (pages.length === 0) {
-                gateErrors.push('product_on_pages is required to finalize');
             }
 
             if (gateErrors.length > 0) {

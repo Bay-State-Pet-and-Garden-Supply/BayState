@@ -111,6 +111,7 @@ export async function importShopSiteProductsBatched({
         slugBySku,
         brandMap,
         categoryMap,
+        categoryMetaById,
         petTypeMap,
         facetDefinitionMap,
         facetValueMap,
@@ -248,7 +249,7 @@ export async function importShopSiteProductsBatched({
     // Phase 4: Batch insert all relations
     console.log('[Batch Import] Phase 4: Inserting relations in batches...');
 
-    const categoriesToInsert: Array<{ product_id: string; category_id: string }> = [];
+    const categoriesToInsert: Array<{ product_id: string; category_id: string; relationship_type: 'canonical' | 'secondary' }> = [];
     const petTypesToInsert: Array<{ product_id: string; pet_type_id: string }> = [];
     const facetValuesToEnsure: Array<{
         definitionName: GenericFacetName;
@@ -265,15 +266,35 @@ export async function importShopSiteProductsBatched({
         // Categories: PF24/PF25 are canonical; ProductOnPages is a fallback when PF24 is blank.
         const categorySlugs = resolveCategorySlugs(transformed, categoryMap);
         if (categorySlugs.length > 0) {
+            // Resolve slugs to IDs
+            const categoryIds: string[] = [];
             for (const mappedSlug of categorySlugs) {
                 const categoryId = categoryMap.get(mappedSlug);
-                if (!categoryId) continue;
-                categoriesToInsert.push({ product_id: productId, category_id: categoryId });
+                if (categoryId) categoryIds.push(categoryId);
+            }
+
+            if (categoryIds.length > 0) {
+                // Choose canonical: deepest depth, then lowest sort_order, then alphabetical slug
+                const canonicalId = [...categoryIds]
+                    .map((id) => ({ id, meta: categoryMetaById.get(id) ?? { depth: 0, sort_order: 0, slug: '' } }))
+                    .sort((a, b) => {
+                        if (a.meta.depth !== b.meta.depth) return b.meta.depth - a.meta.depth;
+                        if (a.meta.sort_order !== b.meta.sort_order) return a.meta.sort_order - b.meta.sort_order;
+                        return a.meta.slug.localeCompare(b.meta.slug);
+                    })[0]?.id ?? null;
+
+                for (const categoryId of categoryIds) {
+                    categoriesToInsert.push({
+                        product_id: productId,
+                        category_id: categoryId,
+                        relationship_type: categoryId === canonicalId ? 'canonical' : 'secondary',
+                    });
+                }
             }
         } else {
-            if ((transformed.category_name || transformed.shopsite_pages.length > 0) && categoriesToInsert.length < 5) {
+            if (transformed.category_name && categoriesToInsert.length < 5) {
                 console.warn(
-                    `[Batch Import] No category mapping for: PF24="${transformed.category_name ?? ''}" PF25="${transformed.product_type ?? ''}" pages="${transformed.shopsite_pages.join('|')}"`,
+                    `[Batch Import] No category mapping for: PF24="${transformed.category_name ?? ''}" PF25="${transformed.product_type ?? ''}"`,
                 );
             }
         }
@@ -344,6 +365,56 @@ export async function importShopSiteProductsBatched({
     // Delete old relations and insert new ones in batches
     console.log(`[Batch Import] Inserting ${categoriesToInsert.length} category links...`);
     await deleteAndInsertRelations(supabase, 'product_categories', categoriesToInsert);
+
+    // Bulk-update products.canonical_category_id from the canonical rows in categoriesToInsert
+    const canonicalUpdates = new Map<string, string | null>(); // productId -> categoryId or null
+    for (const row of categoriesToInsert) {
+        if (row.relationship_type === 'canonical') {
+            canonicalUpdates.set(row.product_id, row.category_id);
+        }
+    }
+    // Also clear canonical for products with 0 categories
+    for (const { product, transformed } of validProducts) {
+        const productId = importedProductIdBySku.get(product.sku);
+        if (!productId) continue;
+        const categorySlugs = resolveCategorySlugs(transformed, categoryMap);
+        if (categorySlugs.length === 0 && !canonicalUpdates.has(productId)) {
+            canonicalUpdates.set(productId, null);
+        }
+    }
+    if (canonicalUpdates.size > 0) {
+        console.log(`[Batch Import] Updating canonical_category_id for ${canonicalUpdates.size} products...`);
+        // Batch: set canonical per product
+        const setToNull: string[] = [];
+        const setToId = new Map<string, string[]>(); // categoryId -> productId[]
+        for (const [productId, categoryId] of canonicalUpdates) {
+            if (categoryId === null) {
+                setToNull.push(productId);
+            } else {
+                const list = setToId.get(categoryId) ?? [];
+                list.push(productId);
+                setToId.set(categoryId, list);
+            }
+        }
+
+        const updateBatch = async (productIds: string[], canonicalId: string | null) => {
+            const chunks = chunk(productIds, 100);
+            for (const ids of chunks) {
+                const { error } = await supabase
+                    .from('products')
+                    .update({ canonical_category_id: canonicalId })
+                    .in('id', ids);
+                if (error) {
+                    console.error(`[Batch Import] Failed to bulk-update canonical_category_id: ${error.message}`);
+                }
+            }
+        };
+
+        if (setToNull.length > 0) await updateBatch(setToNull, null);
+        for (const [categoryId, productIds] of setToId) {
+            await updateBatch(productIds, categoryId);
+        }
+    }
 
     console.log(`[Batch Import] Inserting ${petTypesToInsert.length} pet type links...`);
     await deleteAndInsertRelations(supabase, 'product_pet_types', petTypesToInsert);
@@ -450,7 +521,7 @@ async function loadReferenceData(supabase: SupabaseClient) {
     ] = await Promise.all([
         fetchAll<{id: string, sku: string, slug: string}>(supabase, 'products', 'id, sku, slug'),
         fetchAll<{id: string, name: string}>(supabase, 'brands', 'id, name'),
-        fetchAll<{id: string, name: string, slug: string}>(supabase, 'categories', 'id, name, slug'),
+        fetchAll<{id: string, name: string, slug: string, depth: number | null, sort_order: number | null}>(supabase, 'categories', 'id, name, slug, depth, sort_order'),
         fetchAll<{id: string, name: string}>(supabase, 'pet_types', 'id, name'),
         fetchAll<{id: string, name: string}>(supabase, 'facet_definitions', 'id, name'),
         fetchAll<{id: string, facet_definition_id: string, normalized_value: string}>(supabase, 'facet_values', 'id, facet_definition_id, normalized_value'),
@@ -470,6 +541,12 @@ async function loadReferenceData(supabase: SupabaseClient) {
 
     const brandMap = new Map(brandsData.map((b) => [b.name, b.id]));
     const categoryMap = new Map(categoriesData.map((c) => [c.slug, c.id]));
+    const categoryMetaById = new Map(
+        categoriesData.map((c) => [
+            c.id,
+            { depth: c.depth ?? 0, sort_order: c.sort_order ?? 0, slug: c.slug },
+        ]),
+    );
     const petTypeMap = new Map(petTypesData.map((p) => [p.name, p.id]));
     const facetDefinitionMap = new Map(
         facetDefinitionsData.map((d) => [d.name as GenericFacetName, d.id]),
@@ -485,6 +562,7 @@ async function loadReferenceData(supabase: SupabaseClient) {
         productIdBySku,
         brandMap,
         categoryMap,
+        categoryMetaById,
         petTypeMap,
         facetDefinitionMap,
         facetValueMap,
@@ -494,13 +572,12 @@ async function loadReferenceData(supabase: SupabaseClient) {
 function logShopSiteFieldCoverage(products: SuccessfulTransformedProduct[]): void {
     const withCategory = products.filter(({ transformed }) => !!transformed.category_name).length;
     const withProductType = products.filter(({ transformed }) => !!transformed.product_type).length;
-    const withPages = products.filter(({ transformed }) => transformed.shopsite_pages.length > 0).length;
     const withGenericFacet = products.filter(({ transformed }) =>
         GENERIC_FACET_INPUTS.some(({ transformedKey }) => !!transformed[transformedKey])
     ).length;
 
     console.log(
-        `[Batch Import] ShopSite field coverage: PF24 categories=${withCategory}, PF25 product types=${withProductType}, ProductOnPages=${withPages}, generic facets=${withGenericFacet}`,
+        `[Batch Import] ShopSite field coverage: PF24 categories=${withCategory}, PF25 product types=${withProductType}, generic facets=${withGenericFacet}`,
     );
 }
 
@@ -511,10 +588,6 @@ function resolveCategorySlugs(
     const slugs = new Set<string>();
 
     addMappedCategorySlugs(slugs, categoryMap, transformed.category_name, transformed.product_type);
-
-    for (const pageName of transformed.shopsite_pages) {
-        addMappedCategorySlugs(slugs, categoryMap, pageName, transformed.product_type);
-    }
 
     return Array.from(slugs);
 }

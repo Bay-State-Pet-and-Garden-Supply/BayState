@@ -14,7 +14,6 @@ type FinalizationStockStatus =
 export interface FinalizationDraft {
   name: string;
   description: string;
-  longDescription: string;
   price: string;
   weight: string;
   brandId: string;
@@ -25,18 +24,29 @@ export interface FinalizationDraft {
   minimumQuantity: string;
   searchKeywords: string;
   gtin: string;
-  productOnPages: string[];
-  isSpecialOrder: boolean;
   customImageUrl: string;
   selectedImages: string[];
   customSourceUrl: string;
   sources: Record<string, unknown>;
+  // Product Details
+  petType: string;
+  lifeStage: string;
+  petSize: string;
+  specialDiet: string;
+  healthFeature: string;
+  foodForm: string;
+  flavor: string;
+  productFeature: string;
+  size: string;
+  color: string;
+  packagingType: string;
+  isSpecialOrder: boolean;
+  inStorePickup: boolean;
 }
 
 export const EMPTY_FINALIZATION_DRAFT: FinalizationDraft = {
   name: "",
   description: "",
-  longDescription: "",
   price: "",
   weight: "",
   brandId: "none",
@@ -47,18 +57,29 @@ export const EMPTY_FINALIZATION_DRAFT: FinalizationDraft = {
   minimumQuantity: "0",
   searchKeywords: "",
   gtin: "",
-  productOnPages: [],
-  isSpecialOrder: false,
   customImageUrl: "",
   selectedImages: [],
   customSourceUrl: "",
   sources: {},
+  // Product Details
+  petType: "",
+  lifeStage: "",
+  petSize: "",
+  specialDiet: "",
+  healthFeature: "",
+  foodForm: "",
+  flavor: "",
+  productFeature: "",
+  size: "",
+  color: "",
+  packagingType: "",
+  isSpecialOrder: false,
+  inStorePickup: true,
 };
 
 export const finalizationDraftSchema = z.object({
   name: z.string(),
   description: z.string(),
-  longDescription: z.string(),
   price: z.string(),
   weight: z.string(),
   brandId: z.string(),
@@ -69,12 +90,23 @@ export const finalizationDraftSchema = z.object({
   minimumQuantity: z.string(),
   searchKeywords: z.string(),
   gtin: z.string(),
-  productOnPages: z.array(z.string()),
-  isSpecialOrder: z.boolean(),
   customImageUrl: z.string(),
   selectedImages: z.array(z.string()),
   customSourceUrl: z.string(),
   sources: z.record(z.string(), z.unknown()),
+  petType: z.string(),
+  lifeStage: z.string(),
+  petSize: z.string(),
+  specialDiet: z.string(),
+  healthFeature: z.string(),
+  foodForm: z.string(),
+  flavor: z.string(),
+  productFeature: z.string(),
+  size: z.string(),
+  color: z.string(),
+  packagingType: z.string(),
+  isSpecialOrder: z.boolean(),
+  inStorePickup: z.boolean(),
 });
 
 const nullableUnknownRecordSchema = z.record(z.string(), z.unknown()).nullable();
@@ -104,31 +136,6 @@ function toTrimmedString(value: unknown): string {
   return "";
 }
 
-function parseProductOnPages(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return Array.from(
-      new Set(
-        value
-          .filter((entry): entry is string => typeof entry === "string")
-          .map((entry) => entry.trim())
-          .filter(Boolean),
-      ),
-    );
-  }
-
-  if (typeof value === "string") {
-    return Array.from(
-      new Set(
-        value
-          .split("|")
-          .map((entry) => entry.trim())
-          .filter(Boolean),
-      ),
-    );
-  }
-
-  return [];
-}
 
 function toFinalizationStockStatus(value: unknown): FinalizationStockStatus {
   if (
@@ -198,9 +205,6 @@ export function buildInitialFinalizationDraft(
   return {
     name: toTrimmedString(consolidated.name ?? input.name),
     description: toTrimmedString(consolidated.description ?? input.description),
-    longDescription: toTrimmedString(
-      consolidated.long_description ?? input.long_description,
-    ),
     price: toTrimmedString(consolidated.price ?? input.price),
     weight: toTrimmedString(consolidated.weight ?? input.weight),
     brandId: toTrimmedString(consolidated.brand_id) || "none",
@@ -213,20 +217,25 @@ export function buildInitialFinalizationDraft(
     minimumQuantity: toTrimmedString(consolidated.minimum_quantity ?? input.minimum_quantity) || "0",
     searchKeywords: toTrimmedString(consolidated.search_keywords ?? input.search_keywords),
     gtin: product.sku,
-    productOnPages: parseProductOnPages(
-      consolidated.shopsite_pages ??
-        consolidated.product_on_pages ??
-        input.shopsite_pages ??
-        input.product_on_pages,
-    ),
-    isSpecialOrder: Boolean(
-      consolidated.is_special_order ?? input.is_special_order,
-    ),
     customImageUrl: "",
     selectedImages:
       consolidatedImages.length > 0 ? consolidatedImages : metadataSelectedImages,
     customSourceUrl: "",
     sources: product.sources || {},
+    // Product Details
+    petType: toTrimmedString(consolidated.pet_type ?? input.pet_type),
+    lifeStage: toTrimmedString(consolidated.lifestage ?? consolidated.life_stage ?? input.lifestage ?? input.life_stage),
+    petSize: toTrimmedString(consolidated.pet_size ?? input.pet_size),
+    specialDiet: toTrimmedString(consolidated.special_diet ?? input.special_diet),
+    healthFeature: toTrimmedString(consolidated.health_feature ?? input.health_feature),
+    foodForm: toTrimmedString(consolidated.food_form ?? input.food_form),
+    flavor: toTrimmedString(consolidated.flavor ?? input.flavor),
+    productFeature: toTrimmedString(consolidated.product_feature ?? input.product_feature),
+    size: toTrimmedString(consolidated.size ?? input.size),
+    color: toTrimmedString(consolidated.color ?? input.color),
+    packagingType: toTrimmedString(consolidated.packaging_type ?? input.packaging_type),
+    isSpecialOrder: !!(consolidated.is_special_order ?? input.is_special_order),
+    inStorePickup: !!(consolidated.in_store_pickup ?? input.in_store_pickup ?? true),
   };
 }
 
@@ -252,7 +261,6 @@ export function createPersistedFinalizationDraftSnapshot(
     ...draft,
     name: draft.name.trim(),
     description: draft.description.trim(),
-    longDescription: draft.longDescription.trim(),
     price: draft.price.trim(),
     weight: draft.weight.trim(),
     brandId: draft.brandId || "none",
@@ -263,11 +271,21 @@ export function createPersistedFinalizationDraftSnapshot(
     minimumQuantity: String(parseNonNegativeInt(draft.minimumQuantity)),
     searchKeywords: draft.searchKeywords.trim(),
     gtin: draft.gtin.trim(),
-    productOnPages: parseProductOnPages(draft.productOnPages),
     customImageUrl: "",
     selectedImages: toFinalizationImageArray(draft.selectedImages),
     customSourceUrl: "",
     sources: draft.sources,
+    petType: draft.petType.trim(),
+    lifeStage: draft.lifeStage.trim(),
+    petSize: draft.petSize.trim(),
+    specialDiet: draft.specialDiet.trim(),
+    healthFeature: draft.healthFeature.trim(),
+    foodForm: draft.foodForm.trim(),
+    flavor: draft.flavor.trim(),
+    productFeature: draft.productFeature.trim(),
+    size: draft.size.trim(),
+    color: draft.color.trim(),
+    packagingType: draft.packagingType.trim(),
   };
 }
 
@@ -279,20 +297,28 @@ export function buildConsolidatedPayloadFromDraft(
   return {
     name: snapshot.name,
     description: normalizeOptionalText(snapshot.description),
-    long_description: normalizeOptionalText(snapshot.longDescription),
     price: parseNonNegativeFloat(snapshot.price),
     brand_id: snapshot.brandId === "none" ? null : snapshot.brandId,
     brand: normalizeOptionalText(snapshot.brandName),
     category: normalizeOptionalText(snapshot.category),
     stock_status: snapshot.stockStatus,
-    is_special_order: snapshot.isSpecialOrder,
     weight: normalizeOptionalText(snapshot.weight),
-    shopsite_pages: snapshot.productOnPages,
-    product_on_pages: snapshot.productOnPages,
     images: snapshot.selectedImages,
     search_keywords: normalizeOptionalText(snapshot.searchKeywords),
     gtin: normalizeOptionalText(snapshot.gtin),
     availability: normalizeOptionalText(snapshot.availability) ?? "in stock",
     minimum_quantity: parseNonNegativeInt(snapshot.minimumQuantity),
+    // Product Details
+    pet_type: normalizeOptionalText(snapshot.petType),
+    life_stage: normalizeOptionalText(snapshot.lifeStage),
+    pet_size: normalizeOptionalText(snapshot.petSize),
+    special_diet: normalizeOptionalText(snapshot.specialDiet),
+    health_feature: normalizeOptionalText(snapshot.healthFeature),
+    food_form: normalizeOptionalText(snapshot.foodForm),
+    flavor: normalizeOptionalText(snapshot.flavor),
+    product_feature: normalizeOptionalText(snapshot.productFeature),
+    size: normalizeOptionalText(snapshot.size),
+    color: normalizeOptionalText(snapshot.color),
+    packaging_type: normalizeOptionalText(snapshot.packagingType),
   };
 }

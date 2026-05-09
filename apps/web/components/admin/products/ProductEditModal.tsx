@@ -55,7 +55,6 @@ export interface PublishedProduct {
     name: string;
     slug: string;
     description: string | null;
-    long_description?: string | null;
     price: number;
     weight?: string | null;
     brand_id: string | null;
@@ -116,7 +115,6 @@ function ProductEditModal({
     const [slug, setSlug] = useState(singleProduct?.slug || '');
     const [sku, setSku] = useState(singleProduct?.sku || '');
     const [description, setDescription] = useState(singleProduct?.description || '');
-    const [longDescription, setLongDescription] = useState(singleProduct?.long_description || '');
     const [price, setPrice] = useState(singleProduct ? String(singleProduct.price) : '');
     const [weight, setWeight] = useState(singleProduct?.weight || '');
     const [gtin, setGtin] = useState(singleProduct?.gtin || '');
@@ -274,7 +272,6 @@ function ProductEditModal({
                 formData.append('slug', slug.trim());
                 formData.append('sku', sku.trim());
                 formData.append('description', description.trim());
-                formData.append('long_description', longDescription.trim());
                 formData.append('price', price);
                 formData.append('weight', weight.trim());
                 formData.append('gtin', gtin.trim());
@@ -409,10 +406,6 @@ function ProductEditModal({
                                             <div className="flex flex-col gap-2.5">
                                                 <Label htmlFor="description" className="text-foreground/80">Short Description</Label>
                                                 <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} disabled={isBulkEdit} placeholder={placeholderText || "Brief summary"} rows={3} className={cn("resize-none", isBulkEdit && "opacity-50")} />
-                                            </div>
-                                            <div className="flex flex-col gap-2.5">
-                                                <Label htmlFor="longDescription" className="text-foreground/80">Long Description</Label>
-                                                <Textarea id="longDescription" value={longDescription} onChange={(e) => setLongDescription(e.target.value)} disabled={isBulkEdit} placeholder={placeholderText || "Detailed features and information"} rows={6} className={cn(isBulkEdit && "opacity-50")} />
                                             </div>
                                         </CardContent>
                                     </Card>

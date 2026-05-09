@@ -81,18 +81,6 @@ export function ProductInfoForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="product-long-description" className="text-[10px] font-semibold text-foreground">Long Description</Label>
-        <Textarea
-          id="product-long-description"
-          value={formData.longDescription}
-          onChange={(e) => handleInputChange("longDescription", e.target.value)}
-          placeholder="Extended product description (optional)..."
-          rows={4}
-          className="border border-border rounded-none focus-visible:ring-primary font-bold text-xs resize-y min-h-[80px]"
-        />
-      </div>
-
-      <div className="space-y-1.5">
         <Label htmlFor="product-search-keywords" className="text-[10px] font-semibold text-foreground">Search Keywords</Label>
         <Input
           id="product-search-keywords"

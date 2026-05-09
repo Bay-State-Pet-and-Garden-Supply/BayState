@@ -156,7 +156,8 @@ export function StorefrontHeader({
     return { topLevel, childrenMap };
   }, [categories]);
 
-  const primaryNavCategories = topLevel.filter((category) => category.is_featured);
+  // Show all top-level departments (active categories only, inactive filtered by getNavCategories)
+  const primaryNavCategories = topLevel;
 
   // --- More Menu Logic ---
   const allNavItems = useMemo(() => [

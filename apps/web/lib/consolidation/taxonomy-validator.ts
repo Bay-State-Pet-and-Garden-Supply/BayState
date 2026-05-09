@@ -135,6 +135,9 @@ export function validateCategory(value: string | undefined | null, validCategori
 const REQUIRED_STRING_FIELDS = [
     'name',
     'brand',
+    'category',
+    'description',
+    'search_keywords',
 ] as const;
 
 export function validateRequiredConsolidationFields(result: Record<string, unknown>): Record<string, unknown> {
@@ -171,8 +174,7 @@ export function validateRequiredConsolidationFields(result: Record<string, unkno
  * This can be wrapped for OpenAI Structured Outputs or passed directly to Gemini.
  */
 export function buildResponseSchema(
-    categories: string[],
-    shopsitePages: string[] = []
+    categories: string[]
 ): object {
     return {
         type: 'object',
@@ -189,14 +191,6 @@ export function buildResponseSchema(
                 type: ['string', 'null'],
                 description: 'Primary package size/weight/count as a numeric string with up to 2 decimal places and no units. Use null when no trustworthy weight is available.',
             },
-            product_on_pages: {
-                type: 'array',
-                items: {
-                    type: 'string',
-                    ...(shopsitePages.length > 0 ? { enum: shopsitePages } : {}),
-                },
-                description: 'Store pages this product should appear on, using exact page names from the provided list',
-            },
             confidence_score: {
                 type: 'number',
                 description: 'Confidence score between 0.0 and 1.0',
@@ -210,16 +204,12 @@ export function buildResponseSchema(
                 type: 'string',
                 description: 'Short product description from highest-trust source',
             },
-            long_description: {
-                type: 'string',
-                description: 'Extended product description when source-supported',
-            },
             search_keywords: {
                 type: 'string',
                 description: 'Comma-separated search keywords from source data',
             },
         },
-        required: ['name', 'brand', 'weight', 'product_on_pages', 'confidence_score', 'category', 'description', 'long_description', 'search_keywords'],
+        required: ['name', 'brand', 'weight', 'confidence_score', 'category', 'description', 'search_keywords'],
         additionalProperties: false,
     };
 }

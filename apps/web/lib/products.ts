@@ -30,6 +30,11 @@ interface ProductFilterOptions {
     ancestor_slugs: string[];
     ancestor_names: string[];
     is_leaf: boolean;
+    department_key: string | null;
+    facet_profile: string | null;
+    seo_title: string | null;
+    seo_description: string | null;
+    sort_order: number | null;
   }>;
   stockStatuses: Array<{ id: StorefrontVisibleStockStatus; label: string }>;
   dynamicFacets: FacetDefinition[];
@@ -65,7 +70,6 @@ const PRODUCT_SELECT = `
   name,
   slug,
   description,
-  long_description,
   price,
   stock_status,
   images,
@@ -73,7 +77,6 @@ const PRODUCT_SELECT = `
   is_taxable,
   weight,
   search_keywords,
-  shopsite_pages,
   shopsite_sync_status,
   shopsite_last_synced_at,
   shopsite_last_sync_error,
@@ -103,7 +106,6 @@ interface ProductRow {
   name: string;
   slug?: string;
   description?: string | null;
-  long_description?: string | null;
   price: number;
   stock_status?: string;
   images?: unknown;
@@ -111,7 +113,6 @@ interface ProductRow {
   is_taxable?: boolean | null;
   weight?: number | null;
   search_keywords?: string | null;
-  shopsite_pages?: unknown;
   shopsite_sync_status?: Product['shopsite_sync_status'];
   shopsite_last_synced_at?: string | null;
   shopsite_last_sync_error?: string | null;
@@ -185,7 +186,6 @@ function transformProductRow(row: ProductRow): Product {
     name: row.name,
     slug: row.slug ?? row.id,
     description: row.description ?? null,
-    long_description: row.long_description ?? null,
     price: Number(row.price),
     stock_status: (row.stock_status as Product['stock_status']) || 'in_stock',
     images: parseImages(row.images),
@@ -204,7 +204,6 @@ function transformProductRow(row: ProductRow): Product {
     gtin: row.gtin ?? null,
     availability: row.availability ?? null,
     minimum_quantity: row.minimum_quantity ?? 0,
-    shopsite_pages: parseShopsitePages(row.shopsite_pages),
     shopsite_sync_status: row.shopsite_sync_status ?? null,
     shopsite_last_synced_at: row.shopsite_last_synced_at ?? null,
     shopsite_last_sync_error: row.shopsite_last_sync_error ?? null,
@@ -242,6 +241,7 @@ async function resolveCategoryIds(
       .from('categories')
       .select('id')
       .eq('slug', options.categorySlug)
+      .eq('is_active', true)
       .single();
 
     if (error || !category) {
@@ -255,10 +255,11 @@ async function resolveCategoryIds(
     return null;
   }
 
-  // Fetch all categories to build the tree in memory
+  // Fetch all active categories to build the tree in memory
   const { data: allCategories, error: catError } = await supabase
     .from('categories')
-    .select('id, parent_id');
+    .select('id, parent_id')
+    .eq('is_active', true);
 
   if (catError || !allCategories) {
     console.error('Error fetching categories for resolution:', catError);
@@ -325,27 +326,7 @@ function parseImages(images: unknown): string[] {
   return [];
 }
 
-/**
- * Parse shopsite pages from various formats (JSONB array, string array, etc.)
- */
-function parseShopsitePages(pages: unknown): string[] {
-  if (!pages) return [];
-  if (Array.isArray(pages)) {
-    return pages.filter((page): page is string => typeof page === 'string');
-  }
-  if (typeof pages === 'string') {
-    try {
-      const parsed = JSON.parse(pages);
-      if (Array.isArray(parsed)) {
-        return parsed.filter((page): page is string => typeof page === 'string');
-      }
-    } catch {
-      // Not valid JSON, treat as single page
-      return pages.trim() ? [pages] : [];
-    }
-  }
-  return [];
-}
+
 
 /**
  * Fetches a single product by slug.
@@ -496,7 +477,8 @@ export async function getAvailableProductFilters(
   const
     categoriesQuery = supabase
       .from('categories')
-      .select('id, name, slug, parent_id, display_order, image_url, is_featured')
+      .select('id, name, slug, parent_id, department_key, depth, breadcrumb, facet_profile, seo_title, seo_description, display_order, sort_order, image_url, is_featured')
+      .eq('is_active', true)
       .order('display_order');
   const
     brandsQuery = applyFilters(
@@ -878,7 +860,7 @@ export async function getProductGroupBySlug(
     .select(`
       *,
       product:products!inner(
-        id, sku, name, slug, description, long_description, price,
+        id, sku, name, slug, description, price,
         stock_status, images, brand_id, is_special_order, is_taxable,
         weight, search_keywords, shopsite_pages,
         published_at, gtin, availability, minimum_quantity, quantity,
@@ -923,7 +905,6 @@ export async function getProductGroupBySlug(
       name: product.name as string,
       slug: product.slug as string,
       description: product.description as string | null,
-      long_description: product.long_description as string | null,
       price: Number(product.price),
       stock_status: (product.stock_status as Product['stock_status']) || 'in_stock',
       images: parseImages(product.images),
@@ -948,7 +929,6 @@ export async function getProductGroupBySlug(
         typeof product.minimum_quantity === 'number'
           ? (product.minimum_quantity as number)
           : 0,
-      shopsite_pages: parseImages(product.shopsite_pages),
     };
 
     members.push({ member, product: productData });

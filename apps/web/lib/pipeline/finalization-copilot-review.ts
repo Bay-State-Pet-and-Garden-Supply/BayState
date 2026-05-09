@@ -14,7 +14,6 @@ function cloneFinalizationDraft(
 ): FinalizationDraft {
   return {
     ...draft,
-    productOnPages: [...draft.productOnPages],
     selectedImages: [...draft.selectedImages],
   };
 }

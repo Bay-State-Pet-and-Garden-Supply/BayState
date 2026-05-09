@@ -4,7 +4,6 @@ import {
   replaceInlineImageDataUrls,
 } from "@/lib/product-image-storage";
 import { buildProductSlug } from "@/lib/shopsite/mapping";
-import { parseShopSitePages } from "@/lib/shopsite/constants";
 
 const STOREFRONT_PUBLISHABLE_STATUS = "finalizing";
 const DEFAULT_AVAILABILITY_TEXT = "in stock";
@@ -102,17 +101,6 @@ function resolveStorefrontName(
   return coalesceString(consolidated.name, input.name);
 }
 
-function resolveShopSitePages(
-  consolidated: JsonRecord,
-  input: JsonRecord,
-): string[] {
-  return parseShopSitePages(
-    consolidated.shopsite_pages ??
-      consolidated.product_on_pages ??
-      input.shopsite_pages ??
-      input.product_on_pages,
-  );
-}
 
 export async function publishToStorefront(sku: string) {
   const supabase = await createClient();
@@ -191,10 +179,6 @@ export async function publishToStorefront(sku: string) {
       name,
       slug,
       description: coalesceString(consolidated.description, input.description),
-      long_description: coalesceString(
-        consolidated.long_description,
-        input.long_description,
-      ),
       price: parseNonNegativeNumber(consolidated.price, input.price) ?? 0,
       brand_id: coalesceString(consolidated.brand_id),
       stock_status:
@@ -212,7 +196,6 @@ export async function publishToStorefront(sku: string) {
         consolidated.search_keywords,
         input.search_keywords,
       ),
-      shopsite_pages: resolveShopSitePages(consolidated, input),
       published_at: new Date().toISOString(),
       gtin: coalesceString(consolidated.gtin, input.gtin, sku),
       availability:

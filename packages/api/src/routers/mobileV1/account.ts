@@ -50,12 +50,12 @@ export const accountRouter = t.router({
   }),
 
   listWishlist: protectedProcedure.query(async ({ ctx }) => {
-    const products = await ctx.services.account.listWishlist(ctx.user.id)
+    const products = await ctx.services.account.listFavorites(ctx.user.id)
     return { products }
   }),
 
   toggleWishlist: protectedProcedure.input(productIdInputSchema).mutation(async ({ ctx, input }) => {
-    const action = await ctx.services.account.toggleWishlist(ctx.user.id, input.productId)
+    const action = await ctx.services.account.toggleFavorites(ctx.user.id, input.productId)
     return { success: true, action }
   }),
 

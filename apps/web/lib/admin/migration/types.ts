@@ -75,7 +75,6 @@ export interface ShopSiteProduct {
     outOfStockLimit?: number;         // <OutOfStockLimit>
     minimumQuantity?: number;         // <MinimumQuantity>
     googleProductCategory?: string;   // <GoogleProductCategory>
-    shopsitePages?: string[];         // <ProductOnPages>
     // Raw payload may still contain audit-only fields like ProductField31.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rawXml?: any;                     // To store in shopsite_data

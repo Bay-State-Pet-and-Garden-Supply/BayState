@@ -7,7 +7,7 @@ import {
   normalizeCategoryValue,
   normalizeProductTypeValue,
 } from "@/lib/facets/normalization";
-import { parseShopSitePages } from "./constants";
+import { parseShopSitePages, SHOPSITE_PAGES } from "./constants";
 import type { ShopSiteExportProduct } from "./xml-generator";
 
 export interface ShopSiteExportSourceRow {
@@ -39,13 +39,11 @@ export interface ShopSiteStorefrontProductRecord {
   short_name: string | null;
   is_special_order: boolean;
   in_store_pickup: boolean;
-  shopsite_pages: string[];
   weight: number | null;
   quantity: number;
   low_stock_threshold: number | null;
   is_taxable: boolean;
   minimum_quantity: number;
-  long_description: string | null;
   product_type: string | null;
   search_keywords: string | null;
   brand_name: string | null;
@@ -67,10 +65,7 @@ export interface ShopSiteStorefrontProductRecord {
 export interface ShopSitePipelineInput {
   name: string;
   price: number;
-  product_on_pages: string[];
-  shopsite_pages: string[];
   description?: string | null;
-  long_description?: string | null;
   short_name?: string | null;
   category?: string | null;
   product_type?: string | null;
@@ -356,10 +351,6 @@ export function preparePipelineRowsForShopSiteExport(
       weight: coalesceString(consolidated.weight, input.weight),
       brand_name: brandName,
       description: coalesceString(consolidated.description, input.description),
-      long_description: coalesceString(
-        consolidated.long_description,
-        input.long_description,
-      ),
       images,
       image_sources: imageSources,
       brand_folder: brandFolder,
@@ -368,12 +359,17 @@ export function preparePipelineRowsForShopSiteExport(
         consolidated.product_type,
         input.product_type,
       ),
-      shopsite_pages: parseShopSitePages(
-        consolidated.shopsite_pages ??
-          consolidated.product_on_pages ??
-          input.shopsite_pages ??
-          input.product_on_pages,
-      ),
+      shopsite_pages: (() => {
+        const manualPages = parseShopSitePages(
+          consolidated.shopsite_pages ??
+            input.shopsite_pages,
+        );
+        if (manualPages.length > 0) return manualPages;
+        
+        return inferShopSitePagesFromCategory(
+          coalesceString(consolidated.category, input.category)
+        );
+      })(),
       search_keywords: coalesceString(
         consolidated.search_keywords,
         input.search_keywords,
@@ -395,6 +391,97 @@ export function preparePipelineRowsForShopSiteExport(
         ) ?? 0,
     };
   });
+}
+
+/**
+ * Infers ShopSite pages from a category breadcrumb.
+ * Mapping logic based on category names and structures to automate page assignment.
+ */
+export function inferShopSitePagesFromCategory(category: string | null): string[] {
+  if (!category) {
+    return [];
+  }
+
+  const pages: string[] = [];
+  const normalized = category.toLowerCase().trim();
+  
+  // Split into segments (e.g. "Cat Food > Dry" -> ["cat food", "dry"])
+  const segments = normalized.split(/\s*>\s*/).map(s => s.trim());
+  const mainCategory = segments[0];
+  const subCategory = segments.length > 1 ? segments[1] : null;
+  
+  // Mapping logic based on new retail taxonomy departments+subcategories
+  // New breadcrumbs: "Dog > Food", "Cat > Litter", "Pet Bird > Food", "Horse > Feed", etc.
+  if (mainCategory.includes('dog food')) {
+    pages.push('Dog Food Shop All');
+    if (subCategory?.includes('dry')) pages.push('Dog Food Dry');
+    if (subCategory?.includes('wet')) pages.push('Dog Food Wet');
+    if (subCategory?.includes('raw')) pages.push('Dog Food Raw');
+    if (subCategory?.includes('treat')) pages.push('Dog Treats Shop All');
+  } else if (mainCategory.includes('cat food')) {
+    pages.push('Cat Food Shop All');
+    if (subCategory?.includes('dry')) pages.push('Cat Food Dry');
+    if (subCategory?.includes('wet')) pages.push('Cat Food Wet');
+    if (subCategory?.includes('raw')) pages.push('Cat Food Raw');
+    if (subCategory?.includes('treat')) pages.push('Cat Treats');
+  } else if (mainCategory.includes('dog treats') || (mainCategory === 'dog' && subCategory?.includes('treat'))) {
+    pages.push('Dog Treats Shop All');
+    if (subCategory?.includes('biscuits')) pages.push('Dog Treats Biscuits Cookies & Crunchy Treats');
+    if (subCategory?.includes('bones') || subCategory?.includes('chews')) pages.push('Dog Treats Bones Bully Sticks & Natural Chews');
+    if (subCategory?.includes('soft') || subCategory?.includes('chewy')) pages.push('Dog Treats Soft & Chewy');
+    if (subCategory?.includes('dental')) pages.push('Dog Dental Treats');
+    if (subCategory?.includes('jerky')) pages.push('Jerky Dog Treats');
+  } else if (mainCategory === 'horse' || mainCategory.includes('horse feed') || mainCategory.includes('horse treats')) {
+    pages.push('Horse Feed & Treats Shop All');
+    if (subCategory?.includes('feed') || normalized.includes('horse feed')) pages.push('Horse Feed');
+    if (subCategory?.includes('treat') || normalized.includes('horse treats')) pages.push('Horse Treats');
+  } else if (mainCategory.includes('wild bird')) {
+    pages.push('Wild Bird Food Shop All');
+    if (subCategory?.includes('seed') || subCategory?.includes('wild bird food')) pages.push('Wild Bird Seed & Seed Mixes');
+    if (subCategory?.includes('suet') || subCategory?.includes('mealworm')) pages.push('Wild Bird Suet & Mealworms');
+  } else if (mainCategory.includes('pet bird') || mainCategory.includes('caged bird')) {
+    pages.push('Caged Bird Food & Supplies Shop All');
+    if (subCategory?.includes('food')) pages.push('Caged Bird Food');
+    if (subCategory?.includes('toys')) pages.push('Caged Bird Toys');
+    if (subCategory?.includes('treat')) pages.push('Caged Bird Treats');
+  } else if (mainCategory.includes('small pet')) {
+    pages.push('Small Pet Food & Supplies Shop All');
+    if (subCategory?.includes('food')) pages.push('Small Pet Food');
+    if (subCategory?.includes('bedding')) pages.push('Small Pet Bedding & Litter');
+    if (subCategory?.includes('hay')) pages.push('Small Pet Hay');
+    if (subCategory?.includes('treat')) pages.push('Small Pet Treats');
+  } else if (mainCategory === 'chicken' || mainCategory.includes('poultry')) {
+    pages.push('Farm Animal Chicken & Poultry');
+    if (subCategory?.includes('feed')) pages.push('Farm Animal Shop All');
+  } else if (mainCategory.includes('farm') || mainCategory.includes('livestock') || mainCategory.includes('barn supplies')) {
+    pages.push('Barn Supplies Shop All');
+    if (subCategory?.includes('buckets') || subCategory?.includes('feeder') || subCategory?.includes('water')) pages.push('Barn Supplies Buckets & Feeders');
+    if (subCategory?.includes('fence') || subCategory?.includes('gate') || subCategory?.includes('handling')) pages.push('Barn Supplies Farm Gates & Fencing');
+    if (subCategory?.includes('tools')) pages.push('Barn Supplies Tools & Equipment');
+  } else if (mainCategory.includes('lawn') || mainCategory.includes('garden')) {
+    pages.push('Lawn & Garden Shop All');
+    if (subCategory?.includes('care')) pages.push('Lawn Care');
+    if (subCategory?.includes('pest')) pages.push('Pest Control & Animal Repellents');
+    if (subCategory?.includes('seed')) pages.push('Seeds & Seed Starting');
+  } else if (mainCategory.includes('home') || mainCategory.includes('heating')) {
+    pages.push('Home Shop All');
+    if (subCategory?.includes('heating') || subCategory?.includes('fuel') || subCategory?.includes('pellet')) pages.push('Heating');
+    if (subCategory?.includes('pest')) pages.push('Pest Control');
+  } else if (mainCategory.includes('tool') || mainCategory.includes('hardware')) {
+    pages.push('Hardware');
+  }
+
+  // Fallback: If no pages inferred yet, try to find a direct case-insensitive match in SHOPSITE_PAGES
+  if (pages.length === 0) {
+    const directMatch = SHOPSITE_PAGES.find(p => p.toLowerCase() === normalized);
+    if (directMatch) {
+      pages.push(directMatch);
+    }
+  }
+
+  // Deduplicate and filter against SHOPSITE_PAGES to ensure valid output
+  const validPages = new Set<string>(SHOPSITE_PAGES);
+  return Array.from(new Set(pages)).filter(p => validPages.has(p));
 }
 
 export function transformShopSiteProductToStorefrontRecord(
@@ -427,13 +514,11 @@ export function transformShopSiteProductToStorefrontRecord(
     short_name: product.shortName?.trim() || null,
     is_special_order: !!product.isSpecialOrder,
     in_store_pickup: !!product.inStorePickup,
-    shopsite_pages: parseShopSitePages(product.shopsitePages || []),
     weight: product.weight || null,
     quantity: product.quantityOnHand || 0,
     low_stock_threshold: product.lowStockThreshold ?? 5,
     is_taxable: true,
     minimum_quantity: Math.max(product.minimumQuantity ?? 0, 0),
-    long_description: product.moreInfoText || null,
     product_type: normalizeProductTypeValue(product.productTypeName),
     search_keywords: product.searchKeywords || null,
     brand_name: normalizeBrandName(product.brandName),
@@ -462,10 +547,7 @@ export function buildPipelineInputFromTransformedShopSiteProduct(
   return {
     name: transformed.name,
     price: transformed.price,
-    product_on_pages: transformed.shopsite_pages,
-    shopsite_pages: transformed.shopsite_pages,
     description: transformed.description,
-    long_description: transformed.long_description,
     short_name: transformed.short_name,
     category: transformed.category_name,
     product_type: transformed.product_type,

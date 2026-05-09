@@ -25,7 +25,6 @@ export interface Product {
   name: string;
   slug: string;
   description: string | null;
-  long_description?: string | null;
   price: number;
   stock_status: 'in_stock' | 'out_of_stock' | 'pre_order';
   images: string[];
@@ -44,7 +43,6 @@ export interface Product {
   gtin?: string | null;
   availability?: string | null;
   minimum_quantity?: number | null;
-  shopsite_pages?: string[] | null;
   shopsite_sync_status?: ShopSiteSyncStatus | null;
   shopsite_last_synced_at?: string | null;
   shopsite_last_sync_error?: string | null;
@@ -74,6 +72,18 @@ interface Category {
   description: string | null;
   image_url: string | null;
   created_at: string;
+  department_key?: string | null;
+  depth?: number | null;
+  breadcrumb?: string | null;
+  facet_profile?: string | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
+  synonym_keywords?: string[] | null;
+  sort_order?: number | null;
+  is_active?: boolean | null;
+  display_order?: number | null;
+  is_featured?: boolean | null;
+  updated_at?: string;
 }
 
 export interface PetType {
@@ -83,7 +93,26 @@ export interface PetType {
   icon: string | null;
 }
 
-export type PetLifeStage = 'puppy' | 'kitten' | 'juvenile' | 'adult' | 'senior';
+export type PetLifeStage = 'puppy' | 'kitten' | 'juvenile' | 'adult' | 'senior' | 'chick' | 'layer' | 'starter-grower' | 'all-life-stages';
+
+export type CategoryRelationshipType = 'canonical' | 'secondary' | 'collection';
+
+export type FacetProfile =
+  | 'animal_food'
+  | 'animal_treats_chews'
+  | 'animal_feed_farm'
+  | 'animal_health_wellness'
+  | 'animal_toys_enrichment'
+  | 'animal_habitat_containment'
+  | 'animal_litter_bedding'
+  | 'grooming_cleaning'
+  | 'aquarium_equipment'
+  | 'reptile_equipment'
+  | 'garden_consumable'
+  | 'garden_equipment'
+  | 'home_heating'
+  | 'hardware_tools'
+  | 'general';
 export type PetSizeClass = 'small' | 'medium' | 'large' | 'giant';
 export type PetSpecialNeed =
   | 'grain-free'
@@ -123,6 +152,10 @@ export const PET_LIFE_STAGES: { value: PetLifeStage; label: string; description:
   { value: 'juvenile', label: 'Juvenile', description: 'Young pets 1-2 years' },
   { value: 'adult', label: 'Adult', description: 'Fully grown pets' },
   { value: 'senior', label: 'Senior', description: 'Older pets 7+ years' },
+  { value: 'chick', label: 'Chick', description: 'Baby poultry' },
+  { value: 'layer', label: 'Layer', description: 'Egg-laying poultry' },
+  { value: 'starter-grower', label: 'Starter/Grower', description: 'Young poultry being raised for meat' },
+  { value: 'all-life-stages', label: 'All Life Stages', description: 'Suitable for all life stages' },
 ];
 
 export const PET_SIZE_CLASSES: { value: PetSizeClass; label: string; weightRange: string }[] = [

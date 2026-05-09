@@ -160,10 +160,63 @@ async function replaceProductCrossSells(
     };
 }
 
+interface CategoryMeta {
+    depth: number;
+    sort_order: number;
+    slug: string;
+}
+
+async function fetchCategoryMetas(
+    supabase: SupabaseClient,
+    categoryIds: string[],
+): Promise<Map<string, CategoryMeta>> {
+    if (categoryIds.length === 0) return new Map();
+
+    const { data, error } = await supabase
+        .from('categories')
+        .select('id, depth, sort_order, slug')
+        .in('id', categoryIds);
+
+    if (error) {
+        throw new Error(`Failed to fetch category metadata: ${error.message}`);
+    }
+
+    const map = new Map<string, CategoryMeta>();
+    for (const cat of data || []) {
+        map.set(cat.id, {
+            depth: cat.depth ?? 0,
+            sort_order: cat.sort_order ?? 0,
+            slug: cat.slug,
+        });
+    }
+    return map;
+}
+
+/**
+ * Choose the canonical category from a list of category IDs.
+ * Canonical is: deepest depth first, then lowest sort_order, then alphabetical slug.
+ */
+function chooseCanonicalCategory(
+    categoryIds: string[],
+    meta: Map<string, CategoryMeta>,
+): string | null {
+    const sorted = [...categoryIds]
+        .filter((id) => meta.has(id))
+        .map((id) => ({ id, m: meta.get(id)! }))
+        .sort((a, b) => {
+            if (a.m.depth !== b.m.depth) return b.m.depth - a.m.depth; // deepest first
+            if (a.m.sort_order !== b.m.sort_order) return a.m.sort_order - b.m.sort_order;
+            return a.m.slug.localeCompare(b.m.slug);
+        });
+
+    return sorted.length > 0 ? sorted[0].id : null;
+}
+
 async function replaceProductCategories(
     supabase: SupabaseClient,
     productId: string,
     categoryIds: string[],
+    categoryMetaMap?: Map<string, CategoryMeta> | null,
 ) {
     const { error: deleteError } = await supabase
         .from('product_categories')
@@ -176,21 +229,46 @@ async function replaceProductCategories(
 
     const dedupedCategoryIds = dedupeIds(categoryIds);
     if (dedupedCategoryIds.length === 0) {
+        // Clear canonical reference
+        const { error: clearError } = await supabase
+            .from('products')
+            .update({ canonical_category_id: null })
+            .eq('id', productId);
+
+        if (clearError) {
+            throw new Error(`Failed to clear canonical category: ${clearError.message}`);
+        }
         return;
     }
 
+    // Fetch category metadata if not provided
+    const meta = categoryMetaMap ?? (await fetchCategoryMetas(supabase, dedupedCategoryIds));
+
+    const canonicalId = chooseCanonicalCategory(dedupedCategoryIds, meta);
+
+    // Upsert all rows with relationship_type
+    const rows = dedupedCategoryIds.map((categoryId) => ({
+        product_id: productId,
+        category_id: categoryId,
+        relationship_type: categoryId === canonicalId ? 'canonical' : 'secondary',
+    }));
+
     const { error: linkError } = await supabase
         .from('product_categories')
-        .upsert(
-            dedupedCategoryIds.map((categoryId) => ({
-                product_id: productId,
-                category_id: categoryId,
-            })),
-            { onConflict: 'product_id, category_id' },
-        );
+        .upsert(rows, { onConflict: 'product_id, category_id' });
 
     if (linkError) {
         throw new Error(`Failed to link product categories: ${linkError.message}`);
+    }
+
+    // Update products.canonical_category_id
+    const { error: updateError } = await supabase
+        .from('products')
+        .update({ canonical_category_id: canonicalId })
+        .eq('id', productId);
+
+    if (updateError) {
+        throw new Error(`Failed to update canonical category: ${updateError.message}`);
     }
 }
 
@@ -476,11 +554,23 @@ export async function importShopSiteProducts({
         }
     }
 
+    // categoryMetaMap stores slug -> { id, depth, sort_order, slug } for canonical selection
+    const categoryMetaById = new Map<string, { depth: number; sort_order: number; slug: string }>();
+
     for (const slug of Array.from(categoryNames)) {
-        const { data: existing } = await supabase.from('categories').select('id').eq('slug', slug).single();
+        const { data: existing } = await supabase
+            .from('categories')
+            .select('id, depth, sort_order, slug')
+            .eq('slug', slug)
+            .single();
 
         if (existing) {
             categoryMap.set(slug, existing.id);
+            categoryMetaById.set(existing.id, {
+                depth: existing.depth ?? 0,
+                sort_order: existing.sort_order ?? 0,
+                slug: existing.slug,
+            });
         } else {
             console.warn(`[Import] Mapped category slug not found in DB: ${slug}`);
         }
@@ -564,7 +654,6 @@ export async function importShopSiteProducts({
                 short_name: transformed.short_name,
                 is_special_order: transformed.is_special_order,
                 in_store_pickup: transformed.in_store_pickup,
-                shopsite_pages: transformed.shopsite_pages,
                 weight: transformed.weight,
                 quantity: transformed.quantity,
                 low_stock_threshold: transformed.low_stock_threshold,
@@ -572,7 +661,6 @@ export async function importShopSiteProducts({
                 gtin: null,
                 availability: null,
                 minimum_quantity: transformed.minimum_quantity,
-                long_description: transformed.long_description,
                 search_keywords: transformed.search_keywords,
                 brand_id: null as string | null,
             };
@@ -615,7 +703,7 @@ export async function importShopSiteProducts({
                         if (categoryId) categoryIds.push(categoryId);
                     }
 
-                    await replaceProductCategories(supabase, upserted.id, categoryIds);
+                    await replaceProductCategories(supabase, upserted.id, categoryIds, categoryMetaById);
 
                     const resolvedPetTypes = resolveCanonicalPetTypes({
                         ...shopSiteProduct,

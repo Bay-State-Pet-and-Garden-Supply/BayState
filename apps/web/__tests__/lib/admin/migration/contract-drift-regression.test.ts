@@ -62,10 +62,6 @@ describe('ShopSite field mapping contract drift prevention', () => {
             expect(AUDIT_ONLY_PRODUCT_FIELDS).toContain('ProductField31');
         });
 
-        it('must define exactly 10 generic facet fields', () => {
-            expect(GENERIC_FACET_FIELDS).toHaveLength(10);
-        });
-
         it('must include correct fields in generic facet list', () => {
             const expectedFacetFields = [
                 'ProductField18',
