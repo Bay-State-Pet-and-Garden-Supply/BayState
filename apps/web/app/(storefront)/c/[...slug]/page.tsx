@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { type Metadata } from 'next';
 import { Fragment } from 'react';
 import { Home, Search } from 'lucide-react';
@@ -19,7 +19,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { getAvailableProductFilters, getFilteredProducts } from '@/lib/products';
-import { getCategoryBySlug, getNavCategories } from '@/lib/data';
+import { getCategoryBySlug, getNavCategories, getLegacyCategoryRedirectBySlug } from '@/lib/data';
 import { ProductCard } from '@/components/storefront/product-card';
 import { FacetSidebar } from '@/components/storefront/facet-sidebar';
 import { PageSizeSwitcher } from '@/components/storefront/page-size-switcher';
@@ -52,6 +52,9 @@ interface CategoryPageProps {
  * This also lets us support both `/c/dog-food` and `/c/dog/food` gracefully —
  * a single segment is the direct slug, and multi-segment paths will try the
  * last segment first, then fall back to joining with hyphens.
+ *
+ * As a final fallback, checks legacy_slug_redirects to support old category
+ * URLs (like /c/bird, /c/farm-animal) with 301 permanent redirects.
  */
 async function resolveCategory(slugSegments: string[]) {
   // Try the last segment first (primary usage: /c/dog-food)
@@ -62,7 +65,23 @@ async function resolveCategory(slugSegments: string[]) {
   // Fallback: join segments with hyphens (/c/dog/food → dog-food)
   if (slugSegments.length > 1) {
     const joinedSlug = slugSegments.join('-');
-    return getCategoryBySlug(joinedSlug);
+    const catByJoin = await getCategoryBySlug(joinedSlug);
+    if (catByJoin) return catByJoin;
+  }
+
+  // Legacy redirect lookup — check the last segment first
+  const legacyRedirect = await getLegacyCategoryRedirectBySlug(lastSegment);
+  if (legacyRedirect) {
+    return { ...legacyRedirect.category, _isLegacyRedirect: true } as typeof legacyRedirect.category & { _isLegacyRedirect: boolean };
+  }
+
+  // Fallback: try joined slug for legacy redirects (/c/farm/animal → farm-animal)
+  if (slugSegments.length > 1) {
+    const joinedSlug = slugSegments.join('-');
+    const legacyByJoin = await getLegacyCategoryRedirectBySlug(joinedSlug);
+    if (legacyByJoin) {
+      return { ...legacyByJoin.category, _isLegacyRedirect: true } as typeof legacyByJoin.category & { _isLegacyRedirect: boolean };
+    }
   }
 
   return null;
@@ -76,12 +95,13 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
     return { title: 'Category Not Found | Bay State Pet & Garden' };
   }
 
-  const description = category.description
-    ? category.description.slice(0, 160)
-    : `Shop ${category.name} at Bay State Pet & Garden Supply.`;
+  const description = category.seo_description
+    ?? (category.description
+      ? category.description.slice(0, 160)
+      : `Shop ${category.name} at Bay State Pet & Garden Supply.`);
 
   return {
-    title: `${category.name} | Bay State Pet & Garden`,
+    title: category.seo_title ?? `${category.name} | Bay State Pet & Garden`,
     description,
     openGraph: {
       title: category.name,
@@ -98,6 +118,11 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const { slug } = await params;
   const resolvedParams = await searchParams;
   const category = await resolveCategory(slug);
+
+  // Issue 301 permanent redirect for legacy slug matches
+  if (category && (category as any)._isLegacyRedirect) {
+    permanentRedirect(getCategoryUrl(category.slug!));
+  }
 
   if (!category) {
     notFound();

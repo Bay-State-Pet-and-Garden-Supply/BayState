@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Spinner } from '@/components/ui/spinner';
-import { SHOPSITE_PAGES } from '@/lib/shopsite/constants';
 import { Badge } from '@/components/ui/badge';
 import {
     Select,
@@ -30,7 +29,6 @@ interface PublishedProduct {
     name: string;
     slug: string;
     description: string | null;
-    long_description?: string | null;
     price: number;
     weight?: string | null;
     brand_id: string | null;
@@ -41,7 +39,6 @@ interface PublishedProduct {
     minimum_quantity?: number | null;
     is_special_order?: boolean;
     is_taxable?: boolean;
-    product_on_pages?: string[] | string | null;
     stock_status: string;
     quantity?: number | null;
     low_stock_threshold?: number | null;
@@ -76,7 +73,6 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
     const [slug, setSlug] = useState(product.slug);
     const [sku, setSku] = useState(product.sku || '');
     const [description, setDescription] = useState(product.description || '');
-    const [longDescription, setLongDescription] = useState(product.long_description || '');
     const [price, setPrice] = useState(String(product.price));
     const [weight, setWeight] = useState(product.weight || '');
     const [brandId, setBrandId] = useState(product.brand_id || 'none');
@@ -96,12 +92,6 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
     // Publishing
     const [publishedAt, setPublishedAt] = useState(product.published_at ? new Date(product.published_at).toISOString().slice(0, 16) : '');
     
-    const initialPages = Array.isArray(product.product_on_pages) 
-        ? product.product_on_pages 
-        : typeof product.product_on_pages === 'string' 
-            ? product.product_on_pages.split('|').map(p => p.trim()).filter(Boolean)
-            : [];
-    const [productOnPages, setProductOnPages] = useState<string[]>(initialPages);
     const [selectedPetTypes, setSelectedPetTypes] = useState<ProductPetType[]>([]);
 
     const parseImages = (images: unknown): string[] => {
@@ -156,9 +146,6 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
         fetchData();
     }, [product.id]);
 
-    const togglePage = (page: string) => {
-        setProductOnPages(prev => prev.includes(page) ? prev.filter(p => p !== page) : [...prev, page]);
-    };
 
     const handleSave = async () => {
         setSaving(true);
@@ -168,7 +155,6 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
             formData.append('slug', slug.trim());
             if (sku) formData.append('sku', sku.trim());
             formData.append('description', description.trim());
-            formData.append('long_description', longDescription.trim());
             formData.append('price', price);
             if (weight) formData.append('weight', weight.trim());
             formData.append('category_ids', JSON.stringify(selectedCategoryIds));
@@ -178,7 +164,6 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
             if (minQty) formData.append('minimum_quantity', minQty);
             formData.append('is_special_order', String(isSpecialOrder));
             formData.append('is_taxable', String(isTaxable));
-            formData.append('product_on_pages', JSON.stringify(productOnPages));
             formData.append('stock_status', stockStatus);
             if (quantity) formData.append('quantity', quantity);
             if (lowStockThreshold) formData.append('low_stock_threshold', lowStockThreshold);
@@ -264,10 +249,6 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
                         <div className="space-y-2">
                             <Label htmlFor="description">Short Description</Label>
                             <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="longDescription">Long Description</Label>
-                            <Textarea id="longDescription" value={longDescription} onChange={(e) => setLongDescription(e.target.value)} rows={8} />
                         </div>
                     </div>
                 </TabsContent>
@@ -377,21 +358,6 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
                                 placeholder="Select categories..."
                                 searchPlaceholder="Search categories..."
                             />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-sm font-medium">Assign to ShopSite Pages</Label>
-                            <div className="flex flex-wrap gap-2 p-3 rounded-md border bg-muted/30 min-h-[80px]">
-                                {SHOPSITE_PAGES.map(page => (
-                                    <Badge
-                                        key={page}
-                                        variant={productOnPages.includes(page) ? "default" : "outline"}
-                                        className="cursor-pointer select-none transition-colors"
-                                        onClick={() => togglePage(page)}
-                                    >
-                                        {page}
-                                    </Badge>
-                                ))}
-                            </div>
                         </div>
                         <div className="pt-4 border-t">
                             <PetTypeSelector selectedPetTypes={selectedPetTypes} onChange={setSelectedPetTypes} />

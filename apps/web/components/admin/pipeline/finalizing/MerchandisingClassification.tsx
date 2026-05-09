@@ -31,12 +31,6 @@ interface MerchandisingClassificationProps {
   setBrandPopoverOpen: (open: boolean) => void;
   creatingBrand: boolean;
   handleCreateBrand: () => Promise<void>;
-  pageSearch: string;
-  setPageSearch: (value: string) => void;
-  pagePopoverOpen: boolean;
-  setPagePopoverOpen: (open: boolean) => void;
-  filteredPages: string[];
-  normalizeStorePages: (pages: string[]) => string[];
   categorySearch: string;
   setCategorySearch: (value: string) => void;
   categoryPopoverOpen: boolean;
@@ -44,8 +38,18 @@ interface MerchandisingClassificationProps {
   filteredCategories: TaxonomyCategoryNode[];
   addCustomSource: () => void;
   removeSource: (sourceKey: string) => void;
-  showLegacyShopSiteFields?: boolean;
 }
+
+const PET_TYPES = [
+  "Dog",
+  "Cat",
+  "Bird",
+  "Fish",
+  "Reptile",
+  "Small Animal",
+  "Horse",
+  "Livestock",
+];
 
 export function MerchandisingClassification({
   formData,
@@ -59,12 +63,6 @@ export function MerchandisingClassification({
   setBrandPopoverOpen,
   creatingBrand,
   handleCreateBrand,
-  pageSearch,
-  setPageSearch,
-  pagePopoverOpen,
-  setPagePopoverOpen,
-  filteredPages,
-  normalizeStorePages,
   categorySearch,
   setCategorySearch,
   categoryPopoverOpen,
@@ -72,7 +70,6 @@ export function MerchandisingClassification({
   filteredCategories,
   addCustomSource,
   removeSource,
-  showLegacyShopSiteFields = false,
 }: MerchandisingClassificationProps) {
   const [currentParentId, setCurrentParentId] = useState<string | null>(null);
 
@@ -87,6 +84,7 @@ export function MerchandisingClassification({
     if (!currentParentId) return null;
     return filteredCategories.find((c) => c.id === currentParentId);
   }, [filteredCategories, currentParentId]);
+
   return (
     <div className="space-y-4">
       <div className="space-y-1">
@@ -215,27 +213,6 @@ export function MerchandisingClassification({
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="product-availability" className="text-[10px] font-semibold text-foreground">Availability Text</Label>
-          <Input
-            id="product-availability"
-            value={formData.availability}
-            onChange={(e) =>
-              handleInputChange("availability", e.target.value)
-            }
-            placeholder="usually ships in 24 hours"
-            className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold tabular-nums text-xs"
-          />
-        </div>
-      </div>
-
-      <div className="space-y-3 border border-border bg-muted/10 p-3">
-        <div className="flex items-center justify-between gap-2 mb-1">
-          <Label className="text-[10px] font-semibold text-foreground uppercase tracking-wider">
-            Classification & Placement
-          </Label>
-        </div>
-
-        <div className="space-y-1.5">
           <Label htmlFor="product-category" className="text-[10px] font-semibold text-foreground">
             Category
           </Label>
@@ -340,186 +317,149 @@ export function MerchandisingClassification({
             </PopoverContent>
           </Popover>
         </div>
-
-        {showLegacyShopSiteFields ? (
-          <div className="space-y-1.5 pt-2 border-t border-border border-dashed">
-            <div className="flex items-center justify-between gap-2">
-              <Label className="text-[10px] font-semibold text-foreground">
-                ShopSite Pages
-              </Label>
-              <span className="text-[9px] font-semibold text-muted-foreground">
-                Legacy / Optional Sink
-              </span>
-            </div>
-            <Popover
-              open={pagePopoverOpen}
-              onOpenChange={setPagePopoverOpen}
-            >
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={pagePopoverOpen}
-                  className="h-auto min-h-[44px] w-full justify-between font-semibold rounded-none border border-border"
-                >
-                  <div className="flex flex-wrap gap-1">
-                    {formData.productOnPages.length > 0 ? (
-                      formData.productOnPages.map((page) => (
-                        <div
-                          key={page}
-                          className="flex items-center gap-1 rounded-none border border-border bg-muted px-2 py-0.5 text-[9px] font-semibold text-foreground"
-                        >
-                          {page}
-                          <X
-                            className="h-2 w-2 cursor-pointer hover:text-muted-foreground"
-                            onPointerDown={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                            }}
-                            onMouseDown={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleInputChange(
-                                "productOnPages",
-                                normalizeStorePages(
-                                  formData.productOnPages.filter(
-                                    (entry) => entry !== page,
-                                  ),
-                                ),
-                              );
-                            }}
-                          />
-                        </div>
-                      ))
-                    ) : (
-                      <span className="text-muted-foreground/50">
-                        Select ShopSite Pages
-                      </span>
-                    )}
-                  </div>
-                  <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-[var(--radix-popover-trigger-width)] p-0 rounded-none border border-border shadow-md"
-                align="start"
-              >
-                <div className="flex flex-col">
-                  <div className="flex items-center border-b border-border px-3 py-2">
-                    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                    <input
-                      className="flex h-8 w-full rounded-none bg-transparent text-sm outline-none placeholder:text-muted-foreground font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-                      placeholder="Search ShopSite pages..."
-                      value={pageSearch}
-                      onChange={(e) => setPageSearch(e.target.value)}
-                    />
-                  </div>
-                  <div className="max-h-[300px] overflow-y-auto p-1">
-                    {filteredPages.map((page) => {
-                      const isSelected =
-                        formData.productOnPages.includes(page);
-                      return (
-                        <button
-                          type="button"
-                          key={page}
-                          className={cn(
-                            "relative flex cursor-pointer select-none items-center rounded-none px-2 py-1.5 text-sm font-semibold outline-none hover:bg-foreground hover:text-background",
-                            isSelected
-                              && "bg-foreground text-background",
-                          )}
-                          onClick={() => {
-                            const pages = isSelected
-                              ? formData.productOnPages.filter(
-                                  (entry) => entry !== page,
-                                )
-                              : [...formData.productOnPages, page];
-                            handleInputChange(
-                              "productOnPages",
-                              normalizeStorePages(pages),
-                            );
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              isSelected ? "opacity-100" : "opacity-0",
-                            )}
-                          />
-                          {page}
-                        </button>
-                      );
-                    })}
-                    {filteredPages.length === 0 && (
-                      <div className="p-2 text-center text-xs font-semibold italic text-muted-foreground">
-                        No pages found.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-        ) : (
-          <div className="pt-2 border-t border-border border-dashed text-[9px] font-semibold text-muted-foreground italic">
-            Enable ShopSite fields in header for legacy page assignments.
-          </div>
-        )}
       </div>
 
-      <div className="space-y-3 border border-border p-3 bg-muted/10">
-        <h4 className="text-[10px] font-semibold text-foreground">
-          Product Attributes
-        </h4>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+      <div className="space-y-3 border border-border bg-muted/10 p-3">
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <Label className="text-[10px] font-semibold text-foreground uppercase tracking-wider">
+            Product Details
+          </Label>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="space-y-1.5">
-            <Label htmlFor="product-gtin" className="text-[10px] font-semibold text-foreground">GTIN / UPC</Label>
-            <Input
-              id="product-gtin"
-              value={formData.gtin}
-              onChange={(e) => handleInputChange("gtin", e.target.value)}
-              placeholder="e.g. 077234550182"
-              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold tabular-nums text-xs"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="product-stock-status" className="text-[10px] font-semibold text-foreground">Stock Status</Label>
+            <Label htmlFor="product-pet-type" className="text-[10px] font-semibold text-foreground">Pet Type</Label>
             <Select
-              value={formData.stockStatus}
-              onValueChange={(value) => handleInputChange("stockStatus", value as FinalizationDraft["stockStatus"])}
+              value={formData.petType}
+              onValueChange={(value) => handleInputChange("petType", value)}
             >
               <SelectTrigger
-                id="product-stock-status"
+                id="product-pet-type"
                 className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
               >
-                <SelectValue placeholder="Select status" />
+                <SelectValue placeholder="Select pet type" />
               </SelectTrigger>
               <SelectContent className="rounded-none border-border">
-                {FINALIZATION_STOCK_STATUS_VALUES.map((status) => (
+                {PET_TYPES.map((type) => (
                   <SelectItem
-                    key={status}
-                    value={status}
+                    key={type}
+                    value={type}
                     className="font-semibold text-xs rounded-none"
                   >
-                    {status.replace(/_/g, " ")}
+                    {type}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
           <div className="space-y-1.5">
-            <Label htmlFor="product-minimum-quantity" className="text-[10px] font-semibold text-foreground">Min Qty</Label>
+            <Label htmlFor="product-life-stage" className="text-[10px] font-semibold text-foreground">Life Stage</Label>
             <Input
-              id="product-minimum-quantity"
-              type="number"
-              min="0"
-              step="1"
-              value={formData.minimumQuantity}
-              onChange={(e) => handleInputChange("minimumQuantity", e.target.value)}
-              placeholder="0"
-              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold tabular-nums text-xs"
+              id="product-life-stage"
+              value={formData.lifeStage}
+              onChange={(e) => handleInputChange("lifeStage", e.target.value)}
+              placeholder="e.g. Adult, Puppy"
+              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="product-pet-size" className="text-[10px] font-semibold text-foreground">Pet Size</Label>
+            <Input
+              id="product-pet-size"
+              value={formData.petSize}
+              onChange={(e) => handleInputChange("petSize", e.target.value)}
+              placeholder="e.g. Small Breed"
+              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="product-special-diet" className="text-[10px] font-semibold text-foreground">Special Diet</Label>
+            <Input
+              id="product-special-diet"
+              value={formData.specialDiet}
+              onChange={(e) => handleInputChange("specialDiet", e.target.value)}
+              placeholder="e.g. Grain-Free"
+              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="product-health-feature" className="text-[10px] font-semibold text-foreground">Health Feature</Label>
+            <Input
+              id="product-health-feature"
+              value={formData.healthFeature}
+              onChange={(e) => handleInputChange("healthFeature", e.target.value)}
+              placeholder="e.g. Joint Support"
+              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="product-food-form" className="text-[10px] font-semibold text-foreground">Food Form</Label>
+            <Input
+              id="product-food-form"
+              value={formData.foodForm}
+              onChange={(e) => handleInputChange("foodForm", e.target.value)}
+              placeholder="e.g. Dry Food, Wet Food"
+              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="product-flavor" className="text-[10px] font-semibold text-foreground">Flavor</Label>
+            <Input
+              id="product-flavor"
+              value={formData.flavor}
+              onChange={(e) => handleInputChange("flavor", e.target.value)}
+              placeholder="e.g. Chicken & Rice"
+              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="product-feature" className="text-[10px] font-semibold text-foreground">Product Feature</Label>
+            <Input
+              id="product-feature"
+              value={formData.productFeature}
+              onChange={(e) => handleInputChange("productFeature", e.target.value)}
+              placeholder="e.g. Resealable Bag"
+              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="product-size" className="text-[10px] font-semibold text-foreground">Size</Label>
+            <Input
+              id="product-size"
+              value={formData.size}
+              onChange={(e) => handleInputChange("size", e.target.value)}
+              placeholder="e.g. 30 lb"
+              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="product-color" className="text-[10px] font-semibold text-foreground">Color</Label>
+            <Input
+              id="product-color"
+              value={formData.color}
+              onChange={(e) => handleInputChange("color", e.target.value)}
+              placeholder="e.g. Red"
+              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="product-packaging-type" className="text-[10px] font-semibold text-foreground">Packaging Type</Label>
+            <Input
+              id="product-packaging-type"
+              value={formData.packagingType}
+              onChange={(e) => handleInputChange("packagingType", e.target.value)}
+              placeholder="e.g. Bag, Can"
+              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
             />
           </div>
         </div>
@@ -531,6 +471,72 @@ export function MerchandisingClassification({
           <Plus className="h-3 w-3 transition-transform group-open:rotate-45" />
         </summary>
         <div className="p-3 space-y-4 border-t border-border">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="product-availability" className="text-[10px] font-semibold text-foreground">Availability Text</Label>
+              <Input
+                id="product-availability"
+                value={formData.availability}
+                onChange={(e) =>
+                  handleInputChange("availability", e.target.value)
+                }
+                placeholder="usually ships in 24 hours"
+                className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold tabular-nums text-xs"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="product-gtin" className="text-[10px] font-semibold text-foreground">GTIN / UPC</Label>
+              <Input
+                id="product-gtin"
+                value={formData.gtin}
+                onChange={(e) => handleInputChange("gtin", e.target.value)}
+                placeholder="e.g. 077234550182"
+                className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold tabular-nums text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="product-stock-status" className="text-[10px] font-semibold text-foreground">Stock Status</Label>
+              <Select
+                value={formData.stockStatus}
+                onValueChange={(value) => handleInputChange("stockStatus", value as FinalizationDraft["stockStatus"])}
+              >
+                <SelectTrigger
+                  id="product-stock-status"
+                  className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
+                >
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent className="rounded-none border-border">
+                  {FINALIZATION_STOCK_STATUS_VALUES.map((status) => (
+                    <SelectItem
+                      key={status}
+                      value={status}
+                      className="font-semibold text-xs rounded-none"
+                    >
+                      {status.replace(/_/g, " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="product-minimum-quantity" className="text-[10px] font-semibold text-foreground">Min Qty</Label>
+              <Input
+                id="product-minimum-quantity"
+                type="number"
+                min="0"
+                step="1"
+                value={formData.minimumQuantity}
+                onChange={(e) => handleInputChange("minimumQuantity", e.target.value)}
+                placeholder="0"
+                className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold tabular-nums text-xs"
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label className="text-[10px] font-semibold text-foreground">Source URLs</Label>
             <div className="flex gap-2">
@@ -602,25 +608,6 @@ export function MerchandisingClassification({
               )}
             </div>
           </div>
-
-          {showLegacyShopSiteFields ? (
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="is-special-order"
-                checked={formData.isSpecialOrder}
-                onCheckedChange={(checked) =>
-                  handleInputChange("isSpecialOrder", checked === true)
-                }
-                className="h-5 w-5 rounded-none border border-border data-[state=checked]:bg-foreground"
-              />
-              <Label
-                htmlFor="is-special-order"
-                className="text-sm font-semibold text-foreground cursor-pointer"
-              >
-                Special Order
-              </Label>
-            </div>
-          ) : null}
         </div>
       </details>
     </div>

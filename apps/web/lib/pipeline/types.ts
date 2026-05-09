@@ -108,12 +108,9 @@ export interface PipelineProduct {
   input: {
     name?: string;
     description?: string;
-    long_description?: string;
     price?: number;
     weight?: string | number;
     stock_status?: string;
-    product_on_pages?: string[] | string;
-    shopsite_pages?: string[] | string;
     gtin?: string;
     availability?: string;
     minimum_quantity?: number | string;
@@ -124,6 +121,18 @@ export interface PipelineProduct {
     search_keywords?: string;
     brand?: string;
     legacy_filename?: string;
+    pet_type?: string;
+    life_stage?: string;
+    lifestage?: string;
+    pet_size?: string;
+    special_diet?: string;
+    health_feature?: string;
+    food_form?: string;
+    flavor?: string;
+    product_feature?: string;
+    size?: string;
+    color?: string;
+    packaging_type?: string;
   } | null;
   /** Scraped data from multiple sources keyed by source ID */
   sources: Record<string, unknown>;
@@ -131,7 +140,6 @@ export interface PipelineProduct {
   consolidated: {
     name?: string;
     description?: string;
-    long_description?: string;
     price?: number;
     images?: string[];
     brand_id?: string;
@@ -140,8 +148,6 @@ export interface PipelineProduct {
     is_featured?: boolean;
     weight?: string | number | null;
     stock_status?: string;
-    product_on_pages?: string[] | string;
-    shopsite_pages?: string[] | string;
     is_special_order?: boolean;
     is_taxable?: boolean;
     in_store_pickup?: boolean;
@@ -151,6 +157,18 @@ export interface PipelineProduct {
     availability?: string;
     minimum_quantity?: number | string;
     legacy_filename?: string;
+    pet_type?: string;
+    life_stage?: string;
+    lifestage?: string;
+    pet_size?: string;
+    special_diet?: string;
+    health_feature?: string;
+    food_form?: string;
+    flavor?: string;
+    product_feature?: string;
+    size?: string;
+    color?: string;
+    packaging_type?: string;
   } | null;
   pipeline_status: PersistedPipelineStatus;
   exported_at?: string | null;

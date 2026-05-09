@@ -60,7 +60,6 @@ The foundational system prompt that established core rules for product data cons
 
 #### Field Rules
 - **description:** 1-2 concise storefront sentences (must be non-empty)
-- **long_description:** 3-5 concise detail-page sentences (must be non-empty)
 - **search_keywords:** comma-separated string of 6-12 concise site-search phrases
 - **weight:** numeric string only, no units; preserve precision up to 2 decimal places
 - **category:** prefer single best-fit leaf breadcrumb; only return multiple when product genuinely belongs in multiple aisles

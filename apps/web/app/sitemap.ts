@@ -12,8 +12,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const supabase = createPublicClient();
 
     // Fetch all categories and brands in parallel
+    // Only include active categories (exclude inactive legacy categories)
     const [categoriesResult, brandsResult, productsResult] = await Promise.all([
-        supabase.from('categories').select('slug, updated_at').order('display_order'),
+        supabase.from('categories').select('slug, updated_at').eq('is_active', true).order('display_order'),
         supabase.from('brands').select('slug, updated_at').order('name'),
         supabase
             .from('products')

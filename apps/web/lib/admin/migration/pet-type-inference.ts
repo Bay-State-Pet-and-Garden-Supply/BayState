@@ -39,14 +39,14 @@ interface ResolvedPetTypesResult {
 }
 
 const PET_TYPE_PATTERNS: Record<PetTypeName, RegExp> = {
-    'Dog': /\b(dog|dogs|puppy|puppies|canine|k9|k-9|pup)\b/i,
-    'Cat': /\b(cat|cats|kitten|kittens|feline|kitty)\b/i,
-    'Bird': /\b(bird|birds|parrot|parakeet|cockatiel|finch|avian|budgie|cockatoo|macaw|lovebird)\b/i,
-    'Fish': /\b(fish|aquarium|aquatic|pond|koi|goldfish|betta|tropical fish|freshwater|saltwater|marine)\b/i,
-    'Reptile': /\b(reptile|reptiles|snake|snakes|lizard|lizards|turtle|turtles|tortoise|gecko|bearded dragon|iguana)\b/i,
-    'Small Animal': /\b(rabbit|rabbits|hamster|hamsters|guinea pig|gerbil|ferret|ferrets|small animal|chinchilla|mouse|mice|rat|rats)\b/i,
-    'Horse': /\b(horse|horses|equine|pony|ponies|mare|stallion|foal|equestrian)\b/i,
-    'Livestock': /\b(chicken|chickens|poultry|goat|goats|sheep|cattle|cow|cows|pig|pigs|livestock|farm animal|duck|ducks|turkey|turkeys)\b/i,
+    'Dog': /\b(dog|dogs?|puppy|puppies|canine|k9|k-9|pup|canis)\b/i,
+    'Cat': /\b(cat|cats?|kitten|kittens|feline|kitty|felis)\b/i,
+    'Bird': /\b(bird|birds?|parrot|parakeet|cockatiel|finch|avian|budgie|cockatoo|macaw|lovebird|poultry)\b/i,
+    'Fish': /\b(fish|fishes|aquarium|aquatic|pond|koi|goldfish|betta|tropical fish|freshwater|saltwater|marine)\b/i,
+    'Reptile': /\b(reptile|reptiles?|snake|snakes?|lizard|lizards?|turtle|turtles?|tortoise|gecko|bearded dragon|iguana|herp)\b/i,
+    'Small Animal': /\b(rabbit|rabbits?|hamster|hamsters?|guinea pig|gerbil|ferret|ferrets?|small animal|chinchilla|mouse|mice|rat|rats?|rodent)\b/i,
+    'Horse': /\b(horse|horses?|equine|pony|ponies|mare|stallion|foal|equestrian|colt|filly)\b/i,
+    'Livestock': /\b(chicken|chickens?|poultry|goat|goats?|sheep|cattle|cow|cows?|pig|pigs?|livestock|farm animal|duck|ducks?|turkey|turkeys?|swine|bovine|ovine)\b/i,
 };
 
 const LIFE_STAGE_PATTERNS: Record<LifeStage, RegExp> = {
@@ -135,7 +135,6 @@ function buildSearchableText(product: ShopSiteProduct): string {
         product.productTypeName,
         product.moreInfoText,
         product.searchKeywords,
-        ...(product.shopsitePages || []),
     ];
     return parts.filter(Boolean).join(' ');
 }

@@ -15,7 +15,6 @@ const productSchema = z.object({
     quantity: z.coerce.number().int().min(0).optional().nullable(),
     low_stock_threshold: z.coerce.number().int().min(0).optional().nullable(),
     description: z.string().optional(),
-    long_description: z.string().optional(),
     brand_id: z.string().optional().nullable(),
     weight: z.string().optional().nullable(),
     search_keywords: z.string().optional().nullable(),
@@ -24,7 +23,6 @@ const productSchema = z.object({
     minimum_quantity: z.coerce.number().int().min(0).optional().nullable(),
     is_special_order: z.coerce.boolean().optional(),
     is_taxable: z.coerce.boolean().optional(),
-    shopsite_pages: z.array(z.string()).optional().nullable(),
     published_at: z.string().optional().nullable(),
 });
 
@@ -34,7 +32,6 @@ export async function updateProduct(id: string, formData: FormData): Promise<Act
 
     const rawBrandId = formData.get('brand_id');
     const rawCategoryIds = formData.get('category_ids');
-    const shopsitePagesRaw = formData.get('product_on_pages');
     let categoryIds: string[] = [];
     
     const rawData: Record<string, unknown> = {
@@ -46,7 +43,6 @@ export async function updateProduct(id: string, formData: FormData): Promise<Act
         quantity: formData.get('quantity'),
         low_stock_threshold: formData.get('low_stock_threshold'),
         description: formData.get('description'),
-        long_description: formData.get('long_description'),
         weight: formData.get('weight'),
         search_keywords: formData.get('search_keywords'),
         gtin: formData.get('gtin'),
@@ -64,14 +60,6 @@ export async function updateProduct(id: string, formData: FormData): Promise<Act
         rawData.brand_id = null;
     }
 
-    // Parse ShopSite pages if provided
-    if (shopsitePagesRaw) {
-        try {
-            rawData.shopsite_pages = JSON.parse(shopsitePagesRaw as string);
-        } catch (e) {
-            console.error('Failed to parse shopsite_pages:', e);
-        }
-    }
 
     if (rawCategoryIds) {
         try {
@@ -133,13 +121,6 @@ export async function bulkUpdateProducts(ids: string[], formData: FormData): Pro
         rawData.published_at = val ? new Date(val as string).toISOString() : null;
     }
 
-    if (formData.has('product_on_pages')) {
-        try {
-            rawData.shopsite_pages = JSON.parse(formData.get('product_on_pages') as string);
-        } catch (e) {
-            console.error('Failed to parse shopsite_pages for bulk update:', e);
-        }
-    }
 
     if (formData.has('category_ids')) {
         try {

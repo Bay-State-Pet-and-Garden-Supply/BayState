@@ -101,7 +101,7 @@ const defaultSettings: SiteSettings = {
         title: 'Baby Chicks',
         subtitle: 'In stock today',
         imageUrl: '/images/legacy/baby-chicks-are-here-s-ider.png',
-        linkUrl: '/c/farm-animal',
+        linkUrl: '/c/chicken-poultry',
         linkText: 'Shop Now'
       },
       {

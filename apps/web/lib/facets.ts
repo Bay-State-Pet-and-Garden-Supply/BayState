@@ -4,10 +4,13 @@ export interface FacetDefinition {
   id: string;
   name: string;
   slug: string;
+  description?: string | null;
+  facet_profile?: string[] | null;
+  is_deprecated?: boolean | null;
   values: FacetValue[];
 }
 
-interface FacetValue {
+export interface FacetValue {
   id: string;
   value: string;
   slug: string;
@@ -24,6 +27,7 @@ async function getDynamicFacets(): Promise<FacetDefinition[]> {
   const { data: facetDefs, error: defError } = await supabase
     .from('facet_definitions')
     .select('*')
+    .eq('is_deprecated', false)
     .order('name');
 
   if (defError) {
@@ -46,6 +50,9 @@ async function getDynamicFacets(): Promise<FacetDefinition[]> {
     id: def.id,
     name: def.name,
     slug: def.slug,
+    description: def.description ?? null,
+    facet_profile: def.facet_profile ?? null,
+    is_deprecated: def.is_deprecated ?? null,
     values: (facetValues || [])
       .filter((v) => v.facet_definition_id === def.id)
       .map((v) => ({

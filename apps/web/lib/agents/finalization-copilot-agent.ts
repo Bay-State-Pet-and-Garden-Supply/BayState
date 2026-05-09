@@ -51,7 +51,6 @@ function buildInstructions(context: FinalizationCopilotContext): string {
         `stockStatus: ${context.selectedDraft.stockStatus}`,
         `availability: ${context.selectedDraft.availability || "(empty)"}`,
         `images: ${context.selectedDraft.selectedImages.length} selected`,
-        `pages: ${context.selectedDraft.productOnPages.join(", ") || "(none)"}`,
         `sourceCount: ${Object.keys(context.selectedDraft.sources).length}`,
         `isSpecialOrder: ${context.selectedDraft.isSpecialOrder}`,
         `minimumQuantity: ${context.selectedDraft.minimumQuantity}`,
@@ -89,7 +88,6 @@ Rules:
 - Use bulkTransformProductNames for prefix, suffix, or replace operations that must preserve each product's existing name. Use replace mode with an empty value to remove text from a product name.
 - Use searchBrands before assignBrand unless you already have a brand id from tool output.
 - Use bulkAssignBrand only when the same brand should be applied to every targeted product.
-- Use bulkUpdateStorePages only when the same page change should apply across the full scope.
 - Use createBrand only when the requested brand does not already exist.
 - Use addSourceUrl or removeSource when the user wants to add or remove custom product source URLs from the selected draft.
 - Draft-edit tools stage changes for human review. After staging edits, tell the user to review them. Accepting staged changes autosaves; rejecting staged changes restores the prior draft.
@@ -109,8 +107,8 @@ Image workflow rules:
 Field mapping reference:
 - stockStatus accepts "in_stock", "out_of_stock", or "pre_order" (use setProductFields to change it).
 - searchKeywords is a free-text field for search optimization (use setProductFields to change it).
-- setProductFields can directly edit: name, description, longDescription, price, weight, category, stockStatus, availability, minimumQuantity, searchKeywords, gtin, isSpecialOrder.
-- Other editable draft fields are handled by dedicated tools: brand assignment, ShopSite pages, selected images, and custom source URLs.`;
+- setProductFields can directly edit: name, description, price, weight, category, stockStatus, availability, minimumQuantity, searchKeywords, gtin, isSpecialOrder.
+- Other editable draft fields are handled by dedicated tools: brand assignment, selected images, and custom source URLs.`;
 }
 
 export const finalizationCopilotAgent = new ToolLoopAgent({

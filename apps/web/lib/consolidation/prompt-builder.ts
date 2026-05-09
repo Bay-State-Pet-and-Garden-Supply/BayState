@@ -5,11 +5,12 @@
  * Ported and adapted from BayStateTools.
  */
 
-import { SHOPSITE_PAGES } from '@/lib/shopsite/constants';
 import { normalizeProductSources, type CanonicalProductSourceRecord } from '@/lib/product-sources';
 import type { ProductSource } from '@/lib/consolidation/types';
 import {
+    buildTaxonomyNodes,
     getLeafTaxonomyNodes,
+    type TaxonomyCategoryNode,
     type TaxonomyCategoryRecord,
 } from '@/lib/taxonomy';
 
@@ -63,7 +64,6 @@ interface ConsolidationPromptPayload {
 
 interface ConsolidationPromptContext {
     systemPrompt: string;
-    shopsitePages: string[];
     categories: string[];
 }
 
@@ -180,7 +180,8 @@ async function getCategories() {
     const supabase = await createAdminClient();
     const { data, error } = await supabase
         .from('categories')
-        .select('id, name, slug, parent_id, description, display_order, image_url, is_featured')
+        .select('id, name, slug, parent_id, department_key, depth, breadcrumb, display_order, description, image_url, is_featured')
+        .eq('is_active', true)
         .order('display_order')
         .order('name');
 
@@ -193,33 +194,80 @@ async function getCategories() {
 }
 
 /**
+ * Build a compact, department-grouped category list for the prompt.
+ * Groups leaf categories under their L1 > L2 path to conserve tokens.
+ */
+function buildGroupedCategoryList(categoryNodes: TaxonomyCategoryNode[]): string[] {
+    // Group leaves by their ancestor department_path:L2_path
+    const groups = new Map<string, string[]>();
+
+    for (const node of categoryNodes) {
+        if (!node.is_leaf) continue;
+        const ancestorNames = node.ancestor_names;
+        // Get L1 and L2 ancestors
+        const l1 = ancestorNames[0] || '';
+        const l2 = ancestorNames[1] || '';
+        const groupKey = l1 ? `${l1} > ${l2}` : l1 || 'Other';
+        if (!groups.has(groupKey)) {
+            groups.set(groupKey, []);
+        }
+        groups.get(groupKey)!.push(node.name);
+    }
+
+    // Build compact grouped strings — keep within ~4000 char budget
+    const MAX_CATEGORY_CHARS = 4000;
+    const lines: string[] = [];
+    let totalChars = 0;
+
+    const sortedGroups = Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
+
+    for (const [groupKey, items] of sortedGroups) {
+        const header = `  ${groupKey}:`;
+        // Show up to 8 examples per group, then "+N more"
+        const MAX_EXAMPLES = 8;
+        const shown = items.slice(0, MAX_EXAMPLES);
+        const more = items.length > MAX_EXAMPLES ? ` +${items.length - MAX_EXAMPLES} more` : '';
+        const itemLine = ` ${shown.join(', ')}${more}`;
+        const groupLine = `${header}${itemLine}`;
+
+        if (totalChars + groupLine.length > MAX_CATEGORY_CHARS && lines.length > 0) {
+            // Still include a note that more exist
+            lines.push(`  ... and ${sortedGroups.length - lines.length} more category groups (use exact breadcrumb from source)`);
+            break;
+        }
+        lines.push(groupLine);
+        totalChars += groupLine.length;
+    }
+
+    if (lines.length === 0) {
+        return ['(none configured)'];
+    }
+    return lines;
+}
+
+/**
  * Generate the system prompt for product consolidation.
  * Includes taxonomy constraints and formatting rules.
+ * Categories can be either flat breadcrumb strings or pre-grouped lines
+ * (as produced by buildGroupedCategoryList).
  */
 export function generateSystemPrompt(categories: string[]): string {
-    const MAX_PROMPT_CATEGORIES = 50;
-    const displayedCategories = categories.slice(0, MAX_PROMPT_CATEGORIES);
-    const categorySuffix =
-        categories.length > MAX_PROMPT_CATEGORIES
-            ? `\n... and ${categories.length - MAX_PROMPT_CATEGORIES} more categories (use exact name from allowed list)`
-            : '';
-    const allowedCategoriesStr = displayedCategories.length > 0
-        ? displayedCategories.join('\n')
+    const allowedCategoriesStr = categories.length > 0
+        ? categories.join('\n')
         : '(none configured)';
-    const allowedPagesStr = SHOPSITE_PAGES.join('\n');
 
     return `You consolidate multi-source product data into one ShopSite export-ready product record.
 
-Use only exact source-supported category and product_on_pages values. Never invent ShopSite page names.
+Use only exact source-supported category values.
 
-Prioritize outputs that are ready for ShopSite export: name, brand, weight, and product_on_pages.
+Prioritize outputs that are ready for ShopSite export: name, brand, and weight.
 
 Source trust rules:
 - Highest trust: "shopsite_input" for current ShopSite assignments.
 - High trust: manufacturer, distributor, and catalog sources for factual product data.
 - Lower trust: marketplace and retailer listings such as Amazon, Walmart, eBay, and seller-provided labels.
-- When sources conflict on brand or product_on_pages, prefer the highest-trust source with direct evidence.
-- Preserve shopsite_input product_on_pages unless higher-trust evidence clearly supports a change.
+- When sources conflict on brand or category, prefer the highest-trust source with direct evidence.
+- Preserve shopsite_input category unless higher-trust evidence clearly supports a change.
 - Never let marketplace seller labels or "Brand: ..." prefixes override higher-trust brand evidence.
 
 Sibling product context:
@@ -255,8 +303,6 @@ Product-name rules:
 
 Field rules:
 - weight: numeric string in pounds only, no units. Preserve source-supported precision up to 2 decimal places. If there is no trustworthy weight, return null.
-- product_on_pages: match the customer shopping intent. Planting seed products should use Seeds & Seed Starting and can also use Lawn & Garden Shop All when supported. Do not use Farm Animal, Bird, Small Pet, or Wild Bird pages for seed products unless trusted source descriptions explicitly indicate feed or treat intent.
-- product_on_pages: never use service-only pages such as #Services for a physical retail product unless the trusted source clearly describes a service, rental, refill, pickup, or delivery offering.
 - confidence_score: 0.80-1.00 means ready for immediate ShopSite export, 0.50-0.79 means usable with review, and below 0.50 means key fields remain uncertain.
 
 Output contract — respond with valid JSON matching this structure:
@@ -264,19 +310,14 @@ Output contract — respond with valid JSON matching this structure:
   "name": "string (required) — product name with brand as first token",
   "brand": "string (required) — brand name exactly as in highest-trust source",
   "weight": "string (required) — numeric weight in pounds, no units. null if no trustworthy weight",
-  "product_on_pages": "string (required) — one or more pipe-separated ShopSite page names",
   "confidence_score": "number (required) — 0.0 to 1.0. 0.80+ = export-ready",
   "category": "string (required) — best-fit taxonomy category from allowed list",
   "description": "string (required) — short product description from highest-trust source",
-  "long_description": "string (required) — extended description when source-supported",
   "search_keywords": "string (required) — comma-separated keywords from source data"
 }
 
-Allowed product_on_pages values (use exact names, pipe-separated for multiple):
-${allowedPagesStr}
-
-Allowed category values (use exactly one):
-${allowedCategoriesStr}${categorySuffix}
+Allowed category values (use exactly one). Choose the full breadcrumb (e.g. "Dog > Food > Dry Food") from the allowed categories below:
+${allowedCategoriesStr}
 
 Every required field must be non-empty.`;
 }
@@ -288,7 +329,6 @@ export async function buildPromptContext(): Promise<ConsolidationPromptContext> 
     if (cachedPromptContext && Date.now() < cachedPromptContextExpiresAt) {
         return {
             systemPrompt: cachedPromptContext.systemPrompt,
-            shopsitePages: [...cachedPromptContext.shopsitePages],
             categories: [...cachedPromptContext.categories],
         };
     }
@@ -296,16 +336,19 @@ export async function buildPromptContext(): Promise<ConsolidationPromptContext> 
     const categoryRecords = await getCategories();
     const categories = categoryRecords.map((category) => category.breadcrumb ?? category.name);
 
+    // Use compact grouped format for the prompt to fit ~200+ leaves in ~4000 chars.
+    // The prompt asks the model to pick an exact category using full breadcrumb matches,
+    // and the grouped lines still show full breadcrumbs like "Dog > Food: Dry Food, Wet Food..."
+    const groupedCategoryLines = buildGroupedCategoryList(categoryRecords);
+
     cachedPromptContext = {
-        systemPrompt: generateSystemPrompt(categories),
-        shopsitePages: [...SHOPSITE_PAGES],
+        systemPrompt: generateSystemPrompt(groupedCategoryLines),
         categories,
     };
     cachedPromptContextExpiresAt = Date.now() + PROMPT_CONTEXT_CACHE_TTL_MS;
 
     return {
         systemPrompt: cachedPromptContext.systemPrompt,
-        shopsitePages: [...cachedPromptContext.shopsitePages],
         categories: [...cachedPromptContext.categories],
     };
 }

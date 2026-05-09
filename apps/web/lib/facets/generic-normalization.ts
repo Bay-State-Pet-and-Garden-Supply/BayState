@@ -2,20 +2,20 @@ import { buildFacetSlug, splitMultiValueFacet } from '@/lib/facets/normalization
 
 export const GENERIC_FACET_FIELDS = {
     ProductField18: {
-        name: 'lifestage',
+        name: 'life_stage',
         description: 'Normalized ProductField18 values for life stage filtering.',
     },
     ProductField19: {
-        name: 'pet_size',
-        description: 'Normalized ProductField19 values for pet size filtering.',
+        name: 'breed_size',
+        description: 'Normalized ProductField19 values for breed size filtering.',
     },
     ProductField20: {
-        name: 'special_diet',
-        description: 'Normalized ProductField20 values for special diet filtering.',
+        name: 'diet_type',
+        description: 'Normalized ProductField20 values for diet type filtering.',
     },
     ProductField21: {
-        name: 'health_feature',
-        description: 'Normalized ProductField21 values for health feature filtering.',
+        name: 'health_focus',
+        description: 'Normalized ProductField21 values for health focus filtering.',
     },
     ProductField22: {
         name: 'food_form',

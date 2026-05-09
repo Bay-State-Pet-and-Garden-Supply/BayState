@@ -346,7 +346,7 @@ export async function processDirectChatChunk(
     }
 
     // Get shopsite pages and categories for parsing
-    const { shopsitePages = [], categories = [] } = await buildPromptContext();
+    const { categories = [] } = await buildPromptContext();
     const apiKey = runtimeConfig.llm_api_key || '';
 
     // Build an OpenAI-compatible client for the configured endpoint
@@ -394,7 +394,7 @@ export async function processDirectChatChunk(
                 responsePayload.usage = usage;
                 responsePayload.finish_reason = choice?.finish_reason;
 
-                parsed = parseStructuredConsolidationText(item.sku, content, shopsitePages, categories);
+                parsed = parseStructuredConsolidationText(item.sku, content, categories);
 
                 if (!content.trim() || parsed.error) {
                     lastError = new Error(

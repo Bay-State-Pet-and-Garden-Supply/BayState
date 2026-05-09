@@ -34,7 +34,6 @@ import type {
   BulkAssignBrandInput,
   BulkTransformProductNamesInput,
   BulkSetProductFieldsInput,
-  BulkStorePagesInput,
   CreateBrandInput,
   InspectSourceDataInput,
   InspectSourceDataOutput,
@@ -49,14 +48,12 @@ import type {
   RejectProductInput,
   RemoveSelectedImagesInput,
   RemoveSourceInput,
-  RemoveStorePagesInput,
   ReplaceSelectedImagesInput,
   RestoreSavedDraftInput,
   SaveDraftInput,
   ScopedProductActionInput,
   ScopedRejectProductInput,
   SetProductFieldsInput,
-  SetStorePagesInput,
   ToolSummary,
 } from "@/lib/tools/finalization-copilot";
 import type { FinalizationCopilotContext } from "@/lib/pipeline/finalization-copilot-workspace";
@@ -81,10 +78,6 @@ const TOOL_LABELS: Record<string, string> = {
   assignBrand: "Assigning brand",
   bulkAssignBrand: "Assigning brands",
   createBrand: "Creating brand",
-  setStorePages: "Setting store pages",
-  addStorePages: "Adding store pages",
-  removeStorePages: "Removing store pages",
-  bulkUpdateStorePages: "Updating store pages",
   replaceSelectedImages: "Replacing images",
   addSelectedImages: "Adding images",
   removeSelectedImages: "Removing images",
@@ -194,14 +187,6 @@ interface FinalizationCopilotPanelProps {
   onAssignBrand: (input: AssignBrandInput) => Promise<ToolSummary>;
   onBulkAssignBrand: (input: BulkAssignBrandInput) => Promise<ToolSummary>;
   onCreateBrand: (input: CreateBrandInput) => Promise<ToolSummary>;
-  onSetStorePages: (input: SetStorePagesInput) => Promise<ToolSummary>;
-  onAddStorePages: (input: SetStorePagesInput) => Promise<ToolSummary>;
-  onRemoveStorePages: (
-    input: RemoveStorePagesInput,
-  ) => Promise<ToolSummary>;
-  onBulkUpdateStorePages: (
-    input: BulkStorePagesInput,
-  ) => Promise<ToolSummary>;
   onReplaceSelectedImages: (
     input: ReplaceSelectedImagesInput,
   ) => Promise<ToolSummary>;
@@ -242,10 +227,6 @@ type ClientToolName =
   | "assignBrand"
   | "bulkAssignBrand"
   | "createBrand"
-  | "setStorePages"
-  | "addStorePages"
-  | "removeStorePages"
-  | "bulkUpdateStorePages"
   | "replaceSelectedImages"
   | "addSelectedImages"
   | "removeSelectedImages"
@@ -281,10 +262,6 @@ export function FinalizationCopilotPanel({
   onAssignBrand,
   onBulkAssignBrand,
   onCreateBrand,
-  onSetStorePages,
-  onAddStorePages,
-  onRemoveStorePages,
-  onBulkUpdateStorePages,
   onReplaceSelectedImages,
   onAddSelectedImages,
   onRemoveSelectedImages,
@@ -333,10 +310,6 @@ export function FinalizationCopilotPanel({
         assignBrand: onAssignBrand,
         bulkAssignBrand: onBulkAssignBrand,
         createBrand: onCreateBrand,
-        setStorePages: onSetStorePages,
-        addStorePages: onAddStorePages,
-        removeStorePages: onRemoveStorePages,
-        bulkUpdateStorePages: onBulkUpdateStorePages,
         replaceSelectedImages: onReplaceSelectedImages,
         addSelectedImages: onAddSelectedImages,
         removeSelectedImages: onRemoveSelectedImages,

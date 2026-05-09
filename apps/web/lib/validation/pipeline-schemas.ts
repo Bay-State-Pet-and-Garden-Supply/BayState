@@ -11,23 +11,17 @@ const PipelineStageSchema = z.enum(PIPELINE_TABS);
 const PipelineProductInputSchema = z.object({
     name: z.string().optional(),
     price: z.number().optional(),
-    shopsite_pages: z.array(z.string()).optional(),
-    product_on_pages: z.array(z.string()).optional(),
     legacy_filename: z.string().optional().nullable(),
 });
 
 const PipelineProductConsolidatedSchema = z.object({
     name: z.string().optional(),
     description: z.string().optional(),
-    long_description: z.string().optional(),
     price: z.number().optional(),
     images: z.array(z.string().url()).optional(),
     brand_id: z.string().optional(),
     stock_status: z.string().optional(),
     category: z.string().optional(),
-
-    product_on_pages: z.array(z.string()).optional(),
-    shopsite_pages: z.array(z.string()).optional(),
     legacy_filename: z.string().optional().nullable(),
     weight: z.string().optional(),
     is_special_order: z.boolean().optional(),

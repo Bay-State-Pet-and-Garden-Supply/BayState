@@ -8,10 +8,8 @@ const COMPARISON_FIELDS = [
     'brand',
     'weight',
     'description',
-    'long_description',
     'search_keywords',
     'category',
-    'product_on_pages',
     'confidence_score',
 ] as const;
 
@@ -20,10 +18,8 @@ const COMPLETENESS_FIELDS = [
     'brand',
     'weight',
     'description',
-    'long_description',
     'search_keywords',
     'category',
-    'product_on_pages',
 ] as const;
 
 type ComparableField = (typeof COMPARISON_FIELDS)[number];
@@ -83,10 +79,6 @@ function normalizeFieldValue(field: ComparableField, value: unknown): string | n
         return normalizeNumeric(value);
     }
 
-    if (field === 'product_on_pages') {
-        return normalizeDelimitedSet(value, 'pipe');
-    }
-
     if (field === 'search_keywords') {
         return normalizeDelimitedSet(value, 'comma');
     }
@@ -95,10 +87,6 @@ function normalizeFieldValue(field: ComparableField, value: unknown): string | n
 }
 
 function isFieldPresent(value: unknown, field: typeof COMPLETENESS_FIELDS[number]): boolean {
-    if (field === 'product_on_pages') {
-        return normalizeDelimitedSet(value, 'pipe').length > 0;
-    }
-
     if (field === 'search_keywords') {
         return normalizeDelimitedSet(value, 'comma').length > 0;
     }
@@ -134,19 +122,7 @@ export function calculateTaxonomyCorrectness(
     actual: Partial<ConsolidationResult>,
     expected?: Partial<ConsolidationResult>
 ): number {
-    if (actual.error) {
-        return 0;
-    }
-
-    const actualPages = normalizeDelimitedSet(actual.product_on_pages, 'pipe');
-
-    if (!expected) {
-        return actualPages.length > 0 ? 1 : 0;
-    }
-
-    const expectedPages = normalizeDelimitedSet(expected.product_on_pages, 'pipe');
-
-    return actualPages.length > 0 && JSON.stringify(actualPages) === JSON.stringify(expectedPages) ? 1 : 0;
+    return actual.category ? 1 : 0;
 }
 
 export function compareConsolidationResults(

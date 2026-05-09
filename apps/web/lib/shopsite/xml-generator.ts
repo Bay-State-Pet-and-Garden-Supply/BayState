@@ -23,7 +23,6 @@ export interface ShopSiteExportProduct {
     short_name?: string | null;
     brand_name?: string | null;
     description?: string | null;
-    long_description?: string | null;
     images: string[];
     category?: string | null;
     product_type?: string | null;
@@ -127,7 +126,7 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
     const lines: string[] = [];
     const primaryImage = product.images[0] ?? null;
     const additionalImages = product.images.slice(1, 1 + MAX_MORE_INFO_IMAGES);
-    const description = product.description ?? product.long_description ?? null;
+    const description = product.description ?? null;
     const productOnPages = product.shopsite_pages ?? [];
 
     lines.push('  <Product>');

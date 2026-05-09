@@ -33,13 +33,21 @@ function buildCategoryTree(categories: Category[]): CategoryNode[] {
     const categoryMap = new Map<string, CategoryNode>();
     const rootCategories: CategoryNode[] = [];
 
+    // Sort by sort_order (primary), then display_order, then name
+    const sorted = [...categories].sort((a, b) => {
+        const aOrder = (a as any).sort_order ?? a.display_order ?? 0;
+        const bOrder = (b as any).sort_order ?? b.display_order ?? 0;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return a.name.localeCompare(b.name);
+    });
+
     // First pass: create nodes
-    for (const cat of categories) {
+    for (const cat of sorted) {
         categoryMap.set(cat.id, { ...cat, children: [] });
     }
 
     // Second pass: build tree
-    for (const cat of categories) {
+    for (const cat of sorted) {
         const node = categoryMap.get(cat.id)!;
         if (cat.parent_id && categoryMap.has(cat.parent_id)) {
             categoryMap.get(cat.parent_id)!.children.push(node);
@@ -190,11 +198,21 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
                     </div>
 
                     {/* Name and info */}
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                             <span className="font-medium text-foreground">{node.name}</span>
                             {node.is_featured && (
                                 <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                            )}
+                           {(node as any).department_key && (
+                                <Badge variant="outline" className="text-xs py-0.5 bg-blue-50 text-blue-700 border-blue-200">
+                                    {(node as any).department_key}
+                                </Badge>
+                            )}
+                            {(node as any).is_active === false && (
+                                <Badge variant="outline" className="text-xs py-0.5 bg-red-50 text-red-600 border-red-200">
+                                    Inactive
+                                </Badge>
                             )}
                             {hasChildren && (
                                 <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-muted text-xs py-0.5">
@@ -202,12 +220,19 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
                                 </Badge>
                             )}
                         </div>
-                        <p className="text-sm text-muted-foreground">/{node.slug}</p>
+                        <p className="text-sm text-muted-foreground truncate">
+                            /{node.slug}
+                            {(node as any).breadcrumb && (
+                                <span className="text-xs text-muted-foreground/60 ml-2">
+                                    {(node as any).breadcrumb}
+                                </span>
+                            )}
+                        </p>
                     </div>
 
                     {/* Order */}
                     <Badge variant="outline" className="bg-muted text-muted-foreground border-transparent text-xs py-0.5">
-                        Order: {node.display_order}
+                        {(node as any).sort_order ?? node.display_order ?? 0}
                     </Badge>
 
                     {/* Actions */}

@@ -52,7 +52,7 @@ DeepSeek only supports `{ "type": "json_object" }`. The `json_schema` + `strict`
 
 **File:** `lib/consolidation/prompt-builder.ts`
 
-**Status:** ✅ Done. `generateSystemPrompt()` now appends a compact JSON output contract with required fields, data types, and allowed `product_on_pages` / category values (with token guard at 50 categories).
+**Status:** ✅ Done. `generateSystemPrompt()` now appends a compact JSON output contract with required fields, data types, and category values (with token guard at 50 categories).
 
 ---
 
@@ -69,7 +69,6 @@ DeepSeek only supports `{ "type": "json_object" }`. The `json_schema` + `strict`
 Add a compact output contract section to `generateSystemPrompt()`:
 - Required fields with types and descriptions
 - Example JSON output
-- Allowed `product_on_pages` values (from SHOPSITE_PAGES)
 - Category values with token guard (truncate if >100 categories)
 
 ### 2.2 Add item-level retry in `processDirectChatChunk()`

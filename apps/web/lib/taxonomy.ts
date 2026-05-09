@@ -9,16 +9,32 @@ export interface TaxonomyCategoryRecord {
   display_order?: number | null;
   image_url?: string | null;
   is_featured?: boolean | null;
+  department_key?: string | null;
+  depth?: number | null;
+  breadcrumb?: string | null;
+  facet_profile?: string | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
+  synonym_keywords?: string[] | null;
+  sort_order?: number | null;
+  is_active?: boolean | null;
 }
 
-export interface TaxonomyCategoryNode extends Omit<TaxonomyCategoryRecord, 'slug' | 'description' | 'display_order' | 'image_url' | 'is_featured'> {
+export interface TaxonomyCategoryNode extends Omit<TaxonomyCategoryRecord, 'slug' | 'description' | 'display_order' | 'image_url' | 'is_featured' | 'department_key' | 'depth' | 'breadcrumb' | 'facet_profile' | 'seo_title' | 'seo_description' | 'synonym_keywords' | 'sort_order' | 'is_active'> {
   slug: string;
   description: string | null;
   display_order: number | null;
   image_url: string | null;
   is_featured: boolean | null;
+  department_key: string | null;
   depth: number;
   breadcrumb: string;
+  facet_profile: string | null;
+  seo_title: string | null;
+  seo_description: string | null;
+  synonym_keywords: string[];
+  sort_order: number | null;
+  is_active: boolean;
   ancestor_ids: string[];
   ancestor_slugs: string[];
   ancestor_names: string[];
@@ -124,8 +140,15 @@ export function buildTaxonomyNodes(
       display_order: category.display_order ?? null,
       image_url: category.image_url ?? null,
       is_featured: category.is_featured ?? null,
-      depth: parentNode ? parentNode.depth + 1 : 0,
-      breadcrumb: parentNode ? `${parentNode.breadcrumb} > ${name}` : name,
+      department_key: category.department_key ?? null,
+      depth: category.depth ?? (parentNode ? parentNode.depth + 1 : 0),
+      breadcrumb: category.breadcrumb ?? (parentNode ? `${parentNode.breadcrumb} > ${name}` : name),
+      facet_profile: category.facet_profile ?? null,
+      seo_title: category.seo_title ?? null,
+      seo_description: category.seo_description ?? null,
+      synonym_keywords: category.synonym_keywords ?? [],
+      sort_order: category.sort_order ?? null,
+      is_active: category.is_active ?? true,
       ancestor_ids: parentNode ? [...parentNode.ancestor_ids, parentNode.id] : [],
       ancestor_slugs: parentNode ? [...parentNode.ancestor_slugs, parentNode.slug] : [],
       ancestor_names: parentNode ? [...parentNode.ancestor_names, parentNode.name] : [],
@@ -139,8 +162,8 @@ export function buildTaxonomyNodes(
   return categories
     .map((category) => buildNode(category.id))
     .sort((left, right) => {
-      const leftOrder = left.display_order ?? 0;
-      const rightOrder = right.display_order ?? 0;
+      const leftOrder = left.sort_order ?? left.display_order ?? 0;
+      const rightOrder = right.sort_order ?? right.display_order ?? 0;
       if (leftOrder !== rightOrder) {
         return leftOrder - rightOrder;
       }
@@ -173,12 +196,21 @@ export function resolveTaxonomySelections(
   const bySlug = new Map<string, TaxonomyCategoryNode>();
   const byBreadcrumb = new Map<string, TaxonomyCategoryNode>();
   const byUniqueName = new Map<string, TaxonomyCategoryNode>();
+  const bySynonym = new Map<string, TaxonomyCategoryNode>();
   const duplicateNames = new Set<string>();
 
   for (const node of nodes) {
     byId.set(node.id, node);
     bySlug.set(normalizeLookupValue(node.slug.replace(/^\/+/, '')), node);
     byBreadcrumb.set(normalizeLookupValue(normalizeTaxonomyBreadcrumb(node.breadcrumb)), node);
+
+    // Index synonym keywords
+    for (const synonym of node.synonym_keywords) {
+      const normalizedSynonym = normalizeLookupValue(synonym);
+      if (normalizedSynonym && !bySynonym.has(normalizedSynonym)) {
+        bySynonym.set(normalizedSynonym, node);
+      }
+    }
 
     const normalizedName = normalizeLookupValue(node.name);
     if (byUniqueName.has(normalizedName)) {
@@ -205,7 +237,8 @@ export function resolveTaxonomySelections(
       byId.get(rawValue.trim()) ||
       byBreadcrumb.get(normalizedValue) ||
       bySlug.get(normalizedValue) ||
-      byUniqueName.get(normalizedValue);
+      byUniqueName.get(normalizedValue) ||
+      bySynonym.get(normalizedValue);
 
     if (!node) {
       unresolved.push(rawValue);

@@ -8,7 +8,7 @@
 | `lib/consolidation/taxonomy-validator.ts` | Renamed `buildOpenAIResponseFormat()` → `buildJSONResponseFormat()`. Now returns `{ type: 'json_object' }` (DeepSeek-compatible) instead of OpenAI `json_schema` strict mode. |
 | `lib/consolidation/batch-service.ts` | Updated import + usage of `buildJSONResponseFormat()` |
 | `lib/consolidation/direct-chat-service.ts` | Updated import + usage; removed unused `responseSchema` parameter from `createDirectChatBatch()`; removed unused `buildResponseSchema` import |
-| `lib/consolidation/prompt-builder.ts` | `generateSystemPrompt()` now appends compact JSON output contract with all required fields, allowed ShopSite pages, and category list (with token guard at 50 entries) |
+| `lib/consolidation/prompt-builder.ts` | `generateSystemPrompt()` now appends compact JSON output contract with all required fields and category list (with token guard at 50 entries) |
 | `__tests__/lib/consolidation/taxonomy-validator.test.ts` | Updated test for new function name + behavior |
 | `lib/consolidation/__tests__/prompt-builder.test.ts` | Updated assertions for new output contract text |
 | `lib/consolidation/AGENTS.md` | Full rewrite — DeepSeek direct-chat architecture, removed all OpenAI Batch API / Gemini references |
