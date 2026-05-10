@@ -52,12 +52,12 @@ export function getStripeServerClient(): Stripe {
  * so the UI can gracefully disable card payment instead of mounting Stripe
  * Elements with an invalid key.
  */
-export function getStripePublishableKey(): string | null {
+export function getStripePublishableKey(): string {
   const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
-  if (!key) return null;
-  if (key === 'pk_test_placeholder' || key === 'pk_test_replace_with_your_publishable_key') return null;
-  if (key === 'pk_test_your_publishable_key') return null;
+  if (!key) return '';
+  if (key === 'pk_test_placeholder' || key === 'pk_test_replace_with_your_publishable_key') return '';
+  if (key === 'pk_test_your_publishable_key') return '';
 
   return key;
 }
@@ -67,7 +67,7 @@ export function getStripePublishableKey(): string | null {
  * Components should check this before mounting Stripe Elements.
  */
 export function hasStripePublishableKey(): boolean {
-  return getStripePublishableKey() !== null;
+  return getStripePublishableKey() !== '';
 }
 
 // ---------------------------------------------------------------------------
