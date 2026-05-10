@@ -277,7 +277,7 @@ export interface MobileApiContext {
         promoCodeId?: string | null
         discountAmount?: number
         paymentMethod?: PaymentMethod
-        paymentStatus?: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded' | 'partially_refunded'
+        paymentStatus?: PaymentStatus
         stripePaymentIntentId?: string
         stripeCustomerId?: string
         fulfillmentMethod?: 'pickup' | 'delivery'

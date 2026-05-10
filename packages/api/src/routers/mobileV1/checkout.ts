@@ -221,7 +221,7 @@ export const checkoutRouter = t.router({
       promoCodeId: quote.promoCodeId,
       discountAmount: quote.discountAmount,
       paymentMethod: input.paymentMethod,
-      paymentStatus: input.paymentMethod === 'pickup' ? 'pending' : 'processing',
+      paymentStatus: input.paymentMethod === 'pickup' ? 'unpaid' : 'authorized',
       fulfillmentMethod: input.fulfillmentMethod,
       deliveryAddress: input.deliveryAddress ?? null,
       deliveryDistanceMiles: quote.deliveryBreakdown?.distanceMiles ?? null,
