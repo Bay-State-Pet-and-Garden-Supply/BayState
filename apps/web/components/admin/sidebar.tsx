@@ -22,6 +22,7 @@ import {
  ShoppingBag,
  ClipboardList,
  RefreshCw,
+ Rocket,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -77,6 +78,11 @@ const navSections: NavSection[] = [
  href: "/admin/inventory/sync-runs",
  label: "Sync Runs",
  icon: RefreshCw,
+ },
+ {
+ href: "/admin/inventory/launchpad",
+ label: "Product Launchpad",
+ icon: Rocket,
  },
  ],
  },
