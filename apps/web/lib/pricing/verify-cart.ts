@@ -133,7 +133,7 @@ export async function verifyCart(
   const subtotal = verifiedItems.reduce((sum, item) => sum + item.totalPrice, 0);
 
   // Validate promo code
-  let discountAmount = 0;
+  const discountAmount = 0;
   let promoCodeId: string | null = null;
   const resolvedPromoCode: string | null = promoCode || null;
 
