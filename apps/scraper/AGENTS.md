@@ -15,22 +15,32 @@ Python-based scraper executing YAML-defined workflows to extract product data. R
 ├── scrapers/
 │   ├── actions/handlers/      # 24 action handlers (click, extract, navigate)
 │   ├── ai_search/             # AI discovery, search providers
+│   ├── cohort/                # Cohort processing
 │   ├── configs/               # Scraper YAML configs
 │   ├── executor/              # Workflow executor, browser manager
 │   ├── models/                # Config models, result schemas
 │   ├── parser/                # YAML config parser
+│   ├── product_url_extraction/ # URL extraction
 │   ├── providers/             # Provider implementations
 │   ├── tests/                 # Scraper-specific tests
 │   ├── utils/                 # Scraping utilities
-│   └── runtime.py             # Runtime orchestration
+│   ├── config_validation.py   # Config validation
+│   ├── pricing_loader.py      # Dynamic pricing loader
+│   ├── result_collector.py    # Result collection
+│   ├── runtime.py             # Runtime orchestration
+│   └── sku_loader.py          # SKU loader
 ├── tests/                     # pytest unit/integration tests
 ├── utils/                     # Structured logging, debugging, proxies
+├── validation/                # Validation utilities
 ├── config/                    # Evaluation thresholds, settings
 ├── runner/                    # Job runner modules
 ├── cli/                       # CLI commands
 ├── scripts/                   # Migrations, utilities
 ├── tools/                     # Config migration helpers
 ├── benchmarks/                # Benchmark suites
+├── reports/                   # Performance/test reports
+├── data/                      # Test fixtures, sample data
+├── prompts/                   # AI prompts
 ├── docs/                      # Documentation
 ├── daemon.py                  # Polling daemon
 ├── runner.py                  # Runner entrypoint

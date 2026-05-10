@@ -51,7 +51,7 @@ python runner.py --mode realtime
 
 ## ENTRY POINTS
 - `daemon.py` uses `run_job()` with mode dispatch
-- `runner.py` is thin wrapper (5 lines)
+- `runner.py` is thin wrapper (3 lines)
 - Docker ENTRYPOINT: `python daemon.py`
 
 ## RELATED

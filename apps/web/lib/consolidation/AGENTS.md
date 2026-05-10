@@ -13,7 +13,7 @@ The consolidation pipeline processes `products_ingestion` records through DeepSe
 ```
 .
 ├── index.ts                  # Public API, main entry point
-├── llm-client.ts             # LLM client wrapper + runtime config resolution
+├── openai-client.ts           # LLM client wrapper + runtime config resolution
 ├── batch-service.ts          # Batch job orchestration (submit, status, retrieve, apply)
 ├── direct-chat-service.ts    # Direct-chat execution engine
 ├── prompt-builder.ts         # Dynamic prompt construction with output contract
@@ -22,6 +22,7 @@ The consolidation pipeline processes `products_ingestion` records through DeepSe
 ├── result-parsing.ts         # Parse structured LLM JSON responses
 ├── category-domain.ts        # Product domain classifier + field applicability matrix
 ├── detail-enrichment.ts      # Post-consolidation deterministic field extraction
+├── evaluation.ts             # Batch evaluation and scoring utilities
 ├── two-phase-service.ts      # Two-phase consistency pass across siblings
 ├── consistency-rules.ts       # Consistency validation rules
 ├── parallel-runs.ts          # Cross-provider parallel run tracking (legacy)
@@ -42,7 +43,7 @@ The consolidation pipeline processes `products_ingestion` records through DeepSe
 | **Domain Classification** | `category-domain.ts` | `classifyProductDomain(category)` → pet_food/pet_product/garden/hardware/general |
 | **Detail Enrichment** | `detail-enrichment.ts` | `enrichProductDetails()` — deterministic post-consolidation field extraction |
 | **Result Parsing** | `result-parsing.ts` | `parseStructuredConsolidationText()` |
-| **LLM Config** | `llm-client.ts` | `getConsolidationConfig()`, `getLLMClient()` |
+| **LLM Config** | `openai-client.ts` | `getConsolidationConfig()`, `CONSOLIDATION_CONFIG`, `getOpenAIClient()`, `isOpenAIConfigured()` |
 | **Pricing** | `lib/ai-scraping/pricing.ts` | `calculateAICost()` — DeepSeek entries in pricing catalog |
 
 ## DATA FLOW
@@ -88,27 +89,35 @@ The consolidation pipeline processes `products_ingestion` records through DeepSe
 - **Size**: 100-500 products per batch
 - **Retry**: 3 attempts per item (exponential backoff: 250ms → 500ms → 1000ms)
 - **Retryable errors**: 429, 408, 502, 503, 500, timeout, network errors
-- **Pricing**: Sync pricing ($0.14/M input, $0.28/M output for deepseek-chat)
+- **Pricing**: Loaded dynamically from `lib/ai-scraping/pricing.ts`
 - **Processing**: Claim → run → store (1 item per poll cycle; configurable via `limit`)
 
-## CONSOLIDATION MODULE RENAMING NOTES
-The module was originally written for OpenAI Batch API. Key renames:
-- `openai-client.ts` → `llm-client.ts` (runtime config + LLM client creation)
-- `getOpenAIClient()` → `getLLMClient()` (creates OpenAI SDK pointing to DeepSeek)
-- `buildOpenAIResponseFormat()` → `buildJSONResponseFormat()` (DeepSeek uses `json_object`)
-- `isOpenAIConfigured()` → `isLLMConfigured()`
+## RENAMING NOTES
+Originally written for OpenAI Batch API. Renames are planned (see `DEEPSEEK_OVERHAUL_PLAN.md`) but not yet executed:
+- `openai-client.ts` still active; rename to `llm-client.ts` is pending
+- `getOpenAIClient()` / `isOpenAIConfigured()` still in use; not yet renamed to `getLLMClient()` / `isLLMConfigured()`
+- `buildJSONResponseFormat()` exists in `taxonomy-validator.ts`; `buildOpenAIResponseFormat()` is not a function name in the module
+
+`getLLMClient()` is sourced from `lib/ai-scraping/credentials.ts`, not from this module.
 
 Legacy `openai_batch_id` column in `batch_jobs` table is retained for historical job lookup.
 
-## API ROUTES
+## API ROUTES (13 endpoints)
 | Route | Method | Purpose |
 |-------|--------|---------|
 | `/api/admin/consolidation/submit` | POST | Submit SKUs for consolidation |
 | `/api/admin/consolidation/[batchId]` | GET | Get batch status |
 | `/api/admin/consolidation/[batchId]/apply` | POST | Apply consolidation results |
+| `/api/admin/consolidation/[batchId]/process` | POST | Process a single item |
 | `/api/admin/consolidation/jobs` | GET | List batch jobs |
-| `/api/admin/consolidation/sync` | POST | Sync batch status from provider |
+| `/api/admin/consolidation/models` | GET | List available LLM models |
+| `/api/admin/consolidation/reset` | POST | Reset a batch |
+| `/api/admin/consolidation/review` | GET | Review results before apply |
+| `/api/admin/consolidation/scraped` | GET | Fetch scraped data |
 | `/api/admin/consolidation/settings` | GET/POST | Read/write consolidation defaults |
+| `/api/admin/consolidation/sync` | POST | Sync batch status from provider |
+| `/api/admin/consolidation/webhook` | POST | Webhook receiver |
+| `/api/admin/consolidation/ws` | GET | WebSocket endpoint |
 
 ## ANTI-PATTERNS
 - **NO** OpenAI Batch API usage (`/v1/batches`) — DeepSeek doesn't support it

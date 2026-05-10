@@ -10,23 +10,32 @@ Mobile-first data-heavy dashboard: product CRUD, scraper orchestration, B2B sync
 ## STRUCTURE
 ```
 app/admin/
-├── products/         # CRUD, variants, images, pricing
-├── scrapers/         # YAML config, test runner
-├── scraping/         # Job queue, history, callbacks
-├── migration/        # ShopSite sync tools
+├── (auth)/           # Admin login/login flow
+├── analytics/        # Sales, traffic, conversion
+├── b2b/              # Portal configuration
 ├── brands/           # Management, logos, SEO
 ├── categories/       # Hierarchy, taxonomy
-├── orders/           # Fulfillment, history
+├── cohorts/          # Pipeline cohorts
 ├── customers/        # Profiles, support
-├── analytics/        # Sales, traffic, conversion
-├── quality/          # Flagged products, manual review
-├── b2b/              # Portal configuration
-├── scraper-network/  # Runner health monitoring
+├── design/           # Theme/design settings
+├── enrichment/       # AI enrichment tools
+├── health/           # System health monitoring
+├── inventory/        # Stock management
+├── migration/        # ShopSite sync tools
+├── orders/           # Fulfillment, history
+├── pages/            # CMS pages
 ├── pipeline/         # Job scheduling, monitoring
+├── preorder-groups/  # Preorder management
+├── product-groups/   # Product groups
+├── products/         # CRUD, variants, images, pricing
 ├── promotions/       # Discounts, coupons
-├── services/         # Rentals, refills catalog
+├── quality/          # Flagged products, manual review
+├── reviews/          # Product reviews
+├── scrapers/         # YAML config, test runner, runs
+├── services/         # Services catalog (rentals, refills)
+├── settings/         # System settings
 ├── tools/            # Utility tools
-└── [10 more modules]
+└── users/            # Admin user management
 ```
 
 ## WHERE TO LOOK
@@ -34,8 +43,11 @@ app/admin/
 |------|----------|
 | **Product CRUD** | `app/admin/products/` |
 | **Scraper Config** | `app/admin/scrapers/` |
-| **Job Queue** | `app/admin/scraping/` |
-| **B2B Sync** | `app/admin/migration/` |
+| **Job Queue** | `app/admin/scrapers/runs/` |
+| **B2B Sync** | `app/admin/b2b/` |
+| **ShopSite Export** | `app/admin/migration/` |
+| **Scraper Lab (Testing)** | `app/admin/scrapers/` → Testing tab |
+| **B2B Portal Config** | `app/admin/b2b/` |
 | **Analytics** | `app/admin/analytics/` |
 | **Quality Review** | `app/admin/quality/` |
 
@@ -43,7 +55,7 @@ app/admin/
 - **Routes**: `page.tsx` (lists), `[id]/page.tsx` (details), `actions.ts` (mutations)
 - **Tables**: `@tanstack/react-table` with server-side filtering/pagination
 - **Components**: `components/admin/` mirrors `app/admin/` structure
-- **Auth**: RBAC via `lib/auth/admin.ts`, middleware redirects to `/admin/login`
+- **Auth**: RBAC via `lib/auth/roles.ts`, layout-level redirect to `/admin/(auth)/login`
 
 ## ANTI-PATTERNS
 - **NO** client-side data fetching (use Server Components)
