@@ -7,21 +7,21 @@ DELETE FROM scraper_configs;
 
 -- Step 2: Create scraper_configs for all 10 scrapers
 INSERT INTO scraper_configs (id, slug, display_name, domain, schema_version) VALUES
-('sca001-0000-0000-0000-000000000001', 'amazon', 'Amazon', 'www.amazon.com', '1.0'),
-('sca001-0000-0000-0000-000000000002', 'bradley', 'Bradley Caldwell', 'www.bradleycaldwell.com', '1.0'),
-('sca001-0000-0000-0000-000000000003', 'central-pet', 'Central Pet', 'www.centralpet.com', '1.0'),
-('sca001-0000-0000-0000-000000000004', 'coastal', 'Coastal Pet', 'www.coastalpet.com', '1.0'),
-('sca001-0000-0000-0000-000000000005', 'mazuri', 'Mazuri', 'www.mazuri.com', '1.0'),
-('sca001-0000-0000-0000-000000000006', 'orgill', 'Orgill', 'www.orgill.com', '1.0'),
-('sca001-0000-0000-0000-000000000007', 'petfoodex', 'Pet Food Experts', 'www.petfoodexperts.com', '1.0'),
-('sca001-0000-0000-0000-000000000008', 'phillips', 'Phillips Pet', 'shop.phillipspet.com', '1.0'),
-('sca001-0000-0000-0000-000000000009', 'walmart', 'Walmart', 'www.walmart.com', '1.0'),
-('sca001-0000-0000-0000-000000000010', 'baystate-pet', 'Bay State Pet', 'www.baystatepet.com', '1.0');
+('a0000000-0000-0000-0000-000000000001', 'amazon', 'Amazon', 'www.amazon.com', '1.0'),
+('a0000000-0000-0000-0000-000000000002', 'bradley', 'Bradley Caldwell', 'www.bradleycaldwell.com', '1.0'),
+('a0000000-0000-0000-0000-000000000003', 'central-pet', 'Central Pet', 'www.centralpet.com', '1.0'),
+('a0000000-0000-0000-0000-000000000004', 'coastal', 'Coastal Pet', 'www.coastalpet.com', '1.0'),
+('a0000000-0000-0000-0000-000000000005', 'mazuri', 'Mazuri', 'www.mazuri.com', '1.0'),
+('a0000000-0000-0000-0000-000000000006', 'orgill', 'Orgill', 'www.orgill.com', '1.0'),
+('a0000000-0000-0000-0000-000000000007', 'petfoodex', 'Pet Food Experts', 'www.petfoodexperts.com', '1.0'),
+('a0000000-0000-0000-0000-000000000008', 'phillips', 'Phillips Pet', 'shop.phillipspet.com', '1.0'),
+('a0000000-0000-0000-0000-000000000009', 'walmart', 'Walmart', 'www.walmart.com', '1.0'),
+('a0000000-0000-0000-0000-000000000010', 'baystate-pet', 'Bay State Pet', 'www.baystatepet.com', '1.0');
 
 -- Step 3: Create published versions with full configs
 -- Amazon
 INSERT INTO scraper_config_versions (id, config_id, schema_version, config, status, version_number, published_at, change_summary)
-SELECT 'ver001-0000-0000-0000-000000000001', id, '1.0', '{
+SELECT 'b0000000-0000-0000-0000-000000000001', id, '1.0', '{
   "schema_version": "1.0",
   "name": "amazon",
   "display_name": "Amazon",
@@ -54,7 +54,7 @@ FROM scraper_configs WHERE slug = 'amazon';
 
 -- Bradley
 INSERT INTO scraper_config_versions (id, config_id, schema_version, config, status, version_number, published_at, change_summary)
-SELECT 'ver001-0000-0000-0000-000000000002', id, '1.0', '{
+SELECT 'b0000000-0000-0000-0000-000000000002', id, '1.0', '{
   "schema_version": "1.0",
   "name": "bradley",
   "display_name": "Bradley Caldwell",
@@ -81,7 +81,7 @@ FROM scraper_configs WHERE slug = 'bradley';
 
 -- Central Pet
 INSERT INTO scraper_config_versions (id, config_id, schema_version, config, status, version_number, published_at, change_summary)
-SELECT 'ver001-0000-0000-0000-000000000003', id, '1.0', '{
+SELECT 'b0000000-0000-0000-0000-000000000003', id, '1.0', '{
   "schema_version": "1.0",
   "name": "central_pet",
   "display_name": "Central Pet",
@@ -108,7 +108,7 @@ FROM scraper_configs WHERE slug = 'central-pet';
 
 -- Coastal Pet
 INSERT INTO scraper_config_versions (id, config_id, schema_version, config, status, version_number, published_at, change_summary)
-SELECT 'ver001-0000-0000-0000-000000000004', id, '1.0', '{
+SELECT 'b0000000-0000-0000-0000-000000000004', id, '1.0', '{
   "schema_version": "1.0",
   "name": "coastal",
   "display_name": "Coastal Pet",
@@ -135,7 +135,7 @@ FROM scraper_configs WHERE slug = 'coastal';
 
 -- Mazuri
 INSERT INTO scraper_config_versions (id, config_id, schema_version, config, status, version_number, published_at, change_summary)
-SELECT 'ver001-0000-0000-0000-000000000005', id, '1.0', '{
+SELECT 'b0000000-0000-0000-0000-000000000005', id, '1.0', '{
   "schema_version": "1.0",
   "name": "mazuri",
   "display_name": "Mazuri",
@@ -163,7 +163,7 @@ FROM scraper_configs WHERE slug = 'mazuri';
 
 -- Orgill (requires login)
 INSERT INTO scraper_config_versions (id, config_id, schema_version, config, status, version_number, published_at, change_summary)
-SELECT 'ver001-0000-0000-0000-000000000006', id, '1.0', '{
+SELECT 'b0000000-0000-0000-0000-000000000006', id, '1.0', '{
   "schema_version": "1.0",
   "name": "orgill",
   "display_name": "Orgill",
@@ -194,7 +194,7 @@ FROM scraper_configs WHERE slug = 'orgill';
 
 -- Pet Food Experts (requires login)
 INSERT INTO scraper_config_versions (id, config_id, schema_version, config, status, version_number, published_at, change_summary)
-SELECT 'ver001-0000-0000-0000-000000000007', id, '1.0', '{
+SELECT 'b0000000-0000-0000-0000-000000000007', id, '1.0', '{
   "schema_version": "1.0",
   "name": "petfoodex",
   "display_name": "Pet Food Experts",
@@ -222,7 +222,7 @@ FROM scraper_configs WHERE slug = 'petfoodex';
 
 -- Phillips (requires login)
 INSERT INTO scraper_config_versions (id, config_id, schema_version, config, status, version_number, published_at, change_summary)
-SELECT 'ver001-0000-0000-0000-000000000008', id, '1.0', '{
+SELECT 'b0000000-0000-0000-0000-000000000008', id, '1.0', '{
   "schema_version": "1.0",
   "name": "phillips",
   "display_name": "Phillips Pet",
@@ -250,7 +250,7 @@ FROM scraper_configs WHERE slug = 'phillips';
 
 -- Walmart
 INSERT INTO scraper_config_versions (id, config_id, schema_version, config, status, version_number, published_at, change_summary)
-SELECT 'ver001-0000-0000-0000-000000000009', id, '1.0', '{
+SELECT 'b0000000-0000-0000-0000-000000000009', id, '1.0', '{
   "schema_version": "1.0",
   "name": "walmart",
   "display_name": "Walmart",
