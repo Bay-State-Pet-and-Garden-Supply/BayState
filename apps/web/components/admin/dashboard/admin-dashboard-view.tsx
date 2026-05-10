@@ -22,6 +22,7 @@ import { RecentActivityFeed } from './recent-activity-feed';
 import { QuickActions } from './quick-actions';
 import { FleetStatusWidget } from './FleetStatusWidget';
 import { ActionRequired } from './action-required';
+import { RevenueAtRisk } from './revenue-at-risk';
 import { useDashboardStats } from '@/hooks/use-dashboard-stats';
 
 export function AdminDashboardView() {
@@ -129,7 +130,11 @@ export function AdminDashboardView() {
       </div>
 
       {/* Action Required */}
+      {/* Action Required Panel */}
       <ActionRequired />
+
+      {/* Revenue at Risk */}
+      <RevenueAtRisk />
 
       {/* Middle Section */}
       <div className="grid gap-6 lg:grid-cols-3">
