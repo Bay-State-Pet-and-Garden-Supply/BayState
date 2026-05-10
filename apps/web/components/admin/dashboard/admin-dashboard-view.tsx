@@ -21,6 +21,7 @@ import { ScraperStatusWidget } from './scraper-status-widget';
 import { RecentActivityFeed } from './recent-activity-feed';
 import { QuickActions } from './quick-actions';
 import { FleetStatusWidget } from './FleetStatusWidget';
+import { ActionRequired } from './action-required';
 import { useDashboardStats } from '@/hooks/use-dashboard-stats';
 
 export function AdminDashboardView() {
@@ -126,6 +127,9 @@ export function AdminDashboardView() {
           href="/admin/inventory"
         />
       </div>
+
+      {/* Action Required */}
+      <ActionRequired />
 
       {/* Middle Section */}
       <div className="grid gap-6 lg:grid-cols-3">
