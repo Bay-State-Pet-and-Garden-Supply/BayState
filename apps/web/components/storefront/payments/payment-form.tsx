@@ -9,12 +9,13 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 import { Button } from '@/components/ui/button';
-import { Loader2, CreditCard, Shield, Banknote } from 'lucide-react';
+import { Loader2, CreditCard, Shield, Banknote, AlertTriangle } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
+import { getStripePublishableKey, hasStripePublishableKey } from '@/lib/payments/stripe';
 
-const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder'
-);
+const stripePromise = hasStripePublishableKey()
+  ? loadStripe(getStripePublishableKey()!)
+  : null;
 
 interface PaymentFormProps {
   clientSecret: string;
@@ -109,6 +110,26 @@ export function PaymentForm({
   onSuccess,
   onError,
 }: PaymentFormProps) {
+  // If Stripe publishable key is not configured, show a clear error
+  if (!stripePromise) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6">
+        <div className="flex items-center gap-3 mb-3">
+          <AlertTriangle className="h-6 w-6 text-amber-600" />
+          <p className="text-base font-bold text-amber-800">Stripe Not Configured</p>
+        </div>
+        <p className="text-sm text-amber-700">
+          Credit card payments require a Stripe publishable key.
+          Set <code className="bg-amber-100 px-1.5 py-0.5 rounded text-xs font-mono">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code>
+          in your <code className="bg-amber-100 px-1.5 py-0.5 rounded text-xs font-mono">.env.local</code> file.
+        </p>
+        <p className="text-sm text-amber-600 mt-2">
+          Pickup / pay-at-store orders still work without Stripe.
+        </p>
+      </div>
+    );
+  }
+
   const appearance = {
     theme: 'stripe' as const,
     variables: {

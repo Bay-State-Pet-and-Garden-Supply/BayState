@@ -158,22 +158,12 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
     }
   };
 
-  const createPaymentIntent = async (orderId: string, email: string, name: string) => {
+  const createPaymentIntent = async (orderId: string, _email: string, _name: string) => {
+    // Send only orderId — the server loads the order and derives the amount.
     const response = await fetch('/api/payments/intent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount: total,
-        customerEmail: email,
-        customerName: name,
-        orderId,
-        items: items.map((item) => ({
-          id: item.id,
-          name: item.name,
-          quantity: item.quantity,
-          unitPrice: item.price,
-        })),
-      }),
+      body: JSON.stringify({ orderId }),
     });
     if (!response.ok) throw new Error('Failed to create payment intent');
     return await response.json();
