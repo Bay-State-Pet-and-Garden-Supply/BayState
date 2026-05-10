@@ -32,6 +32,11 @@ on:
         required: false
         type: boolean
         default: false
+      sync_run_id:
+        description: 'Sync run ID from trigger API for correlation'
+        required: false
+        type: string
+        default: ''
 
 concurrency:
   group: register-sync
@@ -208,6 +213,11 @@ jobs:
             $scriptArgs += "--apply"
           } else {
             $scriptArgs += "--dry-run"
+          }
+
+          $syncRunId = "${{ github.event.inputs.sync_run_id }}"
+          if (-not [string]::IsNullOrWhiteSpace($syncRunId)) {
+            $scriptArgs += "--sync-run-id=$syncRunId"
           }
 
           Set-Location apps\web
