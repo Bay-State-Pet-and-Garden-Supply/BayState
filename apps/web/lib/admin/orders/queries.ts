@@ -46,7 +46,7 @@ export async function getAdminOrders(filters: AdminOrderListFilters): Promise<{
   }
 
   if (filters.q) {
-    const sanitized = filters.q.trim().replace(/[%_]/g, '');
+    const sanitized = filters.q.trim().replace(/[%_,]/g, '');
     if (sanitized.length > 0) {
       const searchTerm = `%${sanitized}%`;
       query = query.or(
