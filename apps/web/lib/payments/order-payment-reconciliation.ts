@@ -78,7 +78,7 @@ function refundStatus(
  * was already processed or is currently processing (idempotent dedup).
  * Returns true if the event is new or was previously failed (retryable).
  */
-async function claimWebhookEvent(
+export async function claimWebhookEvent(
   eventId: string,
   eventType: string,
   stripeObjectId: string | null,
@@ -125,7 +125,7 @@ async function claimWebhookEvent(
 /**
  * Mark a webhook event as processed (or failed).
  */
-async function finalizeWebhookEvent(
+export async function finalizeWebhookEvent(
   eventId: string,
   status: 'processed' | 'skipped' | 'failed',
   errorMessage?: string

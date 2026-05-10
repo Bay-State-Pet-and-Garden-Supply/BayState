@@ -2,13 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { constructWebhookEvent } from '@/lib/payments/stripe';
 import {
   claimWebhookEvent,
+  finalizeWebhookEvent,
   handlePaymentIntentSucceeded,
   handlePaymentIntentFailed,
   handlePaymentIntentCanceled,
   handleChargeRefunded,
 } from '@/lib/payments/order-payment-reconciliation';
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+function getWebhookSecret(): string | undefined {
+  return process.env.STRIPE_WEBHOOK_SECRET;
+}
 
 /**
  * POST /api/payments/webhook
@@ -30,7 +33,8 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
  * Returns 500 for misconfigured webhook secret.
  */
 export async function POST(request: NextRequest) {
-  if (!webhookSecret) {
+  const whSecret = getWebhookSecret();
+  if (!whSecret) {
     console.error('STRIPE_WEBHOOK_SECRET not set. Webhooks cannot be processed.');
     return NextResponse.json(
       { error: 'Webhook secret not configured' },
@@ -50,11 +54,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const event = constructWebhookEvent(body, signature, webhookSecret);
+    const event = constructWebhookEvent(body, signature, whSecret);
     const eventId = event.id;
     const eventType = event.type;
-    const eventData = event.data.object as Record<string, unknown>;
-    const stripeObjectId = (eventData as { id?: string })?.id || null;
+    const eventData = event.data.object as unknown as Record<string, unknown>;
+    const stripeObjectId = (eventData as unknown as Record<string, unknown>)?.id as string | null || null;
 
     console.log(`Webhook received: ${eventType} [${eventId}]`);
 
@@ -65,7 +69,7 @@ export async function POST(request: NextRequest) {
       eventType,
       stripeObjectId,
       eventOrderId,
-      event.data.object as Record<string, unknown>
+      event.data.object as unknown as Record<string, unknown>
     );
 
     // Always return 200 for duplicate events to acknowledge receipt
@@ -119,7 +123,6 @@ export async function POST(request: NextRequest) {
       default:
         console.log(`Unhandled webhook event type: ${event.type}`);
         // Mark as skipped in ledger so it doesn't retry infinitely
-        const { finalizeWebhookEvent } = await import('@/lib/payments/order-payment-reconciliation');
         await finalizeWebhookEvent(eventId, 'skipped', `Unhandled event type: ${event.type}`);
     }
 
@@ -147,8 +150,8 @@ export async function POST(request: NextRequest) {
  */
 function extractOrderId(event: import('stripe').Stripe.Event): string | null {
   try {
-    const obj = event.data.object as Record<string, unknown>;
-    const metadata = obj?.metadata as Record<string, string> | undefined;
+    const obj = event.data.object as unknown as Record<string, unknown>;
+    const metadata = (obj?.metadata as Record<string, string> | undefined) || undefined;
     return metadata?.order_id || null;
   } catch {
     return null;
