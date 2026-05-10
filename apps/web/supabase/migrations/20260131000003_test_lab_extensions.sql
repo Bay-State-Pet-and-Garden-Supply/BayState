@@ -151,8 +151,9 @@ DECLARE
     health_score INTEGER := 0;
 BEGIN
     SELECT
-        COUNT(*) INTO total_count,
-        COUNT(*) FILTER (WHERE status = 'FOUND') INTO found_count
+        COUNT(*),
+        COUNT(*) FILTER (WHERE status = 'FOUND')
+    INTO total_count, found_count
     FROM scraper_selector_results
     WHERE test_run_id = p_test_run_id;
 
@@ -200,7 +201,8 @@ ALTER TABLE scraper_login_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scraper_extraction_results ENABLE ROW LEVEL SECURITY;
 
 -- Policies for authenticated users (read own org data)
-CREATE POLICY IF NOT EXISTS "Users can view selector results for their organization"
+DROP POLICY IF EXISTS "Users can view selector results for their organization" ON scraper_selector_results;
+CREATE POLICY "Users can view selector results for their organization"
     ON scraper_selector_results FOR SELECT
     USING (
         EXISTS (
@@ -212,7 +214,8 @@ CREATE POLICY IF NOT EXISTS "Users can view selector results for their organizat
         )
     );
 
-CREATE POLICY IF NOT EXISTS "Users can view login results for their organization"
+DROP POLICY IF EXISTS "Users can view login results for their organization" ON scraper_login_results;
+CREATE POLICY "Users can view login results for their organization"
     ON scraper_login_results FOR SELECT
     USING (
         EXISTS (
@@ -224,7 +227,8 @@ CREATE POLICY IF NOT EXISTS "Users can view login results for their organization
         )
     );
 
-CREATE POLICY IF NOT EXISTS "Users can view extraction results for their organization"
+DROP POLICY IF EXISTS "Users can view extraction results for their organization" ON scraper_extraction_results;
+CREATE POLICY "Users can view extraction results for their organization"
     ON scraper_extraction_results FOR SELECT
     USING (
         EXISTS (
@@ -237,15 +241,18 @@ CREATE POLICY IF NOT EXISTS "Users can view extraction results for their organiz
     );
 
 -- Policy for service role (full access for background jobs)
-CREATE POLICY IF NOT EXISTS "Service role can manage all test results"
+DROP POLICY IF EXISTS "Service role can manage all test results" ON scraper_selector_results;
+CREATE POLICY "Service role can manage all test results"
     ON scraper_selector_results FOR ALL
     USING (auth.role() = 'service_role');
 
-CREATE POLICY IF NOT EXISTS "Service role can manage all login results"
+DROP POLICY IF EXISTS "Service role can manage all login results" ON scraper_login_results;
+CREATE POLICY "Service role can manage all login results"
     ON scraper_login_results FOR ALL
     USING (auth.role() = 'service_role');
 
-CREATE POLICY IF NOT EXISTS "Service role can manage all extraction results"
+DROP POLICY IF EXISTS "Service role can manage all extraction results" ON scraper_extraction_results;
+CREATE POLICY "Service role can manage all extraction results"
     ON scraper_extraction_results FOR ALL
     USING (auth.role() = 'service_role');
 

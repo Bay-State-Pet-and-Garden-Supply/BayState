@@ -47,11 +47,11 @@ AND config IS NOT NULL;
 INSERT INTO public.scraper_selectors (version_id, name, selector, attribute, multiple, required, sort_order)
 SELECT
     cv.id AS version_id,
-    (sel->>'name')::TEXT AS name,
-    (sel->>'selector')::TEXT AS selector,
-    COALESCE(sel->>'attribute', 'text')::TEXT AS attribute,
-    COALESCE((sel->>'multiple')::BOOLEAN, false) AS multiple,
-    COALESCE((sel->>'required')::BOOLEAN, true) AS required,
+    ((sel.value)->>'name')::TEXT AS name,
+    ((sel.value)->>'selector')::TEXT AS selector,
+    COALESCE((sel.value)->>'attribute', 'text')::TEXT AS attribute,
+    COALESCE(((sel.value)->>'multiple')::BOOLEAN, false) AS multiple,
+    COALESCE(((sel.value)->>'required')::BOOLEAN, true) AS required,
     (row_number() OVER (PARTITION BY cv.id ORDER BY ordinality)) - 1 AS sort_order
 FROM public.scraper_config_versions cv,
      jsonb_array_elements(cv.config->'selectors') WITH ORDINALITY AS sel(value, ordinality)
@@ -66,9 +66,9 @@ ON CONFLICT (version_id, sort_order) DO NOTHING;
 INSERT INTO public.scraper_workflow_steps (version_id, action, name, params, sort_order)
 SELECT
     cv.id AS version_id,
-    (step->>'action')::TEXT AS action,
-    step->>'name'::TEXT AS name,
-    COALESCE(step->'params', '{}'::JSONB) AS params,
+    ((step.value)->>'action')::TEXT AS action,
+    (step.value)->>'name'::TEXT AS name,
+    COALESCE((step.value)->'params', '{}'::JSONB) AS params,
     (row_number() OVER (PARTITION BY cv.id ORDER BY ordinality)) - 1 AS sort_order
 FROM public.scraper_config_versions cv,
      jsonb_array_elements(cv.config->'workflows') WITH ORDINALITY AS step(value, ordinality)
