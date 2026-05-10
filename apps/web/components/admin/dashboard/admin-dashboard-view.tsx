@@ -7,7 +7,8 @@ import {
   AlertTriangle, 
   Activity,
   PackagePlus,
-  RefreshCw,
+  Database,
+  HeartPulse,
   BarChart3,
   Eye,
   ShoppingCart,
@@ -37,15 +38,14 @@ export function AdminDashboardView() {
       icon: PackagePlus,
       variant: 'default' as const,
     },
-    { label: 'Sync Products', href: '/admin/migration', icon: RefreshCw },
+    { label: 'Integra Sync', href: '/admin/tools/integra-sync', icon: Database },
+    { label: 'Data Health', href: '/admin/health', icon: HeartPulse },
     { label: 'View Analytics', href: '/admin/analytics', icon: BarChart3 },
     { label: 'View Store', href: '/', icon: Eye },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Morning Briefing */}
-      <MorningBriefing />
       {/* Morning Briefing */}
       <MorningBriefing />
 
