@@ -1,43 +1,57 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { updateOrderStatus } from '@/lib/orders';
 import { createClient } from '@/lib/supabase/server';
 import { ActionState } from '@/lib/types';
 
+import {
+  cancelOrderAction as cancelOrderImpl,
+  archiveOrderAction as archiveOrderImpl,
+  voidOrderAction as voidOrderImpl,
+  updateOrderPaymentStatusAction as updatePaymentImpl,
+  updateOrderFulfillmentStatusAction as updateFulfillmentImpl,
+} from '@/lib/admin/orders/mutations';
+
+export {
+  cancelOrderImpl as cancelOrderAction,
+  archiveOrderImpl as archiveOrderAction,
+  voidOrderImpl as voidOrderAction,
+  updatePaymentImpl as updateOrderPaymentStatusAction,
+  updateFulfillmentImpl as updateOrderFulfillmentStatusAction,
+};
 
 export async function updateOrderStatusAction(
-    id: string,
-    status: 'pending' | 'processing' | 'completed' | 'cancelled'
+  id: string,
+  status: 'pending' | 'processing' | 'completed' | 'cancelled'
 ): Promise<ActionState> {
-    try {
-        const success = await updateOrderStatus(id, status);
+  const supabase = await createClient();
 
-        if (!success) {
-            return { success: false, error: 'Failed to update order status' };
-        }
+  const { data: current } = await supabase
+    .from('orders')
+    .select('status')
+    .eq('id', id)
+    .single();
 
-        revalidatePath('/admin/orders');
-        return { success: true };
-    } catch (error) {
-        console.error('Update order status error:', error);
-        return { success: false, error: 'Failed to update order status' };
-    }
-}
+  const { error } = await supabase
+    .from('orders')
+    .update({
+      status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id);
 
-export async function deleteOrder(id: string): Promise<ActionState> {
-    const supabase = await createClient();
+  if (error) {
+    console.error('Update order status error:', error);
+    return { success: false, error: 'Failed to update order status' };
+  }
 
-    const { error } = await supabase
-        .from('orders')
-        .delete()
-        .eq('id', id);
+  await supabase.from('order_events').insert({
+    order_id: id,
+    event_type: 'status_changed',
+    previous_value: { status: current?.status },
+    new_value: { status },
+  });
 
-    if (error) {
-        console.error('Delete order error:', error);
-        return { success: false, error: 'Failed to delete order' };
-    }
-
-    revalidatePath('/admin/orders');
-    return { success: true };
+  revalidatePath('/admin/orders');
+  return { success: true };
 }

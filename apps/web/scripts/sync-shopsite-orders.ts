@@ -58,6 +58,46 @@ async function completeLog(supabase: SupabaseClient, logId: string, result: Sync
     }
 }
 
+async function startIntegrationSyncRun(supabase: SupabaseClient): Promise<string | null> {
+    const { data, error } = await supabase
+        .from('integration_sync_runs')
+        .insert({
+            source_type: 'shopsite',
+            source_system: 'shopsite_15',
+            sync_kind: 'orders',
+            status: 'running',
+        })
+        .select('id')
+        .single();
+
+    if (error) {
+        console.error('Failed to create integration sync run:', error.message);
+        return null;
+    }
+
+    return data?.id ?? null;
+}
+
+async function completeIntegrationSyncRun(supabase: SupabaseClient, syncRunId: string, result: SyncResult): Promise<void> {
+    const { error } = await supabase
+        .from('integration_sync_runs')
+        .update({
+            completed_at: new Date().toISOString(),
+            status: result.success ? 'completed' : (result.failed > 0 && result.created > 0 ? 'partial' : 'failed'),
+            row_count: result.processed,
+            inserted_count: result.created,
+            updated_count: result.updated,
+            skipped_count: 0,
+            error_count: result.failed,
+            error_summary: result.errors.length > 0 ? JSON.stringify(result.errors.slice(0, 10)) : null,
+        })
+        .eq('id', syncRunId);
+
+    if (error) {
+        console.error('Failed to complete integration sync run:', error.message);
+    }
+}
+
 async function getShopSiteHighWaterOrder(supabase: SupabaseClient): Promise<string | null> {
     const { data, error } = await supabase
         .from('orders')
@@ -125,6 +165,7 @@ async function main() {
 
     console.log('Starting ShopSite order sync...');
     const logId = await startLog(supabase);
+    const syncRunId = await startIntegrationSyncRun(supabase);
     const startedAt = Date.now();
 
     try {
@@ -196,6 +237,13 @@ async function main() {
                     payment_method: transformedOrder.payment_details.method === 'CreditCard' ? 'credit_card' : 'paypal',
                     notes: `Imported from ShopSite. Transaction ID: ${transformedOrder.shopsite_transaction_id || 'N/A'}`,
                     source: 'shopsite',
+                    source_type: 'shopsite',
+                    source_system: 'shopsite_15',
+                    external_order_id: transformedOrder.legacy_order_number,
+                    external_created_at: transformedOrder.created_at,
+                    imported_at: new Date().toISOString(),
+                    payment_status: 'paid',
+                    fulfillment_status: 'fulfilled',
                 }));
 
                 const { data: upsertedOrders, error: orderError } = await supabase
@@ -252,6 +300,56 @@ async function main() {
                     }
                 }
 
+                // 7. Persist order_source_records
+                const sourceRecordRows = transformedBatch.map(({ sourceOrderNumber, transformedOrder }) => {
+                    const orderId = orderIdByNumber.get(transformedOrder.legacy_order_number);
+                    if (!orderId) return null;
+                    return {
+                        order_id: orderId,
+                        source_type: 'shopsite',
+                        source_system: 'shopsite_15',
+                        external_id: sourceOrderNumber,
+                        external_order_number: sourceOrderNumber,
+                        raw_payload: transformedOrder.shopsite_data?.raw_xml ? { xml: transformedOrder.shopsite_data.raw_xml } : {},
+                        normalized_payload: {
+                            transaction_id: transformedOrder.shopsite_transaction_id || null,
+                            billing_address: transformedOrder.billing_address || null,
+                            shipping_address: transformedOrder.shipping_address || null,
+                            payment_details: transformedOrder.payment_details || null,
+                        },
+                        sync_run_id: syncRunId,
+                        external_created_at: transformedOrder.created_at || null,
+                    };
+                }).filter(Boolean);
+
+                if (sourceRecordRows.length > 0) {
+                    const { error: sourceError } = await supabase
+                        .from('order_source_records')
+                        .upsert(sourceRecordRows, { onConflict: 'source_type,source_system,external_id' });
+
+                    if (sourceError) {
+                        console.error('Failed to persist order source records:', sourceError.message);
+                    }
+                }
+
+                // 8. Insert order_events for imported orders
+                const eventRows = transformedBatch.map(({ transformedOrder }) => {
+                    const orderId = orderIdByNumber.get(transformedOrder.legacy_order_number);
+                    if (!orderId) return null;
+                    return {
+                        order_id: orderId,
+                        event_type: 'imported_from_shopsite',
+                        note: `Imported from ShopSite order #${transformedOrder.legacy_order_number}`,
+                    };
+                }).filter(Boolean);
+
+                if (eventRows.length > 0) {
+                    const { error: eventError } = await supabase.from('order_events').insert(eventRows);
+                    if (eventError) {
+                        console.error('Failed to insert order events:', eventError.message);
+                    }
+                }
+
                 created += orderRows.length;
                 if ((batchIndex + 1) % 5 === 0 || batchIndex + 1 === orderBatches.length) {
                     console.log(`[Progress] Processed ${Math.min((batchIndex + 1) * ORDER_BATCH_SIZE, shopsiteOrders.length)}/${shopsiteOrders.length} orders...`);
@@ -283,21 +381,31 @@ async function main() {
             await completeLog(supabase, logId, finalResult);
         }
 
+        if (syncRunId) {
+            await completeIntegrationSyncRun(supabase, syncRunId, finalResult);
+        }
+
         console.log('Order sync complete');
         console.log(JSON.stringify(finalResult, null, 2));
 
     } catch (error: any) {
         console.error('Fatal sync error:', error.message);
+        const fatalResult: SyncResult = {
+            success: false,
+            processed: 0,
+            created: 0,
+            updated: 0,
+            failed: 1,
+            errors: [{ record: 'FATAL', error: error.message, timestamp: new Date().toISOString() }],
+            duration: Date.now() - startedAt
+        };
+
         if (logId) {
-            await completeLog(supabase, logId, {
-                success: false,
-                processed: 0,
-                created: 0,
-                updated: 0,
-                failed: 1,
-                errors: [{ record: 'FATAL', error: error.message, timestamp: new Date().toISOString() }],
-                duration: Date.now() - startedAt
-            });
+            await completeLog(supabase, logId, fatalResult);
+        }
+
+        if (syncRunId) {
+            await completeIntegrationSyncRun(supabase, syncRunId, fatalResult);
         }
         process.exit(1);
     }

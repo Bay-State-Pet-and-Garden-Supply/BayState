@@ -1,24 +1,34 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle, Loader2 } from 'lucide-react';
-import { analyzeIntegraAction, processOnboardingAction } from './actions';
-import { SyncAnalysis } from '@/lib/admin/integra-sync';
+import { CheckCircle, Loader2, ExternalLink } from 'lucide-react';
+import { analyzeIntegraAction } from './actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { FileUpload } from '@/components/ui/file-upload';
-import { formatCurrency } from '@/lib/utils';
 
 export function SyncClient() {
  const [isAnalyzing, setIsAnalyzing] = useState(false);
- const [isProcessing, setIsProcessing] = useState(false);
- const [analysis, setAnalysis] = useState<SyncAnalysis | null>(null);
+ const [result, setResult] = useState<{
+   syncRunId: string;
+   summary: {
+     totalInFile: number;
+     matchedProducts: number;
+     unchangedProducts: number;
+     registerOnlyCount: number;
+     websiteOnlyCount: number;
+     priceMismatchCount: number;
+     quantityMismatchCount: number;
+     stockStatusMismatchCount: number;
+     totalIssues: number;
+   };
+ } | null>(null);
  const [file, setFile] = useState<File | null>(null);
 
  const handleFileChange = (selectedFile: File | null) => {
  setFile(selectedFile);
- setAnalysis(null);
+ setResult(null);
  };
 
  const handleAnalyze = async () => {
@@ -28,30 +38,14 @@ export function SyncClient() {
  const formData = new FormData();
  formData.append('file', file);
 
- const result = await analyzeIntegraAction(formData);
+ const res = await analyzeIntegraAction(formData);
  setIsAnalyzing(false);
 
- if (result.success && result.analysis) {
- setAnalysis(result.analysis);
+ if (res.success && res.summary && res.syncRunId) {
+ setResult({ summary: res.summary, syncRunId: res.syncRunId });
  toast.success('File analyzed successfully');
  } else {
- toast.error(result.error || 'Failed to analyze file');
- }
- };
-
- const handleAddToOnboarding = async () => {
- if (!analysis || analysis.newProducts.length === 0) return;
-
- setIsProcessing(true);
- const result = await processOnboardingAction(analysis.newProducts);
- setIsProcessing(false);
-
- if (result.success) {
- toast.success(`Successfully added ${result.count} products to onboarding pipeline`);
- setAnalysis(null);
- setFile(null);
- } else {
- toast.error(result.error || 'Failed to add products');
+ toast.error(res.error || 'Failed to analyze file');
  }
  };
 
@@ -61,7 +55,7 @@ export function SyncClient() {
  <CardHeader>
  <CardTitle>Integra Export Analysis</CardTitle>
  <CardDescription>
- Upload your Excel export from Integra to identify products missing from the website.
+ Upload your Excel export from Integra to reconcile inventory with the website.
  </CardDescription>
  </CardHeader>
  <CardContent>
@@ -103,12 +97,12 @@ export function SyncClient() {
  </CardContent>
  </Card>
 
- {analysis && (
+ {result && (
  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
  <Card className="border border-border rounded-none">
  <CardHeader className="pb-2">
  <CardDescription>Total in File</CardDescription>
- <CardTitle className="text-3xl">{analysis.totalInFile}</CardTitle>
+ <CardTitle className="text-3xl">{result.summary.totalInFile}</CardTitle>
  </CardHeader>
  <CardContent>
  <p className="text-sm text-muted-foreground">Total products found in the uploaded export.</p>
@@ -118,7 +112,7 @@ export function SyncClient() {
  <Card className="border border-border rounded-none">
  <CardHeader className="pb-2">
  <CardDescription>Existing on Website</CardDescription>
- <CardTitle className="text-3xl text-green-700">{analysis.existingOnWebsite}</CardTitle>
+ <CardTitle className="text-3xl text-green-700">{result.summary.matchedProducts}</CardTitle>
  </CardHeader>
  <CardContent>
  <p className="text-sm text-muted-foreground">Products already found in the live catalog.</p>
@@ -127,77 +121,74 @@ export function SyncClient() {
 
  <Card className="border border-border rounded-none">
  <CardHeader className="pb-2">
- <CardDescription>New Products</CardDescription>
- <CardTitle className="text-3xl text-orange-700">{analysis.newProducts.length}</CardTitle>
+ <CardDescription>Register-only Products</CardDescription>
+ <CardTitle className="text-3xl text-orange-700">{result.summary.registerOnlyCount}</CardTitle>
  </CardHeader>
  <CardContent>
- <p className="text-sm text-muted-foreground">Products missing from the website.</p>
+ <p className="text-sm text-muted-foreground">Products in the export not found on the website.</p>
  </CardContent>
  </Card>
 
- {analysis.newProducts.length > 0 && (
  <Card className="border border-border rounded-none">
+ <CardHeader className="pb-2">
+ <CardDescription>Price Mismatches</CardDescription>
+ <CardTitle className="text-3xl text-amber-600">{result.summary.priceMismatchCount}</CardTitle>
+ </CardHeader>
+ <CardContent>
+ <p className="text-sm text-muted-foreground">Products with different prices between systems.</p>
+ </CardContent>
+ </Card>
+
+ <Card className="border border-border rounded-none">
+ <CardHeader className="pb-2">
+ <CardDescription>Quantity Mismatches</CardDescription>
+ <CardTitle className="text-3xl text-amber-600">{result.summary.quantityMismatchCount}</CardTitle>
+ </CardHeader>
+ <CardContent>
+ <p className="text-sm text-muted-foreground">Products with different stock quantities.</p>
+ </CardContent>
+ </Card>
+
+ <Card className="border border-border rounded-none">
+ <CardHeader className="pb-2">
+ <CardDescription>Total Issues</CardDescription>
+ <CardTitle className="text-3xl text-red-700">{result.summary.totalIssues}</CardTitle>
+ </CardHeader>
+ <CardContent>
+ <p className="text-sm text-muted-foreground">Total discrepancies found across all categories.</p>
+ </CardContent>
+ </Card>
+
+ <Card className="border border-border rounded-none md:col-span-3">
  <CardHeader className="flex flex-row items-center justify-between">
  <div>
- <CardTitle>Ready for Onboarding</CardTitle>
+ <CardTitle>Reconciliation Complete</CardTitle>
  <CardDescription>
- These {analysis.newProducts.length} products can be added to the intake pipeline.
+ Found {result.summary.totalIssues} issue{result.summary.totalIssues !== 1 ? 's' : ''} across {result.summary.totalInFile} products.
  </CardDescription>
  </div>
- <Button
- onClick={handleAddToOnboarding}
- disabled={isProcessing}
- size="lg"
- className="bg-orange-600 hover:bg-orange-700"
+ <a
+ href={`/admin/inventory/sync-runs/${result.syncRunId}`}
+ className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
  >
- {isProcessing ? (
- <>
- <Loader2 className="mr-2 h-4 w-4 animate-spin" />
- Processing...
- </>
- ) : (
- 'Add all to Onboarding Pipeline'
- )}
- </Button>
+ <ExternalLink className="h-4 w-4" />
+ View Full Report →
+ </a>
  </CardHeader>
  <CardContent>
- <div className="max-h-96 overflow-auto rounded-none border border-border">
- <table className="w-full text-sm">
- <thead className="bg-muted sticky top-0">
- <tr>
- <th className="px-4 py-2 text-left font-medium text-muted-foreground">SKU</th>
- <th className="px-4 py-2 text-left font-medium text-muted-foreground">Name</th>
- <th className="px-4 py-2 text-right font-medium text-muted-foreground">Price</th>
- </tr>
- </thead>
- <tbody className="divide-y divide-gray-200">
- {analysis.newProducts.slice(0, 100).map((product) => (
- <tr key={product.sku}>
- <td className="px-4 py-2 font-mono">{product.sku}</td>
- <td className="px-4 py-2">{product.name}</td>
- <td className="px-4 py-2 text-right">{formatCurrency(product.price)}</td>
- </tr>
- ))}
- {analysis.newProducts.length > 100 && (
- <tr>
- <td colSpan={3} className="px-4 py-4 text-center text-muted-foreground italic">
- Showing first 100 of {analysis.newProducts.length} new products...
- </td>
- </tr>
- )}
- </tbody>
- </table>
- </div>
+ <p className="text-sm text-muted-foreground">
+ {result.summary.matchedProducts} products matched, {result.summary.unchangedProducts} unchanged.
+ {result.summary.registerOnlyCount > 0 && ` ${result.summary.registerOnlyCount} register-only product${result.summary.registerOnlyCount !== 1 ? 's' : ''} can be pushed to the product pipeline from the full report.`}
+ </p>
  </CardContent>
  </Card>
- )}
 
- {analysis.newProducts.length === 0 && (
- <Card className="border border-border rounded-none">
+ {result.summary.matchedProducts > 0 && result.summary.unchangedProducts === result.summary.matchedProducts && (
+ <Card className="border border-border rounded-none md:col-span-3">
  <CardContent className="pt-6 flex flex-col items-center justify-center py-12">
  <CheckCircle className="w-12 h-12 text-green-500 mb-4" />
  <h3 className="text-xl font-semibold text-green-900">All products are up to date!</h3>
- <p className="text-muted-foreground mt-2">No new products were found in the export that aren&apos;t already on the website.</p>
+ <p className="text-muted-foreground mt-2">No discrepancies found in this export.</p>
  </CardContent>
  </Card>
  )}

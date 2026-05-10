@@ -6,6 +6,8 @@
 
 import { ShopSiteOrder, ShopSiteOrderItem, AddressInfo } from './types';
 
+export const SHOP_SITE_SOURCE_SYSTEM = 'shopsite_15';
+
 /**
  * Transform a ShopSite order into the Supabase orders table format.
  */
@@ -82,6 +84,27 @@ export function transformShopSiteOrder(
             shopsite_data: order.rawXml ? { raw_xml: order.rawXml } : {},
         },
         items,
+    };
+}
+
+export function buildShopSiteSourcePayload(transformedOrder: {
+    shopsite_transaction_id?: string;
+    billing_address?: AddressInfo;
+    shipping_address?: AddressInfo;
+    payment_details: { method?: string; grandTotal: number; tax: number; shipping: number };
+    shopsite_data: { raw_xml: unknown } | Record<string, never>;
+}): {
+    raw_payload: Record<string, unknown>;
+    normalized_payload: Record<string, unknown>;
+} {
+    return {
+        raw_payload: transformedOrder.shopsite_data?.raw_xml ? { xml: transformedOrder.shopsite_data.raw_xml } : {},
+        normalized_payload: {
+            transaction_id: transformedOrder.shopsite_transaction_id || null,
+            billing_address: transformedOrder.billing_address || null,
+            shipping_address: transformedOrder.shipping_address || null,
+            payment_details: transformedOrder.payment_details || null,
+        },
     };
 }
 

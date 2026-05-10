@@ -957,6 +957,71 @@ export type Database = {
           },
         ]
       }
+      integration_sync_runs: {
+        Row: {
+          id: string
+          source_type: Database["public"]["Enums"]["order_source_type"]
+          source_system: string
+          sync_kind: string
+          status: string
+          file_name: string | null
+          row_count: number | null
+          inserted_count: number | null
+          updated_count: number | null
+          skipped_count: number | null
+          error_count: number | null
+          started_at: string
+          completed_at: string | null
+          created_by: string | null
+          error_summary: string | null
+          metadata: Json
+        }
+        Insert: {
+          id?: string
+          source_type: Database["public"]["Enums"]["order_source_type"]
+          source_system: string
+          sync_kind: string
+          status?: string
+          file_name?: string | null
+          row_count?: number | null
+          inserted_count?: number | null
+          updated_count?: number | null
+          skipped_count?: number | null
+          error_count?: number | null
+          started_at?: string
+          completed_at?: string | null
+          created_by?: string | null
+          error_summary?: string | null
+          metadata?: Json
+        }
+        Update: {
+          id?: string
+          source_type?: Database["public"]["Enums"]["order_source_type"]
+          source_system?: string
+          sync_kind?: string
+          status?: string
+          file_name?: string | null
+          row_count?: number | null
+          inserted_count?: number | null
+          updated_count?: number | null
+          skipped_count?: number | null
+          error_count?: number | null
+          started_at?: string
+          completed_at?: string | null
+          created_by?: string | null
+          error_summary?: string | null
+          metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integration_sync_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_items: {
         Row: {
           created_at: string
@@ -1261,6 +1326,54 @@ export type Database = {
           },
         ]
       }
+      order_events: {
+        Row: {
+          id: string
+          order_id: string
+          event_type: string
+          previous_value: Json | null
+          new_value: Json | null
+          note: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          order_id: string
+          event_type: string
+          previous_value?: Json | null
+          new_value?: Json | null
+          note?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          order_id?: string
+          event_type?: string
+          previous_value?: Json | null
+          new_value?: Json | null
+          note?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           created_at: string | null
@@ -1363,6 +1476,62 @@ export type Database = {
         }
         Relationships: []
       }
+      order_source_records: {
+        Row: {
+          id: string
+          order_id: string | null
+          source_type: Database["public"]["Enums"]["order_source_type"]
+          source_system: string
+          external_id: string | null
+          external_order_number: string | null
+          raw_payload: Json
+          normalized_payload: Json
+          payload_hash: string | null
+          sync_run_id: string | null
+          imported_at: string
+          external_created_at: string | null
+          external_updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          order_id?: string | null
+          source_type: Database["public"]["Enums"]["order_source_type"]
+          source_system: string
+          external_id?: string | null
+          external_order_number?: string | null
+          raw_payload?: Json
+          normalized_payload?: Json
+          payload_hash?: string | null
+          sync_run_id?: string | null
+          imported_at?: string
+          external_created_at?: string | null
+          external_updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          order_id?: string | null
+          source_type?: Database["public"]["Enums"]["order_source_type"]
+          source_system?: string
+          external_id?: string | null
+          external_order_number?: string | null
+          raw_payload?: Json
+          normalized_payload?: Json
+          payload_hash?: string | null
+          sync_run_id?: string | null
+          imported_at?: string
+          external_created_at?: string | null
+          external_updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_source_records_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           created_at: string | null
@@ -1375,17 +1544,23 @@ export type Database = {
           delivery_notes: string | null
           delivery_services: Json | null
           discount_amount: number | null
+          external_created_at: string | null
+          external_order_id: string | null
           fulfillment_method: string | null
+          fulfillment_status: Database["public"]["Enums"]["order_fulfillment_status"]
           id: string
+          imported_at: string | null
           notes: string | null
           order_number: string
           paid_at: string | null
           payment_method: string | null
-          payment_status: string | null
+          payment_status: Database["public"]["Enums"]["order_payment_status"]
           promo_code: string | null
           promo_code_id: string | null
           refunded_amount: number | null
           source: string | null
+          source_system: string | null
+          source_type: Database["public"]["Enums"]["order_source_type"]
           status: string | null
           stripe_customer_id: string | null
           stripe_payment_intent_id: string | null
@@ -1406,23 +1581,29 @@ export type Database = {
           delivery_notes?: string | null
           delivery_services?: Json | null
           discount_amount?: number | null
+          external_created_at?: string | null
+          external_order_id?: string | null
           fulfillment_method?: string | null
+          fulfillment_status?: Database["public"]["Enums"]["order_fulfillment_status"]
           id?: string
+          imported_at?: string | null
           notes?: string | null
-          order_number: string
+          order_number?: string
           paid_at?: string | null
           payment_method?: string | null
-          payment_status?: string | null
+          payment_status?: Database["public"]["Enums"]["order_payment_status"]
           promo_code?: string | null
           promo_code_id?: string | null
           refunded_amount?: number | null
           source?: string | null
+          source_system?: string | null
+          source_type?: Database["public"]["Enums"]["order_source_type"]
           status?: string | null
           stripe_customer_id?: string | null
           stripe_payment_intent_id?: string | null
-          subtotal: number
+          subtotal?: number
           tax?: number | null
-          total: number
+          total?: number
           updated_at?: string | null
           user_id?: string | null
         }
@@ -1437,17 +1618,23 @@ export type Database = {
           delivery_notes?: string | null
           delivery_services?: Json | null
           discount_amount?: number | null
+          external_created_at?: string | null
+          external_order_id?: string | null
           fulfillment_method?: string | null
+          fulfillment_status?: Database["public"]["Enums"]["order_fulfillment_status"]
           id?: string
+          imported_at?: string | null
           notes?: string | null
           order_number?: string
           paid_at?: string | null
           payment_method?: string | null
-          payment_status?: string | null
+          payment_status?: Database["public"]["Enums"]["order_payment_status"]
           promo_code?: string | null
           promo_code_id?: string | null
           refunded_amount?: number | null
           source?: string | null
+          source_system?: string | null
+          source_type?: Database["public"]["Enums"]["order_source_type"]
           status?: string | null
           stripe_customer_id?: string | null
           stripe_payment_intent_id?: string | null
@@ -4158,6 +4345,31 @@ export type Database = {
       }
     }
     Views: {
+      admin_orders_list: {
+        Row: {
+          id: string
+          order_number: string
+          source_type: Database["public"]["Enums"]["order_source_type"]
+          source_system: string | null
+          external_order_id: string | null
+          customer_name: string
+          customer_email: string
+          customer_phone: string | null
+          status: string | null
+          payment_method: string | null
+          payment_status: Database["public"]["Enums"]["order_payment_status"]
+          fulfillment_method: string | null
+          fulfillment_status: Database["public"]["Enums"]["order_fulfillment_status"]
+          subtotal: number
+          tax: number | null
+          total: number
+          created_at: string | null
+          updated_at: string | null
+          item_count: number | null
+          total_quantity: number | null
+        }
+        Relationships: []
+      }
       ai_scraper_stats: {
         Row: {
           confidence_threshold: number | null
@@ -4744,6 +4956,28 @@ export type Database = {
         | "exporting"
         | "failed"
       pipeline_status_new_enum: "registered" | "enriched" | "finalized"
+      order_fulfillment_status:
+        | "unfulfilled"
+        | "reserved"
+        | "ready_for_pickup"
+        | "out_for_delivery"
+        | "fulfilled"
+        | "partially_fulfilled"
+        | "cancelled"
+      order_payment_status:
+        | "unpaid"
+        | "authorized"
+        | "paid"
+        | "failed"
+        | "partially_refunded"
+        | "refunded"
+        | "voided"
+      order_source_type:
+        | "web"
+        | "shopsite"
+        | "integra"
+        | "manual"
+        | "import"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4892,6 +5126,31 @@ export const Constants = {
         "failed",
       ],
       pipeline_status_new_enum: ["registered", "enriched", "finalized"],
+      order_fulfillment_status: [
+        "unfulfilled",
+        "reserved",
+        "ready_for_pickup",
+        "out_for_delivery",
+        "fulfilled",
+        "partially_fulfilled",
+        "cancelled",
+      ],
+      order_payment_status: [
+        "unpaid",
+        "authorized",
+        "paid",
+        "failed",
+        "partially_refunded",
+        "refunded",
+        "voided",
+      ],
+      order_source_type: [
+        "web",
+        "shopsite",
+        "integra",
+        "manual",
+        "import",
+      ],
     },
   },
 } as const

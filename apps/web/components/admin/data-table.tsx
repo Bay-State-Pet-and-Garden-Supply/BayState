@@ -34,6 +34,7 @@ export interface Column<T> {
 interface DataTableProps<T extends { id: string | number }> {
   data: T[];
   columns: Column<T>[];
+  searchable?: boolean;
   searchPlaceholder?: string;
   pageSize?: number;
   pageSizeOptions?: number[];
@@ -44,6 +45,11 @@ interface DataTableProps<T extends { id: string | number }> {
   emptyMessage?: string;
   emptyAction?: React.ReactNode;
   actions?: (row: T) => React.ReactNode;
+  /** Server-side pagination — skip internal filtering and use external page control */
+  currentPage?: number;
+  totalCount?: number;
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
 }
 
 type SortDirection = 'asc' | 'desc' | null;
@@ -56,6 +62,7 @@ interface SortState {
 export function DataTable<T extends { id: string | number }>({
   data,
   columns,
+  searchable = true,
   searchPlaceholder = 'Search...',
   pageSize: initialPageSize = 10,
   pageSizeOptions = [10, 20, 50, 100],
@@ -66,19 +73,24 @@ export function DataTable<T extends { id: string | number }>({
   emptyMessage = 'No results found.',
   emptyAction,
   actions,
+  currentPage: externalPage,
+  totalCount: externalTotalCount,
+  onPageChange,
+  onPageSizeChange,
 }: DataTableProps<T>) {
+  const isServerSide = externalPage !== undefined;
+
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortState>({ key: null, direction: null });
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
 
-  // Filter data by search
+  // Filter data by search (only in client-side mode)
   const searchableKeys = columns.filter((c) => c.searchable !== false).map((c) => c.key);
 
   const filteredData = useMemo(() => {
-    if (!search.trim()) return data;
-
+    if (isServerSide || !search.trim()) return data;
     const lowerSearch = search.toLowerCase();
     return data.filter((row) =>
       searchableKeys.some((key) => {
@@ -86,7 +98,7 @@ export function DataTable<T extends { id: string | number }>({
         return String(value ?? '').toLowerCase().includes(lowerSearch);
       })
     );
-  }, [data, search, searchableKeys]);
+  }, [data, search, searchableKeys, isServerSide]);
 
   // Sort data
   const sortedData = useMemo(() => {
@@ -114,11 +126,14 @@ export function DataTable<T extends { id: string | number }>({
   }, [filteredData, sort]);
 
   // Paginate
-  const totalPages = Math.ceil(sortedData.length / pageSize);
+  const displayPage = isServerSide ? Math.max(0, (externalPage ?? 1) - 1) : page;
+  const displayTotalCount = isServerSide ? (externalTotalCount ?? data.length) : sortedData.length;
+  const totalPages = Math.ceil(displayTotalCount / pageSize);
   const paginatedData = useMemo(() => {
+    if (isServerSide) return data;
     const start = page * pageSize;
     return sortedData.slice(start, start + pageSize);
-  }, [sortedData, page, pageSize]);
+  }, [isServerSide, data, sortedData, page, pageSize]);
 
   // Selection handlers
   const handleSelectAll = useCallback(() => {
@@ -159,11 +174,28 @@ export function DataTable<T extends { id: string | number }>({
     });
   };
 
-  // Reset page when search changes
+  // Reset page when search changes (client mode only)
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    setPage(0);
+    if (!isServerSide) setPage(0);
   };
+
+  const handlePageChange = useCallback((newPage: number) => {
+    if (isServerSide) {
+      onPageChange?.(newPage);
+    } else {
+      setPage(newPage);
+    }
+  }, [isServerSide, onPageChange]);
+
+  const handlePageSizeChange = useCallback((newSize: number) => {
+    setPageSize(newSize);
+    if (isServerSide) {
+      onPageSizeChange?.(newSize);
+    } else {
+      setPage(0);
+    }
+  }, [isServerSide, onPageSizeChange]);
 
   const renderSortIcon = (column: Column<T>) => {
     if (!column.sortable) return null;
@@ -184,25 +216,25 @@ export function DataTable<T extends { id: string | number }>({
     <div className="space-y-4">
       {/* Search and Page Size */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative max-w-sm flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder={searchPlaceholder}
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+        {searchable && (
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder={searchPlaceholder}
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        )}
+        {!searchable && <div className="flex-1" />}
 
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Show</span>
           <select
             value={pageSize}
-            onChange={(e) => {
-              setPageSize(Number(e.target.value));
-              setPage(0);
-            }}
+            onChange={(e) => handlePageSizeChange(Number(e.target.value))}
             className="rounded-md border px-2 py-1 text-sm"
           >
             {pageSizeOptions.map((size) => (
@@ -333,46 +365,51 @@ export function DataTable<T extends { id: string | number }>({
       {/* Pagination */}
       <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
         <p className="text-sm text-muted-foreground">
-          Showing {paginatedData.length > 0 ? page * pageSize + 1 : 0} to{' '}
-          {Math.min((page + 1) * pageSize, sortedData.length)} of {sortedData.length} entries
-          {search && ` (filtered from ${data.length} total)`}
+          {isServerSide ? (
+            <>Showing {displayTotalCount > 0 ? displayPage * pageSize + 1 : 0} to{' '}
+            {Math.min((displayPage + 1) * pageSize, displayTotalCount)} of {displayTotalCount} entries</>
+          ) : (
+            <>Showing {paginatedData.length > 0 ? page * pageSize + 1 : 0} to{' '}
+            {Math.min((page + 1) * pageSize, sortedData.length)} of {sortedData.length} entries
+            {search && ` (filtered from ${data.length} total)`}</>
+          )}
         </p>
 
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage(0)}
-            disabled={page === 0}
+            onClick={() => handlePageChange(1)}
+            disabled={displayPage === 0}
           >
             First
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-            disabled={page === 0}
+            onClick={() => handlePageChange(displayPage)}
+            disabled={displayPage === 0}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
 
           <span className="px-2 text-sm">
-            Page {page + 1} of {Math.max(1, totalPages)}
+            Page {displayPage + 1} of {Math.max(1, totalPages)}
           </span>
 
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-            disabled={page >= totalPages - 1}
+            onClick={() => handlePageChange(displayPage + 2)}
+            disabled={displayPage >= totalPages - 1}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage(totalPages - 1)}
-            disabled={page >= totalPages - 1}
+            onClick={() => handlePageChange(totalPages)}
+            disabled={displayPage >= totalPages - 1}
           >
             Last
           </Button>

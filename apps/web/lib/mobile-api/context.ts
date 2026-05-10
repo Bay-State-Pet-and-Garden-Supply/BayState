@@ -520,7 +520,7 @@ export async function createTRPCContext(request: Request): Promise<MobileApiCont
         createOrder: async (input) => createOrderWithClient(adminClient, input as CreateOrderInput),
         updateOrderPaymentComplete: async (orderId, paymentIntentId, paymentMethod) => {
           const paymentIntent = await retrievePaymentIntent(paymentIntentId)
-          const paymentStatus = paymentIntent.status === 'succeeded' ? 'completed' : 'processing'
+          const paymentStatus = paymentIntent.status === 'succeeded' ? 'paid' : 'authorized'
 
           const { error } = await adminClient
             .from('orders')
@@ -541,7 +541,7 @@ export async function createTRPCContext(request: Request): Promise<MobileApiCont
               stripe_payment_intent_id: paymentIntentId,
               stripe_customer_id: stripeCustomerId,
               payment_method: paymentMethod,
-              payment_status: 'processing',
+              payment_status: 'authorized',
             })
             .eq('id', orderId)
 

@@ -9,7 +9,12 @@ import {
   PackagePlus,
   RefreshCw,
   BarChart3,
-  Eye
+  Eye,
+  ShoppingCart,
+  DollarSign,
+  Truck,
+  AlertCircle,
+  CreditCard,
 } from 'lucide-react';
 import { MetricCard } from './metric-card';
 import { ScraperStatusWidget } from './scraper-status-widget';
@@ -19,7 +24,7 @@ import { FleetStatusWidget } from './FleetStatusWidget';
 import { useDashboardStats } from '@/hooks/use-dashboard-stats';
 
 export function AdminDashboardView() {
-  const { productStats, scraperStats, loading } = useDashboardStats();
+  const { productStats, scraperStats, orderStats, inventoryStats, loading } = useDashboardStats();
 
   const quickActions = [
     {
@@ -62,6 +67,52 @@ export function AdminDashboardView() {
           value={scraperStats?.active_jobs ?? 0}
           icon={Activity}
           status={scraperStats?.active_jobs && scraperStats.active_jobs > 0 ? "info" : undefined}
+          isLoading={loading}
+        />
+      </div>
+
+      {/* Order/Inventory Metrics */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Today&apos;s Sales"
+          value={orderStats?.today_sales ? `$${Number(orderStats.today_sales).toFixed(2)}` : '$0.00'}
+          icon={DollarSign}
+          status="success"
+          isLoading={loading}
+        />
+        <MetricCard
+          title="Open Orders"
+          value={orderStats?.open_orders ?? 0}
+          icon={ShoppingCart}
+          status={orderStats?.open_orders && orderStats.open_orders > 0 ? 'info' : undefined}
+          isLoading={loading}
+        />
+        <MetricCard
+          title="Ready for Pickup"
+          value={orderStats?.ready_for_pickup ?? 0}
+          icon={Truck}
+          status={orderStats?.ready_for_pickup && orderStats.ready_for_pickup > 0 ? 'success' : undefined}
+          isLoading={loading}
+        />
+        <MetricCard
+          title="Inventory Issues"
+          value={inventoryStats?.open_issues ?? 0}
+          icon={AlertCircle}
+          status={inventoryStats?.open_issues && inventoryStats.open_issues > 0 ? 'warning' : undefined}
+          isLoading={loading}
+        />
+        <MetricCard
+          title="Unpaid Orders"
+          value={orderStats?.unpaid_orders ?? 0}
+          icon={CreditCard}
+          status={orderStats?.unpaid_orders && orderStats.unpaid_orders > 0 ? 'warning' : undefined}
+          isLoading={loading}
+        />
+        <MetricCard
+          title="Register-only Products"
+          value={inventoryStats?.register_only_products ?? 0}
+          icon={PackagePlus}
+          status={inventoryStats?.register_only_products && inventoryStats.register_only_products > 0 ? 'info' : undefined}
           isLoading={loading}
         />
       </div>

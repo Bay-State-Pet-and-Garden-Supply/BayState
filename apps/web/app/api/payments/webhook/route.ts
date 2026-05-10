@@ -9,7 +9,8 @@ if (!webhookSecret) {
   console.warn('STRIPE_WEBHOOK_SECRET not set. Webhooks will not be processed.');
 }
 
-type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'refunded' | 'partially_refunded';
+import type { OrderPaymentStatusEnum } from '@/lib/orders';
+type PaymentStatus = OrderPaymentStatusEnum;
 
 async function updateOrderPaymentStatus(
   orderId: string,
@@ -116,7 +117,7 @@ export async function POST(request: NextRequest) {
         if (orderId) {
           await updateOrderPaymentStatus(
             orderId,
-            'completed',
+            'paid',
             paymentIntent.id,
             new Date().toISOString()
           );
