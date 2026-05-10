@@ -4,6 +4,31 @@ import { ActionState } from '@/lib/types';
 import type { ReconciliationIssueStatus } from '@/lib/admin/integrations/reconciliation-types';
 import { pushRegisterOnlyIssuesToPipeline } from '@/lib/admin/integra-sync';
 
+export async function batchMarkIssuesStatusAction(
+  issueIds: string[],
+  status: ReconciliationIssueStatus
+): Promise<ActionState & { count?: number }> {
+  const supabase = await createClient();
+
+  const updateData: Record<string, unknown> = { status };
+  if (status === 'resolved' || status === 'ignored') {
+    updateData.resolved_at = new Date().toISOString();
+  }
+
+  const { error, count } = await supabase
+    .from('inventory_reconciliation_items')
+    .update(updateData)
+    .in('id', issueIds);
+
+  if (error) {
+    console.error('Batch update error:', error);
+    return { success: false, error: 'Failed to update issues' };
+  }
+
+  revalidatePath('/admin/inventory');
+  return { success: true, count: count ?? undefined };
+}
+
 export async function markInventoryIssueStatusAction(
   issueId: string,
   status: ReconciliationIssueStatus
