@@ -24,6 +24,7 @@ import { FleetStatusWidget } from './FleetStatusWidget';
 import { ActionRequired } from './action-required';
 import { RevenueAtRisk } from './revenue-at-risk';
 import { MorningBriefing } from './morning-briefing';
+import { MigrationProgress } from './migration-progress';
 import { useDashboardStats } from '@/hooks/use-dashboard-stats';
 
 export function AdminDashboardView() {
@@ -43,6 +44,8 @@ export function AdminDashboardView() {
 
   return (
     <div className="space-y-6">
+      {/* Morning Briefing */}
+      <MorningBriefing />
       {/* Morning Briefing */}
       <MorningBriefing />
 
@@ -139,6 +142,9 @@ export function AdminDashboardView() {
 
       {/* Revenue at Risk */}
       <RevenueAtRisk />
+
+      {/* Migration Progress */}
+      <MigrationProgress />
 
       {/* Middle Section */}
       <div className="grid gap-6 lg:grid-cols-3">
