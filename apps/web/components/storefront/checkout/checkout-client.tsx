@@ -173,19 +173,21 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
     setIsSubmitting(true);
     setError(null);
 
+    // Send safe identifiers only — server computes prices, discounts, fees
+    const safeItems = items.map((item) => ({
+      id: item.id,
+      quantity: item.quantity,
+    }));
+
     const customerData = {
       customerName: contactData.name,
       customerEmail: contactData.email,
       customerPhone: contactData.phone,
       notes: contactData.notes,
-      items,
+      items: safeItems,
       promoCode: promo.code,
-      promoCodeId: promo.promoCodeId,
-      discountAmount: discount,
       fulfillmentMethod,
       deliveryAddress: fulfillmentMethod === 'delivery' ? deliveryAddress : null,
-      deliveryDistanceMiles: deliveryQuote?.distanceMiles || null,
-      deliveryFee: fulfillmentMethod === 'delivery' ? totalDeliveryFee : 0,
       deliveryServices: Array.from(selectedServices),
       deliveryNotes,
     };
@@ -215,7 +217,7 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
         body: JSON.stringify({
           ...customerData,
           paymentMethod,
-          paymentStatus: 'authorized',
+          // Server decides payment status
         }),
       });
       if (!orderResponse.ok) throw new Error('Failed to create order');

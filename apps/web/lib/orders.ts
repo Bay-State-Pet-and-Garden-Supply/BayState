@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@/lib/supabase/server';
 import { type CartItem } from '@/lib/cart-store';
 import { recordPromoRedemption } from '@/lib/promo-codes';
+import type { VerifiedCart } from '@/lib/pricing/verify-cart';
 
 export interface OrderItem {
   id: string;
@@ -72,6 +73,7 @@ export interface CreateOrderInput {
   promoCode?: string | null;
   promoCodeId?: string | null;
   discountAmount?: number;
+  verifiedCart?: VerifiedCart;
   paymentMethod?: PaymentMethod;
   paymentStatus?: PaymentStatus;
   stripePaymentIntentId?: string;
@@ -93,15 +95,16 @@ export async function createOrderWithClient(
   supabase: SupabaseClient,
   input: CreateOrderInput
 ): Promise<Order | null> {
-  const subtotal = input.items.reduce(
+  // Use server-verified pricing when available
+  const subtotal = input.verifiedCart?.subtotal ?? input.items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
-  const discountAmount = input.discountAmount || 0;
-  const deliveryFee = input.deliveryFee || 0;
+  const discountAmount = input.discountAmount || input.verifiedCart?.discountAmount || 0;
+  const deliveryFee = input.deliveryFee ?? input.verifiedCart?.deliveryFee ?? 0;
   const discountedSubtotal = Math.max(0, subtotal - discountAmount);
-  const tax = discountedSubtotal * 0.0625;
-  const total = discountedSubtotal + tax + deliveryFee;
+  const tax = input.verifiedCart?.tax ?? (discountedSubtotal * 0.0625);
+  const total = input.verifiedCart?.total ?? (Math.round((discountedSubtotal + tax + deliveryFee) * 100) / 100);
 
   const { data: order, error: orderError } = await supabase
     .from('orders')
@@ -143,16 +146,23 @@ export async function createOrderWithClient(
     return null;
   }
 
-  const orderItems = input.items.map((item) => ({
+  // Use verified item data when available (server-authoritative pricing)
+  const orderItems = (input.verifiedCart?.items ?? input.items).map((item) => ({
     order_id: order.id,
-    item_type: item.id.startsWith('service-') ? 'service' : 'product',
-    item_id: item.id.replace('service-', ''),
+    item_type: 'itemType' in item
+      ? (item as any).itemType
+      : (item as any).id?.startsWith('service-')
+        ? 'service'
+        : 'product',
+    item_id: 'itemId' in item
+      ? (item as any).itemId
+      : (item as any).id?.replace('service-', ''),
     item_name: item.name,
     item_slug: item.slug,
     quantity: item.quantity,
-    unit_price: item.price,
-    total_price: item.price * item.quantity,
-    preorder_batch_id: item.preorderBatchId || null,
+    unit_price: 'unitPrice' in item ? (item as any).unitPrice : (item as any).price,
+    total_price: 'totalPrice' in item ? (item as any).totalPrice : (item as any).price * (item as any).quantity,
+    preorder_batch_id: (item as any).preorderBatchId || null,
   }));
 
   const { error: itemsError } = await supabase
