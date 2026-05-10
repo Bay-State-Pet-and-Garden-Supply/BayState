@@ -12,7 +12,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from core.api_client import JobConfig, normalize_selectors_payload
 from core.events import ScraperEvent, create_emitter, event_bus
 from core.settings_manager import settings
-from scrapers.ai_search.official_brand_scraper import OfficialBrandScraper
+from scrapers.product_url_extraction.extractor import ProductUrlExtractor
 from scrapers.ai_search.search import normalize_search_provider
 from scrapers.cohort.processor import CohortProcessor
 from scrapers.executor.workflow_executor import WorkflowExecutor
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 USE_COHORT_PROCESSING = os.getenv("USE_COHORT_PROCESSING", "true").lower() == "true"
 CohortProduct = Mapping[str, object]
 OFFICIAL_BRAND_URL_DISCOVERY_TYPE = "official_brand_url_discovery"
-OFFICIAL_BRAND_EXTRACTION_TYPE = "official_brand_extraction"
+DIRECT_URL_EXTRACTION_TYPE = "direct_url_extraction"
 
 
 class ConfigurationError(Exception):
@@ -551,7 +551,7 @@ def _run_sequential_job(
         results["telemetry"] = {"steps": [], "selectors": [], "extractions": []}
         return results
 
-    is_official_brand_job = job_config.job_type in {"ai_search", OFFICIAL_BRAND_URL_DISCOVERY_TYPE, OFFICIAL_BRAND_EXTRACTION_TYPE} or any(
+    is_official_brand_job = job_config.job_type in {"ai_search", "official_brand_extraction", OFFICIAL_BRAND_URL_DISCOVERY_TYPE, DIRECT_URL_EXTRACTION_TYPE} or any(
         s.name == "official_brand" for s in job_config.scrapers
     )
 
@@ -1065,7 +1065,7 @@ def _run_official_brand_job(
         return "deepseek-chat"
 
     search_cfg = job_config.job_config or {}
-    scraper_name = "official_brand"
+    scraper_name = "product_url_extraction"
     raw_phase = str(search_cfg.get("phase") or "").strip()
     if job_config.job_type == OFFICIAL_BRAND_URL_DISCOVERY_TYPE or raw_phase == "url_discovery":
         _emit_runner_log(
@@ -1078,7 +1078,7 @@ def _run_official_brand_job(
                 "Official Brand URL discovery is now server-side. "
                 "Use the admin pipeline discovery endpoint. This job will be marked as failed."
             ),
-            scraper_name="official_brand",
+            scraper_name="product_url_extraction",
             phase="failed",
             flush_immediately=True,
         )
@@ -1091,7 +1091,31 @@ def _run_official_brand_job(
         results["logs"] = job_logging.snapshot() if job_logging else log_buffer
         results["telemetry"] = {"steps": [], "selectors": [], "extractions": []}
         return results
-    elif job_config.job_type == OFFICIAL_BRAND_EXTRACTION_TYPE or raw_phase == "extraction":
+    elif job_config.job_type == "ai_search" or job_config.job_type == "official_brand_extraction" or raw_phase == "legacy_combined":
+        _emit_runner_log(
+            job_id=job_config.job_id,
+            runner_name=runner_name,
+            job_logging=job_logging,
+            log_buffer=log_buffer,
+            level="error",
+            message=(
+                f"Job type '{job_config.job_type}' is deprecated. "
+                "URL discovery is server-side. Use 'direct_url_extraction' instead."
+            ),
+            scraper_name="product_url_extraction",
+            phase="failed",
+            flush_immediately=True,
+        )
+        results["skus_failed"] = len(skus)
+        results["skus_processed"] = len(skus)
+        results["error_message"] = (
+            f"Job type '{job_config.job_type}' is deprecated. "
+            "Use 'direct_url_extraction' for known-URL extraction."
+        )
+        results["logs"] = job_logging.snapshot() if job_logging else log_buffer
+        results["telemetry"] = {"steps": [], "selectors": [], "extractions": []}
+        return results
+    elif job_config.job_type == DIRECT_URL_EXTRACTION_TYPE:
         official_brand_phase = "extraction"
     else:
         official_brand_phase = "legacy_combined"
@@ -1191,6 +1215,7 @@ def _run_official_brand_job(
             else (cohort_preferred_domains if cohort_preferred_domains is not None else search_cfg.get("preferred_domains")),
             "source_url": item_context.get("source_url") if item_context.get("source_url") is not None else search_cfg.get("source_url"),
             "known_url": item_context.get("known_url") if item_context.get("known_url") is not None else search_cfg.get("known_url"),
+            "url": item_context.get("url") if item_context.get("url") is not None else search_cfg.get("url"),
             "url_source": item_context.get("url_source") if item_context.get("url_source") is not None else search_cfg.get("url_source"),
             "candidate_id": item_context.get("candidate_id") if item_context.get("candidate_id") is not None else search_cfg.get("candidate_id"),
         }
@@ -1241,15 +1266,17 @@ def _run_official_brand_job(
     results["scrapers_run"].append(scraper_name)
 
     async def _run() -> list[Any]:
-        scraper = OfficialBrandScraper(
+        scraper = ProductUrlExtractor(
             headless=settings.browser_settings["headless"],
             llm_provider=llm_provider,
             llm_model=llm_model,
             llm_api_key=llm_api_key,
             llm_base_url=llm_base_url,
         )
+        # direct_url_extraction uses ProductUrlExtractor
         if official_brand_phase == "extraction":
             return await scraper.extract_products_from_urls_batch(items, max_concurrency=max_concurrency)
+        # Legacy combined path (ai_search) — delegates to extraction via scrape_products_batch
         return await scraper.scrape_products_batch(items, max_concurrency=max_concurrency)
 
 
@@ -1388,6 +1415,7 @@ __all__ = [
     "ConfigurationError",
     "create_emitter",
     "create_log_entry",
-    "OfficialBrandScraper",
+    "DIRECT_URL_EXTRACTION_TYPE",
+    "ProductUrlExtractor",
     "run_job",
 ]

@@ -1452,7 +1452,7 @@ export function PipelineClient({
                   </div>
                 </AdminCardHeader>
                 <AdminCardContent>
-                  <ActiveRunsTab jobSubtype="official_brand_extraction" />
+                  <ActiveRunsTab jobSubtype="direct_url_extraction" />
                 </AdminCardContent>
               </AdminCard>
             </div>

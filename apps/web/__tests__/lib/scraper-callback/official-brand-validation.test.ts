@@ -62,7 +62,7 @@ describe('validateOfficialBrandSourceForPersistence', () => {
 });
 
 describe('filterOfficialBrandResultsForPersistence', () => {
-    it('returns accepted and rejected SKU sets', () => {
+    it('returns accepted and rejected SKU sets for legacy official_brand source key', () => {
         const result = filterOfficialBrandResultsForPersistence(
             {
                 'SKU-VALID': {
@@ -77,6 +77,39 @@ describe('filterOfficialBrandResultsForPersistence', () => {
                 },
                 'SKU-INVALID': {
                     official_brand: {
+                        title: 'Invalid Product',
+                        brand: 'Miracle-Gro',
+                        url: 'https://www.amazon.com/products/abc',
+                        source_website: 'https://www.amazon.com/products/abc',
+                        confidence: 0.9,
+                        images: ['https://cdn.example.com/img.jpg'],
+                    },
+                },
+            },
+            { officialDomains: ['scottsmiraclegro.com'] },
+        );
+
+        expect(Object.keys(result.acceptedResults)).toEqual(['SKU-VALID']);
+        expect(result.rejectedBySku['SKU-INVALID']).toBe('Official Brand domain did not match configured cohort domains');
+        expect(result.acceptedCount).toBe(1);
+        expect(result.rejectedCount).toBe(1);
+    });
+
+    it('returns accepted and rejected SKU sets for product_url_extraction source key', () => {
+        const result = filterOfficialBrandResultsForPersistence(
+            {
+                'SKU-VALID': {
+                    product_url_extraction: {
+                        title: 'Valid Product',
+                        brand: 'Miracle-Gro',
+                        url: 'https://www.scottsmiraclegro.com/products/abc',
+                        source_website: 'https://www.scottsmiraclegro.com/products/abc',
+                        confidence: 0.9,
+                        images: ['https://cdn.example.com/img.jpg'],
+                    },
+                },
+                'SKU-INVALID': {
+                    product_url_extraction: {
                         title: 'Invalid Product',
                         brand: 'Miracle-Gro',
                         url: 'https://www.amazon.com/products/abc',

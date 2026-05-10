@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
+import {
+    DIRECT_URL_EXTRACTION_TYPE,
+    OFFICIAL_BRAND_URL_DISCOVERY_TYPE,
+} from "@/lib/official-brand-workflow";
 
 interface ChunkDetail {
   id: string;
@@ -68,11 +72,11 @@ function toOptionalString(value: unknown): string | null {
 }
 
 function getOfficialBrandPhase(job: { type?: unknown; config?: unknown; metadata?: unknown }): string | null {
-  if (job.type === "official_brand_url_discovery") {
+  if (job.type === OFFICIAL_BRAND_URL_DISCOVERY_TYPE) {
     return "url_discovery";
   }
 
-  if (job.type === "official_brand_extraction") {
+  if (job.type === DIRECT_URL_EXTRACTION_TYPE) {
     return "extraction";
   }
 

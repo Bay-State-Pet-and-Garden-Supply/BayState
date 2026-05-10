@@ -2,7 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const OFFICIAL_BRAND_SOURCE_KEY = 'official_brand';
 export const OFFICIAL_BRAND_URL_DISCOVERY_TYPE = 'official_brand_url_discovery';
-export const OFFICIAL_BRAND_EXTRACTION_TYPE = 'official_brand_extraction';
+/** @deprecated Use {@link DIRECT_URL_EXTRACTION_TYPE} instead. */
+export const OFFICIAL_BRAND_EXTRACTION_TYPE = 'direct_url_extraction';
+export const DIRECT_URL_EXTRACTION_TYPE = 'direct_url_extraction';
+export const PRODUCT_URL_EXTRACTION_SOURCE_KEY = 'product_url_extraction';
 
 type OfficialBrandPhase = 'url_discovery' | 'extraction';
 
@@ -212,7 +215,7 @@ export function getOfficialBrandPhaseFromJob(job: {
         return 'url_discovery';
     }
 
-    if (job.type === OFFICIAL_BRAND_EXTRACTION_TYPE) {
+    if (job.type === DIRECT_URL_EXTRACTION_TYPE) {
         return 'extraction';
     }
 
@@ -237,7 +240,7 @@ export function getOfficialBrandPhaseFromJob(job: {
 }
 
 export function isOfficialBrandJobType(type: unknown): boolean {
-    return type === OFFICIAL_BRAND_URL_DISCOVERY_TYPE || type === OFFICIAL_BRAND_EXTRACTION_TYPE;
+    return type === OFFICIAL_BRAND_URL_DISCOVERY_TYPE || type === DIRECT_URL_EXTRACTION_TYPE;
 }
 
 function buildCandidateRow(input: CandidateRowInput): CandidateRow | null {
@@ -412,9 +415,11 @@ export function buildExtractedOfficialBrandCandidateRows(args: {
 
     return Object.entries(args.resultsBySku)
         .map(([sku, sources]) => {
-            const source = isRecord(sources[OFFICIAL_BRAND_SOURCE_KEY])
-                ? sources[OFFICIAL_BRAND_SOURCE_KEY] as Record<string, unknown>
-                : null;
+            const source = isRecord(sources[PRODUCT_URL_EXTRACTION_SOURCE_KEY])
+                ? sources[PRODUCT_URL_EXTRACTION_SOURCE_KEY] as Record<string, unknown>
+                : isRecord(sources[OFFICIAL_BRAND_SOURCE_KEY])
+                    ? sources[OFFICIAL_BRAND_SOURCE_KEY] as Record<string, unknown>
+                    : null;
             const url = source ? toOptionalString(source.url) ?? toOptionalString(source.source_website) : undefined;
             if (!url) {
                 return null;

@@ -93,7 +93,7 @@ describe("Active Runs API", () => {
     const mockJobs = [
       {
         id: "job-1",
-        type: "official_brand_extraction",
+        type: "direct_url_extraction",
         config: { cohort: { id: 'cohort-1' } },
         metadata: { official_brand_phase: 'manual_override' },
         status: "running",
@@ -165,7 +165,7 @@ describe("Active Runs API", () => {
 
     expect(json.jobs[0]).toEqual({
       id: "job-1",
-      jobType: 'official_brand_extraction',
+      jobType: 'direct_url_extraction',
       officialBrandPhase: 'extraction',
       cohortId: 'cohort-1',
       status: "running",

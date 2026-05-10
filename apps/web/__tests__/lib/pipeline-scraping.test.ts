@@ -671,7 +671,7 @@ describe('scrapeProducts', () => {
         expect(result.error).toContain('discovery now runs server-side');
     });
 
-    it('should create official_brand_extraction job when phase is extraction', async () => {
+    it('should create direct_url_extraction job when phase is extraction', async () => {
         mockSupabase = makeSupabaseMock({
             pipelineRows: [
                 {
@@ -697,7 +697,7 @@ describe('scrapeProducts', () => {
 
         expect(result.success).toBe(true);
         const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
-        expect(insertedPayload.type).toBe('official_brand_extraction');
+        expect(insertedPayload.type).toBe('direct_url_extraction');
         expect(insertedPayload.config.phase).toBe('extraction');
         expect(insertedPayload.config.items[0].source_url).toBe('https://example.com/product');
         expect(insertedPayload.config.items[0].url_source).toBe('manual');
@@ -731,7 +731,7 @@ describe('scrapeProducts', () => {
 
         expect(result.success).toBe(true);
         const insertedPayload = mockSupabase._scrapeJobsBuilder.insert.mock.calls[0][0];
-        expect(insertedPayload.type).toBe('official_brand_extraction');
+        expect(insertedPayload.type).toBe('direct_url_extraction');
         expect(insertedPayload.config.items[0].max_fallbacks).toBe(5);
     });
 
