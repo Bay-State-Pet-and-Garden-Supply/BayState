@@ -24,6 +24,7 @@ import {
  RefreshCw,
  Rocket,
  HeartPulse,
+  Database,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -90,6 +91,11 @@ const navSections: NavSection[] = [
  label: "Data Health",
  icon: HeartPulse,
  },
+        {
+          href: "/admin/tools/integra-sync",
+          label: "Integra Sync",
+          icon: Database,
+        },
  ],
  },
  {
