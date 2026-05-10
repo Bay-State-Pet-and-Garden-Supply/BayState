@@ -14,7 +14,7 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { getStripePublishableKey, hasStripePublishableKey } from '@/lib/payments/stripe';
 
 const stripePromise = hasStripePublishableKey()
-  ? loadStripe(getStripePublishableKey()!)
+  ? loadStripe(getStripePublishableKey())
   : null;
 
 interface PaymentFormProps {
