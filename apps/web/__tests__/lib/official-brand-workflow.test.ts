@@ -11,7 +11,9 @@ import {
     buildNormalizedDomainList,
     OFFICIAL_BRAND_URL_DISCOVERY_TYPE,
     OFFICIAL_BRAND_EXTRACTION_TYPE,
+    DIRECT_URL_EXTRACTION_TYPE,
     OFFICIAL_BRAND_SOURCE_KEY,
+    PRODUCT_URL_EXTRACTION_SOURCE_KEY,
 } from '@/lib/official-brand-workflow';
 
 describe('normalizeOfficialBrandUrl', () => {
@@ -167,7 +169,7 @@ describe('getOfficialBrandPhaseFromJob', () => {
     });
 
     it('detects extraction from type', () => {
-        expect(getOfficialBrandPhaseFromJob({ type: OFFICIAL_BRAND_EXTRACTION_TYPE })).toBe('extraction');
+        expect(getOfficialBrandPhaseFromJob({ type: DIRECT_URL_EXTRACTION_TYPE })).toBe('extraction');
     });
 
     it('detects url_discovery from config.phase', () => {
@@ -193,7 +195,7 @@ describe('isOfficialBrandJobType', () => {
     });
 
     it('returns true for extraction', () => {
-        expect(isOfficialBrandJobType(OFFICIAL_BRAND_EXTRACTION_TYPE)).toBe(true);
+        expect(isOfficialBrandJobType(DIRECT_URL_EXTRACTION_TYPE)).toBe(true);
     });
 
     it('returns false for standard', () => {
@@ -370,7 +372,7 @@ describe('buildExtractedOfficialBrandCandidateRows', () => {
             jobId: 'job-extract-1',
             resultsBySku: {
                 'SKU-1': {
-                    [OFFICIAL_BRAND_SOURCE_KEY]: {
+                    [PRODUCT_URL_EXTRACTION_SOURCE_KEY]: {
                         title: 'Product A',
                         brand: 'Acme',
                         url: 'https://example.com/product/a',

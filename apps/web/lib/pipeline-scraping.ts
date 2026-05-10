@@ -13,6 +13,7 @@ import {
 
 import { getLocalScraperConfigs } from '@/lib/admin/scrapers/configs';
 import {
+    DIRECT_URL_EXTRACTION_TYPE,
     OFFICIAL_BRAND_EXTRACTION_TYPE,
     OFFICIAL_BRAND_URL_DISCOVERY_TYPE,
     buildManualOfficialBrandCandidateRows,
@@ -89,7 +90,7 @@ interface ProductCatalogRow {
     }> | null;
 }
 
-type ScrapeJobInsertType = 'standard' | 'ai_search' | typeof OFFICIAL_BRAND_URL_DISCOVERY_TYPE | typeof OFFICIAL_BRAND_EXTRACTION_TYPE | 'deep_research';
+type ScrapeJobInsertType = 'standard' | 'ai_search' | typeof OFFICIAL_BRAND_URL_DISCOVERY_TYPE | typeof OFFICIAL_BRAND_EXTRACTION_TYPE | typeof DIRECT_URL_EXTRACTION_TYPE | 'deep_research';
 
 /**
  * Options for scraping jobs.
@@ -913,11 +914,11 @@ export async function scrapeProducts(
         };
     }
 
-    const effectiveScrapersRaw = isOfficialBrand ? ['official_brand'] : isDeepResearch ? ['deep_research'] : scrapers;
+    const effectiveScrapersRaw = isOfficialBrand ? ['product_url_extraction'] : isDeepResearch ? ['deep_research'] : scrapers;
     const jobType: ScrapeJobInsertType = isOfficialBrandDiscovery
         ? OFFICIAL_BRAND_URL_DISCOVERY_TYPE
         : isOfficialBrandExtraction
-            ? OFFICIAL_BRAND_EXTRACTION_TYPE
+            ? DIRECT_URL_EXTRACTION_TYPE
             : isDeepResearch
                 ? 'deep_research'
                 : 'standard';

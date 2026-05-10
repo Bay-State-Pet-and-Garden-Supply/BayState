@@ -16,7 +16,7 @@ import {
     sanitizeDiscoveryConfig,
 } from '@/lib/ai-scraping/discovery-config';
 import {
-    OFFICIAL_BRAND_EXTRACTION_TYPE,
+    DIRECT_URL_EXTRACTION_TYPE,
     OFFICIAL_BRAND_URL_DISCOVERY_TYPE,
     isOfficialBrandJobType,
 } from '@/lib/official-brand-workflow';
@@ -93,8 +93,8 @@ function deriveRequestedScrapers(job: {
     return [];
 }
 
-function normalizeRunnerJobType(rawType: unknown): 'standard' | 'ai_search' | typeof OFFICIAL_BRAND_URL_DISCOVERY_TYPE | typeof OFFICIAL_BRAND_EXTRACTION_TYPE {
-    if (rawType === OFFICIAL_BRAND_URL_DISCOVERY_TYPE || rawType === OFFICIAL_BRAND_EXTRACTION_TYPE) {
+function normalizeRunnerJobType(rawType: unknown): 'standard' | 'ai_search' | typeof OFFICIAL_BRAND_URL_DISCOVERY_TYPE | typeof DIRECT_URL_EXTRACTION_TYPE {
+    if (rawType === OFFICIAL_BRAND_URL_DISCOVERY_TYPE || rawType === DIRECT_URL_EXTRACTION_TYPE) {
         return rawType;
     }
 

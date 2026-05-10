@@ -1,3 +1,5 @@
+import { PRODUCT_URL_EXTRACTION_SOURCE_KEY } from '@/lib/official-brand-workflow';
+
 interface OfficialBrandCohortConfig {
     officialDomains?: string[];
     preferredDomains?: string[];
@@ -137,7 +139,8 @@ export function filterOfficialBrandResultsForPersistence(
     const rejectedBySku: Record<string, string> = {};
 
     Object.entries(resultsBySku).forEach(([sku, sources]) => {
-        const validation = validateOfficialBrandSourceForPersistence(sources.official_brand, cohortConfig);
+        const extractionSource = sources[PRODUCT_URL_EXTRACTION_SOURCE_KEY] ?? sources.official_brand;
+        const validation = validateOfficialBrandSourceForPersistence(extractionSource, cohortConfig);
         if (validation.accepted) {
             acceptedResults[sku] = sources;
             return;

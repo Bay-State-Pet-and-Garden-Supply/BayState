@@ -1,464 +1,132 @@
 # Implementation Plan
 
 ## Goal
-Plan PRs 3-6 to finish source evidence, persisted Integra reconciliation, inventory UI, and dashboard metrics on top of the completed order schema/query foundation.
+Replace the deprecated `official_brand_extraction` job type with `direct_url_extraction` end-to-end while keeping server-side Official Brand discovery and runner-side Product URL extraction separate.
 
 ## Tasks
+1. **Make `direct_url_extraction` the canonical web job constant**: Add the canonical extraction type and stop local runtime code from depending on the old job type string.
+   - File: `lib/official-brand-workflow.ts`
+   - Changes: Add `export const DIRECT_URL_EXTRACTION_TYPE = 'direct_url_extraction';`. Change `getOfficialBrandPhaseFromJob()` line ~215 and `isOfficialBrandJobType()` line ~240 to check `DIRECT_URL_EXTRACTION_TYPE` instead of `OFFICIAL_BRAND_EXTRACTION_TYPE`. Either remove `OFFICIAL_BRAND_EXTRACTION_TYPE` or keep it only as a deprecated alias to `DIRECT_URL_EXTRACTION_TYPE` for one release; do not leave its value as `'official_brand_extraction'`.
+   - Acceptance: `getOfficialBrandPhaseFromJob({ type: DIRECT_URL_EXTRACTION_TYPE })` returns `'extraction'`; `isOfficialBrandJobType(DIRECT_URL_EXTRACTION_TYPE)` returns `true`; grep finds no runtime comparisons against `'official_brand_extraction'`.
 
-### PR 3: ShopSite Source Records
+2. **Add product URL extraction source key handling for callbacks**: Support the runner result key change from `official_brand` to `product_url_extraction` without breaking legacy callback payloads.
+   - File: `lib/official-brand-workflow.ts`
+   - Changes: Add `export const PRODUCT_URL_EXTRACTION_SOURCE_KEY = 'product_url_extraction';`. In `buildExtractedOfficialBrandCandidateRows()` lines ~413-416, read `sources[PRODUCT_URL_EXTRACTION_SOURCE_KEY]` first, falling back to `sources[OFFICIAL_BRAND_SOURCE_KEY]` for already-completed legacy jobs. Keep `buildDiscoveryOfficialBrandCandidateRows()` using `OFFICIAL_BRAND_SOURCE_KEY` because web discovery still emits `official_brand` candidate payloads.
+   - Acceptance: Extracted candidate rows are built from `{ product_url_extraction: {...} }`; legacy `{ official_brand: {...} }` extraction callback payloads still build rows.
 
-1. **Add ShopSite sync run helpers**
-   - File: `scripts/sync-shopsite-orders.ts`
-   - Changes: Replace `startLog`/`completeLog` as the primary tracking path with `startIntegrationSyncRun()` and `completeIntegrationSyncRun()` against `integration_sync_runs`; keep `migration_log` writes temporarily only as legacy telemetry if needed.
-   - Key signatures:
-     ```ts
-     async function startIntegrationSyncRun(supabase: SupabaseClient): Promise<string | null>
-     async function completeIntegrationSyncRun(supabase: SupabaseClient, syncRunId: string, result: SyncResult): Promise<void>
-     ```
-   - Acceptance: A sync inserts one `integration_sync_runs` row with `source_type='shopsite'`, `source_system='shopsite_15'`, `sync_kind='orders'`, final counts, status, and completion timestamp.
+3. **Update official-brand validation to accept the new extraction result key**: Validate direct URL extraction results for Official Brand flows.
+   - File: `lib/scraper-callback/official-brand-validation.ts`
+   - Changes: Import or duplicate the new `PRODUCT_URL_EXTRACTION_SOURCE_KEY` constant. In `filterOfficialBrandResultsForPersistence()`, call `validateOfficialBrandSourceForPersistence()` with `sources[PRODUCT_URL_EXTRACTION_SOURCE_KEY] ?? sources.official_brand`. Leave `acceptedResults[sku] = sources` unchanged so persisted product sources keep the runner source key.
+   - Acceptance: Official Brand extraction callbacks with only `product_url_extraction` data are accepted/rejected using the same domain/confidence rules as old `official_brand` data.
 
-2. **Write canonical source fields during ShopSite order upsert**
-   - File: `scripts/sync-shopsite-orders.ts`
-   - Changes: Extend `orderRows` with `source_type: 'shopsite'`, `source_system: 'shopsite_15'`, `external_order_id`, `external_created_at`, `imported_at`, `payment_status: 'paid'`, `fulfillment_status: 'fulfilled'`; keep `source: 'shopsite'` for compatibility and keep `order_number = transformedOrder.legacy_order_number`.
-   - Acceptance: Upserted orders keep legacy order numbers but are queryable by `source_type`, `source_system`, and `external_order_id`.
+4. **Create direct URL extraction jobs from pipeline scraping**: Queue only `direct_url_extraction` for Official Brand extraction requests.
+   - File: `lib/pipeline-scraping.ts`
+   - Changes: Replace import of `OFFICIAL_BRAND_EXTRACTION_TYPE` with `DIRECT_URL_EXTRACTION_TYPE`. Update `ScrapeJobInsertType` line ~92 to include `typeof DIRECT_URL_EXTRACTION_TYPE`. Update job type selection lines ~917-922 so `isOfficialBrandExtraction ? DIRECT_URL_EXTRACTION_TYPE`. Change `effectiveScrapersRaw` line ~916 so Official Brand extraction jobs use `['product_url_extraction']` instead of `['official_brand']`; keep deep research and standard scraper behavior unchanged. Leave `officialBrandPhase: 'extraction'`, selected URL item construction, cohort config, and metadata untouched.
+   - Acceptance: The Official Brand extraction API inserts `scrape_jobs.type === 'direct_url_extraction'`, `scrape_jobs.scrapers === ['product_url_extraction']`, and `config.phase === 'extraction'`.
 
-3. **Persist `order_source_records` per ShopSite order**
-   - File: `scripts/sync-shopsite-orders.ts`
-   - Changes: After order upsert, build one source record per transformed order and upsert by `(source_type, source_system, external_id)`.
-   - Key signature:
-     ```ts
-     function buildShopSiteSourceRecord(input: {
-       orderId: string;
-       syncRunId: string | null;
-       sourceOrderNumber: string;
-       transformedOrder: ReturnType<typeof transformShopSiteOrder>["order"];
-     }): Record<string, unknown>
-     ```
-   - Acceptance: Each synced order has one `order_source_records` row with raw XML under `raw_payload`, transaction/payment/address data under `normalized_payload`, and `sync_run_id` set when available.
+5. **Normalize runner-facing job type in scraper API poll endpoint**: Pass `direct_url_extraction` through to the runner.
+   - File: `app/api/scraper/v1/poll/route.ts`
+   - Changes: Replace `OFFICIAL_BRAND_EXTRACTION_TYPE` import/return type with `DIRECT_URL_EXTRACTION_TYPE`. Update `normalizeRunnerJobType()` lines ~115-117 so it passes through `OFFICIAL_BRAND_URL_DISCOVERY_TYPE` and `DIRECT_URL_EXTRACTION_TYPE`. Do not pass through `'official_brand_extraction'`; old rows should be migrated.
+   - Acceptance: Poll responses for direct URL extraction jobs include `job_type: 'direct_url_extraction'`; no poll normalization branch returns `'official_brand_extraction'`.
 
-4. **Add source-record transformation utilities**
-   - File: `lib/admin/migration/order-sync.ts`
-   - Changes: Export helpers that keep ShopSite normalization out of the script body.
-   - Key signatures:
-     ```ts
-     export const SHOP_SITE_SOURCE_SYSTEM = 'shopsite_15';
-     export function mapShopSitePaymentMethod(method?: string): 'credit_card' | 'paypal' | 'pickup';
-     export function buildShopSiteOrderSourcePayload(transformedOrder: TransformedShopSiteOrder): {
-       raw_payload: Record<string, unknown>;
-       normalized_payload: Record<string, unknown>;
-     };
-     ```
-   - Acceptance: `sync-shopsite-orders.ts` imports helpers instead of duplicating payload-shaping logic.
+6. **Normalize runner-facing job type in single-job endpoint**: Keep `/api/scraper/v1/job` consistent with poll.
+   - File: `app/api/scraper/v1/job/route.ts`
+   - Changes: Replace `OFFICIAL_BRAND_EXTRACTION_TYPE` import/return type with `DIRECT_URL_EXTRACTION_TYPE`. Update `normalizeRunnerJobType()` lines ~96-98 to pass through `OFFICIAL_BRAND_URL_DISCOVERY_TYPE` and `DIRECT_URL_EXTRACTION_TYPE` only.
+   - Acceptance: Direct URL extraction jobs fetched by ID are returned as `direct_url_extraction`; old `official_brand_extraction` is not emitted.
 
-5. **Record order import events**
-   - File: `scripts/sync-shopsite-orders.ts`
-   - Changes: Insert/upsert `order_events` entries with `event_type='imported_from_shopsite'` after successful order upsert; avoid duplicates by using source record existence or include only for newly inserted source records if duplicate detection is easy.
-   - Acceptance: Synced orders expose a timeline entry for ShopSite import.
+7. **Update active-runs phase detection**: Remove the hardcoded old extraction type from active run API output.
+   - File: `app/api/admin/pipeline/active-runs/route.ts`
+   - Changes: Import `DIRECT_URL_EXTRACTION_TYPE` and `OFFICIAL_BRAND_URL_DISCOVERY_TYPE` from `@/lib/official-brand-workflow`, or replace literals directly. In `getOfficialBrandPhase()` lines ~70-76, compare URL discovery to `OFFICIAL_BRAND_URL_DISCOVERY_TYPE` and extraction to `DIRECT_URL_EXTRACTION_TYPE`.
+   - Acceptance: Jobs with `type: 'direct_url_extraction'` return `officialBrandPhase: 'extraction'`; tests no longer use `official_brand_extraction`.
 
-6. **Optional schema hardening migration**
-   - File: `supabase/migrations/YYYYMMDDHHMMSS_order_source_records_sync_run_fk.sql`
-   - Migration outline:
-     ```sql
-     alter table public.order_source_records
-       add constraint order_source_records_sync_run_id_fkey
-       foreign key (sync_run_id)
-       references public.integration_sync_runs(id)
-       on delete set null;
-     ```
-   - Acceptance: Migration applies cleanly; skip if FK already exists in target branch.
+8. **Update pipeline UI filter**: Show active Official Brand extraction jobs under the new job type.
+   - File: `components/admin/pipeline/PipelineClient.tsx`
+   - Changes: Replace `<ActiveRunsTab jobSubtype="official_brand_extraction" />` line ~1455 with `jobSubtype="direct_url_extraction"` or a constant import if safe for this client component.
+   - Acceptance: The extraction active-runs card filters for `direct_url_extraction` jobs.
 
-7. **Validation**
-   - Commands/checks: Run a limited sync in dry/test mode if supported, or `bunx tsc --noEmit` plus a small local script/mocked unit test for `buildShopSiteOrderSourcePayload`.
-   - Verify in DB: `orders.external_order_id`, `order_source_records`, `integration_sync_runs`, and `order_events` rows are populated for a known ShopSite order.
+9. **Add migration for scrape job type transition**: Update existing rows and the DB CHECK constraint.
+   - File: `supabase/migrations/20260510030000_deprecate_official_brand_extraction_job_type.sql`
+   - Changes: Create a new timestamped migration. First update existing rows: `UPDATE public.scrape_jobs SET type = 'direct_url_extraction' WHERE type = 'official_brand_extraction';`. Then drop and recreate `scrape_jobs_type_check` with allowed values `standard`, `ai_search`, `official_brand_url_discovery`, `direct_url_extraction`, `deep_research`. Do not edit old migration files.
+   - Acceptance: New inserts of `direct_url_extraction` pass; new inserts of `official_brand_extraction` fail; existing old rows are migrated before the new constraint is applied.
 
-**PR 3 files**
-- Modified: `scripts/sync-shopsite-orders.ts`, `lib/admin/migration/order-sync.ts`
-- New optional: `supabase/migrations/YYYYMMDDHHMMSS_order_source_records_sync_run_fk.sql`
+10. **Clean scraper runner constants/imports**: Remove the redundant runner job type and deprecated wrapper import.
+   - File: `/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/runner/__init__.py`
+   - Changes: Remove `from scrapers.ai_search.official_brand_scraper import OfficialBrandScraper` line ~15. Remove `OFFICIAL_BRAND_EXTRACTION_TYPE = "official_brand_extraction"` line ~31. Keep `OFFICIAL_BRAND_URL_DISCOVERY_TYPE` and `DIRECT_URL_EXTRACTION_TYPE`. Remove `OfficialBrandScraper` from `__all__` lines ~1391-1399.
+   - Acceptance: `python3 -c "from runner import DIRECT_URL_EXTRACTION_TYPE, ProductUrlExtractor"` works; `from runner import OfficialBrandScraper` is no longer supported.
 
-**PR 3 risks / edge cases**
-- Existing `idx_orders_source_external_unique` includes `source_system`; make sure `source_system='shopsite_15'` is always set before relying on the unique external index.
-- `sourceOrderNumber` and `legacy_order_number` must stay identical for old ShopSite compatibility.
-- Current item import deletes/reinserts items; PR 3 can leave it alone unless duplicate source records expose unexpected item churn.
-- `order_source_records` unique constraint with nullable `external_id` allows multiple nulls; ensure ShopSite external IDs are never null.
+11. **Update scraper runner job detection and legacy rejection**: Route only direct URL extraction to ProductUrlExtractor and reject legacy combined paths.
+   - File: `/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/runner/__init__.py`
+   - Changes: Rename `is_official_brand_job` around line ~556 to a neutral name such as `is_product_url_extraction_job` or `is_special_url_job`. Include `DIRECT_URL_EXTRACTION_TYPE`, `OFFICIAL_BRAND_URL_DISCOVERY_TYPE`, legacy `'ai_search'`, and optionally legacy scraper name `official_brand` only so deprecated jobs are caught and rejected. Remove `OFFICIAL_BRAND_EXTRACTION_TYPE` from the set. In `_run_official_brand_job()` line ~1070, set `scraper_name = 'product_url_extraction'`. In phase detection line ~1096, set extraction only when `job_config.job_type == DIRECT_URL_EXTRACTION_TYPE` or `raw_phase == 'extraction'` with a non-legacy job. Add a branch before extraction setup that rejects `job_config.job_type == 'ai_search'` and raw `'official_brand_extraction'` with an error telling callers to use `direct_url_extraction` and server-side discovery.
+   - Acceptance: `official_brand_url_discovery` still returns the existing server-side discovery rejection; `direct_url_extraction` calls `extract_products_from_urls_batch()`; `ai_search` and `official_brand_extraction` do not call `scrape_products_batch()` or extraction.
 
----
+12. **Update scraper runner output metadata/comments**: Remove misleading Official Brand extraction language from direct extraction jobs.
+   - File: `/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/runner/__init__.py`
+   - Changes: Replace comment line ~1254 with “direct_url_extraction uses ProductUrlExtractor”. Consider renaming result fields for new jobs from `official_brand_phase` to `product_url_extraction_phase` while keeping `official_brand_phase` only if callback compatibility requires it. Keep `config.phase = 'extraction'` behavior stable. Ensure result payload uses source key `product_url_extraction` because `scraper_name` changed.
+   - Acceptance: Runner result data shape is `results['data'][sku]['product_url_extraction'] = {...}` for direct URL extraction jobs.
 
-### PR 4: Integra Reconciliation Persistence
+13. **Update web tests for new job type**: Replace old extraction type literals and assertions.
+   - File: `__tests__/lib/official-brand-workflow.test.ts`
+   - Changes: Import `DIRECT_URL_EXTRACTION_TYPE` and `PRODUCT_URL_EXTRACTION_SOURCE_KEY`. Update extraction phase and `isOfficialBrandJobType` tests to use `DIRECT_URL_EXTRACTION_TYPE`. Update `buildExtractedOfficialBrandCandidateRows` tests to use `[PRODUCT_URL_EXTRACTION_SOURCE_KEY]` for the primary path, and add/keep one fallback test for `[OFFICIAL_BRAND_SOURCE_KEY]` legacy payloads.
+   - Acceptance: Workflow tests prove direct URL extraction is the extraction job type and extracted candidate rows support new + legacy source keys.
 
-1. **Create reconciliation schema**
-   - File: `supabase/migrations/YYYYMMDDHHMMSS_inventory_reconciliation.sql`
-   - Migration outline:
-     ```sql
-     create type public.inventory_reconciliation_issue_type as enum (
-       'register_only',
-       'website_only',
-       'price_mismatch',
-       'quantity_mismatch',
-       'stock_status_mismatch',
-       'duplicate_sku',
-       'invalid_row'
-     );
+14. **Update pipeline scraping tests**: Assert new job type and scraper name.
+   - File: `__tests__/lib/pipeline-scraping.test.ts`
+   - Changes: Rename test title line ~674 from `official_brand_extraction` to `direct_url_extraction`. Update assertions lines ~700 and ~734 to expect `insertedPayload.type === 'direct_url_extraction'`. Add/assert `insertedPayload.scrapers` equals `['product_url_extraction']` if the mock exposes it.
+   - Acceptance: Pipeline scraping tests fail if the old job type is inserted.
 
-     create type public.inventory_reconciliation_status as enum (
-       'open',
-       'ignored',
-       'resolved',
-       'pushed_to_pipeline'
-     );
+15. **Update active-runs tests**: Use the new job type in mocks and expected API response.
+   - File: `__tests__/api/admin/pipeline/active-runs.test.ts`
+   - Changes: Replace mock job `type: "official_brand_extraction"` line ~96 with `"direct_url_extraction"`. Replace expected `jobType: 'official_brand_extraction'` line ~168 with `'direct_url_extraction'`.
+   - Acceptance: Active-runs tests verify direct URL extraction displays as Official Brand extraction phase.
 
-     create table public.inventory_reconciliation_items (
-       id uuid primary key default gen_random_uuid(),
-       sync_run_id uuid not null references public.integration_sync_runs(id) on delete cascade,
-       sku text not null,
-       product_id uuid references public.products(id),
-       register_name text,
-       website_name text,
-       register_price numeric(10,2),
-       website_price numeric(10,2),
-       register_quantity numeric(10,2),
-       website_quantity numeric(10,2),
-       issue_type public.inventory_reconciliation_issue_type not null,
-       severity text not null default 'medium',
-       status public.inventory_reconciliation_status not null default 'open',
-       recommended_action text,
-       raw_register_payload jsonb not null default '{}',
-       metadata jsonb not null default '{}',
-       resolved_at timestamptz,
-       resolved_by uuid references auth.users,
-       created_at timestamptz not null default now()
-     );
+16. **Update callback validation tests for source key rename**: Cover official-brand validation over `product_url_extraction` results.
+   - File: `__tests__/lib/scraper-callback/official-brand-validation.test.ts`
+   - Changes: Change primary fixtures from `official_brand` to `product_url_extraction`, or add a new test case with `product_url_extraction` accepted/rejected by the same domain rules. Keep one legacy `official_brand` fallback test if the code keeps fallback support.
+   - Acceptance: Validation tests prove Official Brand workflow callbacks still work after runner result key changes.
 
-     create index idx_inventory_reconciliation_items_sync_run on public.inventory_reconciliation_items(sync_run_id);
-     create index idx_inventory_reconciliation_items_status on public.inventory_reconciliation_items(status);
-     create index idx_inventory_reconciliation_items_issue_type on public.inventory_reconciliation_items(issue_type);
-     create index idx_inventory_reconciliation_items_sku on public.inventory_reconciliation_items(sku);
-     ```
-   - RLS: Admin/staff `SELECT` and `ALL`; service role bypass if scripts use service role.
-   - Acceptance: Migration applies and generated Supabase types include the table/enums.
+17. **Clean scraper-side references to old job type string**: Update benchmark/tuning references only if they are intended to describe the job type, not historical fixture names.
+   - File: `/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/scrapers/ai_search/tuning_inventory.json`
+   - Changes: If the `official_brand_extraction_seed` identifier is meant to track the job type, rename it to `direct_url_extraction_seed`; otherwise leave it and document it as fixture lineage. Update tests accordingly only if renamed.
+   - File: `/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/tests/unit/test_tuning_inventory.py`
+   - Changes: Update expected fixture id/path only if the inventory id changes.
+   - Acceptance: No production runner code references `'official_brand_extraction'`; fixture naming decisions are explicit.
 
-2. **Introduce durable reconciliation types**
-   - File: `lib/admin/integra-sync.ts`
-   - Changes: Replace/extend `SyncAnalysis` with durable reconciliation result types while keeping old exports temporarily if UI still imports them.
-   - Key types:
-     ```ts
-     export type ReconciliationIssueType = 'register_only' | 'website_only' | 'price_mismatch' | 'quantity_mismatch' | 'stock_status_mismatch' | 'duplicate_sku' | 'invalid_row';
-
-     export interface ReconciliationIssue {
-       sku: string;
-       productId: string | null;
-       issueType: ReconciliationIssueType;
-       severity: 'low' | 'medium' | 'high';
-       registerName: string | null;
-       websiteName: string | null;
-       registerPrice: number | null;
-       websitePrice: number | null;
-       registerQuantity: number | null;
-       websiteQuantity: number | null;
-       recommendedAction: string;
-       rawRegisterPayload?: Record<string, unknown>;
-     }
-
-     export interface IntegraReconciliationResult {
-       syncRunId: string;
-       totalInFile: number;
-       matchedProducts: number;
-       unchangedProducts: number;
-       registerOnlyCount: number;
-       websiteOnlyCount: number;
-       priceMismatchCount: number;
-       quantityMismatchCount: number;
-       stockStatusMismatchCount: number;
-       issues: ReconciliationIssue[];
-     }
-     ```
-   - Acceptance: Existing parser still works; analyzer can produce issue rows without writing UI state only.
-
-3. **Use `RegisterWorkbookProduct` as canonical parser output**
-   - File: `lib/admin/integra-sync.ts`
-   - Changes: Keep `parseIntegraExcel()` but have it return enough fields for reconciliation (`quantityOnHand`, dates) or add `parseIntegraWorkbookForReconciliation()` returning `RegisterWorkbookProduct[]`.
-   - Acceptance: Reconciliation can detect price, quantity, and stock-status differences; not just missing SKUs.
-
-4. **Build persisted reconciliation service**
-   - File: `lib/admin/integra-sync.ts`
-   - Changes: Add functions to create sync run, analyze issues, insert rows, and return `syncRunId`.
-   - Key signatures:
-     ```ts
-     export async function createIntegraSyncRun(input: { fileName?: string; rowCount: number; createdBy?: string | null }): Promise<string>;
-     export async function analyzeIntegraReconciliation(registerProducts: RegisterWorkbookProduct[]): Promise<Omit<IntegraReconciliationResult, 'syncRunId'>>;
-     export async function persistIntegraReconciliation(input: { syncRunId: string; issues: ReconciliationIssue[] }): Promise<void>;
-     export async function runIntegraReconciliation(input: { buffer: ArrayBuffer; fileName?: string; createdBy?: string | null }): Promise<IntegraReconciliationResult>;
-     ```
-   - Acceptance: Upload path writes `integration_sync_runs` and `inventory_reconciliation_items`; no reconciliation data is lost after page refresh.
-
-5. **Reuse register planning logic for mismatch detection**
-   - File: `lib/admin/register-sync.ts`
-   - Changes: Export `RegisterSyncPlan`, `RegisterSyncPreview`, `RegisterSyncChange`, and either expose `deriveInventoryStockStatus()` or add a public analyzer helper that PR 4 can reuse.
-   - Acceptance: `integra-sync.ts` does not duplicate stock-status/price/quantity comparison logic.
-
-6. **Update Integra server actions**
-   - File: `app/admin/tools/integra-sync/actions.ts`
-   - Changes: `analyzeIntegraAction()` should call `runIntegraReconciliation()` and return `{ success: true, syncRunId, summary }`; replace `processOnboardingAction(products)` with issue-based action.
-   - Key signatures:
-     ```ts
-     export async function analyzeIntegraAction(formData: FormData): Promise<ActionState & { syncRunId?: string; summary?: IntegraReconciliationSummary }>;
-     export async function pushReconciliationItemsToPipelineAction(issueIds: string[]): Promise<ActionState & { count?: number }>;
-     ```
-   - Acceptance: Upload returns a durable `syncRunId`, and push-to-pipeline updates issue status.
-
-7. **Update onboarding push traceability**
-   - File: `lib/admin/integra-sync.ts`
-   - Changes: Add issue-based pipeline insertion that writes trace metadata to `products_ingestion.input`.
-   - Key signature:
-     ```ts
-     export async function pushRegisterOnlyIssuesToOnboarding(issueIds: string[]): Promise<{ success: boolean; count: number; errors: string[] }>;
-     ```
-   - Required `products_ingestion.input` shape:
-     ```ts
-     {
-       name,
-       price,
-       sku,
-       quantityOnHand,
-       source: 'integra',
-       sync_run_id: syncRunId,
-       reconciliation_item_id: issueId
-     }
-     ```
-   - Acceptance: `inventory_reconciliation_items.status` changes to `pushed_to_pipeline` and `products_ingestion.pipeline_status='imported'`.
-
-8. **Update current Integra upload UI minimally**
-   - File: `app/admin/tools/integra-sync/SyncClient.tsx`
-   - Changes: Display returned durable summary and link to `/admin/inventory/sync-runs/[syncRunId]`; keep old cards but rename “New Products” to “Register-only Products”.
-   - Acceptance: Existing tool remains usable before full PR 5 UI lands.
-
-9. **Validation**
-   - Tests: Unit-test parser/analyzer with rows containing register-only, price mismatch, quantity mismatch, unchanged, and duplicate SKU cases.
-   - Manual: Upload sample workbook, refresh page, verify rows still exist in `inventory_reconciliation_items` and sync run counts match.
-
-**PR 4 files**
-- Modified: `lib/admin/integra-sync.ts`, `lib/admin/register-sync.ts`, `app/admin/tools/integra-sync/actions.ts`, `app/admin/tools/integra-sync/SyncClient.tsx`
-- New: `supabase/migrations/YYYYMMDDHHMMSS_inventory_reconciliation.sql`
-- Optional tests: `__tests__/lib/admin/integra-sync.test.ts`, `__tests__/lib/admin/register-sync.test.ts`
-
-**PR 4 risks / edge cases**
-- Existing `parseRegisterRows()` deduplicates SKUs, so duplicate detection may require preserving raw rows before dedupe or adding a parser option.
-- “Website-only” requires comparing full website SKU set against file SKU set; avoid loading entire catalog if SKU counts are very large, or batch/paginate.
-- `products_ingestion` upsert by SKU can overwrite existing onboarding input; decide whether to merge trace metadata or skip existing rows.
-- RLS must allow server actions for admin/staff and service scripts without exposing reconciliation data to customers.
-
----
-
-### PR 5: Inventory UI
-
-1. **Create inventory data layer**
-   - New files:
-     - `lib/admin/inventory/types.ts`
-     - `lib/admin/inventory/queries.ts`
-     - `lib/admin/inventory/mutations.ts`
-   - Key signatures:
-     ```ts
-     export interface InventoryDashboardStats {
-       lastSyncRun: IntegrationSyncRun | null;
-       openIssues: number;
-       registerOnlyProducts: number;
-       priceMismatches: number;
-       quantityMismatches: number;
-       stockStatusMismatches: number;
-       pushedToPipeline: number;
-     }
-
-     export interface InventoryIssueFilters {
-       syncRunId?: string;
-       issueType?: ReconciliationIssueType;
-       status?: 'open' | 'ignored' | 'resolved' | 'pushed_to_pipeline';
-       q?: string;
-       page?: number;
-       pageSize?: number;
-     }
-
-     export async function getInventoryDashboardStats(): Promise<InventoryDashboardStats>;
-     export async function getInventorySyncRuns(filters: { page?: number; pageSize?: number }): Promise<{ runs: IntegrationSyncRun[]; count: number }>;
-     export async function getInventoryReconciliationItems(filters: InventoryIssueFilters): Promise<{ items: InventoryReconciliationItem[]; count: number }>;
-     export async function getInventorySyncRunDetail(syncRunId: string): Promise<{ run: IntegrationSyncRun; summary: InventorySyncRunSummary }>;
-     export async function markInventoryIssueStatusAction(issueId: string, status: InventoryReconciliationStatus): Promise<ActionState>;
-     export async function pushInventoryIssueToPipelineAction(issueId: string): Promise<ActionState>;
-     export async function linkInventoryIssueProductAction(issueId: string, productId: string): Promise<ActionState>;
-     ```
-   - Acceptance: UI pages do not query Supabase directly from client components.
-
-2. **Build inventory dashboard route**
-   - New file: `app/admin/inventory/page.tsx`
-   - New components:
-     - `components/admin/inventory/inventory-dashboard.tsx`
-     - `components/admin/inventory/inventory-metric-card.tsx`
-     - `components/admin/inventory/latest-sync-card.tsx`
-   - Changes: Render cards for Last Integra Sync, Open Discrepancies, Register-only Products, Price Mismatches, Quantity Mismatches, Products Pushed to Pipeline.
-   - Acceptance: `/admin/inventory` loads server-rendered metrics and links to sync runs/detail pages.
-
-3. **Build sync runs list route**
-   - New file: `app/admin/inventory/sync-runs/page.tsx`
-   - New component: `components/admin/inventory/sync-runs-table.tsx`
-   - Changes: Table of `integration_sync_runs` filtered to `source_type='integra'`, `sync_kind in ('inventory','reconciliation')`, with status/count/date links.
-   - Acceptance: Users can browse historical Integra sync runs.
-
-4. **Build sync run detail route**
-   - New file: `app/admin/inventory/sync-runs/[id]/page.tsx`
-   - New components:
-     - `components/admin/inventory/sync-run-detail.tsx`
-     - `components/admin/inventory/reconciliation-issues-table.tsx`
-     - `components/admin/inventory/reconciliation-issue-actions.tsx`
-     - `components/admin/inventory/issue-status-badge.tsx`
-     - `components/admin/inventory/issue-type-badge.tsx`
-   - Changes: Tabs/filters for All Issues, Register-only, Price mismatches, Quantity mismatches, Resolved, Ignored.
-   - Acceptance: Detail page lists persisted issues and supports row-level actions.
-
-5. **Add server action wrappers**
-   - New file: `app/admin/inventory/actions.ts`
-   - Changes: Re-export inventory mutation functions for client components.
-   - Acceptance: Client action buttons call server actions only; no direct DB access in client code.
-
-6. **Wire push-to-pipeline action**
-   - Files: `lib/admin/inventory/mutations.ts`, `components/admin/inventory/reconciliation-issue-actions.tsx`
-   - Changes: For `register_only` issues, call PR 4’s onboarding helper; for unsupported issue types, disable button with clear tooltip/copy.
-   - Acceptance: Pushed rows appear in `products_ingestion` and issue status updates to `pushed_to_pipeline`.
-
-7. **Validation**
-   - Manual: Seed/upload an Integra sync with all issue types; verify dashboard counts, filters, and row actions.
-   - Tests: Component smoke tests for badge render helpers and query unit tests with mocked Supabase if project pattern supports it.
-   - Accessibility: Ensure table actions have labels and disabled states explain why.
-
-**PR 5 files**
-- New: `app/admin/inventory/page.tsx`, `app/admin/inventory/sync-runs/page.tsx`, `app/admin/inventory/sync-runs/[id]/page.tsx`, `app/admin/inventory/actions.ts`
-- New: `components/admin/inventory/*`
-- New: `lib/admin/inventory/types.ts`, `lib/admin/inventory/queries.ts`, `lib/admin/inventory/mutations.ts`
-- Modified optional: admin navigation file if inventory route is not already visible (identify exact nav file during implementation, likely under `components/admin/` or `app/admin/`).
-
-**PR 5 risks / edge cases**
-- Need exact admin nav location before adding menu link.
-- Large issue tables need server pagination; do not fetch all rows into client.
-- Product linking needs a product lookup UI; if too large, defer to text SKU/product ID search action.
-- Price/quantity update actions were in the original vision but require careful product mutation/audit behavior; keep PR 5 to status/link/push unless scope is expanded.
-
----
-
-### PR 6: Dashboard Metrics
-
-1. **Add dashboard metric views and recent activity expansion**
-   - New file: `supabase/migrations/YYYYMMDDHHMMSS_order_inventory_dashboard_views.sql`
-   - Migration outline:
-     ```sql
-     create or replace view public.dashboard_order_stats as
-     select
-       count(*) filter (where created_at::date = current_date) as today_order_count,
-       coalesce(sum(total) filter (where created_at::date = current_date), 0) as today_sales,
-       count(*) filter (where status in ('pending', 'processing')) as open_orders,
-       count(*) filter (where payment_status in ('unpaid', 'authorized')) as unpaid_orders,
-       count(*) filter (where fulfillment_status = 'ready_for_pickup') as ready_for_pickup,
-       count(*) filter (where source_type = 'integra' and created_at::date = current_date) as today_register_orders,
-       count(*) filter (where source_type = 'web' and created_at::date = current_date) as today_web_orders
-     from public.orders;
-
-     create or replace view public.dashboard_inventory_reconciliation_stats as
-     select
-       count(*) filter (where status = 'open') as open_issues,
-       count(*) filter (where issue_type = 'register_only' and status = 'open') as register_only_products,
-       count(*) filter (where issue_type = 'price_mismatch' and status = 'open') as price_mismatches,
-       count(*) filter (where issue_type = 'quantity_mismatch' and status = 'open') as quantity_mismatches,
-       max(created_at) as last_issue_created_at
-     from public.inventory_reconciliation_items;
-
-     grant select on public.dashboard_order_stats to authenticated;
-     grant select on public.dashboard_inventory_reconciliation_stats to authenticated;
-     ```
-   - Extend `public.get_dashboard_recent_activity(limit_count int)` with UNION branches for new web orders, ShopSite sync completed, Integra sync completed, inventory discrepancy found, product pushed from Integra to pipeline, and order fulfillment events.
-   - Acceptance: Views and RPC return rows in Supabase SQL editor for admin/staff auth.
-
-2. **Update dashboard stats hook types and fetches**
-   - File: `hooks/use-dashboard-stats.ts`
-   - Changes: Add `OrderStats` and `InventoryReconciliationStats` interfaces; fetch four views in `Promise.all`; return `orderStats` and `inventoryStats`.
-   - Key types:
-     ```ts
-     interface OrderStats {
-       today_order_count: number;
-       today_sales: number;
-       open_orders: number;
-       unpaid_orders: number;
-       ready_for_pickup: number;
-       today_register_orders: number;
-       today_web_orders: number;
-     }
-
-     interface InventoryReconciliationStats {
-       open_issues: number;
-       register_only_products: number;
-       price_mismatches: number;
-       quantity_mismatches: number;
-       last_issue_created_at: string | null;
-     }
-     ```
-   - Acceptance: Existing consumers keep working; dashboard handles missing/null stats safely.
-
-3. **Add manager-facing metric cards**
-   - File: `components/admin/dashboard/admin-dashboard-view.tsx`
-   - Changes: Add cards for Today’s Sales, Open Orders, Ready for Pickup, Unpaid Orders, Inventory Issues, Register-only Products; link cards to `/admin/orders` and `/admin/inventory` filtered views where possible.
-   - Acceptance: Dashboard first row/section includes store-manager metrics, not just product/scraper metrics.
-
-4. **Extend recent activity UI type support**
-   - Files: `hooks/use-recent-activity.ts`, `components/admin/dashboard/recent-activity-feed.tsx`
-   - Changes: Add activity types such as `inventory`, `integration`, and `fulfillment` or map new DB `type` values to existing `system/order/product/pipeline`; add icons if new types are used.
-   - Acceptance: New activity rows render with icons/status styles and valid links.
-
-5. **Validation**
-   - SQL: Query both new dashboard views and `get_dashboard_recent_activity(10)` after inserting sample order, sync run, event, and reconciliation row.
-   - UI: Load admin dashboard and verify no client errors, loading states still work, and links navigate correctly.
-   - Regression: Existing product/scraper stats still appear.
-
-**PR 6 files**
-- New: `supabase/migrations/YYYYMMDDHHMMSS_order_inventory_dashboard_views.sql`
-- Modified: `hooks/use-dashboard-stats.ts`, `hooks/use-recent-activity.ts`, `components/admin/dashboard/admin-dashboard-view.tsx`, `components/admin/dashboard/recent-activity-feed.tsx`
-- Optional modified: `components/admin/dashboard/metric-card.tsx` only if currency formatting/link support is needed.
-
-**PR 6 risks / edge cases**
-- `dashboard_inventory_reconciliation_stats` depends on PR 4 migration; PR 6 must not merge before PR 4.
-- Current `Activity.type` union is narrow; DB function and TS hook must agree or UI falls back to system icon.
-- `payment_status` values are enum-based now; use `unpaid`/`authorized`, not legacy `pending`/`processing` payment statuses.
-- Dashboard views with no rows must still return one row with zeros via aggregate behavior.
+18. **Run focused validation**: Verify web + runner behavior.
+   - File: no source change
+   - Changes: From `apps/web`, run focused tests: `bun run test -- __tests__/lib/official-brand-workflow.test.ts __tests__/lib/pipeline-scraping.test.ts __tests__/api/admin/pipeline/active-runs.test.ts __tests__/lib/scraper-callback/official-brand-validation.test.ts`. From `apps/scraper`, run import and runner smoke checks with Python 3: import `runner`, assert `DIRECT_URL_EXTRACTION_TYPE == 'direct_url_extraction'`, assert `OFFICIAL_BRAND_EXTRACTION_TYPE` is absent, and mock `ProductUrlExtractor.extract_products_from_urls_batch()` for a `direct_url_extraction` job if a suitable runner test fixture exists.
+   - Acceptance: Focused tests pass; grep for production code finds no `'official_brand_extraction'` except deprecated alias/comments or historical fixtures explicitly allowed.
 
 ## Files to Modify
-- `scripts/sync-shopsite-orders.ts` - PR 3 ShopSite sync run/source record writes.
-- `lib/admin/migration/order-sync.ts` - PR 3 ShopSite source payload helpers.
-- `lib/admin/integra-sync.ts` - PR 4 durable reconciliation service and onboarding traceability.
-- `lib/admin/register-sync.ts` - PR 4 export reusable plan/change types and stock-status helper.
-- `app/admin/tools/integra-sync/actions.ts` - PR 4 actions return sync run IDs and push issue IDs.
-- `app/admin/tools/integra-sync/SyncClient.tsx` - PR 4 minimal durable result UI/link.
-- `hooks/use-dashboard-stats.ts` - PR 6 fetch order/inventory dashboard stats.
-- `hooks/use-recent-activity.ts` - PR 6 activity type updates.
-- `components/admin/dashboard/admin-dashboard-view.tsx` - PR 6 new dashboard cards.
-- `components/admin/dashboard/recent-activity-feed.tsx` - PR 6 render new activity types.
+- `lib/official-brand-workflow.ts` - add `DIRECT_URL_EXTRACTION_TYPE`, add `PRODUCT_URL_EXTRACTION_SOURCE_KEY`, update phase/type checks and extraction row source lookup.
+- `lib/scraper-callback/official-brand-validation.ts` - validate `product_url_extraction` source key with legacy fallback.
+- `lib/pipeline-scraping.ts` - queue `direct_url_extraction` and use `product_url_extraction` scraper name for extraction jobs.
+- `app/api/scraper/v1/poll/route.ts` - pass through `DIRECT_URL_EXTRACTION_TYPE` to runner.
+- `app/api/scraper/v1/job/route.ts` - pass through `DIRECT_URL_EXTRACTION_TYPE` to runner.
+- `app/api/admin/pipeline/active-runs/route.ts` - detect extraction phase from `direct_url_extraction`.
+- `components/admin/pipeline/PipelineClient.tsx` - filter active extraction runs by `direct_url_extraction`.
+- `/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/runner/__init__.py` - remove `OFFICIAL_BRAND_EXTRACTION_TYPE` and `OfficialBrandScraper`, route/reject legacy job types, use `product_url_extraction` result key.
+- `__tests__/lib/official-brand-workflow.test.ts` - update constants/source-key assertions.
+- `__tests__/lib/pipeline-scraping.test.ts` - update expected job type and scraper name.
+- `__tests__/api/admin/pipeline/active-runs.test.ts` - update job type fixtures/expectations.
+- `__tests__/lib/scraper-callback/official-brand-validation.test.ts` - add/update source key validation cases.
+- `/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/scrapers/ai_search/tuning_inventory.json` - optional fixture id/name cleanup if desired.
+- `/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/tests/unit/test_tuning_inventory.py` - optional only if tuning inventory fixture id changes.
 
 ## New Files
-- `supabase/migrations/YYYYMMDDHHMMSS_order_source_records_sync_run_fk.sql` - optional PR 3 FK hardening.
-- `supabase/migrations/YYYYMMDDHHMMSS_inventory_reconciliation.sql` - PR 4 reconciliation table/enums/RLS.
-- `lib/admin/inventory/types.ts` - PR 5 inventory UI/data types.
-- `lib/admin/inventory/queries.ts` - PR 5 inventory dashboard/list/detail queries.
-- `lib/admin/inventory/mutations.ts` - PR 5 issue status/link/push mutations.
-- `app/admin/inventory/page.tsx` - PR 5 inventory dashboard route.
-- `app/admin/inventory/sync-runs/page.tsx` - PR 5 sync run list route.
-- `app/admin/inventory/sync-runs/[id]/page.tsx` - PR 5 sync run detail route.
-- `app/admin/inventory/actions.ts` - PR 5 server action wrappers.
-- `components/admin/inventory/*` - PR 5 inventory dashboard, tables, badges, actions.
-- `supabase/migrations/YYYYMMDDHHMMSS_order_inventory_dashboard_views.sql` - PR 6 dashboard views/recent activity function update.
+- `supabase/migrations/20260510030000_deprecate_official_brand_extraction_job_type.sql` - migrates existing `official_brand_extraction` rows to `direct_url_extraction` and updates `scrape_jobs_type_check`.
 
 ## Dependencies
-- PR 3 depends on PR 1 tables/columns: `integration_sync_runs`, `order_source_records`, `order_events`, `orders.source_type`, `orders.external_order_id`.
-- PR 4 depends on PR 1 `integration_sync_runs` and existing `products_ingestion` pipeline statuses.
-- PR 5 depends on PR 4 `inventory_reconciliation_items` and PR 1 `integration_sync_runs`.
-- PR 6 depends on PR 1 and PR 4; recent activity also benefits from PR 3/PR 5 events/status updates.
+- Task 1 must happen before web imports can switch to `DIRECT_URL_EXTRACTION_TYPE`.
+- Tasks 2 and 3 must happen before changing runner `scraper_name` to `product_url_extraction`; otherwise callbacks will reject or skip extraction results.
+- Task 4 depends on Task 1 and should be paired with Task 9 to avoid DB constraint insert failures.
+- Tasks 5 and 6 depend on Task 1 and Task 9 so runner polling can return the new type accepted by DB.
+- Tasks 10-12 depend on Task 4/9 conceptually: web must queue `direct_url_extraction` before runner removes support for the old type.
+- Tests in Tasks 13-16 depend on their corresponding runtime changes.
 
 ## Risks
-- Timestamped migrations must be ordered so PR 4 lands before PR 6 dashboard inventory views.
-- Supabase generated types should be regenerated after PR 4 and PR 6 migrations, or local types must be updated manually in the same PR.
-- Avoid client-side DB access in new inventory components; all reads/mutations should go through server components/actions.
-- Avoid hard-deleting or overwriting financial/source evidence; source records and order events are append/upsert evidence trails.
-- Reconciliation duplicate SKU detection conflicts with current parser dedupe behavior; implementation must decide whether to preserve raw rows.
-- Large catalogs/sync files require batched DB reads and server pagination.
+- Changing runner `scraper_name` to `product_url_extraction` changes persisted source keys in `products_ingestion.sources`; callback validation and candidate-row builders must support this or Official Brand extraction persistence will break.
+- `product_url_extraction` is a generic arbitrary URL source; consolidation trust ranking may treat it as `standard`, not trusted/manufacturer. Decide separately whether official-brand-reviewed direct URLs should be elevated in consolidation prompts.
+- Removing `official_brand_extraction` from the DB constraint can fail if rows are not migrated first; the migration must update old rows before recreating the constraint.
+- Keeping a deprecated `OFFICIAL_BRAND_EXTRACTION_TYPE` alias in TypeScript reduces breakage but leaves stale naming in the API surface. Removing it is cleaner but requires updating every import in one pass.
+- Legacy runner jobs with `ai_search`, `official_brand` scraper name, or raw `official_brand_extraction` may still exist in queues. The runner should reject them with a clear error rather than accidentally processing them as standard jobs.
+- Some scraper benchmark/tests still reference `OfficialBrandScraper` discovery APIs that are already deprecated/removed. Do not reintroduce runner discovery to satisfy those tests; update or quarantine them separately if they block CI.

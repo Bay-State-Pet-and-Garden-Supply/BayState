@@ -1,279 +1,219 @@
-# Consolidation Pipeline Analysis
+# Code Context: `official_brand_extraction` job type
 
-## Files Retrieved
+## Constant definition
 
-| File | Lines | Importance |
-|------|-------|------------|
-| `lib/consolidation/types.ts` | 1-120 | Core types: `BatchExecutionMode`, `BatchStatus`, `BatchJob`, `SubmitBatchResponse` |
-| `lib/consolidation/openai-client.ts` | 1-190 | Provider config resolution: `getConsolidationConfig()`, `getOpenAIClient()` |
-| `lib/consolidation/batch-service.ts` | 1-2585 | Main orchestrator: `submitBatch()`, `getBatchStatus()`, `retrieveResults()`, `applyResults()` |
-| `lib/consolidation/direct-chat-service.ts` | 1-470 | Direct-chat execution: `createDirectChatBatch()`, `processDirectChatChunk()`, `aggregateDirectChatStatus()` |
-| `lib/consolidation/index.ts` | 1-54 | Public API exports |
-| `lib/consolidation/parallel-runs.ts` | 1-270 | Parallel run tracking between providers |
-| `lib/consolidation/two-phase-service.ts` | 1-360 | Two-phase consistency pass |
-| `lib/providers/interfaces.ts` | 1-85 | Provider abstraction interfaces (`LLMClient`, `BatchProvider`) |
-| `lib/providers/gemini-batch.ts` | 1-300 | Gemini batch implementation (UNUSED by consolidation pipeline) |
-| `lib/providers/gemini-client.ts` | 1-260 | Gemini chat implementation (UNUSED by consolidation pipeline) |
-| `lib/ai-scraping/credentials.ts` | 1-820 | Credential resolution, provider normalization, `llm_supports_batch_api` |
-| `lib/ai-scraping/models.ts` | 1-60 | Model definitions, `DEFAULT_AI_MODEL = 'deepseek-chat'`, Gemini legacy stubs |
-| `lib/ai-scraping/pricing.ts` | 1-60 | Cost calculation via `pricing-catalog.json` (NO DeepSeek entries) |
-| `lib/ai-scraping/discovery-config.ts` | 1-110 | Discovery provider routing (forces DeepSeek) |
-| `app/api/admin/consolidation/submit/route.ts` | 1-90 | POST endpoint for submitting consolidation |
-| `app/api/admin/consolidation/settings/route.ts` | 1-120 | GET/POST for consolidation settings |
-| `app/admin/settings/page.tsx` | 1-31 | Admin settings page (DeepSeek-focused) |
-| `app/admin/pipeline/page.tsx` | 1-100 | Pipeline management page |
-| `app/admin/pipeline/monitoring/page.tsx` | 1-20 | Pipeline monitoring page |
-| `components/admin/pipeline/ActiveConsolidationsTab.tsx` | 1-640 | Active consolidation jobs UI + batch history |
-| `components/admin/pipeline/ConsolidationJobCard.tsx` | 1-170 | Individual job card component |
-| `components/admin/settings/AIConsolidationSettingsCard.tsx` | referenced | Consolidation settings UI |
-| `supabase/migrations/20260508100000_migrate_ai_defaults_to_deepseek.sql` | 1-105 | DB migration setting DeepSeek as default |
+**File:** `lib/official-brand-workflow.ts:5`
+```ts
+export const OFFICIAL_BRAND_EXTRACTION_TYPE = 'official_brand_extraction';
+```
+Also exported from `lib/pipeline-scraping.ts:16` (re-imported from official-brand-workflow).
 
----
-
-## 1. OpenAI-to-DeepSeek Transition Status
-
-**Migration is functionally complete at the default/configuration level.** The DB defaults now point to `deepseek`/`deepseek-chat` and the credentials layer normalizes legacy providers to `deepseek`. However, the code architecture still treats DeepSeek as an "OpenAI-compatible" provider rather than a first-class citizen.
-
-### How it works now:
-
-**`openai-client.ts`** → `getConsolidationConfig()`:
-- Reads runtime config from DB via `getAIConsolidationRuntimeConfig()`
-- If `effectiveProvider === 'deepseek'`, it:
-  - Resolves API key from `deepseek_api_key ?? llm_api_key`
-  - Resolves base URL via `getDeepSeekOpenAICompatibleBaseURL()` → `https://api.deepseek.com/v1`
-  - Sets `llm_supports_batch_api: false`
-- Falls back to a hardcoded DeepSeek config if DB fetch fails
-
-**`batch-service.ts`** → `submitBatch()` routing:
-```typescript
-if (config.llm_supports_batch_api) {
-    return await submitBatchToOpenAI(products, metadata);  // OpenAI Batch API path
-}
-// Otherwise → direct_chat_chunks path
+**Runner-side duplicate:** `apps/scraper/runner/__init__.py:31`
+```python
+OFFICIAL_BRAND_EXTRACTION_TYPE = "official_brand_extraction"
 ```
 
-Since `llm_supports_batch_api` is `false` for DeepSeek, ALL DeepSeek traffic goes through the direct-chat path.
+---
 
-**Fallback chain exists but is LM-Studio-specific:**
-```typescript
-// In submitBatch():
-if (config.llm_provider === 'lmstudio') {
-    // preflight failed → fall back to DeepSeek
-    return await submitDeepSeekFallbackBatch(...);
-}
-// In handleDirectChatStatus():
-// If items fail in direct-chat, creates DeepSeek fallback batch for failed items
+## 1. ALL references (files & line ranges)
+
+### Web app — runtime code
+
+| File | Lines | Role |
+|------|-------|------|
+| `lib/official-brand-workflow.ts` | 5, 215, 240, 431 | Constant def, phase detection, job type check, metadata source label |
+| `lib/pipeline-scraping.ts` | 16, 92, 897, 919–920 | Import, type union, `isOfficialBrandExtraction` flag, job insert type selection |
+| `app/api/admin/pipeline/active-runs/route.ts` | 75 | Literal string `"official_brand_extraction"` in `getOfficialBrandPhase()` |
+| `app/api/admin/pipeline/official-brand/extract/route.ts` | 220 | Calls `scrapeProducts()` with `officialBrandPhase: "extraction"` (non-literal, uses the string directly in options) |
+| `app/api/scraper/v1/poll/route.ts` | 26, 115, 116 | Import, `normalizeRunnerJobType` (pass‑through for this type) |
+| `app/api/scraper/v1/job/route.ts` | 19, 96, 97 | Import, `normalizeRunnerJobType` (pass‑through) |
+| `app/api/admin/scraping/callback/route.ts` | 26, 590 | Import `buildExtractedOfficialBrandCandidateRows`, calls it for extraction results |
+| `app/api/scraper/v1/chunk-callback/route.ts` | 22, 132 | Same — import and call for extraction results |
+| `components/admin/pipeline/PipelineClient.tsx` | 1455 | Hardcoded literal `"official_brand_extraction"` passed as `jobSubtype` prop to `<ActiveRunsTab>` |
+
+### Web app — tests
+
+| File | Lines | Role |
+|------|-------|------|
+| `__tests__/lib/official-brand-workflow.test.ts` | 13, 170, 196 | Import, phase detection type check, `isOfficialBrandJobType` test |
+| `__tests__/lib/pipeline-scraping.test.ts` | 674, 700, 734 | Creation test; asserts `insertedPayload.type === 'official_brand_extraction'` |
+| `__tests__/api/admin/pipeline/active-runs.test.ts` | 96, 168 | Literal string `"official_brand_extraction"` in mock job data |
+
+### Web app — DB migrations
+
+| File | Lines | Role |
+|------|-------|------|
+| `supabase/migrations/20260501000000_official_brand_phases.sql` | 13 | CHECK constraint includes `'official_brand_extraction'` |
+| `supabase/migrations/20260505000000_add_deep_research_job_type.sql` | 13 | CHECK constraint re‑declared, includes `'official_brand_extraction'` (carried forward) |
+
+### Scraper runner
+
+| File | Lines | Role |
+|------|-------|------|
+| `runner/__init__.py` | 31 | Constant def |
+| `runner/__init__.py` | 556 | Included in `is_official_brand_job` set (`{..., OFFICIAL_BRAND_EXTRACTION_TYPE, ...}`) |
+| `runner/__init__.py` | 1096 | Phase dispatch: selects extraction path when `job_type in {OFFICIAL_BRAND_EXTRACTION_TYPE, DIRECT_URL_EXTRACTION_TYPE}` |
+| `runner/__init__.py` | 1254 | Comment: "Both official_brand_extraction and direct_url_extraction use the same extraction path" |
+
+### Scraper — tuning/tests
+
+| File | Lines | Role |
+|------|-------|------|
+| `scrapers/ai_search/tuning_inventory.json` | 8, 252, 256 | Dataset seed reference and entry |
+| `benchmarks/official_brand/fixtures/extraction_seed.json` | 2 | `schema_version` metadata string |
+| `tests/unit/test_tuning_inventory.py` | 104 | Checks seed entry exists |
+| `tests/unit/test_official_brand_extraction_seed.py` | 14 | Validates fixture schema version |
+
+---
+
+## 2. How it's dispatched (jobs queued/created)
+
+Extraction jobs are only created via `scrapeProducts()` in `lib/pipeline-scraping.ts`.
+
+### Call chain
 ```
-The fallback is only triggered for LM Studio → DeepSeek. No fallback from DeepSeek → anything else.
-
----
-
-## 2. execution_mode: `direct_chat_chunks` vs `batch_api`
-
-**`batch_api`:**
-- Uses OpenAI `/v1/batches` endpoint
-- Creates JSONL file → uploads → submits batch → polls via `client.batches.retrieve()`
-- Requires `llm_supports_batch_api: true` (only OpenAI native)
-- Result retrieval via `client.files.content()`
-- Tight coupling to OpenAI SDK (`new OpenAI()`, `client.batches.create()`, `client.files.create()`)
-
-**`direct_chat_chunks`:**
-- Synthentic batch: creates a `batch_jobs` parent row + individual `batch_job_items` rows
-- Processed incrementally via `processDirectChatChunk()`:
-  - Claims N pending items atomically
-  - For each item: calls `client.chat.completions.create()` (OpenAI SDK, same `new OpenAI()` client)
-  - Stores result per item row
-- Status aggregated via `aggregateDirectChatStatus()` (sums item-level statuses)
-- Fallback: if items fail, creates a DeepSeek fallback batch automatically
-- No actual batch API call—it's simulated batching via individual chat completions
-
-**Key difference:** `batch_api` is true asynchronous batch submission; `direct_chat_chunks` is synchronous-per-chunk but batched in the DB layer.
-
----
-
-## 3. submitBatch → createDirectChatBatch → processDirectChatChunk → aggregateDirectChatStatus Flow
-
-### submitBatch (entry point)
-1. Calls `getConfiguredBatchRuntime(false)` → loads config
-2. If `llm_supports_batch_api`: routes to `submitBatchToOpenAI()` (OpenAI native path)
-3. Otherwise:
-   a. Runs `preflightModels()` → GET `/v1/models`
-   b. If preflight fails and provider is 'lmstudio' → falls back to DeepSeek via `submitDeepSeekFallbackBatch()`
-   c. Calls `submitDirectChatBatchToRuntime()` → which calls `createDirectChatBatch()`
-
-### createDirectChatBatch (in direct-chat-service.ts)
-1. Generates `batchId` (UUID) + `providerBatchId` ("direct_<uuid>")
-2. Builds `batch_content_jsonl` via `createBatchContent()` (same JSONL format as OpenAI batch)
-3. Inserts `batch_jobs` row with `execution_mode: 'direct_chat_chunks'`
-4. Parses JSONL → one `batch_job_items` row per product/SKU
-5. Batch-inserts items
-6. Marks products as `pipeline_status: 'consolidating'`
-7. Returns `batch_id`
-
-### getBatchStatus → handleDirectChatStatus (called repeatedly by polling)
-1. Checks `execution_mode` from DB
-2. If `direct_chat_chunks`:
-   a. Calls `processDirectChatChunk(batchId, { limit: 1 })` - processes ONE item per poll cycle
-   b. Aggregates via `aggregateDirectChatStatus()`
-   c. If batch complete and has failures: gets failed SKUs → creates DeepSeek fallback batch for them
-   d. If fallback batch exists: merges fallback status into parent status
-3. Returns aggregated `BatchStatus`
-
-### processDirectChatChunk (processes N items at a time)
-1. Claims N pending items (atomic `pending → running`)
-2. For each item:
-   a. Builds OpenAI SDK `chat.completions.create()` call (uses OpenAISDK even for DeepSeek!)
-   b. Calls LLM endpoint
-   c. Parses response via `parseStructuredConsolidationText()`
-   d. Updates item as `completed` or `failed`
-
-### aggregateDirectChatStatus
-1. Loads parent + all items
-2. Counts: total, completed, failed, running, pending
-3. Determines aggregate status based on terminal/completion ratios
-4. Sums prompt/completion tokens from each item's response
-5. Syncs counts to parent `batch_jobs` row
-
----
-
-## 4. Provider Abstraction
-
-**There is no clean provider abstraction used by the consolidation pipeline.**
-
-The `lib/providers/` directory defines `LLMClient` and `BatchProvider` interfaces but:
-
-- **`lib/providers/` is completely orphaned from the consolidation pipeline.** Zero imports from `lib/consolidation/` into `lib/providers/` or vice versa.
-- The `GeminiBatch` implementation (`gemini-batch.ts`) and `GeminiClient` (`gemini-client.ts`) are unused dead code.
-- The consolidation pipeline uses the `OpenAI` SDK directly for ALL providers:
-  - `new OpenAI({ apiKey, baseURL })` with DeepSeek's base URL
-  - `client.chat.completions.create()` for direct-chat (DeepSeek)
-  - `client.batches.create/retrieve()` for batch API (OpenAI only)
-  - The `openai` npm package is the de facto abstractor—DeepSeek's API compatibility makes this work
-
-Tight coupling points:
-- `openai-client.ts` imports `OpenAI` from `openai` package
-- `batch-service.ts` calls `getOpenAIClient()` creating an OpenAI SDK instance
-- `submitBatchToOpenAI()` uses OpenAI-specific batch API calls (files, batches)
-- `direct-chat-service.ts` dynamically imports `openai` module inside `processDirectChatChunk()`
-- All error handling, retry logic is OpenAI SDK's default behavior
-
----
-
-## 5. What Needs to Change for DeepSeek-Only
-
-### Must-change:
-
-1. **Rename `getOpenAIClient()` → `getLLMClient()`** and return a generic OpenAI-compatible client. The function already resolves DeepSeek configs correctly.
-
-2. **Remove the OpenAI Batch API code path** (`submitBatchToOpenAI()`, `submitBatchToProvider()`, `persistBatchJobRecord()`). With DeepSeek as the only provider, `llm_supports_batch_api` will always be `false`.
-
-3. **Remove LM-Studio fallback hooks.** The `if (config.llm_provider === 'lmstudio')` branches in `submitBatch()` and `handleDirectChatStatus()` are dead or will become dead.
-
-4. **Clean up `openai-client.ts`:** Remove `LEGACY_OPENAI_MODEL`, `CONSOLIDATION_CONFIG.model` (already `DEEPSEEK_CHAT`), remove OpenAI-specific key resolution branching (`effectiveProvider === 'openai'` branches).
-
-5. **Remove the entire `lib/providers/` directory** (gemini-batch, gemini-client, interfaces) since obsolete.
-
-6. **Fix pricing catalog** (`shared/ai-pricing/pricing-catalog.json`): Add DeepSeek model entries (`deepseek-chat`, `deepseek-reasoner`). Currently `calculateAICost()` returns 0 for all DeepSeek models.
-
-7. **Update `validation/consolidation-schemas.ts`:** Add `'deepseek'` to the provider enums (currently only `['openai', 'openai_compatible', 'gemini', 'lmstudio']`).
-
-8. **Remove `normalizeBatchProvider()` dead code** recognizing `'gemini'` (line 349 of batch-service.ts). Still has `'gemini'` as a valid path even though it's never produced.
-
-### Should-change (cleanup):
-
-9. **Eliminate `openai_batch_id` column usage** in batch_jobs table—it's always null now.
-10. **Rename `openai_batch_id` references** in `BatchHistorySection.tsx` component and `listBatchJobs()`.
-11. **Simplify `getOpenAIClient()` caching** — the `lastClientSignature` caching is fine for DeepSeek.
-12. **Remove `completion_window` config** (only applies to OpenAI Batch API).
-13. **Remove `forceProvider: 'openai'`** from `submitBatchToOpenAI()` call in `batch-service.ts:1227`.
-
-### Keep:
-
-14. **The direct-chat execution path stays** — it's the correct architecture for DeepSeek. Just rename references.
-15. **The DB schema stays** — `batch_jobs` and `batch_job_items` tables work fine for both modes.
-16. **The prompt builder, result normalizer, taxonomy validator stay** — they're provider-neutral.
-17. **The admin UI pipeline monitoring stays** — the polling/apply UX works regardless of provider.
-18. **`parallel-runs.ts` stays** — useful for A/B comparisons if needed later.
-
----
-
-## 6. Admin UI Surface for Consolidation
-
-| UI Component | File | What it Does |
-|---|---|---|
-| **Pipeline page** | `app/admin/pipeline/page.tsx` | Main ingestion pipeline with consolidation tab |
-| **Monitoring page** | `app/admin/pipeline/monitoring/page.tsx` | Real-time monitoring of scraper runs + consolidation batches |
-| **Active Consolidations Tab** | `components/admin/pipeline/ActiveConsolidationsTab.tsx` | Lists active/in-progress batches, allows cancel/sync-status/apply |
-| **Consolidation Job Card** | `components/admin/pipeline/consolidation/ConsolidationJobCard.tsx` | Individual batch card with status, progress, actions |
-| **Batch History Section** | `components/admin/pipeline/consolidation/BatchHistorySection.tsx` | Completed batch history with apply button |
-| **AI Consolidation Settings Card** | `components/admin/settings/AIConsolidationSettingsCard.tsx` | Settings form: DeepSeek API key, model selection, status display |
-| **Settings page** | `app/admin/settings/page.tsx` | Root settings page with "External AI stack finalized" DeepSeek alert |
-| **API: submit** | `app/api/admin/consolidation/submit/route.ts` | POST: submit SKUs for consolidation → calls `submitBatch()` |
-| **API: settings** | `app/api/admin/consolidation/settings/route.ts` | GET/POST: read/write consolidation defaults + API keys |
-
-The UI already reflects the DeepSeek transition—settings page shows DeepSeek as primary, Gemini/OpenAI as deprecated.
-
----
-
-## 7. Gemini-Specific Code Paths Still Active
-
-**Zero active Gemini code in the consolidation pipeline.** The `lib/providers/gemini-batch.ts` and `lib/providers/gemini-client.ts` files exist but are **completely unimported** by any consolidation module. No `import` from `@google/genai` package in consolidation code.
-
-Remaining Gemini artifacts (all safe to ignore or remove):
-- `lib/ai-scraping/models.ts`: `DEFAULT_GEMINI_MODEL`, `GEMINI_MODEL_OPTIONS`, etc. — marked as "Legacy Gemini default retained for historical compatibility only"
-- `lib/ai-scraping/credentials.ts`: `'gemini'` still in `LLMProvider` type and `SITE_SETTINGS_COMPATIBLE_PROVIDERS` — all normalized away to DeepSeek at runtime
-- `consolidation/batch-service.ts` line 349: `'gemini'` still in `normalizeBatchProvider()` switch
-- `consolidation/parallel-runs.ts` line 27: `'gemini'` still in `normalizeProvider()` switch
-- `validation/consolidation-schemas.ts`: `'gemini'` still in Zod enums
-- `lib/consolidation/taxonomy-validator.ts` line 171: comment mentions Gemini
-- `lib/consolidation/AGENTS.md`: stale docs mention "Gemini (migration in progress)"
-- `lib/consolidation/__tests__/` Python scripts: test harnesses that reference Gemini (not production code)
-- `lib/consolidation/docs/`: historical docs referencing Gemini strategy (informational only)
-
----
-
-## Architecture Summary
-
-```
-User clicks "Consolidate" in Pipeline UI
-  ↓
-POST /api/admin/consolidation/submit
-  ↓
-submitBatch(products, metadata)
-  ↓
-  ├─ llm_supports_batch_api=true  → submitBatchToOpenAI() [DEAD PATH - never hits for DeepSeek]
-  │    ├─ createBatchContent() → JSONL
-  │    ├─ upload file via OpenAI SDK
-  │    ├─ client.batches.create()
-  │    └─ persist batch_jobs row
-  │
-  └─ llm_supports_batch_api=false → submitDirectChatBatchToRuntime() [ACTIVE PATH]
-       ├─ preflightModels() → GET /v1/models
-       ├─ createBatchContent() → JSONL
-       ├─ createDirectChatBatch()
-       │    ├─ insert batch_jobs (execution_mode='direct_chat_chunks')
-       │    └─ insert batch_job_items (one per SKU)
-       └─ returns batch_id
-
-Polling loop (via getBatchStatus):
-  └─ handleDirectChatStatus()
-       ├─ processDirectChatChunk() → processes 1 item
-       │    └─ client.chat.completions.create() [OpenAI SDK → DeepSeek]
-       ├─ aggregateDirectChatStatus() → computes batch-level status
-       └─ if failures: submitDeepSeekFallbackBatch() for failed items
-
-User clicks "Apply":
-  POST /api/admin/consolidation/{id}/apply
-    → retrieveResults() → parseLLM responses
-    → applyConsolidationResults() → upsert products_ingestion.consolidated
+scrapeProducts(skus, { officialBrandPhase: 'extraction', ... })
+  → determines isOfficialBrandExtraction = true (line 897)
+  → sets jobType = OFFICIAL_BRAND_EXTRACTION_TYPE (line 919-920)
+  → builds insert payload with { type: OFFICIAL_BRAND_EXTRACTION_TYPE, config: { phase: 'extraction', cohort, items } }
+  → inserts into scrape_jobs table (line ~1094)
+  → also builds manual candidate rows if extraction URLs are provided (line 1118-1132)
+  → updates products_ingestion.pipeline_status = 'extracting' (line 1145)
 ```
 
-## Pain Points
+### Entry points that call `scrapeProducts` with extraction phase:
 
-1. **Misleading naming** — "OpenAI" permeates every file/function/type despite DeepSeek being the provider
-2. **Dead dual-path complexity** — `batch_api` vs `direct_chat_chunks` branching adds ~500 lines of dead code
-3. **Orphaned provider abstraction** — `lib/providers/` defines clean interfaces but they're completely unused
-4. **Pricing gap** — `calculateAICost()` returns $0 for `deepseek-chat` because pricing catalog has no DeepSeek entries
-5. **Provider validation gap** — Zod schemas in `consolidation-schemas.ts` don't include `'deepseek'`
-6. **LM Studio fallback complexity** — the `lmstudio → deepseek` fallback chain adds ~100 lines for a provider no longer in active use
-7. **Test mocks outdated** — `__mocks__/openai-client.ts` mocks the OpenAI SDK directly
+1. **`app/api/admin/pipeline/official-brand/extract/route.ts`** (POST) — The primary dispatch point. Admin UI sends SKUs, the route looks up `official_brand_url_candidates` selected rows, builds URLs, then calls `scrapeProducts()`. This is the main "Start Extraction" button handler.
+
+2. **`app/api/admin/pipeline/scrape/route.ts`** (POST, line 372) — The generic pipeline scrape route. When `enrichment_method === 'official_brand'` and `officialBrandPhase === 'extraction'`, it also calls `scrapeProducts()`.
+
+3. **`app/api/scraper/v1/poll/route.ts`** — The runner poll route doesn't *create* extraction jobs, but it **dispatches them to the runner** by polling the `scrape_jobs` table via `claim_next_pending_job` RPC. The normalized job type is passed through (line 116).
+
+### Runner-side dispatch (in `runner/__init__.py`):
+
+- Line 556: `is_official_brand_job` check catches `job_type == OFFICIAL_BRAND_EXTRACTION_TYPE`
+- Line 1096: Inside `_run_official_brand_job()`, sets `official_brand_phase = "extraction"`
+- Line 1254: Instantiates `ProductUrlExtractor` and calls `extract_products_from_urls_batch()` (same path as `direct_url_extraction`)
+
+---
+
+## 3. `OFFICIAL_BRAND_EXTRACTION_TYPE` constant — all usages
+
+### In `lib/official-brand-workflow.ts`
+
+| Line | Usage |
+|------|-------|
+| 5 | `export const OFFICIAL_BRAND_EXTRACTION_TYPE = 'official_brand_extraction'` |
+| 215 | `getOfficialBrandPhaseFromJob`: returns `'extraction'` when `job.type === OFFICIAL_BRAND_EXTRACTION_TYPE` |
+| 240 | `isOfficialBrandJobType`: returns true when `type === OFFICIAL_BRAND_EXTRACTION_TYPE` |
+
+Also used from the `OFFICIAL_BRAND_EXTRACTION_TYPE` side:
+- Line 431: metadata string `source: 'official_brand_extraction_callback'` (not the constant, but related)
+
+### In `lib/pipeline-scraping.ts`
+
+| Line | Usage |
+|------|-------|
+| 16 | Imported from official-brand-workflow |
+| 92 | `ScrapeJobInsertType` union includes `typeof OFFICIAL_BRAND_EXTRACTION_TYPE` |
+| 919-920 | Job type selection: `isOfficialBrandExtraction ? OFFICIAL_BRAND_EXTRACTION_TYPE :` |
+
+### In `app/api/scraper/v1/poll/route.ts`
+
+| Line | Usage |
+|------|-------|
+| 26 | Imported from official-brand-workflow |
+| 115 | Return type of `normalizeRunnerJobType` includes `typeof OFFICIAL_BRAND_EXTRACTION_TYPE` |
+| 116 | Pass-through check: `if (rawType === ... || rawType === OFFICIAL_BRAND_EXTRACTION_TYPE)` |
+
+### In `app/api/scraper/v1/job/route.ts`
+
+| Line | Usage |
+|------|-------|
+| 19 | Imported |
+| 96 | Return type includes `typeof OFFICIAL_BRAND_EXTRACTION_TYPE` |
+| 97 | Pass-through check |
+
+### In `__tests__/lib/official-brand-workflow.test.ts`
+
+| Line | Usage |
+|------|-------|
+| 13 | Imported |
+| 170 | `getOfficialBrandPhaseFromJob({ type: OFFICIAL_BRAND_EXTRACTION_TYPE })` → expects `'extraction'` |
+| 196 | `isOfficialBrandJobType(OFFICIAL_BRAND_EXTRACTION_TYPE)` → expects true |
+
+---
+
+## 4. All API endpoints / server actions that create extraction jobs
+
+| Endpoint | File | How |
+|----------|------|-----|
+| `POST /api/admin/pipeline/official-brand/extract` | `app/api/admin/pipeline/official-brand/extract/route.ts` | Primary path — loads selected candidates, calls `scrapeProducts()` with `officialBrandPhase: 'extraction'` |
+| `POST /api/admin/pipeline/scrape` | `app/api/admin/pipeline/scrape/route.ts` | Generic pipeline scrape — when enrichment method is official_brand + phase = extraction |
+| `POST /api/scraper/v1/poll` | `app/api/scraper/v1/poll/route.ts` | **Dispatches** existing extraction jobs to runners (does not create them) |
+| `POST /api/scraper/v1/job` (GET) | `app/api/scraper/v1/job/route.ts` | Returns job config for runner (pass-through type) |
+
+Both callback routes (`app/api/admin/scraping/callback/route.ts` and `app/api/scraper/v1/chunk-callback/route.ts`) **consume** extraction results. They call `buildExtractedOfficialBrandCandidateRows()` when processing job results.
+
+---
+
+## 5. `official-brand-workflow.ts` — full usage of `OFFICIAL_BRAND_EXTRACTION_TYPE`
+
+Full file content at `lib/official-brand-workflow.ts` (468 lines). Key sections:
+
+| Section | Lines | Use of constant |
+|---------|-------|-----------------|
+| Constant exports | 3-5 | Defines `OFFICIAL_BRAND_SOURCE_KEY`, `OFFICIAL_BRAND_URL_DISCOVERY_TYPE`, `OFFICIAL_BRAND_EXTRACTION_TYPE` |
+| `getOfficialBrandPhaseFromJob()` | 205-242 | Line 215 checks `job.type === OFFICIAL_BRAND_EXTRACTION_TYPE` → returns `'extraction'` |
+| `isOfficialBrandJobType()` | 244-248 | Line 246 checks `type === OFFICIAL_BRAND_EXTRACTION_TYPE` (returns true) |
+| `buildExtractedOfficialBrandCandidateRows()` | 389-434 | Line 431: sets `metadata.source = 'official_brand_extraction_callback'` (string literal, not constant) |
+
+The constant is **not** used directly in `buildExtractedOfficialBrandCandidateRows` — that function uses the string literal `'official_brand_extraction_callback'` for source metadata on extracted candidates.
+
+---
+
+## Touchpoints summary for renaming/removal
+
+### If renaming (safe rename checklist):
+
+1. **`lib/official-brand-workflow.ts:5`** — change constant value
+2. **`lib/pipeline-scraping.ts:92`** — type union (no change needed if constant-driven)
+3. **`lib/pipeline-scraping.ts:919-920`** — uses constant, no change
+4. **`apps/scraper/runner/__init__.py:31`** — change constant value
+5. **`apps/scraper/runner/__init__.py:556,1096`** — uses constant, no change
+6. **`app/api/scraper/v1/poll/route.ts:26,115-116`** — uses constant, no change
+7. **`app/api/scraper/v1/job/route.ts:19,96-97`** — uses constant, no change
+8. **`app/api/admin/pipeline/active-runs/route.ts:75`** — **literal string**, must update
+9. **`components/admin/pipeline/PipelineClient.tsx:1455`** — **literal string**, must update
+10. **`supabase/migrations/20260501000000_official_brand_phases.sql:13`** — CHECK constraint, new migration needed
+11. **`supabase/migrations/20260505000000_add_deep_research_job_type.sql:13`** — CHECK constraint, new migration needed
+12. **`__tests__/lib/official-brand-workflow.test.ts:13,170,196`** — import test, no change if constant
+13. **`__tests__/lib/pipeline-scraping.test.ts:674,700,734`** — asserts literal `'official_brand_extraction'`, must update
+14. **`__tests__/api/admin/pipeline/active-runs.test.ts:96,168`** — literal string, must update
+15. **Scraper tuning/seed/test files** — update string references:
+    - `scrapers/ai_search/tuning_inventory.json`
+    - `benchmarks/official_brand/fixtures/extraction_seed.json`
+    - `tests/unit/test_official_brand_extraction_seed.py`
+    - `tests/unit/test_tuning_inventory.py`
+
+### If removing entirely:
+
+- Remove the `'official_brand_extraction'` entry from the `scrape_jobs` CHECK constraint (new migration)
+- Remove the `OFFICIAL_BRAND_EXTRACTION_TYPE` constant from both web and scraper
+- Remove `isOfficialBrandExtraction` branch from `pipeline-scraping.ts`
+- Remove or rewrite the `POST /api/admin/pipeline/official-brand/extract` route
+- Remove extraction-related code in `pipeline-scraping.ts` (lines 897, 919, 968-1137 area)
+- Clean up `getOfficialBrandPhaseFromJob` in `official-brand-workflow.ts` (remove the extraction check)
+- Clean up `isOfficialBrandJobType` in `official-brand-workflow.ts` (remove extraction check)
+- Clean up `normalizeRunnerJobType` in both `poll/route.ts` and `job/route.ts`
+- Remove `buildExtractedOfficialBrandCandidateRows` and its callers (two callback routes)
+- Remove the `"extracting"` status piping in PipelineClient.tsx (line 1440 area)
+- Remove scraper runner extraction path (lines 1096, 1254)
+- Update/remove scraper test seeds referencing the string
+
+### Key constraints/risks
+
+- The CHECK constraint in the DB makes `scrape_jobs.type` reject unknown values. Migration must be applied carefully — old extraction jobs with this type will violate the new constraint if you remove it without migrating them.
+- The `claim_next_pending_job` RPC may reference the type — check the actual RPC function in migrations.
+- The scraper runner uses a `set` check in `is_official_brand_job` (line 556) and phase detection (line 1096) — easy to miss.
+- PipelineClient.tsx passes the literal string to `<ActiveRunsTab>`, which then filters jobs. If renamed, both the component and the API response (`jobType` field from active-runs/route.ts) must match.
