@@ -31,11 +31,6 @@ cp .env.local.example .env.local
 # 4. Run migrations and seed
 bun run db:reset
 
-# ⚠️ Known migration issue: The chain has a pre-existing ordering problem
-# with `supabase/migrations/20251230180000_products_published_view.sql`
-# referencing `products_ingestion` before it is created. If `db:reset`
-# fails, try adding a stub products_ingestion table temporarily.
-
 # 5. Verify seed data
 bun run local:verify
 
