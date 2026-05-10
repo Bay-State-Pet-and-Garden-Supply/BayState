@@ -23,6 +23,7 @@ import {
  ClipboardList,
  RefreshCw,
  Rocket,
+ HeartPulse,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -83,6 +84,11 @@ const navSections: NavSection[] = [
  href: "/admin/inventory/launchpad",
  label: "Product Launchpad",
  icon: Rocket,
+ },
+ {
+ href: "/admin/health",
+ label: "Data Health",
+ icon: HeartPulse,
  },
  ],
  },

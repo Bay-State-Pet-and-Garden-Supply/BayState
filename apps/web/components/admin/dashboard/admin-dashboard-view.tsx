@@ -23,6 +23,7 @@ import { QuickActions } from './quick-actions';
 import { FleetStatusWidget } from './FleetStatusWidget';
 import { ActionRequired } from './action-required';
 import { RevenueAtRisk } from './revenue-at-risk';
+import { MorningBriefing } from './morning-briefing';
 import { useDashboardStats } from '@/hooks/use-dashboard-stats';
 
 export function AdminDashboardView() {
@@ -42,6 +43,9 @@ export function AdminDashboardView() {
 
   return (
     <div className="space-y-6">
+      {/* Morning Briefing */}
+      <MorningBriefing />
+
       {/* Top Metrics */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
