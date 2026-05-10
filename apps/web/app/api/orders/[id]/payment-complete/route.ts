@@ -33,6 +33,10 @@ export async function POST(
       );
     }
 
+    const newPaymentStatus = order.stripe_payment_intent_id !== validatedData.paymentIntentId
+      ? (await retrievePaymentIntent(validatedData.paymentIntentId)).status === 'succeeded' ? 'paid' : 'authorized'
+      : 'paid';
+
     if (order.stripe_payment_intent_id !== validatedData.paymentIntentId) {
       const paymentIntent = await retrievePaymentIntent(validatedData.paymentIntentId);
 
@@ -41,8 +45,8 @@ export async function POST(
         .update({
           stripe_payment_intent_id: validatedData.paymentIntentId,
           payment_method: validatedData.paymentMethod,
-          payment_status: paymentIntent.status === 'succeeded' ? 'paid' : 'authorized',
-          paid_at: paymentIntent.status === 'succeeded' ? new Date().toISOString() : null,
+          payment_status: newPaymentStatus,
+          paid_at: newPaymentStatus === 'paid' ? new Date().toISOString() : null,
         })
         .eq('id', orderId);
     } else {
@@ -55,6 +59,13 @@ export async function POST(
         })
         .eq('id', orderId);
     }
+
+    await supabase.from('order_events').insert({
+      order_id: orderId,
+      event_type: 'payment_status_changed',
+      previous_value: { payment_status: order.payment_status },
+      new_value: { payment_status: newPaymentStatus },
+    });
 
     return NextResponse.json({ success: true, orderId });
   } catch (error) {

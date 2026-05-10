@@ -29,13 +29,17 @@ export async function cancelOrderAction(
     return { success: false, error: 'Failed to cancel order' };
   }
 
-  await supabase.from('order_events').insert({
+  const { error: eventError } = await supabase.from('order_events').insert({
     order_id: orderId,
     event_type: 'order_cancelled',
     previous_value: { status: current?.status, fulfillment_status: current?.fulfillment_status },
     new_value: { status: 'cancelled', fulfillment_status: 'cancelled' },
     note: reason ?? null,
   });
+
+  if (eventError) {
+    console.error('Failed to write order event:', eventError.message);
+  }
 
   revalidatePath('/admin/orders');
   return { success: true };
@@ -63,12 +67,16 @@ export async function archiveOrderAction(orderId: string): Promise<ActionState> 
     return { success: false, error: 'Failed to archive order' };
   }
 
-  await supabase.from('order_events').insert({
+  const { error: eventError } = await supabase.from('order_events').insert({
     order_id: orderId,
     event_type: 'order_archived',
     previous_value: { status: current?.status },
     new_value: { status: 'completed' },
   });
+
+  if (eventError) {
+    console.error('Failed to write order event:', eventError.message);
+  }
 
   revalidatePath('/admin/orders');
   return { success: true };
@@ -97,12 +105,16 @@ export async function voidOrderAction(orderId: string): Promise<ActionState> {
     return { success: false, error: 'Failed to void order' };
   }
 
-  await supabase.from('order_events').insert({
+  const { error: eventError } = await supabase.from('order_events').insert({
     order_id: orderId,
     event_type: 'payment_voided',
     previous_value: { payment_status: current?.payment_status },
     new_value: { payment_status: 'voided' },
   });
+
+  if (eventError) {
+    console.error('Failed to write order event:', eventError.message);
+  }
 
   revalidatePath('/admin/orders');
   return { success: true };
@@ -133,12 +145,16 @@ export async function updateOrderPaymentStatusAction(
     return { success: false, error: 'Failed to update payment status' };
   }
 
-  await supabase.from('order_events').insert({
+  const { error: eventError } = await supabase.from('order_events').insert({
     order_id: orderId,
     event_type: 'payment_status_changed',
     previous_value: { payment_status: current?.payment_status },
     new_value: { payment_status: paymentStatus },
   });
+
+  if (eventError) {
+    console.error('Failed to write order event:', eventError.message);
+  }
 
   revalidatePath('/admin/orders');
   return { success: true };
@@ -169,12 +185,16 @@ export async function updateOrderFulfillmentStatusAction(
     return { success: false, error: 'Failed to update fulfillment status' };
   }
 
-  await supabase.from('order_events').insert({
+  const { error: eventError } = await supabase.from('order_events').insert({
     order_id: orderId,
     event_type: 'fulfillment_status_changed',
     previous_value: { fulfillment_status: current?.fulfillment_status },
     new_value: { fulfillment_status: fulfillmentStatus },
   });
+
+  if (eventError) {
+    console.error('Failed to write order event:', eventError.message);
+  }
 
   revalidatePath('/admin/orders');
   return { success: true };

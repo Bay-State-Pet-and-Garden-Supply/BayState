@@ -17,7 +17,7 @@ export default async function SyncRunDetailPage({
   const detail = await getInventorySyncRunDetail(id);
   if (!detail) notFound();
 
-  const { items, count } = await getInventoryReconciliationItems({
+  const { items } = await getInventoryReconciliationItems({
     syncRunId: id,
     issueType: sp.issue_type as InventoryIssueFilters['issueType'],
     status: sp.status as InventoryIssueFilters['status'],

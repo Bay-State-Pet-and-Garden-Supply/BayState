@@ -48,6 +48,16 @@ RETURNS TABLE (
     href text
 ) AS $$
 BEGIN
+    -- Restrict to admin/staff to prevent customer data exposure
+    SET LOCAL search_path TO '';
+    IF NOT EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE profiles.id = auth.uid()
+        AND profiles.role IN ('admin', 'staff')
+    ) THEN
+        RAISE EXCEPTION 'Access denied';
+    END IF;
+
     RETURN QUERY
     (
         -- Recent Orders

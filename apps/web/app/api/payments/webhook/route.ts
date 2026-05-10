@@ -122,6 +122,15 @@ export async function POST(request: NextRequest) {
             new Date().toISOString()
           );
           await recordPaymentTransaction(orderId, paymentIntent);
+
+          const { error: eventError } = await (await createClient()).from('order_events').insert({
+            order_id: orderId,
+            event_type: 'payment_status_changed',
+            previous_value: { payment_status: 'authorized' },
+            new_value: { payment_status: 'paid' },
+          });
+          if (eventError) console.error('Error recording order event:', eventError.message);
+
           console.log(`Order ${orderId} payment completed via webhook`);
         }
         break;
@@ -137,6 +146,14 @@ export async function POST(request: NextRequest) {
             'failed',
             paymentIntent.id
           );
+
+          const { error: eventError } = await (await createClient()).from('order_events').insert({
+            order_id: orderId,
+            event_type: 'payment_status_changed',
+            new_value: { payment_status: 'failed' },
+          });
+          if (eventError) console.error('Error recording order event:', eventError.message);
+
           console.log(`Order ${orderId} payment failed via webhook`);
         }
         break;
@@ -177,6 +194,12 @@ export async function POST(request: NextRequest) {
                   refunded_amount: newRefundedAmount,
                 })
                 .eq('id', orders.id);
+
+              await supabase.from('order_events').insert({
+                order_id: orders.id,
+                event_type: 'payment_status_changed',
+                new_value: { payment_status: paymentStatus, refunded_amount: newRefundedAmount },
+              });
             }
 
             await supabase.from('order_payments').insert({
