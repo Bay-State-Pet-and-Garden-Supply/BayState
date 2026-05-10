@@ -59,6 +59,20 @@ const fulfillmentBadgeConfig: Record<string, { label: string; color: string }> =
     cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800' },
 };
 
+interface SavedView {
+  label: string;
+  params: Record<string, string>;
+}
+
+const savedViews: SavedView[] = [
+  { label: 'Needs Attention', params: { status: 'pending', fulfillment_status: 'unfulfilled' } },
+  { label: 'Ready for Pickup', params: { fulfillment_status: 'ready_for_pickup' } },
+  { label: 'Unpaid Pickup', params: { payment_status: 'unpaid', fulfillment_method: 'pickup' } },
+  { label: 'Legacy', params: { source: 'shopsite' } },
+  { label: 'Register', params: { source: 'integra' } },
+  { label: 'Cancelled', params: { status: 'cancelled' } },
+];
+
 const filterOptions = {
     source: [
         { value: '', label: 'All Sources' },
@@ -220,6 +234,15 @@ export function AdminOrdersClient({ initialOrders, totalCount, initialQ, initial
             minute: '2-digit',
         });
 
+    const isActivePreset = useCallback((params: Record<string, string>) => {
+        return Object.entries(params).every(([k, v]) => searchParams.get(k) === v);
+    }, [searchParams]);
+
+    const handlePresetClick = (params: Record<string, string>) => {
+        const sp = new URLSearchParams(params);
+        router.push(`/admin/orders?${sp.toString()}`);
+    };
+
     const handleExport = () => {
         const rows = [
             ['Order Number', 'Source', 'Customer', 'Email', 'Status', 'Payment', 'Fulfillment', 'Total', 'Date'],
@@ -371,6 +394,20 @@ export function AdminOrdersClient({ initialOrders, totalCount, initialQ, initial
                     <Download className="mr-2 h-4 w-4" />
                     Export CSV
                 </Button>
+            </div>
+
+            {/*** Saved View Presets ***/}
+            <div className="flex flex-wrap items-center gap-2">
+                {savedViews.map((view) => (
+                    <Button
+                        key={view.label}
+                        variant={isActivePreset(view.params) ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handlePresetClick(view.params)}
+                    >
+                        {view.label}
+                    </Button>
+                ))}
             </div>
 
             {/* Filter Bar */}

@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { LucideIcon, TrendingUp, TrendingDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -18,6 +19,7 @@ interface MetricCardProps {
   status?: 'success' | 'warning' | 'error' | 'info';
   isLoading?: boolean;
   className?: string;
+  href?: string;
 }
 
 const statusColors = {
@@ -42,6 +44,7 @@ export function MetricCard({
   status,
   isLoading = false,
   className,
+  href,
 }: MetricCardProps) {
   if (isLoading) {
     return (
@@ -55,7 +58,7 @@ export function MetricCard({
     );
   }
 
-  return (
+  const cardContent = (
     <Card className={cn('py-4 overflow-hidden relative', status && cn(status === 'success' && 'border-t-2 border-t-green-500', status === 'warning' && 'border-t-2 border-t-amber-500', status === 'error' && 'border-t-2 border-t-red-500', status === 'info' && 'border-t-2 border-t-blue-500'), className)}>
       <CardContent className="flex flex-col gap-1">
         <div className="flex items-center justify-between">
@@ -105,4 +108,14 @@ export function MetricCard({
       </CardContent>
     </Card>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className="block hover:opacity-90 transition-opacity">
+        {cardContent}
+      </Link>
+    );
+  }
+
+  return cardContent;
 }

@@ -38,9 +38,13 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         const { data: instore } = await supabase.rpc('get_sales_metrics', { 
             start_date: startDate.toISOString(), end_date: endDate, p_source: 'integra' 
         });
+        const { data: web } = await supabase.rpc('get_sales_metrics', { 
+            start_date: startDate.toISOString(), end_date: endDate, p_source: 'web' 
+        });
         channelMetrics = {
             online: online?.[0] || { total_revenue: 0, average_order_value: 0 },
-            instore: instore?.[0] || { total_revenue: 0, average_order_value: 0 }
+            instore: instore?.[0] || { total_revenue: 0, average_order_value: 0 },
+            web: web?.[0] || { total_revenue: 0, average_order_value: 0 }
         };
     }
 

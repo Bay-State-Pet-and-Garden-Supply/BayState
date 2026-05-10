@@ -59,6 +59,7 @@ interface AnalyticsDashboardProps {
  channelMetrics: {
  online: { total_revenue: number; average_order_value: number };
  instore: { total_revenue: number; average_order_value: number };
+ web: { total_revenue: number; average_order_value: number };
  } | null;
 }
 
@@ -81,8 +82,9 @@ export function AnalyticsDashboard({
 
  const channels = [
  { label: 'All Channels', value: null },
- { label: 'Online', value: 'shopsite' },
- { label: 'In-Store', value: 'integra' },
+ { label: 'New Website', value: 'web' },
+ { label: 'ShopSite Legacy', value: 'shopsite' },
+ { label: 'In-Store Register', value: 'integra' },
  ];
 
  return (
@@ -254,13 +256,15 @@ function ChannelComparison({ activeSource, channelMetrics }: {
  channelMetrics: {
  online: { total_revenue: number; average_order_value: number };
  instore: { total_revenue: number; average_order_value: number };
+ web: { total_revenue: number; average_order_value: number };
  } | null 
 }) {
  if (!channelMetrics || activeSource) return null;
  
- const total = channelMetrics.online.total_revenue + channelMetrics.instore.total_revenue;
+ const total = channelMetrics.online.total_revenue + channelMetrics.instore.total_revenue + channelMetrics.web.total_revenue;
  const onlinePct = total > 0 ? (channelMetrics.online.total_revenue / total) * 100 : 0;
  const instorePct = total > 0 ? (channelMetrics.instore.total_revenue / total) * 100 : 0;
+ const webPct = total > 0 ? (channelMetrics.web.total_revenue / total) * 100 : 0;
 
  return (
  <div className="admin-panel p-6">
@@ -268,26 +272,36 @@ function ChannelComparison({ activeSource, channelMetrics }: {
  <div className="space-y-6">
  <div className="flex h-12 overflow-hidden rounded-full border border-border bg-muted">
  <div 
+ className="flex items-center justify-center border-r border-white bg-emerald-600 text-[11px] font-medium text-white"
+ style={{ width: `${webPct}%` }}
+ >
+ {webPct > 15 && `WEB ${webPct.toFixed(0)}%`}
+ </div>
+ <div 
  className="flex items-center justify-center border-r border-white bg-primary text-[11px] font-medium text-white"
  style={{ width: `${onlinePct}%` }}
  >
- {onlinePct > 15 && `ONLINE ${onlinePct.toFixed(0)}%`}
+ {onlinePct > 15 && `LEGACY ${onlinePct.toFixed(0)}%`}
  </div>
  <div 
  className="flex items-center justify-center bg-zinc-300 text-[11px] font-medium text-zinc-800"
  style={{ width: `${instorePct}%` }}
  >
- {instorePct > 15 && `IN-STORE ${instorePct.toFixed(0)}%`}
+ {instorePct > 15 && `REGISTER ${instorePct.toFixed(0)}%`}
  </div>
  </div>
  
- <div className="grid grid-cols-2 gap-8">
+ <div className="grid grid-cols-3 gap-6">
  <div>
- <span className="text-[11px] font-medium text-zinc-500">Online AOV</span>
+ <span className="text-[11px] font-medium text-zinc-500">Web AOV</span>
+ <div className="text-2xl font-semibold text-foreground">{formatCurrency(channelMetrics.web.average_order_value)}</div>
+ </div>
+ <div>
+ <span className="text-[11px] font-medium text-zinc-500">Legacy AOV</span>
  <div className="text-2xl font-semibold text-foreground">{formatCurrency(channelMetrics.online.average_order_value)}</div>
  </div>
  <div>
- <span className="text-[11px] font-medium text-zinc-500">In-store AOV</span>
+ <span className="text-[11px] font-medium text-zinc-500">Register AOV</span>
  <div className="text-2xl font-semibold text-foreground">{formatCurrency(channelMetrics.instore.average_order_value)}</div>
  </div>
  </div>

@@ -47,6 +47,7 @@ export function AdminDashboardView() {
           value={productStats?.total_count ?? 0}
           icon={Package}
           isLoading={loading}
+          href="/admin/products"
         />
         <MetricCard
           title="Published"
@@ -54,6 +55,7 @@ export function AdminDashboardView() {
           icon={PackageCheck}
           status="success"
           isLoading={loading}
+          href="/admin/products"
         />
         <MetricCard
           title="Low Stock"
@@ -61,6 +63,7 @@ export function AdminDashboardView() {
           icon={AlertTriangle}
           status={productStats?.low_stock_count && productStats.low_stock_count > 0 ? "warning" : undefined}
           isLoading={loading}
+          href="/admin/products"
         />
         <MetricCard
           title="Active Scrapers"
@@ -68,6 +71,7 @@ export function AdminDashboardView() {
           icon={Activity}
           status={scraperStats?.active_jobs && scraperStats.active_jobs > 0 ? "info" : undefined}
           isLoading={loading}
+          href="/admin/scrapers/list"
         />
       </div>
 
@@ -79,6 +83,7 @@ export function AdminDashboardView() {
           icon={DollarSign}
           status="success"
           isLoading={loading}
+          href="/admin/orders"
         />
         <MetricCard
           title="Open Orders"
@@ -86,6 +91,7 @@ export function AdminDashboardView() {
           icon={ShoppingCart}
           status={orderStats?.open_orders && orderStats.open_orders > 0 ? 'info' : undefined}
           isLoading={loading}
+          href="/admin/orders?status=pending"
         />
         <MetricCard
           title="Ready for Pickup"
@@ -93,6 +99,7 @@ export function AdminDashboardView() {
           icon={Truck}
           status={orderStats?.ready_for_pickup && orderStats.ready_for_pickup > 0 ? 'success' : undefined}
           isLoading={loading}
+          href="/admin/orders?fulfillment_status=ready_for_pickup"
         />
         <MetricCard
           title="Inventory Issues"
@@ -100,6 +107,7 @@ export function AdminDashboardView() {
           icon={AlertCircle}
           status={inventoryStats?.open_issues && inventoryStats.open_issues > 0 ? 'warning' : undefined}
           isLoading={loading}
+          href="/admin/inventory"
         />
         <MetricCard
           title="Unpaid Orders"
@@ -107,6 +115,7 @@ export function AdminDashboardView() {
           icon={CreditCard}
           status={orderStats?.unpaid_orders && orderStats.unpaid_orders > 0 ? 'warning' : undefined}
           isLoading={loading}
+          href="/admin/orders?payment_status=unpaid"
         />
         <MetricCard
           title="Register-only Products"
@@ -114,6 +123,7 @@ export function AdminDashboardView() {
           icon={PackagePlus}
           status={inventoryStats?.register_only_products && inventoryStats.register_only_products > 0 ? 'info' : undefined}
           isLoading={loading}
+          href="/admin/inventory"
         />
       </div>
 

@@ -188,6 +188,7 @@ export function SyncRunDetail({
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">SKU</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Product</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Issue Type</th>
+              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Recommendation</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Register</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Website</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
@@ -197,7 +198,7 @@ export function SyncRunDetail({
           <tbody className="divide-y">
             {items.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                   No issues found
                 </td>
               </tr>
@@ -210,6 +211,15 @@ export function SyncRunDetail({
                   </td>
                   <td className="px-4 py-3">
                     <IssueTypeBadge type={item.issue_type} />
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground max-w-[200px]">
+                    {item.recommended_action ? (
+                      <span className="truncate block" title={item.recommended_action}>
+                        {item.recommended_action}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
                     {item.register_price !== null && <div>Price: {fmtCurrency(item.register_price)}</div>}

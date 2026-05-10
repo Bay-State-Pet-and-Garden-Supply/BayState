@@ -19,6 +19,9 @@ import {
  Package,
  DollarSign,
  GitBranch,
+ ShoppingBag,
+ ClipboardList,
+ RefreshCw,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -58,14 +61,33 @@ const navSections: NavSection[] = [
  ],
  },
  {
- title: "Storefront",
+ title: "Operations",
+ items: [
+ {
+ href: "/admin/orders",
+ label: "Orders",
+ icon: ShoppingBag,
+ },
+ {
+ href: "/admin/inventory",
+ label: "Inventory",
+ icon: ClipboardList,
+ },
+ {
+ href: "/admin/inventory/sync-runs",
+ label: "Sync Runs",
+ icon: RefreshCw,
+ },
+ ],
+ },
+ {
+ title: "Catalog",
  items: [
  {
  href: "/admin/products",
  label: "Products",
  icon: Package,
  },
-     
  ],
  },
  {
