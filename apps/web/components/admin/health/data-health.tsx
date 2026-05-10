@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
     HeartPulse, 
     AlertCircle, 
@@ -9,11 +11,13 @@ import {
     RefreshCw, 
     ExternalLink,
     Activity,
+    Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import type { IntegrationSyncRun } from '@/lib/orders';
 
 interface DataHealthProps {
@@ -147,6 +151,34 @@ function SyncHealthCard({
 }
 
 export function DataHealth({ shopSiteSync, integraSync, failedSyncs }: DataHealthProps) {
+    const router = useRouter();
+    const [triggering, setTriggering] = useState<string | null>(null);
+
+    async function triggerSync(syncType: string, inputs?: Record<string, string>) {
+        setTriggering(syncType);
+        try {
+            const res = await fetch('/api/sync/trigger', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ syncType, inputs }),
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Failed to trigger sync');
+            }
+            const data = await res.json();
+            toast.success('Sync queued', {
+                action: { label: 'View run', onClick: () => router.push(`/admin/inventory/sync-runs/${data.syncRunId}`) },
+            });
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to trigger sync');
+        } finally {
+            setTriggering(null);
+        }
+    }
+
+    const isTriggering = triggering !== null;
+
     const health = computeHealth(shopSiteSync, integraSync, failedSyncs);
     const HealthIcon = statusConfig[health.status].icon;
 
@@ -230,17 +262,61 @@ export function DataHealth({ shopSiteSync, integraSync, failedSyncs }: DataHealt
             </Card>
 
             {/* Quick Actions */}
-            <div className="flex flex-wrap gap-3">
-                <Button variant="outline" asChild>
-                    <Link href="/admin/inventory/sync-runs">
-                        View All Sync Runs
-                    </Link>
-                </Button>
-                <Button variant="outline" asChild>
-                    <Link href="/admin/tools/integra-sync">
-                        Run Integra Sync
-                    </Link>
-                </Button>
+            <div className="space-y-4">
+                <h3 className="text-sm font-medium text-muted-foreground">Trigger Sync</h3>
+                <div className="flex flex-wrap gap-3">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isTriggering}
+                        onClick={() => triggerSync('register_inventory', { apply_changes: 'false', sync_price: 'false' })}
+                    >
+                        {triggering === 'register_inventory' ? (
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                        ) : (
+                            <RefreshCw className="mr-1 h-3 w-3" />
+                        )}
+                        Run Register Preview
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isTriggering}
+                        onClick={() => triggerSync('shopsite_orders')}
+                    >
+                        {triggering === 'shopsite_orders' ? (
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                        ) : (
+                            <RefreshCw className="mr-1 h-3 w-3" />
+                        )}
+                        Run ShopSite Orders
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isTriggering}
+                        onClick={() => triggerSync('shopsite_products')}
+                    >
+                        {triggering === 'shopsite_products' ? (
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                        ) : (
+                            <RefreshCw className="mr-1 h-3 w-3" />
+                        )}
+                        Run ShopSite Products
+                    </Button>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                    <Button variant="outline" asChild>
+                        <Link href="/admin/inventory/sync-runs">
+                            View All Sync Runs
+                        </Link>
+                    </Button>
+                    <Button variant="outline" asChild>
+                        <Link href="/admin/tools/integra-sync">
+                            Run Integra Sync
+                        </Link>
+                    </Button>
+                </div>
             </div>
         </div>
     );
