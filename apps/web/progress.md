@@ -1,38 +1,22 @@
-# Progress
+# Agent Progress
 
-## Status
-Completed
+## Task: Audit & fix AGENTS.md docs
 
-## Tasks
+### Status: In Progress
 
-### Phase 4: Cleanup
-- [x] Delete orphan workflows at `apps/web/apps/scraper/.github/workflows/`
-- [x] Update Quick Actions: replace `Sync Products → /admin/migration` with `Integra Sync` + `Data Health`
-- [x] Remove stale `RefreshCw` import, add `Database` + `HeartPulse`
+### Completed Workers
 
-### Phase 0-3: Sync Trigger Infrastructure
-- [ ] Secure `/api/sync/trigger` with admin auth and allowlist
-- [ ] Add `queued` status to `integration_sync_runs`
-- [ ] Update register/shopsite scripts/workflows for sync_run correlation
-- [ ] Add Data Health trigger buttons
-
-### Phase 3: Frontend integration — Data Health trigger buttons
-
-Added sync trigger buttons to `components/admin/health/data-health.tsx`:
-- "Run Register Preview" — calls `/api/sync/trigger` with `syncType: 'register_inventory'`
-- "Run ShopSite Orders" — calls `/api/sync/trigger` with `syncType: 'shopsite_orders'`
-- "Run ShopSite Products" — calls `/api/sync/trigger` with `syncType: 'shopsite_products'`
-
-Each button:
-- Shows spinner while in-flight
-- Shows success toast with "View run" link on completion
-- Shows error toast on failure
-- Disabled while any trigger is running
-
-## Files Changed
-- `components/admin/health/data-health.tsx`
-
-## Notes
-\n## 2026-05-10 — Phase 0+1: Secure sync trigger + queued status
-\n- Migration: added 'queued' status to integration_sync_runs
-- Rewrote /api/sync/trigger with admin auth, typed syncType allowlist, sync_run creation, env-configured repo/ref
+| Doc | Status | Changed by |
+|-----|--------|------------|
+| Root AGENTS.md | ✅ Fixed | worker |
+| apps/web/AGENTS.md | ✅ Fixed | worker |
+| apps/web/app/admin/AGENTS.md | ✅ Fixed | worker |
+| apps/web/lib/consolidation/AGENTS.md | ✅ Fixed | worker |
+| apps/scraper/AGENTS.md | ✅ Fixed (dirs cleaned, tree updated) | worker |
+| apps/scraper/core/AGENTS.md | ✅ Fixed | Worker (this task) |
+| apps/scraper/scrapers/AGENTS.md | ✅ Fixed | worker |
+| apps/scraper/scrapers/actions/AGENTS.md | ❌ Pending | |
+| apps/scraper/scrapers/executor/AGENTS.md | ✅ Fixed (line count 589→723) | worker |
+| apps/scraper/runner/AGENTS.md | ✅ Fixed (5→3 lines) | worker |
+| apps/scraper/src/crawl4ai_engine/AGENTS.md | ❌ Pending (verified accurate, may skip) | |
+| apps/web/apps/scraper/ (stale duplicate) | ❌ Pending deletion | |

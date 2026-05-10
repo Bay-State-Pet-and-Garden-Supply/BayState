@@ -5,7 +5,7 @@
 ## STRUCTURE
 ```
 executor/
-├── workflow_executor.py   # Main orchestrator (~589 lines)
+├── workflow_executor.py   # Main orchestrator (~723 lines)
 ├── browser_manager.py     # Browser lifecycle
 ├── selector_resolver.py   # Element finding and extraction
 ├── step_executor.py       # Step execution with retry logic
@@ -25,7 +25,7 @@ executor/
 ## ARCHITECTURE
 
 Decomposed from single 797-line god class:
-- `WorkflowExecutor` (589 lines) - Orchestration only
+- `WorkflowExecutor` (723 lines) - Orchestration only
 - `BrowserManager` - Browser lifecycle
 - `SelectorResolver` - Element finding
 - `StepExecutor` - Step execution

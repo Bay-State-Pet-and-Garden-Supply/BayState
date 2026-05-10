@@ -5,18 +5,25 @@
 ## STRUCTURE
 ```
 scrapers/
-├── actions/               # 27 action handlers (async)
-│   ├── handlers/          # navigate, click, extract, ai_extract, ...
+├── actions/               # 24 handler files (38 registered actions)
+│   ├── handlers/          # navigate, click, extract, ...
 │   ├── base.py            # BaseAction
 │   └── registry.py        # ActionRegistry
+├── ai_search/             # AI search integration
+├── cohort/                # Cohort processing
+├── configs/               # Deprecated - API is runtime source
 ├── executor/              # Workflow execution (decomposed)
 │   ├── workflow_executor.py, browser_manager.py, selector_resolver.py
 │   ├── step_executor.py, debug_capture.py, normalization.py
-├── events/                # EventEmitter, WebSocket
-├── configs/               # Deprecated - API is runtime source
-├── context.py             # ScraperContext Protocol
 ├── models/                # Pydantic models
-└── parser/                # YAML config parsing
+├── parser/                # YAML config parsing
+├── product_url_extraction/ # URL extraction
+├── providers/             # Provider implementations
+├── config_validation.py   # Config validation
+├── context.py             # ScraperContext Protocol
+├── pricing_loader.py      # Dynamic pricing loader
+├── result_collector.py    # Result collection
+├── sku_loader.py          # SKU loader
 ```
 
 ## KEY CONCEPTS
@@ -47,7 +54,7 @@ class NavigateAction(BaseAction):
 - Parent: `../AGENTS.md`
 - Actions: `./actions/AGENTS.md`
 - Executor: `./executor/AGENTS.md`
-- Events: `./events/AGENTS.md`
+- Events (EventEmitter): `../core/events.py` → `../core/AGENTS.md`
 - crawl4ai: `../src/crawl4ai_engine/AGENTS.md`
 
 ## TESTING

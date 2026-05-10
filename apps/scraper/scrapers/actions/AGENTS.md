@@ -1,18 +1,18 @@
 # ACTIONS MODULE
 
-**Scope:** Workflow action system - 27 handler implementations
+**Scope:** Workflow action system - 24 handler files (39 registered actions)
 
 ## STRUCTURE
 ```
 actions/
-├── handlers/              # 27 action implementations (all async)
-│   ├── navigate.py, click.py, extract.py, extract_and_transform.py
+├── handlers/              # 24 handler implementations (all async)
+│   ├── navigate.py, click.py, extract.py, extract_transform.py
 │   ├── input.py, login.py, verify.py
 │   ├── wait.py, wait_for.py, wait_for_hidden.py
-│   ├── conditional.py, conditional_skip.py, combine.py, script.py
+│   ├── conditional.py, validation.py, combine.py, script.py
 │   ├── browser.py, image.py, table.py, json.py
-│   ├── sponsored.py, weight.py, transform_value.py
-│   └── ai_base.py, ai_extract.py, ai_search.py, ai_validate.py, anti_detection.py
+│   ├── sponsored.py, weight.py, transform.py
+│   └── ocr.py, set_proxy.py, anti_detection.py
 ├── base.py                # BaseAction abstract class
 └── registry.py            # ActionRegistry with auto-discovery
 ```
@@ -31,11 +31,10 @@ class MyAction(BaseAction):
 
 ## HANDLER CATEGORIES
 - **Navigation:** `navigate`, `click`, `wait`, `wait_for`, `wait_for_hidden`
-- **Extraction:** `extract`, `extract_and_transform`, `transform_value`, `table`, `json`, `image`
-- **AI-Powered:** `ai_base`, `ai_extract`, `ai_search`, `ai_validate`
+- **Extraction:** `extract`, `extract_and_transform` (in `extract_transform.py`), `transform_value` (in `transform.py`), `table`, `json`, `image`
 - **Input & Auth:** `input`, `login`, `verify`
-- **Flow Control:** `conditional`, `conditional_skip`, `combine`, `script`
-- **Utilities:** `browser`, `sponsored`, `weight`, `anti_detection`, `validation`
+- **Flow Control:** `conditional`, `conditional_skip` (in `validation.py`), `combine`, `script`
+- **Utilities:** `browser`, `sponsored`, `weight`, `anti_detection`, `validation`, `ocr`, `set_proxy`
 
 ## CONVENTIONS
 - **All async**: Every handler uses `async def execute()`

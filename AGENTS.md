@@ -1,12 +1,12 @@
 # BayState agent notes
 
 ## Read scope-specific notes first
-- Root app boundaries: `apps/web` (Next.js/Bun coordinator + admin/storefront), `apps/scraper` (Python runner), `conductor` (workflow docs only; no runtime code).
+- Root app boundaries: `apps/web` (Next.js/Bun coordinator + admin/storefront), `apps/scraper` (Python runner), `apps/mobile` (Expo/React Native; less active), `packages/api` (shared tRPC library `@baystate/api`), `conductor` (workflow docs only; no runtime code).
 - More specific instructions exist and override this file: `apps/web/AGENTS.md`, `apps/web/app/admin/AGENTS.md`, `apps/web/lib/consolidation/AGENTS.md`, `apps/scraper/AGENTS.md`, plus scraper subdirectory `AGENTS.md` files.
 
 ## Monorepo commands that are easy to guess wrong
 - Package manager is Bun 1.3.5 (`packageManager`); prefer Bun over npm even where old READMEs show npm.
-- Root scripts use Turbo: `bun run dev|build|test|lint`. Note `turbo.json` makes root `test` depend on `build`; for focused checks use workspace commands instead.
+- Root scripts use Turbo: `bun run dev|build|test|lint|typecheck`. Note `turbo.json` makes root `test` depend on `build`; for focused checks use workspace commands instead.
 - Web workspace shortcut: `bun run web <script>` runs inside `apps/web` (examples: `bun run web dev`, `bun run web lint`, `bun run web test`, `bun run web build`).
 - Scraper workspace shortcut: `bun run scraper dev` runs `uv run --with-requirements requirements.txt python daemon.py --env dev`.
 
@@ -16,7 +16,7 @@
 - Supabase clients are split: server code uses `lib/supabase/server.ts`, browser code uses `lib/supabase/client.ts`; client components must not access the DB directly.
 - Imports use `@/*` from `apps/web`; TypeScript is strict and path aliases are in `tsconfig.json`.
 - Tests run through `node scripts/run-jest.cjs` because it finds a real Node executable instead of Bun’s node shim. Focused test example: `bun run web test -- --testPathPatterns="brands"` or pass a test file path after `--`.
-- CI for web runs, in order, `bun install --frozen-lockfile`, `bun run lint`, `CI=true bun run test`; the separate `tsc --noEmit` job is currently non-blocking (`|| true`).
+- CI for web runs, in order, `bun install --frozen-lockfile`, `bun run lint`, `bun run test` (with `env: CI: true` in workflow YAML); the separate `bun run tsc --noEmit || true` job runs typechecking as non-blocking.
 - ESLint flat config ignores `__tests__/**` and `scripts/**`; lint failures there require targeted checks, not `bun run web lint`.
 - Tailwind is v4 CSS/PostCSS based; there is no `tailwind.config.js` to edit.
 - DB migrations live in `apps/web/supabase/migrations` and use timestamp filenames; keep schema changes there rather than ad hoc SQL in app code.
