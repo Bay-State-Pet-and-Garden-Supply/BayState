@@ -30,14 +30,15 @@ describe('Issue #77: Online Payment Processing', () => {
 
     it('should support all payment statuses', () => {
       const statuses: PaymentStatus[] = [
-        'pending',
-        'processing',
-        'completed',
+        'unpaid',
+        'authorized',
+        'paid',
         'failed',
         'refunded',
         'partially_refunded',
+        'voided',
       ];
-      expect(statuses).toHaveLength(6);
+      expect(statuses).toHaveLength(7);
     });
   });
 
@@ -71,7 +72,7 @@ describe('Issue #77: Online Payment Processing', () => {
     it('should have payment_method field', () => {
       const order: OrderWithPayment = {
         payment_method: 'credit_card',
-        payment_status: 'pending',
+        payment_status: 'unpaid',
         stripe_payment_intent_id: null,
         stripe_customer_id: null,
         paid_at: null,
@@ -83,19 +84,19 @@ describe('Issue #77: Online Payment Processing', () => {
     it('should have payment_status field', () => {
       const order: OrderWithPayment = {
         payment_method: 'pickup',
-        payment_status: 'completed',
+        payment_status: 'paid',
         stripe_payment_intent_id: null,
         stripe_customer_id: null,
         paid_at: new Date().toISOString(),
         refunded_amount: 0,
       };
-      expect(order.payment_status).toBe('completed');
+      expect(order.payment_status).toBe('paid');
     });
 
     it('should track stripe_payment_intent_id', () => {
       const order: OrderWithPayment = {
         payment_method: 'credit_card',
-        payment_status: 'completed',
+        payment_status: 'paid',
         stripe_payment_intent_id: 'pi_1234567890',
         stripe_customer_id: null,
         paid_at: new Date().toISOString(),
@@ -145,26 +146,26 @@ describe('Issue #77: Online Payment Processing', () => {
       it('should track payment completion with paid_at timestamp', () => {
         const paidAt = new Date().toISOString();
         const order = {
-          payment_status: 'completed' as const,
+          payment_status: 'paid' as const,
           paid_at: paidAt,
         };
 
         expect(order.paid_at).toBeDefined();
-        expect(order.payment_status).toBe('completed');
+        expect(order.payment_status).toBe('paid');
       });
     });
   });
 
   describe('Payment Status Transitions', () => {
-    it('should transition from pending to completed on successful payment', () => {
-      let status: PaymentStatus = 'pending';
-      expect(status).toBe('pending');
+    it('should transition from unpaid to paid on successful payment', () => {
+      let status: PaymentStatus = 'unpaid';
+      expect(status).toBe('unpaid');
 
-      status = 'processing';
-      expect(status).toBe('processing');
+      status = 'authorized';
+      expect(status).toBe('authorized');
 
-      status = 'completed';
-      expect(status).toBe('completed');
+      status = 'paid';
+      expect(status).toBe('paid');
     });
 
     it('should handle failed payment status', () => {

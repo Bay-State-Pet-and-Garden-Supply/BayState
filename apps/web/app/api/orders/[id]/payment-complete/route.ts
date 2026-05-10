@@ -41,7 +41,7 @@ export async function POST(
         .update({
           stripe_payment_intent_id: validatedData.paymentIntentId,
           payment_method: validatedData.paymentMethod,
-          payment_status: paymentIntent.status === 'succeeded' ? 'completed' : 'processing',
+          payment_status: paymentIntent.status === 'succeeded' ? 'paid' : 'authorized',
           paid_at: paymentIntent.status === 'succeeded' ? new Date().toISOString() : null,
         })
         .eq('id', orderId);
@@ -50,7 +50,7 @@ export async function POST(
         .from('orders')
         .update({
           payment_method: validatedData.paymentMethod,
-          payment_status: 'completed',
+          payment_status: 'paid',
           paid_at: new Date().toISOString(),
         })
         .eq('id', orderId);

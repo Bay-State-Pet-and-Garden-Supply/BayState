@@ -14,8 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { analyzeIntegraAction, processOnboardingAction } from '@/app/admin/tools/integra-sync/actions';
-import { SyncAnalysis } from '@/lib/admin/integra-sync';
+import { analyzeIntegraAction, pushReconciliationItemsToPipelineAction } from '@/app/admin/tools/integra-sync/actions';
 
 interface IntegraImportDialogProps {
     onSuccess: () => void;
@@ -28,12 +27,18 @@ export function IntegraImportDialog({
 }: IntegraImportDialogProps) {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [analysis, setAnalysis] = useState<SyncAnalysis | null>(null);
+    const [syncRunId, setSyncRunId] = useState<string | null>(null);
+    const [summary, setSummary] = useState<{
+        totalInFile: number;
+        registerOnlyCount: number;
+        totalIssues: number;
+    } | null>(null);
     const [file, setFile] = useState<File | null>(null);
 
     const handleFileChange = (selectedFile: File | null) => {
         setFile(selectedFile);
-        setAnalysis(null);
+        setSyncRunId(null);
+        setSummary(null);
     };
 
     const handleAnalyze = async () => {
@@ -45,8 +50,9 @@ export function IntegraImportDialog({
 
         try {
             const result = await analyzeIntegraAction(formData);
-            if (result.success && result.analysis) {
-                setAnalysis(result.analysis);
+            if (result.success && result.syncRunId) {
+                setSyncRunId(result.syncRunId);
+                setSummary(result.summary || null);
                 toast.success('File analyzed successfully');
             } else {
                 toast.error(result.error || 'Failed to analyze file');
@@ -59,26 +65,32 @@ export function IntegraImportDialog({
     };
 
     const handleAddToOnboarding = async () => {
-        if (!analysis || analysis.newProducts.length === 0) return;
-
+        if (!syncRunId) return;
         setIsProcessing(true);
         try {
-            const result = await processOnboardingAction(analysis.newProducts);
+            // Fetch open register-only issues for this sync run
+            const { createClient } = await import('@/lib/supabase/client');
+            const supabase = createClient();
+            const { data: issues } = await supabase
+                .from('inventory_reconciliation_items')
+                .select('id')
+                .eq('sync_run_id', syncRunId)
+                .eq('issue_type', 'register_only')
+                .eq('status', 'open');
+
+            const issueIds = (issues || []).map(i => i.id);
+            if (issueIds.length === 0) {
+                toast.info('No register-only issues found to push');
+                setIsProcessing(false);
+                return;
+            }
+
+            const result = await pushReconciliationItemsToPipelineAction(issueIds);
             if (result.success) {
-                let toastMessage = `Successfully added ${result.count} products to onboarding pipeline`;
-                if (result.cohorts) {
-                    toastMessage += ` (${result.cohorts.cohortCount} cohorts)`;
-                    if (result.cohorts.ungrouped > 0) {
-                        toastMessage += ` — ${result.cohorts.ungrouped} ungrouped`;
-                    }
-                    if (result.cohorts.errors.length > 0) {
-                        console.warn("Cohort assignment warnings:", result.cohorts.errors);
-                    }
-                }
-                toast.success(toastMessage);
+                toast.success(`Pushed ${result.count} register-only products to pipeline`);
                 onSuccess();
             } else {
-                toast.error(result.error || 'Failed to add products');
+                toast.error(result.error || 'Failed to push products to pipeline');
             }
         } catch (error) {
             toast.error('An error occurred during processing');
@@ -88,7 +100,7 @@ export function IntegraImportDialog({
     };
 
     const isBusy = isAnalyzing || isProcessing;
-    const hasNewProducts = analysis && analysis.newProducts.length > 0;
+    const hasNewProducts = summary && summary.registerOnlyCount > 0;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
@@ -115,7 +127,7 @@ export function IntegraImportDialog({
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto px-8 py-8 space-y-8">
-                    {!analysis ? (
+                    {!summary ? (
                         <div className="space-y-8 animate-in fade-in duration-500">
                             <div className="max-w-2xl">
                                 <h3 className="text-lg font-semibold text-foreground mb-2">Upload Inventory Export</h3>
@@ -158,78 +170,35 @@ export function IntegraImportDialog({
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                                 <div className="relative overflow-hidden rounded-none border border-border bg-card p-6">
                                     <p className="text-[10px] font-semibold text-muted-foreground mb-1">Total in File</p>
-                                    <h4 className="text-4xl font-semibold text-foreground">{analysis.totalInFile}</h4>
+                                    <h4 className="text-4xl font-semibold text-foreground">{summary?.totalInFile ?? 0}</h4>
                                     <p className="text-[10px] font-semibold text-muted-foreground mt-2">Unique SKUs analyzed</p>
                                 </div>
 
                                 <div className="relative overflow-hidden rounded-none border border-brand-forest-green/20 bg-brand-forest-green/5 p-6">
-                                    <p className="text-[10px] font-semibold text-brand-forest-green mb-1">Live on Store</p>
-                                    <h4 className="text-4xl font-semibold text-brand-forest-green">{analysis.existingOnWebsite}</h4>
-                                    <p className="text-[10px] font-semibold text-brand-forest-green mt-2">Already in catalog</p>
+                                    <p className="text-[10px] font-semibold text-brand-forest-green mb-1">New Products</p>
+                                    <h4 className="text-4xl font-semibold text-brand-forest-green">{summary?.registerOnlyCount ?? 0}</h4>
+                                    <p className="text-[10px] font-semibold text-brand-forest-green mt-2">Register-only, ready to onboard</p>
                                 </div>
 
                                 <div className="relative overflow-hidden rounded-none border border-primary/20 bg-primary/5 p-6">
-                                    <p className="text-[10px] font-semibold text-primary mb-1">New Products</p>
-                                    <h4 className="text-4xl font-semibold text-primary">{analysis.newProducts.length}</h4>
-                                    <p className="text-[10px] font-semibold text-primary mt-2">Ready to onboard</p>
+                                    <p className="text-[10px] font-semibold text-primary mb-1">Discrepancies</p>
+                                    <h4 className="text-4xl font-semibold text-primary">{summary?.totalIssues ?? 0}</h4>
+                                    <p className="text-[10px] font-semibold text-primary mt-2">Price, quantity, and stock mismatches</p>
                                 </div>
                             </div>
 
-                            {analysis.newProducts.length > 0 ? (
+                            {summary && summary.totalIssues > 0 ? (
                                 <div className="space-y-6">
-                                    <p className="text-[10px] font-semibold text-muted-foreground">
-                                        Products will be automatically grouped into cohorts by UPC prefix after import.
-                                    </p>
-                                    <div className="bg-primary rounded-none p-6 text-primary-foreground">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <div className="h-2 w-2 rounded-none bg-primary-foreground animate-pulse" />
-                                            <h3 className="text-lg font-semibold">Import Selection</h3>
-                                        </div>
-                                        <p className="text-sm font-semibold opacity-90">
-                                            Found <span className="underline underline-offset-4">{analysis.newProducts.length}</span> items not in the live store.
+                                    <div className="bg-amber-50 border border-amber-200 rounded-none p-4">
+                                        <p className="text-sm text-amber-800 font-semibold">
+                                            View full reconciliation details in inventory sync runs
                                         </p>
                                     </div>
-
-                                    <div className="rounded-none border border-border overflow-hidden bg-card">
-                                        <div className="max-h-72 overflow-auto scrollbar-thin scrollbar-thumb-zinc-200">
-                                            <Table>
-                                                <TableHeader className="bg-muted/30 sticky top-0 backdrop-blur-md border-b border-border z-10">
-                                                    <TableRow>
-                                                        <TableHead className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest">SKU</TableHead>
-                                                        <TableHead className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest">Product Name</TableHead>
-                                                        <TableHead className="px-6 py-4 text-right font-bold text-[10px] uppercase tracking-widest">List Price</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {analysis.newProducts.slice(0, 50).map((product) => (
-                                                        <TableRow key={product.sku} className="group hover:bg-muted/30 border-b border-border/50 last:border-0">
-                                                            <TableCell className="px-6 py-4">
-                                                                <span className="font-mono text-foreground bg-muted px-2 py-1 rounded-none text-xs border border-border/50">{product.sku}</span>
-                                                            </TableCell>
-                                                            <TableCell className="px-6 py-4">
-                                                                <span className="text-muted-foreground font-semibold text-[10px] group-hover:text-foreground">{product.name}</span>
-                                                            </TableCell>
-                                                            <TableCell className="px-6 py-4 text-right font-bold tabular-nums text-foreground">
-                                                                {formatCurrency(product.price)}
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                    {analysis.newProducts.length > 50 && (
-                                                        <TableRow>
-                                                            <TableCell colSpan={3} className="px-6 py-8 text-center text-muted-foreground text-[10px] font-semibold italic bg-muted/10">
-                                                                Showing first 50 of {analysis.newProducts.length} products found in the export.
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    )}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-                                    </div>
-                                    
                                     <div className="flex justify-center pt-2">
                                         <button 
                                             onClick={() => {
-                                                setAnalysis(null);
+                                                setSyncRunId(null);
+                                                setSummary(null);
                                                 setFile(null);
                                             }}
                                             className="text-[10px] font-semibold text-muted-foreground hover:text-primary transition-colors py-2 px-4 rounded-none hover:bg-muted"
@@ -269,7 +238,7 @@ export function IntegraImportDialog({
                             Cancel
                         </Button>
 
-                        {!analysis ? (
+                        {!summary ? (
                             <Button
                                 onClick={handleAnalyze}
                                 disabled={!file || isBusy}

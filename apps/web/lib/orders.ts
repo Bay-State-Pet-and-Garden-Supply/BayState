@@ -17,7 +17,10 @@ export interface OrderItem {
 }
 
 export type PaymentMethod = 'pickup' | 'credit_card' | 'paypal' | 'in_store';
-export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'refunded' | 'partially_refunded';
+export type OrderSourceType = 'web' | 'shopsite' | 'integra' | 'manual' | 'import';
+export type OrderPaymentStatusEnum = 'unpaid' | 'authorized' | 'paid' | 'failed' | 'partially_refunded' | 'refunded' | 'voided';
+export type OrderFulfillmentStatus = 'unfulfilled' | 'reserved' | 'ready_for_pickup' | 'out_for_delivery' | 'fulfilled' | 'partially_fulfilled' | 'cancelled';
+export type PaymentStatus = OrderPaymentStatusEnum;
 type FulfillmentMethod = 'pickup' | 'delivery';
 
 export interface Order {
@@ -29,7 +32,13 @@ export interface Order {
   customer_phone: string | null;
   status: 'pending' | 'processing' | 'completed' | 'cancelled';
   payment_method: PaymentMethod;
-  payment_status: PaymentStatus;
+  payment_status: OrderPaymentStatusEnum;
+  source_type: OrderSourceType;
+  source_system: string | null;
+  external_order_id: string | null;
+  external_created_at: string | null;
+  imported_at: string | null;
+  fulfillment_status: OrderFulfillmentStatus;
   subtotal: number;
   discount_amount: number;
   promo_code: string | null;
@@ -108,7 +117,9 @@ export async function createOrderWithClient(
       tax,
       total,
       payment_method: input.paymentMethod || 'pickup',
-      payment_status: input.paymentStatus || 'pending',
+      payment_status: input.paymentStatus || 'unpaid',
+      source_type: 'web',
+      fulfillment_status: 'unfulfilled',
       stripe_payment_intent_id: input.stripePaymentIntentId || null,
       stripe_customer_id: input.stripeCustomerId || null,
       refunded_amount: 0,
@@ -252,6 +263,54 @@ export async function getOrders(options?: {
   }
 
   return { orders: data as Order[] || [], count: count || 0 };
+}
+
+// ---- Integration & Source Records ----
+
+export interface OrderSourceRecord {
+  id: string;
+  order_id: string | null;
+  source_type: OrderSourceType;
+  source_system: string;
+  external_id: string | null;
+  external_order_number: string | null;
+  raw_payload: Record<string, unknown>;
+  normalized_payload: Record<string, unknown>;
+  payload_hash: string | null;
+  sync_run_id: string | null;
+  imported_at: string;
+  external_created_at: string | null;
+  external_updated_at: string | null;
+}
+
+export interface IntegrationSyncRun {
+  id: string;
+  source_type: OrderSourceType;
+  source_system: string;
+  sync_kind: string;
+  status: 'running' | 'completed' | 'failed' | 'partial';
+  file_name: string | null;
+  row_count: number;
+  inserted_count: number;
+  updated_count: number;
+  skipped_count: number;
+  error_count: number;
+  started_at: string;
+  completed_at: string | null;
+  created_by: string | null;
+  error_summary: string | null;
+  metadata: Record<string, unknown>;
+}
+
+export interface OrderEvent {
+  id: string;
+  order_id: string;
+  event_type: string;
+  previous_value: Record<string, unknown> | null;
+  new_value: Record<string, unknown> | null;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
 }
 
 export async function updateOrderStatus(

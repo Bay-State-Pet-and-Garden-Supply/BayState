@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/client';
 
 export interface Activity {
   id: string;
-  type: 'order' | 'product' | 'pipeline' | 'system';
+  type: 'order' | 'product' | 'pipeline' | 'system' | 'integration' | 'fulfillment' | 'inventory';
   title: string;
   description: string;
   status: 'success' | 'warning' | 'info' | 'pending';

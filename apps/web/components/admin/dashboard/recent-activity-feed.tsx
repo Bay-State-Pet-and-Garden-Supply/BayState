@@ -7,6 +7,8 @@ import {
   CheckCircle, 
   AlertCircle,
   Clock,
+  Database,
+  Truck,
   type LucideIcon 
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +20,9 @@ const activityIcons: Record<string, LucideIcon> = {
   order: ShoppingCart,
   product: Package,
   pipeline: CheckCircle,
+  integration: Database,
+  fulfillment: Truck,
+  inventory: Package,
   system: AlertCircle,
 };
 

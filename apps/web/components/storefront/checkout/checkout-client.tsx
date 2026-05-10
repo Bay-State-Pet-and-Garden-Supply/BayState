@@ -208,7 +208,7 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
           body: JSON.stringify({
             ...customerData,
             paymentMethod: 'pickup',
-            paymentStatus: 'pending',
+            paymentStatus: 'unpaid',
           }),
         });
         if (!response.ok) throw new Error('Failed to create order');
@@ -225,7 +225,7 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
         body: JSON.stringify({
           ...customerData,
           paymentMethod,
-          paymentStatus: 'processing',
+          paymentStatus: 'authorized',
         }),
       });
       if (!orderResponse.ok) throw new Error('Failed to create order');

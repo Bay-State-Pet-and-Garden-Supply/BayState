@@ -17,13 +17,13 @@ export interface RegisterSyncExistingProduct {
   date_priced?: string | null;
 }
 
-interface RegisterSyncChange {
+export interface RegisterSyncChange {
   field: RegisterSyncField | "date_sold" | "date_received" | "date_counted" | "date_created" | "date_priced";
   before: number | string | null;
   after: number | string | null;
 }
 
-interface RegisterSyncPreview {
+export interface RegisterSyncPreview {
   sku: string;
   name: string;
   changes: RegisterSyncChange[];
@@ -45,7 +45,7 @@ export interface RegisterSyncUpdate {
   updated_at: string;
 }
 
-interface RegisterSyncPlan {
+export interface RegisterSyncPlan {
   totalInFile: number;
   matchedProducts: number;
   unchangedProducts: number;
@@ -66,7 +66,7 @@ function roundCurrency(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-function deriveInventoryStockStatus(
+export function deriveInventoryStockStatus(
   quantityOnHand: number,
   currentStatus: string,
 ): string {

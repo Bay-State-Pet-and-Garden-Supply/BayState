@@ -1,4 +1,8 @@
 export type PaymentMethod = 'pickup' | 'credit_card' | 'paypal' | 'in_store'
+export type OrderSourceType = 'web' | 'shopsite' | 'integra' | 'manual' | 'import'
+export type OrderPaymentStatusEnum = 'unpaid' | 'authorized' | 'paid' | 'failed' | 'partially_refunded' | 'refunded' | 'voided'
+export type PaymentStatus = OrderPaymentStatusEnum
+export type OrderFulfillmentStatus = 'unfulfilled' | 'reserved' | 'ready_for_pickup' | 'out_for_delivery' | 'fulfilled' | 'partially_fulfilled' | 'cancelled'
 
 export type DiscountType = 'percentage' | 'fixed_amount' | 'free_shipping'
 
@@ -139,7 +143,13 @@ export interface Order {
   customer_phone: string | null
   status: 'pending' | 'processing' | 'completed' | 'cancelled'
   payment_method: PaymentMethod
-  payment_status: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded' | 'partially_refunded'
+  payment_status: OrderPaymentStatusEnum
+  source_type: OrderSourceType
+  source_system: string | null
+  external_order_id: string | null
+  external_created_at: string | null
+  imported_at: string | null
+  fulfillment_status: OrderFulfillmentStatus
   subtotal: number
   discount_amount: number
   promo_code: string | null
