@@ -23,21 +23,35 @@ BayState/
 
 ### Web App (apps/web) — Full Local Bootstrap
 
+**Prerequisites:**
+- Docker Desktop running (for Supabase local containers)
+- Stripe CLI installed (for payment testing — optional)
+
 ```bash
 # 1. Install all workspace dependencies
 bun install
 
-# 2. Copy environment template (edit values after)
-cp apps/web/.env.local.example apps/web/.env.local
-
-# 3. Start local Supabase (Docker containers for DB, API, Studio)
+# 2. Start local Supabase (Docker containers for DB, API, Studio)
 bun run web db:start
+
+# 3. Get local Supabase keys and copy env template
+bun run web db:status
+# Copy the anon key, service_role key, and DB URL from the output
+
+cp apps/web/.env.local.example apps/web/.env.local
+# Edit .env.local with the keys from step 3
 
 # 4. Run migrations and seed the local database
 bun run web db:reset
 
+# ⚠️ Known issue: The migration chain has a pre-existing ordering problem
+# with the `products_ingestion` table. If `db:reset` fails, check
+# `supabase/migrations/20251230180000_products_published_view.sql` —
+# it references a table created later. A temporary workaround is to add
+# a stub table before the view or use hosted Supabase for now.
+
 # 5. Verify seed data loaded correctly
-bun run apps/web/scripts/verify-local-bootstrap.ts
+bun run web local:verify
 
 # 6. Start the Next.js dev server
 bun run web dev
@@ -54,14 +68,19 @@ bun run web stripe:listen
 # Restart Next.js dev server
 ```
 
+### Stripe Test Cards
+
+| Card Number              | Result         |
+|--------------------------|----------------|
+| `4242 4242 4242 4242`    | Success        |
+| `4000 0000 0000 0002`    | Generic decline|
+| `4000 0025 0000 3155`    | Requires SCA/auth|
+
 ### Scraper (apps/scraper)
 
 ```bash
-cd apps/scraper
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python -m scraper_backend.runner --job-id test
+# Use the Bun workspace shortcut:
+bun run scraper dev
 ```
 
 ## Workspace Commands

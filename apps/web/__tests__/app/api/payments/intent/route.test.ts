@@ -174,7 +174,7 @@ describe('POST /api/payments/intent', () => {
         currency: 'usd',
       }),
       expect.objectContaining({
-        idempotencyKey: 'pi:11111111-1111-4111-8111-111111111111',
+        idempotencyKey: 'order:11111111-1111-4111-8111-111111111111:7999',
       })
     );
 

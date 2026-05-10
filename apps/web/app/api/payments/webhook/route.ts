@@ -82,48 +82,65 @@ export async function POST(request: NextRequest) {
       console.log(`Retrying previously failed webhook event ${eventId} (${eventType})`);
     }
 
-    // --- Process event ---
-    switch (event.type) {
-      case 'payment_intent.succeeded': {
-        const paymentIntent = event.data.object as import('stripe').Stripe.PaymentIntent;
-        const result = await handlePaymentIntentSucceeded(paymentIntent, eventId);
-        console.log(
-          `Order ${result.orderId}: payment succeeded (updated: ${result.updated}, status: ${result.previousStatus} → ${result.newStatus})`
-        );
-        break;
-      }
+    // --- Process event (wrapped in try/catch for proper failure handling) ---
+    try {
+      switch (event.type) {
+        case 'payment_intent.succeeded': {
+          const paymentIntent = event.data.object as import('stripe').Stripe.PaymentIntent;
+          const result = await handlePaymentIntentSucceeded(paymentIntent, eventId);
+          console.log(
+            `Order ${result.orderId}: payment succeeded (updated: ${result.updated}, status: ${result.previousStatus} → ${result.newStatus})`
+          );
+          break;
+        }
 
-      case 'payment_intent.payment_failed': {
-        const paymentIntent = event.data.object as import('stripe').Stripe.PaymentIntent;
-        const result = await handlePaymentIntentFailed(paymentIntent, eventId);
-        console.log(
-          `Order ${result.orderId}: payment failed (updated: ${result.updated}, status: ${result.previousStatus} → ${result.newStatus})`
-        );
-        break;
-      }
+        case 'payment_intent.payment_failed': {
+          const paymentIntent = event.data.object as import('stripe').Stripe.PaymentIntent;
+          const result = await handlePaymentIntentFailed(paymentIntent, eventId);
+          console.log(
+            `Order ${result.orderId}: payment failed (updated: ${result.updated}, status: ${result.previousStatus} → ${result.newStatus})`
+          );
+          break;
+        }
 
-      case 'payment_intent.canceled': {
-        const paymentIntent = event.data.object as import('stripe').Stripe.PaymentIntent;
-        const result = await handlePaymentIntentCanceled(paymentIntent, eventId);
-        console.log(
-          `Order ${result.orderId}: payment canceled (updated: ${result.updated}, status: ${result.previousStatus} → ${result.newStatus})`
-        );
-        break;
-      }
+        case 'payment_intent.canceled': {
+          const paymentIntent = event.data.object as import('stripe').Stripe.PaymentIntent;
+          const result = await handlePaymentIntentCanceled(paymentIntent, eventId);
+          console.log(
+            `Order ${result.orderId}: payment canceled (updated: ${result.updated}, status: ${result.previousStatus} → ${result.newStatus})`
+          );
+          break;
+        }
 
-      case 'charge.refunded': {
-        const charge = event.data.object as import('stripe').Stripe.Charge;
-        const result = await handleChargeRefunded(charge, eventId);
-        console.log(
-          `Order ${result.orderId}: charge refunded (updated: ${result.updated}, status: ${result.previousStatus} → ${result.newStatus})`
-        );
-        break;
-      }
+        case 'charge.refunded': {
+          const charge = event.data.object as import('stripe').Stripe.Charge;
+          const result = await handleChargeRefunded(charge, eventId);
+          console.log(
+            `Order ${result.orderId}: charge refunded (updated: ${result.updated}, status: ${result.previousStatus} → ${result.newStatus})`
+          );
+          break;
+        }
 
-      default:
-        console.log(`Unhandled webhook event type: ${event.type}`);
-        // Mark as skipped in ledger so it doesn't retry infinitely
-        await finalizeWebhookEvent(eventId, 'skipped', `Unhandled event type: ${event.type}`);
+        default:
+          console.log(`Unhandled webhook event type: ${event.type}`);
+          // Mark as skipped in ledger so it doesn't retry infinitely
+          await finalizeWebhookEvent(eventId, 'skipped', `Unhandled event type: ${event.type}`);
+      }
+    } catch (processingError) {
+      console.error(`Error processing webhook event ${eventId} (${eventType}):`, processingError);
+      try {
+        await finalizeWebhookEvent(
+          eventId,
+          'failed',
+          processingError instanceof Error ? processingError.message : 'Unknown processing error'
+        );
+      } catch (finalizeErr) {
+        console.error(`Failed to finalize webhook event ${eventId} as failed:`, finalizeErr);
+      }
+      return NextResponse.json(
+        { error: 'Event processing failed' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ received: true });

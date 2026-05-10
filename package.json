@@ -28,6 +28,8 @@
     "web:db:start": "bun run web db:start",
     "web:db:reset": "bun run web db:reset",
     "web:db:status": "bun run web db:status",
+    "web:db:seed": "bun run web db:seed",
+    "web:local:verify": "bun run web local:verify",
     "web:stripe:listen": "bun run web stripe:listen",
     "web:bootstrap": "bun run web bootstrap"
   },
