@@ -107,28 +107,34 @@ FROM public.scrape_jobs
 WHERE created_at > now() - interval '24 hours';
 
 -- 2.7 ai_scraper_stats
-CREATE OR REPLACE VIEW public.ai_scraper_stats
-WITH (security_invoker = true)
-AS
-SELECT 
-    sc.id AS config_id,
-    sc.slug,
-    sc.display_name,
-    cv.version_number,
-    cv.status,
-    CASE 
-        WHEN cv.ai_config IS NOT NULL THEN 'ai'
-        ELSE 'static'
-    END AS scraper_type,
-    cv.ai_config->>'llm_model' AS llm_model,
-    (cv.ai_config->>'max_steps')::INTEGER AS max_steps,
-    (cv.ai_config->>'confidence_threshold')::NUMERIC AS confidence_threshold,
-    cv.published_at,
-    cv.created_at
-FROM public.scraper_configs sc
-JOIN public.scraper_config_versions cv ON sc.id = cv.config_id
-WHERE cv.ai_config IS NOT NULL
-ORDER BY cv.created_at DESC;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'scraper_config_versions') THEN
+        EXECUTE '
+        CREATE OR REPLACE VIEW public.ai_scraper_stats
+        WITH (security_invoker = true)
+        AS
+        SELECT 
+            sc.id AS config_id,
+            sc.slug,
+            sc.display_name,
+            cv.version_number,
+            cv.status,
+            CASE 
+                WHEN cv.ai_config IS NOT NULL THEN ''ai''
+                ELSE ''static''
+            END AS scraper_type,
+            cv.ai_config->>''llm_model'' AS llm_model,
+            (cv.ai_config->>''max_steps'')::INTEGER AS max_steps,
+            (cv.ai_config->>''confidence_threshold'')::NUMERIC AS confidence_threshold,
+            cv.published_at,
+            cv.created_at
+        FROM public.scraper_configs sc
+        JOIN public.scraper_config_versions cv ON sc.id = cv.config_id
+        WHERE cv.ai_config IS NOT NULL
+        ORDER BY cv.created_at DESC';
+    END IF;
+END $$;
 
 -- 3. Grants
 -- Re-applying grants to ensure access is maintained
@@ -139,7 +145,13 @@ GRANT SELECT ON public.pipeline_export_queue TO authenticated;
 GRANT SELECT ON public.products_published TO authenticated;
 GRANT SELECT ON public.dashboard_product_stats TO authenticated;
 GRANT SELECT ON public.dashboard_scraper_stats TO authenticated;
-GRANT SELECT ON public.ai_scraper_stats TO authenticated;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'scraper_config_versions') THEN
+        EXECUTE 'GRANT SELECT ON public.ai_scraper_stats TO authenticated';
+        EXECUTE 'GRANT SELECT ON public.ai_scraper_stats TO service_role';
+    END IF;
+END $$;
 
 GRANT SELECT ON public.pipeline_finalizing_queue TO service_role;
 GRANT SELECT ON public.pipeline_finalized_review TO service_role;
@@ -147,6 +159,5 @@ GRANT SELECT ON public.pipeline_export_queue TO service_role;
 GRANT SELECT ON public.products_published TO service_role;
 GRANT SELECT ON public.dashboard_product_stats TO service_role;
 GRANT SELECT ON public.dashboard_scraper_stats TO service_role;
-GRANT SELECT ON public.ai_scraper_stats TO service_role;
 
 COMMIT;

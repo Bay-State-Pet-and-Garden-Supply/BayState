@@ -5,8 +5,6 @@
 -- All data is fake/placeholder. No real credentials or production data.
 -- =====================================================================
 
-BEGIN;
-
 -- ---------------------------------------------------------------------
 -- Brands
 -- ---------------------------------------------------------------------
@@ -23,12 +21,12 @@ ON CONFLICT (id) DO NOTHING;
 -- ---------------------------------------------------------------------
 -- Pet Types
 -- ---------------------------------------------------------------------
-INSERT INTO pet_types (id, name, icon, display_order)
+INSERT INTO pet_types (id, name, display_order)
 VALUES
-  ('b0000000-0000-0000-0000-000000000001', 'Dog', 'dog', 1),
-  ('b0000000-0000-0000-0000-000000000002', 'Cat', 'cat', 2),
-  ('b0000000-0000-0000-0000-000000000003', 'Small Pet', 'rabbit', 3)
-ON CONFLICT (id) DO NOTHING;
+  ('b0000000-0000-0000-0000-000000000001', 'Dog', 1),
+  ('b0000000-0000-0000-0000-000000000002', 'Cat', 2),
+  ('b0000000-0000-0000-0000-000000000003', 'Small Pet', 3)
+ON CONFLICT (name) DO UPDATE SET id = EXCLUDED.id;
 
 -- ---------------------------------------------------------------------
 -- Categories
@@ -43,7 +41,7 @@ VALUES
   ('c0000000-0000-0000-0000-000000000006', 'Small Pet Food', 'small-pet-food', 'Nutrition for hamsters, guinea pigs, and bunnies', TRUE, 6, '/images/categories/small-pet-food.jpg'),
   ('c0000000-0000-0000-0000-000000000007', 'Grass Seed', 'lawn-garden-grass-seed', 'Premium grass seed for lush lawns', TRUE, 7, '/images/categories/grass-seed.jpg'),
   ('c0000000-0000-0000-0000-000000000008', 'Fertilizer & Lawn Care', 'lawn-garden-fertilizer', 'Feed your lawn naturally', TRUE, 8, '/images/categories/lawn-fertilizer.jpg')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (slug) DO NOTHING;
 
 -- ---------------------------------------------------------------------
 -- Products (12 realistic products)
@@ -245,29 +243,29 @@ ON CONFLICT (product_id) DO NOTHING;
 INSERT INTO product_categories (product_id, category_id)
 VALUES
   -- Fromm Gold Large Breed -> Dog Food
-  ('d0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001'),
+  ('d0000000-0000-0000-0000-000000000001', (SELECT id FROM categories WHERE slug = 'dog-food')),
   -- Fromm Puppy Gold -> Dog Food
-  ('d0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000001'),
+  ('d0000000-0000-0000-0000-000000000002', (SELECT id FROM categories WHERE slug = 'dog-food')),
   -- Purina Pro Plan Sensitive Skin -> Dog Food
-  ('d0000000-0000-0000-0000-000000000003', 'c0000000-0000-0000-0000-000000000001'),
+  ('d0000000-0000-0000-0000-000000000003', (SELECT id FROM categories WHERE slug = 'dog-food')),
   -- Purina Pro Plan Complete Essentials -> Dog Food
-  ('d0000000-0000-0000-0000-000000000004', 'c0000000-0000-0000-0000-000000000001'),
+  ('d0000000-0000-0000-0000-000000000004', (SELECT id FROM categories WHERE slug = 'dog-food')),
   -- KONG Classic -> Dog Toys
-  ('d0000000-0000-0000-0000-000000000005', 'c0000000-0000-0000-0000-000000000003'),
+  ('d0000000-0000-0000-0000-000000000005', (SELECT id FROM categories WHERE slug = 'dog-toys')),
   -- KONG Easy Treat -> Dog Treats & Chews
-  ('d0000000-0000-0000-0000-000000000006', 'c0000000-0000-0000-0000-000000000002'),
+  ('d0000000-0000-0000-0000-000000000006', (SELECT id FROM categories WHERE slug = 'dog-treats-chews')),
   -- Fromm Cat Food Game Bird -> Cat Food
-  ('d0000000-0000-0000-0000-000000000007', 'c0000000-0000-0000-0000-000000000004'),
+  ('d0000000-0000-0000-0000-000000000007', (SELECT id FROM categories WHERE slug = 'cat-food')),
   -- Purina Kitten -> Cat Food
-  ('d0000000-0000-0000-0000-000000000008', 'c0000000-0000-0000-0000-000000000004'),
+  ('d0000000-0000-0000-0000-000000000008', (SELECT id FROM categories WHERE slug = 'cat-food')),
   -- World's Best Cat Litter -> Cat Litter
-  ('d0000000-0000-0000-0000-000000000009', 'c0000000-0000-0000-0000-000000000005'),
+  ('d0000000-0000-0000-0000-000000000009', (SELECT id FROM categories WHERE slug = 'cat-litter')),
   -- Jonathan Green Ultra Grass Seed -> Grass Seed
-  ('d0000000-0000-0000-0000-000000000010', 'c0000000-0000-0000-0000-000000000007'),
+  ('d0000000-0000-0000-0000-000000000010', (SELECT id FROM categories WHERE slug = 'lawn-garden-grass-seed')),
   -- Jonathan Green Organic Lawn Food -> Fertilizer
-  ('d0000000-0000-0000-0000-000000000011', 'c0000000-0000-0000-0000-000000000008'),
+  ('d0000000-0000-0000-0000-000000000011', (SELECT id FROM categories WHERE slug = 'lawn-garden-fertilizer')),
   -- Kaytee Timothy Hay -> Small Pet Food
-  ('d0000000-0000-0000-0000-000000000012', 'c0000000-0000-0000-0000-000000000006')
+  ('d0000000-0000-0000-0000-000000000012', (SELECT id FROM categories WHERE slug = 'small-pet-food'))
 ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------
@@ -297,38 +295,34 @@ VALUES
   ('f0000000-0000-0000-0000-000000000003', 'Primary Protein', 'primary-protein', 'The main protein source in food'),
   ('f0000000-0000-0000-0000-000000000004', 'Food Form', 'food-form', 'The physical form of food'),
   ('f0000000-0000-0000-0000-000000000005', 'Package Weight', 'package-weight', 'The weight of the package')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (slug) DO NOTHING;
 
 -- ---------------------------------------------------------------------
 -- Facet Values
 -- ---------------------------------------------------------------------
 INSERT INTO facet_values (id, facet_definition_id, value, normalized_value, slug)
-VALUES
-  -- Animal Type
-  (  ('f0000000-0000-0000-0001-000000000001', 'f0000000-0000-0000-0000-000000000001', 'Dog', 'dog', 'dog'),
-  ('f0000000-0000-0000-0001-000000000002', 'f0000000-0000-0000-0000-000000000001', 'Cat', 'cat', 'cat'),
-  ('f0000000-0000-0000-0001-000000000003', 'f0000000-0000-0000-0000-000000000001', 'Small Pet', 'small-pet', 'small-pet'),
-  -- Life Stage
-  ('f0000000-0000-0000-0002-000000000001', 'f0000000-0000-0000-0000-000000000002', 'Adult', 'adult', 'adult'),
-  ('f0000000-0000-0000-0002-000000000002', 'f0000000-0000-0000-0000-000000000002', 'Puppy', 'puppy', 'puppy'),
-  ('f0000000-0000-0000-0002-000000000003', 'f0000000-0000-0000-0000-000000000002', 'Kitten', 'kitten', 'kitten'),
-  ('f0000000-0000-0000-0002-000000000004', 'f0000000-0000-0000-0000-000000000002', 'All Life Stages', 'all-life-stages', 'all-life-stages'),
-  -- Primary Protein
-  ('f0000000-0000-0000-0003-000000000001', 'f0000000-0000-0000-0000-000000000003', 'Salmon', 'salmon', 'salmon'),
-  ('f0000000-0000-0000-0003-000000000002', 'f0000000-0000-0000-0000-000000000003', 'Chicken', 'chicken', 'chicken'),
-  ('f0000000-0000-0000-0003-000000000003', 'f0000000-0000-0000-0000-000000000003', 'Game Bird', 'game-bird', 'game-bird'),
-  ('f0000000-0000-0000-0003-000000000004', 'f0000000-0000-0000-0000-000000000003', 'Grain', 'grain', 'grain'),
-  -- Food Form
-  ('f0000000-0000-0000-0004-000000000001', 'f0000000-0000-0000-0000-000000000004', 'Dry Kibble', 'dry-kibble', 'dry-kibble'),
-  ('f0000000-0000-0000-0004-000000000002', 'f0000000-0000-0000-0000-000000000004', 'Treat', 'treat', 'treat'),
-  ('f0000000-0000-0000-0004-000000000003', 'f0000000-0000-0000-0000-000000000004', 'Litter', 'litter', 'litter'),
-  -- Package Weight (for search only)
-  ('f0000000-0000-0000-0005-000000000001', 'f0000000-0000-0000-0000-000000000005', '30 lb', '30-lb', '30-lb'),
-  ('f0000000-0000-0000-0005-000000000002', 'f0000000-0000-0000-0000-000000000005', '24 lb', '24-lb', '24-lb'),
-  ('f0000000-0000-0000-0005-000000000003', 'f0000000-0000-0000-0000-000000000005', '18 lb', '18-lb', '18-lb'),
-  ('f0000000-0000-0000-0005-000000000004', 'f0000000-0000-0000-0000-000000000005', '15 lb', '15-lb', '15-lb'),
-  ('f0000000-0000-0000-0005-000000000005', 'f0000000-0000-0000-0000-000000000005', '10 lb', '10-lb', '10-lb'),
-  ('f0000000-0000-0000-0005-000000000006', 'f0000000-0000-0000-0000-000000000005', '7 lb', '7-lb', '7-lb')
+SELECT * FROM (VALUES
+  ('f0000000-0000-0000-0001-000000000001'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'animal-type'), 'Dog', 'dog', 'dog'),
+  ('f0000000-0000-0000-0001-000000000002'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'animal-type'), 'Cat', 'cat', 'cat'),
+  ('f0000000-0000-0000-0001-000000000003'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'animal-type'), 'Small Pet', 'small-pet', 'small-pet'),
+  ('f0000000-0000-0000-0002-000000000001'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'life-stage'), 'Adult', 'adult', 'adult'),
+  ('f0000000-0000-0000-0002-000000000002'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'life-stage'), 'Puppy', 'puppy', 'puppy'),
+  ('f0000000-0000-0000-0002-000000000003'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'life-stage'), 'Kitten', 'kitten', 'kitten'),
+  ('f0000000-0000-0000-0002-000000000004'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'life-stage'), 'All Life Stages', 'all-life-stages', 'all-life-stages'),
+  ('f0000000-0000-0000-0003-000000000001'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'primary-protein'), 'Salmon', 'salmon', 'salmon'),
+  ('f0000000-0000-0000-0003-000000000002'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'primary-protein'), 'Chicken', 'chicken', 'chicken'),
+  ('f0000000-0000-0000-0003-000000000003'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'primary-protein'), 'Game Bird', 'game-bird', 'game-bird'),
+  ('f0000000-0000-0000-0003-000000000004'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'primary-protein'), 'Grain', 'grain', 'grain'),
+  ('f0000000-0000-0000-0004-000000000001'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'food-form'), 'Dry Kibble', 'dry-kibble', 'dry-kibble'),
+  ('f0000000-0000-0000-0004-000000000002'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'food-form'), 'Treat', 'treat', 'treat'),
+  ('f0000000-0000-0000-0004-000000000003'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'food-form'), 'Litter', 'litter', 'litter'),
+  ('f0000000-0000-0000-0005-000000000001'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'package-weight'), '30 lb', '30-lb', '30-lb'),
+  ('f0000000-0000-0000-0005-000000000002'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'package-weight'), '24 lb', '24-lb', '24-lb'),
+  ('f0000000-0000-0000-0005-000000000003'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'package-weight'), '18 lb', '18-lb', '18-lb'),
+  ('f0000000-0000-0000-0005-000000000004'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'package-weight'), '15 lb', '15-lb', '15-lb'),
+  ('f0000000-0000-0000-0005-000000000005'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'package-weight'), '10 lb', '10-lb', '10-lb'),
+  ('f0000000-0000-0000-0005-000000000006'::uuid, (SELECT id FROM facet_definitions WHERE slug = 'package-weight'), '7 lb', '7-lb', '7-lb')
+) AS vals (id, facet_definition_id, value, normalized_value, slug)
 ON CONFLICT (id) DO NOTHING;
 
 -- ---------------------------------------------------------------------
@@ -483,4 +477,4 @@ VALUES (
 )
 ON CONFLICT DO NOTHING;
 
-COMMIT;
+

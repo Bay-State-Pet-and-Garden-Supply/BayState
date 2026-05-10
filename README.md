@@ -44,11 +44,6 @@ cp apps/web/.env.local.example apps/web/.env.local
 # 4. Run migrations and seed the local database
 bun run web db:reset
 
-# ⚠️ Known issue: The migration chain has a pre-existing ordering problem
-# with the `products_ingestion` table. If `db:reset` fails, check
-# `supabase/migrations/20251230180000_products_published_view.sql` —
-# it references a table created later. A temporary workaround is to add
-# a stub table before the view or use hosted Supabase for now.
 
 # 5. Verify seed data loaded correctly
 bun run web local:verify
