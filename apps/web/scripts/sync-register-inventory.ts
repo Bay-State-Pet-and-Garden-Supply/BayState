@@ -27,6 +27,35 @@ const DEFAULT_FILE_GLOB = '..\\..\\temp\\inventory*.xlsx';
 const PRODUCT_BATCH_SIZE = 500;
 const SYNC_TYPE = 'register_inventory';
 
+async function startSyncRun(supabase: SupabaseClient, syncRunId: string): Promise<void> {
+    const { error } = await supabase
+        .from('integration_sync_runs')
+        .update({ status: 'running', started_at: new Date().toISOString() })
+        .eq('id', syncRunId)
+        .eq('status', 'queued');
+    if (error) console.error('Failed to start sync run:', error.message);
+}
+
+async function completeSyncRun(
+    supabase: SupabaseClient,
+    syncRunId: string,
+    result: { success: boolean; processed: number; updated: number; failed: number; errors: { error: string }[] }
+): Promise<void> {
+    const status = result.success ? 'completed' : (result.failed > 0 && result.processed > 0 ? 'partial' : 'failed');
+    const { error } = await supabase
+        .from('integration_sync_runs')
+        .update({
+            status,
+            completed_at: new Date().toISOString(),
+            row_count: result.processed,
+            updated_count: result.updated,
+            error_count: result.failed,
+            error_summary: result.errors.length > 0 ? JSON.stringify(result.errors.slice(0, 10)) : null,
+        })
+        .eq('id', syncRunId);
+    if (error) console.error('Failed to complete sync run:', error.message);
+}
+
 interface RegisterSnapshot {
     source: RegisterSyncSource;
     sourceLabel: string;
@@ -518,12 +547,19 @@ async function main() {
         },
     });
 
+    const syncRunId = getArgValue('sync-run-id');
+
     console.log('Starting register data sync (inventory + sales)...');
     console.log(`Source: ${source}`);
     console.log(`Mode: ${dryRun ? 'dry-run' : 'apply'}`);
     console.log(`Fields: ${fields.join(', ')}`);
 
     const logId = await startLog(supabase);
+
+    // If triggered via API, update sync run status to running
+    if (syncRunId) {
+        await startSyncRun(supabase, syncRunId);
+    }
 
     try {
         const registerSnapshot =
@@ -581,6 +617,10 @@ async function main() {
         if (logId) {
             await updateLogProgress(supabase, logId, result);
             await completeLog(supabase, logId, result, syncSummary);
+        }
+
+        if (syncRunId) {
+            await completeSyncRun(supabase, syncRunId, result);
         }
 
         console.log(

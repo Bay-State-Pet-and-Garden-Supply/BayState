@@ -24,6 +24,11 @@ on:
         description: 'Start date for order sync (mm/dd/yyyy)'
         required: false
         type: string
+      sync_run_id:
+        description: 'Sync run ID from trigger API for correlation'
+        required: false
+        type: string
+        default: ''
 
 concurrency:
   group: shopsite-sync
@@ -81,7 +86,8 @@ jobs:
           if ($target -eq "all" -or $target -eq "products") {
             Write-Host "=== Syncing ShopSite Products ==="
             try {
-              & bun run sync:shopsite @limitArgs
+              $syncRunArg = if ("${{ github.event.inputs.sync_run_id }}" -ne "") { @("--sync-run-id=${{ github.event.inputs.sync_run_id }}") } else { @() }
+              & bun run sync:shopsite @limitArgs @syncRunArg
               if ($LASTEXITCODE -ne 0) {
                 Write-Host "::error::Product sync failed with exit code $LASTEXITCODE"
                 $success = $false
@@ -95,7 +101,8 @@ jobs:
           if ($target -eq "all" -or $target -eq "orders") {
             Write-Host "=== Syncing ShopSite Orders ==="
             try {
-              & bun run sync:orders @orderArgs
+              $syncRunArg = if ("${{ github.event.inputs.sync_run_id }}" -ne "") { @("--sync-run-id=${{ github.event.inputs.sync_run_id }}") } else { @() }
+              & bun run sync:orders @orderArgs @syncRunArg
               if ($LASTEXITCODE -ne 0) {
                 Write-Host "::error::Order sync failed with exit code $LASTEXITCODE"
                 $success = $false
