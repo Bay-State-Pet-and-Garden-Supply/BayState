@@ -32,7 +32,7 @@ BEGIN
     WHERE status IN ('completed', 'processing')
       AND created_at >= start_date 
       AND created_at <= end_date
-      AND (p_source IS NULL OR source = p_source);
+      AND (p_source IS NULL OR source_type = p_source::public.order_source_type);
 END;
 $$;
 
@@ -63,7 +63,7 @@ BEGIN
     WHERE status IN ('completed', 'processing')
       AND created_at >= start_date 
       AND created_at <= end_date
-      AND (p_source IS NULL OR source = p_source)
+      AND (p_source IS NULL OR source_type = p_source::public.order_source_type)
     GROUP BY date_trunc(period, created_at)
     ORDER BY date_trunc(period, created_at) ASC;
 END;

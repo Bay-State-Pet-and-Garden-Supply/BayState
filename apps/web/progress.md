@@ -1,21 +1,25 @@
 # Progress
 
 ## Status
-Active — post-oracle fixes applied.
+In Progress
 
-## Oracle Fixes Applied
-- **20260509200000**: Added `ALTER COLUMN payment_status DROP DEFAULT` before enum type conversion
-- **20260509230000**: Added admin/staff guard + `SET LOCAL search_path TO ''` in `get_dashboard_recent_activity()` to prevent customer data exposure via SECURITY DEFINER function
-- **integra-sync.ts**: Removed invalid `name`/`price` top-level columns from `products_ingestion.upsert()` — only `sku`, `input` (JSONB), and `pipeline_status` are valid columns. Trace metadata stays inside `input` where Supabase expects it.
-- **AdminOrdersClient.tsx**: Modal now fetches full Order via GET `/api/orders/[id]` instead of casting AdminOrderListRow to Order
-- **mutations.ts, actions.ts**: All `order_events.insert()` calls now capture and log errors instead of silencing them
-
-## Tasks
+## Completed
+- Added `recommended_action` column to inventory reconciliation issues table in `SyncRunDetail` (between Issue Type and Register columns)
+- Added saved view preset buttons to `AdminOrdersClient` (Needs Attention, Ready for Pickup, Unpaid Pickup, Legacy, Register, Cancelled)
 
 ## Files Changed
-- `components/admin/orders/AdminOrdersClient.tsx` — Added `loadingOrder` state, `handleViewOrder` fetch, removed `as unknown as Order` cast
-- `lib/admin/orders/mutations.ts` — All 5 mutation functions log event insert errors
-- `app/admin/orders/actions.ts` — `updateOrderStatusAction` logs event insert errors
+- `components/admin/inventory/sync-run-detail.tsx` — added 8th column "Recommendation" with truncated text + tooltip; bumped empty-state colspan from 7→8
+- `app/admin/analytics/analytics-dashboard.tsx` — added New Website channel filter, renamed labels (Online→ShopSite Legacy, In-Store→In-Store Register), added web segment to ChannelComparison bar + AOV column
+- `app/admin/analytics/page.tsx` — added `web` source fetch alongside `shopsite`/`integra` for channel comparison metrics
 
 ## Notes
-- Pre-existing FilterTab type errors in `components/admin/inventory/sync-run-detail.tsx` remain (PR 5, not related to oracle fixes)
+
+## A1 — Sidebar reorganization ✓
+
+- Added ShoppingBag (Orders), ClipboardList (Inventory), RefreshCw (Sync Runs) icon imports
+- Added "Operations" section: Orders, Inventory, Sync Runs (all staff-visible)
+- Renamed "Storefront" to "Catalog"
+- Orders, Inventory, Sync Runs positioned after Analytics, before Catalog
+- All existing adminOnly visibility unchanged
+- TypeScript: clean
+- File: `components/admin/sidebar.tsx`
