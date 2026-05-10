@@ -26,9 +26,9 @@ function groupBySource(data: MigrationData[]): ChannelTrend {
     }
   }
   // Sort each channel by month ascending
-  for (const channel of Object.values(grouped)) {
-    channel.sort((a, b) => a.month.localeCompare(b.month));
-  }
+  (Object.values(grouped) as MigrationData[][]).forEach((channel) => {
+    channel.sort((a: MigrationData, b: MigrationData) => a.month.localeCompare(b.month));
+  });
   return grouped;
 }
 
