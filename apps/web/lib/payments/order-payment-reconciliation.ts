@@ -100,14 +100,24 @@ export async function claimWebhookEvent(
   // Successfully inserted — first time seeing this event
   if (!error) return 'new';
 
-  // Conflict — event already exists
+  // Only unique violation (23505) is a legitimate duplicate.
+  // Any other DB error should propagate to the caller.
+  if (error.code !== '23505') {
+    throw new Error(`Failed to insert webhook event ${eventId}: ${error.message} (code ${error.code})`);
+  }
+
+  // Conflict — event already exists, check status
   const { data: existing } = await supabase
     .from('stripe_webhook_events')
     .select('status')
     .eq('event_id', eventId)
     .single();
 
-  if (!existing) return 'new'; // race condition, treat as new
+  if (!existing) {
+    // Race condition: event was inserted but select returned nothing.
+    // Treat as new — the next attempt will resolve correctly.
+    return 'new';
+  }
 
   if (existing.status === 'failed') {
     // Retry: update status back to processing
@@ -118,7 +128,11 @@ export async function claimWebhookEvent(
     return 'retry';
   }
 
-  // processed, skipped, or currently processing — skip
+  if (existing.status === 'processing') {
+    console.warn(`Webhook event ${eventId} is still processing — treating as stuck processing, returning duplicate`);
+  }
+
+  // processed or skipped — skip
   return 'duplicate';
 }
 
@@ -250,25 +264,27 @@ async function updateOrderPaymentStatus(
 
 /**
  * Returns true if `newStatus` is a downgrade from `currentStatus`.
- * We never want to go from paid/refunded back to unpaid/failed.
+ * Uses explicit allowed transitions to prevent invalid state changes.
+ * Terminal states (refunded, voided) cannot be changed.
+ * Paid orders cannot go to failed, voided, unpaid, or authorized.
  */
 function isDowngrade(current: PaymentStatus, newStatus: PaymentStatus): boolean {
-  const hierarchy: Record<PaymentStatus, number> = {
-    unpaid: 0,
-    authorized: 1,
-    paid: 3,
-    failed: 1,
-    partially_refunded: 4,
-    refunded: 5,
-    voided: 6,
+  // Same status is always allowed (no-op update)
+  if (current === newStatus) return false;
+
+  const allowedTransitions: Record<PaymentStatus, ReadonlySet<PaymentStatus>> = {
+    unpaid: new Set(['authorized', 'paid', 'failed', 'voided']),
+    authorized: new Set(['paid', 'failed', 'voided']),
+    failed: new Set(['paid', 'voided']),
+    paid: new Set(['partially_refunded', 'refunded']),
+    partially_refunded: new Set(['refunded']),
+    refunded: new Set([]), // terminal
+    voided: new Set([]), // terminal
   };
 
-  const currentLevel = hierarchy[current] ?? 0;
-  const newLevel = hierarchy[newStatus] ?? 0;
-
-  // Allow same-level transitions (e.g. paid -> partially_refunded)
-  // but not going from paid (3) to unpaid (0) or failed (1)
-  return newLevel < currentLevel && currentLevel >= 3;
+  const allowed = allowedTransitions[current];
+  if (!allowed) return true; // unknown current status — block
+  return !allowed.has(newStatus);
 }
 
 // ---------------------------------------------------------------------------
@@ -299,6 +315,46 @@ export async function handlePaymentIntentSucceeded(
   if (!orderId) {
     console.warn('PaymentIntent has no order_id metadata:', paymentIntent.id);
     await finalizeWebhookEvent(eventId, 'skipped', 'No order_id in metadata');
+    return result;
+  }
+
+  // --- Verify amount and currency against the stored order ---
+  const supabase = await createAdminClient();
+  const { data: order } = await supabase
+    .from('orders')
+    .select('total, stripe_payment_intent_id')
+    .eq('id', orderId)
+    .single();
+
+  if (!order) {
+    console.warn(`Order ${orderId} not found for payment_intent.succeeded`);
+    await finalizeWebhookEvent(eventId, 'skipped', `Order ${orderId} not found`);
+    return result;
+  }
+
+  const expectedCents = Math.round(order.total * 100);
+  const actualReceivedCents = paymentIntent.amount_received || paymentIntent.amount;
+
+  if (actualReceivedCents !== expectedCents) {
+    console.error(
+      `PaymentIntent ${paymentIntent.id} amount mismatch: expected ${expectedCents}, received ${actualReceivedCents}`
+    );
+    await finalizeWebhookEvent(eventId, 'failed', `Amount mismatch: expected ${expectedCents}, got ${actualReceivedCents}`);
+    return result;
+  }
+
+  if (paymentIntent.currency !== 'usd') {
+    console.error(`PaymentIntent ${paymentIntent.id} unexpected currency: ${paymentIntent.currency}`);
+    await finalizeWebhookEvent(eventId, 'failed', `Unexpected currency: ${paymentIntent.currency}`);
+    return result;
+  }
+
+  // Verify the PaymentIntent ID either isn't set yet or matches
+  if (order.stripe_payment_intent_id && order.stripe_payment_intent_id !== paymentIntent.id) {
+    console.error(
+      `PaymentIntent ${paymentIntent.id} does not match stored PI ${order.stripe_payment_intent_id} for order ${orderId}`
+    );
+    await finalizeWebhookEvent(eventId, 'failed', 'PaymentIntent ID mismatch with stored value');
     return result;
   }
 
@@ -425,29 +481,38 @@ export async function handleChargeRefunded(
   }
 
   result.orderId = order.id;
-  const refundAmount = dollarsFromCents(charge.amount_refunded);
-  const previousRefunded = order.refunded_amount || 0;
-  const newRefundedAmount = previousRefunded + refundAmount;
-  const newStatus = refundStatus(newRefundedAmount, order.total);
+
+  // charge.amount_refunded is cumulative from Stripe.
+  // Set refunded_amount directly to this cumulative value,
+  // not added to the previous amount.
+  const cumulativeRefundedCents = charge.amount_refunded;
+  const cumulativeRefundedDollars = dollarsFromCents(cumulativeRefundedCents);
+  const previousRefundedDollars = order.refunded_amount || 0;
+  const newStatus = refundStatus(cumulativeRefundedDollars, order.total);
 
   result.newStatus = newStatus;
   result.previousStatus = order.payment_status as PaymentStatus;
 
   const { changed } = await updateOrderPaymentStatus(order.id, newStatus, {
-    refunded_amount: newRefundedAmount,
+    refunded_amount: cumulativeRefundedDollars,
   });
   result.updated = changed;
 
-  // Record refund transaction
-  await recordPayment(
-    order.id,
-    refundAmount,
-    charge.currency,
-    paymentIntentId,
-    charge.id,
-    'refunded',
-    eventId
-  );
+  // Record refund transaction (only the delta for this individual refund)
+  const deltaRefundDollars = cumulativeRefundedDollars - previousRefundedDollars;
+  if (deltaRefundDollars > 0) {
+    await recordPayment(
+      order.id,
+      deltaRefundDollars, // only this individual refund amount, not cumulative
+      charge.currency,
+      paymentIntentId,
+      charge.id,
+      'refunded',
+      eventId
+    );
+  } else {
+    console.warn(`Refund event for order ${order.id}: cumulative ${cumulativeRefundedDollars} not > previous ${previousRefundedDollars}, skipping payment record`);
+  }
 
   await finalizeWebhookEvent(eventId, changed ? 'processed' : 'skipped');
   return result;
@@ -485,12 +550,9 @@ export async function reconcileFromBrowser(
     );
   }
 
-  const chargedAmount = dollarsFromCents(paymentIntent.amount_received || paymentIntent.amount);
-  const chargeId = typeof paymentIntent.latest_charge === 'string'
-    ? paymentIntent.latest_charge
-    : null;
-
-  // Update order status
+  // Update order status only.
+  // Payment transaction recording is left to the webhook (`payment_intent.succeeded`).
+  // This avoids duplicate order_payments rows when both browser and webhook reconcile.
   const { previousStatus, changed } = await updateOrderPaymentStatus(
     orderId,
     'paid',
@@ -498,19 +560,6 @@ export async function reconcileFromBrowser(
   );
   result.previousStatus = previousStatus;
   result.updated = changed;
-
-  // Record payment if not already recorded (idempotent by event_id)
-  if (eventId) {
-    await recordPayment(
-      orderId,
-      chargedAmount,
-      paymentIntent.currency,
-      paymentIntent.id,
-      chargeId,
-      'succeeded',
-      eventId
-    );
-  }
 
   return result;
 }

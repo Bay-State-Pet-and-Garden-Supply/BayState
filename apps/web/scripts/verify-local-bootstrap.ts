@@ -11,11 +11,14 @@
  *   5. At least 4 services exist
  *   6. Site settings exist
  *   7. Facet definitions and values exist
+ *   8. Featured and pickup-only products exist
  *
  * Exit codes:
  *   0 = all checks pass
  *   1 = one or more checks failed
  */
+
+import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -73,66 +76,55 @@ async function runCheck<T>(
   }
 }
 
-async function sqlQuery(query: string): Promise<unknown[]> {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-    },
-    body: JSON.stringify({ query }),
-  });
-  if (response.ok) return await response.json() as unknown[];
+/**
+ * Count rows in a table using Supabase client with exact count.
+ */
+async function countRows(
+  supabase: ReturnType<typeof createClient>,
+  table: string
+): Promise<number> {
+  const { count, error } = await supabase
+    .from(table)
+    .select('*', { count: 'exact', head: true });
 
-  // Fallback: use the REST API directly
-  const tableMatch = query.match(/FROM\s+(\w+)/i);
-  if (!tableMatch) throw new Error(`Cannot parse table from query: ${query}`);
-  const table = tableMatch[1];
-
-  const countMatch = query.match(/COUNT\(\*\)/i);
-  if (countMatch) {
-    const resp = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=count`, {
-      headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        'Accept': 'application/json',
-      },
-    });
-    if (!resp.ok) throw new Error(`REST API error: ${resp.status} ${resp.statusText}`);
-    return await resp.json() as unknown[];
+  if (error) {
+    throw new Error(`Failed to count ${table}: ${error.message}`);
   }
 
-  const limitMatch = query.match(/LIMIT\s+(\d+)/i);
-  const limit = limitMatch ? parseInt(limitMatch[1], 10) : 10;
-  const resp = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*&limit=${limit}`, {
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      'Accept': 'application/json',
-    },
-  });
-  if (!resp.ok) throw new Error(`REST API error: ${resp.status} ${resp.statusText}`);
-  return await resp.json() as unknown[];
+  return count ?? 0;
 }
 
-async function countRows(table: string): Promise<number> {
-  const result = await sqlQuery(`SELECT COUNT(*) FROM ${table}`);
-  // REST API returns array of objects with 'count' property
-  const rows = result as Array<Record<string, unknown>>;
-  if (rows.length > 0 && 'count' in rows[0]) {
-    return Number(rows[0].count);
+/**
+ * Count rows with a filter.
+ */
+async function countRowsWhere(
+  supabase: ReturnType<typeof createClient>,
+  table: string,
+  column: string,
+  value: unknown
+): Promise<number> {
+  const { count, error } = await supabase
+    .from(table)
+    .select('*', { count: 'exact', head: true })
+    .eq(column, value);
+
+  if (error) {
+    throw new Error(`Failed to count ${table} where ${column}=${value}: ${error.message}`);
   }
-  return rows.length;
+
+  return count ?? 0;
 }
 
 async function main() {
   console.log('🔍 Verifying local bootstrap...\n');
 
+  // Create Supabase admin client (uses service_role key for full access)
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
   // 1. Products
   await runCheck(
     'At least 12 products',
-    () => countRows('products'),
+    () => countRows(supabase, 'products'),
     (count) => count >= 12,
     (count) => `Found ${count} products (expected ≥12)`
   );
@@ -140,7 +132,7 @@ async function main() {
   // 2. Brands
   await runCheck(
     'At least 6 brands',
-    () => countRows('brands'),
+    () => countRows(supabase, 'brands'),
     (count) => count >= 6,
     (count) => `Found ${count} brands (expected ≥6)`
   );
@@ -148,7 +140,7 @@ async function main() {
   // 3. Categories
   await runCheck(
     'At least 8 categories',
-    () => countRows('categories'),
+    () => countRows(supabase, 'categories'),
     (count) => count >= 8,
     (count) => `Found ${count} categories (expected ≥8)`
   );
@@ -156,7 +148,7 @@ async function main() {
   // 4. Services
   await runCheck(
     'At least 4 services',
-    () => countRows('services'),
+    () => countRows(supabase, 'services'),
     (count) => count >= 4,
     (count) => `Found ${count} services (expected ≥4)`
   );
@@ -164,7 +156,7 @@ async function main() {
   // 5. Site settings
   await runCheck(
     'At least 3 site settings',
-    () => countRows('site_settings'),
+    () => countRows(supabase, 'site_settings'),
     (count) => count >= 3,
     (count) => `Found ${count} site settings (expected ≥3)`
   );
@@ -172,7 +164,7 @@ async function main() {
   // 6. Facet definitions
   await runCheck(
     'At least 3 facet definitions',
-    () => countRows('facet_definitions'),
+    () => countRows(supabase, 'facet_definitions'),
     (count) => count >= 3,
     (count) => `Found ${count} facet definitions (expected ≥3)`
   );
@@ -180,7 +172,7 @@ async function main() {
   // 7. Facet values
   await runCheck(
     'At least 10 facet values',
-    () => countRows('facet_values'),
+    () => countRows(supabase, 'facet_values'),
     (count) => count >= 10,
     (count) => `Found ${count} facet values (expected ≥10)`
   );
@@ -188,7 +180,7 @@ async function main() {
   // 8. Pet types
   await runCheck(
     'At least 3 pet types',
-    () => countRows('pet_types'),
+    () => countRows(supabase, 'pet_types'),
     (count) => count >= 3,
     (count) => `Found ${count} pet types (expected ≥3)`
   );
@@ -196,17 +188,17 @@ async function main() {
   // 9. Check featured product
   await runCheck(
     'At least 1 featured product',
-    () => sqlQuery("SELECT * FROM product_storefront_settings WHERE is_featured = true LIMIT 1"),
-    (rows) => (rows as unknown[]).length >= 1,
-    () => 'No featured product found'
+    () => countRowsWhere(supabase, 'product_storefront_settings', 'is_featured', true),
+    (count) => count >= 1,
+    (count) => `Found ${count} featured products (expected ≥1)`
   );
 
   // 10. Check pickup-only product
   await runCheck(
     'At least 1 pickup-only product',
-    () => sqlQuery("SELECT * FROM product_storefront_settings WHERE pickup_only = true LIMIT 1"),
-    (rows) => (rows as unknown[]).length >= 1,
-    () => 'No pickup-only product found'
+    () => countRowsWhere(supabase, 'product_storefront_settings', 'pickup_only', true),
+    (count) => count >= 1,
+    (count) => `Found ${count} pickup-only products (expected ≥1)`
   );
 
   // Print results

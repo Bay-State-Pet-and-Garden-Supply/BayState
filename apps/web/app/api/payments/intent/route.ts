@@ -135,15 +135,21 @@ export async function POST(request: NextRequest) {
       customer_email: order.customer_email || '',
     };
 
+    // Use an amount-versioned idempotency key to prevent Stripe from
+    // returning a stale (cancelled) PI result if the amount changed
+    // between retries.
+    const amountCents = Math.round(amount * 100);
+    const idempotencyKey = `order:${orderId}:${amountCents}`;
+
     const paymentIntent = await stripeClient.paymentIntents.create(
       {
-        amount: Math.round(amount * 100),
+        amount: amountCents,
         currency: 'usd',
         automatic_payment_methods: { enabled: true },
         metadata,
       },
       {
-        idempotencyKey: `pi:${orderId}`,
+        idempotencyKey,
       }
     );
 

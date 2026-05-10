@@ -11,22 +11,33 @@ A high-performance, mobile-first PWA e-commerce platform. Built with Next.js 16 
 
 ## Quick Start (Local Development)
 
+**Prerequisites:**
+- Docker Desktop running (for Supabase local containers)
+- Stripe CLI installed (for payment testing — optional)
+
 ```bash
 # 1. Install dependencies
 bun install
 
-# 2. Copy and edit environment
-cp .env.local.example .env.local
-# Fill in values from supabase status and Stripe dashboard (test mode)
-
-# 3. Start local Supabase
+# 2. Start local Supabase (Docker)
 bun run db:start
+
+# 3. Get local Supabase keys
+bun run db:status
+
+cp .env.local.example .env.local
+# Fill in values from 'bun run db:status' output and Stripe dashboard (test mode)
 
 # 4. Run migrations and seed
 bun run db:reset
 
+# ⚠️ Known migration issue: The chain has a pre-existing ordering problem
+# with `supabase/migrations/20251230180000_products_published_view.sql`
+# referencing `products_ingestion` before it is created. If `db:reset`
+# fails, try adding a stub products_ingestion table temporarily.
+
 # 5. Verify seed data
-bun scripts/verify-local-bootstrap.ts
+bun run local:verify
 
 # 6. Start dev server
 bun run dev        # http://localhost:3000
@@ -87,8 +98,17 @@ bun run stripe:listen
 #    Copy sk_test_... -> STRIPE_SECRET_KEY
 
 # 5. Restart Next.js dev server
-# 6. Test card: 4242 4242 4242 4242 (any future date, any CVC, any ZIP)
 ```
+
+### Stripe Test Cards
+
+| Card Number              | Result              |
+|--------------------------|---------------------|
+| `4242 4242 4242 4242`    | Success             |
+| `4000 0000 0000 0002`    | Generic decline     |
+| `4000 0025 0000 3155`    | Requires SCA/auth   |
+
+Use any future expiration date, any CVC, any ZIP.
 
 ### Stripe Config
 
@@ -109,6 +129,20 @@ Configure in Stripe Dashboard → Webhooks. Recommended events:
 - `payment_intent.payment_failed`
 - `payment_intent.canceled`
 - `charge.refunded`
+
+### Vercel Environment Variables
+
+| Variable | Source | Preview vs Production |
+|----------|--------|----------------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project → API | Same for all deploys |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase project → API | Same for all deploys |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase project → API | Same for all deploys |
+| `NEXT_PUBLIC_SITE_URL` | Vercel domain | Preview: auto-set by Vercel |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe Dashboard | `pk_test_...` for preview, `pk_live_...` for production |
+| `STRIPE_SECRET_KEY` | Stripe Dashboard | `sk_test_...` for preview, `sk_live_...` for production |
+| `STRIPE_WEBHOOK_SECRET` | Stripe CLI or Dashboard | Different per environment |
+
+Set in Vercel Project → Environment Variables. The app's `vercel.json` at the repo root and `apps/web/vercel.json` both configure `bun install --frozen-lockfile` and `bun run build`.
 
 ## Payment Flow
 

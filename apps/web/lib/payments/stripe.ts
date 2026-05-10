@@ -248,12 +248,25 @@ export async function createEphemeralKey(
  * needs the webhook signing secret to verify the signature.
  * The webhook route should call this before requiring any API-key-dependent
  * operations.
+ *
+ * Rejects known placeholder webhook secrets with a clear error.
  */
 export function constructWebhookEvent(
   payload: string | Buffer,
   signature: string,
   webhookSecret: string
 ): Stripe.Event {
+  if (
+    !webhookSecret ||
+    webhookSecret === 'whsec_replace_me_from_stripe_cli'
+  ) {
+    throw new Error(
+      'STRIPE_WEBHOOK_SECRET is not set to a real value. ' +
+      'Run `stripe listen --forward-to http://localhost:3000/api/payments/webhook` ' +
+      'and copy the whsec_... secret into your .env.local'
+    );
+  }
+
   // Create a minimal Stripe instance solely for signature verification.
   // The API key is irrelevant for constructEvent.
   const key = process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder_for_webhook_construction';
