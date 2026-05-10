@@ -12,11 +12,13 @@ import { NextRequest } from 'next/server';
 const mockGetStripeServerClient = jest.fn();
 const mockRetrievePaymentIntent = jest.fn();
 const mockCreatePaymentIntent = jest.fn();
+const mockCancelPaymentIntent = jest.fn();
 const mockCreateAdminClient = jest.fn();
 const mockSingle = jest.fn();
 const mockSelect = jest.fn();
-const mockEq = jest.fn();
-const mockUpdate = jest.fn();
+const mockSelectEq = jest.fn(); // for select queries: .eq('id', ...)
+const mockUpdate = jest.fn();    // for update queries
+const mockUpdateEq = jest.fn();  // for update chain: .eq('id', ...)
 
 jest.mock('@/lib/payments/stripe', () => ({
   getStripeServerClient: (...args: unknown[]) => mockGetStripeServerClient(...args),
@@ -38,9 +40,13 @@ function createMockRequest(body: unknown): NextRequest {
   } as unknown as NextRequest;
 }
 
+/** Sets up the Supabase mock chain for the route handler:
+ *  from('orders').select('*').eq('id', orderId).single()
+ *  from('orders').update({...}).eq('id', orderId)
+ */
 function mockSupabaseOrder(overrides: Record<string, unknown> = {}) {
   const defaultOrder = {
-    id: '00000000-0000-0000-0000-000000000001',
+    id: '11111111-1111-4111-8111-111111111111',
     order_number: 'BSP-20260510-0001',
     total: 79.99,
     payment_status: 'unpaid',
@@ -48,14 +54,16 @@ function mockSupabaseOrder(overrides: Record<string, unknown> = {}) {
     customer_email: 'test@example.local',
   };
 
-  // Set up chain: supabase.from('orders').select('*').eq('id', orderId).single()
   mockSingle.mockResolvedValue({
     data: { ...defaultOrder, ...overrides },
     error: null,
   });
 
-  mockEq.mockReturnValue({ single: mockSingle });
-  mockSelect.mockReturnValue({ eq: mockEq });
+  mockSelectEq.mockReturnValue({ single: mockSingle });
+  mockSelect.mockReturnValue({ eq: mockSelectEq });
+
+  mockUpdateEq.mockResolvedValue({ error: null });
+  mockUpdate.mockReturnValue({ eq: mockUpdateEq });
 
   mockCreateAdminClient.mockReturnValue({
     from: () => ({
@@ -76,10 +84,10 @@ describe('POST /api/payments/intent', () => {
       paymentIntents: {
         create: mockCreatePaymentIntent,
         retrieve: mockRetrievePaymentIntent,
-        cancel: jest.fn(),
+        cancel: mockCancelPaymentIntent,
       },
     });
-    mockUpdate.mockReturnValue(Promise.resolve({ error: null }));
+    mockSupabaseOrder();
   });
 
   it('returns 400 for empty body', async () => {
@@ -90,7 +98,7 @@ describe('POST /api/payments/intent', () => {
     expect(body.error).toContain('Invalid request');
   });
 
-  it('returns 400 for missing orderId', async () => {
+  it('returns 400 for invalid orderId', async () => {
     const req = createMockRequest({ orderId: 'not-a-uuid' });
     const res = await POST(req);
     expect(res.status).toBe(400);
@@ -100,9 +108,8 @@ describe('POST /api/payments/intent', () => {
     mockGetStripeServerClient.mockImplementation(() => {
       throw new Error('STRIPE_SECRET_KEY not set');
     });
-    mockSupabaseOrder();
 
-    const req = createMockRequest({ orderId: '00000000-0000-0000-0000-000000000001' });
+    const req = createMockRequest({ orderId: '11111111-1111-4111-8111-111111111111' });
     const res = await POST(req);
     expect(res.status).toBe(500);
     const body = await res.json();
@@ -111,20 +118,15 @@ describe('POST /api/payments/intent', () => {
 
   it('returns 404 when order not found', async () => {
     mockSingle.mockResolvedValue({ data: null, error: { message: 'Not found' } });
-    mockEq.mockReturnValue({ single: mockSingle });
-    mockSelect.mockReturnValue({ eq: mockEq });
-    mockCreateAdminClient.mockReturnValue({
-      from: () => ({ select: mockSelect, update: mockUpdate }),
-    });
 
-    const req = createMockRequest({ orderId: '00000000-0000-0000-0000-000000000099' });
+    const req = createMockRequest({ orderId: '55555555-5555-4555-8555-555555555599' });
     const res = await POST(req);
     expect(res.status).toBe(404);
   });
 
   it('returns 409 when order is already paid', async () => {
     mockSupabaseOrder({ payment_status: 'paid' });
-    const req = createMockRequest({ orderId: '00000000-0000-0000-0000-000000000001' });
+    const req = createMockRequest({ orderId: '11111111-1111-4111-8111-111111111111' });
     const res = await POST(req);
     expect(res.status).toBe(409);
     const body = await res.json();
@@ -133,14 +135,14 @@ describe('POST /api/payments/intent', () => {
 
   it('returns 409 when order is refunded', async () => {
     mockSupabaseOrder({ payment_status: 'refunded' });
-    const req = createMockRequest({ orderId: '00000000-0000-0000-0000-000000000001' });
+    const req = createMockRequest({ orderId: '11111111-1111-4111-8111-111111111111' });
     const res = await POST(req);
     expect(res.status).toBe(409);
   });
 
   it('returns 409 when order is voided', async () => {
     mockSupabaseOrder({ payment_status: 'voided' });
-    const req = createMockRequest({ orderId: '00000000-0000-0000-0000-000000000001' });
+    const req = createMockRequest({ orderId: '11111111-1111-4111-8111-111111111111' });
     const res = await POST(req);
     expect(res.status).toBe(409);
   });
@@ -156,7 +158,7 @@ describe('POST /api/payments/intent', () => {
       status: 'requires_payment_method',
     });
 
-    const req = createMockRequest({ orderId: '00000000-0000-0000-0000-000000000001' });
+    const req = createMockRequest({ orderId: '11111111-1111-4111-8111-111111111111' });
     const res = await POST(req);
     expect(res.status).toBe(200);
 
@@ -172,12 +174,14 @@ describe('POST /api/payments/intent', () => {
         currency: 'usd',
       }),
       expect.objectContaining({
-        idempotencyKey: 'pi:00000000-0000-0000-0000-000000000001',
+        idempotencyKey: 'pi:11111111-1111-4111-8111-111111111111',
       })
     );
 
     // Verify PI ID was stored on order
-    expect(mockUpdate).toHaveBeenCalled();
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ stripe_payment_intent_id: 'pi_test_new_001' })
+    );
   });
 
   it('reuses an existing active PaymentIntent when amount matches', async () => {
@@ -194,7 +198,7 @@ describe('POST /api/payments/intent', () => {
       status: 'requires_payment_method',
     });
 
-    const req = createMockRequest({ orderId: '00000000-0000-0000-0000-000000000001' });
+    const req = createMockRequest({ orderId: '11111111-1111-4111-8111-111111111111' });
     const res = await POST(req);
     expect(res.status).toBe(200);
 
@@ -206,15 +210,6 @@ describe('POST /api/payments/intent', () => {
   });
 
   it('cancels and recreates PI when amount changes', async () => {
-    const mockCancel = jest.fn().mockResolvedValue({ id: 'pi_old', status: 'canceled' });
-    mockGetStripeServerClient.mockReturnValue({
-      paymentIntents: {
-        create: mockCreatePaymentIntent,
-        retrieve: mockRetrievePaymentIntent,
-        cancel: mockCancel,
-      },
-    });
-
     mockSupabaseOrder({
       total: 89.99, // Changed from original
       stripe_payment_intent_id: 'pi_old_amount',
@@ -235,7 +230,7 @@ describe('POST /api/payments/intent', () => {
       currency: 'usd',
     });
 
-    const req = createMockRequest({ orderId: '00000000-0000-0000-0000-000000000001' });
+    const req = createMockRequest({ orderId: '11111111-1111-4111-8111-111111111111' });
     const res = await POST(req);
     expect(res.status).toBe(200);
 
@@ -243,7 +238,7 @@ describe('POST /api/payments/intent', () => {
     expect(body.paymentIntentId).toBe('pi_new_amount');
 
     // Old PI should have been canceled
-    expect(mockCancel).toHaveBeenCalledWith('pi_old_amount');
+    expect(mockCancelPaymentIntent).toHaveBeenCalledWith('pi_old_amount');
     // New PI created
     expect(mockCreatePaymentIntent).toHaveBeenCalled();
   });

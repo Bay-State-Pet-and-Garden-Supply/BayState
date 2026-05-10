@@ -34,7 +34,7 @@ jest.mock('@/lib/supabase/server', () => ({
 // Helpers
 // ---------------------------------------------------------------------------
 
-const VALID_ORDER_ID = '00000000-0000-0000-0000-000000000001';
+const VALID_ORDER_ID = '11111111-1111-4111-8111-111111111111';
 const VALID_PI_ID = 'pi_test_complete_001';
 
 function createMockRequest(body: unknown): NextRequest {
