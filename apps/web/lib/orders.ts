@@ -59,6 +59,7 @@ export interface Order {
   created_at: string;
   updated_at: string;
   items?: OrderItem[];
+  events?: OrderEvent[];
 }
 
 export interface CreateOrderInput {
@@ -194,7 +195,7 @@ export async function getOrderById(id: string): Promise<Order | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('orders')
-    .select('*, items:order_items(*)')
+    .select('*, items:order_items(*), events:order_events(*)')
     .eq('id', id)
     .single();
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useCallback, useState } from 'react';
-import { Package, User, Mail, Phone, FileText, CreditCard, Truck, MapPin, Globe } from 'lucide-react';
+import { Package, User, Mail, Phone, FileText, CreditCard, Truck, MapPin, Globe, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ConfirmationDialog } from '@/components/admin/confirmation-dialog';
+import { OrderTimeline } from './OrderTimeline';
 
 interface OrderModalProps {
   order: Order;
@@ -476,6 +477,20 @@ export function OrderModal({
                     )}
                   </CardContent>
                 </Card>
+
+                {order.events && order.events.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Clock className="h-5 w-5" />
+                        Timeline
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <OrderTimeline events={order.events} />
+                    </CardContent>
+                  </Card>
+                )}
 
                 {order.notes && (
                   <Card>

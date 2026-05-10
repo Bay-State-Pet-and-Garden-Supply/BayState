@@ -12,7 +12,7 @@ import type { InventorySyncRunSummary } from '@/lib/admin/inventory/types';
 import type { InventoryReconciliationItemRow } from '@/lib/admin/integrations/reconciliation-types';
 import { IssueTypeBadge } from './issue-type-badge';
 import { IssueStatusBadge } from './issue-status-badge';
-import { markInventoryIssueStatusAction, pushInventoryIssueToPipelineAction } from '@/app/admin/inventory/actions';
+import { markInventoryIssueStatusAction, pushInventoryIssueToPipelineAction, batchMarkIssuesStatusAction } from '@/app/admin/inventory/actions';
 
 type FilterTab =
   | { value: string; label: string; param: 'issue_type' | 'status' }
@@ -64,6 +64,7 @@ export function SyncRunDetail({
   const activeIssueType = searchParams.get('issue_type') ?? '';
   const activeStatus = searchParams.get('status') ?? '';
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const handleAction = useCallback(
     async (action: () => Promise<unknown>) => {
@@ -97,6 +98,73 @@ export function SyncRunDetail({
     },
     [router, searchParams]
   );
+
+  const handleBatchAction = useCallback(
+    async (status: 'resolved' | 'ignored') => {
+      if (selectedIds.size === 0) return;
+      setActionLoading('batch');
+      try {
+        const ids = Array.from(selectedIds);
+        const result = await batchMarkIssuesStatusAction(ids, status);
+        if (result.success) {
+          toast.success(`${ids.length} issues ${status}`);
+          setSelectedIds(new Set());
+          router.refresh();
+        } else {
+          toast.error('Failed to update issues');
+        }
+      } catch {
+        toast.error('Action failed');
+      } finally {
+        setActionLoading(null);
+      }
+    },
+    [selectedIds, router]
+  );
+
+  const handleBatchPush = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    setActionLoading('batch');
+    try {
+      const ids = Array.from(selectedIds);
+      // Push only register-only items; skip others silently
+      const registerOnlyIds = items.filter(i => selectedIds.has(i.id) && i.issue_type === 'register_only').map(i => i.id);
+      if (registerOnlyIds.length === 0) {
+        toast.error('No register-only items selected');
+        setActionLoading(null);
+        return;
+      }
+      const result = await pushInventoryIssueToPipelineAction(registerOnlyIds[0]);
+      if (result.success) {
+        toast.success('Pushed to pipeline');
+        setSelectedIds(new Set());
+        router.refresh();
+      } else {
+        toast.error(result.error ?? 'Failed to push');
+      }
+    } catch {
+      toast.error('Action failed');
+    } finally {
+      setActionLoading(null);
+    }
+  }, [selectedIds, router, items]);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (selectedIds.size === items.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(items.map((i) => i.id)));
+    }
+  }, [items, selectedIds.size]);
 
   const runStatusColor: Record<string, string> = {
     completed: 'bg-green-100 text-green-800',
@@ -185,6 +253,14 @@ export function SyncRunDetail({
         <table className="min-w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
+              <th className="w-10 px-2 py-3">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300"
+                  checked={selectedIds.size === items.length && items.length > 0}
+                  onChange={toggleSelectAll}
+                />
+              </th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">SKU</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Product</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Issue Type</th>
@@ -205,6 +281,14 @@ export function SyncRunDetail({
             ) : (
               items.map((item) => (
                 <tr key={item.id} className="hover:bg-muted/30">
+                  <td className="px-2 py-3">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300"
+                      checked={selectedIds.has(item.id)}
+                      onChange={() => toggleSelect(item.id)}
+                    />
+                  </td>
                   <td className="px-4 py-3 font-mono text-xs">{item.sku}</td>
                   <td className="px-4 py-3">
                     <p className="font-medium">{item.register_name ?? item.website_name ?? '—'}</p>
@@ -300,6 +384,44 @@ export function SyncRunDetail({
           </tbody>
         </table>
       </div>
+
+      {/* Batch Actions */}
+      {selectedIds.size > 0 && (
+        <div className="sticky bottom-4 bg-card border rounded-lg p-3 shadow-lg flex items-center gap-3 z-10">
+          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <Button
+            size="sm"
+            disabled={actionLoading === 'batch'}
+            onClick={() => handleBatchAction('resolved')}
+          >
+            Resolve Selected
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={actionLoading === 'batch'}
+            onClick={() => handleBatchAction('ignored')}
+          >
+            Ignore Selected
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={actionLoading === 'batch'}
+            onClick={handleBatchPush}
+          >
+            Push Selected to Pipeline
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={actionLoading === 'batch'}
+            onClick={() => setSelectedIds(new Set())}
+          >
+            Clear
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -26,7 +26,7 @@ export async function batchMarkIssuesStatusAction(
   }
 
   revalidatePath('/admin/inventory');
-  return { success: true, count: count ?? undefined };
+  return { success: true, count: count != null ? count : undefined };
 }
 
 export async function markInventoryIssueStatusAction(
