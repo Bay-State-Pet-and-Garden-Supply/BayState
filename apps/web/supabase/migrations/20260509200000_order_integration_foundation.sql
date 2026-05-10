@@ -75,6 +75,9 @@ BEGIN
 EXCEPTION WHEN undefined_object THEN NULL;
 END $$;
 
+-- Drop old default before type conversion
+ALTER TABLE public.orders ALTER COLUMN payment_status DROP DEFAULT;
+
 -- Update existing values to match new enum labels
 UPDATE public.orders
 SET payment_status =

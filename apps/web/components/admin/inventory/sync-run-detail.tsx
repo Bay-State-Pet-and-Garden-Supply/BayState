@@ -14,16 +14,30 @@ import { IssueTypeBadge } from './issue-type-badge';
 import { IssueStatusBadge } from './issue-status-badge';
 import { markInventoryIssueStatusAction, pushInventoryIssueToPipelineAction } from '@/app/admin/inventory/actions';
 
-const filterTabs = [
-  { value: '', label: 'All Issues' },
-  { value: 'register_only', label: 'Register-only' },
-  { value: 'price_mismatch', label: 'Price Mismatches' },
-  { value: 'quantity_mismatch', label: 'Quantity Mismatches' },
-  { value: 'stock_status_mismatch', label: 'Stock Mismatches' },
-  { value: '', divider: true },
-  { value: 'resolved', label: 'Resolved' },
-  { value: 'ignored', label: 'Ignored' },
-  { value: 'pushed_to_pipeline', label: 'In Pipeline' },
+type FilterTab =
+  | { value: string; label: string; param: 'issue_type' | 'status' }
+  | { divider: true };
+
+const issueTypeTabs: FilterTab[] = [
+  { value: '', label: 'All Issues', param: 'issue_type' },
+  { value: 'register_only', label: 'Register-only', param: 'issue_type' },
+  { value: 'price_mismatch', label: 'Price Mismatches', param: 'issue_type' },
+  { value: 'quantity_mismatch', label: 'Quantity Mismatches', param: 'issue_type' },
+  { value: 'stock_status_mismatch', label: 'Stock Mismatches', param: 'issue_type' },
+];
+
+const statusTabs: FilterTab[] = [
+  { value: '', label: 'All Statuses', param: 'status' },
+  { value: 'resolved', label: 'Resolved', param: 'status' },
+  { value: 'ignored', label: 'Ignored', param: 'status' },
+  { value: 'pushed_to_pipeline', label: 'In Pipeline', param: 'status' },
+];
+
+const filterTabs: FilterTab[] = [
+  { value: '', label: 'All Issues', param: 'issue_type' },
+  ...issueTypeTabs.filter((t): t is { value: string; label: string; param: 'issue_type' | 'status' } => 'value' in t && t.value !== ''),
+  { divider: true as const },
+  ...statusTabs.filter((t): t is { value: string; label: string; param: 'issue_type' | 'status' } => 'value' in t && t.value !== ''),
 ];
 
 function fmtCurrency(v: number | null): string {
@@ -47,7 +61,8 @@ export function SyncRunDetail({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const activeFilter = searchParams.get('issue_type') ?? '';
+  const activeIssueType = searchParams.get('issue_type') ?? '';
+  const activeStatus = searchParams.get('status') ?? '';
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const handleAction = useCallback(
@@ -65,12 +80,18 @@ export function SyncRunDetail({
   );
 
   const setFilter = useCallback(
-    (value: string) => {
+    (value: string, param: 'issue_type' | 'status') => {
       const params = new URLSearchParams(searchParams.toString());
-      if (value) {
-        params.set('issue_type', value);
-      } else {
+      if (!value) {
+        // "All" — clear both params
         params.delete('issue_type');
+        params.delete('status');
+      } else if (param === 'status') {
+        params.delete('issue_type');
+        params.set('status', value);
+      } else {
+        params.delete('status');
+        params.set('issue_type', value);
       }
       router.push(`?${params.toString()}`);
     },
@@ -137,17 +158,21 @@ export function SyncRunDetail({
 
       {/* Filter Bar */}
       <div className="flex flex-wrap gap-2">
-        {filterTabs.map((tab) => {
+        {filterTabs.map((tab, idx) => {
           if ('divider' in tab) {
-            return <div key="divider" className="w-px bg-border mx-1" />;
+            return <div key={`divider-${idx}`} className="w-px bg-border mx-1" />;
           }
-          const isActive = activeFilter === tab.value;
+          const isActive = tab.value === ''
+            ? !activeIssueType && !activeStatus
+            : tab.param === 'status'
+              ? activeStatus === tab.value
+              : activeIssueType === tab.value;
           return (
             <Button
-              key={tab.value || '__all__'}
+              key={`${tab.param}-${tab.value}`}
               variant={isActive ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setFilter(tab.value)}
+              onClick={() => setFilter(tab.value, tab.param)}
             >
               {tab.label}
             </Button>

@@ -464,8 +464,6 @@ export async function pushRegisterOnlyIssuesToPipeline(
       .from('products_ingestion')
       .upsert({
         sku: issue.sku,
-        name: issue.register_name || issue.sku,
-        price: issue.register_price || undefined,
         input: {
           name: issue.register_name || issue.sku,
           price: issue.register_price,

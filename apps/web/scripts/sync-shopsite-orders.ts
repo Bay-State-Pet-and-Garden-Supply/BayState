@@ -332,7 +332,7 @@ async function main() {
                     }
                 }
 
-                // 8. Insert order_events for imported orders
+                // 8. Insert order_events for imported orders (deduplicated)
                 const eventRows = transformedBatch.map(({ transformedOrder }) => {
                     const orderId = orderIdByNumber.get(transformedOrder.legacy_order_number);
                     if (!orderId) return null;
@@ -344,9 +344,22 @@ async function main() {
                 }).filter(Boolean);
 
                 if (eventRows.length > 0) {
-                    const { error: eventError } = await supabase.from('order_events').insert(eventRows);
-                    if (eventError) {
-                        console.error('Failed to insert order events:', eventError.message);
+                    // Check for existing events to prevent duplicates on repeat syncs
+                    const orderIds = eventRows.map(e => e.order_id);
+                    const { data: existingEvents } = await supabase
+                        .from('order_events')
+                        .select('order_id')
+                        .in('order_id', orderIds)
+                        .eq('event_type', 'imported_from_shopsite');
+
+                    const existingOrderIds = new Set((existingEvents || []).map(e => e.order_id));
+                    const newEventRows = eventRows.filter(e => !existingOrderIds.has(e.order_id));
+
+                    if (newEventRows.length > 0) {
+                        const { error: eventError } = await supabase.from('order_events').insert(newEventRows);
+                        if (eventError) {
+                            console.error('Failed to insert order events:', eventError.message);
+                        }
                     }
                 }
 

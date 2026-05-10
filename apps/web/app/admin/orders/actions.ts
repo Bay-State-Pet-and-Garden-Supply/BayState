@@ -45,12 +45,16 @@ export async function updateOrderStatusAction(
     return { success: false, error: 'Failed to update order status' };
   }
 
-  await supabase.from('order_events').insert({
+  const { error: eventError } = await supabase.from('order_events').insert({
     order_id: id,
     event_type: 'status_changed',
     previous_value: { status: current?.status },
     new_value: { status },
   });
+
+  if (eventError) {
+    console.error('Failed to write order event:', eventError.message);
+  }
 
   revalidatePath('/admin/orders');
   return { success: true };

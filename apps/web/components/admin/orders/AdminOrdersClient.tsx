@@ -129,7 +129,8 @@ function FilterSelect({
 export function AdminOrdersClient({ initialOrders, totalCount, initialQ, initialSource, initialPaymentStatus, initialFulfillmentStatus, initialFulfillmentMethod, initialDateFrom, initialDateTo }: AdminOrdersClientProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [selectedOrder, setSelectedOrder] = useState<AdminOrderListRow | null>(null);
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [loadingOrder, setLoadingOrder] = useState(false);
     const [cancelOpen, setCancelOpen] = useState(false);
     const [pendingCancelOrder, setPendingCancelOrder] = useState<AdminOrderListRow | null>(null);
     const [cancelling, setCancelling] = useState<string | null>(null);
@@ -158,6 +159,23 @@ export function AdminOrdersClient({ initialOrders, totalCount, initialQ, initial
 
     const handleUpdate = () => {
         router.refresh();
+    };
+
+    const handleViewOrder = async (orderId: string) => {
+        setLoadingOrder(true);
+        try {
+            const res = await fetch(`/api/orders/${orderId}`);
+            if (res.ok) {
+                const data = await res.json();
+                setSelectedOrder(data.order);
+            } else {
+                toast.error('Failed to load order details');
+            }
+        } catch {
+            toast.error('Failed to load order details');
+        } finally {
+            setLoadingOrder(false);
+        }
     };
 
     const handleCloseModal = () => {
@@ -322,7 +340,7 @@ export function AdminOrdersClient({ initialOrders, totalCount, initialQ, initial
 
     const renderActions = (order: AdminOrderListRow) => (
         <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={() => setSelectedOrder(order)}>
+            <Button variant="ghost" size="sm" onClick={() => handleViewOrder(order.id)} disabled={loadingOrder}>
                 <Eye className="mr-1 h-4 w-4" />
             </Button>
             {(order.status === 'pending' || order.status === 'processing') && (
@@ -439,7 +457,7 @@ export function AdminOrdersClient({ initialOrders, totalCount, initialQ, initial
 
             {selectedOrder && (
                 <OrderModal
-                    order={selectedOrder as unknown as Order}
+                    order={selectedOrder}
                     onClose={handleCloseModal}
                     onUpdate={handleUpdate}
                 />
