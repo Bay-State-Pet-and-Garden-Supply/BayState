@@ -49,11 +49,11 @@ export function ProductSaveActions({
               {originalName || productName || "Untitled Product"}
             </h2>
             <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
-              <span className="rounded-none bg-muted border border-border px-1 font-semibold text-foreground">
+              <span className="rounded-sm bg-muted border border-border px-1.5 py-0.5 font-semibold text-foreground">
                 {selectedSku}
               </span>
               <span>•</span>
-              <span className="font-bold text-foreground uppercase tracking-widest">
+              <span className="font-bold text-foreground">
                 ${Number(productPrice || 0).toFixed(2)}
               </span>
             </div>
@@ -61,7 +61,7 @@ export function ProductSaveActions({
           {isDirty ? (
             <Badge
               variant="outline"
-              className="ml-2 h-5 border border-brand-gold bg-brand-gold/10 text-[9px] font-semibold text-brand-burgundy rounded-none animate-pulse"
+              className="ml-2 h-5 border border-brand-gold bg-brand-gold/10 text-[10px] font-semibold text-brand-burgundy rounded-sm animate-pulse"
             >
               Unsaved Changes
             </Badge>
@@ -69,7 +69,7 @@ export function ProductSaveActions({
           {saving ? (
             <Badge
               variant="outline"
-              className="ml-2 h-5 border border-border bg-muted/50 text-[9px] font-semibold text-foreground rounded-none"
+              className="ml-2 h-5 border border-border bg-muted/50 text-[10px] font-semibold text-foreground rounded-sm"
             >
               Saving...
             </Badge>
@@ -77,7 +77,7 @@ export function ProductSaveActions({
           {hasPendingCopilotReview ? (
             <Badge
               variant="outline"
-              className="ml-2 h-5 border border-primary/20 bg-primary/5 text-[9px] font-semibold text-primary rounded-none"
+              className="ml-2 h-5 border border-primary/20 bg-primary/5 text-[10px] font-semibold text-primary rounded-sm"
             >
               Copilot Review Pending
             </Badge>
@@ -94,7 +94,7 @@ export function ProductSaveActions({
               disabled={
                 saving || publishing || rejecting || hasPendingCopilotReview
               }
-              className="rounded-none border border-border font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+              className="rounded-sm font-semibold text-muted-foreground hover:text-foreground transition-all"
             >
               {rejecting ? (
                 "Returning..."
@@ -110,20 +110,20 @@ export function ProductSaveActions({
               size="sm"
               onClick={onSave}
               disabled={saving || publishing || hasPendingCopilotReview}
-              className="rounded-none border border-border font-semibold text-foreground hover:bg-muted transition-all"
+              className="rounded-sm font-semibold transition-all"
             >
               {saving ? (
                 "Saving..."
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
-                  Save
+                  Save Draft
                 </>
               )}
             </Button>
             <Button
               size="sm"
-              className="rounded-none border border-border bg-foreground text-background font-semibold hover:bg-foreground/90 transition-all"
+              className="rounded-sm bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all"
               onClick={onPublish}
               disabled={saving || publishing || hasPendingCopilotReview}
             >

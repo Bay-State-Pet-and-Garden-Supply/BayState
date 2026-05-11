@@ -45,7 +45,7 @@ export function PipelineSidebarProductRow({
       data-sku={product.sku}
       className={cn(
         "cursor-pointer transition-colors duration-300 ease-out relative min-w-0 border-b border-border",
-        isFocused ? "bg-card border-l-4 border-l-primary" : "bg-background hover:bg-muted/30"
+        isFocused ? "bg-primary/5" : "bg-background hover:bg-muted/30"
       )}
       onClick={() => onPreferredSkuChange(product.sku)}
     >
@@ -93,11 +93,11 @@ export function PipelineSidebarProductRow({
           </div>
           <div className="flex-1 min-w-0 overflow-hidden">
             <div className="flex justify-between items-start gap-2 min-w-0">
-              <div className="font-bold text-[10px] text-muted-foreground truncate flex-1 uppercase tracking-widest">
+              <div className="font-semibold text-xs text-muted-foreground truncate flex-1 uppercase tracking-wider">
                 {product.sku}
               </div>
               {price !== undefined && (
-                <div className="text-sm font-bold text-foreground shrink-0 uppercase tracking-widest">
+                <div className="text-sm font-bold text-foreground shrink-0">
                   ${Number(price).toFixed(2)}
                 </div>
               )}
@@ -117,7 +117,7 @@ export function PipelineSidebarProductRow({
                   <Badge
                     key={key}
                     variant="secondary"
-                    className="text-[10px] px-1.5 py-0 font-semibold bg-muted text-foreground border border-border truncate max-w-full rounded-none"
+                    className="text-[10px] px-1.5 py-0.5 font-semibold bg-muted text-foreground border border-border truncate max-w-full rounded-sm"
                   >
                     {key}
                   </Badge>
