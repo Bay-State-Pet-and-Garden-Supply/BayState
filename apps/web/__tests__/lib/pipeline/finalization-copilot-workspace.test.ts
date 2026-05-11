@@ -23,11 +23,9 @@ function createProduct(
     input: {
       name: `${sku} Imported`,
       description: `${sku} short description`,
-      long_description: `${sku} long description`,
       price: 19.99,
       weight: "30 lb",
       stock_status: "in_stock",
-      product_on_pages: ["Dog Food Dry"],
       availability: "usually ships in 24 hours",
       minimum_quantity: 1,
       is_special_order: false,
@@ -56,13 +54,11 @@ function createProduct(
     consolidated: {
       name: `${sku} Consolidated`,
       description: `${sku} consolidated description`,
-      long_description: `${sku} consolidated long description`,
       price: 24.5,
       images: [`https://cdn.example.com/${sku.toLowerCase()}-hero.jpg`],
       brand_id: "brand-acme",
       weight: "35 lb",
       stock_status: "pre_order",
-      product_on_pages: ["Dog Food Dry", "Dog Treats Shop All"],
       is_special_order: false,
       search_keywords: `${sku.toLowerCase()} premium food`,
       gtin: "0123456789012",
@@ -142,7 +138,6 @@ describe("finalization copilot workspace helpers", () => {
         dirty: true,
         hasBrand: true,
         selectedImageCount: 1,
-        storePageCount: 2,
       }),
     ]);
   });
@@ -245,7 +240,7 @@ describe("finalization copilot workspace helpers", () => {
 
     const result = applySetProductFieldsToDraft(draft, {
       name: "  Updated Feed Name  ",
-      longDescription: "  Better long-form copy  ",
+      description: "  Better long-form copy  ",
       price: 27.5,
       category: "  Dog > Food > Dry Food  ",
       minimumQuantity: 6,
@@ -255,7 +250,7 @@ describe("finalization copilot workspace helpers", () => {
 
     expect(result.updatedFields).toEqual([
       "name",
-      "long description",
+      "description",
       "price",
       "category",
       "special order",
@@ -264,7 +259,7 @@ describe("finalization copilot workspace helpers", () => {
     ]);
     expect(result.draft).toMatchObject({
       name: "Updated Feed Name",
-      longDescription: "Better long-form copy",
+      description: "Better long-form copy",
       price: "27.5",
       category: "Dog > Food > Dry Food",
       minimumQuantity: "6",
@@ -441,7 +436,6 @@ describe("buildFinalizationProductSnapshot", () => {
     expect(snapshot.originalName).toBe("SKU-SNAP Imported");
     expect(snapshot.confidenceScore).toBe(0.87);
     expect(snapshot.sourceKeys).toEqual(["source:primary", "source:backup"]);
-    expect(snapshot.availableStorePages.length).toBeGreaterThan(0);
     expect(snapshot.draft).toEqual(draft);
     expect(snapshot.savedDraft).toEqual(savedDraft);
   });
