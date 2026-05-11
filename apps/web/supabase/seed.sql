@@ -235,7 +235,9 @@ VALUES
   ('d0000000-0000-0000-0000-000000000010', FALSE, FALSE),
   ('d0000000-0000-0000-0000-000000000011', FALSE, TRUE),  -- pickup-only
   ('d0000000-0000-0000-0000-000000000012', FALSE, FALSE)
-ON CONFLICT (product_id) DO NOTHING;
+ON CONFLICT (product_id) DO UPDATE SET
+    is_featured = EXCLUDED.is_featured,
+    pickup_only = EXCLUDED.pickup_only;
 
 -- ---------------------------------------------------------------------
 -- Product Categories
