@@ -158,22 +158,12 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
     }
   };
 
-  const createPaymentIntent = async (orderId: string, email: string, name: string) => {
+  const createPaymentIntent = async (orderId: string, _email: string, _name: string) => {
+    // Send only orderId — the server loads the order and derives the amount.
     const response = await fetch('/api/payments/intent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount: total,
-        customerEmail: email,
-        customerName: name,
-        orderId,
-        items: items.map((item) => ({
-          id: item.id,
-          name: item.name,
-          quantity: item.quantity,
-          unitPrice: item.price,
-        })),
-      }),
+      body: JSON.stringify({ orderId }),
     });
     if (!response.ok) throw new Error('Failed to create payment intent');
     return await response.json();
@@ -183,19 +173,21 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
     setIsSubmitting(true);
     setError(null);
 
+    // Send safe identifiers only — server computes prices, discounts, fees
+    const safeItems = items.map((item) => ({
+      id: item.id,
+      quantity: item.quantity,
+    }));
+
     const customerData = {
       customerName: contactData.name,
       customerEmail: contactData.email,
       customerPhone: contactData.phone,
       notes: contactData.notes,
-      items,
+      items: safeItems,
       promoCode: promo.code,
-      promoCodeId: promo.promoCodeId,
-      discountAmount: discount,
       fulfillmentMethod,
       deliveryAddress: fulfillmentMethod === 'delivery' ? deliveryAddress : null,
-      deliveryDistanceMiles: deliveryQuote?.distanceMiles || null,
-      deliveryFee: fulfillmentMethod === 'delivery' ? totalDeliveryFee : 0,
       deliveryServices: Array.from(selectedServices),
       deliveryNotes,
     };
@@ -225,7 +217,7 @@ export function CheckoutClient({ userData }: CheckoutClientProps) {
         body: JSON.stringify({
           ...customerData,
           paymentMethod,
-          paymentStatus: 'authorized',
+          // Server decides payment status
         }),
       });
       if (!orderResponse.ok) throw new Error('Failed to create order');

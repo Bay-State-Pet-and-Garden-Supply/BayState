@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createOrder, getOrderById } from '@/lib/orders';
+import { verifyCart } from '@/lib/pricing/verify-cart';
 import { sendOrderConfirmationEmail } from '@/lib/email/resend';
 import * as z from 'zod';
 
@@ -55,6 +56,21 @@ export async function POST(request: Request) {
       );
     }
 
+    // --- Server-authoritative pricing: verify cart from DB ---
+    const safeItems = validatedData.items.map((item) => ({
+      id: item.id,
+      quantity: item.quantity,
+    }));
+
+    const verifiedCart = await verifyCart(
+      supabase,
+      safeItems,
+      validatedData.promoCode || null,
+      validatedData.fulfillmentMethod,
+      validatedData.deliveryFee || null
+    );
+    // --- End server-authoritative pricing ---
+
     const order = await createOrder({
       userId: user?.id || null,
       customerName: validatedData.customerName,
@@ -62,14 +78,15 @@ export async function POST(request: Request) {
       customerPhone: validatedData.customerPhone,
       notes: validatedData.notes,
       items: validatedData.items,
-      promoCode: validatedData.promoCode,
-      promoCodeId: validatedData.promoCodeId,
-      discountAmount: validatedData.discountAmount,
+      promoCode: verifiedCart.promoCode,
+      promoCodeId: verifiedCart.promoCodeId,
+      discountAmount: verifiedCart.discountAmount,
+      verifiedCart,  // Pass verified cart data for server-authoritative totals
       paymentMethod: validatedData.paymentMethod,
       fulfillmentMethod: validatedData.fulfillmentMethod,
       deliveryAddress: validatedData.deliveryAddress,
-      deliveryDistanceMiles: validatedData.deliveryDistanceMiles,
-      deliveryFee: validatedData.deliveryFee,
+      deliveryDistanceMiles: null, // Server computed
+      deliveryFee: verifiedCart.deliveryFee,
       deliveryServices: validatedData.deliveryServices,
       deliveryNotes: validatedData.deliveryNotes,
     });

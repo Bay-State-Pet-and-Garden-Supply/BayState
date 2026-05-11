@@ -15,7 +15,16 @@
     "typecheck": "tsc --noEmit",
     "test:api-compat": "ts-node scripts/test-api-compatibility.ts",
     "test:a11y:e2e": "playwright test --config=playwright.config.ts",
-    "test:a11y:unit": "node scripts/run-jest.cjs --config=jest.a11y.config.ts --testPathPattern=a11y"
+    "test:a11y:unit": "node scripts/run-jest.cjs --config=jest.a11y.config.ts --testPathPattern=a11y",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:status": "supabase status",
+    "db:reset": "supabase db reset",
+    "db:seed": "supabase db reset",
+    "stripe:listen": "stripe listen --forward-to http://localhost:3000/api/payments/webhook",
+    "local:verify": "bun scripts/verify-local-bootstrap.ts",
+    "dev:local": "bun run db:start && bun run dev",
+    "bootstrap": "bun install && cp -n .env.local.example .env.local || true"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^2.0.34",

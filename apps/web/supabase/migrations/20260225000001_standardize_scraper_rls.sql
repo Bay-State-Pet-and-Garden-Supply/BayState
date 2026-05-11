@@ -69,7 +69,6 @@ CREATE POLICY "Service role can insert scrape results"
     ON public.scrape_results
     FOR INSERT
     TO service_role
-    USING (true)
     WITH CHECK (true);
 
 -- =============================================================================

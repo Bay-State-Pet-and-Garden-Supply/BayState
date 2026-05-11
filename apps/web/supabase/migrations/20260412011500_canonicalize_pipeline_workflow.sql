@@ -157,7 +157,7 @@ SELECT
   b.slug AS brand_slug,
   b.logo_url AS brand_logo_url
 FROM public.products_ingestion pi
-LEFT JOIN public.brands b ON ((pi.consolidated->>'brand_id')::uuid = b.id);
+LEFT JOIN public.brands b ON ((pi.consolidated->>'brand_id')::uuid = b.id)
 WHERE pi.pipeline_status = 'exporting'
   AND pi.exported_at IS NOT NULL;
 

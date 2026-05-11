@@ -20,7 +20,18 @@
     "mobile": "bun --cwd apps/mobile",
     "scraper": "bun --cwd apps/scraper",
     "vercel-build": "cd apps/web && next build",
-    "fallow": "fallow"
+    "fallow": "fallow",
+    "web:dev": "bun run web dev",
+    "web:build": "bun run web build",
+    "web:test": "bun run web test",
+    "web:typecheck": "bun run web typecheck",
+    "web:db:start": "bun run web db:start",
+    "web:db:reset": "bun run web db:reset",
+    "web:db:status": "bun run web db:status",
+    "web:db:seed": "bun run web db:seed",
+    "web:local:verify": "bun run web local:verify",
+    "web:stripe:listen": "bun run web stripe:listen",
+    "web:bootstrap": "bun run web bootstrap"
   },
   "devDependencies": {
     "fallow": "^2.54.3",
