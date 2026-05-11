@@ -126,32 +126,6 @@ export async function getBrandBySlug(slug: string): Promise<Brand | null> {
   return data;
 }
 
-/**
- * Looks up a legacy slug redirect, returning the target active category.
- * Used by the storefront to issue 301 redirects for old category URLs.
- */
-export async function getLegacyCategoryRedirectBySlug(
-  slug: string
-): Promise<{ old_slug: string; category: TaxonomyCategoryRecord } | null> {
-  const supabase = createPublicClient();
-  const { data, error } = await supabase
-    .from('legacy_slug_redirects')
-    .select('old_slug, categories!inner(id, name, slug, parent_id, description, display_order, image_url, is_featured, department_key, depth, breadcrumb, facet_profile, seo_title, seo_description, synonym_keywords, sort_order, is_active)')
-    .eq('old_slug', slug)
-    .eq('categories.is_active', true)
-    .single();
-
-  if (error || !data) {
-    return null;
-  }
-
-  const raw = data as unknown as { old_slug: string; categories: Record<string, unknown> };
-  return {
-    old_slug: raw.old_slug,
-    category: raw.categories as unknown as TaxonomyCategoryRecord,
-  };
-}
-
 // Re-export product functions from lib/products.ts for backward compatibility
 // This ensures existing imports continue to work
 export {
