@@ -8,9 +8,12 @@ import {
   History,
   Settings,
   LifeBuoy,
+  Search,
+  CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import { ConsolidationJobCard } from "@/components/admin/pipeline/consolidation";
@@ -19,6 +22,11 @@ import type {
   ConsolidationJob,
   BatchHistoryJob,
 } from "@/components/admin/pipeline/consolidation";
+import type { PipelineRunSummary } from "@/lib/pipeline/run-types";
+import {
+  StatusBadge as PipelineStatusBadge,
+  getProviderLabel,
+} from "@/components/admin/pipeline/consolidation/shared";
 import { useDocumentVisible } from "@/hooks/useDocumentVisible";
 
 // ============================================================================
@@ -38,6 +46,7 @@ export function ActiveConsolidationsTab({
 }: ActiveConsolidationsTabProps) {
   const isDocumentVisible = useDocumentVisible();
   const [jobs, setJobs] = useState<ConsolidationJob[]>([]);
+  const [searchRuns, setSearchRuns] = useState<PipelineRunSummary[]>([]);
   const [historyJobs, setHistoryJobs] = useState<BatchHistoryJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,16 +58,51 @@ export function ActiveConsolidationsTab({
   const [applyingId, setApplyingId] = useState<string | null>(null);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
 
-  // Fetch active consolidation jobs
+  // Adapter: PipelineRunSummary → ConsolidationJob
+  function pipelineRunToConsolidationJob(run: PipelineRunSummary): ConsolidationJob {
+    return {
+      id: run.id,
+      status: run.status,
+      execution_mode: run.executionMode,
+      provider: run.provider ?? null,
+      provider_batch_id: null,
+      description: run.label,
+      totalProducts: run.totalItems,
+      processedCount: run.completedItems + run.failedItems,
+      successCount: run.completedItems,
+      errorCount: run.failedItems,
+      createdAt: run.startedAt ?? "",
+      progress: run.progressPercent,
+      pendingCount: run.pendingItems,
+      runningCount: run.runningItems,
+      recentItems: [],
+      metadata: run.model ? { llm_model: run.model } : {},
+    };
+  }
+
+  // Fetch pipeline runs from the unified endpoint
   const fetchJobs = useCallback(async () => {
     try {
-      const response = await fetch("/api/admin/pipeline/active-consolidations");
-      if (!response.ok) throw new Error("Failed to fetch jobs");
+      const response = await fetch("/api/admin/pipeline/runs");
+      if (!response.ok) throw new Error("Failed to fetch runs");
       const data = await response.json();
-      const activeJobs = data.jobs || [];
+      const allRuns: PipelineRunSummary[] = data.runs || [];
+
+      // Separate consolidation runs vs search/scrape runs
+      const consolidationRuns = allRuns.filter(
+        (r) => r.kind === "consolidation",
+      );
+      const searchScrapeRuns = allRuns.filter(
+        (r) => r.kind === "serp_search" || r.kind === "page_scrape",
+      );
+
+      // Map consolidation runs to the existing ConsolidationJob type
+      const activeJobs = consolidationRuns.map(pipelineRunToConsolidationJob);
       setJobs(activeJobs);
+      setSearchRuns(searchScrapeRuns);
 
       // If no active jobs, show history automatically
       if (activeJobs.length === 0) {
@@ -90,7 +134,7 @@ export function ActiveConsolidationsTab({
   }, [fetchJobs, fetchHistory]);
 
   useEffect(() => {
-    if (!isDocumentVisible || jobs.length === 0) {
+    if (!isDocumentVisible) {
       return;
     }
 
@@ -99,7 +143,7 @@ export function ActiveConsolidationsTab({
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [fetchHistory, fetchJobs, isDocumentVisible, jobs.length]);
+  }, [fetchHistory, fetchJobs, isDocumentVisible]);
 
   // Cancel a batch
   const handleCancelClick = (batchId: string) => {
@@ -131,6 +175,28 @@ export function ActiveConsolidationsTab({
     }
 
     setPendingCancelBatchId(null);
+  };
+
+  // Retry failed items in a batch
+  const handleRetryFailed = async (batchId: string) => {
+    setRetryingId(batchId);
+    try {
+      const res = await fetch(`/api/admin/consolidation/${batchId}/retry`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(`Reset ${data.resetCount} failed item${data.resetCount !== 1 ? "s" : ""} for retry`);
+        await Promise.all([fetchJobs(), fetchHistory()]);
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to retry failed items");
+      }
+    } catch {
+      toast.error("Failed to retry failed items");
+    } finally {
+      setRetryingId(null);
+    }
   };
 
   // Apply results from a completed batch
@@ -319,9 +385,68 @@ export function ActiveConsolidationsTab({
       </div>
 
       <div className="rounded-none border border-border bg-muted/20 px-4 py-3 text-[10px] font-semibold text-muted-foreground tracking-tight">
-        <span className="text-foreground">DeepSeek consolidation</span>: clicking Consolidate on the scraped tab submits and runs the job.
-        This tab is only for reviewing progress, applying completed results, deleting jobs, and recovery.
+        <span className="text-foreground">Product Consolidation</span>: Click consolidate on the scraped tab to submit a job.
+        This tab shows progress, lets you apply completed results, cancel running jobs, and recover stranded products.
       </div>
+
+      {/* Search Activity — compact summary */}
+      {searchRuns.length > 0 && (
+        <div className="rounded-none border border-border bg-muted/10">
+          <div className="flex items-center gap-2 border-b border-border px-4 py-2">
+            <Search className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-[10px] font-semibold tracking-widest text-muted-foreground">
+              SEARCH &amp; SCRAPE ACTIVITY
+            </span>
+            <span className="ml-auto text-[10px] font-semibold text-muted-foreground">
+              {searchRuns.length} active run{searchRuns.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <div className="divide-y divide-border">
+            {searchRuns.map((run) => {
+              const providerLabel = getProviderLabel(run.provider ?? null);
+              return (
+                <div
+                  key={run.id}
+                  className="flex items-center justify-between px-4 py-2"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <PipelineStatusBadge status={run.status} />
+                    <span className="text-xs font-semibold text-foreground truncate">
+                      {run.label}
+                    </span>
+                    {providerLabel && (
+                      <Badge
+                        variant="secondary"
+                        className="rounded-none border border-border bg-muted font-semibold text-[9px] h-4 tracking-widest"
+                      >
+                        {providerLabel}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 text-[10px] font-semibold text-muted-foreground shrink-0">
+                    <span>
+                      {run.completedItems}/{run.totalItems}
+                    </span>
+                    {run.failedItems > 0 && (
+                      <span className="text-destructive">
+                        {run.failedItems} failed
+                      </span>
+                    )}
+                    {run.status === "running" && (
+                      <span className="text-brand-burgundy">
+                        {run.progressPercent}%
+                      </span>
+                    )}
+                    {run.status === "completed" && (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Active Jobs */}
       {jobs.length === 0 ? (
@@ -344,6 +469,8 @@ export function ActiveConsolidationsTab({
               onApply={handleApply}
               onRefresh={handleRefreshJob}
               onDelete={handleDeleteJob}
+              onRetryFailed={handleRetryFailed}
+              retryingId={retryingId}
               cancellingId={cancellingId}
               deletingId={deletingId}
               applyingId={applyingId}

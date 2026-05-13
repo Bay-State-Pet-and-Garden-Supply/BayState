@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { StatusBadge, formatTimestamp } from "./shared";
+import { StatusBadge, formatTimestamp, getProviderLabel } from "./shared";
 import type { BatchHistoryJob } from "./shared";
 
 // ============================================================================
@@ -50,7 +50,8 @@ function BatchHistoryCard({
   const providerBatchId = job.provider_batch_id as string | undefined;
   const executionMode = job.execution_mode as string | undefined;
   const openaiBatchId = job.openai_batch_id as string | undefined;
-  const applyId = executionMode === 'direct_chat_chunks'
+  const providerLabel = getProviderLabel(llmProvider || job.provider);
+  const applyId = executionMode === "direct_chat_chunks"
     ? (dbId || job.id)
     : (providerBatchId || openaiBatchId || dbId || job.id);
   const isApplied = !!applySummary;
@@ -63,16 +64,16 @@ function BatchHistoryCard({
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={job.status} />
             <span className="text-sm font-semibold text-foreground truncate">
-              {job.description || `Job ${job.id.slice(0, 8)}`}
+              {job.description || `Consolidation Job ${job.id.slice(0, 8)}`}
             </span>
+            {providerLabel && (
+              <Badge variant="secondary" className="rounded-none border border-border bg-muted font-semibold text-[9px] h-4 tracking-widest">
+                {providerLabel}
+              </Badge>
+            )}
             {llmModel && (
               <Badge variant="secondary" className="rounded-none border border-border bg-muted font-semibold text-[9px] h-4 tracking-widest">
                 {llmModel}
-              </Badge>
-            )}
-            {llmProvider && (
-              <Badge variant="secondary" className="rounded-none border border-border bg-emerald-50 text-emerald-700 font-semibold text-[9px] h-4 tracking-widest">
-                {llmProvider === 'deepseek' ? 'DeepSeek' : llmProvider}
               </Badge>
             )}
             {job.auto_apply && (
@@ -257,4 +258,3 @@ export function BatchHistorySection({
     </div>
   );
 }
-

@@ -1,8 +1,21 @@
+/**
+ * Shared types for consolidation components and provider-neutral status display.
+ *
+ * These types are used by the existing consolidation UI. For new code,
+ * prefer the PipelineRun* types from `@/lib/pipeline/run-types`.
+ *
+ * Terminology note: This UI uses provider-neutral labels.
+ * Provider-specific details (e.g. "DeepSeek", "Direct Chat") are shown
+ * only where useful for debugging, never as primary identifiers.
+ */
+
 import {
  Loader2,
  Clock,
  CheckCircle2,
  XCircle,
+ AlertTriangle,
+ RotateCcw,
 } from "lucide-react";
 
 // ============================================================================
@@ -61,24 +74,36 @@ export interface BatchHistoryJob {
 // Status Badge Configuration
 // ============================================================================
 
+/**
+ * Maps database status values to display labels and styles.
+ *
+ * Provider-specific statuses ("validating", "finalizing", "expired")
+ * are mapped to user-friendly provider-neutral labels.
+ */
 const STATUS_CONFIG: Record<
  string,
  { label: string; color: string; bgColor: string; icon: typeof Loader2 }
 > = {
  validating: {
- label: "Validating",
+ label: "Queued",
  color: "text-zinc-700",
  bgColor: "bg-muted",
  icon: Clock,
  },
  pending: {
- label: "Pending",
+ label: "Queued",
+ color: "text-zinc-700",
+ bgColor: "bg-muted",
+ icon: Clock,
+ },
+ queued: {
+ label: "Queued",
  color: "text-zinc-700",
  bgColor: "bg-muted",
  icon: Clock,
  },
  in_progress: {
- label: "In Progress",
+ label: "Running",
  color: "text-brand-burgundy",
  bgColor: "bg-brand-burgundy/10",
  icon: Loader2,
@@ -90,16 +115,28 @@ const STATUS_CONFIG: Record<
  icon: Loader2,
  },
  finalizing: {
- label: "Finalizing",
+ label: "Running",
+ color: "text-brand-burgundy",
+ bgColor: "bg-brand-burgundy/10",
+ icon: Loader2,
+ },
+ retrying: {
+ label: "Retrying",
  color: "text-amber-700",
  bgColor: "bg-amber-50",
- icon: Loader2,
+ icon: RotateCcw,
  },
  completed: {
  label: "Completed",
  color: "text-green-700",
  bgColor: "bg-green-50",
  icon: CheckCircle2,
+ },
+ completed_with_errors: {
+ label: "Completed with Errors",
+ color: "text-orange-700",
+ bgColor: "bg-orange-50",
+ icon: AlertTriangle,
  },
  failed: {
  label: "Failed",
@@ -108,7 +145,7 @@ const STATUS_CONFIG: Record<
  icon: XCircle,
  },
  expired: {
- label: "Expired",
+ label: "Failed",
  color: "text-red-700",
  bgColor: "bg-red-50",
  icon: XCircle,
@@ -143,6 +180,27 @@ export function StatusBadge({ status }: { status: string }) {
 // ============================================================================
 // Helpers
 // ============================================================================
+
+/**
+ * Display a human-readable provider label from a provider key.
+ */
+export function getProviderLabel(provider: string | null | undefined): string | null {
+  if (!provider) return null;
+  switch (provider) {
+    case "deepseek":
+      return "DeepSeek";
+    case "openai":
+      return "OpenAI";
+    case "openai_compatible":
+      return "OpenAI Compatible";
+    case "gemini":
+      return "Gemini";
+    case "lmstudio":
+      return "LM Studio";
+    default:
+      return provider;
+  }
+}
 
 export function formatElapsed(createdAt: string): string {
  const ms = Date.now() - new Date(createdAt).getTime();

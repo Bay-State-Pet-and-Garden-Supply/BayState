@@ -1,8 +1,16 @@
 /**
  * Consolidation Types
  *
- * Type definitions for the OpenAI Batch API consolidation system.
- * Ported from BayStateTools and adapted for BayStateApp patterns.
+ * Legacy type definitions for the consolidation system.
+ *
+ * @deprecated Use the provider-neutral pipeline run types from
+ *   `@/lib/pipeline/run-types` (PipelineRunSummary, PipelineRunKind,
+ *   PipelineRunStatus) for new code. These types remain for backward
+ *   compatibility with existing batch_jobs rows and the direct-chat service.
+ *
+ * When adding new consolidation features, prefer the normalized types.
+ * These older types will be removed after the full migration to the
+ * unified pipeline status system.
  */
 
 import type { LLMProvider } from '@/lib/ai-scraping/credentials';
@@ -14,7 +22,9 @@ import type { LLMProvider } from '@/lib/ai-scraping/credentials';
 /**
  * How a batch job is processed by the provider.
  * - 'batch_api': Uses the provider's Batch API (e.g., OpenAI /v1/batches).
- * - 'direct_chat_chunks': Sends individual /v1/chat/completions requests (LM Studio).
+ * - 'direct_chat_chunks': Sends individual /v1/chat/completions requests (LM Studio/DeepSeek).
+ *
+ * @deprecated Use kind/execution mode from PipelineRunSummary instead.
  */
 export type BatchExecutionMode = 'batch_api' | 'direct_chat_chunks';
 
@@ -24,6 +34,9 @@ export type BatchExecutionMode = 'batch_api' | 'direct_chat_chunks';
 
 /**
  * Metadata stored with batch jobs.
+ *
+ * @deprecated Use normalized PipelineRunSummary fields for UI display.
+ * This interface is kept for backward compatibility with stored metadata.
  */
 export interface BatchMetadata {
     description?: string;
@@ -33,7 +46,10 @@ export interface BatchMetadata {
 }
 
 /**
- * Status of a batch job from OpenAI API.
+ * Status of a batch job from the consolidation provider.
+ *
+ * @deprecated Use PipelineRunSummary from `@/lib/pipeline/run-types` for UI display.
+ * The mapped status is available through GET /api/admin/pipeline/runs.
  */
 export interface BatchStatus {
     id: string;
@@ -56,7 +72,11 @@ export interface BatchStatus {
 }
 
 /**
- * Possible batch job statuses from OpenAI.
+ * Possible batch job statuses stored in the database.
+ *
+ * @deprecated Use PipelineRunStatus from `@/lib/pipeline/run-types` for UI display.
+ * The status mapper function mapBatchJobStatusToRunStatus handles conversion.
+ * This type remains for backward compatibility with batch_jobs rows.
  */
 type BatchJobStatus =
     | 'validating'
@@ -70,6 +90,10 @@ type BatchJobStatus =
 
 /**
  * Database representation of a batch job (from batch_jobs table).
+ *
+ * @deprecated For frontend display, use PipelineRunSummary from
+ *   `@/lib/pipeline/run-types` obtained via GET /api/admin/pipeline/runs.
+ *   This interface is kept for direct DB access in backend services.
  */
 export interface BatchJob {
     id: string;

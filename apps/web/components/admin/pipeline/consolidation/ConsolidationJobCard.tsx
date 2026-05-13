@@ -5,6 +5,7 @@ import {
   Trash2,
   AlertTriangle,
   Zap,
+  RotateCcw,
   Cpu,
   Fingerprint,
 } from "lucide-react";
@@ -14,6 +15,7 @@ import {
   formatTimestamp,
   formatElapsed,
   isTerminalStatus,
+  getProviderLabel,
 } from "./shared";
 import type { ConsolidationJob } from "./shared";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +30,8 @@ interface ConsolidationJobCardProps {
   onApply: (id: string) => void;
   onRefresh: (id: string) => void;
   onDelete: (id: string) => void;
+  onRetryFailed?: (id: string) => void;
+  retryingId?: string | null;
   cancellingId: string | null;
   deletingId: string | null;
   applyingId: string | null;
@@ -44,6 +48,8 @@ export function ConsolidationJobCard({
   onApply,
   onRefresh,
   onDelete,
+  onRetryFailed,
+  retryingId,
   cancellingId,
   deletingId,
   applyingId,
@@ -51,8 +57,10 @@ export function ConsolidationJobCard({
 }: ConsolidationJobCardProps) {
   const llmModel = job.metadata?.llm_model as string | undefined;
   const executionMode = job.execution_mode || undefined;
+  const providerLabel = getProviderLabel(job.provider);
   const pendingCount = job.pendingCount ?? Math.max(job.totalProducts - job.processedCount, 0);
   const runningCount = job.runningCount ?? 0;
+  const isDirectChat = executionMode === "direct_chat_chunks";
 
   return (
     <div className="rounded-none border border-border bg-card p-5 transition-colors hover:bg-accent/5">
@@ -60,18 +68,18 @@ export function ConsolidationJobCard({
         <div className="flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold text-base text-foreground">
-              {job.description || `Job ${job.id.slice(0, 8)}`}
+              {job.description || `Consolidation Job ${job.id.slice(0, 8)}`}
             </h3>
             <StatusBadge status={job.status} />
-            {llmModel && (
+            {providerLabel && (
               <Badge variant="secondary" className="rounded-none border border-border bg-muted font-semibold text-[10px] h-5 tracking-widest">
                 <Cpu className="mr-1 h-3 w-3" />
-                {llmModel}
+                {providerLabel}
               </Badge>
             )}
-            {executionMode === 'direct_chat_chunks' && (
-              <Badge variant="outline" className="rounded-none border border-border bg-violet-50 text-violet-700 font-semibold text-[10px] h-5 tracking-widest">
-                Direct Chat
+            {llmModel && (
+              <Badge variant="secondary" className="rounded-none border border-border bg-muted font-semibold text-[10px] h-5 tracking-widest">
+                {llmModel}
               </Badge>
             )}
           </div>
@@ -84,6 +92,12 @@ export function ConsolidationJobCard({
             <span>Started {formatTimestamp(job.createdAt)}</span>
             <span>•</span>
             <span>{formatElapsed(job.createdAt)} ago</span>
+            {isDirectChat && (
+              <>
+                <span>•</span>
+                <span className="text-violet-600">Direct item processing</span>
+              </>
+            )}
           </div>
         </div>
 
@@ -135,6 +149,24 @@ export function ConsolidationJobCard({
               </>
             )}
           </Button>
+          {job.status === "failed" && job.errorCount > 0 && onRetryFailed && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onRetryFailed(job.id)}
+              disabled={retryingId === job.id}
+              className="h-8 rounded-none border border-amber-500 text-[10px] font-semibold text-amber-700 hover:bg-amber-50 tracking-widest"
+            >
+              {retryingId === job.id ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                  Retry Failed
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -144,7 +176,7 @@ export function ConsolidationJobCard({
             <p className="text-xs font-semibold text-foreground">Current state</p>
             <p className="mt-0.5 text-[10px] font-semibold text-muted-foreground">
               {pendingCount > 0 && !isTerminalStatus(job.status)
-                ? `${pendingCount} product${pendingCount === 1 ? "" : "s"} still waiting. Newly submitted jobs run automatically; refresh to check progress.`
+                ? `${pendingCount} product${pendingCount === 1 ? "" : "s"} still queued. Newly submitted jobs run automatically; refresh to check progress.`
                 : isTerminalStatus(job.status)
                   ? "This job is finished. Review errors or apply successful results."
                   : "No queued products remain."}
@@ -237,7 +269,7 @@ export function ConsolidationJobCard({
       </div>
 
       {/* Apply Button for completed batches */}
-      {job.status === "completed" && (
+      {(job.status === "completed" || job.status === "completed_with_errors") && (
         <div className="mt-5 flex justify-end">
           <Button
             size="sm"

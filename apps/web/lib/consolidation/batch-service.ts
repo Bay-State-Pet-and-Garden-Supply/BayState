@@ -1,8 +1,14 @@
 /**
- * Batch Service
+ * Consolidation Batch Service
  *
- * Core service for OpenAI Batch API operations.
- * Handles batch submission, status checking, and result retrieval.
+ * Orchestrates product data consolidation through two execution modes:
+ * - `batch_api`: Provider-owned batch lifecycle (OpenAI /v1/batches)
+ * - `direct_chat_chunks`: Application-owned direct chat completions (DeepSeek, LM Studio)
+ *
+ * For provider-normalized pipeline status display, prefer:
+ * - PipelineRunSummary types from `@/lib/pipeline/run-types`
+ * - The unified `GET /api/admin/pipeline/runs` endpoint
+ *
  * Ported and adapted from BayStateTools.
  */
 
