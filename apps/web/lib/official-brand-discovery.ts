@@ -13,6 +13,7 @@ import {
 } from '@/lib/official-brand-workflow';
 import {
   type SerperCandidate,
+  type MergedCandidate,
   type ScoredCandidate,
   buildPhase1Query,
   buildPhase2Query,
@@ -23,6 +24,13 @@ import {
 } from '@/lib/official-brand-scoring';
 
 const MAX_SCORED_CANDIDATES = 5;
+const MAX_REVIEW_CANDIDATES = 12;
+const TRAILING_QUALIFIER_WINDOW = 18;
+
+const TRAILING_PRODUCT_QUALIFIER_PATTERNS = [
+  /\b\d+(?:\.\d+)?\s*(?:lb|lbs|pounds?|oz|ounces?|kg|g|grams?|mg|ml|l|liters?|litres?|gal|gallons?|qt|quarts?|pt|pints?|ct|count|pk|packs?|in|inch(?:es)?|ft|feet)\.?\b/gi,
+  /\b\d+(?:\.\d+)?\s*[xX]\s*\d+(?:\.\d+)?(?:\s*[xX]\s*\d+(?:\.\d+)?)?(?:\s*(?:in|inch(?:es)?|ft|feet|cm|mm))?\.?\b/gi,
+] as const;
 
 type HostedLanguageModel = ReturnType<ReturnType<typeof createDeepSeek>>;
 
@@ -58,6 +66,111 @@ interface SkuResult {
     phase1_result_count: number;
     phase2_result_count: number;
   };
+}
+
+function normalizeQualifierFragment(value: string): string {
+  return value
+    .replace(/(?<=\d)(?=[a-zA-Z])/g, ' ')
+    .replace(/(?<=[a-zA-Z])(?=\d)/g, ' ')
+    .replace(/\b(lbs?|pounds?)\b\.?/gi, 'lb')
+    .replace(/\b(ounces?|oz)\b\.?/gi, 'oz')
+    .replace(/\b(count|ct)\b\.?/gi, 'ct')
+    .replace(/\b(packs?|pk)\b\.?/gi, 'pk')
+    .replace(/\b(inches?|in)\b\.?/gi, 'in')
+    .replace(/\b(feet|foot|ft)\b\.?/gi, 'ft')
+    .replace(/\b(gallons?|gal)\b\.?/gi, 'gal')
+    .replace(/\b(quarts?|qt)\b\.?/gi, 'qt')
+    .replace(/\b(pints?|pt)\b\.?/gi, 'pt')
+    .replace(/\b(liters?|litres?|l)\b\.?/gi, 'L')
+    .replace(/\s*[xX]\s*/g, ' X ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function extractTrailingProductQualifiers(productName: string): string[] {
+  const normalizedName = normalizeQualifierFragment(productName);
+  if (!normalizedName) {
+    return [];
+  }
+
+  const qualifiers: Array<{ index: number; value: string }> = [];
+  const seen = new Set<string>();
+
+  TRAILING_PRODUCT_QUALIFIER_PATTERNS.forEach((pattern) => {
+    pattern.lastIndex = 0;
+    for (const match of normalizedName.matchAll(pattern)) {
+      const value = normalizeQualifierFragment(match[0] ?? '');
+      const index = match.index ?? -1;
+      if (!value || index < 0) {
+        continue;
+      }
+
+      const distanceFromEnd = normalizedName.length - (index + value.length);
+      if (distanceFromEnd > TRAILING_QUALIFIER_WINDOW) {
+        continue;
+      }
+
+      const key = value.toLowerCase();
+      if (seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      qualifiers.push({ index, value });
+    }
+  });
+
+  return qualifiers
+    .sort((left, right) => left.index - right.index)
+    .map((entry) => entry.value);
+}
+
+export function stabilizePredictedName(
+  rawProductName: string,
+  predictedName: string | null,
+): string | null {
+  const trimmedPrediction = predictedName?.trim();
+  if (!trimmedPrediction) {
+    return null;
+  }
+
+  const trailingQualifiers = extractTrailingProductQualifiers(rawProductName);
+  if (trailingQualifiers.length === 0) {
+    return trimmedPrediction;
+  }
+
+  const normalizedPrediction = normalizeQualifierFragment(trimmedPrediction).toLowerCase();
+  const missingQualifiers = trailingQualifiers.filter((qualifier) =>
+    !normalizedPrediction.includes(normalizeQualifierFragment(qualifier).toLowerCase()),
+  );
+
+  if (missingQualifiers.length === 0) {
+    return trimmedPrediction;
+  }
+
+  return `${trimmedPrediction} ${missingQualifiers.join(' ')}`.replace(/\s+/g, ' ').trim();
+}
+
+export function selectCandidatesForScoring(
+  candidates: MergedCandidate[],
+  officialDomains: string[],
+  preferredDomains: string[],
+  sku: string,
+  predictedName: string | null,
+  maxCandidates = MAX_SCORED_CANDIDATES,
+): Set<string> {
+  const preliminaryRanking = rankCandidates(
+    candidates,
+    new Map<number, number | null>(),
+    officialDomains,
+    preferredDomains,
+    sku,
+    predictedName,
+  );
+
+  return new Set(
+    preliminaryRanking.slice(0, maxCandidates).map((candidate) => candidate.url),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -212,12 +325,12 @@ async function consolidateName(
       model,
       temperature: 0,
       system:
-        'Extract the full official product name from the raw product name, brand, and search result titles. Return the canonical name.',
+        'Extract the full official product name from the raw product name, brand, and search result titles. Keep source-supported size, weight, count, and dimension qualifiers when present.',
       prompt: `Brand: ${brandName}\nRaw product name: ${productName}\nSearch results:\n${titles.join('\n')}`,
       output: Output.object({ schema: consolidateNameSchema }),
     });
 
-    return output.predicted_name?.trim() || null;
+    return stabilizePredictedName(productName, output.predicted_name?.trim() || null);
   } catch {
     return null;
   }
@@ -231,19 +344,26 @@ async function scoreCandidate(
   model: HostedLanguageModel,
   productName: string,
   brandName: string,
+  predictedName: string | null,
   candidate: SerperCandidate,
-): Promise<{ confidence: number }> {
+): Promise<{ confidence: number | null }> {
   try {
+    const predictedLine = predictedName ? `Predicted canonical name: ${predictedName}\n` : '';
     const { output } = await generateText({
       model,
       temperature: 0,
-      prompt: `Product: ${productName}\nBrand: ${brandName}\nURL: ${candidate.url}\nTitle: ${candidate.title}\nSnippet: ${candidate.snippet}\n\nDoes this URL appear to be an official product page? Return is_official (bool), confidence_score (0-1 float), and reason (string).`,
+      system:
+        'Calibrate confidence for whether the URL is an official brand-controlled product page for the exact product variant. Use the full scoring range and avoid 0 or 1 except for extreme edge cases.',
+      prompt: `Raw product name: ${productName}\nBrand: ${brandName}\n${predictedLine}URL: ${candidate.url}\nTitle: ${candidate.title}\nSnippet: ${candidate.snippet}\n\nAssess four things separately before scoring:\n1. Is the domain or site likely brand-controlled or official?\n2. Is this an exact product page rather than a category, search, article, or generic landing page?\n3. Does the page match the exact product variant, flavor, size, weight, and count?\n4. How strong is the evidence from the title, snippet, and URL?\n\nConfidence rubric:\n- 0.95-0.99: exact official product page with strong evidence for the exact product/variant/size\n- 0.80-0.94: likely exact official product page, but one minor ambiguity remains\n- 0.60-0.79: plausible official match, but page type or exact variant/size is somewhat uncertain\n- 0.30-0.59: mixed signals, could be related but not clearly the exact official product page\n- 0.05-0.29: weak match or likely not the correct official product page\nAvoid returning 0 or 1 for normal cases.\n\nReturn is_official (bool), confidence_score (0-1 float), and reason (short string).`,
       output: Output.object({ schema: candidateScoreSchema }),
     });
 
-    return { confidence: output.confidence_score ?? 0 };
+    return {
+      confidence:
+        typeof output.confidence_score === 'number' ? output.confidence_score : null,
+    };
   } catch {
-    return { confidence: 0 };
+    return { confidence: null };
   }
 }
 
@@ -414,25 +534,33 @@ export async function runOfficialBrandDiscovery(args: {
       // --------------------------------------------------------------------
       const merged = mergeAndDedupeCandidates(phase1Results, phase2Results);
 
-      const confidenceScores = new Map<number, number>();
-      const topN = merged.slice(0, MAX_SCORED_CANDIDATES);
+      const confidenceScores = new Map<number, number | null>();
+      const shortlistedUrls = selectCandidatesForScoring(
+        merged,
+        officialDomains,
+        preferredDomains,
+        sku,
+        effectivePredictedName,
+      );
+
       if (model) {
         for (let i = 0; i < merged.length; i++) {
-          if (topN.includes(merged[i])) {
+          if (shortlistedUrls.has(merged[i].url)) {
             const result = await scoreCandidate(
               model,
               productName,
               brandName,
+              effectivePredictedName,
               merged[i],
             );
             confidenceScores.set(i, result.confidence);
           } else {
-            confidenceScores.set(i, 0);
+            confidenceScores.set(i, null);
           }
         }
       } else {
         for (let i = 0; i < merged.length; i++) {
-          confidenceScores.set(i, 0);
+          confidenceScores.set(i, null);
         }
       }
 
@@ -443,7 +571,7 @@ export async function runOfficialBrandDiscovery(args: {
         preferredDomains,
         sku,
         effectivePredictedName,
-      );
+      ).slice(0, MAX_REVIEW_CANDIDATES);
 
       const topCandidate = scored.length > 0 ? scored[0] : null;
 

@@ -1,6 +1,7 @@
 import {
   normalizeOfficialBrandDomain,
   normalizeOfficialBrandSearchRoot,
+  normalizeOfficialBrandUrl,
 } from '@/lib/official-brand-workflow';
 
 // ---------------------------------------------------------------------------
@@ -20,7 +21,7 @@ export interface MergedCandidate extends SerperCandidate {
 
 export interface ScoredCandidate extends SerperCandidate {
   rank: number;
-  confidence: number;
+  confidence: number | null;
   selection_tier: 'official_domain' | 'preferred_domain' | 'knowledge_graph' | 'organic';
   composite_score: number;
   appeared_in_phases: number[];
@@ -95,10 +96,20 @@ export function buildExclusionQuery(baseQuery: string): string {
 export function buildSiteConstrainedQueries(domains: string[], query: string): string[] {
   const cleanQuery = query.trim();
   if (!cleanQuery || domains.length === 0) return [];
-  return domains
+
+  const seen = new Set<string>();
+  const dedupedRoots = domains
     .map((d) => normalizeOfficialBrandSearchRoot(d))
-    .filter(Boolean)
-    .map((normalized) => `site:${normalized} ${cleanQuery}`);
+    .filter((normalized): normalized is string => Boolean(normalized))
+    .filter((normalized) => {
+      if (seen.has(normalized)) {
+        return false;
+      }
+      seen.add(normalized);
+      return true;
+    });
+
+  return dedupedRoots.map((normalized) => `site:${normalized} ${cleanQuery}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -115,17 +126,19 @@ export function mergeAndDedupeCandidates(
   phase2: SerperCandidate[],
 ): MergedCandidate[] {
   const byUrl = new Map<string, MergedCandidate>();
+  const getKey = (url: string) => normalizeOfficialBrandUrl(url)?.normalizedUrl ?? url;
 
   for (const c of phase1) {
-    byUrl.set(c.url, { ...c, appeared_in_phases: [1] });
+    byUrl.set(getKey(c.url), { ...c, appeared_in_phases: [1] });
   }
 
   for (const c of phase2) {
-    const existing = byUrl.get(c.url);
+    const key = getKey(c.url);
+    const existing = byUrl.get(key);
     if (existing) {
       existing.appeared_in_phases = [1, 2];
     } else {
-      byUrl.set(c.url, { ...c, appeared_in_phases: [2] });
+      byUrl.set(key, { ...c, appeared_in_phases: [2] });
     }
   }
 
@@ -173,7 +186,7 @@ export function getSelectionTier(
  */
 export function rankCandidates(
   candidates: MergedCandidate[],
-  confidenceScores: Map<number, number>,
+  confidenceScores: Map<number, number | null>,
   officialDomains: string[],
   preferredDomains: string[],
   sku: string,
@@ -226,7 +239,8 @@ export function rankCandidates(
     }
 
     // --- Base score ---
-    let composite = confidenceScores.get(i) ?? 0;
+    const llmConfidence = confidenceScores.get(i);
+    let composite = typeof llmConfidence === 'number' ? llmConfidence : 0;
 
     // Domain-tier bonuses
     if (inOfficial) {
@@ -265,7 +279,7 @@ export function rankCandidates(
     return {
       ...c,
       rank: 0,
-      confidence: confidenceScores.get(i) ?? 0,
+      confidence: typeof llmConfidence === 'number' ? llmConfidence : null,
       selection_tier: tier,
       composite_score: composite,
       sortTier,

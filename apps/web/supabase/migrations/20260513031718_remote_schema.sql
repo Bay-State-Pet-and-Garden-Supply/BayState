@@ -937,7 +937,7 @@ alter table "public"."scrape_jobs" alter column "updated_at" drop not null;
 
 alter table "public"."scraper_configs" drop column "file_path";
 
-alter table "public"."scraper_configs" drop column "name";
+alter table "public"."scraper_configs" rename column "name" to "display_name";
 
 alter table "public"."scraper_configs" add column "base_url" text;
 
@@ -945,7 +945,8 @@ alter table "public"."scraper_configs" add column "created_by" uuid;
 
 alter table "public"."scraper_configs" add column "current_version_id" uuid;
 
-alter table "public"."scraper_configs" add column "display_name" character varying(255) not null;
+alter table "public"."scraper_configs" alter column "display_name" type character varying(255);
+alter table "public"."scraper_configs" alter column "display_name" set not null;
 
 alter table "public"."scraper_configs" add column "domain" character varying(512);
 

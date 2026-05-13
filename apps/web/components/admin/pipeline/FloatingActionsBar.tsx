@@ -32,7 +32,12 @@ const BULK_ACTIONS: Record<
  imported: { label: "Scrape Selected", nextStage: "scraped" },
  searching: { label: "", nextStage: null },
  url_review: { label: "Return to Import", nextStage: "imported" },
- extracting: { label: "", nextStage: null },
+  extracting: {
+    label: "",
+    nextStage: null,
+    resetLabel: "Return to URL Review",
+    previousStage: "url_review",
+  },
  scraped: {
  label: "Consolidate Selected",
  nextStage: null,

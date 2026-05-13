@@ -66,7 +66,7 @@ function formatScore(value: number | null): string {
 }
 
 function formatConfidence(value: number | null): string | null {
-  return value === null ? null : `${Math.round(value * 100)}% LLM confidence`;
+  return value === null ? null : `${(value * 100).toFixed(1)}% LLM confidence`;
 }
 
 function formatTier(value: string | null): string {

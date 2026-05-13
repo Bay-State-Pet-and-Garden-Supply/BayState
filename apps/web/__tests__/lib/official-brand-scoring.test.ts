@@ -89,6 +89,14 @@ describe('buildSiteConstrainedQueries', () => {
     ]);
   });
 
+  it('deduplicates equivalent domains after normalization', () => {
+    const result = buildSiteConstrainedQueries(
+      ['gofromm.com', 'https://www.gofromm.com/', 'gofromm.com'],
+      'Fromm Gold',
+    );
+    expect(result).toEqual(['site:gofromm.com Fromm Gold']);
+  });
+
   it('preserves paths in site: queries', () => {
     const result = buildSiteConstrainedQueries(
       ['gofromm.com/products', 'example.com/site/path'],
@@ -129,6 +137,15 @@ describe('mergeAndDedupeCandidates', () => {
     const merged = mergeAndDedupeCandidates(
       [makeCandidate(urlA)],
       [makeCandidate(urlA)],
+    );
+    expect(merged).toHaveLength(1);
+    expect(merged[0].appeared_in_phases).toEqual([1, 2]);
+  });
+
+  it('deduplicates normalized URLs across trailing slash variants', () => {
+    const merged = mergeAndDedupeCandidates(
+      [makeCandidate('https://gofromm.com/product/')],
+      [makeCandidate('https://gofromm.com/product')],
     );
     expect(merged).toHaveLength(1);
     expect(merged[0].appeared_in_phases).toEqual([1, 2]);
