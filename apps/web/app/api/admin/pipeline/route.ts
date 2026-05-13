@@ -28,7 +28,7 @@ function isStageWithProducts(stage: PipelineStage): stage is StageWithProducts {
 }
 
 export async function GET(request: NextRequest) {
-    const auth = await requireAdminAuth();
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     const searchParams = request.nextUrl.searchParams;
@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-    const auth = await requireAdminAuth();
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     try {

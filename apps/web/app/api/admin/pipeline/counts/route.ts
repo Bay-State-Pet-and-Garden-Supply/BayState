@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getStatusCounts } from '@/lib/pipeline';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 
-export async function GET() {
-    const auth = await requireAdminAuth();
+export async function GET(request: NextRequest) {
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     try {

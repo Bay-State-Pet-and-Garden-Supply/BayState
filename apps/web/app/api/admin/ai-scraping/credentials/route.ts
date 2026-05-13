@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
 import {
   type AIConsolidationDefaults,
   type AIScrapingDefaults,
@@ -11,36 +11,10 @@ import {
   upsertAIConsolidationDefaults,
 } from '@/lib/ai-scraping/credentials';
 
-async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || (profile.role !== 'admin' && profile.role !== 'staff')) {
-    return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
-  }
-
-  return { userId: user.id };
-}
-
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAdmin();
-    if ('error' in auth) {
-      return auth.error;
-    }
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) return auth.response;
 
     const [statuses, defaults, consolidationDefaults] = await Promise.all([
       getAIScrapingCredentialStatuses(),
@@ -62,10 +36,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAdmin();
-    if ('error' in auth) {
-      return auth.error;
-    }
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) return auth.response;
 
     const body = (await request.json()) as {
       deepseek_api_key?: string;
@@ -81,24 +53,24 @@ export async function POST(request: NextRequest) {
     const tasks: Array<Promise<unknown>> = [];
 
     if (body.deepseek_api_key && body.deepseek_api_key.trim()) {
-      tasks.push(setAIScrapingProviderSecret('deepseek', body.deepseek_api_key, auth.userId));
+      tasks.push(setAIScrapingProviderSecret('deepseek', body.deepseek_api_key, auth.user.id));
     }
 
     if (body.gemini_api_key && body.gemini_api_key.trim()) {
-      tasks.push(setAIScrapingProviderSecret('gemini', body.gemini_api_key, auth.userId));
+      tasks.push(setAIScrapingProviderSecret('gemini', body.gemini_api_key, auth.user.id));
     }
 
     if (body.openai_api_key && body.openai_api_key.trim()) {
-      tasks.push(setAIScrapingProviderSecret('openai', body.openai_api_key, auth.userId));
+      tasks.push(setAIScrapingProviderSecret('openai', body.openai_api_key, auth.user.id));
     }
 
     if (body.lmstudio_api_key && body.lmstudio_api_key.trim()) {
-      tasks.push(setAIScrapingProviderSecret('lmstudio', body.lmstudio_api_key, auth.userId));
+      tasks.push(setAIScrapingProviderSecret('lmstudio', body.lmstudio_api_key, auth.user.id));
     }
 
     const searchProviderKey = body.serper_api_key ?? body.serpapi_api_key;
     if (searchProviderKey && searchProviderKey.trim()) {
-      tasks.push(setAIScrapingProviderSecret('serpapi', searchProviderKey, auth.userId));
+      tasks.push(setAIScrapingProviderSecret('serpapi', searchProviderKey, auth.user.id));
     }
 
     if (body.defaults) {

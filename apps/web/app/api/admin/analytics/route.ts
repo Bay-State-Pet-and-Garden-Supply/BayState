@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 
 export interface AnalyticsData {
@@ -39,10 +39,10 @@ export interface AnalyticsData {
  * - end: ISO date string (required for custom range)
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAdminAuth();
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
   const { searchParams } = new URL(request.url);
 
   const range = searchParams.get('range') || '7days';

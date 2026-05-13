@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 
 interface ProductIssue {
   sku: string;
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const severityFilter = searchParams.get('severity') as 'required' | 'recommended' | null;
     
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     
     const { data: products, error } = await supabase
       .from('products_ingestion')

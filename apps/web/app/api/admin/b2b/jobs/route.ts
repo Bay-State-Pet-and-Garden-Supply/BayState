@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { getSyncJobs } from '@/lib/b2b/sync-service';
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) return auth.response;
   try {
     const { searchParams } = new URL(request.url);
     const feedId = searchParams.get('feed_id') || undefined;

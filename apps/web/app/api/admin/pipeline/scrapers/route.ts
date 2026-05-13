@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { getLocalScraperConfigs } from '@/lib/admin/scrapers/configs';
 
@@ -6,8 +6,8 @@ import { getLocalScraperConfigs } from '@/lib/admin/scrapers/configs';
  * GET /api/admin/pipeline/scrapers
  * Returns available scrapers from local YAML configs for the scraper selection dialog.
  */
-export async function GET() {
-    const auth = await requireAdminAuth();
+export async function GET(request: NextRequest) {
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     try {

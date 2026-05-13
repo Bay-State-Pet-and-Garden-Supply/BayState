@@ -32,7 +32,7 @@ interface ProductImageRow {
  * }
  */
 export async function GET(request: NextRequest) {
-    const auth = await requireAdminAuth();
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     const brandFilter = request.nextUrl.searchParams.get('brand');

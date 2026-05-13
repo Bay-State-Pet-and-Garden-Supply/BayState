@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 
 export const dynamic = 'force-dynamic';
@@ -27,11 +27,11 @@ function toOptionalTrimmedString(value: unknown): string | null {
 }
 
 export async function GET(request: NextRequest, context: RouteContext) {
-  const auth = await requireAdminAuth();
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
   const { id } = await context.params;
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
   const includeMembers = request.nextUrl.searchParams.get('include_members') === 'true';
 
   // Fetch cohort with brand join
@@ -87,12 +87,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
 }
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
-  const auth = await requireAdminAuth();
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
   const { id } = await context.params;
   const body = await request.json();
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
 
   // Fetch current cohort to get upc_prefix and current name
   const { data: currentCohort, error: fetchError } = await supabase

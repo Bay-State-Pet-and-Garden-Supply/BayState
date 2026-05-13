@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import {
   coerceRunnerMetadata,
   getEffectiveRunnerStatus,
@@ -21,7 +21,7 @@ type RunnerData = Pick<
 
 export async function GET() {
   try {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const { data: runnersData, error } = await supabase
       .from('scraper_runners')
       .select('name,last_seen_at,created_at,status,current_job_id,enabled,metadata')

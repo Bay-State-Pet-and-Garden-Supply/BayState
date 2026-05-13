@@ -103,7 +103,8 @@ describe('AI scraping credentials admin route', () => {
       llm_supports_batch_api: false,
     });
 
-    const res = await GET();
+    const mockReq = { headers: new Map() as unknown as Headers, nextUrl: new URL('http://localhost') };
+    const res = await GET(mockReq as any);
     expect(res?.status).toBe(200);
 
     const body = await res!.json();

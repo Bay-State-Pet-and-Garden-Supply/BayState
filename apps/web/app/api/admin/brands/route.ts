@@ -1,12 +1,12 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 
-export async function GET() {
-  const auth = await requireAdminAuth();
+export async function GET(request: NextRequest) {
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
 
   const { data, error } = await supabase
     .from('brands')
@@ -24,8 +24,8 @@ export async function GET() {
   return NextResponse.json({ brands: data || [] });
 }
 
-export async function POST(request: Request) {
-  const auth = await requireAdminAuth();
+export async function POST(request: NextRequest) {
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
   try {
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Brand name is required' }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const slug = (typeof requestedSlug === 'string' && requestedSlug.trim().length > 0 ? requestedSlug : name).toLowerCase()
       .trim()
       .replace(/[^a-z0-9]+/g, '-')

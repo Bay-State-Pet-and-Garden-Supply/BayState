@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 
 /**
  * POST /api/admin/consolidation/reset
@@ -9,11 +9,11 @@ import { createClient } from '@/lib/supabase/server';
  * It will refuse to run if there are any active (in_progress, validating) batch jobs.
  */
 export async function POST(request: NextRequest) {
-    const auth = await requireAdminAuth();
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     try {
-        const supabase = await createClient();
+        const supabase = await createAdminClient();
 
         // 1. Check for active batch jobs. If there are any, we cannot safely reset all consolidating products.
         const { count, error: countError } = await supabase

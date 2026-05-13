@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SECRET_KEY } from '@/lib/supabase/config';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
+import { SUPABASE_URL, SUPABASE_SECRET_KEY } from '@/lib/supabase/config';
 import {
     coerceRunnerMetadata,
     getEffectiveRunnerStatus,
@@ -20,23 +19,6 @@ function getSupabaseAdmin(): SupabaseClient {
     return createClient(url, key, {
         auth: { autoRefreshToken: false, persistSession: false }
     });
-}
-
-async function getAuthenticatedUser() {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        SUPABASE_URL,
-        SUPABASE_ANON_KEY,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll();
-                },
-            },
-        }
-    );
-    const { data: { user } } = await supabase.auth.getUser();
-    return user;
 }
 
 interface RunnerStats {
@@ -71,10 +53,8 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const user = await getAuthenticatedUser();
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
+        const auth = await requireAdminAuth(request);
+        if (!auth.authorized) return auth.response;
 
         const { id } = await params;
         const admin = getSupabaseAdmin();

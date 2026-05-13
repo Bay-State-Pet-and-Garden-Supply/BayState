@@ -11,7 +11,7 @@ interface RouteContext {
  * Apply the results of a completed provider batch job to products.
  */
 export async function POST(request: NextRequest, context: RouteContext) {
-    const auth = await requireAdminAuth();
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     const { batchId } = await context.params;

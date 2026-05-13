@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { triggerSync } from '@/lib/b2b/sync-service';
 import { DistributorCode, SyncJobType } from '@/lib/b2b/types';
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) return auth.response;
+
   try {
     const body = await request.json();
     const { distributor_code, job_type = 'catalog' } = body;

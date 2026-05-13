@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { normalizeScraperSlug } from '@/lib/scraper-auth';
 import {
   getScraperCredentialStatuses,
@@ -8,39 +8,13 @@ import {
   ScraperCredentialType
 } from '@/lib/admin/scrapers/credentials';
 
-async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || (profile.role !== 'admin' && profile.role !== 'staff')) {
-    return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
-  }
-
-  return { userId: user.id };
-}
-
 export async function GET(
-  req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const auth = await requireAdmin();
-    if ('error' in auth) {
-      return auth.error;
-    }
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) return auth.response;
 
     const { slug } = await params;
     const normalizedSlug = normalizeScraperSlug(slug);
@@ -63,10 +37,8 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const auth = await requireAdmin();
-    if ('error' in auth) {
-      return auth.error;
-    }
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) return auth.response;
 
     const { slug } = await params;
     const normalizedSlug = normalizeScraperSlug(slug);
@@ -79,7 +51,7 @@ export async function POST(
       return NextResponse.json({ error: 'Type and value are required' }, { status: 400 });
     }
 
-    await setScraperCredential(normalizedSlug, body.type, body.value, auth.userId);
+    await setScraperCredential(normalizedSlug, body.type, body.value, auth.user.id);
 
     const statuses = await getScraperCredentialStatuses(normalizedSlug);
 
@@ -101,10 +73,8 @@ export async function DELETE(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const auth = await requireAdmin();
-    if ('error' in auth) {
-      return auth.error;
-    }
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) return auth.response;
 
     const { slug } = await params;
     const normalizedSlug = normalizeScraperSlug(slug);

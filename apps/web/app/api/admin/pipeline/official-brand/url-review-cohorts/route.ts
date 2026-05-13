@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -14,11 +14,11 @@ interface CohortSummaryRow {
   candidate_count: number;
 }
 
-export async function GET() {
-  const auth = await requireAdminAuth();
+export async function GET(request: NextRequest) {
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
 
   const { data: products, error } = await supabase
     .from("products_ingestion")

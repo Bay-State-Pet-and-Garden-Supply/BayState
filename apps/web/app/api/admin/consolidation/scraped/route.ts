@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { TwoPhaseConsolidationService, buildDefaultConsistencyRules } from '@/lib/consolidation';
 import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
 
@@ -11,14 +11,14 @@ import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
  * Body: { skus?: string[] } - if no SKUs provided, consolidates all scraped products
  */
 export async function POST(request: NextRequest) {
-    const auth = await requireAdminAuth();
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     try {
         const body = await request.json();
         const { skus } = body;
 
-        const supabase = await createClient();
+        const supabase = await createAdminClient();
 
         // Build query - either specific SKUs or all scraped products
         let query = supabase

@@ -1,32 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { generateAPIKey } from '@/lib/scraper-auth';
-import { SUPABASE_ANON_KEY, SUPABASE_URL, requireSupabaseConfig } from '@/lib/supabase/config';
+import { requireSupabaseConfig } from '@/lib/supabase/config';
 
 function getSupabaseAdmin(): SupabaseClient {
     const { url, anonKey } = requireSupabaseConfig();
     return createClient(url, anonKey, {
         auth: { autoRefreshToken: false, persistSession: false }
     });
-}
-
-async function getAuthenticatedUser() {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-        SUPABASE_URL,
-        SUPABASE_ANON_KEY,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll();
-                },
-            },
-        }
-    );
-    const { data: { user } } = await supabase.auth.getUser();
-    return user;
 }
 
 interface CreateKeyRequest {
@@ -41,11 +23,9 @@ interface CreateKeyRequest {
  * 
  * Lists all runners with their API key information (not the actual keys).
  */
-export async function GET() {
-    const user = await getAuthenticatedUser();
-    if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+export async function GET(request: NextRequest) {
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) return auth.response;
 
     const admin = getSupabaseAdmin();
 
@@ -97,10 +77,8 @@ export async function GET() {
  * Creates a new API key for a runner. Returns the full key (only shown once).
  */
 export async function POST(request: NextRequest) {
-    const user = await getAuthenticatedUser();
-    if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) return auth.response;
 
     const body: CreateKeyRequest = await request.json();
     
@@ -158,7 +136,7 @@ export async function POST(request: NextRequest) {
             key_prefix: prefix,
             description: body.description || 'API Key',
             expires_at: expiresAt,
-            created_by: user.id,
+            created_by: auth.user.id,
         })
         .select('id')
         .single();
@@ -204,10 +182,8 @@ export async function POST(request: NextRequest) {
  * Revokes an API key. Supports revoking by key_id or all keys for a runner.
  */
 export async function DELETE(request: NextRequest) {
-    const user = await getAuthenticatedUser();
-    if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) return auth.response;
 
     const { searchParams } = new URL(request.url);
     const keyId = searchParams.get('key_id');

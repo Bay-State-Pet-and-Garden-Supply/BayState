@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { getLocalScraperConfig } from "@/lib/admin/scrapers/configs";
 
 /**
@@ -34,7 +34,7 @@ const testJobSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAdminAuth();
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) {
       return auth.response;
     }
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     const { scraper_id, type } = parseResult.data;
 
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
 
     const { data: scraper, error: scraperError } = await supabase
       .from("scraper_configs")

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
+import { createAdminClient } from '@/lib/supabase/server';
 import { getScraperRecommendations } from '@/lib/pipeline/scraper-recommendations';
 
 /**
@@ -10,6 +11,9 @@ import { getScraperRecommendations } from '@/lib/pipeline/scraper-recommendation
  * Can resolve the brand from a cohort ID or accept a brand name directly.
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) return auth.response;
+
   const { searchParams } = request.nextUrl;
   const brandParam = searchParams.get('brand');
   const cohortIdParam = searchParams.get('cohort_id');
@@ -19,7 +23,7 @@ export async function GET(request: NextRequest) {
 
   // Resolve brand from cohort if no direct brand param
   if (!brandName && cohortIdParam) {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const { data: cohort } = await supabase
       .from('cohort_batches')
       .select('brand_name, brand_id, brands(name)')

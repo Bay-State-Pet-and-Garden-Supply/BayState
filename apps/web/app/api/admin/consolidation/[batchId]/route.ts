@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getBatchStatus, cancelBatch, retrieveResults, isOpenAIConfigured } from '@/lib/consolidation';
@@ -11,8 +11,8 @@ interface RouteContext {
  * GET /api/admin/consolidation/[batchId]
  * Read local consolidation queue job status. This endpoint does not process items.
  */
-export async function GET(_request: Request, context: RouteContext) {
-    const auth = await requireAdminAuth();
+export async function GET(request: NextRequest, context: RouteContext) {
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     const { batchId } = await context.params;
@@ -55,8 +55,8 @@ export async function GET(_request: Request, context: RouteContext) {
  * DELETE /api/admin/consolidation/[batchId]
  * Cancel a local consolidation queue job.
  */
-export async function DELETE(request: Request, context: RouteContext) {
-    const auth = await requireAdminAuth();
+export async function DELETE(request: NextRequest, context: RouteContext) {
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     const { batchId } = await context.params;

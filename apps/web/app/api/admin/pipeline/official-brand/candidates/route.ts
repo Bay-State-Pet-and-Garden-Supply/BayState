@@ -5,7 +5,7 @@ import {
   OFFICIAL_BRAND_SELECTION_STATUSES,
   type OfficialBrandSelectionStatus,
 } from "@/lib/official-brand-review-types";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +30,7 @@ function isSelectionStatus(value: unknown): value is OfficialBrandSelectionStatu
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAdminAuth();
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
   const { searchParams } = new URL(request.url);
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
   const status = rawStatus as OfficialBrandSelectionStatus | null;
 
   try {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const response = await loadOfficialBrandCandidates(supabase, {
       cohortId,
       ...(status ? { status } : {}),
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const auth = await requireAdminAuth();
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
   let body: UpdateCandidateRequest;
@@ -103,7 +103,7 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
   const nowIso = new Date().toISOString();
   const reviewedBy = auth.user.email ?? auth.user.id;
   let updatedCount = 0;

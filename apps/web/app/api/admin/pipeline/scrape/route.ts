@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { scrapeProducts } from '@/lib/pipeline-scraping';
 import { runOfficialBrandDiscovery } from '@/lib/official-brand-discovery';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import {
     normalizeOfficialBrandUrl,
     officialBrandUrlMatchesDomains,
@@ -122,7 +122,7 @@ function toStringRecord(value: unknown): Record<string, string> | undefined {
  * }
  */
 export async function POST(request: NextRequest) {
-    const auth = await requireAdminAuth();
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     try {
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
         const officialBrandPhase = enrichmentMethod === 'official_brand'
             ? official_brand_phase ?? (manualUrlsBySku ? 'extraction' : 'url_discovery')
             : undefined;
-        const supabase = await createClient();
+        const supabase = await createAdminClient();
 
         // Resolve cohort brand for context enrichment
         let cohortBrand: string | undefined;

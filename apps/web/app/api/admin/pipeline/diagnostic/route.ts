@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { PERSISTED_PIPELINE_STATUSES, type PersistedPipelineStatus } from '@/lib/pipeline/types';
 
 const PROJECT_ID = 'fapnuczapctelxxmrail';
 
 export async function GET() {
     try {
-        const supabase = await createClient();
+        const supabase = await createAdminClient();
 
         const [
             { data: productsData, error: productsError },

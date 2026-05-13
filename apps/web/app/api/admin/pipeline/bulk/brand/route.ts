@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { recohortProducts } from '@/lib/pipeline/cohorts';
 
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
  * Bulk assign a brand to multiple products and split them into pure cohorts.
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAdminAuth();
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
   try {
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
 
     // Trigger re-cohorting (which also handles updating brand_id in products_ingestion)
     await recohortProducts(supabase, skus, brandId);

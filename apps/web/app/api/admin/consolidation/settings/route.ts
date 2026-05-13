@@ -10,8 +10,8 @@ import {
 
 const LMSTUDIO_BASE_URL_PATTERN = /^https?:\/\//i;
 
-export async function GET() {
-  const auth = await requireAdminAuth();
+export async function GET(request: NextRequest) {
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) {
     return auth.response;
   }
@@ -39,7 +39,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAdminAuth();
+  const auth = await requireAdminAuth(req);
   if (!auth.authorized) {
     return auth.response;
   }

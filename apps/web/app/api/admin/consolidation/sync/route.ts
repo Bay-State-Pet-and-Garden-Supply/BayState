@@ -15,7 +15,7 @@ function clampLimit(value: unknown): number {
  * This is not a remote provider status sync.
  */
 export async function POST(request: NextRequest) {
-    const auth = await requireAdminAuth();
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     const runtimeConfig = await getConsolidationConfig();

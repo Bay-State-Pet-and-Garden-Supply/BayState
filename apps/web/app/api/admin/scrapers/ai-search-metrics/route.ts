@@ -1,11 +1,11 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const days = parseInt(searchParams.get('days') || '30', 10);
 
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
 
   // Calculate date range
   const endDate = new Date().toISOString().split('T')[0];

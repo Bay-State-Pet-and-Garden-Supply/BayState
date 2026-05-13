@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { getB2BFeeds, updateFeedConfig, testFeedConnection } from '@/lib/b2b/sync-service';
 import { DistributorCode } from '@/lib/b2b/types';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) return auth.response;
   try {
     const feeds = await getB2BFeeds();
     return NextResponse.json({ feeds });
@@ -16,6 +19,9 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) return auth.response;
+
   try {
     const body = await request.json();
     const { distributor_code, enabled, sync_frequency, config } = body;

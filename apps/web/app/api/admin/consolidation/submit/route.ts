@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { getBatchStatus, isOpenAIConfigured, processBatchQueue, submitBatch } from '@/lib/consolidation';
 import type { ProductSource } from '@/lib/consolidation';
 import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
@@ -10,7 +10,7 @@ import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
  * Submit a provider-neutral batch of products for LLM consolidation.
  */
 export async function POST(request: NextRequest) {
-    const auth = await requireAdminAuth();
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     if (!(await isOpenAIConfigured())) {
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'skus array is required' }, { status: 400 });
         }
 
-        const supabase = await createClient();
+        const supabase = await createAdminClient();
         const { data: products, error: fetchError } = await supabase
             .from('products_ingestion')
             .select('sku, input, sources')

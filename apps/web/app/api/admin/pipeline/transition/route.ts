@@ -18,7 +18,7 @@ const transitionSchema = z.object({
 type TransitionBody = z.infer<typeof transitionSchema>;
 
 export async function POST(request: NextRequest) {
-    const auth = await requireAdminAuth();
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     try {

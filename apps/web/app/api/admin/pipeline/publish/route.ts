@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { publishToStorefront } from '@/lib/pipeline/publish';
 
@@ -7,7 +7,7 @@ import { publishToStorefront } from '@/lib/pipeline/publish';
  * Publish a product from the ingestion pipeline to the storefront products table.
  */
 export async function POST(request: NextRequest) {
-    const auth = await requireAdminAuth();
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     try {
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
  * Check if a product exists in the storefront (GET endpoint helper)
  */
 export async function GET(request: NextRequest) {
-    const auth = await requireAdminAuth();
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     const searchParams = request.nextUrl.searchParams;
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
         );
     }
 
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
 
     // Check in ingestion table
     const { data: ingestionProduct } = await supabase

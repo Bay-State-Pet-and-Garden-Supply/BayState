@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
+import { createAdminClient } from '@/lib/supabase/server';
 
 const SETTINGS_KEY = 'shopsite_migration';
 
@@ -9,38 +10,13 @@ interface ShopSiteSettingsValue {
   password: string;
 }
 
-async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || profile.role !== 'admin') {
-    return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
-  }
-
-  return { supabase };
-}
-
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAdmin();
-    if ('error' in auth) {
-      return auth.error;
-    }
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) return auth.response;
 
-    const { data } = await auth.supabase
+    const supabase = await createAdminClient();
+    const { data } = await supabase
       .from('site_settings')
       .select('value')
       .eq('key', SETTINGS_KEY)
@@ -66,10 +42,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAdmin();
-    if ('error' in auth) {
-      return auth.error;
-    }
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) return auth.response;
 
     const body = (await request.json()) as {
       storeUrl?: string;
@@ -88,7 +62,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: existingRow } = await auth.supabase
+    const supabase = await createAdminClient();
+    const { data: existingRow } = await supabase
       .from('site_settings')
       .select('value')
       .eq('key', SETTINGS_KEY)
@@ -110,7 +85,7 @@ export async function POST(request: NextRequest) {
       password,
     };
 
-    const { error } = await auth.supabase
+    const { error } = await supabase
       .from('site_settings')
       .upsert(
         {

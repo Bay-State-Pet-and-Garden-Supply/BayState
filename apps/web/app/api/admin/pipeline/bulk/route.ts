@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { bulkUpdateStatus } from '@/lib/pipeline';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { PERSISTED_PIPELINE_STATUSES, isPersistedStatus } from '@/lib/pipeline/types';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { bulkPublishToStorefront } from '@/lib/pipeline/publish';
 
 const CANONICAL_PERSISTED_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
@@ -14,7 +14,7 @@ const CANONICAL_PERSISTED_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
  * Bulk transition products to a new status
  */
 export async function POST(request: NextRequest) {
-    const auth = await requireAdminAuth();
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     try {
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
         // If cohort_id is provided, resolve SKUs from the database
         if (cohort_id && fromStatus) {
-            const supabase = await createClient();
+            const supabase = await createAdminClient();
             const { data: rows, error: queryError } = await supabase
                 .from('products_ingestion')
                 .select('sku')

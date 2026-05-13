@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createAgentUIStreamResponse } from "ai";
 import { z } from "zod";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
@@ -12,8 +12,8 @@ const finalizationCopilotRequestSchema = z.object({
   context: finalizationCopilotContextSchema,
 });
 
-export async function POST(request: Request) {
-  const auth = await requireAdminAuth();
+export async function POST(request: NextRequest) {
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
   try {

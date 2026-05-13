@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
+import { createAdminClient } from '@/lib/supabase/server';
 import { getAllSources } from '@/lib/enrichment/sources';
 
 const SETTINGS_KEY = 'enrichment_defaults';
@@ -10,31 +11,13 @@ interface EnrichmentDefaults {
   updated_at?: string;
 }
 
-/**
- * GET /api/admin/enrichment/defaults
- * Fetch global enrichment defaults and all available sources
- */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) return auth.response;
 
-    // Verify admin access
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const supabase = await createAdminClient();
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profile?.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // Fetch sources and defaults in parallel
     const [sources, { data: settingsRow }] = await Promise.all([
       getAllSources(),
       supabase
@@ -62,29 +45,12 @@ export async function GET() {
   }
 }
 
-/**
- * POST /api/admin/enrichment/defaults
- * Update global enrichment defaults
- */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) return auth.response;
 
-    // Verify admin access
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profile?.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const supabase = await createAdminClient();
 
     const body = await request.json();
     const { enabled_sources, priority_order } = body;
@@ -102,7 +68,6 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     };
 
-    // Upsert into site_settings
     const { error } = await supabase
       .from('site_settings')
       .upsert(

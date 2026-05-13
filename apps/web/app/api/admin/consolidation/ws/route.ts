@@ -11,11 +11,15 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 
 const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
 
 export async function GET(request: NextRequest) {
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) return auth.response;
+
     try {
         // Get auth info
         const supabaseUrl = SUPABASE_URL;

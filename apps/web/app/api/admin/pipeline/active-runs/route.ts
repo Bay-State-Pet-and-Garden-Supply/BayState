@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
 import {
     DIRECT_URL_EXTRACTION_TYPE,
@@ -93,13 +93,13 @@ function getCohortId(config: unknown): string | null {
   return toOptionalString(config.cohort.id);
 }
 
-export async function GET() {
-  const auth = await requireAdminAuth();
+export async function GET(request: NextRequest) {
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) {
     return auth.response;
   }
 
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
 
   // Fetch active jobs (pending/claimed/running)
   const { data: activeJobs, error: activeJobsError } = await supabase

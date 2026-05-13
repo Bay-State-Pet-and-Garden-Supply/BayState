@@ -1,6 +1,5 @@
-import { createClient } from '@/lib/supabase/server';
-import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js';
-import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
+import { createAdminClient } from '@/lib/supabase/server';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { NextRequest, NextResponse } from 'next/server';
@@ -17,15 +16,6 @@ const testRequestSchema = z.object({
   }).optional(),
 });
 
-function getSupabaseAdmin(): SupabaseClient {
-  const url = SUPABASE_URL;
-  const key = SUPABASE_SECRET_KEY;
-  if (!url || !key) {
-    throw new Error('Missing Supabase configuration');
-  }
-  return createSupabaseClient(url, key);
-}
-
 const SCRAPER_APP_DIR = path.join(process.cwd(), '..', 'scraper');
 
 type ParsedScraperYaml = {
@@ -41,19 +31,16 @@ function getTestSkusFromYaml(parsedYaml: ParsedScraperYaml): string[] {
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) return auth.response;
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  try {
 
     // Parse and validate request body
     const body = await request.json();
     const validatedData = testRequestSchema.parse(body);
 
-    const adminClient = getSupabaseAdmin();
+    const adminClient = await createAdminClient();
 
     const { data: config, error: configError } = await adminClient
       .from('scraper_configs')
@@ -124,7 +111,7 @@ export async function POST(request: NextRequest) {
         timeout_at: timeoutAt,
         test_metadata: {
           file_path: config.file_path,
-          triggered_by: user.id,
+          triggered_by: auth.user.id,
           test_type: 'studio',
           priority: validatedData.options?.priority || 'normal',
           scraper_slug: config.slug,

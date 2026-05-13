@@ -1,7 +1,6 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import type { LLMProvider } from '@/lib/ai-scraping/credentials';
-import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { applyResults, syncPendingParallelRuns } from '@/lib/consolidation';
 import { createAdminClient } from '@/lib/supabase/server';
 
@@ -68,20 +67,15 @@ async function authorizeNotification(request: NextRequest, bodyText: string) {
         return { authorized: true as const, mode: 'signature' as const };
     }
 
-    const adminAuth = await requireAdminAuth();
-    if (!adminAuth.authorized) {
-        return {
-            authorized: false as const,
-            response: NextResponse.json(
-                {
-                    error: 'Unauthorized. Provide an admin session or a valid x-consolidation-signature header.',
-                },
-                { status: 401 }
-            ),
-        };
-    }
-
-    return { authorized: true as const, mode: 'admin' as const };
+    return {
+        authorized: false as const,
+        response: NextResponse.json(
+            {
+                error: 'Unauthorized. Provide a valid x-consolidation-signature header.',
+            },
+            { status: 401 }
+        ),
+    };
 }
 
 async function findBatchJob(batchId: string, provider: LLMProvider | null) {
@@ -123,11 +117,10 @@ async function findBatchJob(batchId: string, provider: LLMProvider | null) {
 
 /**
  * POST /api/admin/consolidation/webhook
- * Internal/manual notification endpoint for OpenAI consolidation batches.
+ * External notification endpoint for consolidation batch completion.
  *
- * This route accepts either:
- * 1. An authenticated admin request, or
- * 2. An HMAC-signed request using CONSOLIDATION_WEBHOOK_SECRET.
+ * Authenticated via HMAC signature using CONSOLIDATION_WEBHOOK_SECRET.
+ * Request must include x-consolidation-signature or x-baystate-signature header.
  */
 export async function POST(request: NextRequest) {
     try {

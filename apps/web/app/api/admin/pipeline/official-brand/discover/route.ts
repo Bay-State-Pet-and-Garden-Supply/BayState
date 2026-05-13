@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
 import { runOfficialBrandDiscovery } from "@/lib/official-brand-discovery";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdminAuth();
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
   let body: { cohort_id?: unknown; skus?: unknown };
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Enrich response with per-SKU candidate breakdown
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const { data: candidateRows } = await supabase
       .from("official_brand_url_candidates")
       .select("sku, selection_status")

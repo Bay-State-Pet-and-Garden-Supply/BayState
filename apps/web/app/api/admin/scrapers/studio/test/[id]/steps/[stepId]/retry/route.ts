@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server';
 import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -16,14 +16,10 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; stepId: string }> }
 ) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) return auth.response;
+
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { id: testRunId, stepId } = await params;
     const adminClient = getSupabaseAdmin();
 

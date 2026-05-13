@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { ShopSiteClient, type ShopSiteConfig } from '@/lib/admin/migration/shopsite-client';
 import { requireAdminOnlyAuth } from '@/lib/admin/api-auth';
 
@@ -14,7 +14,7 @@ const TEST_LIMIT = 100;
 
 export async function GET(request: NextRequest) {
     // Migration data download requires admin-only access (not staff)
-    const auth = await requireAdminOnlyAuth();
+    const auth = await requireAdminOnlyAuth(request);
     if (!auth.authorized) return auth.response;
 
     const searchParams = request.nextUrl.searchParams;
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get credentials from Supabase
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
 
     const { data, error } = await supabase
         .from('site_settings')

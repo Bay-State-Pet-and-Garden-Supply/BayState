@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
+import { createAdminClient } from '@/lib/supabase/server';
 
 /**
  * POST /api/admin/enrichment/[sku]/scrape
@@ -16,23 +17,10 @@ export async function POST(
     return NextResponse.json({ error: 'SKU is required' }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  const auth = await requireAdminAuth(request);
+  if (!auth.authorized) return auth.response;
 
-  // Verify user is admin/staff
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || !['admin', 'staff'].includes(profile.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const supabase = await createAdminClient();
 
   try {
     const body = await request.json();
@@ -72,7 +60,7 @@ export async function POST(
           test_mode: false,
           max_workers: 1,
           status: 'pending',
-          created_by: user.id,
+          created_by: auth.user.id,
         })
         .select('id')
         .single();

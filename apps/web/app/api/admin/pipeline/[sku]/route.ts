@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { extractImageCandidatesFromSources } from '@/lib/product-sources';
 import {
@@ -51,11 +51,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ sku: string }> }
 ) {
-  const auth = await requireAdminAuth();
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
   const { sku } = await params;
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
 
   const { data, error } = await supabase
     .from('products_ingestion')
@@ -100,11 +100,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ sku: string }> }
 ) {
-  const auth = await requireAdminAuth();
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
   const { sku } = await params;
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
 
   try {
     const body = await request.json();

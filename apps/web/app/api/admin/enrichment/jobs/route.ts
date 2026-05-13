@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { scrapeProducts, ScrapeOptions } from '@/lib/pipeline-scraping';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 
 interface CohortBrandRecord {
     id?: string | null;
@@ -111,7 +111,7 @@ interface EnrichmentJobRequest {
 }
 
 export async function POST(request: NextRequest) {
-    const auth = await requireAdminAuth();
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) {
         return auth.response;
     }
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
 
         const normalizedMethod: ScrapeOptions['enrichment_method'] =
             body.method === 'scrapers' ? 'scrapers' : 'official_brand';
-        const supabase = await createClient();
+        const supabase = await createAdminClient();
 
         let cohortBrand: string | undefined;
         let officialBrandCohort:

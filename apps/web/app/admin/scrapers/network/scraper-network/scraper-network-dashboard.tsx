@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useRunnerPresence } from "@/lib/realtime/useRunnerPresence";
+import { adminFetch } from "@/lib/admin/api-client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -146,7 +147,7 @@ export function ScraperNetworkDashboard() {
 
  setIsCreatingRunner(true);
  try {
- const response = await fetch("/api/admin/runners/accounts", {
+ const response = await adminFetch("/api/admin/runners/accounts", {
  method: "POST",
  headers: { "Content-Type": "application/json" },
  body: JSON.stringify({

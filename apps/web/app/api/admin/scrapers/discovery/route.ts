@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
+import { createAdminClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 import {
   brandHintToSlug,
@@ -32,15 +33,10 @@ const discoveryRequestSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) return auth.response;
 
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const supabase = await createAdminClient();
 
     const parsed = discoveryRequestSchema.safeParse(await request.json());
     if (!parsed.success) {
@@ -90,7 +86,7 @@ export async function POST(request: NextRequest) {
         },
         metadata: {
           source: 'admin_discovery_api',
-          created_by: user.id,
+          created_by: auth.user.id,
           chunk_size: chunkSize,
           max_concurrency: body.config?.max_concurrency ?? maxWorkers,
         },

@@ -1,46 +1,60 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { validateAdminApiKey } from '@/lib/admin-api-key-auth';
+import { createAdminClient } from '@/lib/supabase/server';
 
-interface AdminAuthResult {
+export interface AdminAuthResult {
   authorized: true;
   user: { id: string; email?: string };
   role: 'admin' | 'staff';
 }
 
-interface AdminAuthError {
+export interface AdminAuthError {
   authorized: false;
   response: NextResponse;
 }
 
 /**
- * Validates that the current request is from an authenticated admin or staff user.
- * Use this at the start of all /api/admin/* route handlers.
+ * Validates that the current request includes a valid admin API key.
+ * API-key-only auth — no JWT session fallback.
+ *
+ * The key can be provided via:
+ *   X-API-Key: bsa_...
+ *   Authorization: Bearer bsa_...
+ *
+ * Returns the authenticated user and their role from profiles.
  *
  * @example
- * export async function GET() {
- *   const auth = await requireAdminAuth();
+ * export async function GET(request: NextRequest) {
+ *   const auth = await requireAdminAuth(request);
  *   if (!auth.authorized) return auth.response;
  *   // ... rest of handler
  * }
  */
-export async function requireAdminAuth(): Promise<AdminAuthResult | AdminAuthError> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+export async function requireAdminAuth(request: NextRequest): Promise<AdminAuthResult | AdminAuthError> {
+  const apiKey = request.headers.get('x-api-key');
+  const authHeader = request.headers.get('authorization');
 
-  if (!user) {
+  const result = await validateAdminApiKey({
+    apiKey,
+    authorization: authHeader,
+  });
+
+  if (!result) {
     return {
       authorized: false,
       response: NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized — valid admin API key required' },
         { status: 401 }
       ),
     };
   }
 
+  // Look up the user's role from profiles
+  const supabase = await createAdminClient();
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
-    .eq('id', user.id)
+    .select('role, email')
+    .eq('id', result.userId)
     .single();
 
   const role = profile?.role;
@@ -57,17 +71,17 @@ export async function requireAdminAuth(): Promise<AdminAuthResult | AdminAuthErr
 
   return {
     authorized: true,
-    user: { id: user.id, email: user.email },
+    user: { id: result.userId, email: profile?.email },
     role: role as 'admin' | 'staff',
   };
 }
 
 /**
- * Validates that the current request is from an admin user (not staff).
- * Use for sensitive operations like user management.
+ * Validates admin-only access (rejects staff).
+ * Use for sensitive operations like user management or key administration.
  */
-export async function requireAdminOnlyAuth(): Promise<AdminAuthResult | AdminAuthError> {
-  const result = await requireAdminAuth();
+export async function requireAdminOnlyAuth(request: NextRequest): Promise<AdminAuthResult | AdminAuthError> {
+  const result = await requireAdminAuth(request);
 
   if (!result.authorized) {
     return result;

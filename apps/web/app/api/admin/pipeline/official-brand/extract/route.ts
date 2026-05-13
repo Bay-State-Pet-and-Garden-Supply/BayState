@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
 import { scrapeProducts } from "@/lib/pipeline-scraping";
 import { normalizeOfficialBrandDomain } from "@/lib/official-brand-workflow";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -83,7 +83,7 @@ function normalizeDomainList(...values: Array<unknown>): string[] | undefined {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdminAuth();
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
   let body: StartExtractionRequest;
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
 
   const { data: membershipRows, error: membershipError } = await supabase
     .from("products_ingestion")

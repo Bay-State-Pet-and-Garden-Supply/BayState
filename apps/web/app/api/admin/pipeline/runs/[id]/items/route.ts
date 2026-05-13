@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
 
 /**
@@ -11,14 +11,14 @@ import { requireAdminAuth } from "@/lib/admin/api-auth";
  * - For scrape runs (scrape_jobs): returns scrape_job_chunks expanded to items
  */
 export async function GET(
-  _request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireAdminAuth();
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
 
   // ---------------------------------------------------------------
   // 1. Try batch_job_items first (consolidation runs)

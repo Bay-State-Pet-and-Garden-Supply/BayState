@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
+import { createAdminClient } from "@/lib/supabase/server";
 
 /**
  * POST /api/admin/consolidation/[batchId]/retry
@@ -9,14 +9,14 @@ import { requireAdminAuth } from "@/lib/admin/api-auth";
  * can be re-processed. Updates the parent batch_jobs status accordingly.
  */
 export async function POST(
-  _request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ batchId: string }> },
 ) {
-  const auth = await requireAdminAuth();
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
   const { batchId } = await params;
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
 
   // ---------------------------------------------------------------
   // 1. Verify the batch exists

@@ -7,7 +7,7 @@ import {
   buildShopSiteNewProductTag,
   generateShopSiteXml,
 } from "@/lib/shopsite/xml-generator";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -47,7 +47,7 @@ async function markShopSiteSyncFailure(skus: string[], message: string) {
   }
 
   try {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const timestamp = new Date().toISOString();
     const { error } = await supabase
       .from("products")
@@ -67,7 +67,7 @@ async function markShopSiteSyncFailure(skus: string[], message: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdminAuth();
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
   let exportSkus: string[] = [];
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     };
 
     const syncedAt = new Date().toISOString();
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
 
     const { error: productSyncError } = await supabase
       .from("products")

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { listBatchJobs, isOpenAIConfigured } from '@/lib/consolidation';
 
@@ -6,8 +6,8 @@ import { listBatchJobs, isOpenAIConfigured } from '@/lib/consolidation';
  * GET /api/admin/consolidation/jobs
  * List recent provider-neutral batch jobs.
  */
-export async function GET() {
-    const auth = await requireAdminAuth();
+export async function GET(request: NextRequest) {
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     if (!(await isOpenAIConfigured())) {

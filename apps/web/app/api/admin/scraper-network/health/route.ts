@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +17,7 @@ interface ConfigCheck {
  */
 export async function GET() {
     const checks: ConfigCheck[] = [];
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
 
     // Check 1: API Key Authentication
     checks.push({

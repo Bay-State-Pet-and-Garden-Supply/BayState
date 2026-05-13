@@ -265,7 +265,7 @@ function buildWorkbookResponse(output: PassThrough) {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAdminAuth();
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
   const statusParam = request.nextUrl.searchParams.get('status') ?? 'exporting';
@@ -291,7 +291,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdminAuth();
+  const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
   try {

@@ -113,8 +113,8 @@ async function buildZipResponse(skus?: string[], includeExportedSelection = fals
     });
 }
 
-export async function GET() {
-    const auth = await requireAdminAuth();
+export async function GET(request: NextRequest) {
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     try {
@@ -129,7 +129,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-    const auth = await requireAdminAuth();
+    const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
     try {
