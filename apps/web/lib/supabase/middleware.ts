@@ -13,8 +13,16 @@ const PLACEHOLDER_SUPABASE_URL = 'https://your-project.supabase.co'
 const PLACEHOLDER_SUPABASE_ANON_KEY = 'your-anon-key'
 
 function resolveSupabaseConfig(): SupabaseConfig | null {
-  const url = (process.env.SUPABASE_URL ?? process.env.SUPABASE_URL)?.trim() ?? ''
-  const anonKey = (process.env.SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY)?.trim() ?? ''
+  const keys = [
+    process.env.SUPABASE_PUBLISHABLE_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    process.env.SUPABASE_ANON_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ]
+  
+  const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL)?.trim() ?? ''
+  // Prioritize keys starting with 'sb_'
+  const anonKey = (keys.find(k => k?.startsWith('sb_')) || keys.find(k => !!k) || '')?.trim() ?? ''
 
   if (!url || !anonKey) {
     return null
