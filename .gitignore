@@ -97,3 +97,5 @@ docker/github-actions-runner/_work/
 .fallow
 .ruff_cache
 
+actions-runner
+
