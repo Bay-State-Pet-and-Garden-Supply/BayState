@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
 import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 import { normalizeScrapeProgressUpdate } from '@/lib/scraper-logs';
