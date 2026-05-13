@@ -262,6 +262,8 @@ class Crawl4AIEngine:
             wait_for=run_settings.get("wait_for"),
             wait_until=run_settings.get("wait_until", "networkidle"),
             wait_for_images=run_settings.get("wait_for_images", False),
+            scan_full_page=run_settings.get("scan_full_page", False),
+            scroll_delay=float(run_settings.get("scroll_delay", 0.45)),
             page_timeout=page_timeout,
             delay_before_return_html=float(run_settings.get("delay_before_return_html", 0)),
             mean_delay=run_settings.get("mean_delay", 0.1),

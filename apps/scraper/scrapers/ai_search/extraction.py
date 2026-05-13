@@ -149,6 +149,16 @@ class ExtractionUtils:
     _DISPLAY_VALUE_PATTERN = re.compile(r"aria-label=[\"']Select\s+([^\"']+)[\"']", flags=re.IGNORECASE)
     _DEMANDWARE_VARIATION_ID_PATTERN = re.compile(r'"variant"\s*:\s*"([^"]+)"', flags=re.IGNORECASE)
 
+    # Image scoring heuristics
+    _NAV_KEYWORDS = {"logo", "icon", "nav", "menu", "category", "banner", "social", "footer", "cart", "account", "search"}
+    _GALLERY_KEYWORDS = {"product", "gallery", "carousel", "pdp", "main", "hero", "detail", "item", "thumb"}
+    _BADGE_KEYWORDS = {"free", "shipping", "guarantee", "badge", "icon", "feature", "made-in", "usa", "natural", "organic"}
+    _NON_PRODUCT_SECTION_MARKERS = [
+        "related products", "customers also bought", "you may also like",
+        "recipe features", "ingredients", "guaranteed analysis", "feeding instructions",
+        "from the manufacturer", "recommendations", "people also viewed"
+    ]
+
     def __init__(self, scoring_module):
         """Initialize with scoring module for domain utilities."""
         self._scoring = scoring_module
@@ -346,6 +356,133 @@ class ExtractionUtils:
                     output.extend(self.coerce_string_list(item))
             return output
         return []
+
+    def merge_product_images(
+        self,
+        *,
+        source_url: str,
+        html: str,
+        markdown: str,
+        crawl_media: dict[str, Any],
+        jsonld_images: list[str],
+        meta_images: list[str],
+        expected_product_name: Optional[str] = None,
+        expected_brand: Optional[str] = None,
+    ) -> tuple[list[str], dict[str, Any]]:
+        """Perform deterministic image enrichment with scoring and diagnostics.
+        
+        Returns (sorted_images, diagnostics).
+        """
+        all_candidates: dict[str, dict[str, Any]] = {}
+        
+        def add_candidate(url: str, source: str, score_bonus: int = 0, media_info: Optional[dict[str, Any]] = None):
+            normalized = self.normalize_images([url], source_url)
+            if not normalized:
+                return
+            target = normalized[0]
+            if target not in all_candidates:
+                all_candidates[target] = {
+                    "url": target,
+                    "sources": {source},
+                    "score": 0.0,
+                    "media_info": media_info or {},
+                    "bonuses": []
+                }
+            else:
+                all_candidates[target]["sources"].add(source)
+            
+            if score_bonus:
+                all_candidates[target]["score"] += score_bonus
+
+        # 1. Collect from all sources
+        for img in jsonld_images: add_candidate(img, "json-ld", score_bonus=3)
+        for img in meta_images: add_candidate(img, "meta", score_bonus=2)
+        
+        # Crawl4AI media
+        crawl_imgs = crawl_media.get("images", [])
+        for img_obj in crawl_imgs:
+            if isinstance(img_obj, dict) and img_obj.get("src"):
+                add_candidate(img_obj["src"], "crawl4ai-media", media_info=img_obj)
+        
+        # Injected script candidates (from our upgraded JS)
+        injected_match = re.search(r'<script[^>]+id=["\']bsp-image-candidates["\'][^>]*>(.*?)</script>', html, flags=re.DOTALL)
+        if injected_match:
+            try:
+                injected_urls = json.loads(injected_match.group(1))
+                for url in injected_urls:
+                    add_candidate(url, "injected-script", score_bonus=1)
+            except: pass
+
+        # 2. Scoring loop
+        product_slug = self._normalize_lookup_token(expected_product_name)
+        brand_slug = self._normalize_lookup_token(expected_brand)
+        domain = self._scoring.domain_from_url(source_url)
+        
+        # Section markers for DOM position scoring
+        html_lower = html.lower()
+        section_offsets = {marker: html_lower.find(marker) for marker in self._NON_PRODUCT_SECTION_MARKERS if html_lower.find(marker) != -1}
+        first_bad_section_offset = min(section_offsets.values()) if section_offsets else len(html_lower)
+
+        for target, data in all_candidates.items():
+            score = data["score"]
+            url_lower = target.lower()
+            filename = urlparse(target).path.split("/")[-1].lower()
+            
+            # Filename matching
+            if product_slug and any(token in filename for token in product_slug.split() if len(token) > 2):
+                score += 5.0
+            
+            # Domain matching
+            if domain and domain in url_lower:
+                score += 3.0
+            
+            # Media info (Crawl4AI)
+            media = data["media_info"]
+            if media:
+                score += float(media.get("score", 0)) * 2.0
+                if self._coerce_int(media.get("width"), 0) > 600: score += 2.0
+                if self._coerce_int(media.get("height"), 0) > 600: score += 2.0
+                
+            # DOM Position (very rough via offset in HTML)
+            img_offset = html_lower.find(target.lower())
+            if img_offset != -1:
+                if img_offset < first_bad_section_offset:
+                    score += 3.0
+                else:
+                    score -= 5.0 # Likely related products or footer
+            
+            # Keywords in URL/Alt
+            alt = str(media.get("alt", "")).lower()
+            if any(kw in url_lower or kw in alt for kw in self._GALLERY_KEYWORDS):
+                score += 4.0
+            if any(kw in url_lower or kw in alt for kw in self._NAV_KEYWORDS):
+                score -= 6.0
+            if any(kw in url_lower or kw in alt for kw in self._BADGE_KEYWORDS):
+                score -= 4.0
+                
+            data["score"] = score
+
+        # 3. Filter and sort
+        final_list = [d for d in all_candidates.values() if d["score"] > 0]
+        final_list.sort(key=lambda x: x["score"], reverse=True)
+        
+        sorted_urls = [d["url"] for d in final_list]
+        
+        diagnostics = {
+            "jsonld_count": len(jsonld_images),
+            "meta_count": len(meta_images),
+            "crawl4ai_media_count": len(crawl_imgs),
+            "total_candidates": len(all_candidates),
+            "selected_count": len(sorted_urls),
+            "rejected_count": len(all_candidates) - len(sorted_urls),
+            "top_score": final_list[0]["score"] if final_list else 0
+        }
+        
+        return sorted_urls, diagnostics
+
+    def _coerce_int(self, value: Any, default: int) -> int:
+        try: return int(float(value))
+        except: return default
 
     def extract_image_urls(self, value: Any) -> list[str]:
         """Extract image URLs from JSON-LD string/list/dict shapes."""

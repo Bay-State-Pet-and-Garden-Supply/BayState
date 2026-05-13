@@ -176,11 +176,17 @@ class Crawl4AIExtractor:
         parse_time_ms = int((time.perf_counter() - parse_start) * 1000)
         if jsonld_result:
             jsonld_result["url"] = response_url
-            jsonld_result["images"] = await _resolve_grounding_images(
-                self._grounding_redirect_resolver, self._extraction.coerce_string_list(jsonld_result.get("images"))
+            enriched_jsonld, image_diag = await self._enrich_images(
+                jsonld_result,
+                url=response_url,
+                html=html_text,
+                markdown=markdown_text,
+                crawl_media={}, # Fixtures don't have crawl media
+                expected_name=product_name,
+                expected_brand=brand,
             )
-            self._log_telemetry(response_url, sku, "fixture-json-ld", True, 0, parse_time_ms, 0, None, float(jsonld_result.get("confidence", 0.0)))
-            return jsonld_result
+            self._log_telemetry(response_url, sku, "fixture-json-ld", True, 0, parse_time_ms, 0, None, float(jsonld_result.get("confidence", 0.0)), image_diagnostics=image_diag)
+            return enriched_jsonld
 
         meta_result = extract_product_from_meta_tags(
             extraction_utils=self._extraction,
@@ -192,11 +198,17 @@ class Crawl4AIExtractor:
         )
         parse_time_ms = int((time.perf_counter() - parse_start) * 1000)
         if meta_result:
-            meta_result["images"] = await _resolve_grounding_images(
-                self._grounding_redirect_resolver, self._extraction.coerce_string_list(meta_result.get("images"))
+            enriched_meta, image_diag = await self._enrich_images(
+                meta_result,
+                url=response_url,
+                html=html_text,
+                markdown=markdown_text,
+                crawl_media={},
+                expected_name=product_name,
+                expected_brand=brand,
             )
-            self._log_telemetry(response_url, sku, "fixture-meta-tags", True, 0, parse_time_ms, 0, None, float(meta_result.get("confidence", 0.0)))
-            return meta_result
+            self._log_telemetry(response_url, sku, "fixture-meta-tags", True, 0, parse_time_ms, 0, None, float(meta_result.get("confidence", 0.0)), image_diagnostics=image_diag)
+            return enriched_meta
 
         fallback_result = await self._fallback_extractor.extract(
             response_url,
@@ -206,7 +218,16 @@ class Crawl4AIExtractor:
             html=html_text or markdown_text,
         )
         if fallback_result.get("success"):
-            return fallback_result
+            enriched_fb, image_diag = await self._enrich_images(
+                fallback_result,
+                url=response_url,
+                html=html_text,
+                markdown=markdown_text,
+                crawl_media={},
+                expected_name=product_name,
+                expected_brand=brand,
+            )
+            return enriched_fb
 
         if status_code is not None and status_code >= 400:
             return {
@@ -216,20 +237,8 @@ class Crawl4AIExtractor:
 
         return fallback_result
 
-    def _log_telemetry(
-        self,
-        url: str,
-        sku: str,
-        method: str,
-        success: bool,
-        fetch_time_ms: int,
-        parse_time_ms: int,
-        llm_time_ms: int,
-        error: Optional[str] = None,
-        confidence: float = 0.0,
-        pruning_enabled: bool = False,
-        fit_markdown_used: bool = False,
         fallback_triggered: bool = False,
+        image_diagnostics: Optional[dict[str, Any]] = None,
     ) -> None:
         """Log structured extraction telemetry."""
         telemetry = {
@@ -244,6 +253,7 @@ class Crawl4AIExtractor:
             "pruning_enabled": pruning_enabled,
             "fit_markdown_used": fit_markdown_used,
             "fallback_triggered": fallback_triggered,
+            "image_diagnostics": image_diagnostics,
         }
         if error:
             telemetry["error"] = self._summarize_error(error)
@@ -395,6 +405,41 @@ class Crawl4AIExtractor:
         normalized["categories"] = categories
         return normalized
 
+    async def _enrich_images(
+        self,
+        result_data: dict[str, Any],
+        *,
+        url: str,
+        html: str,
+        markdown: str,
+        crawl_media: dict[str, Any],
+        expected_name: Optional[str],
+        expected_brand: Optional[str],
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Apply deterministic image enrichment to an extraction result."""
+        final_images, diagnostics = self._extraction.merge_product_images(
+            source_url=url,
+            html=html,
+            markdown=markdown,
+            crawl_media=crawl_media,
+            jsonld_images=self._extraction.coerce_string_list(result_data.get("images") if result_data.get("images") else []),
+            meta_images=[], # Already captured in jsonld_images if coming from meta path
+            expected_product_name=expected_name,
+            expected_brand=expected_brand,
+        )
+        
+        # Resolve any grounding redirects for the new images
+        resolved_images = await _resolve_grounding_images(self._grounding_redirect_resolver, final_images)
+        
+        enriched = dict(result_data)
+        enriched["images"] = resolved_images
+        
+        # Add a warning if we suspects underextraction
+        if len(resolved_images) <= 1 and diagnostics.get("total_candidates", 0) >= 4:
+            diagnostics["warning"] = "image_gallery_underextracted"
+            
+        return enriched, diagnostics
+
     async def _resolve_official_family_variant(
         self,
         *,
@@ -487,6 +532,9 @@ class Crawl4AIExtractor:
                     "remove_overlay_elements": True,
                     "cache_mode": "ENABLED" if self.cache_enabled else "BYPASS",
                     "js_code": get_scroll_javascript(),
+                    "wait_for_images": True,
+                    "scan_full_page": True,
+                    "scroll_delay": 0.45,
                     "timeout": 30000,
                     "pruning_enabled": True,
                     "fallback_fetch_function": _fallback_wrapper,
@@ -498,7 +546,7 @@ class Crawl4AIExtractor:
             logger.debug(
                 f"[AI Search] Crawl4AI config: provider={self._llm_runtime.provider}, model={self.llm_model}, timeout=30000, "
                 f"strategy={self.extraction_strategy}, headless={self.headless}, "
-                f"cache={self.cache_enabled}, base_url={self._llm_runtime.base_url}"
+                f"cache={self.cache_enabled}, wait_for_images=True, scan_full_page=True"
             )
 
             async with Crawl4AIEngine(engine_config) as engine:
@@ -623,6 +671,15 @@ class Crawl4AIExtractor:
                                 jsonld_fallback = dict(jsonld_result)
                             else:
                                 logger.info("[AI Search] Extraction method used: json-ld")
+                                enriched_jsonld, image_diag = await self._enrich_images(
+                                    jsonld_result,
+                                    url=url,
+                                    html=html,
+                                    markdown=markdown,
+                                    crawl_media=result.get("media", {}),
+                                    expected_name=product_name,
+                                    expected_brand=brand,
+                                )
                                 self._log_telemetry(
                                     url,
                                     sku,
@@ -636,8 +693,9 @@ class Crawl4AIExtractor:
                                     pruning_enabled=True,
                                     fit_markdown_used=False,
                                     fallback_triggered=result.get("fallback_triggered", False),
+                                    image_diagnostics=image_diag,
                                 )
-                                return jsonld_result
+                                return enriched_jsonld
 
                         parse_start = time.perf_counter()
                         meta_result = extract_product_from_meta_tags(
@@ -654,6 +712,15 @@ class Crawl4AIExtractor:
                                 self._grounding_redirect_resolver, self._extraction.coerce_string_list(meta_result.get("images"))
                             )
                             logger.info("[AI Search] Extraction method used: meta-tags")
+                            enriched_meta, image_diag = await self._enrich_images(
+                                meta_result,
+                                url=url,
+                                html=html,
+                                markdown=markdown,
+                                crawl_media=result.get("media", {}),
+                                expected_name=product_name,
+                                expected_brand=brand,
+                            )
                             self._log_telemetry(
                                 url,
                                 sku,
@@ -667,8 +734,9 @@ class Crawl4AIExtractor:
                                 pruning_enabled=True,
                                 fit_markdown_used=False,
                                 fallback_triggered=result.get("fallback_triggered", False),
+                                image_diagnostics=image_diag,
                             )
-                            return meta_result
+                            return enriched_meta
 
                 if not result.get("success"):
                     error = result.get("error") or "Extraction failed or returned no content"
@@ -776,19 +844,38 @@ class Crawl4AIExtractor:
                                                 filled = sum(1 for f in required_fields if product_data.get(f))
                                                 product_data["confidence"] = filled / len(required_fields)
 
+                                                enriched_llm, image_diag = await self._enrich_images(
+                                                    product_data,
+                                                    url=url,
+                                                    html=html,
+                                                    markdown=markdown,
+                                                    crawl_media=result.get("media", {}),
+                                                    expected_name=product_name,
+                                                    expected_brand=brand,
+                                                )
                                                 llm_time_ms = int((time.perf_counter() - llm_start) * 1000)
                                                 self._log_telemetry(
                                                     url, sku, "llm", True, fetch_time_ms, 0, llm_time_ms,
-                                                    None, product_data["confidence"],
+                                                    None, enriched_llm["confidence"],
                                                     pruning_enabled=True, fit_markdown_used=True,
                                                     fallback_triggered=True,
+                                                    image_diagnostics=image_diag,
                                                 )
                                                 logger.info("[AI Search] LLM second pass succeeded after incomplete fallback")
-                                                return product_data
+                                                return enriched_llm
                             except Exception as llm_exc:
                                 logger.warning("[AI Search] LLM second pass after fallback failed: %s", self._summarize_error(llm_exc))
 
-                    return fallback_result
+                    enriched_fb, image_diag = await self._enrich_images(
+                        fallback_result,
+                        url=url,
+                        html=html,
+                        markdown=markdown,
+                        crawl_media=result.get("media", {}),
+                        expected_name=product_name,
+                        expected_brand=brand,
+                    )
+                    return enriched_fb
 
                 # SECOND PASS: If lightweight extraction failed, use LLM/CSS strategy
                 if self.extraction_strategy == "json_css":

@@ -10,23 +10,80 @@ logger = logging.getLogger(__name__)
 _PROMPT_CACHE: dict[str, str] = {}
 
 def get_scroll_javascript() -> str:
-    """Get JavaScript for lazy loading trigger through scrolling."""
+    """Get JavaScript for lazy loading trigger and gallery interaction.
+    
+    Scrolls the page, clicks gallery controls, and injects all discovered 
+    image candidates into a JSON script block for extraction.
+    """
     return """
     async () => {
-        // Scroll down to bottom to trigger lazy loading
-        window.scrollTo(0, document.body.scrollHeight);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Scroll back up
-        window.scrollTo(0, 0);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Try to find and interact with carousel elements
-        const carousels = document.querySelectorAll('[class*="carousel"], [class*="gallery"], [data-carousel], [role="carousel"]');
-        for (const carousel of carousels) {
-            carousel.scrollLeft += 200;
-            await new Promise(resolve => setTimeout(resolve, 300));
+        const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+        const startTime = Date.now();
+        const timeout = 8000; // 8s max interaction time
+
+        const getUrls = () => {
+            const urls = new Set();
+            document.querySelectorAll("img, source").forEach(el => {
+                ["src", "data-src", "srcset", "data-srcset"].forEach(attr => {
+                    const value = el.getAttribute(attr);
+                    if (!value) return;
+                    value.split(",").forEach(part => {
+                        const url = part.trim().split(/\s+/)[0];
+                        if (url && !url.startsWith("data:")) {
+                            try { urls.add(new URL(url, location.href).href); } catch(e) {}
+                        }
+                    });
+                });
+            });
+            document.querySelectorAll("[style*='background-image']").forEach(el => {
+                const style = el.getAttribute("style") || "";
+                const matches = [...style.matchAll(/url\\(["']?([^"')]+)["']?\\)/g)];
+                matches.forEach(match => {
+                    try { urls.add(new URL(match[1], location.href).href); } catch(e) {}
+                });
+            });
+            return [...urls];
+        };
+
+        const selectors = [
+            "[class*='carousel'] button",
+            "[class*='gallery'] button",
+            "[aria-label*='next' i]",
+            "[aria-label*='slide' i]",
+            "[class*='thumb']",
+            "[class*='thumbnail']"
+        ];
+
+        // Interaction loop
+        for (let i = 0; i < 10; i++) {
+            if (Date.now() - startTime > timeout) break;
+            
+            for (const selector of selectors) {
+                for (const el of document.querySelectorAll(selector)) {
+                    if (el.offsetParent !== null) { // Visible only
+                        try { el.click(); } catch(e) {}
+                        await sleep(100);
+                    }
+                }
+            }
+
+            for (const carousel of document.querySelectorAll("[class*='carousel'], [class*='gallery']")) {
+                carousel.scrollLeft += carousel.clientWidth || 600;
+            }
+
+            window.scrollBy(0, 400);
+            await sleep(200);
         }
+
+        // Final collection and injection
+        const script = document.createElement("script");
+        script.type = "application/json";
+        script.id = "bsp-image-candidates";
+        script.textContent = JSON.stringify(getUrls());
+        document.body.appendChild(script);
+        
+        // Scroll back to top for clean capture
+        window.scrollTo(0, 0);
     }
     """
 
