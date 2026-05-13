@@ -40,7 +40,7 @@ jobs:
   sync:
     name: Sync ShopSite Data
     environment: register-sync
-    runs-on: [self-hosted, Windows, X64, register-sync]
+    runs-on: [self-hosted, macOS, ARM64]
     timeout-minutes: 60
     defaults:
       run:
