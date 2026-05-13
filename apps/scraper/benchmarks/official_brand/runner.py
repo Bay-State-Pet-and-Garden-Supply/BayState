@@ -63,6 +63,12 @@ async def run_official_brand_fixture_benchmark(
     output_dir: Path,
     fail_under_domain_match_rate: float | None = None,
 ) -> tuple[dict[str, Any], Path, Path, bool]:
+    raise NotImplementedError(
+        "Official Brand URL discovery benchmarks have moved server-side. "
+        "Discovery logic is no longer available in the scraper runner. "
+        "Use the web app discovery endpoint or rewrite benchmarks to test "
+        "extraction-only against pre-discovered URLs."
+    )
     entries: list[OfficialBrandBenchmarkEntry] = load_dataset(dataset_path)
 
     with TemporaryDirectory(prefix="official-brand-benchmark-cache-") as cache_dir:

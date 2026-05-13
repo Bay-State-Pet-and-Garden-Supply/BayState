@@ -1,43 +1,36 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-import os
 from typing import Any
 
-from pydantic import BaseModel, Field
-
-from scrapers.ai_search.llm_runtime import resolve_llm_runtime
 from scrapers.ai_search.models import AISearchResult
-from src.crawl4ai_engine.engine import Crawl4AIEngine
 
 
 logger = logging.getLogger(__name__)
 
 
-class ProductSpecs(BaseModel):
-    """Pydantic model for product specifications."""
+class ProductPageExtractor:
+    """Canonical product page extractor using the robust Crawl4AI pipeline.
 
-    name: str = Field(..., description="Product name")
-    price: str = Field(None, description="Product price")
-    description: str = Field(None, description="Product description")
-    sku: str = Field(None, description="Product SKU or model number")
-    brand: str = Field(None, description="Product brand")
-    specifications: dict = Field(default_factory=dict, description="Technical specifications")
-    images: list[str] = Field(default_factory=list, description="Product image URLs")
+    This is an extraction-only class. It does NOT perform URL discovery,
+    domain verification, or candidate ranking. It receives a known URL
+    and extracts product data using JSON-LD, meta tags, fallback HTTP,
+    and LLM extraction as needed.
 
+    The extraction pipeline follows this order:
+      1. Fetch with Crawl4AIEngine (relaxed-wait retry if needed)
+      2. Detect soft-404 / wrong landing page
+      3. Resolve variant-specific payload if page is a family page (Demandware)
+      4. Extract JSON-LD
+      5. If incomplete, extract meta tags
+      6. If incomplete, run fallback extraction (HTTP GET + JSON-LD + meta)
+      7. If still incomplete, run LLM extraction
+      8. Normalize into one result shape
+      9. Return evidence with method/confidence/telemetry
 
-class ProductUrlExtractor:
-    """Extract product data from known/approved URLs.
-
-    This is an extraction-only class. URL discovery (finding the right URL
-    for a product) is handled server-side by the web app's official-brand
-    discovery pipeline.
-
-    Products MUST have a ``source_url``, ``known_url``, or ``url`` field.
-    If no URL is provided, the extraction will fail with a descriptive
-    message pointing to the server-side discovery endpoint.
+    The same pipeline is used regardless of URL source (manual paste, URL Review
+    selection, bulk import, supplier feed, or future sources).
     """
 
     def __init__(
@@ -47,167 +40,136 @@ class ProductUrlExtractor:
         llm_model: str = "deepseek-chat",
         llm_api_key: str | None = None,
         llm_base_url: str | None = None,
+        cache_enabled: bool = True,
+        extraction_strategy: str = "llm",
+        prompt_version: str = "v1",
     ):
         self.headless = headless
-        self._llm_runtime = resolve_llm_runtime(
-            provider=llm_provider,
-            model=llm_model,
-            base_url=llm_base_url,
-            api_key=llm_api_key,
+        self.cache_enabled = cache_enabled
+        self.extraction_strategy = extraction_strategy
+        self.prompt_version = prompt_version
+
+        from scrapers.ai_search.matching import MatchingUtils
+        from scrapers.ai_search.scoring import SearchScorer
+        from scrapers.ai_search.crawl4ai_extractor import Crawl4AIExtractor
+
+        scoring = SearchScorer()
+        matching = MatchingUtils()
+
+        self._extractor = Crawl4AIExtractor(
+            headless=headless,
+            llm_model=llm_model,
+            scoring=scoring,
+            matching=matching,
+            cache_enabled=cache_enabled,
+            extraction_strategy=extraction_strategy,
+            prompt_version=prompt_version,
+            llm_provider=llm_provider,
+            llm_base_url=llm_base_url,
+            llm_api_key=llm_api_key,
         )
 
-    async def extract_data(self, url: str, schema_path: str | None = None) -> dict[str, Any]:
-        """Extract product data using a two-stage process.
+    async def extract(
+        self,
+        *,
+        url: str,
+        sku: str,
+        product_name: str | None = None,
+        register_name: str | None = None,
+        brand: str | None = None,
+        fallback_urls: list[str] | None = None,
+        max_fallbacks: int = 3,
+    ) -> dict[str, Any]:
+        """Extract product data from a known URL using the robust pipeline.
 
-        Stage 1: Deterministic extraction using JsonCssExtractionStrategy if schema_path provided.
-        Stage 2: Semantic fallback using LLMExtractionStrategy if Stage 1 is skipped or fails.
+        Tries the primary URL first, then fallback URLs if provided.
+        Returns a standardized dict regardless of which extraction method succeeded.
 
         Args:
-            url: The URL to extract data from
-            schema_path: Optional path to a JSON CSS extraction schema
+            url: Primary URL to extract from.
+            sku: Product SKU for context.
+            product_name: Expected product name (used for validation and variant resolution).
+            register_name: Alternate name for the product (e.g., register/brand name).
+            brand: Expected brand name.
+            fallback_urls: Optional list of fallback URLs to try if the primary fails.
+            max_fallbacks: Maximum number of fallback URLs to attempt (default 3).
 
         Returns:
-            Dictionary of extracted product data
+            Dict with keys: success, sku, source, url, final_url, product_name,
+            brand, description, images, categories, size_metrics, method,
+            confidence, telemetry, and error (on failure).
         """
-        engine_config = {
-            "browser": {
-                "headless": self.headless,
-            },
-            "crawler": {
-                "timeout": 60000,
-            },
-        }
+        # Build URLs to try
+        urls_to_try: list[str] = []
+        if url:
+            urls_to_try.append(url)
+        if fallback_urls:
+            urls_to_try.extend(fallback_urls[:max(max_fallbacks - 1, 0)])
 
-        async with Crawl4AIEngine(engine_config) as engine:
-            # Stage 1: Deterministic (JSON CSS)
-            if schema_path and os.path.exists(schema_path):
-                try:
-                    with open(schema_path, "r") as f:
-                        schema = json.load(f)
+        last_error: str | None = None
+        final_url = url
+        effective_name = product_name or register_name
 
-                    from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
-
-                    strategy = JsonCssExtractionStrategy(schema=schema)
-
-                    engine.config.setdefault("crawler", {})["extraction_strategy"] = strategy
-                    result = await engine.crawl(url)
-
-                    if result.get("success") and result.get("extracted_content"):
-                        content = result["extracted_content"]
-                        if content:
-                            logger.info(
-                                "[ProductUrlExtractor] Stage 1 (Deterministic) extraction successful for %s",
-                                url,
-                            )
-                            # JsonCssExtractionStrategy content might be stringified JSON
-                            if isinstance(content, str):
-                                try:
-                                    content = json.loads(content)
-                                except json.JSONDecodeError:
-                                    pass
-
-                            return {"success": True, "data": content, "method": "json_css"}
-                except Exception as e:
-                    logger.warning(
-                        "[ProductUrlExtractor] Stage 1 extraction failed: %s. Falling back to Stage 2.",
-                        e,
-                    )
-
-            # Stage 2: Semantic Fallback (LLM)
-            logger.info("[ProductUrlExtractor] Starting Stage 2 (Semantic) extraction for %s", url)
-            from crawl4ai import LLMConfig
-            from crawl4ai.extraction_strategy import LLMExtractionStrategy
-
-            # Use LLM with Pydantic schema
-            strategy = LLMExtractionStrategy(
-                llm_config=LLMConfig(
-                    provider=self._llm_runtime.crawl4ai_provider,
-                    api_token=self._llm_runtime.api_key,
-                ),
-                schema=ProductSpecs.model_json_schema(),
-                extraction_type="schema",
-                instruction=(
-                    "Extract product name, price, description, sku, brand, specifications, "
-                    "and images from the content."
-                ),
-                input_format="markdown",
+        for attempt_url in urls_to_try:
+            if not attempt_url:
+                continue
+            result = await self._extractor.extract(
+                url=attempt_url,
+                sku=sku,
+                product_name=effective_name,
+                brand=brand,
             )
+            if result and result.get("success"):
+                # Normalize into the canonical output shape
+                normalized: dict[str, Any] = {
+                    "success": True,
+                    "sku": sku,
+                    "source": "product_page_extraction",
+                    "url": url,
+                    "final_url": result.get("url") or attempt_url,
+                    "product_name": result.get("product_name"),
+                    "brand": result.get("brand"),
+                    "description": result.get("description"),
+                    "images": result.get("images") or [],
+                    "categories": result.get("categories") or [],
+                    "size_metrics": result.get("size_metrics"),
+                    "method": result.get("method", "unknown"),
+                    "confidence": result.get("confidence", 0.0),
+                    "telemetry": result.get("telemetry", {}),
+                }
+                return normalized
 
-            engine.config.setdefault("crawler", {})["extraction_strategy"] = strategy
-            # Ensure we don't use cached result without extraction
-            engine.config.setdefault("crawler", {})["cache_mode"] = "BYPASS"
+            last_error = (result.get("error") if result else None) or "Extraction failed"
+            final_url = attempt_url
 
-            result = await engine.crawl(url)
-            if result.get("success") and result.get("extracted_content"):
-                try:
-                    content = result["extracted_content"]
-                    if isinstance(content, str):
-                        data = json.loads(content)
-                        # LLMExtractionStrategy often returns a list of objects
-                        if isinstance(data, list) and data:
-                            data = data[0]
-                    else:
-                        data = content
-
-                    logger.info("[ProductUrlExtractor] Stage 2 (Semantic) extraction successful for %s", url)
-                    return {"success": True, "data": data, "method": "llm"}
-                except Exception as e:
-                    logger.error("[ProductUrlExtractor] Failed to parse Stage 2 results: %s", e)
-
-            return {"success": False, "error": result.get("error") or "Extraction failed"}
-
-    async def scrape_products_batch(
-        self,
-        products: list[dict[str, Any]],
-        max_concurrency: int = 4,
-    ) -> list[AISearchResult]:
-        """Extract products from known URLs. URL discovery is now server-side.
-
-        This is the legacy combined path — it now delegates directly to
-        extraction only. Products MUST have a source_url or known_url;
-        if not, the job fails with a message pointing to the server-side
-        discovery endpoint.
-        """
-        # Extract only what we need: products with pre-discovered URLs
-        url_provided_products = []
-        for product in products:
-            url = str(product.get("source_url") or product.get("known_url") or "").strip()
-            if url:
-                url_provided_products.append(product)
-            else:
-                sku = str(product.get("sku") or "").strip()
-                logger.warning(
-                    "[ProductUrlExtractor] Skipping SKU %s — URL discovery is now server-side. "
-                    "Use POST /api/admin/pipeline/official-brand/discover instead.",
-                    sku,
-                )
-
-        if not url_provided_products:
-            return [
-                AISearchResult(
-                    success=False,
-                    sku="",
-                    error=(
-                        "URL discovery is now server-side. "
-                        "Use POST /api/admin/pipeline/official-brand/discover to discover URLs, "
-                        "then submit extraction jobs with urls_by_sku."
-                    ),
-                )
-            ]
-
-        return await self.extract_products_from_urls_batch(
-            url_provided_products, max_concurrency=max_concurrency
-        )
+        return {
+            "success": False,
+            "sku": sku,
+            "source": "product_page_extraction",
+            "url": url,
+            "final_url": final_url,
+            "error": last_error or "All extraction attempts failed",
+        }
 
     async def extract_products_from_urls_batch(
         self,
         products: list[dict[str, Any]],
         max_concurrency: int = 4,
     ) -> list[AISearchResult]:
-        """Extract product data from known URLs.
+        """Batch extraction from known URLs.
 
         Accepts products with source_url, known_url, or url fields and
         optional fallback_urls for resilience.
+
+        Args:
+            products: List of product dicts. Each should have at minimum
+                ``sku`` and one of ``source_url``, ``known_url``, or ``url``.
+                Optional fields: product_name, register_name, brand,
+                fallback_urls, max_fallbacks, url_source.
+            max_concurrency: Maximum parallel extractions (default 4).
+
+        Returns:
+            List of AISearchResult objects.
         """
         if not products:
             return []
@@ -218,8 +180,17 @@ class ProductUrlExtractor:
             async with semaphore:
                 sku = str(product.get("sku") or "").strip()
                 brand = str(product.get("brand") or "").strip()
-                primary_url = str(product.get("source_url") or product.get("known_url") or product.get("url") or "").strip()
-                fallback_urls = [str(u).strip() for u in (product.get("fallback_urls") or []) if str(u).strip()]
+                primary_url = str(
+                    product.get("source_url")
+                    or product.get("known_url")
+                    or product.get("url")
+                    or ""
+                ).strip()
+                fallback_urls = [
+                    str(u).strip()
+                    for u in (product.get("fallback_urls") or [])
+                    if str(u).strip()
+                ]
                 raw_max = product.get("max_fallbacks")
                 try:
                     max_fallbacks = int(raw_max) if raw_max is not None else 3
@@ -229,40 +200,116 @@ class ProductUrlExtractor:
                 if not sku:
                     return AISearchResult(success=False, sku=sku, error="Missing SKU")
 
-                urls_to_try = [primary_url, *fallback_urls][:max_fallbacks]
-                last_error = "Missing source URL"
+                if not primary_url:
+                    return AISearchResult(
+                        success=False,
+                        sku=sku,
+                        error="Missing source URL",
+                    )
 
-                for attempt_url in urls_to_try:
-                    if not attempt_url:
-                        continue
-                    res = await self.extract_data(attempt_url)
-                    if res.get("success"):
-                        data = res.get("data")
-                        if isinstance(data, list) and data and isinstance(data[0], dict):
-                            data = data[0]
-                        if isinstance(data, dict):
-                            return AISearchResult(
-                                success=True,
-                                sku=sku,
-                                product_name=data.get("name"),
-                                brand=data.get("brand") or brand,
-                                description=data.get("description"),
-                                images=data.get("images"),
-                                categories=data.get("categories"),
-                                url=attempt_url,
-                                source_website=attempt_url,
-                                confidence=1.0 if res.get("method") == "json_css" else 0.8,
-                                cost_usd=0.05,
-                                selection_method=str(product.get("url_source") or "known_url"),
-                            )
-                    last_error = res.get("error") or "Extraction failed"
+                result = await self.extract(
+                    url=primary_url,
+                    sku=sku,
+                    product_name=product.get("product_name"),
+                    register_name=product.get("register_name"),
+                    brand=brand or product.get("brand"),
+                    fallback_urls=fallback_urls,
+                    max_fallbacks=max_fallbacks,
+                )
+
+                if result.get("success"):
+                    return AISearchResult(
+                        success=True,
+                        sku=sku,
+                        product_name=result.get("product_name"),
+                        brand=result.get("brand") or brand,
+                        description=result.get("description"),
+                        size_metrics=result.get("size_metrics"),
+                        images=result.get("images"),
+                        categories=result.get("categories"),
+                        url=result.get("final_url") or primary_url,
+                        source_website=primary_url,
+                        confidence=result.get("confidence", 0.0),
+                        cost_usd=0.05,
+                        selection_method=str(product.get("url_source") or "known_url"),
+                    )
 
                 return AISearchResult(
                     success=False,
                     sku=sku,
-                    error=last_error,
-                    url=primary_url or (fallback_urls[0] if fallback_urls else None),
-                    source_website=primary_url or (fallback_urls[0] if fallback_urls else None),
+                    error=result.get("error") or "Extraction failed",
+                    url=primary_url,
+                    source_website=primary_url,
+                    selection_method=str(product.get("url_source") or "known_url"),
                 )
 
         return list(await asyncio.gather(*(_extract_single(p) for p in products)))
+
+
+class ProductUrlExtractor:
+    """Backward-compatible wrapper around ProductPageExtractor.
+
+    Deprecated: use ProductPageExtractor directly for new code.
+    """
+
+    def __init__(
+        self,
+        headless: bool = True,
+        llm_provider: str = "deepseek",
+        llm_model: str = "deepseek-chat",
+        llm_api_key: str | None = None,
+        llm_base_url: str | None = None,
+    ):
+        self._extractor = ProductPageExtractor(
+            headless=headless,
+            llm_provider=llm_provider,
+            llm_model=llm_model,
+            llm_api_key=llm_api_key,
+            llm_base_url=llm_base_url,
+        )
+
+    async def extract_data(self, url: str, schema_path: str | None = None) -> dict[str, Any]:
+        """Backward-compatible single-URL extraction.
+
+        ``schema_path`` is intentionally ignored — the robust pipeline
+        handles extraction automatically without requiring a manually-
+        maintained JSON-CSS schema.
+
+        Returns the same shape as the old method:
+        ``{"success": True/False, "data": ..., "method": ..., "error": ...}``
+        """
+        # schema_path is ignored — the robust pipeline does not need it
+        result = await self._extractor.extract(url=url, sku="unknown")
+        if result.get("success"):
+            return {
+                "success": True,
+                "data": {
+                    "name": result.get("product_name"),
+                    "brand": result.get("brand"),
+                    "description": result.get("description"),
+                    "images": result.get("images"),
+                    "categories": result.get("categories"),
+                    "sku": result.get("sku"),
+                },
+                "method": result.get("method", "unknown"),
+            }
+        return {"success": False, "error": result.get("error", "Extraction failed")}
+
+    async def scrape_products_batch(
+        self,
+        products: list[dict[str, Any]],
+        max_concurrency: int = 4,
+    ) -> list[AISearchResult]:
+        """Legacy batch path — delegates to ProductPageExtractor."""
+        return await self._extractor.extract_products_from_urls_batch(products, max_concurrency)
+
+    async def extract_products_from_urls_batch(
+        self,
+        products: list[dict[str, Any]],
+        max_concurrency: int = 4,
+    ) -> list[AISearchResult]:
+        """Batch extraction from known URLs — delegates to ProductPageExtractor."""
+        return await self._extractor.extract_products_from_urls_batch(products, max_concurrency)
+
+
+__all__ = ["ProductPageExtractor", "ProductUrlExtractor"]

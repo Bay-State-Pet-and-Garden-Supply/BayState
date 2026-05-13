@@ -433,7 +433,7 @@ export function buildExtractedOfficialBrandCandidateRows(args: {
                 cohort,
                 confidence: source ? toOptionalNumber(source.confidence) : undefined,
                 extractionJobId: args.jobId,
-                metadata: { source: 'official_brand_extraction_callback' },
+                metadata: { source: 'direct_url_extraction_callback' },
                 nowIso: args.nowIso,
             });
         })

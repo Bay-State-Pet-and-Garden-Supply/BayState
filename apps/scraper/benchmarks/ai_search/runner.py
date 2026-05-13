@@ -488,6 +488,12 @@ async def run_ai_search_e2e_benchmark(
     data_quality_threshold: float = 0.6,
     max_concurrency: int = 2,
 ) -> tuple[dict[str, Any], Path, Path, bool]:
+    raise NotImplementedError(
+        "AI Search discovery benchmarks have moved server-side. "
+        "Discovery logic is no longer available in the scraper runner. "
+        "Use the web app discovery endpoint or rewrite benchmarks to test "
+        "extraction-only against pre-discovered URLs."
+    )
     """Run the end-to-end AI Search benchmark.
 
     Args:

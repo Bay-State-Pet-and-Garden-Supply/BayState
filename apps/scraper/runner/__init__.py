@@ -12,7 +12,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from core.api_client import JobConfig, normalize_selectors_payload
 from core.events import ScraperEvent, create_emitter, event_bus
 from core.settings_manager import settings
-from scrapers.product_url_extraction.extractor import ProductUrlExtractor
+from scrapers.product_url_extraction.extractor import ProductPageExtractor
 from scrapers.ai_search.search import normalize_search_provider
 from scrapers.cohort.processor import CohortProcessor
 from scrapers.executor.workflow_executor import WorkflowExecutor
@@ -551,7 +551,7 @@ def _run_sequential_job(
         results["telemetry"] = {"steps": [], "selectors": [], "extractions": []}
         return results
 
-    is_official_brand_job = job_config.job_type in {"ai_search", "official_brand_extraction", OFFICIAL_BRAND_URL_DISCOVERY_TYPE, DIRECT_URL_EXTRACTION_TYPE} or any(
+    is_official_brand_job = job_config.job_type in {OFFICIAL_BRAND_URL_DISCOVERY_TYPE, DIRECT_URL_EXTRACTION_TYPE} or any(
         s.name == "official_brand" for s in job_config.scrapers
     )
 
@@ -1266,18 +1266,18 @@ def _run_official_brand_job(
     results["scrapers_run"].append(scraper_name)
 
     async def _run() -> list[Any]:
-        scraper = ProductUrlExtractor(
+        scraper = ProductPageExtractor(
             headless=settings.browser_settings["headless"],
             llm_provider=llm_provider,
             llm_model=llm_model,
             llm_api_key=llm_api_key,
             llm_base_url=llm_base_url,
         )
-        # direct_url_extraction uses ProductUrlExtractor
+        # direct_url_extraction uses ProductPageExtractor
         if official_brand_phase == "extraction":
             return await scraper.extract_products_from_urls_batch(items, max_concurrency=max_concurrency)
-        # Legacy combined path (ai_search) — delegates to extraction via scrape_products_batch
-        return await scraper.scrape_products_batch(items, max_concurrency=max_concurrency)
+        # Legacy combined path — same extraction behavior, different entry point name
+        return await scraper.extract_products_from_urls_batch(items, max_concurrency=max_concurrency)
 
 
     batch_results = asyncio.run(_run())
@@ -1416,6 +1416,6 @@ __all__ = [
     "create_emitter",
     "create_log_entry",
     "DIRECT_URL_EXTRACTION_TYPE",
-    "ProductUrlExtractor",
+    "ProductPageExtractor",
     "run_job",
 ]

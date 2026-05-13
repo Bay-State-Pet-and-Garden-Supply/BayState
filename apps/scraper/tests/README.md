@@ -18,7 +18,7 @@ CI=true python3 -m pytest
 
 Key offline tests:
 
-- `tests/unit/test_official_brand_scraper.py` - OfficialBrandScraper URL-selection and mocked extraction branches.
+- `tests/unit/test_official_brand_scraper.py` - ProductUrlExtractor extraction and fallback tests (discovery is server-side).
 - `tests/integration/test_official_brand_pipeline.py` - In-memory fixture contract tests for official-vs-retailer selection.
 - `tests/unit/test_search_scorer_regressions.py` - SearchScorer ranking regressions.
 - `tests/unit/test_selection_pipeline.py` - Candidate selection pipeline behavior.
