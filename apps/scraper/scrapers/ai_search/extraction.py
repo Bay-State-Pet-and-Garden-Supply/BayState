@@ -154,9 +154,8 @@ class ExtractionUtils:
     _GALLERY_KEYWORDS = {"product", "gallery", "carousel", "pdp", "main", "hero", "detail", "item", "thumb"}
     _BADGE_KEYWORDS = {"free", "shipping", "guarantee", "badge", "icon", "feature", "made-in", "usa", "natural", "organic"}
     _NON_PRODUCT_SECTION_MARKERS = [
-        "related products", "customers also bought", "you may also like",
-        "recipe features", "ingredients", "guaranteed analysis", "feeding instructions",
-        "from the manufacturer", "recommendations", "people also viewed"
+        "related products", "related-products", "customers also bought", "you may also like",
+        "you might also like", "people also viewed", "recommended products", "others also bought"
     ]
 
     def __init__(self, scoring_module):
@@ -442,15 +441,34 @@ class ExtractionUtils:
                 score += float(media.get("score", 0)) * 2.0
                 if self._coerce_int(media.get("width"), 0) > 600: score += 2.0
                 if self._coerce_int(media.get("height"), 0) > 600: score += 2.0
-                
-            # DOM Position (very rough via offset in HTML)
-            img_offset = html_lower.find(target.lower())
-            if img_offset != -1:
-                if img_offset < first_bad_section_offset:
-                    score += 3.0
-                else:
-                    score -= 5.0 # Likely related products or footer
+                      
+            # Semantic Content Boundary Detection
+            # We try to identify where the "Main Content" starts to avoid header/nav noise
+            content_start_offset = html_lower.find("<h1")
+            if content_start_offset == -1: content_start_offset = html_lower.find("<main")
+            if content_start_offset == -1: content_start_offset = 0
             
+            # DOM Position (rough via offset in HTML)
+            img_offset = html_lower.find(target.lower())
+            if img_offset == -1:
+                # Try finding just the filename part to catch relative paths or CDN variants
+                path_part = urlparse(target).path.split("/")[-1].lower()
+                filename_no_ext = path_part.rsplit(".", 1)[0] if "." in path_part else path_part
+                if len(filename_no_ext) > 5:
+                    img_offset = html_lower.find(filename_no_ext)
+
+            if img_offset != -1:
+                # 1. Header/Navigation Zone: Neutral or slight penalty if way before H1
+                if img_offset < content_start_offset:
+                    score -= 2.0
+                
+                # 2. Main Product Area vs. Related/Footer Sections
+                if first_bad_section_offset < len(html_lower):
+                    if img_offset > first_bad_section_offset:
+                        score -= 25.0 # Massive penalty for related products/footer
+                    elif img_offset >= content_start_offset:
+                        score += 5.0 # High confidence main product area
+
             # Keywords in URL/Alt
             alt = str(media.get("alt", "")).lower()
             if any(kw in url_lower or kw in alt for kw in self._GALLERY_KEYWORDS):
@@ -468,6 +486,13 @@ class ExtractionUtils:
         
         sorted_urls = [d["url"] for d in final_list]
         
+        # Convert sets to lists for JSON serialization
+        candidate_details = []
+        for d in final_list[:15]: # Only log top 15 for brevity
+            detail = d.copy()
+            detail["sources"] = list(d["sources"])
+            candidate_details.append(detail)
+
         diagnostics = {
             "jsonld_count": len(jsonld_images),
             "meta_count": len(meta_images),
@@ -475,7 +500,8 @@ class ExtractionUtils:
             "total_candidates": len(all_candidates),
             "selected_count": len(sorted_urls),
             "rejected_count": len(all_candidates) - len(sorted_urls),
-            "top_score": final_list[0]["score"] if final_list else 0
+            "top_score": final_list[0]["score"] if final_list else 0,
+            "sample_candidates": candidate_details
         }
         
         return sorted_urls, diagnostics
