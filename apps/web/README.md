@@ -131,7 +131,7 @@ Configure in Stripe Dashboard → Webhooks. Recommended events:
 |----------|--------|----------------------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project → API | Same for all deploys |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase project → API | Same for all deploys |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase project → API | Same for all deploys |
+| `SUPABASE_SECRET_KEY` | Supabase project → API | Same for all deploys |
 | `NEXT_PUBLIC_SITE_URL` | Vercel domain | Preview: auto-set by Vercel |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe Dashboard | `pk_test_...` for preview, `pk_live_...` for production |
 | `STRIPE_SECRET_KEY` | Stripe Dashboard | `sk_test_...` for preview, `sk_live_...` for production |
@@ -212,7 +212,7 @@ See `.env.local.example` for all local dev env vars with explanations.
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_SECRET_KEY`
 - `NEXT_PUBLIC_SITE_URL`
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - `STRIPE_SECRET_KEY`

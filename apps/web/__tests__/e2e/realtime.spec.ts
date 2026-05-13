@@ -32,7 +32,7 @@ function requireEnv(name: string): string {
 }
 
 function createSupabaseAdmin(): SupabaseClient {
-  return createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_SERVICE_ROLE_KEY'), {
+  return createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_SECRET_KEY'), {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -286,7 +286,7 @@ function skipNonDesktopProject(testInfo: TestInfo): void {
 
 function skipIfMissingRealtimePrerequisites(): void {
   test.skip(
-    !ADMIN_EMAIL || !ADMIN_PASSWORD || !process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY,
+    !ADMIN_EMAIL || !ADMIN_PASSWORD || !process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY,
     'Realtime E2E tests require admin credentials plus Supabase runtime environment variables.',
   );
 }

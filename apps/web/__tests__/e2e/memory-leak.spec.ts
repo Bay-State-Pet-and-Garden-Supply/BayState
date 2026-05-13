@@ -71,7 +71,7 @@ function requireEnv(name: string): string {
 }
 
 function createSupabaseAdmin(): SupabaseClient {
-  return createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_SERVICE_ROLE_KEY'), {
+  return createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_SECRET_KEY'), {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -100,7 +100,7 @@ function skipNonDesktopProject(testInfo: TestInfo): void {
 
 function skipIfMissingRealtimePrerequisites(): void {
   test.skip(
-    !process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY,
+    !process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY,
     'Memory leak E2E tests require Supabase runtime environment variables.',
   );
 }

@@ -156,7 +156,7 @@ describe('/api/admin/scraping/callback route', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         process.env.SUPABASE_URL = 'https://example.supabase.co';
-        process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
+        process.env.SUPABASE_SECRET_KEY = 'service-role-key';
         (validateRunnerAuth as jest.Mock).mockResolvedValue({ runnerName: 'runner-1', authMethod: 'api_key' });
         (parseScraperCallbackPayload as jest.Mock).mockReturnValue({
             success: true,

@@ -10,7 +10,7 @@ Use this script to verify that your user (`nvborrello@gmail.com`) has the correc
 - You must have `.env.local` in the `BayStateApp` root directory.
 - `.env.local` must contain:
   - `NEXT_PUBLIC_SUPABASE_URL`
-  - `SUPABASE_SERVICE_ROLE_KEY`
+  - `SUPABASE_SECRET_KEY`
 
 ### Usage
 Run from the repository root:

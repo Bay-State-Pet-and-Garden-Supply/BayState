@@ -21,8 +21,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY || '';
 
 const LOCAL_PATTERNS = ['localhost', '127.0.0.1'];
 const isLocalUrl = LOCAL_PATTERNS.some((p) => SUPABASE_URL.includes(p));
@@ -33,9 +33,9 @@ if (!isLocalUrl) {
   process.exit(1);
 }
 
-if (!SUPABASE_SERVICE_ROLE_KEY) {
-  console.error('❌ SUPABASE_SERVICE_ROLE_KEY is not set.');
-  console.error('   Run `supabase status -o env` and copy the service_role key.');
+if (!SUPABASE_SECRET_KEY) {
+  console.error('❌ SUPABASE_SECRET_KEY is not set.');
+  console.error('   Run `supabase status -o env` and copy the secret key.');
   process.exit(1);
 }
 
@@ -119,7 +119,7 @@ async function main() {
   console.log('🔍 Verifying local bootstrap...\n');
 
   // Create Supabase admin client (uses service_role key for full access)
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY);
 
   // 1. Products
   await runCheck(

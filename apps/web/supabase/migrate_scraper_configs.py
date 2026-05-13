@@ -74,11 +74,11 @@ def convert_yaml_to_new_format(yaml_config: dict) -> dict:
 def main():
     # Check for required env vars
     supabase_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
-    supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    supabase_key = os.environ.get("SUPABASE_SECRET_KEY")
 
     if not supabase_url or not supabase_key:
         print(
-            "ERROR: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set"
+            "ERROR: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY must be set"
         )
         sys.exit(1)
 

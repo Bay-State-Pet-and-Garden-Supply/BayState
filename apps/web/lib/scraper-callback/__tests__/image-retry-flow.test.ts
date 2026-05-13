@@ -628,9 +628,9 @@ describe('image retry flow integration', () => {
 
   it('surfaces missing default processor dependencies when no overrides are provided', async () => {
     const originalUrl = process.env.SUPABASE_URL;
-    const originalKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const originalKey = process.env.SUPABASE_SECRET_KEY;
     delete process.env.SUPABASE_URL;
-    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    delete process.env.SUPABASE_SECRET_KEY;
 
     try {
       expect(() => new ImageRetryProcessor()).toThrow('Missing Supabase configuration');
@@ -648,7 +648,7 @@ describe('image retry flow integration', () => {
         process.env.SUPABASE_URL = originalUrl;
       }
       if (originalKey) {
-        process.env.SUPABASE_SERVICE_ROLE_KEY = originalKey;
+        process.env.SUPABASE_SECRET_KEY = originalKey;
       }
     }
   });

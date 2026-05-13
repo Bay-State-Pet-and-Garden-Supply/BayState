@@ -513,10 +513,10 @@ function buildSyncSummary(
 
 async function main() {
     const supabaseUrl = process.env.SUPABASE_URL?.trim();
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+    const secretKey = process.env.SUPABASE_SECRET_KEY?.trim();
 
-    if (!supabaseUrl || !serviceRoleKey) {
-        throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.');
+    if (!supabaseUrl || !secretKey) {
+        throw new Error('Missing SUPABASE_URL or SUPABASE_SECRET_KEY.');
     }
 
     const dryRunFlag = hasFlag('dry-run');
@@ -540,7 +540,7 @@ async function main() {
 
     const startedAt = Date.now();
 
-    const supabase: SupabaseClient = createClient(supabaseUrl, serviceRoleKey, {
+    const supabase: SupabaseClient = createClient(supabaseUrl, secretKey, {
         auth: {
             autoRefreshToken: false,
             persistSession: false,

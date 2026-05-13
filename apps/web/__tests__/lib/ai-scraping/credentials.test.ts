@@ -16,7 +16,7 @@ describe('AI scraping credentials compatibility', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     process.env.SUPABASE_URL = 'https://baystate.example.com';
-    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
+    process.env.SUPABASE_SECRET_KEY = 'service-role-key';
     process.env.AI_CREDENTIALS_ENCRYPTION_KEY = '12345678901234567890123456789012';
     delete process.env.GEMINI_API_KEY;
     delete process.env.DEEPSEEK_API_KEY;
@@ -25,7 +25,7 @@ describe('AI scraping credentials compatibility', () => {
 
   afterEach(() => {
     delete process.env.SUPABASE_URL;
-    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    delete process.env.SUPABASE_SECRET_KEY;
     delete process.env.AI_CREDENTIALS_ENCRYPTION_KEY;
     delete process.env.GEMINI_API_KEY;
     delete process.env.DEEPSEEK_API_KEY;

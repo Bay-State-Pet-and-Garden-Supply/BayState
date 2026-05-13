@@ -125,7 +125,7 @@ function createJobSupabase(jobOverrides: Record<string, unknown> = {}) {
 describe('runner scraper config forwarding', () => {
   beforeEach(() => {
     process.env.SUPABASE_URL = 'http://localhost:54321';
-    process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key';
+    process.env.SUPABASE_SECRET_KEY = 'test-key';
 
     jest.clearAllMocks();
 

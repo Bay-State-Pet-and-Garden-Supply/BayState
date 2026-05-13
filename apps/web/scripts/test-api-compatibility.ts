@@ -187,13 +187,13 @@ function getApiKey(): string | null {
 
 function getSupabaseAdminClient(): SupabaseClient | null {
   const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
 
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
+  if (!supabaseUrl || !supabaseSecretKey) {
     return null;
   }
 
-  return createClient(supabaseUrl, supabaseServiceRoleKey);
+  return createClient(supabaseUrl, supabaseSecretKey);
 }
 
 async function fetchExpectedOrder(
@@ -407,7 +407,7 @@ async function run(): Promise<void> {
   }
   if (!supabase) {
     globalIssues.push(
-      'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. Ordering checks require DB access.',
+      'Missing SUPABASE_URL or SUPABASE_SECRET_KEY. Ordering checks require DB access.',
     );
   }
 
