@@ -4,9 +4,9 @@ import { validateRunnerAuth } from '@/lib/scraper-auth';
 
 function getSupabaseAdmin(): SupabaseClient {
     const url = process.env.SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) {
-        throw new Error('Missing Supabase configuration');
+        throw new Error('Missing Supabase configuration (SUPABASE_URL and SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY)');
     }
     return createClient(url, key);
 }

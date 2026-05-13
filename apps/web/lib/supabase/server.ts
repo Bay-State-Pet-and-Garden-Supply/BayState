@@ -4,14 +4,17 @@ export type { SupabaseClient }
 import { cookies } from 'next/headers'
 import {
   SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_SECRET_KEY,
   requireSupabaseConfig,
 } from './config'
 
-function requireServiceRoleKey() {
-  const serviceRoleKey = SUPABASE_SERVICE_ROLE_KEY.trim()
+function requireAdminKey() {
+  const secretKey = SUPABASE_SECRET_KEY.trim()
+  if (secretKey) return secretKey
 
+  const serviceRoleKey = SUPABASE_SERVICE_ROLE_KEY.trim()
   if (!serviceRoleKey) {
-    throw new Error('Supabase service role key missing. Set SUPABASE_SERVICE_ROLE_KEY.')
+    throw new Error('Supabase admin key missing. Set SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY.')
   }
 
   return serviceRoleKey
@@ -71,7 +74,7 @@ export async function createAdminClient() {
 
   return createServerClient(
     url,
-    requireServiceRoleKey(),
+    requireAdminKey(),
     {
       cookies: {
         getAll() {

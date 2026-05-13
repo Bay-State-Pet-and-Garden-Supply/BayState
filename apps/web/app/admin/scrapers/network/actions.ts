@@ -29,9 +29,14 @@ async function verifyAdminAccess(): Promise<{ userId: string | null; error: stri
  * Get service role client for admin operations
  */
 function getServiceRoleClient() {
+    const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!key) {
+        throw new Error('Supabase admin key missing. Set SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY.');
+    }
+
     return createServiceClient(
         SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        key,
         {
             auth: {
                 autoRefreshToken: false,
