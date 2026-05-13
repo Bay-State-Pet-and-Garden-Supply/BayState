@@ -236,7 +236,19 @@ class Crawl4AIExtractor:
             }
 
         return fallback_result
-
+    def _log_telemetry(
+        self,
+        url: str,
+        sku: str,
+        method: str,
+        success: bool,
+        fetch_time_ms: int,
+        parse_time_ms: int,
+        llm_time_ms: int,
+        error: Optional[str] = None,
+        confidence: float = 0.0,
+        pruning_enabled: bool = False,
+        fit_markdown_used: bool = False,
         fallback_triggered: bool = False,
         image_diagnostics: Optional[dict[str, Any]] = None,
     ) -> None:

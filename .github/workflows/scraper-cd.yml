@@ -18,11 +18,12 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: scraper
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   changes:
     name: Detect scraper changes
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, ARM64]
     outputs:
       scraper: ${{ steps.filter.outputs.scraper }}
     steps:
@@ -41,7 +42,7 @@ jobs:
 
   build-and-push-docker:
     name: Build & Push Docker Image
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, ARM64]
     needs: changes
     if: needs.changes.outputs.scraper == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_build)
     permissions:
@@ -103,7 +104,7 @@ jobs:
         if: contains(steps.meta.outputs.tags, ':latest')
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Publish latest runner release metadata
         if: contains(steps.meta.outputs.tags, ':latest')
