@@ -254,15 +254,15 @@ drop view if exists "public"."pipeline_finalizing_queue";
 
 drop view if exists "public"."products_published";
 
-alter table "public"."orders" drop constraint "orders_pkey";
+alter table "public"."orders" drop constraint "orders_pkey" cascade;
 
-alter table "public"."products" drop constraint "products_pkey";
+alter table "public"."products" drop constraint "products_pkey" cascade;
 
-alter table "public"."products_ingestion" drop constraint "products_ingestion_pkey";
+alter table "public"."products_ingestion" drop constraint "products_ingestion_pkey" cascade;
 
-alter table "public"."scraper_test_runs" drop constraint "scraper_test_runs_pkey";
+alter table "public"."scraper_test_runs" drop constraint "scraper_test_runs_pkey" cascade;
 
-alter table "public"."selector_suggestions" drop constraint "selector_suggestions_pkey";
+alter table "public"."selector_suggestions" drop constraint "selector_suggestions_pkey" cascade;
 
 drop index if exists "public"."categories_slug_key";
 
@@ -323,6 +323,24 @@ drop index if exists "public"."products_pkey";
 drop table "public"."scraper_test_runs";
 
 drop table "public"."selector_suggestions";
+
+DO $$
+DECLARE
+    constraint_record RECORD;
+BEGIN
+    FOR constraint_record IN (
+        SELECT conname
+        FROM pg_constraint
+        WHERE conrelid = 'public.products_ingestion'::regclass
+          AND contype = 'c'
+          AND pg_get_constraintdef(oid) LIKE '%pipeline_status%'
+    ) LOOP
+        EXECUTE format(
+            'ALTER TABLE public.products_ingestion DROP CONSTRAINT %I',
+            constraint_record.conname
+        );
+    END LOOP;
+END $$;
 
 alter type "public"."pipeline_status_five" rename to "pipeline_status_five__old_version_to_be_dropped";
 
