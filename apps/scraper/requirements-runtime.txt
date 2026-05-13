@@ -4,7 +4,7 @@
 # Core scraping runtime
 crawl4ai>=0.8.0
 openai>=1.30.0
-playwright>=1.40.0
+playwright==1.57.0
 pyyaml>=6.0
 
 # HTTP clients

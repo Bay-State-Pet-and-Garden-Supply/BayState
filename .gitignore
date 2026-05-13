@@ -22,11 +22,6 @@
 docs/maestro/
 conductor/fix-scraping-status.md
 
-.agents/*
-!.agents/skills/
-.agents/skills/*
-!.agents/skills/scraper-config-builder/
-
 # AI Agent Output Files
 task.md
 implementation_plan.md

@@ -4,6 +4,9 @@
 
 # Other apps and monorepo folders (keep context slim)
 apps/web/
+apps/mobile/
+apps/logs/
+apps/data/
 conductor/
 docker/
 scratch/

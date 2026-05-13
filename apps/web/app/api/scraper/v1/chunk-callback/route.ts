@@ -648,7 +648,9 @@ export async function POST(request: NextRequest) {
 
                     if (jobSkus.length > 0) {
                         const stuckStatusFrom = officialBrandPhase === 'extraction' ? 'extracting' : 'scraping';
-                        const stuckStatusTo = officialBrandPhase === 'extraction' ? 'url_review' : 'imported';
+                        const stuckStatusTo = officialBrandPhase === 'extraction'
+                            ? (jobStatus === 'completed' ? 'scraped' : 'url_review')
+                            : 'imported';
                         const { error: resetStatusError } = await supabase
                             .from('products_ingestion')
                             .update({
