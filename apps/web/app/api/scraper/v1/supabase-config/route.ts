@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
+import { SUPABASE_ANON_KEY, SUPABASE_URL, SUPABASE_SECRET_KEY } from '@/lib/supabase/config';
 
 function getSupabaseAdmin(): SupabaseClient {
-    const url = process.env.SUPABASE_URL;
-    const key = process.env.SUPABASE_SECRET_KEY;
+    const url = SUPABASE_URL;
+    const key = SUPABASE_SECRET_KEY;
     if (!url || !key) {
         throw new Error('Missing Supabase configuration (SUPABASE_URL and SUPABASE_SECRET_KEY)');
     }
@@ -32,9 +33,9 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseUrl = SUPABASE_URL;
         // Use anon key for realtime connections (service role key is for server-side only)
-        const supabaseRealtimeKey = process.env.SUPABASE_ANON_KEY;
+        const supabaseRealtimeKey = SUPABASE_ANON_KEY;
 
         if (!supabaseUrl || !supabaseRealtimeKey) {
             console.warn(`[SupabaseConfig] Supabase not configured for runner ${runner.runnerName}`);

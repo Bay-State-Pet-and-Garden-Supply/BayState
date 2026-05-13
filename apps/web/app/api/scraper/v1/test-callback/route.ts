@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
+import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 import {
   processTestResultCallback,
   validateTestCallbackPayload,
 } from '@/lib/scraper-callback/test-handler';
 
 function getSupabaseAdmin(): SupabaseClient {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SECRET_KEY;
+  const url = SUPABASE_URL;
+  const key = SUPABASE_SECRET_KEY;
   if (!url || !key) {
     throw new Error('Missing Supabase configuration');
   }

@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { getDeepSeekBaseURL, getDeepSeekOpenAICompatibleBaseURL } from '@/lib/ai-scraping/deepseek';
 import { DEFAULT_AI_MODEL } from '@/lib/ai-scraping/models';
+import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 
 type AIProvider = 'deepseek' | 'openai' | 'openai_compatible' | 'gemini' | 'lmstudio' | 'serpapi' | 'brave';
 export type LLMProvider = 'deepseek' | 'openai' | 'openai_compatible' | 'gemini' | 'lmstudio';
@@ -92,8 +93,8 @@ function getDefaultModelForProvider(provider: LLMProvider): string {
 }
 
 function getSupabaseAdmin(): SupabaseClient {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SECRET_KEY;
+  const url = SUPABASE_URL;
+  const key = SUPABASE_SECRET_KEY;
   if (!url || !key) {
     throw new Error('Missing Supabase configuration (SUPABASE_URL and SUPABASE_SECRET_KEY)');
   }

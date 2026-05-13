@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { parse as parseYaml } from 'yaml';
+import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 import {
   getRetryDelay,
   ImageCaptureErrorType,
@@ -399,8 +400,8 @@ function replaceImageReference(
 }
 
 function getSupabaseAdmin(): Pick<SupabaseClient, 'rpc' | 'from'> {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SECRET_KEY;
+  const url = SUPABASE_URL;
+  const key = SUPABASE_SECRET_KEY;
   if (!url || !key) {
     throw new Error('Missing Supabase configuration (SUPABASE_URL and SUPABASE_SECRET_KEY)');
   }

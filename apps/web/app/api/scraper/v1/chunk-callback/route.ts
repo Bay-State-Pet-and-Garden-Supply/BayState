@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
 import { parseChunkCallbackPayload, ChunkCallbackPayload } from '@/lib/scraper-callback/contract';
+import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 import {
     persistProductsIngestionSourcesPartial,
 } from '@/lib/scraper-callback/products-ingestion';
@@ -24,8 +25,8 @@ import {
     persistOfficialBrandCandidateRows,
 } from '@/lib/official-brand-workflow';
 function getSupabaseAdmin(): SupabaseClient {
-    const url = process.env.SUPABASE_URL;
-    const key = process.env.SUPABASE_SECRET_KEY;
+    const url = SUPABASE_URL;
+    const key = SUPABASE_SECRET_KEY;
     if (!url || !key) {
         throw new Error('Missing Supabase configuration');
     }

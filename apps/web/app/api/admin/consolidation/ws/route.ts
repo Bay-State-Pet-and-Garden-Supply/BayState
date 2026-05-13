@@ -11,14 +11,15 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 
 const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
 
 export async function GET(request: NextRequest) {
     try {
         // Get auth info
-        const supabaseUrl = process.env.SUPABASE_URL;
-        const supabaseKey = process.env.SUPABASE_ANON_KEY;
+        const supabaseUrl = SUPABASE_URL;
+        const supabaseKey = SUPABASE_ANON_KEY;
 
         if (!supabaseUrl || !supabaseKey) {
             return NextResponse.json(

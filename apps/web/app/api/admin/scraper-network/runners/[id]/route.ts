@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase/config';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SECRET_KEY } from '@/lib/supabase/config';
 import {
     coerceRunnerMetadata,
     getEffectiveRunnerStatus,
@@ -13,7 +13,7 @@ import {
 
 function getSupabaseAdmin(): SupabaseClient {
     const url = SUPABASE_URL;
-    const key = process.env.SUPABASE_SECRET_KEY;
+    const key = SUPABASE_SECRET_KEY;
     if (!url || !key) {
         throw new Error('Missing Supabase configuration');
     }
@@ -25,8 +25,8 @@ function getSupabaseAdmin(): SupabaseClient {
 async function getAuthenticatedUser() {
     const cookieStore = await cookies();
     const supabase = createServerClient(
-        SUPABASE_URL!,
-        SUPABASE_ANON_KEY!,
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY,
         {
             cookies: {
                 getAll() {

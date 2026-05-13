@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
-import { SUPABASE_URL } from '@/lib/supabase/config';
+import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 import { revalidatePath } from 'next/cache';
 import { hasRole } from '@/lib/auth/roles';
 
@@ -29,13 +29,13 @@ async function verifyAdminAccess(): Promise<{ userId: string | null; error: stri
  * Get service role client for admin operations
  */
 function getServiceRoleClient() {
-    const key = process.env.SUPABASE_SECRET_KEY;
+    const key = SUPABASE_SECRET_KEY;
     if (!key) {
         throw new Error('Supabase admin key missing. Ensure SUPABASE_SECRET_KEY is set.');
     }
 
     return createServiceClient(
-        SUPABASE_URL!,
+        SUPABASE_URL,
         key,
         {
             auth: {

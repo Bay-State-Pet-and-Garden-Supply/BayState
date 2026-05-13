@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { encryptSecret } from '../../ai-scraping/credentials';
+import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 
 export type ScraperCredentialType = 'login' | 'password' | 'api_key';
 
@@ -10,8 +11,8 @@ export interface ScraperCredentialStatus {
 }
 
 function getSupabaseAdmin(): SupabaseClient {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SECRET_KEY;
+  const url = SUPABASE_URL;
+  const key = SUPABASE_SECRET_KEY;
   if (!url || !key) {
     throw new Error('Missing Supabase configuration (SUPABASE_URL and SUPABASE_SECRET_KEY)');
   }

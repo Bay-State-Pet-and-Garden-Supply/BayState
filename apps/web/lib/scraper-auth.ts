@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 
 interface RunnerAuthResult {
     runnerName: string;
@@ -54,8 +55,8 @@ function normalizeAllowedScrapers(raw: unknown): string[] | null {
 }
 
 function getSupabaseAdmin() {
-    const url = process.env.SUPABASE_URL;
-    const key = process.env.SUPABASE_SECRET_KEY;
+    const url = SUPABASE_URL;
+    const key = SUPABASE_SECRET_KEY;
     if (!url || !key) {
         throw new Error('Missing Supabase configuration (SUPABASE_URL and SUPABASE_SECRET_KEY)');
     }

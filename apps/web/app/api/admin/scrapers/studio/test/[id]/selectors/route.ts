@@ -1,11 +1,11 @@
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js';
-import { SUPABASE_URL } from '@/lib/supabase/config';
+import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 import { NextRequest, NextResponse } from 'next/server';
 
 function getSupabaseAdmin(): SupabaseClient {
   const url = SUPABASE_URL;
-  const key = process.env.SUPABASE_SECRET_KEY;
+  const key = SUPABASE_SECRET_KEY;
   if (!url || !key) {
     throw new Error('Missing Supabase configuration');
   }

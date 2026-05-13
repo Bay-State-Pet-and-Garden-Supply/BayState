@@ -3,14 +3,11 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { generateAPIKey } from '@/lib/scraper-auth';
+import { SUPABASE_ANON_KEY, SUPABASE_URL, requireSupabaseConfig } from '@/lib/supabase/config';
 
 function getSupabaseAdmin(): SupabaseClient {
-    const url = process.env.SUPABASE_URL;
-    const key = process.env.SUPABASE_SECRET_KEY;
-    if (!url || !key) {
-        throw new Error('Missing Supabase configuration');
-    }
-    return createClient(url, key, {
+    const { url, anonKey } = requireSupabaseConfig();
+    return createClient(url, anonKey, {
         auth: { autoRefreshToken: false, persistSession: false }
     });
 }
@@ -18,8 +15,8 @@ function getSupabaseAdmin(): SupabaseClient {
 async function getAuthenticatedUser() {
     const cookieStore = await cookies();
     const supabase = createServerClient(
-        process.env.SUPABASE_URL!,
-        process.env.SUPABASE_ANON_KEY!,
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY,
         {
             cookies: {
                 getAll() {
