@@ -30,11 +30,14 @@ jest.mock('@/lib/scraper-callback/image-retry-processor', () => ({
 const { GET } = require('@/app/api/cron/image-retry/route');
 
 describe('GET /api/cron/image-retry', () => {
-  const OLD_ENV = process.env;
+  const OLD_ENV = { ...process.env };
 
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.CRON_SECRET = 'test-cron-secret';
+    process.env.SUPABASE_URL = 'http://localhost:54321';
+    process.env.SUPABASE_SECRET_KEY = 'test-secret';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-secret';
   });
 
   afterAll(() => {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
+
 import { ImageRetryProcessor } from '@/lib/scraper-callback/image-retry-processor';
 import { httpFetchCaptureImage } from '@/lib/scraper-callback/image-retry-capture';
 import { createScrapeJobReauthenticate } from '@/lib/scraper-callback/image-retry-reauthenticate';
@@ -40,14 +40,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) {
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseKey) {
     return NextResponse.json(
       { error: 'Missing Supabase configuration' },
       { status: 500 }
     );
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY, {
+  const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 

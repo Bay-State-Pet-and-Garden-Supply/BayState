@@ -188,7 +188,6 @@ describe('Data Fetching Functions', () => {
         name: 'Test Product',
         slug: 'test-product',
         description: 'Test',
-        long_description: null,
         price: 10,
         images: [],
         stock_status: 'in_stock',
@@ -207,7 +206,6 @@ describe('Data Fetching Functions', () => {
         gtin: null,
         availability: null,
         minimum_quantity: 0,
-        shopsite_pages: [],
       }];
 
       productQuery.range.mockResolvedValue({

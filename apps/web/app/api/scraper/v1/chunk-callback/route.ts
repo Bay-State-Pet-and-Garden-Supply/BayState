@@ -709,7 +709,7 @@ export async function POST(request: NextRequest) {
                                         .from('products_ingestion')
                                         .update({
                                             pipeline_status: targetStatus,
-                                            scrape_quality: qualityVerdict as Record<string, unknown>,
+                                            scrape_quality: qualityVerdict as unknown as Record<string, unknown>,
                                             updated_at: nowIso,
                                         })
                                         .eq('sku', product.sku)

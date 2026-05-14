@@ -46,6 +46,7 @@ export async function GET() {
             finalizing: 0,
             exporting: 0,
             failed: 0,
+            needs_fallback_review: 0,
         };
 
         let totalProducts = 0;

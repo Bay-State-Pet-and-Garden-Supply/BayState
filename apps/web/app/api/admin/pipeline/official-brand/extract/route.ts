@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
 import { scrapeProducts } from "@/lib/pipeline-scraping";
+import { queueFallbackExtractionJob } from "@/lib/pipeline/fallback-orchestration";
 import { normalizeOfficialBrandDomain } from "@/lib/official-brand-workflow";
 import { createAdminClient } from "@/lib/supabase/server";
 

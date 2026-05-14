@@ -44,7 +44,7 @@ interface FallbackReviewViewProps {
 }
 
 function getScrapeQuality(product: PipelineProduct): ScrapeQuality | null {
-  const raw = (product as Record<string, unknown>).scrape_quality;
+  const raw = (product as unknown as Record<string, unknown>).scrape_quality;
   if (!raw || typeof raw !== "object") return null;
   const q = raw as Record<string, unknown>;
   const verdict = q.result || q.verdict;

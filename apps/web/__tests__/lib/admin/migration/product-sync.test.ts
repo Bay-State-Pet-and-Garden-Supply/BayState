@@ -48,7 +48,6 @@ describe('Product Sync Utilities', () => {
                 productId: '123',
                 productGuid: 'guid-123',
                 fileName: 'test-product.html',
-                shopsitePages: ['Dogs', 'Featured'],
                 lowStockThreshold: 2,
                 minimumQuantity: 0,
                 moreInfoText: '<p>Long form details</p>',
@@ -175,7 +174,6 @@ describe('Product Sync Utilities', () => {
                 productTypeName: 'Treats',
                 packagingType: 'bag',
                 moreInfoText: '<p>Long description</p>',
-                shopsitePages: ['Dog Food Dry', 'Dog Food Shop All'],
                 inStorePickup: true,
             });
 

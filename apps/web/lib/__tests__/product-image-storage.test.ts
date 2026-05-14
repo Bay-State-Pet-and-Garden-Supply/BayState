@@ -170,7 +170,7 @@ describe('replaceInlineImageDataUrls', () => {
     });
 
     // Output contains only storage URL and retry marker — no vendor URL
-    const images = result.value.images as string[];
+    const images = (result.value as unknown as { images: string[] }).images;
     expect(images).toHaveLength(2);
     expect(images[0]).toContain('/storage/v1/object/public/product-images/');
     expect(images[1]).toMatch(/^pending_retry:\/\/auth_401\//);

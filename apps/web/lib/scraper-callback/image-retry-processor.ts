@@ -77,7 +77,7 @@ function resolveScraperRoot(): string {
 
 const SCRAPER_ROOT = resolveScraperRoot();
 
-interface ProductRetryContext {
+export interface ProductRetryContext {
   id: string;
   sku: string;
   sources: Record<string, unknown>;
@@ -108,7 +108,7 @@ interface DomainCircuitState {
   failures: number[];
 }
 
-interface BrowserSessionState {
+export interface BrowserSessionState {
   sessionExpiresAt: string | null;
   storageStatePath: string;
 }
@@ -132,7 +132,7 @@ interface RetryErrorEnvelope {
   auth?: RetryAuthMetadata;
 }
 
-interface ImageRetryCaptureRequest {
+export interface ImageRetryCaptureRequest {
   productId: string;
   sku: string;
   imageUrl: string;

@@ -1,3 +1,4 @@
+import { ImageCaptureErrorType } from '@/lib/image-capture-errors';
 import type { ImageRetryCaptureRequest, ImageRetryCaptureResult } from './image-retry-processor';
 
 const FETCH_TIMEOUT_MS = 30_000;
@@ -33,7 +34,7 @@ export async function httpFetchCaptureImage(
       }
       return {
         success: false,
-        errorType: 'unknown',
+        errorType: ImageCaptureErrorType.UNKNOWN,
         errorMessage: `Unexpected content-type: ${contentType}`,
       };
     }
@@ -41,7 +42,7 @@ export async function httpFetchCaptureImage(
     if (response.status === 401 || response.status === 403) {
       return {
         success: false,
-        errorType: 'auth_401',
+        errorType: ImageCaptureErrorType.AUTH_401,
         errorMessage: `HTTP ${response.status}`,
       };
     }
@@ -49,14 +50,14 @@ export async function httpFetchCaptureImage(
     if (response.status === 404) {
       return {
         success: false,
-        errorType: 'not_found_404',
+        errorType: ImageCaptureErrorType.NOT_FOUND_404,
         errorMessage: 'HTTP 404',
       };
     }
 
     return {
       success: false,
-      errorType: 'unknown',
+      errorType: ImageCaptureErrorType.UNKNOWN,
       errorMessage: `HTTP ${response.status}`,
     };
   } catch (error) {
@@ -71,14 +72,14 @@ export async function httpFetchCaptureImage(
     ) {
       return {
         success: false,
-        errorType: 'network_timeout',
+        errorType: ImageCaptureErrorType.NETWORK_TIMEOUT,
         errorMessage: message,
       };
     }
 
     return {
       success: false,
-      errorType: 'unknown',
+      errorType: ImageCaptureErrorType.UNKNOWN,
       errorMessage: message,
     };
   }

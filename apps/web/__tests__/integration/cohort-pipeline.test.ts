@@ -350,12 +350,8 @@ function moveConsistencyPassedRowsToFinalized(
             consolidated: {
                 name: result.name ?? row.input.name,
                 description: result.description ?? `${String(row.input.name)} normalized for storefront`,
-                long_description: result.long_description ?? `${String(row.input.name)} long description`,
                 price: typeof result.price === 'string' ? Number.parseFloat(result.price) : row.input.price,
                 category: result.category ?? row.input.category,
-                product_on_pages: Array.isArray(row.input.product_on_pages)
-                    ? row.input.product_on_pages
-                    : [String(row.input.product_on_pages)],
                 images: sourceImages,
                 search_keywords: result.search_keywords ?? String(row.input.search_keywords ?? ''),
                 weight: result.weight,
@@ -383,7 +379,6 @@ describe('cohort processing pipeline integration', () => {
                 price: 24.99,
                 category: 'Dog > Food',
                 product_line: 'Acme Kibble',
-                product_on_pages: ['Dog Food'],
                 search_keywords: 'dog kibble, chicken',
             }),
             buildImportedRow('111111110002', {
@@ -391,7 +386,6 @@ describe('cohort processing pipeline integration', () => {
                 price: 54.99,
                 category: 'Dog > Food',
                 product_line: 'Acme Kibble',
-                product_on_pages: ['Dog Food'],
                 search_keywords: 'dog kibble, chicken',
             }),
             buildImportedRow(
@@ -401,7 +395,6 @@ describe('cohort processing pipeline integration', () => {
                     price: 18.99,
                     category: 'Bird > Seed',
                     product_line: 'GardenPro Seed',
-                    product_on_pages: ['Bird Seed'],
                     search_keywords: 'bird seed, finch',
                 },
                 { legacy_feed: { title: 'GardenPro Finch Seed 5 lb' } }
@@ -411,7 +404,6 @@ describe('cohort processing pipeline integration', () => {
                 price: 49.99,
                 category: 'Bird > Seed',
                 product_line: 'GardenPro Seed',
-                product_on_pages: ['Bird Seed'],
                 search_keywords: 'bird seed, finch',
             }),
         ]);
@@ -433,7 +425,6 @@ describe('cohort processing pipeline integration', () => {
                 category: 'Dog > Food',
                 price: '24.99',
                 description: 'Small-bag chicken kibble for adult dogs.',
-                long_description: 'Small-bag chicken kibble formulated for adult dogs.',
                 search_keywords: 'dog kibble, chicken, acme',
                 confidence_score: 0.96,
             },
@@ -444,7 +435,6 @@ describe('cohort processing pipeline integration', () => {
                 category: 'Dog > Food',
                 price: '54.99',
                 description: 'Large-bag chicken kibble for adult dogs.',
-                long_description: 'Large-bag chicken kibble formulated for adult dogs.',
                 search_keywords: 'dog kibble, chicken, acme',
                 confidence_score: 0.97,
             },
@@ -455,7 +445,6 @@ describe('cohort processing pipeline integration', () => {
                 category: 'Bird > Seed',
                 price: '18.99',
                 description: 'Seed blend tuned for finches.',
-                long_description: 'Bird seed blend tuned for finches and other backyard birds.',
                 search_keywords: 'bird seed, finch, gardenpro',
                 confidence_score: 0.91,
             },
@@ -466,7 +455,6 @@ describe('cohort processing pipeline integration', () => {
                 category: 'Bird > Seed',
                 price: '49.99',
                 description: 'Large seed blend with mismatched branding.',
-                long_description: 'Large bird seed bag returned by a mismatched source brand.',
                 search_keywords: 'bird seed, finch, harvest',
                 confidence_score: 0.82,
             },
@@ -586,7 +574,6 @@ describe('cohort processing pipeline integration', () => {
                 price: 12.99,
                 category: 'Dog > Toys',
                 product_line: 'Failure Line',
-                product_on_pages: ['Dog Toys'],
             }),
         ]);
 

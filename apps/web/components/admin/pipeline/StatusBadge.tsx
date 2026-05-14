@@ -34,6 +34,7 @@ const statusConfig: Record<
   searching: { variant: "default", label: "Searching", icon: Loader2, color: "text-indigo-600 bg-indigo-50 border-indigo-200" },
   url_review: { variant: "default", label: "URL Review", icon: Globe, color: "text-purple-600 bg-purple-50 border-purple-200" },
   extracting: { variant: "default", label: "Extracting", icon: Loader2, color: "text-cyan-600 bg-cyan-50 border-cyan-200" },
+  needs_fallback_review: { variant: "warning", label: "Needs Fallback", icon: AlertCircle, color: "text-amber-600 bg-amber-50 border-amber-200" },
   scraping: { variant: "warning", label: "Scraping", icon: Loader2 },
   scraped: { variant: "success", label: "Scraped", icon: Sparkles },
   consolidating: { variant: "warning", label: "Consolidating", icon: Sparkles },
