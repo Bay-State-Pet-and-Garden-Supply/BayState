@@ -1,6 +1,5 @@
 const required = [
   'SUPABASE_URL',
-  'SUPABASE_SERVICE_ROLE_KEY',
   'RUNNER_BUILD_ID',
   'RUNNER_BUILD_SHA',
   'RUNNER_IMAGE',
@@ -13,8 +12,20 @@ for (const key of required) {
   }
 }
 
+// Modern Supabase API keys (v2+) logic: prioritize keys starting with 'sb_'
+const pickModernKey = (keys) => {
+  return keys.find(k => k?.startsWith('sb_')) || keys.find(k => !!k) || '';
+};
+
 const supabaseUrl = process.env.SUPABASE_URL.replace(/\/$/, '');
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const serviceRoleKey = pickModernKey([
+  process.env.SUPABASE_SECRET_KEY,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+]);
+
+if (!serviceRoleKey) {
+  throw new Error('Missing Supabase secret key. Ensure SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY is set.');
+}
 const releaseChannel = (process.env.RUNNER_RELEASE_CHANNEL || 'latest').trim().toLowerCase();
 const nowIso = new Date().toISOString();
 const settingKey = `scraper_runner_release_${releaseChannel}`;

@@ -74,6 +74,7 @@ jobs:
       - name: Run register sync
         env:
           GITHUB_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          GITHUB_SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           GITHUB_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GITHUB_REGISTER_SYNC_SOURCE: ${{ vars.REGISTER_SYNC_SOURCE }}
           GITHUB_REGISTER_SYNC_FILE_PATH: ${{ vars.REGISTER_SYNC_FILE_PATH }}
@@ -144,10 +145,11 @@ jobs:
           }
 
           $hasSupabaseUrl = Set-ResolvedEnvValue -Name 'SUPABASE_URL' -WorkflowValue $env:GITHUB_SUPABASE_URL -Mask $true
+          $hasSupabaseSecretKey = Set-ResolvedEnvValue -Name 'SUPABASE_SECRET_KEY' -WorkflowValue $env:GITHUB_SUPABASE_SECRET_KEY -Mask $true
           $hasSupabaseServiceRoleKey = Set-ResolvedEnvValue -Name 'SUPABASE_SERVICE_ROLE_KEY' -WorkflowValue $env:GITHUB_SUPABASE_SERVICE_ROLE_KEY -Mask $true
 
-          if (-not $hasSupabaseUrl -or -not $hasSupabaseServiceRoleKey) {
-            throw 'Missing Supabase configuration. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in the register-sync GitHub environment or on the labeled runner machine.'
+          if (-not $hasSupabaseUrl -or (-not $hasSupabaseSecretKey -and -not $hasSupabaseServiceRoleKey)) {
+            throw 'Missing Supabase configuration. Set SUPABASE_URL and SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY in the register-sync GitHub environment or on the labeled runner machine.'
           }
 
           $hasConnectionString = Set-ResolvedEnvValue -Name 'REGISTER_ODBC_CONNECTION_STRING' -WorkflowValue $env:GITHUB_REGISTER_ODBC_CONNECTION_STRING -Mask $true
