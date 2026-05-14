@@ -9,11 +9,12 @@ import type { PersistedPipelineStatus, PipelineStage } from './types';
 
 export const WORKFLOW_PIPELINE_TABS = [
   'imported',
-  'scraping',
-  'scraped',
-  'consolidating',
-  'finalizing',
-  'exporting',
+  'url_review',
+  'extracting',
+  'processed',
+  'merging',
+  'reviewing',
+  'publishing',
   'failed',
 ] as const;
 
@@ -30,14 +31,13 @@ export interface ProductTabDerivationInput {
 }
 
 interface ActivePipelineJobs {
-  scraping: boolean;
-  consolidation: boolean;
+  extracting: boolean;
+  merging: boolean;
 }
 
 interface ActiveJobsLookupOptions {
-  scrapeTable?: string;
-  scrapeProductIdColumn?: string;
-  scrapeSkuArrayColumn?: string;
+  enrichmentTable?: string;
+  enrichmentSkuColumn?: string;
   consolidationTable?: string;
   consolidationProductIdsColumn?: string;
 }
@@ -75,9 +75,8 @@ export interface ActiveJobsSupabaseClient {
   ): ActiveJobsQueryBuilder<Row>;
 }
 
-export const ACTIVE_SCRAPE_JOB_STATUSES = [
-  'pending',
-  'claimed',
+export const ACTIVE_ENRICHMENT_JOB_STATUSES = [
+  'queued',
   'running',
 ] as const;
 
@@ -89,9 +88,8 @@ export const ACTIVE_CONSOLIDATION_STATUSES = [
 ] as const;
 
 const DEFAULT_ACTIVE_JOB_LOOKUP_OPTIONS: Required<ActiveJobsLookupOptions> = {
-  scrapeTable: 'scrape_jobs',
-  scrapeProductIdColumn: 'product_id',
-  scrapeSkuArrayColumn: 'skus',
+  enrichmentTable: 'enrichment_jobs',
+  enrichmentSkuColumn: 'skus',
   consolidationTable: 'consolidation_batches',
   consolidationProductIdsColumn: 'product_ids',
 };
@@ -109,8 +107,8 @@ export function normalizeActiveJobs(
   activeJobs?: Partial<ActivePipelineJobs> | null
 ): ActivePipelineJobs {
   return {
-    scraping: Boolean(activeJobs?.scraping),
-    consolidation: Boolean(activeJobs?.consolidation),
+    extracting: Boolean(activeJobs?.extracting),
+    merging: Boolean(activeJobs?.merging),
   };
 }
 
@@ -123,19 +121,20 @@ export function deriveTabFromProduct(
   switch (product?.pipeline_status) {
     case 'imported':
       return 'imported';
-    case 'scraping':
-      return 'scraping';
-
-    case 'scraped':
-      return 'scraped';
-    case 'consolidating':
-      return 'consolidating';
-    case 'finalizing':
-      return 'finalizing';
-    case 'exporting':
-      return 'exporting';
+    case 'url_review':
+      return 'url_review';
+    case 'extracting':
+      return 'extracting';
+    case 'processed':
+      return 'processed';
+    case 'merging':
+      return 'merging';
+    case 'reviewing':
+      return 'reviewing';
+    case 'publishing':
+      return 'publishing';
     case 'failed':
-      return 'failed';
+      return 'imported'; // failed products show in the first tab for retry
     default:
       return 'imported';
   }
@@ -149,7 +148,7 @@ export async function getActiveJobsForProduct(
   const identifiers = getProductIdentifiers(product);
 
   if (!identifiers.id && !identifiers.sku) {
-    return { scraping: false, consolidation: false };
+    return { extracting: false, merging: false };
   }
 
   const lookup = {
@@ -157,12 +156,12 @@ export async function getActiveJobsForProduct(
     ...options,
   };
 
-  const [scraping, consolidation] = await Promise.all([
-    findActiveScrapeJob(identifiers, supabase, lookup),
+  const [extracting, merging] = await Promise.all([
+    findActiveEnrichmentJob(identifiers, supabase, lookup),
     findActiveConsolidationJob(identifiers, supabase, lookup),
   ]);
 
-  return { scraping, consolidation };
+  return { extracting, merging };
 }
 
 function getProductIdentifiers(product?: ProductTabDerivationInput | null): {
@@ -181,35 +180,22 @@ function getProductIdentifiers(product?: ProductTabDerivationInput | null): {
   };
 }
 
-async function findActiveScrapeJob(
+async function findActiveEnrichmentJob(
   identifiers: { id: string | number | null; sku: string | null },
   supabase: ActiveJobsSupabaseClient,
   options: Required<ActiveJobsLookupOptions>
 ): Promise<boolean> {
   const queries: Array<() => ActiveJobsQueryBuilder> = [];
 
-  if (identifiers.id !== null) {
-    const productId = identifiers.id;
-
-    queries.push(() =>
-      supabase
-        .from(options.scrapeTable)
-        .select('status')
-        .eq(options.scrapeProductIdColumn, productId)
-        .in('status', ACTIVE_SCRAPE_JOB_STATUSES)
-        .limit(1)
-    );
-  }
-
   if (identifiers.sku) {
     const sku = identifiers.sku;
 
     queries.push(() =>
       supabase
-        .from(options.scrapeTable)
+        .from(options.enrichmentTable)
         .select('status')
-        .contains(options.scrapeSkuArrayColumn, [sku])
-        .in('status', ACTIVE_SCRAPE_JOB_STATUSES)
+        .contains(options.enrichmentSkuColumn, [sku])
+        .in('status', ACTIVE_ENRICHMENT_JOB_STATUSES)
         .limit(1)
     );
   }

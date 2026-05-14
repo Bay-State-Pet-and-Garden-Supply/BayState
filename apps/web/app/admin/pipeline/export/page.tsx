@@ -20,7 +20,7 @@ export default async function PipelineExportPage({ searchParams }: PageProps) {
     const source = typeof params.source === 'string' ? params.source : undefined;
     const product_line = typeof params.product_line === 'string' ? params.product_line : undefined;
 
-    const initialStage: PipelineStage = 'exporting';
+    const initialStage: PipelineStage = 'publishing';
 
     let initialCounts: StatusCount[] = [];
     let initialProducts: PipelineProduct[] = [];

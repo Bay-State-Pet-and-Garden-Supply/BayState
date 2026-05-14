@@ -320,6 +320,140 @@ async def process_chunk(chunk, client, rm):
         )
 
 
+async def _process_enrichment(attempt, client, rm):
+    """Process a claimed enrichment attempt (AI extraction)."""
+    from runner import _run_enrichment_job
+    from utils.logging_handlers import JobLoggingSession
+
+    attempt_id = attempt.attempt_id
+    job_id = attempt.job_id or attempt_id
+
+    try:
+        await asyncio.to_thread(
+            client.heartbeat,
+            current_job_id=job_id,
+            lease_token=attempt.lease_token,
+            status="busy",
+        )
+
+        with JobLoggingSession(
+            job_id=job_id,
+            runner_name=client.runner_name,
+            lease_token=attempt.lease_token,
+            api_client=client,
+            realtime_manager=rm,
+        ) as job_logging:
+            logger.info(
+                f"Processing enrichment attempt {attempt_id} for SKU {attempt.sku}",
+                extra={
+                    "job_id": job_id,
+                    "runner_name": client.runner_name,
+                    "phase": "claimed",
+                    "details": {
+                        "attempt_id": attempt_id,
+                        "sku": attempt.sku,
+                        "target_url": attempt.target_url,
+                        "model": attempt.model,
+                        "mode": attempt.mode,
+                    },
+                    "flush_immediately": True,
+                },
+            )
+
+            job_logging.emit_progress(
+                status="running",
+                progress=0,
+                message="Enrichment attempt started",
+                phase="claimed",
+                details={
+                    "attempt_id": attempt_id,
+                    "sku": attempt.sku,
+                    "target_url": attempt.target_url,
+                },
+                items_total=1,
+            )
+
+            # Build a minimal JobConfig for the enrichment runner
+            from core.api_client import JobConfig
+
+            job_payload = {
+                "target_url": attempt.target_url,
+                "sku": attempt.sku,
+                "domain": attempt.domain,
+                "model": attempt.model or "deepseek-chat",
+                "mode": attempt.mode or "mixed",
+                "attempt_id": attempt_id,
+                "target_id": attempt.target_id,
+            }
+
+            # Merge job_config from claim response if present
+            if attempt.job_config and isinstance(attempt.job_config, dict):
+                job_payload.update(attempt.job_config)
+                if "sku" not in attempt.job_config:
+                    job_payload["sku"] = attempt.sku
+                if "target_url" not in attempt.job_config:
+                    job_payload["target_url"] = attempt.target_url
+
+            job_config = JobConfig(
+                job_id=job_id,
+                skus=[attempt.sku],
+                scrapers=[],
+                test_mode=attempt.test_mode,
+                max_workers=1,
+                job_type="enrichment",
+                job_config=job_payload,
+                ai_credentials=attempt.ai_credentials,
+                lease_token=attempt.lease_token,
+            )
+
+            start_time = time.time()
+            results = _run_enrichment_job(
+                job_config,
+                runner_name=client.runner_name,
+                log_buffer=None,
+                api_client=client,
+                job_logging=job_logging,
+            )
+            elapsed = time.time() - start_time
+
+            logger.info(
+                f"Enrichment attempt {attempt_id} completed in {elapsed:.1f}s",
+                extra={
+                    "job_id": job_id,
+                    "runner_name": client.runner_name,
+                    "phase": "completed",
+                    "details": {
+                        "attempt_id": attempt_id,
+                        "sku": attempt.sku,
+                        "elapsed_seconds": round(elapsed, 2),
+                        "success": results.get("skus_processed", 0) > 0,
+                    },
+                    "flush_immediately": True,
+                },
+            )
+
+    except Exception as e:
+        logger.exception(
+            f"Enrichment attempt {attempt_id} failed",
+            extra={
+                "job_id": job_id,
+                "runner_name": client.runner_name,
+                "phase": "failed",
+                "attempt_id": attempt_id,
+                "flush_immediately": True,
+            },
+        )
+        try:
+            client.submit_enrichment_result(
+                attempt_id=attempt_id,
+                status="failed",
+                error_message=str(e),
+                lease_token=getattr(attempt, "lease_token", None),
+            )
+        except Exception:
+            logger.exception("Failed to submit enrichment failure result")
+
+
 async def process_cohort(cohort, client, rm):
     """Process a claimed cohort batch."""
     from runner import run_job as run_runner_job  # type: ignore
@@ -530,6 +664,25 @@ async def main_async():
                 break
 
             logger.info("[Daemon] Claiming next work unit...")
+
+            # Try enrichment claims first (AI extraction jobs)
+            use_enrichment_processing = os.environ.get("USE_ENRICHMENT_PROCESSING", "true").lower() == "true"
+            enrichment_attempt = None
+
+            if use_enrichment_processing:
+                enrichment_attempt = await asyncio.to_thread(client.claim_enrichment, runner_name=client.runner_name)
+                if enrichment_attempt:
+                    logger.info(
+                        f"[Enrichment {enrichment_attempt.attempt_id}] Claimed - "
+                        f"job={enrichment_attempt.job_id}, sku={enrichment_attempt.sku}"
+                    )
+
+            if enrichment_attempt:
+                # Process enrichment work immediately
+                consecutive_idle_polls = 0
+                await _process_enrichment(enrichment_attempt, client, rm)
+                work_units_completed += 1
+                continue
 
             # Try cohort claiming first (if enabled), fall back to chunk claiming
             use_cohort_processing = os.environ.get("USE_COHORT_PROCESSING", "true").lower() == "true"

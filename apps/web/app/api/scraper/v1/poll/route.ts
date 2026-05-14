@@ -23,11 +23,13 @@ import {
     getRunnerBuildCheck,
     loadExpectedRunnerRelease,
 } from '@/lib/scraper-runner-version';
-import {
-    DIRECT_URL_EXTRACTION_TYPE,
-    OFFICIAL_BRAND_URL_DISCOVERY_TYPE,
-    isOfficialBrandJobType,
-} from '@/lib/official-brand-workflow';
+// Phase 10: official-brand-workflow imports removed — deprecated modules retained on disk.
+const OFFICIAL_BRAND_URL_DISCOVERY_TYPE = 'official_brand_url_discovery';
+const DIRECT_URL_EXTRACTION_TYPE = 'direct_url_extraction';
+
+function isOfficialBrandJobType(type: unknown): boolean {
+    return type === OFFICIAL_BRAND_URL_DISCOVERY_TYPE || type === DIRECT_URL_EXTRACTION_TYPE;
+}
 
 function getSupabaseAdmin(): SupabaseClient {
     const url = SUPABASE_URL;

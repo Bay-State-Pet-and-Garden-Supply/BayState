@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
         updated_at: syncedAt,
       })
       .in("sku", exportSkus)
-      .eq("pipeline_status", "exporting");
+      .eq("pipeline_status", "publishing");
 
     if (statusError) {
       throw new Error(

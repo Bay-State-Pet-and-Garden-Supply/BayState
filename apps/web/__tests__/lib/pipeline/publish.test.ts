@@ -22,7 +22,7 @@ describe('publishToStorefront', () => {
                 sku: 'SKU-1',
                 input: { name: 'Test Product', price: 12.99 },
                 consolidated: { name: 'Test Product', price: 12.99, images: ['https://cdn.example.com/source.jpg'] },
-                pipeline_status: 'finalizing',
+                pipeline_status: 'reviewing',
             },
             error: null,
         });
@@ -68,7 +68,7 @@ describe('publishToStorefront', () => {
         expect(productsEq).toHaveBeenCalledWith('sku', 'SKU-1');
         expect(ingestionTable.update).toHaveBeenCalledWith(
             expect.objectContaining({
-                pipeline_status: 'exporting',
+                pipeline_status: 'publishing',
                 exported_at: null,
             })
         );
@@ -106,6 +106,6 @@ describe('publishToStorefront', () => {
         const result = await publishToStorefront('SKU-2');
 
         expect(result.success).toBe(false);
-        expect(result.error).toContain('must be in finalizing');
+        expect(result.error).toContain('must be in reviewing');
     });
 });

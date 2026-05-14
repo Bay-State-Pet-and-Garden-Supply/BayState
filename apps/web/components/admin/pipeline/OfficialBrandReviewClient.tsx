@@ -8,12 +8,67 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { adminFetch } from '@/lib/admin/api-client';
-import type {
-  CandidatesBySkuResponse,
-  OfficialBrandCandidateReviewItem,
-  OfficialBrandSelectionStatus,
-  OfficialBrandSkuReview,
-} from "@/lib/official-brand-review-types";
+
+// Phase 10: Inlined types from deprecated official-brand-review-types module.
+interface OfficialBrandCandidateReviewItem {
+  id: string;
+  sku: string;
+  url: string;
+  normalized_url: string;
+  normalized_domain: string;
+  selection_status: string;
+  selection_tier: string | null;
+  composite_score: number | null;
+  confidence: number | null;
+  rank: number | null;
+  title: string | null;
+  snippet: string | null;
+  candidate_source: string;
+  appeared_in_phases: number[] | null;
+  discovery_job_id: string | null;
+  extraction_job_id: string | null;
+  error_message: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+}
+
+interface OfficialBrandSkuReview {
+  sku: string;
+  product_name: string | null;
+  register_name: string | null;
+  predicted_name: string | null;
+  cohort_id: string;
+  candidates: OfficialBrandCandidateReviewItem[];
+  selected_url: string | null;
+  candidate_count: number;
+  has_been_reviewed: boolean;
+}
+
+interface OfficialBrandSelectionStatus {}
+
+interface CandidatesBySkuResponse {
+  skus: OfficialBrandSkuReview[];
+  cohort: {
+    id: string;
+    name: string | null;
+    brand_name: string;
+    official_domains: string[];
+    preferred_domains: string[];
+  };
+  summary: {
+    total_skus: number;
+    skus_with_selection: number;
+    skus_without_candidates: number;
+    skus_reviewed: number;
+    skus_extracted: number;
+  };
+}
+
+interface OfficialBrandReviewCohort {}
+
+interface OfficialBrandReviewSummary {}
+
+interface OfficialBrandCandidateSource {}
 
 interface OfficialBrandReviewClientProps {
   initialData: CandidatesBySkuResponse;
@@ -190,11 +245,7 @@ export function OfficialBrandReviewClient({
   );
 
   const optimisticallyUpdateCandidate = useCallback(
-    (
-      sku: string,
-      normalizedUrl: string,
-      selectionStatus: OfficialBrandSelectionStatus,
-    ) => {
+    (sku: string, normalizedUrl: string, selectionStatus: string) => {
       const nowIso = new Date().toISOString();
       setData((current) => {
         const skus = current.skus.map((entry) => {
@@ -235,7 +286,7 @@ export function OfficialBrandReviewClient({
     async (
       sku: string,
       normalizedUrl: string,
-      selectionStatus: OfficialBrandSelectionStatus,
+      selectionStatus: string,
     ) => {
       const pendingKey = `${sku}:${normalizedUrl}`;
       setIsSaving(true);

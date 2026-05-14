@@ -7,8 +7,11 @@ import {
     persistProductsIngestionSourcesPartial,
     type ProvenanceContext,
 } from '@/lib/scraper-callback/products-ingestion';
-import { filterOfficialBrandResultsForPersistence } from '@/lib/scraper-callback/official-brand-validation';
-import { evaluateScrapeQuality } from '@/lib/pipeline/scrape-quality';
+// Phase 10: Removed imports that reference deprecated modules:
+//   - filterOfficialBrandResultsForPersistence (lib/scraper-callback/official-brand-validation)
+//   - evaluateScrapeQuality (lib/pipeline/scrape-quality)
+//   - buildDiscoveryOfficialBrandCandidateRows / buildExtractedOfficialBrandCandidateRows / getOfficialBrandPhaseFromJob / persistOfficialBrandCandidateRows (lib/official-brand-workflow)
+// Legacy files retained on disk for archival reference.
 import { filterMeaningfulProductSources, hasMeaningfulProductSourceData, mergeProductSources, normalizeProductSources } from '@/lib/product-sources';
 import {
     checkIdempotency,
@@ -20,12 +23,6 @@ import {
     persistScrapeJobLogs,
     updateScrapeJobLogSummary,
 } from '@/lib/scraper-log-persistence';
-import {
-    buildDiscoveryOfficialBrandCandidateRows,
-    buildExtractedOfficialBrandCandidateRows,
-    getOfficialBrandPhaseFromJob,
-    persistOfficialBrandCandidateRows,
-} from '@/lib/official-brand-workflow';
 function getSupabaseAdmin(): SupabaseClient {
     const url = SUPABASE_URL;
     const key = SUPABASE_SECRET_KEY;
@@ -81,19 +78,9 @@ export async function persistChunkResultsToPipeline(
     }
 
     const nowIso = new Date().toISOString();
-    const officialBrandFilter = officialBrandContext?.isOfficialBrandJob
-        ? filterOfficialBrandResultsForPersistence(aggregatedResults, {
-            officialDomains: officialBrandContext.officialDomains,
-            preferredDomains: officialBrandContext.preferredDomains,
-        })
-        : null;
-    const resultsToPersist = officialBrandFilter ? officialBrandFilter.acceptedResults : aggregatedResults;
-
-    if (officialBrandFilter && officialBrandFilter.rejectedCount > 0) {
-        Object.entries(officialBrandFilter.rejectedBySku).forEach(([sku, reason]) => {
-            console.warn(`[Chunk Callback] Official Brand rejected for ${sku}: ${reason}`);
-        });
-    }
+    // Phase 10: officialBrandFilter removed — deprecated module not imported.
+    // Legacy results pass through unfiltered.
+    const resultsToPersist = aggregatedResults;
 
     // Build provenance context for the persistence call
     const provenance: ProvenanceContext = {
@@ -109,49 +96,6 @@ export async function persistChunkResultsToPipeline(
         provenance
     );
 
-    if (officialBrandFilter) {
-        const validationMetadata = {
-            accepted_count: persisted.length,
-            rejected_count: officialBrandFilter.rejectedCount,
-            rejected_by_sku: officialBrandFilter.rejectedBySku,
-            updated_at: nowIso,
-        };
-
-        const { data: metadataRow } = await supabase
-            .from('scrape_jobs')
-            .select('metadata')
-            .eq('id', jobId)
-            .single();
-
-        const priorMetadata = metadataRow?.metadata && typeof metadataRow.metadata === 'object'
-            ? (metadataRow.metadata as Record<string, unknown>)
-            : {};
-
-        await supabase
-            .from('scrape_jobs')
-            .update({
-                metadata: {
-                    ...priorMetadata,
-                    official_brand_validation: validationMetadata,
-                },
-            })
-            .eq('id', jobId);
-
-        if (persisted.length > 0) {
-            try {
-                const extractedRows = buildExtractedOfficialBrandCandidateRows({
-                    jobId,
-                    resultsBySku: resultsToPersist,
-                    config: officialBrandContext?.jobConfig,
-                    nowIso,
-                });
-                await persistOfficialBrandCandidateRows(supabase, extractedRows);
-            } catch (candidateError) {
-                console.warn(`[Chunk Callback] Failed to mark Official Brand URL candidates as extracted for job ${jobId}:`, candidateError);
-            }
-        }
-    }
-
     if (missing.length > 0) {
         console.warn(
             `[Chunk Callback] Job ${jobId}: ${missing.length} SKU(s) not found in products_ingestion, skipped: ${missing.join(', ')}`
@@ -163,82 +107,18 @@ export async function persistChunkResultsToPipeline(
 }
 
 /**
- * @deprecated URL discovery no longer dispatches to the runner.
- * Discovery runs server-side via runOfficialBrandDiscovery().
- * This function is kept for backward compatibility with in-flight
- * jobs created before the migration. Remove once all legacy jobs drain.
+ * @deprecated Phase 10: URL discovery no longer dispatches to the runner.
+ * Kept as stub for backward compatibility. Returns 0.
  */
 async function persistOfficialBrandDiscoveryResults(
-    supabase: SupabaseClient,
-    jobId: string,
-    aggregatedResults: ScrapedDataBySku,
-    isTestJob: boolean,
-    jobConfig?: Record<string, unknown>,
+    _supabase: SupabaseClient,
+    _jobId: string,
+    _aggregatedResults: ScrapedDataBySku,
+    _isTestJob: boolean,
+    _jobConfig?: Record<string, unknown>,
 ): Promise<number> {
-    if (isTestJob) {
-        console.log(
-            `[Chunk Callback] Test discovery job ${jobId} - skipping Official Brand URL candidate persistence`
-        );
-        return 0;
-    }
-
-    const nowIso = new Date().toISOString();
-    const cohort = jobConfig?.cohort && typeof jobConfig.cohort === 'object' && !Array.isArray(jobConfig.cohort)
-        ? jobConfig.cohort as Record<string, unknown>
-        : undefined;
-    const rows = buildDiscoveryOfficialBrandCandidateRows({
-        jobId,
-        resultsBySku: aggregatedResults,
-        cohort,
-        nowIso,
-    });
-    const persistedCount = await persistOfficialBrandCandidateRows(supabase, rows);
-    const skus = Array.from(new Set(Object.keys(aggregatedResults).filter(Boolean)));
-    let pipelineStatusUpdatedCount = 0;
-
-    if (skus.length > 0) {
-        const { data: statusRows, error: statusError } = await supabase
-            .from('products_ingestion')
-            .update({ pipeline_status: 'url_review', updated_at: nowIso })
-            .in('sku', skus)
-            .eq('pipeline_status', 'searching')
-            .select('sku');
-
-        if (statusError) {
-            console.warn(`[Chunk Callback] Failed to move Official Brand discovery SKUs to url_review for job ${jobId}:`, statusError);
-        } else {
-            pipelineStatusUpdatedCount = statusRows?.length ?? 0;
-        }
-    }
-
-    const { data: metadataRow } = await supabase
-        .from('scrape_jobs')
-        .select('metadata')
-        .eq('id', jobId)
-        .single();
-
-    const priorMetadata = metadataRow?.metadata && typeof metadataRow.metadata === 'object'
-        ? (metadataRow.metadata as Record<string, unknown>)
-        : {};
-
-    await supabase
-        .from('scrape_jobs')
-        .update({
-            metadata: {
-                ...priorMetadata,
-                official_brand_discovery: {
-                    candidate_count: persistedCount,
-                    sku_count: Object.keys(aggregatedResults).length,
-                    pipeline_status_updated_count: pipelineStatusUpdatedCount,
-                    pipeline_status_from: 'searching',
-                    pipeline_status_to: 'url_review',
-                    updated_at: nowIso,
-                },
-            },
-        })
-        .eq('id', jobId);
-
-    return persistedCount;
+    console.log('[Chunk Callback] [DEPRECATED] persistOfficialBrandDiscoveryResults called — no-op.');
+    return 0;
 }
 
 function toOptionalString(value: unknown): string | null {
@@ -259,33 +139,16 @@ function normalizeSkuList(value: unknown): string[] {
     );
 }
 
-async function markOfficialBrandExtractionCandidatesFailed(
-    supabase: SupabaseClient,
-    jobId: string,
-    skus: string[],
-    errorMessage: string,
-    nowIso: string,
+function markOfficialBrandExtractionCandidatesFailed(
+    _supabase: SupabaseClient,
+    _jobId: string,
+    _skus: string[],
+    _errorMessage: string,
+    _nowIso: string,
 ): Promise<void> {
-    const targetSkus = Array.from(new Set(skus.filter(Boolean)));
-    if (targetSkus.length === 0) {
-        return;
-    }
-
-    const { error } = await supabase
-        .from('official_brand_url_candidates')
-        .update({
-            selection_status: 'failed',
-            extraction_job_id: jobId,
-            error_message: errorMessage,
-            updated_at: nowIso,
-        })
-        .eq('extraction_job_id', jobId)
-        .in('sku', targetSkus)
-        .in('selection_status', ['selected', 'failed']);
-
-    if (error) {
-        console.warn(`[Chunk Callback] Failed to mark Official Brand candidates as failed for job ${jobId}:`, error);
-    }
+    // Phase 10: deprecated — official_brand_url_candidates table is no longer used.
+    console.log('[Chunk Callback] [DEPRECATED] markOfficialBrandExtractionCandidatesFailed called — no-op.');
+    return Promise.resolve();
 }
 
 export async function POST(request: NextRequest) {
@@ -349,22 +212,7 @@ export async function POST(request: NextRequest) {
             .single();
 
         const isTestJob = updatedJobRecord?.test_mode === true;
-        const metadataRecord = updatedJobRecord?.metadata && typeof updatedJobRecord.metadata === 'object'
-            ? (updatedJobRecord.metadata as Record<string, unknown>)
-            : {};
         const configRecord = updatedJobRecord?.config && typeof updatedJobRecord.config === 'object'
-            ? (updatedJobRecord.config as Record<string, unknown>)
-            : {};
-        const cohortRecord = configRecord.cohort && typeof configRecord.cohort === 'object'
-            ? (configRecord.cohort as Record<string, unknown>)
-            : {};
-        const officialBrandPhase = getOfficialBrandPhaseFromJob({
-            type: updatedJobRecord?.type,
-            metadata: metadataRecord,
-            config: configRecord,
-        });
-        const isOfficialBrandJob = Boolean(officialBrandPhase) || metadataRecord.requested_job_type === 'official_brand' || Boolean(configRecord.cohort);
-
         const chunkIdempotency = await checkIdempotency(
             supabase,
             `${jobId}:${chunk_id}`,
@@ -388,28 +236,19 @@ export async function POST(request: NextRequest) {
             const chunkResultsBySku = mergeChunkResults([{ results: results.data }]);
             if (Object.keys(chunkResultsBySku).length > 0) {
                 try {
-                    // DEPRECATED: URL discovery no longer dispatches to the runner.
-                    // This branch only handles in-flight jobs that were created before
-                    // the server-side migration. New discovery jobs run server-side via
-                    // POST /api/admin/pipeline/official-brand/discover.
-                    if (officialBrandPhase === 'url_discovery') {
-                        const persistedCandidates = await persistOfficialBrandDiscoveryResults(
-                            supabase,
-                            jobId,
-                            chunkResultsBySku,
-                            isTestJob,
-                            configRecord,
-                        );
-                        console.log(`[Chunk Callback] [DEPRECATED] Persisted ${persistedCandidates} Official Brand URL candidates from chunk ${chunk.chunk_index}`);
-                    } else {
-                        await persistChunkResultsToPipeline(supabase, jobId, chunkResultsBySku, isTestJob, {
-                            isOfficialBrandJob,
-                            officialDomains: Array.isArray(cohortRecord.officialDomains) ? (cohortRecord.officialDomains as string[]) : undefined,
-                            preferredDomains: Array.isArray(cohortRecord.preferredDomains) ? (cohortRecord.preferredDomains as string[]) : undefined,
+                    // Phase 10: officialBrandPhase detection removed.
+                    // All results are persisted via the standard path.
+                    await persistChunkResultsToPipeline(
+                        supabase,
+                        jobId,
+                        chunkResultsBySku,
+                        isTestJob,
+                        {
+                            isOfficialBrandJob: false, // Phase 10: simplified — no brand filtering
                             jobConfig: configRecord,
-                        });
-                        console.log(`[Chunk Callback] Persisted ${Object.keys(chunkResultsBySku).length} SKUs from chunk ${chunk.chunk_index}`);
-                    }
+                        },
+                    );
+                    console.log(`[Chunk Callback] Persisted ${Object.keys(chunkResultsBySku).length} SKUs from chunk ${chunk.chunk_index}`);
                 } catch (persistError) {
                     effectiveChunkStatus = 'failed';
                     persistenceErrorMessage = persistError instanceof Error ? persistError.message : 'Failed to persist chunk results';
@@ -438,14 +277,20 @@ export async function POST(request: NextRequest) {
             updateData.error_message = persistenceErrorMessage || error_message;
         }
 
-        if (effectiveChunkStatus === 'failed' && officialBrandPhase === 'extraction' && !isTestJob) {
-            await markOfficialBrandExtractionCandidatesFailed(
-                supabase,
-                jobId,
-                normalizeSkuList(chunk.skus),
-                persistenceErrorMessage || error_message || 'Official Brand extraction failed',
-                new Date().toISOString(),
-            );
+        if (effectiveChunkStatus === 'failed' && !isTestJob) {
+            // Phase 10: official brand extraction candidate marking removed.
+            // Stale product status reset kept but simplified.
+            const failedSkus = normalizeSkuList(chunk.skus);
+            if (failedSkus.length > 0) {
+                const completedAt = new Date().toISOString();
+                await supabase
+                    .from('products_ingestion')
+                    .update({
+                        error_message: persistenceErrorMessage || error_message || 'Chunk processing failed',
+                        updated_at: completedAt,
+                    })
+                    .in('sku', failedSkus);
+            }
         }
 
         const callbackLogs = Array.isArray(results?.logs)
@@ -589,190 +434,12 @@ export async function POST(request: NextRequest) {
                     console.log(`[Chunk Callback] Job ${jobId} was already finalized by another callback`);
                 }
 
-                if (jobStatus === 'failed' && !isTestJob) {
-                    const failedSkus = Array.from(
-                        new Set(
-                            (allChunksForJob || []).flatMap((chunkRow) =>
-                                Array.isArray(chunkRow.skus)
-                                    ? chunkRow.skus.filter(
-                                          (sku): sku is string =>
-                                              typeof sku === 'string' && sku.trim().length > 0
-                                      )
-                                    : []
-                            )
-                        )
-                    );
-
-                    if (failedSkus.length > 0) {
-                        if (officialBrandPhase === 'extraction') {
-                            await markOfficialBrandExtractionCandidatesFailed(
-                                supabase,
-                                jobId,
-                                failedSkus,
-                                terminalMessage,
-                                completedAt,
-                            );
-                        }
-
-                        const failedStatusUpdate = officialBrandPhase === 'extraction'
-                            ? {
-                                pipeline_status: 'url_review',
-                                updated_at: completedAt,
-                            }
-                            : {
-                                pipeline_status: 'needs_fallback_review',
-                                error_message: terminalMessage,
-                                scrape_quality: {
-                                    result: 'needs_fallback_review',
-                                    missingFields: ['scraper_run_failed'],
-                                    sourceScores: {} as Record<string, number>,
-                                    reason: terminalMessage || 'Scraping job failed',
-                                    hasMatchedSku: false,
-                                    matchedSourceKeys: [],
-                                },
-                                updated_at: completedAt,
-                            };
-                        const failedStatusFrom = officialBrandPhase === 'extraction' ? 'extracting' : 'scraping';
-
-                        const { error: pipelineStatusError } = await supabase
-                            .from('products_ingestion')
-                            .update(failedStatusUpdate)
-                            .in('sku', failedSkus)
-                            .eq('pipeline_status', failedStatusFrom);
-
-                        if (pipelineStatusError) {
-                            console.error(
-                                `[Chunk Callback] Failed to update failed products for job ${jobId}:`,
-                                pipelineStatusError
-                            );
-                        }
-                    }
-                }
-
-                // Quality-aware routing for completed static jobs:
-                // Evaluate each SKU's scrape results and route to scraped/Results or needs_fallback_review.
-                // For fallback extraction jobs, keep the legacy stuck-SKU reversion.
-                if (!isTestJob && (jobStatus === 'completed' || jobStatus === 'failed')) {
-                    const jobSkus = Array.from(
-                        new Set(
-                            (allChunksForJob || []).flatMap((chunkRow) =>
-                                Array.isArray(chunkRow.skus)
-                                    ? chunkRow.skus.filter(
-                                          (sku): sku is string =>
-                                              typeof sku === 'string' && sku.trim().length > 0
-                                      )
-                                    : []
-                            )
-                        )
-                    );
-
-                    if (jobSkus.length > 0) {
-                        if (officialBrandPhase === 'extraction') {
-                            // Fallback extraction job — keep legacy stuck-SKU behavior
-                            const stuckStatusFrom = 'extracting';
-                            const stuckStatusTo = jobStatus === 'completed' ? 'scraped' : 'url_review';
-                            const { error: resetStatusError } = await supabase
-                                .from('products_ingestion')
-                                .update({
-                                    pipeline_status: stuckStatusTo,
-                                    updated_at: new Date().toISOString(),
-                                })
-                                .in('sku', jobSkus)
-                                .eq('pipeline_status', stuckStatusFrom);
-
-                            if (resetStatusError) {
-                                console.error(`[Chunk Callback] Failed to reset stuck extraction SKUs to ${stuckStatusTo}:`, resetStatusError);
-                            }
-                        } else if (jobStatus === 'completed') {
-                            // Standard static job — evaluate quality per-SKU
-                            const nowIso = new Date().toISOString();
-                            const { data: products } = await supabase
-                                .from('products_ingestion')
-                                .select('sku, input, sources, pipeline_status')
-                                .in('sku', jobSkus);
-
-                            if (products && products.length > 0) {
-                                for (const product of products) {
-                                    const input = (product.input as Record<string, unknown>) || null;
-                                    const sources = (product.sources as Record<string, unknown>) || {};
-                                    const currentStatus = product.pipeline_status;
-
-                                    const qualityVerdict = evaluateScrapeQuality(
-                                        product.sku,
-                                        input,
-                                        sources,
-                                    );
-
-                                    const targetStatus = qualityVerdict.result === 'pass' ? 'scraped' : 'imported';
-
-                                    await supabase
-                                        .from('products_ingestion')
-                                        .update({
-                                            pipeline_status: targetStatus,
-                                            scrape_quality: qualityVerdict as unknown as Record<string, unknown>,
-                                            updated_at: nowIso,
-                                        })
-                                        .eq('sku', product.sku)
-                                        .in('pipeline_status', [currentStatus, 'scraping']);
-
-                                    console.log(
-                                        `[Chunk Callback] Job ${jobId}: SKU ${product.sku} quality=${qualityVerdict.result} (from ${currentStatus} → ${targetStatus})`
-                                    );
-                                }
-                            }
-
-                            // Revert any SKUs still stuck in 'scraping' (no callback results at all)
-                            const { error: resetStuckError } = await supabase
-                                .from('products_ingestion')
-                                .update({
-                                    pipeline_status: 'needs_fallback_review',
-                                    scrape_quality: {
-                                        result: 'needs_fallback_review',
-                                        missingFields: ['any source'],
-                                        sourceScores: {},
-                                        reason: 'No scraping results received for this SKU',
-                                        hasMatchedSku: false,
-                                        matchedSourceKeys: [],
-                                    },
-                                    updated_at: nowIso,
-                                })
-                                .in('sku', jobSkus)
-                                .eq('pipeline_status', 'scraping');
-
-                            if (resetStuckError) {
-                                console.error(`[Chunk Callback] Failed to reset stuck scraping SKUs to needs_fallback_review:`, resetStuckError);
-                            }
-                        } else {
-                            // Failed standard job — reset stuck scraping SKUs to needs_fallback_review
-                            const nowIso = new Date().toISOString();
-                            const { error: resetStuckError } = await supabase
-                                .from('products_ingestion')
-                                .update({
-                                    pipeline_status: 'needs_fallback_review',
-                                    error_message: terminalMessage,
-                                    scrape_quality: {
-                                        result: 'needs_fallback_review',
-                                        missingFields: ['any source'],
-                                        sourceScores: {},
-                                        reason: 'Scraping job failed',
-                                        hasMatchedSku: false,
-                                        matchedSourceKeys: [],
-                                    },
-                                    updated_at: nowIso,
-                                })
-                                .in('sku', jobSkus)
-                                .eq('pipeline_status', 'scraping');
-
-                            if (resetStuckError) {
-                                console.error(`[Chunk Callback] Failed to reset failed scraping SKUs:`, resetStuckError);
-                            }
-                        }
-                    }
-                }
+                // Phase 10: quality-aware routing and official-brand product status transition removed.
+                // Products remain in their current status for manual processing.
 
                 if (jobStatus === 'completed' && !isTestJob) {
                     console.log(
-                        `[Chunk Callback] Job ${jobId} completed. Consolidation remains manual and must be user-triggered.`
+                        `[Chunk Callback] Job ${jobId} completed. Products remain in current status for manual processing.`
                     );
                 }
 

@@ -1,6 +1,7 @@
 /**
  * Pipeline types
  * The durable workflow states are the same states shown in the admin UI.
+ * Simplified 8-stage pipeline: imported → url_review → extracting → processed → merging → reviewing → publishing → failed
  */
 
 import type { Brand } from "@/lib/types";
@@ -8,15 +9,12 @@ import type { Brand } from "@/lib/types";
 /** Canonical workflow states persisted in products_ingestion.pipeline_status. */
 export const PERSISTED_PIPELINE_STATUSES = [
   "imported",
-  "searching",
   "url_review",
   "extracting",
-  "scraping",
-  "needs_fallback_review",
-  "scraped",
-  "consolidating",
-  "finalizing",
-  "exporting",
+  "processed",
+  "merging",
+  "reviewing",
+  "publishing",
   "failed",
 ] as const;
 
@@ -26,11 +24,12 @@ export type PersistedPipelineStatus =
 /** Main admin workflow tabs shown in the live pipeline UI. */
 export const PIPELINE_TABS = [
   "imported",
-  "scraping",
-  "scraped",
-  "consolidating",
-  "finalizing",
-  "exporting",
+  "url_review",
+  "extracting",
+  "processed",
+  "merging",
+  "reviewing",
+  "publishing",
   "failed",
 ] as const;
 
@@ -55,9 +54,16 @@ const PERSISTED_PIPELINE_STATUS_SET = new Set<string>(
 const DERIVED_PIPELINE_TAB_SET = new Set<string>(DERIVED_PIPELINE_TABS);
 const PIPELINE_STAGE_SET = new Set<string>(PIPELINE_TABS);
 const LEGACY_PIPELINE_STAGE_ALIASES = {
-  finalized: "finalizing",
-  export: "exporting",
-  published: "exporting",
+  finalized: "reviewing",
+  finalizing: "reviewing",
+  export: "publishing",
+  published: "publishing",
+  scraped: "processed",
+  consolidating: "merging",
+  exporting: "publishing",
+  searching: "url_review",
+  scraping: "extracting",
+  needs_fallback_review: "url_review",
 } as const;
 
 export function isPersistedStatus(
@@ -90,21 +96,6 @@ export function normalizePipelineStage(
       value as keyof typeof LEGACY_PIPELINE_STAGE_ALIASES
     ] ?? null
   );
-}
-
-/** Fallback operational states — valid DB statuses but not top-level admin tabs. */
-export const FALLBACK_OPERATIONAL_STATUSES = [
-  "searching",
-  "url_review",
-  "extracting",
-] as const;
-
-export type FallbackOperationalStatus =
-  (typeof FALLBACK_OPERATIONAL_STATUSES)[number];
-
-/** Returns the persisted workflow state for a route stage. */
-export function getStageDataStatus(stage: PipelineStage): PersistedPipelineStatus {
-  return stage;
 }
 
 /**
@@ -251,48 +242,37 @@ export const STAGE_CONFIG: Record<StageConfigKey, StageConfig> = {
   imported: {
     label: "Imported",
     color: "#6B7280",
-    description: "Products imported into the system and waiting for scraping",
-  },
-  searching: {
-    label: "Searching",
-    color: "#6366F1",
-    description: "Fallback SERP URL discovery in progress",
+    description: "Products imported into the system and awaiting URL assignment",
   },
   url_review: {
     label: "URL Review",
     color: "#A855F7",
-    description: "Review discovered URL candidates before fallback extraction",
+    description: "Review and confirm extraction target URLs before enrichment",
   },
   extracting: {
     label: "Extracting",
-    color: "#06B6D4",
-    description: "Fallback product page extraction in progress",
-  },
-  scraping: {
-    label: "Scraping",
     color: "#2563EB",
-    description: "Products currently assigned to active scraper jobs",
+    description: "Products currently being enriched via AI extraction",
   },
-
-  scraped: {
-    label: "Results",
+  processed: {
+    label: "Processed",
     color: "#3B82F6",
-    description: "Products with completed scrape results ready for consolidation",
+    description: "Products with completed enrichment results ready for consolidation",
   },
-  consolidating: {
-    label: "Consolidating",
+  merging: {
+    label: "Merging",
     color: "#8B5CF6",
     description: "Products in active AI consolidation batches",
   },
-  finalizing: {
-    label: "Finalizing",
+  reviewing: {
+    label: "Reviewing",
     color: "#F59E0B",
     description: "Products awaiting final review before storefront publication",
   },
-  exporting: {
-    label: "Exporting",
+  publishing: {
+    label: "Publishing",
     color: "#008850",
-    description: "Products published to the Supabase storefront and queued for optional downstream exports",
+    description: "Products published to the storefront and queued for downstream exports",
   },
   failed: {
     label: "Failed",

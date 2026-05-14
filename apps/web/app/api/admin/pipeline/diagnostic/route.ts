@@ -18,7 +18,7 @@ export async function GET() {
             supabase
                 .from('products_ingestion')
                 .select('sku', { count: 'exact', head: true })
-                .eq('pipeline_status', 'exporting')
+                .eq('pipeline_status', 'publishing')
                 .is('exported_at', null),
         ]);
 
@@ -34,19 +34,16 @@ export async function GET() {
             console.error('Warning: Error fetching pipeline_export_queue:', exportQueueError);
         }
 
-        // Calculate counts by status
+        // Calculate counts by status (8 canonical statuses after pipeline migration)
         const byStatus: Record<PersistedPipelineStatus, number> = {
             imported: 0,
-            searching: 0,
             url_review: 0,
             extracting: 0,
-            scraping: 0,
-            scraped: 0,
-            consolidating: 0,
-            finalizing: 0,
-            exporting: 0,
+            processed: 0,
+            merging: 0,
+            reviewing: 0,
+            publishing: 0,
             failed: 0,
-            needs_fallback_review: 0,
         };
 
         let totalProducts = 0;

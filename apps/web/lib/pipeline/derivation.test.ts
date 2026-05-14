@@ -4,7 +4,7 @@
 
 import {
   ACTIVE_CONSOLIDATION_STATUSES,
-  ACTIVE_SCRAPE_JOB_STATUSES,
+  ACTIVE_ENRICHMENT_JOB_STATUSES,
   WORKFLOW_PIPELINE_TABS,
   type ActiveJobsQueryBuilder,
   deriveTabFromProduct,
@@ -91,11 +91,12 @@ describe("WORKFLOW_PIPELINE_TABS", () => {
   it("exposes the canonical workflow tabs", () => {
     expect(WORKFLOW_PIPELINE_TABS).toEqual([
       "imported",
-      "scraping",
-      "scraped",
-      "consolidating",
-      "finalizing",
-      "exporting",
+      "url_review",
+      "extracting",
+      "processed",
+      "merging",
+      "reviewing",
+      "publishing",
       "failed",
     ]);
   });
@@ -104,18 +105,18 @@ describe("WORKFLOW_PIPELINE_TABS", () => {
 describe("normalizeActiveJobs", () => {
   it("coerces partial values into booleans", () => {
     expect(normalizeActiveJobs()).toEqual({
-      scraping: false,
-      consolidation: false,
+      extracting: false,
+      merging: false,
     });
 
     expect(
       normalizeActiveJobs({
-        scraping: 1 as unknown as boolean,
-        consolidation: "yes" as unknown as boolean,
+        extracting: 1 as unknown as boolean,
+        merging: "yes" as unknown as boolean,
       })
     ).toEqual({
-      scraping: true,
-      consolidation: true,
+      extracting: true,
+      merging: true,
     });
   });
 });
@@ -124,7 +125,7 @@ describe("deriveTabFromProduct", () => {
   it.each<{
     name: string;
     product: ProductTabDerivationInput | null | undefined;
-    activeJobs?: { scraping?: boolean; consolidation?: boolean } | null;
+    activeJobs?: { extracting?: boolean; merging?: boolean } | null;
     expected: WorkflowPipelineTab;
   }>([
     {
@@ -133,35 +134,35 @@ describe("deriveTabFromProduct", () => {
       expected: "imported",
     },
     {
-      name: "keeps scraping products in scraping",
-      product: { pipeline_status: "scraping" },
-      expected: "scraping",
+      name: "keeps extracting products in extracting",
+      product: { pipeline_status: "extracting" },
+      expected: "extracting",
     },
 
     {
-      name: "keeps scraped products in scraped",
-      product: { pipeline_status: "scraped" },
-      expected: "scraped",
+      name: "keeps processed products in processed",
+      product: { pipeline_status: "processed" },
+      expected: "processed",
     },
     {
-      name: "keeps consolidating products in consolidating",
-      product: { pipeline_status: "consolidating" },
-      expected: "consolidating",
+      name: "keeps merging products in merging",
+      product: { pipeline_status: "merging" },
+      expected: "merging",
     },
     {
-      name: "keeps finalizing products in finalizing",
-      product: { pipeline_status: "finalizing" },
-      expected: "finalizing",
+      name: "keeps reviewing products in reviewing",
+      product: { pipeline_status: "reviewing" },
+      expected: "reviewing",
     },
     {
-      name: "keeps exporting products in exporting",
-      product: { pipeline_status: "exporting" },
-      expected: "exporting",
+      name: "keeps publishing products in publishing",
+      product: { pipeline_status: "publishing" },
+      expected: "publishing",
     },
     {
-      name: "routes failed products into failed",
+      name: "routes failed products into imported for retry",
       product: { pipeline_status: "failed" },
-      expected: "failed",
+      expected: "imported",
     },
     {
       name: "defaults unknown products to imported",
@@ -178,17 +179,17 @@ describe("getActiveJobsForProduct", () => {
     const supabase = createSupabaseClient({});
 
     await expect(
-      getActiveJobsForProduct({ pipeline_status: "scraped", sku: "   " }, supabase)
+      getActiveJobsForProduct({ pipeline_status: "processed", sku: "   " }, supabase)
     ).resolves.toEqual({
-      scraping: false,
-      consolidation: false,
+      extracting: false,
+      merging: false,
     });
 
     expect(supabase.from).not.toHaveBeenCalled();
   });
 
-  it("queries scrape and consolidation activity by product id", async () => {
-    const scrapePlan = createQueryPlan({
+  it("queries enrichment and consolidation activity by SKU", async () => {
+    const enrichPlan = createQueryPlan({
       data: [{ status: "running" }],
       error: null,
     });
@@ -197,21 +198,21 @@ describe("getActiveJobsForProduct", () => {
       error: null,
     });
     const supabase = createSupabaseClient({
-      scrape_jobs: [scrapePlan],
-      consolidation_batches: [consolidationPlan],
+      enrichment_jobs: [enrichPlan],
+      consolidation_batches: [consolidationPlan, createQueryPlan({ data: [], error: null })],
     });
 
     await expect(
-      getActiveJobsForProduct({ id: 42, pipeline_status: "scraped" }, supabase)
+      getActiveJobsForProduct({ id: 42, sku: "SKU-42", pipeline_status: "processed" }, supabase)
     ).resolves.toEqual({
-      scraping: true,
-      consolidation: false,
+      extracting: true,
+      merging: false,
     });
 
-    expect(scrapePlan.calls).toEqual([
+    expect(enrichPlan.calls).toEqual([
       ["select", "status"],
-      ["eq", "product_id", 42],
-      ["in", "status", ACTIVE_SCRAPE_JOB_STATUSES],
+      ["contains", "skus", ["SKU-42"]],
+      ["in", "status", ACTIVE_ENRICHMENT_JOB_STATUSES],
       ["limit", 1],
     ]);
     expect(consolidationPlan.calls).toEqual([
@@ -222,50 +223,34 @@ describe("getActiveJobsForProduct", () => {
     ]);
   });
 
-  it("falls back to SKU lookups when id-based queries fail non-fatally", async () => {
-    const scrapeIdPlan = createQueryPlan({
-      data: null,
-      error: createError("Could not find the relation public.scrape_jobs"),
-    });
-    const scrapeSkuPlan = createQueryPlan({
-      data: [{ status: "pending" }],
+  it("queries consolidation by both id and sku", async () => {
+    const enrichPlan = createQueryPlan({
+      data: [],
       error: null,
     });
     const consolidationIdPlan = createQueryPlan({
-      data: null,
-      error: createError("column missing_product_ids does not exist", "42703"),
+      data: [],
+      error: null,
     });
     const consolidationSkuPlan = createQueryPlan({
       data: [{ status: "in_progress" }],
       error: null,
     });
     const supabase = createSupabaseClient({
-      scrape_jobs: [scrapeIdPlan, scrapeSkuPlan],
+      enrichment_jobs: [enrichPlan],
       consolidation_batches: [consolidationIdPlan, consolidationSkuPlan],
     });
 
     await expect(
       getActiveJobsForProduct(
-        { id: "product-1", sku: " SKU-123 ", pipeline_status: "finalizing" },
+        { id: "product-1", sku: " SKU-123 ", pipeline_status: "reviewing" },
         supabase
       )
     ).resolves.toEqual({
-      scraping: true,
-      consolidation: true,
+      extracting: false,
+      merging: true,
     });
 
-    expect(scrapeIdPlan.calls).toEqual([
-      ["select", "status"],
-      ["eq", "product_id", "product-1"],
-      ["in", "status", ACTIVE_SCRAPE_JOB_STATUSES],
-      ["limit", 1],
-    ]);
-    expect(scrapeSkuPlan.calls).toEqual([
-      ["select", "status"],
-      ["contains", "skus", ["SKU-123"]],
-      ["in", "status", ACTIVE_SCRAPE_JOB_STATUSES],
-      ["limit", 1],
-    ]);
     expect(consolidationIdPlan.calls).toEqual([
       ["select", "status"],
       ["contains", "product_ids", ["product-1"]],
@@ -282,17 +267,17 @@ describe("getActiveJobsForProduct", () => {
 
   it("throws when a lookup fails with a fatal query error", async () => {
     const supabase = createSupabaseClient({
-      scrape_jobs: [
+      enrichment_jobs: [
         createQueryPlan({
           data: null,
-          error: createError("permission denied for relation scrape_jobs", "42501"),
+          error: createError("permission denied for relation enrichment_jobs", "42501"),
         }),
       ],
       consolidation_batches: [createQueryPlan()],
     });
 
     await expect(
-      getActiveJobsForProduct({ id: "product-1", pipeline_status: "scraped" }, supabase)
-    ).rejects.toThrow("permission denied for relation scrape_jobs");
+      getActiveJobsForProduct({ id: "product-1", sku: "SKU-1", pipeline_status: "processed" }, supabase)
+    ).rejects.toThrow("permission denied for relation enrichment_jobs");
   });
 });

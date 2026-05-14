@@ -46,7 +46,7 @@ function createProduct(overrides: Partial<PipelineProduct> = {}): PipelineProduc
       availability: "pre-order now",
       minimum_quantity: 5,
     },
-    pipeline_status: "finalizing",
+    pipeline_status: "reviewing",
     selected_images: [
       {
         url: "https://cdn.example.com/fallback.jpg",
@@ -211,21 +211,28 @@ describe("finalization draft helpers", () => {
     expect(buildConsolidatedPayloadFromDraft(draft)).toEqual({
       name: "Deluxe Chow",
       description: null,
-      long_description: "Long form copy",
       price: 19.5,
       brand_id: null,
       brand: null,
       category: null,
       stock_status: "out_of_stock",
-      is_special_order: true,
       weight: null,
-      product_on_pages: ["DOG"],
-      shopsite_pages: ["DOG"],
       images: ["https://cdn.example.com/side.jpg"],
       search_keywords: "dog food, premium",
       gtin: null,
       availability: "in stock",
       minimum_quantity: 7,
+      color: null,
+      flavor: null,
+      food_form: null,
+      health_feature: null,
+      life_stage: null,
+      packaging_type: null,
+      pet_size: null,
+      pet_type: null,
+      product_feature: null,
+      size: null,
+      special_diet: null,
     });
   });
 });

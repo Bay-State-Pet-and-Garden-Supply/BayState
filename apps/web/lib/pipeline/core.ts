@@ -1,27 +1,36 @@
 /**
  * Pipeline Core
- * Transition validation utilities
+ * Transition validation utilities for the simplified 8-stage pipeline.
  */
 
 import type { PersistedPipelineStatus } from './types';
 
 /**
- * Valid status transitions for each pipeline stage
+ * Valid status transitions for each pipeline stage.
+ *
+ * Simplified state machine:
+ *   imported → url_review → extracting → processed → merging → reviewing → publishing
+ *   Any → failed
+ *   failed → imported | url_review | extracting
+ *   url_review → imported
+ *   extracting → url_review
+ *   processed → merging | reviewing | imported
+ *   merging → reviewing | processed
+ *   reviewing → publishing | processed
+ *   publishing → reviewing
  */
 export const STATUS_TRANSITIONS: Record<
   PersistedPipelineStatus,
   PersistedPipelineStatus[]
 > = {
-  imported: ['scraping'],
-  searching: ['url_review', 'imported', 'failed'],
-  url_review: ['extracting', 'scraping', 'imported', 'failed'],
-  extracting: ['scraped', 'url_review', 'failed'],
-  scraping: ['scraped', 'failed', 'imported'],
-  scraped: ['consolidating', 'finalizing', 'imported', 'failed'],
-  consolidating: ['finalizing', 'scraped', 'failed'],
-  finalizing: ['exporting', 'scraped', 'failed'],
-  exporting: ['finalizing', 'failed'],
-  failed: ['imported', 'url_review'],
+  imported: ['url_review', 'failed'],
+  url_review: ['extracting', 'imported', 'failed'],
+  extracting: ['processed', 'url_review', 'failed'],
+  processed: ['merging', 'reviewing', 'imported', 'failed'],
+  merging: ['reviewing', 'processed', 'failed'],
+  reviewing: ['publishing', 'processed', 'failed'],
+  publishing: ['reviewing', 'failed'],
+  failed: ['imported', 'url_review', 'extracting'],
 } as const;
 
 /**

@@ -65,7 +65,7 @@ function createProduct(
       availability: "pre-order now",
       minimum_quantity: 2,
     },
-    pipeline_status: "finalizing",
+    pipeline_status: "reviewing",
     selected_images: [
       {
         url: `https://cdn.example.com/${sku.toLowerCase()}-metadata.jpg`,

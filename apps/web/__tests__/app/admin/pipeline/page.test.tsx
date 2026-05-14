@@ -37,25 +37,25 @@ describe("admin pipeline page stage params", () => {
     render(await PipelinePage({ searchParams: Promise.resolve({ stage: "published" }) }));
 
     expect(mockGetProductsByStage).toHaveBeenCalledWith(
-      "exporting",
+      "publishing",
       expect.objectContaining({ limit: 500 }),
     );
     expect(lastPipelineClientProps).toMatchObject({
-      initialStage: "exporting",
+      initialStage: "publishing",
       initialProducts: [],
       initialTotal: 0,
     });
   });
 
-  it("hydrates finalizing from finalized products", async () => {
+  it("hydrates reviewing from finalized products", async () => {
     render(await PipelinePage({ searchParams: Promise.resolve({ stage: "finalizing" }) }));
 
     expect(mockGetProductsByStage).toHaveBeenCalledWith(
-      "finalizing",
+      "reviewing",
       expect.objectContaining({ limit: 500 }),
     );
     expect(lastPipelineClientProps).toMatchObject({
-      initialStage: "finalizing",
+      initialStage: "reviewing",
     });
   });
 

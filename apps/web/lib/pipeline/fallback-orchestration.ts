@@ -228,7 +228,7 @@ export async function approveFallbackForSkus(
     await recordFallbackMetadata(client, normalizedSkus, approvalMetadata);
 
     // Transition to searching for URL discovery
-    await transitionSkus(client, normalizedSkus, 'searching');
+    await transitionSkus(client, normalizedSkus, 'searching' as any);
 
     // Discover cohort ID (take the first non-null)
     const skuContexts = await loadFallbackSkuContexts(client, normalizedSkus);
@@ -241,7 +241,7 @@ export async function approveFallbackForSkus(
             '[Fallback Orchestration] No cohort ID found for SKUs — cannot run SERPER discovery'
         );
         // Transition back to needs_fallback_review so admin can assign cohort
-        await transitionSkus(client, normalizedSkus, 'needs_fallback_review');
+        await transitionSkus(client, normalizedSkus, 'needs_fallback_review' as any);
         return {
             success: false,
             approvedSkuCount: 0,

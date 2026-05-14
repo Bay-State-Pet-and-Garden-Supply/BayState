@@ -11,16 +11,14 @@ import { PERSISTED_PIPELINE_STATUSES } from './types';
 describe('STATUS_TRANSITIONS', () => {
   it('matches the canonical persisted transition graph', () => {
     expect(STATUS_TRANSITIONS).toEqual({
-      imported: ['scraping'],
-      searching: ['url_review', 'imported', 'failed'],
-      url_review: ['extracting', 'scraping', 'imported', 'failed'],
-      extracting: ['scraped', 'url_review', 'failed'],
-      scraping: ['scraped', 'failed', 'imported'],
-      scraped: ['consolidating', 'finalizing', 'imported', 'failed'],
-      consolidating: ['finalizing', 'scraped', 'failed'],
-      finalizing: ['exporting', 'scraped', 'failed'],
-      exporting: ['finalizing', 'failed'],
-      failed: ['imported', 'url_review'],
+      imported: ['url_review', 'failed'],
+      url_review: ['extracting', 'imported', 'failed'],
+      extracting: ['processed', 'url_review', 'failed'],
+      processed: ['merging', 'reviewing', 'imported', 'failed'],
+      merging: ['reviewing', 'processed', 'failed'],
+      reviewing: ['publishing', 'processed', 'failed'],
+      publishing: ['reviewing', 'failed'],
+      failed: ['imported', 'url_review', 'extracting'],
     });
   });
 });
@@ -31,27 +29,32 @@ describe('validateTransition', () => {
   });
 
   it('allows canonical forward, retry, and rework transitions', () => {
-    expect(validateTransition('imported', 'scraping')).toBe(true);
-    expect(validateTransition('scraping', 'scraped')).toBe(true);
-    expect(validateTransition('scraping', 'failed')).toBe(true);
-    expect(validateTransition('scraping', 'imported')).toBe(true);
-    expect(validateTransition('scraped', 'consolidating')).toBe(true);
-    expect(validateTransition('consolidating', 'finalizing')).toBe(true);
-    expect(validateTransition('finalizing', 'exporting')).toBe(true);
-    expect(validateTransition('scraped', 'imported')).toBe(true);
-    expect(validateTransition('scraped', 'failed')).toBe(true);
+    expect(validateTransition('imported', 'url_review')).toBe(true);
+    expect(validateTransition('url_review', 'extracting')).toBe(true);
+    expect(validateTransition('extracting', 'processed')).toBe(true);
+    expect(validateTransition('processed', 'merging')).toBe(true);
+    expect(validateTransition('merging', 'reviewing')).toBe(true);
+    expect(validateTransition('reviewing', 'publishing')).toBe(true);
+    expect(validateTransition('publishing', 'reviewing')).toBe(true);
+    expect(validateTransition('extracting', 'url_review')).toBe(true);
+    expect(validateTransition('extracting', 'failed')).toBe(true);
+    expect(validateTransition('processed', 'imported')).toBe(true);
+    expect(validateTransition('processed', 'failed')).toBe(true);
     expect(validateTransition('failed', 'imported')).toBe(true);
+    expect(validateTransition('failed', 'url_review')).toBe(true);
+    expect(validateTransition('failed', 'extracting')).toBe(true);
   });
 
   it('rejects non-canonical transitions', () => {
     // Some examples of invalid transitions
-    expect(validateTransition('imported', 'finalizing')).toBe(false);
-    expect(validateTransition('imported', 'failed')).toBe(false);
-    expect(validateTransition('imported', 'searching')).toBe(false);
-    expect(validateTransition('searching', 'scraped')).toBe(false);
-    expect(validateTransition('url_review', 'finalizing')).toBe(false);
-    expect(validateTransition('extracting', 'exporting')).toBe(false);
-    expect(validateTransition('scraped', 'exporting')).toBe(false);
-    expect(validateTransition('exporting', 'imported')).toBe(false);
+    expect(validateTransition('imported', 'publishing')).toBe(false);
+    expect(validateTransition('imported', 'failed')).toBe(true);
+    expect(validateTransition('imported', 'processed')).toBe(false);
+    expect(validateTransition('url_review', 'publishing')).toBe(false);
+    expect(validateTransition('url_review', 'processed')).toBe(false);
+    expect(validateTransition('extracting', 'publishing')).toBe(false);
+    expect(validateTransition('extracting', 'merging')).toBe(false);
+    expect(validateTransition('processed', 'publishing')).toBe(false);
+    expect(validateTransition('publishing', 'imported')).toBe(false);
   });
 });

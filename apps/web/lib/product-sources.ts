@@ -234,6 +234,10 @@ function isAiSource(sourceName: string): boolean {
     return normalized.startsWith('ai_') || normalized === 'ai-search' || normalized === 'ai';
 }
 
+function isEnrichedSource(sourceName: string): boolean {
+    return sourceName === 'enriched';
+}
+
 function sanitizeAiSourcePayload(value: unknown): unknown {
     if (Array.isArray(value)) {
         return value.map((entry) => sanitizeAiSourcePayload(entry));
@@ -472,7 +476,12 @@ export function normalizeProductSources(rawSources: unknown): ProductSourceMap {
         }
 
         if (isRecord(value)) {
-            normalized[key] = normalizeSourcePayload(value);
+            // Enriched sources are already normalized — preserve their structure as-is
+            if (isEnrichedSource(key)) {
+                normalized[key] = value as CanonicalProductSourceRecord;
+            } else {
+                normalized[key] = normalizeSourcePayload(value);
+            }
         } else {
             legacyFields[key] = value;
         }

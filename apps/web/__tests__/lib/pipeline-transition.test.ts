@@ -49,11 +49,12 @@ describe('pipeline status transition CRUD', () => {
             data: [
                 { pipeline_status: 'imported' },
                 { pipeline_status: 'imported' },
-                { pipeline_status: 'scraping' },
-                { pipeline_status: 'scraped' },
-                { pipeline_status: 'consolidating' },
-                { pipeline_status: 'finalizing' },
-                { pipeline_status: 'exporting' },
+                { pipeline_status: 'url_review' },
+                { pipeline_status: 'extracting' },
+                { pipeline_status: 'processed' },
+                { pipeline_status: 'merging' },
+                { pipeline_status: 'reviewing' },
+                { pipeline_status: 'publishing' },
                 { pipeline_status: 'failed' },
                 { pipeline_status: 'failed' },
             ],
@@ -70,15 +71,12 @@ describe('pipeline status transition CRUD', () => {
         expect(queryBuilder.is).toHaveBeenCalledWith('exported_at', null);
         expect(counts).toEqual([
             { status: 'imported', count: 2 },
-            { status: 'searching', count: 0 },
-            { status: 'url_review', count: 0 },
-            { status: 'extracting', count: 0 },
-            { status: 'scraping', count: 1 },
-            { status: 'needs_fallback_review', count: 0 },
-            { status: 'scraped', count: 1 },
-            { status: 'consolidating', count: 1 },
-            { status: 'finalizing', count: 1 },
-            { status: 'exporting', count: 1 },
+            { status: 'url_review', count: 1 },
+            { status: 'extracting', count: 1 },
+            { status: 'processed', count: 1 },
+            { status: 'merging', count: 1 },
+            { status: 'reviewing', count: 1 },
+            { status: 'publishing', count: 1 },
             { status: 'failed', count: 2 },
         ]);
     });
@@ -87,7 +85,7 @@ describe('pipeline status transition CRUD', () => {
         const fetchBuilder = {
             select: jest.fn().mockReturnThis(),
             in: jest.fn().mockResolvedValue({
-                data: [{ sku: 'SKU-1', pipeline_status: 'finalizing' }],
+                data: [{ sku: 'SKU-1', pipeline_status: 'reviewing' }],
                 error: null,
             }),
         };
@@ -108,7 +106,7 @@ describe('pipeline status transition CRUD', () => {
 
         expect(result).toEqual({
             success: false,
-            error: "Invalid status transition to 'imported'. Allowed persisted statuses: 'imported', 'searching', 'url_review', 'extracting', 'scraping', 'needs_fallback_review', 'scraped', 'consolidating', 'finalizing', 'exporting', 'failed' SKU(s): SKU-1",
+            error: "Invalid status transition to 'imported'. Allowed persisted statuses: 'imported', 'url_review', 'extracting', 'processed', 'merging', 'reviewing', 'publishing', 'failed' SKU(s): SKU-1",
             updatedCount: 0,
         });
         expect(updateBuilder.update).not.toHaveBeenCalled();
@@ -140,18 +138,18 @@ describe('pipeline status transition CRUD', () => {
 
         (createClient as jest.Mock).mockResolvedValue({ from });
 
-        const result = await bulkUpdateStatus(['SKU-1'], 'scraping', 'user-1');
+        const result = await bulkUpdateStatus(['SKU-1'], 'url_review', 'user-1');
 
         expect(result).toEqual({ success: true, updatedCount: 1 });
         expect(updateBuilder.update).toHaveBeenCalledWith(
             expect.objectContaining({
-                pipeline_status: 'scraping',
+                pipeline_status: 'url_review',
                 exported_at: null,
             })
         );
         expect(auditBuilder.insert).toHaveBeenCalledWith([
             expect.objectContaining({
-                to_state: 'scraping',
+                to_state: 'url_review',
                 actor_id: 'user-1',
             }),
         ]);
@@ -161,7 +159,7 @@ describe('pipeline status transition CRUD', () => {
         const fetchBuilder = {
             select: jest.fn().mockReturnThis(),
             in: jest.fn().mockResolvedValue({
-                data: [{ sku: 'SKU-1', pipeline_status: 'finalizing' }],
+                data: [{ sku: 'SKU-1', pipeline_status: 'reviewing' }],
                 error: null,
             }),
         };
@@ -183,21 +181,21 @@ describe('pipeline status transition CRUD', () => {
 
         (createClient as jest.Mock).mockResolvedValue({ from });
 
-        const result = await bulkUpdateStatus(['SKU-1'], 'scraped');
+        const result = await bulkUpdateStatus(['SKU-1'], 'processed');
 
         expect(result.success).toBe(true);
         expect(auditBuilder.insert).toHaveBeenCalledWith([
             expect.objectContaining({
-                to_state: 'scraped',
+                to_state: 'processed',
             }),
         ]);
     });
 
-    it('clears finalizing-only artifacts when rejecting back to scraped with resetResults', async () => {
+    it('clears reviewing-only artifacts when rejecting back to processed with resetResults', async () => {
         const fetchBuilder = {
             select: jest.fn().mockReturnThis(),
             in: jest.fn().mockResolvedValue({
-                data: [{ sku: 'SKU-1', pipeline_status: 'finalizing' }],
+                data: [{ sku: 'SKU-1', pipeline_status: 'reviewing' }],
                 error: null,
             }),
         };
@@ -219,12 +217,12 @@ describe('pipeline status transition CRUD', () => {
 
         (createClient as jest.Mock).mockResolvedValue({ from });
 
-        const result = await bulkUpdateStatus(['SKU-1'], 'scraped', 'user-1', true);
+        const result = await bulkUpdateStatus(['SKU-1'], 'processed', 'user-1', true);
 
         expect(result).toEqual({ success: true, updatedCount: 1 });
         expect(updateBuilder.update).toHaveBeenCalledWith(
             expect.objectContaining({
-                pipeline_status: 'scraped',
+                pipeline_status: 'processed',
                 consolidated: null,
                 image_candidates: [],
                 selected_images: [],

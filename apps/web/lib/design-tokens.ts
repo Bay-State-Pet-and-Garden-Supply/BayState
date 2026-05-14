@@ -12,10 +12,9 @@ export const STATUS_COLORS = {
     QUEUED: '#6B7280',
     FAILED: '#EF4444',
     WARNING: '#F59E0B',
-    CONSOLIDATING: '#8B5CF6',
-    SEARCHING: '#6366F1',
+    MERGING: '#8B5CF6',
     URL_REVIEW: '#A855F7',
-    EXTRACTING: '#06B6D4',
+    EXTRACTING: '#2563EB',
     PUBLISHED: BRAND_COLORS.FOREST_GREEN,
 } as const;
 
@@ -23,29 +22,23 @@ type StatusColor = (typeof STATUS_COLORS)[keyof typeof STATUS_COLORS];
 
 export const PIPELINE_STATUS_COLORS: Record<PersistedPipelineStatus, StatusColor> = {
     imported: STATUS_COLORS.QUEUED,
-    searching: STATUS_COLORS.SEARCHING,
     url_review: STATUS_COLORS.URL_REVIEW,
     extracting: STATUS_COLORS.EXTRACTING,
-    scraping: STATUS_COLORS.RUNNING,
-    scraped: STATUS_COLORS.RUNNING,
-    needs_fallback_review: STATUS_COLORS.WARNING,
-    consolidating: STATUS_COLORS.CONSOLIDATING,
-    finalizing: STATUS_COLORS.WARNING,
-    exporting: STATUS_COLORS.PUBLISHED,
+    processed: STATUS_COLORS.RUNNING,
+    merging: STATUS_COLORS.MERGING,
+    reviewing: STATUS_COLORS.WARNING,
+    publishing: STATUS_COLORS.PUBLISHED,
     failed: STATUS_COLORS.FAILED,
 } as const;
 
 export const PIPELINE_STATUS_LABELS: Record<PersistedPipelineStatus, string> = {
     imported: 'Imported',
-    searching: 'Searching',
     url_review: 'URL Review',
     extracting: 'Extracting',
-    scraping: 'Scraping',
-    scraped: 'Scraped',
-    needs_fallback_review: 'Needs Fallback Review',
-    consolidating: 'Consolidating',
-    finalizing: 'Finalizing',
-    exporting: 'Exporting',
+    processed: 'Processed',
+    merging: 'Merging',
+    reviewing: 'Reviewing',
+    publishing: 'Publishing',
     failed: 'Failed',
 } as const;
 
@@ -61,8 +54,7 @@ export const CSS_CUSTOM_PROPERTIES = {
         QUEUED: '--color-status-queued',
         FAILED: '--color-status-failed',
         WARNING: '--color-status-warning',
-        CONSOLIDATING: '--color-status-consolidating',
-        SEARCHING: '--color-status-searching',
+        MERGING: '--color-status-merging',
         URL_REVIEW: '--color-status-url-review',
         EXTRACTING: '--color-status-extracting',
     } as const,
@@ -75,15 +67,12 @@ export function getStatusColor(status: PersistedPipelineStatus): StatusColor {
 export function getStatusCssVar(status: PersistedPipelineStatus): string {
     const statusToCssVar: Record<PersistedPipelineStatus, string> = {
         imported: CSS_CUSTOM_PROPERTIES.STATUS.QUEUED,
-        searching: CSS_CUSTOM_PROPERTIES.STATUS.SEARCHING,
         url_review: CSS_CUSTOM_PROPERTIES.STATUS.URL_REVIEW,
         extracting: CSS_CUSTOM_PROPERTIES.STATUS.EXTRACTING,
-        scraping: CSS_CUSTOM_PROPERTIES.STATUS.RUNNING,
-        scraped: CSS_CUSTOM_PROPERTIES.STATUS.RUNNING,
-        needs_fallback_review: CSS_CUSTOM_PROPERTIES.STATUS.WARNING,
-        consolidating: CSS_CUSTOM_PROPERTIES.STATUS.CONSOLIDATING,
-        finalizing: CSS_CUSTOM_PROPERTIES.STATUS.WARNING,
-        exporting: CSS_CUSTOM_PROPERTIES.BRAND.FOREST_GREEN,
+        processed: CSS_CUSTOM_PROPERTIES.STATUS.RUNNING,
+        merging: CSS_CUSTOM_PROPERTIES.STATUS.MERGING,
+        reviewing: CSS_CUSTOM_PROPERTIES.STATUS.WARNING,
+        publishing: CSS_CUSTOM_PROPERTIES.BRAND.FOREST_GREEN,
         failed: CSS_CUSTOM_PROPERTIES.STATUS.FAILED,
     };
     return statusToCssVar[status];

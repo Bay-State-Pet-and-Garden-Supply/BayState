@@ -34,10 +34,11 @@ jest.mock('@/lib/admin/api-auth', () => ({
 
 jest.mock('@/lib/supabase/server', () => ({
     createClient: jest.fn(),
+    createAdminClient: jest.fn(),
 }));
 
 const { requireAdminAuth } = require('@/lib/admin/api-auth');
-const { createClient } = require('@/lib/supabase/server');
+const { createClient, createAdminClient } = require('@/lib/supabase/server');
 
 describe('GET /api/admin/pipeline/publish', () => {
     it('derives storefront presence from the matching products.sku row', async () => {
@@ -47,7 +48,7 @@ describe('GET /api/admin/pipeline/publish', () => {
             single: jest.fn().mockResolvedValue({
                 data: {
                     sku: 'SKU-1',
-                    pipeline_status: 'finalized',
+                    pipeline_status: 'reviewing',
                     consolidated: { name: 'New Name' },
                     input: { name: 'Old Name' },
                 },
@@ -81,6 +82,7 @@ describe('GET /api/admin/pipeline/publish', () => {
         };
 
         (createClient as jest.Mock).mockResolvedValue(supabase);
+        (createAdminClient as jest.Mock).mockResolvedValue(supabase);
 
         const response = await GET(new NextRequest('http://localhost/api/admin/pipeline/publish?sku=SKU-1'));
         const payload = await response.json();
@@ -88,7 +90,7 @@ describe('GET /api/admin/pipeline/publish', () => {
         expect(productsEq).toHaveBeenCalledWith('sku', 'SKU-1');
         expect(payload).toMatchObject({
             sku: 'SKU-1',
-            pipelineStatus: 'finalized',
+            pipelineStatus: 'reviewing',
             inStorefront: true,
             storefrontProductId: 'product-1',
         });
@@ -135,6 +137,7 @@ describe('GET /api/admin/pipeline/publish', () => {
         };
 
         (createClient as jest.Mock).mockResolvedValue(supabase);
+        (createAdminClient as jest.Mock).mockResolvedValue(supabase);
 
         const response = await GET(new NextRequest('http://localhost/api/admin/pipeline/publish?sku=SKU-2'));
         const payload = await response.json();

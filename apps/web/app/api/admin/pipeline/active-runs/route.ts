@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
-import {
-    DIRECT_URL_EXTRACTION_TYPE,
-    OFFICIAL_BRAND_URL_DISCOVERY_TYPE,
-} from "@/lib/official-brand-workflow";
+// Phase 10: official-brand-workflow imports removed — deprecated modules retained on disk.
+// Inline constants for legacy job type matching.
+const OFFICIAL_BRAND_URL_DISCOVERY_TYPE = 'official_brand_url_discovery';
+const DIRECT_URL_EXTRACTION_TYPE = 'direct_url_extraction';
 
 interface ChunkDetail {
   id: string;

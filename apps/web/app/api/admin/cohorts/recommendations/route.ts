@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { createAdminClient } from '@/lib/supabase/server';
-import { getScraperRecommendations } from '@/lib/pipeline/scraper-recommendations';
+
+// Phase 10: scraper-recommendations no longer used. Return empty recommendations.
 
 /**
  * GET /api/admin/cohorts/recommendations?brand=KONG
@@ -50,17 +51,16 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const recommendations = await getScraperRecommendations(brandName, brandId);
-
+  // scraper-recommendations no longer used — return empty in AI-only pipeline
   return NextResponse.json({
     brand: brandName,
-    recommendations,
+    recommendations: [],
     summary: {
-      total: recommendations.length,
-      preselected: recommendations.filter((r) => r.preselected).length,
-      high_confidence: recommendations.filter((r) => r.confidence === 'high').length,
-      medium_confidence: recommendations.filter((r) => r.confidence === 'medium').length,
-      untested: recommendations.filter((r) => r.confidence === 'untested').length,
+      total: 0,
+      preselected: 0,
+      high_confidence: 0,
+      medium_confidence: 0,
+      untested: 0,
     },
   });
 }

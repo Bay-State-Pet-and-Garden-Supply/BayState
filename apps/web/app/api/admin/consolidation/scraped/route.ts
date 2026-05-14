@@ -6,9 +6,9 @@ import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
 
 /**
  * POST /api/admin/consolidation/scraped
- * Trigger consolidation for products that are scraped and ready for consolidation.
- * Backward-compatible with legacy records that only have pipeline_status = 'scraped'.
- * Body: { skus?: string[] } - if no SKUs provided, consolidates all scraped products
+ * Trigger consolidation for products that are processed and ready for consolidation.
+ * Backward-compatible with legacy records that only have pipeline_status = 'processed'.
+ * Body: { skus?: string[] } - if no SKUs provided, consolidates all processed products
  */
 export async function POST(request: NextRequest) {
     const auth = await requireAdminAuth(request);
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
         let query = supabase
             .from('products_ingestion')
             .select('sku, sources, input')
-            .eq('pipeline_status', 'scraped');
+            .eq('pipeline_status', 'processed');
 
         if (skus && Array.isArray(skus) && skus.length > 0) {
             query = query.in('sku', skus);
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
         if (!products || products.length === 0) {
             return NextResponse.json(
-                { error: 'No scraped products found. Run scraping first.' },
+                { error: 'No processed products found. Run enrichment first.' },
                 { status: 404 }
             );
         }
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
         const twoPhaseService = new TwoPhaseConsolidationService();
         const result = await twoPhaseService.consolidate(productSources, {
             batchMetadata: {
-                description: `Manual consolidation for ${productSources.length} scraped products`,
+                description: `Manual consolidation for ${productSources.length} processed products`,
                 auto_apply: false,
             },
             enablePhase2: true,

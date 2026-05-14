@@ -50,6 +50,10 @@ class ExtractionMetrics:
     anti_bot_strategy: str | None = None
     cache_hit: bool = False
     timestamp: float = field(default_factory=time.time)
+    # Enrichment tracking
+    model: str | None = None
+    latency_ms: float | None = None
+    cost_estimate: float | None = None
 
 
 @dataclass
@@ -129,6 +133,9 @@ class Crawl4AIMetricsCollector:
         anti_bot_triggered: bool = False,
         anti_bot_strategy: str | None = None,
         cache_hit: bool = False,
+        model: str | None = None,
+        latency_ms: float | None = None,
+        cost_estimate: float | None = None,
     ) -> ExtractionMetrics:
         """Record a single extraction metric.
 
@@ -144,6 +151,9 @@ class Crawl4AIMetricsCollector:
             anti_bot_triggered: Whether anti-bot detection was triggered.
             anti_bot_strategy: Strategy used to bypass anti-bot.
             cache_hit: Whether result was served from cache.
+            model: LLM model used (e.g. "deepseek-chat").
+            latency_ms: Total latency in milliseconds.
+            cost_estimate: Estimated cost in USD.
 
         Returns:
             The recorded extraction metrics.
@@ -160,6 +170,9 @@ class Crawl4AIMetricsCollector:
             anti_bot_triggered=anti_bot_triggered,
             anti_bot_strategy=anti_bot_strategy,
             cache_hit=cache_hit,
+            model=model,
+            latency_ms=latency_ms,
+            cost_estimate=cost_estimate,
         )
 
         self._extractions.append(extraction)
@@ -292,6 +305,21 @@ class Crawl4AIMetricsCollector:
         """Get comprehensive metrics summary."""
         uptime_seconds = time.time() - self._start_time
 
+        # Enrichment-specific metrics
+        enrichment_extractions = [e for e in self._extractions if e.model is not None]
+        total_token_input = sum(e.llm_tokens_input for e in self._extractions)
+        total_token_output = sum(e.llm_tokens_output for e in self._extractions)
+        total_cost = sum(e.cost_estimate for e in self._extractions if e.cost_estimate is not None)
+        avg_latency_ms = (
+            sum(e.latency_ms for e in self._extractions if e.latency_ms is not None) / len(enrichment_extractions)
+            if enrichment_extractions
+            else 0.0
+        )
+        models_used: dict[str, int] = {}
+        for e in self._extractions:
+            if e.model:
+                models_used[e.model] = models_used.get(e.model, 0) + 1
+
         return {
             "extractions": {
                 "total": self.total_extractions,
@@ -317,6 +345,14 @@ class Crawl4AIMetricsCollector:
                 "strategies_used": dict(self._anti_bot.strategies_used),
             },
             "sites": self.get_site_stats(),
+            "enrichment": {
+                "total_extractions": len(enrichment_extractions),
+                "total_tokens_input": total_token_input,
+                "total_tokens_output": total_token_output,
+                "estimated_cost_usd": round(total_cost, 6),
+                "average_latency_ms": round(avg_latency_ms, 2),
+                "models_used": models_used,
+            },
             "uptime_seconds": round(uptime_seconds, 2),
         }
 

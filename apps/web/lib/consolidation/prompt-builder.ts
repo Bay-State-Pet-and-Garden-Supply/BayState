@@ -20,6 +20,7 @@ const MAX_SIBLING_PRODUCTS = 3;
 const PROMPT_CONTEXT_CACHE_TTL_MS = 5 * 60 * 1000;
 const TRUSTED_SOURCE_FRAGMENTS = [
     'shopsite_input',
+    'enriched',
     'bradley',
     'central-pet',
     'central_pet',

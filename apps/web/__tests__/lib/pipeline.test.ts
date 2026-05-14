@@ -61,7 +61,7 @@ describe("getProductsByStatus source filter", () => {
   });
 
   it("uses not for source when source is provided", async () => {
-    await getProductsByStatus("scraped", { source: "ebay" });
+    await getProductsByStatus("processed", { source: "ebay" });
 
     expect(mockSupabase._queryBuilder.not).toHaveBeenCalledTimes(1);
     expect(mockSupabase._queryBuilder.not).toHaveBeenCalledWith(
@@ -113,7 +113,7 @@ describe("getProductsByStatus source filter", () => {
   });
 
   it("works with date range filters combined with source", async () => {
-    await getProductsByStatus("finalizing", {
+    await getProductsByStatus("reviewing", {
       source: "scraper-v2",
       startDate: "2024-01-01",
       endDate: "2024-12-31",
@@ -121,7 +121,7 @@ describe("getProductsByStatus source filter", () => {
 
     expect(mockSupabase._queryBuilder.eq).toHaveBeenCalledWith(
       "pipeline_status",
-      "finalizing",
+      "reviewing",
     );
     expect(mockSupabase._queryBuilder.not).toHaveBeenCalledWith(
       "sources->scraper-v2",

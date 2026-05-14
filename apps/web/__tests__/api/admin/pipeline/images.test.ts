@@ -2,6 +2,7 @@ export {};
 const {
     NextRequest,
     createClient,
+    createAdminClient,
     requireAdminAuth,
 } = require('@/__tests__/helpers/admin-api-route-harness');
 const { GET, POST } = require('@/app/api/admin/pipeline/images/route');
@@ -36,6 +37,7 @@ describe('Images Pipeline API', () => {
             },
         };
         (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+        (createAdminClient as jest.Mock).mockResolvedValue(mockSupabase);
     });
 
     describe('GET', () => {

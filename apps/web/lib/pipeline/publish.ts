@@ -5,7 +5,7 @@ import {
 } from "@/lib/product-image-storage";
 import { buildProductSlug } from "@/lib/shopsite/mapping";
 
-const STOREFRONT_PUBLISHABLE_STATUS = "finalizing";
+const STOREFRONT_PUBLISHABLE_STATUS = "reviewing";
 const DEFAULT_AVAILABILITY_TEXT = "in stock";
 const DEFAULT_QUANTITY = 0;
 const DEFAULT_LOW_STOCK_THRESHOLD = 5;
@@ -215,9 +215,9 @@ export async function publishToStorefront(sku: string) {
       const { error: statusError } = await supabase
         .from("products_ingestion")
         .update({
-          pipeline_status: "exporting",
-          exported_at: null,
+          pipeline_status: "publishing",
           updated_at: new Date().toISOString(),
+          exported_at: null,
         })
         .eq("sku", sku);
 
@@ -320,8 +320,8 @@ export async function bulkPublishToStorefront(skus: string[], userId?: string) {
       const auditPayload = {
         job_type: "status_update",
         job_id: crypto.randomUUID(),
-        from_state: "finalizing",
-        to_state: "exporting",
+        from_state: "reviewing",
+        to_state: "publishing",
         actor_id: userId || null,
         actor_type: userId ? "user" : "system",
         metadata: {

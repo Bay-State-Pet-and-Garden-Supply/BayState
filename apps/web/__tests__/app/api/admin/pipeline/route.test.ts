@@ -31,18 +31,18 @@ describe('/api/admin/pipeline route', () => {
 
     it('lists canonical statuses with the requested filters', async () => {
         (getProductsByStatus as jest.Mock).mockResolvedValue({
-            products: [{ sku: 'SKU-1', pipeline_status: 'scraped' }],
+            products: [{ sku: 'SKU-1', pipeline_status: 'processed' }],
             count: 1,
         });
 
         const response = await GET(
             new NextRequest(
-                'http://localhost/api/admin/pipeline?status=scraped&search=hero&limit=25&offset=5&source=amazon&startDate=2026-01-01&endDate=2026-01-31&minConfidence=0.4&maxConfidence=0.9'
+                'http://localhost/api/admin/pipeline?status=processed&search=hero&limit=25&offset=5&source=amazon&startDate=2026-01-01&endDate=2026-01-31&minConfidence=0.4&maxConfidence=0.9'
             )
         );
         const payload = await response.json();
 
-        expect(getProductsByStatus).toHaveBeenCalledWith('scraped', {
+        expect(getProductsByStatus).toHaveBeenCalledWith('processed', {
             limit: 25,
             offset: 5,
             search: 'hero',
@@ -55,7 +55,7 @@ describe('/api/admin/pipeline route', () => {
             maxConfidence: 0.9,
         });
         expect(payload).toEqual({
-            products: [{ sku: 'SKU-1', pipeline_status: 'scraped' }],
+            products: [{ sku: 'SKU-1', pipeline_status: 'processed' }],
             count: 1,
             availableSources: [],
         });
@@ -68,11 +68,11 @@ describe('/api/admin/pipeline route', () => {
         });
 
         const response = await GET(
-            new NextRequest('http://localhost/api/admin/pipeline?status=finalizing&selectAll=true&source=chewy')
+            new NextRequest('http://localhost/api/admin/pipeline?status=reviewing&selectAll=true&source=chewy')
         );
         const payload = await response.json();
 
-        expect(getSkusByStatus).toHaveBeenCalledWith('finalizing', {
+        expect(getSkusByStatus).toHaveBeenCalledWith('reviewing', {
             search: undefined,
             startDate: undefined,
             endDate: undefined,
@@ -107,7 +107,7 @@ describe('/api/admin/pipeline route', () => {
         expect(response.status).toBe(400);
         expect(bulkUpdateStatus).not.toHaveBeenCalled();
         expect(payload).toEqual({
-            error: "Published is no longer a workflow state. Use finalizing/exporting instead.",
+            error: "Published is no longer a workflow state. Use reviewing/publishing instead.",
         });
     });
 });

@@ -18,15 +18,12 @@ const CANONICAL_PERSISTED_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
 type StageBackedPipelineStage = Extract<
   PipelineStage,
   | "imported"
-  | "searching"
   | "url_review"
   | "extracting"
-  | "scraping"
-  | "needs_fallback_review"
-  | "scraped"
-  | "consolidating"
-  | "finalizing"
-  | "exporting"
+  | "processed"
+  | "merging"
+  | "reviewing"
+  | "publishing"
   | "failed"
 >;
 
@@ -38,10 +35,6 @@ const PIPELINE_STAGE_QUERY_SOURCE: Record<
     table: "products_ingestion",
     status: "imported",
   },
-  searching: {
-    table: "products_ingestion",
-    status: "searching",
-  },
   url_review: {
     table: "products_ingestion",
     status: "url_review",
@@ -50,29 +43,21 @@ const PIPELINE_STAGE_QUERY_SOURCE: Record<
     table: "products_ingestion",
     status: "extracting",
   },
-  scraping: {
+  processed: {
     table: "products_ingestion",
-    status: "scraping",
+    status: "processed",
   },
-  needs_fallback_review: {
+  merging: {
     table: "products_ingestion",
-    status: "needs_fallback_review",
+    status: "merging",
   },
-  scraped: {
+  reviewing: {
     table: "products_ingestion",
-    status: "scraped",
+    status: "reviewing",
   },
-  consolidating: {
+  publishing: {
     table: "products_ingestion",
-    status: "consolidating",
-  },
-  finalizing: {
-    table: "products_ingestion",
-    status: "finalizing",
-  },
-  exporting: {
-    table: "products_ingestion",
-    status: "exporting",
+    status: "publishing",
   },
   failed: {
     table: "products_ingestion",
@@ -783,15 +768,12 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
 
   const countMap: Record<PersistedPipelineStatus, number> = {
     imported: 0,
-    searching: 0,
     url_review: 0,
     extracting: 0,
-    scraping: 0,
-    needs_fallback_review: 0,
-    scraped: 0,
-    consolidating: 0,
-    finalizing: 0,
-    exporting: 0,
+    processed: 0,
+    merging: 0,
+    reviewing: 0,
+    publishing: 0,
     failed: 0,
   };
 
@@ -885,12 +867,12 @@ export async function bulkUpdateStatus(
       updatePayload.error_message = null;
       updatePayload.retry_count = 0;
 
-      // Clear official brand candidates on reset to imported
+      // Clear enrichment targets on reset to imported
       await supabase
-        .from("official_brand_url_candidates")
+        .from("enrichment_targets")
         .delete()
         .in("sku", skus);
-    } else if (targetStatus === "scraped") {
+    } else if (targetStatus === "processed") {
       updatePayload.consolidated = null;
       updatePayload.image_candidates = [];
       updatePayload.selected_images = [];
@@ -1024,18 +1006,18 @@ export async function bulkDeleteProducts(
 }
 
 /**
- * Clears scrape results and resets products back to 'imported' status.
- * This removes all scraped source data and consolidated data, allowing products
- * to be retried from scratch, including Official Brand URL review/extraction.
+ * Clears enrichment results and resets products back to 'imported' status.
+ * This removes all extracted source data and consolidated data, allowing products
+ * to be retried from scratch, including URL review.
  */
-export async function clearScrapeResultsAndResetStatus(
+export async function clearEnrichmentResultsAndResetStatus(
   skus: string[],
   userId?: string,
 ): Promise<{ success: boolean; error?: string; updatedCount: number }> {
   const supabase = await createClient();
 
   try {
-    // Clear sources (scraped data) and consolidated fields, reset to imported
+    // Clear sources and consolidated fields, reset to imported
     const { error, count } = await supabase
       .from("products_ingestion")
       .update({
@@ -1052,21 +1034,21 @@ export async function clearScrapeResultsAndResetStatus(
       .in("sku", skus);
 
     if (error) {
-      console.error("Error clearing scrape results:", error);
+      console.error("Error clearing enrichment results:", error);
       return { success: false, error: error.message, updatedCount: 0 };
     }
 
-    // Clear official brand candidates on reset to imported
+    // Clear enrichment targets on reset to imported
     await supabase
-      .from("official_brand_url_candidates")
+      .from("enrichment_targets")
       .delete()
       .in("sku", skus);
 
     // Log the action to audit_log
     const auditPayload = {
-      job_type: "clear_scrape_results",
+      job_type: "clear_enrichment_results",
       job_id: crypto.randomUUID(),
-      from_state: "scraped/url_review/extracting",
+      from_state: "variously",
       to_state: "imported",
       actor_id: userId || null,
       actor_type: userId ? "user" : "system",
@@ -1094,7 +1076,7 @@ export async function clearScrapeResultsAndResetStatus(
       err instanceof Error
         ? err.message
         : "Unknown error during clear scrape results";
-    console.error("Error in clearScrapeResultsAndResetStatus:", errorMessage);
+    console.error("Error in clearEnrichmentResultsAndResetStatus:", errorMessage);
     return { success: false, error: errorMessage, updatedCount: 0 };
   }
 }
@@ -1187,8 +1169,8 @@ async function setSelectedImages(
       const auditPayload = {
         job_type: "image_selection",
         job_id: crypto.randomUUID(),
-        from_state: "scraped",
-        to_state: "scraped",
+        from_state: "processed",
+        to_state: "processed",
         actor_id: userId || null,
         actor_type: userId ? "user" : "system",
         metadata: {

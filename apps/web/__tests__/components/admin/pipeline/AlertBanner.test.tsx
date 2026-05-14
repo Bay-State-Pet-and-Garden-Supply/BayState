@@ -8,8 +8,8 @@ describe("AlertBanner", () => {
         <AlertBanner severity="error" title="Error Title" />
       );
       const alert = screen.getByRole("alert");
-      expect(alert).toHaveClass("border-red-200");
-      expect(alert).toHaveClass("bg-red-50/80");
+      expect(alert).toHaveClass("border-red-500/20");
+      expect(alert).toHaveClass("bg-red-500/\[0\.02\]");
     });
 
     it("renders warning severity with yellow surface treatment", () => {
@@ -17,8 +17,8 @@ describe("AlertBanner", () => {
         <AlertBanner severity="warning" title="Warning Title" />
       );
       const alert = screen.getByRole("alert");
-      expect(alert).toHaveClass("border-yellow-200");
-      expect(alert).toHaveClass("bg-yellow-50/80");
+      expect(alert).toHaveClass("border-amber-500/20");
+      expect(alert).toHaveClass("bg-amber-500/\[0\.02\]");
     });
 
     it("renders info severity with blue surface treatment", () => {
@@ -26,8 +26,8 @@ describe("AlertBanner", () => {
         <AlertBanner severity="info" title="Info Title" />
       );
       const alert = screen.getByRole("alert");
-      expect(alert).toHaveClass("border-blue-200");
-      expect(alert).toHaveClass("bg-blue-50/80");
+      expect(alert).toHaveClass("border-blue-500/20");
+      expect(alert).toHaveClass("bg-blue-500/\[0\.02\]");
     });
 
     it("renders title text", () => {

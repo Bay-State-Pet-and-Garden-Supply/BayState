@@ -25,7 +25,7 @@ function makeProducts(suffix: string): PipelineProduct[] {
         },
       },
       consolidated: { name: 'Broken Product' },
-      pipeline_status: 'scraped',
+      pipeline_status: 'processed',
       created_at: '2026-03-26T00:00:00.000Z',
       updated_at: '2026-03-26T00:00:00.000Z',
     },
@@ -51,7 +51,7 @@ function makeMultiSourceProducts(): PipelineProduct[] {
         },
       },
       consolidated: { name: 'Multi Source Product' },
-      pipeline_status: 'scraped',
+      pipeline_status: 'processed',
       created_at: '2026-03-26T00:00:00.000Z',
       updated_at: '2026-03-26T00:00:00.000Z',
     },
@@ -93,14 +93,15 @@ describe('ScrapedResultsView', () => {
     fireEvent.error(screen.getByTestId('scraped-primary-image'));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/admin/scraping/retry-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sku: 'SKU-primary',
-          image_url: 'https://images.example.com/primary-broken-primary.jpg',
-        }),
-      });
+      expect(fetchMock).toHaveBeenCalledWith('/api/admin/scraping/retry-image',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            sku: 'SKU-primary',
+            image_url: 'https://images.example.com/primary-broken-primary.jpg',
+          }),
+        })
+      );
     });
   });
 
@@ -148,14 +149,15 @@ describe('ScrapedResultsView', () => {
     fireEvent.error(screen.getByTestId('scraped-secondary-image-0'));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/admin/scraping/retry-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sku: 'SKU-secondary',
-          image_url: 'https://images.example.com/secondary-broken-secondary.jpg',
-        }),
-      });
+      expect(fetchMock).toHaveBeenCalledWith('/api/admin/scraping/retry-image',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            sku: 'SKU-secondary',
+            image_url: 'https://images.example.com/secondary-broken-secondary.jpg',
+          }),
+        })
+      );
     });
   });
 

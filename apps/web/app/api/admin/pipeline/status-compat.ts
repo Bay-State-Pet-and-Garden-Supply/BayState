@@ -5,10 +5,15 @@ import {
 
 const LEGACY_ROUTE_STATUS_MAP = {
   registered: 'imported',
-  enriched: 'scraped',
-  finalized: 'finalizing',
-  export: 'exporting',
-  published: 'exporting',
+  // Migration mappings: old → new simplified statuses
+  scraped: 'processed',
+  consolidating: 'merging',
+  finalizing: 'reviewing',
+  exporting: 'publishing',
+  searching: 'url_review',
+  scraping: 'extracting',
+  extracting: 'url_review',
+  needs_fallback_review: 'url_review',
 } as const satisfies Record<string, PersistedPipelineStatus>;
 
 export const PIPELINE_ROUTE_STATUS_VALUES = [

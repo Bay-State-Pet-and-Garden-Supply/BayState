@@ -3,10 +3,9 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
 import {
   mapBatchJobStatusToRunStatus,
-  mapScrapeJobStatusToRunStatus,
-  determineScrapeJobKind,
+  mapEnrichmentJobStatusToRunStatus,
   getConsolidationStageLabel,
-  getScrapeStageLabel,
+  getEnrichmentStageLabel,
   PIPELINE_RUN_KIND_LABELS,
 } from "@/lib/pipeline/run-types";
 import type {
@@ -97,68 +96,25 @@ export async function GET(request: NextRequest) {
   }
 
   // --------------------------------------------------------------------------
-  // 2. Fetch active scrape runs (scrape_jobs)
+  // 2. Fetch active enrichment runs (enrichment_jobs)
   // --------------------------------------------------------------------------
-  const { data: scrapeJobs, error: scrapeError } = await supabase
-    .from("scrape_jobs")
+  const { data: enrichmentJobs, error: enrichmentError } = await supabase
+    .from("enrichment_jobs")
     .select(
-      "id, type, config, metadata, status, created_at, updated_at, completed_at, scrapers, skus, runner_name, progress_percent, progress_message, progress_phase, items_processed, items_total, last_log_message, last_log_level, last_log_at",
+      "id, status, skus, total_count, completed_count, failed_count, model, mode, config, token_usage, cost_estimate, error_message, created_by, claimed_by, started_at, completed_at, created_at, updated_at",
     )
-    .in("status", ["pending", "claimed", "running"])
+    .or(
+      `status.not.in.(completed,failed,cancelled),and(status.in.(completed,failed,cancelled),created_at.gt.${last48Hours})`,
+    )
     .order("created_at", { ascending: false })
     .limit(20);
 
-  if (scrapeError) {
-    console.error("[Pipeline Runs] Failed to fetch scrape jobs:", scrapeError);
+  if (enrichmentError) {
+    console.error("[Pipeline Runs] Failed to fetch enrichment jobs:", enrichmentError);
     return NextResponse.json(
       { error: "Failed to fetch pipeline runs" },
       { status: 500 },
     );
-  }
-
-  // Also include recent completed/failed scrape jobs (last 1 hour)
-  const oneHourAgo = new Date(
-    Date.now() - 60 * 60 * 1000,
-  ).toISOString();
-  const { data: recentScrapeJobs } = await supabase
-    .from("scrape_jobs")
-    .select(
-      "id, type, config, metadata, status, created_at, updated_at, completed_at, scrapers, skus, runner_name, progress_percent, progress_message, progress_phase, items_processed, items_total, last_log_message, last_log_level, last_log_at",
-    )
-    .in("status", ["completed", "failed", "cancelled"])
-    .gte("completed_at", oneHourAgo)
-    .order("completed_at", { ascending: false })
-    .limit(10);
-
-  // Fetch scrape_job_chunks for per-job failure counts
-  const allScrapeJobIds = [
-    ...(scrapeJobs || []).map((j) => j.id),
-    ...(recentScrapeJobs || []).map((j) => j.id),
-  ];
-  const uniqueScrapeJobIds = [...new Set(allScrapeJobIds)];
-  const chunkFailCountByJob = new Map<string, number>();
-  if (uniqueScrapeJobIds.length > 0) {
-    try {
-      const { data: chunks } = await supabase
-        .from("scrape_job_chunks")
-        .select("job_id, status")
-        .in("job_id", uniqueScrapeJobIds);
-
-      for (const chunk of chunks || []) {
-        if (chunk.status === "failed") {
-          const jobId = chunk.job_id as string;
-          chunkFailCountByJob.set(
-            jobId,
-            (chunkFailCountByJob.get(jobId) || 0) + 1,
-          );
-        }
-      }
-    } catch (chunkError) {
-      console.warn(
-        "[Pipeline Runs] Failed to fetch scrape_job_chunks:",
-        chunkError,
-      );
-    }
   }
 
   // --------------------------------------------------------------------------
@@ -224,95 +180,55 @@ export async function GET(request: NextRequest) {
   );
 
   // --------------------------------------------------------------------------
-  // 4. Map scrape runs → PipelineRunSummary
+  // 4. Map enrichment runs → PipelineRunSummary
   // --------------------------------------------------------------------------
-  const allScrapeJobs = [
-    ...(scrapeJobs || []),
-    ...(recentScrapeJobs || []),
-  ];
+  const enrichmentRuns: PipelineRunSummary[] = (enrichmentJobs || []).map(
+    (job) => {
+      const total = job.total_count || 0;
+      const completed = job.completed_count || 0;
+      const failed = job.failed_count || 0;
+      const normalizedStatus = mapEnrichmentJobStatusToRunStatus(job.status);
+      const kind: PipelineRunKind = "enrichment";
 
-  // Deduplicate by id
-  const seenIds = new Set<string>();
-  const uniqueScrapeJobs = allScrapeJobs.filter((job) => {
-    if (seenIds.has(job.id)) return false;
-    seenIds.add(job.id);
-    return true;
-  });
-
-  const scrapeRuns: PipelineRunSummary[] = uniqueScrapeJobs.map((job) => {
-    const jobType = typeof job.type === "string" ? job.type : null;
-    const kind = determineScrapeJobKind(jobType);
-    const normalizedStatus = mapScrapeJobStatusToRunStatus(job.status);
-    const skuCount = Array.isArray(job.skus) ? job.skus.length : 0;
-    const itemsProcessed =
-      typeof job.items_processed === "number" ? job.items_processed : 0;
-    const itemsTotal =
-      typeof job.items_total === "number" ? job.items_total : skuCount;
-    const progressPercent =
-      typeof job.progress_percent === "number"
-        ? job.progress_percent
-        : itemsTotal > 0
-          ? Math.round((itemsProcessed / itemsTotal) * 100)
-          : 0;
-
-    // Extract provider from config if available
-    const config = job.config as Record<string, unknown> | undefined;
-    const provider =
-      (config?.search_provider as string) ||
-      (config?.llm_provider as string) ||
-      (job.runner_name as string) ||
-      undefined;
-
-    // Build events from log data
-    const events: PipelineEvent[] = [];
-    if (job.last_log_message) {
-      events.push({
-        timestamp: job.last_log_at || job.updated_at || job.created_at,
-        level:
-          job.last_log_level === "error"
-            ? "error"
-            : job.last_log_level === "warn"
-              ? "warn"
-              : "info",
-        message: job.last_log_message,
-      });
-    }
-
-    return {
-      id: job.id,
-      kind,
-      label: PIPELINE_RUN_KIND_LABELS[kind],
-      status: normalizedStatus,
-      provider,
-      totalItems: itemsTotal,
-      completedItems: itemsProcessed,
-      // Scrape failure counts derived from scrape_job_chunks where status === "failed".
-      // This is a chunk-level count, not per-item — but it provides useful signal
-      // for the frontend to know if errors occurred.
-      failedItems: chunkFailCountByJob.get(job.id) || 0,
-      runningItems:
-        normalizedStatus === "running" ? itemsTotal - itemsProcessed : 0,
-      pendingItems:
-        normalizedStatus === "queued" ? itemsTotal : 0,
-      progressPercent,
-      startedAt: job.created_at,
-      updatedAt: job.updated_at || undefined,
-      completedAt: job.completed_at || undefined,
-      currentStageLabel: getScrapeStageLabel(normalizedStatus, jobType),
-      nextAction:
-        normalizedStatus === "completed"
-          ? "wait"
-          : normalizedStatus === "failed"
-            ? "review_errors"
-            : undefined,
-      recentEvents: events.length > 0 ? events : undefined,
-    } satisfies PipelineRunSummary;
-  });
+      return {
+        id: job.id,
+        kind,
+        label: "Product Enrichment",
+        status: normalizedStatus,
+        model: job.model || undefined,
+        executionMode: job.mode || "mixed",
+        totalItems: total,
+        completedItems: completed,
+        failedItems: failed,
+        runningItems: Math.max(total - completed - failed, 0),
+        pendingItems: 0,
+        progressPercent:
+          total > 0 ? Math.round(((completed + failed) / total) * 100) : 0,
+        startedAt: job.created_at,
+        updatedAt: job.updated_at || undefined,
+        completedAt: job.completed_at || undefined,
+        currentStageLabel: getEnrichmentStageLabel(
+          normalizedStatus,
+          Math.max(total - completed - failed, 0),
+          Math.max(total - completed - failed, 0),
+          total
+        ),
+        nextAction:
+          normalizedStatus === "completed"
+            ? "apply_results"
+            : normalizedStatus === "completed_with_errors"
+              ? "review_errors"
+              : normalizedStatus === "failed"
+                ? "review_errors"
+                : undefined,
+      } satisfies PipelineRunSummary;
+    },
+  );
 
   // --------------------------------------------------------------------------
   // 5. Merge and return
   // --------------------------------------------------------------------------
-  const runs = [...consolidationRuns, ...scrapeRuns];
+  const runs = [...consolidationRuns, ...enrichmentRuns];
 
   // Sort by startedAt descending, with active runs first
   const activeFirst = runs.sort((a, b) => {

@@ -169,7 +169,7 @@ async function streamWorkbook(status: ExportStatus | 'all', output: PassThrough)
       }
 
       for (const product of data) {
-        if (status === 'finalizing' && !isExportReady(product)) {
+        if (status === 'reviewing' && !isExportReady(product)) {
           continue;
         }
         yield product;
@@ -210,7 +210,7 @@ async function streamWorkbookForSkus(skus: string[], output: PassThrough) {
       const { data, error } = await supabase
         .from('products_ingestion')
         .select('sku, input, consolidated, selected_images, pipeline_status, updated_at')
-        .eq('pipeline_status', 'exporting')
+        .eq('pipeline_status', 'publishing')
         .is('exported_at', null)
         .in('sku', normalizedSkus)
         .order('updated_at', { ascending: false })
@@ -268,7 +268,7 @@ export async function GET(request: NextRequest) {
   const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
-  const statusParam = request.nextUrl.searchParams.get('status') ?? 'exporting';
+  const statusParam = request.nextUrl.searchParams.get('status') ?? 'publishing';
   const normalizedStatus = normalizePipelineRouteStatus(statusParam, '/api/admin/pipeline/export');
 
   if (!normalizedStatus) {

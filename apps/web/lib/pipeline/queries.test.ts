@@ -129,7 +129,7 @@ describe("pipeline queries", () => {
 
   it("queries products for a specific workflow tab", async () => {
     const productsPlan = createQueryPlan({
-      data: [createProduct("p-2", "SKU-2", "finalizing")],
+      data: [createProduct("p-2", "SKU-2", "reviewing")],
       error: null,
       count: 1,
     });
@@ -137,13 +137,13 @@ describe("pipeline queries", () => {
       products_ingestion: [productsPlan],
     });
 
-    const result = await queryProductsForWorkflowTab("finalizing", supabase);
+    const result = await queryProductsForWorkflowTab("reviewing", supabase);
 
-    expect(result.tab).toBe("finalizing");
+    expect(result.tab).toBe("reviewing");
     expect(result.count).toBe(1);
     expect(productsPlan.calls).toEqual([
       ["select", "*", { count: "exact" }],
-      ["eq", "pipeline_status", "finalizing"],
+      ["eq", "pipeline_status", "reviewing"],
       ["order", "sku", { ascending: true }],
       ["range", 0, 99],
     ]);
@@ -167,11 +167,12 @@ describe("pipeline queries", () => {
   it("aggregates counts for all workflow tabs", async () => {
     const workflowTabs: PersistedPipelineStatus[] = [
       "imported",
-      "scraping",
-      "scraped",
-      "consolidating",
-      "finalizing",
-      "exporting",
+      "url_review",
+      "extracting",
+      "processed",
+      "merging",
+      "reviewing",
+      "publishing",
       "failed",
     ];
     const plans: QueryPlan[] = workflowTabs.map(status =>
@@ -186,11 +187,12 @@ describe("pipeline queries", () => {
     
     expect(counts).toEqual({
       imported: "imported".length,
-      scraping: "scraping".length,
-      scraped: "scraped".length,
-      consolidating: "consolidating".length,
-      finalizing: "finalizing".length,
-      exporting: "exporting".length,
+      url_review: "url_review".length,
+      extracting: "extracting".length,
+      processed: "processed".length,
+      merging: "merging".length,
+      reviewing: "reviewing".length,
+      publishing: "publishing".length,
       failed: "failed".length,
     });
   });

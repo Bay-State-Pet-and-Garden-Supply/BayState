@@ -120,10 +120,10 @@ describe('PipelineClient Integration', () => {
 
     it('updates the stage in the URL when the active stage changes', async () => {
         const user = userEvent.setup();
-        mockSearchParamsToString.mockReturnValue('stage=scraped&search=seed&source=scraper-1&product_line=Seeds&cohort_id=batch-123');
+        mockSearchParamsToString.mockReturnValue('stage=processed&search=seed&source=scraper-1&product_line=Seeds&cohort_id=batch-123');
         mockSearchParamGet.mockImplementation((key: string) => {
             const values: Record<string, string | null> = {
-                stage: 'scraped',
+                stage: 'processed',
                 search: 'seed',
                 source: 'scraper-1',
                 product_line: 'Seeds',
@@ -138,16 +138,16 @@ describe('PipelineClient Integration', () => {
                 initialProducts={mockProducts as any}
                 initialCounts={mockCounts as any}
                 initialTotal={1}
-                initialStage="scraped"
+                initialStage="processed"
                 initialSources={['scraper-1']}
             />
         );
 
-        await user.click(screen.getByRole('tab', { name: /Finalizing/i }));
+        await user.click(screen.getByRole('tab', { name: /Reviewing/i }));
 
         await waitFor(() => {
             expect(
-                mockReplace.mock.calls.some(([url]) => url === '/admin/pipeline?stage=finalizing')
+                mockReplace.mock.calls.some(([url]) => url === '/admin/pipeline?stage=reviewing')
             ).toBe(true);
         });
     });

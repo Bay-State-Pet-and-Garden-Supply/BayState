@@ -121,6 +121,10 @@ class ProductPageExtractor:
             )
             if result and result.get("success"):
                 # Normalize into the canonical output shape
+                # Model and mode metadata for the enrichment contract
+                model = result.get("model", getattr(self._extractor, "llm_model", "deepseek-chat"))
+                method = result.get("method", "unknown")
+
                 normalized: dict[str, Any] = {
                     "success": True,
                     "sku": sku,
@@ -133,8 +137,21 @@ class ProductPageExtractor:
                     "images": result.get("images") or [],
                     "categories": result.get("categories") or [],
                     "size_metrics": result.get("size_metrics"),
-                    "method": result.get("method", "unknown"),
+                    # v1 contract fields
+                    "weight": result.get("weight") or result.get("size_metrics"),
+                    "dimensions": result.get("dimensions"),
+                    "shipping_weight": result.get("shipping_weight"),
+                    "features": result.get("features", []),
+                    "ingredients": result.get("ingredients"),
+                    "pet_type": result.get("pet_type"),
+                    "life_stage": result.get("life_stage"),
+                    "food_form": result.get("food_form"),
+                    "flavor": result.get("flavor"),
+                    "method": method,
                     "confidence": result.get("confidence", 0.0),
+                    "model": model,
+                    "mode": "llm" if "llm" in method.lower() else "mixed",
+                    "token_usage": result.get("token_usage", {}),
                     "telemetry": result.get("telemetry", {}),
                 }
                 return normalized

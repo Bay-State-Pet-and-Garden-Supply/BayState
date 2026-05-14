@@ -2,6 +2,7 @@ export {};
 const {
     NextRequest,
     createClient,
+    createAdminClient,
     requireAdminAuth,
 } = require('@/__tests__/helpers/admin-api-route-harness');
 const { GET } = require('@/app/api/admin/pipeline/active-consolidations/route');
@@ -25,6 +26,7 @@ describe('Active Consolidations API', () => {
             limit: jest.fn(),
         };
         (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+        (createAdminClient as jest.Mock).mockResolvedValue(mockSupabase);
     });
 
     it('should return 401 if not authorized', async () => {

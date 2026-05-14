@@ -14,10 +14,17 @@ from core.events import ScraperEvent, create_emitter, event_bus
 from core.settings_manager import settings
 from scrapers.product_url_extraction.extractor import ProductPageExtractor
 from scrapers.ai_search.search import normalize_search_provider
+from scrapers.ai_search.enrichment_models import (
+    EnrichmentResultV1,
+    EnrichmentResultStatus,
+    EnrichmentMode,
+    build_v1_from_extraction_result,
+)
 from scrapers.cohort.processor import CohortProcessor
-from scrapers.executor.workflow_executor import WorkflowExecutor
-from scrapers.parser import ScraperConfigParser
-from scrapers.result_collector import ResultCollector
+# Phase 10: moved to legacy/ — enrichment path replaces static scraping
+# from scrapers.executor.workflow_executor import WorkflowExecutor
+# from scrapers.parser import ScraperConfigParser
+# from scrapers.result_collector import ResultCollector
 from scrapers.models.config import ScraperConfig as ScraperConfigModel
 from validation.result_quality import sanitize_product_payload
 from typing import cast
@@ -28,6 +35,7 @@ USE_COHORT_PROCESSING = os.getenv("USE_COHORT_PROCESSING", "true").lower() == "t
 CohortProduct = Mapping[str, object]
 OFFICIAL_BRAND_URL_DISCOVERY_TYPE = "official_brand_url_discovery"
 DIRECT_URL_EXTRACTION_TYPE = "direct_url_extraction"
+ENRICHMENT_JOB_TYPE = "enrichment"
 
 
 class ConfigurationError(Exception):
@@ -391,6 +399,17 @@ def run_job(
     api_client: Optional[Any] = None,
     job_logging: Optional[Any] = None,
 ) -> Dict[str, Any]:
+    # Dispatch to enrichment mode for AI-only extraction
+    if job_config.job_type == ENRICHMENT_JOB_TYPE:
+        return _run_enrichment_job(
+            job_config,
+            runner_name=runner_name,
+            log_buffer=log_buffer,
+            progress_callback=progress_callback,
+            api_client=api_client,
+            job_logging=job_logging,
+        )
+
     if USE_COHORT_PROCESSING and _job_requests_cohort_processing(job_config):
         return _run_cohort_job(
             job_config,
@@ -480,6 +499,16 @@ def _run_sequential_job(
     """
     job_id = job_config.job_id
     emitter = create_emitter(job_id)
+
+    # Phase 10: static scraping deactivated — enrichment path replaces it
+    logger.warning(f"_run_sequential_job called (job {job_id}) but static scraping is deactivated in Phase 10")
+    return {
+        "skus_processed": 0,
+        "scrapers_run": [],
+        "data": {},
+        "error": "Static scraping deactivated — use enrichment path instead",
+    }
+
     parser = ScraperConfigParser()
     collector = ResultCollector(test_mode=job_config.test_mode)
 
@@ -1411,11 +1440,230 @@ def _run_official_brand_job(
     return results
 
 
+def _run_enrichment_job(
+    job_config: JobConfig,
+    runner_name: Optional[str] = None,
+    log_buffer: Optional[List[Dict[str, Any]]] = None,
+    progress_callback: Optional[Callable[[str, str, dict[str, Any]], bool]] = None,
+    api_client: Optional[Any] = None,
+    job_logging: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """Execute a single enrichment (AI extraction) for a URL target.
+
+    This is the AI-only extraction path. It takes a job config with a target URL
+    and SKU, fetches the page via Crawl4AI engine, extracts product data using
+    the AI extraction pipeline, formats the output as EnrichmentResultV1, and
+    submits the result back to the coordinator.
+
+    Price, stock_status, manufacturer_part_number, and product_line are NEVER
+    extracted here — they come only from import data.
+    """
+    job_id = job_config.job_id
+    skus = job_config.skus
+    job_payload = job_config.job_config if isinstance(job_config.job_config, dict) else {}
+
+    results: Dict[str, Any] = {
+        "skus_processed": 0,
+        "scrapers_run": ["enrichment"],
+        "data": {},
+        "enrichment_results": [],
+    }
+
+    if log_buffer is None:
+        log_buffer = []
+
+    _emit_runner_log(
+        job_id=job_id,
+        runner_name=runner_name,
+        job_logging=job_logging,
+        log_buffer=log_buffer,
+        level="info",
+        message=f"Enrichment job {job_id} started",
+        details={
+            "sku_count": len(skus),
+            "mode": job_payload.get("mode", "mixed"),
+            "model": job_payload.get("model", "deepseek-chat"),
+        },
+        phase="starting",
+        flush_immediately=True,
+    )
+
+    # Extract single SKU and target URL from payload
+    target_url = job_payload.get("target_url", "")
+    target_sku = skus[0] if skus else job_payload.get("sku", "")
+    domain = job_payload.get("domain")
+    model = job_payload.get("model", "deepseek-chat")
+    mode_str = job_payload.get("mode", "mixed")
+
+    if not target_url or not target_sku:
+        error_msg = "Enrichment job missing target_url or SKU"
+        _emit_runner_log(
+            job_id=job_id,
+            runner_name=runner_name,
+            job_logging=job_logging,
+            log_buffer=log_buffer,
+            level="error",
+            message=error_msg,
+            phase="failed",
+            flush_immediately=True,
+        )
+        results["error_message"] = error_msg
+        results["logs"] = job_logging.snapshot() if job_logging else log_buffer
+        return results
+
+    # Map mode string to EnrichmentMode
+    try:
+        enrichment_mode = EnrichmentMode(mode_str)
+    except ValueError:
+        enrichment_mode = EnrichmentMode.MIXED
+
+    _emit_runner_log(
+        job_id=job_id,
+        runner_name=runner_name,
+        job_logging=job_logging,
+        log_buffer=log_buffer,
+        level="info",
+        message=f"Enriching SKU={target_sku} URL={target_url}",
+        details={"model": model, "mode": enrichment_mode.value},
+        sku=target_sku,
+        phase="enriching",
+    )
+
+    # Run extraction via ProductPageExtractor (reuses the full AI pipeline)
+    extractor = ProductPageExtractor(
+        headless=settings.browser_settings["headless"],
+        llm_model=model,
+        cache_enabled=True,
+        extraction_strategy="llm",
+    )
+
+    async def _run_extraction() -> dict[str, Any]:
+        return await extractor.extract(
+            url=target_url,
+            sku=target_sku,
+            brand=job_payload.get("brand"),
+            product_name=job_payload.get("product_name"),
+        )
+
+    extraction_result = asyncio.run(_run_extraction())
+
+    # Build v1 enrichment result
+    enrichment_result = build_v1_from_extraction_result(
+        sku=target_sku,
+        url=target_url,
+        extraction_result=extraction_result,
+        domain=domain,
+        model=model,
+        mode=enrichment_mode,
+    )
+
+    # Record in results dict for backward compatibility
+    if extraction_result.get("success"):
+        results["skus_processed"] = 1
+        results["data"][target_sku] = {
+            "enrichment": {
+                "title": enrichment_result.product.name,
+                "brand": enrichment_result.product.brand,
+                "weight": enrichment_result.product.weight,
+                "description": enrichment_result.product.description,
+                "images": enrichment_result.product.image_urls,
+                "confidence": enrichment_result.confidence.overall,
+                "scraped_at": enrichment_result.extracted_at,
+                "mode": enrichment_mode.value,
+                "model": model,
+            }
+        }
+
+        _emit_runner_log(
+            job_id=job_id,
+            runner_name=runner_name,
+            job_logging=job_logging,
+            log_buffer=log_buffer,
+            level="info",
+            message=f"Enrichment succeeded for SKU={target_sku}",
+            details={
+                "confidence": enrichment_result.confidence.overall,
+                "fields_found": len([f for f in [
+                    enrichment_result.product.name,
+                    enrichment_result.product.brand,
+                    enrichment_result.product.weight,
+                    enrichment_result.product.description,
+                ] if f]),
+            },
+            sku=target_sku,
+            phase="completed",
+        )
+    else:
+        error = extraction_result.get("error", "Extraction returned no data")
+        results["data"][target_sku] = {
+            "enrichment": {
+                "error": error,
+                "confidence": 0.0,
+                "scraped_at": enrichment_result.extracted_at,
+            }
+        }
+
+        _emit_runner_log(
+            job_id=job_id,
+            runner_name=runner_name,
+            job_logging=job_logging,
+            log_buffer=log_buffer,
+            level="warning",
+            message=f"Enrichment failed for SKU={target_sku}: {error}",
+            sku=target_sku,
+            phase="failed",
+        )
+
+    # Submit enrichment result back via API
+    if api_client and hasattr(api_client, "submit_enrichment_result"):
+        attempt_id = job_payload.get("attempt_id", "")
+        if attempt_id:
+            result_json = enrichment_result.model_dump_json()
+            status_str = "success" if extraction_result.get("success") else "failed"
+            if extraction_result.get("success") and enrichment_result.confidence.overall < 0.5:
+                status_str = "partial"
+
+            try:
+                submitted = api_client.submit_enrichment_result(
+                    attempt_id=attempt_id,
+                    status=status_str,
+                    result_json=result_json,
+                    error_message=extraction_result.get("error") if not extraction_result.get("success") else None,
+                    lease_token=getattr(job_config, "lease_token", None),
+                )
+                if submitted:
+                    logger.info(f"Enrichment result submitted for attempt {attempt_id}")
+                else:
+                    logger.warning(f"Failed to submit enrichment result for attempt {attempt_id}")
+            except Exception as e:
+                logger.error(f"Error submitting enrichment result: {e}")
+        else:
+            logger.warning("No attempt_id in job config — enrichment result not submitted via callback")
+
+    results["enrichment_results"] = [enrichment_result.model_dump()]
+    results["logs"] = job_logging.snapshot() if job_logging else log_buffer
+    results["telemetry"] = {"steps": [], "selectors": [], "extractions": []}
+
+    _emit_runner_log(
+        job_id=job_id,
+        runner_name=runner_name,
+        job_logging=job_logging,
+        log_buffer=log_buffer,
+        level="info",
+        message=f"Enrichment job complete for {results['skus_processed']} SKUs",
+        phase="completed",
+        flush_immediately=True,
+    )
+
+    return results
+
+
 __all__ = [
     "ConfigurationError",
     "create_emitter",
     "create_log_entry",
     "DIRECT_URL_EXTRACTION_TYPE",
+    "ENRICHMENT_JOB_TYPE",
     "ProductPageExtractor",
     "run_job",
 ]

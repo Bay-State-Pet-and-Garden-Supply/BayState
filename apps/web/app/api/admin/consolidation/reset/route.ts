@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
         const { data: stuckProducts, error: selectError } = await supabase
             .from('products_ingestion')
             .select('sku')
-            .eq('pipeline_status', 'consolidating');
+            .eq('pipeline_status', 'merging');
 
         if (selectError) {
             console.error('[Consolidation Reset API] Failed to select stuck products:', selectError);
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
         const { error: resetError } = await supabase
             .from('products_ingestion')
             .update({
-                pipeline_status: 'scraped',
+                pipeline_status: 'processed',
                 updated_at: new Date().toISOString(),
             })
             .in('sku', skusToReset);

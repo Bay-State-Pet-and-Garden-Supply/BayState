@@ -27,11 +27,31 @@ describe("FloatingActionsBar", () => {
       screen.getByRole("button", { name: "Clear" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Scrape Selected" }),
+      screen.getByRole("button", { name: "Select All 10" }),
     ).toBeInTheDocument();
   });
 
-  it("renders export actions in exporting stage", () => {
+  it("renders start enrichment action for url_review stage", () => {
+    render(
+      <FloatingActionsBar
+        selectedCount={4}
+        totalCount={10}
+        currentStage="url_review"
+        isLoading={false}
+        onClearSelection={() => {}}
+        onSelectAll={() => {}}
+        onBulkAction={() => {}}
+        onOpenScrapeDialog={() => {}}
+        onDelete={() => {}}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /Start/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders export actions in publishing stage", () => {
     const onUploadShopSite = jest.fn();
     const onDownloadZip = jest.fn();
 
@@ -39,7 +59,7 @@ describe("FloatingActionsBar", () => {
       <FloatingActionsBar
         selectedCount={3}
         totalCount={12}
-        currentStage="exporting"
+        currentStage="publishing"
         isLoading={false}
         onClearSelection={() => {}}
         onSelectAll={() => {}}

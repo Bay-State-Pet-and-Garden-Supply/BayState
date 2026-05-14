@@ -10,7 +10,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { createAdminClient } from '@/lib/supabase/server';
-import { approveFallbackForSkus } from '@/lib/pipeline/fallback-orchestration';
+// TODO(Phase 8): remove after migration to enrichment_targets + enrichment_jobs
+// import { approveFallbackForSkus } from '@/lib/pipeline/fallback-orchestration';
 
 export const dynamic = 'force-dynamic';
 
@@ -165,23 +166,26 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            const fallbackResult = await approveFallbackForSkus(supabase, normalizedSkus, {
-                approvedBy,
-                budgetScope: budget_scope || 'default',
-                qualityReason: qualityReasons.join('; ') || 'Static scrape quality insufficient',
-                sourceJobIds,
-                qualityVerdictKeys,
-            });
+            // TODO(Phase 8): replace approveFallbackForSkus with direct enrichment_targets + enrichment_jobs creation
+            // const fallbackResult = await approveFallbackForSkus(supabase, normalizedSkus, {
+            //     ...
+            // });
+            //
+            // For now just move SKUs to url_review for manual URL assignment:
+            const { error: moveError } = await supabase
+                .from('products_ingestion')
+                .update({ pipeline_status: 'url_review', updated_at: nowIso })
+                .in('sku', normalizedSkus);
 
-            if (!fallbackResult.success) {
-                return NextResponse.json({ error: fallbackResult.error }, { status: 500 });
+            if (moveError) {
+                return NextResponse.json({ error: moveError.message }, { status: 500 });
             }
 
             return NextResponse.json({
                 success: true,
                 action,
-                approved_sku_count: fallbackResult.approvedSkuCount,
-                message: `Fallback approved for ${fallbackResult.approvedSkuCount} SKU(s). SERPER URL discovery initiated.`,
+                approved_sku_count: normalizedSkus.length,
+                message: `${normalizedSkus.length} SKU(s) moved to URL Review for manual URL assignment.`,
             });
         }
 

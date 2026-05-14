@@ -239,15 +239,15 @@ export async function createDirectChatBatch(
         return { success: false, error: itemsError.message };
     }
 
-    // Mark products as consolidating
+    // Mark products as merging
     const skus = products.map((p) => p.sku);
     try {
         await supabase
             .from('products_ingestion')
-            .update({ pipeline_status: 'consolidating', updated_at: new Date().toISOString() })
+            .update({ pipeline_status: 'merging', updated_at: new Date().toISOString() })
             .in('sku', skus);
     } catch (err) {
-        console.warn('[DirectChat] Failed to mark products as consolidating:', err);
+        console.warn('[DirectChat] Failed to mark products as merging:', err);
     }
 
     console.log('[DirectChat] Created synthetic batch %s with %d items', batchId, items.length);

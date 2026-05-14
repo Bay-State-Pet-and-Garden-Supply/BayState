@@ -106,7 +106,7 @@ describe('pipeline export route compatibility boundary', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(response.status).toBe(200);
-    expect(queryBuilder.eq).toHaveBeenCalledWith('pipeline_status', 'exporting');
+    expect(queryBuilder.eq).toHaveBeenCalledWith('pipeline_status', 'publishing');
     expect(queryBuilder.is).toHaveBeenCalledWith('exported_at', null);
     expect(queryBuilder.in).toHaveBeenCalledWith('sku', ['SKU-1', 'SKU-2']);
 

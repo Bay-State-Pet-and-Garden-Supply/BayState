@@ -6,7 +6,7 @@
  * details are mapped server-side in the pipeline runs API route.
  *
  * This is a separate module from lib/pipeline/types.ts because those types
- * model the product ingestion lifecycle (imported → scraped → consolidated → exported),
+ * model the product ingestion lifecycle (imported → processed → published),
  * while these types model job/run execution (queued → running → completed).
  */
 
@@ -17,14 +17,12 @@
 /**
  * What kind of work this pipeline run represents.
  *
- * - `serp_search`: Official URL discovery via SERP search provider
- * - `page_scrape`: Product page scraping
+ * - `enrichment`: AI product enrichment (extraction from target URLs)
  * - `consolidation`: AI product data consolidation
  * - `apply_results`: Applying completed consolidation results back to products
  */
 export type PipelineRunKind =
-  | "serp_search"
-  | "page_scrape"
+  | "enrichment"
   | "consolidation"
   | "apply_results";
 
@@ -74,7 +72,7 @@ export interface PipelineRunSummary {
   id: string;
   /** What kind of run this is */
   kind: PipelineRunKind;
-  /** Human-readable label (e.g. "Official URL Discovery" or "Product Consolidation") */
+  /** Human-readable label (e.g. "Product Enrichment" or "Product Consolidation") */
   label: string;
   /** Normalized status */
   status: PipelineRunStatus;
@@ -115,7 +113,7 @@ export interface PipelineRunSummary {
    * - `retry_failed`: Some items failed and can be retried
    * - `apply_results`: Completed results ready to apply
    * - `review_errors`: Run finished with errors that need review
-   * - `recover`: Items stuck in "consolidating" need recovery
+   * - `recover`: Items stuck in a status need recovery
    */
   nextAction?: "wait" | "retry_failed" | "apply_results" | "review_errors" | "recover";
 
@@ -129,8 +127,7 @@ export interface PipelineRunSummary {
 
 /** Human-readable labels for each run kind. */
 export const PIPELINE_RUN_KIND_LABELS: Record<PipelineRunKind, string> = {
-  serp_search: "Official URL Discovery",
-  page_scrape: "Page Scrape",
+  enrichment: "Product Enrichment",
   consolidation: "Product Consolidation",
   apply_results: "Apply Results",
 };
@@ -179,19 +176,22 @@ export function mapBatchJobStatusToRunStatus(
 }
 
 /**
- * Map a scrape_jobs status string to a canonical PipelineRunStatus.
+ * Map an enrichment_jobs status string to a canonical PipelineRunStatus.
  */
-export function mapScrapeJobStatusToRunStatus(
+export function mapEnrichmentJobStatusToRunStatus(
   status: string,
 ): PipelineRunStatus {
   switch (status) {
     case "pending":
+    case "queued":
       return "queued";
     case "claimed":
     case "running":
       return "running";
     case "completed":
       return "completed";
+    case "completed_with_errors":
+      return "completed_with_errors";
     case "failed":
       return "failed";
     case "cancelled":
@@ -199,18 +199,6 @@ export function mapScrapeJobStatusToRunStatus(
     default:
       return "running";
   }
-}
-
-/**
- * Determine the run kind from a scrape job type.
- */
-export function determineScrapeJobKind(
-  jobType: string | null | undefined,
-): PipelineRunKind {
-  if (jobType === "official_brand_url_discovery") {
-    return "serp_search";
-  }
-  return "page_scrape";
 }
 
 /**
@@ -238,20 +226,25 @@ export function getConsolidationStageLabel(
 }
 
 /**
- * Build the currentStageLabel for a scrape run.
+ * Build the currentStageLabel for an enrichment run.
  */
-export function getScrapeStageLabel(
+export function getEnrichmentStageLabel(
   status: PipelineRunStatus,
-  jobType: string | null | undefined,
+  pendingCount: number,
+  runningCount: number,
+  totalItems: number,
 ): string {
-  if (status === "running") {
-    if (jobType === "official_brand_url_discovery") {
-      return "Searching for official URLs...";
-    }
-    return "Scraping product pages...";
+  if (status === "completed" || status === "completed_with_errors") {
+    return "Settled — review errors or apply results";
   }
-  if (status === "completed") {
-    return "Scraping completed";
+  if (status === "failed" || status === "cancelled") {
+    return "Enrichment run ended — review before proceeding";
   }
-  return "Queued";
+  if (runningCount > 0) {
+    return "Enriching products...";
+  }
+  if (pendingCount > 0 && totalItems > 0) {
+    return `${pendingCount} product${pendingCount === 1 ? "" : "s"} still queued`;
+  }
+  return "Waiting for enrichment targets";
 }

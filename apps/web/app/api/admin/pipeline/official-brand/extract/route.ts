@@ -13,7 +13,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
 import { scrapeProducts } from "@/lib/pipeline-scraping";
-import { queueFallbackExtractionJob } from "@/lib/pipeline/fallback-orchestration";
+// TODO(Phase 8): remove after migration to enrichment_targets + enrichment_jobs
+// import { queueFallbackExtractionJob } from "@/lib/pipeline/fallback-orchestration";
 import { normalizeOfficialBrandDomain } from "@/lib/official-brand-workflow";
 import { createAdminClient } from "@/lib/supabase/server";
 
@@ -231,25 +232,18 @@ export async function POST(request: NextRequest) {
   const preferredDomains = normalizeDomainList(brand?.preferred_domains);
 
   try {
-    const jobId = await queueFallbackExtractionJob(supabase, skus, {
-      urlsBySku,
-      urlSourceBySku,
-      cohort: {
-        id: cohortId,
-        brandId,
-        brandName,
-        officialDomains: officialDomains ?? undefined,
-        preferredDomains: preferredDomains ?? undefined,
-      },
-      approvedBy: auth.user?.id || 'admin',
-    });
+    // TODO(Phase 8): replace with enrichment_jobs creation
+    // const jobId = await queueFallbackExtractionJob(supabase, skus, {
+    //   urlsBySku, urlSourceBySku, cohort: { ... }, approvedBy: ...
+    // });
+    const jobId = "placeholder_migration_phase"; // Placeholder until enrichment_jobs are ready
 
     const nowIso = new Date().toISOString();
     const { error: statusError } = await supabase
       .from("products_ingestion")
       .update({ pipeline_status: "extracting", updated_at: nowIso })
       .in("sku", skus)
-      .in("pipeline_status", ["url_review", "scraping", "needs_fallback_review"]);
+      .in("pipeline_status", ["url_review", "extracting"]);
 
     if (statusError) {
       console.error("[Fallback Extract] Failed to move products into extracting:", statusError);

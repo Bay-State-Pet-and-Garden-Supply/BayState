@@ -5,6 +5,7 @@ import {
   AlertCircle,
   Brain,
   CheckCircle2,
+  Globe,
   Package,
   Sparkles,
   Upload,
@@ -36,39 +37,46 @@ const statusConfig: Array<{
     bgColor: "bg-brand-forest-green/10",
   },
   {
-    status: "scraping",
-    label: "Scraping",
+    status: "url_review",
+    label: "URL Review",
+    icon: Globe,
+    color: "text-purple-600",
+    bgColor: "bg-purple-600/10",
+  },
+  {
+    status: "extracting",
+    label: "Extracting",
     icon: Activity,
     color: "text-blue-600",
     bgColor: "bg-blue-600/10",
   },
   {
-    status: "scraped",
-    label: "Scraped",
+    status: "processed",
+    label: "Processed",
     icon: Sparkles,
-    color: "text-brand-burgundy",
-    bgColor: "bg-brand-burgundy/10",
+    color: "text-cyan-600",
+    bgColor: "bg-cyan-600/10",
   },
   {
-    status: "consolidating",
-    label: "Consolidating",
+    status: "merging",
+    label: "Merging",
     icon: Brain,
     color: "text-violet-600",
     bgColor: "bg-violet-600/10",
   },
   {
-    status: "finalizing",
-    label: "Finalizing",
+    status: "reviewing",
+    label: "Reviewing",
     icon: CheckCircle2,
     color: "text-amber-600",
     bgColor: "bg-amber-600/10",
   },
   {
-    status: "exporting",
-    label: "Exporting",
+    status: "publishing",
+    label: "Publishing",
     icon: Upload,
-    color: "text-brand-forest-green",
-    bgColor: "bg-brand-forest-green/10",
+    color: "text-green-600",
+    bgColor: "bg-green-600/10",
   },
   {
     status: "failed",
@@ -109,7 +117,7 @@ export function PipelineStats({
 }: PipelineStatsProps) {
   if (isLoading) {
       return (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
           {Array.from({ length: statusConfig.length }).map((_, i) => (
             <Card key={i}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -126,7 +134,7 @@ export function PipelineStats({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
       {statusConfig.map((config) => {
         const count = getCountForStatus(counts, config.status);
         const trend = trends?.[config.status];

@@ -18,25 +18,40 @@ type ProtectedField = (typeof PROTECTED_FIELDS)[number];
  * Fields that CAN be enriched from external sources.
  */
 export const ENRICHABLE_FIELDS = [
+  // Core product attributes
   'name',
   'description',
   'brand',
   'images',
   'weight',
   'dimensions',
-  'ingredients',
-  'specifications',
+  'shipping_weight',
   'category',
 
+  // Rich product facts
+  'ingredients',
+  'features',
+  'image_urls',
   'upc',
-  'stock_status',
+
+  // Pet-specific attributes
+  'pet_type',
+  'life_stage',
+  'pet_size',
+  'food_form',
+  'flavor',
+  'special_diet',
+  'health_feature',
+  'packaging_type',
+  'size',
+  'color',
 ] as const;
 export type EnrichableField = (typeof ENRICHABLE_FIELDS)[number];
 
 /**
  * Source types for enrichment data.
  */
-type SourceType = 'scraper' | 'official_brand';
+type SourceType = 'scraper' | 'official_brand' | 'enriched';
 
 /**
  * Represents an enrichment source (web scraper).

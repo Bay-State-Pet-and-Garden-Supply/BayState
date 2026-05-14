@@ -9,8 +9,8 @@ import {
 } from '@/lib/product-image-storage';
 
 export interface ProvenanceContext {
-    /** job type: 'static_scraper' | 'fallback_serper_ai' */
-    sourceKind: 'static_scraper' | 'fallback_serper_ai';
+    /** job type: 'static_scraper' | 'fallback_serper_ai' | 'enrichment' */
+    sourceKind: 'static_scraper' | 'fallback_serper_ai' | 'enrichment';
     /** The scrape job that produced these results */
     scrapeJobId: string;
     /** The specific chunk (if applicable) */
@@ -169,9 +169,11 @@ export async function persistProductsIngestionSourcesStrict(
     throw new MissingProductsIngestionSkusError(missingSkus);
   }
 
-  // Skip pipeline status update for static scraper jobs — quality routing
-  // at job completion will decide between scraped and needs_fallback_review
+  // Skip pipeline status update for static scraper and enrichment jobs —
+  // quality routing at job completion will determine the next status
   const isStaticScraperJob = provenance?.sourceKind === 'static_scraper';
+  const isEnrichmentJob = provenance?.sourceKind === 'enrichment';
+  const skipStatusUpdate = isStaticScraperJob || isEnrichmentJob;
 
   const updateRows = await Promise.all(skus.map(async (sku) => {
     const existingRow = existingSourcesBySku.get(sku)!;
@@ -185,9 +187,9 @@ export async function persistProductsIngestionSourcesStrict(
       sources: updatedSources,
       is_test_run: isTestJob,
       updated_at: nowIso,
-      ...(hasMeaningfulData && !isStaticScraperJob
+      ...(hasMeaningfulData && !skipStatusUpdate
         ? {
-            pipeline_status: 'scraped' as const,
+            pipeline_status: 'processed' as const,
           }
         : {}),
     };
@@ -237,9 +239,11 @@ export async function persistProductsIngestionSourcesPartial(
     return { persisted: [], missing };
   }
 
-  // Skip pipeline status update for static scraper jobs — quality routing
-  // at job completion will decide between scraped and needs_fallback_review
+  // Skip pipeline status update for static scraper and enrichment jobs —
+  // quality routing at job completion will determine the next status
   const isStaticScraperJob = provenance?.sourceKind === 'static_scraper';
+  const isEnrichmentJob = provenance?.sourceKind === 'enrichment';
+  const skipStatusUpdate = isStaticScraperJob || isEnrichmentJob;
 
   const updateRows = await Promise.all(toUpdateSkus.map(async (sku) => {
     const existingRow = existingSourcesBySku.get(sku)!;
@@ -253,9 +257,9 @@ export async function persistProductsIngestionSourcesPartial(
       sources: updatedSources,
       is_test_run: isTestJob,
       updated_at: nowIso,
-      ...(hasMeaningfulData && !isStaticScraperJob
+      ...(hasMeaningfulData && !skipStatusUpdate
         ? {
-            pipeline_status: 'scraped' as const,
+            pipeline_status: 'processed' as const,
           }
         : {}),
     };

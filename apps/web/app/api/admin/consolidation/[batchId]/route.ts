@@ -80,12 +80,12 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
                 await supabase
                     .from('products_ingestion')
                     .update({
-                        pipeline_status: 'scraped',
+                        pipeline_status: 'processed',
                         error_message: null,
                         updated_at: new Date().toISOString(),
                     })
                     .in('sku', skus)
-                    .eq('pipeline_status', 'consolidating');
+                    .eq('pipeline_status', 'merging');
             }
 
             const { error: deleteError } = await supabase

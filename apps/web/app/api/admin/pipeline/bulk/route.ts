@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
         if (toStatus === 'published') {
             return NextResponse.json(
                 {
-                    error: 'Published is no longer a workflow state. Use finalizing/exporting instead.',
+                    error: 'Published is no longer a workflow state. Use reviewing/publishing instead.',
                 },
                 { status: 400 }
             );
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        if (toStatus === 'exporting') {
+        if (toStatus === 'publishing') {
             const publishResult = await bulkPublishToStorefront(skus, auth.user.id);
             if (!publishResult.success && publishResult.successCount === 0) {
                 return NextResponse.json(

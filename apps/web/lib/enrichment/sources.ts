@@ -143,7 +143,7 @@ async function getScraperSources(): Promise<EnrichmentSource[]> {
         enabled: true,
         // Provide standard fields; agentic scrapers typically can extract many fields
         providesFields: isAgentic
-          ? ['name', 'brand', 'images', 'weight', 'description', 'specifications']
+          ? ['name', 'brand', 'images', 'weight', 'description', 'features']
           : ['name', 'brand', 'images'],
       });
     }
@@ -166,7 +166,7 @@ export async function getAllSources(): Promise<EnrichmentSource[]> {
     requiresAuth: false,
     status: 'healthy',
     enabled: true,
-    providesFields: ['name', 'brand', 'images', 'weight', 'description', 'specifications', 'upc'],
+    providesFields: ['name', 'brand', 'images', 'weight', 'description', 'features', 'upc'],
   };
 
   return [...scraperSources, officialBrandSource];

@@ -109,7 +109,7 @@ export function ProductListSidebar({
       
       <div className="flex-1 min-h-0 flex flex-col">
         <PipelineSidebarTable
-          variant="finalizing"
+          variant="reviewing"
           products={products}
           groupedProducts={groupedProducts}
           cohortBrands={cohortBrands}

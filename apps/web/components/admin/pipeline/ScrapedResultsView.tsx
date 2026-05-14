@@ -389,7 +389,7 @@ export function ScrapedResultsView({
           onSelectAll={onSelectAll}
           onDeselectAll={onDeselectAll}
           onPreferredSkuChange={setPreferredSku}
-          variant="scraped"
+          variant="processed"
           onEditCohort={onEditCohort}
         />
       </div>

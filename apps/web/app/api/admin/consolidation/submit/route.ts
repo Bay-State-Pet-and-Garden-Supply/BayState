@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
         if (productsWithSources.length === 0) {
             return NextResponse.json(
                 {
-                    error: 'None of the selected products have source data from scrapers. Run scraping first.',
+                    error: 'None of the selected products have source data. Run enrichment first.',
                 },
                 { status: 400 }
             );

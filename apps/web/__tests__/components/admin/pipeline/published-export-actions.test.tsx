@@ -59,11 +59,12 @@ jest.mock('@/components/admin/pipeline/FinalizingResultsView', () => ({
 
 const counts: StatusCount[] = [
     { status: 'imported', count: 0 },
-    { status: 'scraping', count: 0 },
-    { status: 'scraped', count: 0 },
-    { status: 'consolidating', count: 0 },
-    { status: 'finalizing', count: 0 },
-    { status: 'exporting', count: 2 },
+    { status: 'url_review', count: 0 },
+    { status: 'extracting', count: 0 },
+    { status: 'processed', count: 0 },
+    { status: 'merging', count: 0 },
+    { status: 'reviewing', count: 0 },
+    { status: 'publishing', count: 2 },
     { status: 'failed', count: 0 },
 ];
 
@@ -71,7 +72,7 @@ describe('export tab actions', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockSearchParamsToString.mockReturnValue('');
-        mockSearchParamGet.mockImplementation((key: string) => key === 'stage' ? 'exporting' : null);
+        mockSearchParamGet.mockImplementation((key: string) => key === 'stage' ? 'publishing' : null);
         mockFetch.mockImplementation((input: RequestInfo | URL) => {
             const url = String(input);
 
@@ -98,7 +99,7 @@ describe('export tab actions', () => {
                 });
             }
 
-            if (url.includes('/api/admin/pipeline/export?status=exporting') || url.endsWith('/api/admin/pipeline/export')) {
+            if (url.includes('/api/admin/pipeline/export?status=publishing') || url.endsWith('/api/admin/pipeline/export')) {
                 return Promise.resolve({
                     ok: true,
                     blob: async () => new Blob(['xlsx']),
@@ -117,25 +118,25 @@ describe('export tab actions', () => {
         HTMLAnchorElement.prototype.click = jest.fn();
     });
 
-    it('does not render top bar actions in exporting stage when nothing is selected', async () => {
+    it('does not render top bar actions in publishing stage when nothing is selected', async () => {
         render(
             <PipelineClient
                 initialCounts={counts}
                 initialProducts={[]}
                 initialTotal={2}
-                initialStage="exporting"
+                initialStage="publishing"
                 initialSources={[]}
             />,
         );
 
-        // Top bar should be empty for exporting stage now (except for tabs)
+        // Top bar should be empty for publishing stage now (except for tabs)
         expect(screen.queryByRole('button', { name: 'Upload to ShopSite' })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Export ShopSite XML' })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Export Excel' })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Download Images ZIP' })).not.toBeInTheDocument();
     });
 
-    it('renders selected export actions in the exporting floating action bar', () => {
+    it('renders selected export actions in the publishing floating action bar', () => {
         const onUploadShopSite = jest.fn();
         const onDownloadZip = jest.fn();
 
@@ -143,7 +144,7 @@ describe('export tab actions', () => {
                 <FloatingActionsBar
                     selectedCount={3}
                     totalCount={12}
-                    currentStage="exporting"
+                    currentStage="publishing"
                     isLoading={false}
                 onClearSelection={() => {}}
                 onSelectAll={() => {}}

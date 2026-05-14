@@ -273,9 +273,10 @@ export interface ParallelRunRecord {
  */
 export type PipelineStatus =
     | 'imported'
-    | 'scraping'
-    | 'scraped'
-    | 'consolidating'
-    | 'finalizing'
-    | 'exporting'
+    | 'url_review'
+    | 'extracting'
+    | 'processed'
+    | 'merging'
+    | 'reviewing'
+    | 'publishing'
     | 'failed';

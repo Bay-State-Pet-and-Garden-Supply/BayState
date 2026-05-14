@@ -37,22 +37,22 @@ jest.mock("@/components/admin/pipeline/StageTabs", () => ({
 jest.mock("@/components/admin/pipeline/ProductTable", () => ({
   ProductTable: () => <div data-testid="product-table" />,
 }));
-jest.mock("@/components/admin/pipeline/ScrapedResultsView", () => ({
-  ScrapedResultsView: () => <div data-testid="scraped-results" />,
+jest.mock("@/components/admin/pipeline/ProcessedResultsView", () => ({
+  ProcessedResultsView: () => <div data-testid="processed-results" />,
 }));
 jest.mock("@/components/admin/pipeline/FloatingActionsBar", () => ({
   FloatingActionsBar: () => <div data-testid="floating-actions" />,
 }));
-jest.mock("@/components/admin/pipeline/ActiveRunsTab", () => ({
-  ActiveRunsTab: () => <div data-testid="active-runs" />,
+jest.mock("@/components/admin/pipeline/ActiveEnrichmentsTab", () => ({
+  ActiveEnrichmentsTab: () => <div data-testid="active-enrichments" />,
 }));
 jest.mock("@/components/admin/pipeline/ActiveConsolidationsTab", () => ({
   ActiveConsolidationsTab: () => <div data-testid="active-consolidations" />,
 }));
-jest.mock("@/components/admin/pipeline/FinalizingResultsView", () => ({
-  FinalizingResultsView: (props: Record<string, unknown>) => {
+jest.mock("@/components/admin/pipeline/ReviewingResultsView", () => ({
+  ReviewingResultsView: (props: Record<string, unknown>) => {
     lastFinalizingResultsProps = props;
-    return <div data-testid="finalizing-results" />;
+    return <div data-testid="reviewing-results" />;
   },
 }));
 
@@ -62,7 +62,7 @@ const products: PipelineProduct[] = [
     input: { name: "Product 1", price: 10 },
     sources: {},
     consolidated: { name: "Product 1", price: 10 },
-    pipeline_status: "finalizing",
+    pipeline_status: "reviewing",
     created_at: "2026-01-01",
     updated_at: "2026-01-01",
   },
@@ -70,11 +70,12 @@ const products: PipelineProduct[] = [
 
 const counts: StatusCount[] = [
   { status: "imported", count: 1 },
-  { status: "scraping", count: 0 },
-  { status: "scraped", count: 0 },
-  { status: "consolidating", count: 0 },
-  { status: "finalizing", count: 1 },
-  { status: "exporting", count: 2 },
+  { status: "url_review", count: 0 },
+  { status: "extracting", count: 0 },
+  { status: "processed", count: 0 },
+  { status: "merging", count: 0 },
+  { status: "reviewing", count: 1 },
+  { status: "publishing", count: 2 },
   { status: "failed", count: 0 },
 ];
 
@@ -90,9 +91,9 @@ describe("PipelineClient live tab handling", () => {
     });
   });
 
-  it("renders the scraping tab without product-table chrome", async () => {
+  it("renders the extracting tab without product-table chrome", async () => {
     mockSearchParamGet.mockImplementation((key: string) => {
-      if (key === "stage") return "scraping";
+      if (key === "stage") return "extracting";
       return null;
     });
 
@@ -105,14 +106,14 @@ describe("PipelineClient live tab handling", () => {
       />,
     );
 
-    const activeRunElements = screen.getAllByTestId("active-runs");
+    const activeRunElements = screen.getAllByTestId("active-enrichments");
     expect(activeRunElements.length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByTestId("floating-actions")).not.toBeInTheDocument();
   });
 
-  it("renders finalizing from server-hydrated finalized products", async () => {
+  it("renders reviewing from server-hydrated reviewed products", async () => {
     mockSearchParamGet.mockImplementation((key: string) => {
-      if (key === "stage") return "finalizing";
+      if (key === "stage") return "reviewing";
       return null;
     });
 
@@ -121,43 +122,43 @@ describe("PipelineClient live tab handling", () => {
           initialCounts={counts}
           initialProducts={products}
           initialTotal={1}
-          initialStage="finalizing"
+          initialStage="reviewing"
         />,
       );
 
-    const finalizingResults = await screen.findAllByTestId("finalizing-results");
-    expect(finalizingResults.length).toBeGreaterThan(0);
+    const reviewingResults = await screen.findAllByTestId("reviewing-results");
+    expect(reviewingResults.length).toBeGreaterThan(0);
     expect(lastFinalizingResultsProps).toMatchObject({ products });
     expect(screen.getByTestId("floating-actions")).toBeInTheDocument();
     expect(screen.queryByTestId("product-table")).not.toBeInTheDocument();
   });
 
-  it("renders the exporting stage as the multiselect workspace", async () => {
+  it("renders the publishing stage as the multiselect workspace", async () => {
     mockSearchParamGet.mockImplementation((key: string) => {
-      if (key === "stage") return "exporting";
+      if (key === "stage") return "publishing";
       return null;
     });
 
-    const exportingProducts: PipelineProduct[] = [
+    const publishingProducts: PipelineProduct[] = [
       {
         ...products[0],
-        pipeline_status: "exporting",
+        pipeline_status: "publishing",
       },
       {
         ...products[0],
         sku: "SKU002",
         input: { name: "Product 2", price: 15 },
         consolidated: { name: "Product 2", price: 15 },
-        pipeline_status: "exporting",
+        pipeline_status: "publishing",
       },
     ];
 
     render(
       <PipelineClient
         initialCounts={counts}
-        initialProducts={exportingProducts}
-        initialTotal={exportingProducts.length}
-        initialStage="exporting"
+        initialProducts={publishingProducts}
+        initialTotal={publishingProducts.length}
+        initialStage="publishing"
       />,
     );
 
@@ -183,6 +184,6 @@ describe("PipelineClient live tab handling", () => {
     );
 
     expect(screen.getAllByTestId("product-table").length).toBeGreaterThan(0);
-    expect(screen.queryByTestId("finalizing-results")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("reviewing-results")).not.toBeInTheDocument();
   });
 });

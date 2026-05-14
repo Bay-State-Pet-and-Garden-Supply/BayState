@@ -1,0 +1,169 @@
+/**
+ * Claim Enrichment API
+ *
+ * Worker endpoint to atomically claim queued enrichment attempts.
+ * Authenticated via validateRunnerAuth (X-API-Key).
+ * Uses service-role admin Supabase client per existing scraper route patterns.
+ */
+
+import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { validateRunnerAuth } from "@/lib/scraper-auth";
+import { SUPABASE_SECRET_KEY, SUPABASE_URL } from "@/lib/supabase/config";
+
+function getSupabaseAdmin(): SupabaseClient {
+  const url = SUPABASE_URL;
+  const key = SUPABASE_SECRET_KEY;
+  if (!url || !key) {
+    throw new Error("Missing Supabase configuration");
+  }
+  return createClient(url, key);
+}
+
+// =============================================================================
+// POST - Claim Enrichment Attempts
+// =============================================================================
+
+export async function POST(request: NextRequest) {
+  try {
+    // Validate runner auth per existing scraper pattern
+    const runner = await validateRunnerAuth({
+      apiKey: request.headers.get("X-API-Key"),
+      authorization: request.headers.get("Authorization"),
+    });
+
+    if (!runner) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const supabase = getSupabaseAdmin();
+
+    // Read max_attempts from body (default 10)
+    const body = await request.json().catch(() => ({}));
+    const maxAttempts = Math.min(Math.max(body.max_attempts ?? 10, 1), 50);
+
+    const leaseTTLMinutes = 15;
+    const leaseToken = crypto.randomUUID();
+
+    // Atomic claim: find queued attempts and claim them
+    const { data: unclaimedAttempts, error: fetchError } = await supabase
+      .from("enrichment_attempts")
+      .select("id")
+      .eq("status", "queued")
+      .order("created_at", { ascending: true })
+      .limit(maxAttempts);
+
+    if (fetchError) {
+      return NextResponse.json({ error: fetchError.message }, { status: 500 });
+    }
+
+    if (!unclaimedAttempts || unclaimedAttempts.length === 0) {
+      return NextResponse.json({ attempts: [] });
+    }
+
+    const attemptIds = unclaimedAttempts.map((a: { id: string }) => a.id);
+
+    // Claim them: update status and set run metadata
+    const { data: claimed, error: claimError } = await supabase
+      .from("enrichment_attempts")
+      .update({
+        status: "running",
+        started_at: new Date().toISOString(),
+      })
+      .in("id", attemptIds)
+      .eq("status", "queued")
+      .select();
+
+    if (claimError) {
+      return NextResponse.json({ error: claimError.message }, { status: 500 });
+    }
+
+    if (!claimed || claimed.length === 0) {
+      return NextResponse.json({ attempts: [] });
+    }
+
+    // Group by job ID
+    const jobIds = [
+      ...new Set(claimed.map((a: { job_id: string }) => a.job_id)),
+    ];
+
+    // Get job configs
+    const { data: jobs, error: jobsError } = await supabase
+      .from("enrichment_jobs")
+      .select("*")
+      .in("id", jobIds);
+
+    if (jobsError) {
+      return NextResponse.json({ error: jobsError.message }, { status: 500 });
+    }
+
+    const jobsById = new Map((jobs ?? []).map((j) => [j.id, j]));
+
+    // Update jobs to running if they were queued
+    const leaseExpiresAt = new Date(
+      Date.now() + leaseTTLMinutes * 60 * 1000
+    ).toISOString();
+
+    for (const jobId of jobIds) {
+      const job = jobsById.get(jobId);
+      if (job && job.status === "queued") {
+        await supabase
+          .from("enrichment_jobs")
+          .update({
+            status: "running",
+            claimed_by: runner.runnerName,
+            lease_token: leaseToken,
+            lease_expires_at: leaseExpiresAt,
+            started_at: new Date().toISOString(),
+          })
+          .eq("id", jobId);
+      }
+    }
+
+    // Build response payload with fields matching Python ClaimedEnrichment
+    const attempts = claimed.map((attempt: Record<string, unknown>) => {
+      const job = jobsById.get(attempt.job_id as string);
+      const sourceUrl = (attempt.source_url as string) || "";
+      return {
+        id: attempt.id,
+        job_id: attempt.job_id,
+        sku: attempt.sku,
+        source_url: sourceUrl,
+        domain: extractDomain(sourceUrl),
+        mode: attempt.mode ?? job?.mode ?? "mixed",
+        model: attempt.model ?? job?.model ?? null,
+        target_id: attempt.target_id ?? null,
+        config: job?.config ?? {},
+        ai_credentials: job?.ai_credentials ?? null,
+        lease_token: leaseToken,
+        lease_expires_at: leaseExpiresAt,
+        test_mode: false,
+      };
+    });
+
+    return NextResponse.json({ attempts });
+  } catch (err) {
+    console.error("Error claiming enrichment attempts:", err);
+    return NextResponse.json(
+      {
+        error:
+          err instanceof Error ? err.message : "Internal server error",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Extract domain from a URL string.
+ */
+function extractDomain(url: string): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname;
+  } catch {
+    return null;
+  }
+}

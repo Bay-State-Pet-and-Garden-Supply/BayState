@@ -1758,7 +1758,7 @@ export async function applyConsolidationResults(
                 updateRows.push({
                     sku: result.sku,
                     next_fields: {},
-                    pipeline_status: 'scraped',
+                    pipeline_status: 'processed',
                     confidence_score: null,
                     error_message: result.error,
                     outcome: 'rejected',
@@ -1888,7 +1888,7 @@ export async function applyConsolidationResults(
                 updateRows.push({
                     sku: result.sku,
                     next_fields: {},
-                    pipeline_status: 'scraped',
+                    pipeline_status: 'processed',
                     confidence_score: result.confidence_score ?? null,
                     error_message: errorMessage,
                     outcome: 'rejected',
@@ -1920,7 +1920,7 @@ export async function applyConsolidationResults(
             updateRows.push({
                 sku: result.sku,
                 next_fields: nextFields,
-                pipeline_status: 'finalizing',
+                pipeline_status: 'reviewing',
                 confidence_score: result.confidence_score ?? null,
                 error_message: null,
                 outcome: 'finalized',
@@ -1937,7 +1937,7 @@ export async function applyConsolidationResults(
             updateRows.push({
                 sku: result.sku,
                 next_fields: {},
-                pipeline_status: 'scraped',
+                pipeline_status: 'processed',
                 confidence_score: typeof result.confidence_score === 'number' ? result.confidence_score : null,
                 error_message: errorMessage,
                 outcome: 'rejected',
@@ -1986,7 +1986,7 @@ export async function applyConsolidationResults(
             continue;
         }
 
-        // Could not disambiguate — warn but allow through (user can review in finalizing)
+        // Could not disambiguate — warn but allow through (user can review in reviewing)
         const warningMessage = `duplicate name "${duplicateName}" across SKUs ${group.map((row) => row.sku).join(', ')} — consider reviewing for flavor/color/material differences`;
         if (warnings.length < 10) {
             warnings.push(warningMessage);

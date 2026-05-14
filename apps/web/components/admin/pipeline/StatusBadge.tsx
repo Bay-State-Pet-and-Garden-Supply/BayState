@@ -31,15 +31,12 @@ const statusConfig: Record<
   { variant: "default" | "success" | "warning" | "destructive"; label: string; icon: React.ComponentType<{ className?: string }>; color?: string }
 > = {
   imported: { variant: "default", label: "Imported", icon: Package },
-  searching: { variant: "default", label: "Searching", icon: Loader2, color: "text-indigo-600 bg-indigo-50 border-indigo-200" },
   url_review: { variant: "default", label: "URL Review", icon: Globe, color: "text-purple-600 bg-purple-50 border-purple-200" },
-  extracting: { variant: "default", label: "Extracting", icon: Loader2, color: "text-cyan-600 bg-cyan-50 border-cyan-200" },
-  needs_fallback_review: { variant: "warning", label: "Needs Fallback", icon: AlertCircle, color: "text-amber-600 bg-amber-50 border-amber-200" },
-  scraping: { variant: "warning", label: "Scraping", icon: Loader2 },
-  scraped: { variant: "success", label: "Scraped", icon: Sparkles },
-  consolidating: { variant: "warning", label: "Consolidating", icon: Sparkles },
-  finalizing: { variant: "warning", label: "Finalizing", icon: CheckCircle2 },
-  exporting: { variant: "success", label: "Exporting", icon: Globe },
+  extracting: { variant: "warning", label: "Extracting", icon: Loader2 },
+  processed: { variant: "success", label: "Processed", icon: Sparkles },
+  merging: { variant: "warning", label: "Merging", icon: Sparkles },
+  reviewing: { variant: "warning", label: "Reviewing", icon: CheckCircle2 },
+  publishing: { variant: "success", label: "Publishing", icon: Globe },
   failed: { variant: "destructive", label: "Failed", icon: AlertCircle },
 };
 
@@ -88,7 +85,7 @@ export function StatusBadge({
         className
       )}
     >
-      {(status === "scraping" || status === "consolidating") && (
+      {(status === "extracting" || status === "merging") && (
         <PulseDot className={sizeSettings.icon} />
       )}
       {showIcon && <Icon className={sizeSettings.icon} aria-hidden="true" />}

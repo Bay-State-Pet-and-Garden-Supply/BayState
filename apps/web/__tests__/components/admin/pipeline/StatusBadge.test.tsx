@@ -11,45 +11,45 @@ describe("StatusBadge", () => {
 
       const badge = screen.getByText("Imported").closest("[data-slot='badge']");
       expect(badge).toBeInTheDocument();
-      expect(badge).toHaveClass("border-zinc-950");
-      expect(badge).toHaveClass("shadow-[1px_1px_0px_rgba(0,0,0,1)]");
+      expect(badge).toHaveClass("rounded-none");
+      expect(badge).toHaveClass("border-border");
     });
   });
 
-  describe("scraping status", () => {
-    it("renders scraping status with pulse animation", () => {
-      render(<StatusBadge status="scraping" />);
+  describe("extracting status", () => {
+    it("renders extracting status with pulse animation", () => {
+      render(<StatusBadge status="extracting" />);
 
-      const badge = screen.getByText("Scraping").closest("[data-slot='badge']");
+      const badge = screen.getByText("Extracting").closest("[data-slot='badge']");
       expect(badge).toBeInTheDocument();
       const pulseDot = document.querySelector(".animate-ping");
       expect(pulseDot).toBeInTheDocument();
     });
   });
 
-  describe("scraped status", () => {
-    it("renders scraped status with Sparkles icon", () => {
-      render(<StatusBadge status="scraped" />);
+  describe("processed status", () => {
+    it("renders processed status with Sparkles icon", () => {
+      render(<StatusBadge status="processed" />);
 
       const icon = document.querySelector(".lucide-sparkles");
       expect(icon).toBeInTheDocument();
     });
   });
 
-  describe("finalizing status", () => {
-    it("renders finalizing status with CheckCircle2 icon", () => {
-      const { container } = render(<StatusBadge status="finalizing" />);
+  describe("reviewing status", () => {
+    it("renders reviewing status with CheckCircle2 icon", () => {
+      const { container } = render(<StatusBadge status="reviewing" />);
 
       const icon = container.querySelector("[data-slot='badge'] svg");
       expect(icon).toBeInTheDocument();
     });
   });
 
-  describe("exporting status", () => {
-    it("renders exporting status with Globe icon", () => {
-      render(<StatusBadge status="exporting" />);
+  describe("publishing status", () => {
+    it("renders publishing status with Globe icon", () => {
+      render(<StatusBadge status="publishing" />);
 
-      const badge = screen.getByText("Exporting").closest("[data-slot='badge']");
+      const badge = screen.getByText("Publishing").closest("[data-slot='badge']");
       expect(badge).toBeInTheDocument();
     });
   });

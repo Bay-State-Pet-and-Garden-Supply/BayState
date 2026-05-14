@@ -4,8 +4,9 @@ import { ArrowLeft, PackageSearch } from "lucide-react";
 import { AdminPageShell } from "@/components/admin/admin-page-shell";
 import { OfficialBrandReviewClient } from "@/components/admin/pipeline/OfficialBrandReviewClient";
 import { Button } from "@/components/ui/button";
-import { loadOfficialBrandCandidates } from "@/lib/official-brand-review";
 import { createClient } from "@/lib/supabase/server";
+
+// Phase 10: loadOfficialBrandCandidates removed (deprecated module).
 
 export const metadata: Metadata = {
   title: "Official Brand Review | Pipeline | Admin | Bay State Pet & Garden",
@@ -63,15 +64,15 @@ export default async function OfficialBrandReviewPage({ searchParams }: PageProp
     );
   }
 
-  let initialData: Awaited<ReturnType<typeof loadOfficialBrandCandidates>> | null = null;
+  // Phase 10: loadOfficialBrandCandidates removed. Page shows empty state.
+  let initialData = null;
   let fetchErrorMessage: string | null = null;
 
   try {
     const supabase = await createClient();
-    initialData = await loadOfficialBrandCandidates(supabase, {
-      cohortId,
-      ...(discoveryJobId ? { discoveryJobId } : {}),
-    });
+    // Phase 10: official-brand-candidates endpoint is deprecated.
+    // URL Review now uses enrichment_targets instead.
+    initialData = null;
   } catch (error) {
     fetchErrorMessage = error instanceof Error ? error.message : "Failed to load candidates";
   }

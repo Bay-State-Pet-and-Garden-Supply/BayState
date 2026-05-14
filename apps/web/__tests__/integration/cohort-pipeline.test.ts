@@ -33,7 +33,7 @@ jest.mock('@/lib/product-image-storage', () => ({
     replaceInlineImageDataUrls: jest.fn().mockImplementation(async (_supabase: unknown, value: unknown) => ({ value })),
 }));
 
-type IngestionStatus = 'imported' | 'scraped' | 'consolidated' | 'finalizing' | 'finalized' | 'failed';
+type IngestionStatus = 'imported' | 'processed' | 'consolidated' | 'reviewing' | 'failed';
 
 interface IngestionRow extends Record<string, unknown> {
     sku: string;
@@ -357,7 +357,7 @@ function moveConsistencyPassedRowsToFinalized(
                 weight: result.weight,
                 confidence_score: result.confidence_score,
             },
-            pipeline_status: result.consistencyStatus === 'passed' ? 'finalizing' : 'scraped',
+            pipeline_status: result.consistencyStatus === 'passed' ? 'reviewing' : 'processed',
             updated_at: NOW,
             confidence_score: result.confidence_score ?? null,
             error_message: null,
@@ -503,7 +503,7 @@ describe('cohort processing pipeline integration', () => {
             '222222220002',
         ]);
         expect(
-            Array.from(state.ingestionRows.values()).every((row) => row.pipeline_status === 'scraped')
+            Array.from(state.ingestionRows.values()).every((row) => row.pipeline_status === 'processed')
         ).toBe(true);
         expect(state.ingestionRows.get('222222220001')?.sources).toEqual(
             expect.objectContaining({
@@ -556,15 +556,15 @@ describe('cohort processing pipeline integration', () => {
         expect(blockedPublish).toEqual(
             expect.objectContaining({
                 success: false,
-                error: expect.stringContaining('Product must be in finalizing'),
+                error: expect.stringContaining('Product must be in reviewing'),
             })
         );
         expect(Array.from(state.storefrontRows.values()).map((row) => row.sku).sort()).toEqual([
             '111111110001',
             '111111110002',
         ]);
-        expect(state.ingestionRows.get('222222220001')?.pipeline_status).toBe('scraped');
-        expect(state.ingestionRows.get('222222220002')?.pipeline_status).toBe('scraped');
+        expect(state.ingestionRows.get('222222220001')?.pipeline_status).toBe('processed');
+        expect(state.ingestionRows.get('222222220002')?.pipeline_status).toBe('processed');
     });
 
     it('fails fast on missing imported rows and propagation of consolidation batch failures', async () => {

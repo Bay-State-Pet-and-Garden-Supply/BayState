@@ -4,6 +4,7 @@ const {
     createClient,
     requireAdminAuth,
 } = require('@/__tests__/helpers/admin-api-route-harness');
+const { createAdminClient } = require('@/__tests__/helpers/admin-api-route-harness');
 const { GET, PATCH } = require('@/app/api/admin/pipeline/[sku]/route');
 
 describe('Pipeline SKU Route API', () => {
@@ -34,6 +35,7 @@ describe('Pipeline SKU Route API', () => {
         };
 
         (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+        (createAdminClient as jest.Mock).mockResolvedValue(mockSupabase);
     });
 
     it('returns 401 when unauthorized', async () => {

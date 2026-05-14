@@ -60,7 +60,14 @@ async def _resolve_grounding_images(
 
 
 class Crawl4AIExtractor:
-    """Handles product extraction using crawl4ai."""
+    """Handles product extraction using crawl4ai.
+
+    The extraction pipeline produces a standardized result dict with fields like
+    product_name, brand, description, size_metrics, images, categories, confidence.
+
+    Use extract_to_v1() to get results in the v1 enrichment contract format
+    (a flatter shape aligned with EnrichedProductFactsV1).
+    """
 
     _PLACEHOLDER_TEXT = {
         "",
@@ -236,6 +243,139 @@ class Crawl4AIExtractor:
             }
 
         return fallback_result
+
+    async def extract_to_v1(
+        self,
+        url: str,
+        sku: str,
+        product_name: Optional[str] = None,
+        brand: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Extract product data and return in v1 enrichment contract format.
+
+        The result dict has a flatter shape aligned with EnrichedProductFactsV1:
+        name, brand, description, category, weight, dimensions, shipping_weight,
+        image_urls, ingredients, features, pet_type, life_stage, etc.
+
+        Also includes: success, confidence, field_confidence, sku_match, warnings,
+        missing_required, method, model, mode, token_usage, elapsed_ms.
+
+        Price, stock_status, manufacturer_part_number, and product_line are
+        EXCLUDED by design.
+
+        Args:
+            url: Product page URL.
+            sku: Product SKU.
+            product_name: Expected product name.
+            brand: Expected brand.
+
+        Returns:
+            Dict with v1-shaped product facts plus metadata.
+        """
+        import time
+
+        start_time = time.perf_counter()
+
+        # Run the standard extraction pipeline
+        raw_result = await self.extract(url=url, sku=sku, product_name=product_name, brand=brand)
+        elapsed_ms = int((time.perf_counter() - start_time) * 1000)
+
+        success = raw_result.get("success", False)
+        if not success:
+            return {
+                "success": False,
+                "sku": sku,
+                "error": raw_result.get("error", "Extraction failed"),
+                "confidence": 0.0,
+                "field_confidence": {},
+                "elapsed_ms": elapsed_ms,
+            }
+
+        # Map to flat product facts (v1 contract shape)
+        images = raw_result.get("images") or []
+        image_urls = [str(img) for img in images if img] if isinstance(images, list) else []
+
+        features_raw = raw_result.get("features") or []
+        features = [str(f) for f in features_raw if f] if isinstance(features_raw, list) else []
+
+        categories = raw_result.get("categories") or []
+        category_str = (
+            ", ".join(str(c) for c in categories)
+            if isinstance(categories, list) and categories
+            else raw_result.get("category")
+        )
+
+        result: dict[str, Any] = {
+            "success": True,
+            "sku": sku,
+            "source_url": url,
+            "extracted_url": raw_result.get("url", url),
+            # Product facts (v1 contract fields)
+            "name": raw_result.get("product_name") or raw_result.get("name"),
+            "brand": raw_result.get("brand"),
+            "description": raw_result.get("description"),
+            "category": category_str,
+            "weight": raw_result.get("weight") or raw_result.get("size_metrics"),
+            "dimensions": raw_result.get("dimensions"),
+            "shipping_weight": raw_result.get("shipping_weight"),
+            "image_urls": image_urls,
+            "ingredients": raw_result.get("ingredients"),
+            "features": features,
+            # Pet-specific fields
+            "pet_type": raw_result.get("pet_type"),
+            "life_stage": raw_result.get("life_stage"),
+            "pet_size": raw_result.get("pet_size"),
+            "food_form": raw_result.get("food_form"),
+            "flavor": raw_result.get("flavor"),
+            "special_diet": raw_result.get("special_diet", []),
+            "health_feature": raw_result.get("health_feature", []),
+            "packaging_type": raw_result.get("packaging_type"),
+            "size": raw_result.get("size"),
+            "color": raw_result.get("color"),
+            # Confidence and validation
+            "confidence": float(raw_result.get("confidence", 0.0)),
+            "field_confidence": {},
+            "sku_match": None,
+            "warnings": [],
+            "missing_required": [],
+            # Method metadata
+            "method": raw_result.get("method", "unknown"),
+            "model": self.llm_model,
+            "mode": "mixed",
+            "elapsed_ms": elapsed_ms,
+            "token_usage": raw_result.get("token_usage", {}),
+        }
+
+        # Compute per-field confidence based on extraction heuristics
+        field_confidence: dict[str, float] = {}
+
+        product_fields = ["name", "brand", "description", "category", "weight", "dimensions",
+                         "shipping_weight", "ingredients", "pet_type", "life_stage", "pet_size",
+                         "food_form", "flavor", "packaging_type", "size", "color"]
+
+        for field in product_fields:
+            if result.get(field):
+                field_confidence[field] = result["confidence"] if result["confidence"] > 0 else 0.85
+            else:
+                field_confidence[field] = 0.0
+
+        result["field_confidence"] = field_confidence
+
+        # Check required fields (name, brand are highly desired)
+        missing_required: list[str] = []
+        if not result["name"]:
+            missing_required.append("name")
+        if not result["brand"]:
+            missing_required.append("brand")
+        if not result["description"]:
+            missing_required.append("description")
+        result["missing_required"] = missing_required
+
+        if missing_required:
+            result["warnings"].append(f"Missing required fields: {', '.join(missing_required)}")
+
+        return result
+
     def _log_telemetry(
         self,
         url: str,

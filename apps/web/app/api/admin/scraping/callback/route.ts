@@ -21,7 +21,6 @@ import {
 import {
     persistProductsIngestionSourcesPartial,
 } from '@/lib/scraper-callback/products-ingestion';
-import { filterOfficialBrandResultsForPersistence } from '@/lib/scraper-callback/official-brand-validation';
 import { filterMeaningfulProductSources, hasMeaningfulProductSourceData, normalizeProductSources } from '@/lib/product-sources';
 import {
     checkIdempotency,
@@ -33,12 +32,9 @@ import {
 } from '@/lib/scraper-callback/test-job-utils';
 import type { ChunkTelemetry } from '@/lib/scraper-callback/test-job-utils';
 import { toScrapeJobLogRow } from '@/lib/scraper-logs';
-import {
-    buildDiscoveryOfficialBrandCandidateRows,
-    buildExtractedOfficialBrandCandidateRows,
-    getOfficialBrandPhaseFromJob,
-    persistOfficialBrandCandidateRows,
-} from '@/lib/official-brand-workflow';
+// Phase 10: Removed imports from deprecated modules:
+//   - filterOfficialBrandResultsForPersistence (lib/scraper-callback/official-brand-validation)
+//   - buildDiscoveryOfficialBrandCandidateRows / buildExtractedOfficialBrandCandidateRows / getOfficialBrandPhaseFromJob / persistOfficialBrandCandidateRows (lib/official-brand-workflow)
 
 function getSupabaseAdmin(): SupabaseClient {
     const url = SUPABASE_URL;
@@ -398,22 +394,9 @@ export async function POST(request: NextRequest) {
             priorMetadata && typeof priorMetadata.requested_job_type === 'string'
                 ? priorMetadata.requested_job_type
                 : null;
-        const jobConfigRecord = existingJob.config && typeof existingJob.config === 'object'
-            ? (existingJob.config as Record<string, unknown>)
-            : {};
-        const cohortConfig =
-            jobConfigRecord.cohort && typeof jobConfigRecord.cohort === 'object'
-                ? (jobConfigRecord.cohort as Record<string, unknown>)
-                : null;
-        const officialBrandPhase = getOfficialBrandPhaseFromJob({
-            type: existingJob.type,
-            metadata: priorMetadata,
-            config: jobConfigRecord,
-        });
+        // Phase 10: cohortConfig removed (was used by official brand processing).
         const isDeepResearchJob = requestedJobType === 'deep_research' || existingJob.type === 'deep_research';
-        const isOfficialBrandJob = !isDeepResearchJob && (
-            Boolean(officialBrandPhase) || requestedJobType === 'official_brand' || Boolean(cohortConfig)
-        );
+        // Phase 10: officialBrandPhase and isOfficialBrandJob removed — deprecated.
         let effectiveJobStatus = typeof updateData.status === 'string' ? updateData.status : payload.status;
 
         if (updateData.status === 'failed' && !isTestJob) {
@@ -494,123 +477,15 @@ export async function POST(request: NextRequest) {
 
             if (isTestJob) {
                 console.log(`[Callback] Test job ${payload.job_id} completed with ${skus.length} SKUs. Skipping products_ingestion persistence.`);
-            } else if (officialBrandPhase === 'url_discovery') {
-                const rows = buildDiscoveryOfficialBrandCandidateRows({
-                    jobId: payload.job_id,
-                    resultsBySku: transformedResults,
-                    cohort: cohortConfig ?? undefined,
-                    nowIso: persistenceTimestamp,
-                });
-                const candidateCount = await persistOfficialBrandCandidateRows(supabase, rows);
-
-                const { error: discoveryMetadataError } = await supabase
-                    .from('scrape_jobs')
-                    .update({
-                        metadata: {
-                            ...priorMetadata,
-                            crawl4ai: nextCrawl4AiMetadata,
-                            official_brand_discovery: {
-                                candidate_count: candidateCount,
-                                predicted_name_count: rows.filter((r) => r['predicted_name'] != null).length,
-                                sku_count: Object.keys(transformedResults).length,
-                                updated_at: persistenceTimestamp,
-                            },
-                        },
-                    })
-                    .eq('id', payload.job_id);
-
-                if (discoveryMetadataError) {
-                    console.error('[Callback] Failed to persist Official Brand discovery metadata:', discoveryMetadataError);
-                    return NextResponse.json({ error: 'Failed to persist Official Brand discovery metadata' }, { status: 500 });
-                }
-
-                console.log(`[Callback] Persisted ${candidateCount} Official Brand URL candidates`);
             } else {
-                const officialBrandFilter = isOfficialBrandJob
-                    ? filterOfficialBrandResultsForPersistence(transformedResults, {
-                        officialDomains: Array.isArray(cohortConfig?.officialDomains) ? (cohortConfig?.officialDomains as string[]) : undefined,
-                        preferredDomains: Array.isArray(cohortConfig?.preferredDomains) ? (cohortConfig?.preferredDomains as string[]) : undefined,
-                    })
-                    : null;
-
-                const resultsToPersist = officialBrandFilter ? officialBrandFilter.acceptedResults : transformedResults;
-
-                if (officialBrandFilter && officialBrandFilter.rejectedCount > 0) {
-                    Object.entries(officialBrandFilter.rejectedBySku).forEach(([sku, reason]) => {
-                        console.warn(`[Callback] Official Brand rejected for ${sku}: ${reason}`);
-                    });
-                }
-
+                // Phase 10: official brand processing removed. Results persisted directly.
                 try {
                     const { persisted, missing } = await persistProductsIngestionSourcesPartial(
                         supabase,
-                        resultsToPersist,
+                        transformedResults,
                         false,
                         persistenceTimestamp
                     );
-
-                    if (officialBrandFilter) {
-                        const acceptedCount = persisted.length;
-                        const rejectedCount = officialBrandFilter.rejectedCount;
-                        const validationMetadata = {
-                            accepted_count: acceptedCount,
-                            rejected_count: rejectedCount,
-                            rejected_by_sku: officialBrandFilter.rejectedBySku,
-                            updated_at: persistenceTimestamp,
-                        };
-
-                        const { error: validationMetadataError } = await supabase
-                            .from('scrape_jobs')
-                            .update({
-                                metadata: {
-                                    ...priorMetadata,
-                                    crawl4ai: nextCrawl4AiMetadata,
-                                    official_brand_validation: validationMetadata,
-                                },
-                            })
-                            .eq('id', payload.job_id);
-
-                        if (validationMetadataError) {
-                            console.error('[Callback] Failed to persist Official Brand validation metadata:', validationMetadataError);
-                            return NextResponse.json({ error: 'Failed to persist Official Brand validation metadata' }, { status: 500 });
-                        }
-
-                        if (acceptedCount === 0) {
-                            const { error: zeroAcceptedStatusError } = await supabase
-                                .from('scrape_jobs')
-                                .update({
-                                    status: 'failed',
-                                    error_message: 'Official Brand returned no consolidation-ready results',
-                                    completed_at: persistenceTimestamp,
-                                    updated_at: persistenceTimestamp,
-                                })
-                                .eq('id', payload.job_id);
-
-                            if (zeroAcceptedStatusError) {
-                                console.error('[Callback] Failed to mark Official Brand job as failed after zero accepted results:', zeroAcceptedStatusError);
-                                return NextResponse.json(
-                                    { error: 'Failed to update Official Brand job status after validation' },
-                                    { status: 500 }
-                                );
-                            }
-
-                            effectiveJobStatus = 'failed';
-                        }
-
-                        if (acceptedCount > 0) {
-                            try {
-                                const extractedRows = buildExtractedOfficialBrandCandidateRows({
-                                    jobId: payload.job_id,
-                                    resultsBySku: resultsToPersist,
-                                    config: jobConfigRecord,
-                                    nowIso: persistenceTimestamp,
-                                });
-                                await persistOfficialBrandCandidateRows(supabase, extractedRows);
-                            } catch (candidateError) {
-                                console.warn(`[Callback] Failed to mark Official Brand URL candidates as extracted for job ${payload.job_id}:`, candidateError);
-                            }
-                        }
-                    }
 
                     if (missing.length > 0) {
                         console.warn(
@@ -649,9 +524,6 @@ export async function POST(request: NextRequest) {
                 }
 
                 console.log(`[Callback] Updated ${skus.length} products with scraped data (test_mode: ${isTestJob})`);
-
-                // NOTE: Consolidation is now manually triggered by users
-                // Previously: await onScraperComplete(payload.job_id, skus);
             }
 
             const recordResult = await recordCallbackProcessedWithRetry(

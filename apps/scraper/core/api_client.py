@@ -20,7 +20,8 @@ from typing import Any
 
 import httpx
 from scrapers.models.config import ScraperConfig as ScraperYamlConfig
-from scrapers.parser.yaml_parser import ScraperConfigParser
+# Phase 10: parser moved to legacy/ — enrichment path uses /api/internal/scraper-configs API
+# from scrapers.parser.yaml_parser import ScraperConfigParser
 from core.version import (
     get_runner_build_id,
     get_runner_build_sha,
@@ -93,6 +94,25 @@ class ClaimedChunk:
     ai_credentials: dict[str, Any] | None = None
     lease_token: str | None = None
     lease_expires_at: str | None = None
+
+
+@dataclass
+class ClaimedEnrichment:
+    """Enrichment attempt claimed from the coordinator."""
+
+    attempt_id: str
+    job_id: str
+    sku: str
+    target_url: str
+    domain: str | None = None
+    model: str | None = None
+    mode: str = "mixed"
+    target_id: str | None = None
+    job_config: dict[str, Any] | None = None
+    ai_credentials: dict[str, Any] | None = None
+    lease_token: str | None = None
+    lease_expires_at: str | None = None
+    test_mode: bool = False
 
 
 @dataclass
@@ -640,6 +660,142 @@ class ScraperAPIClient:
             logger.error(f"Error claiming cohort: {e}")
             return None
 
+    def claim_enrichment(self, runner_name: str | None = None) -> ClaimedEnrichment | None:
+        """
+        Claim the next pending enrichment attempt.
+
+        Returns:
+            ClaimedEnrichment if an attempt was claimed, None if none available.
+        """
+        if not self.api_url:
+            logger.error("API client not configured - missing URL")
+            return None
+
+        payload_dict: dict[str, Any] = {
+            "runner_name": runner_name or self.runner_name,
+        }
+        payload = json.dumps(payload_dict)
+
+        try:
+            data = self._make_request("POST", "/api/scraper/v1/claim-enrichment", payload=payload)
+
+            attempts = data.get("attempts", [])
+            if not attempts or not isinstance(attempts, list) or len(attempts) == 0:
+                logger.info("No pending enrichment attempts available")
+                return None
+
+            first = attempts[0]
+            logger.info(f"Claimed enrichment attempt {first.get('id')} for SKU {first.get('sku')}")
+            return ClaimedEnrichment(
+                attempt_id=first.get("id", ""),
+                job_id=first.get("job_id", ""),
+                sku=first.get("sku", ""),
+                target_url=first.get("source_url", ""),
+                domain=first.get("domain"),
+                model=first.get("model"),
+                mode=first.get("mode", "mixed"),
+                target_id=first.get("target_id"),
+                job_config=first.get("config"),
+                ai_credentials=first.get("ai_credentials"),
+                lease_token=first.get("lease_token"),
+                lease_expires_at=first.get("lease_expires_at"),
+                test_mode=first.get("test_mode", False),
+            )
+
+        except AuthenticationError as e:
+            logger.error(f"Authentication failed: {e}")
+            return None
+        except RunnerBuildMismatchError:
+            raise
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in {404, 204}:
+                logger.debug("No pending enrichment attempts available")
+                return None
+            logger.error(f"Failed to claim enrichment: {e.response.status_code} - {e.response.text}")
+            return None
+        except Exception as e:
+            logger.error(f"Error claiming enrichment: {e}")
+            return None
+
+    def submit_enrichment_result(
+        self,
+        attempt_id: str,
+        status: str,
+        result_json: str | None = None,
+        error_message: str | None = None,
+        lease_token: str | None = None,
+    ) -> bool:
+        """Submit the result of an enrichment attempt.
+
+        Sends the full EnrichmentResultV1 JSON as the request body with
+        transport metadata (_attempt_id, _lease_token) embedded in the body.
+        The web endpoint strips these extra fields before Zod validation.
+
+        Args:
+            attempt_id: The attempt ID from claim_enrichment.
+            status: "success", "partial", or "failed".
+            result_json: JSON string of the full EnrichmentResultV1 payload.
+            error_message: Error message if failed.
+            lease_token: Lease token from claim_enrichment.
+
+        Returns:
+            True if accepted, False otherwise.
+        """
+        if not self.api_url:
+            logger.error("API client not configured - missing URL")
+            return False
+
+        if result_json:
+            # Parse the full EnrichmentResultV1 result, add transport metadata
+            result_dict = json.loads(result_json)
+            result_dict["_attempt_id"] = attempt_id
+            result_dict["_status"] = status
+            if lease_token:
+                result_dict["_lease_token"] = lease_token
+            if error_message:
+                result_dict.setdefault("validation", {})
+                existing_warnings = result_dict["validation"].get("warnings", [])
+                if error_message not in existing_warnings:
+                    existing_warnings.append(error_message)
+                    result_dict["validation"]["warnings"] = existing_warnings
+            payload = json.dumps(result_dict)
+        else:
+            # No result - build a minimal failure payload
+            payload_dict: dict[str, Any] = {
+                "_attempt_id": attempt_id,
+                "_status": status,
+                "schema_version": "v1",
+                "sku": "",
+                "source": {"url": ""},
+                "status": "failed",
+                "extracted_at": datetime.utcnow().isoformat() if "datetime" in dir() else "",
+                "mode": "llm",
+                "product": {},
+                "confidence": {"overall": 0.0, "fields": {}},
+                "validation": {"warnings": [error_message] if error_message else []},
+                "attempts": [],
+            }
+            if error_message:
+                payload_dict["_error_message"] = error_message
+            payload = json.dumps(payload_dict)
+
+        try:
+            self._make_request("POST", "/api/scraper/v1/enrichment-callback", payload=payload)
+            logger.info(f"Submitted enrichment result for attempt {attempt_id}: status={status}")
+            return True
+
+        except AuthenticationError as e:
+            logger.error(f"Authentication failed: {e}")
+            return False
+        except RunnerBuildMismatchError:
+            raise
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Failed to submit enrichment result: {e.response.status_code} - {e.response.text}")
+            return False
+        except Exception as e:
+            logger.error(f"Error submitting enrichment result: {e}")
+            return False
+
     def submit_cohort_results(
         self,
         cohort_id: str,
@@ -913,30 +1069,11 @@ class ScraperAPIClient:
         use_yaml_configs = os.environ.get("USE_YAML_CONFIGS", "false").lower() == "true"
 
         if use_yaml_configs:
-            configs_dir = Path(__file__).resolve().parent.parent / "scrapers" / "configs"
-            config_file = configs_dir / f"{slug}.yaml"
-
-            if not config_file.exists():
-                raise ConfigFetchError(
-                    f"Config file not found: {config_file}",
-                    config_slug=slug,
-                )
-
-            try:
-                try:
-                    parsed_config = ScraperYamlConfig.parse_file(config_file)
-                except Exception:
-                    parsed_config = ScraperConfigParser().load_from_file(config_file)
-
-                config = parsed_config.model_dump() if hasattr(parsed_config, "model_dump") else parsed_config.dict()
-                config["slug"] = slug
-                return config
-            except Exception as e:
-                raise ConfigFetchError(
-                    f"Failed to load config from YAML for slug '{slug}': {e}",
-                    config_slug=slug,
-                    original_error=e,
-                ) from e
+            # Phase 10: YAML config loading deactivated
+            raise ConfigFetchError(
+                "YAML config loading deactivated in Phase 10 — use API to fetch config",
+                config_slug=slug,
+            )
 
         if not self.api_url:
             raise ConfigFetchError(
@@ -957,30 +1094,8 @@ class ScraperAPIClient:
         use_yaml_configs = os.environ.get("USE_YAML_CONFIGS", "false").lower() == "true"
 
         if use_yaml_configs:
-            configs_dir = Path(__file__).resolve().parent.parent / "scrapers" / "configs"
-            if not configs_dir.exists():
-                raise ConfigFetchError(f"YAML configs directory not found: {configs_dir}")
-
-            parser = ScraperConfigParser()
-            configs: list[dict[str, Any]] = []
-            for config_file in sorted(configs_dir.glob("*.yaml")):
-                slug = config_file.stem
-                try:
-                    try:
-                        parsed_config = ScraperYamlConfig.parse_file(config_file)
-                    except Exception:
-                        parsed_config = parser.load_from_file(config_file)
-                    configs.append(
-                        {
-                            "slug": slug,
-                            "name": parsed_config.name,
-                            "display_name": parsed_config.display_name,
-                        }
-                    )
-                except Exception as e:
-                    logger.warning(f"Skipping invalid scraper config YAML '{config_file.name}': {e}")
-
-            return configs
+            # Phase 10: YAML config listing deactivated
+            raise ConfigFetchError("YAML config listing deactivated in Phase 10 — use API to list configs")
 
         if not self.api_url:
             raise ConfigFetchError("API client not configured - missing URL")

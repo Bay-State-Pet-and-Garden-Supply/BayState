@@ -8,11 +8,12 @@ import type { StatusCount } from "@/lib/pipeline/types";
 
 const counts: StatusCount[] = [
   { status: "imported", count: 4 },
-  { status: "scraping", count: 6 },
-  { status: "scraped", count: 2 },
-  { status: "consolidating", count: 5 },
-  { status: "finalizing", count: 3 },
-  { status: "exporting", count: 7 },
+  { status: "url_review", count: 6 },
+  { status: "extracting", count: 2 },
+  { status: "processed", count: 5 },
+  { status: "merging", count: 3 },
+  { status: "reviewing", count: 7 },
+  { status: "publishing", count: 8 },
   { status: "failed", count: 1 },
 ];
 
@@ -27,46 +28,47 @@ describe("StageTabs", () => {
     );
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs.length).toBe(7);
+    expect(tabs.length).toBe(8);
 
     expect(screen.getByRole("tab", { name: /Imported/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Scraping/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Results/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Consolidating/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Finalizing/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Exporting/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /URL Review/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Extracting/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Processed/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Merging/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Reviewing/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Publishing/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Failed/i })).toBeInTheDocument();
   });
 
-  it("shows live counts for finalizing and exporting", () => {
+  it("shows live counts for reviewing and publishing", () => {
     render(
       <StageTabs
-        currentStage="finalizing"
+        currentStage="reviewing"
         counts={counts}
         onStageChange={() => {}}
       />,
     );
 
-    const finalizingTab = screen.getByRole("tab", { name: /Finalizing/i });
-    const exportingTab = screen.getByRole("tab", { name: /Exporting/i });
+    const reviewingTab = screen.getByRole("tab", { name: /Reviewing/i });
+    const publishingTab = screen.getByRole("tab", { name: /Publishing/i });
 
-    expect(within(finalizingTab).getByText("3")).toBeInTheDocument();
-    expect(within(exportingTab).getByText("7")).toBeInTheDocument();
+    expect(within(reviewingTab).getByText("7")).toBeInTheDocument();
+    expect(within(publishingTab).getByText("8")).toBeInTheDocument();
   });
 
   it("shows live counts for in-progress workflow tabs", () => {
     render(
       <StageTabs
-        currentStage="scraping"
+        currentStage="extracting"
         counts={counts}
         onStageChange={() => {}}
       />,
     );
 
-    const scrapingTab = screen.getByRole("tab", { name: /Scraping/i });
-    const consolidatingTab = screen.getByRole("tab", { name: /Consolidating/i });
+    const extractingTab = screen.getByRole("tab", { name: /Extracting/i });
+    const mergingTab = screen.getByRole("tab", { name: /Merging/i });
 
-    expect(within(scrapingTab).getByText("6")).toBeInTheDocument();
-    expect(within(consolidatingTab).getByText("5")).toBeInTheDocument();
+    expect(within(extractingTab).getByText("2")).toBeInTheDocument();
+    expect(within(mergingTab).getByText("3")).toBeInTheDocument();
   });
 });

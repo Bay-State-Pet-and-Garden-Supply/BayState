@@ -1079,7 +1079,7 @@ export function FinalizingResultsView({
                 {
                   method: "PATCH",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ pipeline_status: "scraped" }),
+                  body: JSON.stringify({ pipeline_status: "processed" }),
                 },
               )
             : await adminFetch(`/api/admin/pipeline/bulk`, {
@@ -1087,7 +1087,7 @@ export function FinalizingResultsView({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   skus: targetSkus,
-                  toStatus: "scraped",
+                  toStatus: "processed",
                 }),
               });
 

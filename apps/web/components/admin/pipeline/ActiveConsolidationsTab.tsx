@@ -97,7 +97,7 @@ export function ActiveConsolidationsTab({
         (r) => r.kind === "consolidation",
       );
       const searchScrapeRuns = allRuns.filter(
-        (r) => r.kind === "serp_search" || r.kind === "page_scrape",
+        (r) => r.kind === "enrichment",
       );
 
       // Map consolidation runs to the existing ConsolidationJob type

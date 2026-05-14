@@ -111,7 +111,7 @@ export function PipelineSidebarProductRow({
               {name}
             </div>
             
-            {variant === "scraped" && (
+            {variant === "processed" && (
               <div className="flex flex-wrap items-center gap-2 mt-2 min-w-0">
                 {sourceKeys.map((key) => (
                   <Badge

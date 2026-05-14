@@ -35,11 +35,12 @@ interface PipelineProductDetailProps {
 
 const pipelineStatusOptions: { value: PipelineStatus; label: string }[] = [
   { value: 'imported', label: 'Imported' },
-  { value: 'scraping', label: 'Scraping' },
-  { value: 'scraped', label: 'Scraped' },
-  { value: 'consolidating', label: 'Consolidating' },
-  { value: 'finalizing', label: 'Finalizing' },
-  { value: 'exporting', label: 'Exporting' },
+  { value: 'url_review', label: 'URL Review' },
+  { value: 'extracting', label: 'Extracting' },
+  { value: 'processed', label: 'Processed' },
+  { value: 'merging', label: 'Merging' },
+  { value: 'reviewing', label: 'Reviewing' },
+  { value: 'publishing', label: 'Publishing' },
   { value: 'failed', label: 'Failed' },
 ];
 
@@ -204,7 +205,7 @@ export function PipelineProductDetail({
           .filter((img) => img.startsWith('/') || img.startsWith('http') || img.startsWith('data:image/')),
       };
 
-      const requestedStatus = andApprove ? 'exporting' : pipelineStatus;
+      const requestedStatus = andApprove ? 'publishing' : pipelineStatus;
       const payload: {
         consolidated: typeof consolidated;
         pipeline_status?: PipelineStatus;
@@ -481,10 +482,10 @@ export function PipelineProductDetail({
               <Save className="mr-2 h-4 w-4" />
               {saving ? 'Saving…' : 'Save Draft'}
             </Button>
-            {pipelineStatus !== 'exporting' && (
+            {pipelineStatus !== 'publishing' && (
               <Button onClick={() => handleSave(true)} disabled={saving} className="flex-1 sm:flex-none rounded-none font-semibold">
                 <CheckCircle className="mr-2 h-4 w-4" />
-                {saving ? 'Saving…' : 'Save & Move to Exporting'}
+                {saving ? 'Saving…' : 'Save & Move to Publishing'}
               </Button>
             )}
           </div>

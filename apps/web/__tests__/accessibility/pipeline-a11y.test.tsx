@@ -27,12 +27,13 @@ const mockProduct = {
 
 const mockCounts = [
   { status: 'imported', count: 10 },
-  { status: 'scraping', count: 4 },
-  { status: 'scraped', count: 5 },
-  { status: 'consolidating', count: 1 },
-  { status: 'finalizing', count: 2 },
+  { status: 'url_review', count: 0 },
+  { status: 'extracting', count: 4 },
+  { status: 'processed', count: 5 },
+  { status: 'merging', count: 1 },
+  { status: 'reviewing', count: 2 },
   { status: 'failed', count: 1 },
-  { status: 'exporting', count: 3 },
+  { status: 'publishing', count: 3 },
 ];
 
 describe('Pipeline Accessibility', () => {
@@ -101,12 +102,12 @@ describe('Pipeline Accessibility', () => {
       expect(tablist).toBeInTheDocument();
 
       const tabs = screen.getAllByRole('tab');
-      expect(tabs.length).toBe(7);
+      expect(tabs.length).toBe(8);
       expect(screen.getAllByRole('tab', { name: /Imported/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole('tab', { name: /Scraping/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole('tab', { name: /Results/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole('tab', { name: /Finalizing/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole('tab', { name: /Exporting/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('tab', { name: /Extracting/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('tab', { name: /Processed/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('tab', { name: /Reviewing/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('tab', { name: /Publishing/i }).length).toBeGreaterThan(0);
     });
   });
 

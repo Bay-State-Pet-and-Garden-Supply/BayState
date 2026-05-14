@@ -17,58 +17,58 @@ describe('validateStatusTransition', () => {
     });
 
     it('allows canonical forward and retry/rework transitions', () => {
-        // NOTE: imported -> searching is intentionally removed (static scrape always first)
-        expect(validateStatusTransition('imported', 'searching')).toBe(false);
-        expect(validateStatusTransition('searching', 'url_review')).toBe(true);
+        expect(validateStatusTransition('imported', 'url_review')).toBe(true);
         expect(validateStatusTransition('url_review', 'extracting')).toBe(true);
-        expect(validateStatusTransition('url_review', 'scraping')).toBe(true);
-        expect(validateStatusTransition('extracting', 'scraped')).toBe(true);
-        expect(validateStatusTransition('imported', 'scraping')).toBe(true);
-        expect(validateStatusTransition('scraping', 'scraped')).toBe(true);
-        expect(validateStatusTransition('scraping', 'failed')).toBe(true);
-        expect(validateStatusTransition('scraping', 'imported')).toBe(true);
-        expect(validateStatusTransition('scraped', 'consolidating')).toBe(true);
-        expect(validateStatusTransition('scraped', 'finalizing')).toBe(true);
-        expect(validateStatusTransition('scraped', 'imported')).toBe(true);
-        expect(validateStatusTransition('scraped', 'failed')).toBe(true);
-        expect(validateStatusTransition('consolidating', 'finalizing')).toBe(true);
-        expect(validateStatusTransition('finalizing', 'exporting')).toBe(true);
-        expect(validateStatusTransition('finalizing', 'scraped')).toBe(true);
-        expect(validateStatusTransition('exporting', 'finalizing')).toBe(true);
+        expect(validateStatusTransition('url_review', 'imported')).toBe(true);
+        expect(validateStatusTransition('extracting', 'processed')).toBe(true);
+        expect(validateStatusTransition('extracting', 'url_review')).toBe(true);
+        expect(validateStatusTransition('extracting', 'failed')).toBe(true);
+        expect(validateStatusTransition('processed', 'merging')).toBe(true);
+        expect(validateStatusTransition('processed', 'reviewing')).toBe(true);
+        expect(validateStatusTransition('processed', 'imported')).toBe(true);
+        expect(validateStatusTransition('processed', 'failed')).toBe(true);
+        expect(validateStatusTransition('merging', 'reviewing')).toBe(true);
+        expect(validateStatusTransition('merging', 'processed')).toBe(true);
+        expect(validateStatusTransition('merging', 'failed')).toBe(true);
+        expect(validateStatusTransition('reviewing', 'publishing')).toBe(true);
+        expect(validateStatusTransition('reviewing', 'processed')).toBe(true);
+        expect(validateStatusTransition('publishing', 'reviewing')).toBe(true);
+        expect(validateStatusTransition('publishing', 'failed')).toBe(true);
         expect(validateStatusTransition('failed', 'imported')).toBe(true);
+        expect(validateStatusTransition('failed', 'url_review')).toBe(true);
+        expect(validateStatusTransition('failed', 'extracting')).toBe(true);
     });
 
     it('rejects invalid canonical transitions', () => {
-        expect(validateStatusTransition('imported', 'finalizing')).toBe(false);
-        expect(validateStatusTransition('imported', 'failed')).toBe(false);
-        expect(validateStatusTransition('imported', 'searching')).toBe(false);
-        expect(validateStatusTransition('searching', 'scraped')).toBe(false);
-        expect(validateStatusTransition('url_review', 'finalizing')).toBe(false);
-        expect(validateStatusTransition('extracting', 'exporting')).toBe(false);
-        expect(validateStatusTransition('scraped', 'exporting')).toBe(false);
-        expect(validateStatusTransition('finalizing', 'imported')).toBe(false);
-        expect(validateStatusTransition('exporting', 'imported')).toBe(false);
-        expect(validateStatusTransition('failed', 'scraped')).toBe(false);
-        expect(validateStatusTransition('failed', 'exporting')).toBe(false);
-        expect(validateStatusTransition('needs_fallback_review', 'finalizing')).toBe(false);
-        expect(validateStatusTransition('needs_fallback_review', 'extracting')).toBe(false);
-        expect(validateStatusTransition('scraped', 'searching')).toBe(false);
+        expect(validateStatusTransition('imported', 'processed')).toBe(false);
+        expect(validateStatusTransition('imported', 'failed')).toBe(true);
+        expect(validateStatusTransition('imported', 'publishing')).toBe(false);
+        expect(validateStatusTransition('url_review', 'processed')).toBe(false);
+        expect(validateStatusTransition('url_review', 'publishing')).toBe(false);
+        expect(validateStatusTransition('extracting', 'publishing')).toBe(false);
+        expect(validateStatusTransition('extracting', 'merging')).toBe(false);
+        expect(validateStatusTransition('processed', 'publishing')).toBe(false);
+        expect(validateStatusTransition('processed', 'extracting')).toBe(false);
+        expect(validateStatusTransition('merging', 'publishing')).toBe(false);
+        expect(validateStatusTransition('merging', 'extracting')).toBe(false);
+        expect(validateStatusTransition('reviewing', 'imported')).toBe(false);
+        expect(validateStatusTransition('reviewing', 'url_review')).toBe(false);
+        expect(validateStatusTransition('publishing', 'imported')).toBe(false);
+        expect(validateStatusTransition('failed', 'publishing')).toBe(false);
+        expect(validateStatusTransition('failed', 'processed')).toBe(false);
     });
 
     it('enforces the full canonical transition matrix', () => {
-        // Exclude needs_fallback_review — it's a legacy persisted status with no transitions
-        const matrixStatuses = statuses.filter(s => s !== 'needs_fallback_review');
+        const matrixStatuses = statuses;
         const validTargets: Record<PersistedPipelineStatus, PersistedPipelineStatus[]> = {
-            imported: ['imported', 'scraping'],
-            searching: ['searching', 'url_review', 'imported', 'failed'],
-            url_review: ['url_review', 'extracting', 'scraping', 'imported', 'failed'],
-            extracting: ['extracting', 'scraped', 'url_review', 'failed'],
-            scraping: ['scraping', 'scraped', 'failed', 'imported'],
-            scraped: ['scraped', 'consolidating', 'finalizing', 'imported', 'failed'],
-            consolidating: ['consolidating', 'finalizing', 'scraped', 'failed'],
-            finalizing: ['finalizing', 'exporting', 'scraped', 'failed'],
-            exporting: ['exporting', 'finalizing', 'failed'],
-            failed: ['failed', 'imported', 'url_review'],
+            imported: ['imported', 'url_review', 'failed'],
+            url_review: ['url_review', 'extracting', 'imported', 'failed'],
+            extracting: ['extracting', 'processed', 'url_review', 'failed'],
+            processed: ['processed', 'merging', 'reviewing', 'imported', 'failed'],
+            merging: ['merging', 'reviewing', 'processed', 'failed'],
+            reviewing: ['reviewing', 'publishing', 'processed', 'failed'],
+            publishing: ['publishing', 'reviewing', 'failed'],
+            failed: ['failed', 'imported', 'url_review', 'extracting'],
         } as Record<PersistedPipelineStatus, PersistedPipelineStatus[]>;
 
         matrixStatuses.forEach(from => {
@@ -76,9 +76,5 @@ describe('validateStatusTransition', () => {
                 expect(validateStatusTransition(from, to)).toBe(validTargets[from].includes(to));
             });
         });
-
-        // Same-status for needs_fallback_review is allowed, but no other transitions
-        expect(validateStatusTransition('needs_fallback_review', 'needs_fallback_review')).toBe(true);
-        expect(validateStatusTransition('needs_fallback_review', 'imported')).toBe(false);
     });
 });

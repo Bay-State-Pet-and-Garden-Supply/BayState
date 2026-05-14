@@ -115,48 +115,52 @@ export function queryImportedTabProducts(
   return queryTab("imported", supabase, pagination);
 }
 
-function queryScrapingTabProducts(
+function queryUrlReviewTabProducts(
   supabase: PipelineQuerySupabaseClient,
-  pagination?: PipelineTabPagination,
-  _activeScrapeIdentifiers?: unknown
+  pagination?: PipelineTabPagination
 ): Promise<PipelineTabQueryResult> {
-  return queryTab("scraping", supabase, pagination);
+  return queryTab("url_review", supabase, pagination);
 }
 
-function queryScrapedTabProducts(
+function queryExtractingTabProducts(
   supabase: PipelineQuerySupabaseClient,
-  pagination?: PipelineTabPagination,
-  _activeScrapeIdentifiers?: unknown
+  pagination?: PipelineTabPagination
 ): Promise<PipelineTabQueryResult> {
-  return queryTab("scraped", supabase, pagination);
+  return queryTab("extracting", supabase, pagination);
 }
 
-function queryConsolidatingTabProducts(
+function queryProcessedTabProducts(
+  supabase: PipelineQuerySupabaseClient,
+  pagination?: PipelineTabPagination,
+  _activeEnrichmentIdentifiers?: unknown
+): Promise<PipelineTabQueryResult> {
+  return queryTab("processed", supabase, pagination);
+}
+
+function queryMergingTabProducts(
   supabase: PipelineQuerySupabaseClient,
   pagination?: PipelineTabPagination,
   _activeConsolidationIdentifiers?: unknown
 ): Promise<PipelineTabQueryResult> {
-  return queryTab("consolidating", supabase, pagination);
+  return queryTab("merging", supabase, pagination);
 }
 
-function queryFinalizingTabProducts(
+function queryReviewingTabProducts(
   supabase: PipelineQuerySupabaseClient,
   pagination?: PipelineTabPagination,
   _activeConsolidationIdentifiers?: unknown,
   _storefrontIdentifiers?: unknown
 ): Promise<PipelineTabQueryResult> {
-  return queryTab("finalizing", supabase, pagination);
+  return queryTab("reviewing", supabase, pagination);
 }
 
-const queryFinalizedTabProducts = queryFinalizingTabProducts;
-
-function queryExportTabProducts(
+function queryPublishingTabProducts(
   supabase: PipelineQuerySupabaseClient,
   pagination?: PipelineTabPagination,
   _activeConsolidationIdentifiers?: unknown,
   _storefrontIdentifiers?: unknown
 ): Promise<PipelineTabQueryResult> {
-  return queryTab("exporting", supabase, pagination);
+  return queryTab("publishing", supabase, pagination);
 }
 
 function queryFailedTabProducts(
@@ -180,29 +184,32 @@ export async function queryWorkflowTabCounts(
   const pagination = { limit: 1, offset: 0 };
   const [
     imported,
-    scraping,
-    scraped,
-    consolidating,
-    finalizing,
-    exporting,
+    url_review,
+    extracting,
+    processed,
+    merging,
+    reviewing,
+    publishing,
     failed,
   ] = await Promise.all([
     queryImportedTabProducts(supabase, pagination),
-    queryScrapingTabProducts(supabase, pagination),
-    queryScrapedTabProducts(supabase, pagination),
-    queryConsolidatingTabProducts(supabase, pagination),
-    queryFinalizingTabProducts(supabase, pagination),
-    queryExportTabProducts(supabase, pagination),
+    queryUrlReviewTabProducts(supabase, pagination),
+    queryExtractingTabProducts(supabase, pagination),
+    queryProcessedTabProducts(supabase, pagination),
+    queryMergingTabProducts(supabase, pagination),
+    queryReviewingTabProducts(supabase, pagination),
+    queryPublishingTabProducts(supabase, pagination),
     queryFailedTabProducts(supabase, pagination),
   ]);
 
   return {
     imported: imported.count,
-    scraping: scraping.count,
-    scraped: scraped.count,
-    consolidating: consolidating.count,
-    finalizing: finalizing.count,
-    exporting: exporting.count,
+    url_review: url_review.count,
+    extracting: extracting.count,
+    processed: processed.count,
+    merging: merging.count,
+    reviewing: reviewing.count,
+    publishing: publishing.count,
     failed: failed.count,
   };
 }

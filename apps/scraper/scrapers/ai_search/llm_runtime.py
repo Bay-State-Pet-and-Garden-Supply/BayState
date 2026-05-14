@@ -54,6 +54,13 @@ class LLMRuntimeConfig:
     def crawl4ai_provider(self) -> str:
         return f"openai/{self.model}"
 
+    def to_metadata(self) -> dict[str, str | None]:
+        """Return model and mode metadata for enrichment contract."""
+        return {
+            "model": self.model,
+            "provider": self.provider,
+        }
+
 
 def resolve_llm_runtime(
     *,

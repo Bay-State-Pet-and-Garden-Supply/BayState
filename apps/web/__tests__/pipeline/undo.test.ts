@@ -17,7 +17,7 @@ describe('UndoQueue', () => {
             type: 'status_change' as const,
             skus: ['SKU-123'],
             fromStatus: 'imported' as const,
-            toStatus: 'scraped' as const,
+            toStatus: 'url_review' as const,
             revert: jest.fn().mockResolvedValue(undefined),
         };
 
@@ -33,7 +33,7 @@ describe('UndoQueue', () => {
             type: 'status_change' as const,
             skus: ['SKU-123'],
             fromStatus: 'imported' as const,
-            toStatus: 'scraped' as const,
+            toStatus: 'url_review' as const,
             revert: jest.fn().mockResolvedValue(undefined),
         };
 
@@ -53,7 +53,7 @@ describe('UndoQueue', () => {
             type: 'status_change' as const,
             skus: ['SKU-123'],
             fromStatus: 'imported' as const,
-            toStatus: 'scraped' as const,
+            toStatus: 'url_review' as const,
             revert: jest.fn().mockResolvedValue(undefined),
         };
 

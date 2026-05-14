@@ -1,9 +1,8 @@
 import {
   mapBatchJobStatusToRunStatus,
-  mapScrapeJobStatusToRunStatus,
-  determineScrapeJobKind,
+  mapEnrichmentJobStatusToRunStatus,
   getConsolidationStageLabel,
-  getScrapeStageLabel,
+  getEnrichmentStageLabel,
   PIPELINE_RUN_KIND_LABELS,
   PIPELINE_RUN_STATUS_LABELS,
 } from "@/lib/pipeline/run-types";
@@ -49,50 +48,34 @@ describe("mapBatchJobStatusToRunStatus", () => {
 });
 
 // =============================================================================
-// mapScrapeJobStatusToRunStatus
+// mapEnrichmentJobStatusToRunStatus
 // =============================================================================
 
-describe("mapScrapeJobStatusToRunStatus", () => {
-  it("maps pending to queued", () => {
-    expect(mapScrapeJobStatusToRunStatus("pending")).toBe("queued");
+describe("mapEnrichmentJobStatusToRunStatus", () => {
+  it("maps pending and queued to queued", () => {
+    expect(mapEnrichmentJobStatusToRunStatus("pending")).toBe("queued");
+    expect(mapEnrichmentJobStatusToRunStatus("queued")).toBe("queued");
   });
 
   it("maps claimed and running to running", () => {
-    expect(mapScrapeJobStatusToRunStatus("claimed")).toBe("running");
-    expect(mapScrapeJobStatusToRunStatus("running")).toBe("running");
+    expect(mapEnrichmentJobStatusToRunStatus("claimed")).toBe("running");
+    expect(mapEnrichmentJobStatusToRunStatus("running")).toBe("running");
   });
 
   it("maps completed to completed", () => {
-    expect(mapScrapeJobStatusToRunStatus("completed")).toBe("completed");
+    expect(mapEnrichmentJobStatusToRunStatus("completed")).toBe("completed");
   });
 
   it("maps failed to failed", () => {
-    expect(mapScrapeJobStatusToRunStatus("failed")).toBe("failed");
+    expect(mapEnrichmentJobStatusToRunStatus("failed")).toBe("failed");
   });
 
   it("maps cancelled to cancelled", () => {
-    expect(mapScrapeJobStatusToRunStatus("cancelled")).toBe("cancelled");
+    expect(mapEnrichmentJobStatusToRunStatus("cancelled")).toBe("cancelled");
   });
 
   it("defaults unknown statuses to running", () => {
-    expect(mapScrapeJobStatusToRunStatus("unknown")).toBe("running");
-  });
-});
-
-// =============================================================================
-// determineScrapeJobKind
-// =============================================================================
-
-describe("determineScrapeJobKind", () => {
-  it("returns serp_search for official_brand_url_discovery", () => {
-    expect(determineScrapeJobKind("official_brand_url_discovery")).toBe("serp_search");
-  });
-
-  it("returns page_scrape for any other type", () => {
-    expect(determineScrapeJobKind("direct_url_extraction")).toBe("page_scrape");
-    expect(determineScrapeJobKind("standard")).toBe("page_scrape");
-    expect(determineScrapeJobKind(null)).toBe("page_scrape");
-    expect(determineScrapeJobKind(undefined)).toBe("page_scrape");
+    expect(mapEnrichmentJobStatusToRunStatus("unknown")).toBe("running");
   });
 });
 
@@ -142,28 +125,26 @@ describe("getConsolidationStageLabel", () => {
 });
 
 // =============================================================================
-// getScrapeStageLabel
+// getEnrichmentStageLabel
 // =============================================================================
 
-describe("getScrapeStageLabel", () => {
-  it("returns URL discovery message for serp_search running", () => {
-    expect(getScrapeStageLabel("running", "official_brand_url_discovery")).toBe(
-      "Searching for official URLs...",
-    );
-  });
-
-  it("returns scraping message for page_scrape running", () => {
-    expect(getScrapeStageLabel("running", "standard")).toBe(
-      "Scraping product pages...",
+describe("getEnrichmentStageLabel", () => {
+  it("returns enriching message for running", () => {
+    expect(getEnrichmentStageLabel("running", 0, 5, 20)).toBe(
+      "Enriching products...",
     );
   });
 
   it("returns completed message", () => {
-    expect(getScrapeStageLabel("completed", null)).toBe("Scraping completed");
+    expect(getEnrichmentStageLabel("completed", 0, 0, 10)).toBe(
+      "Settled — review errors or apply results",
+    );
   });
 
   it("returns queued message", () => {
-    expect(getScrapeStageLabel("queued", null)).toBe("Queued");
+    expect(getEnrichmentStageLabel("queued", 5, 0, 20)).toBe(
+      "5 products still queued",
+    );
   });
 });
 
@@ -174,8 +155,7 @@ describe("getScrapeStageLabel", () => {
 describe("PIPELINE_RUN_KIND_LABELS", () => {
   it("has labels for all kinds", () => {
     const kinds: PipelineRunKind[] = [
-      "serp_search",
-      "page_scrape",
+      "enrichment",
       "consolidation",
       "apply_results",
     ];

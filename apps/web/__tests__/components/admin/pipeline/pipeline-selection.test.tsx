@@ -70,6 +70,43 @@ jest.mock("@/components/admin/pipeline/ScraperSelectDialog", () => ({
   },
 }));
 
+jest.mock("@/components/admin/pipeline/PipelineSidebarTable", () => ({
+  PipelineSidebarTable: ({
+    products,
+    selectedSkus,
+    onSelectSku,
+  }: {
+    products: Array<{ sku: string }>;
+    selectedSkus: Set<string>;
+    onSelectSku: (
+      sku: string,
+      selected: boolean,
+      index?: number,
+      isShiftClick?: boolean,
+      visibleProducts?: Array<{ sku: string }>,
+    ) => void;
+  }) => (
+    <div data-testid="sidebar-table">
+      {products.map((product, index) => {
+        const isSelected = selectedSkus.has(product.sku);
+
+        return (
+          <button
+            key={product.sku}
+            type="button"
+            data-state={isSelected ? "selected" : "unselected"}
+            onClick={(event) =>
+              onSelectSku(product.sku, !isSelected, index, event.shiftKey, products)
+            }
+          >
+            {product.sku}
+          </button>
+        );
+      })}
+    </div>
+  ),
+}));
+
 jest.mock("@/components/admin/pipeline/ImportedResultsView", () => ({
   ImportedResultsView: ({
     products,
@@ -137,11 +174,12 @@ const products: PipelineProduct[] = [
 
 const counts: StatusCount[] = [
   { status: "imported", count: 3 },
-  { status: "scraping", count: 0 },
-  { status: "scraped", count: 0 },
-  { status: "consolidating", count: 0 },
-  { status: "finalizing", count: 0 },
-  { status: "exporting", count: 0 },
+  { status: "url_review", count: 0 },
+  { status: "extracting", count: 0 },
+  { status: "processed", count: 0 },
+  { status: "merging", count: 0 },
+  { status: "reviewing", count: 0 },
+  { status: "publishing", count: 0 },
   { status: "failed", count: 0 },
 ];
 
@@ -165,11 +203,12 @@ beforeEach(() => {
 
 const importedCounts: StatusCount[] = [
   { status: "imported", count: 3 },
-  { status: "scraping", count: 0 },
-  { status: "scraped", count: 0 },
-  { status: "consolidating", count: 0 },
-  { status: "finalizing", count: 0 },
-  { status: "exporting", count: 0 },
+  { status: "url_review", count: 0 },
+  { status: "extracting", count: 0 },
+  { status: "processed", count: 0 },
+  { status: "merging", count: 0 },
+  { status: "reviewing", count: 0 },
+  { status: "publishing", count: 0 },
   { status: "failed", count: 0 },
 ];
 
@@ -246,30 +285,29 @@ describe("PipelineClient shift range selection", () => {
     });
   });
 
-  it("opens scraper dialog with selected SKU count", async () => {
+  it("opens enrichment dialog with selected SKU count", async () => {
+    const processedCounts: StatusCount[] = [
+      { status: "imported", count: 0 },
+      { status: "url_review", count: 0 },
+      { status: "extracting", count: 0 },
+      { status: "processed", count: 2 },
+      { status: "merging", count: 0 },
+      { status: "reviewing", count: 0 },
+      { status: "publishing", count: 0 },
+      { status: "failed", count: 0 },
+    ];
+
+    const processedProducts = importedCohortProducts.map(p => ({
+      ...p,
+      pipeline_status: "processed" as const,
+    }));
+
     render(
       <PipelineClient
-        initialCounts={importedCounts}
-        initialProducts={[importedCohortProducts[0]]}
-        initialTotal={1}
-        initialStage="imported"
-      />,
-    );
-
-    const row = await screen.findByRole("button", { name: "SKU101" });
-    fireEvent.click(row);
-
-    const floatingBar = screen.getByText("Scrape Selected");
-    expect(floatingBar).toBeInTheDocument();
-  });
-
-  it("does not include legacy enrichment method props in scraper dialog", async () => {
-    render(
-      <PipelineClient
-        initialCounts={importedCounts}
-        initialProducts={importedCohortProducts}
+        initialCounts={processedCounts}
+        initialProducts={processedProducts}
         initialTotal={2}
-        initialStage="imported"
+        initialStage="processed"
       />,
     );
 
@@ -277,6 +315,45 @@ describe("PipelineClient shift range selection", () => {
     const row2 = screen.getByRole("button", { name: "SKU102" });
     fireEvent.click(row1);
     fireEvent.click(row2);
+
+    await waitFor(() => {
+      expect(lastScraperDialogProps).not.toBeNull();
+    });
+  });
+
+  it("does not include legacy enrichment method props in scraper dialog", async () => {
+    const processedCounts: StatusCount[] = [
+      { status: "imported", count: 0 },
+      { status: "url_review", count: 0 },
+      { status: "extracting", count: 0 },
+      { status: "processed", count: 2 },
+      { status: "merging", count: 0 },
+      { status: "reviewing", count: 0 },
+      { status: "publishing", count: 0 },
+      { status: "failed", count: 0 },
+    ];
+
+    const processedProducts = importedCohortProducts.map(p => ({
+      ...p,
+      pipeline_status: "processed" as const,
+    }));
+
+    render(
+      <PipelineClient
+        initialCounts={processedCounts}
+        initialProducts={processedProducts}
+        initialTotal={2}
+        initialStage="processed"
+      />,
+    );
+
+    const row1 = await screen.findByRole("button", { name: "SKU101" });
+    const row2 = screen.getByRole("button", { name: "SKU102" });
+    fireEvent.click(row1);
+    fireEvent.click(row2);
+
+    const reEnrichButton = await screen.findByRole("button", { name: /Re-enrich/i });
+    fireEvent.click(reEnrichButton);
 
     await waitFor(() => {
       expect(lastScraperDialogProps).not.toHaveProperty("brandName");

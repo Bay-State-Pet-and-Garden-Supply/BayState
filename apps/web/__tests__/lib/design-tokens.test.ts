@@ -54,16 +54,16 @@ describe('design-tokens', () => {
             expect(PIPELINE_STATUS_COLORS.imported).toBe('#6B7280');
         });
 
-        it('should map scraped to running blue', () => {
-            expect(PIPELINE_STATUS_COLORS.scraped).toBe('#3B82F6');
+        it('should map processed to running blue', () => {
+            expect(PIPELINE_STATUS_COLORS.processed).toBe('#3B82F6');
         });
 
-        it('should map finalizing to warning amber', () => {
-            expect(PIPELINE_STATUS_COLORS.finalizing).toBe('#F59E0B');
+        it('should map reviewing to warning amber', () => {
+            expect(PIPELINE_STATUS_COLORS.reviewing).toBe('#F59E0B');
         });
 
-        it('should map exporting to forest green', () => {
-            expect(PIPELINE_STATUS_COLORS.exporting).toBe('#1a4d3c');
+        it('should map publishing to forest green', () => {
+            expect(PIPELINE_STATUS_COLORS.publishing).toBe('#1a4d3c');
         });
 
         it('should map failed to failed red', () => {
@@ -74,11 +74,12 @@ describe('design-tokens', () => {
     describe('PIPELINE_STATUS_LABELS', () => {
         it('should have correct labels for all statuses', () => {
             expect(PIPELINE_STATUS_LABELS.imported).toBe('Imported');
-            expect(PIPELINE_STATUS_LABELS.scraping).toBe('Scraping');
-            expect(PIPELINE_STATUS_LABELS.scraped).toBe('Scraped');
-            expect(PIPELINE_STATUS_LABELS.consolidating).toBe('Consolidating');
-            expect(PIPELINE_STATUS_LABELS.finalizing).toBe('Finalizing');
-            expect(PIPELINE_STATUS_LABELS.exporting).toBe('Exporting');
+            expect(PIPELINE_STATUS_LABELS.url_review).toBe('URL Review');
+            expect(PIPELINE_STATUS_LABELS.extracting).toBe('Extracting');
+            expect(PIPELINE_STATUS_LABELS.processed).toBe('Processed');
+            expect(PIPELINE_STATUS_LABELS.merging).toBe('Merging');
+            expect(PIPELINE_STATUS_LABELS.reviewing).toBe('Reviewing');
+            expect(PIPELINE_STATUS_LABELS.publishing).toBe('Publishing');
             expect(PIPELINE_STATUS_LABELS.failed).toBe('Failed');
         });
     });
@@ -104,16 +105,16 @@ describe('design-tokens', () => {
             expect(getStatusColor('imported')).toBe('#6B7280');
         });
 
-        it('should return correct color for scraped status', () => {
-            expect(getStatusColor('scraped')).toBe('#3B82F6');
+        it('should return correct color for processed status', () => {
+            expect(getStatusColor('processed')).toBe('#3B82F6');
         });
 
-        it('should return correct color for finalizing status', () => {
-            expect(getStatusColor('finalizing')).toBe('#F59E0B');
+        it('should return correct color for reviewing status', () => {
+            expect(getStatusColor('reviewing')).toBe('#F59E0B');
         });
 
-        it('should return correct color for exporting status', () => {
-            expect(getStatusColor('exporting')).toBe('#1a4d3c');
+        it('should return correct color for publishing status', () => {
+            expect(getStatusColor('publishing')).toBe('#1a4d3c');
         });
 
         it('should return correct color for failed status', () => {
@@ -126,16 +127,16 @@ describe('design-tokens', () => {
             expect(getStatusCssVar('imported')).toBe('--color-status-queued');
         });
 
-        it('should return correct CSS var for scraped status', () => {
-            expect(getStatusCssVar('scraped')).toBe('--color-status-running');
+        it('should return correct CSS var for processed status', () => {
+            expect(getStatusCssVar('processed')).toBe('--color-status-running');
         });
 
-        it('should return correct CSS var for finalizing status', () => {
-            expect(getStatusCssVar('finalizing')).toBe('--color-status-warning');
+        it('should return correct CSS var for reviewing status', () => {
+            expect(getStatusCssVar('reviewing')).toBe('--color-status-warning');
         });
 
-        it('should return correct CSS var for exporting status', () => {
-            expect(getStatusCssVar('exporting')).toBe('--color-brand-forest-green');
+        it('should return correct CSS var for publishing status', () => {
+            expect(getStatusCssVar('publishing')).toBe('--color-brand-forest-green');
         });
 
         it('should return correct CSS var for failed status', () => {

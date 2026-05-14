@@ -23,11 +23,11 @@ import {
 } from "lucide-react";
 import { StageTabs } from "./StageTabs";
 import { ProductTable } from "./ProductTable";
-import { ScrapedResultsView } from "./ScrapedResultsView";
-import { ActiveRunsTab } from "./ActiveRunsTab";
+import { ProcessedResultsView } from "./ProcessedResultsView";
+import { ActiveEnrichmentsTab } from "./ActiveEnrichmentsTab";
 import { ActiveConsolidationsTab } from "./ActiveConsolidationsTab";
-import { FinalizingResultsView } from "./FinalizingResultsView";
-import { FallbackReviewView } from "./FallbackReviewView";
+import { UrlReviewWorkspace } from "./UrlReviewWorkspace";
+import { ReviewingResultsView } from "./ReviewingResultsView";
 import { FloatingActionsBar } from "./FloatingActionsBar";
 import { ImportedResultsView } from "./ImportedResultsView";
 import { PipelineFilters, type PipelineFiltersState } from "./PipelineFilters";
@@ -87,10 +87,10 @@ const BulkAssignBrandDialog = dynamic(
 );
 
 const LIVE_OPERATIONAL_TABS = new Set<PipelineStage>([
-  "scraping",
-  "consolidating",
+  "extracting",
+  "merging",
 ]);
-const WORKSPACE_TABS = new Set<PipelineStage>(["scraped", "finalizing", "imported", "exporting"]);
+const WORKSPACE_TABS = new Set<PipelineStage>(["processed", "reviewing", "imported", "publishing", "url_review"]);
 const EMPTY_SOURCES: string[] = [];
 
 function isLiveOperationalTab(stage: PipelineStage): boolean {
@@ -211,7 +211,7 @@ export function PipelineClient({
 
   const filteredProducts = useMemo(() => {
     let result = products;
-    if (sourceFilter && currentStage === "scraped") {
+    if (sourceFilter && currentStage === "processed") {
       result = products.filter((product) => {
         const productSources = product.sources ?? {};
         return Object.keys(productSources)
@@ -344,7 +344,7 @@ export function PipelineClient({
           limit: "500",
         });
         if (searchTerm) params.set("search", searchTerm);
-        if (sourceFilter && stage === "scraped")
+        if (sourceFilter && stage === "processed")
           params.set("source", sourceFilter);
         if (productLineFilter) params.set("product_line", productLineFilter);
         if (cohortIdFilter) params.set("cohort_id", cohortIdFilter);
@@ -583,7 +583,7 @@ export function PipelineClient({
       startNavigation(() => {
         // If we're on the /export subpage, go back to the main pipeline route for other stages
         const targetPath =
-          pathname.endsWith("/export") && stage !== "exporting"
+          pathname.endsWith("/publish") && stage !== "publishing"
             ? "/admin/pipeline"
             : pathname;
         router.replace(`${targetPath}?${params.toString()}`);
@@ -724,7 +724,7 @@ export function PipelineClient({
             },
           );
           setSelectedSkus(new Set());
-          handleStageChange("consolidating");
+          handleStageChange("merging");
           await fetchCounts();
         } else {
           const error = await res.json();
@@ -972,12 +972,12 @@ export function PipelineClient({
         refreshAll();
       } else if (selectedSkus.size > 0) {
         if (e.key.toLowerCase() === "s") {
-          if (currentStage === "imported" || currentStage === "scraped") {
+          if (currentStage === "imported" || currentStage === "url_review") {
             e.preventDefault();
             setIsScrapeDialogOpen(true);
           }
         } else if (e.key.toLowerCase() === "c") {
-          if (currentStage === "scraped") {
+          if (currentStage === "processed") {
             e.preventDefault();
             handleConsolidate(Array.from(selectedSkus));
           }
@@ -1028,7 +1028,7 @@ export function PipelineClient({
             ? payload.updatedCount
             : skus.length;
         toast.success(
-          nextStage === "exporting"
+          nextStage === "publishing"
             ? `Published ${updatedCount} product${updatedCount === 1 ? "" : "s"} to the storefront`
             : `Moved ${updatedCount} product${updatedCount === 1 ? "" : "s"} to ${nextStage}`,
         );
@@ -1084,7 +1084,7 @@ export function PipelineClient({
     const skus = Array.from(selectedSkus);
     if (skus.length === 0) return;
 
-    const isAdditionalScrape = currentStage === "scraped";
+    const isAdditionalScrape = currentStage === "processed";
 
     try {
       const res = await adminFetch("/api/admin/pipeline/scrape", {
@@ -1115,7 +1115,7 @@ export function PipelineClient({
           setSearch("");
           await refreshAll();
         } else {
-          handleStageChange("scraping");
+          handleStageChange("extracting");
         }
       } else {
         const error = await res.json();
@@ -1248,7 +1248,36 @@ export function PipelineClient({
         (isLoading || isNavigating) && "opacity-50 pointer-events-none"
       )}>
         <div className="flex flex-col flex-1 h-full w-full min-h-0">
-          {currentStage === "scraping" ? (
+          {currentStage === "url_review" ? (
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <UrlReviewWorkspace
+                products={filteredProducts}
+                selectedSkus={selectedSkus}
+                onSelectSku={handleSelectSku}
+                onRefresh={refreshAll}
+                search={search}
+                onSearchChange={(value: string) => setSearch(value)}
+                filters={filterState}
+                onFilterChange={applyFilterState}
+                availableSources={sources}
+                groupedProducts={groupedProducts}
+                cohortBrands={groupedProducts.brands}
+                onEditCohort={
+                  canEditCohorts
+                    ? (id: string, name: string | null, brandName: string | null) => {
+                        setEditingCohort({
+                          id,
+                          name,
+                          brandName,
+                          brandId: (groupedProducts as any).brandIds?.[id] || null,
+                          brand: (groupedProducts as any).brandObjects?.[id] || null,
+                        });
+                      }
+                    : undefined
+                }
+              />
+            </div>
+          ) : currentStage === "extracting" ? (
             <div className="grid gap-4 xl:grid-cols-1 p-1 pr-8 pb-8">
               <AdminCard variant="panel">
                 <AdminCardHeader>
@@ -1256,34 +1285,18 @@ export function PipelineClient({
                     <Activity className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <AdminCardTitle>Active Runs</AdminCardTitle>
+                    <AdminCardTitle>Active Enrichments</AdminCardTitle>
                     <AdminCardDescription>
-                      Live scraper jobs currently running or queued.
+                      Live AI enrichment jobs currently running or queued.
                     </AdminCardDescription>
                   </div>
                 </AdminCardHeader>
                 <AdminCardContent>
-                  <ActiveRunsTab />
-                </AdminCardContent>
-              </AdminCard>
-              <AdminCard variant="panel">
-                <AdminCardHeader>
-                  <div className="rounded-lg bg-cyan-500/10 p-2">
-                    <Activity className="h-5 w-5 text-cyan-500" />
-                  </div>
-                  <div>
-                    <AdminCardTitle>Fallback Extraction Runs</AdminCardTitle>
-                    <AdminCardDescription>
-                      Live fallback URL extraction jobs currently running or queued.
-                    </AdminCardDescription>
-                  </div>
-                </AdminCardHeader>
-                <AdminCardContent>
-                  <ActiveRunsTab jobSubtype="direct_url_extraction" />
+                  <ActiveEnrichmentsTab />
                 </AdminCardContent>
               </AdminCard>
             </div>
-          ) : currentStage === "consolidating" ? (
+          ) : currentStage === "merging" ? (
             <div className="grid gap-4 xl:grid-cols-1 p-1 pr-8 pb-8">
               <AdminCard variant="panel">
                 <AdminCardHeader>
@@ -1302,12 +1315,12 @@ export function PipelineClient({
                 </AdminCardContent>
               </AdminCard>
             </div>
-          ) : currentStage === "scraped" ? (
-            <ScrapedResultsView
+          ) : currentStage === "processed" ? (
+            <ProcessedResultsView
               products={filteredProducts}
               selectedSkus={selectedSkus}
               onSelectSku={handleSelectSku}
-              onSelectAll={(skus) => {
+              onSelectAll={(skus: string[]) => {
                 setSelectedSkus((prev) => {
                   const next = new Set(prev);
                   skus.forEach((sku) => {
@@ -1316,7 +1329,7 @@ export function PipelineClient({
                   return next;
                 });
               }}
-              onDeselectAll={(skus) => {
+              onDeselectAll={(skus: string[]) => {
                 setSelectedSkus((prev) => {
                   const next = new Set(prev);
                   skus.forEach((sku) => {
@@ -1342,27 +1355,27 @@ export function PipelineClient({
                   setCohortIdFilter(newFilters.cohort_id || "");
               }}
               availableSources={sources}
-              groupedProducts={groupedProducts}
+              groupedProducts={groupedProducts as any}
               cohortBrands={groupedProducts.brands}
               cohortBrandObjects={groupedProducts.brandObjects}
               onEditCohort={
                 canEditCohorts
-                  ? (id, name, brandName) => {
+                  ? (id: string, name: string | null, brandName: string | null) => {
                       setEditingCohort({
                         id,
-                        name,
-                        brandName,
-                        brandId: groupedProducts.brandIds[id] || null,
-                        brand: groupedProducts.brandObjects[id] || null,
+                        name: name ?? null,
+                        brandName: brandName ?? null,
+                        brandId: groupedProducts.brandIds?.[id] || null,
+                        brand: groupedProducts.brandObjects?.[id] || null,
                       });
                     }
                   : undefined
               }
               isSearching={isSearching}
             />
-          ) : currentStage === "finalizing" ? (
-            <div data-testid="finalizing-results" className="contents">
-              <FinalizingResultsView
+          ) : currentStage === "reviewing" ? (
+            <div data-testid="reviewing-results" className="contents">
+              <ReviewingResultsView
                 products={filteredProducts}
                 onRefresh={refreshAll}
                 search={search}
@@ -1390,7 +1403,7 @@ export function PipelineClient({
                 isSearching={isSearching}
               />
             </div>
-          ) : currentStage === "imported" || currentStage === "exporting" || hideTabs ? (
+          ) : currentStage === "imported" || currentStage === "publishing" || hideTabs ? (
             <ImportedResultsView
               products={filteredProducts}
               selectedSkus={selectedSkus}
@@ -1690,14 +1703,14 @@ export function PipelineClient({
           scrapeSelectionValidation={scrapeSelectionValidation}
 
           onDelete={handleDelete}
-          actionState={currentStage === "exporting" ? exportActionState : null}
+          actionState={currentStage === "publishing" ? exportActionState : null}
           onUploadShopSite={
-            currentStage === "exporting"
+            currentStage === "publishing"
               ? handleUploadSelectedShopSite
               : undefined
           }
           onDownloadZip={
-            currentStage === "exporting" ? handleDownloadSelectedZip : undefined
+            currentStage === "publishing" ? handleDownloadSelectedZip : undefined
           }
           showLegacyShopSiteActions={false}
         />

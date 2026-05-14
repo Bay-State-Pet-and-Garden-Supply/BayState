@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { clearScrapeResultsAndResetStatus } from '@/lib/pipeline';
+import { clearEnrichmentResultsAndResetStatus } from '@/lib/pipeline';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 
 export async function POST(request: NextRequest) {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'SKUs array is required' }, { status: 400 });
         }
 
-        const result = await clearScrapeResultsAndResetStatus(skus, auth.user.id);
+        const result = await clearEnrichmentResultsAndResetStatus(skus, auth.user.id);
 
         if (!result.success) {
             return NextResponse.json({ error: result.error }, { status: 500 });

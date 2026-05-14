@@ -21,7 +21,7 @@ const mockProducts: PipelineProduct[] = [
     input: { name: 'Product 2', price: 20.99 },
     sources: {},
     consolidated: { name: 'Product 2', price: 20.99 },
-    pipeline_status: 'scraped',
+    pipeline_status: 'processed',
     created_at: '2024-01-02',
     updated_at: '2024-01-02',
   },
