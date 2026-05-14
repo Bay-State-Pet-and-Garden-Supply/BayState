@@ -18,7 +18,7 @@
  *   1 = one or more checks failed
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -80,7 +80,7 @@ async function runCheck<T>(
  * Count rows in a table using Supabase client with exact count.
  */
 async function countRows(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   table: string
 ): Promise<number> {
   const { count, error } = await supabase
@@ -98,7 +98,7 @@ async function countRows(
  * Count rows with a filter.
  */
 async function countRowsWhere(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   table: string,
   column: string,
   value: unknown
@@ -106,7 +106,7 @@ async function countRowsWhere(
   const { count, error } = await supabase
     .from(table)
     .select('*', { count: 'exact', head: true })
-    .eq(column, value);
+    .eq(column, value as any);
 
   if (error) {
     throw new Error(`Failed to count ${table} where ${column}=${value}: ${error.message}`);

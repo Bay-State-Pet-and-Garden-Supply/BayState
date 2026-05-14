@@ -21,8 +21,8 @@ jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(),
 }));
 
-jest.mock('@/lib/admin/scrapers/configs', () => ({
-  getLocalScraperConfigs: jest.fn(),
+jest.mock('@/lib/admin/scrapers/configs-db', () => ({
+  getDatabaseScraperConfigs: jest.fn(),
 }));
 
 jest.mock('@/lib/ai-scraping/credentials', () => ({
@@ -132,8 +132,8 @@ describe('runner scraper config forwarding', () => {
     const { validateRunnerAuth } = jest.requireMock('@/lib/scraper-auth') as {
       validateRunnerAuth: { mockResolvedValue: (value: unknown) => void };
     };
-    const { getLocalScraperConfigs } = jest.requireMock('@/lib/admin/scrapers/configs') as {
-      getLocalScraperConfigs: { mockResolvedValue: (value: unknown) => void };
+    const { getDatabaseScraperConfigs } = jest.requireMock('@/lib/admin/scrapers/configs-db') as {
+      getDatabaseScraperConfigs: { mockResolvedValue: (value: unknown) => void };
     };
     const {
       getAIScrapingDefaults,
@@ -148,7 +148,7 @@ describe('runner scraper config forwarding', () => {
       authMethod: 'apiKey',
       allowedScrapers: null,
     });
-    getLocalScraperConfigs.mockResolvedValue([localScraperConfig]);
+
     getAIScrapingDefaults.mockResolvedValue({
       llm_provider: 'openai',
       llm_model: 'gpt-4o-mini',
@@ -158,6 +158,7 @@ describe('runner scraper config forwarding', () => {
       confidence_threshold: 0.7,
     });
     getAIScrapingRuntimeCredentials.mockResolvedValue(null);
+    getDatabaseScraperConfigs.mockResolvedValue([localScraperConfig]);
   });
 
   it('forwards login config in poll responses', async () => {

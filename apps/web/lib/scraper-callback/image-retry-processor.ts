@@ -1,13 +1,9 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { parse as parseYaml } from 'yaml';
 import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
-import { scraperConfigRequiresLogin } from '@/lib/scraper-config-login';
 import {
   getRetryDelay,
   ImageCaptureErrorType,
@@ -24,16 +20,14 @@ const DEFAULT_CONCURRENCY = 3;
 const CIRCUIT_BREAKER_FAILURE_THRESHOLD = 5;
 const CIRCUIT_BREAKER_WINDOW_MS = 60_000;
 const CIRCUIT_BREAKER_OPEN_MS = 5 * 60_000;
-const MAX_RELOGIN_ATTEMPTS = 2;
 const AUTH_METADATA_PREFIX = '[image-retry-auth]';
-const execFileAsync = promisify(execFile);
 
 function findWorkspaceRoot(startDir: string): string | null {
   let currentDir = startDir;
 
   while (true) {
     const turboConfigPath = path.join(currentDir, 'turbo.json');
-    const scraperPath = path.join(currentDir, 'apps', 'scraper', 'scrapers', 'configs');
+    const scraperPath = path.join(currentDir, 'apps', 'scraper');
 
     if (existsSync(turboConfigPath) && existsSync(scraperPath)) {
       return currentDir;
@@ -52,18 +46,18 @@ function resolveScraperRoot(): string {
   const workspaceRoot = findWorkspaceRoot(process.cwd());
   if (workspaceRoot) {
     const workspacePath = path.join(workspaceRoot, 'apps', 'scraper');
-    if (existsSync(path.join(workspacePath, 'scrapers', 'configs'))) {
+    if (existsSync(workspacePath)) {
       return workspacePath;
     }
   }
 
   const siblingCandidate = path.resolve(process.cwd(), '..', 'scraper');
-  if (existsSync(path.join(siblingCandidate, 'scrapers', 'configs'))) {
+  if (existsSync(siblingCandidate)) {
     return siblingCandidate;
   }
 
   const workspaceCandidate = path.resolve(process.cwd(), 'apps', 'scraper');
-  if (existsSync(path.join(workspaceCandidate, 'scrapers', 'configs'))) {
+  if (existsSync(workspaceCandidate)) {
     return workspaceCandidate;
   }
 
@@ -71,7 +65,7 @@ function resolveScraperRoot(): string {
     `Could not find scraper root directory. ` +
     `Tried: ${workspaceRoot ? path.join(workspaceRoot, 'apps', 'scraper') : 'n/a (no workspace root)'}, ` +
     `${siblingCandidate}, ${workspaceCandidate}. ` +
-    `Ensure the scraper configs exist at one of these locations.`
+    `Ensure the scraper app exists at one of these locations.`
   );
 }
 
@@ -86,19 +80,11 @@ export interface ProductRetryContext {
 
 interface ScraperConfigMatch {
   slug: string;
-  file_path: string;
-}
-
-interface ScraperYamlConfig {
-  base_url?: string;
-  login?: unknown;
-  workflows?: unknown[];
-  requires_login?: boolean;
+  base_url: string | null;
 }
 
 interface ScraperRuntimeConfig {
   slug: string;
-  filePath: string;
   baseUrl: string | null;
   requiresLogin: boolean;
 }
@@ -162,7 +148,6 @@ interface ImageRetryProcessorOptions {
   supabase?: Pick<SupabaseClient, 'rpc' | 'from'>;
   captureImage?: (request: ImageRetryCaptureRequest) => Promise<ImageRetryCaptureResult>;
   readBrowserSession?: (scraper: ScraperRuntimeConfig) => Promise<BrowserSessionState>;
-  reauthenticate?: (context: ProductRetryContext, session: BrowserSessionState) => Promise<BrowserSessionState>;
   now?: () => Date;
   logger?: Pick<Console, 'info' | 'warn' | 'error'>;
   batchSize?: number;
@@ -227,15 +212,6 @@ function formatRetryError(message: string, auth?: RetryAuthMetadata): string {
   return `${AUTH_METADATA_PREFIX}${JSON.stringify({ message, auth })}`;
 }
 
-function isExpired(sessionExpiresAt: string | null, now: Date): boolean {
-  if (!sessionExpiresAt) {
-    return true;
-  }
-
-  const expiresAtMs = new Date(sessionExpiresAt).getTime();
-  return Number.isNaN(expiresAtMs) || expiresAtMs <= now.getTime();
-}
-
 function getSessionExpiryFromStorageState(storageState: string): string | null {
   const parsed = JSON.parse(storageState) as { cookies?: Array<{ expires?: number }> };
   if (!Array.isArray(parsed.cookies)) {
@@ -298,7 +274,7 @@ async function loadScraperRuntimeConfig(
 
   const { data, error } = await supabase
     .from('scraper_configs')
-    .select('slug, file_path')
+    .select('slug, base_url')
     .in('slug', sourceNames);
 
   if (error || !Array.isArray(data) || data.length === 0) {
@@ -306,24 +282,19 @@ async function loadScraperRuntimeConfig(
   }
 
   const configs = data as ScraperConfigMatch[];
-  const yamlConfigs = await Promise.all(
-    configs.map(async (config) => {
-      const filePath = path.resolve(SCRAPER_ROOT, config.file_path);
-      const rawConfig = await readFile(filePath, 'utf8');
-      const parsed = parseYaml(rawConfig) as ScraperYamlConfig;
-      return {
-        slug: config.slug,
-        filePath: config.file_path,
-        baseUrl: typeof parsed.base_url === 'string' ? parsed.base_url : null,
-        requiresLogin: scraperConfigRequiresLogin(parsed),
-      } satisfies ScraperRuntimeConfig;
-    })
-  );
-
   const domain = parseDomain(imageUrl);
-  const directMatch = yamlConfigs.find((config) => parseDomain(config.baseUrl ?? '') === domain);
+  
+  const directMatch = configs.find((config) => parseDomain(config.base_url ?? '') === domain) || configs[0];
 
-  return directMatch ?? yamlConfigs[0] ?? null;
+  if (!directMatch) {
+    return null;
+  }
+
+  return {
+    slug: directMatch.slug,
+    baseUrl: directMatch.base_url,
+    requiresLogin: false, // Legacy re-auth flow removed; we rely on the main job for login.
+  };
 }
 
 export async function resolveImageRetryTarget(
@@ -416,10 +387,6 @@ export class ImageRetryProcessor {
   private readonly supabase: Pick<SupabaseClient, 'rpc' | 'from'>;
   private readonly captureImage: (request: ImageRetryCaptureRequest) => Promise<ImageRetryCaptureResult>;
   private readonly readBrowserSession: (scraper: ScraperRuntimeConfig) => Promise<BrowserSessionState>;
-  private readonly reauthenticate: (
-    context: ProductRetryContext,
-    session: BrowserSessionState
-  ) => Promise<BrowserSessionState>;
   private readonly now: () => Date;
   private readonly logger: Pick<Console, 'info' | 'warn' | 'error'>;
   private readonly batchSize: number;
@@ -430,7 +397,6 @@ export class ImageRetryProcessor {
     this.supabase = options.supabase ?? getSupabaseAdmin();
     this.captureImage = options.captureImage ?? this.defaultCaptureImage;
     this.readBrowserSession = options.readBrowserSession ?? this.defaultReadBrowserSession;
-    this.reauthenticate = options.reauthenticate ?? this.defaultReauthenticate;
     this.now = options.now ?? (() => new Date());
     this.logger = options.logger ?? console;
     this.batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
@@ -502,8 +468,15 @@ export class ImageRetryProcessor {
 
       const context = await this.loadProductRetryContext(entry.sku, entry.image_url);
       const authEnvelope = parseRetryErrorEnvelope(entry.last_error);
-      const authMetadata = await this.refreshAuthSessionIfNeeded(entry, context, authEnvelope.auth);
-      const capture = await this.captureWithReauthentication(entry, context, domain, authMetadata);
+
+      // Perform single capture attempt since legacy re-auth was removed
+      const capture = await this.captureImage({
+        productId: context.id,
+        sku: context.sku,
+        imageUrl: entry.image_url,
+        scraperSlug: context.scraper?.slug ?? null,
+        domain,
+      });
 
       if (capture.success && capture.imageUrl) {
         await this.persistRetrySuccess(entry, context, capture.imageUrl);
@@ -514,7 +487,7 @@ export class ImageRetryProcessor {
       const errorType = capture.errorType ?? toImageCaptureErrorType(entry.error_type);
       const errorMessage = capture.errorMessage ?? 'Image capture retry failed';
 
-      return await this.handleRetryFailure(entry, errorType, errorMessage, domain, capture.authMetadata);
+      return await this.handleRetryFailure(entry, errorType, errorMessage, domain, authEnvelope.auth);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorType = toImageCaptureErrorType(entry.error_type);
@@ -552,26 +525,6 @@ export class ImageRetryProcessor {
     }
   };
 
-  private readonly defaultReauthenticate = async (
-    context: ProductRetryContext,
-    _session: BrowserSessionState
-  ): Promise<BrowserSessionState> => {
-    if (!context.scraper?.filePath) {
-      throw new Error('Cannot re-authenticate without a scraper config file');
-    }
-
-    const configPath = path.resolve(SCRAPER_ROOT, context.scraper.filePath);
-    await execFileAsync('python', ['runner.py', '--local', '--config', configPath, '--sku', context.sku], {
-      cwd: SCRAPER_ROOT,
-      env: {
-        ...process.env,
-        USE_YAML_CONFIGS: 'true',
-      },
-    });
-
-    return this.readBrowserSession(context.scraper);
-  };
-
   private async loadProductRetryContext(productId: string, imageUrl: string): Promise<ProductRetryContext> {
     const target = await resolveImageRetryTarget(this.supabase, productId, imageUrl);
 
@@ -584,85 +537,6 @@ export class ImageRetryProcessor {
       sku: target.sku,
       sources: target.sources,
       scraper: target.scraper,
-    };
-  }
-
-  private async refreshAuthSessionIfNeeded(
-    entry: ImageRetryEntry,
-    context: ProductRetryContext,
-    authMetadata?: RetryAuthMetadata
-  ): Promise<RetryAuthMetadata | undefined> {
-    if (toImageCaptureErrorType(entry.error_type) !== ImageCaptureErrorType.AUTH_401 || !context.scraper?.requiresLogin) {
-      return authMetadata;
-    }
-
-    const session = await this.readBrowserSession(context.scraper);
-    const nextMetadata: RetryAuthMetadata = {
-      reloginAttempts: authMetadata?.reloginAttempts ?? 0,
-      sessionExpiresAt: session.sessionExpiresAt,
-    };
-
-    if (!isExpired(session.sessionExpiresAt, this.now())) {
-      return nextMetadata;
-    }
-
-    if (nextMetadata.reloginAttempts >= MAX_RELOGIN_ATTEMPTS) {
-      return nextMetadata;
-    }
-
-    const refreshedSession = await this.reauthenticate(context, session);
-    return {
-      reloginAttempts: nextMetadata.reloginAttempts + 1,
-      sessionExpiresAt: refreshedSession.sessionExpiresAt,
-    };
-  }
-
-  private async captureWithReauthentication(
-    entry: ImageRetryEntry,
-    context: ProductRetryContext,
-    domain: string,
-    authMetadata?: RetryAuthMetadata
-  ): Promise<ImageRetryCaptureResult & { authMetadata?: RetryAuthMetadata }> {
-    let currentAuthMetadata = authMetadata;
-    let capture = await this.captureImage({
-      productId: context.id,
-      sku: context.sku,
-      imageUrl: entry.image_url,
-      scraperSlug: context.scraper?.slug ?? null,
-      domain,
-    });
-
-    while (
-      capture.errorType === ImageCaptureErrorType.AUTH_401 &&
-      context.scraper?.requiresLogin &&
-      (currentAuthMetadata?.reloginAttempts ?? 0) < MAX_RELOGIN_ATTEMPTS
-    ) {
-      const refreshedSession = await this.reauthenticate(context, {
-        sessionExpiresAt: currentAuthMetadata?.sessionExpiresAt ?? null,
-        storageStatePath: buildBrowserStatePath(context.scraper),
-      });
-
-      currentAuthMetadata = {
-        reloginAttempts: (currentAuthMetadata?.reloginAttempts ?? 0) + 1,
-        sessionExpiresAt: refreshedSession.sessionExpiresAt,
-      };
-
-      capture = await this.captureImage({
-        productId: context.id,
-        sku: context.sku,
-        imageUrl: entry.image_url,
-        scraperSlug: context.scraper.slug,
-        domain,
-      });
-
-      if (capture.success) {
-        return { ...capture, authMetadata: currentAuthMetadata };
-      }
-    }
-
-    return {
-      ...capture,
-      authMetadata: currentAuthMetadata,
     };
   }
 
@@ -701,13 +575,10 @@ export class ImageRetryProcessor {
   ): Promise<'failed' | 'rescheduled'> {
     const nextRetryCount = entry.retry_count + 1;
     const canRetry = shouldRetry(errorType, nextRetryCount, entry.max_retries);
-    const exhaustedReloginAttempts =
-      errorType === ImageCaptureErrorType.AUTH_401 &&
-      (authMetadata?.reloginAttempts ?? 0) >= MAX_RELOGIN_ATTEMPTS;
 
     this.recordDomainFailure(domain, this.now().getTime());
 
-    if (!canRetry || errorType === ImageCaptureErrorType.NOT_FOUND_404 || exhaustedReloginAttempts) {
+    if (!canRetry || errorType === ImageCaptureErrorType.NOT_FOUND_404) {
       await this.updateRetryEntry(entry.retry_id, {
         error_type: errorType,
         retry_count: nextRetryCount,

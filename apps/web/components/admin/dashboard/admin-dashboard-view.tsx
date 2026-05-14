@@ -18,18 +18,16 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { MetricCard } from './metric-card';
-import { ScraperStatusWidget } from './scraper-status-widget';
-import { RecentActivityFeed } from './recent-activity-feed';
 import { QuickActions } from './quick-actions';
-import { FleetStatusWidget } from './FleetStatusWidget';
 import { ActionRequired } from './action-required';
 import { RevenueAtRisk } from './revenue-at-risk';
 import { MorningBriefing } from './morning-briefing';
 import { MigrationProgress } from './migration-progress';
 import { useDashboardStats } from '@/hooks/use-dashboard-stats';
+import { RecentActivityFeed } from './recent-activity-feed';
 
 export function AdminDashboardView() {
-  const { productStats, scraperStats, orderStats, inventoryStats, loading } = useDashboardStats();
+  const { productStats, orderStats, inventoryStats, loading } = useDashboardStats();
 
   const quickActions = [
     {
@@ -75,12 +73,12 @@ export function AdminDashboardView() {
           href="/admin/products"
         />
         <MetricCard
-          title="Active Scrapers"
-          value={scraperStats?.active_jobs ?? 0}
-          icon={Activity}
-          status={scraperStats?.active_jobs && scraperStats.active_jobs > 0 ? "info" : undefined}
+          title="Inventory Issues"
+          value={inventoryStats?.open_issues ?? 0}
+          icon={AlertCircle}
+          status={inventoryStats?.open_issues && inventoryStats.open_issues > 0 ? "warning" : undefined}
           isLoading={loading}
-          href="/admin/scrapers/list"
+          href="/admin/inventory"
         />
       </div>
 
@@ -111,14 +109,6 @@ export function AdminDashboardView() {
           href="/admin/orders?fulfillment_status=ready_for_pickup"
         />
         <MetricCard
-          title="Inventory Issues"
-          value={inventoryStats?.open_issues ?? 0}
-          icon={AlertCircle}
-          status={inventoryStats?.open_issues && inventoryStats.open_issues > 0 ? 'warning' : undefined}
-          isLoading={loading}
-          href="/admin/inventory"
-        />
-        <MetricCard
           title="Unpaid Orders"
           value={orderStats?.unpaid_orders ?? 0}
           icon={CreditCard}
@@ -145,16 +135,6 @@ export function AdminDashboardView() {
 
       {/* Migration Progress */}
       <MigrationProgress />
-
-      {/* Middle Section */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <ScraperStatusWidget />
-        </div>
-        <div className="lg:col-span-1">
-          <FleetStatusWidget />
-        </div>
-      </div>
 
       {/* Bottom Section */}
       <div className="grid gap-6 lg:grid-cols-3">

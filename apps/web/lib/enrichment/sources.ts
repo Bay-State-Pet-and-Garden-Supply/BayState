@@ -5,7 +5,7 @@
  * This provides a single source of truth for what sources are available.
  */
 
-import { getLocalScraperConfigs } from '@/lib/admin/scrapers/configs';
+import { getDatabaseScraperConfigs } from '@/lib/admin/scrapers/configs-db';
 import type { EnrichmentSource, EnrichableField } from './types';
 
 /**
@@ -97,7 +97,7 @@ const SCRAPER_SOURCES: Omit<EnrichmentSource, 'status' | 'enabled' | 'lastFetchA
  */
 async function getScraperSources(): Promise<EnrichmentSource[]> {
   // Fetch configs from the local YAML files
-  const configs = await getLocalScraperConfigs();
+  const configs = await getDatabaseScraperConfigs();
 
   const activeConfigs = new Map();
   if (configs) {
@@ -130,7 +130,7 @@ async function getScraperSources(): Promise<EnrichmentSource[]> {
     });
   }
 
-  // 2. Append any dynamic sources from YAML not in the hardcoded list (e.g. AI scrapers)
+  // 2. Append any dynamic sources from the database not in the hardcoded list (e.g. AI scrapers)
   for (const [slug, yamlConfig] of activeConfigs.entries()) {
     if (!handledSlugs.has(slug)) {
       const isAgentic = yamlConfig.scraperType === 'agentic';

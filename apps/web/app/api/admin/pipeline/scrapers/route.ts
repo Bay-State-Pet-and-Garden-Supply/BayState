@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
-import { getLocalScraperConfigs } from '@/lib/admin/scrapers/configs';
+import { getDatabaseScraperConfigs } from '@/lib/admin/scrapers/configs-db';
 
 /**
  * GET /api/admin/pipeline/scrapers
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     if (!auth.authorized) return auth.response;
 
     try {
-        const configs = await getLocalScraperConfigs();
+        const configs = await getDatabaseScraperConfigs();
 
         const scrapers = configs
             .filter((c) => c.status === 'active')

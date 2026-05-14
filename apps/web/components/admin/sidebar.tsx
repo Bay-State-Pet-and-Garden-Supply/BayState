@@ -49,113 +49,89 @@ interface NavSection {
 }
 
 const navSections: NavSection[] = [
- {
- items: [
- {
- href: "/admin",
- label: "Dashboard",
- icon: Home,
- },
- {
- href: "/admin/analytics",
- label: "Analytics",
- icon: BarChart3,
- },
- ],
- },
- {
- title: "Operations",
- items: [
- {
- href: "/admin/orders",
- label: "Orders",
- icon: ShoppingBag,
- },
- {
- href: "/admin/inventory",
- label: "Inventory",
- icon: ClipboardList,
- },
- {
- href: "/admin/inventory/sync-runs",
- label: "Sync Runs",
- icon: RefreshCw,
- },
- {
- href: "/admin/inventory/launchpad",
- label: "Product Launchpad",
- icon: Rocket,
- },
- {
- href: "/admin/health",
- label: "Data Health",
- icon: HeartPulse,
- },
-        {
-          href: "/admin/tools/integra-sync",
-          label: "Integra Sync",
-          icon: Database,
-        },
- ],
- },
- {
- title: "Catalog",
- items: [
- {
- href: "/admin/products",
- label: "Products",
- icon: Package,
- },
- ],
- },
- {
- title: "Pipeline",
- adminOnly: true,
- items: [
- {
- href: "/admin/pipeline",
- label: "Pipeline",
- icon: LayoutGrid,
- adminOnly: true,
- },
- ],
- },
- {
- title: "Scrapers",
- adminOnly: true,
- items: [
- {
- href: "/admin/scrapers/list",
- label: "Scrapers",
- icon: Activity,
- adminOnly: true,
- },
- {
- href: "/admin/scrapers/runs",
- label: "Runs",
- icon: LayoutGrid,
- adminOnly: true,
- },
- {
- href: "/admin/scrapers/network",
- label: "Network",
- icon: Network,
- adminOnly: true,
- },
- ],
- },
- {
- title: "System",
- adminOnly: true,
- items: [
- {
- href: "/admin/settings",
- label: "Settings",
- icon: Settings,
- adminOnly: true,
- },
- ],
- },
+  {
+    items: [
+      {
+        href: "/admin",
+        label: "Dashboard",
+        icon: Home,
+      },
+      {
+        href: "/admin/analytics",
+        label: "Analytics",
+        icon: BarChart3,
+      },
+    ],
+  },
+  {
+    title: "Operations",
+    items: [
+      {
+        href: "/admin/orders",
+        label: "Orders",
+        icon: ShoppingBag,
+      },
+      {
+        href: "/admin/inventory",
+        label: "Inventory",
+        icon: ClipboardList,
+      },
+      {
+        href: "/admin/inventory/sync-runs",
+        label: "Sync Runs",
+        icon: RefreshCw,
+      },
+      {
+        href: "/admin/inventory/launchpad",
+        label: "Product Launchpad",
+        icon: Rocket,
+      },
+      {
+        href: "/admin/health",
+        label: "Data Health",
+        icon: HeartPulse,
+      },
+      {
+        href: "/admin/tools/integra-sync",
+        label: "Integra Sync",
+        icon: Database,
+      },
+    ],
+  },
+  {
+    title: "Catalog",
+    items: [
+      {
+        href: "/admin/products",
+        label: "Products",
+        icon: Package,
+      },
+    ],
+  },
+  {
+    title: "Pipeline",
+    adminOnly: true,
+    items: [
+      {
+        href: "/admin/pipeline",
+        label: "Pipeline",
+        icon: LayoutGrid,
+        adminOnly: true,
+      },
+    ],
+  },
+  {
+    title: "System",
+    adminOnly: true,
+    items: [
+      {
+        href: "/admin/settings",
+        label: "Settings",
+        icon: Settings,
+        adminOnly: true,
+      },
+    ],
+  },
 ];
 
 const SIDEBAR_STORAGE_KEY = "adminSidebarCollapsed";

@@ -14,12 +14,10 @@ import time
 import hmac
 import hashlib
 import base64
-from pathlib import Path
 from dataclasses import dataclass
 from typing import Any
 
 import httpx
-from scrapers.models.config import ScraperConfig as ScraperYamlConfig
 # Phase 10: parser moved to legacy/ — enrichment path uses /api/internal/scraper-configs API
 # from scrapers.parser.yaml_parser import ScraperConfigParser
 from core.version import (
@@ -1066,15 +1064,6 @@ class ScraperAPIClient:
             raise
 
     def get_published_config(self, slug: str) -> dict[str, Any]:
-        use_yaml_configs = os.environ.get("USE_YAML_CONFIGS", "false").lower() == "true"
-
-        if use_yaml_configs:
-            # Phase 10: YAML config loading deactivated
-            raise ConfigFetchError(
-                "YAML config loading deactivated in Phase 10 — use API to fetch config",
-                config_slug=slug,
-            )
-
         if not self.api_url:
             raise ConfigFetchError(
                 "API client not configured - missing URL",
@@ -1091,7 +1080,7 @@ class ScraperAPIClient:
             ) from e
 
     def list_published_configs(self) -> list[dict[str, Any]]:
-        use_yaml_configs = os.environ.get("USE_YAML_CONFIGS", "false").lower() == "true"
+        use_yaml_configs = False
 
         if use_yaml_configs:
             # Phase 10: YAML config listing deactivated

@@ -11,7 +11,7 @@ import {
     type BrandRegistryRow,
 } from '@/lib/brand-registry';
 
-import { getLocalScraperConfigs } from '@/lib/admin/scrapers/configs';
+import { getDatabaseScraperConfigs } from '@/lib/admin/scrapers/configs-db';
 import type { ScraperConfig } from '@/lib/admin/scrapers/types';
 import type { 
     PlannedScrapeChunk, 
@@ -474,7 +474,7 @@ async function loadStandardScrapePlan(
     chunkSize: number,
     maxRunners?: number,
 ): Promise<PlannedScrapeJob> {
-    const scraperConfigs = scrapers.length > 0 ? await getLocalScraperConfigs() : [];
+    const scraperConfigs = scrapers.length > 0 ? await getDatabaseScraperConfigs() : [];
     return buildScrapeChunkPlan({
         skus,
         chunkSize,
@@ -861,7 +861,7 @@ export async function scrapeProducts(
     // Resolve scraper display names to slugs if possible using local YAML configs
     let effectiveScrapers = scrapers;
     if (scrapers.length > 0) {
-        const configs = await getLocalScraperConfigs();
+        const configs = await getDatabaseScraperConfigs();
         
         if (configs && configs.length > 0) {
             const slugMap = new Map<string, string>();

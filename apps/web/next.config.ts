@@ -110,55 +110,6 @@ const nextConfig: NextConfig = {
   // Redirects for legacy routes
   async redirects() {
     return [
-      // Phase 3: Redirect deprecated lab route to canonical test-lab
-      {
-        source: '/admin/scrapers/lab',
-        destination: '/admin/scrapers/test-lab',
-        permanent: false, // 307 temporary redirect
-      },
-      {
-        source: '/admin/scrapers/lab/:path*',
-        destination: '/admin/scrapers/test-lab',
-        permanent: false, // 307 temporary redirect
-      },
-      // Phase 3: Redirect scraper-network to scrapers/network
-      {
-        source: '/admin/scraper-network',
-        destination: '/admin/scrapers/network',
-        permanent: false, // 307 temporary redirect
-      },
-      {
-        source: '/admin/scraper-network/:path*',
-        destination: '/admin/scrapers/network',
-        permanent: false, // 307 temporary redirect
-      },
-      // Phase 3: Redirect deprecated config edit routes to scraper list
-      {
-        source: '/admin/scrapers/configs/:id/edit',
-        destination: '/admin/scrapers/list',
-        permanent: true, // 308 permanent redirect
-      },
-      // YAML Transition: Redirect deprecated creation and dashboard routes
-      {
-        source: '/admin/scrapers/new',
-        destination: '/admin/scrapers/list',
-        permanent: true,
-      },
-      {
-        source: '/admin/scrapers/create',
-        destination: '/admin/scrapers/list',
-        permanent: true,
-      },
-      {
-        source: '/admin/scrapers',
-        destination: '/admin/scrapers/list',
-        permanent: true,
-      },
-      {
-        source: '/admin/scrapers/dashboard',
-        destination: '/admin/scrapers/list',
-        permanent: true,
-      },
       // ── Storefront: legacy query-param URLs → canonical slug URLs ──
       // /products?category=dog-food → /c/dog-food (301 permanent)
       {

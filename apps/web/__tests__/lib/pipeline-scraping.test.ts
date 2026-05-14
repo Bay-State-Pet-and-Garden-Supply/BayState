@@ -8,8 +8,8 @@ jest.mock('@/lib/supabase/server', () => ({
     createClient: jest.fn(),
 }));
 
-jest.mock('@/lib/admin/scrapers/configs', () => ({
-    getLocalScraperConfigs: jest.fn().mockResolvedValue([
+jest.mock('@/lib/admin/scrapers/configs-db', () => ({
+    getDatabaseScraperConfigs: jest.fn().mockResolvedValue([
         { slug: 'amazon', domain: 'amazon.com', base_url: 'https://amazon.com' },
         { slug: 'target', domain: 'target.com', base_url: 'https://target.com' },
         { slug: 'walmart', domain: 'walmart.com', base_url: 'https://walmart.com' },

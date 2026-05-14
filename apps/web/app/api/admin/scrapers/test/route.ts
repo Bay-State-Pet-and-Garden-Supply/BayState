@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
 import { createAdminClient } from "@/lib/supabase/server";
-import { getLocalScraperConfig } from "@/lib/admin/scrapers/configs";
+import { getDatabaseScraperConfig } from "@/lib/admin/scrapers/configs-db";
 
 /**
  * POST /api/admin/scrapers/test
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const localConfig = await getLocalScraperConfig(scraper.slug);
+    const localConfig = await getDatabaseScraperConfig(scraper.slug);
     if (!localConfig) {
       return NextResponse.json(
         { error: "Scraper config file not found" },

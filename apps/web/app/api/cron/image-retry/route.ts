@@ -3,7 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 
 import { ImageRetryProcessor } from '@/lib/scraper-callback/image-retry-processor';
 import { httpFetchCaptureImage } from '@/lib/scraper-callback/image-retry-capture';
-import { createScrapeJobReauthenticate } from '@/lib/scraper-callback/image-retry-reauthenticate';
 
 /**
  * Vercel Cron Job: Process pending image retries.
@@ -56,7 +55,6 @@ export async function GET(request: NextRequest) {
   const processor = new ImageRetryProcessor({
     supabase,
     captureImage: httpFetchCaptureImage,
-    reauthenticate: createScrapeJobReauthenticate,
     batchSize: 10,
     concurrency: 3,
     logger: console,

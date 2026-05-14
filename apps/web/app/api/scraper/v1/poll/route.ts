@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
 import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
-import { getLocalScraperConfigs } from '@/lib/admin/scrapers/configs';
+import { getDatabaseScraperConfigs } from '@/lib/admin/scrapers/configs-db';
 import {
     type AIScrapingRuntimeCredentials,
     getAIScrapingDefaults,
@@ -254,7 +254,7 @@ export async function POST(request: NextRequest) {
         const requestedScrapers = deriveRequestedScrapers(job);
         const normalizedJobType = normalizeRunnerJobType(job.type);
 
-        const allLocalConfigs = await getLocalScraperConfigs();
+        const allLocalConfigs = await getDatabaseScraperConfigs();
         const scrapers: ScraperConfig[] = [];
 
         for (const config of allLocalConfigs) {

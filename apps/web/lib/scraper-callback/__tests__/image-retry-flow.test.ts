@@ -272,7 +272,6 @@ describe('image retry flow integration', () => {
       supabase: processorMock.supabase as never,
       captureImage,
       readBrowserSession,
-      reauthenticate,
       now: () => FIXED_NOW,
       logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
     });
@@ -604,10 +603,7 @@ describe('image retry flow integration', () => {
       const processor = new ImageRetryProcessor({
         supabase: processorMock.supabase as never,
         captureImage,
-        reauthenticate: jest.fn(async () => ({
-          sessionExpiresAt: '2026-03-26T14:00:00.000Z',
-          storageStatePath,
-        })),
+
         now: () => FIXED_NOW,
         logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
       });

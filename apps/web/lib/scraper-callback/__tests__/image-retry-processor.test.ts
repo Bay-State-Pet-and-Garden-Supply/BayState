@@ -328,7 +328,7 @@ describe('ImageRetryProcessor', () => {
       supabase: mock.supabase as never,
       captureImage,
       readBrowserSession,
-      reauthenticate,
+
       now: () => FIXED_NOW,
     });
 
@@ -390,7 +390,7 @@ describe('ImageRetryProcessor', () => {
       supabase: mock.supabase as never,
       captureImage,
       readBrowserSession,
-      reauthenticate,
+
       now: () => FIXED_NOW,
     });
 

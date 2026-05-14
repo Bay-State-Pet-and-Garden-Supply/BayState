@@ -106,7 +106,7 @@ export function resolveLoginProtectedScraperSlugs(configs: ScraperConfigLike[]):
     .filter((slug): slug is string => Boolean(slug));
 }
 
-async function loadLocalScraperConfigs(): Promise<ScraperConfigLike[]> {
+async function loadScraperConfigs(supabase: SupabaseClient): Promise<ScraperConfigLike[]> {
   const configsDir = path.join(process.cwd(), 'apps/scraper/scrapers/configs');
   if (!fs.existsSync(configsDir)) {
     return [];
@@ -440,7 +440,7 @@ async function runLoginProtectedImageBackfill(
   options: LoginProtectedImageBackfillOptions,
 ): Promise<LoginProtectedImageBackfillResult> {
   const supabase = createSupabaseAdminClient();
-  const configs = await loadLocalScraperConfigs();
+  const configs = await loadScraperConfigs(supabase);
   const loginProtectedScraperSlugs = resolveLoginProtectedScraperSlugs(configs);
 
   return executeLoginProtectedImageBackfillWithClient(

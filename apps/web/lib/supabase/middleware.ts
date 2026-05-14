@@ -81,15 +81,6 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/api/internal/scraper-configs/') ||
     request.nextUrl.pathname.startsWith('/api/internal/scraper-configs') ||
     request.nextUrl.pathname.startsWith('/api/cron/') ||
-    request.nextUrl.pathname.startsWith('/api/admin/scraper-network/') ||
-    request.nextUrl.pathname.startsWith('/api/admin/scraper-configs/') ||
-    request.nextUrl.pathname.startsWith('/api/admin/scraping/') ||
-    request.nextUrl.pathname.startsWith('/api/admin/scraper-configs') ||
-    request.nextUrl.pathname.startsWith('/admin/scraper-lab') ||
-    request.nextUrl.pathname.startsWith('/admin/scrapers/configs') ||
-    request.nextUrl.pathname.match(/^\/admin\/scrapers\/[^\/]+\/test-lab/) ||
-    request.nextUrl.pathname.startsWith('/admin/scrapers/configs') ||
-    request.nextUrl.pathname.startsWith('/admin/scrapers/test-lab') ||
     request.nextUrl.pathname === '/login' ||
     request.nextUrl.pathname.startsWith('/auth/') ||
     request.nextUrl.pathname.startsWith('/login') ||
@@ -158,7 +149,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Check admin role for admin routes
-  if (request.nextUrl.pathname.startsWith('/admin') && !request.nextUrl.pathname.startsWith('/admin/scraper-lab')) {
+  if (request.nextUrl.pathname.startsWith('/admin')) {
     let role = normalizeRole(user.app_metadata?.role) ?? normalizeRole(user.user_metadata?.role)
 
     if (role !== 'admin' && role !== 'staff') {

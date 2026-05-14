@@ -27,9 +27,6 @@ services:
       - SCRAPER_BROWSER_STATE_DIR=/app/.browser_storage_states
       - HEALTHCHECK_MAX_MEMORY_PERCENT=${HEALTHCHECK_MAX_MEMORY_PERCENT:-90}
       - LOG_LEVEL=DEBUG
-      
-      # YAML-only mode: load configs from local files instead of API
-      - USE_YAML_CONFIGS=true
     volumes:
       - ./.browser_storage_states:/app/.browser_storage_states
     mem_limit: 2g
