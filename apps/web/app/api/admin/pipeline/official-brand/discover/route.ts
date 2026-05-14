@@ -1,3 +1,15 @@
+/**
+ * Fallback URL Discovery (reused from existing Official Brand infrastructure)
+ *
+ * SERPER URL discovery runs server-side. This endpoint is preserved for
+ * the fallback review workflow — after an admin approves fallback via
+ * POST /api/admin/pipeline/fallback, the orchestration module calls
+ * runOfficialBrandDiscovery() internally.
+ *
+ * Direct use of this route is allowed only for SKUs in fallback review.
+ * New products should not be sent here directly from Imported.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
 import { runOfficialBrandDiscovery } from "@/lib/official-brand-discovery";

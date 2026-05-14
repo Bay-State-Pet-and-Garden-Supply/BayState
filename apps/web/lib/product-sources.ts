@@ -189,6 +189,12 @@ function normalizeSourcePayload(sourcePayload: unknown): CanonicalProductSourceR
     const normalized: CanonicalProductSourceRecord = {};
 
     for (const [key, rawValue] of Object.entries(sourcePayload)) {
+        // Preserve provenance/metadata underscore-prefixed keys without normalization
+        if (key.startsWith('_')) {
+            normalized[key] = rawValue;
+            continue;
+        }
+
         const normalizedKey = normalizeSourceFieldName(key);
         if (!normalizedKey) {
             continue;
@@ -482,6 +488,18 @@ export function normalizeProductSources(rawSources: unknown): ProductSourceMap {
     return normalized;
 }
 
+/**
+ * Merge product sources, preserving provenance metadata in `_provenance` fields.
+ *
+ * Provenance fields (prefixed with `_`) are kept per-source to track:
+ * - source_kind: 'static_scraper' | 'fallback_serper_ai'
+ * - scrape_job_id, scrape_chunk_id
+ * - source_url, scraper_slug
+ * - quality_score
+ * - serper_query, llm_model (optional)
+ *
+ * Existing source filters and consolidation logic ignore `_`-prefixed keys.
+ */
 export function mergeProductSources(
     existingRawSources: unknown,
     incomingRawSources: unknown
@@ -494,10 +512,50 @@ export function mergeProductSources(
     };
 
     for (const [sourceName, sourcePayload] of Object.entries(incoming)) {
-        merged[sourceName] = {
-            ...(merged[sourceName] || {}),
-            ...sourcePayload,
+        const existingSource = merged[sourceName];
+        const incomingPayload = sourcePayload as Record<string, unknown>;
+
+        // Merge data fields (non-underscore)
+        const dataMerged = {
+            ...(existingSource || {}),
+            ...incomingPayload,
         };
+
+        // Preserve/merge provenance (underscore-prefixed fields)
+        // Extract _provenance from both existing and incoming, preferring new values
+        // for fields that arrived more recently (incoming takes precedence)
+        const existingProvenance: Record<string, unknown> = {};
+        const incomingProvenance: Record<string, unknown> = {};
+
+        if (existingSource && typeof existingSource === 'object') {
+            for (const [k, v] of Object.entries(existingSource as Record<string, unknown>)) {
+                if (k.startsWith('_')) {
+                    existingProvenance[k] = v;
+                }
+            }
+        }
+
+        for (const [k, v] of Object.entries(incomingPayload)) {
+            if (k.startsWith('_')) {
+                incomingProvenance[k] = v;
+            }
+        }
+
+        // Remove _-prefixed keys from data merge (they're handled as provenance)
+        for (const k of Object.keys(incomingProvenance)) {
+            delete dataMerged[k];
+        }
+        for (const k of Object.keys(existingProvenance)) {
+            if (k in incomingProvenance) {
+                delete dataMerged[k];
+            }
+        }
+
+        merged[sourceName] = {
+            ...dataMerged,
+            ...existingProvenance,
+            ...incomingProvenance,
+        } as CanonicalProductSourceRecord;
     }
 
     return {

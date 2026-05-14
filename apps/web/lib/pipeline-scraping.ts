@@ -12,48 +12,17 @@ import {
 } from '@/lib/brand-registry';
 
 import { getLocalScraperConfigs } from '@/lib/admin/scrapers/configs';
-import {
-    DIRECT_URL_EXTRACTION_TYPE,
-    OFFICIAL_BRAND_EXTRACTION_TYPE,
-    OFFICIAL_BRAND_URL_DISCOVERY_TYPE,
-    buildManualOfficialBrandCandidateRows,
-    normalizeOfficialBrandUrl,
-    persistOfficialBrandCandidateRows,
-} from '@/lib/official-brand-workflow';
 import type { ScraperConfig } from '@/lib/admin/scrapers/types';
 import type { 
     PlannedScrapeChunk, 
     PlannedScrapeJob, 
-    OfficialBrandCohortContext,
     ScrapeOptions, 
     ScrapeResult 
 } from './pipeline-scraping-types';
 
 export type { ScrapeOptions } from './pipeline-scraping-types';
 
-function compactOfficialBrandCohortContext(
-    cohort: OfficialBrandCohortContext | undefined,
-): OfficialBrandCohortContext | undefined {
-    if (!cohort) {
-        return undefined;
-    }
 
-    const compacted: OfficialBrandCohortContext = {
-        id: cohort.id,
-        brandId: cohort.brandId,
-        brandName: cohort.brandName,
-    };
-
-    if (cohort.officialDomains && cohort.officialDomains.length > 0) {
-        compacted.officialDomains = cohort.officialDomains;
-    }
-
-    if (cohort.preferredDomains && cohort.preferredDomains.length > 0) {
-        compacted.preferredDomains = cohort.preferredDomains;
-    }
-
-    return compacted;
-}
 
 interface PipelineInputRow {
     sku: string;
@@ -90,7 +59,7 @@ interface ProductCatalogRow {
     }> | null;
 }
 
-type ScrapeJobInsertType = 'standard' | 'ai_search' | typeof OFFICIAL_BRAND_URL_DISCOVERY_TYPE | typeof OFFICIAL_BRAND_EXTRACTION_TYPE | typeof DIRECT_URL_EXTRACTION_TYPE | 'deep_research';
+type ScrapeJobInsertType = 'standard';
 
 /**
  * Options for scraping jobs.
@@ -887,45 +856,11 @@ export async function scrapeProducts(
     const testMode = options?.testMode ?? false;
     const scrapers = options?.scrapers ?? [];
     const maxAttempts = options?.maxAttempts ?? 3;
-    const chunkSize = options?.chunkSize ?? 50; // Default 50 SKUs per chunk
-    const enrichmentMethod = options?.enrichment_method ?? 'scrapers';
-    const isOfficialBrand = enrichmentMethod === 'official_brand';
-    const isDeepResearch = enrichmentMethod === 'deep_research';
-    const officialBrandPhase = isOfficialBrand
-        ? options?.officialBrandPhase ?? 'url_discovery'
-        : undefined;
-    const isOfficialBrandDiscovery = officialBrandPhase === 'url_discovery';
-    const isOfficialBrandExtraction = officialBrandPhase === 'extraction';
-
-    // -------------------------------------------------------------------
-    // DEPRECATED: Official Brand URL discovery now runs server-side via
-    // POST /api/admin/pipeline/official-brand/discover.
-    // The runner-based URL discovery path is removed.
-    // Runner keeps extraction; SERP moved to Next.js server.
-    // -------------------------------------------------------------------
-    if (isOfficialBrandDiscovery) {
-        console.warn(
-            '[Pipeline Scraping] Official Brand URL discovery is no longer dispatched through the runner. ' +
-            'The pipeline scrape route should call POST /api/admin/pipeline/official-brand/discover instead.',
-        );
-        return {
-            success: false,
-            error: 'Official Brand URL discovery now runs server-side. Use POST /api/admin/pipeline/official-brand/discover instead.',
-        };
-    }
-
-    const effectiveScrapersRaw = isOfficialBrand ? ['product_url_extraction'] : isDeepResearch ? ['deep_research'] : scrapers;
-    const jobType: ScrapeJobInsertType = isOfficialBrandDiscovery
-        ? OFFICIAL_BRAND_URL_DISCOVERY_TYPE
-        : isOfficialBrandExtraction
-            ? DIRECT_URL_EXTRACTION_TYPE
-            : isDeepResearch
-                ? 'deep_research'
-                : 'standard';
+    const chunkSize = options?.chunkSize ?? 50;
 
     // Resolve scraper display names to slugs if possible using local YAML configs
-    let effectiveScrapers = effectiveScrapersRaw;
-    if (scrapers.length > 0 && !isOfficialBrand && !isDeepResearch) {
+    let effectiveScrapers = scrapers;
+    if (scrapers.length > 0) {
         const configs = await getLocalScraperConfigs();
         
         if (configs && configs.length > 0) {
@@ -941,144 +876,54 @@ export async function scrapeProducts(
                     slugMap.set(config.display_name.toLowerCase(), slug);
                 }
             });
-            effectiveScrapers = effectiveScrapersRaw.map(s => slugMap.get(s.toLowerCase()) || s);
+            effectiveScrapers = scrapers.map(s => slugMap.get(s.toLowerCase()) || s);
         }
     }
 
     const supabase = await createClient();
-    const scrapeContextItems = await loadScrapeContextItems(supabase, skus, {
-        preferCatalogContext: isOfficialBrand || isDeepResearch,
-        fallbackBrandHint: options?.cohortBrand,
-        useBrandRegistryFallback: isOfficialBrand || isDeepResearch,
-    });
-
-    // Inject cohort brand into context items that lack one
-    const cohortBrand = toOptionalString(options?.cohortBrand);
-    if (cohortBrand) {
-        scrapeContextItems.forEach((item) => {
-            if (!item.brand) {
-                item.brand = cohortBrand;
-            }
-        });
-    }
-
-    const standardSkuContext = (isOfficialBrand || isDeepResearch) ? undefined : buildStandardSkuContext(scrapeContextItems);
-    const officialBrandCohort = compactOfficialBrandCohortContext(
-        isDeepResearch ? options?.deepResearchCohort : options?.officialBrandCohort
-    );
-    const officialBrandUrlsBySku = isOfficialBrandExtraction ? options?.officialBrandUrlsBySku ?? {} : undefined;
-    const officialBrandUrlSourceBySku = isOfficialBrandExtraction ? options?.officialBrandUrlSourceBySku ?? {} : undefined;
-
-    if (isOfficialBrandExtraction) {
-        const missingUrlSkus = skus.filter((sku) => !toOptionalString(officialBrandUrlsBySku?.[sku]));
-        if (missingUrlSkus.length > 0) {
-            return {
-                success: false,
-                error: `Official Brand extraction requires a source URL for every SKU. Missing: ${missingUrlSkus.join(', ')}`,
-            };
-        }
-
-        const invalidUrlSkus = skus.filter((sku) => {
-            const url = toOptionalString(officialBrandUrlsBySku?.[sku]);
-            return !url || !normalizeOfficialBrandUrl(url);
-        });
-
-        if (invalidUrlSkus.length > 0) {
-            return {
-                success: false,
-                error: `Official Brand extraction has invalid source URLs for: ${invalidUrlSkus.join(', ')}`,
-            };
-        }
-    }
-
-    const deepResearchConfigItems = isDeepResearch
-        ? scrapeContextItems.map((item) => ({
-            sku: item.sku,
-            register_name: item.register_name,
-            brand: item.brand,
-            official_domains: item.official_domains,
-            preferred_domains: item.preferred_domains,
-        }))
-        : undefined;
-
-    const officialBrandConfigItems = isOfficialBrand
-        ? scrapeContextItems.map((item) => {
-            const sourceUrl = officialBrandUrlsBySku
-                ? toOptionalString(officialBrandUrlsBySku[item.sku])
-                : undefined;
-            const base: Record<string, unknown> = {
-                sku: item.sku,
-                register_name: item.register_name,
-                brand: item.brand,
-                official_domains: item.official_domains,
-                preferred_domains: item.preferred_domains,
-            };
-            if (sourceUrl) {
-                base.source_url = sourceUrl;
-                base.url_source = officialBrandUrlSourceBySku?.[item.sku] ?? 'manual';
-            }
-            if (isOfficialBrandExtraction && options?.officialBrandMaxFallbacks !== undefined) {
-                base.max_fallbacks = options.officialBrandMaxFallbacks;
-            }
-            return base;
-        })
-        : undefined;
-
+    const scrapeContextItems = await loadScrapeContextItems(supabase, skus, {});
+    const standardSkuContext = buildStandardSkuContext(scrapeContextItems);
     const nowIso = new Date().toISOString();
 
-    const plannedStandardJob = !isOfficialBrand && !isDeepResearch
-        ? await loadStandardScrapePlan(
-            skus,
-            effectiveScrapers,
-            chunkSize,
-            options?.maxRunners,
-        )
-        : null;
-
-    const buildJobInsertPayload = (type: ScrapeJobInsertType) => ({
+    const plannedJob = await loadStandardScrapePlan(
         skus,
-        scrapers: effectiveScrapers,
-        test_mode: testMode,
-        max_workers: maxWorkers,
-        status: 'pending',
-        attempt_count: 0,
-        max_attempts: maxAttempts,
-        backoff_until: null,
-        lease_token: null,
-        leased_at: null,
-        lease_expires_at: null,
-        heartbeat_at: null,
-        runner_name: null,
-        started_at: null,
-        type,
-        config: isOfficialBrand ? {
-            phase: officialBrandPhase,
-            ...(officialBrandCohort ? { cohort: officialBrandCohort } : {}),
-            items: officialBrandConfigItems ?? [],
-        } : isDeepResearch ? {
-            items: deepResearchConfigItems ?? [],
-            ...(officialBrandCohort ? { cohort: officialBrandCohort } : {}),
-        } : (standardSkuContext ? { sku_context: standardSkuContext } : null),
-        metadata: isOfficialBrand || isDeepResearch
-            ? {
-                source: 'pipeline',
-                mode: enrichmentMethod,
-                requested_job_type: enrichmentMethod,
-                ...(isOfficialBrand ? { official_brand_phase: officialBrandPhase } : {}),
-                stored_job_type: type,
-            }
-            : {
-                source: 'pipeline',
-                ...(plannedStandardJob?.metadata ?? {}),
-            },
-        items_processed: 0,
-        items_total: (isOfficialBrand || isDeepResearch) ? skus.length : plannedStandardJob?.plannedWorkUnits ?? skus.length,
-        updated_at: nowIso,
-    });
+        effectiveScrapers,
+        chunkSize,
+        options?.maxRunners,
+    );
+
+    const jobType: ScrapeJobInsertType = 'standard';
 
     const { data: job, error: insertError } = await supabase
         .from('scrape_jobs')
-        .insert(buildJobInsertPayload(jobType))
+        .insert({
+            skus,
+            scrapers: effectiveScrapers,
+            test_mode: testMode,
+            max_workers: maxWorkers,
+            status: 'pending',
+            attempt_count: 0,
+            max_attempts: maxAttempts,
+            backoff_until: null,
+            lease_token: null,
+            leased_at: null,
+            lease_expires_at: null,
+            heartbeat_at: null,
+            runner_name: null,
+            started_at: null,
+            type: jobType,
+            config: standardSkuContext ? { sku_context: standardSkuContext } : null,
+            metadata: {
+                source: 'pipeline',
+                pipeline_version: 'static_first_v1',
+                orchestration_kind: 'static_scrape',
+                quality_threshold_version: 'v1',
+                ...(plannedJob?.metadata ?? {}),
+            },
+            items_processed: 0,
+            items_total: plannedJob?.plannedWorkUnits ?? skus.length,
+            updated_at: nowIso,
+        })
         .select('id')
         .single();
 
@@ -1091,16 +936,10 @@ export async function scrapeProducts(
         return { success: false, error: `Failed to create scraping job: ${errorMessage}` };
     }
 
-    const plannedChunks = plannedStandardJob?.plannedChunkCount ?? Math.ceil(skus.length / chunkSize);
-
-    const chunkPlan = (!isOfficialBrand && !isDeepResearch)
-        ? plannedStandardJob
-        : await buildLinearChunkPlan(skus, effectiveScrapers, chunkSize);
-
     const chunkResult = await createScrapeJobChunks(
         supabase,
         job.id,
-        chunkPlan ?? {
+        plannedJob ?? {
             chunks: [],
             metadata: {},
             plannedChunkCount: 0,
@@ -1114,55 +953,29 @@ export async function scrapeProducts(
         return { success: false, error: chunkResult.error };
     }
 
-    if (!testMode && isOfficialBrandExtraction && officialBrandUrlsBySku) {
-        try {
-            const rows = buildManualOfficialBrandCandidateRows({
-                urlsBySku: officialBrandUrlsBySku,
-                candidateSourceBySku: officialBrandUrlSourceBySku,
-                cohort: officialBrandCohort,
-                extractionJobId: job.id,
-                nowIso,
-            });
-            await persistOfficialBrandCandidateRows(supabase, rows);
-        } catch (candidateError) {
-            console.error('[Pipeline Scraping] Failed to persist manual Official Brand URLs:', candidateError);
-            await supabase.from('scrape_job_chunks').delete().eq('job_id', job.id);
-            await supabase.from('scrape_jobs').delete().eq('id', job.id);
-            return { success: false, error: 'Failed to persist Official Brand URL candidates' };
-        }
-    }
-
     if (!testMode) {
-        const pipelineStatus = isOfficialBrandDiscovery
-            ? 'searching'
-            : isOfficialBrandExtraction
-                ? 'extracting'
-                : isDeepResearch
-                    ? 'scraping'
-                    : 'scraping';
-
         const { error: statusError } = await supabase
             .from('products_ingestion')
             .update({
-                pipeline_status: pipelineStatus,
+                pipeline_status: 'scraping',
                 updated_at: new Date().toISOString(),
                 error_message: null,
             })
             .in('sku', skus);
 
         if (statusError) {
-            console.error(`[Pipeline Scraping] Failed to move products into ${pipelineStatus}:`, statusError);
+            console.error('[Pipeline Scraping] Failed to move products into scraping:', statusError);
             await supabase.from('scrape_job_chunks').delete().eq('job_id', job.id);
             await supabase.from('scrape_jobs').delete().eq('id', job.id);
-            return { success: false, error: `Failed to mark products as ${pipelineStatus}` };
+            return { success: false, error: 'Failed to mark products as scraping' };
         }
     }
 
-    console.log(`[Pipeline Scraping] Created parent job ${job.id} with ${plannedChunks} chunks (${chunkSize} SKUs per slice)`);
+    console.log(`[Pipeline Scraping] Created parent job ${job.id} with ${plannedJob.plannedChunkCount} chunks (${chunkSize} SKUs per slice)`);
 
     return {
         success: true,
         jobIds: [job.id],
-        plannedChunkCount: plannedChunks,
+        plannedChunkCount: plannedJob.plannedChunkCount,
     };
 }

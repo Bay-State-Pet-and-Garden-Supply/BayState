@@ -74,6 +74,7 @@ describe('pipeline status transition CRUD', () => {
             { status: 'url_review', count: 0 },
             { status: 'extracting', count: 0 },
             { status: 'scraping', count: 1 },
+            { status: 'needs_fallback_review', count: 0 },
             { status: 'scraped', count: 1 },
             { status: 'consolidating', count: 1 },
             { status: 'finalizing', count: 1 },
@@ -107,7 +108,7 @@ describe('pipeline status transition CRUD', () => {
 
         expect(result).toEqual({
             success: false,
-            error: "Invalid status transition to 'imported'. Allowed persisted statuses: 'imported', 'searching', 'url_review', 'extracting', 'scraping', 'scraped', 'consolidating', 'finalizing', 'exporting', 'failed' SKU(s): SKU-1",
+            error: "Invalid status transition to 'imported'. Allowed persisted statuses: 'imported', 'searching', 'url_review', 'extracting', 'scraping', 'needs_fallback_review', 'scraped', 'consolidating', 'finalizing', 'exporting', 'failed' SKU(s): SKU-1",
             updatedCount: 0,
         });
         expect(updateBuilder.update).not.toHaveBeenCalled();

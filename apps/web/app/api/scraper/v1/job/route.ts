@@ -71,13 +71,9 @@ function deriveRequestedScrapers(job: {
         return ['official_brand'];
     }
 
-    if (job.type === 'discovery') {
-        return ['ai_discovery'];
-    }
-
-    if (job.type === 'crawl4ai') {
-        return ['crawl4ai_discovery'];
-    }
+    // DEPRECATED: discovery and crawl4ai no longer dispatch
+    // as first-class job types. Legacy job types still work
+    // if their config signals specific discovery keys.
 
     const config = (job.config && typeof job.config === 'object' && !Array.isArray(job.config))
         ? (job.config as Record<string, unknown>)

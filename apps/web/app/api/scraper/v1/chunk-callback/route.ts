@@ -5,8 +5,10 @@ import { parseChunkCallbackPayload, ChunkCallbackPayload } from '@/lib/scraper-c
 import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 import {
     persistProductsIngestionSourcesPartial,
+    type ProvenanceContext,
 } from '@/lib/scraper-callback/products-ingestion';
 import { filterOfficialBrandResultsForPersistence } from '@/lib/scraper-callback/official-brand-validation';
+import { evaluateScrapeQuality } from '@/lib/pipeline/scrape-quality';
 import { filterMeaningfulProductSources, hasMeaningfulProductSourceData, mergeProductSources, normalizeProductSources } from '@/lib/product-sources';
 import {
     checkIdempotency,
@@ -93,11 +95,18 @@ export async function persistChunkResultsToPipeline(
         });
     }
 
+    // Build provenance context for the persistence call
+    const provenance: ProvenanceContext = {
+        sourceKind: officialBrandContext?.isOfficialBrandJob ? 'fallback_serper_ai' : 'static_scraper',
+        scrapeJobId: jobId,
+    };
+
     const { persisted, missing } = await persistProductsIngestionSourcesPartial(
         supabase,
         resultsToPersist,
         isTestJob,
-        nowIso
+        nowIso,
+        provenance
     );
 
     if (officialBrandFilter) {
@@ -611,8 +620,16 @@ export async function POST(request: NextRequest) {
                                 updated_at: completedAt,
                             }
                             : {
-                                pipeline_status: 'failed',
+                                pipeline_status: 'needs_fallback_review',
                                 error_message: terminalMessage,
+                                scrape_quality: {
+                                    result: 'needs_fallback_review',
+                                    missingFields: ['scraper_run_failed'],
+                                    sourceScores: {} as Record<string, number>,
+                                    reason: terminalMessage || 'Scraping job failed',
+                                    hasMatchedSku: false,
+                                    matchedSourceKeys: [],
+                                },
                                 updated_at: completedAt,
                             };
                         const failedStatusFrom = officialBrandPhase === 'extraction' ? 'extracting' : 'scraping';
@@ -632,7 +649,9 @@ export async function POST(request: NextRequest) {
                     }
                 }
 
-                // Revert any stuck SKUs for production jobs that finished (completed or failed)
+                // Quality-aware routing for completed static jobs:
+                // Evaluate each SKU's scrape results and route to scraped/Results or needs_fallback_review.
+                // For fallback extraction jobs, keep the legacy stuck-SKU reversion.
                 if (!isTestJob && (jobStatus === 'completed' || jobStatus === 'failed')) {
                     const jobSkus = Array.from(
                         new Set(
@@ -648,23 +667,105 @@ export async function POST(request: NextRequest) {
                     );
 
                     if (jobSkus.length > 0) {
-                        const stuckStatusFrom = officialBrandPhase === 'extraction' ? 'extracting' : 'scraping';
-                        const stuckStatusTo = officialBrandPhase === 'extraction'
-                            ? (jobStatus === 'completed' ? 'scraped' : 'url_review')
-                            : 'imported';
-                        const { error: resetStatusError } = await supabase
-                            .from('products_ingestion')
-                            .update({
-                                pipeline_status: stuckStatusTo,
-                                updated_at: new Date().toISOString(),
-                            })
-                            .in('sku', jobSkus)
-                            .eq('pipeline_status', stuckStatusFrom);
+                        if (officialBrandPhase === 'extraction') {
+                            // Fallback extraction job — keep legacy stuck-SKU behavior
+                            const stuckStatusFrom = 'extracting';
+                            const stuckStatusTo = jobStatus === 'completed' ? 'scraped' : 'url_review';
+                            const { error: resetStatusError } = await supabase
+                                .from('products_ingestion')
+                                .update({
+                                    pipeline_status: stuckStatusTo,
+                                    updated_at: new Date().toISOString(),
+                                })
+                                .in('sku', jobSkus)
+                                .eq('pipeline_status', stuckStatusFrom);
 
-                        if (resetStatusError) {
-                            console.error(`[Chunk Callback] Failed to reset stuck SKUs to ${stuckStatusTo}:`, resetStatusError);
+                            if (resetStatusError) {
+                                console.error(`[Chunk Callback] Failed to reset stuck extraction SKUs to ${stuckStatusTo}:`, resetStatusError);
+                            }
+                        } else if (jobStatus === 'completed') {
+                            // Standard static job — evaluate quality per-SKU
+                            const nowIso = new Date().toISOString();
+                            const { data: products } = await supabase
+                                .from('products_ingestion')
+                                .select('sku, input, sources, pipeline_status')
+                                .in('sku', jobSkus);
+
+                            if (products && products.length > 0) {
+                                for (const product of products) {
+                                    const input = (product.input as Record<string, unknown>) || null;
+                                    const sources = (product.sources as Record<string, unknown>) || {};
+                                    const currentStatus = product.pipeline_status;
+
+                                    const qualityVerdict = evaluateScrapeQuality(
+                                        product.sku,
+                                        input,
+                                        sources,
+                                    );
+
+                                    const targetStatus = qualityVerdict.result === 'pass' ? 'scraped' : 'needs_fallback_review';
+
+                                    await supabase
+                                        .from('products_ingestion')
+                                        .update({
+                                            pipeline_status: targetStatus,
+                                            scrape_quality: qualityVerdict as Record<string, unknown>,
+                                            updated_at: nowIso,
+                                        })
+                                        .eq('sku', product.sku)
+                                        .in('pipeline_status', [currentStatus, 'scraping']);
+
+                                    console.log(
+                                        `[Chunk Callback] Job ${jobId}: SKU ${product.sku} quality=${qualityVerdict.result} (from ${currentStatus} → ${targetStatus})`
+                                    );
+                                }
+                            }
+
+                            // Revert any SKUs still stuck in 'scraping' (no callback results at all)
+                            const { error: resetStuckError } = await supabase
+                                .from('products_ingestion')
+                                .update({
+                                    pipeline_status: 'needs_fallback_review',
+                                    scrape_quality: {
+                                        result: 'needs_fallback_review',
+                                        missingFields: ['any source'],
+                                        sourceScores: {},
+                                        reason: 'No scraping results received for this SKU',
+                                        hasMatchedSku: false,
+                                        matchedSourceKeys: [],
+                                    },
+                                    updated_at: nowIso,
+                                })
+                                .in('sku', jobSkus)
+                                .eq('pipeline_status', 'scraping');
+
+                            if (resetStuckError) {
+                                console.error(`[Chunk Callback] Failed to reset stuck scraping SKUs to needs_fallback_review:`, resetStuckError);
+                            }
                         } else {
-                            console.log(`[Chunk Callback] Job ${jobId}: Reverted any remaining '${stuckStatusFrom}' SKUs to '${stuckStatusTo}'`);
+                            // Failed standard job — reset stuck scraping SKUs to needs_fallback_review
+                            const nowIso = new Date().toISOString();
+                            const { error: resetStuckError } = await supabase
+                                .from('products_ingestion')
+                                .update({
+                                    pipeline_status: 'needs_fallback_review',
+                                    error_message: terminalMessage,
+                                    scrape_quality: {
+                                        result: 'needs_fallback_review',
+                                        missingFields: ['any source'],
+                                        sourceScores: {},
+                                        reason: 'Scraping job failed',
+                                        hasMatchedSku: false,
+                                        matchedSourceKeys: [],
+                                    },
+                                    updated_at: nowIso,
+                                })
+                                .in('sku', jobSkus)
+                                .eq('pipeline_status', 'scraping');
+
+                            if (resetStuckError) {
+                                console.error(`[Chunk Callback] Failed to reset failed scraping SKUs:`, resetStuckError);
+                            }
                         }
                     }
                 }

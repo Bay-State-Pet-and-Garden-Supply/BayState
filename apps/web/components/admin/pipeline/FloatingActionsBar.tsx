@@ -32,6 +32,7 @@ const BULK_ACTIONS: Record<
  imported: { label: "Scrape Selected", nextStage: "scraped" },
  searching: { label: "", nextStage: null },
  url_review: { label: "Return to Import", nextStage: "imported" },
+ needs_fallback_review: { label: "", nextStage: null },
   extracting: {
     label: "",
     nextStage: null,
@@ -78,10 +79,7 @@ interface FloatingActionsBarProps {
  onResetStage?: (previousStage: PersistedPipelineStatus) => void;
  onConsolidate?: () => void;
  onOpenScrapeDialog?: () => void;
- onDiscoverOfficialBrand?: () => void;
  onAssignBrand?: () => void;
- canDiscoverOfficialBrand?: boolean;
- officialBrandSelectionReason?: string | null;
 
  scrapeSelectionValidation?: { allowed: boolean; reason: string | null };
  onDelete?: () => void;
@@ -102,10 +100,7 @@ export function FloatingActionsBar({
  onResetStage,
  onConsolidate,
  onOpenScrapeDialog,
- onDiscoverOfficialBrand,
  onAssignBrand,
- canDiscoverOfficialBrand,
- officialBrandSelectionReason,
  scrapeSelectionValidation,
  onDelete,
  actionState = null,
@@ -216,38 +211,7 @@ export function FloatingActionsBar({
  </Button>
  )}
 
- {isImported && onDiscoverOfficialBrand && (
- <Tooltip>
- <TooltipTrigger asChild>
- <div className="inline-block">
- <Button
- variant="outline"
- size="sm"
- onClick={onDiscoverOfficialBrand}
- disabled={isLoading || !canDiscoverOfficialBrand}
- className={cn(
- "h-9 border border-border text-[10px] font-semibold bg-background rounded-none transition-all",
- canDiscoverOfficialBrand 
- ? "text-blue-600 hover:bg-blue-50" 
- : "text-muted-foreground opacity-50 cursor-not-allowed"
- )}
- >
- <Globe className="mr-1 h-3.5 w-3.5" />
- Discover URLs
- </Button>
- </div>
- </TooltipTrigger>
- {!canDiscoverOfficialBrand && officialBrandSelectionReason && (
- <TooltipContent side="top" className="max-w-xs">
- <p className="font-semibold text-[10px]">
- {officialBrandSelectionReason}
- </p>
- </TooltipContent>
- )}
- </Tooltip>
- )}
-
- {isImported && onAssignBrand && (
+          {isImported && onAssignBrand && (
  <Button
  variant="outline"
  size="sm"

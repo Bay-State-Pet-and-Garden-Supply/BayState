@@ -246,7 +246,7 @@ describe("PipelineClient shift range selection", () => {
     });
   });
 
-  it("computes official brand eligibility from a single configured cohort", async () => {
+  it("opens scraper dialog with selected SKU count", async () => {
     render(
       <PipelineClient
         initialCounts={importedCounts}
@@ -259,18 +259,11 @@ describe("PipelineClient shift range selection", () => {
     const row = await screen.findByRole("button", { name: "SKU101" });
     fireEvent.click(row);
 
-    await waitFor(() => {
-      expect(lastScraperDialogProps).toMatchObject({
-        brandName: "Miracle-Gro",
-        officialBrandEligibility: {
-          allowed: true,
-          reason: null,
-        },
-      });
-    });
+    const floatingBar = screen.getByText("Scrape Selected");
+    expect(floatingBar).toBeInTheDocument();
   });
 
-  it("blocks official brand when selection spans multiple cohorts", async () => {
+  it("does not include legacy enrichment method props in scraper dialog", async () => {
     render(
       <PipelineClient
         initialCounts={importedCounts}
@@ -286,12 +279,8 @@ describe("PipelineClient shift range selection", () => {
     fireEvent.click(row2);
 
     await waitFor(() => {
-      expect(lastScraperDialogProps).toMatchObject({
-        officialBrandEligibility: {
-          allowed: false,
-          reason: "Official Brand requires one cohort at a time. Select products from a single cohort.",
-        },
-      });
+      expect(lastScraperDialogProps).not.toHaveProperty("brandName");
+      expect(lastScraperDialogProps).not.toHaveProperty("officialBrandEligibility");
     });
   });
 });

@@ -1,3 +1,15 @@
+/**
+ * Fallback URL Extraction (reused from existing Official Brand infrastructure)
+ *
+ * Extracts product data from selected URL candidates discovered via SERPER.
+ * This is the second phase of the fallback workflow — after URL candidates
+ * are reviewed and selected in the URL Review workspace, this endpoint
+ * queues fallback extraction jobs on the scraper runner.
+ *
+ * The extraction runs as `direct_url_extraction` jobs on the runner.
+ * See: lib/pipeline/fallback-orchestration.ts for the full fallback flow.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
 import { scrapeProducts } from "@/lib/pipeline-scraping";
@@ -217,48 +229,46 @@ export async function POST(request: NextRequest) {
   const officialDomains = normalizeDomainList(brand?.official_domains);
   const preferredDomains = normalizeDomainList(brand?.preferred_domains);
 
-  const result = await scrapeProducts(skus, {
-    scrapers: ["official_brand"],
-    enrichment_method: "official_brand",
-    officialBrandPhase: "extraction",
-    officialBrandUrlsBySku: urlsBySku,
-    officialBrandUrlSourceBySku: urlSourceBySku,
-    testMode: false,
-    cohortBrand: brandName,
-    officialBrandCohort: {
-      id: cohortId,
-      brandId,
-      brandName,
-      ...(officialDomains ? { officialDomains } : {}),
-      ...(preferredDomains ? { preferredDomains } : {}),
-    },
-  });
+  try {
+    const jobId = await queueFallbackExtractionJob(supabase, skus, {
+      urlsBySku,
+      urlSourceBySku,
+      cohort: {
+        id: cohortId,
+        brandId,
+        brandName,
+        officialDomains: officialDomains ?? undefined,
+        preferredDomains: preferredDomains ?? undefined,
+      },
+      approvedBy: auth.user?.id || 'admin',
+    });
 
-  if (!result.success) {
+    const nowIso = new Date().toISOString();
+    const { error: statusError } = await supabase
+      .from("products_ingestion")
+      .update({ pipeline_status: "extracting", updated_at: nowIso })
+      .in("sku", skus)
+      .in("pipeline_status", ["url_review", "scraping", "needs_fallback_review"]);
+
+    if (statusError) {
+      console.error("[Fallback Extract] Failed to move products into extracting:", statusError);
+      return NextResponse.json(
+        { error: "Failed to mark products as extracting" },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      jobIds: [jobId],
+      skuCount: skus.length,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[Fallback Extract] Failed to queue extraction job:", err);
     return NextResponse.json(
-      { error: result.error ?? "Failed to start Official Brand extraction" },
+      { error: `Failed to start fallback extraction: ${message}` },
       { status: 500 },
     );
   }
-
-  const nowIso = new Date().toISOString();
-  const { error: statusError } = await supabase
-    .from("products_ingestion")
-    .update({ pipeline_status: "extracting", updated_at: nowIso })
-    .in("sku", skus)
-    .in("pipeline_status", ["url_review", "scraping"]);
-
-  if (statusError) {
-    console.error("[Official Brand Extract] Failed to move products into extracting:", statusError);
-    return NextResponse.json(
-      { error: "Failed to mark products as extracting" },
-      { status: 500 },
-    );
-  }
-
-  return NextResponse.json({
-    success: true,
-    jobIds: result.jobIds,
-    skuCount: skus.length,
-  });
 }

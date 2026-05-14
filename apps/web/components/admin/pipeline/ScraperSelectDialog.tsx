@@ -39,7 +39,7 @@ interface ScraperSelectDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     selectedSkuCount: number;
-    onConfirm: (scrapers: string[], enrichmentMethod: 'scrapers') => void;
+    onConfirm: (scrapers: string[]) => void;
     /** When provided, fetches and shows scraper recommendations for this brand */
     brandName?: string | null;
 }
@@ -145,7 +145,7 @@ export function ScraperSelectDialog({
 
         setIsSubmitting(true);
         try {
-            await onConfirm(scraperSlugs, 'scrapers');
+            await onConfirm(scraperSlugs);
         } finally {
             setIsSubmitting(false);
         }

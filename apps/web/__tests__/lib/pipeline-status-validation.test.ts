@@ -17,15 +17,21 @@ describe('validateStatusTransition', () => {
     });
 
     it('allows canonical forward and retry/rework transitions', () => {
-        expect(validateStatusTransition('imported', 'searching')).toBe(true);
+        // NOTE: imported -> searching is intentionally removed (static scrape always first)
+        expect(validateStatusTransition('imported', 'searching')).toBe(false);
         expect(validateStatusTransition('searching', 'url_review')).toBe(true);
         expect(validateStatusTransition('url_review', 'extracting')).toBe(true);
         expect(validateStatusTransition('url_review', 'scraping')).toBe(true);
         expect(validateStatusTransition('extracting', 'scraped')).toBe(true);
         expect(validateStatusTransition('imported', 'scraping')).toBe(true);
         expect(validateStatusTransition('scraping', 'scraped')).toBe(true);
+        expect(validateStatusTransition('scraping', 'needs_fallback_review')).toBe(true);
+        expect(validateStatusTransition('needs_fallback_review', 'searching')).toBe(true);
+        expect(validateStatusTransition('needs_fallback_review', 'scraped')).toBe(true);
+        expect(validateStatusTransition('needs_fallback_review', 'imported')).toBe(true);
         expect(validateStatusTransition('scraped', 'consolidating')).toBe(true);
         expect(validateStatusTransition('scraped', 'finalizing')).toBe(true);
+        expect(validateStatusTransition('scraped', 'needs_fallback_review')).toBe(true);
         expect(validateStatusTransition('consolidating', 'finalizing')).toBe(true);
         expect(validateStatusTransition('finalizing', 'exporting')).toBe(true);
         expect(validateStatusTransition('finalizing', 'scraped')).toBe(true);
@@ -36,6 +42,7 @@ describe('validateStatusTransition', () => {
     it('rejects invalid canonical transitions', () => {
         expect(validateStatusTransition('imported', 'finalizing')).toBe(false);
         expect(validateStatusTransition('imported', 'failed')).toBe(false);
+        expect(validateStatusTransition('imported', 'searching')).toBe(false);
         expect(validateStatusTransition('searching', 'scraped')).toBe(false);
         expect(validateStatusTransition('url_review', 'finalizing')).toBe(false);
         expect(validateStatusTransition('extracting', 'exporting')).toBe(false);
@@ -44,16 +51,20 @@ describe('validateStatusTransition', () => {
         expect(validateStatusTransition('exporting', 'imported')).toBe(false);
         expect(validateStatusTransition('failed', 'scraped')).toBe(false);
         expect(validateStatusTransition('failed', 'exporting')).toBe(false);
+        expect(validateStatusTransition('needs_fallback_review', 'finalizing')).toBe(false);
+        expect(validateStatusTransition('needs_fallback_review', 'extracting')).toBe(false);
+        expect(validateStatusTransition('scraped', 'searching')).toBe(false);
     });
 
     it('enforces the full canonical transition matrix', () => {
         const validTargets: Record<PersistedPipelineStatus, PersistedPipelineStatus[]> = {
-            imported: ['imported', 'scraping', 'searching'],
+            imported: ['imported', 'scraping'],
             searching: ['searching', 'url_review', 'imported', 'failed'],
             url_review: ['url_review', 'extracting', 'scraping', 'imported', 'failed'],
             extracting: ['extracting', 'scraped', 'url_review', 'failed'],
-            scraping: ['scraping', 'scraped', 'failed', 'imported'],
-            scraped: ['scraped', 'consolidating', 'finalizing', 'imported', 'failed'],
+            scraping: ['scraping', 'scraped', 'needs_fallback_review', 'failed', 'imported'],
+            needs_fallback_review: ['needs_fallback_review', 'searching', 'scraped', 'imported', 'failed'],
+            scraped: ['scraped', 'consolidating', 'finalizing', 'needs_fallback_review', 'imported', 'failed'],
             consolidating: ['consolidating', 'finalizing', 'scraped', 'failed'],
             finalizing: ['finalizing', 'exporting', 'scraped', 'failed'],
             exporting: ['exporting', 'finalizing', 'failed'],

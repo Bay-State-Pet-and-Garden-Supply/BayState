@@ -2842,6 +2842,8 @@ export type Database = {
           pipeline_status: Database["public"]["Enums"]["pipeline_status_five"]
           product_line: string | null
           retry_count: number | null
+          scrape_quality: Json | null
+          fallback_metadata: Json | null
           selected_images: Json | null
           sku: string
           sources: Json | null
@@ -2865,6 +2867,8 @@ export type Database = {
           pipeline_status: Database["public"]["Enums"]["pipeline_status_five"]
           product_line?: string | null
           retry_count?: number | null
+          scrape_quality?: Json | null
+          fallback_metadata?: Json | null
           selected_images?: Json | null
           sku: string
           sources?: Json | null
@@ -2889,6 +2893,8 @@ export type Database = {
           product_line?: string | null
           retry_count?: number | null
           selected_images?: Json | null
+          scrape_quality?: Json | null
+          fallback_metadata?: Json | null
           sku?: string
           sources?: Json | null
           updated_at?: string | null

@@ -47,6 +47,7 @@ describe("FloatingActionsBar", () => {
         onDelete={() => {}}
         onUploadShopSite={onUploadShopSite}
         onDownloadZip={onDownloadZip}
+        showLegacyShopSiteActions={true}
       />,
     );
 

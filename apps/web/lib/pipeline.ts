@@ -22,6 +22,7 @@ type StageBackedPipelineStage = Extract<
   | "url_review"
   | "extracting"
   | "scraping"
+  | "needs_fallback_review"
   | "scraped"
   | "consolidating"
   | "finalizing"
@@ -52,6 +53,10 @@ const PIPELINE_STAGE_QUERY_SOURCE: Record<
   scraping: {
     table: "products_ingestion",
     status: "scraping",
+  },
+  needs_fallback_review: {
+    table: "products_ingestion",
+    status: "needs_fallback_review",
   },
   scraped: {
     table: "products_ingestion",
@@ -782,6 +787,7 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
     url_review: 0,
     extracting: 0,
     scraping: 0,
+    needs_fallback_review: 0,
     scraped: 0,
     consolidating: 0,
     finalizing: 0,

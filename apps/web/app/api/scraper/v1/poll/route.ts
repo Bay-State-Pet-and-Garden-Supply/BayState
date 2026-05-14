@@ -87,18 +87,6 @@ function deriveRequestedScrapers(job: {
         return ['official_brand'];
     }
 
-    if (job.type === 'deep_research') {
-        return ['deep_research'];
-    }
-
-    if (job.type === 'discovery') {
-        return ['ai_discovery'];
-    }
-
-    if (job.type === 'crawl4ai') {
-        return ['crawl4ai_discovery'];
-    }
-
     const config = toRecord(job.config);
     if (hasKnownConfigKeys(config, DISCOVERY_CONFIG_KEYS)) {
         return ['ai_discovery'];
@@ -111,18 +99,12 @@ function deriveRequestedScrapers(job: {
     return [];
 }
 
-const DEEP_RESEARCH_JOB_TYPE = 'deep_research' as const;
-
-function normalizeRunnerJobType(rawType: unknown): 'standard' | 'ai_search' | typeof OFFICIAL_BRAND_URL_DISCOVERY_TYPE | typeof DIRECT_URL_EXTRACTION_TYPE | typeof DEEP_RESEARCH_JOB_TYPE {
+function normalizeRunnerJobType(rawType: unknown): 'standard' | 'ai_search' | typeof OFFICIAL_BRAND_URL_DISCOVERY_TYPE | typeof DIRECT_URL_EXTRACTION_TYPE {
     if (rawType === OFFICIAL_BRAND_URL_DISCOVERY_TYPE || rawType === DIRECT_URL_EXTRACTION_TYPE) {
         return rawType;
     }
 
-    if (rawType === DEEP_RESEARCH_JOB_TYPE) {
-        return rawType;
-    }
-
-    if (rawType === 'ai_search' || rawType === 'discovery' || rawType === 'crawl4ai') {
+    if (rawType === 'ai_search' || rawType === 'discovery' || rawType === 'crawl4ai' || rawType === 'deep_research') {
         return 'ai_search';
     }
 
@@ -315,17 +297,6 @@ export async function POST(request: NextRequest) {
         if (requestedScrapers.includes('official_brand') && !scrapers.some((scraper) => scraper.name === 'official_brand')) {
             scrapers.push({
                 name: 'official_brand',
-                disabled: false,
-                options: {},
-                test_skus: [],
-                retries: 3,
-                credential_refs: [],
-            });
-        }
-
-        if (requestedScrapers.includes('deep_research') && !scrapers.some((scraper) => scraper.name === 'deep_research')) {
-            scrapers.push({
-                name: 'deep_research',
                 disabled: false,
                 options: {},
                 test_skus: [],

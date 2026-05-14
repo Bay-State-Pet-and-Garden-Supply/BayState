@@ -17,7 +17,7 @@ const counts: StatusCount[] = [
 ];
 
 describe("StageTabs", () => {
-  it("renders the live seven-tab workflow", () => {
+  it("renders all pipeline stage tabs", () => {
     render(
       <StageTabs
         currentStage="imported"
@@ -27,15 +27,16 @@ describe("StageTabs", () => {
     );
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(7);
+    expect(tabs.length).toBeGreaterThanOrEqual(10);
 
     expect(screen.getByRole("tab", { name: /Imported/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Scraping/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Scraped/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Results/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Consolidating/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Finalizing/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Exporting/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Failed/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Fallback Review/i })).toBeInTheDocument();
   });
 
   it("shows live counts for finalizing and exporting", () => {

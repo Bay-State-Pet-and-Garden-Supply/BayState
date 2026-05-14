@@ -12,6 +12,7 @@ export const PERSISTED_PIPELINE_STATUSES = [
   "url_review",
   "extracting",
   "scraping",
+  "needs_fallback_review",
   "scraped",
   "consolidating",
   "finalizing",
@@ -237,25 +238,30 @@ export const STAGE_CONFIG: Record<StageConfigKey, StageConfig> = {
   searching: {
     label: "Searching",
     color: "#6366F1",
-    description: "Official Brand SERP URL discovery in progress",
+    description: "Fallback SERP URL discovery in progress",
   },
   url_review: {
     label: "URL Review",
     color: "#A855F7",
-    description: "Review discovered Official Brand URLs before extraction",
+    description: "Review discovered URL candidates before fallback extraction",
   },
   extracting: {
     label: "Extracting",
     color: "#06B6D4",
-    description: "Official Brand product page extraction in progress",
+    description: "Fallback product page extraction in progress",
   },
   scraping: {
     label: "Scraping",
     color: "#2563EB",
     description: "Products currently assigned to active scraper jobs",
   },
+  needs_fallback_review: {
+    label: "Fallback Review",
+    color: "#F97316",
+    description: "Products needing manual fallback approval before SERPER/AI extraction",
+  },
   scraped: {
-    label: "Scraped",
+    label: "Results",
     color: "#3B82F6",
     description: "Products with completed scrape results ready for consolidation",
   },

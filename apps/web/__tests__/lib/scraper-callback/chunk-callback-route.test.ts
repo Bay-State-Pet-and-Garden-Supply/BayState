@@ -56,7 +56,7 @@ describe('persistChunkResultsToPipeline', () => {
     const result = await persistChunkResultsToPipeline(supabase, 'job-prod', aggregatedResults, false);
 
     expect(mockedPersist).toHaveBeenCalledTimes(1);
-    expect(mockedPersist).toHaveBeenCalledWith(supabase, aggregatedResults, false, expect.any(String));
+    expect(mockedPersist).toHaveBeenCalledWith(supabase, aggregatedResults, false, expect.any(String), expect.objectContaining({ sourceKind: 'static_scraper' }));
     expect(result).toEqual(['SKU-1']);
   });
 
@@ -134,7 +134,8 @@ describe('persistChunkResultsToPipeline', () => {
         'SKU-VALID': expect.any(Object),
       },
       false,
-      expect.any(String)
+      expect.any(String),
+      expect.objectContaining({ sourceKind: 'fallback_serper_ai' })
     );
   });
 

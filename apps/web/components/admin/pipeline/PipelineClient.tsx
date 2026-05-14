@@ -24,6 +24,7 @@ import {
 import { StageTabs } from "./StageTabs";
 import { ProductTable } from "./ProductTable";
 import { ScrapedResultsView } from "./ScrapedResultsView";
+import { FallbackReviewView } from "./FallbackReviewView";
 import { FloatingActionsBar } from "./FloatingActionsBar";
 import { ActiveRunsTab } from "./ActiveRunsTab";
 import { ActiveConsolidationsTab } from "./ActiveConsolidationsTab";
@@ -275,67 +276,6 @@ export function PipelineClient({
 
     return { groups, cohortIds, brands, brandIds, brandObjects, names };
   }, [filteredProducts]);
-
-  const officialBrandSelection = useMemo(() => {
-    const selectedProducts = filteredProducts.filter((product) =>
-      selectedSkus.has(product.sku),
-    );
-
-    if (selectedProducts.length === 0) {
-      return {
-        allowed: false,
-        reason: "Select products from one cohort to use Official Brand.",
-      };
-    }
-
-    const cohortIds = Array.from(
-      new Set(
-        selectedProducts.map((product) => product.cohort_id || "ungrouped"),
-      ),
-    );
-
-    if (cohortIds.length !== 1) {
-      return {
-        allowed: false,
-        reason: "Official Brand requires one cohort at a time. Select products from a single cohort.",
-      };
-    }
-
-    const cohortId = cohortIds[0];
-    if (!cohortId || cohortId === "ungrouped") {
-      return {
-        allowed: false,
-        reason: "Official Brand only works on grouped cohort batches.",
-      };
-    }
-
-    const brand = groupedProducts.brandObjects[cohortId] || null;
-    if (!brand?.id) {
-      return {
-        allowed: false,
-        reason: "Official Brand requires the selected cohort to have an assigned registry brand.",
-      };
-    }
-
-    const hasConfiguredDomains = Boolean(
-      (brand.official_domains && brand.official_domains.length > 0)
-        || (brand.preferred_domains && brand.preferred_domains.length > 0),
-    );
-
-    if (!hasConfiguredDomains) {
-      return {
-        allowed: false,
-        reason: "Official Brand requires the cohort brand to have official or preferred domains configured.",
-      };
-    }
-
-    return {
-      allowed: true,
-      reason: null,
-      cohortId,
-      brandName: groupedProducts.brands[cohortId] || brand.name || null,
-    };
-  }, [filteredProducts, groupedProducts.brandObjects, groupedProducts.brands, selectedSkus]);
 
   const scrapeSelectionValidation = useMemo(() => {
     if (currentStage !== "imported" || selectedSkus.size === 0) {
@@ -1143,54 +1083,10 @@ export function PipelineClient({
     }
   };
 
-  // Handle scrape dialog confirm — creates actual scraper jobs
-  const handleScrapeConfirm = async (
-    scrapers: string[],
-    enrichmentMethod: "scrapers" | "official_brand",
-    options?: { phase?: "url_discovery" | "extraction"; urlsBySku?: Record<string, string> },
-  ) => {
+  // Handle scrape dialog confirm — creates static scraper jobs only
+  const handleScrapeConfirm = async (scrapers: string[]) => {
     const skus = Array.from(selectedSkus);
     if (skus.length === 0) return;
-
-    if (enrichmentMethod === "official_brand" && options?.phase === "url_discovery") {
-      const res = await adminFetch("/api/admin/pipeline/official-brand/discover", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cohort_id: officialBrandSelection.cohortId,
-          skus,
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        toast.success(
-          `Discovered URLs for ${skus.length} product${skus.length > 1 ? "s" : ""}`,
-          {
-            description: `${data.candidate_count} URL candidates found`,
-            action: {
-              label: "Review Candidates",
-              onClick: () => router.push(`/admin/pipeline?stage=url_review&cohort_id=${encodeURIComponent(officialBrandSelection.cohortId ?? "")}`),
-            },
-          },
-        );
-        setIsScrapeDialogOpen(false);
-        setSelectedSkus(new Set());
-        await refreshAll();
-      } else {
-        const error = await res.json();
-        toast.error(error.error || "Discovery failed");
-      }
-      return;
-    }
-
-    if (enrichmentMethod === "official_brand" && !officialBrandSelection.allowed) {
-      toast.error(
-        officialBrandSelection.reason ||
-          "Official Brand requires one eligible cohort at a time.",
-      );
-      return;
-    }
 
     const isAdditionalScrape = currentStage === "scraped";
 
@@ -1201,39 +1097,18 @@ export function PipelineClient({
         body: JSON.stringify({
           skus,
           scrapers,
-          enrichment_method: enrichmentMethod,
-          cohort_id:
-            enrichmentMethod === "official_brand"
-              ? officialBrandSelection.cohortId
-              : cohortIdFilter || undefined,
-          ...(enrichmentMethod === "official_brand" && options?.phase ? { official_brand_phase: options.phase } : {}),
-          ...(enrichmentMethod === "official_brand" && options?.urlsBySku ? { urls_by_sku: options.urlsBySku } : {}),
+          cohort_id: cohortIdFilter || undefined,
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
-        const isOfficialBrandDiscovery =
-          enrichmentMethod === "official_brand" && options?.phase === "url_discovery";
-        const reviewCohortId = officialBrandSelection.cohortId;
         toast.success(
-          isOfficialBrandDiscovery
-            ? `Started Official Brand discovery for ${skus.length} product${skus.length > 1 ? "s" : ""}`
-            : isAdditionalScrape
-              ? `Started additional scrape for ${skus.length} product${skus.length > 1 ? "s" : ""}`
-              : `Created scrape job for ${skus.length} product${skus.length > 1 ? "s" : ""} with ${scrapers.length} scraper${scrapers.length !== 1 ? "s" : ""}`,
+          isAdditionalScrape
+            ? `Started additional scrape for ${skus.length} product${skus.length > 1 ? "s" : ""}`
+            : `Created scrape job for ${skus.length} product${skus.length > 1 ? "s" : ""} with ${scrapers.length} scraper${scrapers.length !== 1 ? "s" : ""}`,
           {
-            description: isOfficialBrandDiscovery
-              ? `Candidates will be saved for review. Job ID: ${data.jobIds?.[0]?.slice(0, 8) ?? "unknown"}...`
-              : `Job ID: ${data.jobIds?.[0]?.slice(0, 8) ?? "unknown"}...`,
-            ...(isOfficialBrandDiscovery && reviewCohortId
-              ? {
-                  action: {
-                    label: "Review Candidates",
-                    onClick: () => router.push(`/admin/pipeline?stage=url_review&cohort_id=${encodeURIComponent(reviewCohortId)}`),
-                  },
-                }
-              : {}),
+            description: `Job ID: ${data.jobIds?.[0]?.slice(0, 8) ?? "unknown"}...`,
           },
         );
 
@@ -1241,11 +1116,9 @@ export function PipelineClient({
         setSelectedSkus(new Set());
 
         if (isAdditionalScrape) {
-          // Stay on scraped tab, refresh to show updated results when callback delivers
           setSearch("");
           await refreshAll();
         } else {
-          // Navigate to the live scraping tab for initial scrapes.
           handleStageChange("scraping");
         }
       } else {
@@ -1257,47 +1130,6 @@ export function PipelineClient({
     }
   };
 
-  // Handle discover official brand from floating actions bar
-  const handleDiscoverOfficialBrand = async () => {
-    const skus = Array.from(selectedSkus);
-    if (skus.length === 0) return;
-
-    setIsLoading(true);
-    try {
-      const res = await adminFetch("/api/admin/pipeline/official-brand/discover", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cohort_id: officialBrandSelection.cohortId,
-          skus,
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        toast.success(
-          `Discovered URLs for ${skus.length} product${skus.length > 1 ? "s" : ""}`,
-          {
-            description: `${data.candidate_count} URL candidates found`,
-            action: {
-              label: "Review Candidates",
-              onClick: () => router.push(`/admin/pipeline?stage=url_review&cohort_id=${encodeURIComponent(officialBrandSelection.cohortId ?? "")}`),
-            },
-          },
-        );
-        setSelectedSkus(new Set());
-        handleStageChange("url_review");
-      } else {
-        const error = await res.json();
-        toast.error(error.error || "Discovery failed");
-      }
-    } catch {
-      toast.error("Failed to start discovery");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const stageConfig = STAGE_CONFIG[currentStage];
   const shellControlsBelongToRoute =
     !isLiveOperationalTab(currentStage) && !isWorkspaceTab(currentStage);
@@ -1306,11 +1138,9 @@ export function PipelineClient({
     product_line: productLineFilter,
     cohort_id: cohortIdFilter,
   };
-  const officialBrandReviewCohortId = cohortIdFilter;
-  const officialBrandReviewHref = officialBrandReviewCohortId
-    ? `/admin/pipeline?stage=url_review&cohort_id=${encodeURIComponent(officialBrandReviewCohortId)}`
+  const urlReviewHref = cohortIdFilter
+    ? `/admin/pipeline?stage=url_review&cohort_id=${encodeURIComponent(cohortIdFilter)}`
     : null;
-  const canDiscoverOfficialBrand = currentStage === "imported" && officialBrandSelection.allowed && selectedSkus.size > 0;
   const applyFilterState = (newFilters: PipelineFiltersState) => {
     setSourceFilter(newFilters.source || "");
     setProductLineFilter(newFilters.product_line || "");
@@ -1368,11 +1198,11 @@ export function PipelineClient({
         />
       ) : null}
 
-      {officialBrandReviewHref ? (
+      {urlReviewHref ? (
         <Button variant="outline" size="sm" asChild className="h-8">
-          <Link href={officialBrandReviewHref}>
+          <Link href={urlReviewHref}>
             <Globe className="h-4 w-4" />
-            Official Brand Candidates
+            Fallback URL Candidates
           </Link>
         </Button>
       ) : null}
@@ -1446,9 +1276,9 @@ export function PipelineClient({
                     <Activity className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <AdminCardTitle>Official Brand Extraction</AdminCardTitle>
+                    <AdminCardTitle>Fallback Extraction</AdminCardTitle>
                     <AdminCardDescription>
-                      Live Official Brand extraction jobs currently running or queued.
+                      Live fallback URL extraction jobs currently running or queued.
                     </AdminCardDescription>
                   </div>
                 </AdminCardHeader>
@@ -1498,6 +1328,31 @@ export function PipelineClient({
           ) : currentStage === "url_review" ? (
             <div className="min-h-0">
               <UrlReviewWorkspace />
+            </div>
+          ) : currentStage === "needs_fallback_review" ? (
+            <div className="min-h-0">
+              <FallbackReviewView
+                products={filteredProducts}
+                selectedSkus={selectedSkus}
+                onSelectSku={handleSelectSku}
+                onSelectAll={(skus) => {
+                  setSelectedSkus((prev) => {
+                    const next = new Set(prev);
+                    skus.forEach((sku) => next.add(sku));
+                    return next;
+                  });
+                }}
+                onDeselectAll={(skus) => {
+                  setSelectedSkus((prev) => {
+                    const next = new Set(prev);
+                    skus.forEach((sku) => next.delete(sku));
+                    return next;
+                  });
+                }}
+                onRefresh={refreshAll}
+                search={search}
+                onSearchChange={(value) => setSearch(value)}
+              />
             </div>
           ) : currentStage === "scraped" ? (
             <ScrapedResultsView
@@ -1848,7 +1703,6 @@ export function PipelineClient({
         onOpenChange={setIsScrapeDialogOpen}
         selectedSkuCount={selectedSkus.size}
         onConfirm={handleScrapeConfirm}
-        brandName={officialBrandSelection.brandName ?? null}
       />
       {/* Manual Add Product Dialog */}
       {isManualAddOpen && (
@@ -1886,9 +1740,7 @@ export function PipelineClient({
           onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
           onAssignBrand={() => setIsBulkAssignBrandOpen(true)}
           scrapeSelectionValidation={scrapeSelectionValidation}
-          onDiscoverOfficialBrand={handleDiscoverOfficialBrand}
-          canDiscoverOfficialBrand={canDiscoverOfficialBrand}
-          officialBrandSelectionReason={officialBrandSelection.reason}
+
           onDelete={handleDelete}
           actionState={currentStage === "exporting" ? exportActionState : null}
           onUploadShopSite={

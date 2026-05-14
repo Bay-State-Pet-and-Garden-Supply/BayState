@@ -1,11 +1,37 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+/**
+ * @deprecated Use {@link FALLBACK_SOURCE_KEY} instead.
+ * Replaced by the fallback review workflow. Kept for backward
+ * compatibility with in-flight jobs and existing URL candidates.
+ */
 export const OFFICIAL_BRAND_SOURCE_KEY = 'official_brand';
+
+/**
+ * @deprecated URL discovery now runs server-side via the fallback
+ * orchestration module (lib/pipeline/fallback-orchestration.ts).
+ * Kept for backward compatibility with legacy jobs.
+ */
 export const OFFICIAL_BRAND_URL_DISCOVERY_TYPE = 'official_brand_url_discovery';
+
 /** @deprecated Use {@link DIRECT_URL_EXTRACTION_TYPE} instead. */
 export const OFFICIAL_BRAND_EXTRACTION_TYPE = 'direct_url_extraction';
+
+/**
+ * Job type for fallback URL extraction on the scraper runner.
+ * This is the only extraction job type that should be created for
+ * the fallback (SERPER/AI) workflow.
+ */
 export const DIRECT_URL_EXTRACTION_TYPE = 'direct_url_extraction';
+
+/** Source key for product URL extraction results in products_ingestion.sources */
 export const PRODUCT_URL_EXTRACTION_SOURCE_KEY = 'product_url_extraction';
+
+/**
+ * Provenance source kind for fallback extraction sources.
+ * Written to source._provenance fields during persistence.
+ */
+export const FALLBACK_EXTRACTION_SOURCE_KEY = 'fallback_extraction';
 
 type OfficialBrandPhase = 'url_discovery' | 'extraction';
 

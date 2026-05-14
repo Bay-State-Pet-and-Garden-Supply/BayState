@@ -12,12 +12,13 @@ export const STATUS_TRANSITIONS: Record<
   PersistedPipelineStatus,
   PersistedPipelineStatus[]
 > = {
-  imported: ['scraping', 'searching'],
+  imported: ['scraping'],
   searching: ['url_review', 'imported', 'failed'],
   url_review: ['extracting', 'scraping', 'imported', 'failed'],
   extracting: ['scraped', 'url_review', 'failed'],
-  scraping: ['scraped', 'failed', 'imported'],
-  scraped: ['consolidating', 'finalizing', 'imported', 'failed'],
+  scraping: ['scraped', 'needs_fallback_review', 'failed', 'imported'],
+  needs_fallback_review: ['searching', 'scraped', 'imported', 'failed'],
+  scraped: ['consolidating', 'finalizing', 'needs_fallback_review', 'imported', 'failed'],
   consolidating: ['finalizing', 'scraped', 'failed'],
   finalizing: ['exporting', 'scraped', 'failed'],
   exporting: ['finalizing', 'failed'],

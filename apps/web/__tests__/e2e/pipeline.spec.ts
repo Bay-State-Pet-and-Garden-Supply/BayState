@@ -22,7 +22,7 @@ test.describe('Pipeline E2E Tests', () => {
         await expect(page.getByText('Operational')).toBeVisible();
 
         await expect(page.getByRole('tab', { name: /Imported/ })).toBeVisible();
-        await expect(page.getByRole('tab', { name: /Scraped/ })).toBeVisible();
+        await expect(page.getByRole('tab', { name: /Results/ })).toBeVisible();
         await expect(page.getByRole('tab', { name: /Finalized/ })).toBeVisible();
         await expect(page.getByRole('tab', { name: /Failed/ })).toBeVisible();
         await expect(page.getByRole('tab', { name: /Published/ })).toBeVisible();

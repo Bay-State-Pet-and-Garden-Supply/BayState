@@ -88,6 +88,33 @@ const EMPTY_SOURCES: Record<string, unknown> = {};
 const IMAGE_RETRY_DEBOUNCE_MS = 5 * 60 * 1000;
 const imageRetryAttemptTimestamps = new Map<string, number>();
 
+interface ProvenanceInfo {
+  source_kind?: "static_scraper" | "fallback_serper_ai";
+  scraper_slug?: string;
+  scrape_job_id?: string;
+  source_url?: string;
+  quality_score?: number;
+  serper_query?: string;
+  llm_model?: string;
+}
+
+function getProvenance(sourceData: Record<string, unknown> | null): ProvenanceInfo | null {
+  const p = (sourceData as Record<string, unknown>)?.["_provenance"];
+  if (p && typeof p === "object") return p as ProvenanceInfo;
+  return null;
+}
+
+function getProvenanceBadge(provenance: ProvenanceInfo | null): { label: string; className: string } | null {
+  if (!provenance?.source_kind) return null;
+  if (provenance.source_kind === "static_scraper") {
+    return { label: "Static scraper", className: "bg-blue-100 text-blue-700 border-blue-200" };
+  }
+  if (provenance.source_kind === "fallback_serper_ai") {
+    return { label: "Fallback SERPER/AI", className: "bg-purple-100 text-purple-700 border-purple-200" };
+  }
+  return null;
+}
+
 function isSourceDetails(value: unknown): value is SourceDetails {
   return typeof value === "object" && value !== null;
 }
@@ -411,15 +438,25 @@ export function ScrapedResultsView({
                     className="flex-1"
                   >
                     <TabsList className="h-8 justify-start bg-muted rounded-none border border-border p-0.5 w-fit">
-                      {sourceKeys.map((key) => (
-                        <TabsTrigger
-                          key={key}
-                          value={key}
-                          className="text-[10px] px-2 h-6 font-semibold rounded-none data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-none"
-                        >
-                          {key}
-                        </TabsTrigger>
-                      ))}
+                      {sourceKeys.map((key) => {
+                        const srcData = isSourceDetails(sources[key]) ? sources[key] as Record<string, unknown> : null;
+                        const prov = getProvenance(srcData);
+                        const provBadge = getProvenanceBadge(prov);
+                        return (
+                          <TabsTrigger
+                            key={key}
+                            value={key}
+                            className="text-[10px] px-2 h-6 font-semibold rounded-none data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-none flex items-center gap-1"
+                          >
+                            {key}
+                            {provBadge ? (
+                              <span className={`text-[7px] px-1 py-0.5 font-bold uppercase tracking-wider ${provBadge.className} rounded-none`}>
+                                {provBadge.label}
+                              </span>
+                            ) : null}
+                          </TabsTrigger>
+                        );
+                      })}
                     </TabsList>
                   </Tabs>
                   <Button
@@ -554,12 +591,23 @@ export function ScrapedResultsView({
                     <div className="space-y-2">
                       <div className="space-y-1.5">
                         <div className="flex justify-between items-baseline">
-                          <Badge
-                            variant="outline"
-                            className="bg-foreground text-background border border-foreground rounded-none font-semibold text-[9px]"
-                          >
-                            {activeSource.toUpperCase()} RESULT
-                          </Badge>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Badge
+                              variant="outline"
+                              className="bg-foreground text-background border border-foreground rounded-none font-semibold text-[9px]"
+                            >
+                              {activeSource.toUpperCase()}
+                            </Badge>
+                            {(() => {
+                              const prov = getProvenance(currentSourceData as unknown as Record<string, unknown>);
+                              const provBadge = getProvenanceBadge(prov);
+                              return provBadge ? (
+                                <Badge variant="outline" className={`text-[8px] font-bold uppercase tracking-wider rounded-none ${provBadge.className}`}>
+                                  {provBadge.label}
+                                </Badge>
+                              ) : null;
+                            })()}
+                          </div>
                           {currentSourceData.price && (
                             <span className="text-2xl font-bold text-foreground">
                               $

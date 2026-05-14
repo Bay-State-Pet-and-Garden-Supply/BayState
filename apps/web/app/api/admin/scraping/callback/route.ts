@@ -1,3 +1,14 @@
+/**
+ * @deprecated
+ * This whole-job callback endpoint is deprecated in favor of the
+ * per-chunk callback (POST /api/scraper/v1/chunk-callback).
+ *
+ * The chunk-based callback handles static scrape result persistence
+ * with per-SKU quality evaluation and provenance tracking.
+ *
+ * This route is kept for backward compatibility while legacy jobs drain.
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
