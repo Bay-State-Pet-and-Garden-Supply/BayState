@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import yaml from 'yaml';
 import type { ImageRetryQueueInsert } from '../lib/supabase/database.types';
+import { scraperConfigRequiresLogin } from '../lib/scraper-config-login';
 
 type BackfillMode = 'dry-run' | 'execute';
 
@@ -91,24 +92,7 @@ function isDurableProductImageReference(value: string): boolean {
   return isInlineImageDataUrl(normalized) || isProductImageStorageUrl(normalized);
 }
 
-function scraperConfigRequiresLogin(config: ScraperConfigLike): boolean {
-  if (config.login && isRecord(config.login)) {
-    return true;
-  }
 
-  const loginKeywords = ['login', 'authenticate', 'sign_in', 'signin', 'password', 'username'];
-  const workflows = Array.isArray(config.workflows) ? config.workflows : [];
-
-  return workflows.some((step) => {
-    const action = typeof step?.action === 'string' ? step.action.toLowerCase() : '';
-    if (loginKeywords.some((keyword) => action.includes(keyword))) {
-      return true;
-    }
-
-    const paramsString = step?.params ? JSON.stringify(step.params).toLowerCase() : '';
-    return loginKeywords.some((keyword) => paramsString.includes(keyword));
-  });
-}
 
 export function resolveLoginProtectedScraperSlugs(configs: ScraperConfigLike[]): string[] {
   return configs
@@ -147,6 +131,7 @@ async function loadLocalScraperConfigs(): Promise<ScraperConfigLike[]> {
       configs.push({
         slug,
         login: parsed.login,
+        requires_login: parsed.requires_login,
         workflows: Array.isArray(parsed.workflows)
           ? parsed.workflows.map((step) => (isRecord(step) ? step : {}))
           : [],
@@ -400,7 +385,7 @@ export async function executeLoginProtectedImageBackfillWithClient(
             await insertRetryQueueEntry(supabase, {
               sku: candidate.productId,
               image_url: target.normalizedUrl,
-              error_type: 'not_found_404',
+              error_type: 'auth_401',
               retry_count: 0,
               status: 'pending',
               scheduled_for: nowIso,

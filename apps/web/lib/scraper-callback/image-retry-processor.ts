@@ -7,6 +7,7 @@ import path from 'node:path';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { parse as parseYaml } from 'yaml';
 import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
+import { scraperConfigRequiresLogin } from '@/lib/scraper-config-login';
 import {
   getRetryDelay,
   ImageCaptureErrorType,
@@ -90,6 +91,8 @@ interface ScraperConfigMatch {
 
 interface ScraperYamlConfig {
   base_url?: string;
+  login?: unknown;
+  workflows?: unknown[];
   requires_login?: boolean;
 }
 
@@ -312,7 +315,7 @@ async function loadScraperRuntimeConfig(
         slug: config.slug,
         filePath: config.file_path,
         baseUrl: typeof parsed.base_url === 'string' ? parsed.base_url : null,
-        requiresLogin: Boolean(parsed.requires_login),
+        requiresLogin: scraperConfigRequiresLogin(parsed),
       } satisfies ScraperRuntimeConfig;
     })
   );

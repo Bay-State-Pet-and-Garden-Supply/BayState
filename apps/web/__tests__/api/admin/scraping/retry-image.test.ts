@@ -2,6 +2,7 @@ export {};
 const {
   NextRequest,
   createClient,
+  createAdminClient,
   requireAdminAuth,
 } = require('@/__tests__/helpers/admin-api-route-harness');
 
@@ -56,6 +57,7 @@ describe('POST /api/admin/scraping/retry-image', () => {
     };
 
     (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+    (createAdminClient as jest.Mock).mockResolvedValue(mockSupabase);
     (resolveImageRetryTarget as jest.Mock).mockResolvedValue({
       productId: 'product-1',
       sku: 'SKU-404',
@@ -149,7 +151,7 @@ describe('POST /api/admin/scraping/retry-image', () => {
       expect.objectContaining({
         sku: 'SKU-404',
         image_url: 'https://images.example.com/broken.jpg',
-        error_type: 'not_found_404',
+        error_type: 'auth_401',
         status: 'pending',
         retry_count: 0,
       })
@@ -187,7 +189,7 @@ describe('POST /api/admin/scraping/retry-image', () => {
 
     expect(imageRetryTable.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        error_type: 'not_found_404',
+        error_type: 'auth_401',
         status: 'pending',
         last_error: null,
       })

@@ -113,6 +113,80 @@ describe('replaceInlineImageDataUrls', () => {
     ]);
   });
 
+  it('handles mixed payload with both successful and failed capture results, leaving no vendor URL', async () => {
+    const { supabase, insert, upload, getPublicUrl } = createSupabaseMock();
+
+    const result = await replaceInlineImageDataUrls(
+      supabase as never,
+      {
+        images: [
+          {
+            status: 'success',
+            data_url: INLINE_PNG_DATA_URL,
+            original_url: 'https://vendor.example.com/protected/img.jpg',
+          },
+          {
+            status: 'error',
+            error_type: 'auth_401',
+            original_url: 'https://vendor.example.com/protected/img2.jpg',
+            error_message: 'HTTP 401',
+          },
+        ],
+      },
+      {
+        folderPath: 'pipeline-sources/test-sku',
+        productId: 'product-mixed-789',
+        scraperImageMetadata: [
+          {
+            status: 'success',
+            data_url: INLINE_PNG_DATA_URL,
+            original_url: 'https://vendor.example.com/protected/img.jpg',
+          },
+          {
+            status: 'error',
+            error_type: 'auth_401',
+            original_url: 'https://vendor.example.com/protected/img2.jpg',
+            error_message: 'HTTP 401',
+          },
+        ],
+      }
+    );
+
+    // Success: data_url uploaded and replaced with public URL
+    expect(upload).toHaveBeenCalledTimes(1);
+    expect(getPublicUrl).toHaveBeenCalledTimes(1);
+
+    // Failure: queued with auth_401
+    expect(insert).toHaveBeenCalledTimes(1);
+    expect(insert).toHaveBeenCalledWith({
+      sku: 'product-mixed-789',
+      image_url: 'https://vendor.example.com/protected/img2.jpg',
+      error_type: 'auth_401',
+      retry_count: 0,
+      max_retries: 2,
+      status: 'pending',
+      scheduled_for: '2026-03-26T12:00:01.000Z',
+      last_error: 'HTTP 401',
+    });
+
+    // Output contains only storage URL and retry marker — no vendor URL
+    const images = result.value.images as string[];
+    expect(images).toHaveLength(2);
+    expect(images[0]).toContain('/storage/v1/object/public/product-images/');
+    expect(images[1]).toMatch(/^pending_retry:\/\/auth_401\//);
+
+    // Verify no protected vendor URL escapes into the final value
+    const serialized = JSON.stringify(result.value);
+    expect(serialized).not.toContain('vendor.example.com');
+    expect(serialized).not.toContain('protected/img');
+
+    expect(result.queuedImages).toHaveLength(1);
+    expect(result.queuedImages[0]).toMatchObject({
+      errorType: 'auth_401',
+      imageUrl: 'https://vendor.example.com/protected/img2.jpg',
+    });
+  });
+
   it('queues structured scraper error metadata without attempting an upload', async () => {
     const { supabase, insert, upload } = createSupabaseMock();
 

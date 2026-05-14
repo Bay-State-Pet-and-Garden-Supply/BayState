@@ -62,8 +62,9 @@ export async function POST(request: NextRequest) {
       const { error: updateError } = await supabase
         .from('image_retry_queue')
         .update({
-          error_type: 'not_found_404',
+          error_type: 'auth_401',
           status: 'pending',
+          retry_count: 0,
           scheduled_for: nowIso,
           last_error: null,
           updated_at: nowIso,
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
     const { error: insertError } = await supabase.from('image_retry_queue').insert({
       sku: productId,
       image_url: imageUrl,
-      error_type: 'not_found_404',
+      error_type: 'auth_401',
       status: 'pending',
       retry_count: 0,
       scheduled_for: nowIso,

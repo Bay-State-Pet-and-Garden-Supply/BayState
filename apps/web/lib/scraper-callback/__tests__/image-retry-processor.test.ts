@@ -4,6 +4,7 @@ import {
 } from '@/lib/image-capture-errors';
 import {
   ImageRetryProcessor,
+  resolveImageRetryTarget,
   type ImageRetryCaptureResult,
   type ImageRetryEntry,
 } from '@/lib/scraper-callback/image-retry-processor';
@@ -408,5 +409,57 @@ describe('ImageRetryProcessor', () => {
         updated_at: '2026-03-26T12:00:00.000Z',
       },
     });
+  });
+
+  it('detects login requirement from login config block (petfoodex style)', async () => {
+    const supabase = {
+      rpc: jest.fn().mockResolvedValue({ data: [], error: null }),
+      from: jest.fn((table: string) => {
+        if (table === 'products_ingestion') {
+          return {
+            select: jest.fn(() => ({
+              eq: jest.fn(() => ({
+                single: jest.fn().mockResolvedValue({
+                  data: {
+                    sku: 'SKU-PFE-001',
+                    sources: {
+                      petfoodex: {
+                        'Image URLs': ['https://orders.petfoodexperts.com/product-image.jpg'],
+                      },
+                    },
+                  },
+                  error: null,
+                }),
+              })),
+            })),
+            update: jest.fn(() => ({ eq: jest.fn().mockResolvedValue({ error: null }) })),
+          };
+        }
+        if (table === 'scraper_configs') {
+          return {
+            select: jest.fn(() => ({
+              in: jest.fn().mockResolvedValue({
+                data: [
+                  { slug: 'petfoodex', file_path: 'scrapers/configs/petfoodex.yaml' },
+                ],
+                error: null,
+              }),
+            })),
+          };
+        }
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    };
+
+    const target = await resolveImageRetryTarget(
+      supabase as never,
+      'SKU-PFE-001',
+      'https://orders.petfoodexperts.com/product-image.jpg'
+    );
+
+    expect(target).not.toBeNull();
+    expect(target!.requiresLogin).toBe(true);
+    expect(target!.scraper).not.toBeNull();
+    expect(target!.scraper!.slug).toBe('petfoodex');
   });
 });

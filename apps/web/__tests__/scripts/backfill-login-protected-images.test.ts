@@ -42,6 +42,25 @@ describe('backfill-login-protected-images logic', () => {
     expect(result).toEqual(['phillips', 'orgill']);
   });
 
+  it('detects scrapers with only requires_login flag (no login block or workflow keywords)', () => {
+    const result = resolveLoginProtectedScraperSlugs([
+      {
+        slug: 'legacy-login',
+        base_url: 'https://legacy.example.com',
+        schema_version: '1.0' as never,
+        requires_login: true,
+      },
+      {
+        slug: 'no-login',
+        base_url: 'https://no-login.example.com',
+        schema_version: '1.0' as never,
+        requires_login: false,
+      },
+    ]);
+
+    expect(result).toEqual(['legacy-login']);
+  });
+
   it('collects non-durable images for login-protected sources only', async () => {
     const candidates = await collectLoginProtectedImageBackfillCandidates(
       [
@@ -250,7 +269,7 @@ describe('backfill-login-protected-images logic', () => {
         sku: 'SKU-1',
         image_url: 'https://private.example.com/new-entry.jpg',
         status: 'pending',
-        error_type: 'not_found_404',
+        error_type: 'auth_401',
       }),
     );
 
