@@ -185,17 +185,18 @@ function CarouselPrevious({
       variant={variant}
       size={size}
       className={cn(
-        "absolute size-8 rounded-full",
+        "absolute size-10 rounded-full bg-white/90 backdrop-blur-sm shadow-md transition-all hover:bg-brand-forest-green hover:text-white border-border/50 hover:border-brand-forest-green",
         orientation === "horizontal"
-          ? "top-1/2 -left-12 -translate-y-1/2"
-          : "-top-12 left-1/2 -translate-x-1/2 rotate-90",
+          ? "top-1/2 -left-5 -translate-y-1/2"
+          : "-top-5 left-1/2 -translate-x-1/2 rotate-90",
+        "disabled:opacity-0 disabled:pointer-events-none", // Fade out when can't scroll
         className
       )}
       disabled={!canScrollPrev}
       onClick={scrollPrev}
       {...props}
     >
-      <ArrowLeft />
+      <ArrowLeft className="size-5" />
       <span className="sr-only">Previous slide</span>
     </Button>
   )
@@ -215,17 +216,18 @@ function CarouselNext({
       variant={variant}
       size={size}
       className={cn(
-        "absolute size-8 rounded-full",
+        "absolute size-10 rounded-full bg-white/90 backdrop-blur-sm shadow-md transition-all hover:bg-brand-forest-green hover:text-white border-border/50 hover:border-brand-forest-green",
         orientation === "horizontal"
-          ? "top-1/2 -right-12 -translate-y-1/2"
-          : "-bottom-12 left-1/2 -translate-x-1/2 rotate-90",
+          ? "top-1/2 -right-5 -translate-y-1/2"
+          : "-bottom-5 left-1/2 -translate-x-1/2 rotate-90",
+        "disabled:opacity-0 disabled:pointer-events-none", // Fade out when can't scroll
         className
       )}
       disabled={!canScrollNext}
       onClick={scrollNext}
       {...props}
     >
-      <ArrowRight />
+      <ArrowRight className="size-5" />
       <span className="sr-only">Next slide</span>
     </Button>
   )

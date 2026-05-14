@@ -70,17 +70,17 @@ export function HeroCarousel({ slides, interval = 5000 }: HeroCarouselProps) {
                 <div className="absolute top-1/2 w-full flex justify-between -translate-y-1/2 px-4 z-20 pointer-events-none">
                     <button
                         onClick={(e) => { e.preventDefault(); goToPrev(); }}
-                        className="bg-white border-4 border-black text-black hover:bg-zinc-100 w-12 h-[60px] flex items-center justify-center shadow-sm transition-transform active:translate-x-0.5 active:translate-y-0.5 pointer-events-auto"
+                        className="bg-white/90 backdrop-blur-sm border border-border text-primary hover:bg-primary hover:text-white w-12 h-12 flex items-center justify-center shadow-md transition-all active:scale-95 pointer-events-auto rounded-full group/btn"
                         aria-label="Previous slide"
                     >
-                        <ChevronLeft className="h-8 w-8" />
+                        <ChevronLeft className="h-6 w-6 transition-transform group-hover/btn:-translate-x-0.5" />
                     </button>
                     <button
                         onClick={(e) => { e.preventDefault(); goToNext(); }}
-                        className="bg-white border-4 border-black text-black hover:bg-zinc-100 w-12 h-[60px] flex items-center justify-center shadow-sm transition-transform active:translate-x-0.5 active:translate-y-0.5 pointer-events-auto"
+                        className="bg-white/90 backdrop-blur-sm border border-border text-primary hover:bg-primary hover:text-white w-12 h-12 flex items-center justify-center shadow-md transition-all active:scale-95 pointer-events-auto rounded-full group/btn"
                         aria-label="Next slide"
                     >
-                        <ChevronRight className="h-8 w-8" />
+                        <ChevronRight className="h-6 w-6 transition-transform group-hover/btn:translate-x-0.5" />
                     </button>
                 </div>
             )}
