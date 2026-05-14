@@ -30,11 +30,30 @@ export const enrichmentModeSchema = z.enum([
 // Source Schema
 // =============================================================================
 
+const decisionSchema = z.enum([
+  "deterministic_success",
+  "deterministic_partial",
+  "llm_fallback",
+  "failed",
+]).nullable().optional();
+
+const sourceResultInfoSchema = z.object({
+  sourceSlug: z.string(),
+  sourceType: z.string(),
+  confidence: z.number().min(0).max(1),
+  matchedFields: z.array(z.string()).optional(),
+  evidenceUrl: z.string().nullable().optional(),
+});
+
 export const enrichmentResultSourceV1Schema = z.object({
   url: z.string().min(1, "URL is required"),
   domain: z.string().nullable().optional(),
   label: z.string().nullable().optional(),
   target_id: z.string().uuid().nullable().optional(),
+  source_type: z.string().nullable().optional(),
+  source_slug: z.string().nullable().optional(),
+  approved_source_id: z.string().nullable().optional(),
+  evidence: z.string().nullable().optional(),
 });
 
 // =============================================================================
@@ -111,6 +130,9 @@ export const enrichmentResultV1Schema = z.object({
   confidence: enrichmentConfidenceV1Schema,
   validation: enrichmentValidationV1Schema,
   attempts: z.array(enrichmentAttemptSummaryV1Schema),
+  decision: decisionSchema,
+  llm_used: z.boolean().nullable().optional(),
+  source_results: z.array(sourceResultInfoSchema).optional(),
 });
 
 // =============================================================================

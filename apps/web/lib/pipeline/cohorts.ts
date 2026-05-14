@@ -85,11 +85,20 @@ export async function recohortProducts(
         brand_id: brandId
       };
 
+      // Determine status transition: awaiting_brand → imported when brand assigned
+      const statusUpdate: Record<string, unknown> = {};
+      if (brandId !== null) {
+        // Move from awaiting_brand to imported when brand is assigned
+        statusUpdate.pipeline_status = 'imported';
+      }
+
       await supabase
         .from('products_ingestion')
         .update({
           cohort_id: targetCohortId,
+          brand_id: brandId,  // Write durable brand_id for source plan eligibility
           consolidated: updatedConsolidated,
+          pipeline_status: statusUpdate.pipeline_status ?? undefined,
           updated_at: new Date().toISOString()
         })
         .eq('sku', sku);

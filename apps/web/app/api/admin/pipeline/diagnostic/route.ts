@@ -34,8 +34,9 @@ export async function GET() {
             console.error('Warning: Error fetching pipeline_export_queue:', exportQueueError);
         }
 
-        // Calculate counts by status (8 canonical statuses after pipeline migration)
+        // Calculate counts by status
         const byStatus: Record<PersistedPipelineStatus, number> = {
+            awaiting_brand: 0,
             imported: 0,
             url_review: 0,
             extracting: 0,

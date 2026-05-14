@@ -18,6 +18,14 @@ export interface EnrichmentResultSourceV1 {
   domain?: string | null;
   label?: string | null;
   target_id?: string | null;
+  /** Approved source extraction: source type (official_brand, distributor, etc.) */
+  source_type?: string | null;
+  /** Approved source extraction: source slug */
+  source_slug?: string | null;
+  /** Approved source extraction: brand_sources.id reference */
+  approved_source_id?: string | null;
+  /** Approved source extraction: evidence about match quality */
+  evidence?: string | null;
 }
 
 export interface EnrichedProductFactsV1 {
@@ -64,7 +72,23 @@ export interface EnrichmentAttemptSummaryV1 {
 /**
  * The canonical v1 enrichment result contract.
  * Returned by the Python worker and accepted by the v2 enrichment-callback route.
+ *
+ * Approved source extraction adds optional fields:
+ *   - source.source_type / source.source_slug / source.approved_source_id / source.evidence
+ *   - decision ("deterministic_success" | "deterministic_partial" | "llm_fallback" | "failed")
+ *   - llm_used
+ *   - source_results[] (array of individual source extraction results)
  */
+export type EnrichmentDecision = "deterministic_success" | "deterministic_partial" | "llm_fallback" | "failed";
+
+export interface SourceResultInfo {
+  sourceSlug: string;
+  sourceType: string;
+  confidence: number;
+  matchedFields?: string[];
+  evidenceUrl?: string | null;
+}
+
 export interface EnrichmentResultV1 {
   schema_version: "v1";
   sku: string;
@@ -77,6 +101,12 @@ export interface EnrichmentResultV1 {
   confidence: EnrichmentConfidenceV1;
   validation: EnrichmentValidationV1;
   attempts: EnrichmentAttemptSummaryV1[];
+  /** Approved source extraction: decision type */
+  decision?: EnrichmentDecision | null;
+  /** Approved source extraction: whether LLM was used */
+  llm_used?: boolean | null;
+  /** Approved source extraction: per-source extraction results */
+  source_results?: SourceResultInfo[];
 }
 
 /**
@@ -112,6 +142,18 @@ export interface NormalizedEnrichedSourceV1 {
   url: string;
   /** Backward-compatible alias: overall confidence score */
   confidence_score: number;
+  /** Approved source extraction: decision type */
+  decision?: string | null;
+  /** Approved source extraction: whether LLM was used */
+  llm_used?: boolean | null;
+  /** Approved source extraction: per-source results */
+  source_results?: Array<{
+    sourceSlug: string;
+    sourceType: string;
+    confidence: number;
+    matchedFields?: string[];
+    evidenceUrl?: string | null;
+  }>;
   /** Nested enriched product facts (all extracted fields) */
   extracted: EnrichedProductFactsV1;
   /** Per-field confidence scores */

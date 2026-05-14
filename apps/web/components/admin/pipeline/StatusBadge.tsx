@@ -30,6 +30,7 @@ const statusConfig: Record<
   PipelineDisplayStatus,
   { variant: "default" | "success" | "warning" | "destructive"; label: string; icon: React.ComponentType<{ className?: string }>; color?: string }
 > = {
+  awaiting_brand: { variant: "default", label: "Awaiting Brand", icon: Package },
   imported: { variant: "default", label: "Imported", icon: Package },
   url_review: { variant: "default", label: "URL Review", icon: Globe, color: "text-purple-600 bg-purple-50 border-purple-200" },
   extracting: { variant: "warning", label: "Extracting", icon: Loader2 },

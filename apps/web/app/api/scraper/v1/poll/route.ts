@@ -26,6 +26,7 @@ import {
 // Phase 10: official-brand-workflow imports removed — deprecated modules retained on disk.
 const OFFICIAL_BRAND_URL_DISCOVERY_TYPE = 'official_brand_url_discovery';
 const DIRECT_URL_EXTRACTION_TYPE = 'direct_url_extraction';
+const APPROVED_SOURCE_EXTRACTION_TYPE = 'approved_source_extraction';
 
 function isOfficialBrandJobType(type: unknown): boolean {
     return type === OFFICIAL_BRAND_URL_DISCOVERY_TYPE || type === DIRECT_URL_EXTRACTION_TYPE;
@@ -66,6 +67,7 @@ interface PollResponse {
         ai_credentials?: AIScrapingRuntimeCredentials;
         lease_token?: string;
         lease_expires_at?: string;
+        source_plans_by_sku?: Record<string, unknown>;
     } | null;
 }
 
@@ -89,6 +91,10 @@ function deriveRequestedScrapers(job: {
         return ['official_brand'];
     }
 
+    if (job.type === APPROVED_SOURCE_EXTRACTION_TYPE) {
+        return [];
+    }
+
     const config = toRecord(job.config);
     if (hasKnownConfigKeys(config, DISCOVERY_CONFIG_KEYS)) {
         return ['ai_discovery'];
@@ -101,9 +107,13 @@ function deriveRequestedScrapers(job: {
     return [];
 }
 
-function normalizeRunnerJobType(rawType: unknown): 'standard' | 'ai_search' | typeof OFFICIAL_BRAND_URL_DISCOVERY_TYPE | typeof DIRECT_URL_EXTRACTION_TYPE {
+function normalizeRunnerJobType(rawType: unknown): 'standard' | 'ai_search' | typeof OFFICIAL_BRAND_URL_DISCOVERY_TYPE | typeof DIRECT_URL_EXTRACTION_TYPE | typeof APPROVED_SOURCE_EXTRACTION_TYPE {
     if (rawType === OFFICIAL_BRAND_URL_DISCOVERY_TYPE || rawType === DIRECT_URL_EXTRACTION_TYPE) {
         return rawType;
+    }
+
+    if (rawType === APPROVED_SOURCE_EXTRACTION_TYPE) {
+        return APPROVED_SOURCE_EXTRACTION_TYPE;
     }
 
     if (rawType === 'ai_search' || rawType === 'discovery' || rawType === 'crawl4ai' || rawType === 'deep_research') {
@@ -253,61 +263,68 @@ export async function POST(request: NextRequest) {
 
         const requestedScrapers = deriveRequestedScrapers(job);
         const normalizedJobType = normalizeRunnerJobType(job.type);
+        const isApprovedSource = normalizedJobType === APPROVED_SOURCE_EXTRACTION_TYPE;
 
-        const allLocalConfigs = await getDatabaseScraperConfigs();
+        // For approved-source extraction, skip static scraper configs entirely
         const scrapers: ScraperConfig[] = [];
 
-        for (const config of allLocalConfigs) {
-            const scraperSlug = config.slug;
-            if (!scraperSlug) {
-                continue;
+        if (!isApprovedSource) {
+            const allLocalConfigs = await getDatabaseScraperConfigs();
+
+            for (const config of allLocalConfigs) {
+                const scraperSlug = config.slug;
+                if (!scraperSlug) {
+                    continue;
+                }
+
+                // If specific scrapers are requested, filter by name/slug
+                if (requestedScrapers.length > 0 && !requestedScrapers.includes(scraperSlug)) {
+                    continue;
+                }
+
+                const options: Record<string, unknown> = {};
+                if (config.workflows && Array.isArray(config.workflows) && config.workflows.length > 0) {
+                    options.workflows = config.workflows;
+                }
+                if (typeof config.timeout === 'number') {
+                    options.timeout = config.timeout;
+                }
+
+                const searchUrlTemplate =
+                    'search_url_template' in config && typeof config.search_url_template === 'string'
+                        ? config.search_url_template
+                        : undefined;
+
+                scrapers.push({
+                    name: scraperSlug,
+                    disabled: config.status === 'disabled' || config.status === 'archived',
+                    base_url: config.base_url,
+                    search_url_template: searchUrlTemplate,
+                    selectors: toSelectors(config.selectors),
+                    options,
+                    test_skus: config.test_skus,
+                    retries: config.retries,
+                    validation: config.validation,
+                    login: toRecord(config.login),
+                    credential_refs: config.credential_refs,
+                });
             }
 
-            // If specific scrapers are requested, filter by name/slug
-            if (requestedScrapers.length > 0 && !requestedScrapers.includes(scraperSlug)) {
-                continue;
+            if (requestedScrapers.includes('official_brand') && !scrapers.some((scraper) => scraper.name === 'official_brand')) {
+                scrapers.push({
+                    name: 'official_brand',
+                    disabled: false,
+                    options: {},
+                    test_skus: [],
+                    retries: 3,
+                    credential_refs: [],
+                });
             }
 
-            const options: Record<string, unknown> = {};
-            if (config.workflows && Array.isArray(config.workflows) && config.workflows.length > 0) {
-                options.workflows = config.workflows;
-            }
-            if (typeof config.timeout === 'number') {
-                options.timeout = config.timeout;
-            }
-
-            const searchUrlTemplate =
-                'search_url_template' in config && typeof config.search_url_template === 'string'
-                    ? config.search_url_template
-                    : undefined;
-
-            scrapers.push({
-                name: scraperSlug,
-                disabled: config.status === 'disabled' || config.status === 'archived',
-                base_url: config.base_url,
-                search_url_template: searchUrlTemplate,
-                selectors: toSelectors(config.selectors),
-                options,
-                test_skus: config.test_skus,
-                retries: config.retries,
-                validation: config.validation,
-                login: toRecord(config.login),
-                credential_refs: config.credential_refs,
-            });
+            console.log('[Poll] Scrapers from YAML:', scrapers.length);
+        } else {
+            console.log('[Poll] Approved-source extraction job — skipping static scraper configs.');
         }
-
-        if (requestedScrapers.includes('official_brand') && !scrapers.some((scraper) => scraper.name === 'official_brand')) {
-            scrapers.push({
-                name: 'official_brand',
-                disabled: false,
-                options: {},
-                test_skus: [],
-                retries: 3,
-                credential_refs: [],
-            });
-        }
-
-        console.log('[Poll] Scrapers from YAML:', scrapers.length);
 
         // Extract config from JSONB column
         const skus: string[] = job.skus || [];
@@ -346,6 +363,11 @@ export async function POST(request: NextRequest) {
             getAIScrapingRuntimeCredentials(),
         ]);
 
+        const jobConfig = (job.config || {}) as Record<string, unknown>;
+        const sourcePlansBySku = isApprovedSource
+            ? (jobConfig.source_plans_by_sku as Record<string, unknown> | undefined)
+            : undefined;
+
         // Transform scrapers to response format for runner consumption
         // Runner expects options.workflows and optional timeout
         const response: PollResponse = {
@@ -356,10 +378,11 @@ export async function POST(request: NextRequest) {
                 test_mode: job.test_mode || false,
                 max_workers: job.max_workers || 3,
                 job_type: normalizedJobType,
-                job_config: (job.config || undefined) as Record<string, unknown> | undefined,
+                job_config: jobConfig,
                 ai_credentials: aiCredentials || undefined,
                 lease_token: job.lease_token || undefined,
                 lease_expires_at: job.lease_expires_at || undefined,
+                ...(sourcePlansBySku ? { source_plans_by_sku: sourcePlansBySku } : {}),
             },
         };
 

@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
 import { createAdminClient } from "@/lib/supabase/server";
+import { buildApprovedSourcePlans } from "@/lib/approved-sources/source-plan";
 
 // =============================================================================
 // POST - Create Enrichment Job
@@ -21,7 +22,14 @@ export async function POST(request: NextRequest) {
     const supabase = await createAdminClient();
 
     const body = await request.json();
-    const { skus, targetIds, mode, model, config } = body;
+    const {
+      skus,
+      targetIds,
+      mode,
+      model,
+      config,
+      selectedDistributorSlug,
+    } = body;
 
     if (!Array.isArray(skus) || skus.length === 0) {
       return NextResponse.json(
@@ -37,7 +45,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate SKUs exist with url_review status
+    // Validate SKUs exist with valid pipeline status
     const { data: products, error: fetchError } = await supabase
       .from("products_ingestion")
       .select("sku, pipeline_status")
@@ -49,55 +57,114 @@ export async function POST(request: NextRequest) {
 
     const validSkus = (products || [])
       .filter((p: { sku: string; pipeline_status: string }) =>
-        p.pipeline_status === "url_review" || p.pipeline_status === "imported"
+        p.pipeline_status === "url_review" ||
+        p.pipeline_status === "imported"
       )
       .map((p: { sku: string }) => p.sku);
 
     if (validSkus.length === 0) {
       return NextResponse.json(
-        { error: "None of the selected SKUs are in URL Review or Imported status" },
+        {
+          error:
+            "None of the selected SKUs are in URL Review or Imported status",
+        },
         { status: 400 }
       );
     }
 
-    // Resolve targets: use provided targetIds or find selected targets from enrichment_targets
+    // ------------------------------------------------------------------
+    // Approved Source Extraction: build source plans if selectedDistributorSlug
+    // is provided, or if we detect approved-source mode.
+    // ------------------------------------------------------------------
+    const useApprovedSources =
+      config?.source_type === "approved_source_extraction" ||
+      selectedDistributorSlug !== undefined;
+
+    let sourcePlansBySku: Record<string, unknown> | undefined;
+    let skippedSkus: string[] = [];
+    let brandedSkus: string[] = [...validSkus];
+
+    if (useApprovedSources) {
+      const plans = await buildApprovedSourcePlans(
+        supabase,
+        validSkus,
+        selectedDistributorSlug
+          ? { selectedDistributorSlug }
+          : undefined,
+      );
+
+      sourcePlansBySku = {};
+      for (const [sku, result] of Object.entries(plans)) {
+        if (result.ok) {
+          sourcePlansBySku[sku] = result.plan;
+        } else {
+          skippedSkus.push(sku);
+        }
+      }
+
+      brandedSkus = Object.keys(sourcePlansBySku);
+
+      if (brandedSkus.length === 0) {
+        return NextResponse.json(
+          {
+            error:
+              "None of the selected SKUs have an assigned brand. " +
+              "Assign a brand before starting approved source extraction.",
+            skipped_skus: skippedSkus,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Resolve targets for non-approved-source path
     let targetMap: Record<string, string | null> = {};
 
-    if (Array.isArray(targetIds) && targetIds.length > 0) {
-      const { data: targets } = await supabase
-        .from("enrichment_targets")
-        .select("sku, url")
-        .in("id", targetIds)
-        .in("sku", validSkus);
+    if (!useApprovedSources) {
+      if (Array.isArray(targetIds) && targetIds.length > 0) {
+        const { data: targets } = await supabase
+          .from("enrichment_targets")
+          .select("sku, url")
+          .in("id", targetIds)
+          .in("sku", brandedSkus);
 
-      if (targets) {
-        for (const t of targets) {
-          targetMap[t.sku] = t.url;
+        if (targets) {
+          for (const t of targets) {
+            targetMap[t.sku] = t.url;
+          }
+        }
+      } else {
+        // Use selected targets
+        const { data: selectedTargets } = await supabase
+          .from("enrichment_targets")
+          .select("sku, url")
+          .in("sku", brandedSkus)
+          .eq("selected", true)
+          .eq("status", "selected");
+
+        if (selectedTargets) {
+          for (const t of selectedTargets) {
+            targetMap[t.sku] = t.url;
+          }
+        }
+
+        // For SKUs without a selected target, mark them as needing URL review
+        const skusWithoutTargets = brandedSkus.filter(
+          (sku: string) => !targetMap[sku],
+        );
+        if (skusWithoutTargets.length > 0) {
+          for (const sku of skusWithoutTargets) {
+            targetMap[sku] = null;
+          }
         }
       }
-    } else {
-      // Use selected targets
-      const { data: selectedTargets } = await supabase
-        .from("enrichment_targets")
-        .select("sku, url")
-        .in("sku", validSkus)
-        .eq("selected", true)
-        .eq("status", "selected");
+    }
 
-      if (selectedTargets) {
-        for (const t of selectedTargets) {
-          targetMap[t.sku] = t.url;
-        }
-      }
-
-      // For SKUs without a selected target, mark them as needing URL review
-      const skusWithoutTargets = validSkus.filter((sku: string) => !targetMap[sku]);
-      if (skusWithoutTargets.length > 0) {
-        // These will be created without a URL (URL-less attempts)
-        for (const sku of skusWithoutTargets) {
-          targetMap[sku] = null;
-        }
-      }
+    // Build job config with optional source plans
+    const jobConfig: Record<string, unknown> = config ?? {};
+    if (sourcePlansBySku && Object.keys(sourcePlansBySku).length > 0) {
+      jobConfig.source_plans_by_sku = sourcePlansBySku;
+      jobConfig.source_type = "approved_source_extraction";
     }
 
     // Create enrichment_jobs row
@@ -108,13 +175,13 @@ export async function POST(request: NextRequest) {
       .from("enrichment_jobs")
       .insert({
         status: "queued",
-        skus: validSkus,
-        total_count: validSkus.length,
+        skus: brandedSkus,
+        total_count: brandedSkus.length,
         completed_count: 0,
         failed_count: 0,
         model: jobModel,
         mode: jobMode,
-        config: config ?? {},
+        config: jobConfig,
         created_by: auth.user.id,
       })
       .select()
@@ -128,14 +195,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Create enrichment_attempts rows
-    const attempts = validSkus.map((sku: string) => ({
+    const attempts = brandedSkus.map((sku: string) => ({
       job_id: job.id,
       sku,
       attempt_number: 1,
       status: "queued",
       mode: jobMode,
       model: jobModel,
-      source_url: targetMap[sku],
+      source_url: useApprovedSources ? null : targetMap[sku],
     }));
 
     const { error: attemptError } = await supabase
@@ -151,14 +218,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Transition products from url_review to extracting
+    // Transition products to extracting
     const { error: updateError } = await supabase
       .from("products_ingestion")
       .update({
         pipeline_status: "extracting",
         updated_at: new Date().toISOString(),
       })
-      .in("sku", validSkus);
+      .in("sku", brandedSkus);
 
     if (updateError) {
       console.error("Failed to update product statuses:", updateError);
@@ -168,9 +235,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       jobId: job.id,
-      skuCount: validSkus.length,
+      skuCount: brandedSkus.length,
       attemptCount: attempts.length,
-      skusWithoutTargets: validSkus.filter((sku: string) => !targetMap[sku]).length,
+      ...(skippedSkus.length > 0 ? { skipped_skus: skippedSkus } : {}),
     });
   } catch (err) {
     console.error("Error creating enrichment job:", err);

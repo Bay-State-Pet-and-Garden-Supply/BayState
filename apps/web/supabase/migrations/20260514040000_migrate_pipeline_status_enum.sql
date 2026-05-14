@@ -17,67 +17,75 @@
 -- deployed with the new status constants. Running it before code deployment
 -- will cause old code to see unexpected status values.
 
-begin;
+-- Idempotent: check if migration already applied (column is already pipeline_status_six)
+do $$
+begin
+  if exists (
+    select 1 from pg_type t
+    where t.typname = 'pipeline_status_six'
+  ) then
+    raise notice 'pipeline_status_six already exists — migration already applied, skipping';
+    return;
+  end if;
 
--- Drop default temporarily while we change the type
-alter table public.products_ingestion
-  alter column pipeline_status drop default;
+  -- Drop default temporarily while we change the type
+  alter table public.products_ingestion
+    alter column pipeline_status drop default;
 
--- Create new enum type with the 8 simplified statuses
-create type public.pipeline_status_six as enum (
-  'imported',
-  'url_review',
-  'extracting',
-  'processed',
-  'merging',
-  'reviewing',
-  'publishing',
-  'failed'
-);
-
--- Alter the column to the new type, mapping old values to new
-alter table public.products_ingestion
-  alter column pipeline_status type public.pipeline_status_six
-  using (
-    case pipeline_status::text
-      when 'imported'                    then 'imported'::public.pipeline_status_six
-      when 'searching'                   then 'url_review'::public.pipeline_status_six
-      when 'url_review'                  then 'url_review'::public.pipeline_status_six
-      when 'extracting'                  then 'extracting'::public.pipeline_status_six
-      when 'scraping'                    then 'extracting'::public.pipeline_status_six
-      when 'needs_fallback_review'       then 'url_review'::public.pipeline_status_six
-      when 'scraped'                     then 'processed'::public.pipeline_status_six
-      when 'consolidating'               then 'merging'::public.pipeline_status_six
-      when 'finalizing'                  then 'reviewing'::public.pipeline_status_six
-      when 'exporting'                   then 'publishing'::public.pipeline_status_six
-      when 'failed'                      then 'failed'::public.pipeline_status_six
-      else 'failed'::public.pipeline_status_six
-    end
+  -- Create new enum type with the 8 simplified statuses
+  create type public.pipeline_status_six as enum (
+    'imported',
+    'url_review',
+    'extracting',
+    'processed',
+    'merging',
+    'reviewing',
+    'publishing',
+    'failed'
   );
 
--- Restore default
-alter table public.products_ingestion
-  alter column pipeline_status set default 'imported'::public.pipeline_status_six;
+  -- Alter the column to the new type, mapping old values to new
+  alter table public.products_ingestion
+    alter column pipeline_status type public.pipeline_status_six
+    using (
+      case pipeline_status::text
+        when 'imported'                    then 'imported'::public.pipeline_status_six
+        when 'searching'                   then 'url_review'::public.pipeline_status_six
+        when 'url_review'                  then 'url_review'::public.pipeline_status_six
+        when 'extracting'                  then 'extracting'::public.pipeline_status_six
+        when 'scraping'                    then 'extracting'::public.pipeline_status_six
+        when 'needs_fallback_review'       then 'url_review'::public.pipeline_status_six
+        when 'scraped'                     then 'processed'::public.pipeline_status_six
+        when 'consolidating'               then 'merging'::public.pipeline_status_six
+        when 'finalizing'                  then 'reviewing'::public.pipeline_status_six
+        when 'exporting'                   then 'publishing'::public.pipeline_status_six
+        when 'failed'                      then 'failed'::public.pipeline_status_six
+        else 'failed'::public.pipeline_status_six
+      end
+    );
 
--- Drop any old check constraints on pipeline_status
-do $$
-declare
-  constraint_name text;
-begin
-  for constraint_name in
-    select conname
-    from pg_constraint
-    where conrelid = 'public.products_ingestion'::regclass
-      and conname like '%pipeline_status%check%'
-  loop
-    execute format('alter table public.products_ingestion drop constraint if exists %I', constraint_name);
-  end loop;
-end $$;
+  -- Restore default
+  alter table public.products_ingestion
+    alter column pipeline_status set default 'imported'::public.pipeline_status_six;
 
--- Rename old enum to legacy for reference (keeps dependent views/backward compat)
-alter type public.pipeline_status_five rename to pipeline_status_five_legacy;
+  -- Drop any old check constraints on pipeline_status
+  declare
+    constraint_name text;
+  begin
+    for constraint_name in
+      select conname
+      from pg_constraint
+      where conrelid = 'public.products_ingestion'::regclass
+        and conname like '%pipeline_status%check%'
+    loop
+      execute format('alter table public.products_ingestion drop constraint if exists %I', constraint_name);
+    end loop;
+  end;
 
--- Rename new enum to the canonical name so existing RPCs and code still work
-alter type public.pipeline_status_six rename to pipeline_status_five;
+  -- Rename old enum to legacy for reference (keeps dependent views/backward compat)
+  alter type public.pipeline_status_five rename to pipeline_status_five_legacy;
 
-commit;
+  -- Rename new enum to the canonical name so existing RPCs and code still work
+  alter type public.pipeline_status_six rename to pipeline_status_five;
+end;
+$$;

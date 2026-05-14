@@ -386,6 +386,11 @@ async def _process_enrichment(attempt, client, rm):
                 "target_id": attempt.target_id,
             }
 
+            # For approved-source extraction, include the source plan
+            # in the job payload so the enrichment handler can route it.
+            if attempt.target_url == "approved_source_extraction" and attempt.source_plan:
+                job_payload["source_plan"] = attempt.source_plan
+
             # Merge job_config from claim response if present
             if attempt.job_config and isinstance(attempt.job_config, dict):
                 job_payload.update(attempt.job_config)

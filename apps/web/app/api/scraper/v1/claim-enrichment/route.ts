@@ -125,16 +125,29 @@ export async function POST(request: NextRequest) {
     const attempts = claimed.map((attempt: Record<string, unknown>) => {
       const job = jobsById.get(attempt.job_id as string);
       const sourceUrl = (attempt.source_url as string) || "";
+      const jobConfig = (job?.config ?? {}) as Record<string, unknown>;
+      const sourcePlansBySku = jobConfig.source_plans_by_sku as
+        | Record<string, unknown>
+        | undefined;
+      const perSkuSourcePlan = sourcePlansBySku?.[attempt.sku as string] ?? null;
+
+      // For approved-source extraction, use a sentinel URL so the runner
+      // knows this is a source-plan job, not a URL extraction job.
+      const effectiveSourceUrl = perSkuSourcePlan
+        ? "approved_source_extraction"
+        : sourceUrl;
+
       return {
         id: attempt.id,
         job_id: attempt.job_id,
         sku: attempt.sku,
-        source_url: sourceUrl,
-        domain: extractDomain(sourceUrl),
+        source_url: effectiveSourceUrl,
+        domain: extractDomain(sourceUrl) || (perSkuSourcePlan ? "approved_source_extraction" : null),
         mode: attempt.mode ?? job?.mode ?? "mixed",
         model: attempt.model ?? job?.model ?? null,
         target_id: attempt.target_id ?? null,
-        config: job?.config ?? {},
+        config: jobConfig,
+        source_plan: perSkuSourcePlan,
         ai_credentials: job?.ai_credentials ?? null,
         lease_token: leaseToken,
         lease_expires_at: leaseExpiresAt,
@@ -160,6 +173,8 @@ export async function POST(request: NextRequest) {
  */
 function extractDomain(url: string): string | null {
   if (!url) return null;
+  // Sentinel value for approved-source extraction
+  if (url === "approved_source_extraction") return "approved_source_extraction";
   try {
     const parsed = new URL(url);
     return parsed.hostname;

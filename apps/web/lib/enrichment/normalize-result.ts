@@ -49,6 +49,11 @@ export function normalizeEnrichmentResultForSources(
     model: result.model ?? null,
     mode: result.mode,
     extracted_at: result.extracted_at,
+
+    // Approved source extraction evidence
+    decision: result.decision ?? null,
+    llm_used: result.llm_used ?? null,
+    source_results: result.source_results ?? undefined,
   };
 }
 

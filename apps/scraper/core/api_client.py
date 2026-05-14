@@ -111,6 +111,7 @@ class ClaimedEnrichment:
     lease_token: str | None = None
     lease_expires_at: str | None = None
     test_mode: bool = False
+    source_plan: dict[str, Any] | None = None
 
 
 @dataclass
@@ -698,6 +699,7 @@ class ScraperAPIClient:
                 lease_token=first.get("lease_token"),
                 lease_expires_at=first.get("lease_expires_at"),
                 test_mode=first.get("test_mode", False),
+                source_plan=first.get("source_plan"),
             )
 
         except AuthenticationError as e:

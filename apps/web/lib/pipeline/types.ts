@@ -8,6 +8,7 @@ import type { Brand } from "@/lib/types";
 
 /** Canonical workflow states persisted in products_ingestion.pipeline_status. */
 export const PERSISTED_PIPELINE_STATUSES = [
+  "awaiting_brand",
   "imported",
   "url_review",
   "extracting",
@@ -23,6 +24,7 @@ export type PersistedPipelineStatus =
 
 /** Main admin workflow tabs shown in the live pipeline UI. */
 export const PIPELINE_TABS = [
+  "awaiting_brand",
   "imported",
   "url_review",
   "extracting",
@@ -63,6 +65,7 @@ const LEGACY_PIPELINE_STAGE_ALIASES = {
   exporting: "publishing",
   searching: "url_review",
   scraping: "extracting",
+  needs_brand: "awaiting_brand",
   needs_fallback_review: "url_review",
 } as const;
 
@@ -180,6 +183,8 @@ export interface PipelineProduct {
     color?: string;
     packaging_type?: string;
   } | null;
+  /** Durable brand ID foreign key for extraction eligibility */
+  brand_id?: string | null;
   pipeline_status: PersistedPipelineStatus;
   exported_at?: string | null;
   /** Image URLs from scraping */
@@ -239,6 +244,11 @@ type StageConfigKey = PersistedPipelineStatus | PipelineStage;
  * Maps each pipeline status or stage to its UI representation.
  */
 export const STAGE_CONFIG: Record<StageConfigKey, StageConfig> = {
+  awaiting_brand: {
+    label: "Awaiting Brand",
+    color: "#9CA3AF",
+    description: "Products without an assigned brand, blocking extraction",
+  },
   imported: {
     label: "Imported",
     color: "#6B7280",

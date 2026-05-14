@@ -116,6 +116,74 @@ export type Database = {
         }
         Relationships: []
       }
+      brand_sources: {
+        Row: {
+          id: string
+          brand_id: string
+          source_type: string
+          source_slug: string
+          display_name: string
+          domains: string[]
+          asset_domains: string[]
+          crawl4ai_adapter_slug: string
+          requires_auth: boolean
+          credential_ref: string | null
+          search_mode: string
+          allowed_fields: string[]
+          priority: number
+          enabled: boolean
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          brand_id: string
+          source_type: string
+          source_slug: string
+          display_name: string
+          domains?: string[]
+          asset_domains?: string[]
+          crawl4ai_adapter_slug: string
+          requires_auth?: boolean
+          credential_ref?: string | null
+          search_mode: string
+          allowed_fields?: string[]
+          priority?: number
+          enabled?: boolean
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          brand_id?: string
+          source_type?: string
+          source_slug?: string
+          display_name?: string
+          domains?: string[]
+          asset_domains?: string[]
+          crawl4ai_adapter_slug?: string
+          requires_auth?: boolean
+          credential_ref?: string | null
+          search_mode?: string
+          allowed_fields?: string[]
+          priority?: number
+          enabled?: boolean
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_sources_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       b2b_feeds: {
         Row: {
           config: Json | null
@@ -2827,6 +2895,7 @@ export type Database = {
         Row: {
           active_consolidation_review_id: string | null
           b2b_sources: Json | null
+          brand_id: string | null
           cohort_id: string | null
           confidence_score: number | null
           consolidated: Json | null
@@ -2852,6 +2921,7 @@ export type Database = {
         Insert: {
           active_consolidation_review_id?: string | null
           b2b_sources?: Json | null
+          brand_id?: string | null
           cohort_id?: string | null
           confidence_score?: number | null
           consolidated?: Json | null
@@ -2877,6 +2947,7 @@ export type Database = {
         Update: {
           active_consolidation_review_id?: string | null
           b2b_sources?: Json | null
+          brand_id?: string | null
           cohort_id?: string | null
           confidence_score?: number | null
           consolidated?: Json | null
@@ -4951,6 +5022,7 @@ export type Database = {
         | "unknown"
       image_retry_status: "pending" | "processing" | "completed" | "failed"
       pipeline_status_five:
+        | "awaiting_brand"
         | "imported"
         | "searching"
         | "url_review"
@@ -5120,6 +5192,7 @@ export const Constants = {
       ],
       image_retry_status: ["pending", "processing", "completed", "failed"],
       pipeline_status_five: [
+        "awaiting_brand",
         "imported",
         "searching",
         "url_review",

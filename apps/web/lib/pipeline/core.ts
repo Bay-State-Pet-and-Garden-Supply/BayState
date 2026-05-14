@@ -23,6 +23,7 @@ export const STATUS_TRANSITIONS: Record<
   PersistedPipelineStatus,
   PersistedPipelineStatus[]
 > = {
+  awaiting_brand: ['imported', 'failed'],
   imported: ['url_review', 'failed'],
   url_review: ['extracting', 'imported', 'failed'],
   extracting: ['processed', 'url_review', 'failed'],

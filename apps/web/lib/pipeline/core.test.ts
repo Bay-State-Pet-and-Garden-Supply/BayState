@@ -11,6 +11,7 @@ import { PERSISTED_PIPELINE_STATUSES } from './types';
 describe('STATUS_TRANSITIONS', () => {
   it('matches the canonical persisted transition graph', () => {
     expect(STATUS_TRANSITIONS).toEqual({
+      awaiting_brand: ['imported', 'failed'],
       imported: ['url_review', 'failed'],
       url_review: ['extracting', 'imported', 'failed'],
       extracting: ['processed', 'url_review', 'failed'],

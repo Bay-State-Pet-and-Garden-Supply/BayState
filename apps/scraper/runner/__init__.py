@@ -1495,8 +1495,59 @@ def _run_enrichment_job(
     model = job_payload.get("model", "deepseek-chat")
     mode_str = job_payload.get("mode", "mixed")
 
-    if not target_url or not target_sku:
-        error_msg = "Enrichment job missing target_url or SKU"
+    if not target_sku:
+        error_msg = "Enrichment job missing SKU"
+        _emit_runner_log(
+            job_id=job_id,
+            runner_name=runner_name,
+            job_logging=job_logging,
+            log_buffer=log_buffer,
+            level="error",
+            message=error_msg,
+            phase="failed",
+            flush_immediately=True,
+        )
+        results["error_message"] = error_msg
+        results["logs"] = job_logging.snapshot() if job_logging else log_buffer
+        return results
+
+    # Approved Source Extraction sentinel — runner receives a source_plan
+    # instead of a target URL. Concrete source adapters will be implemented
+    # in follow-up work. For now, return a placeholder success so the
+    # enrichment callback does not fail the attempt.
+    if target_url == "approved_source_extraction":
+        source_plan = job_payload.get("source_plan")
+        _emit_runner_log(
+            job_id=job_id,
+            runner_name=runner_name,
+            job_logging=job_logging,
+            log_buffer=log_buffer,
+            level="info",
+            message=f"Approved source extraction for SKU={target_sku} (concrete adapters not yet implemented)",
+            details={"has_source_plan": source_plan is not None},
+            sku=target_sku,
+            phase="enriching",
+        )
+        results["skus_processed"] = 1
+        results["data"][target_sku] = {
+            "enrichment": {
+                "title": None,
+                "brand": None,
+                "weight": None,
+                "description": None,
+                "images": [],
+                "confidence": 0.0,
+                "scraped_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "mode": "approved_source_extraction",
+                "decision": "not_implemented",
+                "llm_used": False,
+                "warnings": ["Approved source extraction adapters not yet implemented"],
+            }
+        }
+        return results
+
+    if not target_url:
+        error_msg = "Enrichment job missing target_url"
         _emit_runner_log(
             job_id=job_id,
             runner_name=runner_name,

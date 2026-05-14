@@ -61,6 +61,7 @@ describe('validateStatusTransition', () => {
     it('enforces the full canonical transition matrix', () => {
         const matrixStatuses = statuses;
         const validTargets: Record<PersistedPipelineStatus, PersistedPipelineStatus[]> = {
+            awaiting_brand: ['awaiting_brand', 'imported', 'failed'],
             imported: ['imported', 'url_review', 'failed'],
             url_review: ['url_review', 'extracting', 'imported', 'failed'],
             extracting: ['extracting', 'processed', 'url_review', 'failed'],
