@@ -6,6 +6,7 @@ import { ChevronRight, Loader2, PackageSearch, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface CohortSummary {
   cohort_id: string;
@@ -33,7 +34,7 @@ export function SearchingTab({ className }: SearchingTabProps) {
   const fetchCohorts = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/pipeline/official-brand/url-review-cohorts", {
+      const res = await adminFetch("/api/admin/pipeline/official-brand/url-review-cohorts", {
         cache: "no-store",
       });
       if (!res.ok) throw new Error("Failed to load cohorts");

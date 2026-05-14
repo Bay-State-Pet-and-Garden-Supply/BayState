@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, CheckCircle2, ImageOff } from 'lucide-react';
 import { toast } from 'sonner';
 import type { SelectedImage, PipelineProduct } from '@/lib/pipeline/types';
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface ImageSelectionWorkspaceProps {
   /** Single SKU for image selection */
@@ -35,7 +36,7 @@ export function ImageSelectionWorkspace({
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/pipeline/${sku}`);
+      const res = await adminFetch(`/api/admin/pipeline/${sku}`);
       if (!res.ok) {
         throw new Error('Failed to fetch product');
       }
@@ -79,7 +80,7 @@ export function ImageSelectionWorkspace({
 
     setIsSaving(true);
     try {
-      const res = await fetch('/api/admin/pipeline/images', {
+      const res = await adminFetch('/api/admin/pipeline/images', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sku, selectedImages: selectedUrls }),
@@ -109,7 +110,7 @@ export function ImageSelectionWorkspace({
     setIsFinalizing(true);
     try {
       // First save the selections
-      const saveRes = await fetch('/api/admin/pipeline/images', {
+      const saveRes = await adminFetch('/api/admin/pipeline/images', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sku, selectedImages: selectedUrls }),
@@ -121,7 +122,7 @@ export function ImageSelectionWorkspace({
       }
 
       // Then transition into finalizing for manual review/export approval
-      const transitionRes = await fetch('/api/admin/pipeline/transition', {
+      const transitionRes = await adminFetch('/api/admin/pipeline/transition', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

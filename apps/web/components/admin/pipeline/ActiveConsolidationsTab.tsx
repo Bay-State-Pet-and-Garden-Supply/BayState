@@ -28,6 +28,7 @@ import {
   getProviderLabel,
 } from "@/components/admin/pipeline/consolidation/shared";
 import { useDocumentVisible } from "@/hooks/useDocumentVisible";
+import { adminFetch } from '@/lib/admin/api-client';
 
 // ============================================================================
 // Types
@@ -86,7 +87,7 @@ export function ActiveConsolidationsTab({
   // Fetch pipeline runs from the unified endpoint
   const fetchJobs = useCallback(async () => {
     try {
-      const response = await fetch("/api/admin/pipeline/runs");
+      const response = await adminFetch("/api/admin/pipeline/runs");
       if (!response.ok) throw new Error("Failed to fetch runs");
       const data = await response.json();
       const allRuns: PipelineRunSummary[] = data.runs || [];
@@ -120,7 +121,7 @@ export function ActiveConsolidationsTab({
   // Fetch batch history
   const fetchHistory = useCallback(async () => {
     try {
-      const response = await fetch("/api/admin/consolidation/jobs");
+      const response = await adminFetch("/api/admin/consolidation/jobs");
       if (!response.ok) return;
       const data = await response.json();
       setHistoryJobs(data.jobs || []);
@@ -158,7 +159,7 @@ export function ActiveConsolidationsTab({
     const batchId = pendingCancelBatchId;
     setCancellingId(batchId);
     try {
-      const res = await fetch(`/api/admin/consolidation/${batchId}`, {
+      const res = await adminFetch(`/api/admin/consolidation/${batchId}`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -181,7 +182,7 @@ export function ActiveConsolidationsTab({
   const handleRetryFailed = async (batchId: string) => {
     setRetryingId(batchId);
     try {
-      const res = await fetch(`/api/admin/consolidation/${batchId}/retry`, {
+      const res = await adminFetch(`/api/admin/consolidation/${batchId}/retry`, {
         method: "POST",
       });
       if (res.ok) {
@@ -203,7 +204,7 @@ export function ActiveConsolidationsTab({
   const handleApply = async (batchId: string) => {
     setApplyingId(batchId);
     try {
-      const res = await fetch(`/api/admin/consolidation/${batchId}/apply`, {
+      const res = await adminFetch(`/api/admin/consolidation/${batchId}/apply`, {
         method: "POST",
       });
       if (res.ok) {
@@ -241,7 +242,7 @@ export function ActiveConsolidationsTab({
   const handleRefreshJob = async (batchId: string) => {
     setRefreshingId(batchId);
     try {
-      const res = await fetch(`/api/admin/consolidation/${batchId}`);
+      const res = await adminFetch(`/api/admin/consolidation/${batchId}`);
       if (res.ok) {
         toast.success("Status refreshed");
         await Promise.all([fetchJobs(), fetchHistory()]);
@@ -261,7 +262,7 @@ export function ActiveConsolidationsTab({
 
     setDeletingId(batchId);
     try {
-      const res = await fetch(`/api/admin/consolidation/${batchId}?delete=true`, {
+      const res = await adminFetch(`/api/admin/consolidation/${batchId}?delete=true`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -292,7 +293,7 @@ export function ActiveConsolidationsTab({
     
     setResettingStranded(true);
     try {
-      const res = await fetch("/api/admin/consolidation/reset", {
+      const res = await adminFetch("/api/admin/consolidation/reset", {
         method: "POST",
       });
       const data = await res.json();

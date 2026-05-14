@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { type AnalyticsData } from '@/app/api/admin/analytics/route';
 import { formatCurrency } from '@/lib/utils';
+import { adminFetch } from '@/lib/admin/api-client';
 
 type DateRange = 'today' | '7days' | '30days' | 'all' | 'custom';
 
@@ -39,7 +40,7 @@ export function AnalyticsClient({ initialRange = '7days' }: AnalyticsClientProps
         url += `&start=${customStart}&end=${customEnd}`;
       }
 
-      const response = await fetch(url);
+      const response = await adminFetch(url);
       if (!response.ok) {
         throw new Error('Failed to fetch analytics');
       }

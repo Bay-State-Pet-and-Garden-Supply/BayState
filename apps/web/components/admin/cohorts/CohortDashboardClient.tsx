@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { CohortBrandBadge } from "./CohortBrandBadge";
 import type { CohortBrandInfo } from "./types";
 import { isConfiguredBrand } from "./types";
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface CohortBatch {
  id: string;
@@ -165,7 +166,7 @@ export function CohortDashboardClient() {
  params.append("status", statusFilter);
  }
 
- const response = await fetch(`/api/admin/cohorts?${params.toString()}`);
+ const response = await adminFetch(`/api/admin/cohorts?${params.toString()}`);
  if (!response.ok) throw new Error("Failed to fetch cohorts");
 
  const data = await response.json();
@@ -216,7 +217,7 @@ export function CohortDashboardClient() {
 
  const handleAssignBrand = async (cohortId: string, brand: CohortBrandInfo | null) => {
  try {
- const response = await fetch(`/api/admin/cohorts/${cohortId}`, {
+ const response = await adminFetch(`/api/admin/cohorts/${cohortId}`, {
  method: "PATCH",
  headers: { "Content-Type": "application/json" },
  body: JSON.stringify(

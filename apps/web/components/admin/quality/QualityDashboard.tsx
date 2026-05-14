@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/admin/dashboard/stat-card';
 import type { QualityMetrics } from '@/app/api/admin/quality/route';
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface QualityDashboardProps {
   initialMetrics?: QualityMetrics | null;
@@ -56,7 +57,7 @@ export function QualityDashboard({ initialMetrics }: QualityDashboardProps) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/admin/quality');
+      const response = await adminFetch('/api/admin/quality');
       if (!response.ok) throw new Error('Failed to fetch metrics');
       const data = await response.json();
       setMetrics(data);

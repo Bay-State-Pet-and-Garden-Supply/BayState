@@ -61,6 +61,7 @@ import type {
   StatusCount,
 } from "@/lib/pipeline/types";
 import { normalizePipelineStage, STAGE_CONFIG } from "@/lib/pipeline/types";
+import { adminFetch } from '@/lib/admin/api-client';
 
 const ScraperSelectDialog = dynamic(
   () => import("./ScraperSelectDialog").then((mod) => mod.ScraperSelectDialog),
@@ -147,7 +148,7 @@ export function PipelineClient({
 
     setIsLoading(true);
     try {
-      const res = await fetch("/api/admin/pipeline/bulk/brand", {
+      const res = await adminFetch("/api/admin/pipeline/bulk/brand", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -412,7 +413,7 @@ export function PipelineClient({
         if (productLineFilter) params.set("product_line", productLineFilter);
         if (cohortIdFilter) params.set("cohort_id", cohortIdFilter);
 
-        const res = await fetch(`/api/admin/pipeline?${params}`, {
+        const res = await adminFetch(`/api/admin/pipeline?${params}`, {
           cache: "no-store",
         });
         if (!res.ok) throw new Error("Failed to fetch products");
@@ -434,7 +435,7 @@ export function PipelineClient({
   // Fetch counts for all stages
   const fetchCounts = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/pipeline/counts", {
+      const res = await adminFetch("/api/admin/pipeline/counts", {
         cache: "no-store",
       });
       if (res.ok) {
@@ -739,7 +740,7 @@ export function PipelineClient({
       });
       if (search) params.set("search", search);
 
-      const res = await fetch(`/api/admin/pipeline?${params}`);
+      const res = await adminFetch(`/api/admin/pipeline?${params}`);
       if (res.ok) {
         const data = await res.json();
         const allSkus: string[] = data.skus || [];
@@ -764,7 +765,7 @@ export function PipelineClient({
     async (skus: string[]) => {
       setIsLoading(true);
       try {
-        const res = await fetch("/api/admin/consolidation/submit", {
+        const res = await adminFetch("/api/admin/consolidation/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -816,7 +817,7 @@ export function PipelineClient({
 
     setIsLoading(true);
     try {
-      const res = await fetch("/api/admin/pipeline/delete", {
+      const res = await adminFetch("/api/admin/pipeline/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ skus }),
@@ -867,7 +868,7 @@ export function PipelineClient({
     ) => {
       const hasScopedSelection = !!skus && skus.length > 0;
       const response = hasScopedSelection
-        ? await fetch("/api/admin/pipeline/export-zip", {
+        ? await adminFetch("/api/admin/pipeline/export-zip", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -877,7 +878,7 @@ export function PipelineClient({
                 : {}),
             }),
           })
-        : await fetch("/api/admin/pipeline/export-zip");
+        : await adminFetch("/api/admin/pipeline/export-zip");
 
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
@@ -898,7 +899,7 @@ export function PipelineClient({
 
       setExportActionState("upload");
       try {
-        const response = await fetch("/api/admin/pipeline/upload-shopsite", {
+        const response = await adminFetch("/api/admin/pipeline/upload-shopsite", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(skus && skus.length > 0 ? { skus } : {}),
@@ -1074,7 +1075,7 @@ export function PipelineClient({
 
     setIsLoading(true);
     try {
-      const res = await fetch("/api/admin/pipeline/bulk", {
+      const res = await adminFetch("/api/admin/pipeline/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1115,7 +1116,7 @@ export function PipelineClient({
 
     setIsLoading(true);
     try {
-      const res = await fetch("/api/admin/pipeline/bulk", {
+      const res = await adminFetch("/api/admin/pipeline/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1152,7 +1153,7 @@ export function PipelineClient({
     if (skus.length === 0) return;
 
     if (enrichmentMethod === "official_brand" && options?.phase === "url_discovery") {
-      const res = await fetch("/api/admin/pipeline/official-brand/discover", {
+      const res = await adminFetch("/api/admin/pipeline/official-brand/discover", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1194,7 +1195,7 @@ export function PipelineClient({
     const isAdditionalScrape = currentStage === "scraped";
 
     try {
-      const res = await fetch("/api/admin/pipeline/scrape", {
+      const res = await adminFetch("/api/admin/pipeline/scrape", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1263,7 +1264,7 @@ export function PipelineClient({
 
     setIsLoading(true);
     try {
-      const res = await fetch("/api/admin/pipeline/official-brand/discover", {
+      const res = await adminFetch("/api/admin/pipeline/official-brand/discover", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

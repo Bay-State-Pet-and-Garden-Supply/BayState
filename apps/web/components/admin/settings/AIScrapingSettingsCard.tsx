@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Bot, Save, RefreshCw } from "lucide-react";
 import { AIModelCombobox } from "@/components/admin/settings/AIModelCombobox";
 import { DEFAULT_AI_MODEL } from "@/lib/ai-scraping/models";
+import { adminFetch } from '@/lib/admin/api-client';
 
 type ProviderName = "deepseek" | "gemini" | "serpapi";
 
@@ -87,7 +88,7 @@ export function AIScrapingSettingsCard() {
  setError(null);
 
  try {
- const res = await fetch("/api/admin/ai-scraping/credentials");
+ const res = await adminFetch("/api/admin/ai-scraping/credentials");
  if (!res.ok) {
  throw new Error("Failed to load AI scraping settings");
  }
@@ -146,7 +147,7 @@ export function AIScrapingSettingsCard() {
  },
  };
 
- const res = await fetch("/api/admin/ai-scraping/credentials", {
+ const res = await adminFetch("/api/admin/ai-scraping/credentials", {
  method: "POST",
  headers: { "Content-Type": "application/json" },
  body: JSON.stringify(payload),

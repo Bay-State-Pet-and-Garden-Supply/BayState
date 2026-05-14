@@ -10,6 +10,7 @@ import { Loader2, Shield, Save, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ScraperCredentialStatus, ScraperCredentialType } from '@/lib/admin/scrapers/credentials';
 import { ConfirmationDialog } from '@/components/admin/confirmation-dialog';
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface ScraperCredentialsCardProps {
  slug: string;
@@ -34,7 +35,7 @@ export function ScraperCredentialsCard({ slug }: ScraperCredentialsCardProps) {
  setLoading(true);
  setError(null);
  try {
- const res = await fetch(`/api/admin/scrapers/${slug}/credentials`);
+ const res = await adminFetch(`/api/admin/scrapers/${slug}/credentials`);
  if (!res.ok) {
  throw new Error('Failed to load scraper credentials');
  }
@@ -63,7 +64,7 @@ export function ScraperCredentialsCard({ slug }: ScraperCredentialsCardProps) {
  setError(null);
 
  try {
- const res = await fetch(`/api/admin/scrapers/${slug}/credentials`, {
+ const res = await adminFetch(`/api/admin/scrapers/${slug}/credentials`, {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ type, value }),
@@ -99,7 +100,7 @@ export function ScraperCredentialsCard({ slug }: ScraperCredentialsCardProps) {
  setError(null);
 
  try {
- const res = await fetch(`/api/admin/scrapers/${slug}/credentials?type=${type}`, {
+ const res = await adminFetch(`/api/admin/scrapers/${slug}/credentials?type=${type}`, {
  method: 'DELETE',
  });
 

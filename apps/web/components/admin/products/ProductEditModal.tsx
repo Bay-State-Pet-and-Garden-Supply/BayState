@@ -32,6 +32,7 @@ import { PetTypeSelector } from './PetTypeSelector';
 import { updateProduct, bulkUpdateProducts } from '@/app/admin/products/actions';
 import { cn, formatImageUrl } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface Brand {
     id: string;
@@ -186,13 +187,13 @@ function ProductEditModal({
         async function fetchData() {
             try {
                 const requests = [
-                    fetch('/api/admin/brands'),
-                    fetch('/api/admin/categories'),
+                    adminFetch('/api/admin/brands'),
+                    adminFetch('/api/admin/categories'),
                 ];
 
                 // If single product, fetch its specific pet types
                 if (!isBulkEdit && singleProduct) {
-                    requests.push(fetch(`/api/admin/products/${singleProduct.id}/pet-types`));
+                    requests.push(adminFetch(`/api/admin/products/${singleProduct.id}/pet-types`));
                 }
 
                 const responses = await Promise.all(requests);
@@ -290,7 +291,7 @@ function ProductEditModal({
             } else if (singleProduct) {
                 const [productResult, petTypesRes] = await Promise.all([
                     updateProduct(singleProduct.id, formData),
-                    fetch(`/api/admin/products/${singleProduct.id}/pet-types`, {
+                    adminFetch(`/api/admin/products/${singleProduct.id}/pet-types`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ petTypes: selectedPetTypes }),

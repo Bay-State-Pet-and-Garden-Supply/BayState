@@ -17,6 +17,7 @@ import { Loader2, Edit2, Layers } from "lucide-react";
 import { CohortBrandPicker } from "../cohorts/CohortBrandPicker";
 import { BrandModal } from "../brands/BrandModal";
 import type { Brand } from "@/lib/types";
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface CohortEditDialogProps {
   open: boolean;
@@ -56,7 +57,7 @@ export function CohortEditDialog({
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/admin/cohorts/${cohortId}`, {
+      const response = await adminFetch(`/api/admin/cohorts/${cohortId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

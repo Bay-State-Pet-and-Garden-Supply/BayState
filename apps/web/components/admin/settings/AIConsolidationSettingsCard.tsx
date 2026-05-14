@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Layers, Save, RefreshCw } from 'lucide-react';
 import { AIModelCombobox } from '@/components/admin/settings/AIModelCombobox';
 import { DEFAULT_AI_MODEL } from '@/lib/ai-scraping/models';
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface ProviderStatus {
  provider: string;
@@ -62,7 +63,7 @@ export function AIConsolidationSettingsCard() {
  setError(null);
 
  try {
- const res = await fetch('/api/admin/consolidation/settings');
+ const res = await adminFetch('/api/admin/consolidation/settings');
  if (!res.ok) {
  throw new Error('Failed to load AI consolidation settings');
  }
@@ -111,7 +112,7 @@ export function AIConsolidationSettingsCard() {
  confidence_threshold: defaults.confidence_threshold,
  };
 
- const res = await fetch('/api/admin/consolidation/settings', {
+ const res = await adminFetch('/api/admin/consolidation/settings', {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify(payload),

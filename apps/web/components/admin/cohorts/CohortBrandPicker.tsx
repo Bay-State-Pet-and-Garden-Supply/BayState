@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { BrandModal } from '@/components/admin/brands/BrandModal';
 import type { Brand } from '@/components/admin/brands/types';
+import { adminFetch } from '@/lib/admin/api-client';
 
 export type CohortBrandOption = Brand;
 
@@ -50,7 +51,7 @@ export function CohortBrandPicker({
  const fetchBrands = useCallback(async () => {
  setLoadingBrands(true);
  try {
- const response = await fetch('/api/admin/brands');
+ const response = await adminFetch('/api/admin/brands');
  if (!response.ok) {
  throw new Error('Failed to load brands');
  }

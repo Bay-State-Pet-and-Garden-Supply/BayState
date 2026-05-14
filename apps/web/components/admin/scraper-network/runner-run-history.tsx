@@ -30,6 +30,7 @@ import {
 } from '@/components/admin/data-table';
 
 import type { ScraperRunRecord } from '@/lib/admin/scrapers/runs-types';
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface RunnerRunHistoryProps {
   runnerId: string;
@@ -104,7 +105,7 @@ export function RunnerRunHistory({ runnerId, runnerName }: RunnerRunHistoryProps
         params.append('search', filters.search);
       }
 
-      const res = await fetch(`/api/admin/scraper-network/jobs?${params}`);
+      const res = await adminFetch(`/api/admin/scraper-network/jobs?${params}`);
       if (!res.ok) throw new Error('Failed to fetch runs');
       
       const data = await res.json();

@@ -9,6 +9,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface FeedCardProps {
   feed: B2BFeed;
@@ -21,7 +22,7 @@ export function FeedCard({ feed }: FeedCardProps) {
   const handleSync = async () => {
     setIsSyncing(true);
     try {
-      const res = await fetch('/api/admin/b2b/sync', {
+      const res = await adminFetch('/api/admin/b2b/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ distributor_code: feed.distributor_code, job_type: 'full' }),
@@ -40,7 +41,7 @@ export function FeedCard({ feed }: FeedCardProps) {
   const handleTest = async () => {
     setIsTesting(true);
     try {
-      const res = await fetch('/api/admin/b2b/feeds', {
+      const res = await adminFetch('/api/admin/b2b/feeds', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ distributor_code: feed.distributor_code, action: 'test' }),

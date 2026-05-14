@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { titleCaseProductName, bulkTitleCaseNames } from '@/app/admin/quality/actions';
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface ProductIssue {
  sku: string;
@@ -42,7 +43,7 @@ export function QualityIssueTable({ initialProducts }: QualityIssueTableProps) {
  const fetchProducts = useCallback(async () => {
  setLoading(true);
  try {
- const response = await fetch('/api/admin/quality/products');
+ const response = await adminFetch('/api/admin/quality/products');
  if (response.ok) {
  const data = await response.json();
  setProducts(data.products || []);

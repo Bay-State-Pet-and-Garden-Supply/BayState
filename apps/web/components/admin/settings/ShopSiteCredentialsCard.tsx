@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Database, Loader2, RefreshCw, Save } from 'lucide-react';
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface ShopSiteSettingsResponse {
  storeUrl: string;
@@ -29,7 +30,7 @@ export function ShopSiteCredentialsCard() {
  setError(null);
 
  try {
- const res = await fetch('/api/admin/settings/shopsite');
+ const res = await adminFetch('/api/admin/settings/shopsite');
  if (!res.ok) {
  throw new Error('Failed to load ShopSite settings');
  }
@@ -63,7 +64,7 @@ export function ShopSiteCredentialsCard() {
  setError(null);
 
  try {
- const res = await fetch('/api/admin/settings/shopsite', {
+ const res = await adminFetch('/api/admin/settings/shopsite', {
  method: 'POST',
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({

@@ -40,6 +40,7 @@ import { useLogSubscription } from "@/lib/realtime/useLogSubscription";
 import type { LogEntry } from "@/lib/realtime/useLogSubscription";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import { useDocumentVisible } from "@/hooks/useDocumentVisible";
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface ActiveRunsTabProps {
   className?: string;
@@ -87,7 +88,7 @@ export function ActiveRunsTab({ className, jobSubtype }: ActiveRunsTabProps) {
   // Fetch jobs with chunk data from API
   const fetchJobs = useCallback(async () => {
     try {
-      const response = await fetch("/api/admin/pipeline/active-runs");
+      const response = await adminFetch("/api/admin/pipeline/active-runs");
       if (!response.ok) throw new Error("Failed to fetch jobs");
       const data = await response.json();
 
@@ -199,7 +200,7 @@ export function ActiveRunsTab({ className, jobSubtype }: ActiveRunsTabProps) {
     const jobId = pendingCancelJobId;
     setCancellingId(jobId);
     try {
-      const res = await fetch(`/api/admin/scrapers/runs/${jobId}/cancel`, {
+      const res = await adminFetch(`/api/admin/scrapers/runs/${jobId}/cancel`, {
         method: "POST",
       });
 

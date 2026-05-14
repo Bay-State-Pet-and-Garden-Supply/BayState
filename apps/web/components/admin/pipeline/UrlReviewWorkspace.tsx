@@ -9,6 +9,7 @@ import { OfficialBrandReviewClient } from "./OfficialBrandReviewClient";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { CandidatesBySkuResponse } from "@/lib/official-brand-review-types";
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface CohortSummary {
   cohort_id: string;
@@ -33,7 +34,7 @@ export function UrlReviewWorkspace() {
   const fetchCohorts = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/pipeline/official-brand/url-review-cohorts", {
+      const res = await adminFetch("/api/admin/pipeline/official-brand/url-review-cohorts", {
         cache: "no-store",
       });
       if (!res.ok) throw new Error("Failed to load cohorts");
@@ -55,8 +56,7 @@ export function UrlReviewWorkspace() {
     setLoadingReview(true);
     setReviewData(null);
     try {
-      const res = await fetch(
-        `/api/admin/pipeline/official-brand/candidates?cohort_id=${encodeURIComponent(cohortId)}`,
+      const res = await adminFetch(`/api/admin/pipeline/official-brand/candidates?cohort_id=${encodeURIComponent(cohortId)}`,
         { cache: "no-store" },
       );
       if (!res.ok) throw new Error("Failed to load candidates");
@@ -91,7 +91,7 @@ export function UrlReviewWorkspace() {
   const returnCohortToImport = useCallback(async (cohortId: string, e: { stopPropagation: () => void }) => {
     e.stopPropagation();
     try {
-      const res = await fetch("/api/admin/pipeline/bulk", {
+      const res = await adminFetch("/api/admin/pipeline/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cohort_id: cohortId, fromStatus: "url_review", toStatus: "imported", resetResults: true }),

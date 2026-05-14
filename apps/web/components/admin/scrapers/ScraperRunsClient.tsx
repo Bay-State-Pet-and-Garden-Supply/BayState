@@ -27,6 +27,7 @@ import {
 import { TimelineView } from '@/components/admin/pipeline/TimelineView';
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import { useDocumentVisible } from "@/hooks/useDocumentVisible";
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface ScraperRunsClientProps {
  initialRuns: ScraperRunRecord[];
@@ -94,7 +95,7 @@ export function ScraperRunsClient({ initialRuns, totalCount }: ScraperRunsClient
  const fetchActiveJobDetails = useCallback(async () => {
  try {
  setLoadingChunks(true);
- const response = await fetch("/api/admin/pipeline/active-runs");
+ const response = await adminFetch("/api/admin/pipeline/active-runs");
  if (!response.ok) throw new Error("Failed to fetch job details");
  const data = await response.json();
  

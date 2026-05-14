@@ -33,6 +33,7 @@ import { CohortBrandPicker } from "./CohortBrandPicker";
 import type { CohortBrandInfo } from "./types";
 import { isConfiguredBrand } from "./types";
 import { BrandModal } from "@/components/admin/brands/BrandModal";
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface CohortDetail {
  id: string;
@@ -123,7 +124,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
 
  const fetchCohort = useCallback(async () => {
  try {
- const response = await fetch(`/api/admin/cohorts/${cohortId}?include_members=true`);
+ const response = await adminFetch(`/api/admin/cohorts/${cohortId}?include_members=true`);
  if (!response.ok) throw new Error("Failed to fetch cohort");
 
  const data = await response.json();
@@ -141,8 +142,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  const fetchRecommendations = useCallback(async () => {
  setLoadingRecs(true);
  try {
- const response = await fetch(
- `/api/admin/cohorts/recommendations?cohort_id=${cohortId}`
+ const response = await adminFetch(`/api/admin/cohorts/recommendations?cohort_id=${cohortId}`
  );
  if (response.ok) {
  const data = await response.json();
@@ -167,7 +167,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
 
  const handleAssignBrand = async (brand: CohortBrandInfo | null) => {
  try {
- const response = await fetch(`/api/admin/cohorts/${cohortId}`, {
+ const response = await adminFetch(`/api/admin/cohorts/${cohortId}`, {
  method: "PATCH",
  headers: { "Content-Type": "application/json" },
  body: JSON.stringify(
@@ -203,7 +203,7 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
    
    setIsAssigningBrand(true);
    try {
-     const response = await fetch("/api/admin/pipeline/bulk/brand", {
+     const response = await adminFetch("/api/admin/pipeline/bulk/brand", {
        method: "POST",
        headers: { "Content-Type": "application/json" },
        body: JSON.stringify({

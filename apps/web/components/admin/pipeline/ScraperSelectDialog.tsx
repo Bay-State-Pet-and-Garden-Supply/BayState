@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { adminFetch } from '@/lib/admin/api-client';
 import {
     Dialog,
     DialogContent,
@@ -69,7 +70,7 @@ export function ScraperSelectDialog({
         setIsLoadingScrapers(true);
         setLoadError(null);
         try {
-            const res = await fetch('/api/admin/pipeline/scrapers');
+            const res = await adminFetch('/api/admin/pipeline/scrapers');
             if (!res.ok) throw new Error('Failed to load scrapers');
             const data = await res.json();
             const list: ScraperOption[] = data.scrapers ?? [];
@@ -90,7 +91,7 @@ export function ScraperSelectDialog({
             return;
         }
         try {
-            const res = await fetch(`/api/admin/cohorts/recommendations?brand=${encodeURIComponent(brandName)}`);
+            const res = await adminFetch(`/api/admin/cohorts/recommendations?brand=${encodeURIComponent(brandName)}`);
             if (res.ok) {
                 const data = await res.json();
                 const recs: ScraperRecommendation[] = data.recommendations || [];

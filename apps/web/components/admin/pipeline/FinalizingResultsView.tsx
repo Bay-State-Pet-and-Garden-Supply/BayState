@@ -100,6 +100,7 @@ import type {
 import { filterPendingCopilotDraftReview, restorePendingCopilotDraftReview, stagePendingCopilotDraftReview, type PendingCopilotDraftReview } from "@/lib/pipeline/finalization-copilot-review";
 import type { Brand } from "@/lib/types";
 import type { TaxonomyCategoryNode } from "@/lib/taxonomy";
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface FinalizingResultsViewProps {
   products: PipelineProduct[];
@@ -332,7 +333,7 @@ export function FinalizingResultsView({
       throw new Error("Brand name is required");
     }
 
-    const res = await fetch("/api/admin/brands", {
+    const res = await adminFetch("/api/admin/brands", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: trimmedName }),
@@ -408,8 +409,8 @@ export function FinalizingResultsView({
     async function fetchData() {
       try {
         const [brandsRes, categoriesRes] = await Promise.all([
-          fetch("/api/admin/brands"),
-          fetch("/api/admin/categories"),
+          adminFetch("/api/admin/brands"),
+          adminFetch("/api/admin/categories"),
         ]);
 
         if (brandsRes.ok) {
@@ -769,8 +770,7 @@ export function FinalizingResultsView({
             !== JSON.stringify(currentSavedDraft);
 
           if (hasPersistableChanges) {
-            const patchRes = await fetch(
-              `/api/admin/pipeline/${encodeURIComponent(currentProduct.sku)}`,
+            const patchRes = await adminFetch(`/api/admin/pipeline/${encodeURIComponent(currentProduct.sku)}`,
               {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
@@ -788,7 +788,7 @@ export function FinalizingResultsView({
           }
 
           if (andPublish) {
-            const publishRes = await fetch(`/api/admin/pipeline/publish`, {
+            const publishRes = await adminFetch(`/api/admin/pipeline/publish`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ sku: currentProduct.sku }),
@@ -1075,15 +1075,14 @@ export function FinalizingResultsView({
       try {
         const res =
           targetSkus.length === 1
-            ? await fetch(
-                `/api/admin/pipeline/${encodeURIComponent(targetSkus[0])}`,
+            ? await adminFetch(`/api/admin/pipeline/${encodeURIComponent(targetSkus[0])}`,
                 {
                   method: "PATCH",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ pipeline_status: "scraped" }),
                 },
               )
-            : await fetch(`/api/admin/pipeline/bulk`, {
+            : await adminFetch(`/api/admin/pipeline/bulk`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

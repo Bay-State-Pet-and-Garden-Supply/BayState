@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface PetType {
   id: string;
@@ -39,7 +40,7 @@ export function PetTypeSelector({ selectedPetTypes, onChange }: PetTypeSelectorP
   useEffect(() => {
     async function fetchPetTypes() {
       try {
-        const res = await fetch('/api/admin/pet-types');
+        const res = await adminFetch('/api/admin/pet-types');
         if (res.ok) {
           const data = await res.json();
           setPetTypes(data.petTypes || []);

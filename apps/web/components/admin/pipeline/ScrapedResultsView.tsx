@@ -23,6 +23,7 @@ import { PipelineFilters } from "./PipelineFilters";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import { PipelineSearchField } from "./PipelineSearchField";
 import { PipelineSidebarTable } from "./PipelineSidebarTable";
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface ScrapedResultsViewProps {
   products: PipelineProduct[];
@@ -196,7 +197,7 @@ export function ScrapedResultsView({
 
       imageRetryAttemptTimestamps.set(retryKey, now);
 
-      void fetch("/api/admin/scraping/retry-image", {
+      void adminFetch("/api/admin/scraping/retry-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -237,7 +238,7 @@ export function ScrapedResultsView({
         Object.entries(newSources).filter(([key]) => !key.startsWith("_")),
       );
       const nextStatus = Object.keys(cleanedSources).length === 0 ? "imported" : undefined;
-      const res = await fetch(`/api/admin/pipeline/${encodeURIComponent(selectedProduct.sku)}`, {
+      const res = await adminFetch(`/api/admin/pipeline/${encodeURIComponent(selectedProduct.sku)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

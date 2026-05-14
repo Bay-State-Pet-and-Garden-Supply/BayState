@@ -7,6 +7,7 @@ import { CandidateUrlPicker } from "./CandidateUrlPicker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { adminFetch } from '@/lib/admin/api-client';
 import type {
   CandidatesBySkuResponse,
   OfficialBrandCandidateReviewItem,
@@ -159,8 +160,7 @@ export function OfficialBrandReviewClient({
           params.set("discovery_job_id", discoveryJobId);
         }
 
-        const response = await fetch(
-          `/api/admin/pipeline/official-brand/candidates?${params.toString()}`,
+        const response = await adminFetch(`/api/admin/pipeline/official-brand/candidates?${params.toString()}`,
           { cache: "no-store" },
         );
         const payload = await response.json().catch(() => ({}));
@@ -243,7 +243,7 @@ export function OfficialBrandReviewClient({
       optimisticallyUpdateCandidate(sku, normalizedUrl, selectionStatus);
 
       try {
-        const response = await fetch("/api/admin/pipeline/official-brand/candidates", {
+        const response = await adminFetch("/api/admin/pipeline/official-brand/candidates", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -283,7 +283,7 @@ export function OfficialBrandReviewClient({
 
     setIsSaving(true);
     try {
-      const response = await fetch("/api/admin/pipeline/official-brand/candidates", {
+      const response = await adminFetch("/api/admin/pipeline/official-brand/candidates", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -317,7 +317,7 @@ export function OfficialBrandReviewClient({
 
     setIsStartingExtraction(true);
     try {
-      const response = await fetch("/api/admin/pipeline/official-brand/extract", {
+      const response = await adminFetch("/api/admin/pipeline/official-brand/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cohort_id: data.cohort.id, skus: selectedSkus }),
@@ -341,7 +341,7 @@ export function OfficialBrandReviewClient({
   const handleReturnCohortToImport = async () => {
     setIsSaving(true);
     try {
-      const res = await fetch("/api/admin/pipeline/bulk", {
+      const res = await adminFetch("/api/admin/pipeline/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cohort_id: data.cohort.id, fromStatus: "url_review", toStatus: "imported", resetResults: true }),
@@ -367,7 +367,7 @@ export function OfficialBrandReviewClient({
 
     setIsSaving(true);
     try {
-      const response = await fetch("/api/admin/pipeline/official-brand/add-url", {
+      const response = await adminFetch("/api/admin/pipeline/official-brand/add-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

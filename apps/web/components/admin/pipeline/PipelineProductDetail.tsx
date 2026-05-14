@@ -19,6 +19,7 @@ import {
 import { ImageSelector } from './ImageSelector';
 import { Badge } from '@/components/ui/badge';
 import { AlertBanner } from '@/components/admin/pipeline/AlertBanner';
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface Brand {
   id: string;
@@ -70,8 +71,8 @@ export function PipelineProductDetail({
     async function fetchData() {
       try {
         const [productRes, brandsRes] = await Promise.all([
-          fetch(`/api/admin/pipeline/${encodeURIComponent(sku)}`),
-          fetch('/api/admin/brands'),
+          adminFetch(`/api/admin/pipeline/${encodeURIComponent(sku)}`),
+          adminFetch('/api/admin/brands'),
         ]);
 
         if (!productRes.ok) {
@@ -213,7 +214,7 @@ export function PipelineProductDetail({
         payload.pipeline_status = requestedStatus;
       }
 
-      const res = await fetch(`/api/admin/pipeline/${encodeURIComponent(sku)}`, {
+      const res = await adminFetch(`/api/admin/pipeline/${encodeURIComponent(sku)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

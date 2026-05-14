@@ -22,6 +22,7 @@ import { PetTypeSelector } from './PetTypeSelector';
 import { SearchableMultiSelect } from './SearchableMultiSelect';
 import { updateProduct } from '@/app/admin/products/actions';
 import { cn } from '@/lib/utils';
+import { adminFetch } from '@/lib/admin/api-client';
 
 interface PublishedProduct {
     id: string;
@@ -121,9 +122,9 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
         async function fetchData() {
             try {
                 const [brandsRes, categoriesRes, petTypesRes] = await Promise.all([
-                    fetch('/api/admin/brands'),
-                    fetch('/api/admin/categories'),
-                    fetch(`/api/admin/products/${product.id}/pet-types`),
+                    adminFetch('/api/admin/brands'),
+                    adminFetch('/api/admin/categories'),
+                    adminFetch(`/api/admin/products/${product.id}/pet-types`),
                 ]);
                 if (brandsRes.ok) {
                     const data = await brandsRes.json();
@@ -177,7 +178,7 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
 
             const [productResult, petTypesRes] = await Promise.all([
                 updateProduct(product.id, formData),
-                fetch(`/api/admin/products/${product.id}/pet-types`, {
+                adminFetch(`/api/admin/products/${product.id}/pet-types`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ petTypes: selectedPetTypes }),
