@@ -703,7 +703,7 @@ export async function POST(request: NextRequest) {
                                         sources,
                                     );
 
-                                    const targetStatus = qualityVerdict.result === 'pass' ? 'scraped' : 'needs_fallback_review';
+                                    const targetStatus = qualityVerdict.result === 'pass' ? 'scraped' : 'imported';
 
                                     await supabase
                                         .from('products_ingestion')

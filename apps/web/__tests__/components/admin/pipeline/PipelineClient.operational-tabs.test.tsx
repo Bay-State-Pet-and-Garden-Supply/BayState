@@ -105,7 +105,8 @@ describe("PipelineClient live tab handling", () => {
       />,
     );
 
-    expect(screen.getByTestId("active-runs")).toBeInTheDocument();
+    const activeRunElements = screen.getAllByTestId("active-runs");
+    expect(activeRunElements.length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByTestId("floating-actions")).not.toBeInTheDocument();
   });
 

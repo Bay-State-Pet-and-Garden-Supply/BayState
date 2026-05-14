@@ -1,7 +1,7 @@
 export {};
 const {
   NextRequest,
-  createClient,
+  createAdminClient,
   requireAdminAuth,
 } = require('@/__tests__/helpers/admin-api-route-harness');
 const { GET } = require("@/app/api/admin/pipeline/active-runs/route");
@@ -66,7 +66,7 @@ describe("Active Runs API", () => {
         throw new Error(`Unexpected table: ${table}`);
       }),
     };
-    (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+    (createAdminClient as jest.Mock).mockResolvedValue(mockSupabase);
   });
 
   it("should return 401 if not authorized", async () => {

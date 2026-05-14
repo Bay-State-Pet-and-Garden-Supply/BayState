@@ -125,6 +125,7 @@ export function deriveTabFromProduct(
       return 'imported';
     case 'scraping':
       return 'scraping';
+
     case 'scraped':
       return 'scraped';
     case 'consolidating':

@@ -16,9 +16,8 @@ export const STATUS_TRANSITIONS: Record<
   searching: ['url_review', 'imported', 'failed'],
   url_review: ['extracting', 'scraping', 'imported', 'failed'],
   extracting: ['scraped', 'url_review', 'failed'],
-  scraping: ['scraped', 'needs_fallback_review', 'failed', 'imported'],
-  needs_fallback_review: ['searching', 'scraped', 'imported', 'failed'],
-  scraped: ['consolidating', 'finalizing', 'needs_fallback_review', 'imported', 'failed'],
+  scraping: ['scraped', 'failed', 'imported'],
+  scraped: ['consolidating', 'finalizing', 'imported', 'failed'],
   consolidating: ['finalizing', 'scraped', 'failed'],
   finalizing: ['exporting', 'scraped', 'failed'],
   exporting: ['finalizing', 'failed'],
@@ -42,5 +41,8 @@ export function validateTransition(
   }
 
   const allowedTransitions = STATUS_TRANSITIONS[fromStatus];
+  if (!allowedTransitions) {
+    return false;
+  }
   return allowedTransitions.includes(toStatus);
 }

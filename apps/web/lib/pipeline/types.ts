@@ -24,7 +24,15 @@ export type PersistedPipelineStatus =
   (typeof PERSISTED_PIPELINE_STATUSES)[number];
 
 /** Main admin workflow tabs shown in the live pipeline UI. */
-export const PIPELINE_TABS = PERSISTED_PIPELINE_STATUSES;
+export const PIPELINE_TABS = [
+  "imported",
+  "scraping",
+  "scraped",
+  "consolidating",
+  "finalizing",
+  "exporting",
+  "failed",
+] as const;
 
 export type PipelineStage = (typeof PIPELINE_TABS)[number];
 type PipelineTab = PipelineStage;
@@ -83,6 +91,16 @@ export function normalizePipelineStage(
     ] ?? null
   );
 }
+
+/** Fallback operational states — valid DB statuses but not top-level admin tabs. */
+export const FALLBACK_OPERATIONAL_STATUSES = [
+  "searching",
+  "url_review",
+  "extracting",
+] as const;
+
+export type FallbackOperationalStatus =
+  (typeof FALLBACK_OPERATIONAL_STATUSES)[number];
 
 /** Returns the persisted workflow state for a route stage. */
 export function getStageDataStatus(stage: PipelineStage): PersistedPipelineStatus {
@@ -255,11 +273,7 @@ export const STAGE_CONFIG: Record<StageConfigKey, StageConfig> = {
     color: "#2563EB",
     description: "Products currently assigned to active scraper jobs",
   },
-  needs_fallback_review: {
-    label: "Fallback Review",
-    color: "#F97316",
-    description: "Products needing manual fallback approval before SERPER/AI extraction",
-  },
+
   scraped: {
     label: "Results",
     color: "#3B82F6",

@@ -104,7 +104,7 @@ describe('Pipeline Accessibility', () => {
       expect(tabs.length).toBe(7);
       expect(screen.getAllByRole('tab', { name: /Imported/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole('tab', { name: /Scraping/i }).length).toBeGreaterThan(0);
-      expect(screen.getAllByRole('tab', { name: /Scraped/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('tab', { name: /Results/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole('tab', { name: /Finalizing/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole('tab', { name: /Exporting/i }).length).toBeGreaterThan(0);
     });

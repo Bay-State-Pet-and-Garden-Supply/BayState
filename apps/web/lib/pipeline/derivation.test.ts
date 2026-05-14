@@ -137,6 +137,7 @@ describe("deriveTabFromProduct", () => {
       product: { pipeline_status: "scraping" },
       expected: "scraping",
     },
+
     {
       name: "keeps scraped products in scraped",
       product: { pipeline_status: "scraped" },

@@ -122,7 +122,7 @@ describe("pipeline queries", () => {
     expect(productsPlan.calls).toEqual([
       ["select", "*", { count: "exact" }],
       ["eq", "pipeline_status", "imported"],
-      ["order", "updated_at", { ascending: false }],
+      ["order", "sku", { ascending: true }],
       ["range", 10, 34],
     ]);
   });
@@ -144,7 +144,7 @@ describe("pipeline queries", () => {
     expect(productsPlan.calls).toEqual([
       ["select", "*", { count: "exact" }],
       ["eq", "pipeline_status", "finalizing"],
-      ["order", "updated_at", { ascending: false }],
+      ["order", "sku", { ascending: true }],
       ["range", 0, 99],
     ]);
   });

@@ -27,7 +27,7 @@ describe("StageTabs", () => {
     );
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs.length).toBeGreaterThanOrEqual(10);
+    expect(tabs.length).toBe(7);
 
     expect(screen.getByRole("tab", { name: /Imported/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Scraping/i })).toBeInTheDocument();
@@ -36,7 +36,6 @@ describe("StageTabs", () => {
     expect(screen.getByRole("tab", { name: /Finalizing/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Exporting/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Failed/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Fallback Review/i })).toBeInTheDocument();
   });
 
   it("shows live counts for finalizing and exporting", () => {

@@ -24,14 +24,12 @@ import {
 import { StageTabs } from "./StageTabs";
 import { ProductTable } from "./ProductTable";
 import { ScrapedResultsView } from "./ScrapedResultsView";
-import { FallbackReviewView } from "./FallbackReviewView";
-import { FloatingActionsBar } from "./FloatingActionsBar";
 import { ActiveRunsTab } from "./ActiveRunsTab";
 import { ActiveConsolidationsTab } from "./ActiveConsolidationsTab";
 import { FinalizingResultsView } from "./FinalizingResultsView";
+import { FallbackReviewView } from "./FallbackReviewView";
+import { FloatingActionsBar } from "./FloatingActionsBar";
 import { ImportedResultsView } from "./ImportedResultsView";
-import { SearchingTab } from "./SearchingTab";
-import { UrlReviewWorkspace } from "./UrlReviewWorkspace";
 import { PipelineFilters, type PipelineFiltersState } from "./PipelineFilters";
 import { PipelineSearchField } from "./PipelineSearchField";
 import { formatPipelineBatchLabel } from "./view-utils";
@@ -89,12 +87,10 @@ const BulkAssignBrandDialog = dynamic(
 );
 
 const LIVE_OPERATIONAL_TABS = new Set<PipelineStage>([
-  "searching",
-  "extracting",
   "scraping",
   "consolidating",
 ]);
-const WORKSPACE_TABS = new Set<PipelineStage>(["scraped", "url_review", "finalizing", "imported", "exporting"]);
+const WORKSPACE_TABS = new Set<PipelineStage>(["scraped", "finalizing", "imported", "exporting"]);
 const EMPTY_SOURCES: string[] = [];
 
 function isLiveOperationalTab(stage: PipelineStage): boolean {
@@ -1138,9 +1134,6 @@ export function PipelineClient({
     product_line: productLineFilter,
     cohort_id: cohortIdFilter,
   };
-  const urlReviewHref = cohortIdFilter
-    ? `/admin/pipeline?stage=url_review&cohort_id=${encodeURIComponent(cohortIdFilter)}`
-    : null;
   const applyFilterState = (newFilters: PipelineFiltersState) => {
     setSourceFilter(newFilters.source || "");
     setProductLineFilter(newFilters.product_line || "");
@@ -1197,17 +1190,6 @@ export function PipelineClient({
           className="h-8"
         />
       ) : null}
-
-      {urlReviewHref ? (
-        <Button variant="outline" size="sm" asChild className="h-8">
-          <Link href={urlReviewHref}>
-            <Globe className="h-4 w-4" />
-            Fallback URL Candidates
-          </Link>
-        </Button>
-      ) : null}
-
-
 
       {currentStage === "imported" && (
         <>
@@ -1266,28 +1248,7 @@ export function PipelineClient({
         (isLoading || isNavigating) && "opacity-50 pointer-events-none"
       )}>
         <div className="flex flex-col flex-1 h-full w-full min-h-0">
-          {currentStage === "searching" ? (
-            <SearchingTab />
-          ) : currentStage === "extracting" ? (
-            <div className="grid gap-4 xl:grid-cols-1 p-1 pr-8 pb-8">
-              <AdminCard variant="panel">
-                <AdminCardHeader>
-                  <div className="rounded-lg bg-primary/10 p-2">
-                    <Activity className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <AdminCardTitle>Fallback Extraction</AdminCardTitle>
-                    <AdminCardDescription>
-                      Live fallback URL extraction jobs currently running or queued.
-                    </AdminCardDescription>
-                  </div>
-                </AdminCardHeader>
-                <AdminCardContent>
-                  <ActiveRunsTab jobSubtype="direct_url_extraction" />
-                </AdminCardContent>
-              </AdminCard>
-            </div>
-          ) : currentStage === "scraping" ? (
+          {currentStage === "scraping" ? (
             <div className="grid gap-4 xl:grid-cols-1 p-1 pr-8 pb-8">
               <AdminCard variant="panel">
                 <AdminCardHeader>
@@ -1303,6 +1264,22 @@ export function PipelineClient({
                 </AdminCardHeader>
                 <AdminCardContent>
                   <ActiveRunsTab />
+                </AdminCardContent>
+              </AdminCard>
+              <AdminCard variant="panel">
+                <AdminCardHeader>
+                  <div className="rounded-lg bg-cyan-500/10 p-2">
+                    <Activity className="h-5 w-5 text-cyan-500" />
+                  </div>
+                  <div>
+                    <AdminCardTitle>Fallback Extraction Runs</AdminCardTitle>
+                    <AdminCardDescription>
+                      Live fallback URL extraction jobs currently running or queued.
+                    </AdminCardDescription>
+                  </div>
+                </AdminCardHeader>
+                <AdminCardContent>
+                  <ActiveRunsTab jobSubtype="direct_url_extraction" />
                 </AdminCardContent>
               </AdminCard>
             </div>
@@ -1324,35 +1301,6 @@ export function PipelineClient({
                   <ActiveConsolidationsTab />
                 </AdminCardContent>
               </AdminCard>
-            </div>
-          ) : currentStage === "url_review" ? (
-            <div className="min-h-0">
-              <UrlReviewWorkspace />
-            </div>
-          ) : currentStage === "needs_fallback_review" ? (
-            <div className="min-h-0">
-              <FallbackReviewView
-                products={filteredProducts}
-                selectedSkus={selectedSkus}
-                onSelectSku={handleSelectSku}
-                onSelectAll={(skus) => {
-                  setSelectedSkus((prev) => {
-                    const next = new Set(prev);
-                    skus.forEach((sku) => next.add(sku));
-                    return next;
-                  });
-                }}
-                onDeselectAll={(skus) => {
-                  setSelectedSkus((prev) => {
-                    const next = new Set(prev);
-                    skus.forEach((sku) => next.delete(sku));
-                    return next;
-                  });
-                }}
-                onRefresh={refreshAll}
-                search={search}
-                onSearchChange={(value) => setSearch(value)}
-              />
             </div>
           ) : currentStage === "scraped" ? (
             <ScrapedResultsView
