@@ -479,4 +479,21 @@ VALUES (
 )
 ON CONFLICT DO NOTHING;
 
+-- ---------------------------------------------------------------------
+-- Scraper Runners (Local Dev)
+-- ---------------------------------------------------------------------
+INSERT INTO scraper_runners (name, status, enabled, metadata)
+VALUES ('local-dev-runner', 'online', TRUE, '{"environment": "development"}'::jsonb)
+ON CONFLICT (name) DO UPDATE SET status = 'online', enabled = TRUE;
+
+-- Seed the API key for the local runner (hash of 'bsr_local_dev_key')
+INSERT INTO runner_api_keys (runner_name, key_hash, key_prefix, description)
+VALUES (
+  'local-dev-runner', 
+  '00ea90233cb6277be758add4673161cb95615d074c8021fc66a4dabb1eabd7c2', 
+  'bsr_local_dev', 
+  'Local development key'
+)
+ON CONFLICT DO NOTHING;
+
 
