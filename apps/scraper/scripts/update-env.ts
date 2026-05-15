@@ -28,6 +28,10 @@ async function main() {
 
   const updates = new Map<string, string>();
 
+  // 0. Set local dev defaults
+  updates.set('SCRAPER_API_URL', 'http://localhost:3000');
+  updates.set('ENVIRONMENT', 'dev');
+
   // 1. Pull from Supabase status
   console.log('🔄 Fetching modern Supabase keys...');
   try {

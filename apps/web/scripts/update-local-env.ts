@@ -89,6 +89,14 @@ async function main() {
     updates.push({ key: encryptionKeyKey, value: newKey });
   }
 
+  // 4. Handle Scraper API Key for Local Dev
+  console.log('🔄 Checking Scraper API Key...');
+  const scraperKeyKey = 'SCRAPER_API_KEY';
+  const scraperKeyRegex = new RegExp(`^${scraperKeyKey}=.*$`, 'm');
+  if (!envContent.match(scraperKeyRegex)) {
+    updates.push({ key: scraperKeyKey, value: 'bsr_local_dev_key' });
+  }
+
   let changed = false;
 
   updates.forEach(({ key, value }) => {

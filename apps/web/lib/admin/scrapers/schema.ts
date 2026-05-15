@@ -17,7 +17,7 @@ const scraperTypeSchema = z.enum(['static', 'agentic']);
 const aiModelSchema = z.enum(AI_MODEL_VALUES);
 
 const aiConfigSchema = z.object({
-  tool: z.enum(['browser-use', 'crawl4ai']).default('crawl4ai'),
+  tool: z.literal('browser-use').default('browser-use'),
   task: z.string().min(1, 'AI task description is required'),
   max_steps: z.number().min(1).max(50).default(10),
   confidence_threshold: z.number().min(0).max(1).default(0.7),

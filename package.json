@@ -36,7 +36,11 @@
     "web:stripe:listen": "bun run web stripe:listen",
     "web:local:sync-env": "bun run web local:sync-env",
     "web:bootstrap": "bun run web bootstrap",
-    "scraper:sync-env": "bun run scraper local:sync-env"
+    "web:db:reset": "bun run web db:reset",
+    "scraper:sync-env": "bun run scraper local:sync-env",
+    "bootstrap": "bun run web:bootstrap && bun run scraper:sync-env",
+    "scraper:dev": "bun run scraper dev",
+    "dev:all": "bunx turbo run dev stripe:listen scraper:dev"
   },
   "devDependencies": {
     "fallow": "^2.54.3",

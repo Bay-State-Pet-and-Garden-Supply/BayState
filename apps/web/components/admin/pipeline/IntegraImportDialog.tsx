@@ -1,0 +1,293 @@
+'use client';
+
+import { useState } from 'react';
+import { Database, Loader2, X, CheckCircle, Upload, FileText, AlertCircle, ArrowRight, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { FileUpload } from '@/components/ui/file-upload';
+import { formatCurrency } from '@/lib/utils';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { analyzeIntegraAction, pushReconciliationItemsToPipelineAction } from '@/app/admin/pipeline/actions';
+
+interface IntegraImportDialogProps {
+    onSuccess: () => void;
+    onCancel: () => void;
+}
+
+export function IntegraImportDialog({
+    onSuccess,
+    onCancel,
+}: IntegraImportDialogProps) {
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [syncRunId, setSyncRunId] = useState<string | null>(null);
+    const [summary, setSummary] = useState<{
+        totalInFile: number;
+        registerOnlyCount: number;
+        totalIssues: number;
+    } | null>(null);
+    const [file, setFile] = useState<File | null>(null);
+
+    const handleFileChange = (selectedFile: File | null) => {
+        setFile(selectedFile);
+        setSyncRunId(null);
+        setSummary(null);
+    };
+
+    const handleAnalyze = async () => {
+        if (!file) return;
+
+        setIsAnalyzing(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const result = await analyzeIntegraAction(formData);
+            if (result.success && result.syncRunId) {
+                setSyncRunId(result.syncRunId);
+                setSummary(result.summary || null);
+                toast.success('File analyzed successfully');
+            } else {
+                toast.error(result.error || 'Failed to analyze file');
+            }
+        } catch (error) {
+            toast.error('An error occurred during analysis');
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    const handleAddToOnboarding = async () => {
+        if (!syncRunId) return;
+        setIsProcessing(true);
+        try {
+            // Fetch open register-only issues for this sync run
+            const { createClient } = await import('@/lib/supabase/client');
+            const supabase = createClient();
+            const { data: issues } = await supabase
+                .from('inventory_reconciliation_items')
+                .select('id')
+                .eq('sync_run_id', syncRunId)
+                .eq('issue_type', 'register_only')
+                .eq('status', 'open');
+
+            const issueIds = (issues || []).map(i => i.id);
+            if (issueIds.length === 0) {
+                toast.info('No register-only issues found to push');
+                setIsProcessing(false);
+                return;
+            }
+
+            const result = await pushReconciliationItemsToPipelineAction(issueIds);
+            if (result.success) {
+                toast.success(`Pushed ${result.count} register-only products to pipeline`);
+                onSuccess();
+            } else {
+                toast.error(result.error || 'Failed to push products to pipeline');
+            }
+        } catch (error) {
+            toast.error('An error occurred during processing');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const isBusy = isAnalyzing || isProcessing;
+    const hasNewProducts = summary && summary.registerOnlyCount > 0;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+            <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-none bg-card flex flex-col border border-border">
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-border px-8 py-5 flex-shrink-0 bg-muted/30">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-none bg-primary/5 text-primary border border-primary/10">
+                            <Database className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-semibold text-foreground">Integra Register Sync</h2>
+                            <p className="text-[10px] font-semibold text-muted-foreground">Onboarding Pipeline</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onCancel}
+                        disabled={isBusy}
+                        className="rounded-none p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto px-8 py-8 space-y-8">
+                    {!summary ? (
+                        <div className="space-y-8 animate-in fade-in duration-500">
+                            <div className="max-w-2xl">
+                                <h3 className="text-lg font-semibold text-foreground mb-2">Upload Inventory Export</h3>
+                                <p className="text-sm text-foreground leading-relaxed">
+                                    Upload your Excel export from the Integra system. We&apos;ll cross-reference it with the website catalog to find missing items.
+                                </p>
+                                <div className="mt-4 flex items-center gap-4 text-[10px] font-semibold text-foreground">
+                                    <div className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-none border border-border">
+                                        <FileText className="h-3.5 w-3.5" />
+                                        <span>.xlsx or .xls</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-none border border-border">
+                                        <AlertCircle className="h-3.5 w-3.5" />
+                                        <span>Required: SKU_NO, LIST_PRICE</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <FileUpload
+                                    onFileSelect={handleFileChange}
+                                    accept=".xlsx, .xls"
+                                    maxSize={20}
+                                    loading={isAnalyzing}
+                                    selectedFile={file}
+                                    label={
+                                        <div className="py-4">
+                                            <p className="text-sm font-semibold text-foreground">
+                                                <span className="text-primary underline decoration-primary/20 underline-offset-4 hover:decoration-primary transition-colors">Click to upload</span> or drag and drop
+                                            </p>
+                                            <p className="text-[10px] font-semibold text-muted-foreground mt-2">Excel spreadsheet up to 20MB</p>
+                                        </div>
+                                    }
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {/* Stats Cards */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                <div className="relative overflow-hidden rounded-none border border-border bg-card p-6">
+                                    <p className="text-[10px] font-semibold text-muted-foreground mb-1">Total in File</p>
+                                    <h4 className="text-4xl font-semibold text-foreground">{summary?.totalInFile ?? 0}</h4>
+                                    <p className="text-[10px] font-semibold text-muted-foreground mt-2">Unique SKUs analyzed</p>
+                                </div>
+
+                                <div className="relative overflow-hidden rounded-none border border-brand-forest-green/20 bg-brand-forest-green/5 p-6">
+                                    <p className="text-[10px] font-semibold text-brand-forest-green mb-1">New Products</p>
+                                    <h4 className="text-4xl font-semibold text-brand-forest-green">{summary?.registerOnlyCount ?? 0}</h4>
+                                    <p className="text-[10px] font-semibold text-brand-forest-green mt-2">Register-only, ready to onboard</p>
+                                </div>
+
+                                <div className="relative overflow-hidden rounded-none border border-primary/20 bg-primary/5 p-6">
+                                    <p className="text-[10px] font-semibold text-primary mb-1">Discrepancies</p>
+                                    <h4 className="text-4xl font-semibold text-primary">{summary?.totalIssues ?? 0}</h4>
+                                    <p className="text-[10px] font-semibold text-primary mt-2">Price, quantity, and stock mismatches</p>
+                                </div>
+                            </div>
+
+                            {summary && summary.totalIssues > 0 ? (
+                                <div className="space-y-6">
+                                    <div className="bg-amber-50 border border-amber-200 rounded-none p-4">
+                                        <p className="text-sm text-amber-800 font-semibold">
+                                            View full reconciliation details in inventory sync runs
+                                        </p>
+                                    </div>
+                                    <div className="flex justify-center pt-2">
+                                        <button 
+                                            onClick={() => {
+                                                setSyncRunId(null);
+                                                setSummary(null);
+                                                setFile(null);
+                                            }}
+                                            className="text-[10px] font-semibold text-muted-foreground hover:text-primary transition-colors py-2 px-4 rounded-none hover:bg-muted"
+                                        >
+                                            Upload Different File
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-20 text-center bg-brand-forest-green/5 rounded-none border border-dashed border-brand-forest-green/20">
+                                    <div className="h-20 w-20 rounded-none bg-brand-forest-green/10 flex items-center justify-center mb-6">
+                                        <CheckCircle className="w-10 h-10 text-brand-forest-green" />
+                                    </div>
+                                    <h3 className="text-2xl font-semibold text-foreground">Database is Synchronized</h3>
+                                    <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto leading-relaxed">
+                                        Excellent! Every product found in this export is already present in your website catalog.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer Actions */}
+                <div className="flex items-center justify-between gap-3 border-t border-border bg-muted/30 px-8 py-5 flex-shrink-0">
+                    <p className="text-[10px] font-semibold text-muted-foreground">
+                        Supported formats: CSV, XLSX, XLS
+                    </p>
+                    <div className="flex items-center gap-3">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={onCancel}
+                            disabled={isBusy}
+                            className="text-muted-foreground font-semibold text-[10px] hover:bg-muted"
+                        >
+                            Cancel
+                        </Button>
+
+                        {!summary ? (
+                            <Button
+                                onClick={handleAnalyze}
+                                disabled={!file || isBusy}
+                                size="lg"
+                                className="bg-primary hover:bg-primary/90 text-background transition-all active:scale-[0.98] px-8 font-semibold text-xs h-11 rounded-none border border-primary"
+                            >
+                                {isAnalyzing ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        <span>Analyzing...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <ArrowRight className="mr-2 h-4 w-4" />
+                                        <span>Process Inventory File</span>
+                                    </>
+                                )}
+                            </Button>
+                        ) : hasNewProducts ? (
+                            <Button
+                                onClick={handleAddToOnboarding}
+                                disabled={isProcessing}
+                                size="lg"
+                                className="bg-brand-forest-green hover:bg-brand-forest-green/90 text-background transition-all active:scale-[0.98] px-8 font-semibold text-xs h-11 rounded-none border border-brand-forest-green"
+                            >
+                                {isProcessing ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        <span>Importing…</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        <span>Add to Pipeline</span>
+                                    </>
+                                )}
+                            </Button>
+                        ) : (
+                            <Button
+                                onClick={onCancel}
+                                size="lg"
+                                className="bg-primary text-background hover:bg-primary/90 font-semibold text-xs px-8 h-11 rounded-none border border-primary"
+                            >
+                                Done
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

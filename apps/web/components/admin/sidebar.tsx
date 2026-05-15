@@ -19,15 +19,15 @@ import {
  Package,
  DollarSign,
  GitBranch,
+ ShoppingBag,
+ ClipboardList,
+ RefreshCw,
+ Rocket,
+ HeartPulse,
+ Database,
+ } from "lucide-react";
 
-
-
-
-
-
-} from "lucide-react";
-
-import { cn } from "@/lib/utils";
+ import { cn } from "@/lib/utils";
 import {
  Tooltip,
  TooltipContent,
@@ -61,9 +61,13 @@ const navSections: NavSection[] = [
         label: "Analytics",
         icon: BarChart3,
       },
+      {
+        href: "/admin/scrapers/network",
+        label: "Network",
+        icon: Network,
+      },
     ],
   },
-
   {
     title: "Catalog",
     items: [

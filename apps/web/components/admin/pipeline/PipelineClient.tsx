@@ -72,6 +72,14 @@ const BulkAssignBrandDialog = dynamic(
   () => import("./BulkAssignBrandDialog").then((mod) => mod.BulkAssignBrandDialog),
   { ssr: false },
 );
+const IntegraImportDialog = dynamic(
+  () => import("./IntegraImportDialog").then((mod) => mod.IntegraImportDialog),
+  { ssr: false },
+);
+const ManualAddProductDialog = dynamic(
+  () => import("./ManualAddProductDialog").then((mod) => mod.ManualAddProductDialog),
+  { ssr: false },
+);
 
 const LIVE_OPERATIONAL_TABS = new Set<PipelineStage>([
   "extracting",
@@ -122,6 +130,8 @@ export function PipelineClient({
   const [isScrapeDialogOpen, setIsScrapeDialogOpen] = useState(false);
   const [isApprovedExtracting, setIsApprovedExtracting] = useState(false);
   const [isBulkAssignBrandOpen, setIsBulkAssignBrandOpen] = useState(false);
+  const [isIntegraImportOpen, setIsIntegraImportOpen] = useState(false);
+  const [isManualAddOpen, setIsManualAddOpen] = useState(false);
 
   // Handle bulk brand assignment
   const handleBulkAssignBrand = async (brandId: string | null) => {
@@ -1446,6 +1456,8 @@ export function PipelineClient({
                   }
                   : undefined
               }
+              onImportCsv={() => setIsIntegraImportOpen(true)}
+              onManualAdd={() => setIsManualAddOpen(true)}
               isSearching={isSearching}
               isLoading={isLoading}
             />
@@ -1720,6 +1732,18 @@ export function PipelineClient({
         confirmLabel="Delete"
         variant="destructive"
         isLoading={isLoading}
+      />
+
+      <IntegraImportDialog
+        open={isIntegraImportOpen}
+        onOpenChange={setIsIntegraImportOpen}
+        onSuccess={refreshAll}
+      />
+
+      <ManualAddProductDialog
+        open={isManualAddOpen}
+        onOpenChange={setIsManualAddOpen}
+        onSuccess={refreshAll}
       />
     </div>
   );

@@ -57,6 +57,8 @@ interface ImportedResultsViewProps {
   cohortBrands?: Record<string, string>;
   cohortBrandObjects?: Record<string, Brand>;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
+  onImportCsv?: () => void;
+  onManualAdd?: () => void;
   isLoading?: boolean;
 }
 
@@ -76,6 +78,8 @@ export function ImportedResultsView({
   cohortBrands = {},
   cohortBrandObjects = {},
   onEditCohort,
+  onImportCsv,
+  onManualAdd,
   isLoading = false,
 }: ImportedResultsViewProps) {
   // 1. Data Transformation & Memoized State
@@ -162,6 +166,35 @@ export function ImportedResultsView({
               />
             ) : null}
           </div>
+
+          {(onImportCsv || onManualAdd) && (
+            <div className="flex items-center gap-2 px-2 pb-2">
+              {onImportCsv && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onImportCsv}
+                  disabled={isLoading}
+                  className="flex-1 h-8 border border-border text-foreground hover:bg-muted text-[10px] font-semibold transition-all"
+                >
+                  <Database className="mr-1.5 h-3.5 w-3.5" />
+                  Import Integra
+                </Button>
+              )}
+              {onManualAdd && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onManualAdd}
+                  disabled={isLoading}
+                  className="flex-1 h-8 border border-border text-foreground hover:bg-muted text-[10px] font-semibold transition-all"
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Add Product
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
         <PipelineSidebarTable
