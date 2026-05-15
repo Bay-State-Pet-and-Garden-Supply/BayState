@@ -22,10 +22,16 @@ function createEntry(overrides: Partial<ImageRetryEntry> = {}): ImageRetryEntry 
     retry_id: 'retry-1',
     sku: 'SKU-001',
     image_url: 'https://private.example.com/protected.jpg',
-    error_type: 'network_timeout',
     retry_count: 0,
     max_retries: 3,
+    last_error: null,
+    scheduled_for: FIXED_NOW.toISOString(),
+    created_at: FIXED_NOW.toISOString(),
+    updated_at: FIXED_NOW.toISOString(),
     ...overrides,
+    // Ensure literal types are preserved
+    error_type: overrides.error_type ?? 'network_timeout',
+    status: overrides.status ?? 'pending',
   };
 }
 

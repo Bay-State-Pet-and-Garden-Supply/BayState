@@ -58,7 +58,6 @@ export async function POST(request: NextRequest) {
     const validSkus = (products || [])
       .filter((p: { sku: string; pipeline_status: string }) =>
         p.pipeline_status === "imported" ||
-        p.pipeline_status === "url_review" ||
         p.pipeline_status === "extracting"
       )
       .map((p: { sku: string }) => p.sku);

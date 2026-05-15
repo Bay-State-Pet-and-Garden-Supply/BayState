@@ -174,7 +174,7 @@ const products: PipelineProduct[] = [
 
 const counts: StatusCount[] = [
   { status: "imported", count: 3 },
-  { status: "url_review", count: 0 },
+  { status: "awaiting_brand", count: 0 },
   { status: "extracting", count: 0 },
   { status: "processed", count: 0 },
   { status: "merging", count: 0 },
@@ -203,7 +203,7 @@ beforeEach(() => {
 
 const importedCounts: StatusCount[] = [
   { status: "imported", count: 3 },
-  { status: "url_review", count: 0 },
+  { status: "awaiting_brand", count: 0 },
   { status: "extracting", count: 0 },
   { status: "processed", count: 0 },
   { status: "merging", count: 0 },
@@ -288,7 +288,7 @@ describe("PipelineClient shift range selection", () => {
   it("opens enrichment dialog with selected SKU count", async () => {
     const processedCounts: StatusCount[] = [
       { status: "imported", count: 0 },
-      { status: "url_review", count: 0 },
+      { status: "awaiting_brand", count: 0 },
       { status: "extracting", count: 0 },
       { status: "processed", count: 2 },
       { status: "merging", count: 0 },
@@ -324,7 +324,7 @@ describe("PipelineClient shift range selection", () => {
   it("does not include legacy enrichment method props in scraper dialog", async () => {
     const processedCounts: StatusCount[] = [
       { status: "imported", count: 0 },
-      { status: "url_review", count: 0 },
+      { status: "awaiting_brand", count: 0 },
       { status: "extracting", count: 0 },
       { status: "processed", count: 2 },
       { status: "merging", count: 0 },

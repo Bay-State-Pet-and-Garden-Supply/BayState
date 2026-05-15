@@ -6,20 +6,18 @@
   "packageManager": "bun@1.3.5",
   "workspaces": [
     "packages/*",
-    "apps/mobile",
     "apps/web",
     "apps/scraper"
   ],
   "scripts": {
     "dev": "bunx turbo run dev stripe:listen",
-    "up": "bun run dev",
-    "down": "bun run web:db:stop",
+    "up": "bun run dev:all",
+    "down": "bun run web:db:stop && docker rm -f baystate-stripe-dev 2>/dev/null || true && docker compose -p baystate-dev -f apps/scraper/docker-compose.yml down",
     "build": "bunx turbo run build",
     "test": "bunx turbo run test",
     "lint": "bunx turbo run lint",
     "typecheck": "bunx turbo run typecheck",
     "web": "bun --cwd apps/web",
-    "mobile": "bun --cwd apps/mobile",
     "scraper": "bun --cwd apps/scraper",
     "vercel-build": "cd apps/web && next build",
     "fallow": "fallow",
@@ -36,11 +34,14 @@
     "web:stripe:listen": "bun run web stripe:listen",
     "web:local:sync-env": "bun run web local:sync-env",
     "web:bootstrap": "bun run web bootstrap",
-    "web:db:reset": "bun run web db:reset",
+    "stripe:login": "bun run web stripe:login",
+    "stripe:listen": "bun run web stripe:listen",
     "scraper:sync-env": "bun run scraper local:sync-env",
+    "scraper:build": "docker compose -p baystate-dev -f apps/scraper/docker-compose.yml build",
+    "scraper:up": "docker compose -p baystate-dev -f apps/scraper/docker-compose.yml up -d",
     "bootstrap": "bun run web:bootstrap && bun run scraper:sync-env",
     "scraper:dev": "bun run scraper dev",
-    "dev:all": "bunx turbo run dev stripe:listen scraper:dev"
+    "dev:all": "bunx turbo run dev stripe:listen --parallel && bun run scraper:up"
   },
   "devDependencies": {
     "fallow": "^2.54.3",

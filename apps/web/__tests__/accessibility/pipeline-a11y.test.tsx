@@ -27,7 +27,7 @@ const mockProduct = {
 
 const mockCounts = [
   { status: 'imported', count: 10 },
-  { status: 'url_review', count: 0 },
+  { status: 'awaiting_brand', count: 0 },
   { status: 'extracting', count: 4 },
   { status: 'processed', count: 5 },
   { status: 'merging', count: 1 },

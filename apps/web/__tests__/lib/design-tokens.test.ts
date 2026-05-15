@@ -74,7 +74,6 @@ describe('design-tokens', () => {
     describe('PIPELINE_STATUS_LABELS', () => {
         it('should have correct labels for all statuses', () => {
             expect(PIPELINE_STATUS_LABELS.imported).toBe('Imported');
-            expect(PIPELINE_STATUS_LABELS.url_review).toBe('URL Review');
             expect(PIPELINE_STATUS_LABELS.extracting).toBe('Extracting');
             expect(PIPELINE_STATUS_LABELS.processed).toBe('Processed');
             expect(PIPELINE_STATUS_LABELS.merging).toBe('Merging');

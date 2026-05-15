@@ -1734,17 +1734,19 @@ export function PipelineClient({
         isLoading={isLoading}
       />
 
-      <IntegraImportDialog
-        open={isIntegraImportOpen}
-        onOpenChange={setIsIntegraImportOpen}
-        onSuccess={refreshAll}
-      />
+      {isIntegraImportOpen && (
+        <IntegraImportDialog
+          onSuccess={refreshAll}
+          onCancel={() => setIsIntegraImportOpen(false)}
+        />
+      )}
 
-      <ManualAddProductDialog
-        open={isManualAddOpen}
-        onOpenChange={setIsManualAddOpen}
-        onSuccess={refreshAll}
-      />
+      {isManualAddOpen && (
+        <ManualAddProductDialog
+          onSuccess={refreshAll}
+          onCancel={() => setIsManualAddOpen(false)}
+        />
+      )}
     </div>
   );
 }

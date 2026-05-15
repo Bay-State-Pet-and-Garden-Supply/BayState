@@ -5,7 +5,7 @@
       "cache": false
     },
     "local:sync-env": {
-      "dependsOn": ["db:start"],
+      "dependsOn": ["db:start", "^local:sync-env"],
       "cache": false
     },
     "dev": {

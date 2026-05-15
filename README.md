@@ -7,9 +7,10 @@ This is the monorepo for Bay State Pet and Garden Supply, containing the web app
 ```
 BayState/
 ├── apps/
-│   ├── web/              # Next.js 16 + TypeScript + Bun (formerly BayStateApp)
-│   └── scraper/          # Python + Docker + Playwright (formerly BayStateScraper)
-├── package.json          # Root workspace configuration
+│   ├── web/              # Next.js 16 + TypeScript (Port 3000)
+│   └── scraper/          # Python + Playwright (Dockerized)
+├── packages/             # Shared libraries
+├── package.json          # Root orchestration
 └── README.md             # This file
 ```
 
@@ -17,66 +18,38 @@ BayState/
 
 ### Requirements
 - **Bun 1.3.5** (use `bun --version` to check; install via `curl -fsSL https://bun.sh/install | bash`)
-- **Docker Desktop** (required by Supabase CLI for local database)
-- **Supabase CLI** (install: `brew install supabase/tap/supabase` or see [docs](https://supabase.com/docs/guides/local-development/cli)))
-- **Stripe CLI** (install: `brew install stripe/stripe-cli/stripe` or see [docs](https://stripe.com/docs/stripe-cli)))
+- **Docker Desktop** (required for Supabase, Stripe, and Scraper containers)
 
-### Web App (apps/web) — Full Local Bootstrap
+### The "One-Command" Development Setup
 
-**Prerequisites:**
-- Docker Desktop running (for Supabase local containers)
-- Stripe CLI installed (for payment testing — optional)
+The monorepo uses a containerized orchestration system to ensure a consistent development experience across machines and total isolation from any live runners on the same system.
 
 ```bash
-# 1. Install all workspace dependencies
+# 1. Install workspace dependencies
 bun install
 
-# 2. Start local Supabase (Docker containers for DB, API, Studio)
-bun run web db:start
+# 2. Link Stripe CLI (One-time setup)
+bun run stripe:login
 
-# 3. Get local Supabase keys and copy env template
-bun run web db:status
-# Copy the anon key, service_role key, and DB URL from the output
-
-cp apps/web/.env.local.example apps/web/.env.local
-# Edit .env.local with the keys from step 3
-
-# 4. Run migrations and seed the local database
-bun run web db:reset
-
-
-# 5. Verify seed data loaded correctly
-bun run web local:verify
-
-# 6. Start the Next.js dev server
-bun run web dev
-# Open http://localhost:3000
+# 3. Start the entire stack
+bun run up
 ```
 
-### Stripe Local Workflow (for card payments)
+The `up` command automatically:
+1. Starts **Supabase** (Database, Auth, Storage).
+2. Syncs **Environment Variables** (Supabase and Scraper keys).
+3. Starts an isolated **Stripe Webhook Listener** (and auto-syncs the secret to `.env.local`).
+4. Starts the **Scraper Daemon** in an isolated Docker container (`baystate-scraper-dev`).
+5. Starts the **Next.js Web App** on your host machine.
 
-```bash
-# In a separate terminal:
-stripe login
-bun run web stripe:listen
-# Copy the whsec_... secret printed by Stripe CLI into apps/web/.env.local
-# Restart Next.js dev server
-```
+### Core Commands
 
-### Stripe Test Cards
-
-| Card Number              | Result         |
-|--------------------------|----------------|
-| `4242 4242 4242 4242`    | Success        |
-| `4000 0000 0000 0002`    | Generic decline|
-| `4000 0025 0000 3155`    | Requires SCA/auth|
-
-### Scraper (apps/scraper)
-
-```bash
-# Use the Bun workspace shortcut:
-bun run scraper dev
-```
+| Command | Action |
+|---------|--------|
+| `bun run up` | Start the full development stack |
+| `bun run down` | Stop and clean up all dev containers |
+| `bun run stripe:login` | Authenticate the Stripe CLI container |
+| `bun run scraper:build` | Rebuild the local scraper image |
 
 ## Workspace Commands
 
@@ -85,30 +58,22 @@ bun run scraper dev
 bun run web:dev           # Start web dev server
 bun run web:build         # Build web for production
 bun run web:test          # Run web tests
-bun run web:typecheck     # TypeScript check
 bun run web:db:start      # Start local Supabase
 bun run web:db:reset      # Reset + seed local DB
 bun run web:db:status     # Supabase status
-bun run web:stripe:listen # Start Stripe webhook forwarding
-bun run web:bootstrap     # Install + copy env example
 
-# Direct workspace shortcuts
-bun run web dev           # Start dev server (apps/web)
-bun run web test          # Run tests (apps/web)
-bun run web lint          # Lint (apps/web)
-
-# Scraper commands (uses Python directly)
-bun run scraper -m scraper_backend.runner --job-id test
+# Scraper commands
+bun run scraper:build     # Build dev scraper image
+bun run scraper:up        # Start dev scraper container
 ```
 
-## Migration Notes
+## Stripe Test Cards
 
-This repository was converted from a git submodule setup to a true monorepo:
-
-- **BayStateApp** → `apps/web` (imported with full git history via git subtree)
-- **BayStateScraper** → `apps/scraper` (imported with full git history)
-
-The original repositories have been archived for reference.
+| Card Number              | Result         |
+|--------------------------|----------------|
+| `4242 4242 4242 4242`    | Success        |
+| `4000 0000 0000 0002`    | Generic decline|
+| `4000 0025 0000 3155`    | Requires SCA/auth|
 
 ## CI/CD
 

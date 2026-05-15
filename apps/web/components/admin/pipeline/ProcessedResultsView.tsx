@@ -168,7 +168,7 @@ export function ProcessedResultsView({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           skus,
-          toStatus: "url_review",
+          toStatus: "imported",
           resetResults: true,
         }),
       });
@@ -178,7 +178,7 @@ export function ProcessedResultsView({
         throw new Error(err.error || "Failed to reset products");
       }
 
-      toast.success(`${skus.length} product${skus.length === 1 ? "" : "s"} returned to URL Review`);
+      toast.success(`${skus.length} product${skus.length === 1 ? "" : "s"} returned to Imported`);
       onRefresh(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Reset failed");
@@ -286,7 +286,7 @@ export function ProcessedResultsView({
             }}
           >
             <RotateCcw className="size-4 mr-2" />
-            Return to URL Review
+            Return to Imported
           </Button>
         </div>
       </div>
@@ -369,10 +369,10 @@ export function ProcessedResultsView({
         <ConfirmationDialog
           open={showClearDialog}
           onOpenChange={setShowClearDialog}
-          title="Return to URL Review"
-          description={`${selectedSkus.size} product${selectedSkus.size === 1 ? "" : "s"} will be returned to URL Review for re-extraction. All enrichment data will be cleared, but imported data will be preserved.`}
+          title="Return to Imported"
+          description={`${selectedSkus.size} product${selectedSkus.size === 1 ? "" : "s"} will be returned to Imported for re-extraction. All enrichment data will be cleared, but imported data will be preserved.`}
           onConfirm={handleClearResults}
-          confirmLabel="Return to URL Review"
+          confirmLabel="Return to Imported"
           variant="destructive"
         />
 

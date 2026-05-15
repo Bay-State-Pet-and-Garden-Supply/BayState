@@ -1,5 +1,5 @@
 {
-  "name": "temp_app",
+  "name": "@baystate/web",
   "version": "0.1.0",
   "private": true,
   "packageManager": "bun@1.3.5",
@@ -23,7 +23,8 @@
     "db:seed": "bun run local:bundle-seed && bunx supabase db reset",
     "local:sync-env": "bun scripts/update-local-env.ts",
     "local:bundle-seed": "bun scripts/bundle-seed.ts",
-    "stripe:listen": "stripe listen --forward-to http://localhost:3000/api/payments/webhook",
+    "stripe:login": "bun scripts/stripe-docker.ts login",
+    "stripe:listen": "bun scripts/stripe-docker.ts listen",
     "local:verify": "bun scripts/verify-local-bootstrap.ts",
     "dev:local": "bun run db:start && bun run local:sync-env && bun run local:bundle-seed && bun run dev",
     "bootstrap": "bun install && cp -n .env.local.example .env.local || true && bun run local:sync-env && bun run local:bundle-seed"

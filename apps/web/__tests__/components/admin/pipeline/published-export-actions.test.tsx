@@ -59,7 +59,7 @@ jest.mock('@/components/admin/pipeline/FinalizingResultsView', () => ({
 
 const counts: StatusCount[] = [
     { status: 'imported', count: 0 },
-    { status: 'url_review', count: 0 },
+    { status: 'awaiting_brand', count: 0 },
     { status: 'extracting', count: 0 },
     { status: 'processed', count: 0 },
     { status: 'merging', count: 0 },

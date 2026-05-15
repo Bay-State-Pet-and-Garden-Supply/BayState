@@ -97,7 +97,7 @@ Your current root scripts are decent, but I would make the intent clearer:
 {
   "scripts": {
     "dev": "turbo run dev",
-    "dev:web": "turbo run dev --filter=temp_app",
+    "dev:web": "turbo run dev --filter=@baystate/web",
     "dev:scraper": "turbo run dev --filter=@baystate/scraper",
     "dev:all": "turbo run dev --parallel",
 
@@ -114,7 +114,7 @@ Your current root scripts are decent, but I would make the intent clearer:
 }
 ```
 
-I would eventually rename `apps/web` from `"name": "temp_app"` to something real like `"@baystate/web"` because “temp_app” sitting in a production-bound repo is the software equivalent of labeling your electrical panel “misc sparks.” Your Vercel monorepo optimization also benefits from unique package names and explicit dependencies; Vercel says all workspace packages should have unique names, and internal dependencies need to be explicitly declared for dependency graph detection. ([Vercel][1])
+I would eventually rename `apps/web` from `"name": "@baystate/web"` to something real like `"@baystate/web"` because “@baystate/web” sitting in a production-bound repo is the software equivalent of labeling your electrical panel “misc sparks.” Your Vercel monorepo optimization also benefits from unique package names and explicit dependencies; Vercel says all workspace packages should have unique names, and internal dependencies need to be explicitly declared for dependency graph detection. ([Vercel][1])
 
 ### `turbo.json` should know all production env vars
 

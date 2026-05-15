@@ -10,18 +10,23 @@
 
 services:
   scraper:
-    image: baystate-scraper:latest
+    container_name: baystate-scraper-dev
+    image: baystate-scraper:dev
     build:
       context: ../../
       dockerfile: apps/scraper/Dockerfile
     restart: on-failure
     init: true
     shm_size: '2gb'
+    ports:
+      - "8001:8000"
+    env_file:
+      - .env.development
     environment:
-      # Production settings - uses .env file values
-      - SCRAPER_API_URL=${SCRAPER_API_URL}
+      # Use host.docker.internal to reach Next.js on the host
+      - SCRAPER_API_URL=${SCRAPER_API_URL:-http://host.docker.internal:3000}
       - SCRAPER_API_KEY=${SCRAPER_API_KEY}
-      - RUNNER_NAME=${RUNNER_NAME:-default-runner}
+      - RUNNER_NAME=${RUNNER_NAME:-local-dev-runner}
       - POLL_INTERVAL=${POLL_INTERVAL:-30}
       - MAX_JOBS_BEFORE_RESTART=${MAX_JOBS_BEFORE_RESTART:-100}
       - SCRAPER_BROWSER_STATE_DIR=/app/.browser_storage_states

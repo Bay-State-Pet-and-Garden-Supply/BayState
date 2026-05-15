@@ -33,10 +33,31 @@ async function main() {
   updates.set('ENVIRONMENT', 'dev');
 
   // 1. Pull from Supabase status
-  console.log('🔄 Fetching modern Supabase keys...');
+  console.log('🔄 Fetching modern Supabase keys (waiting for DB if needed)...');
+  let statusOutput = '';
+  let retries = 20;
+  while (retries > 0) {
+    try {
+      statusOutput = execSync('npx supabase status -o env', { encoding: 'utf8', cwd: webDir, stdio: ['ignore', 'pipe', 'ignore'] });
+      if (statusOutput.includes('API_URL')) break;
+    } catch (err: any) {
+      const errorMsg = err.stderr?.toString() || err.message || '';
+      if (errorMsg.includes('No such container')) {
+        console.error('❌ Supabase containers are missing in web directory.');
+        process.exit(1);
+      }
+    }
+    console.log(`⏳ Waiting for Supabase to be healthy... (${retries} retries left)`);
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    retries--;
+  }
+
+  if (!statusOutput.includes('API_URL')) {
+    console.error('❌ Timeout waiting for Supabase status. Please check Docker health.');
+    process.exit(1);
+  }
+
   try {
-    // We try to run this from the web directory where Supabase CLI is usually configured
-    const statusOutput = execSync('npx supabase status -o env', { encoding: 'utf8', cwd: webDir });
     statusOutput.split('\n').forEach(line => {
       const match = line.match(/^([A-Z_]+)="(.+)"$/);
       if (match) {
@@ -45,7 +66,7 @@ async function main() {
       }
     });
   } catch (err) {
-    console.warn('⚠️ Failed to run `supabase status`. Skipping Supabase key sync.');
+    console.warn('⚠️ Failed to process `supabase status`. Skipping Supabase key sync.');
   }
 
   // 2. Pull from web .env.local

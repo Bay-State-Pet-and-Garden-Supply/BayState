@@ -8,7 +8,7 @@ import type { StatusCount } from '@/lib/pipeline';
 
 const mockCounts: StatusCount[] = [
   { status: 'imported', count: 10 },
-  { status: 'url_review', count: 4 },
+  { status: 'awaiting_brand', count: 0 },
   { status: 'extracting', count: 25 },
   { status: 'processed', count: 3 },
   { status: 'merging', count: 15 },
@@ -38,7 +38,7 @@ describe('PipelineStats', () => {
   it('renders zero counts when no products', () => {
     const emptyCounts: StatusCount[] = [
       { status: 'imported', count: 0 },
-      { status: 'url_review', count: 0 },
+      { status: 'awaiting_brand', count: 0 },
       { status: 'extracting', count: 0 },
       { status: 'processed', count: 0 },
       { status: 'merging', count: 0 },
