@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import crypto from 'crypto';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
@@ -72,11 +73,22 @@ async function main() {
     // Alternative: If the user has the CLI, we can't easily "sync" the secret 
     // unless they start the listener. We'll skip auto-sync for Stripe for now 
     // but keep the structure for when they have a persistent test secret.
-  } catch (err) {
-    // Ignore
+    } catch (err) {
+      // Ignore Stripe CLI errors
+    }
+  
+    // 3. Handle Scraper Encryption Key
+    console.log('🔄 Checking Scraper Encryption Key...');
+    let envContent = readFileSync(envPath, 'utf8');
+  const encryptionKeyKey = 'AI_CREDENTIALS_ENCRYPTION_KEY';
+  const encryptionKeyRegex = new RegExp(`^${encryptionKeyKey}=.*$`, 'm');
+  const keyMatch = envContent.match(encryptionKeyRegex);
+  
+  if (!keyMatch || keyMatch[0].includes('your-key-here') || keyMatch[0].split('=')[1].trim() === '') {
+    const newKey = crypto.randomBytes(32).toString('base64');
+    updates.push({ key: encryptionKeyKey, value: newKey });
   }
 
-  let envContent = readFileSync(envPath, 'utf8');
   let changed = false;
 
   updates.forEach(({ key, value }) => {

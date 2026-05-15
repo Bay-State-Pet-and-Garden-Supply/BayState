@@ -19,13 +19,14 @@
     "db:start": "bunx supabase start",
     "db:stop": "bunx supabase stop",
     "db:status": "bunx supabase status",
-    "db:reset": "bunx supabase db reset",
-    "db:seed": "bunx supabase db reset",
+    "db:reset": "bun run local:bundle-seed && bunx supabase db reset",
+    "db:seed": "bun run local:bundle-seed && bunx supabase db reset",
     "local:sync-env": "bun scripts/update-local-env.ts",
+    "local:bundle-seed": "bun scripts/bundle-seed.ts",
     "stripe:listen": "stripe listen --forward-to http://localhost:3000/api/payments/webhook",
     "local:verify": "bun scripts/verify-local-bootstrap.ts",
-    "dev:local": "bun run db:start && bun run local:sync-env && bun run dev",
-    "bootstrap": "bun install && cp -n .env.local.example .env.local || true && bun run local:sync-env"
+    "dev:local": "bun run db:start && bun run local:sync-env && bun run local:bundle-seed && bun run dev",
+    "bootstrap": "bun install && cp -n .env.local.example .env.local || true && bun run local:sync-env && bun run local:bundle-seed"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^2.0.34",

@@ -1,9 +1,3 @@
--- =====================================================================
--- Generated Seed File (do not edit directly)
--- Generated at: 2026-05-15T19:08:48.007Z
--- =====================================================================
-
--- --- Module: 00-auth.sql ---
 -- apps/web/supabase/seed/00-auth.sql
 -- ---------------------------------------------------------------------
 -- Admin User (Local Dev)
@@ -53,32 +47,3 @@ VALUES (
   'Local development key'
 )
 ON CONFLICT DO NOTHING;
-
-
--- --- Module: 01-taxonomy.sql ---
--- ---------------------------------------------------------------------
--- Pet Types
--- ---------------------------------------------------------------------
--- Categories (hierarchical)
--- ---------------------------------------------------------------------
--- Brands
--- ---------------------------------------------------------------------
--- Product Images, Variants, Attributes, Tags, Reviews, Q&A
-
-
--- --- Module: 02-products.sql ---
-
-
--- --- Module: 03-scraping.sql ---
-
-
--- --- Module: 04-orders.sql ---
--- ---------------------------------------------------------------------
--- Promo Codes, Orders, Payments, and Legacy Order Ingestion
-
-
--- --- Module: 05-settings.sql ---
--- ---------------------------------------------------------------------
--- Services, Site Settings, and Pages
-
-
