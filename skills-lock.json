@@ -101,7 +101,8 @@
     "turborepo": {
       "source": "vercel/turborepo",
       "sourceType": "github",
-      "computedHash": "362fc541359923b3b6006ea58451f99976fb01eca92e8670890ad0c9c2399817"
+      "skillPath": "skills/turborepo/SKILL.md",
+      "computedHash": "f1ee7a8f12c867f8c5d0f9a84aac184a1dc50e04cdc8a96b595a084a9f1cd359"
     },
     "ui-ux-pro-max": {
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
