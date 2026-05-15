@@ -8,7 +8,7 @@ import {
 describe('isPersistedStatus', () => {
   it('accepts canonical persisted statuses', () => {
     expect(isPersistedStatus('imported')).toBe(true);
-    expect(isPersistedStatus('url_review')).toBe(true);
+    expect(isPersistedStatus('url_review')).toBe(false);
     expect(isPersistedStatus('extracting')).toBe(true);
     expect(isPersistedStatus('processed')).toBe(true);
     expect(isPersistedStatus('merging')).toBe(true);
@@ -33,13 +33,17 @@ describe('isDerivedTab', () => {
 describe('isPipelineStage', () => {
   it('accepts every public pipeline stage', () => {
     expect(isPipelineStage('imported')).toBe(true);
-    expect(isPipelineStage('url_review')).toBe(true);
+    expect(isPipelineStage('awaiting_brand')).toBe(true);
     expect(isPipelineStage('extracting')).toBe(true);
     expect(isPipelineStage('processed')).toBe(true);
     expect(isPipelineStage('merging')).toBe(true);
     expect(isPipelineStage('reviewing')).toBe(true);
     expect(isPipelineStage('publishing')).toBe(true);
     expect(isPipelineStage('failed')).toBe(true);
+  });
+
+  it('rejects legacy stages no longer shown as tabs', () => {
+    expect(isPipelineStage('url_review')).toBe(false);
   });
 
   it('rejects unknown values', () => {

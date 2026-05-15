@@ -324,7 +324,7 @@ function SyncHealthTimeline({ health }: { health: SyncHealth[] }) {
  } else {
  toast.error('Failed to trigger sync');
  }
- } catch (_err) {
+ } catch {
  toast.error('Error triggering sync');
  }
  };

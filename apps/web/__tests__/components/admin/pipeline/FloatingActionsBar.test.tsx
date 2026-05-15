@@ -31,26 +31,6 @@ describe("FloatingActionsBar", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders start enrichment action for url_review stage", () => {
-    render(
-      <FloatingActionsBar
-        selectedCount={4}
-        totalCount={10}
-        currentStage="url_review"
-        isLoading={false}
-        onClearSelection={() => {}}
-        onSelectAll={() => {}}
-        onBulkAction={() => {}}
-        onOpenScrapeDialog={() => {}}
-        onDelete={() => {}}
-      />,
-    );
-
-    expect(
-      screen.getByRole("button", { name: /Start/ }),
-    ).toBeInTheDocument();
-  });
-
   it("renders export actions in publishing stage", () => {
     const onUploadShopSite = jest.fn();
     const onDownloadZip = jest.fn();

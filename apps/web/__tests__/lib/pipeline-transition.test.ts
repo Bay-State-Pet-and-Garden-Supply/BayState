@@ -49,7 +49,6 @@ describe('pipeline status transition CRUD', () => {
             data: [
                 { pipeline_status: 'imported' },
                 { pipeline_status: 'imported' },
-                { pipeline_status: 'url_review' },
                 { pipeline_status: 'extracting' },
                 { pipeline_status: 'processed' },
                 { pipeline_status: 'merging' },
@@ -71,7 +70,7 @@ describe('pipeline status transition CRUD', () => {
         expect(queryBuilder.is).toHaveBeenCalledWith('exported_at', null);
         expect(counts).toEqual([
             { status: 'imported', count: 2 },
-            { status: 'url_review', count: 1 },
+            { status: 'awaiting_brand', count: 0 },
             { status: 'extracting', count: 1 },
             { status: 'processed', count: 1 },
             { status: 'merging', count: 1 },
@@ -106,7 +105,7 @@ describe('pipeline status transition CRUD', () => {
 
         expect(result).toEqual({
             success: false,
-            error: "Invalid status transition to 'imported'. Allowed persisted statuses: 'imported', 'url_review', 'extracting', 'processed', 'merging', 'reviewing', 'publishing', 'failed' SKU(s): SKU-1",
+            error: "Invalid status transition to 'imported'. Allowed persisted statuses: 'imported', 'awaiting_brand', 'extracting', 'processed', 'merging', 'reviewing', 'publishing', 'failed' SKU(s): SKU-1",
             updatedCount: 0,
         });
         expect(updateBuilder.update).not.toHaveBeenCalled();
@@ -138,18 +137,18 @@ describe('pipeline status transition CRUD', () => {
 
         (createClient as jest.Mock).mockResolvedValue({ from });
 
-        const result = await bulkUpdateStatus(['SKU-1'], 'url_review', 'user-1');
+        const result = await bulkUpdateStatus(['SKU-1'], 'imported', 'user-1');
 
         expect(result).toEqual({ success: true, updatedCount: 1 });
         expect(updateBuilder.update).toHaveBeenCalledWith(
             expect.objectContaining({
-                pipeline_status: 'url_review',
+                pipeline_status: 'imported',
                 exported_at: null,
             })
         );
         expect(auditBuilder.insert).toHaveBeenCalledWith([
             expect.objectContaining({
-                to_state: 'url_review',
+                to_state: 'imported',
                 actor_id: 'user-1',
             }),
         ]);

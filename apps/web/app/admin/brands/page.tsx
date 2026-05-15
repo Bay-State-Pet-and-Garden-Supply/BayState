@@ -3,8 +3,6 @@ import { Tag } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { AdminBrandsClient } from '@/components/admin/brands/AdminBrandsClient';
 import { type Brand } from '@/components/admin/brands/types';
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
 
 export default async function AdminBrandsPage() {
   const supabase = await createClient();

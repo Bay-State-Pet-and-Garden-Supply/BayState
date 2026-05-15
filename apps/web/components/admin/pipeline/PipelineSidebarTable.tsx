@@ -8,7 +8,7 @@ import { VirtualizedPipelineTable, type VirtualizedPipelineTableHandle } from ".
 import { PipelineSidebarHeaderRow } from "./PipelineSidebarHeaderRow";
 import { PipelineSidebarProductRow } from "./PipelineSidebarProductRow";
 
-export type PipelineSidebarTableVariant = "processed" | "reviewing" | "imported" | "url_review";
+export type PipelineSidebarTableVariant = "processed" | "reviewing" | "imported";
 
 type FlatItem = 
   | { type: 'header'; cohortId: string; groupProducts: PipelineProduct[] }

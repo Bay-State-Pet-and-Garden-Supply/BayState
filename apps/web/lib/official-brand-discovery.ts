@@ -383,9 +383,9 @@ export async function runOfficialBrandDiscovery(args: {
   // Transition selected SKUs to searching before processing
   await supabase
     .from('products_ingestion')
-    .update({ pipeline_status: 'searching', updated_at: nowIso })
+    .update({ pipeline_status: 'imported', updated_at: nowIso })
     .in('sku', args.skus)
-    .in('pipeline_status', ['imported', 'searching', 'url_review']);
+    .in('pipeline_status', ['imported']);
 
   let credentials: AIScrapingRuntimeCredentials;
   let serperApiKey: string;
@@ -609,9 +609,9 @@ export async function runOfficialBrandDiscovery(args: {
     // Move ALL SKUs to url_review (even those with no candidates — admin can manually add URLs)
     await supabase
       .from('products_ingestion')
-      .update({ pipeline_status: 'url_review', updated_at: nowIso })
+      .update({ pipeline_status: 'imported', updated_at: nowIso })
       .in('sku', args.skus)
-      .eq('pipeline_status', 'searching');
+      .eq('pipeline_status', 'imported');
 
     return { success: true, skuCount: args.skus.length, candidateCount: rows.length };
   } catch (err) {
@@ -625,7 +625,7 @@ export async function runOfficialBrandDiscovery(args: {
         updated_at: new Date().toISOString(),
       })
       .in('sku', args.skus)
-      .eq('pipeline_status', 'searching');
+      .eq('pipeline_status', 'imported');
     return { success: false, skuCount: 0, candidateCount: 0, error: message };
   }
 }

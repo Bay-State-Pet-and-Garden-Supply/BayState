@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import * as z from 'zod';
 import { ActionState } from '@/lib/types';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 const categorySchema = z.object({
     name: z.string().min(1, 'Name is required'),
@@ -37,7 +38,7 @@ function parseSynonyms(value: string | null | undefined): string[] {
 /**
  * Fetch parent category metadata for computing depth/breadcrumb.
  */
-async function fetchParentMetadata(supabase: any, parentId: string | null): Promise<{ breadcrumb: string | null; depth: number | null; department_key: string | null }> {
+async function fetchParentMetadata(supabase: SupabaseClient, parentId: string | null): Promise<{ breadcrumb: string | null; depth: number | null; department_key: string | null }> {
     if (!parentId) return { breadcrumb: null, depth: null, department_key: null };
     const { data } = await supabase
         .from('categories')
@@ -51,7 +52,7 @@ async function fetchParentMetadata(supabase: any, parentId: string | null): Prom
  * Recursively recompute depth and breadcrumb for a category and all its descendants.
  * Called after a category's name or parent changes.
  */
-async function recomputeCategorySubtree(supabase: any, categoryId: string): Promise<void> {
+async function recomputeCategorySubtree(supabase: SupabaseClient, categoryId: string): Promise<void> {
     // Fetch all categories to build parent-child relationships
     const { data: allCats } = await supabase
         .from('categories')
@@ -67,7 +68,7 @@ async function recomputeCategorySubtree(supabase: any, categoryId: string): Prom
         if (!cat) return { depth: 0, breadcrumb: '' };
 
         let depth = 0;
-        let parts: string[] = [cat.name];
+        const parts: string[] = [cat.name];
         let current = cat;
         const visited = new Set<string>();
         visited.add(id);

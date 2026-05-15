@@ -26,7 +26,6 @@ import { ProductTable } from "./ProductTable";
 import { ProcessedResultsView } from "./ProcessedResultsView";
 import { ActiveEnrichmentsTab } from "./ActiveEnrichmentsTab";
 import { ActiveConsolidationsTab } from "./ActiveConsolidationsTab";
-import { UrlReviewWorkspace } from "./UrlReviewWorkspace";
 import { ReviewingResultsView } from "./ReviewingResultsView";
 import { FloatingActionsBar } from "./FloatingActionsBar";
 import { ImportedResultsView } from "./ImportedResultsView";
@@ -90,7 +89,7 @@ const LIVE_OPERATIONAL_TABS = new Set<PipelineStage>([
   "extracting",
   "merging",
 ]);
-const WORKSPACE_TABS = new Set<PipelineStage>(["processed", "reviewing", "imported", "publishing", "url_review"]);
+const WORKSPACE_TABS = new Set<PipelineStage>(["processed", "reviewing", "imported", "publishing"]);
 const EMPTY_SOURCES: string[] = [];
 
 function isLiveOperationalTab(stage: PipelineStage): boolean {
@@ -972,7 +971,7 @@ export function PipelineClient({
         refreshAll();
       } else if (selectedSkus.size > 0) {
         if (e.key.toLowerCase() === "s") {
-          if (currentStage === "imported" || currentStage === "url_review") {
+          if (currentStage === "imported") {
             e.preventDefault();
             setIsScrapeDialogOpen(true);
           }
@@ -1248,36 +1247,7 @@ export function PipelineClient({
         (isLoading || isNavigating) && "opacity-50 pointer-events-none"
       )}>
         <div className="flex flex-col flex-1 h-full w-full min-h-0">
-          {currentStage === "url_review" ? (
-            <div className="flex-1 min-h-0 overflow-hidden">
-              <UrlReviewWorkspace
-                products={filteredProducts}
-                selectedSkus={selectedSkus}
-                onSelectSku={handleSelectSku}
-                onRefresh={refreshAll}
-                search={search}
-                onSearchChange={(value: string) => setSearch(value)}
-                filters={filterState}
-                onFilterChange={applyFilterState}
-                availableSources={sources}
-                groupedProducts={groupedProducts}
-                cohortBrands={groupedProducts.brands}
-                onEditCohort={
-                  canEditCohorts
-                    ? (id: string, name: string | null, brandName: string | null) => {
-                        setEditingCohort({
-                          id,
-                          name,
-                          brandName,
-                          brandId: (groupedProducts as any).brandIds?.[id] || null,
-                          brand: (groupedProducts as any).brandObjects?.[id] || null,
-                        });
-                      }
-                    : undefined
-                }
-              />
-            </div>
-          ) : currentStage === "extracting" ? (
+          {currentStage === "extracting" ? (
             <div className="grid gap-4 xl:grid-cols-1 p-1 pr-8 pb-8">
               <AdminCard variant="panel">
                 <AdminCardHeader>

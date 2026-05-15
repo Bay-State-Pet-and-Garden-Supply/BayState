@@ -115,11 +115,11 @@ export function queryImportedTabProducts(
   return queryTab("imported", supabase, pagination);
 }
 
-function queryUrlReviewTabProducts(
+function queryAwaitingBrandTabProducts(
   supabase: PipelineQuerySupabaseClient,
   pagination?: PipelineTabPagination
 ): Promise<PipelineTabQueryResult> {
-  return queryTab("url_review", supabase, pagination);
+  return queryTab("awaiting_brand", supabase, pagination);
 }
 
 function queryExtractingTabProducts(
@@ -184,7 +184,7 @@ export async function queryWorkflowTabCounts(
   const pagination = { limit: 1, offset: 0 };
   const [
     imported,
-    url_review,
+    awaiting_brand,
     extracting,
     processed,
     merging,
@@ -193,7 +193,7 @@ export async function queryWorkflowTabCounts(
     failed,
   ] = await Promise.all([
     queryImportedTabProducts(supabase, pagination),
-    queryUrlReviewTabProducts(supabase, pagination),
+    queryAwaitingBrandTabProducts(supabase, pagination),
     queryExtractingTabProducts(supabase, pagination),
     queryProcessedTabProducts(supabase, pagination),
     queryMergingTabProducts(supabase, pagination),
@@ -204,7 +204,7 @@ export async function queryWorkflowTabCounts(
 
   return {
     imported: imported.count,
-    url_review: url_review.count,
+    awaiting_brand: awaiting_brand.count,
     extracting: extracting.count,
     processed: processed.count,
     merging: merging.count,

@@ -35,7 +35,6 @@ interface PipelineProductDetailProps {
 
 const pipelineStatusOptions: { value: PipelineStatus; label: string }[] = [
   { value: 'imported', label: 'Imported' },
-  { value: 'url_review', label: 'URL Review' },
   { value: 'extracting', label: 'Extracting' },
   { value: 'processed', label: 'Processed' },
   { value: 'merging', label: 'Merging' },

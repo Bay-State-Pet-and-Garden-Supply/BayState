@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation';
 import { type Metadata } from 'next';
 import { Fragment } from 'react';
 import { Home, Search } from 'lucide-react';
-import Link from 'next/link';
 import {
   Pagination,
   PaginationContent,

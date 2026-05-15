@@ -30,12 +30,6 @@ const BULK_ACTIONS: Record<
 > = {
   awaiting_brand: { label: "", nextStage: null },
   imported: { label: "", nextStage: null },
-  url_review: {
-    label: "Start Enrichment",
-    nextStage: "extracting",
-    resetLabel: "Return to Import",
-    previousStage: "imported",
-  },
   extracting: { label: "", nextStage: null },
   processed: {
     label: "Merge Selected",
@@ -112,7 +106,6 @@ export function FloatingActionsBar({
       (currentStage === "processed" && !!onConsolidate));
   const hasResetAction =
     !!bulkAction.resetLabel && !!bulkAction.previousStage && !!onResetStage;
-  const isUrlReview = currentStage === "url_review";
   const hasSecondaryAction =
     !!bulkAction.secondaryAction && !!onOpenScrapeDialog;
 
@@ -120,9 +113,7 @@ export function FloatingActionsBar({
 
   const handlePrimaryAction = () => {
     if (isPrimaryDisabled) return;
-    if (isUrlReview && bulkAction.nextStage) {
-      onBulkAction(bulkAction.nextStage);
-    } else if (currentStage === "processed" && onConsolidate) {
+    if (currentStage === "processed" && onConsolidate) {
       onConsolidate();
     } else if (bulkAction.nextStage) {
       onBulkAction(bulkAction.nextStage);
@@ -203,7 +194,7 @@ export function FloatingActionsBar({
             </Button>
           )}
 
-          {currentStage === "url_review" && onAssignBrand && (
+{onAssignBrand && (
             <Button
               variant="outline"
               size="sm"
@@ -215,7 +206,6 @@ export function FloatingActionsBar({
               Set Brand
             </Button>
           )}
-
           {onDelete && (
             <Button
               variant="outline"
@@ -292,7 +282,6 @@ export function FloatingActionsBar({
                       </>
                     ) : (
                       <>
-                        {isUrlReview && <Eye className="mr-1 h-3.5 w-3.5" />}
                         {bulkAction.label}
                       </>
                     )}

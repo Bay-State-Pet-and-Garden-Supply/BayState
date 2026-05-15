@@ -10,10 +10,10 @@ const LEGACY_ROUTE_STATUS_MAP = {
   consolidating: 'merging',
   finalizing: 'reviewing',
   exporting: 'publishing',
-  searching: 'url_review',
+  searching: 'imported',
   scraping: 'extracting',
-  extracting: 'url_review',
-  needs_fallback_review: 'url_review',
+  extracting: 'imported',
+  needs_fallback_review: 'imported',
 } as const satisfies Record<string, PersistedPipelineStatus>;
 
 export const PIPELINE_ROUTE_STATUS_VALUES = [

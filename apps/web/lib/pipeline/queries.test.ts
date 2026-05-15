@@ -167,7 +167,7 @@ describe("pipeline queries", () => {
   it("aggregates counts for all workflow tabs", async () => {
     const workflowTabs: PersistedPipelineStatus[] = [
       "imported",
-      "url_review",
+      "awaiting_brand",
       "extracting",
       "processed",
       "merging",
@@ -187,7 +187,7 @@ describe("pipeline queries", () => {
     
     expect(counts).toEqual({
       imported: "imported".length,
-      url_review: "url_review".length,
+      awaiting_brand: "awaiting_brand".length,
       extracting: "extracting".length,
       processed: "processed".length,
       merging: "merging".length,

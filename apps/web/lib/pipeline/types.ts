@@ -1,16 +1,16 @@
 /**
  * Pipeline types
  * The durable workflow states are the same states shown in the admin UI.
- * Simplified 8-stage pipeline: imported → url_review → extracting → processed → merging → reviewing → publishing → failed
+ * 6-stage pipeline: imported → extracting → processed → merging → reviewing → publishing → failed
+ * awaiting_brand is a persisted sub-status of imported for products without a brand.
  */
 
 import type { Brand } from "@/lib/types";
 
 /** Canonical workflow states persisted in products_ingestion.pipeline_status. */
 export const PERSISTED_PIPELINE_STATUSES = [
-  "awaiting_brand",
   "imported",
-  "url_review",
+  "awaiting_brand",
   "extracting",
   "processed",
   "merging",
@@ -22,11 +22,13 @@ export const PERSISTED_PIPELINE_STATUSES = [
 export type PersistedPipelineStatus =
   (typeof PERSISTED_PIPELINE_STATUSES)[number];
 
-/** Main admin workflow tabs shown in the live pipeline UI. */
+/**
+ * Main admin workflow tabs shown in the live pipeline UI.
+ * url_review is excluded — replaced by Approved Source Extraction.
+ */
 export const PIPELINE_TABS = [
-  "awaiting_brand",
   "imported",
-  "url_review",
+  "awaiting_brand",
   "extracting",
   "processed",
   "merging",
@@ -63,10 +65,10 @@ const LEGACY_PIPELINE_STAGE_ALIASES = {
   scraped: "processed",
   consolidating: "merging",
   exporting: "publishing",
-  searching: "url_review",
+  searching: "imported",
   scraping: "extracting",
   needs_brand: "awaiting_brand",
-  needs_fallback_review: "url_review",
+  needs_fallback_review: "imported",
 } as const;
 
 export function isPersistedStatus(
@@ -247,22 +249,17 @@ export const STAGE_CONFIG: Record<StageConfigKey, StageConfig> = {
   awaiting_brand: {
     label: "Awaiting Brand",
     color: "#9CA3AF",
-    description: "Products without an assigned brand, blocking extraction",
+    description: "Imported products without an assigned brand — assign a brand to enable extraction",
   },
   imported: {
     label: "Imported",
     color: "#6B7280",
-    description: "Products imported into the system and awaiting URL assignment",
-  },
-  url_review: {
-    label: "URL Review",
-    color: "#A855F7",
-    description: "Review and confirm extraction target URLs before enrichment",
+    description: "Products imported into the system, ready for brand assignment and approved source extraction",
   },
   extracting: {
     label: "Extracting",
     color: "#2563EB",
-    description: "Products currently being enriched via AI extraction",
+    description: "Products currently being enriched via approved source extraction",
   },
   processed: {
     label: "Processed",

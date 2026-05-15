@@ -23,7 +23,6 @@ type StatusColor = (typeof STATUS_COLORS)[keyof typeof STATUS_COLORS];
 export const PIPELINE_STATUS_COLORS: Record<PersistedPipelineStatus, StatusColor> = {
     awaiting_brand: STATUS_COLORS.QUEUED,
     imported: STATUS_COLORS.QUEUED,
-    url_review: STATUS_COLORS.URL_REVIEW,
     extracting: STATUS_COLORS.EXTRACTING,
     processed: STATUS_COLORS.RUNNING,
     merging: STATUS_COLORS.MERGING,
@@ -35,7 +34,6 @@ export const PIPELINE_STATUS_COLORS: Record<PersistedPipelineStatus, StatusColor
 export const PIPELINE_STATUS_LABELS: Record<PersistedPipelineStatus, string> = {
     awaiting_brand: 'Awaiting Brand',
     imported: 'Imported',
-    url_review: 'URL Review',
     extracting: 'Extracting',
     processed: 'Processed',
     merging: 'Merging',
@@ -70,7 +68,6 @@ export function getStatusCssVar(status: PersistedPipelineStatus): string {
     const statusToCssVar: Record<PersistedPipelineStatus, string> = {
         awaiting_brand: CSS_CUSTOM_PROPERTIES.STATUS.QUEUED,
         imported: CSS_CUSTOM_PROPERTIES.STATUS.QUEUED,
-        url_review: CSS_CUSTOM_PROPERTIES.STATUS.URL_REVIEW,
         extracting: CSS_CUSTOM_PROPERTIES.STATUS.EXTRACTING,
         processed: CSS_CUSTOM_PROPERTIES.STATUS.RUNNING,
         merging: CSS_CUSTOM_PROPERTIES.STATUS.MERGING,

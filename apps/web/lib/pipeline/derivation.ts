@@ -9,7 +9,7 @@ import type { PersistedPipelineStatus, PipelineStage } from './types';
 
 export const WORKFLOW_PIPELINE_TABS = [
   'imported',
-  'url_review',
+  'awaiting_brand',
   'extracting',
   'processed',
   'merging',
@@ -121,8 +121,6 @@ export function deriveTabFromProduct(
   switch (product?.pipeline_status) {
     case 'imported':
       return 'imported';
-    case 'url_review':
-      return 'url_review';
     case 'extracting':
       return 'extracting';
     case 'processed':

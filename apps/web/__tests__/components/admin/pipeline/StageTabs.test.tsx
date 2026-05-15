@@ -8,7 +8,7 @@ import type { StatusCount } from "@/lib/pipeline/types";
 
 const counts: StatusCount[] = [
   { status: "imported", count: 4 },
-  { status: "url_review", count: 6 },
+  { status: "awaiting_brand", count: 0 },
   { status: "extracting", count: 2 },
   { status: "processed", count: 5 },
   { status: "merging", count: 3 },
@@ -31,7 +31,7 @@ describe("StageTabs", () => {
     expect(tabs.length).toBe(8);
 
     expect(screen.getByRole("tab", { name: /Imported/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /URL Review/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Awaiting Brand/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Extracting/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Processed/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Merging/i })).toBeInTheDocument();

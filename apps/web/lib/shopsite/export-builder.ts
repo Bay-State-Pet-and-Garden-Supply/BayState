@@ -60,7 +60,7 @@ export async function loadStorefrontShopSiteExport(
     let exportQueueQuery = supabase
       .from("products_ingestion")
       .select("sku, input, consolidated, selected_images")
-      .eq("pipeline_status", "exporting")
+      .eq("pipeline_status", "publishing")
       .order("sku", { ascending: true });
 
     if (!includeExportedRequestedSkus) {

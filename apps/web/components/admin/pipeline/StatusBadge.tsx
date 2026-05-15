@@ -32,7 +32,6 @@ const statusConfig: Record<
 > = {
   awaiting_brand: { variant: "default", label: "Awaiting Brand", icon: Package },
   imported: { variant: "default", label: "Imported", icon: Package },
-  url_review: { variant: "default", label: "URL Review", icon: Globe, color: "text-purple-600 bg-purple-50 border-purple-200" },
   extracting: { variant: "warning", label: "Extracting", icon: Loader2 },
   processed: { variant: "success", label: "Processed", icon: Sparkles },
   merging: { variant: "warning", label: "Merging", icon: Sparkles },

@@ -70,7 +70,6 @@ const products: PipelineProduct[] = [
 
 const counts: StatusCount[] = [
   { status: "imported", count: 1 },
-  { status: "url_review", count: 0 },
   { status: "extracting", count: 0 },
   { status: "processed", count: 0 },
   { status: "merging", count: 0 },

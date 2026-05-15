@@ -17,9 +17,8 @@ const CANONICAL_PERSISTED_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
 
 type StageBackedPipelineStage = Extract<
   PipelineStage,
-  | "awaiting_brand"
   | "imported"
-  | "url_review"
+  | "awaiting_brand"
   | "extracting"
   | "processed"
   | "merging"
@@ -32,17 +31,13 @@ const PIPELINE_STAGE_QUERY_SOURCE: Record<
   StageBackedPipelineStage,
   { table: string; status?: PersistedPipelineStatus }
 > = {
-  awaiting_brand: {
-    table: "products_ingestion",
-    status: "awaiting_brand",
-  },
   imported: {
     table: "products_ingestion",
     status: "imported",
   },
-  url_review: {
+  awaiting_brand: {
     table: "products_ingestion",
-    status: "url_review",
+    status: "awaiting_brand",
   },
   extracting: {
     table: "products_ingestion",
@@ -774,7 +769,6 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
   const countMap: Record<PersistedPipelineStatus, number> = {
     awaiting_brand: 0,
     imported: 0,
-    url_review: 0,
     extracting: 0,
     processed: 0,
     merging: 0,
