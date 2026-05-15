@@ -19,12 +19,12 @@ import {
  Package,
  DollarSign,
  GitBranch,
- ShoppingBag,
- ClipboardList,
- RefreshCw,
- Rocket,
- HeartPulse,
-  Database,
+
+
+
+
+
+
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -63,41 +63,7 @@ const navSections: NavSection[] = [
       },
     ],
   },
-  {
-    title: "Operations",
-    items: [
-      {
-        href: "/admin/orders",
-        label: "Orders",
-        icon: ShoppingBag,
-      },
-      {
-        href: "/admin/inventory",
-        label: "Inventory",
-        icon: ClipboardList,
-      },
-      {
-        href: "/admin/inventory/sync-runs",
-        label: "Sync Runs",
-        icon: RefreshCw,
-      },
-      {
-        href: "/admin/inventory/launchpad",
-        label: "Product Launchpad",
-        icon: Rocket,
-      },
-      {
-        href: "/admin/health",
-        label: "Data Health",
-        icon: HeartPulse,
-      },
-      {
-        href: "/admin/tools/integra-sync",
-        label: "Integra Sync",
-        icon: Database,
-      },
-    ],
-  },
+
   {
     title: "Catalog",
     items: [

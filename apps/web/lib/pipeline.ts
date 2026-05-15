@@ -26,9 +26,15 @@ type StageBackedPipelineStage = Extract<
   | "failed"
 >;
 
+interface PipelineStageQuerySource {
+  table: string;
+  status?: PersistedPipelineStatus;
+  statuses?: PersistedPipelineStatus[];
+}
+
 const PIPELINE_STAGE_QUERY_SOURCE: Record<
   StageBackedPipelineStage,
-  { table: string; status?: PersistedPipelineStatus }
+  PipelineStageQuerySource
 > = {
   imported: {
     table: "products_ingestion",
@@ -143,11 +149,7 @@ export function validateStatusTransition(
   return validateTransition(from, to);
 }
 
-function getStageQuerySource(stage: StageBackedPipelineStage): {
-  table: string;
-  status?: PersistedPipelineStatus;
-  statuses?: PersistedPipelineStatus[];
-} {
+function getStageQuerySource(stage: StageBackedPipelineStage): PipelineStageQuerySource {
   return PIPELINE_STAGE_QUERY_SOURCE[stage];
 }
 

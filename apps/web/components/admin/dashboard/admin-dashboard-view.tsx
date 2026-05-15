@@ -5,29 +5,17 @@ import {
   Package, 
   PackageCheck, 
   AlertTriangle, 
-  Activity,
   PackagePlus,
-  Database,
-  HeartPulse,
   BarChart3,
   Eye,
-  ShoppingCart,
-  DollarSign,
-  Truck,
-  AlertCircle,
-  CreditCard,
 } from 'lucide-react';
 import { MetricCard } from './metric-card';
 import { QuickActions } from './quick-actions';
-import { ActionRequired } from './action-required';
-import { RevenueAtRisk } from './revenue-at-risk';
-import { MorningBriefing } from './morning-briefing';
-import { MigrationProgress } from './migration-progress';
 import { useDashboardStats } from '@/hooks/use-dashboard-stats';
 import { RecentActivityFeed } from './recent-activity-feed';
 
 export function AdminDashboardView() {
-  const { productStats, orderStats, inventoryStats, loading } = useDashboardStats();
+  const { productStats, loading } = useDashboardStats();
 
   const quickActions = [
     {
@@ -36,19 +24,14 @@ export function AdminDashboardView() {
       icon: PackagePlus,
       variant: 'default' as const,
     },
-    { label: 'Integra Sync', href: '/admin/tools/integra-sync', icon: Database },
-    { label: 'Data Health', href: '/admin/health', icon: HeartPulse },
     { label: 'View Analytics', href: '/admin/analytics', icon: BarChart3 },
     { label: 'View Store', href: '/', icon: Eye },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Morning Briefing */}
-      <MorningBriefing />
-
       {/* Top Metrics */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <MetricCard
           title="Total Products"
           value={productStats?.total_count ?? 0}
@@ -72,74 +55,12 @@ export function AdminDashboardView() {
           isLoading={loading}
           href="/admin/products"
         />
-        <MetricCard
-          title="Inventory Issues"
-          value={inventoryStats?.open_issues ?? 0}
-          icon={AlertCircle}
-          status={inventoryStats?.open_issues && inventoryStats.open_issues > 0 ? "warning" : undefined}
-          isLoading={loading}
-          href="/admin/inventory"
-        />
       </div>
-
-      {/* Order/Inventory Metrics */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          title="Today&apos;s Sales"
-          value={orderStats?.today_sales ? `$${Number(orderStats.today_sales).toFixed(2)}` : '$0.00'}
-          icon={DollarSign}
-          status="success"
-          isLoading={loading}
-          href="/admin/orders"
-        />
-        <MetricCard
-          title="Open Orders"
-          value={orderStats?.open_orders ?? 0}
-          icon={ShoppingCart}
-          status={orderStats?.open_orders && orderStats.open_orders > 0 ? 'info' : undefined}
-          isLoading={loading}
-          href="/admin/orders?status=pending"
-        />
-        <MetricCard
-          title="Ready for Pickup"
-          value={orderStats?.ready_for_pickup ?? 0}
-          icon={Truck}
-          status={orderStats?.ready_for_pickup && orderStats.ready_for_pickup > 0 ? 'success' : undefined}
-          isLoading={loading}
-          href="/admin/orders?fulfillment_status=ready_for_pickup"
-        />
-        <MetricCard
-          title="Unpaid Orders"
-          value={orderStats?.unpaid_orders ?? 0}
-          icon={CreditCard}
-          status={orderStats?.unpaid_orders && orderStats.unpaid_orders > 0 ? 'warning' : undefined}
-          isLoading={loading}
-          href="/admin/orders?payment_status=unpaid"
-        />
-        <MetricCard
-          title="Register-only Products"
-          value={inventoryStats?.register_only_products ?? 0}
-          icon={PackagePlus}
-          status={inventoryStats?.register_only_products && inventoryStats.register_only_products > 0 ? 'info' : undefined}
-          isLoading={loading}
-          href="/admin/inventory"
-        />
-      </div>
-
-      {/* Action Required */}
-      {/* Action Required Panel */}
-      <ActionRequired />
-
-      {/* Revenue at Risk */}
-      <RevenueAtRisk />
-
-      {/* Migration Progress */}
-      <MigrationProgress />
 
       {/* Bottom Section */}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <RecentActivityFeed limit={8} />
+          <RecentActivityFeed limit={12} />
         </div>
         <div className="lg:col-span-1">
           <QuickActions actions={quickActions} />
@@ -148,3 +69,4 @@ export function AdminDashboardView() {
     </div>
   );
 }
+
