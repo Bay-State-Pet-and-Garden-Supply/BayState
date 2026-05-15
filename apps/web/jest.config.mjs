@@ -24,7 +24,7 @@ const customJestConfig = {
         '^react-dom$': reactDomEntry,
         '^react-dom/(.*)$': `${reactDomDir}/$1`,
     },
-    // Exclude Playwright tests - they should run via `npx playwright test` not Jest
+    // Exclude Playwright tests - they should run via `bunx playwright test` not Jest
     testPathIgnorePatterns: ['/node_modules/', '/.next/', '/a11y/', '/e2e/'],
 };
 

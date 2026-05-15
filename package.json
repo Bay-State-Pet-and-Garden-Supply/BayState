@@ -26,6 +26,7 @@
     "web:test": "bun run web test",
     "web:typecheck": "bun run web typecheck",
     "web:db:start": "bun run web db:start",
+    "web:db:stop": "bun run web db:stop",
     "web:db:reset": "bun run web db:reset",
     "web:db:status": "bun run web db:status",
     "web:db:seed": "bun run web db:seed",

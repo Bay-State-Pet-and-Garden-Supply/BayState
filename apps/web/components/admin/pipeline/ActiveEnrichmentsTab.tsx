@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { PIPELINE_RUN_STATUS_LABELS } from "@/lib/pipeline/run-types";
 import type { PipelineRunKind, PipelineRunStatus } from "@/lib/pipeline/run-types";
 import { cn } from "@/lib/utils";
+import { adminFetch } from "@/lib/admin/api-client";
 
 interface EnrichmentJobSummary {
   id: string;
@@ -82,7 +83,7 @@ export function ActiveEnrichmentsTab({ initialJobs = [] }: ActiveEnrichmentsTabP
   const fetchJobs = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/admin/enrichment/jobs");
+      const response = await adminFetch("/api/admin/enrichment/jobs");
       if (!response.ok) throw new Error("Failed to fetch enrichment jobs");
       const data = await response.json();
       setJobs(data.jobs ?? []);

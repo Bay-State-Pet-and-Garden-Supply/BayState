@@ -1,6 +1,6 @@
 /**
  * Clear all past consolidation runs.
- * Usage: cd apps/web && npx tsx scripts/clear-consolidation-history.ts
+ * Usage: cd apps/web && bun scripts/clear-consolidation-history.ts
  */
 import { createClient } from '@supabase/supabase-js';
 

@@ -137,7 +137,7 @@ export function ProcessedResultsView({
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/admin/consolidation/submit", {
+      const res = await adminFetch("/api/admin/consolidation/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ skus: Array.from(selectedSkus) }),
@@ -163,7 +163,7 @@ export function ProcessedResultsView({
     const skus = Array.from(selectedSkus);
     setSubmitting(true);
     try {
-      const res = await fetch("/api/admin/pipeline/bulk", {
+      const res = await adminFetch("/api/admin/pipeline/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

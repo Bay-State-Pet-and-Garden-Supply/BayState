@@ -30,6 +30,8 @@ export async function adminFetch(
 
   if (key) {
     headers.set('X-API-Key', key);
+  } else {
+    console.warn('[Admin API Client] adminFetch called without an API key in sessionStorage. This will likely result in a 401.');
   }
 
   return fetch(input, {

@@ -102,10 +102,12 @@ const nextConfig: NextConfig = {
   // place ssh2 internals into ESM chunks during server builds on Vercel.
   serverExternalPackages: ['ssh2', 'ssh2-sftp-client'],
 
+  /*
   // Keep Turbopack rooted at the monorepo workspace so hoisted dependencies resolve consistently.
   turbopack: {
     root: workspaceRoot,
   },
+  */
 
   // Redirects for legacy routes
   async redirects() {

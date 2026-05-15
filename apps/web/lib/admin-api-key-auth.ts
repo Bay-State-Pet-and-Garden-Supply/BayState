@@ -46,9 +46,14 @@ export async function validateAdminApiKeyValue(
         });
 
         if (error) {
-            console.warn(
-                '[Admin API Key Auth] RPC unavailable:',
-                error.message.substring(0, 100)
+            console.error(
+                '[Admin API Key Auth] RPC validation failed:',
+                {
+                    message: error.message,
+                    code: error.code,
+                    details: error.details,
+                    hint: error.hint
+                }
             );
             return null;
         }
