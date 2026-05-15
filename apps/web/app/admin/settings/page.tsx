@@ -1,6 +1,7 @@
 import { AIScrapingSettingsCard } from "@/components/admin/settings/AIScrapingSettingsCard";
 import { AIConsolidationSettingsCard } from "@/components/admin/settings/AIConsolidationSettingsCard";
 import { ShopSiteCredentialsCard } from "@/components/admin/settings/ShopSiteCredentialsCard";
+import { DistributorCredentialsCard } from "@/components/admin/settings/DistributorCredentialsCard";
 import { AdminPageShell } from "@/components/admin/admin-page-shell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Brain, Settings } from "lucide-react";
@@ -25,6 +26,7 @@ export default function AdminSettingsPage() {
       </Alert>
 
       <ShopSiteCredentialsCard />
+      <DistributorCredentialsCard />
       <AIScrapingSettingsCard />
       <AIConsolidationSettingsCard />
     </AdminPageShell>
