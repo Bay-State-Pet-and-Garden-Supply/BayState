@@ -5,7 +5,6 @@ import { expectNoAccessibilityViolations } from './utils';
  * Public routes accessibility tests.
  * These routes require no authentication and should be tested first.
  * 
- * Route matrix from: .sisyphus/plans/accessibility-critical-fixes.md
  */
 test.describe('Public Routes - Accessibility', () => {
   // Define public routes from the plan matrix.

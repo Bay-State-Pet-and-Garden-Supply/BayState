@@ -9,7 +9,7 @@ test.describe('Scraper Studio Step Trace View', () => {
   test('should render history tab with test runs list', async ({ page }) => {
     await expect(page.locator('text=Test Run History')).toBeVisible();
     
-    await page.screenshot({ path: '.sisyphus/evidence/task-12-history-tab.png' });
+    await page.screenshot({ path: 'test-results/screenshots/task-12-history-tab.png' });
   });
 
   test('should show step trace when viewing a test run', async ({ page }) => {
@@ -28,7 +28,7 @@ test.describe('Scraper Studio Step Trace View', () => {
     
     await expect(page.locator('text=Step Execution Summary')).toBeVisible();
     
-    await page.screenshot({ path: '.sisyphus/evidence/task-12-step-trace.png' });
+    await page.screenshot({ path: 'test-results/screenshots/task-12-step-trace.png' });
   });
 
   test('should show step details when expanding', async ({ page }) => {
@@ -57,7 +57,7 @@ test.describe('Scraper Studio Step Trace View', () => {
       
       expect(hasStarted || hasCompleted || hasDuration).toBeTruthy();
       
-      await page.screenshot({ path: '.sisyphus/evidence/task-12-expanded-step.png' });
+      await page.screenshot({ path: 'test-results/screenshots/task-12-expanded-step.png' });
     }
   });
 
@@ -87,7 +87,7 @@ test.describe('Scraper Studio Step Trace View', () => {
         if (hasRetryButton) {
           await expect(page.locator('text=Error Details')).toBeVisible();
           
-          await page.screenshot({ path: '.sisyphus/evidence/task-12-failed-step-retry.png' });
+          await page.screenshot({ path: 'test-results/screenshots/task-12-failed-step-retry.png' });
         }
       }
     }
@@ -107,7 +107,7 @@ test.describe('Scraper Studio Step Trace View', () => {
     await expect(page.locator('text=Run Information')).toBeVisible();
     await expect(page.locator('text=Status')).toBeVisible();
     
-    await page.screenshot({ path: '.sisyphus/evidence/task-12-overview-tab.png' });
+    await page.screenshot({ path: 'test-results/screenshots/task-12-overview-tab.png' });
   });
 
   test('should show SKU results tab', async ({ page }) => {
@@ -123,7 +123,7 @@ test.describe('Scraper Studio Step Trace View', () => {
     
     await expect(page.locator('text=SKU Test Results')).toBeVisible();
     
-    await page.screenshot({ path: '.sisyphus/evidence/task-12-sku-results.png' });
+    await page.screenshot({ path: 'test-results/screenshots/task-12-sku-results.png' });
   });
 
   test('should navigate back to history list', async ({ page }) => {
@@ -141,6 +141,6 @@ test.describe('Scraper Studio Step Trace View', () => {
     
     await expect(page.locator('text=Test Run History')).toBeVisible();
     
-    await page.screenshot({ path: '.sisyphus/evidence/task-12-back-to-history.png' });
+    await page.screenshot({ path: 'test-results/screenshots/task-12-back-to-history.png' });
   });
 });

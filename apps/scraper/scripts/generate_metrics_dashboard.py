@@ -6,12 +6,12 @@ Aggregates data from all evaluation sources and generates an HTML dashboard
 with time series charts, alerts for regressions, and links to detailed reports.
 
 Data sources:
-- Weekly validation results (.sisyphus/evidence/weekly_validation/)
-- Evaluation runs (.sisyphus/evidence/evaluation/)
+- Weekly validation results (.agent_evidence/evidence/weekly_validation/)
+- Evaluation runs (.agent_evidence/evidence/evaluation/)
 - A/B test results (tests/finetuning/experiments.json)
 - Thresholds (config/evaluation_thresholds.yaml)
 
-Output: .sisyphus/evidence/dashboard/index.html
+Output: .agent_evidence/evidence/dashboard/index.html
 """
 
 from __future__ import annotations
@@ -32,8 +32,8 @@ for import_root in (PROJECT_ROOT, SRC_ROOT):
     if str(import_root) not in sys.path:
         sys.path.insert(0, str(import_root))
 
-DEFAULT_EVIDENCE_DIR = Path(".sisyphus/evidence")
-DEFAULT_OUTPUT_DIR = Path(".sisyphus/evidence/dashboard")
+DEFAULT_EVIDENCE_DIR = Path(".agent_evidence/evidence")
+DEFAULT_OUTPUT_DIR = Path(".agent_evidence/evidence/dashboard")
 REGRESSION_THRESHOLD_PCT = 0.02  # 2% drop triggers alert
 
 

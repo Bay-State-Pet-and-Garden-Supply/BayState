@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_DIR="$ROOT_DIR/apps/web"
 ENV_FILE="${BAYSTATE_ENV_FILE:-$APP_DIR/.env.local}"
-EVIDENCE_DIR="$ROOT_DIR/.sisyphus/evidence"
+EVIDENCE_DIR="$ROOT_DIR/logs/rollout-evidence"
 RESULT_FILE="$EVIDENCE_DIR/gemini-rollback-test.json"
 
 if [[ ! -f "$ENV_FILE" ]]; then

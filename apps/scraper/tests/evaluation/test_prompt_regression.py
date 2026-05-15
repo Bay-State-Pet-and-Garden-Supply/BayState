@@ -23,7 +23,7 @@ from tests.evaluation.types import EvaluationResult, FieldComparison, GroundTrut
 MINIMUM_BASELINE_FIELD_ACCURACY = 0.80
 MAX_ALLOWED_REGRESSION = 0.02
 WORKSPACE_ROOT = Path(__file__).resolve().parents[4]
-EVIDENCE_PATH = WORKSPACE_ROOT / ".sisyphus" / "evidence" / "task-3-1-regression-test.txt"
+EVIDENCE_PATH = WORKSPACE_ROOT / ".agent_evidence" / "evidence" / "task-3-1-regression-test.txt"
 
 
 @dataclass(frozen=True)

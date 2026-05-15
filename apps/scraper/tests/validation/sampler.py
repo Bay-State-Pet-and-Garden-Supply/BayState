@@ -15,7 +15,7 @@ SeedValue: TypeAlias = int | float | str | bytes | bytearray | None
 REPO_ROOT = Path(__file__).resolve().parents[4]
 SCRAPER_ROOT = REPO_ROOT / "apps" / "scraper"
 WEB_ROOT = REPO_ROOT / "apps" / "web"
-HISTORY_PATH = REPO_ROOT / ".sisyphus" / "evidence" / "sampling_history.json"
+HISTORY_PATH = REPO_ROOT / ".agent_evidence" / "evidence" / "sampling_history.json"
 ENV_FILES = (
     SCRAPER_ROOT / ".env",
     SCRAPER_ROOT / ".env.development",

@@ -14,7 +14,7 @@ from tests.evaluation.types import GroundTruthProduct
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[4]
-BASELINE_CACHE_DIR = WORKSPACE_ROOT / ".sisyphus" / "evidence" / "baselines"
+BASELINE_CACHE_DIR = WORKSPACE_ROOT / ".agent_evidence" / "evidence" / "baselines"
 
 
 @dataclass(frozen=True)

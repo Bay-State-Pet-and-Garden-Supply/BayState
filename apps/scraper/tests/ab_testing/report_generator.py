@@ -8,7 +8,7 @@ from typing import Any, Iterable
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[3]
-EVIDENCE_DIR = WORKSPACE_ROOT / ".sisyphus" / "evidence"
+EVIDENCE_DIR = WORKSPACE_ROOT / ".agent_evidence" / "evidence"
 JSON_PATH = EVIDENCE_DIR / "t17-ab-test-report.json"
 MARKDOWN_PATH = EVIDENCE_DIR / "t17-ab-test-report.md"
 

@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_DIR="$ROOT_DIR/apps/web"
 ENV_FILE="${BAYSTATE_ENV_FILE:-$APP_DIR/.env.local}"
-EVIDENCE_DIR="$ROOT_DIR/.sisyphus/evidence"
+EVIDENCE_DIR="$ROOT_DIR/logs/rollout-evidence"
 REPORT_FILE="$EVIDENCE_DIR/gemini-rollout-status.json"
 DAYS="${ROLLOUT_DAYS:-7}"
 MIN_ACCURACY="${MIN_PARALLEL_ACCURACY:-0.90}"

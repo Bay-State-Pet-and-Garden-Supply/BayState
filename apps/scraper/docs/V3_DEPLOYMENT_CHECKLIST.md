@@ -125,7 +125,7 @@ git log --oneline -3
 python scripts/evaluate.py \
   --prompt-version v3 \
   --skus 032247886598 \
-  --output-dir .sisyphus/evidence/canary-test
+  --output-dir logs/deployment-validation/canary-test
 
 # Verify output has:
 # - product_name
@@ -151,7 +151,7 @@ python scripts/evaluate.py \
 tail -f logs/scraper.log | grep -i "v3\|error\|fail"
 
 # Check metrics
-cat .sisyphus/evidence/canary-test/*/evaluation-report.json | jq '.aggregate_metrics'
+cat logs/deployment-validation/canary-test/*/evaluation-report.json | jq '.aggregate_metrics'
 ```
 
 **Monitoring Checklist:**
@@ -270,7 +270,7 @@ echo "Default prompt: v3 (product-focused)" >> docs/DEPLOYMENT.md
 # Run against all 10 ground truth SKUs
 python scripts/evaluate.py \
   --prompt-version v3 \
-  --output-dir .sisyphus/evidence/v3-production-validation
+  --output-dir logs/deployment-validation/v3-production-validation
 
 # Compare to v2 baseline
 python -c "
@@ -312,7 +312,7 @@ python scripts/weekly_validation.py \
 # Generate dashboard
 python scripts/generate_metrics_dashboard.py
 
-# Review at: .sisyphus/evidence/dashboard/index.html
+# Review at: logs/deployment-validation/dashboard/index.html
 ```
 
 **Verification:**

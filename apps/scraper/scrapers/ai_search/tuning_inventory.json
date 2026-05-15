@@ -261,7 +261,7 @@
       "id": "forbidden.add_new_scoring_signals",
       "status": "forbidden",
       "kind": "guardrail",
-      "source_file": ".sisyphus/plans/benchmark-driven-scraper-finetuning.md",
+      "source_file": "LEGACY_PLAN_ARCHIVE",
       "source_symbol": "Must NOT Have",
       "description": "Adding new scoring signals is outside the approved tuning surface for this plan.",
       "value": {"forbidden_action": "add_new_scoring_signals"}
@@ -270,7 +270,7 @@
       "id": "forbidden.algorithm_rewrite",
       "status": "forbidden",
       "kind": "guardrail",
-      "source_file": ".sisyphus/plans/benchmark-driven-scraper-finetuning.md",
+      "source_file": "LEGACY_PLAN_ARCHIVE",
       "source_symbol": "Must NOT Have",
       "description": "Rewriting the scorer/ranking algorithm is outside the approved tuning surface for this plan.",
       "value": {"forbidden_action": "rewrite_scoring_algorithm"}

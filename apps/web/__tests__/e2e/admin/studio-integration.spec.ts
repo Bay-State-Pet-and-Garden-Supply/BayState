@@ -19,7 +19,7 @@ test.describe('Scraper Studio Integration Tests', () => {
       await expect(page.getByText('Versions')).toBeVisible();
       await expect(page.getByText('Health')).toBeVisible();
 
-      await page.screenshot({ path: '.sisyphus/evidence/task-14-config-list.png' });
+      await page.screenshot({ path: 'test-results/screenshots/task-14-config-list.png' });
     });
 
     test('should validate YAML syntax in editor', async ({ page }) => {
@@ -33,7 +33,7 @@ test.describe('Scraper Studio Integration Tests', () => {
       await expect(page.locator('button:has-text("Workflow")')).toBeVisible();
       await expect(page.locator('button:has-text("Configuration")')).toBeVisible();
 
-      await page.screenshot({ path: '.sisyphus/evidence/task-14-config-editor.png' });
+      await page.screenshot({ path: 'test-results/screenshots/task-14-config-editor.png' });
     });
   });
 
@@ -46,7 +46,7 @@ test.describe('Scraper Studio Integration Tests', () => {
       await expect(page.locator('button:has-text("Metadata")')).toHaveAttribute('data-state', 'active');
       await expect(page.locator('input[name*="name"], input[placeholder*="name"]').first()).toBeVisible();
 
-      await page.screenshot({ path: '.sisyphus/evidence/task-14-metadata-tab.png' });
+      await page.screenshot({ path: 'test-results/screenshots/task-14-metadata-tab.png' });
     });
 
     test('should navigate to testing tab for SKU management', async ({ page }) => {
@@ -58,7 +58,7 @@ test.describe('Scraper Studio Integration Tests', () => {
       await expect(page.locator('button:has-text("Testing")')).toHaveAttribute('data-state', 'active');
       await expect(page.locator('text=Test SKU Management')).toBeVisible();
 
-      await page.screenshot({ path: '.sisyphus/evidence/task-14-testing-tab.png' });
+      await page.screenshot({ path: 'test-results/screenshots/task-14-testing-tab.png' });
     });
   });
 
@@ -68,7 +68,7 @@ test.describe('Scraper Studio Integration Tests', () => {
 
       await expect(page.locator('text=Test Run History')).toBeVisible();
 
-      await page.screenshot({ path: '.sisyphus/evidence/task-14-history-tab.png' });
+      await page.screenshot({ path: 'test-results/screenshots/task-14-history-tab.png' });
     });
 
     test('should show test run details when clicking a run', async ({ page }) => {
@@ -85,7 +85,7 @@ test.describe('Scraper Studio Integration Tests', () => {
         await expect(page.locator('text=Overview')).toBeVisible();
         await expect(page.locator('text=SKU Results')).toBeVisible();
 
-        await page.screenshot({ path: '.sisyphus/evidence/task-14-test-run-details.png' });
+        await page.screenshot({ path: 'test-results/screenshots/task-14-test-run-details.png' });
       } else {
         await expect(page.locator('text=No test runs found')).toBeVisible();
       }
@@ -104,7 +104,7 @@ test.describe('Scraper Studio Integration Tests', () => {
 
         await expect(page.locator('text=Step Execution Summary')).toBeVisible();
 
-        await page.screenshot({ path: '.sisyphus/evidence/task-14-step-trace.png' });
+        await page.screenshot({ path: 'test-results/screenshots/task-14-step-trace.png' });
       }
     });
 
@@ -124,7 +124,7 @@ test.describe('Scraper Studio Integration Tests', () => {
           expect(statusBadges).toBeGreaterThanOrEqual(0);
         }
 
-        await page.screenshot({ path: '.sisyphus/evidence/task-14-step-status.png' });
+        await page.screenshot({ path: 'test-results/screenshots/task-14-step-status.png' });
       }
     });
   });
@@ -141,7 +141,7 @@ test.describe('Scraper Studio Integration Tests', () => {
 
         await expect(page.locator('text=Total').or(page.locator('text=No selector'))).toBeVisible();
 
-        await page.screenshot({ path: '.sisyphus/evidence/task-14-selector-validation.png' });
+        await page.screenshot({ path: 'test-results/screenshots/task-14-selector-validation.png' });
       }
     });
 
@@ -160,7 +160,7 @@ test.describe('Scraper Studio Integration Tests', () => {
           await expect(page.locator('button:has-text("All")')).toBeVisible();
         }
 
-        await page.screenshot({ path: '.sisyphus/evidence/task-14-selector-filters.png' });
+        await page.screenshot({ path: 'test-results/screenshots/task-14-selector-filters.png' });
       }
     });
   });
@@ -177,7 +177,7 @@ test.describe('Scraper Studio Integration Tests', () => {
         await versionsTab.click();
         await expect(page.locator('text=Version History')).toBeVisible();
 
-        await page.screenshot({ path: '.sisyphus/evidence/task-14-version-history.png' });
+        await page.screenshot({ path: 'test-results/screenshots/task-14-version-history.png' });
       }
     });
 
@@ -202,7 +202,7 @@ test.describe('Scraper Studio Integration Tests', () => {
           await page.locator('button:has-text("Cancel")').click();
           await expect(page.locator('text=Create New Version')).not.toBeVisible();
 
-          await page.screenshot({ path: '.sisyphus/evidence/task-14-create-version-dialog.png' });
+          await page.screenshot({ path: 'test-results/screenshots/task-14-create-version-dialog.png' });
         }
       }
     });
@@ -224,7 +224,7 @@ test.describe('Scraper Studio Integration Tests', () => {
           expect(badges).toBeGreaterThanOrEqual(0);
         }
 
-        await page.screenshot({ path: '.sisyphus/evidence/task-14-version-cards.png' });
+        await page.screenshot({ path: 'test-results/screenshots/task-14-version-cards.png' });
       }
     });
   });
@@ -253,7 +253,7 @@ test.describe('Scraper Studio Integration Tests', () => {
             await page.locator('button:has-text("Cancel")').click();
           }
 
-          await page.screenshot({ path: '.sisyphus/evidence/task-14-publish-dialog.png' });
+          await page.screenshot({ path: 'test-results/screenshots/task-14-publish-dialog.png' });
         }
       }
     });
@@ -284,7 +284,7 @@ test.describe('Scraper Studio Integration Tests', () => {
             await page.locator('button:has-text("Cancel")').click();
           }
 
-          await page.screenshot({ path: '.sisyphus/evidence/task-14-rollback-dialog.png' });
+          await page.screenshot({ path: 'test-results/screenshots/task-14-rollback-dialog.png' });
         }
       }
     });
@@ -303,7 +303,7 @@ test.describe('Scraper Studio Integration Tests', () => {
       if (await yamlEditor.isVisible().catch(() => false)) {
         await yamlEditor.fill('invalid: yaml: content: [}');
 
-        await page.screenshot({ path: '.sisyphus/evidence/task-14-yaml-error.png' });
+        await page.screenshot({ path: 'test-results/screenshots/task-14-yaml-error.png' });
       }
     });
 
@@ -316,7 +316,7 @@ test.describe('Scraper Studio Integration Tests', () => {
         await expect(page.locator('text=No test runs found')).toBeVisible();
         await expect(page.locator('text=Test runs will appear here')).toBeVisible();
 
-        await page.screenshot({ path: '.sisyphus/evidence/task-14-empty-history.png' });
+        await page.screenshot({ path: 'test-results/screenshots/task-14-empty-history.png' });
       }
     });
 
@@ -332,7 +332,7 @@ test.describe('Scraper Studio Integration Tests', () => {
 
         await expect(page.locator('text=Test Run History')).toBeVisible();
 
-        await page.screenshot({ path: '.sisyphus/evidence/task-14-back-navigation.png' });
+        await page.screenshot({ path: 'test-results/screenshots/task-14-back-navigation.png' });
       }
     });
 
@@ -343,7 +343,7 @@ test.describe('Scraper Studio Integration Tests', () => {
 
       await expect(page.locator('text=Test Run History')).toBeVisible();
 
-      await page.screenshot({ path: '.sisyphus/evidence/task-14-loading-states.png' });
+      await page.screenshot({ path: 'test-results/screenshots/task-14-loading-states.png' });
     });
   });
 
@@ -360,7 +360,7 @@ test.describe('Scraper Studio Integration Tests', () => {
 
       expect(loadTime).toBeLessThan(3000);
 
-      await page.screenshot({ path: '.sisyphus/evidence/task-14-performance-load.png' });
+      await page.screenshot({ path: 'test-results/screenshots/task-14-performance-load.png' });
     });
 
     test('should handle config filtering efficiently', async ({ page }) => {
@@ -376,7 +376,7 @@ test.describe('Scraper Studio Integration Tests', () => {
 
         expect(filterTime).toBeLessThan(500);
 
-        await page.screenshot({ path: '.sisyphus/evidence/task-14-filter-performance.png' });
+        await page.screenshot({ path: 'test-results/screenshots/task-14-filter-performance.png' });
       }
     });
 
@@ -398,7 +398,7 @@ test.describe('Scraper Studio Integration Tests', () => {
         }
       }
 
-      await page.screenshot({ path: '.sisyphus/evidence/task-14-tab-performance.png' });
+      await page.screenshot({ path: 'test-results/screenshots/task-14-tab-performance.png' });
     });
 
     test('should render large lists efficiently', async ({ page }) => {
@@ -408,7 +408,7 @@ test.describe('Scraper Studio Integration Tests', () => {
 
       expect(tableRows).toBeGreaterThanOrEqual(0);
 
-      await page.screenshot({ path: '.sisyphus/evidence/task-14-large-list.png' });
+      await page.screenshot({ path: 'test-results/screenshots/task-14-large-list.png' });
     });
   });
 
@@ -432,7 +432,7 @@ test.describe('Scraper Studio Integration Tests', () => {
         }
       }
 
-      await page.screenshot({ path: '.sisyphus/evidence/task-14-all-tabs.png' });
+      await page.screenshot({ path: 'test-results/screenshots/task-14-all-tabs.png' });
     });
 
     test('should verify config editor tabs work', async ({ page }) => {
@@ -453,7 +453,7 @@ test.describe('Scraper Studio Integration Tests', () => {
         }
       }
 
-      await page.screenshot({ path: '.sisyphus/evidence/task-14-editor-tabs.png' });
+      await page.screenshot({ path: 'test-results/screenshots/task-14-editor-tabs.png' });
     });
   });
 
@@ -485,7 +485,7 @@ test.describe('Scraper Studio Integration Tests', () => {
         await expect(page.locator('text=Test Run History')).toBeVisible();
       }
 
-      await page.screenshot({ path: '.sisyphus/evidence/task-14-complete-workflow.png' });
+      await page.screenshot({ path: 'test-results/screenshots/task-14-complete-workflow.png' });
     });
 
     test('full workflow: config edit → version → create view', async ({ page }) => {
@@ -516,7 +516,7 @@ test.describe('Scraper Studio Integration Tests', () => {
 
       await page.locator('button:has-text("Back"), button:has-text("←")').first().click();
 
-      await page.screenshot({ path: '.sisyphus/evidence/task-14-version-workflow.png' });
+      await page.screenshot({ path: 'test-results/screenshots/task-14-version-workflow.png' });
     });
   });
 });

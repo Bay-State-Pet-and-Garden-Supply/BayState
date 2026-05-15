@@ -14,5 +14,5 @@ test('admin can view config list in scraper studio', async ({ page }) => {
   
   await expect(page.getByRole('link', { name: 'New Config' })).toBeVisible();
   
-  await page.screenshot({ path: '.sisyphus/evidence/task-4-config-list.png' });
+  await page.screenshot({ path: 'test-results/screenshots/task-4-config-list.png' });
 });

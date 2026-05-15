@@ -198,7 +198,7 @@ class FailurePatternAnalyzer:
 
     def _load_evaluation_failures(self, cutoff: datetime) -> list[FailureRecord]:
         records: list[FailureRecord] = []
-        for path in self.base_dir.glob(".sisyphus/evidence/**/evaluation-report.json"):
+        for path in self.base_dir.glob(".agent_evidence/evidence/**/evaluation-report.json"):
             payload = self._read_json(path)
             for item in payload.get("per_sku_results", []):
                 timestamp = self._parse_ts(item.get("timestamp"))
@@ -218,7 +218,7 @@ class FailurePatternAnalyzer:
 
     def _load_weekly_review_failures(self, cutoff: datetime) -> list[FailureRecord]:
         records: list[FailureRecord] = []
-        for path in self.base_dir.glob(".sisyphus/evidence/**/weekly-validation-report.json"):
+        for path in self.base_dir.glob(".agent_evidence/evidence/**/weekly-validation-report.json"):
             payload = self._read_json(path)
             for item in payload.get("per_product_results", []):
                 timestamp = self._parse_ts(item.get("timestamp"))
@@ -330,7 +330,7 @@ class FailurePatternAnalyzer:
         records: list[FailureRecord] = []
         extraction_log_paths: list[Path] = []
         extraction_log_paths.extend(self.base_dir.glob("logs/**/*extraction*.json"))
-        extraction_log_paths.extend(self.base_dir.glob(".sisyphus/evidence/**/*extraction*.json"))
+        extraction_log_paths.extend(self.base_dir.glob(".agent_evidence/evidence/**/*extraction*.json"))
 
         for path in extraction_log_paths:
             payload = self._read_json(path)
@@ -434,7 +434,7 @@ class FailurePatternAnalyzer:
         return recommendations
 
     def _write_report(self, report: FailurePatternReport, output_dir: Path | None) -> Path:
-        target_dir = output_dir or self.base_dir / ".sisyphus" / "evidence"
+        target_dir = output_dir or self.base_dir / ".agent_evidence" / "evidence"
         target_dir.mkdir(parents=True, exist_ok=True)
         output_path = target_dir / "failure-pattern-report.json"
 

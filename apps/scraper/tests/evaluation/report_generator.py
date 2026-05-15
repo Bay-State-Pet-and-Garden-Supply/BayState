@@ -14,9 +14,9 @@ from tests.validation.review_workflow import ReviewedResult
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_EVIDENCE_BASE = WORKSPACE_ROOT / ".sisyphus" / "evidence" / "evaluation"
-DEFAULT_REGRESSION_EVIDENCE_BASE = WORKSPACE_ROOT / ".sisyphus" / "evidence" / "regression"
-DEFAULT_WEEKLY_EVIDENCE_BASE = WORKSPACE_ROOT / ".sisyphus" / "evidence" / "weekly"
+DEFAULT_EVIDENCE_BASE = WORKSPACE_ROOT / ".agent_evidence" / "evidence" / "evaluation"
+DEFAULT_REGRESSION_EVIDENCE_BASE = WORKSPACE_ROOT / ".agent_evidence" / "evidence" / "regression"
+DEFAULT_WEEKLY_EVIDENCE_BASE = WORKSPACE_ROOT / ".agent_evidence" / "evidence" / "weekly"
 
 
 @dataclass(frozen=True)

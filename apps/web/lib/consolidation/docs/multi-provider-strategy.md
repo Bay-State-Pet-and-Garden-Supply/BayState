@@ -273,8 +273,8 @@ This hybrid configuration gives BayState the best of both provider ecosystems: G
 
 ## References
 
-- Task 9a: `.sisyphus/drafts/search-provider-comparison.md`
-- Task 9b: `.sisyphus/drafts/extraction-mode-comparison.md`
-- Task 9c: `.sisyphus/drafts/provider-cost-accuracy-matrix.md`
-- Baseline: `.sisyphus/evidence/baseline-metrics.md`
+- Task 9a: `.agent_evidence/drafts/search-provider-comparison.md`
+- Task 9b: `.agent_evidence/drafts/extraction-mode-comparison.md`
+- Task 9c: `.agent_evidence/drafts/provider-cost-accuracy-matrix.md`
+- Baseline: `.agent_evidence/evidence/baseline-metrics.md`
 - Analysis: `apps/scraper/tests/analysis/analysis_baseline.md`

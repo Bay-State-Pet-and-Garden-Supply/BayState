@@ -49,7 +49,7 @@ Replace the `generateSystemPrompt()` function content with Prompt v1:
 
 1. Open `prompt-builder.ts`
 2. Locate the `generateSystemPrompt()` function
-3. Replace the function body with content from `.sisyphus/drafts/prompt-v1-optimized.txt`
+3. Replace the function body with content from `.agent_evidence/drafts/prompt-v1-optimized.txt`
 4. Save the file
 
 **Verification:**

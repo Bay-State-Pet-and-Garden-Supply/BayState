@@ -7,7 +7,7 @@ import pytest
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-EVIDENCE_JSON_PATH = PROJECT_ROOT / ".sisyphus" / "evidence" / "t17-ab-comparison.json"
+EVIDENCE_JSON_PATH = PROJECT_ROOT / ".agent_evidence" / "evidence" / "t17-ab-comparison.json"
 
 
 class MockExtractionPayload(TypedDict):

@@ -8,7 +8,6 @@
 
 # AI Agent Workspaces & State
 .gemini/
-.sisyphus/
 .opencode/
 .playwright-mcp/
 .claude/
