@@ -32,7 +32,9 @@
     "web:db:seed": "bun run web db:seed",
     "web:local:verify": "bun run web local:verify",
     "web:stripe:listen": "bun run web stripe:listen",
-    "web:bootstrap": "bun run web bootstrap"
+    "web:db:sync-env": "bun run web db:sync-env",
+    "web:bootstrap": "bun run web bootstrap",
+    "scraper:sync-env": "bun run scraper sync-env"
   },
   "devDependencies": {
     "fallow": "^2.54.3",

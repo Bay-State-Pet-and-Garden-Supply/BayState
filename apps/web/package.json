@@ -21,10 +21,11 @@
     "db:status": "bunx supabase status",
     "db:reset": "bunx supabase db reset",
     "db:seed": "bunx supabase db reset",
+    "db:sync-env": "bun scripts/update-supabase-env.ts",
     "stripe:listen": "stripe listen --forward-to http://localhost:3000/api/payments/webhook",
     "local:verify": "bun scripts/verify-local-bootstrap.ts",
-    "dev:local": "bun run db:start && bun run dev",
-    "bootstrap": "bun install && cp -n .env.local.example .env.local || true"
+    "dev:local": "bun run db:start && bun run db:sync-env && bun run dev",
+    "bootstrap": "bun install && cp -n .env.local.example .env.local || true && bun run db:sync-env"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^2.0.34",

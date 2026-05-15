@@ -35,11 +35,16 @@ export async function createClient() {
               cookieStore.set(name, value, options)
             )
           } catch (error) {
-            // The `setAll` method was called from a Server Component without
-            // the `await cookies()` pattern, or in a context where cookies
-            // can't be modified (e.g., after headers have been sent).
-            // In Server Actions, this should work if called correctly.
-            console.warn('Could not set cookies:', error)
+            // The `setAll` method was called from a Server Component or a context
+            // where cookies can't be modified. In Next.js 15+, this is expected
+            // behavior for Server Components. We suppress the warning for this
+            // specific error to reduce log noise.
+            const isNextRestriction = error instanceof Error && 
+              error.message.includes('Cookies can only be modified');
+            
+            if (!isNextRestriction) {
+              console.warn('Could not set cookies:', error);
+            }
           }
         },
       },
