@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -54,13 +54,16 @@ function DistributorCredentialRow({ distributor }: { distributor: DistributorInf
     saving: false,
     error: null,
   });
+  const mountedRef = useRef(true);
 
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
       const res = await adminFetch(`/api/admin/scrapers/${distributor.slug}/credentials`);
+      if (!mountedRef.current) return;
       if (!res.ok) throw new Error('Failed to fetch credential status');
       const data = (await res.json()) as CredentialStatusesResponse;
+      if (!mountedRef.current) return;
       const login = data.statuses.find(s => s.type === 'login');
       const password = data.statuses.find(s => s.type === 'password');
       setState(prev => ({
@@ -70,13 +73,16 @@ function DistributorCredentialRow({ distributor }: { distributor: DistributorInf
         loading: false,
       }));
     } catch (e) {
+      if (!mountedRef.current) return;
       setState(prev => ({ ...prev, error: e instanceof Error ? e.message : 'Unknown error', loading: false }));
     }
-  };
+  }, [distributor.slug]);
 
   useEffect(() => {
+    mountedRef.current = true;
     void fetchStatus();
-  }, [distributor.slug]);
+    return () => { mountedRef.current = false; };
+  }, [fetchStatus]);
 
   const onSave = async () => {
     setState(prev => ({ ...prev, saving: true, error: null }));
@@ -114,10 +120,18 @@ function DistributorCredentialRow({ distributor }: { distributor: DistributorInf
     setState(prev => ({ ...prev, saving: true, error: null }));
     try {
       if (state.loginConfigured) {
-        await adminFetch(`/api/admin/scrapers/${distributor.slug}/credentials?type=login`, { method: 'DELETE' });
+        const delRes = await adminFetch(`/api/admin/scrapers/${distributor.slug}/credentials?type=login`, { method: 'DELETE' });
+        if (!delRes.ok) {
+          const err = await delRes.json();
+          throw new Error(err.details || err.error || 'Failed to clear login');
+        }
       }
       if (state.passwordConfigured) {
-        await adminFetch(`/api/admin/scrapers/${distributor.slug}/credentials?type=password`, { method: 'DELETE' });
+        const delRes = await adminFetch(`/api/admin/scrapers/${distributor.slug}/credentials?type=password`, { method: 'DELETE' });
+        if (!delRes.ok) {
+          const err = await delRes.json();
+          throw new Error(err.details || err.error || 'Failed to clear password');
+        }
       }
       setState(prev => ({ ...prev, saving: false }));
       await fetchStatus();
@@ -126,8 +140,13 @@ function DistributorCredentialRow({ distributor }: { distributor: DistributorInf
     }
   };
 
-  const isConfigured = state.loginConfigured && state.passwordConfigured;
+  const anyConfigured = state.loginConfigured || state.passwordConfigured;
   const hasChanges = state.username.trim().length > 0 || state.password.trim().length > 0;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!state.saving && hasChanges) void onSave();
+  };
 
   if (state.loading) {
     return (
@@ -138,66 +157,68 @@ function DistributorCredentialRow({ distributor }: { distributor: DistributorInf
   }
 
   return (
-    <div className="border rounded-lg p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Store className="h-4 w-4 text-muted-foreground" />
-          <div>
-            <span className="font-medium">{distributor.name}</span>
-            <span className="text-xs text-muted-foreground ml-2">{distributor.description}</span>
+    <form onSubmit={handleSubmit}>
+      <div className="border rounded-lg p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Store className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <span className="font-medium">{distributor.name}</span>
+              <span className="text-xs text-muted-foreground ml-2">{distributor.description}</span>
+            </div>
+          </div>
+          <Badge variant={anyConfigured ? 'default' : 'secondary'} className="gap-1">
+            {anyConfigured ? (
+              <><ShieldCheck className="h-3 w-3" /> Configured</>
+            ) : (
+              <><ShieldOff className="h-3 w-3" /> Not configured</>
+            )}
+          </Badge>
+        </div>
+
+        {state.error && (
+          <div className="rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">{state.error}</div>
+        )}
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor={`${distributor.slug}-username`}>Username</Label>
+            <Input
+              id={`${distributor.slug}-username`}
+              value={state.username}
+              onChange={(e) => setState(prev => ({ ...prev, username: e.target.value }))}
+              placeholder={state.loginConfigured ? 'Leave blank to keep existing' : 'Enter username'}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`${distributor.slug}-password`}>Password</Label>
+            <Input
+              id={`${distributor.slug}-password`}
+              type="password"
+              value={state.password}
+              onChange={(e) => setState(prev => ({ ...prev, password: e.target.value }))}
+              placeholder={state.passwordConfigured ? 'Leave blank to keep existing' : 'Enter password'}
+            />
           </div>
         </div>
-        <Badge variant={isConfigured ? 'default' : 'secondary'} className="gap-1">
-          {isConfigured ? (
-            <><ShieldCheck className="h-3 w-3" /> Configured</>
-          ) : (
-            <><ShieldOff className="h-3 w-3" /> Not configured</>
+
+        <div className="flex justify-end gap-2">
+          {anyConfigured && (
+            <Button type="button" variant="outline" size="sm" onClick={onClear} disabled={state.saving}>
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              Clear
+            </Button>
           )}
-        </Badge>
-      </div>
-
-      {state.error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{state.error}</div>
-      )}
-
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor={`${distributor.slug}-username`}>Username</Label>
-          <Input
-            id={`${distributor.slug}-username`}
-            value={state.username}
-            onChange={(e) => setState(prev => ({ ...prev, username: e.target.value }))}
-            placeholder={state.loginConfigured ? 'Leave blank to keep existing' : 'Enter username'}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor={`${distributor.slug}-password`}>Password</Label>
-          <Input
-            id={`${distributor.slug}-password`}
-            type="password"
-            value={state.password}
-            onChange={(e) => setState(prev => ({ ...prev, password: e.target.value }))}
-            placeholder={state.passwordConfigured ? 'Leave blank to keep existing' : 'Enter password'}
-          />
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-2">
-        {isConfigured && (
-          <Button variant="outline" size="sm" onClick={onClear} disabled={state.saving}>
-            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-            Clear
+          <Button type="submit" size="sm" disabled={state.saving || !hasChanges}>
+            {state.saving ? (
+              <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Saving...</>
+            ) : (
+              <><Save className="mr-1.5 h-3.5 w-3.5" /> Save</>
+            )}
           </Button>
-        )}
-        <Button size="sm" onClick={onSave} disabled={state.saving || !hasChanges}>
-          {state.saving ? (
-            <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Saving...</>
-          ) : (
-            <><Save className="mr-1.5 h-3.5 w-3.5" /> Save</>
-          )}
-        </Button>
+        </div>
       </div>
-    </div>
+    </form>
   );
 }
 
