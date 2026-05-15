@@ -37,5 +37,8 @@
   "devDependencies": {
     "fallow": "^2.54.3",
     "turbo": "^2.8.17"
+  },
+  "dependencies": {
+    "next": "^16.2.6"
   }
 }
