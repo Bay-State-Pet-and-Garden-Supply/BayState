@@ -119,6 +119,7 @@ export function deriveTabFromProduct(
 
   switch (product?.pipeline_status) {
     case 'imported':
+    case 'awaiting_brand':
       return 'imported';
     case 'extracting':
       return 'extracting';

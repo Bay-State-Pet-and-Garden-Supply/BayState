@@ -32,7 +32,7 @@ const PIPELINE_STAGE_QUERY_SOURCE: Record<
 > = {
   imported: {
     table: "products_ingestion",
-    status: "imported",
+    statuses: ["imported", "awaiting_brand"],
   },
   extracting: {
     table: "products_ingestion",
@@ -146,6 +146,7 @@ export function validateStatusTransition(
 function getStageQuerySource(stage: StageBackedPipelineStage): {
   table: string;
   status?: PersistedPipelineStatus;
+  statuses?: PersistedPipelineStatus[];
 } {
   return PIPELINE_STAGE_QUERY_SOURCE[stage];
 }
@@ -389,6 +390,10 @@ export async function getProductsByStage(
     query = query.eq("pipeline_status", querySource.status);
   }
 
+  if (querySource.statuses) {
+    query = query.in("pipeline_status", querySource.statuses);
+  }
+
   if (querySource.table === "products_ingestion") {
     query = query.is("exported_at", null);
   }
@@ -553,6 +558,10 @@ export async function getSkusByStage(
     query = query.eq("pipeline_status", querySource.status);
   }
 
+  if (querySource.statuses) {
+    query = query.in("pipeline_status", querySource.statuses);
+  }
+
   if (querySource.table === "products_ingestion") {
     query = query.is("exported_at", null);
   }
@@ -692,6 +701,10 @@ export async function getAvailableSourcesByStage(
     query = query.eq("pipeline_status", querySource.status);
   }
 
+  if (querySource.statuses) {
+    query = query.in("pipeline_status", querySource.statuses);
+  }
+
   if (querySource.table === "products_ingestion") {
     query = query.is("exported_at", null);
   }
@@ -734,10 +747,19 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
         countMap[row.status] = Number(row.count);
       });
 
-      return PERSISTED_PIPELINE_STATUSES.map((status) => ({
-        status,
-        count: countMap[status] || 0,
-      }));
+      return PERSISTED_PIPELINE_STATUSES.map((status) => {
+        let count = countMap[status] || 0;
+        
+        // Merge awaiting_brand into imported for the tab count
+        if (status === "imported") {
+          count += countMap["awaiting_brand"] || 0;
+        }
+
+        return {
+          status,
+          count,
+        };
+      });
     }
     
     if (error) {
@@ -778,10 +800,19 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
     }
   });
 
-  return PERSISTED_PIPELINE_STATUSES.map((status) => ({
-    status,
-    count: countMap[status] || 0,
-  }));
+  return PERSISTED_PIPELINE_STATUSES.map((status) => {
+    let count = countMap[status] || 0;
+
+    // Merge awaiting_brand into imported for the tab count
+    if (status === "imported") {
+      count += countMap["awaiting_brand"] || 0;
+    }
+
+    return {
+      status,
+      count,
+    };
+  });
 }
 
 /**

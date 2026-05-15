@@ -33,6 +33,7 @@ interface QueryBuilder<Row> extends PromiseLike<QueryResult<Row>> {
     options?: { count?: "exact" | "planned" | "estimated" }
   ): QueryBuilder<Row>;
   eq(column: string, value: string): QueryBuilder<Row>;
+  in(column: string, values: string[]): QueryBuilder<Row>;
   order(column: string, options?: { ascending?: boolean }): QueryBuilder<Row>;
   range(from: number, to: number): QueryBuilder<Row>;
 }
@@ -60,13 +61,16 @@ function normalizePagination(pagination?: PipelineTabPagination): {
   };
 }
 
-function getStatusForTab(tab: WorkflowPipelineTab): PersistedPipelineStatus {
-  return tab;
+function getStatusesForTab(tab: WorkflowPipelineTab): PersistedPipelineStatus[] {
+  if (tab === "imported") {
+    return ["imported", "awaiting_brand"];
+  }
+  return [tab];
 }
 
-async function queryProductsByStatus(
+async function queryProductsByStatuses(
   supabase: PipelineQuerySupabaseClient,
-  status: PersistedPipelineStatus,
+  statuses: PersistedPipelineStatus[],
   pagination?: PipelineTabPagination
 ): Promise<{ products: PipelineProduct[]; count: number }> {
   const { limit, offset } = normalizePagination(pagination);
@@ -74,7 +78,7 @@ async function queryProductsByStatus(
   const { data, error, count } = await supabase
     .from<PipelineProduct>("products_ingestion")
     .select("*", { count: "exact" })
-    .eq("pipeline_status", status)
+    .in("pipeline_status", statuses)
     .order("sku", { ascending: true })
     .range(offset, offset + limit - 1);
 
@@ -94,9 +98,9 @@ async function queryTab(
   pagination?: PipelineTabPagination
 ): Promise<PipelineTabQueryResult> {
   const startedAt = Date.now();
-  const result = await queryProductsByStatus(
+  const result = await queryProductsByStatuses(
     supabase,
-    getStatusForTab(tab),
+    getStatusesForTab(tab),
     pagination
   );
 
