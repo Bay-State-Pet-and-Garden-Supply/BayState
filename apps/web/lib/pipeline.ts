@@ -26,15 +26,13 @@ type StageBackedPipelineStage = Extract<
   | "failed"
 >;
 
-interface PipelineStageQuerySource {
-  table: string;
-  status?: PersistedPipelineStatus;
-  statuses?: PersistedPipelineStatus[];
-}
-
 const PIPELINE_STAGE_QUERY_SOURCE: Record<
   StageBackedPipelineStage,
-  PipelineStageQuerySource
+  {
+    table: string;
+    status?: PersistedPipelineStatus;
+    statuses?: PersistedPipelineStatus[];
+  }
 > = {
   imported: {
     table: "products_ingestion",
@@ -149,7 +147,11 @@ export function validateStatusTransition(
   return validateTransition(from, to);
 }
 
-function getStageQuerySource(stage: StageBackedPipelineStage): PipelineStageQuerySource {
+function getStageQuerySource(stage: StageBackedPipelineStage): {
+  table: string;
+  status?: PersistedPipelineStatus;
+  statuses?: PersistedPipelineStatus[];
+} {
   return PIPELINE_STAGE_QUERY_SOURCE[stage];
 }
 
@@ -168,7 +170,7 @@ function withMergedImageCandidates(product: PipelineProduct): PipelineProduct {
   try {
     const consolidatedImages = toImageUrlArray(product.consolidated?.images);
     const storedCandidates = toImageUrlArray(product.image_candidates);
-    
+
     // Performance optimization: skip source extraction if we already have plenty of candidates
     // or if the product is already finalized/published (where image extraction is less relevant).
     if (storedCandidates.length >= 10 || consolidatedImages.length >= 5) {
@@ -633,7 +635,7 @@ export async function getAvailableSources(
         .filter((key) => !key.startsWith("_"))
         .sort();
     }
-    
+
     if (error) {
       console.warn("RPC get_pipeline_stage_sources failed, falling back:", error.message);
     }
@@ -684,7 +686,7 @@ export async function getAvailableSourcesByStage(
           .filter((key) => !key.startsWith("_"))
           .sort();
       }
-      
+
       if (error) {
         console.warn("RPC get_pipeline_stage_sources failed, falling back:", error.message);
       }
@@ -751,7 +753,7 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
 
       return PERSISTED_PIPELINE_STATUSES.map((status) => {
         let count = countMap[status] || 0;
-        
+
         // Merge awaiting_brand into imported for the tab count
         if (status === "imported") {
           count += countMap["awaiting_brand"] || 0;
@@ -763,7 +765,7 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
         };
       });
     }
-    
+
     if (error) {
       console.warn("RPC get_pipeline_status_counts failed, falling back:", error.message);
     }

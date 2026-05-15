@@ -3,28 +3,28 @@ import { AnalyticsDashboard } from './analytics-dashboard';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 
 export const metadata = {
-  title: 'Analytics | Bay State Admin',
+    title: 'Analytics | Bay State Admin',
 };
 
 interface PageProps {
-  searchParams: Promise<{
-    source?: string;
-  }>;
+    searchParams: Promise<{
+        source?: string;
+    }>;
 }
 
 export default async function AnalyticsPage({ searchParams }: PageProps) {
     const supabase = await createClient();
     const params = await searchParams;
     const source = params.source || null;
-    
+
     const endDate = new Date().toISOString();
     const startDate = new Date();
     startDate.setFullYear(startDate.getFullYear() - 10); // 10 years for historical ShopSite data
-    
+
     // 1. Fetch top level metrics
     const { data: metricsData } = await supabase
-        .rpc('get_sales_metrics', { 
-            start_date: startDate.toISOString(), 
+        .rpc('get_sales_metrics', {
+            start_date: startDate.toISOString(),
             end_date: endDate,
             p_source: source
         });
@@ -32,14 +32,14 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
     // Fetch channel comparison data if no source is selected
     let channelMetrics = null;
     if (!source) {
-        const { data: online } = await supabase.rpc('get_sales_metrics', { 
-            start_date: startDate.toISOString(), end_date: endDate, p_source: 'shopsite' 
+        const { data: online } = await supabase.rpc('get_sales_metrics', {
+            start_date: startDate.toISOString(), end_date: endDate, p_source: 'shopsite'
         });
-        const { data: instore } = await supabase.rpc('get_sales_metrics', { 
-            start_date: startDate.toISOString(), end_date: endDate, p_source: 'integra' 
+        const { data: instore } = await supabase.rpc('get_sales_metrics', {
+            start_date: startDate.toISOString(), end_date: endDate, p_source: 'integra'
         });
-        const { data: web } = await supabase.rpc('get_sales_metrics', { 
-            start_date: startDate.toISOString(), end_date: endDate, p_source: 'web' 
+        const { data: web } = await supabase.rpc('get_sales_metrics', {
+            start_date: startDate.toISOString(), end_date: endDate, p_source: 'web'
         });
         channelMetrics = {
             online: online?.[0] || { total_revenue: 0, average_order_value: 0 },
@@ -50,9 +50,9 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
 
     // 2. Fetch trends
     const { data: trendsData } = await supabase
-        .rpc('get_sales_trends', { 
-            start_date: startDate.toISOString(), 
-            end_date: endDate, 
+        .rpc('get_sales_trends', {
+            start_date: startDate.toISOString(),
+            end_date: endDate,
             period: 'month',
             p_source: source
         });
@@ -89,9 +89,9 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
 
     return (
         <AdminPageShell title="Analytics & Reporting">
-            <AnalyticsDashboard 
-                metrics={metrics} 
-                trends={trendsData || []} 
+            <AnalyticsDashboard
+                metrics={metrics}
+                trends={trendsData || []}
                 activeSource={source}
                 drift={driftData || []}
                 syncHealth={healthData || []}

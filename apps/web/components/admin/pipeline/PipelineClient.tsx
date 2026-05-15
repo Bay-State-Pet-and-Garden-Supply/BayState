@@ -65,17 +65,6 @@ const ScraperSelectDialog = dynamic(
   () => import("./ScraperSelectDialog").then((mod) => mod.ScraperSelectDialog),
   { ssr: false },
 );
-const ManualAddProductDialog = dynamic(
-  () =>
-    import("./ManualAddProductDialog").then(
-      (mod) => mod.ManualAddProductDialog,
-    ),
-  { ssr: false },
-);
-const IntegraImportDialog = dynamic(
-  () => import("./IntegraImportDialog").then((mod) => mod.IntegraImportDialog),
-  { ssr: false },
-);
 const CohortEditDialog = dynamic(
   () => import("./CohortEditDialog").then((mod) => mod.CohortEditDialog),
   { ssr: false },
@@ -134,8 +123,6 @@ export function PipelineClient({
   const [isSearching, setIsSearching] = useState(false);
   const [isScrapeDialogOpen, setIsScrapeDialogOpen] = useState(false);
   const [isBulkAssignBrandOpen, setIsBulkAssignBrandOpen] = useState(false);
-  const [isManualAddOpen, setIsManualAddOpen] = useState(false);
-  const [isIntegraImportOpen, setIsIntegraImportOpen] = useState(false);
 
   // Handle bulk brand assignment
   const handleBulkAssignBrand = async (brandId: string | null) => {
@@ -263,7 +250,7 @@ export function PipelineClient({
     cohortIds.sort((a, b) => {
       if (a === "ungrouped") return -1;
       if (b === "ungrouped") return 1;
-      
+
       const nameA = names[a]?.trim() || `Batch ${a.slice(0, 8)}`;
       const nameB = names[b]?.trim() || `Batch ${b.slice(0, 8)}`;
       return nameA.localeCompare(nameB);
@@ -432,7 +419,7 @@ export function PipelineClient({
       return;
     }
 
-    const hasChanged = 
+    const hasChanged =
       search !== lastFetchedParams.current.search ||
       sourceFilter !== lastFetchedParams.current.source ||
       productLineFilter !== lastFetchedParams.current.product_line ||
@@ -498,7 +485,7 @@ export function PipelineClient({
     if (cohortIdParam !== lastFetchedParams.current.cohort_id) {
       setCohortIdFilter(cohortIdParam);
     }
-    
+
     // We update our ref to match the URL state after syncing
     lastFetchedParams.current = {
       search: searchParam,
@@ -804,15 +791,15 @@ export function PipelineClient({
       const hasScopedSelection = !!skus && skus.length > 0;
       const response = hasScopedSelection
         ? await adminFetch("/api/admin/pipeline/export-zip", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              skus,
-              ...(options.includeExportedSelection
-                ? { includeExportedSelection: true }
-                : {}),
-            }),
-          })
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            skus,
+            ...(options.includeExportedSelection
+              ? { includeExportedSelection: true }
+              : {}),
+          }),
+        })
         : await adminFetch("/api/admin/pipeline/export-zip");
 
       if (!response.ok) {
@@ -857,14 +844,14 @@ export function PipelineClient({
             : uploadCount;
         const publishWarning =
           typeof payload.publishWarning === "string" &&
-          payload.publishWarning.length > 0
+            payload.publishWarning.length > 0
             ? payload.publishWarning
             : null;
         const uploadedSkus = Array.isArray(payload.uploadedSkus)
           ? (payload.uploadedSkus as unknown[]).filter(
-              (sku: unknown): sku is string =>
-                typeof sku === "string" && sku.length > 0,
-            )
+            (sku: unknown): sku is string =>
+              typeof sku === "string" && sku.length > 0,
+          )
           : (skus ?? []);
         let zipDownloaded = false;
 
@@ -1148,7 +1135,7 @@ export function PipelineClient({
               aria-label="Select all visible products"
               checked={
                 filteredProducts.length > 0 &&
-                filteredProducts.every((p) => selectedSkus.has(p.sku))
+                  filteredProducts.every((p) => selectedSkus.has(p.sku))
                   ? true
                   : filteredProducts.some((p) => selectedSkus.has(p.sku))
                     ? "indeterminate"
@@ -1331,14 +1318,14 @@ export function PipelineClient({
               onEditCohort={
                 canEditCohorts
                   ? (id: string, name: string | null, brandName: string | null) => {
-                      setEditingCohort({
-                        id,
-                        name: name ?? null,
-                        brandName: brandName ?? null,
-                        brandId: groupedProducts.brandIds?.[id] || null,
-                        brand: groupedProducts.brandObjects?.[id] || null,
-                      });
-                    }
+                    setEditingCohort({
+                      id,
+                      name: name ?? null,
+                      brandName: brandName ?? null,
+                      brandId: groupedProducts.brandIds?.[id] || null,
+                      brand: groupedProducts.brandObjects?.[id] || null,
+                    });
+                  }
                   : undefined
               }
               isSearching={isSearching}
@@ -1358,14 +1345,14 @@ export function PipelineClient({
                 onEditCohort={
                   canEditCohorts
                     ? (id, name, brandName) => {
-                        setEditingCohort({
-                          id,
-                          name,
-                          brandName,
-                          brandId: groupedProducts.brandIds[id] || null,
-                          brand: groupedProducts.brandObjects[id] || null,
-                        });
-                      }
+                      setEditingCohort({
+                        id,
+                        name,
+                        brandName,
+                        brandId: groupedProducts.brandIds[id] || null,
+                        brand: groupedProducts.brandObjects[id] || null,
+                      });
+                    }
                     : undefined
                 }
                 selectedSkus={selectedSkus}
@@ -1408,26 +1395,24 @@ export function PipelineClient({
               onEditCohort={
                 canEditCohorts
                   ? (id, name, brandName) => {
-                      setEditingCohort({
-                        id,
-                        name,
-                        brandName,
-                        brandId: groupedProducts.brandIds[id] || null,
-                        brand: groupedProducts.brandObjects[id] || null,
-                      });
-                    }
+                    setEditingCohort({
+                      id,
+                      name,
+                      brandName,
+                      brandId: groupedProducts.brandIds[id] || null,
+                      brand: groupedProducts.brandObjects[id] || null,
+                    });
+                  }
                   : undefined
               }
               isSearching={isSearching}
-              onImportCsv={currentStage === "imported" ? () => setIsIntegraImportOpen(true) : undefined}
-              onManualAdd={currentStage === "imported" ? () => setIsManualAddOpen(true) : undefined}
               isLoading={isLoading}
             />
           ) : (
             <div className="flex flex-col h-full min-h-0">
               {groupedProducts.cohortIds.length <= 1 &&
-              (groupedProducts.cohortIds.length === 0 ||
-                groupedProducts.cohortIds[0] === "ungrouped") ? (
+                (groupedProducts.cohortIds.length === 0 ||
+                  groupedProducts.cohortIds[0] === "ungrouped") ? (
                 <ProductTable
                   products={filteredProducts}
                   selectedSkus={selectedSkus}
@@ -1461,29 +1446,29 @@ export function PipelineClient({
                         >
                           <div className="flex items-center hover:bg-muted/30 bg-muted/10 pr-2 group border-b border-border last:border-b-0">
                             <div className="pl-4 flex items-center shrink-0">
-                               <input
-                                  type="checkbox"
-                                  checked={allSelected}
-                                  ref={el => {
-                                    if (el) el.indeterminate = someSelected;
-                                  }}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      const next = new Set(selectedSkus);
-                                      cohortSkus.forEach((s) => {
-                                        next.add(s);
-                                      });
-                                      setSelectedSkus(next);
-                                    } else {
-                                      const next = new Set(selectedSkus);
-                                      cohortSkus.forEach((s) => {
-                                        next.delete(s);
-                                      });
-                                      setSelectedSkus(next);
-                                    }
-                                  }}
-                                  className="h-4 w-4 rounded-none border border-border cursor-pointer accent-primary"
-                                />
+                              <input
+                                type="checkbox"
+                                checked={allSelected}
+                                ref={el => {
+                                  if (el) el.indeterminate = someSelected;
+                                }}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    const next = new Set(selectedSkus);
+                                    cohortSkus.forEach((s) => {
+                                      next.add(s);
+                                    });
+                                    setSelectedSkus(next);
+                                  } else {
+                                    const next = new Set(selectedSkus);
+                                    cohortSkus.forEach((s) => {
+                                      next.delete(s);
+                                    });
+                                    setSelectedSkus(next);
+                                  }
+                                }}
+                                className="h-4 w-4 rounded-none border border-border cursor-pointer accent-primary"
+                              />
                             </div>
 
                             <AccordionTrigger
@@ -1635,26 +1620,6 @@ export function PipelineClient({
         selectedSkuCount={selectedSkus.size}
         onConfirm={handleScrapeConfirm}
       />
-      {/* Manual Add Product Dialog */}
-      {isManualAddOpen && (
-        <ManualAddProductDialog
-          onSuccess={() => {
-            setIsManualAddOpen(false);
-            refreshAll();
-          }}
-          onCancel={() => setIsManualAddOpen(false)}
-        />
-      )}
-      {/* Integra Import Dialog */}
-      {isIntegraImportOpen && (
-        <IntegraImportDialog
-          onSuccess={() => {
-            setIsIntegraImportOpen(false);
-            refreshAll();
-          }}
-          onCancel={() => setIsIntegraImportOpen(false)}
-        />
-      )}
 
       {/* Floating Bulk Actions Bar */}
       {!isLiveOperationalTab(currentStage) && (
