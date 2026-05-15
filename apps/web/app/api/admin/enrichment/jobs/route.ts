@@ -57,8 +57,9 @@ export async function POST(request: NextRequest) {
 
     const validSkus = (products || [])
       .filter((p: { sku: string; pipeline_status: string }) =>
+        p.pipeline_status === "imported" ||
         p.pipeline_status === "url_review" ||
-        p.pipeline_status === "imported"
+        p.pipeline_status === "extracting"
       )
       .map((p: { sku: string }) => p.sku);
 
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "None of the selected SKUs are in URL Review or Imported status",
+            "None of the selected SKUs are in Imported or Extracting status",
         },
         { status: 400 }
       );

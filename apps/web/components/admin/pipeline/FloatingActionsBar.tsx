@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Plus, Trash2, Search, Archive, Upload, Globe, Tag, Eye } from "lucide-react";
+import { Loader2, Plus, Trash2, Search, Archive, Upload, Globe, Tag, Eye, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -28,7 +28,7 @@ const BULK_ACTIONS: Record<
     secondaryAction?: string;
   }
 > = {
-  imported: { label: "", nextStage: null },
+  imported: { label: "", nextStage: null, secondaryAction: "Extract" },
   extracting: { label: "", nextStage: null },
   processed: {
     label: "Merge Selected",
@@ -64,6 +64,7 @@ interface FloatingActionsBarProps {
   onResetStage?: (previousStage: PersistedPipelineStatus) => void;
   onConsolidate?: () => void;
   onOpenScrapeDialog?: () => void;
+  onStartApprovedExtraction?: () => void;
   onAssignBrand?: () => void;
 
   scrapeSelectionValidation?: { allowed: boolean; reason: string | null };
@@ -85,6 +86,7 @@ export function FloatingActionsBar({
   onResetStage,
   onConsolidate,
   onOpenScrapeDialog,
+  onStartApprovedExtraction,
   onAssignBrand,
   scrapeSelectionValidation,
   onDelete,
@@ -106,7 +108,8 @@ export function FloatingActionsBar({
   const hasResetAction =
     !!bulkAction.resetLabel && !!bulkAction.previousStage && !!onResetStage;
   const hasSecondaryAction =
-    !!bulkAction.secondaryAction && !!onOpenScrapeDialog;
+    (currentStage === "processed" && !!bulkAction.secondaryAction && !!onOpenScrapeDialog) ||
+    (currentStage === "imported" && !!bulkAction.secondaryAction && !!onStartApprovedExtraction);
 
   const isPrimaryDisabled = isLoading;
 
@@ -180,7 +183,20 @@ export function FloatingActionsBar({
             </Button>
           )}
 
-          {hasSecondaryAction && (
+          {currentStage === "imported" && hasSecondaryAction && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onStartApprovedExtraction?.()}
+              disabled={isLoading}
+              className="h-9 border border-border text-[10px] font-semibold text-brand-forest-green bg-background hover:bg-brand-forest-green/5 rounded-none transition-all"
+            >
+              <Sparkles className="mr-1 h-3.5 w-3.5" />
+              {bulkAction.secondaryAction}
+            </Button>
+          )}
+
+          {currentStage === "processed" && hasSecondaryAction && (
             <Button
               variant="outline"
               size="sm"
