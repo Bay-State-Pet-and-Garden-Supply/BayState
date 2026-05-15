@@ -11,7 +11,9 @@
     "apps/scraper"
   ],
   "scripts": {
-    "dev": "bunx turbo run dev",
+    "dev": "bunx turbo run dev stripe:listen",
+    "up": "bun run dev",
+    "down": "bun run web:db:stop",
     "build": "bunx turbo run build",
     "test": "bunx turbo run test",
     "lint": "bunx turbo run lint",
@@ -32,9 +34,9 @@
     "web:db:seed": "bun run web db:seed",
     "web:local:verify": "bun run web local:verify",
     "web:stripe:listen": "bun run web stripe:listen",
-    "web:db:sync-env": "bun run web db:sync-env",
+    "web:local:sync-env": "bun run web local:sync-env",
     "web:bootstrap": "bun run web bootstrap",
-    "scraper:sync-env": "bun run scraper sync-env"
+    "scraper:sync-env": "bun run scraper local:sync-env"
   },
   "devDependencies": {
     "fallow": "^2.54.3",

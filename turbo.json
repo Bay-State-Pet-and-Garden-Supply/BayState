@@ -1,7 +1,19 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
+    "db:start": {
+      "cache": false
+    },
+    "local:sync-env": {
+      "dependsOn": ["db:start"],
+      "cache": false
+    },
     "dev": {
+      "dependsOn": ["local:sync-env"],
+      "cache": false,
+      "persistent": true
+    },
+    "stripe:listen": {
       "cache": false,
       "persistent": true
     },

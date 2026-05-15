@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "uv run --with-requirements requirements.txt python daemon.py --env dev",
-    "sync-env": "bun scripts/update-env.ts"
+    "local:sync-env": "bun scripts/update-env.ts",
+    "db:start": "exit 0"
   }
 }
