@@ -52,13 +52,13 @@ echo ""
 echo "📦 Building scraper Docker image..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-SCRAPER_DIR="$REPO_ROOT/scraper_backend"
+SCRAPER_DIR="$REPO_ROOT/apps/scraper"
 
 if [ -d "$SCRAPER_DIR" ]; then
     docker build -t baystate-scraper:latest "$SCRAPER_DIR"
     echo "✓ Scraper image built: baystate-scraper:latest"
 else
-    echo "⚠ scraper_backend directory not found at $SCRAPER_DIR"
+    echo "⚠ apps/scraper directory not found at $SCRAPER_DIR"
     echo "  Skipping Docker build - you'll need to build it manually"
 fi
 
