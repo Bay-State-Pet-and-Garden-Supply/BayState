@@ -23,14 +23,6 @@ services:
     env_file:
       - .env.development
     environment:
-      # Use host.docker.internal to reach Next.js on the host
-      - SCRAPER_API_URL=${SCRAPER_API_URL:-http://host.docker.internal:3000}
-      - SCRAPER_API_KEY=${SCRAPER_API_KEY}
-      - RUNNER_NAME=${RUNNER_NAME:-local-dev-runner}
-      - POLL_INTERVAL=${POLL_INTERVAL:-30}
-      - MAX_JOBS_BEFORE_RESTART=${MAX_JOBS_BEFORE_RESTART:-100}
-      - SCRAPER_BROWSER_STATE_DIR=/app/.browser_storage_states
-      - HEALTHCHECK_MAX_MEMORY_PERCENT=${HEALTHCHECK_MAX_MEMORY_PERCENT:-90}
       - LOG_LEVEL=DEBUG
     volumes:
       - ./.browser_storage_states:/app/.browser_storage_states
