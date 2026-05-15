@@ -18,7 +18,6 @@ const CANONICAL_PERSISTED_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
 type StageBackedPipelineStage = Extract<
   PipelineStage,
   | "imported"
-  | "awaiting_brand"
   | "extracting"
   | "processed"
   | "merging"
@@ -34,10 +33,6 @@ const PIPELINE_STAGE_QUERY_SOURCE: Record<
   imported: {
     table: "products_ingestion",
     status: "imported",
-  },
-  awaiting_brand: {
-    table: "products_ingestion",
-    status: "awaiting_brand",
   },
   extracting: {
     table: "products_ingestion",

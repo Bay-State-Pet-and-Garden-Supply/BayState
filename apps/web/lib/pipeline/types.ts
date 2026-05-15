@@ -1,8 +1,8 @@
 /**
  * Pipeline types
- * The durable workflow states are the same states shown in the admin UI.
  * 6-stage pipeline: imported → extracting → processed → merging → reviewing → publishing → failed
- * awaiting_brand is a persisted sub-status of imported for products without a brand.
+ * awaiting_brand is a persisted sub-status of imported for products without a brand —
+ * those products appear in the imported tab, not as a separate tab.
  */
 
 import type { Brand } from "@/lib/types";
@@ -24,11 +24,10 @@ export type PersistedPipelineStatus =
 
 /**
  * Main admin workflow tabs shown in the live pipeline UI.
- * url_review is excluded — replaced by Approved Source Extraction.
+ * awaiting_brand is not a tab — those products live in the imported tab.
  */
 export const PIPELINE_TABS = [
   "imported",
-  "awaiting_brand",
   "extracting",
   "processed",
   "merging",

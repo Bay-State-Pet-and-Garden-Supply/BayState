@@ -91,7 +91,6 @@ describe("WORKFLOW_PIPELINE_TABS", () => {
   it("exposes the canonical workflow tabs", () => {
     expect(WORKFLOW_PIPELINE_TABS).toEqual([
       "imported",
-      "awaiting_brand",
       "extracting",
       "processed",
       "merging",

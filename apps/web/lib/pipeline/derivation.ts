@@ -9,7 +9,6 @@ import type { PersistedPipelineStatus, PipelineStage } from './types';
 
 export const WORKFLOW_PIPELINE_TABS = [
   'imported',
-  'awaiting_brand',
   'extracting',
   'processed',
   'merging',

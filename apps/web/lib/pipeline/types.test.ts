@@ -33,7 +33,6 @@ describe('isDerivedTab', () => {
 describe('isPipelineStage', () => {
   it('accepts every public pipeline stage', () => {
     expect(isPipelineStage('imported')).toBe(true);
-    expect(isPipelineStage('awaiting_brand')).toBe(true);
     expect(isPipelineStage('extracting')).toBe(true);
     expect(isPipelineStage('processed')).toBe(true);
     expect(isPipelineStage('merging')).toBe(true);
@@ -42,7 +41,8 @@ describe('isPipelineStage', () => {
     expect(isPipelineStage('failed')).toBe(true);
   });
 
-  it('rejects legacy stages no longer shown as tabs', () => {
+  it('rejects sub-status values not shown as tabs', () => {
+    expect(isPipelineStage('awaiting_brand')).toBe(false);
     expect(isPipelineStage('url_review')).toBe(false);
   });
 
