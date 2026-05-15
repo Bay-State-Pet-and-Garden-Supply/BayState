@@ -6,6 +6,7 @@ crawl4ai>=0.8.0
 openai>=1.30.0
 playwright==1.57.0
 pyyaml>=6.0
+beautifulsoup4>=4.12.0
 
 # HTTP clients
 requests==2.31.0

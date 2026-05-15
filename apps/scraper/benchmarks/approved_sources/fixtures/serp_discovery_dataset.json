@@ -1,0 +1,1228 @@
+{
+  "schema_version": "official-brand-benchmark-dataset-v1",
+  "description": "Golden dataset for SERP/AI official brand URL discovery. Tests that the official brand discovery pipeline correctly identifies and auto-selects approved official URLs while rejecting disallowed retailer/marketplace results.",
+  "source_notes": {
+    "curation": "Mix of easy exact matches, hard buried cases, official homepage vs product page, SKU-only searches, and negative rejection cases.",
+    "legal": "Retailer/marketplace domains appear only as expected_negative examples. Approved_source_legality enforces domain rules."
+  },
+  "entries": [
+    {
+      "sku": "032247761215",
+      "brand": "Scotts",
+      "product_name": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
+      "expected_official_domains": ["scotts.com"],
+      "preferred_domains": ["scotts.com"],
+      "expected_url": "https://www.scotts.com/en-us/products/spreaders/turf-builder-edgeguard-mini-broadcast-spreader",
+      "category": "lawn-garden",
+      "difficulty": "easy",
+      "tags": ["smoke", "official-domain"],
+      "source_legality": {
+        "approved_positive_domains": ["scotts.com", "scottsmiraclegro.com"],
+        "disallowed_negative_domains": ["amazon.com", "walmart.com", "homedepot.com", "lowes.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "032247279048",
+      "brand": "Miracle-Gro",
+      "product_name": "Miracle-Gro Potting Mix 50 Quart",
+      "expected_official_domains": ["miraclegro.com"],
+      "preferred_domains": ["miraclegro.com"],
+      "expected_url": "https://www.miraclegro.com/en-us/shop/soils/potting-mix/miracle-gro-potting-mix",
+      "category": "lawn-garden",
+      "difficulty": "easy",
+      "tags": ["smoke", "official-domain"],
+      "source_legality": {
+        "approved_positive_domains": ["miraclegro.com", "scottsmiraclegro.com"],
+        "disallowed_negative_domains": ["amazon.com", "walmart.com", "homedepot.com", "target.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "850012047735",
+      "brand": "The Honest Kitchen",
+      "product_name": "The Honest Kitchen Grain Free Turkey & Chicken Clusters Dry Cat Food 1 lb",
+      "expected_official_domains": ["thehonestkitchen.com"],
+      "preferred_domains": ["thehonestkitchen.com"],
+      "expected_url": "https://www.thehonestkitchen.com/products/grain-free-turkey-and-chicken-whole-food-clusters-dry-cat-food",
+      "category": "Cat Food Dry",
+      "difficulty": "hard",
+      "tags": ["official", "pet-food", "cat"],
+      "source_legality": {
+        "approved_positive_domains": ["thehonestkitchen.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.75
+      }
+    },
+    {
+      "sku": "072318200618",
+      "brand": "FirstMate",
+      "product_name": "FirstMate Chicken Meal with Blueberries Formula Dry Cat Food 3.96lb",
+      "expected_official_domains": ["firstmate.com"],
+      "preferred_domains": ["firstmate.com"],
+      "expected_url": "https://firstmate.com/product/chicken-meal-with-blueberries-formula-for-cats/",
+      "category": "Cat Food Dry",
+      "difficulty": "easy",
+      "tags": ["official", "pet-food", "cat"],
+      "source_legality": {
+        "approved_positive_domains": ["firstmate.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.85
+      }
+    },
+    {
+      "sku": "045663976866",
+      "brand": "Four Paws",
+      "product_name": "Four Paws Wee-Wee Cat Pads 11x17 10ct",
+      "expected_official_domains": ["fourpaws.com"],
+      "preferred_domains": ["fourpaws.com"],
+      "expected_url": "https://www.fourpaws.com/products/wee-wee-cat-litter-box-system-pads",
+      "category": "Cat Litter Accessories",
+      "difficulty": "easy",
+      "tags": ["official", "pet-supplies"],
+      "source_legality": {
+        "approved_positive_domains": ["fourpaws.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "walmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "072318100680",
+      "brand": "FirstMate",
+      "product_name": "FirstMate Grain-Free Chicken Meal with Blueberries 5 lb.",
+      "expected_official_domains": ["firstmate.com"],
+      "preferred_domains": ["firstmate.com"],
+      "expected_url": "https://firstmate.com/product/chicken-meal-with-blueberries-formula/",
+      "category": "Dog Food Dry",
+      "difficulty": "easy",
+      "tags": ["official", "pet-food", "dog"],
+      "source_legality": {
+        "approved_positive_domains": ["firstmate.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "4059433816098",
+      "brand": "Schleich",
+      "product_name": "Schleich Clydesdale Gelding Horse Toy Figurine",
+      "expected_official_domains": ["schleich-s.com"],
+      "preferred_domains": ["schleich-s.com"],
+      "expected_url": "https://us.schleich-s.com/products/clydesdale-gelding-13808-2",
+      "category": "Collectible Animal Figurines",
+      "difficulty": "easy",
+      "tags": ["official", "toy"],
+      "source_legality": {
+        "approved_positive_domains": ["schleich-s.com"],
+        "disallowed_negative_domains": ["amazon.com", "walmart.com", "target.com", "ebay.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "032247886598",
+      "brand": "Scotts",
+      "product_name": "Scotts Nature Scapes Color Enhanced Mulch Deep Forest Brown 1.5 cu. ft.",
+      "expected_official_domains": ["scottsmiraclegro.com", "scotts.com"],
+      "preferred_domains": ["scottsmiraclegro.com"],
+      "expected_url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
+      "category": "Garden > Mulch",
+      "difficulty": "medium",
+      "tags": ["official", "garden", "brand-family"],
+      "source_legality": {
+        "approved_positive_domains": ["scottsmiraclegro.com", "scotts.com"],
+        "disallowed_negative_domains": ["amazon.com", "walmart.com", "homedepot.com", "lowes.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.75
+      }
+    },
+    {
+      "sku": "095668480400",
+      "brand": "Manna Pro",
+      "product_name": "Manna Pro Fresh Flakes Poultry Bedding 12 Lb",
+      "expected_official_domains": ["mannapro.com"],
+      "preferred_domains": ["mannapro.com"],
+      "expected_url": "https://mannapro.com/products/fresh-flakes-poultry-bedding",
+      "category": "Poultry Bedding",
+      "difficulty": "easy",
+      "tags": ["official", "farm", "poultry"],
+      "source_legality": {
+        "approved_positive_domains": ["mannapro.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "walmart.com", "tractorsupply.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "072318100680",
+      "brand": "FirstMate",
+      "product_name": "FirstMate Grain-Free Chicken Meal with Blueberries 5 lb.",
+      "expected_official_domains": ["firstmate.com"],
+      "preferred_domains": ["firstmate.com"],
+      "expected_url": "https://firstmate.com/product/chicken-meal-with-blueberries-formula/",
+      "category": "Dog Food Dry",
+      "difficulty": "easy",
+      "tags": ["official", "pet-food", "dog", "grain-free"],
+      "source_legality": {
+        "approved_positive_domains": ["firstmate.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "877362001042",
+      "brand": "Green Juju",
+      "product_name": "Green Juju Beef Bone Broth for Dogs 32 oz",
+      "expected_official_domains": ["greenjuju.com"],
+      "preferred_domains": ["greenjuju.com"],
+      "expected_url": "https://greenjuju.com/products/beef-bone-broth",
+      "category": "Dog Treats",
+      "difficulty": "easy",
+      "tags": ["official", "pet-food", "dog", "treat"],
+      "source_legality": {
+        "approved_positive_domains": ["greenjuju.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "017623456789",
+      "brand": "Fromm",
+      "product_name": "Fromm Gold Large Breed Adult Dry Dog Food 30 lb",
+      "expected_official_domains": ["frommfamily.com"],
+      "preferred_domains": ["frommfamily.com"],
+      "expected_url": "https://frommfamily.com/products/gold-large-breed-adult-dog-food",
+      "category": "Dog Food Dry",
+      "difficulty": "medium",
+      "tags": ["official", "pet-food", "dog", "premium"],
+      "source_legality": {
+        "approved_positive_domains": ["frommfamily.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.75
+      }
+    },
+    {
+      "sku": "018214789012",
+      "brand": "Taste of the Wild",
+      "product_name": "Taste of the Wild High Prairie Canine Recipe 28 lb",
+      "expected_official_domains": ["tasteofthewildpetfood.com"],
+      "preferred_domains": ["tasteofthewildpetfood.com"],
+      "expected_url": "https://www.tasteofthewildpetfood.com/products/high-prairie-canine-recipe",
+      "category": "Dog Food Dry",
+      "difficulty": "easy",
+      "tags": ["official", "pet-food", "dog", "grain-free"],
+      "source_legality": {
+        "approved_positive_domains": ["tasteofthewildpetfood.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "walmart.com", "petco.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "019436123456",
+      "brand": "Wellness",
+      "product_name": "Wellness CORE Grain Free Chicken & Turkey Dry Dog Food 4 lb",
+      "expected_official_domains": ["wellnesspetfood.com"],
+      "preferred_domains": ["wellnesspetfood.com"],
+      "expected_url": "https://www.wellnesspetfood.com/products/wellness-core-grain-free-chicken-turkey-dry-dog-food",
+      "category": "Dog Food Dry",
+      "difficulty": "easy",
+      "tags": ["official", "pet-food", "dog", "grain-free"],
+      "source_legality": {
+        "approved_positive_domains": ["wellnesspetfood.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "020345678901",
+      "brand": "Blue Buffalo",
+      "product_name": "Blue Buffalo Life Protection Formula Chicken & Brown Rice Dry Dog Food 30 lb",
+      "expected_official_domains": ["bluebuffalo.com"],
+      "preferred_domains": ["bluebuffalo.com"],
+      "expected_url": "https://bluebuffalo.com/dog-food/life-protection-formula-chicken-brown-rice",
+      "category": "Dog Food Dry",
+      "difficulty": "easy",
+      "tags": ["official", "pet-food", "dog"],
+      "source_legality": {
+        "approved_positive_domains": ["bluebuffalo.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "walmart.com", "petco.com", "petsmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "021456789012",
+      "brand": "Purina Pro Plan",
+      "product_name": "Purina Pro Plan Complete Essentials Chicken & Rice Dry Dog Food 35 lb",
+      "expected_official_domains": ["purina.com", "proplan.com"],
+      "preferred_domains": ["proplan.com", "purina.com"],
+      "expected_url": "https://www.proplan.com/dog-food/complete-essentials-chicken-rice",
+      "category": "Dog Food Dry",
+      "difficulty": "easy",
+      "tags": ["official", "pet-food", "dog"],
+      "source_legality": {
+        "approved_positive_domains": ["purina.com", "proplan.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "walmart.com", "petco.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "022567890123",
+      "brand": "Hill's Science Diet",
+      "product_name": "Hill's Science Diet Adult Chicken & Barley Dry Dog Food 35 lb",
+      "expected_official_domains": ["hillspet.com"],
+      "preferred_domains": ["hillspet.com"],
+      "expected_url": "https://www.hillspet.com/dog-food/sd-adult-chicken-barley-dry",
+      "category": "Dog Food Dry",
+      "difficulty": "easy",
+      "tags": ["official", "pet-food", "dog"],
+      "source_legality": {
+        "approved_positive_domains": ["hillspet.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "023678901234",
+      "brand": "Royal Canin",
+      "product_name": "Royal Canin Size Health Nutrition Medium Adult Dry Dog Food 30 lb",
+      "expected_official_domains": ["royalcanin.com", "royalcanining.com"],
+      "preferred_domains": ["royalcanin.com"],
+      "expected_url": "https://www.royalcanin.com/dogs/products/medium-adult-dry-dog-food",
+      "category": "Dog Food Dry",
+      "difficulty": "easy",
+      "tags": ["official", "pet-food", "dog"],
+      "source_legality": {
+        "approved_positive_domains": ["royalcanin.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "024789012345",
+      "brand": "Merrick",
+      "product_name": "Merrick Grain Free Texas Beef & Sweet Potato Dry Dog Food 22 lb",
+      "expected_official_domains": ["merrickpetcare.com"],
+      "preferred_domains": ["merrickpetcare.com"],
+      "expected_url": "https://www.merrickpetcare.com/products/grain-free-texas-beef-sweet-potato-dry-dog-food",
+      "category": "Dog Food Dry",
+      "difficulty": "easy",
+      "tags": ["official", "pet-food", "dog", "grain-free"],
+      "source_legality": {
+        "approved_positive_domains": ["merrickpetcare.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "025890123456",
+      "brand": "NutriSource",
+      "product_name": "NutriSource Adult Chicken & Rice Dry Dog Food 30 lb",
+      "expected_official_domains": ["nutrisourcepetfoods.com"],
+      "preferred_domains": ["nutrisourcepetfoods.com"],
+      "expected_url": "https://nutrisourcepetfoods.com/products/adult-chicken-rice",
+      "category": "Dog Food Dry",
+      "difficulty": "medium",
+      "tags": ["official", "pet-food", "dog"],
+      "source_legality": {
+        "approved_positive_domains": ["nutrisourcepetfoods.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.75
+      }
+    },
+    {
+      "sku": "026901234567",
+      "brand": "Victor",
+      "product_name": "Victor Super Premium Dog Food Hi-Pro Plus 30 lb",
+      "expected_official_domains": ["victorsuperpremium.com"],
+      "preferred_domains": ["victorsuperpremium.com"],
+      "expected_url": "https://victorsuperpremium.com/products/hi-pro-plus",
+      "category": "Dog Food Dry",
+      "difficulty": "medium",
+      "tags": ["official", "pet-food", "dog"],
+      "source_legality": {
+        "approved_positive_domains": ["victorsuperpremium.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "walmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.75
+      }
+    },
+    {
+      "sku": "034567890123",
+      "brand": "KONG",
+      "product_name": "KONG Classic Dog Toy Large Red",
+      "expected_official_domains": ["kongcompany.com"],
+      "preferred_domains": ["kongcompany.com"],
+      "expected_url": "https://www.kongcompany.com/products/kong-classic-dog-toy-large",
+      "category": "Dog Toys",
+      "difficulty": "easy",
+      "tags": ["official", "toy", "dog", "accessory"],
+      "source_legality": {
+        "approved_positive_domains": ["kongcompany.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com", "walmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "035678901234",
+      "brand": "Nylabone",
+      "product_name": "Nylabone Dura Chew Textured Dog Chew Toy Bacon Flavor Large",
+      "expected_official_domains": ["nylabone.com"],
+      "preferred_domains": ["nylabone.com"],
+      "expected_url": "https://www.nylabone.com/products/dura-chew-textured-dog-chew-toy-bacon-large",
+      "category": "Dog Toys",
+      "difficulty": "easy",
+      "tags": ["official", "toy", "dog", "accessory"],
+      "source_legality": {
+        "approved_positive_domains": ["nylabone.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com", "walmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "036789012345",
+      "brand": "Outward Hound",
+      "product_name": "Outward Hound Hide-A-Squirrel Puzzle Dog Toy Large",
+      "expected_official_domains": ["outwardhound.com"],
+      "preferred_domains": ["outwardhound.com"],
+      "expected_url": "https://www.outwardhound.com/products/hide-a-squirrel-puzzle-dog-toy-large",
+      "category": "Dog Toys",
+      "difficulty": "easy",
+      "tags": ["official", "toy", "dog", "accessory"],
+      "source_legality": {
+        "approved_positive_domains": ["outwardhound.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "037890123456",
+      "brand": "PetSafe",
+      "product_name": "PetSafe Drinkwell Platinum Pet Fountain",
+      "expected_official_domains": ["petsafe.net"],
+      "preferred_domains": ["petsafe.net"],
+      "expected_url": "https://www.petsafe.net/products/drinkwell-platinum-pet-fountain",
+      "category": "Pet Supplies",
+      "difficulty": "medium",
+      "tags": ["official", "supplies", "accessory"],
+      "source_legality": {
+        "approved_positive_domains": ["petsafe.net"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "walmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.75
+      }
+    },
+    {
+      "sku": "045678901234",
+      "brand": "Kaytee",
+      "product_name": "Kaytee Supreme Mouse & Rat Food 5 lb",
+      "expected_official_domains": ["kaytee.com"],
+      "preferred_domains": ["kaytee.com"],
+      "expected_url": "https://www.kaytee.com/products/supreme-mouse-rat-food",
+      "category": "Small Animal Food",
+      "difficulty": "easy",
+      "tags": ["official", "small-animal", "pet-food"],
+      "source_legality": {
+        "approved_positive_domains": ["kaytee.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com", "walmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "046789012345",
+      "brand": "OXGORD",
+      "product_name": "OXGORD 8-Cube Storage Shelving Unit Black",
+      "expected_official_domains": ["oxgord.com"],
+      "preferred_domains": ["oxgord.com"],
+      "expected_url": "https://www.oxgord.com/products/8-cube-storage-shelving-unit-black",
+      "category": "Home Storage",
+      "difficulty": "hard",
+      "tags": ["official", "home", "storage"],
+      "source_legality": {
+        "approved_positive_domains": ["oxgord.com"],
+        "disallowed_negative_domains": ["amazon.com", "walmart.com", "target.com", "wayfair.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.7
+      }
+    },
+    {
+      "sku": "065432109876",
+      "brand": "Tetra",
+      "product_name": "Tetra Whisper IQ Power Filter 10-30 Gallons",
+      "expected_official_domains": ["tetra-fish.com"],
+      "preferred_domains": ["tetra-fish.com"],
+      "expected_url": "https://www.tetra-fish.com/products/whisper-iq-power-filter-10-30-gallons",
+      "category": "Aquarium Supplies",
+      "difficulty": "medium",
+      "tags": ["official", "fish", "aquarium"],
+      "source_legality": {
+        "approved_positive_domains": ["tetra-fish.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com", "walmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.75
+      }
+    },
+    {
+      "sku": "066543210987",
+      "brand": "API",
+      "product_name": "API Stress Coat Water Conditioner 16 oz",
+      "expected_official_domains": ["apifishcare.com"],
+      "preferred_domains": ["apifishcare.com"],
+      "expected_url": "https://www.apifishcare.com/products/stress-coat-water-conditioner-16-oz",
+      "category": "Aquarium Supplies",
+      "difficulty": "medium",
+      "tags": ["official", "fish", "aquarium"],
+      "source_legality": {
+        "approved_positive_domains": ["apifishcare.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.75
+      }
+    },
+    {
+      "sku": "076543210987",
+      "brand": "Mazuri",
+      "product_name": "Mazuri Rat & Mouse Diet 50 lb",
+      "expected_official_domains": ["mazuri.com"],
+      "preferred_domains": ["mazuri.com"],
+      "expected_url": "https://www.mazuri.com/product/rat-mouse-diet-50-lb",
+      "category": "Small Animal Food",
+      "difficulty": "easy",
+      "tags": ["official", "small-animal", "pet-food"],
+      "source_legality": {
+        "approved_positive_domains": ["mazuri.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.85
+      }
+    },
+    {
+      "sku": "086543210987",
+      "brand": "Zoo Med",
+      "product_name": "Zoo Med Repti Calcium with D3 8 oz",
+      "expected_official_domains": ["zoomed.com"],
+      "preferred_domains": ["zoomed.com"],
+      "expected_url": "https://www.zoomed.com/product/repti-calcium-with-d3-8-oz",
+      "category": "Reptile Supplies",
+      "difficulty": "medium",
+      "tags": ["official", "reptile", "supplements"],
+      "source_legality": {
+        "approved_positive_domains": ["zoomed.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.75
+      }
+    },
+    {
+      "sku": "096543210987",
+      "brand": "Ossum",
+      "product_name": "Ossum Squeaky Chew Ball Dog Toy Medium",
+      "expected_official_domains": ["ossum.com"],
+      "preferred_domains": ["ossum.com"],
+      "expected_url": "https://www.ossum.com/products/squeaky-chew-ball-medium",
+      "category": "Dog Toys",
+      "difficulty": "hard",
+      "tags": ["official", "toy", "dog", "hard-find"],
+      "source_legality": {
+        "approved_positive_domains": ["ossum.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "walmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.7
+      }
+    },
+    {
+      "sku": "106543210987",
+      "brand": "JW Pet",
+      "product_name": "JW Pet Hol-ee Roller Dog Toy Large",
+      "expected_official_domains": ["jwpet.com"],
+      "preferred_domains": ["jwpet.com"],
+      "expected_url": "https://www.jwpet.com/products/hol-ee-roller-dog-toy-large",
+      "category": "Dog Toys",
+      "difficulty": "hard",
+      "tags": ["official", "toy", "dog"],
+      "source_legality": {
+        "approved_positive_domains": ["jwpet.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.7
+      }
+    },
+    {
+      "sku": "116543210987",
+      "brand": "Pride Lands",
+      "product_name": "Pride Lands Bearded Dragon Food 4 oz",
+      "expected_official_domains": ["pridelands.com"],
+      "preferred_domains": ["pridelands.com"],
+      "expected_url": null,
+      "category": "Reptile Food",
+      "difficulty": "hard",
+      "tags": ["no-official-found", "reptile", "food"],
+      "source_legality": {
+        "approved_positive_domains": ["pridelands.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": false,
+        "should_auto_select": false,
+        "minimum_domain_match": false,
+        "minimum_confidence": 0.5
+      }
+    },
+    {
+      "sku": "126543210987",
+      "brand": "Wild Harvest",
+      "product_name": "Wild Harvest Food for Hamsters & Gerbils 4 lb",
+      "expected_official_domains": ["wildharvest.com"],
+      "preferred_domains": ["wildharvest.com"],
+      "expected_url": null,
+      "category": "Small Animal Food",
+      "difficulty": "hard",
+      "tags": ["no-official-found", "small-animal", "food"],
+      "source_legality": {
+        "approved_positive_domains": ["wildharvest.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": false,
+        "should_auto_select": false,
+        "minimum_domain_match": false,
+        "minimum_confidence": 0.5
+      }
+    },
+    {
+      "sku": "136543210987",
+      "brand": "Kaytee",
+      "product_name": "Kaytee Fiesta Parakeet Food 5 lb",
+      "expected_official_domains": ["kaytee.com"],
+      "preferred_domains": ["kaytee.com"],
+      "expected_url": "https://www.kaytee.com/products/fiesta-parakeet-food-5-lb",
+      "category": "Bird Food",
+      "difficulty": "medium",
+      "tags": ["official", "bird", "pet-food"],
+      "source_legality": {
+        "approved_positive_domains": ["kaytee.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com", "walmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.75
+      }
+    },
+    {
+      "sku": "146543210987",
+      "brand": "Prevue Hendryx",
+      "product_name": "Prevue Hendryx Parakeet Home Bird Cage 18x18x27 inches",
+      "expected_official_domains": ["prevuepetproducts.com"],
+      "preferred_domains": ["prevuepetproducts.com"],
+      "expected_url": "https://www.prevuepetproducts.com/products/parakeet-home-bird-cage-18x18x27",
+      "category": "Bird Supplies",
+      "difficulty": "medium",
+      "tags": ["official", "bird", "cage"],
+      "source_legality": {
+        "approved_positive_domains": ["prevuepetproducts.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com", "walmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.7
+      }
+    },
+    {
+      "sku": "076132443569",
+      "brand": "Vitakraft",
+      "product_name": "Vitakraft Menu Premium Parakeet Food 3 lb",
+      "expected_official_domains": ["vitakraft.com"],
+      "preferred_domains": ["vitakraft.com"],
+      "expected_url": "https://www.vitakraft.com/products/menu-premium-parakeet-food-3-lb",
+      "category": "Bird Food",
+      "difficulty": "medium",
+      "tags": ["official", "bird", "pet-food"],
+      "source_legality": {
+        "approved_positive_domains": ["vitakraft.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.75
+      }
+    },
+    {
+      "sku": "086644729348",
+      "brand": "Farnam",
+      "product_name": "Farnam IverCare Ivermectin Horse Wormer 1.87% 0.21 oz Syringe",
+      "expected_official_domains": ["farnam.com"],
+      "preferred_domains": ["farnam.com"],
+      "expected_url": "https://www.farnam.com/products/ivercare-ivermectin-horse-wormer-0-21-oz",
+      "category": "Horse Health",
+      "difficulty": "medium",
+      "tags": ["official", "farm", "horse", "health"],
+      "source_legality": {
+        "approved_positive_domains": ["farnam.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "walmart.com", "tractorsupply.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.75
+      }
+    },
+    {
+      "sku": "098765432101",
+      "brand": "Durvet",
+      "product_name": "Durvet Ivermectin Paste 1.87% Horse Wormer 0.21 oz",
+      "expected_official_domains": ["durvet.com"],
+      "preferred_domains": ["durvet.com"],
+      "expected_url": "https://www.durvet.com/products/ivermectin-paste-1-87-horse-wormer",
+      "category": "Horse Health",
+      "difficulty": "medium",
+      "tags": ["official", "farm", "horse", "health"],
+      "source_legality": {
+        "approved_positive_domains": ["durvet.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "walmart.com", "tractorsupply.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.75
+      }
+    },
+    {
+      "sku": "101010101010",
+      "brand": "UnknownBrand",
+      "product_name": "Generic Dog Leash 6ft Nylon",
+      "expected_official_domains": [],
+      "preferred_domains": [],
+      "expected_url": null,
+      "category": "Dog Supplies",
+      "difficulty": "hard",
+      "tags": ["no-official-found", "no-brand", "generic"],
+      "source_legality": {
+        "approved_positive_domains": [],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "walmart.com", "petco.com", "petsmart.com", "ebay.com", "etsy.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": false,
+        "should_auto_select": false,
+        "minimum_domain_match": false,
+        "minimum_confidence": 0
+      }
+    },
+    {
+      "sku": "NEGATIVE-001",
+      "brand": "Fromm",
+      "product_name": "Fromm Gold Large Breed Adult Dry Dog Food 30 lb",
+      "expected_official_domains": ["frommfamily.com"],
+      "preferred_domains": ["frommfamily.com"],
+      "expected_url": "https://frommfamily.com/products/gold-large-breed-adult-dog-food",
+      "category": "Dog Food Dry",
+      "difficulty": "hard",
+      "tags": ["negative", "retailer-top-result", "chewy"],
+      "source_legality": {
+        "approved_positive_domains": ["frommfamily.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "walmart.com", "petco.com", "petsmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "NEGATIVE-002",
+      "brand": "Blue Buffalo",
+      "product_name": "Blue Buffalo Life Protection Formula Chicken & Brown Rice Dry Dog Food 30 lb",
+      "expected_official_domains": ["bluebuffalo.com"],
+      "preferred_domains": ["bluebuffalo.com"],
+      "expected_url": "https://bluebuffalo.com/dog-food/life-protection-formula-chicken-brown-rice",
+      "category": "Dog Food Dry",
+      "difficulty": "hard",
+      "tags": ["negative", "amazon-top-result", "marketplace"],
+      "source_legality": {
+        "approved_positive_domains": ["bluebuffalo.com"],
+        "disallowed_negative_domains": ["amazon.com", "walmart.com", "chewy.com", "petco.com", "petsmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "NEGATIVE-003",
+      "brand": "Purina",
+      "product_name": "Purina Pro Plan Complete Essentials Chicken & Rice Dry Dog Food 35 lb",
+      "expected_official_domains": ["purina.com"],
+      "preferred_domains": ["purina.com"],
+      "expected_url": "https://www.purina.com/pro-plan/dogs/dog-food/complete-essentials-chicken-rice",
+      "category": "Dog Food Dry",
+      "difficulty": "hard",
+      "tags": ["negative", "walmart-top-result", "retailer"],
+      "source_legality": {
+        "approved_positive_domains": ["purina.com"],
+        "disallowed_negative_domains": ["walmart.com", "amazon.com", "chewy.com", "petco.com", "petsmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "NEGATIVE-004",
+      "brand": "KONG",
+      "product_name": "KONG Classic Dog Toy Large Red",
+      "expected_official_domains": ["kongcompany.com"],
+      "preferred_domains": ["kongcompany.com"],
+      "expected_url": "https://www.kongcompany.com/products/kong-classic-dog-toy-large",
+      "category": "Dog Toys",
+      "difficulty": "hard",
+      "tags": ["negative", "petco-top-result", "retailer"],
+      "source_legality": {
+        "approved_positive_domains": ["kongcompany.com"],
+        "disallowed_negative_domains": ["petco.com", "petsmart.com", "chewy.com", "amazon.com", "walmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "NEGATIVE-005",
+      "brand": "Hill's Science Diet",
+      "product_name": "Hill's Science Diet Adult Chicken & Barley Dry Dog Food 35 lb",
+      "expected_official_domains": ["hillspet.com"],
+      "preferred_domains": ["hillspet.com"],
+      "expected_url": "https://www.hillspet.com/dog-food/sd-adult-chicken-barley-dry",
+      "category": "Dog Food Dry",
+      "difficulty": "hard",
+      "tags": ["negative", "petsmart-top-result", "retailer"],
+      "source_legality": {
+        "approved_positive_domains": ["hillspet.com"],
+        "disallowed_negative_domains": ["petsmart.com", "petco.com", "chewy.com", "amazon.com", "walmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "NEGATIVE-006",
+      "brand": "Royal Canin",
+      "product_name": "Royal Canin Size Health Nutrition Medium Adult Dry Dog Food 30 lb",
+      "expected_official_domains": ["royalcanin.com"],
+      "preferred_domains": ["royalcanin.com"],
+      "expected_url": "https://www.royalcanin.com/dogs/products/medium-adult-dry-dog-food",
+      "category": "Dog Food Dry",
+      "difficulty": "hard",
+      "tags": ["negative", "ebay-listing", "marketplace"],
+      "source_legality": {
+        "approved_positive_domains": ["royalcanin.com"],
+        "disallowed_negative_domains": ["ebay.com", "amazon.com", "chewy.com", "walmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "NEGATIVE-007",
+      "brand": "NutriSource",
+      "product_name": "NutriSource Adult Chicken & Rice Dry Dog Food 30 lb",
+      "expected_official_domains": ["nutrisourcepetfoods.com"],
+      "preferred_domains": ["nutrisourcepetfoods.com"],
+      "expected_url": "https://nutrisourcepetfoods.com/products/adult-chicken-rice",
+      "category": "Dog Food Dry",
+      "difficulty": "hard",
+      "tags": ["negative", "etsy-handmade", "marketplace"],
+      "source_legality": {
+        "approved_positive_domains": ["nutrisourcepetfoods.com"],
+        "disallowed_negative_domains": ["etsy.com", "amazon.com", "ebay.com", "chewy.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.8
+      }
+    },
+    {
+      "sku": "NEGATIVE-008",
+      "brand": "Wellness",
+      "product_name": "Wellness CORE Grain Free Chicken & Turkey Dry Dog Food 4 lb",
+      "expected_official_domains": ["wellnesspetfood.com"],
+      "preferred_domains": ["wellnesspetfood.com"],
+      "expected_url": null,
+      "category": "Dog Food Dry",
+      "difficulty": "hard",
+      "tags": ["negative", "chewy-dominates-serp", "retailer"],
+      "source_legality": {
+        "approved_positive_domains": ["wellnesspetfood.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com", "walmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": false,
+        "should_auto_select": false,
+        "minimum_domain_match": false,
+        "minimum_confidence": 0.5
+      }
+    },
+    {
+      "sku": "NEGATIVE-009",
+      "brand": "Merrick",
+      "product_name": "Merrick Grain Free Texas Beef & Sweet Potato Dry Dog Food 22 lb",
+      "expected_official_domains": ["merrickpetcare.com"],
+      "preferred_domains": ["merrickpetcare.com"],
+      "expected_url": null,
+      "category": "Dog Food Dry",
+      "difficulty": "hard",
+      "tags": ["negative", "all-retailer-results", "no-official-found"],
+      "source_legality": {
+        "approved_positive_domains": ["merrickpetcare.com"],
+        "disallowed_negative_domains": ["chewy.com", "amazon.com", "petco.com", "petsmart.com", "walmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": false,
+        "should_auto_select": false,
+        "minimum_domain_match": false,
+        "minimum_confidence": 0.5
+      }
+    },
+    {
+      "sku": "NEGATIVE-010",
+      "brand": "Kaytee",
+      "product_name": "Kaytee Fiesta Parakeet Food 5 lb",
+      "expected_official_domains": ["kaytee.com"],
+      "preferred_domains": ["kaytee.com"],
+      "expected_url": null,
+      "category": "Bird Food",
+      "difficulty": "hard",
+      "tags": ["negative", "walmart-dominates", "target-dominates", "all-retailer"],
+      "source_legality": {
+        "approved_positive_domains": ["kaytee.com"],
+        "disallowed_negative_domains": ["walmart.com", "target.com", "chewy.com", "amazon.com", "petco.com", "petsmart.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": false,
+        "should_auto_select": false,
+        "minimum_domain_match": false,
+        "minimum_confidence": 0.5
+      }
+    },
+    {
+      "sku": "GARDEN-001",
+      "brand": "Scotts",
+      "product_name": "Scotts Turf Builder Lawn Food 5000 sq ft",
+      "expected_official_domains": ["scotts.com"],
+      "preferred_domains": ["scotts.com"],
+      "expected_url": "https://www.scotts.com/en-us/products/lawn-food/turf-builder-lawn-food",
+      "category": "Lawn Garden",
+      "difficulty": "easy",
+      "tags": ["easy", "garden", "lawn"],
+      "source_legality": {
+        "approved_positive_domains": ["scotts.com", "scottsmiraclegro.com"],
+        "disallowed_negative_domains": ["amazon.com", "walmart.com", "homedepot.com", "lowes.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.85
+      }
+    },
+    {
+      "sku": "GARDEN-002",
+      "brand": "Miracle-Gro",
+      "product_name": "Miracle-Gro Water Soluble All Purpose Plant Food 1 lb",
+      "expected_official_domains": ["miraclegro.com"],
+      "preferred_domains": ["miraclegro.com"],
+      "expected_url": "https://www.miraclegro.com/en-us/shop/plant-food/all-purpose-water-soluble-plant-food",
+      "category": "Lawn Garden",
+      "difficulty": "easy",
+      "tags": ["easy", "garden", "plant-food"],
+      "source_legality": {
+        "approved_positive_domains": ["miraclegro.com", "scottsmiraclegro.com"],
+        "disallowed_negative_domains": ["amazon.com", "walmart.com", "homedepot.com", "lowes.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.85
+      }
+    },
+    {
+      "sku": "GARDEN-003",
+      "brand": "Ortho",
+      "product_name": "Ortho Home Defense Insect Killer For Indoor & Perimeter 1.1 gal",
+      "expected_official_domains": ["ortho.com"],
+      "preferred_domains": ["ortho.com"],
+      "expected_url": "https://www.ortho.com/en-us/products/insect-control/home-defense-insect-killer-indoor-perimeter",
+      "category": "Lawn Garden",
+      "difficulty": "medium",
+      "tags": ["medium", "garden", "pest-control"],
+      "source_legality": {
+        "approved_positive_domains": ["ortho.com"],
+        "disallowed_negative_domains": ["amazon.com", "walmart.com", "homedepot.com", "lowes.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.75
+      }
+    },
+    {
+      "sku": "GARDEN-004",
+      "brand": "Roundup",
+      "product_name": "Roundup Ready-To-Use Weed & Grass Killer 1 gal",
+      "expected_official_domains": ["roundup.com"],
+      "preferred_domains": ["roundup.com"],
+      "expected_url": "https://www.roundup.com/en-us/products/weed-grass-killer/ready-to-use-weed-grass-killer",
+      "category": "Lawn Garden",
+      "difficulty": "medium",
+      "tags": ["medium", "garden", "weed-control"],
+      "source_legality": {
+        "approved_positive_domains": ["roundup.com"],
+        "disallowed_negative_domains": ["amazon.com", "walmart.com", "homedepot.com", "lowes.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.75
+      }
+    },
+    {
+      "sku": "GARDEN-005",
+      "brand": "Pennington",
+      "product_name": "Pennington Smart Seed Sun & Shade Grass Seed 7 lb",
+      "expected_official_domains": ["pennington.com"],
+      "preferred_domains": ["pennington.com"],
+      "expected_url": "https://www.pennington.com/products/smart-seed-sun-shade-grass-seed-7lb",
+      "category": "Lawn Garden",
+      "difficulty": "medium",
+      "tags": ["medium", "garden", "seed"],
+      "source_legality": {
+        "approved_positive_domains": ["pennington.com"],
+        "disallowed_negative_domains": ["amazon.com", "walmart.com", "homedepot.com", "lowes.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.75
+      }
+    },
+    {
+      "sku": "DIY-001",
+      "brand": "Flex Seal",
+      "product_name": "Flex Seal Liquid Rubber Coating 14 oz Black",
+      "expected_official_domains": ["flexsealproducts.com"],
+      "preferred_domains": ["flexsealproducts.com"],
+      "expected_url": "https://flexsealproducts.com/products/liquid-rubber-coating-14-oz-black",
+      "category": "Home Improvement",
+      "difficulty": "medium",
+      "tags": ["medium", "home-improvement", "diy"],
+      "source_legality": {
+        "approved_positive_domains": ["flexsealproducts.com"],
+        "disallowed_negative_domains": ["amazon.com", "walmart.com", "homedepot.com", "lowes.com", "target.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.75
+      }
+    },
+    {
+      "sku": "DIY-002",
+      "brand": "Gorilla Glue",
+      "product_name": "Gorilla Glue Original 18 oz Bottle",
+      "expected_official_domains": ["gorillaglue.com"],
+      "preferred_domains": ["gorillaglue.com"],
+      "expected_url": "https://www.gorillaglue.com/products/original-gorilla-glue-18-oz",
+      "category": "Home Improvement",
+      "difficulty": "medium",
+      "tags": ["medium", "home-improvement", "adhesive"],
+      "source_legality": {
+        "approved_positive_domains": ["gorillaglue.com"],
+        "disallowed_negative_domains": ["amazon.com", "walmart.com", "homedepot.com", "lowes.com"]
+      },
+      "expected_behavior": {
+        "should_find_official": true,
+        "should_auto_select": true,
+        "minimum_domain_match": true,
+        "minimum_confidence": 0.75
+      }
+    }
+  ]
+}

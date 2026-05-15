@@ -1,3 +1,5 @@
+"""Runner entry point — dispatches enrichment jobs including approved-source extraction."""
+
 from __future__ import annotations
 
 import asyncio
@@ -10,8 +12,9 @@ from core.api_client import JobConfig
 from core.settings_manager import settings
 from scrapers.product_url_extraction.extractor import ProductPageExtractor
 from scrapers.ai_search.enrichment_models import (
-    EnrichmentMode,
     build_v1_from_extraction_result,
+    build_error_result,
+    now_iso,
 )
 
 logger = logging.getLogger(__name__)
@@ -83,7 +86,7 @@ def run_job(
     api_client: Optional[Any] = None,
     job_logging: Optional[Any] = None,
 ) -> Dict[str, Any]:
-    # Only enrichment jobs are supported in the modern architecture
+    """Main job dispatch. Only enrichment jobs are supported."""
     if job_config.job_type == ENRICHMENT_JOB_TYPE:
         return _run_enrichment_job(
             job_config,
@@ -111,12 +114,11 @@ def _run_enrichment_job(
     api_client: Optional[Any] = None,
     job_logging: Optional[Any] = None,
 ) -> Dict[str, Any]:
-    """Execute a single enrichment (AI extraction) for a URL target.
+    """Execute a single enrichment job.
 
-    This is the AI-only extraction path. It takes a job config with a target URL
-    and SKU, fetches the page via Crawl4AI engine, extracts product data using
-    the AI extraction pipeline, formats the output as EnrichmentResultV1, and
-    submits the result back to the coordinator.
+    Supports two modes:
+    1. Standard URL extraction: target_url + SKU
+    2. Approved Source Extraction: source_plan in payload
     """
     job_id = job_config.job_id
     skus = job_config.skus
@@ -148,7 +150,6 @@ def _run_enrichment_job(
         flush_immediately=True,
     )
 
-    # Extract single SKU and target URL from payload
     target_url = job_payload.get("target_url", "")
     target_sku = skus[0] if skus else job_payload.get("sku", "")
     domain = job_payload.get("domain")
@@ -171,38 +172,20 @@ def _run_enrichment_job(
         results["logs"] = job_logging.snapshot() if job_logging else log_buffer
         return results
 
-    # Approved Source Extraction sentinel
+    # ---- APPROVED SOURCE EXTRACTION PATH ----
     if target_url == "approved_source_extraction":
-        source_plan = job_payload.get("source_plan")
-        _emit_runner_log(
-            job_id=job_id,
+        return _run_approved_source_extraction(
+            job_config=job_config,
+            job_payload=job_payload,
+            target_sku=target_sku,
             runner_name=runner_name,
-            job_logging=job_logging,
             log_buffer=log_buffer,
-            level="info",
-            message=f"Approved source extraction for SKU={target_sku} (concrete adapters not yet implemented)",
-            details={"has_source_plan": source_plan is not None},
-            sku=target_sku,
-            phase="enriching",
+            api_client=api_client,
+            job_logging=job_logging,
+            results=results,
         )
-        results["skus_processed"] = 1
-        results["data"][target_sku] = {
-            "enrichment": {
-                "title": None,
-                "brand": None,
-                "weight": None,
-                "description": None,
-                "images": [],
-                "confidence": 0.0,
-                "scraped_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                "mode": "approved_source_extraction",
-                "decision": "not_implemented",
-                "llm_used": False,
-                "warnings": ["Approved source extraction adapters not yet implemented"],
-            }
-        }
-        return results
 
+    # ---- STANDARD URL EXTRACTION PATH ----
     if not target_url:
         error_msg = "Enrichment job missing target_url"
         _emit_runner_log(
@@ -219,12 +202,6 @@ def _run_enrichment_job(
         results["logs"] = job_logging.snapshot() if job_logging else log_buffer
         return results
 
-    # Map mode string to EnrichmentMode
-    try:
-        enrichment_mode = EnrichmentMode(mode_str)
-    except ValueError:
-        enrichment_mode = EnrichmentMode.MIXED
-
     _emit_runner_log(
         job_id=job_id,
         runner_name=runner_name,
@@ -232,12 +209,11 @@ def _run_enrichment_job(
         log_buffer=log_buffer,
         level="info",
         message=f"Enriching SKU={target_sku} URL={target_url}",
-        details={"model": model, "mode": enrichment_mode.value},
+        details={"model": model, "mode": mode_str},
         sku=target_sku,
         phase="enriching",
     )
 
-    # Run extraction via ProductPageExtractor (reuses the full AI pipeline)
     extractor = ProductPageExtractor(
         headless=settings.browser_settings["headless"],
         llm_model=model,
@@ -255,17 +231,15 @@ def _run_enrichment_job(
 
     extraction_result = asyncio.run(_run_extraction())
 
-    # Build v1 enrichment result
     enrichment_result = build_v1_from_extraction_result(
+        result=extraction_result,
         sku=target_sku,
         url=target_url,
-        extraction_result=extraction_result,
         domain=domain,
         model=model,
-        mode=enrichment_mode,
+        mode=mode_str,
     )
 
-    # Record in results dict for backward compatibility
     if extraction_result.get("success"):
         results["skus_processed"] = 1
         results["data"][target_sku] = {
@@ -277,11 +251,10 @@ def _run_enrichment_job(
                 "images": enrichment_result.product.image_urls,
                 "confidence": enrichment_result.confidence.overall,
                 "scraped_at": enrichment_result.extracted_at,
-                "mode": enrichment_mode.value,
+                "mode": mode_str,
                 "model": model,
             }
         }
-
         _emit_runner_log(
             job_id=job_id,
             runner_name=runner_name,
@@ -291,12 +264,18 @@ def _run_enrichment_job(
             message=f"Enrichment succeeded for SKU={target_sku}",
             details={
                 "confidence": enrichment_result.confidence.overall,
-                "fields_found": len([f for f in [
-                    enrichment_result.product.name,
-                    enrichment_result.product.brand,
-                    enrichment_result.product.weight,
-                    enrichment_result.product.description,
-                ] if f]),
+                "fields_found": len(
+                    [
+                        f
+                        for f in [
+                            enrichment_result.product.name,
+                            enrichment_result.product.brand,
+                            enrichment_result.product.weight,
+                            enrichment_result.product.description,
+                        ]
+                        if f
+                    ]
+                ),
             },
             sku=target_sku,
             phase="completed",
@@ -310,7 +289,6 @@ def _run_enrichment_job(
                 "scraped_at": enrichment_result.extracted_at,
             }
         }
-
         _emit_runner_log(
             job_id=job_id,
             runner_name=runner_name,
@@ -322,31 +300,8 @@ def _run_enrichment_job(
             phase="failed",
         )
 
-    # Submit enrichment result back via API
-    if api_client and hasattr(api_client, "submit_enrichment_result"):
-        attempt_id = job_payload.get("attempt_id", "")
-        if attempt_id:
-            result_json = enrichment_result.model_dump_json()
-            status_str = "success" if extraction_result.get("success") else "failed"
-            if extraction_result.get("success") and enrichment_result.confidence.overall < 0.5:
-                status_str = "partial"
-
-            try:
-                submitted = api_client.submit_enrichment_result(
-                    attempt_id=attempt_id,
-                    status=status_str,
-                    result_json=result_json,
-                    error_message=extraction_result.get("error") if not extraction_result.get("success") else None,
-                    lease_token=getattr(job_config, "lease_token", None),
-                )
-                if submitted:
-                    logger.info(f"Enrichment result submitted for attempt {attempt_id}")
-                else:
-                    logger.warning(f"Failed to submit enrichment result for attempt {attempt_id}")
-            except Exception as e:
-                logger.error(f"Error submitting enrichment result: {e}")
-        else:
-            logger.warning("No attempt_id in job config — enrichment result not submitted via callback")
+    # Submit enrichment result via callback
+    _submit_result(api_client, job_config, job_payload, enrichment_result)
 
     results["enrichment_results"] = [enrichment_result.model_dump()]
     results["logs"] = job_logging.snapshot() if job_logging else log_buffer
@@ -364,6 +319,271 @@ def _run_enrichment_job(
     )
 
     return results
+
+
+# =============================================================================
+# Approved Source Extraction
+# =============================================================================
+
+
+def _run_approved_source_extraction(
+    job_config: JobConfig,
+    job_payload: dict[str, Any],
+    target_sku: str,
+    runner_name: str | None,
+    log_buffer: list[dict[str, Any]],
+    api_client: Any | None,
+    job_logging: Any | None,
+    results: dict[str, Any],
+) -> dict[str, Any]:
+    """Execute approved source extraction via the executor.
+
+    Returns results dict with enrichment result data and always submits
+    a callback (even on failure).
+    """
+    job_id = job_config.job_id
+
+    source_plan_raw = job_payload.get("source_plan")
+    if not source_plan_raw:
+        error_msg = f"Approved source extraction for SKU={target_sku} missing source_plan"
+        _emit_runner_log(
+            job_id=job_id,
+            runner_name=runner_name,
+            job_logging=job_logging,
+            log_buffer=log_buffer,
+            level="error",
+            message=error_msg,
+            sku=target_sku,
+            phase="failed",
+        )
+        results["error_message"] = error_msg
+        # Build and submit a failed result
+        enrichment_result = build_error_result(
+            sku=target_sku,
+            url="approved_source_extraction",
+            error_message=error_msg,
+            mode="mixed",
+        )
+        _submit_result(api_client, job_config, job_payload, enrichment_result)
+        results["logs"] = job_logging.snapshot() if job_logging else log_buffer
+        return results
+
+    _emit_runner_log(
+        job_id=job_id,
+        runner_name=runner_name,
+        job_logging=job_logging,
+        log_buffer=log_buffer,
+        level="info",
+        message=f"Executing Approved Source Extraction for SKU={target_sku}",
+        details={"has_source_plan": True},
+        sku=target_sku,
+        phase="enriching",
+    )
+
+    # Parse source plan
+    try:
+        from scrapers.approved_sources.types import parse_source_plan
+
+        plan = parse_source_plan(source_plan_raw)
+    except Exception as e:
+        error_msg = f"Failed to parse source plan for SKU={target_sku}: {e}"
+        _emit_runner_log(
+            job_id=job_id,
+            runner_name=runner_name,
+            job_logging=job_logging,
+            log_buffer=log_buffer,
+            level="error",
+            message=error_msg,
+            sku=target_sku,
+            phase="failed",
+        )
+        results["error_message"] = error_msg
+        enrichment_result = build_error_result(
+            sku=target_sku,
+            url="approved_source_extraction",
+            error_message=error_msg,
+            mode="mixed",
+        )
+        _submit_result(api_client, job_config, job_payload, enrichment_result)
+        results["logs"] = job_logging.snapshot() if job_logging else log_buffer
+        return results
+
+    # Execute via executor
+    try:
+        from scrapers.approved_sources.executor import ApprovedSourceExecutor
+
+        # Create extractor (needed for the adapter interface)
+        model = job_payload.get("model", "deepseek-chat")
+        extractor = ProductPageExtractor(
+            headless=settings.browser_settings["headless"],
+            llm_model=model,
+            cache_enabled=True,
+            extraction_strategy="llm",
+        )
+
+        executor = ApprovedSourceExecutor(
+            plan=plan,
+            extractor=extractor,
+            api_client=api_client,
+        )
+
+        enrichment_result = asyncio.run(executor.execute())
+    except Exception as e:
+        error_msg = f"Executor failed for SKU={target_sku}: {e}"
+        _emit_runner_log(
+            job_id=job_id,
+            runner_name=runner_name,
+            job_logging=job_logging,
+            log_buffer=log_buffer,
+            level="error",
+            message=error_msg,
+            sku=target_sku,
+            phase="failed",
+        )
+        results["error_message"] = error_msg
+        enrichment_result = build_error_result(
+            sku=target_sku,
+            url="approved_source_extraction",
+            error_message=error_msg,
+            mode="mixed",
+        )
+
+    # Merge executor result into results dict
+    if enrichment_result and enrichment_result.status in ("success", "partial"):
+        results["skus_processed"] = 1
+        results["data"][target_sku] = {
+            "enrichment": {
+                "title": enrichment_result.product.name,
+                "brand": enrichment_result.product.brand,
+                "weight": enrichment_result.product.weight,
+                "description": enrichment_result.product.description,
+                "images": enrichment_result.product.image_urls,
+                "confidence": enrichment_result.confidence.overall,
+                "scraped_at": enrichment_result.extracted_at,
+                "mode": "approved_source",
+                "decision": enrichment_result.decision,
+                "llm_used": enrichment_result.llm_used,
+                "source_results": [
+                    sr.model_dump() for sr in (enrichment_result.source_results or [])
+                ],
+            }
+        }
+        _emit_runner_log(
+            job_id=job_id,
+            runner_name=runner_name,
+            job_logging=job_logging,
+            log_buffer=log_buffer,
+            level="info",
+            message=f"Approved source extraction succeeded for SKU={target_sku}",
+            details={
+                "confidence": enrichment_result.confidence.overall,
+                "decision": enrichment_result.decision,
+            },
+            sku=target_sku,
+            phase="completed",
+        )
+    else:
+        status = enrichment_result.status if enrichment_result else "failed"
+        confidence = enrichment_result.confidence.overall if enrichment_result else 0.0
+        results["data"][target_sku] = {
+            "enrichment": {
+                "error": "All approved sources failed",
+                "confidence": confidence,
+                "scraped_at": now_iso(),
+                "mode": "approved_source",
+                "decision": "failed",
+                "source_results": (
+                    [sr.model_dump() for sr in enrichment_result.source_results]
+                    if enrichment_result and enrichment_result.source_results
+                    else []
+                ),
+            }
+        }
+        _emit_runner_log(
+            job_id=job_id,
+            runner_name=runner_name,
+            job_logging=job_logging,
+            log_buffer=log_buffer,
+            level="warning",
+            message=f"Approved source extraction failed for SKU={target_sku}",
+            sku=target_sku,
+            phase="failed",
+        )
+
+    # ALWAYS submit callback (even on failure)
+    if enrichment_result:
+        _submit_result(api_client, job_config, job_payload, enrichment_result)
+        results["enrichment_results"] = [enrichment_result.model_dump()]
+
+    results["logs"] = job_logging.snapshot() if job_logging else log_buffer
+    return results
+
+
+# =============================================================================
+# Callback submission
+# =============================================================================
+
+
+def _submit_result(
+    api_client: Any | None,
+    job_config: JobConfig,
+    job_payload: dict[str, Any],
+    enrichment_result: Any | None,
+) -> None:
+    """Submit enrichment result back to the coordinator via callback API."""
+    if not api_client or not hasattr(api_client, "submit_enrichment_result"):
+        logger.warning("No API client or submit_enrichment_result method — callback skipped")
+        return
+
+    attempt_id = job_payload.get("attempt_id", "")
+    if not attempt_id:
+        logger.warning("No attempt_id in job config — enrichment result not submitted")
+        return
+
+    if not enrichment_result:
+        logger.warning("No enrichment result to submit for attempt %s", attempt_id)
+        return
+
+    try:
+        result_json = enrichment_result.model_dump_json()
+        status_str = _determine_submission_status(enrichment_result)
+
+        submitted = api_client.submit_enrichment_result(
+            attempt_id=attempt_id,
+            status=status_str,
+            result_json=result_json,
+            lease_token=getattr(job_config, "lease_token", None),
+        )
+        if submitted:
+            logger.info("Enrichment result submitted for attempt %s (status=%s)", attempt_id, status_str)
+        else:
+            logger.warning("Failed to submit enrichment result for attempt %s", attempt_id)
+    except Exception as e:
+        logger.error("Error submitting enrichment result for attempt %s: %s", attempt_id, e)
+
+
+def _determine_submission_status(enrichment_result: Any) -> str:
+    """Map EnrichmentResultV1 status to callback submission status.
+
+    Maps:
+      - success -> success
+      - partial with confidence >= 0.7 -> success
+      - partial with confidence < 0.7 -> partial
+      - failed -> failed
+
+    Note: we NEVER send url_review. Approved-source extraction
+    is autonomous; failures stay as failed.
+    """
+    if enrichment_result.status == "success":
+        return "success"
+    if enrichment_result.status == "partial":
+        if (
+            enrichment_result.confidence
+            and enrichment_result.confidence.overall >= 0.7
+        ):
+            return "success"
+        return "partial"
+    return "failed"
 
 
 __all__ = [

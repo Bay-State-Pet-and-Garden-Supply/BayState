@@ -1,184 +1,229 @@
 # Implementation Plan
 
 ## Goal
-Harden the login-protected image pipeline so authenticated vendor image URLs are captured as bytes, persisted to durable public storage, retried with correct login semantics, and prevented from escaping as final product image references.
+Implement Approved Source Extraction v1 end-to-end with Crawl4AI distributor adapters, legal/source-policy enforcement, deterministic benchmark datasets, and valid enrichment callback results.
 
 ## Tasks
+1. **Reconcile and fix the enrichment result contract first**
+   - File: `apps/scraper/scrapers/ai_search/enrichment_models.py`
+   - Changes: Add Python model fields matching `apps/web/lib/enrichment/contracts.ts`: `source.source_type`, `source.source_slug`, `source.approved_source_id`, `source.evidence`, top-level `decision`, `llm_used`, and `source_results`. Generate `extracted_at` with UTC offset (`datetime.now(timezone.utc).isoformat()`). Fix `build_v1_from_extraction_result()` to accept/use `result` consistently and keep `mode` as a string literal, not an enum object.
+   - Acceptance: Existing enrichment result serialization still works; approved-source results validate against web Zod schema.
 
-1. **Create shared TypeScript login-detection helper** _(complexity: small)_
-   - File: `apps/web/lib/scraper-config-login.ts`
-   - Changes:
-     - Add an exported `scraperConfigRequiresLogin(config: unknown): boolean` helper.
-     - Treat these as login-required:
-       - `requires_login === true`
-       - `login` is a non-null object
-       - any `workflows[]` step whose `action` or JSON-serialized `params` contains one of: `login`, `authenticate`, `sign_in`, `signin`, `password`, `username`.
-     - Keep helper defensive for malformed YAML/DB config objects.
-   - Tests:
-     - New file: `apps/web/lib/__tests__/scraper-config-login.test.ts`
-     - Cover `petfoodex.yaml` style config with `login:` but no `requires_login`.
-     - Cover workflow-keyword-only login.
-     - Cover explicit `requires_login: true`.
-     - Cover non-login scraper returns false.
-   - Acceptance:
-     - `bun run web test -- lib/__tests__/scraper-config-login.test.ts`
+2. **Fix runner dispatch so approved-source jobs execute and always callback**
+   - File: `apps/scraper/runner/__init__.py`
+   - Changes: Replace the current `approved_source_extraction` not-implemented branch with source-plan parsing and executor/orchestrator invocation. Fix `build_v1_from_extraction_result(extraction_result=...)` to `result=...`. Stop treating `EnrichmentMode` as an enum; use validated mode strings. Submit a failed `EnrichmentResultV1` callback when `source_plan` is missing, executor fails, or all sources fail.
+   - Acceptance: A job with `target_url == "approved_source_extraction"` no longer returns `decision: not_implemented`; failed jobs submit callback payloads instead of leaving attempts stuck.
 
-2. **Use shared login detection in retry target resolution** _(complexity: small)_
-   - File: `apps/web/lib/scraper-callback/image-retry-processor.ts`
-   - Changes:
-     - Import `scraperConfigRequiresLogin` from `@/lib/scraper-config-login`.
-     - Expand `ScraperYamlConfig` to include `login?: unknown`, `workflows?: unknown`, and `requires_login?: boolean`.
-     - Replace `requiresLogin: Boolean(parsed.requires_login)` with `requiresLogin: scraperConfigRequiresLogin(parsed)` in `loadScraperRuntimeConfig()`.
-     - Keep base URL matching behavior unchanged.
-   - Tests:
-     - Modify `apps/web/lib/scraper-callback/__tests__/image-retry-processor.test.ts`.
-     - Add/adjust a test where the matched scraper YAML has a `login:` block but no `requires_login`; expected `resolveImageRetryTarget(...).requiresLogin === true` and auth refresh/relogin code paths are reachable for `auth_401` retry entries.
-   - Acceptance:
-     - Existing retry processor tests pass.
-     - PetFoodEx-style config no longer resolves to `requiresLogin: false`.
+3. **Add approved-source extraction result builder**
+   - File: `apps/scraper/scrapers/approved_sources/result_builder.py`
+   - Changes: Create helpers to build success, partial, auth-required/auth-expired, policy-blocked, no-match, and generic failed `EnrichmentResultV1` objects. Include `decision`, `llm_used`, `source_results`, source provenance, SKU match validation, warnings, field confidences, and allowed-field filtering.
+   - Acceptance: Unit tests can build valid success/partial/failed results without invoking Crawl4AI or network.
 
-3. **Remove duplicate backfill login detection and fix queued error type** _(complexity: small)_
-   - File: `apps/web/scripts/backfill-login-protected-images-logic.ts`
-   - Changes:
-     - Import and use `scraperConfigRequiresLogin` from `../lib/scraper-config-login`.
-     - Remove the local duplicate login-detection function, or keep only a thin wrapper if needed for test exports.
-     - For login-protected non-durable URLs queued by backfill, set `error_type: 'auth_401'` instead of `not_found_404` so retry processing can refresh/relogin instead of treating the URL as a permanent missing asset.
-     - Keep durable reference filtering unchanged: data URLs and `product-images` storage URLs should not be queued.
-   - Tests:
-     - Modify `apps/web/__tests__/scripts/backfill-login-protected-images.test.ts`.
-     - Add/adjust assertions that PetFoodEx-style configs are detected and queued entries use `auth_401`.
-   - Acceptance:
-     - `bun run web test -- __tests__/scripts/backfill-login-protected-images.test.ts`
+4. **Add adapter result/types needed by the executor**
+   - File: `apps/scraper/scrapers/approved_sources/types.py`
+   - Changes: Add dataclasses or Pydantic models for `ApprovedSourceExtractionResult`, `ApprovedSourceFieldResult`, source attempt metadata, and failure codes (`AUTH_REQUIRED`, `AUTH_EXPIRED`, `POLICY_BLOCKED`, `NO_MATCH`, `EXTRACTION_FAILED`). Keep existing plan parsing backward-compatible.
+   - Acceptance: Existing `parse_source_plan()` tests continue to pass; executor/adapters share typed result objects.
 
-4. **Fix admin manual retry semantics** _(complexity: small)_
-   - File: `apps/web/app/api/admin/scraping/retry-image/route.ts`
-   - Changes:
-     - Keep relying on `resolveImageRetryTarget()`; after Task 2 this will correctly identify login-required scrapers.
-     - When `target.requiresLogin` is true, enqueue/update manual retry rows with `error_type: 'auth_401'` instead of `not_found_404`.
-     - Preserve current `202` behavior for non-login sources: accepted but not queued.
-   - Tests:
-     - Modify `apps/web/__tests__/api/admin/scraping/retry-image.test.ts`.
-     - Assert login-protected manual retry inserts/updates `auth_401`.
-     - Assert non-login source still returns `{ accepted: true, queued: false }`.
-   - Acceptance:
-     - `bun run web test -- __tests__/api/admin/scraping/retry-image.test.ts`
+5. **Create a common Crawl4AI distributor adapter base**
+   - File: `apps/scraper/scrapers/approved_sources/adapters/base.py`
+   - Changes: Implement `ApprovedSourceAdapter` plus `BaseDistributorCrawl4AIAdapter` with common methods: alias-safe slug metadata, credential check, search URL construction, policy validation before crawl, Crawl4AI/ProductPageExtractor invocation, deterministic HTML/metadata extraction from fixture or crawl result, image URL normalization/filtering, allowed-field filtering, confidence calculation, and no-result detection.
+   - File: `apps/scraper/requirements.txt`
+   - File: `apps/scraper/requirements-runtime.txt`
+   - Changes: If deterministic selector parsing needs it, add `beautifulsoup4` and `lxml`; otherwise document that parsing uses existing dependencies only.
+   - Acceptance: A mock adapter can extract title/brand/SKU/images from fixture HTML and reject disallowed image URLs.
 
-5. **Add callback/storage persistence regression coverage** _(complexity: medium)_
-   - File: `apps/web/lib/__tests__/product-image-storage.test.ts`
-   - Changes:
-     - Add a regression test for a source payload containing:
-       - a successful scraper image capture result object with `status: 'success'`, `data_url`, and `original_url`.
-       - a failed capture result object with `status: 'error'`, `error_type: 'auth_401'`, and `original_url`.
-     - Expected behavior from `replaceInlineImageDataUrls()`:
-       - success becomes a public Supabase `product-images` URL.
-       - failure becomes a `pending_retry://auth_401/...` marker and inserts into `image_retry_queue`.
-       - no protected vendor URL is returned as a final image value except inside retry queue metadata/`image_url`.
-   - Optional integration file if existing mocks are better suited: `apps/web/__tests__/lib/scraper-callback/products-ingestion-callback.test.ts`
-   - Acceptance:
-     - `bun run web test -- lib/__tests__/product-image-storage.test.ts`
+6. **Create adapter registry with required aliases**
+   - File: `apps/scraper/scrapers/approved_sources/adapters/registry.py`
+   - Changes: Register adapter slugs `bradley_crawl4ai`, `central_pet_crawl4ai`, `orgill_crawl4ai`, `phillips_crawl4ai`, `pet_food_experts_crawl4ai`, and `crawl4ai_direct`. Register aliases `bradley`, `central-pet`, `central_pet`, `orgill`, `phillips`, `petfoodex`, `pet_food_experts`, `pet-food-experts`. Add `normalize_adapter_slug()` / `get_adapter_class()` helpers.
+   - Acceptance: All required slugs and aliases resolve in unit tests.
 
-6. **Harden scraper authenticated image capture primary path** _(complexity: medium)_
-   - File: `apps/scraper/scrapers/actions/handlers/image.py`
-   - Changes:
-     - Add Python-side URL normalization using the current page URL, e.g. `urllib.parse.urljoin(page.url, raw_url)`, before attempting capture.
-     - Ensure every capture metadata `original_url` for HTTP(S) images is absolute, including failures.
-     - Add a Playwright authenticated request capture path as the primary attempt:
-       - Use the active page or browser context request object (`page.request` or `page.context.request`) so cookies/session state are shared.
-       - Send image-friendly headers: `referer: page.url`, `accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8`.
-       - Use existing `FETCH_TIMEOUT_MS` and `fail_on_status_code=False` if supported by the Playwright Python API.
-       - On 401/403 classify as `auth_401`; 404 as `not_found_404`; timeout/network as `network_timeout`; unexpected non-image content as `cors_blocked` or `unknown`.
-       - Convert successful response bytes to `data:<content-type>;base64,...`.
-     - Keep current browser-side `fetch(..., { credentials: 'include' })` implementation as fallback when the primary request path fails because of network/CORS/browser-header quirks.
-     - Do not return raw protected URLs as successful `data_url` values for login-required scrapers. If no page/authenticated context is available, return structured errors for those images instead of `_build_success_result(url)`.
-     - If adding `unknown` as a Python-side `error_type`, update the `ImageCaptureResult` TypedDict literal accordingly; web already has `unknown` in the `image_error_type` enum.
-   - Tests:
-     - Modify `apps/scraper/tests/unit/test_process_images_action.py`.
-     - Add tests that:
-       - login-required capture uses request-context response bytes and stores a data URL.
-       - relative image URLs are recorded as absolute `original_url`.
-       - request-context failure falls back to browser-side fetch.
-       - missing page/context for login-required capture yields structured errors, not raw URL successes.
-   - Acceptance:
-     - `cd apps/scraper && pytest tests/unit/test_process_images_action.py`
+7. **Create approved-source executor/orchestrator**
+   - File: `apps/scraper/scrapers/approved_sources/executor.py`
+   - File: `apps/scraper/scrapers/approved_sources/orchestrator.py`
+   - Changes: Implement `ApprovedSourceExecutor.execute(plan, extractor, api_client=None)` and keep `ApprovedSourceOrchestrator` as a compatibility wrapper if imported elsewhere. Sort entries with `runFirst=True` first, then priority. Apply global and entry-level policy before dispatch. Run distributor adapters by registry. Merge partial results only from approved sources. Invoke LLM fallback only when `plan.llmPolicy.enabled` is true, deterministic extraction is insufficient, and the evidence URL is approved. Return failed result if no source succeeds.
+   - Acceptance: Executor honors selected distributor ordering, blocks disallowed domains, returns valid failed/partial/success `EnrichmentResultV1`, and never returns `None` to the runner.
 
-7. **Confirm no protected vendor URL escapes from fresh login scrapes** _(complexity: small)_
-   - Files:
-     - `apps/scraper/tests/unit/test_process_images_action.py`
-     - `apps/web/lib/__tests__/product-image-storage.test.ts`
-   - Changes:
-     - Add explicit regression assertions in the tests from Tasks 5 and 6:
-       - For login-required process_images, `ctx.results[field]` contains only data URLs for successes, not `https://orders.petfoodexperts.com/...` URLs.
-       - For callback/storage processing, returned source payload image fields contain storage URLs or pending retry markers, not protected vendor URLs.
-   - Acceptance:
-     - The focused scraper and web tests fail before the hardening changes and pass after.
+8. **Implement Bradley adapter**
+   - File: `apps/scraper/scrapers/approved_sources/adapters/bradley.py`
+   - Changes: Use legacy config reference `legacy-scraper-archive/configs/bradley.yaml`: base URL `https://www.bradleycaldwell.com`, search URL `/search?term={sku}`, selectors for Name, Brand, Weight, Image URLs, BCI Item Number, UPC, Case Pack, Dimensions, Ingredients, Description, no-results patterns, and image quality replacements. Requires no auth.
+   - Acceptance: Fixture tests extract expected legacy assertion for SKU `001135` (`E-Z HANG SCALE`, `KERBL`), handle fake SKU no-match, and filter images to approved domains.
 
-8. **Audit production retry processor wiring** _(complexity: small investigation; implementation may be medium/large if missing)_
-   - Files to inspect:
-     - `apps/web/lib/scraper-callback/image-retry-processor.ts`
-     - `apps/web/scripts/*`
-     - `apps/web/app/api/**`
-     - deployment/cron files if present.
-   - Changes:
-     - Search for non-test instantiations of `new ImageRetryProcessor()` and for a real `captureImage` implementation.
-     - If a production worker exists, add/update a test or inline assertion that it supplies `captureImage` and does not rely on the throwing default.
-     - If no production worker exists, do **not** silently claim retry recovery is complete. Record this as a follow-up implementation/design task because wiring real retry capture requires deciding how web invokes scraper-side authenticated capture in production.
-   - Acceptance:
-     - A worker can answer: “queued image retries are processed by `<file/job>` using `<captureImage implementation>`” or the gap is explicitly documented as unresolved.
+9. **Implement Central Pet adapter**
+   - File: `apps/scraper/scrapers/approved_sources/adapters/central_pet.py`
+   - Changes: Use legacy config `central-pet.yaml`: base URL `https://www.centralpet.com`, search URL `/Search?criteria={sku}`, selectors for product description/name, brand, product number, UPC, image, description, features, dimensions, no-results patterns, and image quality replacements. Treat credentials as optional only if the plan/source says auth is not required; if `requiresAuth` is true and credentials are unavailable, return `AUTH_REQUIRED`.
+   - Acceptance: Fixture tests extract expected assertions for SKUs `38777520` and `43580233`, support `central-pet`/`central_pet` aliases, and cleanly fail auth-required cases.
 
-9. **Run focused validation commands** _(complexity: small)_
-   - Files: no code changes unless failures reveal test updates needed.
-   - Commands:
-     - `bun run web test -- lib/__tests__/scraper-config-login.test.ts lib/scraper-callback/__tests__/image-retry-processor.test.ts __tests__/scripts/backfill-login-protected-images.test.ts __tests__/api/admin/scraping/retry-image.test.ts lib/__tests__/product-image-storage.test.ts`
-     - `cd apps/scraper && pytest tests/unit/test_process_images_action.py`
-   - Acceptance:
-     - All focused tests pass.
-     - No new lint/type errors in changed TypeScript files.
+10. **Implement Orgill adapter with clean auth-blocked behavior**
+   - File: `apps/scraper/scrapers/approved_sources/adapters/orgill.py`
+   - Changes: Use legacy config `orgill.yaml`: base URL `https://www.orgill.com`, search URL `/SearchResultN.aspx?ddlhQ={sku}`, selectors for Name, Brand, model number, UPC, image, description, features, category. Resolve credentials via `api_client.get_credentials("orgill")` or entry `credentialRef`. If credentials/session profile is absent, return `AUTH_REQUIRED`; if credentials exist but login/session execution is not implemented, return `AUTH_EXPIRED`/actionable warning rather than fake extraction.
+   - Acceptance: Tests prove no network crawl occurs without auth and returned result has failed/partial status with `AUTH_REQUIRED` or `AUTH_EXPIRED` warning.
+
+11. **Implement Phillips adapter with clean auth-blocked behavior**
+   - File: `apps/scraper/scrapers/approved_sources/adapters/phillips.py`
+   - Changes: Replace stub with Crawl4AI adapter using `phillips.yaml`: base URL `https://shop.phillipspet.com`, Salesforce Commerce quick search URL, selectors for Name, Brand, UPC, ItemNumber, Image URLs, Description, Weight, Features, no-results patterns, and image replacement rules. Check `api_client.get_credentials("phillips")`; fail with `AUTH_REQUIRED`/`AUTH_EXPIRED` when session support is unavailable.
+   - Acceptance: Fixture tests extract legacy assertion for SKU `072705115310`; auth-blocked test returns actionable failure; no fake success.
+
+12. **Implement Pet Food Experts adapter with clean auth-blocked behavior**
+   - File: `apps/scraper/scrapers/approved_sources/adapters/pet_food_experts.py`
+   - Changes: Use `petfoodex.yaml`: base URL `https://www.petfoodexperts.com` / order URL `https://orders.petfoodexperts.com/Search?query={sku}`, selectors for Name, Attributes, Product Meta, UoM, Image URLs, Description, Weight, Features, Ingredients, transform regexes for Brand/ItemNumber/UPC. Check `api_client.get_credentials("petfoodex")`; fail cleanly without usable auth session.
+   - Acceptance: Fixture tests cover at least one positive HTML extraction and one auth-required result; aliases `petfoodex`, `pet_food_experts`, and `pet-food-experts` resolve.
+
+13. **Update approved-source package exports**
+   - File: `apps/scraper/scrapers/approved_sources/__init__.py`
+   - File: `apps/scraper/scrapers/approved_sources/adapters/__init__.py`
+   - Changes: Export executor, result builder, registry, base classes, and distributor adapters for test/import stability.
+   - Acceptance: `python -c "from scrapers.approved_sources.executor import ApprovedSourceExecutor"` works from `apps/scraper`.
+
+14. **Add fixed approved distributor catalog for v1 source-plan fallback**
+   - File: `apps/web/lib/approved-sources/distributor-catalog.ts`
+   - Changes: Add static catalog entries for Bradley, Central Pet, Orgill, Phillips, and Pet Food Experts with source slug, adapter slug, display name, domains, asset domains, auth requirement, credential ref, search mode `sku_search`, allowed fields, and default priority.
+   - File: `apps/web/lib/approved-sources/source-plan.ts`
+   - Changes: Normalize selected distributor aliases. If `selectedDistributorSlug` is set and no enabled `brand_sources` distributor entry matches, synthesize the matching fixed catalog distributor entry into the plan and source policy. Preserve existing brand-source behavior and still reject unbranded products.
+   - Acceptance: Web tests show `selectedDistributorSlug: "petfoodex"` creates a run-first Pet Food Experts entry even when DB has only official sources.
+
+15. **Build approved-source benchmark datasets**
+   - File: `apps/scraper/benchmarks/approved_sources/README.md`
+   - File: `apps/scraper/benchmarks/approved_sources/fixtures/approved_source_dataset.json`
+   - File: `apps/scraper/benchmarks/approved_sources/fixtures/distributor_extraction_fixtures.json`
+   - File: `apps/scraper/benchmarks/approved_sources/fixtures/serp_discovery_dataset.json`
+   - File: `apps/scraper/benchmarks/approved_sources/fixtures/serp_search_fixtures.json`
+   - File: `apps/scraper/benchmarks/approved_sources/fixtures/official_extraction_dataset.json`
+   - File: `apps/scraper/benchmarks/approved_sources/fixtures/negative_source_dataset.json`
+   - Changes: Create the split datasets requested in the prompt. Seed distributor entries from the five legacy YAML `test_skus`, `fake_skus`, and `test_assertions`; document distributor count gaps where legacy has fewer than 5 positive assertions. Include auth-required and no-match cases. Copy only official rows from `official_brand/fixtures/extraction_seed.json` into official extraction positives. Move `thepetbeastro.com` and `bigdweb.com` retailer rows into the negative dataset. Add 50 SERP discovery cases with deterministic search fixtures including hard cases, retailer top-result rejection, official/preferred domains, garden/farm, pet food/treat, and accessory cases.
+   - Acceptance: Dataset validator passes; no positive extraction entry has `source_type: retailer` or a disallowed domain.
+
+16. **Add deterministic HTML/JSON fixture files for adapter tests**
+   - File: `apps/scraper/benchmarks/approved_sources/fixtures/html/bradley/*.html`
+   - File: `apps/scraper/benchmarks/approved_sources/fixtures/html/central_pet/*.html`
+   - File: `apps/scraper/benchmarks/approved_sources/fixtures/html/orgill/*.html`
+   - File: `apps/scraper/benchmarks/approved_sources/fixtures/html/phillips/*.html`
+   - File: `apps/scraper/benchmarks/approved_sources/fixtures/html/pet_food_experts/*.html`
+   - Changes: Add minimal, source-shaped fixture HTML that contains the legacy selectors/fields, plus auth/login/no-results fixtures. These are deterministic CI fixtures, not live scraped truth.
+   - Acceptance: Adapter tests use these fixtures and do not require network or credentials.
+
+17. **Add scraper tests for policy, registry, models, adapters, executor, runner, and datasets**
+   - File: `apps/scraper/tests/unit/test_approved_sources_policy.py`
+   - File: `apps/scraper/tests/unit/test_approved_sources_registry.py`
+   - File: `apps/scraper/tests/unit/test_approved_sources_result_builder.py`
+   - File: `apps/scraper/tests/unit/test_approved_sources_adapters.py`
+   - File: `apps/scraper/tests/unit/test_approved_sources_executor.py`
+   - File: `apps/scraper/tests/unit/test_approved_sources_dataset.py`
+   - File: `apps/scraper/tests/unit/test_runner_approved_source_extraction.py`
+   - Changes: Cover disallowed domain/image blocking, alias resolution, result shape, adapter fixture extraction, auth-required failures, selected-distributor ordering, LLM policy disabled, runner callback submission, and dataset legality/schema rules.
+   - Acceptance: Targeted pytest command passes without live network.
+
+18. **Add web tests for source-plan fallback, aliases, SERP rejection, and callback contract**
+   - File: `apps/web/__tests__/lib/approved-sources/source-plan.test.ts`
+   - File: `apps/web/__tests__/lib/official-brand-scoring.test.ts`
+   - File: `apps/web/__tests__/lib/official-brand-discovery.test.ts`
+   - File: `apps/web/__tests__/app/api/scraper/v1/enrichment-callback/route.test.ts`
+   - Changes: Add/update tests for unbranded product rejection, selected distributor run-first behavior, fixed catalog synthesis, disallowed domain filtering, retailer top-result rejection, no selected URL means no extraction, and callback acceptance/persistence of approved-source provenance.
+   - Acceptance: Focused Jest tests pass.
+
+19. **Add benchmark/validation CLI support or documented commands**
+   - File: `apps/scraper/benchmarks/approved_sources/README.md`
+   - Optional File: `apps/scraper/benchmarks/approved_sources/dataset.py`
+   - Optional File: `apps/scraper/benchmarks/approved_sources/runner.py`
+   - Optional File: `apps/scraper/cli/main.py`
+   - Changes: At minimum document pytest-based dataset validation and adapter benchmark commands. If CLI structure is straightforward, add `benchmark approved-sources` subcommands for dataset validation, distributor fixture extraction, official extraction fixture validation, and negative-source rejection.
+   - Acceptance: README contains exact commands and expected output paths; any added CLI command is covered by tests.
+
+20. **Run focused validation and record limitations**
+   - Files: No code file unless docs need final updates.
+   - Changes: Run targeted checks listed below. Update README/source notes with honest gaps: auth session/profile setup not fully implemented, live official extraction target of 30 may require manual source review, and fixture tests are deterministic rather than proof of live portal access.
+   - Acceptance: Validation results are available for the final handoff, including exact command failures if dependencies/env are missing.
 
 ## Files to Modify
-
-- `apps/web/lib/scraper-callback/image-retry-processor.ts` - use shared YAML login detection; fix PetFoodEx-style `requiresLogin` resolution.
-- `apps/web/scripts/backfill-login-protected-images-logic.ts` - use shared login detection; enqueue login-protected non-durable images with `auth_401`.
-- `apps/web/app/api/admin/scraping/retry-image/route.ts` - enqueue/update manual login-protected retries with `auth_401`.
-- `apps/web/lib/__tests__/product-image-storage.test.ts` - add durable persistence and retry marker regression coverage.
-- `apps/web/lib/scraper-callback/__tests__/image-retry-processor.test.ts` - add retry target login detection coverage.
-- `apps/web/__tests__/scripts/backfill-login-protected-images.test.ts` - update login detection/error type expectations.
-- `apps/web/__tests__/api/admin/scraping/retry-image.test.ts` - update manual retry error type expectations.
-- `apps/scraper/scrapers/actions/handlers/image.py` - add request-context primary capture, absolute `original_url`, fallback behavior, and no raw protected URL success for login-required capture.
-- `apps/scraper/tests/unit/test_process_images_action.py` - add scraper capture hardening tests.
+- `apps/scraper/runner/__init__.py` - route approved-source extraction to executor, fix callback/result builder bugs.
+- `apps/scraper/scrapers/ai_search/enrichment_models.py` - align Python result contract with TypeScript v1 contract.
+- `apps/scraper/scrapers/approved_sources/types.py` - add adapter/extraction result types and failure codes.
+- `apps/scraper/scrapers/approved_sources/policy.py` - keep existing gate; add tests and small helpers only if needed for entry-level policy composition.
+- `apps/scraper/scrapers/approved_sources/__init__.py` - export new modules.
+- `apps/scraper/scrapers/approved_sources/adapters/__init__.py` - export new adapters/registry.
+- `apps/scraper/scrapers/approved_sources/adapters/phillips.py` - replace stub with real adapter/auth failure path.
+- `apps/scraper/requirements.txt` - add parser dependency only if needed.
+- `apps/scraper/requirements-runtime.txt` - mirror runtime parser dependency only if needed.
+- `apps/web/lib/approved-sources/source-plan.ts` - alias normalization and fixed catalog selected-distributor fallback.
+- `apps/web/__tests__/lib/official-brand-scoring.test.ts` - add legal rejection coverage.
+- `apps/web/__tests__/lib/official-brand-discovery.test.ts` - add fixture-based official discovery coverage.
+- `apps/scraper/benchmarks/official_brand/fixtures/extraction_seed.json` - either remove retailer positives or mark source notes that positives moved; do not keep retailer rows as positive truth.
 
 ## New Files
-
-- `apps/web/lib/scraper-config-login.ts` - shared TypeScript helper for login-required scraper config detection.
-- `apps/web/lib/__tests__/scraper-config-login.test.ts` - unit tests for shared login detection helper.
+- `apps/scraper/scrapers/approved_sources/result_builder.py` - build valid approved-source `EnrichmentResultV1` objects.
+- `apps/scraper/scrapers/approved_sources/executor.py` - execute source plans and enforce policy/LLM rules.
+- `apps/scraper/scrapers/approved_sources/orchestrator.py` - compatibility wrapper around executor if absent in current checkout.
+- `apps/scraper/scrapers/approved_sources/adapters/base.py` - common adapter interface and Crawl4AI distributor base.
+- `apps/scraper/scrapers/approved_sources/adapters/registry.py` - adapter registration and alias resolution.
+- `apps/scraper/scrapers/approved_sources/adapters/bradley.py` - Bradley adapter.
+- `apps/scraper/scrapers/approved_sources/adapters/central_pet.py` - Central Pet adapter.
+- `apps/scraper/scrapers/approved_sources/adapters/orgill.py` - Orgill adapter.
+- `apps/scraper/scrapers/approved_sources/adapters/pet_food_experts.py` - Pet Food Experts adapter.
+- `apps/web/lib/approved-sources/distributor-catalog.ts` - fixed approved distributor catalog for selected-distributor v1 fallback.
+- `apps/scraper/benchmarks/approved_sources/README.md` - dataset schemas and benchmark commands.
+- `apps/scraper/benchmarks/approved_sources/fixtures/*.json` - six requested dataset/fixture JSON files.
+- `apps/scraper/benchmarks/approved_sources/fixtures/html/**` - deterministic adapter HTML fixtures.
+- `apps/scraper/tests/unit/test_approved_sources_*.py` - scraper unit tests.
+- `apps/web/__tests__/lib/approved-sources/source-plan.test.ts` - web source-plan tests.
+- `apps/web/__tests__/app/api/scraper/v1/enrichment-callback/route.test.ts` - callback contract/provenance tests.
 
 ## Dependencies
+- Tasks 1-4 must precede executor/adapters because the adapter and runner output shape depends on the contract and shared types.
+- Task 6 depends on adapter class names from Tasks 8-12 but can be scaffolded first with lazy imports.
+- Task 7 depends on Tasks 1-6.
+- Tasks 8-12 depend on Tasks 3-7.
+- Task 14 depends on the chosen fixed distributor catalog and alias mapping from Task 6.
+- Tasks 15-16 depend on legacy YAML fields/test SKUs and should be completed before tests in Tasks 17-18.
+- Tasks 17-18 depend on implementation and datasets.
+- Task 19 depends on dataset files and, optionally, existing CLI benchmark structure.
+- Task 20 depends on all implementation and test tasks.
 
-- Task 1 must happen before Tasks 2 and 3.
-- Task 2 must happen before Task 4 can be fully trusted, because the admin route depends on `resolveImageRetryTarget()`.
-- Tasks 2, 3, and 4 can run in parallel after Task 1.
-- Task 5 can run after or alongside Tasks 2-4; it validates callback/storage behavior independent of retry target resolution.
-- Task 6 is independent of TypeScript helper work but should be completed before claiming fresh scrape hardening is done.
-- Task 7 depends on Tasks 5 and 6.
-- Task 8 can run anytime, but any production retry implementation follow-up should wait until Tasks 1-6 define correct semantics.
-- Task 9 runs last.
+## Validation Commands
+Run from repo root unless noted:
 
-## Suggested Order of Execution
+```bash
+cd apps/scraper && python -m pytest \
+  tests/unit/test_approved_sources_policy.py \
+  tests/unit/test_approved_sources_registry.py \
+  tests/unit/test_approved_sources_result_builder.py \
+  tests/unit/test_approved_sources_adapters.py \
+  tests/unit/test_approved_sources_executor.py \
+  tests/unit/test_approved_sources_dataset.py \
+  tests/unit/test_runner_approved_source_extraction.py
+```
 
-1. Task 1 - create shared login detection helper and tests.
-2. Task 2 - wire helper into retry processor and add PetFoodEx-style retry tests.
-3. Task 3 - wire helper into backfill and change queued error type to `auth_401`.
-4. Task 4 - change admin manual retry error type to `auth_401`.
-5. Task 5 - add callback/storage persistence regression coverage.
-6. Task 6 - harden scraper request-context image capture and fallback behavior.
-7. Task 7 - add explicit no-protected-URL escape assertions.
-8. Task 8 - audit production retry worker wiring and document unresolved gap if absent.
-9. Task 9 - run focused validation commands.
+```bash
+cd apps/scraper && python -m pytest tests/unit/test_official_brand_extraction_seed.py tests/unit/test_official_brand_benchmark_dataset.py
+```
+
+```bash
+bun run web test -- --testPathPatterns="approved-sources|official-brand|enrichment-callback|enrichment/jobs"
+```
+
+```bash
+bun run web lint
+```
+
+```bash
+cd apps/scraper && pytest -m "not benchmark and not live and not performance" --ignore=tests/benchmarks
+```
+
+If CLI benchmark support is added:
+
+```bash
+cd apps/scraper && python3 -m cli.main benchmark approved-sources --dataset benchmarks/approved_sources/fixtures/approved_source_dataset.json --fixtures benchmarks/approved_sources/fixtures/distributor_extraction_fixtures.json
+```
 
 ## Risks
+- Current checkout appears to still have a runner `not_implemented` approved-source branch and no `orchestrator.py`/adapter base files, while prior scout context reported those files. Implementers should trust the actual checkout and create/replace files as needed.
+- Auth/session support for Orgill, Phillips, and Pet Food Experts may not be production-ready; v1 must return `AUTH_REQUIRED`/`AUTH_EXPIRED` instead of pretending live extraction works.
+- Legacy selectors mix Playwright CSS pseudo-selectors and XPath; deterministic parser support may require translation or adding `beautifulsoup4`/`lxml`.
+- The fixed distributor catalog is a v1 fallback for selected distributor execution; long-term production should move distributor source configuration into `brand_sources` admin data.
+- The existing official extraction seed has only seven official positives after quarantining retailer rows; reaching 30 reviewed official extraction entries requires manual/live source review and should not be fabricated.
+- SERP discovery logic lives mostly in `apps/web/lib/official-brand-*`; do not duplicate a new Python discovery implementation just for benchmarks unless explicitly required.
+- Callback validity is the highest integration risk: every executor outcome must serialize to a web-accepted `EnrichmentResultV1` and include provenance.
 
-- Fixing `Boolean(parsed.requires_login)` only repairs retry/manual/backfill login detection; it will not fix fresh scrape failures if scraper-side capture is failing before callback persistence.
-- Playwright Python request APIs differ slightly by version. Implement primary request capture defensively (`page.request` vs `page.context.request`, supported keyword arguments) and cover with mocks.
-- Browser-side `fetch(credentials: include)` can still fail due to CORS; request-context primary capture reduces this but screenshot fallback is intentionally out of scope for this focused hardening pass.
-- Existing queued rows created with `not_found_404` may need migration or requeueing after code changes; this plan changes new rows but does not rewrite historical queue entries.
-- `image_retry_queue` lacks explicit `scraper_slug`/`source_name`, so retry source matching remains brittle when only `pending_retry://` markers remain. Treat schema changes for that as a separate follow-up unless current tests prove it is blocking.
-- No production `captureImage` wiring was found in the provided context. If Task 8 confirms it is absent, retry recovery remains operationally incomplete and needs a separate implementation/design decision.
+## Known Limitations
+- Live login automation/session profiles for auth-gated distributors are out of scope for the first safe v1 unless existing credentials and profile support are proven during implementation.
+- Fixture extraction proves selectors and policy gates, not live portal availability.
+- Price/availability/case pack should be extracted only when visible and allowed; missing fields should produce partial results and warnings, not hallucinated values.
+- The official extraction dataset should document any gap below the requested 30 reviewed positives.

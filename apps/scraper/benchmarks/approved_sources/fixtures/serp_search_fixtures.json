@@ -1,0 +1,516 @@
+{
+  "schema_version": "official-brand-search-fixtures-v1",
+  "description": "Deterministic search fixtures for approved source SERP discovery testing. Each entry provides cached search results that simulate real SERP responses without live API calls.",
+  "entries": [
+    {
+      "query": "site:scotts.com 032247761215",
+      "results": [
+        {
+          "url": "https://www.scotts.com/en-us/products/spreaders/turf-builder-edgeguard-mini-broadcast-spreader",
+          "title": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
+          "description": "Official Scotts product page with specs and pricing",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:miraclegro.com 032247279048",
+      "results": [
+        {
+          "url": "https://www.miraclegro.com/en-us/shop/soils/potting-mix/miracle-gro-potting-mix",
+          "title": "Miracle-Gro Potting Mix 50 Quart",
+          "description": "Official Miracle-Gro product page",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:scotts.com OR site:scottsmiraclegro.com 032247886598",
+      "results": [
+        {
+          "url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
+          "title": "Scotts Nature Scapes Color Enhanced Mulch Deep Forest Brown 1.5 cu. ft.",
+          "description": "Scotts Color Enhanced Mulch | ScottsMiracle-Gro",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:kongcompany.com KONG Classic Dog Toy Large Red",
+      "results": [
+        {
+          "url": "https://www.kongcompany.com/products/kong-classic-dog-toy-large",
+          "title": "KONG Classic Dog Toy Large Red",
+          "description": "The original KONG Classic dog toy in Large size",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:frommfamily.com Fromm Gold Large Breed Dog 30 lb 072705115310",
+      "results": [
+        {
+          "url": "https://frommfamily.com/products/gold-large-breed-adult-dog-food",
+          "title": "Fromm Gold Large Breed Adult Dry Dog Food 30 lb",
+          "description": "Fromm Gold Large Breed formula for adult dogs",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:bluebuffalo.com Blue Buffalo Life Protection Formula Chicken & Brown Rice Dry Dog Food 30 lb",
+      "results": [
+        {
+          "url": "https://bluebuffalo.com/dog-food/life-protection-formula-chicken-brown-rice",
+          "title": "Blue Buffalo Life Protection Formula Chicken & Brown Rice",
+          "description": "Official Blue Buffalo product page",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:hillspet.com Hill's Science Diet Adult Chicken & Barley Dry Dog Food 35 lb",
+      "results": [
+        {
+          "url": "https://www.hillspet.com/dog-food/sd-adult-chicken-barley-dry",
+          "title": "Hill's Science Diet Adult Chicken & Barley Dry Dog Food",
+          "description": "Official Hill's Pet product page",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:royalcanin.com Royal Canin Size Health Nutrition Medium Adult Dry Dog Food 30 lb",
+      "results": [
+        {
+          "url": "https://www.royalcanin.com/dogs/products/medium-adult-dry-dog-food",
+          "title": "Royal Canin Medium Adult Dry Dog Food",
+          "description": "Precise nutrition for medium breed adult dogs",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:nylabone.com Nylabone Dura Chew Textured Dog Chew Toy Bacon Flavor Large",
+      "results": [
+        {
+          "url": "https://www.nylabone.com/products/dura-chew-textured-dog-chew-toy-bacon-large",
+          "title": "Nylabone Dura Chew Textured Dog Chew Toy Bacon Large",
+          "description": "Nylabone official product page",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:kaytee.com Kaytee Supreme Mouse & Rat Food 5 lb",
+      "results": [
+        {
+          "url": "https://www.kaytee.com/products/supreme-mouse-rat-food",
+          "title": "Kaytee Supreme Mouse & Rat Food 5 lb",
+          "description": "Official Kaytee product",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:mannapro.com Manna Pro Fresh Flakes Poultry Bedding 12 Lb 095668480400",
+      "results": [
+        {
+          "url": "https://mannapro.com/products/fresh-flakes-poultry-bedding",
+          "title": "Manna Pro Fresh Flakes Poultry Bedding 12 Lb",
+          "description": "Manna Pro official product",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "Fromm Gold Large Breed Dog 30 lb",
+      "results": [
+        {
+          "url": "https://www.frommfamily.com/products/gold-large-breed-adult-dog-food",
+          "title": "Fromm Gold Large Breed Adult Dry Dog Food 30 lb",
+          "description": "Fromm Gold Large Breed formula for adult dogs",
+          "provider": "fixture",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://www.chewy.com/fromm-gold-large-breed-adult-dog/dp/170200",
+          "title": "Fromm Gold Large Breed Adult Dog Food 30 lb - Chewy",
+          "description": "Shop Fromm Gold Large Breed Adult Dry Dog Food online at Chewy.com",
+          "provider": "fixture",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://www.amazon.com/Fromm-Gold-Large-Breed-Dog/dp/B0012ABCDE",
+          "title": "Fromm Gold Large Breed Adult Dog Food 30 lb - Amazon",
+          "description": "Buy Fromm Gold Large Breed Adult Dog Food on Amazon.com",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "Blue Buffalo Life Protection Formula Chicken & Brown Rice Dry Dog Food 30 lb",
+      "results": [
+        {
+          "url": "https://www.amazon.com/Blue-Buffalo-Life-Protection-Chicken/dp/B002XYZ789",
+          "title": "Blue Buffalo Life Protection Formula Chicken & Brown Rice - Amazon",
+          "description": "Buy Blue Buffalo dog food on Amazon",
+          "provider": "fixture",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://www.chewy.com/blue-buffalo-life-protection-formula/dp/103201",
+          "title": "Blue Buffalo Life Protection - Chewy",
+          "description": "Shop Blue Buffalo on Chewy",
+          "provider": "fixture",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://bluebuffalo.com/dog-food/life-protection-formula-chicken-brown-rice",
+          "title": "Blue Buffalo Life Protection Formula Chicken & Brown Rice",
+          "description": "Official Blue Buffalo product page",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "Hill's Science Diet Adult Chicken & Barley Dry Dog Food 35 lb",
+      "results": [
+        {
+          "url": "https://www.walmart.com/ip/Hill-s-Science-Diet-Adult-Chicken-Barley/123456789",
+          "title": "Hill's Science Diet Adult Chicken & Barley - Walmart",
+          "description": "Buy Hill's Science Diet at Walmart",
+          "provider": "fixture",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://www.petsmart.com/dog/food/science-diet-adult-chicken-barley-12345.html",
+          "title": "Hill's Science Diet Adult Chicken & Barley - PetSmart",
+          "description": "Shop at PetSmart",
+          "provider": "fixture",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://www.hillspet.com/dog-food/sd-adult-chicken-barley-dry",
+          "title": "Hill's Science Diet Adult Chicken & Barley Dry Dog Food",
+          "description": "Official Hill's Pet product page",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "KONG Classic Dog Toy Large Red",
+      "results": [
+        {
+          "url": "https://www.petco.com/shop/en/petcostore/product/kong-classic-dog-toy-large-red-12345",
+          "title": "KONG Classic Dog Toy Large Red - Petco",
+          "description": "Shop KONG at Petco",
+          "provider": "fixture",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://www.kongcompany.com/products/kong-classic-dog-toy-large",
+          "title": "KONG Classic Dog Toy Large Red",
+          "description": "The original KONG Classic dog toy in Large size",
+          "provider": "fixture",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://www.amazon.com/KONG-Classic-Dog-Toy-Large/dp/B000ABCDEF",
+          "title": "KONG Classic Dog Toy Large - Amazon",
+          "description": "Buy KONG Classic on Amazon",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "Purina Pro Plan Complete Essentials Chicken & Rice Dry Dog Food 35 lb",
+      "results": [
+        {
+          "url": "https://www.walmart.com/ip/Purina-Pro-Plan-Complete-Essentials/987654321",
+          "title": "Purina Pro Plan Complete Essentials - Walmart",
+          "description": "Shop at Walmart",
+          "provider": "fixture",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://www.chewy.com/purina-pro-plan-complete-essentials/dp/104567",
+          "title": "Purina Pro Plan Complete Essentials - Chewy",
+          "description": "Shop at Chewy",
+          "provider": "fixture",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://www.purina.com/pro-plan/dogs/dog-food/complete-essentials-chicken-rice",
+          "title": "Purina Pro Plan Complete Essentials Chicken & Rice",
+          "description": "Official Purina product page",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "Royal Canin Size Health Nutrition Medium Adult Dry Dog Food 30 lb",
+      "results": [
+        {
+          "url": "https://www.ebay.com/itm/123456789012",
+          "title": "Royal Canin Medium Adult Dry Dog Food 30 lb - eBay",
+          "description": "Shop on eBay",
+          "provider": "fixture",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://www.amazon.com/Royal-Canin-Health-Nutrition-Medium/dp/B003XYZ456",
+          "title": "Royal Canin Medium Adult - Amazon",
+          "description": "Buy on Amazon",
+          "provider": "fixture",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://www.royalcanin.com/dogs/products/medium-adult-dry-dog-food",
+          "title": "Royal Canin Medium Adult Dry Dog Food",
+          "description": "Precise nutrition for medium breed adult dogs",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "NutriSource Adult Chicken & Rice Dry Dog Food 30 lb",
+      "results": [
+        {
+          "url": "https://www.etsy.com/listing/1234567890/nutrisource-adult-chicken-rice",
+          "title": "NutriSource Adult Chicken & Rice - Etsy",
+          "description": "Available on Etsy",
+          "provider": "fixture",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://nutrisourcepetfoods.com/products/adult-chicken-rice",
+          "title": "NutriSource Adult Chicken & Rice Dry Dog Food",
+          "description": "Official NutriSource product page",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "Wellness CORE Grain Free Chicken & Turkey Dry Dog Food 4 lb",
+      "results": [
+        {
+          "url": "https://www.chewy.com/wellness-core-grain-free-chicken-turkey/dp/105678",
+          "title": "Wellness CORE Grain Free - Chewy",
+          "description": "Shop Wellness CORE at Chewy",
+          "provider": "fixture",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://www.petco.com/shop/en/petcostore/product/wellness-core-12345",
+          "title": "Wellness CORE Grain Free - Petco",
+          "description": "Shop at Petco",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "Merrick Grain Free Texas Beef & Sweet Potato Dry Dog Food 22 lb",
+      "results": [
+        {
+          "url": "https://www.chewy.com/merrick-grain-free-texas-beef-sweet/dp/106789",
+          "title": "Merrick Grain Free Texas Beef - Chewy",
+          "description": "Shop Merrick at Chewy",
+          "provider": "fixture",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://www.amazon.com/Merrick-Grain-Free-Texas-Beef/dp/B004XYZ123",
+          "title": "Merrick Grain Free Texas Beef - Amazon",
+          "description": "Buy on Amazon",
+          "provider": "fixture",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://www.petsmart.com/dog/food/merrick-grain-free-texas-beef-56789.html",
+          "title": "Merrick Grain Free Texas Beef - PetSmart",
+          "description": "Shop at PetSmart",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "Kaytee Fiesta Parakeet Food 5 lb",
+      "results": [
+        {
+          "url": "https://www.walmart.com/ip/Kaytee-Fiesta-Parakeet-Food/1122334455",
+          "title": "Kaytee Fiesta Parakeet Food - Walmart",
+          "description": "Shop at Walmart",
+          "provider": "fixture",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://www.target.com/p/kaytee-fiesta-parakeet-food/-/A-12345678",
+          "title": "Kaytee Fiesta Parakeet Food - Target",
+          "description": "Shop at Target",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "072705115310",
+      "results": [
+        {
+          "url": "https://www.chewy.com/fromm-gold-large-breed-adult-dog/dp/170200",
+          "title": "Fromm Gold Large Breed Adult Dog Food 30 lb - Chewy",
+          "description": "Shop Fromm Gold Large Breed at Chewy",
+          "provider": "fixture",
+          "result_type": "organic"
+        },
+        {
+          "url": "https://www.amazon.com/Fromm-Gold-Large-Breed-Dog/dp/B0012ABCDE",
+          "title": "Fromm Gold Large Breed Dog 30 lb - Amazon",
+          "description": "Buy Fromm Gold at Amazon",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:firstmate.com FirstMate Chicken Meal with Blueberries Formula Dry Cat Food 3.96lb",
+      "results": [
+        {
+          "url": "https://firstmate.com/product/chicken-meal-with-blueberries-formula-for-cats/",
+          "title": "FirstMate Chicken Meal with Blueberries Formula for Cats",
+          "description": "FirstMate official product page",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:fourpaws.com Four Paws Wee-Wee Cat Pads 11x17 10ct",
+      "results": [
+        {
+          "url": "https://www.fourpaws.com/products/wee-wee-cat-litter-box-system-pads",
+          "title": "Four Paws Wee-Wee Cat Pads",
+          "description": "Official Four Paws product page",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:thehonestkitchen.com The Honest Kitchen Grain Free Turkey & Chicken Clusters Dry Cat Food 1 lb",
+      "results": [
+        {
+          "url": "https://www.thehonestkitchen.com/products/grain-free-turkey-and-chicken-whole-food-clusters-dry-cat-food",
+          "title": "Grain Free Turkey & Chicken Whole Food Clusters Dry Cat Food",
+          "description": "The Honest Kitchen official product",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:firstmate.com 072318100680",
+      "results": [
+        {
+          "url": "https://firstmate.com/product/chicken-meal-with-blueberries-formula/",
+          "title": "FirstMate Chicken Meal with Blueberries Formula",
+          "description": "FirstMate official product page",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:schleich-s.com Schleich Clydesdale Gelding Horse Toy Figurine 4059433816098",
+      "results": [
+        {
+          "url": "https://us.schleich-s.com/products/clydesdale-gelding-13808-2",
+          "title": "Schleich Clydesdale Gelding",
+          "description": "Schleich official product",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:wellnesspetfood.com Wellness CORE Grain Free Chicken & Turkey Dry Dog Food 4 lb",
+      "results": [
+        {
+          "url": "https://www.wellnesspetfood.com/products/wellness-core-grain-free-chicken-turkey-dry-dog-food",
+          "title": "Wellness CORE Grain Free Chicken & Turkey Dry Dog Food",
+          "description": "Wellness official product page",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:merrickpetcare.com Merrick Grain Free Texas Beef & Sweet Potato Dry Dog Food 22 lb",
+      "results": [
+        {
+          "url": "https://www.merrickpetcare.com/products/grain-free-texas-beef-sweet-potato-dry-dog-food",
+          "title": "Merrick Grain Free Texas Beef & Sweet Potato Dry Dog Food",
+          "description": "Merrick official product page",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:tasteofthewildpetfood.com Taste of the Wild High Prairie Canine Recipe 28 lb",
+      "results": [
+        {
+          "url": "https://www.tasteofthewildpetfood.com/products/high-prairie-canine-recipe",
+          "title": "Taste of the Wild High Prairie Canine Recipe",
+          "description": "Official product page",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:nutrisourcepetfoods.com NutriSource Adult Chicken & Rice Dry Dog Food 30 lb",
+      "results": [
+        {
+          "url": "https://nutrisourcepetfoods.com/products/adult-chicken-rice",
+          "title": "NutriSource Adult Chicken & Rice Dry Dog Food",
+          "description": "Official NutriSource product page",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    },
+    {
+      "query": "site:kaytee.com Kaytee Fiesta Parakeet Food 5 lb",
+      "results": [
+        {
+          "url": "https://www.kaytee.com/products/fiesta-parakeet-food-5-lb",
+          "title": "Kaytee Fiesta Parakeet Food 5 lb",
+          "description": "Official Kaytee product page",
+          "provider": "fixture",
+          "result_type": "organic"
+        }
+      ]
+    }
+  ]
+}

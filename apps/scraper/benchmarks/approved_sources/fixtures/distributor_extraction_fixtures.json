@@ -1,0 +1,149 @@
+{
+  "schema_version": "distributor-extraction-fixtures-v1",
+  "description": "Fixture catalog for deterministic distributor adapter tests. Maps dataset entries to HTML fixture files.",
+  "fixtures": {
+    "bradley_001135": {
+      "dataset_entry_ref": "Bradley product 001135",
+      "adapter_slug": "bradley_crawl4ai",
+      "fixture_type": "product",
+      "fixture_path": "bradley/product_001135.html",
+      "expected_sku": "001135",
+      "expected_name_contains": "E-Z HANG SCALE",
+      "expected_brand": "KERBL",
+      "expected_image_count": 2,
+      "expected_has_bci_item_number": true
+    },
+    "bradley_010199_partial": {
+      "dataset_entry_ref": "Bradley product 010199 partial",
+      "adapter_slug": "bradley_crawl4ai",
+      "fixture_type": "product_partial",
+      "fixture_path": "bradley/product_010199_partial.html",
+      "expected_sku": "010199",
+      "expected_name_contains": "Partial Item",
+      "expected_brand": "ACME Corp",
+      "expected_missing_fields": [
+        "weight",
+        "upc",
+        "case_pack",
+        "dimensions",
+        "ingredients"
+      ]
+    },
+    "bradley_no_match_xyzabc123notexist456": {
+      "dataset_entry_ref": "Bradley no match for fake SKU",
+      "adapter_slug": "bradley_crawl4ai",
+      "fixture_type": "no_results",
+      "fixture_path": "bradley/no_results_xyzabc123notexist456.html",
+      "expected_sku": "xyzabc123notexist456",
+      "expected_status": "no_match"
+    },
+    "central_pet_38777520": {
+      "dataset_entry_ref": "Central Pet product 38777520",
+      "adapter_slug": "central_pet_crawl4ai",
+      "fixture_type": "product",
+      "fixture_path": "central_pet/product_38777520.html",
+      "expected_sku": "38777520",
+      "expected_name_contains": "KONG Air Dog Squeaker Tennis Ball Dog Toy",
+      "expected_brand": "KONG",
+      "expected_has_features": true
+    },
+    "central_pet_43580233": {
+      "dataset_entry_ref": "Central Pet product 43580233",
+      "adapter_slug": "central_pet_crawl4ai",
+      "fixture_type": "product",
+      "fixture_path": "central_pet/product_43580233.html",
+      "expected_sku": "43580233",
+      "expected_name_contains": "IAMS Perfect Portions",
+      "expected_brand": "IAMS"
+    },
+    "central_pet_no_match_00000000": {
+      "dataset_entry_ref": "Central Pet no match for fake SKU",
+      "adapter_slug": "central_pet_crawl4ai",
+      "fixture_type": "no_results",
+      "fixture_path": "central_pet/no_results_00000000.html",
+      "expected_status": "no_match",
+      "expected_sku": "00000000"
+    },
+    "orgill_037193347322": {
+      "dataset_entry_ref": "Orgill product 037193347322",
+      "adapter_slug": "orgill_crawl4ai",
+      "fixture_type": "product",
+      "fixture_path": "orgill/product_037193347322.html",
+      "expected_sku": "037193347322",
+      "expected_name_contains": "Premium Chicken Feed",
+      "expected_brand": "Purina",
+      "expected_has_upc": true
+    },
+    "orgill_032700006105_partial": {
+      "dataset_entry_ref": "Orgill product 032700006105 partial",
+      "adapter_slug": "orgill_crawl4ai",
+      "fixture_type": "product_partial",
+      "fixture_path": "orgill/product_032700006105_partial.html",
+      "expected_sku": "032700006105",
+      "expected_name_contains": "Garden Trowel",
+      "expected_brand": "Fiskars"
+    },
+    "orgill_no_match_000000000000": {
+      "dataset_entry_ref": "Orgill no match for fake SKU",
+      "adapter_slug": "orgill_crawl4ai",
+      "fixture_type": "no_results",
+      "fixture_path": "orgill/no_results_000000000000.html",
+      "expected_status": "no_match",
+      "expected_sku": "000000000000"
+    },
+    "phillips_072705115310": {
+      "dataset_entry_ref": "Phillips product 072705115310",
+      "adapter_slug": "phillips_crawl4ai",
+      "fixture_type": "product",
+      "fixture_path": "phillips/product_072705115310.html",
+      "expected_sku": "072705115310",
+      "expected_name_contains": "Fromm Gold Large Breed Dog 30 lb",
+      "expected_brand": "FROMM FAMILY FOODS LLC",
+      "expected_image_count": 2
+    },
+    "phillips_072705104321_partial": {
+      "dataset_entry_ref": "Phillips product 072705104321 partial",
+      "adapter_slug": "phillips_crawl4ai",
+      "fixture_type": "product_partial",
+      "fixture_path": "phillips/product_072705104321_partial.html",
+      "expected_sku": "072705104321",
+      "expected_name_contains": "Fromm Salmon ALA",
+      "expected_brand": "FROMM FAMILY FOODS LLC"
+    },
+    "phillips_no_match_000000000000": {
+      "dataset_entry_ref": "Phillips no match for fake SKU",
+      "adapter_slug": "phillips_crawl4ai",
+      "fixture_type": "no_results",
+      "fixture_path": "phillips/no_results_000000000000.html",
+      "expected_status": "no_match",
+      "expected_sku": "000000000000"
+    },
+    "pfe_33011808": {
+      "dataset_entry_ref": "Pet Food Experts product 33011808",
+      "adapter_slug": "pet_food_experts_crawl4ai",
+      "fixture_type": "product",
+      "fixture_path": "pet_food_experts/product_33011808.html",
+      "expected_sku": "33011808",
+      "expected_name_contains": "Wellness CORE Grain Free",
+      "expected_brand": "Wellness",
+      "expected_has_upc": true
+    },
+    "pfe_10158320_partial": {
+      "dataset_entry_ref": "Pet Food Experts product 10158320 partial",
+      "adapter_slug": "pet_food_experts_crawl4ai",
+      "fixture_type": "product_partial",
+      "fixture_path": "pet_food_experts/product_10158320_partial.html",
+      "expected_sku": "10158320",
+      "expected_name_contains": "Basic Dog Treat",
+      "expected_brand": "Generic Treat Co"
+    },
+    "pfe_no_match_00000000": {
+      "dataset_entry_ref": "Pet Food Experts no match for fake SKU",
+      "adapter_slug": "pet_food_experts_crawl4ai",
+      "fixture_type": "no_results",
+      "fixture_path": "pet_food_experts/no_results_00000000.html",
+      "expected_status": "no_match",
+      "expected_sku": "00000000"
+    }
+  }
+}

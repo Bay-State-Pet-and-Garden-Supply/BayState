@@ -3,9 +3,15 @@ Enrichment Models (v1)
 
 Pydantic models for the AI enrichment pipeline.
 Mirrors the EnrichmentResultV1 TypeScript contract.
+
+Approved source extraction adds:
+- source.source_type / source.source_slug / source.approved_source_id / source.evidence
+- decision ("deterministic_success" | "deterministic_partial" | "llm_fallback" | "failed")
+- llm_used — whether LLM was invoked for this result
+- source_results[] — per-source extraction details
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 from pydantic import BaseModel, Field
 
@@ -17,12 +23,23 @@ EnrichmentResultStatus = Literal["success", "partial", "failed"]
 
 EnrichmentMode = Literal["structured", "metadata", "llm", "mixed"]
 
+EnrichmentDecision = Literal[
+    "deterministic_success",
+    "deterministic_partial",
+    "llm_fallback",
+    "failed",
+]
+
 
 class EnrichmentResultSource(BaseModel):
     url: str
     domain: Optional[str] = None
     label: Optional[str] = None
     target_id: Optional[str] = None
+    source_type: Optional[str] = None  # "official_brand" | "distributor" | etc.
+    source_slug: Optional[str] = None
+    approved_source_id: Optional[str] = None
+    evidence: Optional[str] = None  # match quality / how URL was selected
 
 
 class EnrichedProductFacts(BaseModel):
@@ -66,20 +83,39 @@ class EnrichmentAttemptSummary(BaseModel):
     error: Optional[str] = None
 
 
+class SourceResultInfo(BaseModel):
+    """Per-source extraction result metadata for approved source extraction."""
+
+    sourceSlug: str
+    sourceType: str
+    confidence: float = 0.0
+    matchedFields: list[str] = Field(default_factory=list)
+    evidenceUrl: Optional[str] = None
+
+
 class EnrichmentResultV1(BaseModel):
     schema_version: str = "v1"
     sku: str
     source: EnrichmentResultSource
     status: str = Field(pattern=r"^(success|partial|failed)$")
     _status_literal: EnrichmentResultStatus = "success"  # marker for type checking
-    extracted_at: str  # ISO datetime
+    extracted_at: str  # ISO datetime with timezone offset
     model: Optional[str] = None
-    mode: str = Field(pattern=r"^(structured|metadata|llm|mixed)$", default="mixed")
+    mode: str = Field(pattern=r"^(structured|metadata|llm|mixed|approved_source)$", default="mixed")
     _mode_literal: EnrichmentMode = "mixed"  # marker for type checking
     product: EnrichedProductFacts = Field(default_factory=EnrichedProductFacts)
     confidence: EnrichmentConfidence = Field(default_factory=EnrichmentConfidence)
     validation: EnrichmentValidation = Field(default_factory=EnrichmentValidation)
     attempts: list[EnrichmentAttemptSummary] = Field(default_factory=list)
+    # Approved source extraction fields
+    decision: Optional[str] = None  # EnrichmentDecision
+    llm_used: Optional[bool] = None
+    source_results: list[SourceResultInfo] = Field(default_factory=list)
+
+
+def now_iso() -> str:
+    """Return current UTC time in ISO 8601 format with timezone offset."""
+    return datetime.now(timezone.utc).isoformat()
 
 
 def build_error_result(
@@ -95,7 +131,7 @@ def build_error_result(
         sku=sku,
         source=EnrichmentResultSource(url=url),
         status="failed",
-        extracted_at=datetime.utcnow().isoformat(),
+        extracted_at=now_iso(),
         model=model,
         mode=mode,
         product=EnrichedProductFacts(),
@@ -111,6 +147,8 @@ def build_error_result(
                 error=error_message,
             )
         ],
+        decision="failed",
+        llm_used=False,
     )
 
 
@@ -122,13 +160,69 @@ def build_v1_from_extraction_result(
     model: Optional[str] = None,
     mode: str = "mixed",
     extraction_mode: str = "llm",
+    decision: Optional[str] = None,
+    llm_used: Optional[bool] = None,
+    source_results: Optional[list[dict[str, Any]]] = None,
 ) -> EnrichmentResultV1:
     """
     Build an EnrichmentResultV1 from a Crawl4AIExtractor/extraction result dict.
 
     Maps the extraction result's product fields into the v1 contract shape.
+
+    Args:
+        result: Extraction result dict with keys: success, product, confidence, validation, etc.
+        sku: Product SKU.
+        url: Source URL that was scraped.
+        domain: Domain of the source URL.
+        model: LLM model used (if any).
+        mode: Extraction mode.
+        extraction_mode: Internal extraction mode label.
+        decision: Approved-source decision type.
+        llm_used: Whether LLM was used.
+        source_results: Per-source extraction details.
     """
     product_data = result.get("product", result)
+
+    # Handle both Crawl4AIExtractor shape and ProductPageExtractor shape
+    # ProductPageExtractor returns product_name not name, images not image_urls, confidence as float
+    name = product_data.get("name") or product_data.get("product_name")
+    image_urls = product_data.get("image_urls") or product_data.get("images", []) or result.get("images", [])
+    category = product_data.get("category")
+    if not category:
+        categories = product_data.get("categories", [])
+        category = categories[0] if isinstance(categories, list) and categories else None
+
+    # Handle confidence as float (ProductPageExtractor) or dict (Crawl4AIExtractor)
+    raw_confidence = result.get("confidence", 0.0)
+    if isinstance(raw_confidence, dict):
+        overall_confidence = raw_confidence.get("overall", 0.0)
+        field_confidences = raw_confidence.get("fields", {})
+    else:
+        overall_confidence = float(raw_confidence) if raw_confidence else 0.0
+        field_confidences = {}
+
+    # Handle validation dict or default
+    raw_validation = result.get("validation", {})
+    if not isinstance(raw_validation, dict):
+        raw_validation = {}
+
+    success = result.get("success", True)
+    if isinstance(success, bool) is False:
+        success = True
+
+    # Build source results if provided
+    source_results_models: list[SourceResultInfo] = []
+    if source_results:
+        for sr in source_results:
+            source_results_models.append(
+                SourceResultInfo(
+                    sourceSlug=sr.get("sourceSlug", ""),
+                    sourceType=sr.get("sourceType", ""),
+                    confidence=sr.get("confidence", 0.0),
+                    matchedFields=sr.get("matchedFields", []),
+                    evidenceUrl=sr.get("evidenceUrl"),
+                )
+            )
 
     return EnrichmentResultV1(
         schema_version="v1",
@@ -137,22 +231,22 @@ def build_v1_from_extraction_result(
             url=url,
             domain=domain,
         ),
-        status="success" if result.get("success", True) else "failed",
-        extracted_at=datetime.utcnow().isoformat(),
+        status="success" if success else "failed",
+        extracted_at=now_iso(),
         model=model,
         mode=mode,
         product=EnrichedProductFacts(
-            name=product_data.get("name"),
-            brand=product_data.get("brand"),
-            description=product_data.get("description"),
-            category=product_data.get("category"),
-            sku=product_data.get("sku"),
-            weight=product_data.get("weight"),
-            dimensions=product_data.get("dimensions"),
+            name=name,
+            brand=product_data.get("brand") or result.get("brand"),
+            description=product_data.get("description") or result.get("description"),
+            category=category,
+            sku=product_data.get("sku") or result.get("sku"),
+            weight=product_data.get("weight") or result.get("weight"),
+            dimensions=product_data.get("dimensions") or result.get("dimensions"),
             shipping_weight=product_data.get("shipping_weight"),
-            image_urls=product_data.get("image_urls", []),
-            ingredients=product_data.get("ingredients"),
-            features=product_data.get("features", []),
+            image_urls=image_urls,
+            ingredients=product_data.get("ingredients") or result.get("ingredients"),
+            features=product_data.get("features", []) or result.get("features", []),
             pet_type=product_data.get("pet_type"),
             life_stage=product_data.get("life_stage"),
             pet_size=product_data.get("pet_size"),
@@ -165,13 +259,13 @@ def build_v1_from_extraction_result(
             color=product_data.get("color"),
         ),
         confidence=EnrichmentConfidence(
-            overall=result.get("confidence", {}).get("overall", 0.0),
-            fields=result.get("confidence", {}).get("fields", {}),
+            overall=overall_confidence,
+            fields=field_confidences,
         ),
         validation=EnrichmentValidation(
-            sku_match=result.get("validation", {}).get("sku_match"),
-            warnings=result.get("validation", {}).get("warnings", []),
-            missing_required=result.get("validation", {}).get("missing_required", []),
+            sku_match=raw_validation.get("sku_match"),
+            warnings=raw_validation.get("warnings", []),
+            missing_required=raw_validation.get("missing_required", []),
         ),
         attempts=[
             EnrichmentAttemptSummary(
@@ -180,4 +274,7 @@ def build_v1_from_extraction_result(
                 error=result.get("error"),
             )
         ],
+        decision=decision,
+        llm_used=llm_used or (decision == "llm_fallback"),
+        source_results=source_results_models,
     )

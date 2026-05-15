@@ -18,6 +18,7 @@ import {
   DISALLOWED_DOMAINS,
   DEFAULT_LLM_POLICY,
 } from "./types";
+import { normalizeDistributorSlug, findDistributorInCatalog, buildDistributorPlanEntry } from "./distributor-catalog";
 
 // =============================================================================
 // Database row shapes (minimal, not full DB types)
@@ -166,7 +167,10 @@ export async function buildApprovedSourcePlans(
   options?: BuildSourcePlanOptions,
 ): Promise<Record<string, SourcePlanResult>> {
   const results: Record<string, SourcePlanResult> = {};
-  const selectedDistributorSlug = options?.selectedDistributorSlug;
+  // Normalize distributor slug through catalog to support aliases
+  const selectedDistributorSlug = options?.selectedDistributorSlug
+    ? normalizeDistributorSlug(options.selectedDistributorSlug)
+    : undefined;
   const llmPolicyOverride = options?.llmPolicy;
 
   if (!skus.length) {
@@ -369,6 +373,17 @@ export async function buildApprovedSourcePlans(
     runFirstEntries.sort((a, b) => a.priority - b.priority);
 
     const orderedEntries = [...runFirstEntries, ...otherEntries];
+
+    // ---- Catalog fallback: synthesize from fixed catalog if selected distributor not found ----
+    if (orderedEntries.length === 0 && selectedDistributorSlug) {
+      const catalogEntry = findDistributorInCatalog(selectedDistributorSlug);
+      if (catalogEntry) {
+        const fallbackEntry = buildDistributorPlanEntry(catalogEntry);
+        orderedEntries.push(fallbackEntry);
+        for (const d of catalogEntry.domains) allDomains.add(d);
+        for (const d of catalogEntry.assetDomains) allAssetDomains.add(d);
+      }
+    }
 
     // ---- Empty plan guard ----
     if (orderedEntries.length === 0) {

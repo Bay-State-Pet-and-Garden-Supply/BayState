@@ -1,0 +1,330 @@
+{
+  "schema_version": "negative-source-dataset-v1",
+  "description": "Negative/unsafe source examples that the pipeline must reject. Used to validate that policy enforcement blocks extraction from disallowed domains.",
+  "source_notes": {
+    "curation": "Includes known retailers, marketplaces, blogs, review sites, and quarantined rows from old extraction_seed.json that used retailer pages as positive truth.",
+    "legal": "No entry in this dataset may be used as positive extraction ground truth. They are rejection/detection test cases only."
+  },
+  "entries": [
+    {
+      "dataset_kind": "negative_source",
+      "sku": "072705115310",
+      "product_name": "Fromm Gold Large Breed Dog 30 lb",
+      "brand": "Fromm",
+      "candidate_url": "https://www.amazon.com/Fromm-Gold-Large-Breed-Dog/dp/B0012ABCDE",
+      "candidate_domain": "amazon.com",
+      "source_type": "retailer",
+      "reason": "disallowed_domain",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": true
+      },
+      "tags": ["negative", "retailer", "legal-safety", "amazon"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "072705115310",
+      "product_name": "Fromm Gold Large Breed Dog 30 lb",
+      "brand": "Fromm",
+      "candidate_url": "https://www.chewy.com/fromm-gold-large-breed-adult-dog/dp/170200",
+      "candidate_domain": "chewy.com",
+      "source_type": "retailer",
+      "reason": "disallowed_domain",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": true
+      },
+      "tags": ["negative", "retailer", "legal-safety", "chewy"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "072705115310",
+      "product_name": "Fromm Gold Large Breed Dog 30 lb",
+      "brand": "Fromm",
+      "candidate_url": "https://www.walmart.com/ip/Fromm-Gold-Large-Breed/123456789",
+      "candidate_domain": "walmart.com",
+      "source_type": "retailer",
+      "reason": "disallowed_domain",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": true
+      },
+      "tags": ["negative", "retailer", "legal-safety", "walmart"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "045663976866",
+      "product_name": "Four Paws Wee-Wee Cat Pads 11x17 10ct",
+      "brand": "Four Paws",
+      "candidate_url": "https://www.petco.com/shop/en/petcostore/product/wee-wee-cat-pads",
+      "candidate_domain": "petco.com",
+      "source_type": "retailer",
+      "reason": "disallowed_domain",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": true
+      },
+      "tags": ["negative", "retailer", "legal-safety", "petco"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "045663976866",
+      "product_name": "Four Paws Wee-Wee Cat Pads 11x17 10ct",
+      "brand": "Four Paws",
+      "candidate_url": "https://www.petsmart.com/cat/supplies/cat-pads/four-paws-wee-wee-cat-pads-12345.html",
+      "candidate_domain": "petsmart.com",
+      "source_type": "retailer",
+      "reason": "disallowed_domain",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": true
+      },
+      "tags": ["negative", "retailer", "legal-safety", "petsmart"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "4059433816098",
+      "product_name": "Schleich Clydesdale Gelding Horse Toy Figurine",
+      "brand": "Schleich",
+      "candidate_url": "https://www.ebay.com/itm/123456789012",
+      "candidate_domain": "ebay.com",
+      "source_type": "marketplace",
+      "reason": "disallowed_domain",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": true
+      },
+      "tags": ["negative", "marketplace", "legal-safety", "ebay"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "4059433816098",
+      "product_name": "Schleich Clydesdale Gelding Horse Toy Figurine",
+      "brand": "Schleich",
+      "candidate_url": "https://www.etsy.com/listing/1234567890/clydesdale-gelding-figurine",
+      "candidate_domain": "etsy.com",
+      "source_type": "marketplace",
+      "reason": "disallowed_domain",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": true
+      },
+      "tags": ["negative", "marketplace", "legal-safety", "etsy"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "032247761215",
+      "product_name": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
+      "brand": "Scotts",
+      "candidate_url": "https://www.target.com/p/scotts-turf-builder-edgeguard/-/A-12345678",
+      "candidate_domain": "target.com",
+      "source_type": "retailer",
+      "reason": "disallowed_domain",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": true
+      },
+      "tags": ["negative", "retailer", "legal-safety", "target"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "032247761215",
+      "product_name": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
+      "brand": "Scotts",
+      "candidate_url": "https://www.instacart.com/products/scotts-turf-builder-edgeguard",
+      "candidate_domain": "instacart.com",
+      "source_type": "retailer",
+      "reason": "disallowed_domain",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": true
+      },
+      "tags": ["negative", "retailer", "legal-safety", "instacart"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "032247761215",
+      "product_name": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
+      "brand": "Scotts",
+      "candidate_url": "https://scotts.blogspot.com/2019/review-edgeguard-spreader",
+      "candidate_domain": "blogspot.com",
+      "source_type": "blog",
+      "reason": "disallowed_domain",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": true
+      },
+      "tags": ["negative", "blog", "legal-safety"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "072318200618",
+      "product_name": "FirstMate Chicken Meal with Blueberries Formula Dry Cat Food 3.96lb",
+      "brand": "FirstMate",
+      "candidate_url": "https://www.firstmate.com",
+      "candidate_domain": "firstmate.com",
+      "source_type": "official",
+      "reason": "not_official_product_page",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": false
+      },
+      "tags": ["negative", "homepage-not-product", "edge-case"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "856595005308",
+      "product_name": "Etta Says Flavor Fusion Salmon & Sweet Potato 1.75 oz",
+      "brand": "Etta Says!",
+      "candidate_url": "https://www.thepetbeastro.com/etta-says-flavor-fusion-dog-treats-or-salmon-and-s.html",
+      "candidate_domain": "thepetbeastro.com",
+      "source_type": "retailer",
+      "reason": "not_official_not_approved_distributor",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": true
+      },
+      "tags": ["negative", "retailer", "quarantined-from-extraction-seed", "legal-safety"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "813347001018",
+      "product_name": "Stud Muffins Horse Treats 10 oz Tub",
+      "brand": "Stud Muffins",
+      "candidate_url": "https://www.bigdweb.com/stud-muffins-horse-treats-10-oz",
+      "candidate_domain": "bigdweb.com",
+      "source_type": "retailer",
+      "reason": "not_official_not_approved_distributor",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": true
+      },
+      "tags": ["negative", "retailer", "quarantined-from-extraction-seed", "legal-safety"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "813347003043",
+      "product_name": "Stud Muffins Horse Treats 45 oz Tub",
+      "brand": "Stud Muffins",
+      "candidate_url": "https://www.bigdweb.com/stud-muffins-horse-treat-45-oz-bag",
+      "candidate_domain": "bigdweb.com",
+      "source_type": "retailer",
+      "reason": "not_official_not_approved_distributor",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": true
+      },
+      "tags": ["negative", "retailer", "quarantined-from-extraction-seed", "legal-safety"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "072705115310",
+      "product_name": "Fromm Gold Large Breed Dog 30 lb",
+      "brand": "Fromm",
+      "candidate_url": "https://images-na.ssl-images-amazon.com/images/I/81ABCDEFGH.jpg",
+      "candidate_domain": "images-na.ssl-images-amazon.com",
+      "source_type": "unknown",
+      "reason": "disallowed_asset_domain",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": true
+      },
+      "tags": ["negative", "cdn", "legal-safety", "image"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "072705115310",
+      "product_name": "Fromm Gold Large Breed Dog 30 lb",
+      "brand": "Fromm",
+      "candidate_url": "https://www.google.com/products/fromm-gold-large-breed",
+      "candidate_domain": "google.com",
+      "source_type": "unknown",
+      "reason": "disallowed_domain",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": true
+      },
+      "tags": ["negative", "google", "legal-safety"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "072705115310",
+      "product_name": "Fromm Gold Large Breed Dog 30 lb",
+      "brand": "Fromm",
+      "candidate_url": "https://www.youtube.com/watch?v=fromm-gold-review",
+      "candidate_domain": "youtube.com",
+      "source_type": "review_site",
+      "reason": "disallowed_domain",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": true
+      },
+      "tags": ["negative", "review-site", "legal-safety"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "072705115310",
+      "product_name": "Fromm Gold Large Breed Dog 30 lb",
+      "brand": "Fromm",
+      "candidate_url": "https://medium.com/pet-reviews/fromm-gold-review-12345",
+      "candidate_domain": "medium.com",
+      "source_type": "blog",
+      "reason": "disallowed_domain",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": true
+      },
+      "tags": ["negative", "blog", "legal-safety"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "072705115310",
+      "product_name": "Fromm Gold Large Breed Dog 30 lb",
+      "brand": "Fromm",
+      "candidate_url": "https://mystore.myshopify.com/products/fromm-gold",
+      "candidate_domain": "myshopify.com",
+      "source_type": "retailer",
+      "reason": "not_approved_distributor",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": true
+      },
+      "tags": ["negative", "retailer", "shopify", "legal-safety"]
+    },
+    {
+      "dataset_kind": "negative_source",
+      "sku": "850012047735",
+      "product_name": "The Honest Kitchen Grain Free Turkey & Chicken Clusters Dry Cat Food 1 lb",
+      "brand": "The Honest Kitchen",
+      "candidate_url": "https://www.thehonestkitchen.com",
+      "candidate_domain": "thehonestkitchen.com",
+      "source_type": "official",
+      "reason": "not_official_product_page",
+      "expected_behavior": {
+        "may_extract": false,
+        "may_use_images": false,
+        "should_reject_before_runner": false
+      },
+      "tags": ["negative", "homepage-not-product", "edge-case"]
+    }
+  ]
+}

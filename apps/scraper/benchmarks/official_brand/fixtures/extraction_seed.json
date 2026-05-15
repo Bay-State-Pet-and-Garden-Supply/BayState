@@ -3,7 +3,7 @@
   "source_notes": {
     "origin": "Salvaged from the former golden_dataset_v3_extraction_pilot.json and related live manifest data.",
     "curation": "Rows with challenge-blocked pages, empty required image ground truth, or placeholder descriptions were excluded.",
-    "purpose": "Seed dataset for the new live Crawl4AI extraction benchmark. This is intentionally small and strict; expand only with reviewed ground truth."
+    "purpose": "Seed dataset for the new live Crawl4AI extraction benchmark. Retailer rows moved to approved_sources/fixtures/negative_source_dataset.json per legal policy."
   },
   "entries": [
     {
@@ -57,57 +57,7 @@
         "categories": ["Cat Litter Accessories", "Cat Pads", "Litter Box Pads"]
       }
     },
-    {
-      "sku": "856595005308",
-      "product_name": "Etta Says Flavor Fusion Salmon & Sweet Potato 1.75 oz",
-      "brand": "Etta Says!",
-      "source_url": "https://www.thepetbeastro.com/etta-says-flavor-fusion-dog-treats-or-salmon-and-s.html",
-      "source_type": "retailer",
-      "category": "Dog Treats",
-      "difficulty": "medium",
-      "ground_truth": {
-        "brand": "Etta Says!",
-        "name": "Etta Says Flavor Fusion Salmon & Sweet Potato 1.75 oz",
-        "description_contains": ["salmon", "sweet potato"],
-        "size_metrics": "1.75 oz",
-        "image_required": true,
-        "categories": ["Dog Treats", "Dog Chews", "Salmon & Sweet Potato"]
-      }
-    },
-    {
-      "sku": "813347001018",
-      "product_name": "Stud Muffins Horse Treats 10 oz Tub",
-      "brand": "Stud Muffins",
-      "source_url": "https://www.bigdweb.com/stud-muffins-horse-treats-10-oz",
-      "source_type": "retailer",
-      "category": "Horse Treats",
-      "difficulty": "hard",
-      "ground_truth": {
-        "brand": "Stud Muffins",
-        "name": "Stud Muffins Horse Treats 10 oz Tub",
-        "description_contains": ["molasses", "oats"],
-        "size_metrics": "10 oz",
-        "image_required": true,
-        "categories": ["Horse Treats", "Horse Snacks", "Rewards"]
-      }
-    },
-    {
-      "sku": "813347003043",
-      "product_name": "Stud Muffins Horse Treats 45 oz Tub",
-      "brand": "Stud Muffins",
-      "source_url": "https://www.bigdweb.com/stud-muffins-horse-treat-45-oz-bag",
-      "source_type": "retailer",
-      "category": "Horse Treats",
-      "difficulty": "hard",
-      "ground_truth": {
-        "brand": "Stud Muffins",
-        "name": "Stud Muffins Horse Treats 45 oz Tub",
-        "description_contains": ["flax", "molasses"],
-        "size_metrics": "45 oz",
-        "image_required": true,
-        "categories": ["Horse Treats", "Horse Snacks", "Rewards"]
-      }
-    },
+
     {
       "sku": "072318100680",
       "product_name": "FirstMate Grain-Free Chicken Meal with Blueberries 5 lb.",

@@ -1,0 +1,846 @@
+{
+  "schema_version": "official-brand-extraction-dataset-v1",
+  "source_notes": {
+    "origin": "Combined from: (1) original extraction_seed.json official rows, (2) 10 reviewed training rows from bay_state_ai_extraction_training_dataset_pruned.xlsx, (3) 13 reviewed SERP discovery dataset entries with expected_official_domains. Retailer rows (thepetbeastro.com, bigdweb.com) have been moved to negative_source_dataset.json per legal policy.",
+    "curation": "All entries have source_type: 'official'. Retailer/marketplace sources are excluded. Training Excel rows had training_status=train_positive, url_level=product_page, confidence>=0.85, and verified official product URLs. SERP discovery entries were selected for official domain availability and auto-select suitability.",
+    "purpose": "Golden dataset for Crawl4AI official brand extraction benchmark. 30 reviewed entries with field-level ground truth, approved domains, and fixture reference paths.",
+    "fixture_refs_note": "Fixture files at fixture_refs paths do not exist yet. They must be curated from live official pages using the curate_official_extraction.py utility. Run with --live --accept-network to capture snapshots."
+  },
+  "entries": [
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "850012047735",
+      "product_name": "The Honest Kitchen Grain Free Turkey & Chicken Clusters Dry Cat Food 1 lb",
+      "brand": "The Honest Kitchen",
+      "source_url": "https://www.thehonestkitchen.com/products/grain-free-turkey-and-chicken-whole-food-clusters-dry-cat-food",
+      "source_type": "official",
+      "approved_domains": ["thehonestkitchen.com"],
+      "approved_asset_domains": ["thehonestkitchen.com"],
+      "category": "Cat Food Dry",
+      "difficulty": "hard",
+      "ground_truth": {
+        "brand": "The Honest Kitchen",
+        "name": "The Honest Kitchen Grain Free Turkey & Chicken Clusters Dry Cat Food 1 lb",
+        "description_contains": ["whole food clusters", "probiotics"],
+        "size_metrics": "1 lb",
+        "image_required": true,
+        "categories": ["Cat Food Dry", "Dry Cat Food", "Whole Food Clusters"]
+      },
+      "expected": {
+        "minimum_confidence": 0.7,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "pet-food"],
+      "fixture_refs": {
+        "html": "official/thehonestkitchen/850012047735/page.html",
+        "markdown": "official/thehonestkitchen/850012047735/cleaned.md",
+        "json_ld": "official/thehonestkitchen/850012047735/jsonld.json"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "072318200618",
+      "product_name": "FirstMate Chicken Meal with Blueberries Formula Dry Cat Food 3.96lb",
+      "brand": "FirstMate",
+      "source_url": "https://firstmate.com/product/chicken-meal-with-blueberries-formula-for-cats/",
+      "source_type": "official",
+      "approved_domains": ["firstmate.com"],
+      "approved_asset_domains": ["firstmate.com"],
+      "category": "Cat Food Dry",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "FirstMate",
+        "name": "FirstMate Chicken Meal with Blueberries Formula Dry Cat Food 3.96lb",
+        "description_contains": ["chicken", "blueberries"],
+        "size_metrics": "3.96 lb",
+        "image_required": true,
+        "categories": ["Cat Food Dry", "Dry Cat Food", "Limited Ingredient Diet"]
+      },
+      "expected": {
+        "minimum_confidence": 0.8,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "pet-food"],
+      "fixture_refs": {
+        "html": "official/firstmate/072318200618/page.html",
+        "markdown": "official/firstmate/072318200618/cleaned.md",
+        "json_ld": "official/firstmate/072318200618/jsonld.json"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "045663976866",
+      "product_name": "Four Paws Wee-Wee Cat Pads 11x17 10ct",
+      "brand": "Four Paws",
+      "source_url": "https://www.fourpaws.com/products/wee-wee-cat-litter-box-system-pads",
+      "source_type": "official",
+      "approved_domains": ["fourpaws.com"],
+      "approved_asset_domains": ["fourpaws.com"],
+      "category": "Cat Litter Accessories",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Four Paws",
+        "name": "Four Paws Wee-Wee Cat Pads 11x17 10ct",
+        "description_contains": ["cat litter box", "odor"],
+        "size_metrics": "10 count",
+        "image_required": true,
+        "categories": ["Cat Litter Accessories", "Cat Pads", "Litter Box Pads"]
+      },
+      "expected": {
+        "minimum_confidence": 0.8,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "supplies"],
+      "fixture_refs": {
+        "html": "official/fourpaws/045663976866/page.html",
+        "markdown": "official/fourpaws/045663976866/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "072318100680",
+      "product_name": "FirstMate Grain-Free Chicken Meal with Blueberries 5 lb.",
+      "brand": "FirstMate",
+      "source_url": "https://firstmate.com/product/chicken-meal-with-blueberries-formula/",
+      "source_type": "official",
+      "approved_domains": ["firstmate.com"],
+      "approved_asset_domains": ["firstmate.com"],
+      "category": "Dog Food Dry",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "FirstMate",
+        "name": "FirstMate Grain-Free Chicken Meal with Blueberries 5 lb.",
+        "description_contains": ["chicken", "blueberries"],
+        "size_metrics": "5 lb",
+        "image_required": true,
+        "categories": ["Dog Food Dry", "Dry Dog Food", "Limited Ingredient Diet"]
+      },
+      "expected": {
+        "minimum_confidence": 0.8,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "pet-food"],
+      "fixture_refs": {
+        "html": "official/firstmate/072318100680/page.html",
+        "markdown": "official/firstmate/072318100680/cleaned.md",
+        "json_ld": "official/firstmate/072318100680/jsonld.json"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "4059433816098",
+      "product_name": "Schleich Clydesdale Gelding Horse Toy Figurine",
+      "brand": "Schleich",
+      "source_url": "https://us.schleich-s.com/products/clydesdale-gelding-13808-2",
+      "source_type": "official",
+      "approved_domains": ["schleich-s.com", "us.schleich-s.com"],
+      "approved_asset_domains": ["schleich-s.com", "us.schleich-s.com"],
+      "category": "Collectible Animal Figurines",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Schleich",
+        "name": "Schleich Clydesdale Gelding Horse Toy Figurine",
+        "description_contains": ["Clydesdale", "horse"],
+        "size_metrics": "4.8 inch",
+        "image_required": true,
+        "categories": ["Collectible Animal Figurines", "Horse Figurines", "Farm World"]
+      },
+      "expected": {
+        "minimum_confidence": 0.8,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "toy"],
+      "fixture_refs": {
+        "html": "official/schleich/4059433816098/page.html",
+        "markdown": "official/schleich/4059433816098/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "032247886598",
+      "product_name": "Scotts Nature Scapes Color Enhanced Mulch Deep Forest Brown 1.5 cu. ft.",
+      "brand": "Scotts",
+      "source_url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
+      "source_type": "official",
+      "approved_domains": ["scottsmiraclegro.com", "scotts.com"],
+      "approved_asset_domains": ["scottsmiraclegro.com", "scotts.com"],
+      "category": "Garden > Mulch",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Scotts",
+        "name": "Scotts Nature Scapes Color Enhanced Mulch Deep Forest Brown 1.5 cu. ft.",
+        "description_contains": ["mulch", "color"],
+        "size_metrics": "1.5 cu. ft.",
+        "image_required": true,
+        "categories": ["Garden > Mulch", "Mulch", "Lawn & Garden"]
+      },
+      "expected": {
+        "minimum_confidence": 0.8,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "garden"],
+      "fixture_refs": {
+        "html": "official/scottsmiraclegro/032247886598/page.html",
+        "markdown": "official/scottsmiraclegro/032247886598/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "095668480400",
+      "product_name": "Manna Pro Fresh Flakes Poultry Bedding 12 Lb",
+      "brand": "Manna Pro",
+      "source_url": "https://mannapro.com/products/fresh-flakes-poultry-bedding",
+      "source_type": "official",
+      "approved_domains": ["mannapro.com"],
+      "approved_asset_domains": ["mannapro.com"],
+      "category": "Poultry Bedding",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Manna Pro",
+        "name": "Manna Pro Fresh Flakes Poultry Bedding 12 Lb",
+        "description_contains": ["bedding", "pine"],
+        "size_metrics": "12 lb",
+        "image_required": true,
+        "categories": ["Poultry Bedding", "Coop Bedding", "Pine Shavings"]
+      },
+      "expected": {
+        "minimum_confidence": 0.8,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "farm", "poultry"],
+      "fixture_refs": {
+        "html": "official/mannapro/095668480400/page.html",
+        "markdown": "official/mannapro/095668480400/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "019962890727",
+      "product_name": "Wondercide Flea & Tick Spray Lemongrass 4oz",
+      "brand": "Wondercide",
+      "source_url": "https://www.wondercide.com/products/natural-flea-tick-mosquito-control-for-dogs-evolv",
+      "source_type": "official",
+      "approved_domains": ["wondercide.com"],
+      "approved_asset_domains": ["wondercide.com"],
+      "category": "Pet Health > Flea & Tick",
+      "difficulty": "medium",
+      "ground_truth": {
+        "brand": "Wondercide",
+        "name": "Wondercide Flea & Tick Spray Lemongrass 4oz",
+        "description_contains": ["flea", "tick", "mosquito"],
+        "size_metrics": "4 oz",
+        "image_required": true,
+        "categories": ["Pet Health", "Flea & Tick", "Spray"]
+      },
+      "expected": {
+        "minimum_confidence": 0.7,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "pet-health", "verified"],
+      "source_notes": {
+        "origin": "Training Excel (bay_state_ai_extraction_training_dataset_pruned.xlsx)",
+        "verified": true,
+        "confidence_in_source": 0.88
+      },
+      "fixture_refs": {
+        "html": "official/wondercide/019962890727/page.html",
+        "markdown": "official/wondercide/019962890727/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "019962890925",
+      "product_name": "Wondercide Flea & Tick Spray Lemongrass 32oz",
+      "brand": "Wondercide",
+      "source_url": "https://www.wondercide.com/products/natural-flea-tick-mosquito-control-for-dogs-evolv",
+      "source_type": "official",
+      "approved_domains": ["wondercide.com"],
+      "approved_asset_domains": ["wondercide.com"],
+      "category": "Pet Health > Flea & Tick",
+      "difficulty": "medium",
+      "ground_truth": {
+        "brand": "Wondercide",
+        "name": "Wondercide Flea & Tick Spray Lemongrass 32oz",
+        "description_contains": ["flea", "tick", "mosquito"],
+        "size_metrics": "32 oz",
+        "image_required": true,
+        "categories": ["Pet Health", "Flea & Tick", "Spray"]
+      },
+      "expected": {
+        "minimum_confidence": 0.7,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "pet-health", "verified"],
+      "source_notes": {
+        "origin": "Training Excel (bay_state_ai_extraction_training_dataset_pruned.xlsx)",
+        "verified": true,
+        "confidence_in_source": 0.88
+      },
+      "fixture_refs": {
+        "html": "official/wondercide/019962890925/page.html",
+        "markdown": "official/wondercide/019962890925/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "022517437179",
+      "product_name": "Catit Pixi Fountain Light Blue",
+      "brand": "Catit",
+      "source_url": "https://www.catit.com/products/drinking-fountains/pixi-drinking-fountain/",
+      "source_type": "official",
+      "approved_domains": ["catit.com"],
+      "approved_asset_domains": ["catit.com"],
+      "category": "Cat Accessories > Fountains",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Catit",
+        "name": "Catit Pixi Fountain Light Blue",
+        "description_contains": ["drinking fountain", "filter"],
+        "size_metrics": null,
+        "image_required": true,
+        "categories": ["Cat Accessories", "Fountains", "Drinking Fountains"]
+      },
+      "expected": {
+        "minimum_confidence": 0.8,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "cat", "accessories", "verified"],
+      "source_notes": {
+        "origin": "Training Excel (bay_state_ai_extraction_training_dataset_pruned.xlsx)",
+        "verified": true,
+        "confidence_in_source": 0.96
+      },
+      "fixture_refs": {
+        "html": "official/catit/022517437179/page.html",
+        "markdown": "official/catit/022517437179/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "072705113408",
+      "product_name": "Fromm Cat Purrsnick Duck Liver Pate 3oz",
+      "brand": "Fromm",
+      "source_url": "https://frommfamily.com/products/cat/purrsnickitty/can/duck-liver-pate/",
+      "source_type": "official",
+      "approved_domains": ["frommfamily.com"],
+      "approved_asset_domains": ["frommfamily.com"],
+      "category": "Cat Food Wet",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Fromm",
+        "name": "Fromm Cat Purrsnick Duck Liver Pate 3oz",
+        "description_contains": ["duck", "liver", "pate"],
+        "size_metrics": "3 oz",
+        "image_required": true,
+        "categories": ["Cat Food Wet", "Pate", "Purrsnickitty"]
+      },
+      "expected": {
+        "minimum_confidence": 0.85,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "pet-food", "cat", "verified"],
+      "source_notes": {
+        "origin": "Training Excel (bay_state_ai_extraction_training_dataset_pruned.xlsx)",
+        "verified": true,
+        "confidence_in_source": 0.98
+      },
+      "fixture_refs": {
+        "html": "official/frommfamily/072705113408/page.html",
+        "markdown": "official/frommfamily/072705113408/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "072705113446",
+      "product_name": "Fromm Cat Purrsnick Duck Stew 3oz",
+      "brand": "Fromm",
+      "source_url": "https://frommfamily.com/products/cat/purrsnickitty/can/duck-stew/",
+      "source_type": "official",
+      "approved_domains": ["frommfamily.com"],
+      "approved_asset_domains": ["frommfamily.com"],
+      "category": "Cat Food Wet",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Fromm",
+        "name": "Fromm Cat Purrsnick Duck Stew 3oz",
+        "description_contains": ["duck", "stew"],
+        "size_metrics": "3 oz",
+        "image_required": true,
+        "categories": ["Cat Food Wet", "Stew", "Purrsnickitty"]
+      },
+      "expected": {
+        "minimum_confidence": 0.85,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "pet-food", "cat", "verified"],
+      "source_notes": {
+        "origin": "Training Excel (bay_state_ai_extraction_training_dataset_pruned.xlsx)",
+        "verified": true,
+        "confidence_in_source": 0.98
+      },
+      "fixture_refs": {
+        "html": "official/frommfamily/072705113446/page.html",
+        "markdown": "official/frommfamily/072705113446/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "072705113484",
+      "product_name": "Fromm Cat Purrsnick Chicken Shred 3oz",
+      "brand": "Fromm",
+      "source_url": "https://frommfamily.com/products/cat/purrsnickitty/can/shredded-chicken-entree-in-gelee/",
+      "source_type": "official",
+      "approved_domains": ["frommfamily.com"],
+      "approved_asset_domains": ["frommfamily.com"],
+      "category": "Cat Food Wet",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Fromm",
+        "name": "Fromm Cat Purrsnick Chicken Shred 3oz",
+        "description_contains": ["chicken", "gelee", "shredded"],
+        "size_metrics": "3 oz",
+        "image_required": true,
+        "categories": ["Cat Food Wet", "Shredded", "Purrsnickitty"]
+      },
+      "expected": {
+        "minimum_confidence": 0.85,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "pet-food", "cat", "verified"],
+      "source_notes": {
+        "origin": "Training Excel (bay_state_ai_extraction_training_dataset_pruned.xlsx)",
+        "verified": true,
+        "confidence_in_source": 0.95
+      },
+      "fixture_refs": {
+        "html": "official/frommfamily/072705113484/page.html",
+        "markdown": "official/frommfamily/072705113484/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "072705137008",
+      "product_name": "Fromm Cat Purrsnick Chicken 4lb",
+      "brand": "Fromm",
+      "source_url": "https://frommfamily.com/products/cat/purrsnickitty/dry/chicken-delight/",
+      "source_type": "official",
+      "approved_domains": ["frommfamily.com"],
+      "approved_asset_domains": ["frommfamily.com"],
+      "category": "Cat Food Dry",
+      "difficulty": "medium",
+      "ground_truth": {
+        "brand": "Fromm",
+        "name": "Fromm Cat Purrsnick Chicken Delight 4lb",
+        "description_contains": ["chicken", "delight"],
+        "size_metrics": "4 lb",
+        "image_required": true,
+        "categories": ["Cat Food Dry", "Chicken Delight", "Purrsnickitty"]
+      },
+      "expected": {
+        "minimum_confidence": 0.8,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "pet-food", "cat", "verified"],
+      "source_notes": {
+        "origin": "Training Excel (bay_state_ai_extraction_training_dataset_pruned.xlsx)",
+        "verified": true,
+        "confidence_in_source": 0.94
+      },
+      "fixture_refs": {
+        "html": "official/frommfamily/072705137008/page.html",
+        "markdown": "official/frommfamily/072705137008/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "072705137206",
+      "product_name": "Fromm Cat Purrsnick Game Bird 4lb",
+      "brand": "Fromm",
+      "source_url": "https://frommfamily.com/products/cat/purrsnickitty/dry/game-bird-grandeur/",
+      "source_type": "official",
+      "approved_domains": ["frommfamily.com"],
+      "approved_asset_domains": ["frommfamily.com"],
+      "category": "Cat Food Dry",
+      "difficulty": "medium",
+      "ground_truth": {
+        "brand": "Fromm",
+        "name": "Fromm Cat Purrsnick Game Bird Grandeur 4lb",
+        "description_contains": ["game bird", "grandeur"],
+        "size_metrics": "4 lb",
+        "image_required": true,
+        "categories": ["Cat Food Dry", "Game Bird Grandeur", "Purrsnickitty"]
+      },
+      "expected": {
+        "minimum_confidence": 0.8,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "pet-food", "cat", "verified"],
+      "source_notes": {
+        "origin": "Training Excel (bay_state_ai_extraction_training_dataset_pruned.xlsx)",
+        "verified": true,
+        "confidence_in_source": 0.94
+      },
+      "fixture_refs": {
+        "html": "official/frommfamily/072705137206/page.html",
+        "markdown": "official/frommfamily/072705137206/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "072705137404",
+      "product_name": "Fromm Cat Purrsnick Salmon 4lb",
+      "brand": "Fromm",
+      "source_url": "https://frommfamily.com/products/cat/purrsnickitty/dry/salmon-splendor/",
+      "source_type": "official",
+      "approved_domains": ["frommfamily.com"],
+      "approved_asset_domains": ["frommfamily.com"],
+      "category": "Cat Food Dry",
+      "difficulty": "medium",
+      "ground_truth": {
+        "brand": "Fromm",
+        "name": "Fromm Cat Purrsnick Salmon Splendor 4lb",
+        "description_contains": ["salmon", "splendor"],
+        "size_metrics": "4 lb",
+        "image_required": true,
+        "categories": ["Cat Food Dry", "Salmon Splendor", "Purrsnickitty"]
+      },
+      "expected": {
+        "minimum_confidence": 0.8,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "pet-food", "cat", "verified"],
+      "source_notes": {
+        "origin": "Training Excel (bay_state_ai_extraction_training_dataset_pruned.xlsx)",
+        "verified": true,
+        "confidence_in_source": 0.90
+      },
+      "fixture_refs": {
+        "html": "official/frommfamily/072705137404/page.html",
+        "markdown": "official/frommfamily/072705137404/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "810075890174",
+      "product_name": "Wondercide Flying Insect Trap",
+      "brand": "Wondercide",
+      "source_url": "https://www.wondercide.com/products/flying-insect-trap",
+      "source_type": "official",
+      "approved_domains": ["wondercide.com"],
+      "approved_asset_domains": ["wondercide.com"],
+      "category": "Pet Health > Insect Control",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Wondercide",
+        "name": "Wondercide Flying Insect Trap",
+        "description_contains": ["flying insect", "trap"],
+        "size_metrics": null,
+        "image_required": true,
+        "categories": ["Pet Health", "Insect Control", "Fly Trap"]
+      },
+      "expected": {
+        "minimum_confidence": 0.8,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "pet-health", "verified"],
+      "source_notes": {
+        "origin": "Training Excel (bay_state_ai_extraction_training_dataset_pruned.xlsx)",
+        "verified": true,
+        "confidence_in_source": 0.95
+      },
+      "fixture_refs": {
+        "html": "official/wondercide/810075890174/page.html",
+        "markdown": "official/wondercide/810075890174/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "032247761215",
+      "product_name": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
+      "brand": "Scotts",
+      "source_url": "https://www.scotts.com/en-us/products/spreaders/turf-builder-edgeguard-mini-broadcast-spreader",
+      "source_type": "official",
+      "approved_domains": ["scotts.com", "scottsmiraclegro.com"],
+      "approved_asset_domains": ["scotts.com", "scottsmiraclegro.com"],
+      "category": "Garden > Spreaders",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Scotts",
+        "name": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
+        "description_contains": ["spreader", "EdgeGuard", "mini"],
+        "size_metrics": null,
+        "image_required": true,
+        "categories": ["Garden", "Spreaders", "Lawn Care"]
+      },
+      "expected": {
+        "minimum_confidence": 0.8,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "garden", "verified"],
+      "source_notes": {
+        "origin": "SERP discovery dataset",
+        "verified": true
+      },
+      "fixture_refs": {
+        "html": "official/scotts/032247761215/page.html",
+        "markdown": "official/scotts/032247761215/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "032247279048",
+      "product_name": "Miracle-Gro Potting Mix 50 Quart",
+      "brand": "Miracle-Gro",
+      "source_url": "https://www.miraclegro.com/en-us/shop/soils/potting-mix/miracle-gro-potting-mix",
+      "source_type": "official",
+      "approved_domains": ["miraclegro.com", "scottsmiraclegro.com"],
+      "approved_asset_domains": ["miraclegro.com", "scottsmiraclegro.com"],
+      "category": "Garden > Soils",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Miracle-Gro",
+        "name": "Miracle-Gro Potting Mix 50 Quart",
+        "description_contains": ["potting mix", "Miracle-Gro"],
+        "size_metrics": "50 qt",
+        "image_required": true,
+        "categories": ["Garden", "Soils", "Potting Mix"]
+      },
+      "expected": {
+        "minimum_confidence": 0.8,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "garden", "verified"],
+      "source_notes": {
+        "origin": "SERP discovery dataset",
+        "verified": true
+      },
+      "fixture_refs": {
+        "html": "official/miraclegro/032247279048/page.html",
+        "markdown": "official/miraclegro/032247279048/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "877362001042",
+      "product_name": "Green Juju Beef Bone Broth for Dogs 32 oz",
+      "brand": "Green Juju",
+      "source_url": "https://greenjuju.com/products/beef-bone-broth",
+      "source_type": "official",
+      "approved_domains": ["greenjuju.com"],
+      "approved_asset_domains": ["greenjuju.com"],
+      "category": "Dog Treats > Broths",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Green Juju",
+        "name": "Green Juju Beef Bone Broth for Dogs 32 oz",
+        "description_contains": ["bone broth", "beef"],
+        "size_metrics": "32 oz",
+        "image_required": true,
+        "categories": ["Dog Treats", "Broths", "Supplements"]
+      },
+      "expected": {
+        "minimum_confidence": 0.8,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "pet-food", "dog", "verified"],
+      "source_notes": {
+        "origin": "SERP discovery dataset",
+        "verified": true
+      },
+      "fixture_refs": {
+        "html": "official/greenjuju/877362001042/page.html",
+        "markdown": "official/greenjuju/877362001042/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "017623456789",
+      "product_name": "Fromm Gold Large Breed Adult Dry Dog Food 30 lb",
+      "brand": "Fromm",
+      "source_url": "https://frommfamily.com/products/gold-large-breed-adult-dog-food",
+      "source_type": "official",
+      "approved_domains": ["frommfamily.com"],
+      "approved_asset_domains": ["frommfamily.com"],
+      "category": "Dog Food Dry",
+      "difficulty": "medium",
+      "ground_truth": {
+        "brand": "Fromm",
+        "name": "Fromm Gold Large Breed Adult Dry Dog Food 30 lb",
+        "description_contains": ["gold", "large breed"],
+        "size_metrics": "30 lb",
+        "image_required": true,
+        "categories": ["Dog Food Dry", "Gold Formula", "Large Breed"]
+      },
+      "expected": {
+        "minimum_confidence": 0.75,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "pet-food", "dog", "verified"],
+      "source_notes": {
+        "origin": "SERP discovery dataset",
+        "verified": true
+      },
+      "fixture_refs": {
+        "html": "official/frommfamily/017623456789/page.html",
+        "markdown": "official/frommfamily/017623456789/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "018214789012",
+      "product_name": "Taste of the Wild High Prairie Canine Recipe 28 lb",
+      "brand": "Taste of the Wild",
+      "source_url": "https://www.tasteofthewildpetfood.com/products/high-prairie-canine-recipe",
+      "source_type": "official",
+      "approved_domains": ["tasteofthewildpetfood.com"],
+      "approved_asset_domains": ["tasteofthewildpetfood.com"],
+      "category": "Dog Food Dry",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Taste of the Wild",
+        "name": "Taste of the Wild High Prairie Canine Recipe 28 lb",
+        "description_contains": ["bison", "venison", "high prairie"],
+        "size_metrics": "28 lb",
+        "image_required": true,
+        "categories": ["Dog Food Dry", "High Prairie", "Grain Free"]
+      },
+      "expected": {
+        "minimum_confidence": 0.8,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "pet-food", "dog", "verified"],
+      "source_notes": {
+        "origin": "SERP discovery dataset",
+        "verified": true
+      },
+      "fixture_refs": {
+        "html": "official/tasteofthewildpetfood/018214789012/page.html",
+        "markdown": "official/tasteofthewildpetfood/018214789012/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "019436123456",
+      "product_name": "Wellness CORE Grain Free Chicken & Turkey Dry Dog Food 4 lb",
+      "brand": "Wellness",
+      "source_url": "https://www.wellnesspetfood.com/products/wellness-core-grain-free-chicken-turkey-dry-dog-food",
+      "source_type": "official",
+      "approved_domains": ["wellnesspetfood.com"],
+      "approved_asset_domains": ["wellnesspetfood.com"],
+      "category": "Dog Food Dry",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Wellness",
+        "name": "Wellness CORE Grain Free Chicken & Turkey Dry Dog Food 4 lb",
+        "description_contains": ["CORE", "grain free", "turkey"],
+        "size_metrics": "4 lb",
+        "image_required": true,
+        "categories": ["Dog Food Dry", "CORE", "Grain Free"]
+      },
+      "expected": {
+        "minimum_confidence": 0.8,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "pet-food", "dog", "verified"],
+      "source_notes": {
+        "origin": "SERP discovery dataset",
+        "verified": true
+      },
+      "fixture_refs": {
+        "html": "official/wellnesspetfood/019436123456/page.html",
+        "markdown": "official/wellnesspetfood/019436123456/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "034567890123",
+      "product_name": "KONG Classic Dog Toy Large Red",
+      "brand": "KONG",
+      "source_url": "https://www.kongcompany.com/products/kong-classic-dog-toy-large",
+      "source_type": "official",
+      "approved_domains": ["kongcompany.com"],
+      "approved_asset_domains": ["kongcompany.com"],
+      "category": "Dog Toys",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "KONG",
+        "name": "KONG Classic Dog Toy Large Red",
+        "description_contains": ["rubber", "bouncing", "treat dispensing"],
+        "size_metrics": "Large",
+        "image_required": true,
+        "categories": ["Dog Toys", "Chew Toys", "Interactive Toys"]
+      },
+      "expected": {
+        "minimum_confidence": 0.8,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "toy", "dog", "verified"],
+      "source_notes": {
+        "origin": "SERP discovery dataset",
+        "verified": true
+      },
+      "fixture_refs": {
+        "html": "official/kongcompany/034567890123/page.html",
+        "markdown": "official/kongcompany/034567890123/cleaned.md"
+      }
+    },
+    {
+      "schema_version": "official-brand-extraction-dataset-v1",
+      "sku": "076543210987",
+      "product_name": "Mazuri Rat & Mouse Diet 50 lb",
+      "brand": "Mazuri",
+      "source_url": "https://www.mazuri.com/product/rat-mouse-diet-50-lb",
+      "source_type": "official",
+      "approved_domains": ["mazuri.com"],
+      "approved_asset_domains": ["mazuri.com"],
+      "category": "Small Animal Food",
+      "difficulty": "easy",
+      "ground_truth": {
+        "brand": "Mazuri",
+        "name": "Mazuri Rat & Mouse Diet 50 lb",
+        "description_contains": ["rat", "mouse", "diet", "complete nutrition"],
+        "size_metrics": "50 lb",
+        "image_required": true,
+        "categories": ["Small Animal Food", "Rat & Mouse", "Complete Diet"]
+      },
+      "expected": {
+        "minimum_confidence": 0.85,
+        "llm_allowed": true,
+        "expected_status": "success"
+      },
+      "tags": ["official", "pet-food", "small-animal", "verified"],
+      "source_notes": {
+        "origin": "SERP discovery dataset",
+        "verified": true
+      },
+      "fixture_refs": {
+        "html": "official/mazuri/076543210987/page.html",
+        "markdown": "official/mazuri/076543210987/cleaned.md"
+      }
+    }
+  ]
+}

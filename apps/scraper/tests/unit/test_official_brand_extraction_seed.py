@@ -12,7 +12,8 @@ def test_extraction_seed_has_strict_curated_shape() -> None:
     payload = json.loads(DATASET_PATH.read_text(encoding="utf-8"))
 
     assert payload["schema_version"] == "official-brand-extraction-dataset-v1"
-    assert len(payload["entries"]) >= 8
+    # 3 retailer rows were moved to negative_source_dataset.json (legal policy)
+    assert len(payload["entries"]) >= 7
 
     seen_skus: set[str] = set()
     for entry in payload["entries"]:

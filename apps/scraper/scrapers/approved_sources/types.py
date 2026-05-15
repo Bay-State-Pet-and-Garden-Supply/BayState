@@ -7,6 +7,7 @@ and related types defined in apps/web/lib/approved-sources/types.ts.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any
 
 
@@ -68,6 +69,58 @@ class ApprovedSourcePlan:
     priority: list[ApprovedSourcePlanEntry] = field(default_factory=list)
     sourcePolicy: ApprovedSourcePolicy = field(default_factory=ApprovedSourcePolicy)
     llmPolicy: ApprovedSourceLLMPolicy = field(default_factory=ApprovedSourceLLMPolicy)
+
+
+# =============================================================================
+# Failure codes for approved-source extraction
+# =============================================================================
+
+
+class FailureCode(str, Enum):
+    """Well-known failure reasons for source-level extraction attempts."""
+
+    AUTH_REQUIRED = "AUTH_REQUIRED"
+    AUTH_EXPIRED = "AUTH_EXPIRED"
+    POLICY_BLOCKED = "POLICY_BLOCKED"
+    NO_MATCH = "NO_MATCH"
+    EXTRACTION_FAILED = "EXTRACTION_FAILED"
+    UNKNOWN = "UNKNOWN"
+
+
+# =============================================================================
+# Adapter extraction result types
+# =============================================================================
+
+
+@dataclass
+class ApprovedSourceExtractionResult:
+    """Result from a single adapter extraction attempt.
+
+    This is an intermediate result type used internally by adapters.
+    The final EnrichmentResultV1 is built by result_builder.py.
+    """
+
+    success: bool = False
+    source_slug: str = ""
+    source_type: str = "distributor"
+    evidence_url: str | None = None
+    product: dict[str, Any] = field(default_factory=dict)
+    matched_fields: list[str] = field(default_factory=list)
+    confidence: float = 0.0
+    failure_code: FailureCode | None = None
+    failure_message: str | None = None
+    warnings: list[str] = field(default_factory=list)
+    auth_required: bool = False
+
+
+@dataclass
+class AdapterSearchInput:
+    """Structured input passed to adapters for searching."""
+
+    sku: str
+    name: str | None = None
+    brand: str | None = None
+    price: float | None = None
 
 
 # =============================================================================
