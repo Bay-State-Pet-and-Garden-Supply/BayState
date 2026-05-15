@@ -66,7 +66,7 @@ const LEGACY_PIPELINE_STAGE_ALIASES = {
   exporting: "publishing",
   searching: "imported",
   scraping: "extracting",
-  needs_brand: "awaiting_brand",
+  needs_brand: "imported",
   needs_fallback_review: "imported",
 } as const;
 

@@ -1,62 +1,26 @@
-# SCRAPERS MODULE
+# Scrapers Module Agent Context (scrapers/)
 
-**Scope:** Scraping domain - actions, workflows, execution engine, events
+## Overview
+This module contains the domain-specific scraping logic, discovery pipelines, and cohort management. It has transitioned away from a purely selector-based engine to an AI-driven discovery and extraction system.
 
-## STRUCTURE
-```
-scrapers/
-├── actions/               # 24 handler files (38 registered actions)
-│   ├── handlers/          # navigate, click, extract, ...
-│   ├── base.py            # BaseAction
-│   └── registry.py        # ActionRegistry
-├── ai_search/             # AI search integration
-├── cohort/                # Cohort processing
-├── configs/               # Deprecated - API is runtime source
-├── executor/              # Workflow execution (decomposed)
-│   ├── workflow_executor.py, browser_manager.py, selector_resolver.py
-│   ├── step_executor.py, debug_capture.py, normalization.py
-├── models/                # Pydantic models
-├── parser/                # YAML config parsing
-├── product_url_extraction/ # URL extraction
-├── providers/             # Provider implementations
-├── config_validation.py   # Config validation
-├── context.py             # ScraperContext Protocol
-├── pricing_loader.py      # Dynamic pricing loader
-├── result_collector.py    # Result collection
-├── sku_loader.py          # SKU loader
-```
+## Key Sub-modules
+- `ai_search/`: Handles search-based discovery using providers like Serper. Includes logic for scoring and ranking search results.
+- `cohort/`: Manages groups of products (cohorts) for batch processing and search frequency analysis.
+- `product_url_extraction/`: Specialized logic for finding the correct manufacturer URL for a product before extraction.
+- `config/`: Contains YAML templates and sample configurations for scrapers. Note: Production configs are fetched via API.
+- `models/`: Pydantic schemas for scraper configurations and validation rules.
 
-## KEY CONCEPTS
+## Phase 10 Context
+The legacy `actions/`, `executor/`, and `parser/` sub-directories have been removed or deactivated as part of Phase 10. The system now favors the **enrichment path** using `src/crawl4ai_engine/`.
 
-**ScraperContext Protocol:** Interface between actions and executor. Actions receive `self.ctx`.
+## Where to look
+| Task | Path |
+| :--- | :--- |
+| **Search Ranking** | `ai_search/scoring.py` |
+| **Batch Search** | `ai_search/batch_search.py` |
+| **Cohort Logic** | `cohort/` |
+| **URL Extraction** | `product_url_extraction/` |
 
-**Action Registration:**
-```python
-@ActionRegistry.register("navigate")
-class NavigateAction(BaseAction):
-    async def execute(self, params):
-        await self.ctx.browser.page.goto(params["url"])
-```
-
-**Adding Actions:**
-1. Create `{name}.py` in `actions/handlers/`
-2. Inherit `BaseAction`, use `@ActionRegistry.register("{name}")`
-3. Access via `self.ctx`
-
-## ANTI-PATTERNS
-- **NO** selenium references
-- **NO** sync browser operations
-- **NO** direct DB access
-- **NO** hardcoded site logic
-- **NO** bypassing EventEmitter
-
-## RELATED
-- Parent: `../AGENTS.md`
-- Actions: `./actions/AGENTS.md`
-- Executor: `./executor/AGENTS.md`
-- Events (EventEmitter): `../core/events.py` → `../core/AGENTS.md`
-- crawl4ai: `../src/crawl4ai_engine/AGENTS.md`
-
-## TESTING
-Action tests: `tests/test_action_registry.py`
-Executor tests: `tests/test_workflow_executor.py`
+## Related AGENTS.md
+- `../AGENTS.md`: Root scraper context.
+- `../src/crawl4ai_engine/AGENTS.md`: Extraction engine details.

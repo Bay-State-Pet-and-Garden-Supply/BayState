@@ -215,9 +215,9 @@ The previous browser-use based AI scraper system (v0.2.0) has been deprecated:
 - **Old configs**: Used `ai_config.tool: "browser-use"`
 - **New configs**: Use `ai_config.provider: "crawl4ai"`
 - **Action handlers**: `ai_extract`, `ai_search`, `ai_validate` now use Crawl4AI
-- **Fallback behavior**: Maintained - falls back to static scraping when AI fails
+- **Fallback behavior**: Maintained - falls back to static scraping (Note: Static scraping is currently deactivated in Phase 10 in favor of enrichment paths).
 
-Archived browser-use code is available in `scraper_backend/archive/ai_handlers/`.
+Archived browser-use code is available in repository history or historical branches.
 
 ### Benefits of Crawl4AI
 

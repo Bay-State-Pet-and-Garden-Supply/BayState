@@ -245,7 +245,7 @@ test_skus:
 
 If you need to rollback to browser-use temporarily:
 
-1. Code is archived in `scraper_backend/archive/ai_handlers/`
+1. Code is archived in `archive/ai_handlers/`
 2. Restore the handlers from archive
 3. Change `provider: "crawl4ai"` back to `tool: "browser-use"`
 

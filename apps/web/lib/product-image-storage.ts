@@ -6,7 +6,10 @@ import {
   getRetryDelay,
   ImageCaptureErrorType,
 } from './image-capture-errors';
-import type { ImageErrorType, ImageRetryQueueInsert } from './supabase/database.types';
+import type { Database } from './supabase/database.types';
+
+type ImageErrorType = Database['public']['Enums']['image_error_type'];
+type ImageRetryQueueInsert = Database['public']['Tables']['image_retry_queue']['Insert'];
 
 const PRODUCT_IMAGES_BUCKET = 'product-images';
 export const PENDING_RETRY_IMAGE_PREFIX = 'pending_retry://';

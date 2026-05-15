@@ -900,7 +900,7 @@ Disabling validation may allow malformed data to reach the coordinator, causing 
 
 2. **Test extraction locally** to inspect raw output:
    ```bash
-   python -m scraper_backend.test_extraction --config my-scraper.yaml --sku TEST123
+   python runner.py --local --config my-scraper.yaml --sku TEST123
    ```
 
 3. **Check the callback payload** in the coordinator logs to see what data was sent

@@ -38,7 +38,6 @@ export async function GET() {
         const byStatus: Record<PersistedPipelineStatus, number> = {
             awaiting_brand: 0,
             imported: 0,
-            url_review: 0,
             extracting: 0,
             processed: 0,
             merging: 0,

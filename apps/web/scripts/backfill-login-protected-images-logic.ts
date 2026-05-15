@@ -2,8 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import yaml from 'yaml';
-import type { ImageRetryQueueInsert } from '../lib/supabase/database.types';
+import type { Database } from '../lib/supabase/database.types';
 import { scraperConfigRequiresLogin } from '../lib/scraper-config-login';
+
+type ImageRetryQueueInsert = Database['public']['Tables']['image_retry_queue']['Insert'];
 
 type BackfillMode = 'dry-run' | 'execute';
 

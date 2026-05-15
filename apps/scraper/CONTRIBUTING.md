@@ -66,13 +66,10 @@ We enforce **Conventional Commits** to automate changelogs and versioning.
 
 - **PR Validation**: Runs on all PRs.
   - Python: `pytest`, `ruff`, `mypy`
-  - UI: `npm test`, `npm run lint`
-  - Docker: Build verification
+  - Docker: Build verification (linux/amd64 native)
 
 - **Release Pipeline**: Runs on tags `v*`.
-  - Builds Docker images
-  - Builds Desktop App (Tauri)
-  - Publishes Release to GitHub
+  - Builds Docker images for scraper runners.
 
-- **Scraper Deploy**: Runs on `push` to `main`.
-  - Deploys updated scraper logic to runners.
+- **Scraper Deploy**:
+  - Deploys updated scraper runners to the fleet.

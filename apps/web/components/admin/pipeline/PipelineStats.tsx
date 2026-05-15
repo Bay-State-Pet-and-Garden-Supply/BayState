@@ -5,7 +5,6 @@ import {
   AlertCircle,
   Brain,
   CheckCircle2,
-  Globe,
   Package,
   Sparkles,
   Upload,
@@ -35,13 +34,6 @@ const statusConfig: Array<{
     icon: Package,
     color: "text-brand-forest-green",
     bgColor: "bg-brand-forest-green/10",
-  },
-  {
-    status: "url_review",
-    label: "URL Review",
-    icon: Globe,
-    color: "text-purple-600",
-    bgColor: "bg-purple-600/10",
   },
   {
     status: "extracting",

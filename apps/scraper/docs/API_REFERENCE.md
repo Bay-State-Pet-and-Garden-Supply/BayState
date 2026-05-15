@@ -152,7 +152,7 @@ Common HTTP status codes:
 ## Python Client Example
 
 ```python
-from scraper_backend.core.api_client import ScraperAPIClient
+from apps.scraper.core.api_client import ScraperAPIClient
 
 client = ScraperAPIClient(
     api_url="https://app.baystatepet.com",

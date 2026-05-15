@@ -4,6 +4,18 @@ All notable changes to BayStateScraper will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-15
+### Added
+- **crawl4ai v0.3.0 Engine** - High-performance extraction engine (3-5x faster).
+- **Enrichment Path** - AI-only extraction pipeline replacing legacy static scraping.
+- **Phase 10 Migration** - Deactivation of static scraping in favor of enrichment/AI-only extraction.
+- **Local CLI** - New `bsr` CLI for local cohort testing and benchmarking.
+- **Official Brand Scraper** - Isolated pipeline for direct-from-manufacturer ingestion.
+
+### Deprecated
+- **Static Scraping** - Selector-based scraping is now a secondary fallback or deactivated.
+- **Legacy Actions/Executor** - Moved toward crawl4ai-native execution.
+
 ### Deprecated
 - **GitHub Actions Runner** - The `.github/workflows/scrape.yml` workflow has been deprecated. Use the polling daemon instead (see [Runner Setup Guide](../BayStateApp/docs/runner-setup.md)).
 

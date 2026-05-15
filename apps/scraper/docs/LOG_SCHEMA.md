@@ -13,7 +13,7 @@ Every log entry MUST contain these fields:
 |-------|------|-------------|---------|
 | `timestamp` | string | ISO 8601 timestamp (UTC) | `"2025-01-21T10:30:00.123Z"` |
 | `level` | string | Log level (UPPERCASE) | `"INFO"`, `"ERROR"`, `"DEBUG"` |
-| `logger` | string | Python logger name | `"scraper_backend.scrapers.executor"` |
+| `logger` | string | Python logger name | `"apps.scraper.scrapers.executor"` |
 | `message` | string | Human-readable message | `"Starting workflow execution"` |
 | `job_id` | string \| null | Current scrape job ID | `"job_12345"` |
 | `runner_name` | string | Configured runner identity | `"runner-prod-01"` |
@@ -52,7 +52,7 @@ Redacted values are replaced with `[REDACTED]`.
 {
   "timestamp": "2025-01-21T10:30:05.123Z",
   "level": "INFO",
-  "logger": "scraper_backend.scrapers.executor",
+  "logger": "apps.scraper.scrapers.executor",
   "message": "Successfully navigated to product page",
   "job_id": "job_123",
   "runner_name": "worker-01",
@@ -68,7 +68,7 @@ Redacted values are replaced with `[REDACTED]`.
 {
   "timestamp": "2025-01-21T10:30:10.555Z",
   "level": "ERROR",
-  "logger": "scraper_backend.core.retry",
+  "logger": "apps.scraper.core.retry",
   "message": "Element not found after retries",
   "job_id": "job_123",
   "runner_name": "worker-01",
@@ -85,7 +85,7 @@ Redacted values are replaced with `[REDACTED]`.
 {
   "timestamp": "2025-01-21T10:30:08.777Z",
   "level": "WARNING",
-  "logger": "scraper_backend.scrapers.extract",
+  "logger": "apps.scraper.scrapers.extract",
   "message": "Optional field 'rating' not found",
   "job_id": "job_123",
   "runner_name": "worker-01",
@@ -102,7 +102,7 @@ Redacted values are replaced with `[REDACTED]`.
 {
   "timestamp": "2025-01-21T10:30:01.000Z",
   "level": "DEBUG",
-  "logger": "scraper_backend.utils.debugging",
+  "logger": "apps.scraper.utils.debugging",
   "message": "Selector validation result",
   "job_id": null,
   "runner_name": "local-dev",

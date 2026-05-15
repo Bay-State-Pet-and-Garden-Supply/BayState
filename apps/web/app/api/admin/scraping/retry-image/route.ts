@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { createAdminClient } from '@/lib/supabase/server';
-import type { ImageRetryQueueRow } from '@/lib/supabase/database.types';
+import type { Database } from '@/lib/supabase/database.types';
 import { resolveImageRetryTarget } from '@/lib/scraper-callback/image-retry-processor';
+
+type ImageRetryQueueRow = Database['public']['Tables']['image_retry_queue']['Row'];
 
 interface RetryImageRequestBody {
   sku?: string;

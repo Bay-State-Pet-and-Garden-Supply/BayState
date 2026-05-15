@@ -42,7 +42,7 @@ Fallback chain: LLM-free → LLM → Static selectors → Manual review
 - Uses `AsyncWebCrawler` from crawl4ai library
 - Error classification from `core.failure_classifier` and `scrapers.exceptions`
 - Results via `callback.py` with HMAC-SHA256 signatures
-- Config from `scrapers/configs/*.yaml` (API-published at runtime)
+- Config from `scrapers/config/*.yaml` (API-published at runtime)
 
 ## ANTI-PATTERNS
 - **NO** sync operations (async-only engine)
@@ -53,4 +53,4 @@ Fallback chain: LLM-free → LLM → Static selectors → Manual review
 ## RELATED
 - Parent: `../../AGENTS.md` (scraper root)
 - Core retry: `../../core/AGENTS.md`
-- Action handlers: `../../scrapers/actions/AGENTS.md`
+- Scrapers domain: `../../scrapers/AGENTS.md`

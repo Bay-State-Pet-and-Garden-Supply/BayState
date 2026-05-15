@@ -9,11 +9,14 @@ import {
   ImageCaptureErrorType,
   shouldRetry,
 } from '@/lib/image-capture-errors';
-import type {
-  ImageErrorType,
-  ImageRetryQueueUpdate,
-  PendingImageRetry,
-} from '@/lib/supabase/database.types';
+import type { Database } from '@/lib/supabase/database.types';
+
+type ImageErrorType = Database['public']['Enums']['image_error_type'];
+type ImageRetryQueueUpdate = Database['public']['Tables']['image_retry_queue']['Update'];
+type PendingImageRetry = Omit<Database['public']['Tables']['image_retry_queue']['Row'], 'id'> & {
+  retry_id: string;
+  error_type: Database['public']['Enums']['image_error_type'];
+};
 
 const DEFAULT_BATCH_SIZE = 10;
 const DEFAULT_CONCURRENCY = 3;

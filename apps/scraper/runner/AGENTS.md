@@ -59,10 +59,8 @@ python runner.py --mode realtime
 - Core: `../core/AGENTS.md` (infrastructure services)
 - Scrapers: `../scrapers/AGENTS.md` (scraping domain)
 - crawl4ai: `../src/crawl4ai_engine/AGENTS.md` (extraction engine)
-- Parent: `../AGENTS.md` (root scraper overview)
-- Core: `../core/AGENTS.md` (infrastructure services)
-- Scrapers: `../scrapers/AGENTS.md` (scraping domain)
 
 ## ANTI-PATTERNS
-- **NO** mode-specific logic outside this package
-- **NO** direct scraper instantiation (use WorkflowExecutor)
+- **NO** mode-specific logic outside this package.
+- **NO** static scraping logic (deactivated in Phase 10).
+- **NO** direct browser manipulation (delegate to crawl4ai engine).

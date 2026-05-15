@@ -135,7 +135,7 @@ jobs:
       # Update to new runner
       - name: Run crawl4ai Scraper
         run: |
-          python -m scraper_backend.crawl4ai_runner \
+          python runner.py \
             --job-id ${{ github.event.inputs.job_id }}
         env:
           SCRAPER_API_URL: ${{ secrets.SCRAPER_API_URL }}
@@ -186,7 +186,7 @@ pip install crawl4ai>=0.4.0
 python daemon.py --engine crawl4ai
 
 # Or run single job
-python -m src.crawl4ai_engine.engine --job-id <uuid>
+python cli/main.py extraction test --job-id <uuid>
 ```
 
 ### System Requirements

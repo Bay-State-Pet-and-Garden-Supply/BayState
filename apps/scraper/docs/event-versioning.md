@@ -201,7 +201,7 @@ def normalize_event_type(event_type: str) -> str:
 {
   "timestamp": "2025-01-21T10:30:05.123Z",
   "level": "INFO",
-  "logger": "scraper_backend.scrapers.executor",
+  "logger": "apps.scraper.scrapers.executor",
   "message": "Successfully navigated to product page",
   "job_id": "job_123",
   "runner_name": "worker-01",

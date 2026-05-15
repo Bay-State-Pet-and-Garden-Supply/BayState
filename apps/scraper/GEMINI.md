@@ -28,9 +28,12 @@ gh workflow run scrape.yml \
 - **Style:** ruff configuration (line length 100)
 - **Typing:** Type hints required
 - **Naming:** snake_case for functions/variables, PascalCase for classes
+- **Project Name:** Bay State Scraper (apps/scraper)
+- **Local Configs:** `apps/scraper/scrapers/config/`
+- **Docs:** `apps/scraper/docs/`
 
 ### Workflow
-- Scrapers defined in YAML (`scraper_backend/scrapers/configs/`)
+- Scrapers defined in YAML (`apps/scraper/scrapers/config/`)
 - Triggered by BayStateApp admin panel
 - Results posted back via secure webhook
 

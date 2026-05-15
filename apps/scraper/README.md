@@ -197,21 +197,27 @@ You can now run and test scrapers locally without a running API server. This is 
 
 ```bash
 # Test a scraper with its built-in test_skus
-python runner.py --local --config scrapers/configs/phillips.yaml
+python runner.py --local --config scrapers/config/phillips.yaml
 
 # Test a specific SKU and watch the browser
-python runner.py --local --config scrapers/configs/phillips.yaml --sku 072705115310 --no-headless
+python runner.py --local --config scrapers/config/phillips.yaml --sku 072705115310 --no-headless
 
 # Save results to a file
-python runner.py --local --config scrapers/configs/phillips.yaml --output results.json
+python runner.py --local --config scrapers/config/phillips.yaml --output results.json
 ```
 
 For scrapers requiring login, set environment variables:
 
 ```bash
 PHILLIPS_USERNAME=myuser PHILLIPS_PASSWORD=mypass \
-  python runner.py --local --config scrapers/configs/phillips.yaml
+  python runner.py --local --config scrapers/config/phillips.yaml
 ```
+
+## Related Documentation
+- [AGENTS.md](AGENTS.md) - Architectural patterns and constraints
+- [DEV_SETUP.md](DEV_SETUP.md) - Detailed setup and quickstart
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - Deep dive into system design
+- [docs/API_REFERENCE.md](docs/API_REFERENCE.md) - API contract details
 
 ### Quick Start (Orchestrated)
 

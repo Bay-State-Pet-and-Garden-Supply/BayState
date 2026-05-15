@@ -28,7 +28,6 @@ const BULK_ACTIONS: Record<
     secondaryAction?: string;
   }
 > = {
-  awaiting_brand: { label: "", nextStage: null },
   imported: { label: "", nextStage: null },
   extracting: { label: "", nextStage: null },
   processed: {
