@@ -480,6 +480,43 @@ VALUES (
 ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------
+-- Admin User (Local Dev)
+-- ---------------------------------------------------------------------
+-- Seed a standard admin user: admin@baystate.local / dev-password
+-- This uses the standard Supabase auth.users table.
+-- We use a fixed UUID for idempotency.
+INSERT INTO auth.users (
+  instance_id, id, aud, role, email, encrypted_password, 
+  email_confirmed_at, recovery_sent_at, last_sign_in_at, 
+  raw_app_meta_data, raw_user_meta_data, created_at, updated_at, 
+  confirmation_token, email_change, email_change_token_new, recovery_token
+)
+VALUES (
+  '00000000-0000-0000-0000-000000000000',
+  'a0000000-0000-0000-0000-000000000000',
+  'authenticated',
+  'authenticated',
+  'admin@baystate.local',
+  -- Hash for 'dev-password' (standard GoTrue/Bcrypt)
+  '$2a$10$7Z2Z.Z.Z.Z.Z.Z.Z.Z.Z.uL2B6V8m1uG/3j/yH0v7O8p5Z1g.q7uW',
+  NOW(), NOW(), NOW(),
+  '{"provider": "email", "providers": ["email"]}',
+  '{"full_name": "Local Admin"}',
+  NOW(), NOW(), '', '', '', ''
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Seed the profile for the admin user
+INSERT INTO public.profiles (id, email, full_name, role)
+VALUES (
+  'a0000000-0000-0000-0000-000000000000',
+  'admin@baystate.local',
+  'Local Admin',
+  'admin'
+)
+ON CONFLICT (id) DO UPDATE SET role = 'admin';
+
+-- ---------------------------------------------------------------------
 -- Scraper Runners (Local Dev)
 -- ---------------------------------------------------------------------
 INSERT INTO scraper_runners (name, status, enabled, metadata)
