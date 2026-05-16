@@ -85,8 +85,6 @@ interface SourceDetails extends Record<string, unknown> {
 }
 
 const EMPTY_SOURCES: Record<string, unknown> = {};
-const IMAGE_RETRY_DEBOUNCE_MS = 5 * 60 * 1000;
-const imageRetryAttemptTimestamps = new Map<string, number>();
 
 interface ProvenanceInfo {
   source_kind?: "static_scraper" | "fallback_serper_ai";
@@ -209,32 +207,6 @@ export function ScrapedResultsView({
   }, [sortedProducts, preferredSku]);
 
   // 5. Callbacks
-  const handleImageError = useCallback(
-    (imageUrl: string | undefined) => {
-      const productId = selectedProduct?.sku;
-      const normalizedImageUrl = imageUrl?.trim();
-
-      if (!productId || !normalizedImageUrl) return;
-
-      const retryKey = `${productId}:${normalizedImageUrl}`;
-      const now = Date.now();
-      const lastAttemptAt = imageRetryAttemptTimestamps.get(retryKey);
-
-      if (typeof lastAttemptAt === "number" && now - lastAttemptAt < IMAGE_RETRY_DEBOUNCE_MS) return;
-
-      imageRetryAttemptTimestamps.set(retryKey, now);
-
-      void adminFetch("/api/admin/scraping/retry-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sku: productId,
-          image_url: normalizedImageUrl,
-        }),
-      }).catch(err => console.warn("[ScrapedResultsView] Image retry error:", err));
-    },
-    [selectedProduct?.sku],
-  );
 
   const handleDeleteSourceClick = useCallback((sourceKey: string) => {
     if (!selectedProduct) return;
@@ -498,7 +470,6 @@ export function ScrapedResultsView({
                               alt={currentSourceData.title || currentSourceData.name}
                               className="w-full h-full object-contain transition-all duration-300"
                               data-testid="scraped-primary-image"
-                              onError={() => handleImageError(currentSourceData.images?.[currentImageIndex])}
                             />
                             
                             {/* Navigation Arrows */}
@@ -542,7 +513,6 @@ export function ScrapedResultsView({
                             alt={currentSourceData.title || currentSourceData.name}
                             className="w-full h-full object-contain"
                             data-testid="scraped-primary-image"
-                            onError={() => handleImageError(currentSourceData.image_url)}
                           />
                         ) : (
                           <div className="flex flex-col items-center text-muted-foreground">
@@ -579,7 +549,6 @@ export function ScrapedResultsView({
                                 alt=""
                                 className="w-full h-full object-contain"
                                 data-testid={i > 0 ? `scraped-secondary-image-${i - 1}` : undefined}
-                                onError={() => handleImageError(img)}
                               />
                             </div>
                           ))}

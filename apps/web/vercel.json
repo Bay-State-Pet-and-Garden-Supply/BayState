@@ -2,10 +2,4 @@
   "installCommand": "bun install --frozen-lockfile",
   "buildCommand": "bun run build",
   "ignoreCommand": "bunx turbo-ignore",
-  "crons": [
-    {
-      "path": "/api/cron/image-retry",
-      "schedule": "*/5 * * * *"
-    }
-  ]
 }
