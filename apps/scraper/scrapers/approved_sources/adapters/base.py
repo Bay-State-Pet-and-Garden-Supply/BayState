@@ -236,48 +236,15 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             )
             return None, login_result.failure_type or "AUTH_FAILED"
 
-        # Fetch using Playwright for full JavaScript rendering.
-        # Salesforce Commerce Cloud (Phillips) and Angular sites require JS execution.
+        # Fetch using the authenticated Playwright page from the login manager.
+        # The login manager keeps the page alive for subsequent fetches.
         try:
-            from playwright.async_api import async_playwright
-
-            username, _ = creds
-            async with async_playwright() as pw:
-                browser = await pw.chromium.launch(headless=True)
-                context = await browser.new_context()
-                page = await context.new_page()
-
-                # Login
-                await page.goto(login_config.login_url, wait_until="domcontentloaded", timeout=30000)
-                try:
-                    await page.wait_for_selector(login_config.username_selector, timeout=10000)
-                except Exception:
-                    pass
-                await page.fill(login_config.username_selector, username)
-                await page.fill(login_config.password_selector, creds[1])
-                await page.click(login_config.submit_selector)
-
-                await asyncio.sleep(2)
-                try:
-                    await page.wait_for_load_state("networkidle", timeout=20000)
-                except Exception:
-                    pass
-
-                # Navigate to target URL
-                await page.goto(url, wait_until="domcontentloaded", timeout=30000)
-                await asyncio.sleep(3)
-                try:
-                    await page.wait_for_load_state("networkidle", timeout=15000)
-                except Exception:
-                    pass
-                await asyncio.sleep(2)
-
-                html = await page.content()
-                await browser.close()
-
-                if html:
-                    return html, None
-                return None, "EXTRACTION_FAILED: No HTML from Playwright fallback"
+            html = await login_manager.fetch_authenticated_html(
+                login_result.session_id, url
+            )
+            if html:
+                return html, None
+            return None, "EXTRACTION_FAILED: Authenticated fetch returned empty HTML"
 
         except Exception as e:
             logger.error(
