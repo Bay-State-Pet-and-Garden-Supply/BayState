@@ -208,11 +208,11 @@ class ProductSampler:
         import os
 
         url = os.environ.get("SUPABASE_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
-        key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("BSR_SUPABASE_REALTIME_KEY") or os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+        key = os.environ.get("SUPABASE_SECRET_KEY") or os.environ.get("BSR_SUPABASE_REALTIME_KEY") or os.environ.get("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
 
         if not url or not key:
             raise EnvironmentError(
-                "Missing Supabase credentials. Expected SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, BSR_SUPABASE_REALTIME_KEY, or NEXT_PUBLIC_SUPABASE_ANON_KEY."
+                "Missing Supabase credentials. Expected SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY, BSR_SUPABASE_REALTIME_KEY, or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY."
             )
 
         return url, key

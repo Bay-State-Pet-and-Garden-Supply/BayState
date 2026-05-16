@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from '@/lib/supabase/config';
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 
 const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
 
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     try {
         // Get auth info
         const supabaseUrl = SUPABASE_URL;
-        const supabaseKey = SUPABASE_ANON_KEY;
+        const supabaseKey = SUPABASE_PUBLISHABLE_KEY;
 
         if (!supabaseUrl || !supabaseKey) {
             return NextResponse.json(

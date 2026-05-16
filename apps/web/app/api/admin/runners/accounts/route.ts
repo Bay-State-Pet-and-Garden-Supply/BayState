@@ -5,8 +5,8 @@ import { generateAPIKey } from '@/lib/scraper-auth';
 import { requireSupabaseConfig } from '@/lib/supabase/config';
 
 function getSupabaseAdmin(): SupabaseClient {
-    const { url, anonKey } = requireSupabaseConfig();
-    return createClient(url, anonKey, {
+    const { url, publishableKey } = requireSupabaseConfig();
+    return createClient(url, publishableKey, {
         auth: { autoRefreshToken: false, persistSession: false }
     });
 }

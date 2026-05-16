@@ -288,7 +288,7 @@ class TestScraperAPIClient:
             os.environ,
             {
                 "NEXT_PUBLIC_SUPABASE_URL": "https://test.supabase.co",
-                "SUPABASE_SERVICE_ROLE_KEY": "service-role-key",
+                "SUPABASE_SECRET_KEY": "service-role-key",
                 "AI_CREDENTIALS_ENCRYPTION_KEY": encryption_key,
             },
             clear=False,
@@ -361,7 +361,7 @@ class TestScraperAPIClient:
             os.environ,
             {
                 "NEXT_PUBLIC_SUPABASE_URL": "https://test.supabase.co",
-                "SUPABASE_SERVICE_ROLE_KEY": "service-role-key",
+                "SUPABASE_SECRET_KEY": "service-role-key",
                 "AI_CREDENTIALS_ENCRYPTION_KEY": encryption_key,
             },
             clear=False,

@@ -18,11 +18,11 @@ function requireAdminKey() {
 
 export async function createClient() {
   const cookieStore = await cookies()
-  const { url, anonKey } = requireSupabaseConfig()
+  const { url, publishableKey } = requireSupabaseConfig()
 
   return createServerClient(
     url,
-    anonKey,
+    publishableKey,
     {
       cookies: {
         getAll() {
@@ -53,11 +53,11 @@ export async function createClient() {
 }
 
 export function createPublicClient() {
-  const { url, anonKey } = requireSupabaseConfig()
+  const { url, publishableKey } = requireSupabaseConfig()
 
   return createServerClient(
     url,
-    anonKey,
+    publishableKey,
     {
       cookies: {
         getAll() {
@@ -91,7 +91,7 @@ export async function createAdminClient() {
 export function createClientFromRequest(request: Request) {
   // For use in contexts where we don't have access to cookies() async
   // This is a fallback that reads cookies from the request header
-  const { url, anonKey } = requireSupabaseConfig()
+  const { url, publishableKey } = requireSupabaseConfig()
   const cookieHeader = request.headers.get('cookie') || ''
   const cookieMap = new Map<string, string>()
 
@@ -104,7 +104,7 @@ export function createClientFromRequest(request: Request) {
 
   return createServerClient(
     url,
-    anonKey,
+    publishableKey,
     {
       cookies: {
         getAll() {
@@ -123,9 +123,9 @@ export function createClientFromRequest(request: Request) {
 }
 
 export function createClientFromBearerToken(token: string): SupabaseClient {
-  const { url, anonKey } = requireSupabaseConfig()
+  const { url, publishableKey } = requireSupabaseConfig()
 
-  return createSupabaseClient(url, anonKey, {
+  return createSupabaseClient(url, publishableKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,

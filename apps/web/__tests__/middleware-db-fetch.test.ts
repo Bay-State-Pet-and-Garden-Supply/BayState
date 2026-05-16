@@ -14,15 +14,15 @@ describe('Middleware role resolution', () => {
     let mockFrom: jest.Mock;
     let profilesTableCalls: string[];
     const originalSupabaseUrl = process.env.SUPABASE_URL;
-    const originalSupabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+    const originalSupabasePublishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
 
     beforeEach(() => {
         jest.clearAllMocks();
         process.env.SUPABASE_URL = 'https://example.supabase.co';
-        process.env.SUPABASE_ANON_KEY = 'test-anon-key';
+        process.env.SUPABASE_PUBLISHABLE_KEY = 'test-anon-key';
         profilesTableCalls = [];
         process.env.SUPABASE_URL = 'https://example.supabase.co';
-        process.env.SUPABASE_ANON_KEY = 'anon-test-key';
+        process.env.SUPABASE_PUBLISHABLE_KEY = 'anon-test-key';
 
         mockGetUser = jest.fn();
         mockFrom = jest.fn().mockImplementation((table: string) => {
@@ -52,10 +52,10 @@ describe('Middleware role resolution', () => {
             process.env.SUPABASE_URL = originalSupabaseUrl;
         }
 
-        if (originalSupabaseAnonKey === undefined) {
-            delete process.env.SUPABASE_ANON_KEY;
+        if (originalSupabasePublishableKey === undefined) {
+            delete process.env.SUPABASE_PUBLISHABLE_KEY;
         } else {
-            process.env.SUPABASE_ANON_KEY = originalSupabaseAnonKey;
+            process.env.SUPABASE_PUBLISHABLE_KEY = originalSupabasePublishableKey;
         }
     });
 

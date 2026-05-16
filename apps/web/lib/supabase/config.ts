@@ -21,9 +21,9 @@ const validateModernKey = (key: string | undefined, label: string) => {
 
 export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 
-export const SUPABASE_ANON_KEY = validateModernKey(
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, 
-  'NEXT_PUBLIC_SUPABASE_ANON_KEY'
+export const SUPABASE_PUBLISHABLE_KEY = validateModernKey(
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, 
+  'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'
 )
 
 export const SUPABASE_SECRET_KEY = validateModernKey(
@@ -34,16 +34,16 @@ export const SUPABASE_SECRET_KEY = validateModernKey(
 /**
  * Required configuration for standard client initialization
  */
-export function requireSupabaseConfig(): { url: string; anonKey: string } {
+export function requireSupabaseConfig(): { url: string; publishableKey: string } {
   const url = SUPABASE_URL.trim()
-  const anonKey = SUPABASE_ANON_KEY.trim()
+  const publishableKey = SUPABASE_PUBLISHABLE_KEY.trim()
 
-  if (!url || !anonKey) {
+  if (!url || !publishableKey) {
     if (isServer) {
-      console.error('[Supabase Config] ❌ Missing Supabase configuration. Ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set.')
+      console.error('[Supabase Config] ❌ Missing Supabase configuration. Ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY are set.')
     }
     throw new Error('Supabase configuration missing.')
   }
 
-  return { url, anonKey }
+  return { url, publishableKey }
 }

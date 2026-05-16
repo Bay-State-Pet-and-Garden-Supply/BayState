@@ -6,21 +6,21 @@ type AppRole = 'admin' | 'staff' | 'customer'
 
 type SupabaseConfig = {
   url: string
-  anonKey: string
+  publishableKey: string
 }
 
 const PLACEHOLDER_SUPABASE_URL = 'https://your-project.supabase.co'
-const PLACEHOLDER_SUPABASE_ANON_KEY = 'your-anon-key'
+const PLACEHOLDER_SUPABASE_PUBLISHABLE_KEY = 'your-anon-key'
 
 function resolveSupabaseConfig(): SupabaseConfig | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? ''
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? ''
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ?? ''
 
-  if (!url || !anonKey) {
+  if (!url || !publishableKey) {
     return null
   }
 
-  if (url === PLACEHOLDER_SUPABASE_URL || anonKey === PLACEHOLDER_SUPABASE_ANON_KEY) {
+  if (url === PLACEHOLDER_SUPABASE_URL || publishableKey === PLACEHOLDER_SUPABASE_PUBLISHABLE_KEY) {
     return null
   }
 
@@ -33,7 +33,7 @@ function resolveSupabaseConfig(): SupabaseConfig | null {
     return null
   }
 
-  return { url, anonKey }
+  return { url, publishableKey }
 }
 
 function normalizeRole(value: unknown): AppRole | null {
@@ -82,7 +82,7 @@ export async function updateSession(request: NextRequest) {
 
   if (!supabaseConfig) {
     if (process.env.NODE_ENV === 'production') {
-      throw new Error('Missing SUPABASE_URL or SUPABASE_ANON_KEY')
+      throw new Error('Missing SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY')
     }
 
     return response
@@ -94,7 +94,7 @@ export async function updateSession(request: NextRequest) {
 
   const supabase = createServerClient(
     supabaseConfig.url,
-    supabaseConfig.anonKey,
+    supabaseConfig.publishableKey,
     {
       cookies: {
         getAll() {

@@ -6,10 +6,10 @@
 jest.mock('@/lib/supabase/config', () => ({
     SUPABASE_URL: 'https://test.supabase.co',
     SUPABASE_SECRET_KEY: 'test-service-key',
-    SUPABASE_ANON_KEY: 'test-anon-key',
+    SUPABASE_PUBLISHABLE_KEY: 'test-anon-key',
     requireSupabaseConfig: jest.fn().mockReturnValue({
         url: 'https://test.supabase.co',
-        anonKey: 'test-anon-key',
+        publishableKey: 'test-anon-key',
     }),
 }));
 

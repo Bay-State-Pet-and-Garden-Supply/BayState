@@ -74,7 +74,7 @@ async function main() {
 
     updates.push(
       { key: 'NEXT_PUBLIC_SUPABASE_URL', value: apiUrl },
-      { key: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', value: publishableKey },
+      { key: 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', value: publishableKey },
       { key: 'SUPABASE_SECRET_KEY', value: secretKey },
       { key: 'SUPABASE_DB_URL', value: dbUrl || '' },
       { key: 'DATABASE_URL', value: dbUrl || '' },

@@ -61,12 +61,12 @@ async function main() {
     statusOutput.split('\n').forEach(line => {
       const match = line.match(/^([A-Z_]+)="(.+)"$/);
       if (match) {
-        if (match[1] === 'PUBLISHABLE_KEY') updates.set('NEXT_PUBLIC_SUPABASE_ANON_KEY', match[2]);
+        if (match[1] === 'PUBLISHABLE_KEY') updates.set('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', match[2]);
         if (match[1] === 'API_URL') updates.set('NEXT_PUBLIC_SUPABASE_URL', match[2]);
       }
     });
 
-    if (!updates.has('NEXT_PUBLIC_SUPABASE_ANON_KEY') || !updates.has('NEXT_PUBLIC_SUPABASE_URL')) {
+    if (!updates.has('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY') || !updates.has('NEXT_PUBLIC_SUPABASE_URL')) {
       console.error('❌ Could not find required Supabase keys in CLI output.');
       process.exit(1);
     }

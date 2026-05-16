@@ -118,7 +118,7 @@ I would eventually rename `apps/web` from `"name": "@baystate/web"` to something
 
 ### `turbo.json` should know all production env vars
 
-Your current `turbo.json` includes `VERCEL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY` for build hashing . That is not enough for your app if build/runtime behavior depends on Stripe, AI providers, Supabase service role usage, ShopSite, scraper API settings, etc.
+Your current `turbo.json` includes `VERCEL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for build hashing . That is not enough for your app if build/runtime behavior depends on Stripe, AI providers, Supabase service role usage, ShopSite, scraper API settings, etc.
 
 Turborepo’s docs say environment variables should be accounted for in `env` or `globalEnv`, and missing env configuration can cause wrong cache hits, including preview builds accidentally using production-style configuration. ([Turborepo][4])
 
@@ -141,8 +141,8 @@ I’d expand it roughly like this:
         "NODE_ENV",
 
         "NEXT_PUBLIC_SUPABASE_URL",
-        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-        "SUPABASE_SERVICE_ROLE_KEY",
+        "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+        "SUPABASE_SECRET_KEY",
 
         "STRIPE_SECRET_KEY",
         "STRIPE_WEBHOOK_SECRET",

@@ -20,11 +20,11 @@ const pickModernKey = (keys) => {
 const supabaseUrl = process.env.SUPABASE_URL.replace(/\/$/, '');
 const serviceRoleKey = pickModernKey([
   process.env.SUPABASE_SECRET_KEY,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SECRET_KEY
 ]);
 
 if (!serviceRoleKey) {
-  throw new Error('Missing Supabase secret key. Ensure SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY is set.');
+  throw new Error('Missing Supabase secret key. Ensure SUPABASE_SECRET_KEY or SUPABASE_SECRET_KEY is set.');
 }
 const releaseChannel = (process.env.RUNNER_RELEASE_CHANNEL || 'latest').trim().toLowerCase();
 const nowIso = new Date().toISOString();

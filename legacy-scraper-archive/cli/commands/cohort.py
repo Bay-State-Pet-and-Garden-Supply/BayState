@@ -99,7 +99,7 @@ def register_cohort_commands(cohort_group: click.Group) -> None:
 def _resolve_supabase_credentials() -> tuple[str | None, str | None]:
     env = os.environ
     url = env.get("SUPABASE_URL") or env.get("NEXT_PUBLIC_SUPABASE_URL")
-    key = env.get("SUPABASE_SERVICE_ROLE_KEY") or env.get("SUPABASE_KEY") or env.get("SUPABASE_ANON_KEY") or env.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+    key = env.get("SUPABASE_SECRET_KEY") or env.get("SUPABASE_KEY") or env.get("SUPABASE_PUBLISHABLE_KEY") or env.get("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
     return url, key
 
 
@@ -109,7 +109,7 @@ def _create_supabase_client() -> SupabaseClientProtocol:
 
     url, key = _resolve_supabase_credentials()
     if not url or not key:
-        raise click.ClickException("Supabase credentials are required. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, or pass --input-file.")
+        raise click.ClickException("Supabase credentials are required. Set SUPABASE_URL and SUPABASE_SECRET_KEY, or pass --input-file.")
 
     return cast(SupabaseClientProtocol, cast(object, create_client(url, key)))
 
