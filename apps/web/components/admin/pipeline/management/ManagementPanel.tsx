@@ -8,6 +8,7 @@ import type { PipelineProduct } from '@/lib/pipeline/types';
 import type { Brand } from '@/lib/types';
 import { BrandAssignmentSection } from './BrandAssignmentSection';
 import { OfficialDomainsSection } from './OfficialDomainsSection';
+import { DistributorSection } from './DistributorSection';
 
 interface ManagementPanelProps {
   selection: {
@@ -22,6 +23,15 @@ export function ManagementPanel({ selection, onSuccess }: ManagementPanelProps) 
   const [isSaving, setIsSaving] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
   const [domains, setDomains] = useState<string[]>([]);
+  const [activeScrapers, setActiveScrapers] = useState<string[]>([]);
+
+  const toggleScraper = (id: string) => {
+    setActiveScrapers(prev => 
+      prev.includes(id) 
+        ? prev.filter(s => s !== id) 
+        : [...prev, id]
+    );
+  };
 
   if (selection.skus.size === 0 && !selection.cohortId) {
     return (
@@ -53,6 +63,11 @@ export function ManagementPanel({ selection, onSuccess }: ManagementPanelProps) 
         <OfficialDomainsSection 
           domains={domains}
           onDomainsChange={setDomains}
+        />
+
+        <DistributorSection 
+          activeScrapers={activeScrapers}
+          onToggleScraper={toggleScraper}
         />
       </div>
 
