@@ -98,9 +98,17 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
 
         soup = BeautifulSoup(html, "html.parser")
 
-        # --- Check for no results ---
+        # --- Name (check FIRST before no-results text, since Salesforce CC
+        #     renders "no results found" in initial HTML that gets replaced via XHR) ---
+        name_elem = soup.select_one("#plp-desktop-row .cc_product_name strong")
+        if not name_elem:
+            name_elem = soup.select_one("h1")
+        if not name_elem:
+            name_elem = soup.select_one("[data-testid='product-name']")
+        
+        # --- Check for no results (only if no product name was found) ---
         empty_state = soup.select_one(".plp-empty-state-message-container h3")
-        if empty_state:
+        if empty_state and not name_elem:
             text = empty_state.get_text(strip=True).lower()
             if "no results" in text or "no products" in text or "no items" in text:
                 result.success = False
@@ -108,27 +116,22 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
                 result.failure_message = f"No match found for SKU {sku}"
                 return result
 
-        # Also check common text patterns
-        page_text = soup.get_text(" ", strip=True).lower()
-        if any(
-            pattern in page_text
-            for pattern in [
-                "no results found",
-                "your search returned no results",
-                "0 items",
-            ]
-        ):
-            result.success = False
-            result.failure_code = FailureCode.NO_MATCH
-            result.failure_message = f"No match found for SKU {sku}"
-            return result
+        # Also check common text patterns (only if no product name was found)
+        if not name_elem:
+            page_text = soup.get_text(" ", strip=True).lower()
+            if any(
+                pattern in page_text
+                for pattern in [
+                    "no results found",
+                    "your search returned no results",
+                    "0 items",
+                ]
+            ):
+                result.success = False
+                result.failure_code = FailureCode.NO_MATCH
+                result.failure_message = f"No match found for SKU {sku}"
+                return result
 
-        # --- Name ---
-        name_elem = soup.select_one("#plp-desktop-row .cc_product_name strong")
-        if not name_elem:
-            name_elem = soup.select_one("h1")
-        if not name_elem:
-            name_elem = soup.select_one("[data-testid='product-name']")
         if name_elem:
             product["name"] = name_elem.get_text(strip=True)
             matched.append("name")

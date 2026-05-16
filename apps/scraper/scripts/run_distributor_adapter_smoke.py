@@ -143,7 +143,7 @@ def build_plan_from_entry(entry: dict[str, Any]) -> tuple[ApprovedSourcePlan, Ap
     allowed_asset_domains = entry.get("allowed_asset_domains", allowed_domains)
 
     # Add known CDN domains for asset delivery
-    known_cdns = ["images.salsify.com"]
+    known_cdns = ["images.salsify.com", "d56ygyjv466yj.cloudfront.net"]
     allowed_asset_domains = list(set(allowed_asset_domains + known_cdns))
 
     plan_entry = ApprovedSourcePlanEntry(
