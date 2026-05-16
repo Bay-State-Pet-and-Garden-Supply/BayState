@@ -38,7 +38,7 @@ async function main() {
   let retries = 20;
   while (retries > 0) {
     try {
-      statusOutput = execSync('npx supabase status -o env', { encoding: 'utf8', cwd: webDir, stdio: ['ignore', 'pipe', 'ignore'] });
+      statusOutput = execSync('bunx supabase status -o env', { encoding: 'utf8', cwd: webDir, stdio: ['ignore', 'pipe', 'ignore'] });
       if (statusOutput.includes('API_URL')) break;
     } catch (err: any) {
       const errorMsg = err.stderr?.toString() || err.message || '';
@@ -65,8 +65,14 @@ async function main() {
         if (match[1] === 'API_URL') updates.set('NEXT_PUBLIC_SUPABASE_URL', match[2]);
       }
     });
-  } catch (err) {
-    console.warn('⚠️ Failed to process `supabase status`. Skipping Supabase key sync.');
+
+    if (!updates.has('NEXT_PUBLIC_SUPABASE_ANON_KEY') || !updates.has('NEXT_PUBLIC_SUPABASE_URL')) {
+      console.error('❌ Could not find required Supabase keys in CLI output.');
+      process.exit(1);
+    }
+  } catch (err: any) {
+    console.error('❌ Failed to process `supabase status`.', err.message);
+    process.exit(1);
   }
 
   // 2. Pull from web .env.local

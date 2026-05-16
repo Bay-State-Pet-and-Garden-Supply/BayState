@@ -32,7 +32,7 @@ async function main() {
   let retries = 20;
   while (retries > 0) {
     try {
-      statusOutput = execSync('npx supabase status -o env', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+      statusOutput = execSync('bunx supabase status -o env', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
       if (statusOutput.includes('API_URL')) break;
     } catch (err: any) {
       const errorMsg = err.stderr?.toString() || err.message || '';
@@ -65,19 +65,23 @@ async function main() {
     const apiUrl = keys.get('API_URL');
     const dbUrl = keys.get('DB_URL');
 
-    if (publishableKey && secretKey) {
-      updates.push(
-        { key: 'NEXT_PUBLIC_SUPABASE_URL', value: apiUrl || '' },
-        { key: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', value: publishableKey },
-        { key: 'SUPABASE_SECRET_KEY', value: secretKey },
-        { key: 'SUPABASE_DB_URL', value: dbUrl || '' },
-        { key: 'DATABASE_URL', value: dbUrl || '' },
-      );
-    } else {
-      console.warn('⚠️ Could not find modern Supabase keys. Check CLI version.');
+    if (!publishableKey || !secretKey || !apiUrl) {
+      console.error('❌ Could not find required Supabase keys (PUBLISHABLE_KEY, SECRET_KEY, API_URL).');
+      console.error('   This might happen if you are using an old version of the Supabase CLI.');
+      console.error('   Try running `bunx supabase --version` (should be >= 1.150.0).');
+      process.exit(1);
     }
-  } catch (err) {
-    console.warn('⚠️ Failed to run `supabase status`. Is Supabase running?');
+
+    updates.push(
+      { key: 'NEXT_PUBLIC_SUPABASE_URL', value: apiUrl },
+      { key: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', value: publishableKey },
+      { key: 'SUPABASE_SECRET_KEY', value: secretKey },
+      { key: 'SUPABASE_DB_URL', value: dbUrl || '' },
+      { key: 'DATABASE_URL', value: dbUrl || '' },
+    );
+  } catch (err: any) {
+    console.error('❌ Failed to process `supabase status`.', err.message);
+    process.exit(1);
   }
 
   // 2. Fetch Stripe Webhook Secret

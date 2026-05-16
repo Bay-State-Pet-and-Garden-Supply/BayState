@@ -82,7 +82,8 @@ docker/github-actions-runner/_work/
 # Supabase
 .supabase_env
 **/supabase/.temp/
-**/supabase/config.toml
+# **/supabase/config.toml
+# supabase/config.toml
 **/supabase/.branch
 
 .omg

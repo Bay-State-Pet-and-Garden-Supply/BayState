@@ -50,22 +50,27 @@ if (command === "login") {
     "stripe/stripe-cli",
     "login"
   ];
-  spawnSync("docker", loginArgs, { stdio: "inherit", shell: true });
+  spawnSync("docker", loginArgs, { stdio: "inherit" });
 } else if (command === "listen") {
   const listenArgs = [
     ...dockerArgs,
-    "--add-host=host.docker.internal:host-gateway",
     "stripe/stripe-cli",
     "listen",
     "--forward-to",
     "host.docker.internal:3000/api/payments/webhook"
   ];
 
+  // Only add host-gateway if we are on Linux (though on Mac it doesn't hurt, 
+  // but host.docker.internal is usually there anyway)
+  if (process.platform === 'linux') {
+    listenArgs.splice(listenArgs.indexOf("run") + 1, 0, "--add-host=host.docker.internal:host-gateway");
+  }
+
   console.log("🚀 Cleaning up old Stripe listener...");
-  spawnSync("docker", ["rm", "-f", "baystate-stripe-dev"], { stdio: "ignore", shell: true });
+  spawnSync("docker", ["rm", "-f", "baystate-stripe-dev"], { stdio: "ignore" });
 
   console.log("🚀 Starting Stripe listener...");
-  const child = spawn("docker", listenArgs, { shell: true });
+  const child = spawn("docker", listenArgs);
 
   child.stdout.on("data", (data) => {
     const output = data.toString();

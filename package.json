@@ -10,17 +10,13 @@
     "apps/scraper"
   ],
   "scripts": {
-    "dev": "bunx turbo run dev stripe:listen",
-    "up": "bun run dev:all",
+    "bootstrap": "bun install && bun run web:bootstrap && bun run scraper:sync-env",
+    "up": "bun run web:db:start && bun run bootstrap && bunx concurrently -k -n web,stripe,scraper \"bun run web:dev\" \"bun run stripe:listen\" \"bun run scraper:up && docker logs -f baystate-scraper-dev\"",
     "down": "bun run web:db:stop && docker rm -f baystate-stripe-dev 2>/dev/null || true && docker compose -p baystate-dev -f apps/scraper/docker-compose.yml down",
+    "check": "bunx turbo run lint typecheck test",
     "build": "bunx turbo run build",
-    "test": "bunx turbo run test",
-    "lint": "bunx turbo run lint",
-    "typecheck": "bunx turbo run typecheck",
     "web": "bun --cwd apps/web",
     "scraper": "bun --cwd apps/scraper",
-    "vercel-build": "cd apps/web && next build",
-    "fallow": "fallow",
     "web:dev": "bun run web dev",
     "web:build": "bun run web build",
     "web:test": "bun run web test",
@@ -31,19 +27,15 @@
     "web:db:status": "bun run web db:status",
     "web:db:seed": "bun run web db:seed",
     "web:local:verify": "bun run web local:verify",
-    "web:stripe:listen": "bun run web stripe:listen",
-    "web:local:sync-env": "bun run web local:sync-env",
     "web:bootstrap": "bun run web bootstrap",
     "stripe:login": "bun run web stripe:login",
     "stripe:listen": "bun run web stripe:listen",
     "scraper:sync-env": "bun run scraper local:sync-env",
     "scraper:build": "docker compose -p baystate-dev -f apps/scraper/docker-compose.yml build",
-    "scraper:up": "docker compose -p baystate-dev -f apps/scraper/docker-compose.yml up -d",
-    "bootstrap": "bun run web:bootstrap && bun run scraper:sync-env",
-    "scraper:dev": "bun run scraper dev",
-    "dev:all": "bunx turbo run dev stripe:listen --parallel && bun run scraper:up"
+    "scraper:up": "docker compose -p baystate-dev -f apps/scraper/docker-compose.yml up -d"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "fallow": "^2.54.3",
     "turbo": "^2.8.17"
   },

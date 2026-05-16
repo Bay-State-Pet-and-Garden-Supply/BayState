@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "uv run --with-requirements requirements.txt python daemon.py --env dev",
+    "dev:host": "uv run --with-requirements requirements.txt python daemon.py --env dev",
     "local:sync-env": "bun scripts/update-env.ts",
     "db:start": "exit 0"
   }

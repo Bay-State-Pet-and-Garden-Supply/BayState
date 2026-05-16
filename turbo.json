@@ -1,25 +1,27 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
-    "db:start": {
-      "cache": false
-    },
-    "local:sync-env": {
-      "dependsOn": ["db:start", "^local:sync-env"],
-      "cache": false
-    },
     "dev": {
-      "dependsOn": ["local:sync-env"],
-      "cache": false,
-      "persistent": true
-    },
-    "stripe:listen": {
       "cache": false,
       "persistent": true
     },
     "build": {
       "dependsOn": ["^build"],
-      "env": ["VERCEL", "NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"],
+      "env": [
+        "VERCEL",
+        "NODE_ENV",
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "SUPABASE_SECRET_KEY",
+        "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+        "STRIPE_SECRET_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+        "OPENAI_API_KEY",
+        "DEEPSEEK_API_KEY",
+        "GOOGLE_GENERATIVE_AI_API_KEY",
+        "SCRAPER_API_KEY",
+        "INTERNAL_SCRAPER_API_KEY"
+      ],
       "outputs": [".next/**", "!.next/cache/**", ".vercel/output/**", "dist/**"]
     },
     "test": {

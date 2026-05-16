@@ -35,7 +35,7 @@ if (!isLocalUrl) {
 
 if (!SUPABASE_SECRET_KEY) {
   console.error('❌ SUPABASE_SECRET_KEY is not set.');
-  console.error('   Run `supabase status -o env` and copy the secret key.');
+  console.error('   Run `bun run web db:sync-env` to sync keys from Supabase CLI.');
   process.exit(1);
 }
 

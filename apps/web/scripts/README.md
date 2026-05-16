@@ -16,7 +16,7 @@ Use this script to verify that your user (`nvborrello@gmail.com`) has the correc
 Run from the repository root:
 
 ```bash
-npx tsx BayStateApp/scripts/verify_admin.ts
+bunx tsx scripts/verify_admin.ts
 ```
 
 ### Output
