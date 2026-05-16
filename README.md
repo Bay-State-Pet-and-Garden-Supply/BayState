@@ -28,12 +28,17 @@ The monorepo uses a containerized orchestration system to ensure a consistent de
 # 1. Install workspace dependencies
 bun install
 
-# 2. Link Stripe CLI (One-time setup)
-bun run stripe:login
+# 2. First-time Stripe setup (prevents race condition)
+bun run stripe:setup
+# Wait until STRIPE_WEBHOOK_SECRET is written to apps/web/.env.local
+# Then you can stop the process (Ctrl+C)
 
 # 3. Start the entire stack
 bun run up
 ```
+
+> [!IMPORTANT]
+> **First-time Stripe setup is critical.** `bun run up` starts the web app and Stripe listener in parallel. If the webhook secret doesn't exist yet, Next.js may start before the secret is written, causing webhook verification to fail until a restart. Use `bun run stripe:setup` once to avoid this gambling mechanic.
 
 The `up` command automatically:
 1. Starts **Supabase** (Database, Auth, Storage).

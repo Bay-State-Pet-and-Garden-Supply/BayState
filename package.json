@@ -29,6 +29,7 @@
     "web:local:verify": "bun run web local:verify",
     "web:bootstrap": "bun run web bootstrap",
     "stripe:login": "bun run web stripe:login",
+    "stripe:setup": "bun run stripe:login && bun run stripe:listen",
     "stripe:listen": "bun run web stripe:listen",
     "scraper:sync-env": "bun run scraper local:sync-env",
     "scraper:build": "docker compose -p baystate-dev -f apps/scraper/docker-compose.yml build",
@@ -37,6 +38,7 @@
   "devDependencies": {
     "concurrently": "^9.2.1",
     "fallow": "^2.54.3",
+    "supabase": "^2.98.2",
     "turbo": "^2.8.17"
   },
   "dependencies": {

@@ -85,31 +85,15 @@ async function main() {
   }
 
   // 2. Fetch Stripe Webhook Secret
-  console.log('🔄 Checking Stripe CLI for local webhook secret...');
-  try {
-    // Attempt to get the signing secret from the local listener if it's running
-    // Note: Stripe doesn't have a direct "get secret" command without a listener,
-    // so we check if there's a cached secret or instructions.
-    // For now, we'll try to find it in the user's stripe config if possible.
-    const stripeConfigPath = join(process.env.USERPROFILE || '', '.config', 'stripe', 'config.toml');
-    // This is more complex to parse reliably, so we'll look for an active listener log
-    // OR we can't reliably "sync" it without the user actually running the command.
-    // However, we can at least provide a placeholder if it's missing.
-    
-    // Alternative: If the user has the CLI, we can't easily "sync" the secret 
-    // unless they start the listener. We'll skip auto-sync for Stripe for now 
-    // but keep the structure for when they have a persistent test secret.
-    } catch (err) {
-      // Ignore Stripe CLI errors
-    }
+  console.log('ℹ️ Stripe webhook secret is managed by `bun run stripe:listen`.');
   
-    // 3. Handle Scraper Encryption Key
-    console.log('🔄 Checking Scraper Encryption Key...');
-    let envContent = readFileSync(envPath, 'utf8');
+  // 3. Handle Scraper Encryption Key
+  console.log('🔄 Checking Scraper Encryption Key...');
+  let envContent = readFileSync(envPath, 'utf8');
   const encryptionKeyKey = 'AI_CREDENTIALS_ENCRYPTION_KEY';
   const encryptionKeyRegex = new RegExp(`^${encryptionKeyKey}=.*$`, 'm');
   const keyMatch = envContent.match(encryptionKeyRegex);
-  
+
   if (!keyMatch || keyMatch[0].includes('your-key-here') || keyMatch[0].split('=')[1].trim() === '') {
     const newKey = crypto.randomBytes(32).toString('base64');
     updates.push({ key: encryptionKeyKey, value: newKey });
