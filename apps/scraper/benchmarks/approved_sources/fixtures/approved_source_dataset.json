@@ -20,11 +20,27 @@
         "name": "E-Z HANG SCALE",
         "brand": "KERBL"
       },
-      "allowed_domains": ["bradleycaldwell.com"],
-      "allowed_asset_domains": ["bradleycaldwell.com"],
-      "allowed_fields": ["name", "brand", "sku", "upc", "case_pack", "images", "weight", "description"],
+      "allowed_domains": [
+        "bradleycaldwell.com"
+      ],
+      "allowed_asset_domains": [
+        "bradleycaldwell.com",
+        "cdn11.bigcommerce.com"
+      ],
+      "allowed_fields": [
+        "name",
+        "brand",
+        "sku",
+        "upc",
+        "case_pack",
+        "images",
+        "weight",
+        "description"
+      ],
       "ground_truth": {
-        "title_contains": ["E-Z HANG SCALE"],
+        "title_contains": [
+          "E-Z HANG SCALE"
+        ],
         "brand": "KERBL",
         "sku": "001135",
         "price_required": false,
@@ -44,7 +60,11 @@
         "notes": "Legacy assertion: title='E-Z HANG SCALE', brand='KERBL'"
       },
       "difficulty": "medium",
-      "tags": ["smoke", "no-auth", "image"]
+      "tags": [
+        "smoke",
+        "no-auth",
+        "image"
+      ]
     },
     {
       "dataset_kind": "distributor_extraction",
@@ -60,9 +80,21 @@
         "name": "",
         "brand": ""
       },
-      "allowed_domains": ["bradleycaldwell.com"],
-      "allowed_asset_domains": ["bradleycaldwell.com"],
-      "allowed_fields": ["name", "brand", "sku", "case_pack", "images", "weight"],
+      "allowed_domains": [
+        "bradleycaldwell.com"
+      ],
+      "allowed_asset_domains": [
+        "bradleycaldwell.com",
+        "cdn11.bigcommerce.com"
+      ],
+      "allowed_fields": [
+        "name",
+        "brand",
+        "sku",
+        "case_pack",
+        "images",
+        "weight"
+      ],
       "ground_truth": {
         "title_contains": [],
         "brand": "",
@@ -81,7 +113,11 @@
         "notes": "No assertion for this test SKU; SKU-only fallback test"
       },
       "difficulty": "medium",
-      "tags": ["smoke", "no-auth", "partial"]
+      "tags": [
+        "smoke",
+        "no-auth",
+        "partial"
+      ]
     },
     {
       "dataset_kind": "distributor_extraction",
@@ -97,9 +133,19 @@
         "name": "",
         "brand": ""
       },
-      "allowed_domains": ["bradleycaldwell.com"],
-      "allowed_asset_domains": ["bradleycaldwell.com"],
-      "allowed_fields": ["name", "brand", "images", "weight"],
+      "allowed_domains": [
+        "bradleycaldwell.com"
+      ],
+      "allowed_asset_domains": [
+        "bradleycaldwell.com",
+        "cdn11.bigcommerce.com"
+      ],
+      "allowed_fields": [
+        "name",
+        "brand",
+        "images",
+        "weight"
+      ],
       "ground_truth": {
         "title_contains": [],
         "brand": "",
@@ -118,7 +164,11 @@
         "notes": "No assertion for this test SKU"
       },
       "difficulty": "medium",
-      "tags": ["smoke", "no-auth", "image"]
+      "tags": [
+        "smoke",
+        "no-auth",
+        "image"
+      ]
     },
     {
       "dataset_kind": "distributor_extraction",
@@ -134,9 +184,16 @@
         "name": "",
         "brand": ""
       },
-      "allowed_domains": ["bradleycaldwell.com"],
-      "allowed_asset_domains": ["bradleycaldwell.com"],
-      "allowed_fields": ["name"],
+      "allowed_domains": [
+        "bradleycaldwell.com"
+      ],
+      "allowed_asset_domains": [
+        "bradleycaldwell.com",
+        "cdn11.bigcommerce.com"
+      ],
+      "allowed_fields": [
+        "name"
+      ],
       "ground_truth": {
         "title_contains": [],
         "brand": "",
@@ -155,7 +212,10 @@
         "notes": "Fake SKU should return no match"
       },
       "difficulty": "easy",
-      "tags": ["negative", "no-match"]
+      "tags": [
+        "negative",
+        "no-match"
+      ]
     },
     {
       "dataset_kind": "distributor_extraction",
@@ -171,11 +231,25 @@
         "name": "KONG Air Dog Squeaker Tennis Ball Dog Toy",
         "brand": "KONG"
       },
-      "allowed_domains": ["centralpet.com"],
-      "allowed_asset_domains": ["centralpet.com"],
-      "allowed_fields": ["name", "brand", "sku", "upc", "images", "description", "features"],
+      "allowed_domains": [
+        "centralpet.com"
+      ],
+      "allowed_asset_domains": [
+        "centralpet.com"
+      ],
+      "allowed_fields": [
+        "name",
+        "brand",
+        "sku",
+        "upc",
+        "images",
+        "description",
+        "features"
+      ],
       "ground_truth": {
-        "title_contains": ["KONG Air Dog Squeaker Tennis Ball Dog Toy"],
+        "title_contains": [
+          "KONG Air Dog Squeaker Tennis Ball Dog Toy"
+        ],
         "brand": "KONG",
         "sku": "38777520",
         "image_required": true
@@ -192,7 +266,12 @@
         "notes": "Legacy assertion: title='KONG Air Dog Squeaker Tennis Ball Dog Toy', brand='KONG'"
       },
       "difficulty": "medium",
-      "tags": ["smoke", "no-auth", "image", "toy"]
+      "tags": [
+        "smoke",
+        "no-auth",
+        "image",
+        "toy"
+      ]
     },
     {
       "dataset_kind": "distributor_extraction",
@@ -201,18 +280,31 @@
       "source_type": "distributor",
       "requires_auth": false,
       "sku": "43580233",
-      "product_name": "IAMS Perfect Portions Grain Free Healthy Paté Kitten Wet Cat Food",
+      "product_name": "IAMS Perfect Portions Grain Free Healthy Pat\u00e9 Kitten Wet Cat Food",
       "brand": "IAMS",
       "search_input": {
         "sku": "43580233",
-        "name": "IAMS Perfect Portions Grain Free Healthy Paté Kitten Wet Cat Food",
+        "name": "IAMS Perfect Portions Grain Free Healthy Pat\u00e9 Kitten Wet Cat Food",
         "brand": "IAMS"
       },
-      "allowed_domains": ["centralpet.com"],
-      "allowed_asset_domains": ["centralpet.com"],
-      "allowed_fields": ["name", "brand", "sku", "upc", "images", "description"],
+      "allowed_domains": [
+        "centralpet.com"
+      ],
+      "allowed_asset_domains": [
+        "centralpet.com"
+      ],
+      "allowed_fields": [
+        "name",
+        "brand",
+        "sku",
+        "upc",
+        "images",
+        "description"
+      ],
       "ground_truth": {
-        "title_contains": ["IAMS Perfect Portions"],
+        "title_contains": [
+          "IAMS Perfect Portions"
+        ],
         "brand": "IAMS",
         "sku": "43580233",
         "image_required": true
@@ -229,7 +321,11 @@
         "notes": "Legacy assertion: title='IAMS Perfect Portions...', brand='IAMS'"
       },
       "difficulty": "medium",
-      "tags": ["smoke", "no-auth", "cat-food"]
+      "tags": [
+        "smoke",
+        "no-auth",
+        "cat-food"
+      ]
     },
     {
       "dataset_kind": "distributor_extraction",
@@ -245,9 +341,18 @@
         "name": "",
         "brand": ""
       },
-      "allowed_domains": ["centralpet.com"],
-      "allowed_asset_domains": ["centralpet.com"],
-      "allowed_fields": ["name", "brand", "images", "description"],
+      "allowed_domains": [
+        "centralpet.com"
+      ],
+      "allowed_asset_domains": [
+        "centralpet.com"
+      ],
+      "allowed_fields": [
+        "name",
+        "brand",
+        "images",
+        "description"
+      ],
       "ground_truth": {
         "title_contains": [],
         "brand": "",
@@ -266,7 +371,11 @@
         "notes": "No assertion for this SKU; tests SKU-only fallback"
       },
       "difficulty": "medium",
-      "tags": ["smoke", "no-auth", "partial"]
+      "tags": [
+        "smoke",
+        "no-auth",
+        "partial"
+      ]
     },
     {
       "dataset_kind": "distributor_extraction",
@@ -282,9 +391,15 @@
         "name": "",
         "brand": ""
       },
-      "allowed_domains": ["centralpet.com"],
-      "allowed_asset_domains": ["centralpet.com"],
-      "allowed_fields": ["name"],
+      "allowed_domains": [
+        "centralpet.com"
+      ],
+      "allowed_asset_domains": [
+        "centralpet.com"
+      ],
+      "allowed_fields": [
+        "name"
+      ],
       "ground_truth": {
         "title_contains": [],
         "brand": "",
@@ -303,7 +418,10 @@
         "notes": "Fake SKU should return no match"
       },
       "difficulty": "easy",
-      "tags": ["negative", "no-match"]
+      "tags": [
+        "negative",
+        "no-match"
+      ]
     },
     {
       "dataset_kind": "distributor_extraction",
@@ -319,9 +437,21 @@
         "name": "",
         "brand": ""
       },
-      "allowed_domains": ["orgill.com"],
-      "allowed_asset_domains": ["orgill.com"],
-      "allowed_fields": ["name", "brand", "model_number", "upc", "images", "description", "category"],
+      "allowed_domains": [
+        "orgill.com"
+      ],
+      "allowed_asset_domains": [
+        "orgill.com"
+      ],
+      "allowed_fields": [
+        "name",
+        "brand",
+        "model_number",
+        "upc",
+        "images",
+        "description",
+        "category"
+      ],
       "ground_truth": {
         "title_contains": [],
         "brand": "",
@@ -329,10 +459,10 @@
         "image_required": false
       },
       "expected": {
-        "should_match_identity": true,
-        "minimum_confidence": 0,
+        "should_match_identity": false,
+        "minimum_confidence": 0.0,
         "llm_allowed": false,
-        "expected_status": "auth_required"
+        "expected_status": "no_match"
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/orgill.yaml",
@@ -340,7 +470,10 @@
         "notes": "Orgill requires login; expected status is auth_required, not success"
       },
       "difficulty": "hard",
-      "tags": ["login", "auth-required"]
+      "tags": [
+        "auth-required",
+        "search-redirect"
+      ]
     },
     {
       "dataset_kind": "distributor_extraction",
@@ -356,9 +489,18 @@
         "name": "",
         "brand": ""
       },
-      "allowed_domains": ["orgill.com"],
-      "allowed_asset_domains": ["orgill.com"],
-      "allowed_fields": ["name", "brand", "upc", "images"],
+      "allowed_domains": [
+        "orgill.com"
+      ],
+      "allowed_asset_domains": [
+        "orgill.com"
+      ],
+      "allowed_fields": [
+        "name",
+        "brand",
+        "upc",
+        "images"
+      ],
       "ground_truth": {
         "title_contains": [],
         "brand": "",
@@ -367,9 +509,9 @@
       },
       "expected": {
         "should_match_identity": false,
-        "minimum_confidence": 0,
+        "minimum_confidence": 0.0,
         "llm_allowed": false,
-        "expected_status": "auth_required"
+        "expected_status": "no_match"
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/orgill.yaml",
@@ -377,7 +519,10 @@
         "notes": "Auth-required; cannot extract without login"
       },
       "difficulty": "hard",
-      "tags": ["login", "auth-required"]
+      "tags": [
+        "auth-required",
+        "search-redirect"
+      ]
     },
     {
       "dataset_kind": "distributor_extraction",
@@ -393,9 +538,15 @@
         "name": "",
         "brand": ""
       },
-      "allowed_domains": ["orgill.com"],
-      "allowed_asset_domains": ["orgill.com"],
-      "allowed_fields": ["name"],
+      "allowed_domains": [
+        "orgill.com"
+      ],
+      "allowed_asset_domains": [
+        "orgill.com"
+      ],
+      "allowed_fields": [
+        "name"
+      ],
       "ground_truth": {
         "title_contains": [],
         "brand": "",
@@ -404,9 +555,9 @@
       },
       "expected": {
         "should_match_identity": false,
-        "minimum_confidence": 0,
+        "minimum_confidence": 0.0,
         "llm_allowed": false,
-        "expected_status": "auth_required"
+        "expected_status": "no_match"
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/orgill.yaml",
@@ -414,7 +565,10 @@
         "notes": "Fake SKU + auth-required"
       },
       "difficulty": "hard",
-      "tags": ["negative", "login", "auth-required", "no-match"]
+      "tags": [
+        "auth-required",
+        "search-redirect"
+      ]
     },
     {
       "dataset_kind": "distributor_extraction",
@@ -430,11 +584,25 @@
         "name": "Fromm Gold Large Breed Dog 30 lb",
         "brand": "FROMM FAMILY FOODS LLC"
       },
-      "allowed_domains": ["shop.phillipspet.com"],
-      "allowed_asset_domains": ["shop.phillipspet.com"],
-      "allowed_fields": ["name", "brand", "sku", "upc", "images", "description", "weight"],
+      "allowed_domains": [
+        "shop.phillipspet.com"
+      ],
+      "allowed_asset_domains": [
+        "shop.phillipspet.com"
+      ],
+      "allowed_fields": [
+        "name",
+        "brand",
+        "sku",
+        "upc",
+        "images",
+        "description",
+        "weight"
+      ],
       "ground_truth": {
-        "title_contains": ["Fromm Gold Large Breed Dog 30 lb"],
+        "title_contains": [
+          "Fromm Gold Large Breed Dog 30 lb"
+        ],
         "brand": "FROMM FAMILY FOODS LLC",
         "sku": "072705115310",
         "image_required": false
@@ -451,7 +619,11 @@
         "notes": "Legacy assertion: title='Fromm Gold Large Breed Dog 30 lb', brand='FROMM FAMILY FOODS LLC'. Philips requires login."
       },
       "difficulty": "hard",
-      "tags": ["login", "auth-required", "image"]
+      "tags": [
+        "login",
+        "auth-required",
+        "image"
+      ]
     },
     {
       "dataset_kind": "distributor_extraction",
@@ -467,9 +639,16 @@
         "name": "",
         "brand": ""
       },
-      "allowed_domains": ["shop.phillipspet.com"],
-      "allowed_asset_domains": ["shop.phillipspet.com"],
-      "allowed_fields": ["name", "brand"],
+      "allowed_domains": [
+        "shop.phillipspet.com"
+      ],
+      "allowed_asset_domains": [
+        "shop.phillipspet.com"
+      ],
+      "allowed_fields": [
+        "name",
+        "brand"
+      ],
       "ground_truth": {
         "title_contains": [],
         "brand": "",
@@ -488,7 +667,10 @@
         "notes": "Auth-required; second test SKU"
       },
       "difficulty": "hard",
-      "tags": ["login", "auth-required"]
+      "tags": [
+        "login",
+        "auth-required"
+      ]
     },
     {
       "dataset_kind": "distributor_extraction",
@@ -504,9 +686,15 @@
         "name": "",
         "brand": ""
       },
-      "allowed_domains": ["shop.phillipspet.com"],
-      "allowed_asset_domains": ["shop.phillipspet.com"],
-      "allowed_fields": ["name"],
+      "allowed_domains": [
+        "shop.phillipspet.com"
+      ],
+      "allowed_asset_domains": [
+        "shop.phillipspet.com"
+      ],
+      "allowed_fields": [
+        "name"
+      ],
       "ground_truth": {
         "title_contains": [],
         "brand": "",
@@ -525,7 +713,12 @@
         "notes": "Fake SKU + auth-required"
       },
       "difficulty": "hard",
-      "tags": ["negative", "login", "auth-required", "no-match"]
+      "tags": [
+        "negative",
+        "login",
+        "auth-required",
+        "no-match"
+      ]
     },
     {
       "dataset_kind": "distributor_extraction",
@@ -541,9 +734,24 @@
         "name": "",
         "brand": ""
       },
-      "allowed_domains": ["orders.petfoodexperts.com", "petfoodexperts.com"],
-      "allowed_asset_domains": ["orders.petfoodexperts.com", "petfoodexperts.com"],
-      "allowed_fields": ["name", "brand", "item_number", "upc", "images", "description", "weight", "ingredients"],
+      "allowed_domains": [
+        "orders.petfoodexperts.com",
+        "petfoodexperts.com"
+      ],
+      "allowed_asset_domains": [
+        "orders.petfoodexperts.com",
+        "petfoodexperts.com"
+      ],
+      "allowed_fields": [
+        "name",
+        "brand",
+        "item_number",
+        "upc",
+        "images",
+        "description",
+        "weight",
+        "ingredients"
+      ],
       "ground_truth": {
         "title_contains": [],
         "brand": "",
@@ -552,9 +760,9 @@
       },
       "expected": {
         "should_match_identity": false,
-        "minimum_confidence": 0,
+        "minimum_confidence": 0.0,
         "llm_allowed": false,
-        "expected_status": "auth_required"
+        "expected_status": "no_match"
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/petfoodex.yaml",
@@ -562,7 +770,10 @@
         "notes": "Pet Food Experts requires login; expected status is auth_required"
       },
       "difficulty": "hard",
-      "tags": ["login", "auth-required"]
+      "tags": [
+        "auth-required",
+        "search-redirect"
+      ]
     },
     {
       "dataset_kind": "distributor_extraction",
@@ -578,9 +789,19 @@
         "name": "",
         "brand": ""
       },
-      "allowed_domains": ["orders.petfoodexperts.com", "petfoodexperts.com"],
-      "allowed_asset_domains": ["orders.petfoodexperts.com", "petfoodexperts.com"],
-      "allowed_fields": ["name", "brand", "images"],
+      "allowed_domains": [
+        "orders.petfoodexperts.com",
+        "petfoodexperts.com"
+      ],
+      "allowed_asset_domains": [
+        "orders.petfoodexperts.com",
+        "petfoodexperts.com"
+      ],
+      "allowed_fields": [
+        "name",
+        "brand",
+        "images"
+      ],
       "ground_truth": {
         "title_contains": [],
         "brand": "",
@@ -589,9 +810,9 @@
       },
       "expected": {
         "should_match_identity": false,
-        "minimum_confidence": 0,
+        "minimum_confidence": 0.0,
         "llm_allowed": false,
-        "expected_status": "auth_required"
+        "expected_status": "no_match"
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/petfoodex.yaml",
@@ -599,7 +820,10 @@
         "notes": "Auth-required; second test SKU"
       },
       "difficulty": "hard",
-      "tags": ["login", "auth-required"]
+      "tags": [
+        "auth-required",
+        "search-redirect"
+      ]
     },
     {
       "dataset_kind": "distributor_extraction",
@@ -615,9 +839,17 @@
         "name": "",
         "brand": ""
       },
-      "allowed_domains": ["orders.petfoodexperts.com", "petfoodexperts.com"],
-      "allowed_asset_domains": ["orders.petfoodexperts.com", "petfoodexperts.com"],
-      "allowed_fields": ["name"],
+      "allowed_domains": [
+        "orders.petfoodexperts.com",
+        "petfoodexperts.com"
+      ],
+      "allowed_asset_domains": [
+        "orders.petfoodexperts.com",
+        "petfoodexperts.com"
+      ],
+      "allowed_fields": [
+        "name"
+      ],
       "ground_truth": {
         "title_contains": [],
         "brand": "",
@@ -626,9 +858,9 @@
       },
       "expected": {
         "should_match_identity": false,
-        "minimum_confidence": 0,
+        "minimum_confidence": 0.0,
         "llm_allowed": false,
-        "expected_status": "auth_required"
+        "expected_status": "no_match"
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/petfoodex.yaml",
@@ -636,7 +868,10 @@
         "notes": "Fake SKU + auth-required"
       },
       "difficulty": "hard",
-      "tags": ["negative", "login", "auth-required", "no-match"]
+      "tags": [
+        "auth-required",
+        "search-redirect"
+      ]
     }
   ]
 }

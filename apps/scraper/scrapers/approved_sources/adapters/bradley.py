@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import Any
 from urllib.parse import urljoin
 
 from scrapers.approved_sources.adapters.base import BaseDistributorCrawl4AIAdapter
@@ -31,9 +32,68 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
     search_url_template = "https://www.bradleycaldwell.com/search?term={sku}"
     requires_auth = False
 
+    def __init__(self, entry: ApprovedSourcePlanEntry, plan: ApprovedSourcePlan):
+        super().__init__(entry, plan)
+        self._product_page_url: str | None = None
+
     def build_search_url(self, sku: str) -> str:
         """Build the Bradley search URL from a SKU."""
         return self.search_url_template.format(sku=sku)
+
+    async def _post_process_extraction(
+        self,
+        det_result: ApprovedSourceExtractionResult,
+        search_url: str,
+        source_policy: Any,
+    ) -> ApprovedSourceExtractionResult | None:
+        """Navigate to product page to fetch images if missing from search results."""
+        if det_result.product.get("image_urls") or not self._product_page_url:
+            return None
+
+        try:
+            from src.crawl4ai_engine.engine import Crawl4AIEngine
+            from crawl4ai import CrawlerRunConfig, CacheMode
+
+            engine = Crawl4AIEngine({
+                "browser": {"headless": True, "viewport_width": 1280, "viewport_height": 800, "light_mode": True},
+                "crawler": {"page_timeout": 30000, "delay_before_return_html": 1500, "remove_overlay_elements": True},
+            })
+            await engine.initialize()
+
+            config = CrawlerRunConfig(
+                cache_mode=CacheMode.BYPASS,
+                page_timeout=30000,
+                wait_until="networkidle",
+                remove_overlay_elements=True,
+            )
+
+            page_result = await engine.crawler.arun(url=self._product_page_url, config=config)
+            await engine.cleanup()
+
+            if page_result and getattr(page_result, "success", False):
+                page_html = getattr(page_result, "html", None) or ""
+                # Extract images from product page
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(page_html, "html.parser")
+                images = []
+                for img in soup.select('img[src*="bigcommerce"]'):
+                    src = img.get("src", "")
+                    if src and "stencil" in src:
+                        if src.startswith("//"):
+                            src = "https:" + src
+                        images.append(src)
+                if images:
+                    from scrapers.approved_sources.policy import filter_allowed_assets
+                    det_result.product["image_urls"] = filter_allowed_assets(images, source_policy)
+                    det_result.matched_fields.append("image_urls")
+                    logger.info(
+                        "[%s] Found %d images from product page: %s",
+                        self.adapter_slug, len(images), self._product_page_url,
+                    )
+        except Exception as e:
+            logger.warning("[%s] Product page image fetch failed: %s", self.adapter_slug, e)
+
+        return det_result
 
     def extract_from_html(
         self, html: str, sku: str, url: str
@@ -218,6 +278,9 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
 
         if not product_link:
             return
+
+        # Store product page URL for image extraction in post-processing
+        self._product_page_url = urljoin(self.base_url, product_link.get('href', ''))
 
         product["name"] = product_link.get_text(strip=True)
         matched.append("name")

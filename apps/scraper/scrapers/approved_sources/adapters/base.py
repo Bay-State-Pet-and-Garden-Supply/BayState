@@ -253,6 +253,15 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             )
             return None, f"EXTRACTION_FAILED: {e}"
 
+    async def _post_process_extraction(
+        self,
+        det_result: ApprovedSourceExtractionResult,
+        search_url: str,
+        source_policy: Any,
+    ) -> ApprovedSourceExtractionResult | None:
+        """Post-process extraction to enrich images. Override in subclasses."""
+        return None
+
     async def extract(self, extractor: Any = None) -> EnrichmentResultV1 | None:
         """Execute distributor extraction by fetching HTML directly and parsing.
 
@@ -385,6 +394,12 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
         if det_result.success and det_result.product.get("image_urls"):
             raw_images = self.normalize_images(det_result.product["image_urls"])
             det_result.product["image_urls"] = self.filter_images(raw_images, source_policy)
+
+        # 6b. Post-process: allow adapters to enrich results (e.g., fetch product page images)
+        if det_result.success and not det_result.product.get("image_urls"):
+            post_processed = await self._post_process_extraction(det_result, search_url, source_policy)
+            if post_processed:
+                det_result = post_processed
 
         # 7. Apply allowedFields filter
         if det_result.success and self.entry.allowedFields:
