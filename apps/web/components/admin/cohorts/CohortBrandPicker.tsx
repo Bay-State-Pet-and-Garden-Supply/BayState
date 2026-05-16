@@ -185,7 +185,7 @@ export function CohortBrandPicker({
  <div className="text-[10px] font-semibold text-zinc-500">Loading...</div>
  </div>
  ) : filteredBrands.length > 0 ? (
- <div className="divide-y divide-zinc-100">
+ <div className="divide-y divide-border">
  {filteredBrands.map((brand) => {
  const selected = value?.id === brand.id;
  const configured = isBrandConfigured(brand);
@@ -213,9 +213,9 @@ export function CohortBrandPicker({
  {configured ? 'Config' : 'Needs Site'}
  </span>
  </span>
- <span className="truncate text-[9px] font-bold text-zinc-400 uppercase tracking-widest">{brand.slug}</span>
+ <span className="truncate text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{brand.slug}</span>
  {brand.official_domains && brand.official_domains.length > 0 && (
- <span className="truncate text-[9px] italic text-zinc-500">{brand.official_domains[0]}</span>
+ <span className="truncate text-[9px] italic text-muted-foreground">{brand.official_domains[0]}</span>
  )}
  </span>
  </button>
@@ -223,7 +223,7 @@ export function CohortBrandPicker({
  })}
  </div>
  ) : (
- <div className="p-8 text-center text-[10px] font-semibold text-zinc-400">No brands found.</div>
+ <div className="p-8 text-center text-[10px] font-semibold text-muted-foreground">No brands found.</div>
  )}
  </div>
  {search.trim() && !exactMatch && (
@@ -232,7 +232,7 @@ export function CohortBrandPicker({
  type="button"
  variant="ghost"
  size="sm"
- className="w-full justify-start text-[10px] font-semibold hover:bg-zinc-900 hover:text-white rounded-none border border-transparent hover:border-border transition-all"
+ className="w-full justify-start text-[10px] font-semibold hover:bg-accent hover:text-accent-foreground rounded-none border border-transparent hover:border-border transition-all"
  onClick={() => createBrand(search.trim())}
  >
  <Plus className="mr-2 h-3.5 w-3.5" />

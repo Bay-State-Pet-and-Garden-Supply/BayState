@@ -150,6 +150,11 @@ export interface PipelineProduct {
   } | null;
   /** Scraped data from multiple sources keyed by source ID */
   sources: Record<string, unknown>;
+  /** Configuration for enrichment and extraction */
+  enrichment_config?: {
+    enabled_sources?: string[];
+    official_domains?: string[];
+  } | null;
   /** AI-consolidated product data from all sources */
   consolidated: {
     name?: string;

@@ -440,24 +440,56 @@ export async function runIntegraReconciliation(input: {
 
 /**
  * Push selected register-only reconciliation items to the product pipeline.
+ * Can be called with either a list of specific issueIds OR a syncRunId to push all open register-only issues for that run.
  */
 export async function pushRegisterOnlyIssuesToPipeline(
-  issueIds: string[]
+  params: { issueIds?: string[]; syncRunId?: string }
 ): Promise<{ success: boolean; count: number; errors: string[] }> {
-  const supabase = await createClient();
+  // Use admin client to bypass RLS for this bulk operation
+  const { createAdminClient, createClient } = await import('@/lib/supabase/server');
+  const userClient = await createClient();
+  const supabase = await createAdminClient();
   const errors: string[] = [];
   let count = 0;
 
-  const { data: issues, error: fetchError } = await supabase
+  // Verify the user is an admin or staff member
+  const { data: { user } } = await userClient.auth.getUser();
+  if (!user) {
+    return { success: false, count: 0, errors: ['Unauthorized: No active session'] };
+  }
+
+  const { data: profile } = await userClient
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile || !['admin', 'staff'].includes(profile.role)) {
+    return { success: false, count: 0, errors: ['Unauthorized: Staff access required'] };
+  }
+
+  let query = supabase
     .from('inventory_reconciliation_items')
     .select('*')
-    .in('id', issueIds)
     .eq('issue_type', 'register_only')
     .eq('status', 'open');
 
-  if (fetchError || !issues) {
-    return { success: false, count: 0, errors: ['Failed to fetch issues'] };
+  if (params.syncRunId) {
+    query = query.eq('sync_run_id', params.syncRunId);
+  } else if (params.issueIds && params.issueIds.length > 0) {
+    query = query.in('id', params.issueIds);
+  } else {
+    return { success: false, count: 0, errors: ['No issues or sync run ID provided'] };
   }
+
+  const { data: issues, error: fetchError } = await query;
+
+  if (fetchError || !issues) {
+    console.error('Failed to fetch issues from inventory_reconciliation_items:', fetchError);
+    return { success: false, count: 0, errors: [`Failed to fetch issues: ${fetchError?.message || 'No issues returned'}`] };
+  }
+
+  console.log(`[pushToPipeline] Fetching ${issues.length} issues for sync run ${params.syncRunId || 'custom list'}`);
 
   for (const issue of issues) {
     const { error: insertError } = await supabase
@@ -483,6 +515,23 @@ export async function pushRegisterOnlyIssuesToPipeline(
         .update({ status: 'pushed_to_pipeline', resolved_at: new Date().toISOString() })
         .eq('id', issue.id);
       count++;
+    }
+  }
+
+  // Assign successfully pushed products to cohorts
+  if (count > 0) {
+    const pushedSkus = issues.map(i => i.sku).filter(sku => !errors.some(e => e.includes(sku)));
+    if (pushedSkus.length > 0) {
+      try {
+        const cohortResult = await assignProductsToCohorts(supabase, pushedSkus);
+        if (cohortResult.errors.length > 0) {
+          errors.push(...cohortResult.errors);
+        }
+        console.log(`[pushToPipeline] Assigned ${cohortResult.assigned} products to ${cohortResult.cohortCount} cohorts`);
+      } catch (cohortError) {
+        console.warn("[pushToPipeline] Cohort assignment failed (non-fatal):", cohortError);
+        errors.push(`Cohort assignment failed: ${cohortError instanceof Error ? cohortError.message : String(cohortError)}`);
+      }
     }
   }
 

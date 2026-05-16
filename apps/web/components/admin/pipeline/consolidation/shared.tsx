@@ -86,19 +86,22 @@ const STATUS_CONFIG: Record<
 > = {
  validating: {
  label: "Queued",
- color: "text-zinc-700",
+ color: "text-muted-foreground",
+
  bgColor: "bg-muted",
  icon: Clock,
  },
  pending: {
  label: "Queued",
- color: "text-zinc-700",
+ color: "text-muted-foreground",
+
  bgColor: "bg-muted",
  icon: Clock,
  },
  queued: {
  label: "Queued",
- color: "text-zinc-700",
+ color: "text-muted-foreground",
+
  bgColor: "bg-muted",
  icon: Clock,
  },
@@ -122,37 +125,37 @@ const STATUS_CONFIG: Record<
  },
  retrying: {
  label: "Retrying",
- color: "text-amber-700",
- bgColor: "bg-amber-50",
+ color: "text-brand-gold",
+ bgColor: "bg-brand-gold/10",
  icon: RotateCcw,
  },
  completed: {
  label: "Completed",
- color: "text-green-700",
- bgColor: "bg-green-50",
+ color: "text-brand-forest-green",
+ bgColor: "bg-brand-forest-green/10",
  icon: CheckCircle2,
  },
  completed_with_errors: {
  label: "Completed with Errors",
- color: "text-orange-700",
- bgColor: "bg-orange-50",
+ color: "text-brand-gold",
+ bgColor: "bg-brand-gold/10",
  icon: AlertTriangle,
  },
  failed: {
  label: "Failed",
- color: "text-red-700",
- bgColor: "bg-red-50",
+ color: "text-destructive",
+ bgColor: "bg-destructive/10",
  icon: XCircle,
  },
  expired: {
  label: "Failed",
- color: "text-red-700",
- bgColor: "bg-red-50",
+ color: "text-destructive",
+ bgColor: "bg-destructive/10",
  icon: XCircle,
  },
  cancelled: {
  label: "Cancelled",
- color: "text-zinc-500",
+ color: "text-muted-foreground",
  bgColor: "bg-muted",
  icon: XCircle,
  },

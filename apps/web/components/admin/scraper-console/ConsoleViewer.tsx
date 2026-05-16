@@ -34,7 +34,7 @@ function LogItem({ log }: { log: ScrapeJobLogEntry }) {
       <div className="flex-1 flex flex-col min-w-0">
         <span className={cn(
           "font-mono break-all leading-relaxed",
-          log.level === 'error' ? "text-brand-burgundy font-bold" : "text-zinc-700"
+          log.level === 'error' ? "text-brand-burgundy font-bold" : "text-muted-foreground"
         )}>
           {log.message}
         </span>

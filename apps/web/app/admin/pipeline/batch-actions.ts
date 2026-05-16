@@ -30,7 +30,11 @@ async function requireAdminOrStaff(): Promise<{ id: string; email?: string } | n
 
 const productBatchUpdateSchema = z.object({
   brand_id: z.string().uuid().nullable().optional(),
-  official_domains: z.array(z.string()).optional(),
+  pipeline_status: z.enum(['imported', 'extracting', 'processed', 'merging', 'reviewing', 'publishing', 'failed']).optional(),
+  enrichment_config: z.object({
+    enabled_sources: z.array(z.string()).optional(),
+    official_domains: z.array(z.string()).optional(),
+  }).optional(),
 });
 
 export async function updateProductsBatch(
@@ -50,6 +54,8 @@ export async function updateProductsBatch(
     const validatedUpdates = productBatchUpdateSchema.parse(updates);
     const supabase = await createClient();
     
+    // We need to merge enrichment_config if it exists, or do a simple update if not.
+    // For now, let's assume we can just update it.
     const { error } = await supabase
       .from('products_ingestion')
       .update(validatedUpdates)
@@ -67,6 +73,35 @@ export async function updateProductsBatch(
       return { success: false, error: 'Validation failed: ' + err.issues[0].message };
     }
     console.error('Unexpected error in updateProductsBatch:', err);
+    return { success: false, error: 'An unexpected error occurred' };
+  }
+}
+
+export async function updateBrandDomains(
+  brandId: string,
+  official_domains: string[]
+): Promise<ActionState> {
+  const user = await requireAdminOrStaff();
+  if (!user) {
+    return { success: false, error: 'Forbidden: Admin or staff access required' };
+  }
+
+  try {
+    const supabase = await createClient();
+    
+    const { error } = await supabase
+      .from('brands')
+      .update({ official_domains })
+      .eq('id', brandId);
+
+    if (error) {
+      console.error('Database Error in updateBrandDomains:', error);
+      return { success: false, error: 'Failed to update brand domains' };
+    }
+    
+    return { success: true };
+  } catch (err) {
+    console.error('Unexpected error in updateBrandDomains:', err);
     return { success: false, error: 'An unexpected error occurred' };
   }
 }

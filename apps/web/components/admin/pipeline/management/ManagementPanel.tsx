@@ -204,7 +204,7 @@ export function ManagementPanel({
       {/* Footer Action */}
       <div className="p-4 border-t border-border bg-muted/30">
         <Button 
-          className="w-full rounded-none bg-brand-gold hover:bg-brand-gold/90 text-brand-burgundy font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all h-12"
+          className="w-full rounded-none bg-brand-gold hover:bg-brand-gold/90 text-ledger-charcoal font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all h-12"
           disabled={isSaving}
           onClick={() => handleSave(true)}
         >

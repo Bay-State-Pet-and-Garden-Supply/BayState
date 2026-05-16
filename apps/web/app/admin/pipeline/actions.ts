@@ -93,9 +93,9 @@ export async function analyzeIntegraAction(formData: FormData): Promise<ActionSt
 /**
  * Pushes selected register-only items to the pipeline.
  */
-export async function pushReconciliationItemsToPipelineAction(issueIds: string[]): Promise<ActionState & { count?: number }> {
+export async function pushReconciliationItemsToPipelineAction(params: { issueIds?: string[]; syncRunId?: string }): Promise<ActionState & { count?: number }> {
     try {
-        const result = await pushRegisterOnlyIssuesToPipeline(issueIds);
+        const result = await pushRegisterOnlyIssuesToPipeline(params);
         revalidatePath('/admin/pipeline');
         return { success: result.success, count: result.count, error: result.errors.join(', ') || undefined };
     } catch (error) {

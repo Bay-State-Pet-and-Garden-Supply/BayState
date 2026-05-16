@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   Activity,
   AlertCircle,
@@ -79,16 +80,24 @@ export function ActiveEnrichmentsTab({ initialJobs = [] }: ActiveEnrichmentsTabP
   const router = useRouter();
   const [jobs, setJobs] = useState<EnrichmentJobSummary[]>(initialJobs);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await adminFetch("/api/admin/enrichment/jobs");
-      if (!response.ok) throw new Error("Failed to fetch enrichment jobs");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to fetch enrichment jobs (${response.status})`);
+      }
       const data = await response.json();
       setJobs(data.jobs ?? []);
     } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error fetching enrichment jobs";
       console.error("Error fetching enrichment jobs:", err);
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -136,6 +145,15 @@ export function ActiveEnrichmentsTab({ initialJobs = [] }: ActiveEnrichmentsTabP
           Refresh
         </Button>
       </div>
+
+      {error && (
+        <div className="rounded-none border border-destructive/20 bg-destructive/[0.02] p-3">
+          <p className="text-sm font-bold uppercase text-destructive tracking-tight flex items-center gap-2">
+            <AlertCircle className="size-4" />
+            Queue Failure: {error}
+          </p>
+        </div>
+      )}
 
       {/* Active Runs */}
       {activeJobs.length > 0 && (
@@ -292,7 +310,7 @@ export function ActiveEnrichmentsTab({ initialJobs = [] }: ActiveEnrichmentsTabP
                     <div>
                       <span className="text-muted-foreground">Cost</span>
                       <p className="font-medium">
-                        {job.cost_estimate ? `$${job.cost_estimate.toFixed(4)}` : "--"}
+                        {job.cost_estimate ? `$${Number(job.cost_estimate).toFixed(4)}` : "--"}
                       </p>
                     </div>
                   </div>

@@ -44,7 +44,7 @@ export function BulkAssignBrandDialog({
       <DialogContent className="sm:max-w-[425px] rounded-none border-2 border-border shadow-xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold uppercase tracking-tight">Assign Brand</DialogTitle>
-          <DialogDescription className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
+          <DialogDescription className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
             Assigning brand to {selectedCount} product{selectedCount !== 1 ? 's' : ''}.
             Products will be re-grouped into brand-specific cohorts.
           </DialogDescription>

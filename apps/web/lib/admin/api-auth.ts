@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateAdminApiKey } from '@/lib/admin-api-key-auth';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
 
 export interface AdminAuthResult {
   authorized: true;
@@ -14,47 +14,51 @@ export interface AdminAuthError {
 }
 
 /**
- * Validates that the current request includes a valid admin API key.
- * API-key-only auth — no JWT session fallback.
- *
- * The key can be provided via:
- *   X-API-Key: bsa_...
- *   Authorization: Bearer bsa_...
+ * Validates that the current request includes a valid admin API key OR a valid session.
+ * Fallback to JWT session auth if API key is missing.
  *
  * Returns the authenticated user and their role from profiles.
- *
- * @example
- * export async function GET(request: NextRequest) {
- *   const auth = await requireAdminAuth(request);
- *   if (!auth.authorized) return auth.response;
- *   // ... rest of handler
- * }
  */
 export async function requireAdminAuth(request: NextRequest): Promise<AdminAuthResult | AdminAuthError> {
   const apiKey = request.headers.get('x-api-key');
   const authHeader = request.headers.get('authorization');
 
+  // 1. Try API Key Auth
   const result = await validateAdminApiKey({
     apiKey,
     authorization: authHeader,
   });
 
-  if (!result) {
+  let userId: string | undefined;
+
+  if (result) {
+    userId = result.userId;
+  } else {
+    // 2. Fallback to Session Auth
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+      userId = user.id;
+    }
+  }
+
+  if (!userId) {
     return {
       authorized: false,
       response: NextResponse.json(
-        { error: 'Unauthorized — valid admin API key required' },
+        { error: 'Unauthorized — valid admin API key or session required' },
         { status: 401 }
       ),
     };
   }
 
   // Look up the user's role from profiles
-  const supabase = await createAdminClient();
-  const { data: profile } = await supabase
+  const adminClient = await createAdminClient();
+  const { data: profile } = await adminClient
     .from('profiles')
     .select('role, email')
-    .eq('id', result.userId)
+    .eq('id', userId)
     .single();
 
   const role = profile?.role;
@@ -71,7 +75,7 @@ export async function requireAdminAuth(request: NextRequest): Promise<AdminAuthR
 
   return {
     authorized: true,
-    user: { id: result.userId, email: profile?.email },
+    user: { id: userId, email: profile?.email },
     role: role as 'admin' | 'staff',
   };
 }

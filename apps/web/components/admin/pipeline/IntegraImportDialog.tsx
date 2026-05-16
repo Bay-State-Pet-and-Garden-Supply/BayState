@@ -68,24 +68,7 @@ export function IntegraImportDialog({
         if (!syncRunId) return;
         setIsProcessing(true);
         try {
-            // Fetch open register-only issues for this sync run
-            const { createClient } = await import('@/lib/supabase/client');
-            const supabase = createClient();
-            const { data: issues } = await supabase
-                .from('inventory_reconciliation_items')
-                .select('id')
-                .eq('sync_run_id', syncRunId)
-                .eq('issue_type', 'register_only')
-                .eq('status', 'open');
-
-            const issueIds = (issues || []).map(i => i.id);
-            if (issueIds.length === 0) {
-                toast.info('No register-only issues found to push');
-                setIsProcessing(false);
-                return;
-            }
-
-            const result = await pushReconciliationItemsToPipelineAction(issueIds);
+            const result = await pushReconciliationItemsToPipelineAction({ syncRunId });
             if (result.success) {
                 toast.success(`Pushed ${result.count} register-only products to pipeline`);
                 onSuccess();

@@ -45,10 +45,10 @@ interface ScraperSelectDialogProps {
 }
 
 const CONFIDENCE_BADGE: Record<string, { label: string; className: string }> = {
-    high: { label: 'Recommended', className: 'bg-green-100 text-green-800 border-green-200' },
-    medium: { label: 'Promising', className: 'bg-amber-100 text-amber-800 border-amber-200' },
-    low: { label: 'Low', className: 'bg-red-50 text-red-600 border-red-200' },
-    untested: { label: 'Untested', className: 'bg-gray-100 text-gray-600 border-gray-200' },
+    high: { label: 'Recommended', className: 'bg-brand-forest-green/10 text-brand-forest-green border-brand-forest-green/20' },
+    medium: { label: 'Promising', className: 'bg-brand-gold/10 text-brand-burgundy border-brand-gold/20' },
+    low: { label: 'Low', className: 'bg-destructive/10 text-destructive border-destructive/20' },
+    untested: { label: 'Untested', className: 'bg-muted text-muted-foreground border-border' },
 };
 
 export function ScraperSelectDialog({

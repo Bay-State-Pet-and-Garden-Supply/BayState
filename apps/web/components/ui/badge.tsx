@@ -18,7 +18,7 @@ const badgeVariants = cva(
         success:
           "bg-brand-forest-green text-white [a&]:hover:bg-brand-forest-green/90 focus-visible:ring-brand-forest-green/20 dark:focus-visible:ring-brand-forest-green/40",
         warning:
-          "bg-brand-gold text-brand-burgundy [a&]:hover:bg-brand-gold/90 focus-visible:ring-brand-gold/20 dark:focus-visible:ring-brand-gold/40",
+          "bg-brand-gold text-ledger-charcoal [a&]:hover:bg-brand-gold/90 focus-visible:ring-brand-gold/20 dark:focus-visible:ring-brand-gold/40",
         outline:
           "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
       },
