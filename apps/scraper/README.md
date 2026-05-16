@@ -23,6 +23,24 @@ bun run up
 
 ---
 
+## 🌎 Production Runner Installation
+
+Use this one-liner to install a production runner on a new machine (Linux, macOS, or Windows with Bash).
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash
+```
+
+### Setup Flow
+1. Open **Admin → Scrapers → Network** in BayStateApp.
+2. Generate a runner key in **Runner Accounts**.
+3. Run the one-liner above on the target machine.
+4. Paste your API key and follow the prompts.
+
+The installer configures a Docker Compose stack with **Watchtower** for automatic updates by default.
+
+---
+
 ## 🏗️ Architecture
 
 ### System Overview

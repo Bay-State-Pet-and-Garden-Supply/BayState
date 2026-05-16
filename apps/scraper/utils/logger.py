@@ -24,20 +24,19 @@ class JSONFormatter(logging.Formatter):
         self.include_context = include_context
 
     def format(self, record: logging.LogRecord) -> str:
-        """Format the log record as a JSON string."""
-        message = record.getMessage()
+        """Format the log record as a JSON string with safety truncation."""
+        max_field_size = 4096
 
-        # Defense-in-depth: Truncate extremely large messages that would flood the terminal.
-        # This protects against any unexpected massive output from dependencies or errors.
-        max_msg_size = 8192
-        if len(message) > max_msg_size:
-            message = f"{message[:max_msg_size]}... (truncated {len(message)} bytes)"
+        def _truncate(val: Any) -> Any:
+            if isinstance(val, str) and len(val) > max_field_size:
+                return f"{val[:max_field_size]}... (truncated {len(val)} bytes)"
+            return val
 
         log_data: dict[str, Any] = {
             "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
-            "message": message,
+            "message": _truncate(record.getMessage()),
         }
 
         # Add optional fields from record if present
@@ -45,12 +44,12 @@ class JSONFormatter(logging.Formatter):
         for field in optional_fields:
             value = getattr(record, field, None)
             if value is not None and value != "":
-                log_data[field] = value
+                log_data[field] = _truncate(value)
 
         # Add error fields if present
         if record.exc_info:
             log_data["error_type"] = record.exc_info[0].__name__ if record.exc_info[0] else None
-            log_data["error_message"] = str(record.exc_info[1]) if record.exc_info[1] else None
+            log_data["error_message"] = _truncate(str(record.exc_info[1])) if record.exc_info[1] else None
             # Stack trace is intentionally not included by default (can be large)
 
         # Add duration_ms if present

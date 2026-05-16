@@ -127,14 +127,20 @@ def _format_error_response(response: httpx.Response, max_length: int = 200) -> s
     # Next.js / RSC noise detection patterns
     # - Standard HTML tags
     # - self.__next_f (Next.js client-side router/streaming)
-    # - ["$ (RSC payload start)
-    # - ]$ (RSC payload end)
+    # - RSC chunks (e.g., 1:["$", ...])
+    # - RSC continuation (e.g., ,{"property": ...})
+    # - Site metadata patterns
     is_noise = (
         prefix.startswith("<!doctype") or
         "<html" in prefix or
         "self.__next_f" in prefix or
         prefix.startswith('["$') or
-        prefix.startswith('1:[')
+        prefix.startswith('1:[') or
+        prefix.startswith('0:[') or
+        prefix.startswith(',{"') or
+        prefix.startswith(',["') or
+        "og:description" in prefix or
+        "og:title" in prefix
     )
 
     if is_noise:

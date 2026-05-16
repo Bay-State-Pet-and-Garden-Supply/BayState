@@ -85,12 +85,19 @@ class JSONFormatter(logging.Formatter):
     """
 
     def format(self, record: LogRecord) -> str:
-        """Format log record as JSON string."""
+        """Format log record as JSON string with safety truncation."""
+        max_field_size = 4096
+
+        def _truncate(val: Any) -> Any:
+            if isinstance(val, str) and len(val) > max_field_size:
+                return f"{val[:max_field_size]}... (truncated {len(val)} bytes)"
+            return val
+
         log_data: dict[str, Any] = {
             "timestamp": datetime.utcnow().isoformat() + "Z",
             "level": record.levelname,
             "logger": record.name,
-            "message": record.getMessage(),
+            "message": _truncate(record.getMessage()),
             "module": record.module,
             "function": record.funcName,
             "line": record.lineno,
@@ -98,15 +105,15 @@ class JSONFormatter(logging.Formatter):
 
         # Add context fields if present
         if hasattr(record, "job_id") and record.job_id:
-            log_data["job_id"] = record.job_id
+            log_data["job_id"] = _truncate(record.job_id)
         if hasattr(record, "scraper_name") and record.scraper_name:
-            log_data["scraper_name"] = record.scraper_name
+            log_data["scraper_name"] = _truncate(record.scraper_name)
         if hasattr(record, "trace_id") and record.trace_id:
-            log_data["trace_id"] = record.trace_id
+            log_data["trace_id"] = _truncate(record.trace_id)
 
         # Add exception info if present
         if record.exc_info:
-            log_data["exception"] = self.formatException(record.exc_info)
+            log_data["exception"] = _truncate(self.formatException(record.exc_info))
 
         # Add extra fields
         for key, value in record.__dict__.items():
@@ -138,7 +145,7 @@ class JSONFormatter(logging.Formatter):
                 try:
                     # Only include JSON-serializable values
                     json.dumps(value)
-                    log_data[key] = value
+                    log_data[key] = _truncate(value)
                 except (TypeError, ValueError):
                     pass
 
