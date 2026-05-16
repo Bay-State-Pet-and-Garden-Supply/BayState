@@ -70,8 +70,18 @@ class OrgillAdapter(BaseDistributorCrawl4AIAdapter):
         warnings: list[str] = []
 
         # Check for login redirect / not authenticated
-        if "login" in html.lower() and ("password" in html.lower() or "sign in" in html.lower()):
-            # This looks like a login page, not a product page
+        # Check for specific login form elements to avoid false positives
+        try:
+            from bs4 import BeautifulSoup
+            login_soup = BeautifulSoup(html, "html.parser")
+            has_login_form = bool(login_soup.select_one(
+                "#cphMainContent_ctl00_loginOrgillxs_UserName, "
+                "#cphMainContent_ctl00_loginOrgillxs_Password"
+            ))
+        except Exception:
+            has_login_form = "login" in html.lower() and ("password" in html.lower() or "sign in" in html.lower())
+
+        if has_login_form:
             result.success = False
             result.failure_code = FailureCode.AUTH_REQUIRED
             result.failure_message = f"Authentication required for Orgill — received login page for SKU {sku}"
@@ -241,9 +251,18 @@ class OrgillAdapter(BaseDistributorCrawl4AIAdapter):
             source_type=self.source_type,
         )
 
-        # Check for login page
-        if re.search(r"login|sign.?in", html, re.I) and re.search(r"password|user.?name", html, re.I):
-            # Likely on login page
+        # Check for login page - check for specific form elements
+        try:
+            from bs4 import BeautifulSoup
+            login_soup = BeautifulSoup(html, "html.parser")
+            has_login_form = bool(login_soup.select_one(
+                "#cphMainContent_ctl00_loginOrgillxs_UserName, "
+                "#cphMainContent_ctl00_loginOrgillxs_Password"
+            ))
+        except Exception:
+            has_login_form = bool(re.search(r"login|sign.?in", html, re.I)) and bool(re.search(r"password|user.?name", html, re.I))
+
+        if has_login_form:
             result.success = False
             result.failure_code = FailureCode.AUTH_REQUIRED
             result.failure_message = f"Authentication required for Orgill (SKU {sku})"

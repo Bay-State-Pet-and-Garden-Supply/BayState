@@ -246,6 +246,18 @@ class ApprovedSourceLoginManager:
         self._session_locks: dict[str, asyncio.Lock] = {}
         self._session_ttl = session_ttl_seconds or self.DEFAULT_SESSION_TTL_SECONDS
         self._engine: Any = None  # Lazy-initialized Crawl4AIEngine
+        self._session_cookies: dict[str, dict[str, str]] = {}  # session_id -> cookie_dict
+        self._playwright: Any = None  # Lazy-initialized Playwright
+        self._playwright_browser: Any = None  # Lazy-initialized Playwright browser
+        self._auth_pages: dict[str, Any] = {}  # session_id -> Playwright page
+
+    def _store_cookies(self, session_id: str, cookies: dict[str, str]) -> None:
+        """Store cookies for an authenticated session."""
+        self._session_cookies[session_id] = cookies
+
+    def _get_cookies(self, session_id: str) -> dict[str, str] | None:
+        """Get stored cookies for an authenticated session."""
+        return self._session_cookies.get(session_id)
 
     def _cache_key(self, source_slug: str, credential_ref: str | None) -> str:
         """Derive a stable cache key from source slug and credential ref."""
@@ -441,6 +453,42 @@ class ApprovedSourceLoginManager:
 
         return None
 
+    async def _ensure_playwright_browser(self):
+        """Lazy-initialize Playwright and browser for persistent use."""
+        if self._playwright is None or self._playwright_browser is None:
+            from playwright.async_api import async_playwright
+            self._playwright = await async_playwright().__aenter__()
+            self._playwright_browser = await self._playwright.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-setuid-sandbox"],
+            )
+        return self._playwright_browser
+
+    async def fetch_authenticated_html(
+        self, session_id: str, url: str
+    ) -> str | None:
+        """Fetch HTML using an authenticated Playwright session.
+
+        Reuses the existing authenticated page for the given session_id
+        to navigate to the URL and return the rendered HTML.
+        """
+        if session_id not in self._auth_pages:
+            logger.warning("[Auth] No authenticated page for session %s", session_id[:12])
+            return None
+
+        page = self._auth_pages[session_id]
+        try:
+            await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            try:
+                await page.wait_for_load_state("networkidle", timeout=15000)
+            except Exception:
+                pass
+            html = await page.content()
+            return html
+        except Exception as e:
+            logger.error("[Auth] Authenticated fetch failed for %s: %s", url, e)
+            return None
+
     async def _crawl_for_login(
         self,
         login_config: LoginAutomationConfig,
@@ -448,121 +496,144 @@ class ApprovedSourceLoginManager:
         password: str,
         session_id: str,
     ) -> LoginResult:
-        """Perform a login attempt by crawling the login URL with js_code.
+        """Perform a login attempt using Playwright for reliable form interaction.
 
-        Uses Crawl4AI to:
+        Uses Playwright (not Crawl4AI js_code) to:
         1. Navigate to the login URL
-        2. Execute js_code that fills and submits the form
-        3. Wait for the page to respond
-        4. Check for success/failure indicators in the resulting HTML
+        2. Wait for the username/password selectors (handles JS-rendered forms)
+        3. Fill the form fields
+        4. Click the submit button
+        5. Wait for the success indicator or detect failure
+
+        After successful login, the Playwright page is kept alive in
+        self._auth_pages for subsequent authenticated product fetches.
         """
-        engine = await self._initialize_engine()
-        if not engine:
+        try:
+            browser = await self._ensure_playwright_browser()
+        except Exception as e:
             return LoginResult(
                 success=False,
                 failure_type="AUTH_FAILED",
-                error_message="Craw4AI engine not available for login automation",
+                error_message=f"Playwright not available: {e}",
             )
 
-        # Generate js_code for form filling
-        js_code = await self._generate_login_js_code(login_config, username, password)
-
-        # Override engine config for this crawl to include js_code, session_id,
-        # and the right wait conditions
-        from crawl4ai import CrawlerRunConfig, CacheMode
-
-        run_config = CrawlerRunConfig(
-            session_id=session_id,
-            js_code=js_code,
-            wait_for=login_config.success_indicator,
-            page_timeout=login_config.timeout_seconds * 1000,
-            cache_mode=CacheMode.BYPASS,
-            remove_overlay_elements=True,
-            simulate_user=False,
-            magic=False,
-            delay_before_return_html=2000,
-            wait_until="networkidle",
+        logger.info(
+            "[Auth] Attempting login for %s with Playwright (session: %s...)",
+            login_config.credential_ref,
+            session_id[:12],
         )
 
+        page = await browser.new_page()
+        page.set_default_timeout(login_config.timeout_seconds * 1000)
+
+        final_url = login_config.login_url
         try:
-            logger.info(
-                "[Auth] Attempting login for %s (session: %s...)",
-                login_config.credential_ref,
-                session_id[:12],
+            # Navigate to login page
+            await page.goto(
+                login_config.login_url,
+                wait_until="domcontentloaded",
+                timeout=login_config.timeout_seconds * 1000,
             )
 
-            result = await engine.crawler.arun(
-                url=login_config.login_url,
-                config=run_config,
-            )
-
-            if not result:
+            # Wait for the username field to appear (handles JS-rendered forms)
+            try:
+                await page.wait_for_selector(
+                    login_config.username_selector,
+                    timeout=login_config.timeout_seconds * 1000,
+                )
+            except Exception:
                 return LoginResult(
                     success=False,
                     failure_type="AUTH_FAILED",
-                    error_message="No result from Crawl4AI login attempt",
+                    error_message=(
+                        f"Login form not found: {login_config.username_selector} "
+                        f"not found on {login_config.login_url}"
+                    ),
+                    redirected_url=page.url,
                 )
 
-            html = getattr(result, "html", None) or ""
-            final_url = str(getattr(result, "url", login_config.login_url) or login_config.login_url)
-            success = getattr(result, "success", False)
+            # Fill form fields
+            await page.fill(login_config.username_selector, username)
+            await page.fill(login_config.password_selector, password)
 
-            # Check for failure indicators first
-            failure_reason = self._check_login_failure(html, login_config)
-            if failure_reason:
-                logger.warning(
-                    "[Auth] Login failed for %s: %s",
-                    login_config.credential_ref,
-                    failure_reason,
-                )
-                return LoginResult(
-                    success=False,
-                    session_id=session_id,
-                    failure_type="AUTH_FAILED",
-                    error_message=f"Login failed: {failure_reason}",
-                    redirected_url=final_url,
-                )
+            # Click submit and wait for navigation
+            try:
+                async with page.expect_navigation(
+                    timeout=login_config.timeout_seconds * 1000,
+                    wait_until="domcontentloaded",
+                ):
+                    await page.click(login_config.submit_selector)
+                final_url = page.url
+            except Exception:
+                pass
 
-            # Check for success indicators
-            if self._check_login_success(html, login_config):
+            # Wait a bit for the page to settle
+            try:
+                await page.wait_for_load_state("networkidle", timeout=10000)
+            except Exception:
+                pass
+
+            # Check for success indicator
+            try:
+                await page.wait_for_selector(
+                    login_config.success_indicator,
+                    timeout=5000,
+                )
+                # Login succeeded! Keep page alive for authenticated fetches
+                self._auth_pages[session_id] = page
+
                 logger.info(
-                    "[Auth] Login successful for %s",
+                    "[Auth] Login successful for %s (page kept alive)",
                     login_config.credential_ref,
                 )
+
                 return LoginResult(
                     success=True,
                     session_id=session_id,
                     redirected_url=final_url,
                 )
+            except Exception:
+                # Success indicator not found
+                html = await page.content()
+                failure_reason = self._check_login_failure(html, login_config)
+                if failure_reason:
+                    logger.warning(
+                        "[Auth] Login failed for %s: %s",
+                        login_config.credential_ref,
+                        failure_reason,
+                    )
+                    await page.close()
+                    return LoginResult(
+                        success=False,
+                        session_id=session_id,
+                        failure_type="AUTH_FAILED",
+                        error_message=f"Login failed: {failure_reason}",
+                        redirected_url=final_url,
+                    )
 
-            # If Crawl4AI result.success is True but we can't find indicators,
-            # the login might still have succeeded with a redirect
-            if success:
-                logger.info(
-                    "[Auth] Crawl4AI reports success for %s (no indicator found, assuming success)",
-                    login_config.credential_ref,
-                )
+                await page.close()
                 return LoginResult(
-                    success=True,
+                    success=False,
                     session_id=session_id,
+                    failure_type="AUTH_FAILED",
+                    error_message=(
+                        f"Login attempt returned unknown state on {final_url}"
+                    ),
                     redirected_url=final_url,
                 )
-
-            # Unknown state - Crawl4AI failed but no clear failure indicator
-            return LoginResult(
-                success=False,
-                session_id=session_id,
-                failure_type="AUTH_FAILED",
-                error_message="Login attempt returned unknown state",
-                redirected_url=final_url,
-            )
 
         except Exception as e:
-            logger.error("[Auth] Login error for %s: %s", login_config.credential_ref, e)
+            await page.close()
+            logger.error(
+                "[Auth] Login error for %s: %s",
+                login_config.credential_ref,
+                e,
+            )
             return LoginResult(
                 success=False,
                 failure_type="AUTH_FAILED",
                 error_message=f"Login exception: {e}",
+                redirected_url=final_url,
             )
 
     async def ensure_logged_in(
@@ -682,14 +753,40 @@ class ApprovedSourceLoginManager:
         }
 
     async def cleanup(self) -> None:
-        """Clean up the Crawl4AI engine if initialized."""
+        """Clean up all resources: Crawl4AI engine, Playwright browser, sessions."""
         if self._engine is not None:
             try:
                 await self._engine.cleanup()
             except Exception as e:
                 logger.warning("[Auth] Error cleaning up engine: %s", e)
             self._engine = None
+
+        # Close Playwright auth pages
+        for session_id, page in self._auth_pages.items():
+            try:
+                await page.close()
+            except Exception:
+                pass
+        self._auth_pages.clear()
+
+        # Close Playwright browser
+        if self._playwright_browser is not None:
+            try:
+                await self._playwright_browser.close()
+            except Exception as e:
+                logger.warning("[Auth] Error closing Playwright browser: %s", e)
+            self._playwright_browser = None
+
+        # Close Playwright
+        if self._playwright is not None:
+            try:
+                await self._playwright.stop()
+            except Exception as e:
+                logger.warning("[Auth] Error stopping Playwright: %s", e)
+            self._playwright = None
+
         self._session_cache.clear()
+        self._session_cookies.clear()
 
 
 # Module-level singleton for reuse across adapters

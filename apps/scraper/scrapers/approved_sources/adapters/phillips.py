@@ -74,7 +74,17 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
         warnings: list[str] = []
 
         # Check for login page (Salesforce CC)
-        if "login" in html.lower() and ("CCSiteLogin" in html or "password" in html.lower()):
+        # Look for the actual login form, not just the word "password" in text
+        try:
+            from bs4 import BeautifulSoup
+            login_soup = BeautifulSoup(html, "html.parser")
+            has_email_field = bool(login_soup.select_one("#emailField"))
+            has_password_field = bool(login_soup.select_one("#passwordField"))
+            has_login_form = has_email_field or has_password_field
+        except Exception:
+            has_login_form = "login" in html.lower() and ("CCSiteLogin" in html or "password" in html.lower())
+
+        if has_login_form:
             result.success = False
             result.failure_code = FailureCode.AUTH_REQUIRED
             result.failure_message = f"Authentication required for Phillips — received login page for SKU {sku}"
@@ -234,8 +244,15 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
             source_type=self.source_type,
         )
 
-        # Check for login
-        if re.search(r"CCSiteLogin|login|sign.?in", html, re.I):
+        # Check for login form elements specifically
+        try:
+            from bs4 import BeautifulSoup
+            login_soup = BeautifulSoup(html, "html.parser")
+            has_login_form = bool(login_soup.select_one("#emailField, #passwordField, #send2Dsk"))
+        except Exception:
+            has_login_form = bool(re.search(r"CCSiteLogin", html, re.I))
+
+        if has_login_form:
             result.success = False
             result.failure_code = FailureCode.AUTH_REQUIRED
             result.failure_message = f"Authentication required for Phillips (SKU {sku})"

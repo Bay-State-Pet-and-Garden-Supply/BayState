@@ -78,10 +78,11 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
         matched: list[str] = []
         warnings: list[str] = []
 
-        # Check for login page
-        if "SignIn" in html or (
-            "sign in" in html.lower() and "password" in html.lower()
-        ):
+        # Check for login page (be specific to avoid false positives on product pages)
+        # Sign-in page has a userName INPUT element, product pages have productDetails
+        # The actual login page has <input id="userName" while product pages have data-test-selector="header_signIn"
+        if ('id="userName"' in html or 'name="userName"' in html or
+            html.lower().count('sign in') > 20) and 'productDetails' not in html:
             result.success = False
             result.failure_code = FailureCode.AUTH_REQUIRED
             result.failure_message = (
@@ -287,8 +288,8 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
             source_type=self.source_type,
         )
 
-        # Check for sign-in page
-        if re.search(r"SignIn|sign.?in|Sign.?in", html, re.I):
+        # Check for sign-in page (be specific to avoid false positives on product pages)
+        if (html.count("sign in") > 3 and "#userName" in html) or "SignInPage" in html:
             result.success = False
             result.failure_code = FailureCode.AUTH_REQUIRED
             result.failure_message = f"Authentication required for Pet Food Experts (SKU {sku})"

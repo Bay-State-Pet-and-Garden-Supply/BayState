@@ -7,6 +7,7 @@ Provides:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from abc import ABC, abstractmethod
 from typing import Any
@@ -144,17 +145,22 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
         # Check from entry credentialRef
         credential_ref = self.entry.credentialRef or self.source_slug
 
-        if api_client is None or not hasattr(api_client, "get_credentials"):
-            return False, f"AUTH_REQUIRED: Authentication required for {self.source_slug}: no credential provider available"
+        # Try api_client first
+        if api_client and hasattr(api_client, "get_credentials"):
+            try:
+                creds = api_client.get_credentials(credential_ref)
+                if creds:
+                    return True, credential_ref
+            except Exception as e:
+                logger.warning("[%s] Credential check via api_client failed: %s", self.adapter_slug, e)
 
-        try:
-            # get_credentials() is synchronous - call directly
-            creds = api_client.get_credentials(credential_ref)
-            if creds:
-                return True, credential_ref
-            return False, f"AUTH_REQUIRED: Authentication required for {self.source_slug}: no credentials found for '{credential_ref}'"
-        except Exception as e:
-            return False, f"AUTH_REQUIRED: Authentication required for {self.source_slug}: credential check failed ({e})"
+        # Fallback: check environment variables via resolve_credentials
+        from scrapers.approved_sources.auth import resolve_credentials
+        env_creds = resolve_credentials(self.source_slug, None, credential_ref)
+        if env_creds:
+            return True, credential_ref
+
+        return False, f"AUTH_REQUIRED: Authentication required for {self.source_slug}: no credentials found for '{credential_ref}' in api_client or environment"
 
     def filter_images(
         self, urls: list[str], policy: Any
@@ -230,55 +236,53 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             )
             return None, login_result.failure_type or "AUTH_FAILED"
 
-        # Use Crawl4AI with the authenticated session to fetch the URL
+        # Fetch using Playwright for full JavaScript rendering.
+        # Salesforce Commerce Cloud (Phillips) and Angular sites require JS execution.
         try:
-            from src.crawl4ai_engine.engine import Crawl4AIEngine
-            from crawl4ai import CrawlerRunConfig, CacheMode
+            from playwright.async_api import async_playwright
 
-            session_id = login_result.session_id
-            engine_config = {
-                "browser": {
-                    "headless": True,
-                    "viewport_width": 1280,
-                    "viewport_height": 800,
-                    "light_mode": True,
-                },
-                "crawler": {
-                    "page_timeout": 30000,
-                    "delay_before_return_html": 500,
-                    "remove_overlay_elements": True,
-                },
-            }
+            username, _ = creds
+            async with async_playwright() as pw:
+                browser = await pw.chromium.launch(headless=True)
+                context = await browser.new_context()
+                page = await context.new_page()
 
-            engine = Crawl4AIEngine(engine_config)
-            await engine.initialize()
+                # Login
+                await page.goto(login_config.login_url, wait_until="domcontentloaded", timeout=30000)
+                try:
+                    await page.wait_for_selector(login_config.username_selector, timeout=10000)
+                except Exception:
+                    pass
+                await page.fill(login_config.username_selector, username)
+                await page.fill(login_config.password_selector, creds[1])
+                await page.click(login_config.submit_selector)
 
-            run_config = CrawlerRunConfig(
-                session_id=session_id,
-                cache_mode=CacheMode.BYPASS,
-                page_timeout=30000,
-                wait_until="networkidle",
-                remove_overlay_elements=True,
-                simulate_user=False,
-                magic=False,
-            )
+                await asyncio.sleep(2)
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=20000)
+                except Exception:
+                    pass
 
-            result = await engine.crawler.arun(url=url, config=run_config)
-            await engine.cleanup()
+                # Navigate to target URL
+                await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                await asyncio.sleep(3)
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=15000)
+                except Exception:
+                    pass
+                await asyncio.sleep(2)
 
-            if result and getattr(result, "success", False):
-                html = getattr(result, "html", None) or ""
-                return html, None
-            else:
-                error = getattr(result, "error", "No result") if result else "No result"
-                return None, f"EXTRACTION_FAILED: {error}"
+                html = await page.content()
+                await browser.close()
+
+                if html:
+                    return html, None
+                return None, "EXTRACTION_FAILED: No HTML from Playwright fallback"
 
         except Exception as e:
             logger.error(
                 "[%s] Authenticated fetch error for %s: %s",
-                self.adapter_slug,
-                url,
-                e,
+                self.adapter_slug, url, e,
             )
             return None, f"EXTRACTION_FAILED: {e}"
 
