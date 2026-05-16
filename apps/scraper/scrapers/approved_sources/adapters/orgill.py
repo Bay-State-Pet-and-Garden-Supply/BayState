@@ -136,6 +136,26 @@ class OrgillAdapter(BaseDistributorCrawl4AIAdapter):
                 product["model_number"] = mtext
                 matched.append("model_number")
 
+        # --- Orgill Item Number (SKU verification) ---
+        orgill_sku_elem = soup.select_one("#cphMainContent_ctl00_lblOrgillItemNumber")
+        if orgill_sku_elem:
+            orgill_sku = orgill_sku_elem.get_text(strip=True)
+            if orgill_sku:
+                product["item_number"] = orgill_sku
+                matched.append("item_number")
+                # Verify the product SKU matches what we searched for
+                # When Orgill search redirects to a different product (nearest match),
+                # the returned SKU differs from the searched SKU.
+                if orgill_sku != sku:
+                    result.success = False
+                    result.failure_code = FailureCode.NO_MATCH
+                    result.failure_message = (
+                        f"SKU mismatch for Orgill: searched {sku} but got product "
+                        f"{orgill_sku}. This SKU '{sku}' may no longer be in Orgill's catalog."
+                    )
+                    result.warnings = warnings
+                    return result
+
         # --- UPC ---
         upc_elem = soup.select_one("#cphMainContent_ctl00_lblUPCCode")
         if upc_elem:
