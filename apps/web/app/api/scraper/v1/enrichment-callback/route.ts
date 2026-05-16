@@ -173,6 +173,8 @@ export async function POST(request: NextRequest) {
       console.error("Failed to update enrichment attempt:", attemptUpdateError);
     }
 
+    const nextStatus = nextAttempt.status;
+
     if (isTestJob) {
       console.log(`[Enrichment Callback] Test job detected for SKU ${enrichedResult.sku} - skipping products_ingestion update.`);
     } else {
@@ -189,8 +191,7 @@ export async function POST(request: NextRequest) {
         enriched: normalized as any,
       };
 
-      // Determine next status and update product
-      const nextStatus = nextAttempt.status;
+      // Update product
       const updatePayload: Record<string, unknown> = {
         sources: updatedSources,
         pipeline_status: nextStatus,
