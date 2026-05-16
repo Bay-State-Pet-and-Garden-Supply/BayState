@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { PipelineProduct } from '@/lib/pipeline/types';
 import type { Brand } from '@/lib/types';
+import { BrandAssignmentSection } from './BrandAssignmentSection';
 
 interface ManagementPanelProps {
   selection: {
@@ -18,6 +19,7 @@ interface ManagementPanelProps {
 
 export function ManagementPanel({ selection, onSuccess }: ManagementPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
 
   if (selection.skus.size === 0 && !selection.cohortId) {
     return (
@@ -41,8 +43,10 @@ export function ManagementPanel({ selection, onSuccess }: ManagementPanelProps) 
 
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-8">
-        {/* Sections will go here */}
-        <div className="text-xs text-muted-foreground italic">Assignment sections coming soon...</div>
+        <BrandAssignmentSection 
+          selectedBrand={selectedBrand}
+          onBrandChange={setSelectedBrand}
+        />
       </div>
 
       {/* Footer Action */}
