@@ -13,29 +13,29 @@ export async function POST(
     
     // Get the job first so we know which SKUs to revert
     const { data: job, error: fetchError } = await supabase
-      .from('scrape_jobs')
+      .from('enrichment_jobs')
       .select('skus')
       .eq('id', id)
       .single();
 
     if (fetchError) {
-      console.error(`Error fetching scraper run ${id}:`, fetchError);
+      console.error(`Error fetching enrichment run ${id}:`, fetchError);
       return NextResponse.json(
-        { error: 'Failed to fetch scraper run' },
+        { error: 'Failed to fetch enrichment run' },
         { status: 500 }
       );
     }
 
     // Update job status
     const { error: jobError } = await supabase
-      .from('scrape_jobs')
+      .from('enrichment_jobs')
       .update({ status: 'cancelled', completed_at: nowIso })
       .eq('id', id);
 
     if (jobError) {
-      console.error(`Error cancelling scraper run ${id}:`, jobError);
+      console.error(`Error cancelling enrichment run ${id}:`, jobError);
       return NextResponse.json(
-        { error: 'Failed to cancel scraper run' },
+        { error: 'Failed to cancel enrichment run' },
         { status: 500 }
       );
     }
@@ -47,7 +47,7 @@ export async function POST(
         .update({
           pipeline_status: 'imported',
           updated_at: nowIso,
-          error_message: 'Scrape job was cancelled'
+          error_message: 'Enrichment job was cancelled'
         })
         .in('sku', job.skus)
         .eq('pipeline_status', 'scraping');
@@ -57,11 +57,10 @@ export async function POST(
       }
     }
 
-    // Also update all chunks for this job to failed
-    // This prevents chunks from staying in 'pending' or 'running' status
-    // which bloats the "pending/running" count in the API and monitoring UI
-    const { error: chunksError } = await supabase
-      .from('scrape_job_chunks')
+    // Also update all attempts for this job to failed
+    // This prevents attempts from staying in 'pending' or 'running' status
+    const { error: attemptsError } = await supabase
+      .from('enrichment_attempts')
       .update({ 
         status: 'failed', 
         error_message: 'Job was cancelled',
@@ -71,9 +70,8 @@ export async function POST(
       .eq('job_id', id)
       .in('status', ['pending', 'running']);
 
-    if (chunksError) {
-      console.warn(`Warning: Failed to cancel chunks for job ${id}:`, chunksError);
-      // We don't fail the whole request because the job itself WAS cancelled
+    if (attemptsError) {
+      console.warn(`Warning: Failed to cancel attempts for job ${id}:`, attemptsError);
     }
 
     return NextResponse.json({ success: true });

@@ -25,7 +25,7 @@ export function useJobStats() {
       const supabase = createClient();
 
       const { data, error: fetchError } = await supabase
-        .from('scrape_jobs')
+        .from('enrichment_jobs')
         .select('status, created_at, completed_at, skus')
         .order('created_at', { ascending: false })
         .limit(100);
@@ -44,7 +44,7 @@ export function useJobStats() {
 
       // Calculate stats
       const totalJobs = data.length;
-      const activeJobs = data.filter((job) => job.status === 'running').length;
+      const activeJobs = data.filter((job) => job.status === 'running' || job.status === 'claimed').length;
       
       const completedJobs = data.filter((job) => job.status === 'completed');
       const successRate = totalJobs > 0 

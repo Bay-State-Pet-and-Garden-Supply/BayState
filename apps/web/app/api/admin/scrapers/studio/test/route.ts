@@ -96,19 +96,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create a scrape job with test_mode=true — no separate test_run record needed
+    // Create an enrichment job with test_mode=true
     const TEST_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
-    const timeoutAt = new Date(Date.now() + TEST_TIMEOUT_MS).toISOString();
+    const leaseExpiresAt = new Date(Date.now() + TEST_TIMEOUT_MS).toISOString();
 
     const { data: job, error: jobError } = await adminClient
-      .from('scrape_jobs')
+      .from('enrichment_jobs')
       .insert({
         skus: skus,
-        scrapers: [config.slug],
         test_mode: true,
-        max_workers: 1,
-        status: 'pending',
-        timeout_at: timeoutAt,
+        total_count: skus.length,
+        status: 'queued',
         test_metadata: {
           file_path: config.file_path,
           triggered_by: auth.user.id,
@@ -117,51 +115,52 @@ export async function POST(request: NextRequest) {
           scraper_slug: config.slug,
           scraper_display_name: config.name || config.slug,
         },
-        metadata: {
+        config: {
           file_path: config.file_path,
           scraper_slug: config.slug,
           studio_test: true,
           priority: validatedData.options?.priority || 'normal',
+          // Enrichment runner expects target_url or source_plan. 
+          // For Studio test, we might need to provide a way to resolve URLs.
+          // For now, we'll assume the runner can handle it or we'll add more context.
         },
       })
       .select('id')
       .single();
 
     if (jobError || !job) {
-      console.error('[Studio Test API] Failed to create scrape job:', jobError);
+      console.error('[Studio Test API] Failed to create enrichment job:', jobError);
       return NextResponse.json(
         { error: 'Failed to create test job' },
         { status: 500 }
       );
     }
 
-    // Create chunks for the job
-    const chunks = [{
+    // Create attempts for each SKU
+    const attempts = skus.map((sku, index) => ({
       job_id: job.id,
-      chunk_index: 0,
-      skus: skus,
-      scrapers: [config.slug],
-      status: 'pending',
-    }];
+      sku: sku,
+      attempt_number: 1,
+      status: 'queued',
+      mode: 'llm', // Default to LLM for studio tests
+    }));
 
-    const { error: chunkError } = await adminClient
-      .from('scrape_job_chunks')
-      .insert(chunks);
+    const { error: attemptError } = await adminClient
+      .from('enrichment_attempts')
+      .insert(attempts);
 
-    if (chunkError) {
-      console.error('[Studio Test API] Failed to create chunks:', chunkError);
-      // Non-fatal: job was created, runner will still pick it up
+    if (attemptError) {
+      console.error('[Studio Test API] Failed to create enrichment attempts:', attemptError);
     }
 
-    console.log(`[Studio Test API] Created test job ${job.id} for config ${config.slug} (${skus.length} SKUs, timeout: ${timeoutAt})`);
+    console.log(`[Studio Test API] Created enrichment test job ${job.id} for config ${config.slug} (${skus.length} SKUs)`);
 
     return NextResponse.json({
       test_run_id: job.id,
       job_id: job.id,
-      status: 'pending',
+      status: 'queued',
       scraper_slug: validatedData.scraper_slug,
       skus_count: skus.length,
-      timeout_at: timeoutAt,
       message: 'Test job created. A runner will pick it up and process it.',
     }, { status: 201 });
 

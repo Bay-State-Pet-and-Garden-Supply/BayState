@@ -1,7 +1,7 @@
 /**
- * useJobSubscription - Supabase Postgres Changes hook for subscribing to scrape_jobs table
+ * useJobSubscription - Supabase Postgres Changes hook for subscribing to enrichment_jobs table
  *
- * This hook subscribes to INSERT, UPDATE, and DELETE events on the scrape_jobs table.
+ * This hook subscribes to INSERT, UPDATE, and DELETE events on the enrichment_jobs table.
  * Used for real-time tracking of job creation, assignment, and completion.
  */
 
@@ -17,6 +17,7 @@ interface JobSubscriptionState {
   /** All jobs organized by status */
   jobs: {
     pending: JobAssignment[];
+    queued: JobAssignment[];
     running: JobAssignment[];
     completed: JobAssignment[];
     failed: JobAssignment[];
@@ -27,6 +28,7 @@ interface JobSubscriptionState {
   /** Count of jobs by status */
   counts: {
     pending: number;
+    queued: number;
     running: number;
     completed: number;
     failed: number;
@@ -118,6 +120,7 @@ const sharedJobChannels = new Map<string, SharedJobChannelEntry>();
 function createEmptyJobs(): JobBuckets {
   return {
     pending: [],
+    queued: [],
     running: [],
     completed: [],
     failed: [],
@@ -131,6 +134,7 @@ function createInitialDataState(): JobSubscriptionData {
     latestJob: null,
     counts: {
       pending: 0,
+      queued: 0,
       running: 0,
       completed: 0,
       failed: 0,
@@ -142,6 +146,7 @@ function createInitialDataState(): JobSubscriptionData {
 
 function calculateCounts(jobs: JobBuckets): JobCounts {
   const pending = jobs.pending.length;
+  const queued = jobs.queued.length;
   const running = jobs.running.length;
   const completed = jobs.completed.length;
   const failed = jobs.failed.length;
@@ -149,16 +154,17 @@ function calculateCounts(jobs: JobBuckets): JobCounts {
 
   return {
     pending,
+    queued,
     running,
     completed,
     failed,
     cancelled,
-    total: pending + running + completed + failed + cancelled,
+    total: pending + queued + running + completed + failed + cancelled,
   };
 }
 
 function getLatestJob(jobs: JobBuckets): JobAssignment | null {
-  const allJobs = [...jobs.pending, ...jobs.running, ...jobs.completed, ...jobs.failed, ...jobs.cancelled];
+  const allJobs = [...jobs.pending, ...jobs.queued, ...jobs.running, ...jobs.completed, ...jobs.failed, ...jobs.cancelled];
 
   if (allJobs.length === 0) {
     return null;
@@ -190,7 +196,7 @@ function ensureSharedJobChannel(baseChannelName: string): SharedJobChannelEntry 
     {
       event: '*',
       schema: 'public',
-      table: 'scrape_jobs',
+      table: 'enrichment_jobs',
     },
     (payload) => {
       for (const listener of Array.from(entry.listeners)) {
@@ -225,7 +231,7 @@ function cleanupSharedJobChannel(baseChannelName: string, entry: SharedJobChanne
 }
 
 /**
- * useJobSubscription - Hook for subscribing to scrape_jobs table changes
+ * useJobSubscription - Hook for subscribing to enrichment_jobs table changes
  *
  * @example
  * ```typescript
@@ -307,11 +313,11 @@ export function useJobSubscription(
 
   const normalizeStatus = useCallback(
     (status: string | undefined): keyof JobSubscriptionState['jobs'] => {
-      if (status === 'claimed') {
+      if (status === 'claimed' || status === 'running') {
         return 'running';
       }
 
-      if (status === 'completed' || status === 'failed' || status === 'cancelled' || status === 'running') {
+      if (status === 'completed' || status === 'failed' || status === 'cancelled' || status === 'queued') {
         return status;
       }
 
@@ -341,6 +347,7 @@ export function useJobSubscription(
       setDataState((previousState) => {
         const nextJobs: JobBuckets = {
           pending: [...previousState.jobs.pending],
+          queued: [...previousState.jobs.queued],
           running: [...previousState.jobs.running],
           completed: [...previousState.jobs.completed],
           failed: [...previousState.jobs.failed],
@@ -349,12 +356,14 @@ export function useJobSubscription(
 
         if (eventType === 'DELETE' && oldJob) {
           nextJobs.pending = nextJobs.pending.filter((candidate) => candidate.id !== oldJob.id);
+          nextJobs.queued = nextJobs.queued.filter((candidate) => candidate.id !== oldJob.id);
           nextJobs.running = nextJobs.running.filter((candidate) => candidate.id !== oldJob.id);
           nextJobs.completed = nextJobs.completed.filter((candidate) => candidate.id !== oldJob.id);
           nextJobs.failed = nextJobs.failed.filter((candidate) => candidate.id !== oldJob.id);
           nextJobs.cancelled = nextJobs.cancelled.filter((candidate) => candidate.id !== oldJob.id);
         } else if (job) {
           nextJobs.pending = nextJobs.pending.filter((candidate) => candidate.id !== job.id);
+          nextJobs.queued = nextJobs.queued.filter((candidate) => candidate.id !== job.id);
           nextJobs.running = nextJobs.running.filter((candidate) => candidate.id !== job.id);
           nextJobs.completed = nextJobs.completed.filter((candidate) => candidate.id !== job.id);
           nextJobs.failed = nextJobs.failed.filter((candidate) => candidate.id !== job.id);
@@ -414,7 +423,16 @@ export function useJobSubscription(
       if (candidate && scraperNames && scraperNames.length > 0) {
         const hasMatchingScraper = scraperNames.some((name) => (candidate.scrapers || []).includes(name));
         if (!hasMatchingScraper) {
-          return;
+          // Fallback to checking config if scrapers list is empty/missing
+          const config = (candidate as any).config;
+          if (config && typeof config === 'object') {
+            const configScrapers = config.scrapers || [];
+            if (!configScrapers.some((name: string) => scraperNames.includes(name))) {
+              return;
+            }
+          } else {
+            return;
+          }
         }
       }
 
@@ -508,7 +526,7 @@ export function useJobSubscription(
 
     try {
       let query = supabase
-        .from('scrape_jobs')
+        .from('enrichment_jobs')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(200);
@@ -555,6 +573,7 @@ export function useJobSubscription(
     (jobId: string): JobAssignment | undefined => {
       return (
         dataState.jobs.pending.find((job) => job.id === jobId) ||
+        dataState.jobs.queued.find((job) => job.id === jobId) ||
         dataState.jobs.running.find((job) => job.id === jobId) ||
         dataState.jobs.completed.find((job) => job.id === jobId) ||
         dataState.jobs.failed.find((job) => job.id === jobId) ||
@@ -571,11 +590,12 @@ export function useJobSubscription(
     (runnerId: string): JobAssignment[] => {
       return [
         ...dataState.jobs.pending,
+        ...dataState.jobs.queued,
         ...dataState.jobs.running,
         ...dataState.jobs.completed,
         ...dataState.jobs.failed,
         ...dataState.jobs.cancelled,
-      ].filter((job) => job.runner_id === runnerId);
+      ].filter((job) => job.claimed_by === runnerId || job.runner_id === runnerId);
     },
     [dataState.jobs]
   );

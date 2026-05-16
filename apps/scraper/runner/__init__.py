@@ -8,7 +8,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 
-from core.api_client import JobConfig
+from core.api_client import ClaimedEnrichment
 from core.settings_manager import settings
 from scrapers.product_url_extraction.extractor import ProductPageExtractor
 from scrapers.ai_search.enrichment_models import (
@@ -78,36 +78,11 @@ def _emit_runner_log(
         log_buffer.append(entry)
 
 
-def run_job(
-    job_config: JobConfig,
-    runner_name: Optional[str] = None,
-    log_buffer: Optional[List[Dict[str, Any]]] = None,
-    progress_callback: Optional[Callable[[str, str, dict[str, Any]], bool]] = None,
-    api_client: Optional[Any] = None,
-    job_logging: Optional[Any] = None,
-) -> Dict[str, Any]:
-    """Main job dispatch. Only enrichment jobs are supported."""
-    if job_config.job_type == ENRICHMENT_JOB_TYPE:
-        return _run_enrichment_job(
-            job_config,
-            runner_name=runner_name,
-            log_buffer=log_buffer,
-            progress_callback=progress_callback,
-            api_client=api_client,
-            job_logging=job_logging,
-        )
 
-    logger.error(f"Unsupported job type: {job_config.job_type}")
-    return {
-        "skus_processed": 0,
-        "scrapers_run": [],
-        "data": {},
-        "error": f"Unsupported job type: {job_config.job_type} — use enrichment path instead",
-    }
 
 
 def _run_enrichment_job(
-    job_config: JobConfig,
+    attempt: ClaimedEnrichment,
     runner_name: Optional[str] = None,
     log_buffer: Optional[List[Dict[str, Any]]] = None,
     progress_callback: Optional[Callable[[str, str, dict[str, Any]], bool]] = None,
@@ -120,9 +95,9 @@ def _run_enrichment_job(
     1. Standard URL extraction: target_url + SKU
     2. Approved Source Extraction: source_plan in payload
     """
-    job_id = job_config.job_id
-    skus = job_config.skus
-    job_payload = job_config.job_config if isinstance(job_config.job_config, dict) else {}
+    job_id = attempt.job_id
+    skus = [attempt.sku]
+    job_payload = attempt.job_config if isinstance(attempt.job_config, dict) else {}
 
     results: Dict[str, Any] = {
         "skus_processed": 0,
@@ -175,7 +150,7 @@ def _run_enrichment_job(
     # ---- APPROVED SOURCE EXTRACTION PATH ----
     if target_url == "approved_source_extraction":
         return _run_approved_source_extraction(
-            job_config=job_config,
+            attempt=attempt,
             job_payload=job_payload,
             target_sku=target_sku,
             runner_name=runner_name,
@@ -301,7 +276,7 @@ def _run_enrichment_job(
         )
 
     # Submit enrichment result via callback
-    _submit_result(api_client, job_config, job_payload, enrichment_result)
+    _submit_result(api_client, attempt, job_payload, enrichment_result)
 
     results["enrichment_results"] = [enrichment_result.model_dump()]
     results["logs"] = job_logging.snapshot() if job_logging else log_buffer
@@ -327,7 +302,7 @@ def _run_enrichment_job(
 
 
 def _run_approved_source_extraction(
-    job_config: JobConfig,
+    attempt: ClaimedEnrichment,
     job_payload: dict[str, Any],
     target_sku: str,
     runner_name: str | None,
@@ -341,7 +316,7 @@ def _run_approved_source_extraction(
     Returns results dict with enrichment result data and always submits
     a callback (even on failure).
     """
-    job_id = job_config.job_id
+    job_id = attempt.job_id
 
     source_plan_raw = job_payload.get("source_plan")
     if not source_plan_raw:
@@ -364,7 +339,7 @@ def _run_approved_source_extraction(
             error_message=error_msg,
             mode="mixed",
         )
-        _submit_result(api_client, job_config, job_payload, enrichment_result)
+        _submit_result(api_client, attempt, job_payload, enrichment_result)
         results["logs"] = job_logging.snapshot() if job_logging else log_buffer
         return results
 
@@ -404,7 +379,7 @@ def _run_approved_source_extraction(
             error_message=error_msg,
             mode="mixed",
         )
-        _submit_result(api_client, job_config, job_payload, enrichment_result)
+        _submit_result(api_client, attempt, job_payload, enrichment_result)
         results["logs"] = job_logging.snapshot() if job_logging else log_buffer
         return results
 
@@ -512,7 +487,7 @@ def _run_approved_source_extraction(
 
     # ALWAYS submit callback (even on failure)
     if enrichment_result:
-        _submit_result(api_client, job_config, job_payload, enrichment_result)
+        _submit_result(api_client, attempt, job_payload, enrichment_result)
         results["enrichment_results"] = [enrichment_result.model_dump()]
 
     results["logs"] = job_logging.snapshot() if job_logging else log_buffer
@@ -526,7 +501,7 @@ def _run_approved_source_extraction(
 
 def _submit_result(
     api_client: Any | None,
-    job_config: JobConfig,
+    attempt: ClaimedEnrichment,
     job_payload: dict[str, Any],
     enrichment_result: Any | None,
 ) -> None:
@@ -552,7 +527,7 @@ def _submit_result(
             attempt_id=attempt_id,
             status=status_str,
             result_json=result_json,
-            lease_token=getattr(job_config, "lease_token", None),
+            lease_token=getattr(attempt, "lease_token", None),
         )
         if submitted:
             logger.info("Enrichment result submitted for attempt %s (status=%s)", attempt_id, status_str)
@@ -591,5 +566,4 @@ __all__ = [
     "create_log_entry",
     "ENRICHMENT_JOB_TYPE",
     "ProductPageExtractor",
-    "run_job",
 ]

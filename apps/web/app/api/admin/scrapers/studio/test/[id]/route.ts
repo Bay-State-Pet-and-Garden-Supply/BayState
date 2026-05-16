@@ -2,7 +2,6 @@ import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 import { NextRequest, NextResponse } from 'next/server';
-import { checkJobTimeout } from '@/lib/scraper-callback/test-job-utils';
 
 function getSupabaseAdmin(): SupabaseClient {
   const url = SUPABASE_URL;
@@ -17,12 +16,12 @@ function getSupabaseAdmin(): SupabaseClient {
  * GET /api/admin/scrapers/studio/test/[id]
  *
  * Gets the status and results of a test job.
- * Reads from scrape_jobs (unified architecture) instead of scraper_test_runs.
+ * Reads from enrichment_jobs (unified enrichment-first architecture).
  *
  * Response:
  * {
  *   id: string;
- *   status: 'pending' | 'running' | 'completed' | 'failed';
+ *   status: 'queued' | 'running' | 'completed' | 'failed';
  *   test_status?: 'passed' | 'failed' | 'partial';
  *   config_id: string;
  *   version_id: string;
@@ -45,9 +44,9 @@ export async function GET(
     const { id } = await params;
     const adminClient = getSupabaseAdmin();
 
-    // Fetch the test job directly from scrape_jobs
+    // Fetch the test job directly from enrichment_jobs
     const { data: job, error: jobError } = await adminClient
-      .from('scrape_jobs')
+      .from('enrichment_jobs')
       .select('*')
       .eq('id', id)
       .single();
@@ -60,19 +59,14 @@ export async function GET(
     }
 
     // Check for timeout if still active
-    if ((job.status === 'pending' || job.status === 'running') && job.timeout_at) {
-      const timedOut = await checkJobTimeout(adminClient, id);
-      if (timedOut) {
-        // Re-fetch the updated job
-        const { data: updatedJob } = await adminClient
-          .from('scrape_jobs')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (updatedJob) {
-          return buildResponse(updatedJob, adminClient);
-        }
+    const now = new Date();
+    if ((job.status === 'queued' || job.status === 'running') && job.lease_expires_at) {
+      const expiresAt = new Date(job.lease_expires_at);
+      if (now > expiresAt) {
+          // If the job has expired, we mark it as failed in the response 
+          // (though we might want to let a background process handle the DB update)
+          job.status = 'failed';
+          job.error_message = job.error_message || 'Job timed out';
       }
     }
 
@@ -92,47 +86,42 @@ async function buildResponse(
   adminClient: SupabaseClient,
 ) {
   const testMetadata = (job.test_metadata as Record<string, unknown>) || {};
-  const metadata = (job.metadata as Record<string, unknown>) || {};
-  const summary = (testMetadata.summary as Record<string, unknown>) || null;
-  const skuResults = (testMetadata.sku_results as Array<Record<string, unknown>>) || [];
+  const config = (job.config as Record<string, unknown>) || {};
+  
+  // Fetch attempts to build SKU results
+  const { data: attempts } = await adminClient
+    .from('enrichment_attempts')
+    .select('*')
+    .eq('job_id', job.id as string)
+    .order('created_at', { ascending: true });
 
-  // Calculate summary from test_metadata or chunk data
-  const responseSummary = { passed: 0, failed: 0, total: 0 };
+  const skuResults = (attempts || []).map(a => ({
+    sku: a.sku,
+    status: a.status,
+    confidence: a.confidence_overall,
+    error: a.error_message,
+    result: a.result,
+    completed_at: a.completed_at
+  }));
 
-  if (summary) {
-    responseSummary.passed = (summary.passed_count as number) || 0;
-    responseSummary.failed = (summary.failed_count as number) || 0;
-    responseSummary.total = (summary.total_skus as number) || 0;
-  } else if (job.status === 'completed' || job.status === 'failed') {
-    // Fallback: compute from chunk data
-    const { data: chunks } = await adminClient
-      .from('scrape_job_chunks')
-      .select('skus_successful, skus_failed')
-      .eq('job_id', job.id as string);
-
-    if (chunks) {
-      responseSummary.passed = chunks.reduce((s: number, c: { skus_successful?: number }) => s + (c.skus_successful || 0), 0);
-      responseSummary.failed = chunks.reduce((s: number, c: { skus_failed?: number }) => s + (c.skus_failed || 0), 0);
-      responseSummary.total = responseSummary.passed + responseSummary.failed;
-    }
-  }
+  const responseSummary = { 
+    passed: (job.completed_count as number) || 0, 
+    failed: (job.failed_count as number) || 0, 
+    total: (job.total_count as number) || 0 
+  };
 
   // Calculate duration
   let duration_ms: number | undefined;
-  if (summary?.duration_ms) {
-    duration_ms = summary.duration_ms as number;
-  } else if (job.created_at && job.completed_at) {
+  if (job.started_at && job.completed_at) {
     duration_ms = new Date(job.completed_at as string).getTime() -
-                  new Date(job.created_at as string).getTime();
+                  new Date(job.started_at as string).getTime();
   }
 
   // Derive test_status from summary or job status
   let testStatus: string | undefined;
-  if (summary?.test_status) {
-    testStatus = summary.test_status as string;
-  } else if (job.status === 'completed') {
+  if (job.status === 'completed') {
     testStatus = responseSummary.failed === 0 ? 'passed' : responseSummary.passed > 0 ? 'partial' : 'failed';
-  } else if (job.status === 'failed') {
+  } else if (job.status === 'failed' || job.status === 'completed_with_errors') {
     testStatus = 'failed';
   }
 
@@ -140,20 +129,20 @@ async function buildResponse(
     id: job.id,
     status: job.status,
     test_status: testStatus,
-    config_id: testMetadata.config_id || metadata.config_id,
-    version_id: testMetadata.version_id || metadata.version_id,
-    started_at: job.created_at,
+    config_id: testMetadata.scraper_slug || config.scraper_slug,
+    version_id: 'latest', // Scraper configs are now simpler
+    started_at: job.started_at || job.created_at,
     completed_at: job.completed_at || null,
     duration_ms,
     sku_results: skuResults,
     summary: responseSummary,
     job_id: job.id,
     job_status: job.status,
-    metadata: { ...metadata, ...testMetadata },
-    scraper_id: testMetadata.config_id,
+    metadata: { ...config, ...testMetadata },
+    scraper_id: testMetadata.scraper_slug || config.scraper_slug,
     test_type: testMetadata.test_type || 'studio',
     skus_tested: job.skus,
-    timeout_at: job.timeout_at || null,
+    timeout_at: job.lease_expires_at || null,
     error_message: job.error_message || null,
   });
 }

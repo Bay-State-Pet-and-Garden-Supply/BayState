@@ -29,6 +29,8 @@ const feedItemVariants = cva(
       status: {
         pending:
           'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800',
+        queued:
+          'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800',
         claimed:
           'bg-sky-50 border-sky-200 dark:bg-sky-900/20 dark:border-sky-800',
         running:
@@ -49,7 +51,7 @@ const feedItemVariants = cva(
 
 interface JobAssignmentFeedProps {
   /** Filter by specific status */
-  statusFilter?: ('pending' | 'claimed' | 'running' | 'completed' | 'failed' | 'cancelled')[];
+  statusFilter?: ('pending' | 'queued' | 'claimed' | 'running' | 'completed' | 'failed' | 'cancelled')[];
   /** Filter by scraper names */
   scraperNames?: string[];
   /** Maximum items to show */
@@ -83,6 +85,7 @@ function formatTimestamp(isoString: string): string {
 function getStatusIcon(status: JobAssignment['status']) {
   switch (status) {
     case 'pending':
+    case 'queued':
       return <Clock className="h-4 w-4 text-amber-500" />;
     case 'claimed':
       return <ArrowRight className="h-4 w-4 text-sky-500" />;
@@ -105,6 +108,7 @@ function getStatusIcon(status: JobAssignment['status']) {
 function FeedItem({ job, compact = false, showTimestamp = true, onClick }: FeedItemProps) {
   const statusColor = {
     pending: 'text-amber-600 dark:text-amber-400',
+    queued: 'text-amber-600 dark:text-amber-400',
     claimed: 'text-sky-600 dark:text-sky-400',
     running: 'text-violet-600 dark:text-violet-400',
     completed: 'text-emerald-600 dark:text-emerald-400',
@@ -186,6 +190,7 @@ export function JobAssignmentFeed({
   const allJobs = useMemo(() => {
     const combined: JobAssignment[] = [
       ...jobs.pending,
+      ...jobs.queued,
       ...jobs.running,
       ...jobs.completed,
       ...jobs.failed,
@@ -224,6 +229,7 @@ export function JobAssignmentFeed({
   const statusCounts = useMemo(() => {
     return {
       pending: jobs.pending.length,
+      queued: jobs.queued.length,
       running: jobs.running.length,
       completed: jobs.completed.length,
       failed: jobs.failed.length,
@@ -243,7 +249,7 @@ export function JobAssignmentFeed({
         <div className="flex items-center gap-3 text-xs">
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-amber-500" />
-            {statusCounts.pending}
+            {statusCounts.pending + statusCounts.queued}
           </span>
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-violet-500" />

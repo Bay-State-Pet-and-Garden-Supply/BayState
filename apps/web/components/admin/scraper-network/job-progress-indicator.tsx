@@ -28,6 +28,7 @@ const statusVariants = cva('flex items-center gap-1.5', {
   variants: {
     status: {
       pending: 'text-amber-600 dark:text-amber-400',
+      queued: 'text-amber-600 dark:text-amber-400',
       claimed: 'text-sky-600 dark:text-sky-400',
       running: 'text-blue-600 dark:text-blue-400',
       completed: 'text-emerald-600 dark:text-emerald-400',
@@ -68,6 +69,7 @@ function formatElapsed(startIso: string, endIso?: string): string {
 function getStatusIcon(status: JobAssignment['status']) {
   switch (status) {
     case 'pending':
+    case 'queued':
       return <Clock className="h-4 w-4" />;
     case 'claimed':
       return <Zap className="h-4 w-4 text-sky-500" />;
@@ -140,7 +142,7 @@ function JobProgressItem({
         )}
 
         <div className="flex items-center gap-3">
-          {showElapsed && job.status === 'running' && (
+          {showElapsed && (job.status === 'running' || job.status === 'claimed') && (
             <span className="text-xs text-slate-500">{elapsed}</span>
           )}
           <button
@@ -243,15 +245,16 @@ export function JobProgressIndicator({
     jobIds,
   });
 
-  // Get running jobs
-  const runningJobs = useMemo(() => {
-    return jobs.running.filter((job) => {
+  // Get active jobs (queued + running)
+  const activeJobs = useMemo(() => {
+    const allActive = [...jobs.queued, ...jobs.running];
+    return allActive.filter((job) => {
       if (jobIds && jobIds.length > 0 && !jobIds.includes(job.id)) {
         return false;
       }
       return true;
     });
-  }, [jobs.running, jobIds]);
+  }, [jobs.queued, jobs.running, jobIds]);
 
   // Get progress for each job
   const getProgressForJob = useCallback(
@@ -263,10 +266,10 @@ export function JobProgressIndicator({
 
   // Sort by newest first
   const sortedJobs = useMemo(() => {
-    return [...runningJobs].sort(
+    return [...activeJobs].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
-  }, [runningJobs]);
+  }, [activeJobs]);
 
   // Limit items
   const displayJobs = sortedJobs.slice(0, maxItems);
@@ -278,10 +281,10 @@ export function JobProgressIndicator({
         <div className="flex items-center gap-2">
           <Zap className="h-5 w-5 text-amber-500" />
           <h3 className="font-semibold text-slate-900 dark:text-slate-100">
-            Running Jobs
+            Active Jobs
           </h3>
           <span className="text-xs text-slate-500">
-            ({displayJobs.length} of {runningJobs.length})
+            ({displayJobs.length} of {activeJobs.length})
           </span>
         </div>
 

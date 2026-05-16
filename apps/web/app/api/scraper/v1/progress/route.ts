@@ -53,8 +53,8 @@ export async function POST(request: NextRequest) {
 
     const supabase = getSupabaseAdmin();
     const { data: job, error: jobError } = await supabase
-      .from('scrape_jobs')
-      .select('id, status, lease_token, runner_name, started_at')
+      .from('enrichment_jobs')
+      .select('id, status, lease_token, claimed_by, started_at')
       .eq('id', progress.job_id)
       .single();
 
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    if (job.runner_name && job.runner_name !== runner.runnerName) {
+    if (job.claimed_by && job.claimed_by !== runner.runnerName) {
       return NextResponse.json({ error: 'Runner does not own current job' }, { status: 409 });
     }
 
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     const updateData: Record<string, unknown> = {
       status: nextStatus,
-      runner_name: runner.runnerName,
+      claimed_by: runner.runnerName,
       started_at: job.started_at ?? nowIso,
       updated_at: nowIso,
       heartbeat_at: nowIso,
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { error: updateError } = await supabase
-      .from('scrape_jobs')
+      .from('enrichment_jobs')
       .update(updateData)
       .eq('id', progress.job_id);
 

@@ -63,7 +63,7 @@ interface MockScraperConfig {
   last_test_result: 'passed' | 'failed' | null;
 }
 
-interface MockScrapeJob {
+interface MockEnrichmentJob {
   id: string;
   config_id: string;
   status: 'pending' | 'running' | 'completed' | 'failed';
@@ -93,7 +93,7 @@ interface MockTestRun {
 
 interface TestState {
   scrapers: Map<string, MockScraperConfig>;
-  jobs: Map<string, MockScrapeJob>;
+  jobs: Map<string, MockEnrichmentJob>;
   testRuns: Map<string, MockTestRun>;
   nextIds: { scraper: number; job: number; testRun: number };
 }
@@ -206,11 +206,11 @@ function buildMockSupabase(state: TestState) {
     insert: (payload: Record<string, unknown> | Record<string, unknown>[]) => {
       const insertOne = (data: Record<string, unknown>) => {
         const id = generateId('job', 'job');
-        const job: MockScrapeJob = {
+        const job: MockEnrichmentJob = {
           id,
           config_id: String(data.config_id || ''),
-          status: String(data.status || 'pending') as MockScrapeJob['status'],
-          job_type: String(data.job_type || 'test') as MockScrapeJob['job_type'],
+          status: String(data.status || 'pending') as MockEnrichmentJob['status'],
+          job_type: String(data.job_type || 'test') as MockEnrichmentJob['job_type'],
           test_metadata: (data.test_metadata as Record<string, unknown>) || {},
           created_at: NOW,
           completed_at: null,
@@ -340,14 +340,12 @@ function buildMockSupabase(state: TestState) {
       switch (table) {
         case 'scraper_configs':
           return scraperConfigsTable;
-        case 'scrape_jobs':
+        case 'enrichment_jobs':
           return scrapeJobsTable;
         case 'scraper_test_runs':
           return scraperTestRunsTable;
         case 'scrape_results':
           return scrapeResultsTable;
-        case 'scrape_job_chunks':
-          return scrapeJobChunksTable;
         default:
           throw new Error(`Unexpected table: ${table}`);
       }

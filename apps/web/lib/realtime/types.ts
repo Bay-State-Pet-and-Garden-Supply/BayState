@@ -60,16 +60,18 @@ export interface JobAssignment {
   /** Optional legacy reference to the scrape job being assigned */
   job_id?: string;
   /** List of scraper names to execute */
-  scrapers: string[];
+  scrapers?: string[];
   /** Target SKUs to scrape */
   skus: string[];
   /** Current status of the job assignment */
-  status: 'pending' | 'claimed' | 'running' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'queued' | 'claimed' | 'running' | 'completed' | 'failed' | 'cancelled';
   /** ISO 8601 timestamp when the assignment was created */
   created_at: string;
   /** ISO 8601 timestamp when the assignment was last updated */
   updated_at?: string;
-  /** Optional runner ID once the job is picked up */
+  /** Runner ID that claimed the job */
+  claimed_by?: string | null;
+  /** Optional legacy runner ID once the job is picked up */
   runner_id?: string;
   /** Human-readable runner name */
   runner_name?: string | null;
@@ -111,10 +113,11 @@ export interface JobAssignment {
 const jobAssignmentSchema = z.object({
   id: z.string(),
   job_id: z.string().optional(),
-  scrapers: z.array(z.string()),
+  scrapers: z.array(z.string()).optional(),
   skus: z.array(z.string()),
-  status: z.enum(['pending', 'claimed', 'running', 'completed', 'failed', 'cancelled']),
+  status: z.enum(['pending', 'queued', 'claimed', 'running', 'completed', 'failed', 'cancelled']),
   created_at: z.string(),
+  claimed_by: z.string().nullable().optional(),
   runner_id: z.string().optional(),
   runner_name: z.string().nullable().optional(),
   test_mode: z.boolean().optional(),

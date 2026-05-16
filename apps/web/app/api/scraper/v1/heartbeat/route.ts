@@ -79,8 +79,8 @@ export async function POST(request: NextRequest) {
 
         if (body.current_job_id) {
             const { data: job, error: jobError } = await supabase
-                .from('scrape_jobs')
-                .select('id, status, lease_token, runner_name')
+                .from('enrichment_jobs')
+                .select('id, status, lease_token, claimed_by')
                 .eq('id', body.current_job_id)
                 .single();
 
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
                 );
             }
 
-            if (job.runner_name && job.runner_name !== runnerName) {
+            if (job.claimed_by && job.claimed_by !== runnerName) {
                 return NextResponse.json(
                     { error: 'Runner does not own current job' },
                     { status: 409 }
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
             leaseExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
             const { error: jobUpdateError } = await supabase
-                .from('scrape_jobs')
+                .from('enrichment_jobs')
                 .update({
                     heartbeat_at: nowIso,
                     lease_expires_at: leaseExpiresAt,

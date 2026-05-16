@@ -81,7 +81,7 @@ if env_file.exists():
 try:
     # Prefer package-relative imports when daemon.py is imported as part of the
     # `scraper` package (normal runtime).
-    from core.api_client import ClaimedChunk, ClaimedCohort, ScraperAPIClient, JobConfig, RunnerBuildMismatchError
+    from core.api_client import ScraperAPIClient, RunnerBuildMismatchError
     from core.realtime_manager import RealtimeManager
     from core.version import (
         get_runner_build_id,
@@ -116,10 +116,7 @@ except Exception:
     from typing import Any
 
     api_mod = importlib.import_module("apps.scraper.core.api_client")
-    ClaimedChunk = getattr(api_mod, "ClaimedChunk")
     ScraperAPIClient = getattr(api_mod, "ScraperAPIClient")
-    JobConfig = getattr(api_mod, "JobConfig")
-    ClaimedCohort = getattr(api_mod, "ClaimedCohort")
 
     realtime_mod = importlib.import_module("apps.scraper.core.realtime_manager")
     RealtimeManager = getattr(realtime_mod, "RealtimeManager")
@@ -187,138 +184,6 @@ def signal_handler(signum, frame):
     _shutdown_requested = True
 
 
-def run_claimed_chunk(chunk, client, log_buffer=None, job_logging=None) -> dict[str, Any]:
-    from runner import run_job as run_runner_job  # type: ignore
-
-    job_config = client.get_job_config(chunk.job_id)
-    if not job_config:
-        raise RuntimeError(f"Failed to fetch job config for chunk job {chunk.job_id}")
-
-    job_config.skus = chunk.skus
-    job_config.test_mode = chunk.test_mode
-    job_config.max_workers = chunk.max_workers
-
-    if chunk.scrapers:
-        job_config.scrapers = [s for s in job_config.scrapers if s.name in chunk.scrapers or (s.display_name and s.display_name in chunk.scrapers)]
-
-    return run_runner_job(
-        job_config,
-        runner_name=client.runner_name,
-        log_buffer=log_buffer,
-        api_client=client,
-        job_logging=job_logging,
-    )
-
-
-async def process_chunk(chunk, client, rm):
-    """Process a claimed chunk of SKUs."""
-    from utils.logging_handlers import JobLoggingSession
-
-    try:
-        await asyncio.to_thread(client.heartbeat, current_job_id=chunk.job_id, lease_token=chunk.lease_token, status="busy")
-        with JobLoggingSession(
-            job_id=chunk.job_id,
-            runner_name=client.runner_name,
-            lease_token=chunk.lease_token,
-            api_client=client,
-            realtime_manager=rm,
-        ) as job_logging:
-            logger.info(
-                f"Claimed chunk {chunk.chunk_id}",
-                extra={
-                    "job_id": chunk.job_id,
-                    "runner_name": client.runner_name,
-                    "phase": "claimed",
-                    "details": {
-                        "chunk_id": chunk.chunk_id,
-                        "chunk_index": chunk.chunk_index,
-                        "sku_count": len(chunk.skus),
-                        "scrapers": chunk.scrapers,
-                    },
-                    "flush_immediately": True,
-                },
-            )
-            planned_work_units = chunk.planned_work_units or (len(chunk.skus) * max(1, len(chunk.scrapers)))
-            job_logging.emit_progress(
-                status="running",
-                progress=0,
-                message="Chunk processing started",
-                phase="claimed",
-                details={
-                    "chunk_id": chunk.chunk_id,
-                    "chunk_index": chunk.chunk_index,
-                    "sku_count": len(chunk.skus),
-                    "planned_work_units": planned_work_units,
-                    "site_group_label": chunk.site_group_label,
-                },
-                items_total=planned_work_units,
-            )
-
-            start_time = time.time()
-            results = await asyncio.to_thread(run_claimed_chunk, chunk, client, None, job_logging)
-            elapsed = time.time() - start_time
-
-            logger.info(
-                f"Chunk {chunk.chunk_id} completed",
-                extra={
-                    "job_id": chunk.job_id,
-                    "runner_name": client.runner_name,
-                    "phase": "completed",
-                    "details": {
-                        "chunk_id": chunk.chunk_id,
-                        "elapsed_seconds": round(elapsed, 2),
-                        "skus_processed": results.get("skus_processed", 0),
-                    },
-                    "flush_immediately": True,
-                },
-            )
-
-            chunk_results = {
-                "skus_processed": results.get("skus_processed", 0),
-                "skus_successful": len(results.get("data", {})),
-                "skus_failed": results.get("skus_processed", 0) - len(results.get("data", {})),
-                "work_units_processed": planned_work_units,
-                "work_units_total": planned_work_units,
-                "data": results.get("data", {}),
-                "telemetry": results.get("telemetry", {}),
-                "logs": results.get("logs", []) or job_logging.snapshot(),
-            }
-
-            await asyncio.to_thread(
-                client.submit_chunk_results,
-                chunk.chunk_id,
-                "completed",
-                results=chunk_results,
-            )
-
-            logger.info(
-                f"Chunk {chunk.chunk_id} completed in {elapsed:.1f}s",
-                extra={
-                    "job_id": chunk.job_id,
-                    "runner_name": client.runner_name,
-                    "phase": "completed",
-                    "details": {"skus_processed": results.get("skus_processed", 0)},
-                },
-            )
-
-    except Exception as e:
-        logger.exception(
-            f"Chunk {chunk.chunk_id} failed",
-            extra={
-                "job_id": chunk.job_id,
-                "runner_name": client.runner_name,
-                "phase": "failed",
-                "chunk_id": chunk.chunk_id,
-                "chunk_index": chunk.chunk_index,
-                "flush_immediately": True,
-            },
-        )
-        await asyncio.to_thread(
-            client.submit_chunk_results,
-            chunk.chunk_id,
-            "failed",
-            error_message=str(e),
-        )
 
 
 async def _process_enrichment(attempt, client, rm):
@@ -374,47 +239,9 @@ async def _process_enrichment(attempt, client, rm):
                 items_total=1,
             )
 
-            # Build a minimal JobConfig for the enrichment runner
-            from core.api_client import JobConfig
-
-            job_payload = {
-                "target_url": attempt.target_url,
-                "sku": attempt.sku,
-                "domain": attempt.domain,
-                "model": attempt.model or "deepseek-chat",
-                "mode": attempt.mode or "mixed",
-                "attempt_id": attempt_id,
-                "target_id": attempt.target_id,
-            }
-
-            # For approved-source extraction, include the source plan
-            # in the job payload so the enrichment handler can route it.
-            if attempt.target_url == "approved_source_extraction" and attempt.source_plan:
-                job_payload["source_plan"] = attempt.source_plan
-
-            # Merge job_config from claim response if present
-            if attempt.job_config and isinstance(attempt.job_config, dict):
-                job_payload.update(attempt.job_config)
-                if "sku" not in attempt.job_config:
-                    job_payload["sku"] = attempt.sku
-                if "target_url" not in attempt.job_config:
-                    job_payload["target_url"] = attempt.target_url
-
-            job_config = JobConfig(
-                job_id=job_id,
-                skus=[attempt.sku],
-                scrapers=[],
-                test_mode=attempt.test_mode,
-                max_workers=1,
-                job_type="enrichment",
-                job_config=job_payload,
-                ai_credentials=attempt.ai_credentials,
-                lease_token=attempt.lease_token,
-            )
-
             start_time = time.time()
             results = _run_enrichment_job(
-                job_config,
+                attempt,
                 runner_name=client.runner_name,
                 log_buffer=None,
                 api_client=client,
@@ -460,138 +287,6 @@ async def _process_enrichment(attempt, client, rm):
             logger.exception("Failed to submit enrichment failure result")
 
 
-async def process_cohort(cohort, client, rm):
-    """Process a claimed cohort batch."""
-    from runner import run_job as run_runner_job  # type: ignore
-
-    from utils.logging_handlers import JobLoggingSession
-
-    cohort_id = cohort.cohort_id
-    job_id = cohort_id  # Use cohort_id as the job identifier
-
-    try:
-        await asyncio.to_thread(client.heartbeat, current_job_id=job_id, lease_token=cohort.lease_token, status="busy")
-        with JobLoggingSession(
-            job_id=job_id,
-            runner_name=client.runner_name,
-            lease_token=cohort.lease_token,
-            api_client=client,
-            realtime_manager=rm,
-        ) as job_logging:
-            logger.info(
-                f"Claimed cohort {cohort_id}",
-                extra={
-                    "job_id": job_id,
-                    "runner_name": client.runner_name,
-                    "phase": "claimed",
-                    "details": {
-                        "cohort_id": cohort_id,
-                        "cohort_index": cohort.cohort_index,
-                        "product_count": len(cohort.products),
-                        "scrapers": cohort.scrapers,
-                    },
-                    "flush_immediately": True,
-                },
-            )
-            job_logging.emit_progress(
-                status="running",
-                progress=0,
-                message="Cohort processing started",
-                phase="claimed",
-                details={
-                    "cohort_id": cohort_id,
-                    "cohort_index": cohort.cohort_index,
-                    "product_count": len(cohort.products),
-                },
-                items_total=len(cohort.products),
-            )
-
-            start_time = time.time()
-
-            # Build job config from cohort data
-            job_config = client.get_job_config(cohort_id)
-            if not job_config:
-                raise RuntimeError(f"Failed to fetch job config for cohort {cohort_id}")
-
-            # Convert cohort products to SKU list
-            skus = [p.get("sku") or p.get("upc") for p in cohort.products if p.get("sku") or p.get("upc")]
-            job_config.skus = skus
-            job_config.test_mode = cohort.test_mode
-            job_config.max_workers = cohort.max_workers
-
-            # Filter scrapers if specified
-            if cohort.scrapers:
-                job_config.scrapers = [s for s in job_config.scrapers if s.name in cohort.scrapers]
-
-            results = await asyncio.to_thread(
-                run_runner_job,
-                job_config,
-                runner_name=client.runner_name,
-                log_buffer=None,
-                api_client=client,
-                job_logging=job_logging,
-            )
-            elapsed = time.time() - start_time
-
-            logger.info(
-                f"Cohort {cohort_id} completed",
-                extra={
-                    "job_id": job_id,
-                    "runner_name": client.runner_name,
-                    "phase": "completed",
-                    "details": {
-                        "cohort_id": cohort_id,
-                        "elapsed_seconds": round(elapsed, 2),
-                        "products_processed": results.get("skus_processed", 0),
-                    },
-                    "flush_immediately": True,
-                },
-            )
-
-            cohort_results = {
-                "products_processed": results.get("skus_processed", 0),
-                "products_successful": len(results.get("data", {})),
-                "products_failed": results.get("skus_processed", 0) - len(results.get("data", {})),
-                "product_results": results.get("data", {}),
-                "telemetry": results.get("telemetry", {}),
-                "logs": results.get("logs", []) or job_logging.snapshot(),
-            }
-
-            await asyncio.to_thread(
-                client.submit_cohort_results,
-                cohort_id,
-                "completed",
-                results=cohort_results,
-            )
-
-            logger.info(
-                f"Cohort {cohort_id} completed in {elapsed:.1f}s",
-                extra={
-                    "job_id": job_id,
-                    "runner_name": client.runner_name,
-                    "phase": "completed",
-                    "details": {"products_processed": results.get("skus_processed", 0)},
-                },
-            )
-
-    except Exception as e:
-        logger.exception(
-            f"Cohort {cohort_id} failed",
-            extra={
-                "job_id": job_id,
-                "runner_name": client.runner_name,
-                "phase": "failed",
-                "cohort_id": cohort_id,
-                "cohort_index": cohort.cohort_index,
-                "flush_immediately": True,
-            },
-        )
-        await asyncio.to_thread(
-            client.submit_cohort_results,
-            cohort_id,
-            "failed",
-            error_message=str(e),
-        )
 
 
 
@@ -669,49 +364,21 @@ async def main_async():
                 logger.info(f"Completed {work_units_completed} work units. Exiting for container restart (memory hygiene).")
                 break
 
-            logger.info("[Daemon] Claiming next work unit...")
+            logger.info("[Daemon] Claiming next enrichment attempt...")
 
-            # Try enrichment claims first (AI extraction jobs)
-            use_enrichment_processing = os.environ.get("USE_ENRICHMENT_PROCESSING", "true").lower() == "true"
-            enrichment_attempt = None
-
-            if use_enrichment_processing:
-                enrichment_attempt = await asyncio.to_thread(client.claim_enrichment, runner_name=client.runner_name)
-                if enrichment_attempt:
-                    logger.info(
-                        f"[Enrichment {enrichment_attempt.attempt_id}] Claimed - "
-                        f"job={enrichment_attempt.job_id}, sku={enrichment_attempt.sku}"
-                    )
+            enrichment_attempt = await asyncio.to_thread(client.claim_enrichment, runner_name=client.runner_name)
 
             if enrichment_attempt:
                 # Process enrichment work immediately
                 consecutive_idle_polls = 0
+                logger.info(
+                    f"[Enrichment {enrichment_attempt.attempt_id}] Claimed - "
+                    f"job={enrichment_attempt.job_id}, sku={enrichment_attempt.sku}"
+                )
                 await _process_enrichment(enrichment_attempt, client, rm)
                 work_units_completed += 1
                 continue
-
-            # Try cohort claiming first (if enabled), fall back to chunk claiming
-            use_cohort_processing = os.environ.get("USE_COHORT_PROCESSING", "true").lower() == "true"
-
-            work_unit = None
-            is_cohort = False
-
-            if use_cohort_processing:
-                cohort = await asyncio.to_thread(client.claim_cohort, runner_name=client.runner_name)
-                if cohort:
-                    logger.info(f"[Cohort {cohort.cohort_id}] Claimed - index={cohort.cohort_index}, products={len(cohort.products)}")
-                    work_unit = cohort
-                    is_cohort = True
-
-            if not work_unit:
-                # Fall back to chunk claiming
-                chunk = await asyncio.to_thread(client.claim_chunk, runner_name=client.runner_name)
-                if chunk:
-                    logger.info(f"[Chunk {chunk.chunk_id}] Claimed - job={chunk.job_id}, skus={len(chunk.skus)}")
-                    work_unit = chunk
-                    is_cohort = False
-
-            if not work_unit:
+            else:
                 # No work available - idle backoff
                 consecutive_idle_polls += 1
                 now = time.time()
@@ -731,15 +398,6 @@ async def main_async():
                 logger.debug(f"No jobs found. Backing off for {sleep_time:.1f}s")
                 await asyncio.sleep(sleep_time)
                 continue
-
-            # Process the work unit (cohort or chunk)
-            consecutive_idle_polls = 0
-
-            if is_cohort:
-                await process_cohort(work_unit, client, rm)
-            else:
-                await process_chunk(work_unit, client, rm)
-            work_units_completed += 1
 
         except RunnerBuildMismatchError as e:
             latest_build_id = getattr(e, "latest_build_id", None)

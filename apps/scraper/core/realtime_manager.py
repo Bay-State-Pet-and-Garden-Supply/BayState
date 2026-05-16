@@ -2,7 +2,7 @@
 Supabase Realtime subscription manager for scrape job notifications.
 
 Features:
-- Subscribe to scrape_jobs INSERT events
+- Subscribe to enrichment_jobs INSERT events
 - Track runner presence (online/offline status)
 - Optionally broadcast transient progress, log, and runner-status diagnostics
 """
@@ -88,7 +88,7 @@ class RealtimeManager:
     Features:
     - Async WebSocket connection management
     - Automatic reconnection with exponential backoff
-    - Subscribe to scrape_jobs INSERT events with status=eq.pending filter
+    - Subscribe to enrichment_jobs INSERT events with status=eq.pending filter
     - Thread-safe job queuing via asyncio.Queue
     - Graceful shutdown via asyncio.Event
     - Presence tracking for runner online/offline status
@@ -241,7 +241,7 @@ class RealtimeManager:
 
     async def subscribe_to_jobs(self, callback: Callable[[dict[str, Any]], None]) -> None:
         """
-        Subscribe to INSERT events on the scrape_jobs table.
+        Subscribe to INSERT events on the enrichment_jobs table.
 
         Filters for jobs where status='pending'. When a matching INSERT is
         detected, the job data is placed on the internal queue and the callback
@@ -263,14 +263,14 @@ class RealtimeManager:
         channel.on_postgres_changes(
             event="INSERT",
             schema="public",
-            table="scrape_jobs",
+            table="enrichment_jobs",
             filter="status=eq.pending",
             callback=self._handle_job_insert,
         )
 
         def _on_subscribe(status: Any, err: Exception | None):
             if str(status) == "SUBSCRIBED":
-                logger.info(f"[{self.runner_name}] Subscribed to scrape_jobs INSERT events")
+                logger.info(f"[{self.runner_name}] Subscribed to enrichment_jobs INSERT events")
             elif str(status) == "CHANNEL_ERROR":
                 logger.warning(f"[{self.runner_name}] Error subscribing to jobs: {self._summarize_realtime_error(err)}")
             elif str(status) == "TIMED_OUT":
@@ -280,7 +280,7 @@ class RealtimeManager:
 
     async def _handle_job_insert(self, payload: dict[str, Any]) -> None:
         """
-        Handle INSERT event from scrape_jobs table.
+        Handle INSERT event from enrichment_jobs table.
 
         Args:
             payload: Realtime payload containing 'new' key with inserted row

@@ -116,7 +116,14 @@ export async function POST(request: NextRequest) {
     // Find the enrichment attempt by attempt_id from transport, or fall back to SKU lookup
     let attemptQuery = supabase
       .from("enrichment_attempts")
-      .select("id, job_id, retry_count")
+      .select(`
+        id, 
+        job_id, 
+        retry_count,
+        enrichment_jobs!inner (
+          test_mode
+        )
+      `)
       .eq("sku", enrichedResult.sku)
       .order("created_at", { ascending: false })
       .limit(1);
@@ -124,7 +131,14 @@ export async function POST(request: NextRequest) {
     if (attemptId) {
       attemptQuery = supabase
         .from("enrichment_attempts")
-        .select("id, job_id, retry_count")
+        .select(`
+          id, 
+          job_id, 
+          retry_count,
+          enrichment_jobs!inner (
+            test_mode
+          )
+        `)
         .eq("id", attemptId);
     }
 
@@ -135,6 +149,8 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    const isTestJob = (attemptData as any).enrichment_jobs?.test_mode === true;
 
     // Update the enrichment attempt
     const nextAttempt = determineNextStatus(enrichedResult, attemptData);
@@ -157,45 +173,49 @@ export async function POST(request: NextRequest) {
       console.error("Failed to update enrichment attempt:", attemptUpdateError);
     }
 
-    // Merge normalized source into product's sources.enriched
-    const { data: product } = await supabase
-      .from("products_ingestion")
-      .select("sources")
-      .eq("sku", enrichedResult.sku)
-      .single();
+    if (isTestJob) {
+      console.log(`[Enrichment Callback] Test job detected for SKU ${enrichedResult.sku} - skipping products_ingestion update.`);
+    } else {
+      // Merge normalized source into product's sources.enriched
+      const { data: product } = await supabase
+        .from("products_ingestion")
+        .select("sources")
+        .eq("sku", enrichedResult.sku)
+        .single();
 
-    const currentSources = (product?.sources as Record<string, unknown>) ?? {};
-    const updatedSources = {
-      ...currentSources,
-      enriched: normalized as any,
-    };
+      const currentSources = (product?.sources as Record<string, unknown>) ?? {};
+      const updatedSources = {
+        ...currentSources,
+        enriched: normalized as any,
+      };
 
-    // Determine next status and update product
-    const nextStatus = nextAttempt.status;
-    const updatePayload: Record<string, unknown> = {
-      sources: updatedSources,
-      pipeline_status: nextStatus,
-      confidence_score: enrichedResult.confidence.overall,
-      updated_at: new Date().toISOString(),
-    };
+      // Determine next status and update product
+      const nextStatus = nextAttempt.status;
+      const updatePayload: Record<string, unknown> = {
+        sources: updatedSources,
+        pipeline_status: nextStatus,
+        confidence_score: enrichedResult.confidence.overall,
+        updated_at: new Date().toISOString(),
+      };
 
-    if (nextStatus === "failed") {
-      updatePayload.error_message =
-        (enrichedResult.validation?.warnings ?? []).join("; ") ||
-        "Enrichment failed after retries";
-    }
+      if (nextStatus === "failed") {
+        updatePayload.error_message =
+          (enrichedResult.validation?.warnings ?? []).join("; ") ||
+          "Enrichment failed after retries";
+      }
 
-    const { error: productUpdateError } = await supabase
-      .from("products_ingestion")
-      .update(updatePayload)
-      .eq("sku", enrichedResult.sku);
+      const { error: productUpdateError } = await supabase
+        .from("products_ingestion")
+        .update(updatePayload)
+        .eq("sku", enrichedResult.sku);
 
-    if (productUpdateError) {
-      console.error("Failed to update product:", productUpdateError);
-      return NextResponse.json(
-        { error: productUpdateError.message },
-        { status: 500 }
-      );
+      if (productUpdateError) {
+        console.error("Failed to update product:", productUpdateError);
+        return NextResponse.json(
+          { error: productUpdateError.message },
+          { status: 500 }
+        );
+      }
     }
 
     // Update enrichment_jobs counters

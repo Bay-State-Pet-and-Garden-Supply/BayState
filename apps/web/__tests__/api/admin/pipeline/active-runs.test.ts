@@ -48,18 +48,18 @@ describe("Active Runs API", () => {
       order: jest.fn(),
     };
     chunksQuery.select.mockReturnValue(chunksQuery);
-    chunksQuery.in.mockReturnValue(chunksQuery);
+    chunksQuery.in.mockResolvedValue({ data: [], error: null });
     chunksQuery.order.mockResolvedValue({ data: [], error: null });
 
     mockSupabase = {
       _jobQueryCallCount: 0,
       from: jest.fn((table: string) => {
-        if (table === "scrape_jobs") {
+        if (table === "enrichment_jobs") {
           mockSupabase._jobQueryCallCount += 1;
           return mockSupabase._jobQueryCallCount === 1 ? activeJobsQuery : recentJobsQuery;
         }
 
-        if (table === "scrape_job_chunks") {
+        if (table === "enrichment_attempts") {
           return chunksQuery;
         }
 
@@ -93,65 +93,55 @@ describe("Active Runs API", () => {
     const mockJobs = [
       {
         id: "job-1",
-        type: "direct_url_extraction",
-        config: { cohort: { id: 'cohort-1' } },
-        metadata: { official_brand_phase: 'manual_override' },
+        config: { scrapers: ["amazon", "walmart"], cohort: { id: 'cohort-1' } },
         status: "running",
         created_at: "2024-01-15T10:00:00Z",
         updated_at: "2024-01-15T10:01:00Z",
-        scrapers: ["amazon", "walmart"],
         skus: ["SKU-001", "SKU-002", "SKU-003"],
-        runner_name: "runner-a",
+        claimed_by: "runner-a",
         heartbeat_at: "2024-01-15T10:01:00Z",
         progress_percent: 67,
         progress_message: "Processing SKU-003",
         progress_phase: "scraping",
-        progress_updated_at: "2024-01-15T10:01:00Z",
         current_sku: "SKU-003",
         items_processed: 2,
         items_total: 3,
-        last_event_at: "2024-01-15T10:01:00Z",
         last_log_at: "2024-01-15T10:01:00Z",
         last_log_level: "info",
         last_log_message: "Parsed price",
       },
       {
         id: "job-2",
-        type: null,
-        config: null,
-        metadata: null,
+        config: { scrapers: ["target"] },
         status: "pending",
         created_at: "2024-01-15T09:00:00Z",
         updated_at: "2024-01-15T09:00:00Z",
-        scrapers: ["target"],
         skus: ["SKU-004", "SKU-005"],
-        runner_name: null,
+        claimed_by: null,
         heartbeat_at: null,
         progress_percent: null,
         progress_message: null,
         progress_phase: null,
-        progress_updated_at: null,
         current_sku: null,
         items_processed: null,
         items_total: null,
-        last_event_at: null,
         last_log_at: null,
         last_log_level: null,
         last_log_message: null,
       },
     ];
 
-    const mockChunks = [
-      { job_id: "job-1", id: "chunk-1", status: "completed", chunk_index: 0, skus: ["SKU-001"], claimed_by: null, claimed_at: null, started_at: null, completed_at: null, skus_processed: 1, skus_successful: 1, skus_failed: 0, error_message: null, planned_work_units: 2, sku_slice_index: 0, site_group_key: "amazon.com", site_group_label: "amazon.com", site_domain: "amazon.com" },
-      { job_id: "job-1", id: "chunk-2", status: "completed", chunk_index: 1, skus: ["SKU-001"], claimed_by: null, claimed_at: null, started_at: null, completed_at: null, skus_processed: 1, skus_successful: 1, skus_failed: 0, error_message: null, planned_work_units: 2, sku_slice_index: 0, site_group_key: "walmart.com", site_group_label: "walmart.com", site_domain: "walmart.com" },
-      { job_id: "job-1", id: "chunk-3", status: "running", chunk_index: 2, skus: ["SKU-002"], claimed_by: "runner-a", claimed_at: "2024-01-15T10:01:00Z", started_at: "2024-01-15T10:01:00Z", completed_at: null, skus_processed: 0, skus_successful: 0, skus_failed: 0, error_message: null, planned_work_units: 2, sku_slice_index: 1, site_group_key: "amazon.com", site_group_label: "amazon.com", site_domain: "amazon.com" },
-      { job_id: "job-1", id: "chunk-4", status: "pending", chunk_index: 3, skus: ["SKU-002"], claimed_by: null, claimed_at: null, started_at: null, completed_at: null, skus_processed: 0, skus_successful: 0, skus_failed: 0, error_message: null, planned_work_units: 2, sku_slice_index: 1, site_group_key: "walmart.com", site_group_label: "walmart.com", site_domain: "walmart.com" },
-      { job_id: "job-2", id: "chunk-5", status: "pending", chunk_index: 0, skus: ["SKU-004", "SKU-005"], claimed_by: null, claimed_at: null, started_at: null, completed_at: null, skus_processed: 0, skus_successful: 0, skus_failed: 0, error_message: null, planned_work_units: 2, sku_slice_index: 0, site_group_key: "target.com", site_group_label: "target.com", site_domain: "target.com" },
+    const mockAttempts = [
+      { id: "att-1", job_id: "job-1", sku: "SKU-001", status: "completed", claimed_by: null, started_at: null, completed_at: "2024-01-15T10:00:30Z", error_message: null },
+      { id: "att-2", job_id: "job-1", sku: "SKU-002", status: "completed", claimed_by: null, started_at: null, completed_at: "2024-01-15T10:00:45Z", error_message: null },
+      { id: "att-3", job_id: "job-1", sku: "SKU-003", status: "running", claimed_by: "runner-a", started_at: "2024-01-15T10:01:00Z", completed_at: null, error_message: null },
+      { id: "att-4", job_id: "job-2", sku: "SKU-004", status: "pending", claimed_by: null, started_at: null, completed_at: null, error_message: null },
+      { id: "att-5", job_id: "job-2", sku: "SKU-005", status: "pending", claimed_by: null, started_at: null, completed_at: null, error_message: null },
     ];
 
     activeJobsQuery.limit.mockResolvedValueOnce({ data: mockJobs, error: null });
     recentJobsQuery.limit.mockResolvedValueOnce({ data: [], error: null });
-    chunksQuery.order.mockResolvedValueOnce({ data: mockChunks, error: null });
+    chunksQuery.in.mockResolvedValueOnce({ data: mockAttempts, error: null });
 
     const req = new NextRequest(
       "http://localhost/api/admin/pipeline/active-runs",
@@ -165,8 +155,8 @@ describe("Active Runs API", () => {
 
     expect(json.jobs[0]).toEqual({
       id: "job-1",
-      jobType: 'direct_url_extraction',
-      officialBrandPhase: 'extraction',
+      jobType: 'enrichment',
+      officialBrandPhase: null,
       cohortId: 'cohort-1',
       status: "running",
       createdAt: "2024-01-15T10:00:00Z",
@@ -186,90 +176,13 @@ describe("Active Runs API", () => {
       lastUpdateAt: "2024-01-15T10:01:00Z",
       heartbeatAt: "2024-01-15T10:01:00Z",
       chunks: [
-        {
-          id: "chunk-1",
-          jobId: "job-1",
-          chunkIndex: 0,
-          skuCount: 1,
-          plannedWorkUnits: 2,
-          skuSliceIndex: 0,
-          siteGroupKey: "amazon.com",
-          siteGroupLabel: "amazon.com",
-          siteDomain: "amazon.com",
-          status: "completed",
-          claimedBy: null,
-          claimedAt: null,
-          startedAt: null,
-          completedAt: null,
-          skusProcessed: 1,
-          skusSuccessful: 1,
-          skusFailed: 0,
-          errorMessage: null,
-        },
-        {
-          id: "chunk-2",
-          jobId: "job-1",
-          chunkIndex: 1,
-          skuCount: 1,
-          plannedWorkUnits: 2,
-          skuSliceIndex: 0,
-          siteGroupKey: "walmart.com",
-          siteGroupLabel: "walmart.com",
-          siteDomain: "walmart.com",
-          status: "completed",
-          claimedBy: null,
-          claimedAt: null,
-          startedAt: null,
-          completedAt: null,
-          skusProcessed: 1,
-          skusSuccessful: 1,
-          skusFailed: 0,
-          errorMessage: null,
-        },
-        {
-          id: "chunk-3",
-          jobId: "job-1",
-          chunkIndex: 2,
-          skuCount: 1,
-          plannedWorkUnits: 2,
-          skuSliceIndex: 1,
-          siteGroupKey: "amazon.com",
-          siteGroupLabel: "amazon.com",
-          siteDomain: "amazon.com",
-          status: "running",
-          claimedBy: "runner-a",
-          claimedAt: "2024-01-15T10:01:00Z",
-          startedAt: "2024-01-15T10:01:00Z",
-          completedAt: null,
-          skusProcessed: 0,
-          skusSuccessful: 0,
-          skusFailed: 0,
-          errorMessage: null,
-        },
-        {
-          id: "chunk-4",
-          jobId: "job-1",
-          chunkIndex: 3,
-          skuCount: 1,
-          plannedWorkUnits: 2,
-          skuSliceIndex: 1,
-          siteGroupKey: "walmart.com",
-          siteGroupLabel: "walmart.com",
-          siteDomain: "walmart.com",
-          status: "pending",
-          claimedBy: null,
-          claimedAt: null,
-          startedAt: null,
-          completedAt: null,
-          skusProcessed: 0,
-          skusSuccessful: 0,
-          skusFailed: 0,
-          errorMessage: null,
-        },
+        { id: "att-1", jobId: "job-1", chunkIndex: 0, skuCount: 1, plannedWorkUnits: 1, skuSliceIndex: null, siteGroupKey: null, siteGroupLabel: null, siteDomain: null, status: "completed", claimedBy: null, claimedAt: null, startedAt: null, completedAt: "2024-01-15T10:00:30Z", skusProcessed: 1, skusSuccessful: 1, skusFailed: 0, errorMessage: null },
+        { id: "att-2", jobId: "job-1", chunkIndex: 0, skuCount: 1, plannedWorkUnits: 1, skuSliceIndex: null, siteGroupKey: null, siteGroupLabel: null, siteDomain: null, status: "completed", claimedBy: null, claimedAt: null, startedAt: null, completedAt: "2024-01-15T10:00:45Z", skusProcessed: 1, skusSuccessful: 1, skusFailed: 0, errorMessage: null },
+        { id: "att-3", jobId: "job-1", chunkIndex: 0, skuCount: 1, plannedWorkUnits: 1, skuSliceIndex: null, siteGroupKey: null, siteGroupLabel: null, siteDomain: null, status: "running", claimedBy: "runner-a", claimedAt: null, startedAt: "2024-01-15T10:01:00Z", completedAt: null, skusProcessed: 1, skusSuccessful: 0, skusFailed: 0, errorMessage: null },
       ],
       chunkSummary: {
-        total: 4,
-        pending: 1,
+        total: 3,
+        pending: 0,
         running: 1,
         completed: 2,
         failed: 0,
@@ -278,7 +191,7 @@ describe("Active Runs API", () => {
 
     expect(json.jobs[1]).toEqual({
       id: "job-2",
-      jobType: null,
+      jobType: "enrichment",
       officialBrandPhase: null,
       cohortId: null,
       status: "pending",
@@ -299,30 +212,12 @@ describe("Active Runs API", () => {
       lastUpdateAt: "2024-01-15T09:00:00Z",
       heartbeatAt: null,
       chunks: [
-        {
-          id: "chunk-5",
-          jobId: "job-2",
-          chunkIndex: 0,
-          skuCount: 2,
-          plannedWorkUnits: 2,
-          skuSliceIndex: 0,
-          siteGroupKey: "target.com",
-          siteGroupLabel: "target.com",
-          siteDomain: "target.com",
-          status: "pending",
-          claimedBy: null,
-          claimedAt: null,
-          startedAt: null,
-          completedAt: null,
-          skusProcessed: 0,
-          skusSuccessful: 0,
-          skusFailed: 0,
-          errorMessage: null,
-        },
+        { id: "att-4", jobId: "job-2", chunkIndex: 0, skuCount: 1, plannedWorkUnits: 1, skuSliceIndex: null, siteGroupKey: null, siteGroupLabel: null, siteDomain: null, status: "pending", claimedBy: null, claimedAt: null, startedAt: null, completedAt: null, skusProcessed: 1, skusSuccessful: 0, skusFailed: 0, errorMessage: null },
+        { id: "att-5", jobId: "job-2", chunkIndex: 0, skuCount: 1, plannedWorkUnits: 1, skuSliceIndex: null, siteGroupKey: null, siteGroupLabel: null, siteDomain: null, status: "pending", claimedBy: null, claimedAt: null, startedAt: null, completedAt: null, skusProcessed: 1, skusSuccessful: 0, skusFailed: 0, errorMessage: null },
       ],
       chunkSummary: {
-        total: 1,
-        pending: 1,
+        total: 2,
+        pending: 2,
         running: 0,
         completed: 0,
         failed: 0,

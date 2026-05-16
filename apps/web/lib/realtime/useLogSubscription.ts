@@ -72,7 +72,7 @@ function ensureSharedLogChannel(baseChannelName: string, jobId?: string): Shared
         {
             event: 'INSERT',
             schema: 'public',
-            table: 'scrape_job_logs',
+            table: 'enrichment_job_logs',
             ...(jobId ? { filter: `job_id=eq.${jobId}` } : {}),
         },
         (payload) => {

@@ -14,8 +14,6 @@ import {
 import { getDatabaseScraperConfigs } from '@/lib/admin/scrapers/configs-db';
 import type { ScraperConfig } from '@/lib/admin/scrapers/types';
 import type { 
-    PlannedScrapeChunk, 
-    PlannedScrapeJob, 
     ScrapeOptions, 
     ScrapeResult 
 } from './pipeline-scraping-types';
@@ -192,20 +190,6 @@ function normalizeDomainCandidate(value: string): string | undefined {
     }
 }
 
-interface ScraperSiteGroup {
-    key: string;
-    label: string;
-    domain: string | null;
-    scrapers: string[];
-}
-
-interface BuildChunkPlanOptions {
-    skus: string[];
-    chunkSize: number;
-    scrapers: string[];
-    maxRunners?: number;
-    scraperConfigs?: ScraperConfig[];
-}
 
 function mergeOfficialDomains(...domainLists: Array<string[] | undefined>): string[] | undefined {
     const ordered: string[] = [];
@@ -314,203 +298,30 @@ function getCatalogCategoryName(
     return undefined;
 }
 
-function normalizeSiteGroupLabel(value: string): string {
-    return value
-        .split(/[-_\s]+/)
-        .filter((part) => part.length > 0)
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ');
-}
 
-function toHostname(value: string | undefined): string | null {
-    if (!value) {
-        return null;
-    }
-
-    try {
-        return new URL(value).hostname || null;
-    } catch {
-        return null;
-    }
-}
-
-function buildScraperSiteGroups(
-    scrapers: string[],
-    scraperConfigs: ScraperConfig[] = []
-): ScraperSiteGroup[] {
-    const configBySlug = new Map<string, ScraperConfig>();
-    scraperConfigs.forEach((config) => {
-        if (config.slug) {
-            configBySlug.set(config.slug, config);
-        }
-    });
-
-    const grouped = new Map<string, ScraperSiteGroup>();
-
-    scrapers.forEach((scraperSlug) => {
-        const config = configBySlug.get(scraperSlug);
-        const domain =
-            toOptionalString(config?.domain)
-            ?? toHostname(toOptionalString(config?.base_url))
-            ?? null;
-        const key = domain ?? scraperSlug;
-        const label = domain ?? normalizeSiteGroupLabel(scraperSlug);
-
-        const existing = grouped.get(key);
-        if (existing) {
-            existing.scrapers.push(scraperSlug);
-            return;
-        }
-
-        grouped.set(key, {
-            key,
-            label,
-            domain,
-            scrapers: [scraperSlug],
-        });
-    });
-
-    return Array.from(grouped.values()).sort((left, right) => {
-        if (left.scrapers.length !== right.scrapers.length) {
-            return right.scrapers.length - left.scrapers.length;
-        }
-
-        return left.label.localeCompare(right.label);
-    });
-}
-
-function buildScrapeChunkPlan({
-    skus,
-    chunkSize,
-    scrapers,
-    maxRunners,
-    scraperConfigs,
-}: BuildChunkPlanOptions): PlannedScrapeJob {
-    const normalizedChunkSize = Math.max(1, chunkSize);
-    const numChunks = Math.ceil(skus.length / normalizedChunkSize);
-    const skuSlices: string[][] = [];
-
-    if (numChunks > 0) {
-        const baseSize = Math.floor(skus.length / numChunks);
-        let remainder = skus.length % numChunks;
-        
-        let currentIndex = 0;
-        for (let i = 0; i < numChunks; i++) {
-            const currentChunkSize = baseSize + (remainder > 0 ? 1 : 0);
-            if (remainder > 0) remainder--;
-            
-            skuSlices.push(skus.slice(currentIndex, currentIndex + currentChunkSize));
-            currentIndex += currentChunkSize;
-        }
-    }
-
-    const siteGroups = buildScraperSiteGroups(scrapers, scraperConfigs);
-    const effectiveGroups = siteGroups.length > 0
-        ? siteGroups
-        : [{
-            key: 'default',
-            label: 'Default',
-            domain: null,
-            scrapers,
-        } satisfies ScraperSiteGroup];
-
-    const normalizedMaxRunners =
-        typeof maxRunners === 'number' && Number.isFinite(maxRunners) && maxRunners > 0
-            ? Math.max(1, Math.trunc(maxRunners))
-            : undefined;
-
-    const chunks: PlannedScrapeChunk[] = [];
-    let plannedWorkUnits = 0;
-
-    skuSlices.forEach((skuSlice, sliceIndex) => {
-        effectiveGroups.forEach((group) => {
-            const plannedUnits = skuSlice.length * Math.max(1, group.scrapers.length);
-            plannedWorkUnits += plannedUnits;
-            chunks.push({
-                chunk_index: chunks.length,
-                skus: skuSlice,
-                scrapers: group.scrapers,
-                planned_work_units: plannedUnits,
-                sku_slice_index: sliceIndex,
-                site_group_key: group.key,
-                site_group_label: group.label,
-                site_domain: group.domain,
-                scraper_count: group.scrapers.length,
-            });
-        });
-    });
-
-    const metadata: Record<string, unknown> = {
-        planning_strategy: 'sku_slices_x_site_groups',
-        sku_slice_count: skuSlices.length,
-        site_group_count: effectiveGroups.length,
-        planned_chunk_count: chunks.length,
-        planned_work_units: plannedWorkUnits,
-        chunk_size: normalizedChunkSize,
-        chunk_grouping: effectiveGroups.map((group) => ({
-            key: group.key,
-            label: group.label,
-            domain: group.domain,
-            scraper_count: group.scrapers.length,
-            scrapers: group.scrapers,
-        })),
-    };
-
-    if (normalizedMaxRunners) {
-        metadata.max_concurrent_chunks = normalizedMaxRunners;
-    }
-
-    return {
-        chunks,
-        metadata,
-        plannedChunkCount: chunks.length,
-        plannedWorkUnits,
-    };
-}
-
-async function loadStandardScrapePlan(
-    skus: string[],
-    scrapers: string[],
-    chunkSize: number,
-    maxRunners?: number,
-): Promise<PlannedScrapeJob> {
-    const scraperConfigs = scrapers.length > 0 ? await getDatabaseScraperConfigs() : [];
-    return buildScrapeChunkPlan({
-        skus,
-        chunkSize,
-        scrapers,
-        maxRunners,
-        scraperConfigs,
-    });
-}
-
-async function createScrapeJobChunks(
+async function createEnrichmentAttempts(
     supabase: Awaited<ReturnType<typeof createClient>>,
     jobId: string,
-    plannedJob: PlannedScrapeJob,
-    nowIso: string,
+    skus: string[],
+    jobMode: string,
+    jobModel: string | null,
 ): Promise<{ success: true } | { success: false; error: string }> {
-    const chunks = plannedJob.chunks.map((chunk) => ({
+    const attempts = skus.map((sku) => ({
         job_id: jobId,
-        chunk_index: chunk.chunk_index,
-        skus: chunk.skus,
-        scrapers: chunk.scrapers,
-        status: 'pending',
-        updated_at: nowIso,
-        sku_slice_index: chunk.sku_slice_index ?? null,
-        site_group_key: chunk.site_group_key ?? null,
-        site_group_label: chunk.site_group_label ?? null,
-        site_domain: chunk.site_domain ?? null,
-        planned_work_units: chunk.planned_work_units,
+        sku,
+        attempt_number: 1,
+        status: 'queued',
+        mode: jobMode,
+        model: jobModel,
     }));
 
     const { error } = await supabase
-        .from('scrape_job_chunks')
-        .insert(chunks);
+        .from('enrichment_attempts')
+        .insert(attempts);
 
     if (error) {
-        console.error('[Pipeline Scraping] Failed to create work units:', error);
-        return { success: false, error: 'Failed to create scraping work units' };
+        console.error('[Pipeline Scraping] Failed to create enrichment attempts:', error);
+        return { success: false, error: 'Failed to create enrichment attempts' };
     }
 
     return { success: true };
@@ -519,62 +330,34 @@ async function createScrapeJobChunks(
 export async function cloneScrapeJobForRetry(
     supabase: Awaited<ReturnType<typeof createClient>>,
     originalJob: {
+        id: string;
         skus?: string[] | null;
-        scrapers?: string[] | null;
-        test_mode?: boolean | null;
-        max_workers?: number | null;
-        max_attempts?: number | null;
-        type?: string | null;
+        mode?: string | null;
+        model?: string | null;
         config?: Record<string, unknown> | null;
-        metadata?: Record<string, unknown> | null;
     },
-): Promise<{ success: true; jobId: string; plannedChunkCount: number } | { success: false; error: string }> {
+): Promise<{ success: true; jobId: string } | { success: false; error: string }> {
     const skus = Array.isArray(originalJob.skus) ? originalJob.skus : [];
-    const scrapers = Array.isArray(originalJob.scrapers) ? originalJob.scrapers : [];
 
     if (skus.length === 0) {
         return { success: false, error: 'Original job has no SKUs to retry' };
     }
 
     const nowIso = new Date().toISOString();
-    const metadata = originalJob.metadata && typeof originalJob.metadata === 'object'
-        ? { ...originalJob.metadata }
-        : {};
-    const chunkSize = typeof metadata.chunk_size === 'number' && Number.isFinite(metadata.chunk_size)
-        ? Math.max(1, Math.trunc(metadata.chunk_size))
-        : 50;
-    const maxConcurrentChunks = typeof metadata.max_concurrent_chunks === 'number' && Number.isFinite(metadata.max_concurrent_chunks)
-        ? Math.max(1, Math.trunc(metadata.max_concurrent_chunks))
-        : undefined;
-
-    const plannedJob = await loadStandardScrapePlan(
-        skus,
-        scrapers,
-        chunkSize,
-        maxConcurrentChunks,
-    );
-
-    const mergedMetadata = {
-        ...metadata,
-        ...plannedJob.metadata,
-        retry_source: 'admin_scraper_runs',
-    } satisfies Record<string, unknown>;
+    const jobMode = originalJob.mode ?? 'mixed';
+    const jobModel = originalJob.model ?? null;
 
     const { data: newJob, error: createError } = await supabase
-        .from('scrape_jobs')
+        .from('enrichment_jobs')
         .insert({
+            status: 'queued',
             skus,
-            scrapers,
-            test_mode: originalJob.test_mode ?? false,
-            max_workers: originalJob.max_workers ?? 3,
-            status: 'pending',
-            attempt_count: 0,
-            max_attempts: originalJob.max_attempts ?? 3,
-            type: originalJob.type ?? 'standard',
-            config: originalJob.config ?? null,
-            metadata: mergedMetadata,
-            items_processed: 0,
-            items_total: plannedJob.plannedWorkUnits,
+            total_count: skus.length,
+            completed_count: 0,
+            failed_count: 0,
+            mode: jobMode,
+            model: jobModel,
+            config: originalJob.config ?? {},
             updated_at: nowIso,
         })
         .select('id')
@@ -582,67 +365,28 @@ export async function cloneScrapeJobForRetry(
 
     if (createError || !newJob) {
         console.error('[Pipeline Scraping] Failed to create retried job:', createError);
-        return { success: false, error: 'Failed to retry scraper run' };
+        return { success: false, error: 'Failed to retry enrichment run' };
     }
 
-    const chunkResult = await createScrapeJobChunks(supabase, newJob.id, plannedJob, nowIso);
-    if (!chunkResult.success) {
-        await supabase.from('scrape_jobs').delete().eq('id', newJob.id);
-        return chunkResult;
+    const attemptResult = await createEnrichmentAttempts(
+        supabase,
+        newJob.id,
+        skus,
+        jobMode,
+        jobModel
+    );
+
+    if (!attemptResult.success) {
+        await supabase.from('enrichment_jobs').delete().eq('id', newJob.id);
+        return attemptResult;
     }
 
     return {
         success: true,
         jobId: newJob.id,
-        plannedChunkCount: plannedJob.plannedChunkCount,
     };
 }
 
-export async function buildLinearChunkPlan(
-    skus: string[],
-    scrapers: string[],
-    chunkSize: number,
-): Promise<PlannedScrapeJob> {
-    const normalizedChunkSize = Math.max(1, chunkSize);
-    const numChunks = Math.ceil(skus.length / normalizedChunkSize);
-    const chunks: PlannedScrapeChunk[] = [];
-
-    if (numChunks > 0) {
-        const baseSize = Math.floor(skus.length / numChunks);
-        let remainder = skus.length % numChunks;
-        
-        let currentIndex = 0;
-        for (let sliceIndex = 0; sliceIndex < numChunks; sliceIndex++) {
-            const currentChunkSize = baseSize + (remainder > 0 ? 1 : 0);
-            if (remainder > 0) remainder--;
-            
-            const sliceSkus = skus.slice(currentIndex, currentIndex + currentChunkSize);
-            chunks.push({
-                chunk_index: sliceIndex,
-                skus: sliceSkus,
-                scrapers,
-                planned_work_units: sliceSkus.length,
-                sku_slice_index: sliceIndex,
-            });
-            
-            currentIndex += currentChunkSize;
-        }
-    }
-
-    return {
-        chunks,
-        metadata: {
-            planning_strategy: 'linear_sku_slices',
-            sku_slice_count: chunks.length,
-            site_group_count: 1,
-            planned_chunk_count: chunks.length,
-            planned_work_units: skus.length,
-            chunk_size: normalizedChunkSize,
-        },
-        plannedChunkCount: chunks.length,
-        plannedWorkUnits: skus.length,
-    };
-}
 
 async function loadScrapeContextItems(
     supabase: Awaited<ReturnType<typeof createClient>>,
@@ -852,11 +596,8 @@ export async function scrapeProducts(
         return { success: false, error: 'No SKUs provided' };
     }
 
-    const maxWorkers = options?.maxWorkers ?? 3;
     const testMode = options?.testMode ?? false;
     const scrapers = options?.scrapers ?? [];
-    const maxAttempts = options?.maxAttempts ?? 3;
-    const chunkSize = options?.chunkSize ?? 50;
 
     // Resolve scraper display names to slugs if possible using local YAML configs
     let effectiveScrapers = scrapers;
@@ -885,97 +626,78 @@ export async function scrapeProducts(
     const standardSkuContext = buildStandardSkuContext(scrapeContextItems);
     const nowIso = new Date().toISOString();
 
-    const plannedJob = await loadStandardScrapePlan(
-        skus,
-        effectiveScrapers,
-        chunkSize,
-        options?.maxRunners,
-    );
-
-    const jobType: ScrapeJobInsertType = 'standard';
+    const jobMode = 'mixed';
+    const jobModel = null;
+    const jobConfig = {
+        scrapers: effectiveScrapers,
+        sku_context: standardSkuContext,
+        test_mode: testMode,
+        source: 'pipeline',
+        pipeline_version: 'static_first_v1',
+    };
 
     const { data: job, error: insertError } = await supabase
-        .from('scrape_jobs')
+        .from('enrichment_jobs')
         .insert({
+            status: 'queued',
             skus,
-            scrapers: effectiveScrapers,
-            test_mode: testMode,
-            max_workers: maxWorkers,
-            status: 'pending',
-            attempt_count: 0,
-            max_attempts: maxAttempts,
-            backoff_until: null,
-            lease_token: null,
-            leased_at: null,
-            lease_expires_at: null,
-            heartbeat_at: null,
-            runner_name: null,
-            started_at: null,
-            type: jobType,
-            config: standardSkuContext ? { sku_context: standardSkuContext } : null,
-            metadata: {
-                source: 'pipeline',
-                pipeline_version: 'static_first_v1',
-                orchestration_kind: 'static_scrape',
-                quality_threshold_version: 'v1',
-                ...(plannedJob?.metadata ?? {}),
-            },
+            total_count: skus.length,
+            completed_count: 0,
+            failed_count: 0,
+            mode: jobMode,
+            model: jobModel,
+            config: jobConfig,
             items_processed: 0,
-            items_total: plannedJob?.plannedWorkUnits ?? skus.length,
+            items_total: skus.length,
             updated_at: nowIso,
         })
         .select('id')
         .single();
 
     if (insertError || !job) {
-        console.error('[Pipeline Scraping] Failed to create parent job:', insertError);
+        console.error('[Pipeline Scraping] Failed to create enrichment job:', insertError);
         const errorMessage =
             insertError && typeof insertError === 'object' && 'message' in insertError
                 ? String((insertError as { message?: unknown }).message ?? '')
                 : JSON.stringify(insertError);
-        return { success: false, error: `Failed to create scraping job: ${errorMessage}` };
+        return { success: false, error: `Failed to create enrichment job: ${errorMessage}` };
     }
 
-    const chunkResult = await createScrapeJobChunks(
+    const attemptResult = await createEnrichmentAttempts(
         supabase,
         job.id,
-        plannedJob ?? {
-            chunks: [],
-            metadata: {},
-            plannedChunkCount: 0,
-            plannedWorkUnits: 0,
-        },
-        nowIso,
+        skus,
+        jobMode,
+        jobModel
     );
 
-    if (!chunkResult.success) {
-        await supabase.from('scrape_jobs').delete().eq('id', job.id);
-        return { success: false, error: chunkResult.error };
+    if (!attemptResult.success) {
+        await supabase.from('enrichment_jobs').delete().eq('id', job.id);
+        return { success: false, error: attemptResult.error };
     }
 
     if (!testMode) {
         const { error: statusError } = await supabase
             .from('products_ingestion')
             .update({
-                pipeline_status: 'scraping',
+                pipeline_status: 'extracting',
                 updated_at: new Date().toISOString(),
                 error_message: null,
             })
             .in('sku', skus);
 
         if (statusError) {
-            console.error('[Pipeline Scraping] Failed to move products into scraping:', statusError);
-            await supabase.from('scrape_job_chunks').delete().eq('job_id', job.id);
-            await supabase.from('scrape_jobs').delete().eq('id', job.id);
-            return { success: false, error: 'Failed to mark products as scraping' };
+            console.error('[Pipeline Scraping] Failed to move products into extracting:', statusError);
+            await supabase.from('enrichment_attempts').delete().eq('job_id', job.id);
+            await supabase.from('enrichment_jobs').delete().eq('id', job.id);
+            return { success: false, error: 'Failed to mark products as extracting' };
         }
     }
 
-    console.log(`[Pipeline Scraping] Created parent job ${job.id} with ${plannedJob.plannedChunkCount} chunks (${chunkSize} SKUs per slice)`);
+    console.log(`[Pipeline Scraping] Created enrichment job ${job.id} for ${skus.length} SKUs`);
 
     return {
         success: true,
         jobIds: [job.id],
-        plannedChunkCount: plannedJob.plannedChunkCount,
     };
 }

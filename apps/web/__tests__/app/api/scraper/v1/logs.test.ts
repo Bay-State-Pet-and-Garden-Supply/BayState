@@ -118,8 +118,8 @@ describe("POST /api/scraper/v1/logs", () => {
     const data = await res.json();
     expect(data.success).toBe(true);
 
-    expect(mockSupabase.from).toHaveBeenCalledWith("scrape_job_logs");
-    expect(mockSupabase.from).toHaveBeenCalledWith("scrape_jobs");
+    expect(mockSupabase.from).toHaveBeenCalledWith("enrichment_job_logs");
+    expect(mockSupabase.from).toHaveBeenCalledWith("enrichment_jobs");
     expect(mockSupabase.upsert).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({

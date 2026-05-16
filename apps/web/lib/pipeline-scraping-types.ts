@@ -1,21 +1,3 @@
-export interface PlannedScrapeChunk {
-    chunk_index: number;
-    skus: string[];
-    scrapers: string[];
-    planned_work_units: number;
-    sku_slice_index?: number;
-    site_group_key?: string;
-    site_group_label?: string;
-    site_domain?: string | null;
-    scraper_count?: number;
-}
-
-export interface PlannedScrapeJob {
-    chunks: PlannedScrapeChunk[];
-    metadata: Record<string, unknown>;
-    plannedChunkCount: number;
-    plannedWorkUnits: number;
-}
 
 /**
  * Options for static scraping jobs (static scraper workflow only).

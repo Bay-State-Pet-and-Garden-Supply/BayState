@@ -1,48 +1,21 @@
 /**
- * Scraper Runs types - for viewing scrape job execution history
+ * Scraper Runs types - for viewing enrichment job execution history
+ * (Formerly scrape_jobs in the legacy architecture)
  */
 import { z } from 'zod';
 
-// Scraper run status enum (from database constraint)
-const scrapeJobStatusSchema = z.enum(['pending', 'running', 'completed', 'failed', 'cancelled']);
-type ScrapeJobStatus = z.infer<typeof scrapeJobStatusSchema>;
+// Enrichment job status enum (from database constraint)
+const enrichmentJobStatusSchema = z.enum(['queued', 'running', 'completed', 'failed', 'cancelled']);
+type EnrichmentJobStatus = z.infer<typeof enrichmentJobStatusSchema>;
 
-const scrapeJobChunkStatusSchema = z.enum(['pending', 'running', 'completed', 'failed']);
-type ScrapeJobChunkStatus = z.infer<typeof scrapeJobChunkStatusSchema>;
-
-// Extended statuses used in the UI
-type ScraperRunStatus = ScrapeJobStatus | 'claimed';
-
-// Scraper run chunk record from database (matches scrape_job_chunks table)
-export interface ScraperRunChunk {
-  id: string;
-  job_id: string;
-  chunk_index: number;
-  status: ScrapeJobChunkStatus;
-  scrapers: string[];
-  skus: string[];
-  runner_id: string | null;
-  claimed_by: string | null;
-  started_at: string | null;
-  completed_at: string | null;
-  heartbeat_at: string | null;
-  lease_expires_at: string | null;
-  error_message: string | null;
-  work_units_processed: number;
-  planned_work_units: number;
-  created_at: string;
-  updated_at: string;
-}
-
-// Scraper run record from database (matches scrape_jobs table)
+// Scraper run record from database (matches enrichment_jobs table)
 export interface ScraperRunRecord {
   id: string;
-  scraper_name: string;
-  status: string;
+  status: string; // From EnrichmentJobStatus
   skus: string[];
-  total_skus: number;
-  completed_skus: number;
-  failed_skus: number;
+  total_count: number;
+  completed_count: number;
+  failed_count: number;
   items_found: number;
   started_at: string | null;
   completed_at: string | null;
@@ -56,6 +29,7 @@ export interface ScraperRunRecord {
   attempt_count?: number;
   max_attempts?: number;
   backoff_until?: string | null;
+  claimed_by?: string | null;
   runner_name?: string | null;
   progress_percent?: number | null;
   progress_message?: string | null;
@@ -68,13 +42,30 @@ export interface ScraperRunRecord {
   last_log_at?: string | null;
   last_log_level?: string | null;
   last_log_message?: string | null;
-  // Additional fields not in schema but computed
-  github_run_id?: number | null;
+  // Metadata/Config context
+  config?: Record<string, any>;
+  test_metadata?: Record<string, any>;
+  // Additional fields for UI compatibility
+  scraper_name?: string;
   created_by?: string | null;
 }
 
+// Scraper run attempt (replaces chunks in unified architecture)
+export interface ScraperRunAttempt {
+  id: string;
+  job_id: string;
+  sku: string;
+  attempt_number: number;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  started_at: string | null;
+  completed_at: string | null;
+  error_message: string | null;
+  confidence_overall?: number | null;
+  result?: any;
+}
+
 // API response type for runs list
-interface ScraperRunsResponse {
+export interface ScraperRunsResponse {
   runs: ScraperRunRecord[];
   totalCount: number;
 }

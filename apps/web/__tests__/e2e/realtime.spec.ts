@@ -122,14 +122,12 @@ async function seedRealtimeRun(admin: SupabaseClient, options?: { runnerName?: s
   const jobId = crypto.randomUUID();
   const runner = await seedRunner(admin, runnerName);
 
-  const { error: jobError } = await admin.from('scrape_jobs').insert({
+  const { error: jobError } = await admin.from('enrichment_jobs').insert({
     id: jobId,
-    scrapers: [scraperName],
     skus: [sku],
     test_mode: true,
-    max_workers: 1,
     status: 'running',
-    runner_name: runner.runnerName,
+    claimed_by: runner.runnerName,
     started_at: now,
     created_at: now,
     updated_at: now,
@@ -142,6 +140,7 @@ async function seedRealtimeRun(admin: SupabaseClient, options?: { runnerName?: s
     items_processed: 0,
     items_total: 1,
     last_event_at: now,
+    config: { scrapers: [scraperName] },
   });
 
   if (jobError) {
@@ -172,8 +171,8 @@ async function seedRealtimeRun(admin: SupabaseClient, options?: { runnerName?: s
 }
 
 async function cleanupRealtimeRun(admin: SupabaseClient, run: RunSeed): Promise<void> {
-  await admin.from('scrape_job_logs').delete().eq('job_id', run.jobId);
-  await admin.from('scrape_jobs').delete().eq('id', run.jobId);
+  await admin.from('enrichment_job_logs').delete().eq('job_id', run.jobId);
+  await admin.from('enrichment_jobs').delete().eq('id', run.jobId);
   await admin.from('runner_api_keys').delete().eq('id', run.keyId);
   await admin.from('scraper_runners').delete().eq('name', run.runnerName);
 }

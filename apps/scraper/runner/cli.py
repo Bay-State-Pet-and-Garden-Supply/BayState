@@ -10,14 +10,10 @@ from pathlib import Path
 from typing import Any
 
 from core.api_client import ConnectionError
-from core.api_client import JobConfig
 from core.api_client import ScraperAPIClient
-from core.api_client import ScraperConfig
 from utils.logging_handlers import JobLoggingSession
 from utils.structured_logging import setup_structured_logging
 
-from runner.chunk_mode import run_chunk_worker_mode
-from runner.full_mode import run_full_mode
 from runner.realtime_mode import run_realtime_mode
 
 logger = logging.getLogger(__name__)
@@ -30,9 +26,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--runner-name", default=os.environ.get("RUNNER_NAME", "unknown"))
     parser.add_argument(
         "--mode",
-        choices=["full", "chunk_worker", "realtime"],
-        default="full",
-        help="Execution mode: 'full', 'chunk_worker', or 'realtime'",
+        choices=["realtime"],
+        default="realtime",
+        help="Execution mode: 'realtime'",
     )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
@@ -57,8 +53,6 @@ def parse_args() -> argparse.Namespace:
 
     args = parser.parse_args()
 
-    if args.mode in {"full", "chunk_worker"} and not args.job_id:
-        parser.error("--job-id is required unless --mode realtime")
 
     return args
 
@@ -156,7 +150,4 @@ def main() -> None:
 
     if args.mode == "realtime":
         asyncio.run(run_realtime_mode(client, args.runner_name))
-    elif args.mode == "chunk_worker":
-        run_chunk_worker_mode(client, args.job_id, args.runner_name)
-    else:
-        run_full_mode(client, args.job_id, args.runner_name)
+

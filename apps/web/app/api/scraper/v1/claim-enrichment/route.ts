@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
         ai_credentials: job?.ai_credentials ?? null,
         lease_token: leaseToken,
         lease_expires_at: leaseExpiresAt,
-        test_mode: false,
+        test_mode: job?.test_mode ?? false,
       };
     });
 

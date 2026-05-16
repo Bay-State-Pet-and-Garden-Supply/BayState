@@ -47,7 +47,7 @@ export async function persistScrapeJobLogs(
 
   const logRows = normalizedLogs.map((log) => toScrapeJobLogRow(log));
   const { error } = await supabase
-    .from('scrape_job_logs')
+    .from('enrichment_job_logs')
     .upsert(logRows, { onConflict: 'job_id,event_id', ignoreDuplicates: true });
 
   if (error) {
@@ -79,7 +79,7 @@ export async function updateScrapeJobLogSummary(
   }
 
   const { error } = await supabase
-    .from('scrape_jobs')
+    .from('enrichment_jobs')
     .update(updateData)
     .eq('id', jobId);
 

@@ -25,6 +25,8 @@ const cellVariants = cva(
         none: 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500',
         pending:
           'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+        queued:
+          'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
         claimed:
           'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400',
         running:
@@ -98,6 +100,7 @@ export function JobHeatmap({
     // Add jobs to their assigned runners
     const allJobs = [
       ...jobs.pending,
+      ...jobs.queued,
       ...jobs.running,
       ...jobs.completed,
       ...jobs.failed,
@@ -170,6 +173,7 @@ export function JobHeatmap({
     runnerJobs.forEach((rj) => {
       rj.jobs.forEach((job) => {
         if (job.status === 'pending') pending++;
+        else if (job.status === 'queued') pending++;
         else if (job.status === 'claimed') claimed++;
         else if (job.status === 'running') running++;
         else if (job.status === 'completed') completed++;
@@ -289,7 +293,7 @@ export function JobHeatmap({
                         )}
                       >
                         {status === 'none' && '-'}
-                        {status === 'pending' && <Clock className="h-4 w-4 mx-auto" />}
+                        {(status === 'pending' || status === 'queued') && <Clock className="h-4 w-4 mx-auto" />}
                         {status === 'claimed' && <ArrowRight className="h-4 w-4 mx-auto" />}
                         {status === 'running' && (
                           <Clock className="h-4 w-4 mx-auto animate-spin" />
