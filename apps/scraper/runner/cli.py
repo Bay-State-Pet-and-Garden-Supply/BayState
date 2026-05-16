@@ -14,23 +14,16 @@ from core.api_client import ScraperAPIClient
 from utils.logging_handlers import JobLoggingSession
 from utils.structured_logging import setup_structured_logging
 
-from runner.realtime_mode import run_realtime_mode
-
 logger = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run a scrape job from the API")
+    parser = argparse.ArgumentParser(description="Bay State Scraper CLI (bsr)")
     parser.add_argument("--job-id", help="Job ID to execute")
     parser.add_argument("--api-url", help="API base URL (or set SCRAPER_API_URL)")
     parser.add_argument("--runner-name", default=os.environ.get("RUNNER_NAME", "unknown"))
-    parser.add_argument(
-        "--mode",
-        choices=["realtime"],
-        default="realtime",
-        help="Execution mode: 'realtime'",
-    )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+
 
     parser.add_argument("--sku", help="SKU to extract (enrichment mode)")
     parser.add_argument("--url", help="Target URL to extract from (enrichment mode)")
@@ -148,6 +141,7 @@ def main() -> None:
         logger.error(f"[Runner] Pre-flight health check failed: {e}")
         sys.exit(1)
 
-    if args.mode == "realtime":
-        asyncio.run(run_realtime_mode(client, args.runner_name))
+    if args.job_id:
+        logger.error("Legacy job-id mode is no longer supported. Use daemon.py for polling.")
+        sys.exit(1)
 
