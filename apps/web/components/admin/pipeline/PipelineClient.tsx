@@ -1414,26 +1414,6 @@ export function PipelineClient({
           ) : currentStage === "imported" || currentStage === "publishing" || hideTabs ? (
             <ImportedResultsView
               products={filteredProducts}
-              selectedSkus={selectedSkus}
-              onSelectSku={handleSelectSku}
-              onSelectAll={(skus) => {
-                setSelectedSkus((prev) => {
-                  const next = new Set(prev);
-                  skus.forEach((sku) => {
-                    next.add(sku);
-                  });
-                  return next;
-                });
-              }}
-              onDeselectAll={(skus) => {
-                setSelectedSkus((prev) => {
-                  const next = new Set(prev);
-                  skus.forEach((sku) => {
-                    next.delete(sku);
-                  });
-                  return next;
-                });
-              }}
               onRefresh={refreshAll}
               search={search}
               onSearchChange={(value) => setSearch(value)}
@@ -1675,7 +1655,7 @@ export function PipelineClient({
       />
 
       {/* Floating Bulk Actions Bar */}
-      {!isLiveOperationalTab(currentStage) && (
+      {!isLiveOperationalTab(currentStage) && currentStage !== "imported" && (
         <FloatingActionsBar
           selectedCount={selectedSkus.size}
           totalCount={totalCount}

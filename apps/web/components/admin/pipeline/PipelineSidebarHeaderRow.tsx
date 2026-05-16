@@ -25,6 +25,7 @@ interface PipelineSidebarHeaderRowProps {
   onToggleCollapse?: (id: string) => void;
   isActive?: boolean;
   hideChevron?: boolean;
+  showCheckboxes?: boolean;
 }
 
 /**
@@ -45,6 +46,7 @@ export function PipelineSidebarHeaderRow({
   onToggleCollapse,
   isActive = false,
   hideChevron = false,
+  showCheckboxes = true,
 }: PipelineSidebarHeaderRowProps) {
   const allSelected = groupProducts.length > 0 && groupProducts.every((p) => selectedSkus.has(p.sku));
   const someSelected = groupProducts.some((p) => selectedSkus.has(p.sku)) && !allSelected;
@@ -84,19 +86,21 @@ export function PipelineSidebarHeaderRow({
                 />
               </Button>
             )}
-            <Checkbox
-              checked={allSelected ? true : someSelected ? "indeterminate" : false}
-              onCheckedChange={(checked) => {
-                const cohortSkus = groupProducts.map((p) => p.sku);
-                if (checked) {
-                  onSelectAll?.(cohortSkus);
-                } else {
-                  onDeselectAll?.(cohortSkus);
-                }
-              }}
-              onClick={(e) => e.stopPropagation()}
-              className="h-4 w-4 border-foreground data-[state=checked]:bg-foreground data-[state=checked]:border-foreground"
-            />
+            {showCheckboxes && (
+              <Checkbox
+                checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                onCheckedChange={(checked) => {
+                  const cohortSkus = groupProducts.map((p) => p.sku);
+                  if (checked) {
+                    onSelectAll?.(cohortSkus);
+                  } else {
+                    onDeselectAll?.(cohortSkus);
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="h-4 w-4 border-foreground data-[state=checked]:bg-foreground data-[state=checked]:border-foreground"
+              />
+            )}
           </div>
           <div className="flex-1 flex items-center gap-2 overflow-hidden min-w-0">
             <div className="font-bold text-[11px] uppercase tracking-widest text-foreground truncate shrink-0">

@@ -254,6 +254,8 @@ export function PipelineSidebarTable({
   }, [preferredSku, flatItems, scrollContainerRef, variant]);
 
   const renderRow = (item: FlatItem) => {
+    const showCheckboxes = variant !== "imported";
+
     if (item.type === 'header') {
       return (
         <PipelineSidebarHeaderRow
@@ -271,6 +273,7 @@ export function PipelineSidebarTable({
           onToggleCollapse={variant === "imported" ? onPreferredCohortChange : toggleCohortExpansion}
           isActive={variant === "imported" && preferredCohortId === item.cohortId}
           hideChevron={variant === "imported"}
+          showCheckboxes={showCheckboxes}
         />
       );
     }
@@ -286,6 +289,7 @@ export function PipelineSidebarTable({
         isSelected={selectedSkus.has(item.product.sku)}
         onSelectSku={onSelectSku}
         onPreferredSkuChange={onPreferredSkuChange}
+        showCheckboxes={showCheckboxes}
       />
     );
   };

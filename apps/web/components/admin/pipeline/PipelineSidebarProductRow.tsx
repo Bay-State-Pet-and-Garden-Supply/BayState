@@ -17,6 +17,7 @@ interface PipelineSidebarProductRowProps {
   isSelected: boolean;
   onSelectSku: (sku: string, isSelected: boolean, index?: number, isShiftClick?: boolean, visibleProducts?: PipelineProduct[]) => void;
   onPreferredSkuChange: (sku: string) => void;
+  showCheckboxes?: boolean;
 }
 
 /**
@@ -32,6 +33,7 @@ export function PipelineSidebarProductRow({
   isSelected,
   onSelectSku,
   onPreferredSkuChange,
+  showCheckboxes = true,
 }: PipelineSidebarProductRowProps) {
   const name = product.consolidated?.name || product.input?.name || "Unknown";
   const price = product.consolidated?.price ?? product.input?.price;
@@ -51,33 +53,9 @@ export function PipelineSidebarProductRow({
     >
       <TableCell className="p-4 whitespace-normal max-w-0 w-full overflow-hidden">
         <div className="flex items-start gap-3 w-full">
-          <div
-            className="mt-0.5 shrink-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelectSku(
-                product.sku,
-                !isSelected,
-                index,
-                e.shiftKey,
-                visibleProducts,
-              );
-            }}
-          >
-            <Checkbox
-              checked={isSelected}
-              onCheckedChange={(checked) => {
-                // Handle keyboard interaction for checkbox
-                if (typeof window !== 'undefined' && !(window.event instanceof MouseEvent)) {
-                  onSelectSku(
-                    product.sku,
-                    checked === true,
-                    index,
-                    false,
-                    visibleProducts,
-                  )
-                }
-              }}
+          {showCheckboxes && (
+            <div
+              className="mt-0.5 shrink-0"
               onClick={(e) => {
                 e.stopPropagation();
                 onSelectSku(
@@ -88,9 +66,35 @@ export function PipelineSidebarProductRow({
                   visibleProducts,
                 );
               }}
-              className="h-4 w-4 border-foreground data-[state=checked]:bg-foreground data-[state=checked]:border-foreground"
-            />
-          </div>
+            >
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={(checked) => {
+                  // Handle keyboard interaction for checkbox
+                  if (typeof window !== 'undefined' && !(window.event instanceof MouseEvent)) {
+                    onSelectSku(
+                      product.sku,
+                      checked === true,
+                      index,
+                      false,
+                      visibleProducts,
+                    )
+                  }
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectSku(
+                    product.sku,
+                    !isSelected,
+                    index,
+                    e.shiftKey,
+                    visibleProducts,
+                  );
+                }}
+                className="h-4 w-4 border-foreground data-[state=checked]:bg-foreground data-[state=checked]:border-foreground"
+              />
+            </div>
+          )}
           <div className="flex-1 min-w-0 overflow-hidden">
             <div className="flex justify-between items-start gap-2 min-w-0">
               <div className="font-semibold text-xs text-muted-foreground truncate flex-1 uppercase tracking-wider">

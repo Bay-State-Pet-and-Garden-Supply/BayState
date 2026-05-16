@@ -23,16 +23,6 @@ import { ManagementPanel } from "./management/ManagementPanel";
 
 interface ImportedResultsViewProps {
   products: PipelineProduct[];
-  selectedSkus: Set<string>;
-  onSelectSku: (
-    sku: string,
-    selected: boolean,
-    index?: number,
-    isShiftClick?: boolean,
-    visibleProducts?: PipelineProduct[],
-  ) => void;
-  onSelectAll?: (skus: string[]) => void;
-  onDeselectAll?: (skus: string[]) => void;
   onRefresh: (silent?: boolean) => void;
   // Filter props
   search?: string;
@@ -65,10 +55,7 @@ interface ImportedResultsViewProps {
 
 export function ImportedResultsView({
   products,
-  selectedSkus,
-  onSelectSku,
-  onSelectAll,
-  onDeselectAll,
+  onRefresh,
   search,
   onSearchChange,
   filters,
@@ -131,26 +118,6 @@ export function ImportedResultsView({
       <div className="w-96 min-w-[384px] max-w-[384px] border-r border-border flex flex-col shrink-0 bg-background overflow-x-hidden">
         <div className="flex flex-col border-b border-border bg-card">
           <div className="flex items-center gap-2 p-2">
-            <label className="flex shrink-0 items-center justify-center h-9 w-9 border border-border bg-card hover:bg-muted cursor-pointer transition-colors">
-              <Checkbox
-                checked={
-                  sortedProducts.length > 0 &&
-                    sortedProducts.every((p) => selectedSkus.has(p.sku))
-                    ? true
-                    : sortedProducts.some((p) => selectedSkus.has(p.sku))
-                      ? "indeterminate"
-                      : false
-                }
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    onSelectAll?.(sortedProducts.map((p) => p.sku));
-                  } else {
-                    onDeselectAll?.(sortedProducts.map((p) => p.sku));
-                  }
-                }}
-                className="h-4 w-4 rounded-none border border-border accent-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background data-[state=indeterminate]:bg-foreground data-[state=indeterminate]:text-background"
-              />
-            </label>
             <PipelineSearchField
               value={search || ""}
               onChange={(value) => onSearchChange?.(value)}
@@ -203,12 +170,12 @@ export function ImportedResultsView({
           groupedProducts={groupedProducts}
           cohortBrands={cohortBrands}
           cohortBrandObjects={cohortBrandObjects}
-          selectedSkus={selectedSkus}
+          selectedSkus={new Set()}
           preferredSku={null}
           preferredCohortId={preferredCohortId}
-          onSelectSku={onSelectSku}
-          onSelectAll={onSelectAll}
-          onDeselectAll={onDeselectAll}
+          onSelectSku={() => {}}
+          onSelectAll={() => {}}
+          onDeselectAll={() => {}}
           onPreferredSkuChange={() => { }}
           onPreferredCohortChange={handleCohortChange}
           variant="imported"
@@ -287,23 +254,13 @@ export function ImportedResultsView({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                     {cohortProducts.map(product => {
-                      const isSelected = selectedSkus.has(product.sku);
                       return (
                         <div
                           key={product.sku}
-                          onClick={() => onSelectSku(product.sku, !isSelected)}
-                          className={cn(
-                            "p-3 bg-card border flex flex-col gap-2 transition-colors cursor-pointer group relative",
-                            isSelected ? "border-foreground bg-accent/50" : "border-border hover:border-foreground"
-                          )}
+                          className="p-3 bg-card border flex flex-col gap-2 transition-colors group relative border-border"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-2">
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={(checked) => onSelectSku(product.sku, !!checked)}
-                                onClick={(e) => e.stopPropagation()}
-                              />
                               <div className="text-[9px] font-semibold text-muted-foreground bg-background px-1 py-0.5 rounded-none border border-border shrink-0">
                                 {product.sku}
                               </div>
@@ -325,11 +282,9 @@ export function ImportedResultsView({
 
             {/* Right: Management Panel (Detail) */}
             <ManagementPanel
-              selection={{
-                skus: selectedSkus,
-                cohortId: activeCohortId,
-                products: cohortProducts,
-              }}
+              cohortId={activeCohortId}
+              products={cohortProducts}
+              cohortBrandObjects={cohortBrandObjects}
               onSuccess={() => onRefresh()}
             />
           </>
