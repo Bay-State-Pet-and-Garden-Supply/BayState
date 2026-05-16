@@ -68,7 +68,8 @@ args, remaining_argv = parser.parse_known_args()
 if args.env == "dev":
     env_file = PROJECT_ROOT / ".env.development"
     if not env_file.exists():
-        print(f"Warning: {env_file} not found, falling back to .env")
+        if "SCRAPER_API_URL" not in os.environ:
+            print(f"Warning: {env_file} not found, falling back to .env")
         env_file = PROJECT_ROOT / ".env"
 else:
     env_file = PROJECT_ROOT / ".env"

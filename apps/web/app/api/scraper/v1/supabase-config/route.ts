@@ -3,6 +3,19 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { validateRunnerAuth } from '@/lib/scraper-auth';
 import { SUPABASE_ANON_KEY, SUPABASE_URL, SUPABASE_SECRET_KEY } from '@/lib/supabase/config';
 
+function getRunnerSupabaseUrl(url: string) {
+    if (
+        process.env.NODE_ENV === "development" &&
+        (url.includes("127.0.0.1") || url.includes("localhost"))
+    ) {
+        return url
+            .replace("127.0.0.1", "host.docker.internal")
+            .replace("localhost", "host.docker.internal");
+    }
+
+    return url;
+}
+
 function getSupabaseAdmin(): SupabaseClient {
     const url = SUPABASE_URL;
     const key = SUPABASE_SECRET_KEY;
@@ -33,7 +46,7 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        const supabaseUrl = SUPABASE_URL;
+        const supabaseUrl = getRunnerSupabaseUrl(SUPABASE_URL);
         // Use anon key for realtime connections (service role key is for server-side only)
         const supabaseRealtimeKey = SUPABASE_ANON_KEY;
 
