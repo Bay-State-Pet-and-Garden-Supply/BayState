@@ -1,49 +1,57 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
+import { requireAdminAuth } from '@/lib/admin/api-auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
+        const auth = await requireAdminAuth(request);
+        if (!auth.authorized) return auth.response;
+
+        const { searchParams } = new URL(request.url);
+        const runnerId = searchParams.get('runner_id');
+        const limit = parseInt(searchParams.get('limit') || '25');
+        const offset = parseInt(searchParams.get('offset') || '0');
+        const status = searchParams.get('status');
+        const scraper = searchParams.get('scraper');
+
         const supabase = await createAdminClient();
 
-        const { data, error } = await supabase
-            .from('scrape_jobs')
-            .select('id, skus, status, runner_name, lease_token, lease_expires_at, heartbeat_at, attempt_count, max_attempts, backoff_until, created_at, completed_at, error_message, metadata')
+        let query = supabase
+            .from('enrichment_jobs')
+            .select('*', { count: 'exact' });
+
+        if (runnerId) {
+            query = query.eq('claimed_by', runnerId);
+        }
+
+        if (status && status !== 'all') {
+            query = query.eq('status', status);
+        }
+
+        if (scraper) {
+            // In the new architecture, scrapers is an array or part of config. 
+            // Filtering by scraper name might be complex depending on schema.
+            // For now, we'll assume it's in the 'scrapers' array if it exists.
+            query = query.contains('scrapers', [scraper]);
+        }
+
+        const { data, error, count } = await query
             .order('created_at', { ascending: false })
-            .limit(20);
+            .range(offset, offset + limit - 1);
 
         if (error) {
             console.error('[Jobs API] Error:', error);
-            return NextResponse.json({ jobs: [] }, { status: 500 });
+            return NextResponse.json({ jobs: [], total: 0 }, { status: 500 });
         }
 
-        const jobs = (data || []).map((job) => {
-            const metadata = job.metadata && typeof job.metadata === 'object'
-                ? (job.metadata as Record<string, unknown>)
-                : {};
-            const crawl4ai = metadata.crawl4ai && typeof metadata.crawl4ai === 'object'
-                ? (metadata.crawl4ai as Record<string, unknown>)
-                : {};
-
-            return {
-                ...job,
-                crawl4ai: {
-                    extraction_strategy: Array.isArray(crawl4ai.extraction_strategy)
-                        ? crawl4ai.extraction_strategy
-                        : [],
-                    cost_breakdown: crawl4ai.cost_breakdown ?? null,
-                    anti_bot_metrics: crawl4ai.anti_bot_metrics ?? null,
-                    llm_count: typeof crawl4ai.llm_count === 'number' ? crawl4ai.llm_count : 0,
-                    llm_free_count: typeof crawl4ai.llm_free_count === 'number' ? crawl4ai.llm_free_count : 0,
-                    llm_ratio: typeof crawl4ai.llm_ratio === 'number' ? crawl4ai.llm_ratio : null,
-                },
-            };
+        return NextResponse.json({ 
+            jobs: data || [],
+            total: count || 0
         });
-
-        return NextResponse.json({ jobs });
     } catch (error) {
         console.error('[Jobs API] Error:', error);
-        return NextResponse.json({ jobs: [] }, { status: 500 });
+        return NextResponse.json({ jobs: [], total: 0 }, { status: 500 });
     }
 }

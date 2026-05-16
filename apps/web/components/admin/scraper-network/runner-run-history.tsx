@@ -152,12 +152,12 @@ export function RunnerRunHistory({ runnerId, runnerName }: RunnerRunHistoryProps
       render: (_, row) => <StatusBadge status={row.status} />,
     },
     {
-      key: 'total_skus',
+      key: 'total_count',
       header: 'SKUs',
       sortable: true,
       render: (value, row) => {
-        const completed = row.completed_skus || 0;
-        const failed = row.failed_skus || 0;
+        const completed = row.completed_count || 0;
+        const failed = row.failed_count || 0;
         const total = Number(value) || 0;
         return (
           <span className="text-sm">

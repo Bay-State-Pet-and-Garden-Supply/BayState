@@ -105,6 +105,8 @@ export interface JobAssignment {
   last_log_level?: string | null;
   /** Latest persisted log message */
   last_log_message?: string | null;
+  /** Optional job configuration */
+  config?: Record<string, unknown> | null;
 }
 
 /**
@@ -136,6 +138,7 @@ const jobAssignmentSchema = z.object({
   last_log_at: z.string().nullable().optional(),
   last_log_level: z.string().nullable().optional(),
   last_log_message: z.string().nullable().optional(),
+  config: z.record(z.string(), z.unknown()).nullable().optional(),
 });
 
 /**

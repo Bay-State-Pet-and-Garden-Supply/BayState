@@ -134,7 +134,7 @@ export async function verifyCart(
 
   // Validate promo code
   const discountAmount = 0;
-  let promoCodeId: string | null = null;
+  const promoCodeId: string | null = null;
   const resolvedPromoCode: string | null = promoCode || null;
 
   // Delivery fee: use server-provided or default

@@ -424,10 +424,10 @@ export function useJobSubscription(
         const hasMatchingScraper = scraperNames.some((name) => (candidate.scrapers || []).includes(name));
         if (!hasMatchingScraper) {
           // Fallback to checking config if scrapers list is empty/missing
-          const config = (candidate as any).config;
+          const config = candidate.config;
           if (config && typeof config === 'object') {
-            const configScrapers = config.scrapers || [];
-            if (!configScrapers.some((name: string) => scraperNames.includes(name))) {
+            const configScrapers = (config as { scrapers?: string[] }).scrapers || [];
+            if (!Array.isArray(configScrapers) || !configScrapers.some((name: string) => scraperNames.includes(name))) {
               return;
             }
           } else {

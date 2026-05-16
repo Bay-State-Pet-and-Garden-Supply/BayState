@@ -26,9 +26,9 @@ async function checkCounts() {
     return;
   }
 
-  const counts: Record<string, any> = {};
+  const counts: Record<string, number> = {};
   
-  data.forEach((row: any) => {
+  data.forEach((row: { pipeline_status: string; brand_id: string | null; exported_at: string | null }) => {
     const brandStatus = row.brand_id ? 'with_brand' : 'no_brand';
     const exportStatus = row.exported_at ? 'exported' : 'not_exported';
     const key = `${row.pipeline_status} | ${brandStatus} | ${exportStatus}`;
