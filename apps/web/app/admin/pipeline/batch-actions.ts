@@ -30,7 +30,7 @@ async function requireAdminOrStaff(): Promise<{ id: string; email?: string } | n
 
 const productBatchUpdateSchema = z.object({
   brand_id: z.string().uuid().nullable().optional(),
-  pipeline_status: z.enum(['imported', 'extracting', 'processed', 'merging', 'reviewing', 'publishing', 'failed']).optional(),
+  pipeline_status: z.enum(['imported', 'awaiting_brand', 'extracting', 'processed', 'merging', 'reviewing', 'publishing', 'failed']).optional(),
   enrichment_config: z.object({
     enabled_sources: z.array(z.string()).optional(),
     official_domains: z.array(z.string()).optional(),
@@ -64,6 +64,19 @@ export async function updateProductsBatch(
     if (error) {
       console.error('Database Error in updateProductsBatch:', error);
       return { success: false, error: 'Failed to update products batch' };
+    }
+
+    // If brand_id is being assigned, transition any 'awaiting_brand' products in this batch to 'imported'
+    if (validatedUpdates.brand_id) {
+      const { error: transitionError } = await supabase
+        .from('products_ingestion')
+        .update({ pipeline_status: 'imported' })
+        .in('sku', skus)
+        .eq('pipeline_status', 'awaiting_brand');
+
+      if (transitionError) {
+        console.error('Failed to transition products from awaiting_brand to imported:', transitionError);
+      }
     }
     
     revalidatePath('/admin/pipeline');

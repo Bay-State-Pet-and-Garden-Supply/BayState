@@ -70,6 +70,8 @@ export function ImportedResultsView({
   onManualAdd,
   isLoading = false,
 }: ImportedResultsViewProps) {
+
+
   // 1. Data Transformation & Memoized State
   const sortedProducts = useMemo(() => {
     return [...products].sort((a, b) => a.sku.localeCompare(b.sku));

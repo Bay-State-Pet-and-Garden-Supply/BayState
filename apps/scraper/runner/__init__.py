@@ -125,11 +125,11 @@ def _run_enrichment_job(
         flush_immediately=True,
     )
 
-    target_url = job_payload.get("target_url", "")
+    target_url = getattr(attempt, "target_url", None) or job_payload.get("target_url", "")
     target_sku = skus[0] if skus else job_payload.get("sku", "")
-    domain = job_payload.get("domain")
-    model = job_payload.get("model", "deepseek-chat")
-    mode_str = job_payload.get("mode", "mixed")
+    domain = getattr(attempt, "domain", None) or job_payload.get("domain")
+    model = getattr(attempt, "model", None) or job_payload.get("model", "deepseek-chat")
+    mode_str = getattr(attempt, "mode", None) or job_payload.get("mode", "mixed")
 
     if not target_sku:
         error_msg = "Enrichment job missing SKU"
@@ -318,7 +318,7 @@ def _run_approved_source_extraction(
     """
     job_id = attempt.job_id
 
-    source_plan_raw = job_payload.get("source_plan")
+    source_plan_raw = getattr(attempt, "source_plan", None) or job_payload.get("source_plan")
     if not source_plan_raw:
         error_msg = f"Approved source extraction for SKU={target_sku} missing source_plan"
         _emit_runner_log(
@@ -388,7 +388,7 @@ def _run_approved_source_extraction(
         from scrapers.approved_sources.executor import ApprovedSourceExecutor
 
         # Create extractor (needed for the adapter interface)
-        model = job_payload.get("model", "deepseek-chat")
+        model = getattr(attempt, "model", None) or job_payload.get("model", "deepseek-chat")
         extractor = ProductPageExtractor(
             headless=settings.browser_settings["headless"],
             llm_model=model,

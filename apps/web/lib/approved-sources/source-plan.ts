@@ -31,6 +31,7 @@ interface ProductRow {
     name?: string | null;
     price?: number | null;
   } | null;
+  enrichment_config?: any;
 }
 
 interface BrandRow {
@@ -182,7 +183,7 @@ export async function buildApprovedSourcePlans(
   // ------------------------------------------------------------------
   const { data: products, error: productError } = await db
     .from("products_ingestion")
-    .select("sku, brand_id, input")
+    .select("sku, brand_id, input, enrichment_config")
     .in("sku", skus);
 
   if (productError) {
@@ -311,6 +312,20 @@ export async function buildApprovedSourcePlans(
     const allAssetDomains: Set<string> = new Set();
 
     for (const source of sources) {
+      // If the product has enrichment_config.enabled_sources defined,
+      // verify that this source is explicitly enabled before including it in the plan.
+      const enabledSources = product.enrichment_config?.enabled_sources;
+      if (Array.isArray(enabledSources)) {
+        const isEnabled = enabledSources.some(es => 
+          es === source.crawl4ai_adapter_slug ||
+          es === source.source_slug ||
+          es.replace('_crawl4ai', '').replace('_scraper', '') === source.source_slug
+        );
+        if (!isEnabled) {
+          continue; // Skip disabled sources!
+        }
+      }
+
       // Determine domains: use source domains, fall back to brand domains
       // for official_brand entries without explicit domains
       let entryDomains: string[];
@@ -382,6 +397,22 @@ export async function buildApprovedSourcePlans(
         orderedEntries.push(fallbackEntry);
         for (const d of catalogEntry.domains) allDomains.add(d);
         for (const d of catalogEntry.assetDomains) allAssetDomains.add(d);
+      }
+    }
+
+    // ---- Enrichment Config fallback: if no entries exist, check if there are enabled sources in the product's enrichment_config ----
+    if (orderedEntries.length === 0) {
+      const enabledSources = product.enrichment_config?.enabled_sources;
+      if (Array.isArray(enabledSources) && enabledSources.length > 0) {
+        for (const sourceId of enabledSources) {
+          const catalogEntry = findDistributorInCatalog(sourceId);
+          if (catalogEntry) {
+            const fallbackEntry = buildDistributorPlanEntry(catalogEntry);
+            orderedEntries.push(fallbackEntry);
+            for (const d of catalogEntry.domains) allDomains.add(d);
+            for (const d of catalogEntry.assetDomains) allAssetDomains.add(d);
+          }
+        }
       }
     }
 

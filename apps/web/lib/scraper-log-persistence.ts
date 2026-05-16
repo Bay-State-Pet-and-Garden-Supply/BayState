@@ -75,7 +75,7 @@ export async function updateScrapeJobLogSummary(
   };
 
   if (latestLog.runner_name) {
-    updateData.runner_name = latestLog.runner_name;
+    updateData.claimed_by = latestLog.runner_name;
   }
 
   const { error } = await supabase

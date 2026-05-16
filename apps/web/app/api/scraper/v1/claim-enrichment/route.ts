@@ -100,30 +100,76 @@ export async function POST(request: NextRequest) {
 
     const jobsById = new Map((jobs ?? []).map((j) => [j.id, j]));
 
-    // Update jobs to running if they were queued
+    // Map job ID to the lease info we should use for it
+    const jobLeases = new Map<string, { token: string; expiresAt: string }>();
+
     const leaseExpiresAt = new Date(
       Date.now() + leaseTTLMinutes * 60 * 1000
     ).toISOString();
 
     for (const jobId of jobIds) {
       const job = jobsById.get(jobId);
-      if (job && job.status === "queued") {
+      if (!job) continue;
+
+      const isAlreadyClaimedByUs =
+        job.status === "running" &&
+        job.claimed_by === runner.runnerName &&
+        job.lease_token;
+
+      if (isAlreadyClaimedByUs) {
+        // Reuse existing lease, but extend it
+        const extendedExpiresAt = new Date(
+          Date.now() + leaseTTLMinutes * 60 * 1000
+        ).toISOString();
+
         await supabase
           .from("enrichment_jobs")
           .update({
-            status: "running",
-            claimed_by: runner.runnerName,
-            lease_token: leaseToken,
-            lease_expires_at: leaseExpiresAt,
-            started_at: new Date().toISOString(),
+            lease_expires_at: extendedExpiresAt,
+            updated_at: new Date().toISOString(),
           })
           .eq("id", jobId);
+
+        jobLeases.set(jobId, {
+          token: job.lease_token,
+          expiresAt: extendedExpiresAt,
+        });
+      } else {
+        // Claim the job (or overwrite lease if it was someone else's/expired)
+        const updateData: Record<string, any> = {
+          status: "running",
+          claimed_by: runner.runnerName,
+          lease_token: leaseToken,
+          lease_expires_at: leaseExpiresAt,
+          updated_at: new Date().toISOString(),
+        };
+
+        // Only set started_at if not already set
+        if (!job.started_at) {
+          updateData.started_at = new Date().toISOString();
+        }
+
+        await supabase
+          .from("enrichment_jobs")
+          .update(updateData)
+          .eq("id", jobId);
+
+        jobLeases.set(jobId, {
+          token: leaseToken,
+          expiresAt: leaseExpiresAt,
+        });
       }
     }
 
     // Build response payload with fields matching Python ClaimedEnrichment
     const attempts = claimed.map((attempt: Record<string, unknown>) => {
-      const job = jobsById.get(attempt.job_id as string);
+      const jobId = attempt.job_id as string;
+      const job = jobsById.get(jobId);
+      const lease = jobLeases.get(jobId) || {
+        token: leaseToken,
+        expiresAt: leaseExpiresAt,
+      };
+
       const sourceUrl = (attempt.source_url as string) || "";
       const jobConfig = (job?.config ?? {}) as Record<string, unknown>;
       const sourcePlansBySku = jobConfig.source_plans_by_sku as
@@ -142,15 +188,17 @@ export async function POST(request: NextRequest) {
         job_id: attempt.job_id,
         sku: attempt.sku,
         source_url: effectiveSourceUrl,
-        domain: extractDomain(sourceUrl) || (perSkuSourcePlan ? "approved_source_extraction" : null),
+        domain:
+          extractDomain(sourceUrl) ||
+          (perSkuSourcePlan ? "approved_source_extraction" : null),
         mode: attempt.mode ?? job?.mode ?? "mixed",
         model: attempt.model ?? job?.model ?? null,
         target_id: attempt.target_id ?? null,
         config: jobConfig,
         source_plan: perSkuSourcePlan,
         ai_credentials: job?.ai_credentials ?? null,
-        lease_token: leaseToken,
-        lease_expires_at: leaseExpiresAt,
+        lease_token: lease.token,
+        lease_expires_at: lease.expiresAt,
         test_mode: job?.test_mode ?? false,
       };
     });

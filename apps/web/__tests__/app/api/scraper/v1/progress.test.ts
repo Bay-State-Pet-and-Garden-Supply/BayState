@@ -50,7 +50,7 @@ describe('POST /api/scraper/v1/progress', () => {
           id: 'job-1',
           status: 'running',
           lease_token: 'expected-lease',
-          runner_name: 'runner-a',
+          claimed_by: 'runner-a',
           started_at: null,
         },
         error: null,
@@ -80,7 +80,7 @@ describe('POST /api/scraper/v1/progress', () => {
           id: 'job-1',
           status: 'pending',
           lease_token: 'lease-1',
-          runner_name: 'runner-a',
+          claimed_by: 'runner-a',
           started_at: null,
         },
         error: null,
@@ -134,7 +134,7 @@ describe('POST /api/scraper/v1/progress', () => {
     expect(jobUpdateBuilder.update).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'running',
-        runner_name: 'runner-a',
+        claimed_by: 'runner-a',
         progress_percent: 42,
         progress_message: 'Processing SKU-42',
         progress_phase: 'scraping',

@@ -33,6 +33,54 @@ export function ManagementPanel({
   const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
   const [domains, setDomains] = useState<string[]>([]);
   const [activeScrapers, setActiveScrapers] = useState<string[]>([]);
+  const [credentialStatuses, setCredentialStatuses] = useState<Record<string, { configured: boolean; loading: boolean }>>({
+    phillips: { configured: false, loading: true },
+    orgill: { configured: false, loading: true },
+    petfoodex: { configured: false, loading: true },
+  });
+
+  // Load credential statuses on mount
+  useEffect(() => {
+    let active = true;
+    async function loadStatuses() {
+      try {
+        const slugs = ['phillips', 'orgill', 'petfoodex'];
+        const results = await Promise.all(
+          slugs.map(async (slug) => {
+            const res = await fetch(`/api/admin/scrapers/${slug}/credentials`);
+            if (!res.ok) throw new Error('Failed to load credentials for ' + slug);
+            const data = await res.json();
+            const login = data.statuses?.find((s: any) => s.type === 'login');
+            const password = data.statuses?.find((s: any) => s.type === 'password');
+            return {
+              slug,
+              configured: (login?.configured && password?.configured) ?? false,
+            };
+          })
+        );
+        if (active) {
+          const newStatuses: Record<string, { configured: boolean; loading: boolean }> = {};
+          results.forEach(({ slug, configured }) => {
+            newStatuses[slug] = { configured, loading: false };
+          });
+          setCredentialStatuses(newStatuses);
+        }
+      } catch (err) {
+        console.error('Failed to load credential statuses:', err);
+        if (active) {
+          setCredentialStatuses({
+            phillips: { configured: false, loading: false },
+            orgill: { configured: false, loading: false },
+            petfoodex: { configured: false, loading: false },
+          });
+        }
+      }
+    }
+    void loadStatuses();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Initialize state from cohort/products
   useEffect(() => {
@@ -109,7 +157,7 @@ export function ManagementPanel({
       // 1. Update products in DB
       const productResult = await updateProductsBatch(skus, {
         brand_id: selectedBrand?.id || null,
-        pipeline_status: startScraper ? 'extracting' : undefined,
+        pipeline_status: undefined,
         enrichment_config: {
           enabled_sources: activeScrapers,
           official_domains: domains,
@@ -140,7 +188,9 @@ export function ManagementPanel({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             skus,
-            source_type: 'approved_source_extraction',
+            config: {
+              source_type: 'approved_source_extraction',
+            },
           }),
         });
 
@@ -198,6 +248,7 @@ export function ManagementPanel({
         <DistributorSection 
           activeScrapers={activeScrapers}
           onToggleScraper={toggleScraper}
+          credentialStatuses={credentialStatuses}
         />
       </div>
 

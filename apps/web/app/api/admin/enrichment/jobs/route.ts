@@ -94,9 +94,24 @@ export async function POST(request: NextRequest) {
       );
 
       sourcePlansBySku = {};
+      const requiredCredentialSlugs = new Set<string>();
+
       for (const [sku, result] of Object.entries(plans)) {
         if (result.ok) {
           sourcePlansBySku[sku] = result.plan;
+          
+          // Collect required credentials from the plan priority list
+          const plan = result.plan as any;
+          if (plan.priority && Array.isArray(plan.priority)) {
+            for (const entry of plan.priority) {
+              if (entry.requiresAuth) {
+                const credRef = entry.credentialRef || entry.sourceSlug;
+                if (credRef) {
+                  requiredCredentialSlugs.add(credRef);
+                }
+              }
+            }
+          }
         } else {
           skippedSkus.push(sku);
         }
@@ -105,15 +120,83 @@ export async function POST(request: NextRequest) {
       brandedSkus = Object.keys(sourcePlansBySku);
 
       if (brandedSkus.length === 0) {
+        const errorMessages = new Set<string>();
+        for (const [sku, result] of Object.entries(plans)) {
+          if (!result.ok && result.error) {
+            errorMessages.add(result.error);
+          }
+        }
+        const detailedError = errorMessages.size > 0
+          ? Array.from(errorMessages).join("; ")
+          : "None of the selected SKUs have an assigned brand. Assign a brand before starting approved source extraction.";
+
         return NextResponse.json(
           {
-            error:
-              "None of the selected SKUs have an assigned brand. " +
-              "Assign a brand before starting approved source extraction.",
+            error: detailedError,
             skipped_skus: skippedSkus,
           },
           { status: 400 }
         );
+      }
+
+      // Check if credentials are set for all required sources
+      if (requiredCredentialSlugs.size > 0) {
+        const slugs = Array.from(requiredCredentialSlugs);
+        const { data: dbCreds, error: dbCredsError } = await supabase
+          .from("scraper_credentials")
+          .select("scraper_slug, credential_type")
+          .in("scraper_slug", slugs);
+
+        if (dbCredsError) {
+          return NextResponse.json(
+            { error: `Database error checking credentials: ${dbCredsError.message}` },
+            { status: 500 }
+          );
+        }
+
+        const missingMap: Record<string, string[]> = {};
+        for (const slug of slugs) {
+          const matchingCreds = (dbCreds || []).filter(
+            (c: { scraper_slug: string }) => c.scraper_slug === slug
+          );
+          
+          const hasLogin = matchingCreds.some(
+            (c: { credential_type: string }) => c.credential_type === "login"
+          );
+          const hasPassword = matchingCreds.some(
+            (c: { credential_type: string }) => c.credential_type === "password"
+          );
+          
+          const missingTypes: string[] = [];
+          if (!hasLogin) missingTypes.push("Username");
+          if (!hasPassword) missingTypes.push("Password");
+          
+          if (missingTypes.length > 0) {
+            missingMap[slug] = missingTypes;
+          }
+        }
+
+        if (Object.keys(missingMap).length > 0) {
+          const friendlyNames: Record<string, string> = {
+            phillips: "Phillips Pet",
+            orgill: "Orgill",
+            petfoodex: "Pet Food Experts",
+          };
+          
+          const errorDetails = Object.entries(missingMap)
+            .map(([slug, missing]) => {
+              const name = friendlyNames[slug] || slug;
+              return `${name} (missing: ${missing.join(" and ")})`;
+            })
+            .join(", ");
+
+          return NextResponse.json(
+            {
+              error: `Scrape cannot be started. Credentials are not configured in Settings for: ${errorDetails}. Please go to Settings to configure them before starting a scrape.`,
+            },
+            { status: 400 }
+          );
+        }
       }
     }
 

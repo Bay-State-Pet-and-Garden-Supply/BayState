@@ -12,7 +12,6 @@ jest.mock('next/server', () => ({
             if (typeof this.requestBody === 'string') {
                 return JSON.parse(this.requestBody);
             }
-
             return this.requestBody;
         }
     },
@@ -42,31 +41,47 @@ jest.mock('@/lib/admin/api-auth', () => ({
     requireAdminAuth: jest.fn(),
 }));
 
-jest.mock('@/lib/supabase/server', () => ({
-    createClient: jest.fn(),
-}));
+jest.mock('@/lib/supabase/server', () => {
+    const mockCreate = jest.fn();
+    return {
+        createClient: mockCreate,
+        createAdminClient: mockCreate,
+    };
+});
 
-jest.mock('@/lib/pipeline-scraping', () => ({
-    scrapeProducts: jest.fn(),
+jest.mock('@/lib/approved-sources/source-plan', () => ({
+    buildApprovedSourcePlans: jest.fn(),
 }));
 
 const { requireAdminAuth } = require('@/lib/admin/api-auth');
-const { createClient } = require('@/lib/supabase/server');
-const { scrapeProducts } = require('@/lib/pipeline-scraping');
+const { createAdminClient } = require('@/lib/supabase/server');
+const { buildApprovedSourcePlans } = require('@/lib/approved-sources/source-plan');
 
 describe('/api/admin/enrichment/jobs route', () => {
+    let mockSupabase: any;
+
     beforeEach(() => {
         jest.clearAllMocks();
         (requireAdminAuth as jest.Mock).mockResolvedValue({ authorized: true, user: { id: 'admin-1' } });
-        (scrapeProducts as jest.Mock).mockResolvedValue({ success: true, jobIds: ['job-1'] });
+        
+        mockSupabase = {
+            from: jest.fn().mockReturnThis(),
+            select: jest.fn().mockReturnThis(),
+            in: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            single: jest.fn(),
+            insert: jest.fn().mockReturnThis(),
+            delete: jest.fn().mockReturnThis(),
+            update: jest.fn().mockReturnThis(),
+        };
+        (createAdminClient as jest.Mock).mockResolvedValue(mockSupabase);
     });
 
-    it('rejects official brand requests without cohort_id', async () => {
+    it('rejects requests with empty SKUs array', async () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/enrichment/jobs', {
                 body: JSON.stringify({
-                    skus: ['SKU-1'],
-                    method: 'official_brand',
+                    skus: [],
                 }),
             } as any),
         );
@@ -74,124 +89,139 @@ describe('/api/admin/enrichment/jobs route', () => {
 
         expect(response.status).toBe(400);
         expect(payload).toEqual({
-            error: 'Official Brand requires a single cohort to be selected',
+            error: 'skus array is required and must not be empty',
         });
-        expect(scrapeProducts).not.toHaveBeenCalled();
     });
 
-    it('rejects official brand requests for mixed cohorts', async () => {
-        const cohortSingle = jest.fn().mockResolvedValue({
-            data: {
-                id: 'cohort-1',
-                brand_id: 'brand-1',
-                brand_name: null,
-                brands: {
-                    id: 'brand-1',
-                    name: 'Miracle-Gro',
-                    official_domains: ['scottsmiraclegro.com'],
-                    preferred_domains: [],
-                },
-            },
+    it('rejects approved source extraction if no products found in imported/extracting status', async () => {
+        // Mock products_ingestion search to return empty array
+        mockSupabase.in.mockResolvedValue({ data: [], error: null });
+
+        const response = await POST(
+            new NextRequest('http://localhost/api/admin/enrichment/jobs', {
+                body: JSON.stringify({
+                    skus: ['SKU-1'],
+                    config: {
+                        source_type: 'approved_source_extraction',
+                    },
+                }),
+            } as any),
+        );
+        const payload = await response.json();
+
+        expect(response.status).toBe(400);
+        expect(payload).toEqual({
+            error: 'None of the selected SKUs are in Imported or Extracting status',
+        });
+    });
+
+    it('rejects approved source extraction if required credentials are not configured', async () => {
+        // 1. Mock products_ingestion search to find SKU
+        mockSupabase.in.mockResolvedValueOnce({
+            data: [{ sku: 'SKU-1', pipeline_status: 'imported' }],
             error: null,
         });
 
-        const membershipIn = jest.fn().mockResolvedValue({
+        // 2. Mock source plan building to return a plan requiring auth for phillips
+        (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
+            'SKU-1': {
+                ok: true,
+                plan: {
+                    sku: 'SKU-1',
+                    priority: [
+                        {
+                            sourceType: 'distributor',
+                            sourceSlug: 'phillips',
+                            requiresAuth: true,
+                            credentialRef: 'phillips',
+                        },
+                    ],
+                },
+            },
+        });
+
+        // 3. Mock scraper_credentials query to return empty (missing credentials)
+        mockSupabase.in.mockResolvedValueOnce({
+            data: [],
+            error: null,
+        });
+
+        const response = await POST(
+            new NextRequest('http://localhost/api/admin/enrichment/jobs', {
+                body: JSON.stringify({
+                    skus: ['SKU-1'],
+                    config: {
+                        source_type: 'approved_source_extraction',
+                    },
+                }),
+            } as any),
+        );
+        const payload = await response.json();
+
+        expect(response.status).toBe(400);
+        expect(payload.error).toContain('Scrape cannot be started. Credentials are not configured in Settings for: Phillips Pet (missing: Username and Password)');
+    });
+
+    it('succeeds and creates enrichment job when credentials are configured', async () => {
+        // 1. Mock products_ingestion search to find SKU
+        mockSupabase.in.mockResolvedValueOnce({
+            data: [{ sku: 'SKU-1', pipeline_status: 'imported' }],
+            error: null,
+        });
+
+        // 2. Mock source plan building to return a plan requiring auth for phillips
+        (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
+            'SKU-1': {
+                ok: true,
+                plan: {
+                    sku: 'SKU-1',
+                    priority: [
+                        {
+                            sourceType: 'distributor',
+                            sourceSlug: 'phillips',
+                            requiresAuth: true,
+                            credentialRef: 'phillips',
+                        },
+                    ],
+                },
+            },
+        });
+
+        // 3. Mock scraper_credentials query to return both credentials configured
+        mockSupabase.in.mockResolvedValueOnce({
             data: [
-                { sku: 'SKU-1', cohort_id: 'cohort-1' },
-                { sku: 'SKU-2', cohort_id: 'cohort-2' },
+                { scraper_slug: 'phillips', credential_type: 'login' },
+                { scraper_slug: 'phillips', credential_type: 'password' },
             ],
             error: null,
         });
 
-        (createClient as jest.Mock).mockResolvedValue({
-            from: jest.fn((table: string) => {
-                if (table === 'cohort_batches') {
-                    return {
-                        select: jest.fn().mockReturnValue({
-                            eq: jest.fn().mockReturnValue({ single: cohortSingle }),
-                        }),
-                    };
-                }
-
-                if (table === 'products_ingestion') {
-                    return {
-                        select: jest.fn().mockReturnValue({
-                            in: membershipIn,
-                        }),
-                    };
-                }
-
-                throw new Error(`Unexpected table ${table}`);
-            }),
+        // 4. Mock enrichment_jobs insert to return mockSupabase for chaining,
+        // and mock enrichment_attempts insert to return resolved promise.
+        mockSupabase.insert = jest.fn().mockImplementation((arg) => {
+            if (Array.isArray(arg)) {
+                return Promise.resolve({ error: null });
+            }
+            return mockSupabase;
         });
 
-        const response = await POST(
-            new NextRequest('http://localhost/api/admin/enrichment/jobs', {
-                body: JSON.stringify({
-                    skus: ['SKU-1', 'SKU-2'],
-                    method: 'official_brand',
-                    cohort_id: 'cohort-1',
-                }),
-            } as any),
-        );
-        const payload = await response.json();
-
-        expect(response.status).toBe(400);
-        expect(payload).toEqual({
-            error: 'Official Brand can only run on products from the selected cohort',
-        });
-        expect(scrapeProducts).not.toHaveBeenCalled();
-    });
-
-    it('passes validated cohort context for official brand jobs', async () => {
-        const cohortSingle = jest.fn().mockResolvedValue({
-            data: {
-                id: 'cohort-1',
-                brand_id: 'brand-1',
-                brand_name: null,
-                brands: {
-                    id: 'brand-1',
-                    name: 'Miracle-Gro',
-                    official_domains: ['scottsmiraclegro.com'],
-                    preferred_domains: ['homedepot.com'],
-                },
-            },
+        mockSupabase.single.mockResolvedValue({
+            data: { id: 'job-1' },
             error: null,
         });
 
-        const membershipIn = jest.fn().mockResolvedValue({
-            data: [{ sku: 'SKU-1', cohort_id: 'cohort-1' }],
+        // 6. Mock products_ingestion status transition update
+        mockSupabase.in.mockResolvedValueOnce({
             error: null,
-        });
-
-        (createClient as jest.Mock).mockResolvedValue({
-            from: jest.fn((table: string) => {
-                if (table === 'cohort_batches') {
-                    return {
-                        select: jest.fn().mockReturnValue({
-                            eq: jest.fn().mockReturnValue({ single: cohortSingle }),
-                        }),
-                    };
-                }
-
-                if (table === 'products_ingestion') {
-                    return {
-                        select: jest.fn().mockReturnValue({
-                            in: membershipIn,
-                        }),
-                    };
-                }
-
-                throw new Error(`Unexpected table ${table}`);
-            }),
         });
 
         const response = await POST(
             new NextRequest('http://localhost/api/admin/enrichment/jobs', {
                 body: JSON.stringify({
                     skus: ['SKU-1'],
-                    method: 'official_brand',
-                    cohort_id: 'cohort-1',
+                    config: {
+                        source_type: 'approved_source_extraction',
+                    },
                 }),
             } as any),
         );
@@ -199,24 +229,10 @@ describe('/api/admin/enrichment/jobs route', () => {
 
         expect(response.status).toBe(200);
         expect(payload).toEqual({
+            success: true,
             jobId: 'job-1',
-            chunkCount: 1,
-            statusUrl: '/admin/scrapers/runs/job-1',
-        });
-
-        expect(scrapeProducts).toHaveBeenCalledWith(['SKU-1'], {
-            enrichment_method: 'official_brand',
-            chunkSize: undefined,
-            maxWorkers: undefined,
-            maxRunners: undefined,
-            cohortBrand: 'Miracle-Gro',
-            officialBrandCohort: {
-                id: 'cohort-1',
-                brandId: 'brand-1',
-                brandName: 'Miracle-Gro',
-                officialDomains: ['scottsmiraclegro.com'],
-                preferredDomains: ['homedepot.com'],
-            },
+            skuCount: 1,
+            attemptCount: 1,
         });
     });
 });
