@@ -19,6 +19,107 @@ export interface ScrapeJobLogEntry {
   persisted?: boolean;
 }
 
+export interface JobPhase {
+  id: string;
+  label: string;
+  status: 'idle' | 'running' | 'completed' | 'failed';
+  startTime?: string;
+  endTime?: string;
+  logs: ScrapeJobLogEntry[];
+  metadata: Record<string, any>;
+}
+
+/**
+ * Reducer function to transform a flat list of logs into structured phases.
+ * Uses STEP_STARTED and STEP_COMPLETED markers to identify boundaries.
+ */
+export function reduceLogsToPhases(logs: ScrapeJobLogEntry[]): JobPhase[] {
+  const phases: JobPhase[] = [];
+  let currentPhase: JobPhase | null = null;
+
+  // Sorted by timestamp and sequence
+  const sortedLogs = [...logs].sort((a, b) => {
+    const timeA = new Date(a.timestamp || a.created_at || 0).getTime();
+    const timeB = new Date(b.timestamp || b.created_at || 0).getTime();
+    const timeDiff = timeA - timeB;
+    if (timeDiff !== 0) return timeDiff;
+    return (a.sequence ?? 0) - (b.sequence ?? 0);
+  });
+
+  for (const log of sortedLogs) {
+    const message = log.message.toUpperCase();
+    const logTime = log.timestamp || log.created_at || new Date().toISOString();
+    
+    // Detect Phase Start
+    if (message.includes('STEP_STARTED:') || log.phase?.includes('starting')) {
+      const label = message.includes('STEP_STARTED:') 
+        ? log.message.split('STEP_STARTED:')[1].trim()
+        : log.phase || 'Initialization';
+
+      // Close previous phase if it was running
+      if (currentPhase && currentPhase.status === 'running') {
+        currentPhase.status = 'completed';
+        currentPhase.endTime = logTime;
+      }
+
+      currentPhase = {
+        id: `phase-${phases.length}`,
+        label,
+        status: 'running',
+        startTime: logTime,
+        logs: [log],
+        metadata: log.details || {},
+      };
+      phases.push(currentPhase);
+      continue;
+    }
+
+    // Detect Phase Completion
+    if (message.includes('STEP_COMPLETED:') || log.phase === 'completed') {
+      if (currentPhase) {
+        currentPhase.status = 'completed';
+        currentPhase.endTime = logTime;
+        currentPhase.logs.push(log);
+        if (log.details) {
+          currentPhase.metadata = { ...currentPhase.metadata, ...log.details };
+        }
+      }
+      continue;
+    }
+
+    // Detect Failure
+    if (log.level === 'error' || log.level === 'critical' || log.phase === 'failed') {
+      if (currentPhase) {
+        currentPhase.status = 'failed';
+        currentPhase.endTime = logTime;
+        currentPhase.logs.push(log);
+      }
+      continue;
+    }
+
+    // Assign generic logs to the active phase
+    if (currentPhase) {
+      currentPhase.logs.push(log);
+    } else if (phases.length === 0) {
+      // Create a default "Initialization" phase if logs appear before a STEP_STARTED
+      currentPhase = {
+        id: 'phase-init',
+        label: 'Initialization',
+        status: 'running',
+        startTime: logTime,
+        logs: [log],
+        metadata: log.details || {},
+      };
+      phases.push(currentPhase);
+    } else {
+      // Log belongs to the last known phase
+      phases[phases.length - 1].logs.push(log);
+    }
+  }
+
+  return phases;
+}
+
 export interface ScrapeJobProgressUpdate {
   job_id: string;
   runner_id?: string | null;

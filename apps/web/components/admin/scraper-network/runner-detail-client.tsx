@@ -23,8 +23,10 @@ import { RunnerManagementPanel } from './runner-management-panel';
 import { RunnerMetadataEditor } from './runner-metadata-editor';
 import { RunnerRunHistory } from './runner-run-history';
 import { RunnerStatistics } from './runner-statistics';
+import { JobConsoleDrawer } from '../scraper-console/JobConsoleDrawer';
 import type { RunnerStatus, RunnerDetail } from './types';
 import { cn } from '@/lib/utils';
+import { Terminal } from 'lucide-react';
 
 interface RunnerDetailClientProps {
   runner: RunnerDetail;
@@ -243,6 +245,10 @@ export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: Run
       <Tabs defaultValue="runs" className="space-y-4">
         <TabsList variant="line" className={cn(isEmbedded && "w-full justify-start border-b border-zinc-200 rounded-none")}>
           <TabsTrigger value="runs">Run History</TabsTrigger>
+          <TabsTrigger value="console" className="gap-2">
+            <Terminal className="h-3.5 w-3.5" />
+            Live Console
+          </TabsTrigger>
           <TabsTrigger value="statistics">Statistics</TabsTrigger>
           <TabsTrigger value="manage">Manage</TabsTrigger>
           <TabsTrigger value="metadata">Metadata</TabsTrigger>
@@ -250,6 +256,28 @@ export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: Run
 
         <TabsContent value="runs">
           <RunnerRunHistory runnerId={runner.id} runnerName={runner.name} />
+        </TabsContent>
+
+        <TabsContent value="console" className="h-[600px] border-2 border-zinc-900 shadow-[4px_4px_0px_rgba(0,0,0,1)] bg-white overflow-hidden flex flex-col">
+           <div className="p-4 border-b-2 border-zinc-900 bg-zinc-50 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-tighter">Active Runner Diagnostics</h3>
+                <p className="text-[10px] text-zinc-500 font-mono">Monitoring logs for: {runner.name}</p>
+              </div>
+              {runner.status === 'busy' && (
+                <div className="flex items-center gap-2 bg-brand-gold px-2 py-1 border border-zinc-900">
+                  <div className="h-2 w-2 bg-zinc-900 animate-pulse" />
+                  <span className="text-[10px] font-black uppercase tracking-tighter">Job In Progress</span>
+                </div>
+              )}
+           </div>
+           <div className="flex-1 overflow-hidden relative">
+              <JobConsoleDrawer 
+                jobId={null} // TODO: Track active jobId from runner presence
+                isOpen={true} 
+                onClose={() => {}} 
+              />
+           </div>
         </TabsContent>
 
         <TabsContent value="statistics">

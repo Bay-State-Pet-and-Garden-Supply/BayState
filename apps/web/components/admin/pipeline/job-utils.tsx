@@ -15,6 +15,7 @@ import {
  AlertCircle,
  Bug,
  Layers,
+ Terminal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -224,6 +225,9 @@ function JobStatusBadge({ status }: { status: ActiveJob["status"] }) {
  );
 }
 
+import { JobConsoleDrawer } from "../scraper-console/JobConsoleDrawer";
+import { useState } from "react";
+
 export function JobCard({
  job,
  logs,
@@ -241,6 +245,7 @@ export function JobCard({
  cancellingId: string | null;
  logCount: number;
 }) {
+ const [isConsoleOpen, setIsConsoleOpen] = useState(false);
  const hasChunks = job.chunkSummary.total > 0;
  const isActive = job.status === "pending" || job.status === "running";
  const reviewHref = job.cohortId
@@ -396,6 +401,17 @@ export function JobCard({
  ) : null}
  {isActive && (
  <Button
+ variant="outline"
+ size="sm"
+ onClick={() => setIsConsoleOpen(true)}
+ className="h-7 rounded-none text-[10px] bg-zinc-900 text-white hover:bg-zinc-800"
+ >
+ <Terminal className="h-3.5 w-3.5 mr-1.5" />
+ Console
+ </Button>
+ )}
+ {isActive && (
+ <Button
  variant="destructive"
  size="sm"
  onClick={() => onCancelClick(job.id)}
@@ -423,6 +439,12 @@ export function JobCard({
  <ChunkStatusTable chunks={job.chunks} />
  )}
  {expandedPanel === "logs" && <JobLogPanel jobId={job.id} logs={logs} />}
+
+ <JobConsoleDrawer 
+ jobId={job.id} 
+ isOpen={isConsoleOpen} 
+ onClose={() => setIsConsoleOpen(false)} 
+ />
  </div>
  );
 }
