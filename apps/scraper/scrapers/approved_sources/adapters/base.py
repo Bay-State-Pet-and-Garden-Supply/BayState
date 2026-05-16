@@ -382,6 +382,21 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             # Public fetch for no-auth distributors
             html = await self._fetch_html(search_url)
 
+            # Check if HTML needs JS rendering (skeleton loaders, Angular templates)
+            if html and self._needs_js_rendering(html):
+                logger.info(
+                    "[%s] HTML appears JS-rendered, trying browser fallback for %s",
+                    self.adapter_slug, search_url,
+                )
+                browser_html = await self._fetch_html_with_browser(search_url)
+                if browser_html:
+                    html = browser_html
+                else:
+                    logger.warning(
+                        "[%s] Browser fallback failed, using httpx result",
+                        self.adapter_slug,
+                    )
+
         if not html:
             logger.warning(
                 "[%s] Failed to fetch HTML for %s", self.adapter_slug, search_url
@@ -402,10 +417,14 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
 
         # 7. Apply allowedFields filter
         if det_result.success and self.entry.allowedFields:
+            # Map 'images' to 'image_urls' for field matching
+            allowed = set(self.entry.allowedFields)
+            if 'images' in allowed:
+                allowed.add('image_urls')
             det_result.product = {
                 k: v
                 for k, v in det_result.product.items()
-                if k in self.entry.allowedFields
+                if k in allowed
             }
 
         # 8. Build final EnrichmentResultV1
@@ -479,6 +498,83 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
                 "[%s] Error fetching %s: %s",
                 self.adapter_slug, url, e,
             )
+            return None
+
+    def _needs_js_rendering(self, html: str) -> bool:
+        """Detect if HTML appears to be a JS-rendered shell without product data.
+
+        Checks for common indicators:
+        - Skeleton loaders (CSS class patterns)
+        - Angular/Vue/React template placeholders ({{ }})
+        - "Loading..." text in product areas
+        - Empty product containers
+        """
+        indicators = [
+            'skeleton',
+            '{{product.',
+            '{{vm.',
+            'Loading...',
+            'animate-pulse',
+            'Loading...',
+        ]
+        html_lower = html.lower()
+        count = sum(1 for ind in indicators if ind.lower() in html_lower)
+        # If 2+ indicators present, likely JS-rendered
+        return count >= 2
+
+    async def _fetch_html_with_browser(self, url: str) -> str | None:
+        """Fetch HTML using Crawl4AI headless browser for JS-rendered sites.
+
+        Falls back gracefully if Crawl4AI is not available.
+        Uses a short page timeout to avoid blocking too long.
+        """
+        try:
+            from src.crawl4ai_engine.engine import Crawl4AIEngine
+            from crawl4ai import CrawlerRunConfig, CacheMode
+
+            engine_config = {
+                "browser": {
+                    "headless": True,
+                    "viewport_width": 1280,
+                    "viewport_height": 800,
+                    "light_mode": True,
+                },
+                "crawler": {
+                    "page_timeout": 30000,
+                    "delay_before_return_html": 1000,
+                    "remove_overlay_elements": True,
+                },
+            }
+
+            engine = Crawl4AIEngine(engine_config)
+            await engine.initialize()
+
+            run_config = CrawlerRunConfig(
+                cache_mode=CacheMode.BYPASS,
+                page_timeout=30000,
+                wait_until="networkidle",
+                remove_overlay_elements=True,
+                simulate_user=False,
+                magic=False,
+            )
+
+            result = await engine.crawler.arun(url=url, config=run_config)
+            await engine.cleanup()
+
+            if result and getattr(result, "success", False):
+                html = getattr(result, "html", None) or ""
+                if html:
+                    logger.info(
+                        "[%s] Browser fetch succeeded for %s (%d chars)",
+                        self.adapter_slug, url, len(html),
+                    )
+                    return html
+            return None
+        except ImportError:
+            logger.debug("[%s] Crawl4AI not available for browser fetch", self.adapter_slug)
+            return None
+        except Exception as e:
+            logger.warning("[%s] Browser fetch failed for %s: %s", self.adapter_slug, url, e)
             return None
 
     async def _extract_from_html_fixture(

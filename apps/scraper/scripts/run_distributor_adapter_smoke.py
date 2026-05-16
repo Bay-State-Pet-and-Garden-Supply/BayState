@@ -142,6 +142,10 @@ def build_plan_from_entry(entry: dict[str, Any]) -> tuple[ApprovedSourcePlan, Ap
     allowed_domains = entry.get("allowed_domains", [])
     allowed_asset_domains = entry.get("allowed_asset_domains", allowed_domains)
 
+    # Add known CDN domains for asset delivery
+    known_cdns = ["images.salsify.com"]
+    allowed_asset_domains = list(set(allowed_asset_domains + known_cdns))
+
     plan_entry = ApprovedSourcePlanEntry(
         sourceType=entry.get("source_type", "distributor"),
         sourceSlug=source_slug,
@@ -407,10 +411,12 @@ def write_markdown_report(summary: SmokeTestSummary, output_dir: Path) -> None:
 
     for r in summary.results:
         status_icon = "✅" if r.passed else "❌"
-        name_short = (r.product_name[:30] + "...") if len(r.product_name) > 30 else r.product_name
+        name = r.product_name or ""
+        name_short = (name[:30] + "...") if len(name) > 30 else name
+        brand = r.product_brand or ""
         lines.append(
             f"| {r.source_slug} | {r.sku} | {r.expected_status} | {r.actual_status} | "
-            f"{status_icon} | {r.confidence:.2f} | {name_short} | {r.product_brand} | "
+            f"{status_icon} | {r.confidence:.2f} | {name_short} | {brand} | "
             f"{r.elapsed_seconds:.1f}s |"
         )
 

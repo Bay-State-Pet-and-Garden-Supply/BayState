@@ -155,6 +155,10 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
 
         # Check if we found enough
         if not product.get("name"):
+            # Try BigCommerce headless structure (2025+ site redesign)
+            self._extract_bigcommerce_headless(soup, sku, product, matched, warnings)
+
+        if not product.get("name"):
             # Check for no-results message
             no_results = soup.find(
                 "h3", string=re.compile(r"Sorry, no results for", re.I)
@@ -184,6 +188,92 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
         result.confidence = confidence
         result.warnings = warnings
         return result
+
+    def _extract_bigcommerce_headless(
+        self,
+        soup: Any,
+        sku: str,
+        product: dict,
+        matched: list[str],
+        warnings: list[str],
+    ) -> None:
+        """Extract from BigCommerce headless/Next.js storefront HTML (2025+ redesign).
+
+        The new site uses Tailwind CSS classes and client-side rendering.
+        Product data appears in search results as:
+        - Name: link with href like /product-slug-sku -> "E-Z HANG SCALE"
+        - Brand: span.block.text-sm ("KERBL")
+        - Details: text content with patterns like "BCI#:001135"
+        """
+        # Find product links that look like product pages
+        # BigCommerce headless uses slug-based URLs like /e-z-hang-scale-silver-up-to-55-lb-001135
+        product_link = None
+        for a in soup.select('a[href]'):
+            href = a.get('href', '')
+            text = a.get_text(strip=True)
+            # Match product links: href contains the SKU or text looks like a product name
+            if sku in href and '/' in href and len(text) > 3:
+                product_link = a
+                break
+
+        if not product_link:
+            return
+
+        product["name"] = product_link.get_text(strip=True)
+        matched.append("name")
+
+        # Find the parent container that has all product details
+        # Walk up to find a div that contains both the link and detail text
+        container = product_link.parent
+        for _ in range(5):  # Max 5 levels up
+            if container is None or not hasattr(container, 'get_text'):
+                break
+            text = container.get_text()
+            if sku in text and 'BCI#' in text:
+                break
+            container = container.parent
+
+        if container is None:
+            return
+
+        # Extract brand: look for a span near the product name
+        # In BigCommerce headless, brand is in a span.block.text-sm
+        card_text = container.get_text()
+        for span in container.select('span[class*="text-sm"]'):
+            text = span.get_text(strip=True)
+            if text and len(text) < 50 and text != product.get('name'):
+                if not any(c.isdigit() for c in text) and ':' not in text:
+                    product['brand'] = text
+                    matched.append('brand')
+                    break
+
+        # Extract detail fields from text content
+        detail_patterns = {
+            r'BCI#:\s*(\S+)': 'bci_item_number',
+            r'Manufacturer #:\s*(\S+)': 'manufacturer_number',
+            r'UPC Code:\s*(\S+)': 'upc',
+            r'Size:\s*([^A-Z]+)': 'size',
+            r'Type:\s*(\S+)': 'type',
+            r'Case Pack:\s*(\S+)': 'case_pack',
+        }
+        for pattern, field in detail_patterns.items():
+            match = re.search(pattern, card_text)
+            if match:
+                product[field] = match.group(1).strip()
+                if field not in matched:
+                    matched.append(field)
+
+        # Extract images from the product card area
+        images = []
+        for img in container.select('img[src]'):
+            src = img.get('src', '')
+            if src and ('bigcommerce' in src or 'products' in src or 'cdn' in src):
+                if src.startswith('//'):
+                    src = 'https:' + src
+                images.append(src)
+        if images:
+            product['image_urls'] = images
+            matched.append('image_urls')
 
     def _extract_with_regex(
         self, html: str, sku: str, url: str
