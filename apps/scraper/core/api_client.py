@@ -334,6 +334,7 @@ class ScraperAPIClient:
 
         payload_dict: dict[str, Any] = {
             "runner_name": runner_name or self.runner_name,
+            "max_attempts": 1,
         }
         payload = json.dumps(payload_dict)
 

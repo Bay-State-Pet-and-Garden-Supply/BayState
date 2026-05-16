@@ -13,6 +13,9 @@ __pycache__/
 .agents/skills/scraper-config-builder-workspace/
 baystate_scraper.egg-info/
 
+# Benchmark outputs and temp files
+.tmp/
+
 # Generated runtime outputs
 reports/
 data/analytics/

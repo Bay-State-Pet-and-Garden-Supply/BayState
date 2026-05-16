@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from scrapers.approved_sources.executor import ApprovedSourceExecutor
+from scrapers.approved_sources.result_builder import build_success_result
 from scrapers.approved_sources.types import (
     ApprovedSourcePlan,
     ApprovedSourcePlanEntry,
@@ -248,3 +249,226 @@ class TestExecutor:
         # Bradley adapter finds name+brand from HTML, confidence should be >= 0.7
         # Should return success or partial
         assert result.status in ("success", "partial"), f"Expected success/partial but got {result.status}: {result.validation.warnings}"
+
+    # ------------------------------------------------------------------ #
+    # Approved-source executor orchestration tests (benchmark plan Phase 3)
+    # ------------------------------------------------------------------ #
+
+    @patch(
+        "scrapers.approved_sources.adapters.official_brand.OfficialBrandAdapter.extract",
+        new_callable=AsyncMock,
+    )
+    @patch("scrapers.approved_sources.adapters.bradley.BradleyAdapter._fetch_html")
+    def test_selected_distributor_succeeds_skips_official_fallback(
+        self, mock_bradley_fetch, mock_official_extract
+    ):
+        """When Bradley succeeds, official brand fallback is NOT called."""
+        mock_bradley_fetch.return_value = SAMPLE_BRADLEY_HTML
+        mock_official_extract.return_value = build_success_result(
+            sku="001135",
+            source_slug="official_brand",
+            source_type="official_brand",
+            evidence_url="https://example.com/product",
+            product_fields={"name": "Official Product", "brand": "Brand"},
+            matched_fields=["name", "brand"],
+            overall_confidence=0.85,
+            llm_used=True,
+        )
+
+        entries = [
+            ApprovedSourcePlanEntry(
+                sourceType="distributor",
+                sourceSlug="bradley",
+                displayName="Bradley Caldwell",
+                domains=["bradleycaldwell.com"],
+                assetDomains=["bradleycaldwell.com"],
+                adapterSlug="bradley_crawl4ai",
+                requiresAuth=False,
+                searchMode="sku_search",
+                allowedFields=["name", "brand"],
+                priority=10,
+                runFirst=True,
+            ),
+        ]
+        plan = _make_plan(entries=entries, llm_enabled=True)
+        mock_extractor = MagicMock()
+        mock_extractor.api_client = None
+
+        executor = ApprovedSourceExecutor(plan=plan, extractor=mock_extractor)
+        import asyncio
+
+        result = asyncio.run(executor.execute())
+
+        # Bradley should succeed, skip official fallback
+        assert result.status in ("success", "partial")
+        assert result.source.source_slug == "bradley"
+        assert "E-Z HANG SCALE" in (result.product.name or "")
+        mock_official_extract.assert_not_called()
+
+    @patch("scrapers.approved_sources.adapters.central_pet.CentralPetAdapter._fetch_html")
+    def test_no_match_fallback_disabled_returns_failed(self, mock_cp_fetch):
+        """When Central Pet returns no-match and llmPolicy.enabled=False, result is failed."""
+        mock_cp_fetch.return_value = SAMPLE_NO_MATCH_HTML
+
+        entries = [
+            ApprovedSourcePlanEntry(
+                sourceType="distributor",
+                sourceSlug="central_pet",
+                displayName="Central Pet",
+                domains=["centralpet.com"],
+                assetDomains=["centralpet.com"],
+                adapterSlug="central_pet_crawl4ai",
+                requiresAuth=False,
+                searchMode="sku_search",
+                allowedFields=["name", "brand"],
+                priority=10,
+                runFirst=True,
+            ),
+        ]
+        plan = _make_plan(entries=entries, llm_enabled=False)
+        mock_extractor = MagicMock()
+        mock_extractor.api_client = None
+
+        executor = ApprovedSourceExecutor(plan=plan, extractor=mock_extractor)
+        import asyncio
+
+        result = asyncio.run(executor.execute())
+
+        assert result.status == "failed"
+        assert result.decision == "failed"
+        # No fallback means the official brand adapter is never instantiated
+
+    @patch(
+        "scrapers.approved_sources.adapters.official_brand.OfficialBrandAdapter.extract",
+        new_callable=AsyncMock,
+    )
+    @patch("scrapers.approved_sources.adapters.central_pet.CentralPetAdapter._fetch_html")
+    def test_no_match_fallback_enabled_calls_official(
+        self, mock_cp_fetch, mock_official_extract
+    ):
+        """When Central Pet returns no-match and llmPolicy.enabled=True, official fallback runs."""
+        mock_cp_fetch.return_value = SAMPLE_NO_MATCH_HTML
+        mock_official_result = build_success_result(
+            sku="38777520",
+            source_slug="official_brand",
+            source_type="official_brand",
+            evidence_url="https://www.example.com/product",
+            product_fields={"name": "Official Product Name", "brand": "Official Brand"},
+            matched_fields=["name", "brand"],
+            overall_confidence=0.85,
+            llm_used=True,
+        )
+        mock_official_extract.return_value = mock_official_result
+
+        entries = [
+            ApprovedSourcePlanEntry(
+                sourceType="distributor",
+                sourceSlug="central_pet",
+                displayName="Central Pet",
+                domains=["centralpet.com"],
+                assetDomains=["centralpet.com"],
+                adapterSlug="central_pet_crawl4ai",
+                requiresAuth=False,
+                searchMode="sku_search",
+                allowedFields=["name", "brand"],
+                priority=10,
+                runFirst=True,
+            ),
+        ]
+        plan = _make_plan(entries=entries, llm_enabled=True)
+        mock_extractor = MagicMock()
+        mock_extractor.api_client = None
+
+        executor = ApprovedSourceExecutor(plan=plan, extractor=mock_extractor)
+        import asyncio
+
+        result = asyncio.run(executor.execute())
+
+        # Official fallback should have been called
+        mock_official_extract.assert_called_once()
+        # Result should be the official fallback result
+        assert result.status == "success"
+        assert result.source.source_slug == "official_brand"
+
+    @patch("scrapers.approved_sources.adapters.bradley.BradleyAdapter._fetch_html")
+    @patch("scrapers.approved_sources.adapters.phillips.PhillipsAdapter.check_credentials")
+    def test_auth_required_continues_to_next_source(
+        self, mock_phillips_check_creds, mock_bradley_fetch
+    ):
+        """Auth-required source fails with AUTH_REQUIRED, then next no-auth source succeeds."""
+        mock_phillips_check_creds.return_value = (False, "AUTH_REQUIRED: no credentials available")
+        mock_bradley_fetch.return_value = SAMPLE_BRADLEY_HTML
+
+        entries = [
+            ApprovedSourcePlanEntry(
+                sourceType="distributor",
+                sourceSlug="phillips",
+                displayName="Phillips",
+                domains=["shop.phillipspet.com"],
+                assetDomains=["shop.phillipspet.com"],
+                adapterSlug="phillips_crawl4ai",
+                requiresAuth=True,
+                searchMode="sku_search",
+                allowedFields=["name"],
+                priority=10,
+                runFirst=True,
+            ),
+            ApprovedSourcePlanEntry(
+                sourceType="distributor",
+                sourceSlug="bradley",
+                displayName="Bradley Caldwell",
+                domains=["bradleycaldwell.com"],
+                assetDomains=["bradleycaldwell.com"],
+                adapterSlug="bradley_crawl4ai",
+                requiresAuth=False,
+                searchMode="sku_search",
+                allowedFields=["name", "brand"],
+                priority=20,
+                runFirst=False,
+            ),
+        ]
+        plan = _make_plan(entries=entries, llm_enabled=False)
+        mock_extractor = MagicMock()
+        mock_extractor.api_client = None
+
+        executor = ApprovedSourceExecutor(plan=plan, extractor=mock_extractor)
+        import asyncio
+
+        result = asyncio.run(executor.execute())
+
+        # Should get Bradley's success, not Phillips' failure
+        assert result is not None
+        assert result.status in ("success", "partial")
+        assert result.source.source_slug == "bradley"
+        # Ensure the auth-required result is recorded in source_results
+        source_slugs = [s.sourceSlug for s in result.source_results]
+        assert "bradley" in source_slugs
+
+    def test_empty_priority_plan_fallback_disabled_fails_closed(self):
+        """Plan with no priority entries and fallback disabled returns failed."""
+        plan = ApprovedSourcePlan(
+            sku="001135",
+            input={"name": "Test Product", "price": None},
+            brand=ApprovedSourceBrand(id="brand-1", name="KERBL", slug="kerbl"),
+            selectedDistributorSlug=None,
+            priority=[],
+            sourcePolicy=ApprovedSourcePolicy(
+                allowedDomains=[],
+                allowedAssetDomains=[],
+                disallowedDomains=["amazon.com", "chewy.com"],
+                approvedSourcesOnly=True,
+            ),
+            llmPolicy=ApprovedSourceLLMPolicy(enabled=False),
+        )
+        mock_extractor = MagicMock()
+        mock_extractor.api_client = None
+
+        executor = ApprovedSourceExecutor(plan=plan, extractor=mock_extractor)
+        import asyncio
+
+        result = asyncio.run(executor.execute())
+
+        assert result is not None
+        assert result.status == "failed"
+        assert result.decision == "failed"
+        # Should not crash when no adapter slugs are in the plan
