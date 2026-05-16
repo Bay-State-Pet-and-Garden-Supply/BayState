@@ -105,22 +105,45 @@ def _format_error_response(response: httpx.Response, max_length: int = 200) -> s
     Attempts to parse JSON error messages first; falls back to truncated raw text.
     """
     try:
-        data = response.json()
-        if isinstance(data, dict):
-            msg = data.get("message") or data.get("error") or data.get("detail")
-            if msg:
-                return str(msg)[:max_length]
-            return json.dumps(data)[:max_length]
+        # Only attempt JSON parse if content-type suggests it
+        content_type = response.headers.get("Content-Type", "").lower()
+        if "application/json" in content_type:
+            data = response.json()
+            if isinstance(data, dict):
+                msg = data.get("message") or data.get("error") or data.get("detail")
+                if msg:
+                    return str(msg)[:max_length]
+                return json.dumps(data)[:max_length]
     except Exception:
         pass
+
+    # Efficiently peek at the start of the body for HTML/RSC noise
+    # We use .content[:4096] to avoid decoding a massive body if it's large HTML
+    try:
+        prefix = response.content[:4096].decode("utf-8", errors="ignore").lower()
+    except Exception:
+        prefix = ""
+
+    # Next.js / RSC noise detection patterns
+    # - Standard HTML tags
+    # - self.__next_f (Next.js client-side router/streaming)
+    # - ["$ (RSC payload start)
+    # - ]$ (RSC payload end)
+    is_noise = (
+        prefix.startswith("<!doctype") or
+        "<html" in prefix or
+        "self.__next_f" in prefix or
+        prefix.startswith('["$') or
+        prefix.startswith('1:[')
+    )
+
+    if is_noise:
+        # Return a concise summary instead of the noisy body
+        return f"HTML/RSC Response ({len(response.content)} bytes)"
 
     text = response.text.strip()
     if not text:
         return "Empty response body"
-
-    # Next.js / RSC noise detection
-    if text.startswith("<!DOCTYPE") or "<html" in text.lower() or "self.__next_f" in text:
-        return f"HTML/RSC Response ({len(text)} bytes)"
 
     if len(text) > max_length:
         return f"{text[:max_length]}... (truncated)"
@@ -311,7 +334,13 @@ class ScraperAPIClient:
 
                     # Raise for status on HTTP errors
                     response.raise_for_status()
-                    return response.json()
+                    
+                    try:
+                        return response.json()
+                    except (json.JSONDecodeError, TypeError) as e:
+                        # 200 OK but not JSON - common in Next.js dev for "compiling" pages
+                        error_msg = f"Failed to parse JSON response from {endpoint}: {_format_error_response(response)}"
+                        raise ValueError(error_msg) from e
 
             except httpx.HTTPStatusError as e:
                 status_code = e.response.status_code

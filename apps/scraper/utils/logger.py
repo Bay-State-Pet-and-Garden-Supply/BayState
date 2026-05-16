@@ -25,11 +25,19 @@ class JSONFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         """Format the log record as a JSON string."""
+        message = record.getMessage()
+
+        # Defense-in-depth: Truncate extremely large messages that would flood the terminal.
+        # This protects against any unexpected massive output from dependencies or errors.
+        max_msg_size = 8192
+        if len(message) > max_msg_size:
+            message = f"{message[:max_msg_size]}... (truncated {len(message)} bytes)"
+
         log_data: dict[str, Any] = {
             "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
-            "message": record.getMessage(),
+            "message": message,
         }
 
         # Add optional fields from record if present
