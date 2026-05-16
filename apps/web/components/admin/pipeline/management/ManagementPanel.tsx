@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import type { PipelineProduct } from '@/lib/pipeline/types';
 import type { Brand } from '@/lib/types';
 import { BrandAssignmentSection } from './BrandAssignmentSection';
+import { OfficialDomainsSection } from './OfficialDomainsSection';
 
 interface ManagementPanelProps {
   selection: {
@@ -20,6 +21,7 @@ interface ManagementPanelProps {
 export function ManagementPanel({ selection, onSuccess }: ManagementPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
+  const [domains, setDomains] = useState<string[]>([]);
 
   if (selection.skus.size === 0 && !selection.cohortId) {
     return (
@@ -46,6 +48,11 @@ export function ManagementPanel({ selection, onSuccess }: ManagementPanelProps) 
         <BrandAssignmentSection 
           selectedBrand={selectedBrand}
           onBrandChange={setSelectedBrand}
+        />
+
+        <OfficialDomainsSection 
+          domains={domains}
+          onDomainsChange={setDomains}
         />
       </div>
 
