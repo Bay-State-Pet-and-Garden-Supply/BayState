@@ -318,6 +318,19 @@ async def main_async():
         logger.error("Missing SCRAPER_API_URL or SCRAPER_API_KEY. Cannot start daemon.")
         sys.exit(1)
 
+    # Wait for API to become available (dev mode hygiene)
+    max_wait_seconds = 30
+    start_wait = time.time()
+    logger.info(f"Waiting for API at {client.api_url} to become available...")
+    while time.time() - start_wait < max_wait_seconds:
+        if client.health_check():
+            logger.info("API is available. Proceeding...")
+            break
+        logger.info("API not yet available, retrying...")
+        await asyncio.sleep(2)
+    else:
+        logger.warning(f"API at {client.api_url} did not become healthy within {max_wait_seconds}s. Proceeding anyway, but expect initial errors.")
+
 
 
     logger.info("=" * 60)

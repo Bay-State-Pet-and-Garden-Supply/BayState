@@ -99,6 +99,34 @@ class ConfigFetchError(Exception):
         super().__init__(message)
 
 
+def _format_error_response(response: httpx.Response, max_length: int = 200) -> str:
+    """Safely format an error response body for logging, truncating if necessary.
+
+    Attempts to parse JSON error messages first; falls back to truncated raw text.
+    """
+    try:
+        data = response.json()
+        if isinstance(data, dict):
+            msg = data.get("message") or data.get("error") or data.get("detail")
+            if msg:
+                return str(msg)[:max_length]
+            return json.dumps(data)[:max_length]
+    except Exception:
+        pass
+
+    text = response.text.strip()
+    if not text:
+        return "Empty response body"
+
+    # Next.js / RSC noise detection
+    if text.startswith("<!DOCTYPE") or "<html" in text.lower() or "self.__next_f" in text:
+        return f"HTML/RSC Response ({len(text)} bytes)"
+
+    if len(text) > max_length:
+        return f"{text[:max_length]}... (truncated)"
+    return text
+
+
 def normalize_selectors_payload(raw_selectors: Any) -> list[dict[str, Any]]:
     """Normalize selectors payload from coordinator into list format."""
     if isinstance(raw_selectors, list):
@@ -295,7 +323,7 @@ class ScraperAPIClient:
 
                 last_exception = e
                 logger.warning(
-                    f"API request failed (attempt {attempt + 1}/{self.max_retries + 1}): {status_code} - {e.response.text[:200]}. Retrying in {delay:.1f}s..."
+                    f"API request failed (attempt {attempt + 1}/{self.max_retries + 1}): {status_code} - {_format_error_response(e.response)}. Retrying in {delay:.1f}s..."
                 )
 
             except (httpx.NetworkError, httpx.TimeoutException) as e:
@@ -374,7 +402,7 @@ class ScraperAPIClient:
             if e.response.status_code in {404, 204}:
                 logger.debug("No pending enrichment attempts available")
                 return None
-            logger.error(f"Failed to claim enrichment: {e.response.status_code} - {e.response.text}")
+            logger.error(f"Failed to claim enrichment: {e.response.status_code} - {_format_error_response(e.response)}")
             return None
         except Exception as e:
             logger.error(f"Error claiming enrichment: {e}")
@@ -453,7 +481,7 @@ class ScraperAPIClient:
         except RunnerBuildMismatchError:
             raise
         except httpx.HTTPStatusError as e:
-            logger.error(f"Failed to submit enrichment result: {e.response.status_code} - {e.response.text}")
+            logger.error(f"Failed to submit enrichment result: {e.response.status_code} - {_format_error_response(e.response)}")
             return False
         except Exception as e:
             logger.error(f"Error submitting enrichment result: {e}")
@@ -509,7 +537,7 @@ class ScraperAPIClient:
         except RunnerBuildMismatchError:
             raise
         except httpx.HTTPStatusError as e:
-            logger.error(f"Heartbeat failed: {e.response.status_code} - {e.response.text}")
+            logger.error(f"Heartbeat failed: {e.response.status_code} - {_format_error_response(e.response)}")
             return False
         except Exception as e:
             logger.error(f"Heartbeat error: {e}")

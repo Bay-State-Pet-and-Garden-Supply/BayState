@@ -1,10 +1,14 @@
-#!/usr/bin/env python3
-from __future__ import annotations
-
 import os
 import sys
+import logging
 from pathlib import Path
 
+# Add parent directory to sys.path to allow importing from utils
+sys.path.append(str(Path(__file__).parent.parent))
+from utils.logger import setup_logging
+
+setup_logging(json_output=True, use_file_handler=False)
+logger = logging.getLogger("health_check")
 
 MB = 1024 * 1024
 MAX_MEMORY_LIMIT_SENTINEL = 1 << 60
@@ -199,10 +203,10 @@ def main() -> int:
             failures.append(f"{name}: {message}")
 
     if failures:
-        print("UNHEALTHY - " + " | ".join(failures), file=sys.stderr)
+        logger.error("UNHEALTHY - " + " | ".join(failures))
         return 1
 
-    print("HEALTHY - " + " | ".join(messages))
+    logger.info("HEALTHY - " + " | ".join(messages))
     return 0
 
 
