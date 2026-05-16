@@ -62,5 +62,5 @@ ai_debug.log
 # Supabase
 .supabase_env
 supabase/.temp/
-supabase/config.toml
+# supabase/config.toml
 supabase/.branch
