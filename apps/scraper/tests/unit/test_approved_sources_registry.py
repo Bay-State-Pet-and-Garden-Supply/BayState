@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from scrapers.approved_sources.adapters.registry import (
-    ADAPTER_ALIASES,
     normalize_adapter_slug,
     get_adapter_class,
     list_adapters,

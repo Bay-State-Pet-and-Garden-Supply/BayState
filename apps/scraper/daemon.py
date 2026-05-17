@@ -37,7 +37,7 @@ import sys
 import time
 import asyncio
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from dotenv import load_dotenv
 
@@ -113,7 +113,6 @@ except Exception:
     # package". Use importlib to load modules by full package path to avoid
     # implicit-relative-import diagnostics from static checkers.
     import importlib
-    from typing import Any
 
     api_mod = importlib.import_module("apps.scraper.core.api_client")
     ScraperAPIClient = getattr(api_mod, "ScraperAPIClient")

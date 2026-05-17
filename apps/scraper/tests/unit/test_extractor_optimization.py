@@ -11,7 +11,7 @@ class TestCrawl4AIExtractorOptimization:
     @pytest.fixture
     def extractor(self):
         """Initialize extractor with default settings."""
-        return Crawl4AIExtractor(
+        ext = Crawl4AIExtractor(
             headless=True,
             llm_model="gemini-3.1-flash-lite-preview",
             scoring=MagicMock(),
@@ -20,6 +20,13 @@ class TestCrawl4AIExtractorOptimization:
             llm_provider="gemini",
             llm_api_key="test-key",
         )
+        # Mock _enrich_images as a passthrough — these tests exercise the LLM
+        # pipeline, not image enrichment. Without this, merge_product_images
+        # raises TypeError on MagicMock-backed scoring/matching internals.
+        async def _passthrough_enrich(result_data, **_kwargs):
+            return dict(result_data), {}
+        ext._enrich_images = _passthrough_enrich
+        return ext
 
     @pytest.mark.asyncio
     async def test_extract_uses_optimized_params(self, extractor):
@@ -427,7 +434,13 @@ class TestCrawl4AIExtractorOptimization:
             "markdown": "product markdown",
         }
         extractor._extraction.extract_product_from_html_jsonld = MagicMock(
-            return_value={"product_name": "Structured Product", "confidence": 0.2}
+            return_value={
+                "product_name": "Structured Product",
+                "confidence": 0.2,
+                "description": "Structured Description",
+                "size_metrics": "Structured Size",
+                "categories": ["Pet Supply"],
+            }
         )
 
         with patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine):

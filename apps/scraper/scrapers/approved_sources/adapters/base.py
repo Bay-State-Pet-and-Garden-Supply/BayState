@@ -7,11 +7,9 @@ Provides:
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from abc import ABC, abstractmethod
 from typing import Any
-from urllib.parse import urljoin
 
 from scrapers.approved_sources.types import (
     ApprovedSourceExtractionResult,
@@ -21,7 +19,6 @@ from scrapers.approved_sources.types import (
 )
 from scrapers.ai_search.enrichment_models import EnrichmentResultV1
 from scrapers.approved_sources.auth import (
-    get_login_config,
     get_default_login_manager,
     resolve_credentials,
 )

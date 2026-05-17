@@ -7,7 +7,6 @@ Main orchestration logic is in executor.py.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from scrapers.approved_sources.executor import ApprovedSourceExecutor
 from scrapers.approved_sources.types import ApprovedSourcePlan

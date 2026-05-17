@@ -12,13 +12,10 @@ Tests cover:
 
 from __future__ import annotations
 
-import asyncio
 import pytest
 
 from scrapers.approved_sources.auth import (
     ApprovedSourceLoginManager,
-    LoginAutomationConfig,
-    LoginResult,
     AuthenticatedSessionState,
     get_login_config,
     resolve_credentials,
@@ -26,7 +23,6 @@ from scrapers.approved_sources.auth import (
     ORGILL_LOGIN,
     PHILLIPS_LOGIN,
     PFE_LOGIN,
-    LOGIN_CONFIG_MAP,
 )
 
 
@@ -316,7 +312,6 @@ class TestJSCodeGeneration:
 
         This test checks the JS itself; actual logging safety is in auth.py.
         """
-        import logging
         manager = ApprovedSourceLoginManager()
         js_code = await manager._generate_login_js_code(
             ORGILL_LOGIN,

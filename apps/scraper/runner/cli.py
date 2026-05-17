@@ -1,17 +1,12 @@
 from __future__ import annotations
 
 import argparse
-import asyncio
-import json
 import logging
 import os
 import sys
-from pathlib import Path
-from typing import Any
 
 from core.api_client import ConnectionError
 from core.api_client import ScraperAPIClient
-from utils.logging_handlers import JobLoggingSession
 from utils.structured_logging import setup_structured_logging
 
 logger = logging.getLogger(__name__)

@@ -21,7 +21,6 @@ import os
 import time
 from dataclasses import dataclass, field
 from typing import Any
-from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 

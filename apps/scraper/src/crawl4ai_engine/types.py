@@ -90,6 +90,10 @@ class EngineConfig:
     browser_type: str = "chromium"  # chromium, firefox, webkit
     timeout: int = 30
     max_concurrent_crawls: int = 5
+    text_mode: bool = False
+    light_mode: bool = False
+    avoid_ads: bool = True
+    avoid_css: bool = False
 
     # Retry settings
     enable_retry: bool = False

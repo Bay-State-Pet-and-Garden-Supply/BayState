@@ -9,7 +9,6 @@ via failing tests. Task 7 will implement the engine to make these pass.
 
 from __future__ import annotations
 
-import pytest
 
 
 # ---------------------------------------------------------------------------

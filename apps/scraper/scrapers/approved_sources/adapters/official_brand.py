@@ -55,10 +55,6 @@ class OfficialBrandAdapter(ApprovedSourceAdapter):
         Returns EnrichmentResultV1 on success/partial, or None if no
         approved candidate was found (caller should fail closed).
         """
-        from scrapers.approved_sources.result_builder import (
-            build_failed_result,
-            build_policy_blocked_result,
-        )
 
         sku = self.plan.sku
         product_name = self.plan.input.get("name") if self.plan.input else None

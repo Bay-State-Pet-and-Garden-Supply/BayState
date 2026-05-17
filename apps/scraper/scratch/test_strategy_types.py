@@ -1,5 +1,5 @@
 import asyncio
-from crawl4ai.extraction_strategy import LLMExtractionStrategy, JsonCssExtractionStrategy
+from crawl4ai.extraction_strategy import LLMExtractionStrategy
 from crawl4ai import LLMConfig
 from pydantic import BaseModel, Field
 

@@ -28,7 +28,6 @@ from scrapers.approved_sources.auth import (
     ORGILL_LOGIN,
     PHILLIPS_LOGIN,
     PFE_LOGIN,
-    resolve_credentials,
 )
 from scrapers.approved_sources.adapters.registry import get_adapter_class
 from scrapers.approved_sources.types import (

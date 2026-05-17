@@ -9,7 +9,6 @@ decision, llm_used, and source_results fields.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any
 
 from scrapers.ai_search.enrichment_models import (

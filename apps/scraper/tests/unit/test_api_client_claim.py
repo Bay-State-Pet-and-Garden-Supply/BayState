@@ -11,7 +11,7 @@ Verifies:
 from __future__ import annotations
 
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from core.api_client import ScraperAPIClient, ClaimedEnrichment
 

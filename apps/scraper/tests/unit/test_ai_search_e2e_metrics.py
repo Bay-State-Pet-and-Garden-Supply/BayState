@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import pytest
 
 from benchmarks.ai_search.dataset import ExtractionGroundTruth
 from benchmarks.ai_search.metrics import (
     EndToEndResultRow,
-    ExtractionMetadata,
     FieldQualityMetrics,
     PipelineStageMetrics,
     TimingMetrics,

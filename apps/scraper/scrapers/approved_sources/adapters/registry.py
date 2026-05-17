@@ -15,7 +15,6 @@ Aliases supported:
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from scrapers.approved_sources.adapters.base import ApprovedSourceAdapter
 

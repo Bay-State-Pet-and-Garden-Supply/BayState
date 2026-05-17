@@ -27,12 +27,10 @@ from typing import Any
 
 from scrapers.approved_sources.adapters.registry import (
     get_adapter_class,
-    normalize_adapter_slug,
 )
 from scrapers.approved_sources.types import (
     ApprovedSourcePlan,
     ApprovedSourcePlanEntry,
-    ApprovedSourcePolicy,
 )
 from scrapers.ai_search.enrichment_models import EnrichmentResultV1
 

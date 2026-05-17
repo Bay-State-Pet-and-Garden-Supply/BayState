@@ -29,7 +29,14 @@ def _normalize_base_url(value: str | None) -> str | None:
     if normalized is None:
         return None
 
-    return normalized.rstrip("/")
+    url = normalized.rstrip("/")
+    # Defensively correct common misconfigurations for local LM Studio endpoints:
+    # If the user configured http://localhost:1234/api/v1, LM Studio expects http://localhost:1234/v1
+    if "localhost:1234/api/v1" in url:
+        url = url.replace("localhost:1234/api/v1", "localhost:1234/v1")
+    elif "127.0.0.1:1234/api/v1" in url:
+        url = url.replace("127.0.0.1:1234/api/v1", "127.0.0.1:1234/v1")
+    return url
 
 
 def normalize_llm_provider(value: str | None) -> LLMProvider:

@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 
 from scrapers.approved_sources.executor import ApprovedSourceExecutor
 from scrapers.approved_sources.result_builder import build_success_result

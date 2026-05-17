@@ -1,0 +1,108 @@
+{
+  "timestamp": "2026-05-17_17-34-51",
+  "total": 8,
+  "successful": 7,
+  "results": [
+    {
+      "sku": "OPFM-WCSDF-3.5",
+      "brand": "Open Farm",
+      "success": true,
+      "match_rate": 0.5,
+      "resolver_status": null,
+      "extraction_time_ms": 1176.5904170461,
+      "error": null,
+      "fields_matched": {
+        "name": true,
+        "brand": false
+      }
+    },
+    {
+      "sku": "OPFM-HRDD-3.5",
+      "brand": "Open Farm",
+      "success": true,
+      "match_rate": 0.5,
+      "resolver_status": null,
+      "extraction_time_ms": 983.1727906130254,
+      "error": null,
+      "fields_matched": {
+        "name": true,
+        "brand": false
+      }
+    },
+    {
+      "sku": "072357002006",
+      "brand": "Espoma",
+      "success": true,
+      "match_rate": 1.0,
+      "resolver_status": null,
+      "extraction_time_ms": 661.513667088002,
+      "error": null,
+      "fields_matched": {
+        "name": true,
+        "brand": true
+      }
+    },
+    {
+      "sku": "8818",
+      "brand": "Weruva",
+      "success": true,
+      "match_rate": 1.0,
+      "resolver_status": null,
+      "extraction_time_ms": 914.617667440325,
+      "error": null,
+      "fields_matched": {
+        "name": true,
+        "brand": true
+      }
+    },
+    {
+      "sku": "944",
+      "brand": "Muenster",
+      "success": true,
+      "match_rate": 0.0,
+      "resolver_status": null,
+      "extraction_time_ms": 742.5783751532435,
+      "error": null,
+      "fields_matched": {
+        "name": false,
+        "brand": false
+      }
+    },
+    {
+      "sku": "032247886598",
+      "brand": "Scotts",
+      "success": false,
+      "match_rate": 0.0,
+      "resolver_status": null,
+      "extraction_time_ms": 0.0,
+      "error": "Extraction returned None or no product_name",
+      "fields_matched": {}
+    },
+    {
+      "sku": "NV-DOG-LAMB-4.5",
+      "brand": "Nulo",
+      "success": true,
+      "match_rate": 0.5,
+      "resolver_status": null,
+      "extraction_time_ms": 1090.3578749857843,
+      "error": null,
+      "fields_matched": {
+        "name": false,
+        "brand": true
+      }
+    },
+    {
+      "sku": "073219020014",
+      "brand": "Espoma",
+      "success": true,
+      "match_rate": 1.0,
+      "resolver_status": null,
+      "extraction_time_ms": 835.1581669412553,
+      "error": null,
+      "fields_matched": {
+        "name": true,
+        "brand": true
+      }
+    }
+  ]
+}

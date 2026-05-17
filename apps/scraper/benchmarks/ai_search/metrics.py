@@ -61,6 +61,8 @@ class ExtractionMetadata:
     fallback_triggered: bool = False
     extraction_error: str | None = None
     estimated_cost_usd: float = 0.0
+    resolver_status: str | None = None
+
 
 
 @dataclass(frozen=True)

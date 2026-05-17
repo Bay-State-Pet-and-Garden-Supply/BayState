@@ -17,6 +17,8 @@ from scrapers.approved_sources.adapters.base import BaseDistributorCrawl4AIAdapt
 from scrapers.approved_sources.types import (
     ApprovedSourceExtractionResult,
     FailureCode,
+    ApprovedSourcePlanEntry,
+    ApprovedSourcePlan,
 )
 
 logger = logging.getLogger(__name__)

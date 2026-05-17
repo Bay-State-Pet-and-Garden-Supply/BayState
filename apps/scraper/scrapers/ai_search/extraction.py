@@ -394,8 +394,10 @@ class ExtractionUtils:
                 all_candidates[target]["score"] += score_bonus
 
         # 1. Collect from all sources
-        for img in jsonld_images: add_candidate(img, "json-ld", score_bonus=3)
-        for img in meta_images: add_candidate(img, "meta", score_bonus=2)
+        for img in jsonld_images:
+            add_candidate(img, "json-ld", score_bonus=3)
+        for img in meta_images:
+            add_candidate(img, "meta", score_bonus=2)
         
         # Crawl4AI media
         crawl_imgs = crawl_media.get("images", [])
@@ -410,7 +412,8 @@ class ExtractionUtils:
                 injected_urls = json.loads(injected_match.group(1))
                 for url in injected_urls:
                     add_candidate(url, "injected-script", score_bonus=1)
-            except: pass
+            except Exception:
+                pass
 
         # 2. Scoring loop
         product_slug = self._normalize_lookup_token(expected_product_name)
@@ -439,14 +442,18 @@ class ExtractionUtils:
             media = data["media_info"]
             if media:
                 score += float(media.get("score", 0)) * 2.0
-                if self._coerce_int(media.get("width"), 0) > 600: score += 2.0
-                if self._coerce_int(media.get("height"), 0) > 600: score += 2.0
+                if self._coerce_int(media.get("width"), 0) > 600:
+                    score += 2.0
+                if self._coerce_int(media.get("height"), 0) > 600:
+                    score += 2.0
                       
             # Semantic Content Boundary Detection
             # We try to identify where the "Main Content" starts to avoid header/nav noise
             content_start_offset = html_lower.find("<h1")
-            if content_start_offset == -1: content_start_offset = html_lower.find("<main")
-            if content_start_offset == -1: content_start_offset = 0
+            if content_start_offset == -1:
+                content_start_offset = html_lower.find("<main")
+            if content_start_offset == -1:
+                content_start_offset = 0
             
             # DOM Position (rough via offset in HTML)
             img_offset = html_lower.find(target.lower())
@@ -507,8 +514,10 @@ class ExtractionUtils:
         return sorted_urls, diagnostics
 
     def _coerce_int(self, value: Any, default: int) -> int:
-        try: return int(float(value))
-        except: return default
+        try:
+            return int(float(value))
+        except Exception:
+            return default
 
     def extract_image_urls(self, value: Any) -> list[str]:
         """Extract image URLs from JSON-LD string/list/dict shapes."""

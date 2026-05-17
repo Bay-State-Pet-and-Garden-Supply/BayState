@@ -374,6 +374,7 @@ def _normalize_weekly_result(item: ReviewedResult | EvaluationResult | dict[str,
             "field_accuracy": {comparison.field_name: round(float(comparison.match_score), 4) for comparison in item.field_comparisons},
             "extracted_data": {comparison.field_name: _serialize_value(comparison.actual) for comparison in item.field_comparisons},
             "reviewed_data": {comparison.field_name: _serialize_value(comparison.expected) for comparison in item.field_comparisons},
+            "cost": float(getattr(item, "cost", 0.0)),
         }
 
     if isinstance(item, ReviewedResult):
@@ -402,6 +403,7 @@ def _normalize_weekly_result(item: ReviewedResult | EvaluationResult | dict[str,
                 "price": None,
                 "images": None,
             },
+            "cost": float(getattr(item, "cost", 0.0)),
         }
 
     payload = _coerce_mapping(item)
@@ -431,6 +433,7 @@ def _normalize_weekly_result(item: ReviewedResult | EvaluationResult | dict[str,
         "field_accuracy": {str(key): round(float(value), 4) for key, value in field_accuracy_raw.items() if isinstance(value, (int, float))},
         "extracted_data": {str(key): _serialize_value(value) for key, value in extracted_data.items()},
         "reviewed_data": {str(key): _serialize_value(value) for key, value in reviewed_data.items()},
+        "cost": float(payload.get("cost", 0.0)),
     }
 
 

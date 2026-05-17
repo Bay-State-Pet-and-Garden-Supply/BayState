@@ -1,0 +1,168 @@
+[
+  {
+    "sku": "OPFM-WCSDF-3.5",
+    "brand": "Open Farm",
+    "name": "Open Farm Wild Caught Salmon Grain Free Dry Dog Food",
+    "description": "Wild-caught salmon dry dog food, rich in Omega-3 for dogs. Hypoallergenic and high fiber to support digestive health.",
+    "size_metrics": "4 lb",
+    "images": [],
+    "categories": ["Dog Food", "Grain Free", "Salmon"],
+    "expected_source_url": "https://openfarmpet.com/products/wild-caught-salmon-dry-dog-food",
+    "expected_source_domain": "openfarmpet.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "images", "size_metrics"],
+    "difficulty": "medium",
+    "variant_resolution": {
+      "platform": "shopify",
+      "is_family_page": true,
+      "expected_resolver_status": "exact_variant",
+      "variant_distinguishing_field": "size_metrics",
+      "notes": "Shopify store with multiple bag sizes (3.5lb, 11lb, 22lb). Products endpoint at /products/{handle}.json available."
+    }
+  },
+  {
+    "sku": "OPFM-HRDD-3.5",
+    "brand": "Open Farm",
+    "name": "Open Farm Homestead Turkey & Chicken Grain Free Dry Dog Food",
+    "description": "Homestead turkey and chicken recipe dry dog food with ethically sourced poultry.",
+    "size_metrics": "4 lb",
+    "images": [],
+    "categories": ["Dog Food", "Grain Free", "Turkey", "Chicken"],
+    "expected_source_url": "https://openfarmpet.com/products/homestead-turkey-chicken-dry-dog-food",
+    "expected_source_domain": "openfarmpet.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "images", "size_metrics"],
+    "difficulty": "medium",
+    "variant_resolution": {
+      "platform": "shopify",
+      "is_family_page": true,
+      "expected_resolver_status": "exact_variant",
+      "variant_distinguishing_field": "size_metrics",
+      "notes": "Another Shopify variant page — same store, different product. Good for testing consistency."
+    }
+  },
+  {
+    "sku": "072357002006",
+    "brand": "Espoma",
+    "name": "Espoma Organic Blood Meal 3 lb",
+    "description": "All natural organic nitrogen fertilizer. Provides a slow release of nitrogen for steady feeding.",
+    "size_metrics": "3 lb",
+    "images": [],
+    "categories": ["Organic Fertilizer", "Blood Meal", "Soil Amendment"],
+    "expected_source_url": "https://www.espoma.com/product/blood-meal/",
+    "expected_source_domain": "espoma.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "easy",
+    "variant_resolution": {
+      "platform": "wordpress",
+      "is_family_page": false,
+      "expected_resolver_status": "not_applicable",
+      "notes": "WordPress/custom CMS — no variant selector on this page. Single product, no family."
+    }
+  },
+  {
+    "sku": "8818",
+    "brand": "Weruva",
+    "name": "Weruva Cats in the Kitchen Goldie Lox Chicken & Salmon Recipe",
+    "description": "Grain-free wet cat food featuring chicken and salmon in au jus.",
+    "size_metrics": "6oz",
+    "images": [],
+    "categories": ["Cat Food", "Wet", "Chicken", "Salmon"],
+    "expected_source_url": "https://weruva.com/products/goldie-lox-cat-can",
+    "expected_source_domain": "weruva.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "images", "size_metrics"],
+    "difficulty": "medium",
+    "variant_resolution": {
+      "platform": "shopify",
+      "is_family_page": true,
+      "expected_resolver_status": "exact_variant",
+      "variant_distinguishing_field": "size_metrics",
+      "notes": "Weruva runs on Shopify. Products have size variants (single can, case of 12, case of 24)."
+    }
+  },
+  {
+    "sku": "944",
+    "brand": "Muenster",
+    "name": "Muenster Natural Chicken & Ancient Grains Dry Dog Food",
+    "description": "Slow-roasted chicken recipe with ancient grains for adult dogs.",
+    "size_metrics": "4 lb",
+    "images": [],
+    "categories": ["Dog Food", "Chicken", "Ancient Grains"],
+    "expected_source_url": "https://muensterpet.com/products/muenster-ancient-grains-with-chicken",
+    "expected_source_domain": "muensterpet.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "images", "size_metrics"],
+    "difficulty": "medium",
+    "variant_resolution": {
+      "platform": "shopify",
+      "is_family_page": true,
+      "expected_resolver_status": "exact_variant",
+      "variant_distinguishing_field": "size_metrics",
+      "notes": "Muenster Pet is Shopify. Multiple bag sizes available."
+    }
+  },
+  {
+    "sku": "032247886598",
+    "brand": "Scotts",
+    "name": "Scotts NatureScapes Color Enhanced Mulch Deep Forest Brown 1.5 cu ft",
+    "description": "Color enhanced mulch with ColorGuard technology for year-long color. Helps soil retain moisture and prevents weeds.",
+    "size_metrics": "1.5 cu ft",
+    "images": [],
+    "categories": ["Mulch", "Garden Care", "Soil Amendment"],
+    "expected_source_url": "https://www.scotts.com/en-us/products/mulch/scotts-naturescapes-color-enhanced-mulch",
+    "expected_source_domain": "scotts.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "images", "size_metrics"],
+    "difficulty": "medium",
+    "variant_resolution": {
+      "platform": "demandware",
+      "is_family_page": true,
+      "expected_resolver_status": "ambiguous",
+      "variant_distinguishing_field": "color",
+      "notes": "Scotts runs on Salesforce Commerce Cloud (Demandware). Site currently down for maintenance."
+    }
+  },
+  {
+    "sku": "NV-DOG-LAMB-4.5",
+    "brand": "Nulo",
+    "name": "Nulo Freestyle Grain Free Adult Dog Food Lamb & Chickpeas",
+    "description": "High-protein, grain-free dry dog food with deboned lamb as the first ingredient.",
+    "size_metrics": "4.5 lb",
+    "images": [],
+    "categories": ["Dog Food", "Grain Free", "Lamb"],
+    "expected_source_url": "https://nulo.com/products/freestyle-high-protein-kibble-lamb-chickpeas-recipe",
+    "expected_source_domain": "nulo.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "images", "size_metrics"],
+    "difficulty": "medium",
+    "variant_resolution": {
+      "platform": "shopify",
+      "is_family_page": true,
+      "expected_resolver_status": "ambiguous",
+      "variant_distinguishing_field": "size_metrics",
+      "notes": "Nulo runs on Shopify Hydrogen. JS endpoints fail."
+    }
+  },
+  {
+    "sku": "073219020014",
+    "brand": "Espoma",
+    "name": "Espoma Organic Bone Meal 3 lb",
+    "description": "All natural organic phosphorus fertilizer. Promotes root development. Ideal for bulbs and transplanting.",
+    "size_metrics": "3 lb",
+    "images": [],
+    "categories": ["Organic Fertilizer", "Bone Meal", "Root Development"],
+    "expected_source_url": "https://www.espoma.com/product/bone-meal/",
+    "expected_source_domain": "espoma.com",
+    "expected_source_tier": "official",
+    "expected_fields": ["name", "brand", "description", "size_metrics"],
+    "difficulty": "easy",
+    "variant_resolution": {
+      "platform": "wordpress",
+      "is_family_page": false,
+      "expected_resolver_status": "not_applicable",
+      "notes": "WordPress/custom CMS — single product page, no variant selector."
+    }
+  }
+]

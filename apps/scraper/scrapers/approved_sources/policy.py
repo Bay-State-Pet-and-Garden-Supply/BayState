@@ -8,7 +8,6 @@ even if they mistakenly appear in an allowed list.
 from __future__ import annotations
 
 import logging
-from typing import Any
 from urllib.parse import urlparse
 
 from scrapers.approved_sources.types import (

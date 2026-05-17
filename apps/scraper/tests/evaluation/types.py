@@ -65,6 +65,8 @@ class EvaluationResult:
     timestamp: datetime = field(default_factory=datetime.utcnow)
     error_message: str | None = None
     extraction_time_ms: float | None = None
+    cost: float = 0.0
+
 
     def __post_init__(self):
         if not 0.0 <= self.accuracy <= 1.0:

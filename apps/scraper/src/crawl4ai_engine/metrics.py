@@ -54,6 +54,8 @@ class ExtractionMetrics:
     model: str | None = None
     latency_ms: float | None = None
     cost_estimate: float | None = None
+    resolver_status: str | None = None
+
 
 
 @dataclass
@@ -136,6 +138,7 @@ class Crawl4AIMetricsCollector:
         model: str | None = None,
         latency_ms: float | None = None,
         cost_estimate: float | None = None,
+        resolver_status: str | None = None,
     ) -> ExtractionMetrics:
         """Record a single extraction metric.
 
@@ -154,6 +157,7 @@ class Crawl4AIMetricsCollector:
             model: LLM model used (e.g. "deepseek-chat").
             latency_ms: Total latency in milliseconds.
             cost_estimate: Estimated cost in USD.
+            resolver_status: Platform variant resolver status.
 
         Returns:
             The recorded extraction metrics.
@@ -173,6 +177,7 @@ class Crawl4AIMetricsCollector:
             model=model,
             latency_ms=latency_ms,
             cost_estimate=cost_estimate,
+            resolver_status=resolver_status,
         )
 
         self._extractions.append(extraction)

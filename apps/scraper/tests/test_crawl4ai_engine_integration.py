@@ -8,8 +8,6 @@ from src.crawl4ai_engine.strategies.css_strategy import CSSExtractionStrategy
 from src.crawl4ai_engine.strategies.xpath_strategy import XPathExtractionStrategy
 from src.crawl4ai_engine.callback import CallbackDelivery
 from src.crawl4ai_engine.retry import CircuitBreaker, RetryPolicy, execute_with_retry
-from src.crawl4ai_engine.transpiler.yaml_parser import YAMLConfigParser
-from src.crawl4ai_engine.transpiler.schema_generator import YAMLToCrawl4AI
 
 
 class TestEndToEndExtractionFlow:
@@ -253,72 +251,6 @@ class TestCallbackIntegration:
             assert payload["job_id"] == "job-123"
             assert payload["status"] == "completed"
             assert payload["results"]["skus_processed"] == 2
-
-
-class TestTranspilerIntegration:
-    """Integration tests for YAML transpiler."""
-
-    @pytest.fixture
-    def yaml_config_file(self, tmp_path):
-        """Create a YAML config file."""
-        yaml_content = """
-name: "product-scraper"
-base_url: "https://store.example.com"
-
-selectors:
-  - name: "title"
-    selector: "h1.product-title"
-    attribute: "text"
-  - name: "price"
-    selector: ".price"
-    attribute: "data-price"
-  - name: "image"
-    selector: "img.product-image"
-    attribute: "src"
-
-workflows:
-  - action: "navigate"
-    params:
-      url: "{base_url}"
-  - action: "wait_for"
-    params:
-      selector: "h1.product-title"
-"""
-        config_file = tmp_path / "scraper.yaml"
-        config_file.write_text(yaml_content)
-        return config_file
-
-    def test_full_transpilation_flow(self, yaml_config_file):
-        """Test full YAML to crawl4ai schema flow."""
-        parser = YAMLConfigParser()
-        transpiler = YAMLToCrawl4AI(parser)
-
-        # Parse
-        parsed = parser.parse_file(yaml_config_file)
-        assert parsed.name == "product-scraper"
-        assert parsed.base_url == "https://store.example.com"
-
-        # Transpile
-        schema = transpiler.transpile(yaml_config_file)
-        assert schema["name"] == "product-scraper"
-        assert schema["baseUrl"] == "https://store.example.com"
-        assert len(schema["fields"]) == 3
-
-    def test_transpile_to_python_file(self, yaml_config_file, tmp_path):
-        """Test transpiling to Python file."""
-        parser = YAMLConfigParser()
-        transpiler = YAMLToCrawl4AI(parser)
-
-        output_file = tmp_path / "generated_schema.py"
-        transpiler.transpile_to_python(
-            yaml_config_file,
-            output_path=str(output_file),
-            variable_name="PRODUCT_SCHEMA",
-        )
-
-        content = output_file.read_text()
-        assert "PRODUCT_SCHEMA" in content
-        assert "from __future__ import annotations" in content
 
 
 class TestFullWorkflow:

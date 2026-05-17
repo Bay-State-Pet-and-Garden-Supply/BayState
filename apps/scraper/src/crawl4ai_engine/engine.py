@@ -9,7 +9,7 @@ import logging
 import re
 from urllib.parse import urlparse
 
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
+from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode, MemoryAdaptiveDispatcher
 from crawl4ai.async_logger import AsyncLogger, LogLevel
 from crawl4ai.content_filter_strategy import PruningContentFilter
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
@@ -52,6 +52,10 @@ class Crawl4AIEngine:
                 "proxy": config.proxy,
                 "extra_args": config.extra_browser_args or None,
                 "verbose": config.verbose,
+                "text_mode": config.text_mode,
+                "light_mode": config.light_mode,
+                "avoid_ads": config.avoid_ads,
+                "avoid_css": config.avoid_css,
             }
             crawler: dict[str, Any] = {
                 "timeout": int(config.timeout * 1000),
@@ -140,6 +144,8 @@ class Crawl4AIEngine:
         metadata = getattr(result, "metadata", None)
         links = getattr(result, "links", None)
         media = getattr(result, "media", None)
+        network_requests = getattr(result, "network_requests", None)
+        console_messages = getattr(result, "console_messages", None)
 
         return {
             "url": final_url,
@@ -157,6 +163,8 @@ class Crawl4AIEngine:
             "metadata": metadata if isinstance(metadata, dict) else {},
             "links": links if isinstance(links, dict) else {},
             "media": media if isinstance(media, dict) else {},
+            "network_requests": network_requests if isinstance(network_requests, list) else [],
+            "console_messages": console_messages if isinstance(console_messages, list) else [],
             "fallback_triggered": fallback_triggered,
         }
 
@@ -216,7 +224,10 @@ class Crawl4AIEngine:
             browser_config_kwargs["user_agent_mode"] = browser_settings.get("user_agent_mode", "")
         if "user_agent_generator_config" in browser_settings:
             browser_config_kwargs["user_agent_generator_config"] = browser_settings.get("user_agent_generator_config", {})
-        return BrowserConfig(**browser_config_kwargs)
+        browser_config = BrowserConfig(**browser_config_kwargs)
+        browser_config.avoid_ads = browser_settings.get("avoid_ads", True)
+        browser_config.avoid_css = browser_settings.get("avoid_css", False)
+        return browser_config
 
     def _build_run_config(self, session_id: Optional[str] = None, url_matcher: Optional[str] = None) -> CrawlerRunConfig:
         """Build crawler run configuration from config dict.
@@ -228,12 +239,16 @@ class Crawl4AIEngine:
         run_settings = self.config.get("crawler", {})
         
         # Map string cache mode to Enum
-        cache_mode_str = run_settings.get("cache_mode", "ENABLED").upper()
-        try:
-            cache_mode = CacheMode[cache_mode_str]
-        except KeyError:
-            logger.warning(f"Invalid cache mode '{cache_mode_str}', defaulting to ENABLED")
-            cache_mode = CacheMode.ENABLED
+        cache_mode_val = run_settings.get("cache_mode", "ENABLED")
+        if isinstance(cache_mode_val, CacheMode):
+            cache_mode = cache_mode_val
+        else:
+            cache_mode_str = str(cache_mode_val).upper()
+            try:
+                cache_mode = CacheMode[cache_mode_str]
+            except KeyError:
+                logger.warning(f"Invalid cache mode '{cache_mode_str}', defaulting to ENABLED")
+                cache_mode = CacheMode.ENABLED
 
         # Extraction strategy handling - exclusively static for the engine
         extraction_strategy = run_settings.get("extraction_strategy")
@@ -279,6 +294,10 @@ class Crawl4AIEngine:
             user_agent=run_settings.get("user_agent"),
             url_matcher=url_matcher,
             extraction_strategy=extraction_strategy,
+            # Variant resolution primitives
+            js_only=run_settings.get("js_only", False),
+            # Shadow DOM flattening for Web Component storefronts
+            flatten_shadow_dom=run_settings.get("flatten_shadow_dom", False),
         )
 
     def _get_domain_session_id(self, url: str) -> str:
@@ -334,9 +353,11 @@ class Crawl4AIEngine:
             raise RuntimeError("Crawler not initialized. Use async context manager.")
 
         # Use domain-persistent session ID if not explicitly provided
+        is_dynamic_session = False
         session_id = self.config.get("crawler", {}).get("session_id")
         if not session_id:
             session_id = self._get_domain_session_id(url)
+            is_dynamic_session = True
             
         run_config = self._build_run_config(session_id=session_id)
 
@@ -349,23 +370,32 @@ class Crawl4AIEngine:
         max_retries = self.config.get("crawler", {}).get("max_retries", 2)
         last_exc: Exception | None = None
         result = None
-        for attempt in range(max_retries + 1):
-            try:
-                result = await self._crawler.arun(url=url, config=run_config)
-                last_exc = None
-                break
-            except Exception as exc:
-                last_exc = exc
-                error_str = str(exc).lower()
-                is_transient = any(kw in error_str for kw in ("timeout", "timed out", "connection", "network", "dns"))
-                if not is_transient or attempt >= max_retries:
-                    raise
-                delay = min(1.0 * (2 ** attempt), 10.0) + _random.uniform(0, 0.5)
-                logger.warning(
-                    "Transient error on attempt %d/%d for %s: %s — retrying in %.1fs",
-                    attempt + 1, max_retries + 1, url, exc, delay,
-                )
-                await _asyncio.sleep(delay)
+        try:
+            for attempt in range(max_retries + 1):
+                try:
+                    result = await self._crawler.arun(url=url, config=run_config)
+                    last_exc = None
+                    break
+                except Exception as exc:
+                    last_exc = exc
+                    error_str = str(exc).lower()
+                    is_transient = any(kw in error_str for kw in ("timeout", "timed out", "connection", "network", "dns"))
+                    if not is_transient or attempt >= max_retries:
+                        raise
+                    delay = min(1.0 * (2 ** attempt), 10.0) + _random.uniform(0, 0.5)
+                    logger.warning(
+                        "Transient error on attempt %d/%d for %s: %s — retrying in %.1fs",
+                        attempt + 1, max_retries + 1, url, exc, delay,
+                    )
+                    await _asyncio.sleep(delay)
+        finally:
+            # Explicitly kill the session context if dynamically generated
+            if is_dynamic_session and session_id and self._crawler:
+                try:
+                    await self._crawler.crawler_strategy.kill_session(session_id)
+                    logger.debug(f"Successfully killed dynamic Crawl4AI session context: {session_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to kill dynamic session {session_id} in crawl: {e}")
         
         duration_ms = (_time.perf_counter() - crawl_start) * 1000
         fallback_fn = self.config.get("crawler", {}).get("fallback_fetch_function")
@@ -438,44 +468,66 @@ class Crawl4AIEngine:
             raise RuntimeError("Crawler not initialized. Use async context manager.")
 
         global_session_id = self.config.get("crawler", {}).get("session_id")
+        dynamic_sessions = []
 
         if global_session_id:
             run_config: CrawlerRunConfig | list[CrawlerRunConfig] = self._build_run_config(session_id=global_session_id)
         else:
-            run_config = [
-                self._build_run_config(session_id=self._get_domain_session_id(url), url_matcher=url)
-                for url in urls
-            ]
+            run_config = []
+            for url in urls:
+                sid = self._get_domain_session_id(url)
+                dynamic_sessions.append(sid)
+                run_config.append(self._build_run_config(session_id=sid, url_matcher=url))
+
+        concurrency_limit = self._coerce_int(self.config.get("crawler", {}).get("concurrency_limit"), 3)
+        memory_threshold = float(self.config.get("crawler", {}).get("memory_threshold_percent", 90.0))
+        
+        dispatcher = MemoryAdaptiveDispatcher(
+            max_session_permit=concurrency_limit,
+            memory_threshold_percent=memory_threshold,
+            check_interval=1.0
+        )
 
         batch_start = _time.perf_counter()
-        results = await self._crawler.arun_many(
-            urls=urls,
-            config=run_config,
-        )
-        batch_duration_ms = (_time.perf_counter() - batch_start) * 1000
-
-        def _record_and_build(item: Any) -> dict[str, Any]:
-            item_url = str(getattr(item, "url", ""))
-            item_success = bool(getattr(item, "success", False))
-            per_item_ms = batch_duration_ms / max(len(urls), 1)
-            error_text = (self._extract_error_text(item) or "").lower() if not item_success else ""
-            get_metrics_collector().record_extraction(
-                url=item_url,
-                mode=ExtractionMode.LLM_FREE,
-                success=item_success,
-                duration_ms=per_item_ms,
-                error_type=self._classify_error_type(error_text) if not item_success else None,
-                error_message=self._extract_error_text(item) if not item_success else None,
+        try:
+            results = await self._crawler.arun_many(
+                urls=urls,
+                config=run_config,
+                dispatcher=dispatcher,
+                stream=True,
             )
-            return self._build_result_payload(fallback_triggered=False, result=item, source_url=item_url)
-
-        if hasattr(results, "__aiter__"):
-            collected_results: list[dict[str, Any]] = []
-            async for item in results:
-                collected_results.append(_record_and_build(item))
-            return collected_results
-
-        return [_record_and_build(item) for item in results]
+            batch_duration_ms = (_time.perf_counter() - batch_start) * 1000
+    
+            def _record_and_build(item: Any) -> dict[str, Any]:
+                item_url = str(getattr(item, "url", ""))
+                item_success = bool(getattr(item, "success", False))
+                per_item_ms = batch_duration_ms / max(len(urls), 1)
+                error_text = (self._extract_error_text(item) or "").lower() if not item_success else ""
+                get_metrics_collector().record_extraction(
+                    url=item_url,
+                    mode=ExtractionMode.LLM_FREE,
+                    success=item_success,
+                    duration_ms=per_item_ms,
+                    error_type=self._classify_error_type(error_text) if not item_success else None,
+                    error_message=self._extract_error_text(item) if not item_success else None,
+                )
+                return self._build_result_payload(fallback_triggered=False, result=item, source_url=item_url)
+    
+            if hasattr(results, "__aiter__"):
+                collected_results: list[dict[str, Any]] = []
+                async for item in results:
+                    collected_results.append(_record_and_build(item))
+                return collected_results
+    
+            return [_record_and_build(item) for item in results]
+        finally:
+            # Explicitly kill the session contexts if dynamically generated
+            if dynamic_sessions and self._crawler:
+                for sid in dynamic_sessions:
+                    try:
+                        await self._crawler.crawler_strategy.kill_session(sid)
+                    except Exception as e:
+                        logger.warning(f"Failed to kill dynamic session {sid} in crawl_many: {e}")
 
     async def crawl_multiple(self, urls: list[str]) -> list[Any]:
         """Compatibility wrapper for legacy benchmark callers.

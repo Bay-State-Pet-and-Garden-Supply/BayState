@@ -14,6 +14,7 @@ import time
 import hmac
 import hashlib
 import base64
+from datetime import datetime
 from dataclasses import dataclass
 from typing import Any
 
@@ -392,7 +393,8 @@ class ScraperAPIClient:
 
                 last_exception = e
                 logger.warning(
-                    f"API request failed (attempt {attempt + 1}/{self.max_retries + 1}): {status_code} - {_format_error_response(e.response)}. Retrying in {delay:.1f}s..."
+                    f"API request failed (attempt {attempt + 1}/{self.max_retries + 1}): "
+                    f"{status_code} - {_format_error_response(e.response)}. Retrying in {delay:.1f}s..."
                 )
 
             except (httpx.NetworkError, httpx.TimeoutException) as e:
