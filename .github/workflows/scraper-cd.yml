@@ -114,7 +114,6 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           RUNNER_RELEASE_CHANNEL: latest
           RUNNER_BUILD_ID: ${{ github.run_id }}-${{ github.run_attempt }}
           RUNNER_BUILD_SHA: ${{ github.sha }}
