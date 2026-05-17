@@ -88,6 +88,12 @@ function getDefaultModelForProvider(provider: LLMProvider): string {
   if (provider === 'openai') {
     return LEGACY_OPENAI_MODEL;
   }
+  if (provider === 'gemini') {
+    return 'gemini-2.5-flash';
+  }
+  if (provider === 'lmstudio' || provider === 'openai_compatible') {
+    return 'google/gemma-4-e4b';
+  }
 
   return DEFAULT_AI_MODEL;
 }
@@ -405,20 +411,30 @@ function logDecryptFailure(provider: AIProvider, error: unknown): void {
 }
 
 function normalizeLLMProvider(_provider?: unknown): LLMProvider {
-  if (_provider === 'deepseek' || _provider === 'openai_compatible') {
+  if (
+    _provider === 'deepseek' ||
+    _provider === 'openai_compatible' ||
+    _provider === 'lmstudio' ||
+    _provider === 'openai' ||
+    _provider === 'gemini'
+  ) {
     return _provider;
   }
 
-  // OpenAI, Gemini, and other legacy providers now route to DeepSeek.
   return 'deepseek';
 }
 
 function normalizeConsolidationProvider(_provider?: unknown): LLMProvider {
-  if (_provider === 'deepseek' || _provider === 'openai_compatible' || _provider === 'lmstudio') {
+  if (
+    _provider === 'deepseek' ||
+    _provider === 'openai_compatible' ||
+    _provider === 'lmstudio' ||
+    _provider === 'openai' ||
+    _provider === 'gemini'
+  ) {
     return _provider;
   }
 
-  // OpenAI, Gemini, and other legacy providers now route to DeepSeek.
   return 'deepseek';
 }
 
@@ -478,9 +494,9 @@ function normalizeDefaults(raw: unknown): AIScrapingDefaults {
   const value = (raw && typeof raw === 'object') ? (raw as Record<string, unknown>) : {};
 
   const llmProvider = normalizeLLMProvider(value.llm_provider);
-  const llmModel = llmProvider === 'openai_compatible'
-    ? normalizeLLMModel(value.llm_model, getDefaultModelForProvider(llmProvider))
-    : normalizeDeepSeekModel(value.llm_model, getDefaultModelForProvider(llmProvider));
+  const llmModel = llmProvider === 'deepseek'
+    ? normalizeDeepSeekModel(value.llm_model, getDefaultModelForProvider(llmProvider))
+    : normalizeLLMModel(value.llm_model, getDefaultModelForProvider(llmProvider));
   const llmBaseUrl = normalizeLLMBaseUrl(value.llm_base_url, llmProvider);
   const maxSearchResults = Number.isFinite(value.max_search_results) ? Number(value.max_search_results) : DEFAULT_AI_SCRAPING_DEFAULTS.max_search_results;
   const maxSteps = Number.isFinite(value.max_steps) ? Number(value.max_steps) : DEFAULT_AI_SCRAPING_DEFAULTS.max_steps;
@@ -547,9 +563,9 @@ function normalizeConsolidationDefaults(raw: unknown): AIConsolidationDefaults {
   const value = (raw && typeof raw === 'object') ? (raw as Record<string, unknown>) : {};
 
   const llmProvider = normalizeConsolidationProvider(value.llm_provider);
-  const llmModel = (llmProvider === 'lmstudio' || llmProvider === 'openai_compatible')
-    ? normalizeLLMModel(value.llm_model, getDefaultModelForProvider(llmProvider))
-    : normalizeDeepSeekModel(value.llm_model, getDefaultModelForProvider(llmProvider));
+  const llmModel = llmProvider === 'deepseek'
+    ? normalizeDeepSeekModel(value.llm_model, getDefaultModelForProvider(llmProvider))
+    : normalizeLLMModel(value.llm_model, getDefaultModelForProvider(llmProvider));
   const llmBaseUrl = normalizeLLMBaseUrl(value.llm_base_url, llmProvider);
   const confidenceThreshold = Number.isFinite(value.confidence_threshold)
     ? Number(value.confidence_threshold)
@@ -727,7 +743,7 @@ export async function getAIScrapingCredentialStatuses(): Promise<Record<AIProvid
   return statuses;
 }
 
-async function getAIScrapingProviderSecret(provider: AIProvider): Promise<string | null> {
+export async function getAIScrapingProviderSecret(provider: AIProvider): Promise<string | null> {
   const key = resolveEncryptionKey(false);
   if (!key) {
     return null;

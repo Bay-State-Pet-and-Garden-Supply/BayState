@@ -133,7 +133,19 @@ export function AIModelCombobox({
                 </button>
               );
             })}
-            {filteredOptions.length === 0 && (
+            {search.trim().length > 0 && !modelOptions.some(o => o.value.toLowerCase() === search.trim().toLowerCase()) && (
+              <button
+                type="button"
+                className="flex w-full items-center rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground text-brand-burgundy font-medium border-t mt-1"
+                onClick={() => {
+                  onChange(search.trim());
+                  setOpen(false);
+                }}
+              >
+                <span className="truncate">Use custom model: "{search.trim()}"</span>
+              </button>
+            )}
+            {filteredOptions.length === 0 && search.trim().length === 0 && (
               <div className="p-4 text-center text-sm text-muted-foreground">
                 {emptyMessage}
               </div>
