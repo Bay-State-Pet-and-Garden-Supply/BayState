@@ -36,7 +36,7 @@ class ProductPageExtractor:
     def __init__(
         self,
         headless: bool = True,
-        llm_provider: str = "deepseek",
+        llm_provider: str | None = None,
         llm_model: str = "deepseek-chat",
         llm_api_key: str | None = None,
         llm_base_url: str | None = None,

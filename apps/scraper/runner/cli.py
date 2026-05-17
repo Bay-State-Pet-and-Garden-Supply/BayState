@@ -55,7 +55,7 @@ def run_enrichment_mode(args: argparse.Namespace) -> None:
     import json
     from datetime import datetime
     from runner import _run_enrichment_job
-    from core.api_client import JobConfig, ScraperConfig
+    from core.api_client import ClaimedEnrichment
 
     if not args.sku or not args.url:
         logger.error("Enrichment mode requires --sku and --url")
@@ -81,14 +81,16 @@ def run_enrichment_mode(args: argparse.Namespace) -> None:
     if args.domain:
         job_payload["domain"] = args.domain
 
-    job_config = JobConfig(
+    job_config = ClaimedEnrichment(
+        attempt_id=f"local_{args.sku}",
         job_id=job_id,
-        skus=[args.sku],
-        scrapers=[],
-        test_mode=True,
-        max_workers=1,
-        job_type="enrichment",
+        sku=args.sku,
+        target_url=args.url,
+        domain=args.domain,
+        model=args.model,
+        mode=args.enrichment_strategy,
         job_config=job_payload,
+        test_mode=True,
     )
 
     from runner import settings

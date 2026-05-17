@@ -33,7 +33,8 @@ def _normalize_base_url(value: str | None) -> str | None:
 
 
 def normalize_llm_provider(value: str | None) -> LLMProvider:
-    normalized = (_normalize_optional_string(value) or "").lower()
+    provider_str = _normalize_optional_string(value) or os.getenv("LLM_PROVIDER")
+    normalized = (provider_str or "").lower().strip()
     if normalized == "deepseek":
         return "deepseek"
     if normalized == "openai":
@@ -72,8 +73,15 @@ def resolve_llm_runtime(
     normalized_provider = normalize_llm_provider(provider)
 
     if normalized_provider == "openai_compatible":
-        default_model = DEFAULT_OPENAI_COMPATIBLE_MODEL
-        normalized_model = _normalize_optional_string(model) or default_model
+        # Allow specifying default model via LLM_MODEL env var
+        default_model = os.getenv("LLM_MODEL") or DEFAULT_OPENAI_COMPATIBLE_MODEL
+        passed_model = _normalize_optional_string(model)
+        # If deepseek-chat is passed by default but we are using openai_compatible, override with local model if defined
+        if passed_model == "deepseek-chat" and os.getenv("LLM_MODEL"):
+            normalized_model = os.getenv("LLM_MODEL")
+        else:
+            normalized_model = passed_model or default_model
+
         normalized_base_url = _normalize_base_url(base_url or os.getenv("OPENAI_COMPATIBLE_BASE_URL"))
         normalized_api_key = _normalize_optional_string(api_key or os.getenv("OPENAI_COMPATIBLE_API_KEY"))
         if normalized_base_url and normalized_api_key is None:

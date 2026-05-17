@@ -1,6 +1,7 @@
 """crawl4ai-based product extraction."""
 
 from importlib import metadata as importlib_metadata
+import asyncio
 import json
 import logging
 import re
@@ -101,7 +102,7 @@ class Crawl4AIExtractor:
         cache_enabled: bool = True,
         extraction_strategy: str = "llm",
         prompt_version: str = "v1",
-        llm_provider: str = "deepseek",
+        llm_provider: str | None = None,
         llm_base_url: str | None = None,
         llm_api_key: str | None = None,
     ):
@@ -863,32 +864,80 @@ class Crawl4AIExtractor:
                             meta_result["images"] = await _resolve_grounding_images(
                                 self._grounding_redirect_resolver, self._extraction.coerce_string_list(meta_result.get("images"))
                             )
-                            logger.info("[AI Search] Extraction method used: meta-tags")
-                            enriched_meta, image_diag = await self._enrich_images(
-                                meta_result,
-                                url=url,
-                                html=html,
-                                markdown=markdown,
-                                crawl_media=result.get("media", {}),
-                                expected_name=product_name,
-                                expected_brand=brand,
+                            meta_result["url"] = url
+                            meta_result["confidence"] = max(float(meta_result.get("confidence", 0.0)), 0.8)
+
+                            # Completeness check: if meta-tags is missing key fields
+                            # or has generic/placeholder content, fall through to LLM
+                            # extraction for richer data.
+                            meta_description = str(meta_result.get("description") or "").strip()
+                            meta_size = str(meta_result.get("size_metrics") or "").strip()
+                            meta_name = str(meta_result.get("product_name") or meta_result.get("name") or "").strip()
+                            meta_categories = meta_result.get("categories")
+                            meta_has_categories = isinstance(meta_categories, list) and len(meta_categories) > 0
+                            missing_critical_fields = not meta_description and not meta_size
+                            missing_enough_fields = sum(1 for f in (meta_description, meta_size) if f) < 1
+                            weak_categories = not meta_has_categories or (
+                                isinstance(meta_categories, list)
+                                and len(meta_categories) == 1
+                                and str(meta_categories[0]).lower() in {"product", "products", "home", "catalog", "poultry"}
                             )
-                            self._log_telemetry(
-                                url,
-                                sku,
-                                "meta-tags",
-                                True,
-                                fetch_time_ms,
-                                parse_time_ms,
-                                llm_time_ms,
-                                None,
-                                float(meta_result["confidence"]),
-                                pruning_enabled=True,
-                                fit_markdown_used=False,
-                                fallback_triggered=result.get("fallback_triggered", False),
-                                image_diagnostics=image_diag,
+
+                            _GENERIC_DESCRIPTION_PHRASES = (
+                                "shop our", "browse our", "our collection", "our line of",
+                                "discover our", "explore our", "find your", "we offer",
                             )
-                            return enriched_meta
+                            is_generic_description = (
+                                meta_description
+                                and len(meta_description) < 300
+                                and any(phrase in meta_description.lower() for phrase in _GENERIC_DESCRIPTION_PHRASES)
+                            )
+
+                            is_brand_only_name = (
+                                meta_name
+                                and brand
+                                and meta_name.lower().strip() == brand.lower().strip()
+                            )
+
+                            if (missing_critical_fields or (missing_enough_fields and weak_categories) or is_generic_description or is_brand_only_name) and self.extraction_strategy != "json_css":
+                                logger.info(
+                                    "[AI Search] Meta-tags extraction incomplete (description=%s, size=%s, categories=%s, generic_desc=%s, brand_only_name=%s), "
+                                    "falling through to LLM for richer extraction",
+                                    "present" if meta_description else "missing",
+                                    "present" if meta_size else "missing",
+                                    meta_categories,
+                                    is_generic_description,
+                                    is_brand_only_name,
+                                )
+                                # Store meta-tags result as fallback in case LLM also fails
+                                jsonld_fallback = dict(meta_result)
+                            else:
+                                logger.info("[AI Search] Extraction method used: meta-tags")
+                                enriched_meta, image_diag = await self._enrich_images(
+                                    meta_result,
+                                    url=url,
+                                    html=html,
+                                    markdown=markdown,
+                                    crawl_media=result.get("media", {}),
+                                    expected_name=product_name,
+                                    expected_brand=brand,
+                                )
+                                self._log_telemetry(
+                                    url,
+                                    sku,
+                                    "meta-tags",
+                                    True,
+                                    fetch_time_ms,
+                                    parse_time_ms,
+                                    llm_time_ms,
+                                    None,
+                                    float(meta_result["confidence"]),
+                                    pruning_enabled=True,
+                                    fit_markdown_used=False,
+                                    fallback_triggered=result.get("fallback_triggered", False),
+                                    image_diagnostics=image_diag,
+                                )
+                                return enriched_meta
 
                 if not result.get("success"):
                     error = result.get("error") or "Extraction failed or returned no content"
@@ -954,17 +1003,21 @@ class Crawl4AIExtractor:
                                         extraction_type="schema",
                                         instruction=instruction,
                                         input_format="fit_markdown",
-                                        chunk_token_threshold=4000,
+                                        chunk_token_threshold=2000,
                                         overlap_rate=0.1,
+                                        extra_args={
+                                            "max_tokens": 2000,
+                                            "temperature": 0.01,
+                                        },
                                     )
-                                    engine.config.setdefault("crawler", {})["extraction_strategy"] = llm_strategy
-                                    engine.config["crawler"]["cache_mode"] = "BYPASS"
-                                    engine.config["crawler"]["wait_until"] = "domcontentloaded"
-                                    engine.config["crawler"]["delay_before_return_html"] = 2.0
-                                    engine.config["crawler"]["timeout"] = 45000
-
                                     llm_start = time.perf_counter()
-                                    llm_result = await engine.crawl(url)
+                                    # Truncate markdown to fit context length limits of local models (e.g. 64000 ctx)
+                                    safe_markdown = markdown[:32000] if markdown else ""
+                                    extracted_content = await asyncio.to_thread(llm_strategy.extract, url, 0, safe_markdown)
+                                    llm_result = {
+                                        "success": bool(extracted_content),
+                                        "extracted_content": extracted_content
+                                    }
 
                                     if llm_result.get("success") and llm_result.get("extracted_content"):
                                         extracted_content = llm_result["extracted_content"]
@@ -1058,32 +1111,30 @@ class Crawl4AIExtractor:
                         extraction_type="schema",
                         instruction=instruction,
                         input_format="fit_markdown",
-                        chunk_token_threshold=4000,
+                        chunk_token_threshold=2000,
                         overlap_rate=0.1,
+                        extra_args={
+                            "max_tokens": 2000,
+                            "temperature": 0.01,
+                        },
                     )
                     method = "llm"
 
-                engine.config.setdefault("crawler", {})["extraction_strategy"] = strategy
-                # The second pass changes extraction strategy for the same URL. Bypass
-                # Crawl4AI's response cache here so we do not just replay the first crawl
-                # result without running extraction.
-                engine.config["crawler"]["cache_mode"] = "BYPASS"
                 llm_start = time.perf_counter()
-                result = await engine.crawl(url)
-                if not result.get("success") and self._should_retry_with_relaxed_wait(result):
-                    engine.config["crawler"]["wait_until"] = "domcontentloaded"
-                    engine.config["crawler"]["delay_before_return_html"] = 2.0
-                    result = await engine.crawl(url)
-
-                # Strict validation for second crawl results
-                result_html = result.get("html")
-                result_markdown = result.get("markdown")
-                if isinstance(result_html, str):
-                    html = result_html
-                if isinstance(result_markdown, str):
-                    markdown = result_markdown
+                if self.extraction_strategy == "json_css":
+                    extracted_content = await asyncio.to_thread(strategy.extract, url, 0, html)
+                else:
+                    # Truncate markdown to fit context length limits of local models (e.g. 64000 ctx)
+                    safe_markdown = markdown[:32000] if markdown else ""
+                    extracted_content = await asyncio.to_thread(strategy.extract, url, 0, safe_markdown)
 
                 llm_time_ms = int((time.perf_counter() - llm_start) * 1000)
+                result = {
+                    "success": bool(extracted_content),
+                    "extracted_content": extracted_content,
+                    "html": html,
+                    "markdown": markdown,
+                }
 
                 if result.get("success") and result.get("extracted_content"):
                     extracted_content = result["extracted_content"]
