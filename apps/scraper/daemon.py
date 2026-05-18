@@ -239,7 +239,7 @@ async def _process_enrichment(attempt, client, rm):
             )
 
             start_time = time.time()
-            results = _run_enrichment_job(
+            results = await _run_enrichment_job(
                 attempt,
                 runner_name=client.runner_name,
                 log_buffer=None,

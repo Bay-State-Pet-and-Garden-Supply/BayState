@@ -22,6 +22,15 @@ DROP CONSTRAINT IF EXISTS scrape_job_logs_job_id_fkey;
 ALTER TABLE IF EXISTS public.scraper_runners
 DROP CONSTRAINT IF EXISTS scraper_runners_current_job_id_fkey;
 
+-- Clean up orphaned log records that do not exist in enrichment_jobs
+DELETE FROM public.scrape_job_logs
+WHERE job_id NOT IN (SELECT id FROM public.enrichment_jobs);
+
+-- Clean up scraper runner references that do not exist in enrichment_jobs
+UPDATE public.scraper_runners
+SET current_job_id = NULL
+WHERE current_job_id IS NOT NULL AND current_job_id NOT IN (SELECT id FROM public.enrichment_jobs);
+
 -- Add new FKs pointing to enrichment_jobs
 ALTER TABLE public.scrape_job_logs
 ADD CONSTRAINT scrape_job_logs_job_id_fkey

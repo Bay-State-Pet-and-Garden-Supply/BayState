@@ -48,6 +48,7 @@ def parse_args() -> argparse.Namespace:
 def run_enrichment_mode(args: argparse.Namespace) -> None:
     """Run a single enrichment (AI extraction) locally."""
     import json
+    import asyncio
     from datetime import datetime
     from runner import _run_enrichment_job
     from core.api_client import ClaimedEnrichment
@@ -94,7 +95,7 @@ def run_enrichment_mode(args: argparse.Namespace) -> None:
     else:
         settings.browser_settings["headless"] = not args.no_headless
 
-    results = _run_enrichment_job(job_config, runner_name="local-cli")
+    results = asyncio.run(_run_enrichment_job(job_config, runner_name="local-cli"))
 
     # Output enrichment result JSON
     enrichment_results = results.get("enrichment_results", [])

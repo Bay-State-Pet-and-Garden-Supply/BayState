@@ -81,7 +81,7 @@ def _emit_runner_log(
 
 
 
-def _run_enrichment_job(
+async def _run_enrichment_job(
     attempt: ClaimedEnrichment,
     runner_name: Optional[str] = None,
     log_buffer: Optional[List[Dict[str, Any]]] = None,
@@ -149,7 +149,7 @@ def _run_enrichment_job(
 
     # ---- APPROVED SOURCE EXTRACTION PATH ----
     if target_url == "approved_source_extraction":
-        return _run_approved_source_extraction(
+        return await _run_approved_source_extraction(
             attempt=attempt,
             job_payload=job_payload,
             target_sku=target_sku,
@@ -196,15 +196,12 @@ def _run_enrichment_job(
         extraction_strategy="llm",
     )
 
-    async def _run_extraction() -> dict[str, Any]:
-        return await extractor.extract(
-            url=target_url,
-            sku=target_sku,
-            brand=job_payload.get("brand"),
-            product_name=job_payload.get("product_name"),
-        )
-
-    extraction_result = asyncio.run(_run_extraction())
+    extraction_result = await extractor.extract(
+        url=target_url,
+        sku=target_sku,
+        brand=job_payload.get("brand"),
+        product_name=job_payload.get("product_name"),
+    )
 
     enrichment_result = build_v1_from_extraction_result(
         result=extraction_result,
@@ -301,7 +298,7 @@ def _run_enrichment_job(
 # =============================================================================
 
 
-def _run_approved_source_extraction(
+async def _run_approved_source_extraction(
     attempt: ClaimedEnrichment,
     job_payload: dict[str, Any],
     target_sku: str,
@@ -402,7 +399,7 @@ def _run_approved_source_extraction(
             api_client=api_client,
         )
 
-        enrichment_result = asyncio.run(executor.execute())
+        enrichment_result = await executor.execute()
     except Exception as e:
         error_msg = f"Executor failed for SKU={target_sku}: {e}"
         _emit_runner_log(
@@ -510,9 +507,9 @@ def _submit_result(
         logger.warning("No API client or submit_enrichment_result method — callback skipped")
         return
 
-    attempt_id = job_payload.get("attempt_id", "")
+    attempt_id = getattr(attempt, "attempt_id", None) or (job_payload.get("attempt_id", "") if isinstance(job_payload, dict) else "")
     if not attempt_id:
-        logger.warning("No attempt_id in job config — enrichment result not submitted")
+        logger.warning("No attempt_id found — enrichment result not submitted")
         return
 
     if not enrichment_result:

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Activity,
@@ -10,12 +9,13 @@ import {
   Clock,
   Loader2,
   RefreshCw,
+  LifeBuoy,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PIPELINE_RUN_STATUS_LABELS } from "@/lib/pipeline/run-types";
-import type { PipelineRunKind, PipelineRunStatus } from "@/lib/pipeline/run-types";
+import type { PipelineRunStatus } from "@/lib/pipeline/run-types";
 import { cn } from "@/lib/utils";
 import { adminFetch } from "@/lib/admin/api-client";
 
@@ -77,10 +77,10 @@ function getProgressPercent(job: EnrichmentJobSummary): number {
 }
 
 export function ActiveEnrichmentsTab({ initialJobs = [] }: ActiveEnrichmentsTabProps) {
-  const router = useRouter();
   const [jobs, setJobs] = useState<EnrichmentJobSummary[]>(initialJobs);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resettingStranded, setResettingStranded] = useState(false);
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
@@ -102,6 +102,32 @@ export function ActiveEnrichmentsTab({ initialJobs = [] }: ActiveEnrichmentsTabP
       setLoading(false);
     }
   }, []);
+
+  const handleRecoverStranded = async () => {
+    if (!window.confirm("This will abort all active enrichment runs and reset stuck 'extracting' products back to 'imported'. Continue?")) return;
+    
+    setResettingStranded(true);
+    try {
+      const res = await adminFetch("/api/admin/enrichment/reset", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (data.products_reset > 0 || data.jobs_cancelled > 0) {
+          toast.success(`Recovered ${data.products_reset} stuck product(s) and cancelled ${data.jobs_cancelled} active job(s).`);
+          fetchJobs();
+        } else {
+          toast.info("No stranded products or active jobs found");
+        }
+      } else {
+        toast.error(data.error || "Failed to recover stranded products");
+      }
+    } catch {
+      toast.error("Failed to recover stranded products");
+    } finally {
+      setResettingStranded(false);
+    }
+  };
 
   useEffect(() => {
     if (initialJobs.length === 0) {
@@ -140,10 +166,26 @@ export function ActiveEnrichmentsTab({ initialJobs = [] }: ActiveEnrichmentsTabP
             AI-powered product extraction from target URLs
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchJobs} disabled={loading}>
-          <RefreshCw className={cn("size-4 mr-2", loading && "animate-spin")} />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={fetchJobs} disabled={loading}>
+            <RefreshCw className={cn("size-4 mr-2", loading && "animate-spin")} />
+            Refresh
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRecoverStranded}
+            disabled={resettingStranded}
+            className="text-muted-foreground hover:text-destructive hover:bg-destructive/[0.02]"
+          >
+            {resettingStranded ? (
+              <Loader2 className="mr-2 size-4 animate-spin" />
+            ) : (
+              <LifeBuoy className="mr-2 size-4" />
+            )}
+            Recover Stranded
+          </Button>
+        </div>
       </div>
 
       {error && (
