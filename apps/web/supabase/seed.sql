@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Generated Seed File (do not edit directly)
--- Generated at: 2026-05-16T21:10:09.017Z
+-- Generated at: 2026-05-18T10:02:44.097Z
 -- =====================================================================
 
 -- --- Module: 00-auth.sql ---
@@ -773,60 +773,1048 @@ INSERT INTO brands (id, name, slug) VALUES
 ('b7aa55ca-d4c7-4864-b12d-99f43ebefe13', 'Zymox', 'zymox')
 ON CONFLICT (id) DO NOTHING;
 
+-- ---------------------------------------------------------------------
+-- Canonical taxonomy, pet types, and facets required for local bootstrap
+-- ---------------------------------------------------------------------
+
+INSERT INTO pet_types (name, display_order, icon)
+VALUES
+  ('Dog', 1, 'dog'),
+  ('Cat', 2, 'cat'),
+  ('Pet Bird', 3, 'bird'),
+  ('Small Pet', 4, 'rabbit'),
+  ('Fish', 5, 'fish')
+ON CONFLICT (name) DO UPDATE SET
+  display_order = EXCLUDED.display_order,
+  icon = COALESCE(EXCLUDED.icon, pet_types.icon);
+
+WITH root_categories (name, slug, department_key, depth, breadcrumb, facet_profile, display_order, sort_order) AS (
+  VALUES
+    ('Dog', 'dog', 'dog', 0, 'Dog', 'general', 1, 1),
+    ('Cat', 'cat', 'cat', 0, 'Cat', 'general', 2, 2),
+    ('Pet Bird', 'pet-bird', 'pet-bird', 0, 'Pet Bird', 'general', 3, 3),
+    ('Small Pet', 'small-pet', 'small-pet', 0, 'Small Pet', 'general', 4, 4),
+    ('Fish & Aquarium', 'fish-aquarium', 'fish-aquarium', 0, 'Fish & Aquarium', 'general', 5, 5),
+    ('Lawn & Garden', 'lawn-garden', 'lawn-garden', 0, 'Lawn & Garden', 'general', 6, 6),
+    ('Home & Heating', 'home-heating', 'home-heating', 0, 'Home & Heating', 'general', 7, 7),
+    ('Tools & Hardware', 'tools-hardware', 'tools-hardware', 0, 'Tools & Hardware', 'general', 8, 8)
+)
+INSERT INTO categories (
+  name,
+  slug,
+  department_key,
+  depth,
+  breadcrumb,
+  facet_profile,
+  display_order,
+  sort_order,
+  is_active,
+  synonym_keywords
+)
+SELECT
+  name,
+  slug,
+  department_key,
+  depth,
+  breadcrumb,
+  facet_profile,
+  display_order,
+  sort_order,
+  true,
+  ARRAY[slug, name]
+FROM root_categories
+ON CONFLICT (slug) DO UPDATE SET
+  name = EXCLUDED.name,
+  department_key = EXCLUDED.department_key,
+  depth = EXCLUDED.depth,
+  breadcrumb = EXCLUDED.breadcrumb,
+  facet_profile = EXCLUDED.facet_profile,
+  display_order = EXCLUDED.display_order,
+  sort_order = EXCLUDED.sort_order,
+  is_active = EXCLUDED.is_active,
+  synonym_keywords = EXCLUDED.synonym_keywords;
+
+WITH child_categories (name, slug, parent_slug, department_key, facet_profile, display_order, sort_order) AS (
+  VALUES
+    ('Dog Food', 'dog-food', 'dog', 'dog', 'animal_food', 1, 1),
+    ('Dog Flea & Tick', 'dog-flea-tick', 'dog', 'dog', 'animal_health_wellness', 2, 2),
+    ('Cat Food', 'cat-food', 'cat', 'cat', 'animal_food', 1, 1),
+    ('Cat Bowls & Feeders', 'cat-bowls-feeders', 'cat', 'cat', 'general', 2, 2),
+    ('Pet Bird Food', 'pet-bird-food', 'pet-bird', 'pet-bird', 'animal_food', 1, 1),
+    ('Wild Bird Food', 'wild-bird-wildlife-food', 'pet-bird', 'pet-bird', 'animal_food', 2, 2),
+    ('Small Pet Food', 'small-pet-food', 'small-pet', 'small-pet', 'animal_food', 1, 1),
+    ('Aquarium Food', 'fish-aquarium-food', 'fish-aquarium', 'fish-aquarium', 'animal_food', 1, 1)
+)
+INSERT INTO categories (
+  name,
+  slug,
+  parent_id,
+  department_key,
+  depth,
+  breadcrumb,
+  facet_profile,
+  display_order,
+  sort_order,
+  is_active,
+  synonym_keywords
+)
+SELECT
+  child.name,
+  child.slug,
+  parent.id,
+  child.department_key,
+  1,
+  parent.name || ' > ' || child.name,
+  child.facet_profile,
+  child.display_order,
+  child.sort_order,
+  true,
+  ARRAY[child.slug, child.name]
+FROM child_categories AS child
+JOIN categories AS parent ON parent.slug = child.parent_slug
+ON CONFLICT (slug) DO UPDATE SET
+  name = EXCLUDED.name,
+  parent_id = EXCLUDED.parent_id,
+  department_key = EXCLUDED.department_key,
+  depth = EXCLUDED.depth,
+  breadcrumb = EXCLUDED.breadcrumb,
+  facet_profile = EXCLUDED.facet_profile,
+  display_order = EXCLUDED.display_order,
+  sort_order = EXCLUDED.sort_order,
+  is_active = EXCLUDED.is_active,
+  synonym_keywords = EXCLUDED.synonym_keywords;
+
+INSERT INTO facet_definitions (name, slug, description, facet_profile)
+VALUES
+  ('Animal Type', 'animal-type', 'Primary animal or pet category for the product.', ARRAY['animal_food', 'animal_health_wellness', 'general']),
+  ('Life Stage', 'life-stage', 'Life stage fit for food and wellness products.', ARRAY['animal_food', 'animal_health_wellness']),
+  ('Flavor', 'flavor', 'Primary flavor or protein callout.', ARRAY['animal_food', 'animal_treats_chews'])
+ON CONFLICT (slug) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  facet_profile = EXCLUDED.facet_profile,
+  is_deprecated = false;
+
 
 -- --- Module: 02-products.sql ---
--- Generated Products from Excel
-INSERT INTO products (id, brand_id, name, slug, upc, sku, price, stock_status, created_at, updated_at) VALUES
-('bd731767-abed-58a8-8409-3b6cb003dae4', 'a1889317-5cc0-48b2-8156-285ba445b0e2', 'Wondercide Flea & Tick Spray Lemongrass 4oz', 'wondercide-flea-tick-spray-lemongrass-4oz-019962890727', '019962890727', '019962890727', 9.99, 'in_stock', NOW(), NOW()),
-('2b8dcfc7-200b-5e14-83fc-11126af0a90a', 'a1889317-5cc0-48b2-8156-285ba445b0e2', 'Wondercide Flea & Tick Spray Lemongrass 32oz', 'wondercide-flea-tick-spray-lemongrass-32oz-019962890925', '019962890925', '019962890925', 9.99, 'in_stock', NOW(), NOW()),
-('4940d798-fa4b-5fa7-b733-a3abe1e3be44', 'da487015-ac06-4110-825a-aaf6ef51178f', 'Catit Pixi Fountain Light Blue', 'catit-pixi-fountain-light-blue-022517437179', '022517437179', '022517437179', 9.99, 'in_stock', NOW(), NOW()),
-('bc8e0978-0e0b-5c1e-84b0-28d683764daa', '2ebacbc3-53a7-4207-94e8-10ba7576a4f5', 'Fromm Cat Purrsnick Duck Liver Pate 3oz', 'fromm-cat-purrsnick-duck-liver-pate-3oz-072705113408', '072705113408', '072705113408', 9.99, 'in_stock', NOW(), NOW()),
-('f3efbe5c-8ba9-5c4f-853f-154ff51be3fc', '2ebacbc3-53a7-4207-94e8-10ba7576a4f5', 'Fromm Cat Purrsnick Duck Stew 3oz', 'fromm-cat-purrsnick-duck-stew-3oz-072705113446', '072705113446', '072705113446', 9.99, 'in_stock', NOW(), NOW()),
-('6b839236-3a4f-5358-93be-56f61f4a3ff5', '2ebacbc3-53a7-4207-94e8-10ba7576a4f5', 'Fromm Cat Purrsnick Chicken Shred 3oz', 'fromm-cat-purrsnick-chicken-shred-3oz-072705113484', '072705113484', '072705113484', 9.99, 'in_stock', NOW(), NOW()),
-('a42e1184-4183-5ece-a0b8-2e60ad3b4a09', '2ebacbc3-53a7-4207-94e8-10ba7576a4f5', 'Fromm Cat Purrsnick Chicken 4lb', 'fromm-cat-purrsnick-chicken-4lb-072705137008', '072705137008', '072705137008', 9.99, 'in_stock', NOW(), NOW()),
-('23cc15d2-4920-5af8-b8ab-bb0778e26669', '2ebacbc3-53a7-4207-94e8-10ba7576a4f5', 'Fromm Cat Purrsnick Game Bird 4lb', 'fromm-cat-purrsnick-game-bird-4lb-072705137206', '072705137206', '072705137206', 9.99, 'in_stock', NOW(), NOW()),
-('a35447a5-9929-56f4-bf35-649b829ebb69', '2ebacbc3-53a7-4207-94e8-10ba7576a4f5', 'Fromm Cat Purrsnick Salmon 4lb', 'fromm-cat-purrsnick-salmon-4lb-072705137404', '072705137404', '072705137404', 9.99, 'in_stock', NOW(), NOW()),
-('32711615-c441-5063-a1ed-464d3ba6d253', 'a1889317-5cc0-48b2-8156-285ba445b0e2', 'Wondercide Flying in Sect Trap', 'wondercide-flying-in-sect-trap-810075890174', '810075890174', '810075890174', 9.99, 'in_stock', NOW(), NOW()),
-('55555555-5555-5555-5555-555555555555', 'da487015-ac06-4110-825a-aaf6ef51178f', 'Catit Pixi Fountain Pink', 'catit-pixi-fountain-pink-022517437180', '022517437180', '022517437180', 14.99, 'in_stock', NOW(), NOW()),
-('66666666-6666-6666-6666-666666666666', '2ebacbc3-53a7-4207-94e8-10ba7576a4f5', 'Fromm Cat Purrsnick Chicken 12lb', 'fromm-cat-purrsnick-chicken-12lb-072705137015', '072705137015', '072705137015', 24.99, 'in_stock', NOW(), NOW())
-ON CONFLICT (id) DO NOTHING;
+-- Generated Products from Excel (enriched for local bootstrap)
+INSERT INTO products (
+  id,
+  brand_id,
+  name,
+  slug,
+  description,
+  upc,
+  sku,
+  price,
+  stock_status,
+  images,
+  quantity,
+  weight,
+  search_keywords,
+  published_at,
+  is_special_order,
+  is_taxable,
+  created_at,
+  updated_at
+)
+VALUES
+  (
+    'bd731767-abed-58a8-8409-3b6cb003dae4',
+    'a1889317-5cc0-48b2-8156-285ba445b0e2',
+    'Wondercide Flea & Tick Spray Lemongrass 4oz',
+    'wondercide-flea-tick-spray-lemongrass-4oz-019962890727',
+    'Plant-powered flea and tick spray for dogs and home surfaces with a fresh lemongrass scent.',
+    '019962890727',
+    '019962890727',
+    14.99,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/wondercide-lemongrass-4oz.webp'],
+    18,
+    0.25,
+    'dog flea tick spray lemongrass home pest control',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    '2b8dcfc7-200b-5e14-83fc-11126af0a90a',
+    'a1889317-5cc0-48b2-8156-285ba445b0e2',
+    'Wondercide Flea & Tick Spray Lemongrass 32oz',
+    'wondercide-flea-tick-spray-lemongrass-32oz-019962890925',
+    'Large-format Wondercide flea and tick spray for multi-pet households and outdoor use.',
+    '019962890925',
+    '019962890925',
+    29.99,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/wondercide-lemongrass-32oz.webp'],
+    9,
+    2.00,
+    'dog flea tick spray large refill lemongrass',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    '4940d798-fa4b-5fa7-b733-a3abe1e3be44',
+    'da487015-ac06-4110-825a-aaf6ef51178f',
+    'Catit Pixi Fountain Light Blue',
+    'catit-pixi-fountain-light-blue-022517437179',
+    'Quiet cat water fountain with ergonomic PIXI face design and triple-action filtration.',
+    '022517437179',
+    '022517437179',
+    39.99,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/catit-pixi-fountain-blue.webp'],
+    7,
+    1.80,
+    'cat water fountain pixi hydration feeder bowl',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    'bc8e0978-0e0b-5c1e-84b0-28d683764daa',
+    '2ebacbc3-53a7-4207-94e8-10ba7576a4f5',
+    'Fromm Cat PurrSnickety Chicken Pate 3oz',
+    'fromm-cat-purrsnickety-chicken-pate-3oz-072705113408',
+    'Protein-rich chicken pate recipe for adult cats with a smooth texture and added vitamins.',
+    '072705113408',
+    '072705113408',
+    2.49,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/fromm-purrsnickety-chicken-pate-3oz.webp'],
+    42,
+    0.19,
+    'cat wet food chicken pate fromm adult',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    'f3efbe5c-8ba9-5c4f-853f-154ff51be3fc',
+    '2ebacbc3-53a7-4207-94e8-10ba7576a4f5',
+    'Fromm Cat PurrSnickety Chicken Stew 3oz',
+    'fromm-cat-purrsnickety-chicken-stew-3oz-072705113446',
+    'Savory chicken stew with tender shreds and broth for cats that prefer a softer meal.',
+    '072705113446',
+    '072705113446',
+    2.49,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/fromm-purrsnickety-chicken-stew-3oz.webp'],
+    35,
+    0.19,
+    'cat wet food chicken stew fromm adult',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    '6b839236-3a4f-5358-93be-56f61f4a3ff5',
+    '2ebacbc3-53a7-4207-94e8-10ba7576a4f5',
+    'Fromm Cat PurrSnickety Salmon Shred 3oz',
+    'fromm-cat-purrsnickety-salmon-shred-3oz-072705113484',
+    'Shredded salmon entree with gravy for picky cats and mixed feeding routines.',
+    '072705113484',
+    '072705113484',
+    2.59,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/fromm-purrsnickety-salmon-shred-3oz.webp'],
+    31,
+    0.19,
+    'cat wet food salmon shred fromm adult',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    'a42e1184-4183-5ece-a0b8-2e60ad3b4a09',
+    '2ebacbc3-53a7-4207-94e8-10ba7576a4f5',
+    'Fromm Cat Four-Star Chicken 4lb',
+    'fromm-cat-four-star-chicken-4lb-072705137008',
+    'Four-Star dry cat food recipe with chicken, probiotics, and balanced nutrition for adult cats.',
+    '072705137008',
+    '072705137008',
+    21.99,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/fromm-four-star-chicken-4lb.webp'],
+    12,
+    4.00,
+    'cat dry food chicken kibble fromm four star',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    '23cc15d2-4920-5af8-b8ab-bb0778e26669',
+    '2ebacbc3-53a7-4207-94e8-10ba7576a4f5',
+    'Fromm Cat Four-Star Game Bird 4lb',
+    'fromm-cat-four-star-game-bird-4lb-072705137206',
+    'Game bird dry cat food featuring duck, turkey, and wholesome grains for adult cats.',
+    '072705137206',
+    '072705137206',
+    23.99,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/fromm-four-star-game-bird-4lb.webp'],
+    10,
+    4.00,
+    'cat dry food game bird fromm four star',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    'a35447a5-9929-56f4-bf35-649b829ebb69',
+    '2ebacbc3-53a7-4207-94e8-10ba7576a4f5',
+    'Fromm Cat Four-Star Salmon 4lb',
+    'fromm-cat-four-star-salmon-4lb-072705137404',
+    'Salmon-forward dry cat food recipe with balanced omega support and digestible ingredients.',
+    '072705137404',
+    '072705137404',
+    23.99,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/fromm-four-star-salmon-4lb.webp'],
+    11,
+    4.00,
+    'cat dry food salmon fromm four star',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    '32711615-c441-5063-a1ed-464d3ba6d253',
+    'a1889317-5cc0-48b2-8156-285ba445b0e2',
+    'Wondercide Flying Insect Trap',
+    'wondercide-flying-insect-trap-810075890174',
+    'Indoor sticky trap for flying insects that pairs with Wondercide attractant cartridges.',
+    '810075890174',
+    '810075890174',
+    24.99,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/wondercide-flying-insect-trap.webp'],
+    6,
+    1.25,
+    'flying insect trap indoor pest control wondercide',
+    NOW(),
+    true,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    '55555555-5555-5555-5555-555555555555',
+    'da487015-ac06-4110-825a-aaf6ef51178f',
+    'Catit Pixi Fountain Pink',
+    'catit-pixi-fountain-pink-022517437180',
+    'Catit PIXI drinking fountain in pink with ergonomic spout and quiet pump operation.',
+    '022517437180',
+    '022517437180',
+    39.99,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/catit-pixi-fountain-pink.webp'],
+    5,
+    1.80,
+    'cat water fountain pink pixi hydration feeder bowl',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    '66666666-6666-6666-6666-666666666666',
+    '2ebacbc3-53a7-4207-94e8-10ba7576a4f5',
+    'Fromm Cat Four-Star Chicken 12lb',
+    'fromm-cat-four-star-chicken-12lb-072705137015',
+    'Larger format Four-Star chicken recipe for multi-cat homes and pantry restocks.',
+    '072705137015',
+    '072705137015',
+    49.99,
+    'pre_order',
+    ARRAY['https://images.baystate.local/products/fromm-four-star-chicken-12lb.webp'],
+    0,
+    12.00,
+    'cat dry food chicken kibble fromm bulk bag',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  )
+ON CONFLICT (id) DO UPDATE SET
+  brand_id = EXCLUDED.brand_id,
+  name = EXCLUDED.name,
+  slug = EXCLUDED.slug,
+  description = EXCLUDED.description,
+  upc = EXCLUDED.upc,
+  sku = EXCLUDED.sku,
+  price = EXCLUDED.price,
+  stock_status = EXCLUDED.stock_status,
+  images = EXCLUDED.images,
+  quantity = EXCLUDED.quantity,
+  weight = EXCLUDED.weight,
+  search_keywords = EXCLUDED.search_keywords,
+  published_at = EXCLUDED.published_at,
+  is_special_order = EXCLUDED.is_special_order,
+  is_taxable = EXCLUDED.is_taxable,
+  updated_at = NOW();
 
--- Mark featured and pickup-only products
-UPDATE product_storefront_settings SET is_featured = true WHERE product_id = 'bd731767-abed-58a8-8409-3b6cb003dae4';
-UPDATE product_storefront_settings SET pickup_only = true WHERE product_id = '32711615-c441-5063-a1ed-464d3ba6d253';
+WITH canonical_category_map (product_id, category_slug) AS (
+  VALUES
+    ('bd731767-abed-58a8-8409-3b6cb003dae4', 'dog-flea-tick'),
+    ('2b8dcfc7-200b-5e14-83fc-11126af0a90a', 'dog-flea-tick'),
+    ('4940d798-fa4b-5fa7-b733-a3abe1e3be44', 'cat-bowls-feeders'),
+    ('bc8e0978-0e0b-5c1e-84b0-28d683764daa', 'cat-food'),
+    ('f3efbe5c-8ba9-5c4f-853f-154ff51be3fc', 'cat-food'),
+    ('6b839236-3a4f-5358-93be-56f61f4a3ff5', 'cat-food'),
+    ('a42e1184-4183-5ece-a0b8-2e60ad3b4a09', 'cat-food'),
+    ('23cc15d2-4920-5af8-b8ab-bb0778e26669', 'cat-food'),
+    ('a35447a5-9929-56f4-bf35-649b829ebb69', 'cat-food'),
+    ('32711615-c441-5063-a1ed-464d3ba6d253', 'dog-flea-tick'),
+    ('55555555-5555-5555-5555-555555555555', 'cat-bowls-feeders'),
+    ('66666666-6666-6666-6666-666666666666', 'cat-food')
+)
+INSERT INTO product_categories (product_id, category_id, relationship_type)
+SELECT map.product_id::uuid, categories.id, 'canonical'
+FROM canonical_category_map AS map
+JOIN categories ON categories.slug = map.category_slug
+ON CONFLICT (product_id, category_id) DO UPDATE SET
+  relationship_type = EXCLUDED.relationship_type;
+
+WITH canonical_category_map (product_id, category_slug) AS (
+  VALUES
+    ('bd731767-abed-58a8-8409-3b6cb003dae4', 'dog-flea-tick'),
+    ('2b8dcfc7-200b-5e14-83fc-11126af0a90a', 'dog-flea-tick'),
+    ('4940d798-fa4b-5fa7-b733-a3abe1e3be44', 'cat-bowls-feeders'),
+    ('bc8e0978-0e0b-5c1e-84b0-28d683764daa', 'cat-food'),
+    ('f3efbe5c-8ba9-5c4f-853f-154ff51be3fc', 'cat-food'),
+    ('6b839236-3a4f-5358-93be-56f61f4a3ff5', 'cat-food'),
+    ('a42e1184-4183-5ece-a0b8-2e60ad3b4a09', 'cat-food'),
+    ('23cc15d2-4920-5af8-b8ab-bb0778e26669', 'cat-food'),
+    ('a35447a5-9929-56f4-bf35-649b829ebb69', 'cat-food'),
+    ('32711615-c441-5063-a1ed-464d3ba6d253', 'dog-flea-tick'),
+    ('55555555-5555-5555-5555-555555555555', 'cat-bowls-feeders'),
+    ('66666666-6666-6666-6666-666666666666', 'cat-food')
+)
+UPDATE products
+SET canonical_category_id = categories.id
+FROM canonical_category_map AS map
+JOIN categories ON categories.slug = map.category_slug
+WHERE products.id = map.product_id::uuid;
+
+WITH pet_type_map (product_id, pet_type_name) AS (
+  VALUES
+    ('bd731767-abed-58a8-8409-3b6cb003dae4', 'Dog'),
+    ('2b8dcfc7-200b-5e14-83fc-11126af0a90a', 'Dog'),
+    ('4940d798-fa4b-5fa7-b733-a3abe1e3be44', 'Cat'),
+    ('bc8e0978-0e0b-5c1e-84b0-28d683764daa', 'Cat'),
+    ('f3efbe5c-8ba9-5c4f-853f-154ff51be3fc', 'Cat'),
+    ('6b839236-3a4f-5358-93be-56f61f4a3ff5', 'Cat'),
+    ('a42e1184-4183-5ece-a0b8-2e60ad3b4a09', 'Cat'),
+    ('23cc15d2-4920-5af8-b8ab-bb0778e26669', 'Cat'),
+    ('a35447a5-9929-56f4-bf35-649b829ebb69', 'Cat'),
+    ('32711615-c441-5063-a1ed-464d3ba6d253', 'Dog'),
+    ('55555555-5555-5555-5555-555555555555', 'Cat'),
+    ('66666666-6666-6666-6666-666666666666', 'Cat')
+)
+INSERT INTO product_pet_types (product_id, pet_type_id)
+SELECT map.product_id::uuid, pet_types.id
+FROM pet_type_map AS map
+JOIN pet_types ON pet_types.name = map.pet_type_name
+ON CONFLICT (product_id, pet_type_id) DO NOTHING;
+
+INSERT INTO product_storefront_settings (product_id, is_featured, pickup_only)
+VALUES
+  ('bd731767-abed-58a8-8409-3b6cb003dae4', true, false),
+  ('32711615-c441-5063-a1ed-464d3ba6d253', false, true),
+  ('4940d798-fa4b-5fa7-b733-a3abe1e3be44', true, false),
+  ('55555555-5555-5555-5555-555555555555', false, false)
+ON CONFLICT (product_id) DO UPDATE SET
+  is_featured = EXCLUDED.is_featured,
+  pickup_only = EXCLUDED.pickup_only;
 
 
 -- --- Module: 03-scraping.sql ---
 -- ---------------------------------------------------------------------
--- Facet Values and Scraping Metadata
+-- Facet values, product facet assignments, and sample scraper configs
 -- ---------------------------------------------------------------------
 
--- Animal Type
-INSERT INTO facet_values (facet_definition_id, value, normalized_value, slug) VALUES
-((SELECT id FROM facet_definitions WHERE slug = 'animal-type'), 'Dog', 'dog', 'dog'),
-((SELECT id FROM facet_definitions WHERE slug = 'animal-type'), 'Cat', 'cat', 'cat'),
-((SELECT id FROM facet_definitions WHERE slug = 'animal-type'), 'Bird', 'bird', 'bird')
-ON CONFLICT (facet_definition_id, normalized_value) DO NOTHING;
+INSERT INTO facet_values (facet_definition_id, value, normalized_value, slug)
+VALUES
+  ((SELECT id FROM facet_definitions WHERE slug = 'animal-type'), 'Dog', 'dog', 'dog'),
+  ((SELECT id FROM facet_definitions WHERE slug = 'animal-type'), 'Cat', 'cat', 'cat'),
+  ((SELECT id FROM facet_definitions WHERE slug = 'animal-type'), 'Bird', 'bird', 'bird'),
+  ((SELECT id FROM facet_definitions WHERE slug = 'life-stage'), 'Adult', 'adult', 'adult'),
+  ((SELECT id FROM facet_definitions WHERE slug = 'life-stage'), 'Puppy', 'puppy', 'puppy'),
+  ((SELECT id FROM facet_definitions WHERE slug = 'life-stage'), 'Senior', 'senior', 'senior'),
+  ((SELECT id FROM facet_definitions WHERE slug = 'life-stage'), 'Kitten', 'kitten', 'kitten'),
+  ((SELECT id FROM facet_definitions WHERE slug = 'flavor'), 'Chicken', 'chicken', 'chicken'),
+  ((SELECT id FROM facet_definitions WHERE slug = 'flavor'), 'Salmon', 'salmon', 'salmon'),
+  ((SELECT id FROM facet_definitions WHERE slug = 'flavor'), 'Beef', 'beef', 'beef'),
+  ((SELECT id FROM facet_definitions WHERE slug = 'flavor'), 'Duck', 'duck', 'duck')
+ON CONFLICT (facet_definition_id, normalized_value) DO UPDATE SET
+  value = EXCLUDED.value,
+  slug = EXCLUDED.slug;
 
--- Life Stage
-INSERT INTO facet_values (facet_definition_id, value, normalized_value, slug) VALUES
-((SELECT id FROM facet_definitions WHERE slug = 'life-stage'), 'Adult', 'adult', 'adult'),
-((SELECT id FROM facet_definitions WHERE slug = 'life-stage'), 'Puppy', 'puppy', 'puppy'),
-((SELECT id FROM facet_definitions WHERE slug = 'life-stage'), 'Senior', 'senior', 'senior'),
-((SELECT id FROM facet_definitions WHERE slug = 'life-stage'), 'Kitten', 'kitten', 'kitten')
-ON CONFLICT (facet_definition_id, normalized_value) DO NOTHING;
+WITH product_facet_map (product_id, facet_definition_slug, facet_value_slug) AS (
+  VALUES
+    ('bd731767-abed-58a8-8409-3b6cb003dae4', 'animal-type', 'dog'),
+    ('2b8dcfc7-200b-5e14-83fc-11126af0a90a', 'animal-type', 'dog'),
+    ('32711615-c441-5063-a1ed-464d3ba6d253', 'animal-type', 'dog'),
+    ('4940d798-fa4b-5fa7-b733-a3abe1e3be44', 'animal-type', 'cat'),
+    ('55555555-5555-5555-5555-555555555555', 'animal-type', 'cat'),
+    ('bc8e0978-0e0b-5c1e-84b0-28d683764daa', 'animal-type', 'cat'),
+    ('f3efbe5c-8ba9-5c4f-853f-154ff51be3fc', 'animal-type', 'cat'),
+    ('6b839236-3a4f-5358-93be-56f61f4a3ff5', 'animal-type', 'cat'),
+    ('a42e1184-4183-5ece-a0b8-2e60ad3b4a09', 'animal-type', 'cat'),
+    ('23cc15d2-4920-5af8-b8ab-bb0778e26669', 'animal-type', 'cat'),
+    ('a35447a5-9929-56f4-bf35-649b829ebb69', 'animal-type', 'cat'),
+    ('66666666-6666-6666-6666-666666666666', 'animal-type', 'cat'),
+    ('bd731767-abed-58a8-8409-3b6cb003dae4', 'life-stage', 'adult'),
+    ('2b8dcfc7-200b-5e14-83fc-11126af0a90a', 'life-stage', 'adult'),
+    ('bc8e0978-0e0b-5c1e-84b0-28d683764daa', 'life-stage', 'adult'),
+    ('f3efbe5c-8ba9-5c4f-853f-154ff51be3fc', 'life-stage', 'adult'),
+    ('6b839236-3a4f-5358-93be-56f61f4a3ff5', 'life-stage', 'adult'),
+    ('a42e1184-4183-5ece-a0b8-2e60ad3b4a09', 'life-stage', 'adult'),
+    ('23cc15d2-4920-5af8-b8ab-bb0778e26669', 'life-stage', 'adult'),
+    ('a35447a5-9929-56f4-bf35-649b829ebb69', 'life-stage', 'adult'),
+    ('66666666-6666-6666-6666-666666666666', 'life-stage', 'adult'),
+    ('bc8e0978-0e0b-5c1e-84b0-28d683764daa', 'flavor', 'chicken'),
+    ('f3efbe5c-8ba9-5c4f-853f-154ff51be3fc', 'flavor', 'chicken'),
+    ('6b839236-3a4f-5358-93be-56f61f4a3ff5', 'flavor', 'salmon'),
+    ('a42e1184-4183-5ece-a0b8-2e60ad3b4a09', 'flavor', 'chicken'),
+    ('23cc15d2-4920-5af8-b8ab-bb0778e26669', 'flavor', 'duck'),
+    ('a35447a5-9929-56f4-bf35-649b829ebb69', 'flavor', 'salmon'),
+    ('66666666-6666-6666-6666-666666666666', 'flavor', 'chicken')
+)
+INSERT INTO product_facets (product_id, facet_value_id)
+SELECT map.product_id::uuid, facet_values.id
+FROM product_facet_map AS map
+JOIN facet_definitions ON facet_definitions.slug = map.facet_definition_slug
+JOIN facet_values
+  ON facet_values.facet_definition_id = facet_definitions.id
+ AND facet_values.slug = map.facet_value_slug
+ON CONFLICT (product_id, facet_value_id) DO NOTHING;
 
--- Flavor
-INSERT INTO facet_values (facet_definition_id, value, normalized_value, slug) VALUES
-((SELECT id FROM facet_definitions WHERE slug = 'flavor'), 'Chicken', 'chicken', 'chicken'),
-((SELECT id FROM facet_definitions WHERE slug = 'flavor'), 'Beef', 'beef', 'beef'),
-((SELECT id FROM facet_definitions WHERE slug = 'flavor'), 'Salmon', 'salmon', 'salmon')
-ON CONFLICT (facet_definition_id, normalized_value) DO NOTHING;
+INSERT INTO scraper_configs (
+  id,
+  slug,
+  display_name,
+  domain,
+  base_url,
+  schema_version,
+  scraper_type,
+  status,
+  health_status,
+  health_score,
+  last_test_at
+)
+VALUES
+  (
+    'a0000000-0000-0000-0000-000000000011',
+    'wondercide-sample',
+    'Wondercide Sample Scraper',
+    'www.wondercide.com',
+    'https://www.wondercide.com',
+    '1.0',
+    'static',
+    'active',
+    'healthy',
+    92,
+    NOW()
+  ),
+  (
+    'a0000000-0000-0000-0000-000000000012',
+    'fromm-sample',
+    'Fromm Sample Scraper',
+    'www.frommfamily.com',
+    'https://www.frommfamily.com',
+    '1.0',
+    'static',
+    'draft',
+    'unknown',
+    0,
+    NULL
+  )
+ON CONFLICT (slug) DO UPDATE SET
+  display_name = EXCLUDED.display_name,
+  domain = EXCLUDED.domain,
+  base_url = EXCLUDED.base_url,
+  schema_version = EXCLUDED.schema_version,
+  scraper_type = EXCLUDED.scraper_type,
+  status = EXCLUDED.status,
+  health_status = EXCLUDED.health_status,
+  health_score = EXCLUDED.health_score,
+  last_test_at = EXCLUDED.last_test_at;
+
+INSERT INTO scraper_config_versions (
+  id,
+  config_id,
+  schema_version,
+  status,
+  version_number,
+  published_at,
+  change_summary,
+  validation_result,
+  ai_config,
+  anti_detection,
+  validation_config,
+  timeout,
+  retries,
+  image_quality
+)
+VALUES
+  (
+    'b0000000-0000-0000-0000-000000000011',
+    'a0000000-0000-0000-0000-000000000011',
+    '1.0',
+    'published',
+    1,
+    NOW(),
+    'Seeded local Wondercide scraper configuration.',
+    '{"valid": true, "warnings": []}'::jsonb,
+    NULL,
+    '{"enable_rate_limiting": true, "rate_limit_min_delay": 1.5, "rate_limit_max_delay": 3.0}'::jsonb,
+    '{"no_results_selectors": [".search-no-results"], "no_results_text_patterns": ["no results found"]}'::jsonb,
+    45,
+    2,
+    70
+  ),
+  (
+    'b0000000-0000-0000-0000-000000000012',
+    'a0000000-0000-0000-0000-000000000012',
+    '1.0',
+    'validated',
+    1,
+    NULL,
+    'Seeded local Fromm scraper configuration for lab testing.',
+    '{"valid": true, "warnings": ["Selectors tuned for local demo only"]}'::jsonb,
+    NULL,
+    '{"enable_rate_limiting": true, "rate_limit_min_delay": 1.0, "rate_limit_max_delay": 2.5}'::jsonb,
+    '{"no_results_selectors": [".no-products"], "no_results_text_patterns": ["sorry, no products found"]}'::jsonb,
+    40,
+    2,
+    75
+  )
+ON CONFLICT (id) DO UPDATE SET
+  status = EXCLUDED.status,
+  published_at = EXCLUDED.published_at,
+  change_summary = EXCLUDED.change_summary,
+  validation_result = EXCLUDED.validation_result,
+  anti_detection = EXCLUDED.anti_detection,
+  validation_config = EXCLUDED.validation_config,
+  timeout = EXCLUDED.timeout,
+  retries = EXCLUDED.retries,
+  image_quality = EXCLUDED.image_quality;
+
+UPDATE scraper_configs
+SET current_version_id = CASE id
+  WHEN 'a0000000-0000-0000-0000-000000000011' THEN 'b0000000-0000-0000-0000-000000000011'
+  WHEN 'a0000000-0000-0000-0000-000000000012' THEN 'b0000000-0000-0000-0000-000000000012'
+  ELSE current_version_id
+END
+WHERE id IN (
+  'a0000000-0000-0000-0000-000000000011',
+  'a0000000-0000-0000-0000-000000000012'
+);
+
+INSERT INTO scraper_selectors (version_id, name, selector, attribute, multiple, required, sort_order)
+VALUES
+  ('b0000000-0000-0000-0000-000000000011', 'product_name', '.product-title', 'text', false, true, 1),
+  ('b0000000-0000-0000-0000-000000000011', 'product_price', '.product-price', 'text', false, true, 2),
+  ('b0000000-0000-0000-0000-000000000011', 'product_image', '.product-image img', 'src', false, true, 3),
+  ('b0000000-0000-0000-0000-000000000012', 'product_name', 'h1.product-title', 'text', false, true, 1),
+  ('b0000000-0000-0000-0000-000000000012', 'product_price', '.price', 'text', false, true, 2),
+  ('b0000000-0000-0000-0000-000000000012', 'product_image', '.gallery img', 'src', false, true, 3)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO scraper_workflow_steps (version_id, action, name, params, sort_order)
+VALUES
+  ('b0000000-0000-0000-0000-000000000011', 'navigate', 'Open PDP', '{"url": "https://www.wondercide.com/products/{sku}"}'::jsonb, 1),
+  ('b0000000-0000-0000-0000-000000000011', 'extract', 'Extract fields', '{"fields": ["product_name", "product_price", "product_image"]}'::jsonb, 2),
+  ('b0000000-0000-0000-0000-000000000012', 'navigate', 'Open PDP', '{"url": "https://www.frommfamily.com/products/{sku}"}'::jsonb, 1),
+  ('b0000000-0000-0000-0000-000000000012', 'extract', 'Extract fields', '{"fields": ["product_name", "product_price", "product_image"]}'::jsonb, 2)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO scraper_config_test_skus (config_id, sku, sku_type)
+VALUES
+  ('a0000000-0000-0000-0000-000000000011', '019962890727', 'test'),
+  ('a0000000-0000-0000-0000-000000000011', 'NO-SUCH-WONDERCIDE-SKU', 'fake'),
+  ('a0000000-0000-0000-0000-000000000012', '072705137008', 'test'),
+  ('a0000000-0000-0000-0000-000000000012', 'NO-SUCH-FROMM-SKU', 'fake')
+ON CONFLICT (config_id, sku) DO UPDATE SET
+  sku_type = EXCLUDED.sku_type;
 
 
 -- --- Module: 04-orders.sql ---
 -- ---------------------------------------------------------------------
--- Promo Codes, Orders, Payments, and Legacy Order Ingestion
+-- Promo Codes, Orders, Sync Runs, and Legacy Order Source Records
+-- ---------------------------------------------------------------------
+
+INSERT INTO integration_sync_runs (
+  id,
+  external_source_id,
+  source_type,
+  source_system,
+  sync_kind,
+  status,
+  row_count,
+  inserted_count,
+  updated_count,
+  skipped_count,
+  error_count,
+  started_at,
+  completed_at,
+  error_summary,
+  metadata
+)
+SELECT
+  '91000000-0000-0000-0000-000000000001',
+  external_sources.id,
+  'shopsite',
+  'shopsite_15',
+  'orders',
+  'completed',
+  2,
+  2,
+  0,
+  0,
+  0,
+  NOW() - INTERVAL '2 days',
+  NOW() - INTERVAL '2 days' + INTERVAL '2 minutes',
+  NULL,
+  '{"seeded": true, "notes": "Sample ShopSite order import"}'::jsonb
+FROM external_sources
+WHERE external_sources.key = 'shopsite'
+ON CONFLICT (id) DO UPDATE SET
+  external_source_id = EXCLUDED.external_source_id,
+  status = EXCLUDED.status,
+  row_count = EXCLUDED.row_count,
+  inserted_count = EXCLUDED.inserted_count,
+  updated_count = EXCLUDED.updated_count,
+  error_count = EXCLUDED.error_count,
+  metadata = EXCLUDED.metadata;
+
+INSERT INTO integration_sync_runs (
+  id,
+  external_source_id,
+  source_type,
+  source_system,
+  sync_kind,
+  status,
+  row_count,
+  inserted_count,
+  updated_count,
+  skipped_count,
+  error_count,
+  started_at,
+  completed_at,
+  error_summary,
+  metadata
+)
+SELECT
+  '92000000-0000-0000-0000-000000000001',
+  external_sources.id,
+  'integra',
+  'integra_register',
+  'inventory',
+  'partial',
+  3,
+  0,
+  2,
+  0,
+  1,
+  NOW() - INTERVAL '1 day',
+  NOW() - INTERVAL '1 day' + INTERVAL '90 seconds',
+  'One inventory row required manual review',
+  '{
+    "seeded": true,
+    "preview": [
+      {
+        "sku": "019962890727",
+        "name": "Wondercide Flea & Tick Spray Lemongrass 4oz",
+        "changes": [
+          { "field": "price", "before": "12.99", "after": "14.99" },
+          { "field": "quantity", "before": "12", "after": "18" }
+        ]
+      },
+      {
+        "sku": "072705137008",
+        "name": "Fromm Cat Four-Star Chicken 4lb",
+        "changes": [
+          { "field": "quantity", "before": "8", "after": "12" }
+        ]
+      }
+    ],
+    "errors": [
+      {
+        "record": "SKU-MISSING-001",
+        "error": "No matching storefront product found",
+        "timestamp": "2026-05-18T00:00:00.000Z"
+      }
+    ]
+  }'::jsonb
+FROM external_sources
+WHERE external_sources.key = 'integra'
+ON CONFLICT (id) DO UPDATE SET
+  external_source_id = EXCLUDED.external_source_id,
+  status = EXCLUDED.status,
+  row_count = EXCLUDED.row_count,
+  updated_count = EXCLUDED.updated_count,
+  error_count = EXCLUDED.error_count,
+  error_summary = EXCLUDED.error_summary,
+  metadata = EXCLUDED.metadata;
+
+INSERT INTO orders (
+  id,
+  order_number,
+  customer_name,
+  customer_email,
+  customer_phone,
+  status,
+  subtotal,
+  tax,
+  total,
+  notes,
+  created_at,
+  updated_at,
+  user_id,
+  payment_method,
+  payment_status,
+  fulfillment_method,
+  delivery_fee,
+  source,
+  source_type,
+  source_system,
+  external_order_id,
+  external_created_at,
+  imported_at,
+  fulfillment_status
+)
+VALUES
+  (
+    '93000000-0000-0000-0000-000000000001',
+    'SS-1001',
+    'Olivia ShopSite',
+    'olivia@example.com',
+    '(555) 111-1001',
+    'completed',
+    44.98,
+    2.81,
+    47.79,
+    'Imported from ShopSite for local admin testing.',
+    NOW() - INTERVAL '2 days',
+    NOW() - INTERVAL '2 days',
+    'a0000000-0000-0000-0000-000000000000',
+    'credit_card',
+    'paid',
+    'pickup',
+    0,
+    'shopsite',
+    'shopsite',
+    'shopsite_15',
+    '1001',
+    NOW() - INTERVAL '2 days',
+    NOW() - INTERVAL '2 days',
+    'fulfilled'
+  ),
+  (
+    '93000000-0000-0000-0000-000000000002',
+    'WEB-1002',
+    'Drew Pickup',
+    'drew@example.com',
+    '(555) 222-1002',
+    'processing',
+    64.98,
+    4.06,
+    69.04,
+    'Local web checkout sample order.',
+    NOW() - INTERVAL '6 hours',
+    NOW() - INTERVAL '3 hours',
+    'a0000000-0000-0000-0000-000000000000',
+    'credit_card',
+    'paid',
+    'pickup',
+    0,
+    'web',
+    'web',
+    'web_storefront',
+    'WEB-1002',
+    NOW() - INTERVAL '6 hours',
+    NOW() - INTERVAL '6 hours',
+    'ready_for_pickup'
+  )
+ON CONFLICT (order_number) DO UPDATE SET
+  customer_name = EXCLUDED.customer_name,
+  customer_email = EXCLUDED.customer_email,
+  status = EXCLUDED.status,
+  subtotal = EXCLUDED.subtotal,
+  tax = EXCLUDED.tax,
+  total = EXCLUDED.total,
+  updated_at = EXCLUDED.updated_at,
+  payment_status = EXCLUDED.payment_status,
+  fulfillment_status = EXCLUDED.fulfillment_status;
+
+INSERT INTO order_items (
+  id,
+  order_id,
+  item_type,
+  item_id,
+  item_name,
+  item_slug,
+  quantity,
+  unit_price,
+  total_price,
+  created_at
+)
+VALUES
+  (
+    '94000000-0000-0000-0000-000000000001',
+    '93000000-0000-0000-0000-000000000001',
+    'product',
+    'bd731767-abed-58a8-8409-3b6cb003dae4',
+    'Wondercide Flea & Tick Spray Lemongrass 4oz',
+    'wondercide-flea-tick-spray-lemongrass-4oz-019962890727',
+    2,
+    14.99,
+    29.98,
+    NOW() - INTERVAL '2 days'
+  ),
+  (
+    '94000000-0000-0000-0000-000000000002',
+    '93000000-0000-0000-0000-000000000001',
+    'product',
+    '32711615-c441-5063-a1ed-464d3ba6d253',
+    'Wondercide Flying Insect Trap',
+    'wondercide-flying-insect-trap-810075890174',
+    1,
+    14.99,
+    14.99,
+    NOW() - INTERVAL '2 days'
+  ),
+  (
+    '94000000-0000-0000-0000-000000000003',
+    '93000000-0000-0000-0000-000000000002',
+    'product',
+    'a42e1184-4183-5ece-a0b8-2e60ad3b4a09',
+    'Fromm Cat Four-Star Chicken 4lb',
+    'fromm-cat-four-star-chicken-4lb-072705137008',
+    1,
+    21.99,
+    21.99,
+    NOW() - INTERVAL '6 hours'
+  ),
+  (
+    '94000000-0000-0000-0000-000000000004',
+    '93000000-0000-0000-0000-000000000002',
+    'service',
+    '44444444-4444-4444-4444-444444444444',
+    'Delivery',
+    'delivery',
+    1,
+    35.00,
+    35.00,
+    NOW() - INTERVAL '6 hours'
+  )
+ON CONFLICT (id) DO UPDATE SET
+  quantity = EXCLUDED.quantity,
+  unit_price = EXCLUDED.unit_price,
+  total_price = EXCLUDED.total_price;
+
+INSERT INTO order_events (
+  id,
+  order_id,
+  event_type,
+  note,
+  created_by,
+  created_at
+)
+VALUES
+  (
+    '95000000-0000-0000-0000-000000000001',
+    '93000000-0000-0000-0000-000000000001',
+    'imported_from_shopsite',
+    'Imported during local ShopSite seed.',
+    'a0000000-0000-0000-0000-000000000000',
+    NOW() - INTERVAL '2 days'
+  ),
+  (
+    '95000000-0000-0000-0000-000000000002',
+    '93000000-0000-0000-0000-000000000001',
+    'fulfilled',
+    'Order fulfilled and picked up.',
+    'a0000000-0000-0000-0000-000000000000',
+    NOW() - INTERVAL '2 days' + INTERVAL '3 hours'
+  ),
+  (
+    '95000000-0000-0000-0000-000000000003',
+    '93000000-0000-0000-0000-000000000002',
+    'placed',
+    'Order placed through the web storefront.',
+    'a0000000-0000-0000-0000-000000000000',
+    NOW() - INTERVAL '6 hours'
+  ),
+  (
+    '95000000-0000-0000-0000-000000000004',
+    '93000000-0000-0000-0000-000000000002',
+    'ready_for_pickup',
+    'Order is staged for pickup.',
+    'a0000000-0000-0000-0000-000000000000',
+    NOW() - INTERVAL '2 hours'
+  )
+ON CONFLICT (id) DO UPDATE SET
+  note = EXCLUDED.note,
+  created_at = EXCLUDED.created_at;
+
+INSERT INTO order_source_records (
+  id,
+  order_id,
+  source_type,
+  source_system,
+  external_id,
+  external_order_number,
+  raw_payload,
+  normalized_payload,
+  sync_run_id,
+  imported_at,
+  external_created_at
+)
+VALUES
+  (
+    '96000000-0000-0000-0000-000000000001',
+    '93000000-0000-0000-0000-000000000001',
+    'shopsite',
+    'shopsite_15',
+    '1001',
+    '1001',
+    '{"seeded": true, "source": "shopsite"}'::jsonb,
+    '{"customer_email": "olivia@example.com", "payment_method": "credit_card"}'::jsonb,
+    '91000000-0000-0000-0000-000000000001',
+    NOW() - INTERVAL '2 days',
+    NOW() - INTERVAL '2 days'
+  )
+ON CONFLICT (source_type, source_system, external_id) DO UPDATE SET
+  normalized_payload = EXCLUDED.normalized_payload,
+  sync_run_id = EXCLUDED.sync_run_id,
+  imported_at = EXCLUDED.imported_at;
 
 
 -- --- Module: 05-settings.sql ---

@@ -1,19 +1,353 @@
--- Generated Products from Excel
-INSERT INTO products (id, brand_id, name, slug, upc, sku, price, stock_status, created_at, updated_at) VALUES
-('bd731767-abed-58a8-8409-3b6cb003dae4', 'a1889317-5cc0-48b2-8156-285ba445b0e2', 'Wondercide Flea & Tick Spray Lemongrass 4oz', 'wondercide-flea-tick-spray-lemongrass-4oz-019962890727', '019962890727', '019962890727', 9.99, 'in_stock', NOW(), NOW()),
-('2b8dcfc7-200b-5e14-83fc-11126af0a90a', 'a1889317-5cc0-48b2-8156-285ba445b0e2', 'Wondercide Flea & Tick Spray Lemongrass 32oz', 'wondercide-flea-tick-spray-lemongrass-32oz-019962890925', '019962890925', '019962890925', 9.99, 'in_stock', NOW(), NOW()),
-('4940d798-fa4b-5fa7-b733-a3abe1e3be44', 'da487015-ac06-4110-825a-aaf6ef51178f', 'Catit Pixi Fountain Light Blue', 'catit-pixi-fountain-light-blue-022517437179', '022517437179', '022517437179', 9.99, 'in_stock', NOW(), NOW()),
-('bc8e0978-0e0b-5c1e-84b0-28d683764daa', '2ebacbc3-53a7-4207-94e8-10ba7576a4f5', 'Fromm Cat Purrsnick Duck Liver Pate 3oz', 'fromm-cat-purrsnick-duck-liver-pate-3oz-072705113408', '072705113408', '072705113408', 9.99, 'in_stock', NOW(), NOW()),
-('f3efbe5c-8ba9-5c4f-853f-154ff51be3fc', '2ebacbc3-53a7-4207-94e8-10ba7576a4f5', 'Fromm Cat Purrsnick Duck Stew 3oz', 'fromm-cat-purrsnick-duck-stew-3oz-072705113446', '072705113446', '072705113446', 9.99, 'in_stock', NOW(), NOW()),
-('6b839236-3a4f-5358-93be-56f61f4a3ff5', '2ebacbc3-53a7-4207-94e8-10ba7576a4f5', 'Fromm Cat Purrsnick Chicken Shred 3oz', 'fromm-cat-purrsnick-chicken-shred-3oz-072705113484', '072705113484', '072705113484', 9.99, 'in_stock', NOW(), NOW()),
-('a42e1184-4183-5ece-a0b8-2e60ad3b4a09', '2ebacbc3-53a7-4207-94e8-10ba7576a4f5', 'Fromm Cat Purrsnick Chicken 4lb', 'fromm-cat-purrsnick-chicken-4lb-072705137008', '072705137008', '072705137008', 9.99, 'in_stock', NOW(), NOW()),
-('23cc15d2-4920-5af8-b8ab-bb0778e26669', '2ebacbc3-53a7-4207-94e8-10ba7576a4f5', 'Fromm Cat Purrsnick Game Bird 4lb', 'fromm-cat-purrsnick-game-bird-4lb-072705137206', '072705137206', '072705137206', 9.99, 'in_stock', NOW(), NOW()),
-('a35447a5-9929-56f4-bf35-649b829ebb69', '2ebacbc3-53a7-4207-94e8-10ba7576a4f5', 'Fromm Cat Purrsnick Salmon 4lb', 'fromm-cat-purrsnick-salmon-4lb-072705137404', '072705137404', '072705137404', 9.99, 'in_stock', NOW(), NOW()),
-('32711615-c441-5063-a1ed-464d3ba6d253', 'a1889317-5cc0-48b2-8156-285ba445b0e2', 'Wondercide Flying in Sect Trap', 'wondercide-flying-in-sect-trap-810075890174', '810075890174', '810075890174', 9.99, 'in_stock', NOW(), NOW()),
-('55555555-5555-5555-5555-555555555555', 'da487015-ac06-4110-825a-aaf6ef51178f', 'Catit Pixi Fountain Pink', 'catit-pixi-fountain-pink-022517437180', '022517437180', '022517437180', 14.99, 'in_stock', NOW(), NOW()),
-('66666666-6666-6666-6666-666666666666', '2ebacbc3-53a7-4207-94e8-10ba7576a4f5', 'Fromm Cat Purrsnick Chicken 12lb', 'fromm-cat-purrsnick-chicken-12lb-072705137015', '072705137015', '072705137015', 24.99, 'in_stock', NOW(), NOW())
-ON CONFLICT (id) DO NOTHING;
+-- Generated Products from Excel (enriched for local bootstrap)
+INSERT INTO products (
+  id,
+  brand_id,
+  name,
+  slug,
+  description,
+  upc,
+  sku,
+  price,
+  stock_status,
+  images,
+  quantity,
+  weight,
+  search_keywords,
+  published_at,
+  is_special_order,
+  is_taxable,
+  created_at,
+  updated_at
+)
+VALUES
+  (
+    'bd731767-abed-58a8-8409-3b6cb003dae4',
+    'a1889317-5cc0-48b2-8156-285ba445b0e2',
+    'Wondercide Flea & Tick Spray Lemongrass 4oz',
+    'wondercide-flea-tick-spray-lemongrass-4oz-019962890727',
+    'Plant-powered flea and tick spray for dogs and home surfaces with a fresh lemongrass scent.',
+    '019962890727',
+    '019962890727',
+    14.99,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/wondercide-lemongrass-4oz.webp'],
+    18,
+    0.25,
+    'dog flea tick spray lemongrass home pest control',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    '2b8dcfc7-200b-5e14-83fc-11126af0a90a',
+    'a1889317-5cc0-48b2-8156-285ba445b0e2',
+    'Wondercide Flea & Tick Spray Lemongrass 32oz',
+    'wondercide-flea-tick-spray-lemongrass-32oz-019962890925',
+    'Large-format Wondercide flea and tick spray for multi-pet households and outdoor use.',
+    '019962890925',
+    '019962890925',
+    29.99,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/wondercide-lemongrass-32oz.webp'],
+    9,
+    2.00,
+    'dog flea tick spray large refill lemongrass',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    '4940d798-fa4b-5fa7-b733-a3abe1e3be44',
+    'da487015-ac06-4110-825a-aaf6ef51178f',
+    'Catit Pixi Fountain Light Blue',
+    'catit-pixi-fountain-light-blue-022517437179',
+    'Quiet cat water fountain with ergonomic PIXI face design and triple-action filtration.',
+    '022517437179',
+    '022517437179',
+    39.99,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/catit-pixi-fountain-blue.webp'],
+    7,
+    1.80,
+    'cat water fountain pixi hydration feeder bowl',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    'bc8e0978-0e0b-5c1e-84b0-28d683764daa',
+    '2ebacbc3-53a7-4207-94e8-10ba7576a4f5',
+    'Fromm Cat PurrSnickety Chicken Pate 3oz',
+    'fromm-cat-purrsnickety-chicken-pate-3oz-072705113408',
+    'Protein-rich chicken pate recipe for adult cats with a smooth texture and added vitamins.',
+    '072705113408',
+    '072705113408',
+    2.49,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/fromm-purrsnickety-chicken-pate-3oz.webp'],
+    42,
+    0.19,
+    'cat wet food chicken pate fromm adult',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    'f3efbe5c-8ba9-5c4f-853f-154ff51be3fc',
+    '2ebacbc3-53a7-4207-94e8-10ba7576a4f5',
+    'Fromm Cat PurrSnickety Chicken Stew 3oz',
+    'fromm-cat-purrsnickety-chicken-stew-3oz-072705113446',
+    'Savory chicken stew with tender shreds and broth for cats that prefer a softer meal.',
+    '072705113446',
+    '072705113446',
+    2.49,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/fromm-purrsnickety-chicken-stew-3oz.webp'],
+    35,
+    0.19,
+    'cat wet food chicken stew fromm adult',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    '6b839236-3a4f-5358-93be-56f61f4a3ff5',
+    '2ebacbc3-53a7-4207-94e8-10ba7576a4f5',
+    'Fromm Cat PurrSnickety Salmon Shred 3oz',
+    'fromm-cat-purrsnickety-salmon-shred-3oz-072705113484',
+    'Shredded salmon entree with gravy for picky cats and mixed feeding routines.',
+    '072705113484',
+    '072705113484',
+    2.59,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/fromm-purrsnickety-salmon-shred-3oz.webp'],
+    31,
+    0.19,
+    'cat wet food salmon shred fromm adult',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    'a42e1184-4183-5ece-a0b8-2e60ad3b4a09',
+    '2ebacbc3-53a7-4207-94e8-10ba7576a4f5',
+    'Fromm Cat Four-Star Chicken 4lb',
+    'fromm-cat-four-star-chicken-4lb-072705137008',
+    'Four-Star dry cat food recipe with chicken, probiotics, and balanced nutrition for adult cats.',
+    '072705137008',
+    '072705137008',
+    21.99,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/fromm-four-star-chicken-4lb.webp'],
+    12,
+    4.00,
+    'cat dry food chicken kibble fromm four star',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    '23cc15d2-4920-5af8-b8ab-bb0778e26669',
+    '2ebacbc3-53a7-4207-94e8-10ba7576a4f5',
+    'Fromm Cat Four-Star Game Bird 4lb',
+    'fromm-cat-four-star-game-bird-4lb-072705137206',
+    'Game bird dry cat food featuring duck, turkey, and wholesome grains for adult cats.',
+    '072705137206',
+    '072705137206',
+    23.99,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/fromm-four-star-game-bird-4lb.webp'],
+    10,
+    4.00,
+    'cat dry food game bird fromm four star',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    'a35447a5-9929-56f4-bf35-649b829ebb69',
+    '2ebacbc3-53a7-4207-94e8-10ba7576a4f5',
+    'Fromm Cat Four-Star Salmon 4lb',
+    'fromm-cat-four-star-salmon-4lb-072705137404',
+    'Salmon-forward dry cat food recipe with balanced omega support and digestible ingredients.',
+    '072705137404',
+    '072705137404',
+    23.99,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/fromm-four-star-salmon-4lb.webp'],
+    11,
+    4.00,
+    'cat dry food salmon fromm four star',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    '32711615-c441-5063-a1ed-464d3ba6d253',
+    'a1889317-5cc0-48b2-8156-285ba445b0e2',
+    'Wondercide Flying Insect Trap',
+    'wondercide-flying-insect-trap-810075890174',
+    'Indoor sticky trap for flying insects that pairs with Wondercide attractant cartridges.',
+    '810075890174',
+    '810075890174',
+    24.99,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/wondercide-flying-insect-trap.webp'],
+    6,
+    1.25,
+    'flying insect trap indoor pest control wondercide',
+    NOW(),
+    true,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    '55555555-5555-5555-5555-555555555555',
+    'da487015-ac06-4110-825a-aaf6ef51178f',
+    'Catit Pixi Fountain Pink',
+    'catit-pixi-fountain-pink-022517437180',
+    'Catit PIXI drinking fountain in pink with ergonomic spout and quiet pump operation.',
+    '022517437180',
+    '022517437180',
+    39.99,
+    'in_stock',
+    ARRAY['https://images.baystate.local/products/catit-pixi-fountain-pink.webp'],
+    5,
+    1.80,
+    'cat water fountain pink pixi hydration feeder bowl',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  ),
+  (
+    '66666666-6666-6666-6666-666666666666',
+    '2ebacbc3-53a7-4207-94e8-10ba7576a4f5',
+    'Fromm Cat Four-Star Chicken 12lb',
+    'fromm-cat-four-star-chicken-12lb-072705137015',
+    'Larger format Four-Star chicken recipe for multi-cat homes and pantry restocks.',
+    '072705137015',
+    '072705137015',
+    49.99,
+    'pre_order',
+    ARRAY['https://images.baystate.local/products/fromm-four-star-chicken-12lb.webp'],
+    0,
+    12.00,
+    'cat dry food chicken kibble fromm bulk bag',
+    NOW(),
+    false,
+    true,
+    NOW(),
+    NOW()
+  )
+ON CONFLICT (id) DO UPDATE SET
+  brand_id = EXCLUDED.brand_id,
+  name = EXCLUDED.name,
+  slug = EXCLUDED.slug,
+  description = EXCLUDED.description,
+  upc = EXCLUDED.upc,
+  sku = EXCLUDED.sku,
+  price = EXCLUDED.price,
+  stock_status = EXCLUDED.stock_status,
+  images = EXCLUDED.images,
+  quantity = EXCLUDED.quantity,
+  weight = EXCLUDED.weight,
+  search_keywords = EXCLUDED.search_keywords,
+  published_at = EXCLUDED.published_at,
+  is_special_order = EXCLUDED.is_special_order,
+  is_taxable = EXCLUDED.is_taxable,
+  updated_at = NOW();
 
--- Mark featured and pickup-only products
-UPDATE product_storefront_settings SET is_featured = true WHERE product_id = 'bd731767-abed-58a8-8409-3b6cb003dae4';
-UPDATE product_storefront_settings SET pickup_only = true WHERE product_id = '32711615-c441-5063-a1ed-464d3ba6d253';
+WITH canonical_category_map (product_id, category_slug) AS (
+  VALUES
+    ('bd731767-abed-58a8-8409-3b6cb003dae4', 'dog-flea-tick'),
+    ('2b8dcfc7-200b-5e14-83fc-11126af0a90a', 'dog-flea-tick'),
+    ('4940d798-fa4b-5fa7-b733-a3abe1e3be44', 'cat-bowls-feeders'),
+    ('bc8e0978-0e0b-5c1e-84b0-28d683764daa', 'cat-food'),
+    ('f3efbe5c-8ba9-5c4f-853f-154ff51be3fc', 'cat-food'),
+    ('6b839236-3a4f-5358-93be-56f61f4a3ff5', 'cat-food'),
+    ('a42e1184-4183-5ece-a0b8-2e60ad3b4a09', 'cat-food'),
+    ('23cc15d2-4920-5af8-b8ab-bb0778e26669', 'cat-food'),
+    ('a35447a5-9929-56f4-bf35-649b829ebb69', 'cat-food'),
+    ('32711615-c441-5063-a1ed-464d3ba6d253', 'dog-flea-tick'),
+    ('55555555-5555-5555-5555-555555555555', 'cat-bowls-feeders'),
+    ('66666666-6666-6666-6666-666666666666', 'cat-food')
+)
+INSERT INTO product_categories (product_id, category_id, relationship_type)
+SELECT map.product_id::uuid, categories.id, 'canonical'
+FROM canonical_category_map AS map
+JOIN categories ON categories.slug = map.category_slug
+ON CONFLICT (product_id, category_id) DO UPDATE SET
+  relationship_type = EXCLUDED.relationship_type;
+
+WITH canonical_category_map (product_id, category_slug) AS (
+  VALUES
+    ('bd731767-abed-58a8-8409-3b6cb003dae4', 'dog-flea-tick'),
+    ('2b8dcfc7-200b-5e14-83fc-11126af0a90a', 'dog-flea-tick'),
+    ('4940d798-fa4b-5fa7-b733-a3abe1e3be44', 'cat-bowls-feeders'),
+    ('bc8e0978-0e0b-5c1e-84b0-28d683764daa', 'cat-food'),
+    ('f3efbe5c-8ba9-5c4f-853f-154ff51be3fc', 'cat-food'),
+    ('6b839236-3a4f-5358-93be-56f61f4a3ff5', 'cat-food'),
+    ('a42e1184-4183-5ece-a0b8-2e60ad3b4a09', 'cat-food'),
+    ('23cc15d2-4920-5af8-b8ab-bb0778e26669', 'cat-food'),
+    ('a35447a5-9929-56f4-bf35-649b829ebb69', 'cat-food'),
+    ('32711615-c441-5063-a1ed-464d3ba6d253', 'dog-flea-tick'),
+    ('55555555-5555-5555-5555-555555555555', 'cat-bowls-feeders'),
+    ('66666666-6666-6666-6666-666666666666', 'cat-food')
+)
+UPDATE products
+SET canonical_category_id = categories.id
+FROM canonical_category_map AS map
+JOIN categories ON categories.slug = map.category_slug
+WHERE products.id = map.product_id::uuid;
+
+WITH pet_type_map (product_id, pet_type_name) AS (
+  VALUES
+    ('bd731767-abed-58a8-8409-3b6cb003dae4', 'Dog'),
+    ('2b8dcfc7-200b-5e14-83fc-11126af0a90a', 'Dog'),
+    ('4940d798-fa4b-5fa7-b733-a3abe1e3be44', 'Cat'),
+    ('bc8e0978-0e0b-5c1e-84b0-28d683764daa', 'Cat'),
+    ('f3efbe5c-8ba9-5c4f-853f-154ff51be3fc', 'Cat'),
+    ('6b839236-3a4f-5358-93be-56f61f4a3ff5', 'Cat'),
+    ('a42e1184-4183-5ece-a0b8-2e60ad3b4a09', 'Cat'),
+    ('23cc15d2-4920-5af8-b8ab-bb0778e26669', 'Cat'),
+    ('a35447a5-9929-56f4-bf35-649b829ebb69', 'Cat'),
+    ('32711615-c441-5063-a1ed-464d3ba6d253', 'Dog'),
+    ('55555555-5555-5555-5555-555555555555', 'Cat'),
+    ('66666666-6666-6666-6666-666666666666', 'Cat')
+)
+INSERT INTO product_pet_types (product_id, pet_type_id)
+SELECT map.product_id::uuid, pet_types.id
+FROM pet_type_map AS map
+JOIN pet_types ON pet_types.name = map.pet_type_name
+ON CONFLICT (product_id, pet_type_id) DO NOTHING;
+
+INSERT INTO product_storefront_settings (product_id, is_featured, pickup_only)
+VALUES
+  ('bd731767-abed-58a8-8409-3b6cb003dae4', true, false),
+  ('32711615-c441-5063-a1ed-464d3ba6d253', false, true),
+  ('4940d798-fa4b-5fa7-b733-a3abe1e3be44', true, false),
+  ('55555555-5555-5555-5555-555555555555', false, false)
+ON CONFLICT (product_id) DO UPDATE SET
+  is_featured = EXCLUDED.is_featured,
+  pickup_only = EXCLUDED.pickup_only;

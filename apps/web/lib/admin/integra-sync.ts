@@ -1,9 +1,8 @@
 import { parseRegisterWorkbook, type RegisterWorkbookProduct } from "@/lib/admin/register-file";
-import { createClient } from "@/lib/supabase/server";
 import { assignProductsToCohorts } from "@/lib/admin/cohort-utils";
+import { createClient } from "@/lib/supabase/server";
 import type {
   ReconciliationIssue,
-  ReconciliationIssueType,
   IntegraReconciliationResult,
 } from "@/lib/admin/integrations/reconciliation-types";
 
@@ -137,9 +136,21 @@ export async function createIntegraReconciliationSyncRun(input: {
   createdBy?: string | null;
 }): Promise<string> {
   const supabase = await createClient();
+  const { data: externalSource, error: externalSourceError } = await supabase
+    .from('external_sources')
+    .select('id')
+    .eq('key', 'integra')
+    .maybeSingle();
+
+  if (externalSourceError) {
+    throw new Error(`Failed to resolve external source: ${externalSourceError.message}`);
+  }
+
+  const externalSourceId = externalSource?.id ?? null;
   const { data, error } = await supabase
     .from('integration_sync_runs')
     .insert({
+      external_source_id: externalSourceId,
       source_type: 'integra',
       source_system: 'integra_register',
       sync_kind: 'inventory',
@@ -147,6 +158,9 @@ export async function createIntegraReconciliationSyncRun(input: {
       file_name: input.fileName || null,
       row_count: input.rowCount,
       created_by: input.createdBy || null,
+      metadata: {
+        initiated_from: 'runIntegraReconciliation',
+      },
     })
     .select('id')
     .single();

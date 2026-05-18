@@ -8,9 +8,10 @@ function getRunnerSupabaseUrl(url: string) {
         process.env.NODE_ENV === "development" &&
         (url.includes("127.0.0.1") || url.includes("localhost"))
     ) {
-        return url
-            .replace("127.0.0.1", "host.docker.internal")
-            .replace("localhost", "host.docker.internal");
+        // return url
+        //    .replace("127.0.0.1", "host.docker.internal")
+        //    .replace("localhost", "host.docker.internal");
+        return url;
     }
 
     return url;

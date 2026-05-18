@@ -26,7 +26,7 @@ export interface JobPhase {
   startTime?: string;
   endTime?: string;
   logs: ScrapeJobLogEntry[];
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 /**

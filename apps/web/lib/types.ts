@@ -43,9 +43,6 @@ export interface Product {
   gtin?: string | null;
   availability?: string | null;
   minimum_quantity?: number | null;
-  shopsite_sync_status?: ShopSiteSyncStatus | null;
-  shopsite_last_synced_at?: string | null;
-  shopsite_last_sync_error?: string | null;
   brand?: Brand;
   primary_category?: Category;
   variants?: ProductVariant[];

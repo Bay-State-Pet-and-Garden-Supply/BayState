@@ -77,9 +77,6 @@ const PRODUCT_SELECT = `
   is_taxable,
   weight,
   search_keywords,
-  shopsite_sync_status,
-  shopsite_last_synced_at,
-  shopsite_last_sync_error,
   published_at,
   gtin,
   availability,
@@ -113,9 +110,6 @@ interface ProductRow {
   is_taxable?: boolean | null;
   weight?: number | null;
   search_keywords?: string | null;
-  shopsite_sync_status?: Product['shopsite_sync_status'];
-  shopsite_last_synced_at?: string | null;
-  shopsite_last_sync_error?: string | null;
   published_at?: string | null;
   gtin?: string | null;
   availability?: string | null;
@@ -204,9 +198,6 @@ function transformProductRow(row: ProductRow): Product {
     gtin: row.gtin ?? null,
     availability: row.availability ?? null,
     minimum_quantity: row.minimum_quantity ?? 0,
-    shopsite_sync_status: row.shopsite_sync_status ?? null,
-    shopsite_last_synced_at: row.shopsite_last_synced_at ?? null,
-    shopsite_last_sync_error: row.shopsite_last_sync_error ?? null,
     brand: brand
       ? {
           id: brand.id,

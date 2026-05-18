@@ -59,9 +59,19 @@ async function runCleanup() {
     console.log('No active/queued attempts found for these SKUs.');
   }
 
+  interface EnrichmentJob {
+    id: string;
+    status: string;
+    claimed_by?: string | null;
+    lease_expires_at?: string | null;
+    total_count?: number | null;
+    completed_count?: number | null;
+    failed_count?: number | null;
+  }
+
   // 3. Fetch associated enrichment jobs
   const jobIds = Array.from(new Set(attempts?.map(a => a.job_id).filter(Boolean) || []));
-  let jobs: any[] = [];
+  let jobs: EnrichmentJob[] = [];
   if (jobIds.length > 0) {
     console.log('\n3. Fetching associated enrichment jobs...');
     const { data: jobsData, error: jobsError } = await supabase

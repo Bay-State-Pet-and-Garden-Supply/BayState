@@ -8,6 +8,7 @@ import {
   Layers,
   Edit2,
   AlertCircle,
+  Globe,
 } from "lucide-react";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 import type { Brand } from "@/lib/types";
@@ -226,14 +227,27 @@ export function ImportedResultsView({
                         )}
                       </div>
                       {activeCohortBrand && (
-                        <Badge variant="outline" className={cn(
-                          "font-semibold rounded-none",
-                          hasConfiguredDomains
-                            ? "border-brand-forest-green text-brand-forest-green bg-brand-forest-green/10"
-                            : "border-brand-gold text-brand-burgundy bg-brand-gold/10"
-                        )}>
-                          {activeCohortBrand}
-                        </Badge>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge variant="outline" className={cn(
+                            "font-semibold rounded-none",
+                            hasConfiguredDomains
+                              ? "border-brand-forest-green text-brand-forest-green bg-brand-forest-green/10"
+                              : "border-brand-gold text-brand-burgundy bg-brand-gold/10"
+                          )}>
+                            {activeCohortBrand}
+                          </Badge>
+                          {activeCohortBrandObject?.official_domains && activeCohortBrandObject.official_domains.length > 0 && (
+                            <a
+                              href={`https://${activeCohortBrandObject.official_domains[0]}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-brand-forest-green hover:underline font-semibold bg-muted/30 px-2 py-0.5 border border-border"
+                            >
+                              <Globe className="h-3 w-3 shrink-0" />
+                              <span className="truncate max-w-[150px]">{activeCohortBrandObject.official_domains[0]}</span>
+                            </a>
+                          )}
+                        </div>
                       )}
                     </div>
                     <div className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">

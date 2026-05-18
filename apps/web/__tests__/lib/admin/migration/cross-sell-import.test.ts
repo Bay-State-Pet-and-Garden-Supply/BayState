@@ -36,10 +36,13 @@ function createMockQueryBuilder(
     state: DatabaseState,
     counters: Record<string, number>,
 ) {
-    let operation: 'select' | 'insert' | 'upsert' | 'delete' | null = null;
+    let operation: 'select' | 'insert' | 'upsert' | 'update' | 'delete' | null = null;
     let payload: Row | Row[] | null = null;
     let onConflict: string | undefined;
-    const filters: Array<{ type: 'eq' | 'in'; field: string; value: unknown }> = [];
+    const filters: Array<
+        | { type: 'eq' | 'in'; field: string; value: unknown }
+        | { type: 'not'; field: string; operator: string; value: unknown }
+    > = [];
     let rangeStart: number | null = null;
     let rangeEnd: number | null = null;
     let singleRow = false;
@@ -62,7 +65,21 @@ function createMockQueryBuilder(
             return row[filter.field] === filter.value;
         }
 
-        return Array.isArray(filter.value) && filter.value.includes(row[filter.field]);
+        if (filter.type === 'in') {
+            return Array.isArray(filter.value) && filter.value.includes(row[filter.field]);
+        }
+
+        if (filter.type === 'not' && filter.operator === 'in' && typeof filter.value === 'string') {
+            const values = filter.value
+                .replace(/^\(/, '')
+                .replace(/\)$/, '')
+                .split(',')
+                .map((value) => value.trim())
+                .filter(Boolean);
+            return !values.includes(String(row[filter.field] ?? ''));
+        }
+
+        return true;
     }));
 
     const insertRow = (row: Row): Row => {
@@ -100,6 +117,13 @@ function createMockQueryBuilder(
             return { data: singleRow ? upsertedRows[0] ?? null : upsertedRows, error: null };
         }
 
+        if (operation === 'update') {
+            const rowsToUpdate = applyFilters(state[table]);
+            const updatePayload = Array.isArray(payload) ? payload[0] ?? {} : (payload ?? {});
+            rowsToUpdate.forEach((row) => Object.assign(row, updatePayload));
+            return { data: singleRow ? rowsToUpdate[0] ?? null : rowsToUpdate, error: null };
+        }
+
         if (operation === 'delete') {
             const rowsToDelete = applyFilters(state[table]);
             state[table] = state[table].filter((row) => !rowsToDelete.includes(row));
@@ -118,9 +142,11 @@ function createMockQueryBuilder(
         select: (_columns?: string) => typeof builder;
         insert: (value: Row | Row[]) => typeof builder;
         upsert: (value: Row | Row[], options?: { onConflict?: string }) => typeof builder;
+        update: (value: Row) => typeof builder;
         delete: () => typeof builder;
         eq: (field: string, value: unknown) => typeof builder;
         in: (field: string, value: unknown[]) => typeof builder;
+        not: (field: string, operator: string, value: unknown) => typeof builder;
         range: (start: number, end: number) => typeof builder;
         single: () => Promise<Awaited<ReturnType<typeof execute>>>;
     };
@@ -146,6 +172,12 @@ function createMockQueryBuilder(
         return builder;
     };
 
+    builder.update = (value: Row) => {
+        operation = 'update';
+        payload = value;
+        return builder;
+    };
+
     builder.delete = () => {
         operation = 'delete';
         return builder;
@@ -158,6 +190,11 @@ function createMockQueryBuilder(
 
     builder.in = (field: string, value: unknown[]) => {
         filters.push({ type: 'in', field, value });
+        return builder;
+    };
+
+    builder.not = (field: string, operator: string, value: unknown) => {
+        filters.push({ type: 'not', field, operator, value });
         return builder;
     };
 
@@ -389,18 +426,20 @@ describe('migration history audit summaries', () => {
         await completeMigrationLog('log-1', result);
 
         expect(mockSupabase.update).toHaveBeenCalledWith(expect.objectContaining({
-            processed: 5,
-            failed: 0,
-            errors: expect.arrayContaining([
-                expect.objectContaining({
-                    record: '__audit__',
-                    error: 'Audit summary: processed=5, skipped=3, failed=0',
-                }),
-                expect.objectContaining({
-                    record: '__audit_cross_sell__',
-                    error: 'Cross-sell summary: sources=2, linked=1, skipped=3, duplicate=1, self=1, missing=1',
-                }),
-            ]),
+            row_count: 5,
+            error_count: 0,
+            metadata: expect.objectContaining({
+                errors: expect.arrayContaining([
+                    expect.objectContaining({
+                        record: '__audit__',
+                        error: 'Audit summary: processed=5, skipped=3, failed=0',
+                    }),
+                    expect.objectContaining({
+                        record: '__audit_cross_sell__',
+                        error: 'Cross-sell summary: sources=2, linked=1, skipped=3, duplicate=1, self=1, missing=1',
+                    }),
+                ]),
+            }),
         }));
     });
 });

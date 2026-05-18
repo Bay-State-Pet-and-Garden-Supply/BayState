@@ -714,3 +714,125 @@ INSERT INTO brands (id, name, slug) VALUES
 ('cd62495f-d897-40fa-80f9-c20cbbadc388', 'Zupreem', 'zupreem'),
 ('b7aa55ca-d4c7-4864-b12d-99f43ebefe13', 'Zymox', 'zymox')
 ON CONFLICT (id) DO NOTHING;
+
+-- ---------------------------------------------------------------------
+-- Canonical taxonomy, pet types, and facets required for local bootstrap
+-- ---------------------------------------------------------------------
+
+INSERT INTO pet_types (name, display_order, icon)
+VALUES
+  ('Dog', 1, 'dog'),
+  ('Cat', 2, 'cat'),
+  ('Pet Bird', 3, 'bird'),
+  ('Small Pet', 4, 'rabbit'),
+  ('Fish', 5, 'fish')
+ON CONFLICT (name) DO UPDATE SET
+  display_order = EXCLUDED.display_order,
+  icon = COALESCE(EXCLUDED.icon, pet_types.icon);
+
+WITH root_categories (name, slug, department_key, depth, breadcrumb, facet_profile, display_order, sort_order) AS (
+  VALUES
+    ('Dog', 'dog', 'dog', 0, 'Dog', 'general', 1, 1),
+    ('Cat', 'cat', 'cat', 0, 'Cat', 'general', 2, 2),
+    ('Pet Bird', 'pet-bird', 'pet-bird', 0, 'Pet Bird', 'general', 3, 3),
+    ('Small Pet', 'small-pet', 'small-pet', 0, 'Small Pet', 'general', 4, 4),
+    ('Fish & Aquarium', 'fish-aquarium', 'fish-aquarium', 0, 'Fish & Aquarium', 'general', 5, 5),
+    ('Lawn & Garden', 'lawn-garden', 'lawn-garden', 0, 'Lawn & Garden', 'general', 6, 6),
+    ('Home & Heating', 'home-heating', 'home-heating', 0, 'Home & Heating', 'general', 7, 7),
+    ('Tools & Hardware', 'tools-hardware', 'tools-hardware', 0, 'Tools & Hardware', 'general', 8, 8)
+)
+INSERT INTO categories (
+  name,
+  slug,
+  department_key,
+  depth,
+  breadcrumb,
+  facet_profile,
+  display_order,
+  sort_order,
+  is_active,
+  synonym_keywords
+)
+SELECT
+  name,
+  slug,
+  department_key,
+  depth,
+  breadcrumb,
+  facet_profile,
+  display_order,
+  sort_order,
+  true,
+  ARRAY[slug, name]
+FROM root_categories
+ON CONFLICT (slug) DO UPDATE SET
+  name = EXCLUDED.name,
+  department_key = EXCLUDED.department_key,
+  depth = EXCLUDED.depth,
+  breadcrumb = EXCLUDED.breadcrumb,
+  facet_profile = EXCLUDED.facet_profile,
+  display_order = EXCLUDED.display_order,
+  sort_order = EXCLUDED.sort_order,
+  is_active = EXCLUDED.is_active,
+  synonym_keywords = EXCLUDED.synonym_keywords;
+
+WITH child_categories (name, slug, parent_slug, department_key, facet_profile, display_order, sort_order) AS (
+  VALUES
+    ('Dog Food', 'dog-food', 'dog', 'dog', 'animal_food', 1, 1),
+    ('Dog Flea & Tick', 'dog-flea-tick', 'dog', 'dog', 'animal_health_wellness', 2, 2),
+    ('Cat Food', 'cat-food', 'cat', 'cat', 'animal_food', 1, 1),
+    ('Cat Bowls & Feeders', 'cat-bowls-feeders', 'cat', 'cat', 'general', 2, 2),
+    ('Pet Bird Food', 'pet-bird-food', 'pet-bird', 'pet-bird', 'animal_food', 1, 1),
+    ('Wild Bird Food', 'wild-bird-wildlife-food', 'pet-bird', 'pet-bird', 'animal_food', 2, 2),
+    ('Small Pet Food', 'small-pet-food', 'small-pet', 'small-pet', 'animal_food', 1, 1),
+    ('Aquarium Food', 'fish-aquarium-food', 'fish-aquarium', 'fish-aquarium', 'animal_food', 1, 1)
+)
+INSERT INTO categories (
+  name,
+  slug,
+  parent_id,
+  department_key,
+  depth,
+  breadcrumb,
+  facet_profile,
+  display_order,
+  sort_order,
+  is_active,
+  synonym_keywords
+)
+SELECT
+  child.name,
+  child.slug,
+  parent.id,
+  child.department_key,
+  1,
+  parent.name || ' > ' || child.name,
+  child.facet_profile,
+  child.display_order,
+  child.sort_order,
+  true,
+  ARRAY[child.slug, child.name]
+FROM child_categories AS child
+JOIN categories AS parent ON parent.slug = child.parent_slug
+ON CONFLICT (slug) DO UPDATE SET
+  name = EXCLUDED.name,
+  parent_id = EXCLUDED.parent_id,
+  department_key = EXCLUDED.department_key,
+  depth = EXCLUDED.depth,
+  breadcrumb = EXCLUDED.breadcrumb,
+  facet_profile = EXCLUDED.facet_profile,
+  display_order = EXCLUDED.display_order,
+  sort_order = EXCLUDED.sort_order,
+  is_active = EXCLUDED.is_active,
+  synonym_keywords = EXCLUDED.synonym_keywords;
+
+INSERT INTO facet_definitions (name, slug, description, facet_profile)
+VALUES
+  ('Animal Type', 'animal-type', 'Primary animal or pet category for the product.', ARRAY['animal_food', 'animal_health_wellness', 'general']),
+  ('Life Stage', 'life-stage', 'Life stage fit for food and wellness products.', ARRAY['animal_food', 'animal_health_wellness']),
+  ('Flavor', 'flavor', 'Primary flavor or protein callout.', ARRAY['animal_food', 'animal_treats_chews'])
+ON CONFLICT (slug) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  facet_profile = EXCLUDED.facet_profile,
+  is_deprecated = false;

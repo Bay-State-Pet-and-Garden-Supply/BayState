@@ -7,6 +7,10 @@ import {
   buildShopSiteNewProductTag,
   generateShopSiteXml,
 } from "@/lib/shopsite/xml-generator";
+import {
+  markShopSiteSyncFailureBySkus,
+  markShopSiteSyncSuccessBySkus,
+} from "@/lib/shopsite/sync-status";
 import { createAdminClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -47,20 +51,7 @@ async function markShopSiteSyncFailure(skus: string[], message: string) {
   }
 
   try {
-    const supabase = await createAdminClient();
-    const timestamp = new Date().toISOString();
-    const { error } = await supabase
-      .from("products")
-      .update({
-        shopsite_sync_status: "failed",
-        shopsite_last_sync_error: message,
-        updated_at: timestamp,
-      })
-      .in("sku", skus);
-
-    if (error) {
-      console.error("[UploadShopSite] Failed to persist ShopSite failure status:", error);
-    }
+    await markShopSiteSyncFailureBySkus(skus, message);
   } catch (statusError) {
     console.error("[UploadShopSite] Failed to record ShopSite failure status:", statusError);
   }
@@ -118,19 +109,11 @@ export async function POST(request: NextRequest) {
     const syncedAt = new Date().toISOString();
     const supabase = await createAdminClient();
 
-    const { error: productSyncError } = await supabase
-      .from("products")
-      .update({
-        shopsite_sync_status: "synced",
-        shopsite_last_synced_at: syncedAt,
-        shopsite_last_sync_error: null,
-        updated_at: syncedAt,
-      })
-      .in("sku", exportSkus);
-
-    if (productSyncError) {
+    try {
+      await markShopSiteSyncSuccessBySkus(exportSkus, syncedAt);
+    } catch (productSyncError) {
       throw new Error(
-        `ShopSite upload succeeded, but failed to record storefront sync status: ${productSyncError.message}`,
+        `ShopSite upload succeeded, but failed to record storefront sync status: ${productSyncError instanceof Error ? productSyncError.message : String(productSyncError)}`,
       );
     }
 

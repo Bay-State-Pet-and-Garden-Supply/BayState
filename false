@@ -1,0 +1,148 @@
+# Implementation Plan
+
+## Goal
+Implement the highest-value canonical schema cleanup safely by adding external source/sync adapter tables, moving ShopSite sync state out of `products`, consolidating `migration_log` consumers onto `integration_sync_runs`, fixing local seeds, and documenting schema ownership while staging the full migration squash for a follow-up PR.
+
+## Tasks
+1. **Add canonical external-source and ShopSite sync migration**
+   - File: `apps/web/supabase/migrations/20260518093000_external_sources_and_shopsite_sync.sql`
+   - Changes: create `external_sources` with `id`, `key`, `name`, `source_type`, `config`, `is_active`, `created_at`, `updated_at`; seed `shopsite` and `integra`; create `shopsite_product_sync` with `product_id` unique FK, `external_source_id`, `sync_status`, `last_synced_at`, `last_sync_error`, `pending_since`, timestamps, status CHECK; backfill from current `products.shopsite_*` columns where present; add indexes and comments; enable RLS with staff/service-role policies.
+   - Acceptance: migration applies on current local DB and on fresh reset; `select count(*) from external_sources where key in ('shopsite','integra')` returns 2; existing product sync statuses are copied.
+
+2. **Link sync runs to external sources without breaking existing code**
+   - File: `apps/web/supabase/migrations/20260518094000_integration_sync_runs_external_source.sql`
+   - Changes: add nullable `external_source_id uuid references external_sources(id)` to `integration_sync_runs`; backfill from `source_type`/`source_system`; add index; keep existing `source_type`, `source_system`, and `sync_kind` columns for compatibility.
+   - Acceptance: Integra and ShopSite sync-run inserts still work without specifying `external_source_id`; new rows can include it.
+
+3. **Copy legacy `migration_log` history into `integration_sync_runs` and mark table deprecated**
+   - File: `apps/web/supabase/migrations/20260518095000_consolidate_migration_log_history.sql`
+   - Changes: insert legacy `migration_log` rows into `integration_sync_runs` where not already represented, storing `legacy_migration_log_id` and `errors` in `metadata`; add comments to `migration_log` documenting deprecation; do not drop `migration_log` in this PR.
+   - Acceptance: `integration_sync_runs.metadata->>'legacy_migration_log_id'` exists for copied rows; no destructive schema changes.
+
+4. **Remove ShopSite sync fields from storefront product reads/types**
+   - File: `apps/web/lib/products.ts`
+   - Changes: remove `shopsite_sync_status`, `shopsite_last_synced_at`, and `shopsite_last_sync_error` from `PRODUCT_SELECT`, `ProductRow`, and `transformProductRow`; do not change active commerce fields (`price`, `quantity`, `stock_status`, etc.).
+   - File: `apps/web/lib/types.ts`
+   - Changes: remove `ShopSiteSyncStatus` and the three ShopSite fields from `Product`.
+   - Acceptance: storefront product fetches no longer require legacy sync columns; typecheck passes.
+
+5. **Persist ShopSite sync state through `shopsite_product_sync`**
+   - File: `apps/web/lib/pipeline/publish.ts`
+   - Changes: stop writing ShopSite sync columns into `products`; after product upsert, upsert `shopsite_product_sync` for that product with `sync_status = 'pending'`, clear error, and set `pending_since`.
+   - File: `apps/web/app/api/admin/pipeline/upload-shopsite/route.ts`
+   - Changes: replace product-table sync status updates with `shopsite_product_sync` upserts/updates by resolving product IDs from exported SKUs; failure path writes `failed` and error message; success path writes `synced` and `last_synced_at`.
+   - Acceptance: publishing queues sync state without touching `products.shopsite_*`; upload success/failure updates new table.
+
+6. **Migrate migration history utilities/UI to `integration_sync_runs`**
+   - File: `apps/web/lib/admin/migration/history.ts`
+   - Changes: make `startMigrationLog`, `updateMigrationProgress`, `completeMigrationLog`, and `getRecentMigrationLogs` use `integration_sync_runs`; map legacy UI fields as `sync_type = sync_kind`, `processed = row_count`, `created = inserted_count`, `updated = updated_count`, `failed = error_count`, `errors = metadata.errors` or parsed `error_summary`.
+   - File: `apps/web/components/admin/migration/migration-history.tsx`
+   - Changes: subscribe to `integration_sync_runs` instead of `migration_log`; normalize realtime payloads to `MigrationLogEntry` shape before inserting into state.
+   - File: `apps/web/__tests__/lib/admin/migration/history.test.ts`
+   - Changes: update mocks/expectations from `migration_log` to `integration_sync_runs` and new mapped columns.
+   - Acceptance: focused Jest test passes and the migration history UI remains unchanged visually.
+
+7. **Remove script writes to `migration_log`**
+   - File: `apps/web/scripts/sync-shopsite-products.ts`
+   - Changes: replace `startLog`, `updateLogProgress`, and `completeLog` with `integration_sync_runs` writes (`source_type = 'shopsite'`, `source_system = 'shopsite_15'`, `sync_kind = 'products'`). Store detailed errors in `metadata.errors` and summary in `error_summary`.
+   - File: `apps/web/scripts/sync-shopsite-orders.ts`
+   - Changes: delete duplicate `migration_log` path; keep/enhance existing `integration_sync_runs` path and store errors in `metadata.errors`.
+   - Acceptance: no non-migration TypeScript references to `.from('migration_log')` remain.
+
+8. **Update Supabase generated types after schema changes**
+   - File: `apps/web/lib/supabase/database.types.ts`
+   - File: `apps/web/types/supabase.ts`
+   - Changes: regenerate types after local reset if possible; otherwise minimally add `external_sources`, `shopsite_product_sync`, and `integration_sync_runs.external_source_id` types and remove app-facing reliance on product ShopSite columns.
+   - Acceptance: `bun run web typecheck` passes without `from('shopsite_product_sync')` table-name errors.
+
+9. **Rewrite taxonomy seed module to satisfy bootstrap checks**
+   - File: `apps/web/supabase/seed/01-taxonomy.sql`
+   - Changes: keep existing brand seed or replace with a curated deterministic set of at least 6 brands; add at least 8 active hierarchical categories with stable UUIDs/slugs; add at least 3 `pet_types`; add facet definitions for `animal-type`, `life-stage`, `flavor`, and optionally `product-form`.
+   - Acceptance: after `db:reset`, `verify-local-bootstrap.ts` category, pet type, and facet definition checks pass.
+
+10. **Enrich product seed and product relationships**
+    - File: `apps/web/supabase/seed/02-products.sql`
+    - Changes: keep 12 deterministic products but add descriptions, images, `canonical_category_id`, realistic prices/quantities/weights; insert `product_storefront_settings` rows with `ON CONFLICT`; insert `product_categories`, `product_pet_types`, and representative `product_facets` rows.
+    - Acceptance: at least one featured and one pickup-only product exist; product category and facet joins work in storefront filters.
+
+11. **Add scraper and facet seed data**
+    - File: `apps/web/supabase/seed/03-scraping.sql`
+    - Changes: keep/add at least 10 facet values tied to the facet definitions from `01-taxonomy.sql`; seed at least two `scraper_configs` rows for admin testing (`fromm`, `catit` or equivalent) with non-secret YAML/config metadata matching current table columns.
+    - Acceptance: facet value count check passes; admin scraper list has sample rows.
+
+12. **Add order/admin seed data**
+    - File: `apps/web/supabase/seed/04-orders.sql`
+    - Changes: add at least two orders with `order_items` and `order_events`; optionally add `order_source_records` linked to `external_sources`/`integration_sync_runs` for ShopSite history testing.
+    - Acceptance: admin orders page has local data; seeded rows do not require auth users beyond existing local admin.
+
+13. **Keep settings seed, adding only non-secret source metadata if needed**
+    - File: `apps/web/supabase/seed/05-settings.sql`
+    - Changes: keep 4 services and 3 site settings; do not seed real ShopSite credentials; optionally add non-secret placeholders only if admin UI needs settings rows.
+    - Acceptance: existing services/site settings bootstrap checks still pass.
+
+14. **Regenerate bundled seed file**
+    - File: `apps/web/supabase/seed.sql`
+    - Changes: run `bun run web local:bundle-seed` after editing seed modules; commit generated `seed.sql` because `db:reset` consumes it.
+    - Acceptance: generated module list includes `00-auth.sql` through `05-settings.sql`.
+
+15. **Document schema ownership and cleanup policy**
+    - New file: `apps/web/SCHEMA.md`
+    - Changes: document canonical layers (`products` storefront catalog, `products_ingestion` pipeline, external adapter tables), table classifications (`KEEP_CORE`, `KEEP_PIPELINE`, `KEEP_EXTERNAL_ADAPTER`, `DEPRECATED`, `DROP_LATER`), current pipeline status enum, and rules: no ShopSite metadata on `products`, use `integration_sync_runs` for sync history, no destructive drops without backup/audit.
+    - Acceptance: future schema work has one authoritative reference.
+
+16. **Require schema docs in web agent notes**
+    - File: `apps/web/AGENTS.md`
+    - Changes: add a short Supabase/schema note requiring agents to read `apps/web/SCHEMA.md` before schema/migration changes and to prefer additive migrations unless a production backup/drop plan exists.
+    - Acceptance: guidance is visible where future web agents will read it.
+
+17. **Stage, do not attempt, full baseline SQL squash in this coding session**
+    - File: `apps/web/SCHEMA.md` or new `plans/canonical-schema-baseline-runbook.md`
+    - Changes: document follow-up baseline procedure: production `pg_dump`, row-count audit, final DROP/KEEP signoff, generate split files (`baseline_schema.sql`, `baseline_rls.sql`, `baseline_functions_views.sql`, `baseline_realtime.sql`, `baseline_seed_taxonomy.sql`), then archive old migrations. Do not create these baseline files now.
+    - Acceptance: this PR avoids high-risk migration-chain surgery while delivering app-visible cleanup and seed reliability.
+
+18. **Validation pass**
+    - Commands: `bun run web local:bundle-seed`; `bun run web db:reset`; `bun run web local:verify`; `bun run web test -- __tests__/lib/admin/migration/history.test.ts`; `bun run web typecheck`; `bun run web lint`.
+    - Acceptance: all commands pass, or any failure is documented with exact failing file and reason.
+
+## Files to Modify
+- `apps/web/lib/products.ts` - remove ShopSite sync columns from storefront product query/transform.
+- `apps/web/lib/types.ts` - remove ShopSite sync fields from public `Product` type.
+- `apps/web/lib/pipeline/publish.ts` - write pending ShopSite sync state to `shopsite_product_sync`.
+- `apps/web/app/api/admin/pipeline/upload-shopsite/route.ts` - write success/failure ShopSite sync state to `shopsite_product_sync`.
+- `apps/web/lib/admin/migration/history.ts` - use `integration_sync_runs` as sync history source.
+- `apps/web/components/admin/migration/migration-history.tsx` - realtime subscribe to `integration_sync_runs`.
+- `apps/web/__tests__/lib/admin/migration/history.test.ts` - update table/column mocks.
+- `apps/web/scripts/sync-shopsite-products.ts` - write product sync run history to `integration_sync_runs`.
+- `apps/web/scripts/sync-shopsite-orders.ts` - remove duplicate `migration_log` writes.
+- `apps/web/lib/supabase/database.types.ts` - regenerated Supabase schema types.
+- `apps/web/types/supabase.ts` - regenerated/legacy Supabase schema types.
+- `apps/web/supabase/seed/01-taxonomy.sql` - add categories, pet types, facet definitions.
+- `apps/web/supabase/seed/02-products.sql` - enrich products and relationship rows.
+- `apps/web/supabase/seed/03-scraping.sql` - add facet values and scraper configs.
+- `apps/web/supabase/seed/04-orders.sql` - add sample orders/items/events.
+- `apps/web/supabase/seed/05-settings.sql` - preserve settings/services; optional non-secret source placeholders.
+- `apps/web/supabase/seed.sql` - regenerate bundled seed output.
+- `apps/web/AGENTS.md` - require `SCHEMA.md` for schema work.
+
+## New Files
+- `apps/web/supabase/migrations/20260518093000_external_sources_and_shopsite_sync.sql` - external source registry and product-level ShopSite sync table.
+- `apps/web/supabase/migrations/20260518094000_integration_sync_runs_external_source.sql` - optional FK from sync runs to external sources.
+- `apps/web/supabase/migrations/20260518095000_consolidate_migration_log_history.sql` - one-time history copy and deprecation comments.
+- `apps/web/SCHEMA.md` - canonical schema/table ownership documentation.
+- Optional: `plans/canonical-schema-baseline-runbook.md` - follow-up baseline squash runbook if not included in `SCHEMA.md`.
+
+## Dependencies
+- Tasks 1-3 must land before code changes that reference `external_sources` or `shopsite_product_sync`.
+- Task 5 depends on Task 1 and should be implemented before removing product ShopSite fields from app types.
+- Tasks 6-7 depend on Task 3 so legacy history is preserved before consumers move.
+- Task 8 depends on Tasks 1-3 and should happen before typecheck.
+- Tasks 9-14 should be validated together because `seed.sql` is generated from module order.
+- Task 18 depends on all implementation tasks.
+
+## Risks
+- Full baseline/squash is intentionally staged: archiving 213 migrations without production backup, row-count audit, and DROP/KEEP signoff is the highest-risk part of the review.
+- Generated Supabase types may be hard to regenerate if local DB is not resettable; fallback manual edits must be minimal and carefully reviewed.
+- `integration_sync_runs.source_type` currently uses `order_source_type`; adding more source keys must match existing enum values (`shopsite`, `integra`) or the migration will fail.
+- Realtime payloads from `integration_sync_runs` do not match `MigrationLogEntry`; client-side normalization is required to avoid UI runtime issues.
+- Seed inserts must use stable UUIDs and `ON CONFLICT` clauses; otherwise repeated `db:reset`/seed runs can fail.
+- Do not drop `products.shopsite_*` or `migration_log` in this PR; existing production DBs need a separate destructive cleanup after verification.

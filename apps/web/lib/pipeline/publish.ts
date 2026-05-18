@@ -4,6 +4,7 @@ import {
   replaceInlineImageDataUrls,
 } from "@/lib/product-image-storage";
 import { buildProductSlug } from "@/lib/shopsite/mapping";
+import { upsertShopSiteSyncByProductIds } from "@/lib/shopsite/sync-status";
 
 const STOREFRONT_PUBLISHABLE_STATUS = "reviewing";
 const DEFAULT_AVAILABILITY_TEXT = "in stock";
@@ -207,8 +208,6 @@ export async function publishToStorefront(sku: string) {
       ),
       quantity: DEFAULT_QUANTITY,
       low_stock_threshold: DEFAULT_LOW_STOCK_THRESHOLD,
-      shopsite_sync_status: "pending",
-      shopsite_last_sync_error: null,
     };
 
     const markProductAsExporting = async () => {
@@ -232,6 +231,26 @@ export async function publishToStorefront(sku: string) {
       return { success: true as const };
     };
 
+    const markProductPendingShopSiteSync = async (productId: string) => {
+      try {
+        await upsertShopSiteSyncByProductIds([
+          {
+            productId,
+            syncStatus: "pending",
+            lastSyncedAt: null,
+            lastUploadedAt: null,
+            lastSyncError: null,
+            metadata: {
+              sku,
+              published_at: new Date().toISOString(),
+            },
+          },
+        ]);
+      } catch (syncError) {
+        console.error(`[Publish] Failed to persist ShopSite sync row for ${sku}:`, syncError);
+      }
+    };
+
     const { data: existingProduct } = await supabase
       .from("products")
       .select("id")
@@ -252,6 +271,8 @@ export async function publishToStorefront(sku: string) {
         };
       }
 
+      await markProductPendingShopSiteSync(existingProduct.id);
+
       const statusResult = await markProductAsExporting();
       if (!statusResult.success) {
         return statusResult;
@@ -269,6 +290,10 @@ export async function publishToStorefront(sku: string) {
     if (insertError) {
       console.error(`[Publish] Error inserting product ${sku}:`, insertError);
       return { success: false, error: "Failed to create product in storefront" };
+    }
+
+    if (insertedProduct?.id) {
+      await markProductPendingShopSiteSync(insertedProduct.id);
     }
 
     const statusResult = await markProductAsExporting();

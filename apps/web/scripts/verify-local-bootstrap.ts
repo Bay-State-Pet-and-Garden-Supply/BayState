@@ -18,14 +18,11 @@
  *   1 = one or more checks failed
  */
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '';
 const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY || '';
 
 const LOCAL_PATTERNS = ['localhost', '127.0.0.1'];
-const isLocalUrl = LOCAL_PATTERNS.some((p) => SUPABASE_URL.includes(p));
+const isLocalUrl = LOCAL_PATTERNS.some((pattern) => SUPABASE_URL.includes(pattern));
 
 if (!isLocalUrl) {
   console.error(`❌ SUPABASE_URL is not pointing to localhost: ${SUPABASE_URL}`);
@@ -55,7 +52,7 @@ async function runCheck<T>(
   label: string,
   fn: () => Promise<T>,
   predicate: (result: T) => boolean,
-  detailFn?: (result: T) => string
+  detailFn?: (result: T) => string,
 ): Promise<void> {
   try {
     const result = await fn();
@@ -76,132 +73,125 @@ async function runCheck<T>(
   }
 }
 
-/**
- * Count rows in a table using Supabase client with exact count.
- */
-async function countRows(
-  supabase: SupabaseClient,
-  table: string
-): Promise<number> {
-  const { count, error } = await supabase
-    .from(table)
-    .select('*', { count: 'exact', head: true });
+function buildRestUrl(table: string, filters?: Array<{ column: string; value: string | boolean }>): string {
+  const url = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
+  url.searchParams.set('select', '*');
 
-  if (error) {
-    throw new Error(`Failed to count ${table}: ${error.message}`);
+  for (const filter of filters ?? []) {
+    const encodedValue = typeof filter.value === 'boolean' ? String(filter.value) : filter.value;
+    url.searchParams.set(filter.column, `eq.${encodedValue}`);
   }
 
-  return count ?? 0;
+  return url.toString();
 }
 
-/**
- * Count rows with a filter.
- */
-async function countRowsWhere(
-  supabase: SupabaseClient,
-  table: string,
-  column: string,
-  value: unknown
-): Promise<number> {
-  const { count, error } = await supabase
-    .from(table)
-    .select('*', { count: 'exact', head: true })
-    .eq(column, value as any);
-
-  if (error) {
-    throw new Error(`Failed to count ${table} where ${column}=${value}: ${error.message}`);
+function parseExactCount(contentRange: string | null): number {
+  if (!contentRange) {
+    throw new Error('Missing content-range header');
   }
 
-  return count ?? 0;
+  const total = contentRange.split('/').at(-1);
+  const parsed = total ? Number.parseInt(total, 10) : Number.NaN;
+
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`Invalid content-range header: ${contentRange}`);
+  }
+
+  return parsed;
+}
+
+async function countRows(
+  table: string,
+  filters?: Array<{ column: string; value: string | boolean }>,
+): Promise<number> {
+  const response = await fetch(buildRestUrl(table, filters), {
+    method: 'HEAD',
+    headers: {
+      apikey: SUPABASE_SECRET_KEY,
+      Prefer: 'count=exact',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} ${response.statusText}`);
+  }
+
+  return parseExactCount(response.headers.get('content-range'));
 }
 
 async function main() {
   console.log('🔍 Verifying local bootstrap...\n');
 
-  // Create Supabase admin client (uses service_role key for full access)
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY);
-
-  // 1. Products
   await runCheck(
     'At least 12 products',
-    () => countRows(supabase, 'products'),
+    () => countRows('products'),
     (count) => count >= 12,
-    (count) => `Found ${count} products (expected ≥12)`
+    (count) => `Found ${count} products (expected ≥12)`,
   );
 
-  // 2. Brands
   await runCheck(
     'At least 6 brands',
-    () => countRows(supabase, 'brands'),
+    () => countRows('brands'),
     (count) => count >= 6,
-    (count) => `Found ${count} brands (expected ≥6)`
+    (count) => `Found ${count} brands (expected ≥6)`,
   );
 
-  // 3. Categories
   await runCheck(
     'At least 8 categories',
-    () => countRows(supabase, 'categories'),
+    () => countRows('categories'),
     (count) => count >= 8,
-    (count) => `Found ${count} categories (expected ≥8)`
+    (count) => `Found ${count} categories (expected ≥8)`,
   );
 
-  // 4. Services
   await runCheck(
     'At least 4 services',
-    () => countRows(supabase, 'services'),
+    () => countRows('services'),
     (count) => count >= 4,
-    (count) => `Found ${count} services (expected ≥4)`
+    (count) => `Found ${count} services (expected ≥4)`,
   );
 
-  // 5. Site settings
   await runCheck(
     'At least 3 site settings',
-    () => countRows(supabase, 'site_settings'),
+    () => countRows('site_settings'),
     (count) => count >= 3,
-    (count) => `Found ${count} site settings (expected ≥3)`
+    (count) => `Found ${count} site settings (expected ≥3)`,
   );
 
-  // 6. Facet definitions
   await runCheck(
     'At least 3 facet definitions',
-    () => countRows(supabase, 'facet_definitions'),
+    () => countRows('facet_definitions'),
     (count) => count >= 3,
-    (count) => `Found ${count} facet definitions (expected ≥3)`
+    (count) => `Found ${count} facet definitions (expected ≥3)`,
   );
 
-  // 7. Facet values
   await runCheck(
     'At least 10 facet values',
-    () => countRows(supabase, 'facet_values'),
+    () => countRows('facet_values'),
     (count) => count >= 10,
-    (count) => `Found ${count} facet values (expected ≥10)`
+    (count) => `Found ${count} facet values (expected ≥10)`,
   );
 
-  // 8. Pet types
   await runCheck(
     'At least 3 pet types',
-    () => countRows(supabase, 'pet_types'),
+    () => countRows('pet_types'),
     (count) => count >= 3,
-    (count) => `Found ${count} pet types (expected ≥3)`
+    (count) => `Found ${count} pet types (expected ≥3)`,
   );
 
-  // 9. Check featured product
   await runCheck(
     'At least 1 featured product',
-    () => countRowsWhere(supabase, 'product_storefront_settings', 'is_featured', true),
+    () => countRows('product_storefront_settings', [{ column: 'is_featured', value: true }]),
     (count) => count >= 1,
-    (count) => `Found ${count} featured products (expected ≥1)`
+    (count) => `Found ${count} featured products (expected ≥1)`,
   );
 
-  // 10. Check pickup-only product
   await runCheck(
     'At least 1 pickup-only product',
-    () => countRowsWhere(supabase, 'product_storefront_settings', 'pickup_only', true),
+    () => countRows('product_storefront_settings', [{ column: 'pickup_only', value: true }]),
     (count) => count >= 1,
-    (count) => `Found ${count} pickup-only products (expected ≥1)`
+    (count) => `Found ${count} pickup-only products (expected ≥1)`,
   );
 
-  // Print results
   console.log('Results:');
   for (const check of checks) {
     const icon = check.passed ? '✓' : '✗';
@@ -213,7 +203,7 @@ async function main() {
   if (exitCode === 0) {
     console.log('✅ All checks passed. Local bootstrap verified.\n');
   } else {
-    console.log(`❌ ${checks.filter((c) => !c.passed).length} check(s) failed.\n`);
+    console.log(`❌ ${checks.filter((check) => !check.passed).length} check(s) failed.\n`);
   }
 
   process.exit(exitCode);
