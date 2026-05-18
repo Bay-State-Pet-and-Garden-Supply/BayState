@@ -287,6 +287,7 @@ write_compose_file() {
 services:
   scraper:
     image: $IMAGE
+    platform: linux/amd64
     restart: unless-stopped
     init: true
     shm_size: 2g
