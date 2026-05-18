@@ -361,3 +361,138 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// =============================================================================
+// DELETE - Cancel a Specific Enrichment Job
+// =============================================================================
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await requireAdminAuth(request);
+    if (!auth.authorized) return auth.response;
+
+    const supabase = await createAdminClient();
+
+    const { searchParams } = new URL(request.url);
+    const jobId = searchParams.get("id");
+
+    if (!jobId) {
+      return NextResponse.json(
+        { error: "id (Job ID) query parameter is required" },
+        { status: 400 }
+      );
+    }
+
+    // 1. Get the job to know the SKUs
+    const { data: job, error: getJobError } = await supabase
+      .from("enrichment_jobs")
+      .select("status, skus")
+      .eq("id", jobId)
+      .single();
+
+    if (getJobError || !job) {
+      return NextResponse.json(
+        { error: getJobError?.message ?? "Job not found" },
+        { status: 404 }
+      );
+    }
+
+    if (["completed", "completed_with_errors", "failed", "cancelled"].includes(job.status)) {
+      return NextResponse.json(
+        { error: `Job is already in a terminal state: ${job.status}` },
+        { status: 400 }
+      );
+    }
+
+    // 2. Update the job status to 'cancelled'
+    const { error: updateJobError } = await supabase
+      .from("enrichment_jobs")
+      .update({
+        status: "cancelled",
+        completed_at: new Date().toISOString(),
+        error_message: "Job cancelled by administrator",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", jobId);
+
+    if (updateJobError) {
+      return NextResponse.json(
+        { error: updateJobError.message },
+        { status: 500 }
+      );
+    }
+
+    // 3. Cancel all non-terminal attempts under this job
+    const { error: updateAttemptsError } = await supabase
+      .from("enrichment_attempts")
+      .update({
+        status: "cancelled",
+        completed_at: new Date().toISOString(),
+        error_message: "Attempt cancelled by administrator",
+      })
+      .eq("job_id", jobId)
+      .in("status", ["queued", "running"]);
+
+    if (updateAttemptsError) {
+      console.error("[Cancel Job API] Failed to cancel attempts:", updateAttemptsError);
+    }
+
+    // 4. For any product SKU in this job, check if it's stuck in 'extracting'
+    // and reset back to 'imported' if there are no other active attempts/jobs.
+    if (Array.isArray(job.skus) && job.skus.length > 0) {
+      // Find which of these SKUs are currently in 'extracting'
+      const { data: productsToReset, error: productsError } = await supabase
+        .from("products_ingestion")
+        .select("sku")
+        .in("sku", job.skus)
+        .eq("pipeline_status", "extracting");
+
+      if (productsError) {
+        console.error("[Cancel Job API] Failed to check products ingestion status:", productsError);
+      } else if (productsToReset && productsToReset.length > 0) {
+        const skusToCheck = productsToReset.map((p) => p.sku);
+
+        // Check if these SKUs have ANY OTHER active attempts (not this job) that are queued or running
+        const { data: otherActiveAttempts, error: otherAttemptsError } = await supabase
+          .from("enrichment_attempts")
+          .select("sku")
+          .in("sku", skusToCheck)
+          .neq("job_id", jobId)
+          .in("status", ["queued", "running"]);
+
+        if (otherAttemptsError) {
+          console.error("[Cancel Job API] Failed to check other active attempts:", otherAttemptsError);
+        } else {
+          const skusWithOtherAttempts = new Set(
+            (otherActiveAttempts || []).map((a) => a.sku)
+          );
+
+          // SKUs that have no other active attempts can be safely reset to 'imported'
+          const skusToReset = skusToCheck.filter((sku) => !skusWithOtherAttempts.has(sku));
+
+          if (skusToReset.length > 0) {
+            const { error: resetError } = await supabase
+              .from("products_ingestion")
+              .update({
+                pipeline_status: "imported",
+                updated_at: new Date().toISOString(),
+              })
+              .in("sku", skusToReset);
+
+            if (resetError) {
+              console.error("[Cancel Job API] Failed to reset product statuses to imported:", resetError);
+            }
+          }
+        }
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("Error cancelling enrichment job:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

@@ -10,6 +10,7 @@ import {
   Loader2,
   RefreshCw,
   LifeBuoy,
+  X,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -81,6 +82,30 @@ export function ActiveEnrichmentsTab({ initialJobs = [] }: ActiveEnrichmentsTabP
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resettingStranded, setResettingStranded] = useState(false);
+  const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
+
+  const handleCancelJob = async (jobId: string) => {
+    if (!window.confirm("Are you sure you want to cancel this enrichment run?")) return;
+
+    setCancellingJobId(jobId);
+    try {
+      const res = await adminFetch(`/api/admin/enrichment/jobs?id=${jobId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast.success("Enrichment run cancelled successfully");
+        fetchJobs();
+      } else {
+        toast.error(data.error || "Failed to cancel enrichment run");
+      }
+    } catch (err) {
+      console.error("Error cancelling job:", err);
+      toast.error("Failed to cancel enrichment run");
+    } finally {
+      setCancellingJobId(null);
+    }
+  };
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
@@ -229,13 +254,29 @@ export function ActiveEnrichmentsTab({ initialJobs = [] }: ActiveEnrichmentsTabP
                         </Badge>
                       )}
                     </div>
-                    <Badge
-                      variant={
-                        job.status === "running" ? "default" : "outline"
-                      }
-                    >
-                      {PIPELINE_RUN_STATUS_LABELS[job.status as PipelineRunStatus] ?? job.status}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={
+                          job.status === "running" ? "default" : "outline"
+                        }
+                      >
+                        {PIPELINE_RUN_STATUS_LABELS[job.status as PipelineRunStatus] ?? job.status}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleCancelJob(job.id)}
+                        disabled={cancellingJobId === job.id}
+                        title="Cancel run"
+                      >
+                        {cancellingJobId === job.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <X className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
