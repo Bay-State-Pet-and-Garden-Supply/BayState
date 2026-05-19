@@ -1,6 +1,6 @@
-# API Reference: Runner ↔ Coordinator Communication
+# API Reference: Runner ↔ Coordinator Communication (v0.3.0+)
 
-This document describes the API contract between scraper runners and the BayStateApp coordinator.
+This document describes the API contract between scraper runners and the BayStateApp coordinator for the enrichment-based pipeline.
 
 ## Authentication
 
@@ -10,126 +10,118 @@ All endpoints require an API key in the `X-API-Key` header:
 X-API-Key: bsr_your_api_key_here
 ```
 
-API keys are issued from the BayStateApp admin panel and start with `bsr_`.
-
-### Fallback: HMAC Signature
-
-For Docker crash scenarios (where the Python client isn't available), the GitHub Action can send an HMAC-signed request:
-
-```http
-X-Webhook-Signature: <sha256-hmac-of-body>
-```
+API keys are issued from the BayStateApp admin panel.
 
 ## Endpoints
 
-### 1. Get Job Configuration
+### 1. Claim Enrichment Attempt
 
-Fetch job details and scraper configurations.
+Claim the next pending enrichment attempt from the queue.
 
-**GET /api/scraper/v1/job**
-
-Query Parameters:
-- `job_id` (required): UUID of the scrape job
-
-Response:
-```json
-{
-  "job_id": "550e8400-e29b-41d4-a716-446655440000",
-  "skus": ["SKU-001", "SKU-002"],
-  "scrapers": [
-    {
-      "name": "amazon",
-      "disabled": false,
-      "base_url": "https://amazon.com",
-      "search_url_template": "/s?k={sku}",
-      "selectors": { ... },
-      "options": { ... }
-    }
-  ],
-  "test_mode": false,
-  "max_workers": 3
-}
-```
-
-### 2. Submit Results
-
-Report job status and scraped data.
-
-**POST /api/admin/scraping/callback**
+**POST /api/scraper/v1/claim-enrichment**
 
 Request Body:
 ```json
 {
-  "job_id": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "completed",
   "runner_name": "office-mac",
-  "results": {
-    "skus_processed": 25,
-    "scrapers_run": ["amazon", "chewy"],
-    "data": {
-      "SKU-001": {
-        "amazon": {
-          "price": 29.99,
-          "title": "Premium Dog Food",
-          "url": "https://amazon.com/dp/...",
-          "scraped_at": "2024-01-15T10:30:00Z"
-        }
-      }
-    }
-  }
+  "max_attempts": 1
 }
 ```
 
-Status values:
-- `running` - Job started
-- `completed` - Job finished successfully
-- `failed` - Job failed (include `error_message`)
+Response:
+```json
+{
+  "attempts": [
+    {
+      "id": "attempt-uuid",
+      "job_id": "job-uuid",
+      "sku": "072705115310",
+      "source_url": "https://example.com/product/123",
+      "domain": "example.com",
+      "model": "deepseek-chat",
+      "mode": "mixed",
+      "ai_credentials": { ... },
+      "lease_token": "token-abc",
+      "lease_expires_at": "2024-01-15T10:35:00Z",
+      "source_plan": { ... }
+    }
+  ]
+}
+```
 
-### 3. Register Runner
+### 2. Submit Enrichment Result
 
-Register a new runner or update existing.
+Submit the result of an enrichment attempt.
 
-**POST /api/admin/scraper-network/runners/register**
+**POST /api/scraper/v1/enrichment-callback**
+
+Request Body (EnrichmentResultV1 + metadata):
+```json
+{
+  "sku": "072705115310",
+  "status": "success",
+  "product": {
+    "name": "Product Title",
+    "brand": "Brand Name",
+    "weight": "30lb",
+    "description": "...",
+    "image_urls": ["..."]
+  },
+  "confidence": {
+    "overall": 0.95,
+    "fields": { "name": 0.99, "price": 0.95 }
+  },
+  "_attempt_id": "attempt-uuid",
+  "_status": "success",
+  "_lease_token": "token-abc"
+}
+```
+
+### 3. Heartbeat
+
+Indicate that the runner is alive.
+
+**POST /api/scraper/v1/heartbeat**
 
 Request Body:
 ```json
 {
-  "runner_name": "garage-pi",
-  "metadata": {
-    "platform": "Linux",
-    "python_version": "3.11",
-    "hostname": "raspberrypi"
-  }
+  "runner_name": "office-mac",
+  "status": "online",
+  "current_job_id": "job-uuid"
 }
 ```
 
-Response:
+### 4. Post Logs
+
+Batch upload runner logs.
+
+**POST /api/scraper/v1/logs**
+
+Request Body:
 ```json
 {
-  "success": true,
-  "runner": {
-    "name": "garage-pi",
-    "status": "online",
-    "registered_at": "2024-01-15T10:30:00Z"
-  },
-  "message": "Runner 'garage-pi' registered successfully"
-}
-```
-
-### 4. Health Check
-
-Verify API connectivity.
-
-**GET /api/admin/scraper-network/health**
-
-Response:
-```json
-{
-  "checks": [
-    { "name": "GitHub App", "status": "ok", "message": "Configured" },
-    { "name": "Runner Auth", "status": "ok", "message": "API Key authentication" },
-    { "name": "Webhook Secret", "status": "ok", "message": "HMAC fallback configured" }
+  "job_id": "job-uuid",
+  "logs": [
+    { "level": "info", "message": "Enrichment started", "timestamp": "..." }
   ]
+}
+```
+
+### 5. Fetch Scraper Configs
+
+Fetch specialized scraper configurations (used for approved sources or custom extraction).
+
+**GET /api/internal/scraper-configs/{slug}**
+
+Response:
+```json
+{
+  "name": "slug",
+  "scraper_type": "crawl4ai",
+  "base_url": "...",
+  "crawl4ai_config": { ... },
+  "workflows": [ ... ]
 }
 ```
 
@@ -146,27 +138,6 @@ All errors follow this format:
 Common HTTP status codes:
 - `400` - Bad request (missing/invalid parameters)
 - `401` - Unauthorized (invalid or missing API key)
-- `404` - Not found (job doesn't exist)
+- `404` - Not found
+- `426` - Upgrade Required (Runner image build mismatch)
 - `500` - Server error
-
-## Python Client Example
-
-```python
-from apps.scraper.core.api_client import ScraperAPIClient
-
-client = ScraperAPIClient(
-    api_url="https://app.baystatepet.com",
-    api_key="bsr_your_key_here",
-    runner_name="my-runner"
-)
-
-# Fetch job config
-config = client.get_job_config("job-uuid")
-
-# Submit results
-client.submit_results(
-    job_id="job-uuid",
-    status="completed",
-    results={"skus_processed": 10, "data": {...}}
-)
-```

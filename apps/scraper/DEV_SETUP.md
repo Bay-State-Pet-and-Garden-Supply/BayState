@@ -29,24 +29,15 @@ Copy `.env.example` to `.env` and configure `SCRAPER_API_URL` and `SCRAPER_API_K
 - `daemon.py`: Main polling entry point.
 - `runner/__init__.py`: Job dispatcher.
 - `src/crawl4ai_engine/`: Extraction engine logic.
-- `scrapers/`: Domain logic (ai_search, cohort, URL extraction).
+- `scrapers/`: Domain logic (ai_search, cohort, URL extraction, approved sources).
 - `core/`: API client, events, and retry logic.
 - `api/`: Shared Pydantic models.
-- `cli/`: Local testing CLI (`bsr`).
 
 ## Local Testing
-Use the `bsr` CLI for local testing:
-```bash
-# See all commands
-python cli/main.py --help
 
-# Test a cohort locally
-python cli/main.py cohort test <cohort_id>
-```
-
-Or use the legacy `runner.py` for direct config testing:
+Test AI extraction (Enrichment) directly using `runner.py`:
 ```bash
-python runner.py --local --config scrapers/config/sample_config.yaml --sku 12345
+python runner.py --sku "TEST-SKU" --url "https://example.com" --debug
 ```
 
 ## Related Documentation

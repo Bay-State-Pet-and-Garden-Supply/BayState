@@ -78,7 +78,7 @@ async def test_shopify_variant_resolver_success(mock_scoring_utils, mock_matchin
         mock_client_cls.return_value = mock_client
 
         res_url, res_html, res_md, status = await resolver.resolve(
-            url=url, sku=sku, product_name="Dog Food", brand="SuperBrand", html="<html></html>"
+            url=url, sku=sku, product_name="Dog Food", brand="SuperBrand", html="<html><body>window.Shopify=true;</body></html>"
         )
 
         assert status == "exact_variant"
@@ -177,7 +177,7 @@ async def test_resolve_family_variant_coordinator_shopify_falls_through(
             sku=sku,
             product_name="Unknown Product",
             brand="Brand",
-            html="<html></html>",
+            html="<html><body>window.Shopify=true;</body></html>",
             scoring_utils=mock_scoring_utils,
             matching_utils=mock_matching_utils,
             extraction_utils=mock_extraction_utils,

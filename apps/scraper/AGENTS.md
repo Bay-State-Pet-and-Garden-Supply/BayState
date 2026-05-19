@@ -1,23 +1,22 @@
 # Scraper Agent Context (apps/scraper)
 
 ## Core Facts
-- **Stack**: Python 3.10+, Playwright, YAML DSL, Docker, crawl4ai v0.3.0.
+- **Stack**: Python 3.10+, Playwright, crawl4ai v0.3.0+, Pydantic.
 - **Role**: API-only runner. Authenticates via `X-API-Key: bsr_*`. No direct database access.
 - **Entry Point**: `daemon.py` (persistent polling/realtime service).
 - **Core Engine**: `src/crawl4ai_engine/` (async-only, high-performance extraction).
-- **Phase 10 Status**: **Static scraping is deactivated** in `runner/__init__.py`. All work is now dispatched to the enrichment path (AI-only extraction via crawl4ai).
+- **Current Status**: **Static YAML-based scraping is deactivated**. All work is now dispatched to the enrichment path (AI-only extraction via crawl4ai) or specialized Python adapters.
 
 ## Structure
 - `runner/`: Polling and task dispatch logic. `__init__.py` is the dispatcher.
 - `scrapers/`: Scraper domain logic.
   - `ai_search/`: AI-driven discovery and search providers (Serper).
   - `cohort/`: Cohort processing and batch search.
+  - `approved_sources/`: Python-based adapters for trusted distributors.
   - `product_url_extraction/`: Extracting target URLs for products.
-  - `config/`: Scraper YAML templates (mostly for local reference/testing).
 - `src/crawl4ai_engine/`: The v0.3.0 extraction engine. Handles rendering, LLM-free vs LLM modes, and failure classification.
 - `core/`: Infrastructure (API client, events, retries, hmac).
 - `api/`: Shared schemas and Pydantic models.
-- `cli/`: Local testing tools (`bsr` command).
 
 ## Where to look
 | Goal | Path | Context |
@@ -25,7 +24,7 @@
 | **Fix Extraction Bug** | `src/crawl4ai_engine/` | Logic for content cleaning, LLM prompting, or rendering. |
 | **Modify Job Dispatch** | `runner/__init__.py` | How jobs are claimed and sent to enrichment paths. |
 | **Adjust Retry/API** | `core/` | Base client, event bus, and failure classification. |
-| **Test Locally** | `cli/` | Local cohort/batch testing commands. |
+| **Update Adapters** | `scrapers/approved_sources/` | Logic for specific trusted vendor scraping. |
 | **Update Schemas** | `api/` | Pydantic models for jobs, results, and enrichment. |
 
 ## Execution Flow (Enrichment Path)

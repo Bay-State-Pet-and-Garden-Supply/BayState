@@ -19,8 +19,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import httpx
-# Phase 10: parser moved to legacy/ — enrichment path uses /api/internal/scraper-configs API
-# from scrapers.parser.yaml_parser import ScraperConfigParser
+# Phase 10: enrichment path uses /api/internal/scraper-configs API
 from core.version import (
     get_runner_build_id,
     get_runner_build_sha,
@@ -38,40 +37,6 @@ RUNNER_BUILD_SHA_HEADER = "X-BayState-Runner-Build-Sha"
 RUNNER_RELEASE_CHANNEL_HEADER = "X-BayState-Runner-Release-Channel"
 LATEST_RUNNER_BUILD_ID_HEADER = "X-BayState-Latest-Runner-Build-Id"
 LATEST_RUNNER_BUILD_SHA_HEADER = "X-BayState-Latest-Runner-Build-Sha"
-
-
-@dataclass
-class ScraperConfig:
-    """Configuration for a single scraper."""
-
-    name: str
-    display_name: str | None = None
-    disabled: bool = False
-    base_url: str | None = None
-    search_url_template: str | None = None
-    selectors: list[dict[str, Any]] | dict[str, Any] | None = None
-    options: dict[str, Any] | None = None
-    test_skus: list[str] | None = None
-    retries: int = 3
-    validation: dict[str, Any] | None = None
-    login: dict[str, Any] | None = None
-    credential_refs: list[str] | None = None
-
-
-@dataclass
-class JobConfig:
-    """Job configuration received from the coordinator."""
-
-    job_id: str
-    skus: list[str]
-    scrapers: list[ScraperConfig]
-    test_mode: bool = False
-    max_workers: int = 3
-    job_type: str = "standard"
-    job_config: dict[str, Any] | None = None
-    ai_credentials: dict[str, Any] | None = None
-    lease_token: str | None = None
-    lease_expires_at: str | None = None
 
 
 @dataclass

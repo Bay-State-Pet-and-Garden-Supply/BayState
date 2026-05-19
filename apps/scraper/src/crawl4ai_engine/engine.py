@@ -296,8 +296,6 @@ class Crawl4AIEngine:
             extraction_strategy=extraction_strategy,
             # Variant resolution primitives
             js_only=run_settings.get("js_only", False),
-            # Shadow DOM flattening for Web Component storefronts
-            flatten_shadow_dom=run_settings.get("flatten_shadow_dom", False),
         )
 
     def _get_domain_session_id(self, url: str) -> str:

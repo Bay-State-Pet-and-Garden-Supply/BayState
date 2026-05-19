@@ -12,8 +12,8 @@ The scraper system uses a fully decoupled, API-driven architecture with **API Ke
 │  1. Admin creates runner → API key generated (bsr_xxxx)                 │
 │  2. Key stored in GitHub Secrets as SCRAPER_API_KEY                     │
 └─────────────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
+                                 │
+                                 ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                         Runtime Authentication                           │
 │                                                                          │
@@ -125,16 +125,13 @@ For more details, see [OFFICIAL_BRAND_SCRAPER.md](./OFFICIAL_BRAND_SCRAPER.md).
 
 ## Local/Offline Operation (Developer Mode)
 
-While the production runner is API-driven, the system supports a **Stateless Local Mode** designed for development and CI/CD validation.
+While the production runner is API-driven, the system supports a **Stateless Local Mode** for AI extraction and testing.
 
 ### Mechanism
-In local mode (`--local`), the runner:
-1. **Bypasses API Client**: Skips all health checks and initialization of the `ScraperAPIClient`.
-2. **Loads Local Configs**: Reads YAML files directly from `scrapers/configs/`.
-3. **Environment Credentials**: Resolves site credentials from environment variables (`SLUG_USERNAME`/`SLUG_PASSWORD`) instead of the `/api/scraper/v1/credentials` endpoint.
-4. **Direct Output**: Emits results to `stdout` or a local file instead of posting to the coordinator callback.
-
-This architecture ensures that scraper logic can be verified in isolation without a running instance of BayStateApp.
+In local mode, the runner can be used to test AI extraction (Enrichment) without a job queue:
+1. **Direct URL Extraction**: Run `python runner.py --sku <sku> --url <url>` to test the `crawl4ai_engine` on a specific page.
+2. **Environment Credentials**: Resolves site credentials from environment variables (`REF_USERNAME`/`REF_PASSWORD`) for testing authenticated pages.
+3. **Direct Output**: Emits extraction results to `stdout` or a local JSON file.
 
 ### Database Tables
 
@@ -186,39 +183,6 @@ As of v0.3.0, the scraper system uses **Crawl4AI** for AI-powered content extrac
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Configuration Schema
-
-AI scrapers use the `scraper_type: "agentic"` setting with Crawl4AI-specific configuration:
-
-```yaml
-name: "my-ai-scraper"
-scraper_type: "agentic"
-
-ai_config:
-  provider: "crawl4ai"          # Extraction engine
-  task: "Extract products"      # Natural language task
-  llm_model: "gpt-4o-mini"      # OpenAI model
-  confidence_threshold: 0.7     # Acceptance threshold
-  extraction_type: "markdown"   # Output format
-
-workflows:
-  - action: "ai_extract"
-    params:
-      task: "Extract product details"
-      extraction_type: "markdown"
-```
-
-### Migration from browser-use
-
-The previous browser-use based AI scraper system (v0.2.0) has been deprecated:
-
-- **Old configs**: Used `ai_config.tool: "browser-use"`
-- **New configs**: Use `ai_config.provider: "crawl4ai"`
-- **Action handlers**: `ai_extract`, `ai_search`, `ai_validate` now use Crawl4AI
-- **Fallback behavior**: Maintained - falls back to static scraping (Note: Static scraping is currently deactivated in Phase 10 in favor of enrichment paths).
-
-Archived browser-use code is available in repository history or historical branches.
-
 ### Benefits of Crawl4AI
 
 1. **Speed**: Faster page rendering and content extraction
@@ -226,6 +190,7 @@ Archived browser-use code is available in repository history or historical branc
 3. **Clean Output**: Markdown format is easier to parse than raw HTML
 4. **Cost Efficiency**: Reduced token usage with pre-cleaned content
 5. **Maintainability**: Simpler codebase, fewer dependencies
+
 ## Benefits
 
 - **Security**: No database credentials leave the secure BayStateApp environment

@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Bay State Scraper CLI (bsr)")
-    parser.add_argument("--job-id", help="Job ID to execute")
     parser.add_argument("--api-url", help="API base URL (or set SCRAPER_API_URL)")
     parser.add_argument("--runner-name", default=os.environ.get("RUNNER_NAME", "unknown"))
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
@@ -29,8 +28,8 @@ def parse_args() -> argparse.Namespace:
     # Enrichment mode flags
     parser.add_argument(
         "--enrichment-mode",
-        choices=["enrichment", "standard"],
-        default="standard",
+        choices=["enrichment"],
+        default="enrichment",
         help="Execution mode",
     )
     parser.add_argument("--model", default="deepseek-chat", help="LLM model for enrichment")
@@ -121,7 +120,7 @@ def main() -> None:
     setup_structured_logging(debug=args.debug)
 
     # Enrichment mode (AI extraction without YAML configs)
-    if args.enrichment_mode == "enrichment":
+    if args.sku and args.url:
         run_enrichment_mode(args)
         return
 
@@ -139,7 +138,5 @@ def main() -> None:
         logger.error(f"[Runner] Pre-flight health check failed: {e}")
         sys.exit(1)
 
-    if args.job_id:
-        logger.error("Legacy job-id mode is no longer supported. Use daemon.py for polling.")
-        sys.exit(1)
+    logger.info("[Runner] Local CLI initialized. Use --sku and --url for extraction.")
 

@@ -50,5 +50,5 @@ images | 96.97% | 93.94% | -3.03%
 product_name | 100.00% | 64.51% | -35.49%
 size_metrics | 84.85% | 100.00% | +15.15%
 
-baseline_report=/private/var/folders/09/psvh1gl520384nntp58c2lrr0000gn/T/pytest-of-nickborrello/pytest-298/test_regression_detection0/v1/2026-05-18_07-33-42/evaluation-report.md
-challenger_report=/private/var/folders/09/psvh1gl520384nntp58c2lrr0000gn/T/pytest-of-nickborrello/pytest-298/test_regression_detection0/v2-regressed/2026-05-18_07-33-42/evaluation-report.md
+baseline_report=/private/var/folders/09/psvh1gl520384nntp58c2lrr0000gn/T/pytest-of-nickborrello/pytest-302/test_regression_detection0/v1/2026-05-19_23-34-18/evaluation-report.md
+challenger_report=/private/var/folders/09/psvh1gl520384nntp58c2lrr0000gn/T/pytest-of-nickborrello/pytest-302/test_regression_detection0/v2-regressed/2026-05-19_23-34-18/evaluation-report.md

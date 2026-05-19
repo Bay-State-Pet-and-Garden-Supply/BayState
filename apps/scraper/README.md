@@ -61,11 +61,11 @@ The BayStateScraper uses a coordinator-runner pattern with the crawl4ai engine:
 │  Docker Container (baystate-scraper-dev)                      │
 │  ┌────────────────────────────────────────────────────────┐  │
 │  │              crawl4ai Engine                            │  │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │  │
-│  │  │ LLM-Free     │  │ LLM          │  │ Static       │ │  │
-│  │  │ Extraction   │→│ Extraction   │→│ Selectors    │ │  │
-│  │  │ (Primary)    │  │ (Fallback)   │  │ (Fallback)   │ │  │
-│  │  └──────────────┘  └──────────────┘  └──────────────┘ │  │
+│  │  ┌──────────────┐          ┌──────────────┐            │  │
+│  │  │ LLM-Free     │          │ LLM          │            │  │
+│  │  │ Extraction   │ -------->│ Extraction   │            │  │
+│  │  │ (Primary)    │          │ (Fallback)   │            │  │
+│  │  └──────────────┘          └──────────────┘            │  │
 │  └────────────────────────────────────────────────────────┘  │
 └───────────────────────────────────────────────────────────────┘
 ```
@@ -76,7 +76,23 @@ The BayStateScraper uses a coordinator-runner pattern with the crawl4ai engine:
 | ---------------------- | ----- | ---------- | -------------------------------------------- |
 | **LLM-Free**           | 2-4s  | Free       | Structured pages, e-commerce products        |
 | **LLM**                | 8-15s | $0.01-0.05 | Complex comparisons, unstructured data       |
-| **Auto** (Recommended) | 2-8s  | Varies     | Automatic selection based on page complexity |
+| **Mixed** (Default)    | 2-8s  | Varies     | Automatic selection based on page complexity |
+
+## 🧪 Local Testing
+
+You can test AI extraction locally without the full stack:
+
+```bash
+# Extract data from a specific URL
+python runner.py --sku "MY-SKU" --url "https://example.com/product/123" --debug
+```
+
+Flags:
+- `--sku`: Product SKU for tracking.
+- `--url`: Target page URL.
+- `--no-headless`: Show the browser window for debugging.
+- `--model`: Change LLM model (e.g., `gpt-4o`).
+- `--enrichment-strategy`: Choose `mixed`, `llm`, or `structured`.
 
 ## 📦 Docker Management
 
