@@ -24,11 +24,13 @@ def _make_plan(
     sku: str = "001135",
     brand_name: str = "KERBL",
     selected_distributor: str | None = "bradley",
+    name: str = "E-Z HANG SCALE",
+    brand_slug: str = "kerbl",
 ) -> ApprovedSourcePlan:
     return ApprovedSourcePlan(
         sku=sku,
-        input={"name": "E-Z HANG SCALE", "price": None},
-        brand=ApprovedSourceBrand(id="brand-1", name=brand_name, slug="kerbl"),
+        input={"name": name, "price": None},
+        brand=ApprovedSourceBrand(id="brand-1", name=brand_name, slug=brand_slug),
         selectedDistributorSlug=selected_distributor,
         priority=[
             ApprovedSourcePlanEntry(
@@ -155,6 +157,16 @@ class TestOrgillAdapter:
         assert "orgill.com" in url
         assert "037193347322" in url
 
+    def test_build_search_url_encodes_special_chars(self):
+        from scrapers.approved_sources.adapters.orgill import OrgillAdapter
+
+        entry = _make_entry(slug="orgill", adapter="orgill_crawl4ai", domains=["orgill.com"], auth=True)
+        plan = _make_plan(sku="A B/C#1")
+        adapter = OrgillAdapter(entry, plan)
+
+        url = adapter.build_search_url("A B/C#1")
+        assert "A%20B%2FC%231" in url
+
     def test_requires_auth(self):
         from scrapers.approved_sources.adapters.orgill import OrgillAdapter
 
@@ -204,6 +216,25 @@ class TestOrgillAdapter:
         assert "/web/" in normalized[0]
         assert "thumb" not in normalized[1]
 
+    def test_extract_accepts_upc_match_even_when_item_number_differs(self):
+        from scrapers.approved_sources.adapters.orgill import OrgillAdapter
+
+        entry = _make_entry(slug="orgill", adapter="orgill_crawl4ai", domains=["orgill.com"], auth=True)
+        plan = _make_plan(sku="037193347322")
+        adapter = OrgillAdapter(entry, plan)
+
+        html = """
+        <html><body>
+          <span id="cphMainContent_ctl00_lblDescription">Steel Hammer</span>
+          <span id="cphMainContent_ctl00_lblVendorName">ACME</span>
+          <span id="cphMainContent_ctl00_lblOrgillItemNumber">1234567</span>
+          <span id="cphMainContent_ctl00_lblRetailUpc">037193347322</span>
+        </body></html>
+        """
+        result = adapter.extract_from_html(html, "037193347322", "https://www.orgill.com/SearchResultN.aspx?ddlhQ=037193347322")
+        assert result.success is True
+        assert result.sku_match is True
+
 
 class TestPhillipsAdapter:
     """Tests for Phillips adapter (login required)."""
@@ -218,6 +249,16 @@ class TestPhillipsAdapter:
         url = adapter.build_search_url("072705115310")
         assert "shop.phillipspet.com" in url
         assert "072705115310" in url
+
+    def test_build_search_url_encodes_special_chars(self):
+        from scrapers.approved_sources.adapters.phillips import PhillipsAdapter
+
+        entry = _make_entry(slug="phillips", adapter="phillips_crawl4ai", domains=["shop.phillipspet.com"], auth=True)
+        plan = _make_plan(sku="A B/C#1")
+        adapter = PhillipsAdapter(entry, plan)
+
+        url = adapter.build_search_url("A B/C#1")
+        assert "A%20B%2FC%231" in url
 
     def test_requires_auth(self):
         from scrapers.approved_sources.adapters.phillips import PhillipsAdapter
@@ -242,6 +283,66 @@ class TestPhillipsAdapter:
         assert "/large/" in normalized[0]
         assert "_large" in normalized[1]
 
+    def test_extract_supports_legacy_plp_desktop_row(self):
+        from scrapers.approved_sources.adapters.phillips import PhillipsAdapter
+
+        entry = _make_entry(slug="phillips", adapter="phillips_crawl4ai", domains=["shop.phillipspet.com"], auth=True)
+        plan = _make_plan(sku="072705115310")
+        adapter = PhillipsAdapter(entry, plan)
+
+        html = """
+        <html><body>
+          <div id="plp-desktop-row">
+            <div class="cc_product_name"><strong>Fromm Gold Large Breed Adult Dog Food 30lb</strong></div>
+            <div class="product-brand"><span class="branded">FROMM PET FOOD</span></div>
+            <div class="product-item-number"><span class="cc_value">FG123</span></div>
+            <div class="product-upc"><span class="cc_value">072705115310</span></div>
+            <div class="cc_product_image"><img src="https://shop.phillipspet.com/images/thumb/product.jpg" /></div>
+          </div>
+        </body></html>
+        """
+
+        result = adapter.extract_from_html(html, "072705115310", "https://shop.phillipspet.com/ccrz__ProductList?searchText=072705115310")
+        assert result.success is True
+        assert result.product["name"] == "Fromm Gold Large Breed Adult Dog Food 30lb"
+        assert result.sku_match is True
+
+    def test_extract_prefers_best_matching_result_card(self):
+        from scrapers.approved_sources.adapters.phillips import PhillipsAdapter
+
+        entry = _make_entry(slug="phillips", adapter="phillips_crawl4ai", domains=["shop.phillipspet.com"], auth=True)
+        plan = _make_plan(
+            sku="840243156412",
+            name="BLUE TRUE CHEWS MEAT BALLS BEEF 12OZ",
+            brand_name="Blue Buffalo",
+            brand_slug="blue-buffalo",
+        )
+        adapter = PhillipsAdapter(entry, plan)
+
+        html = """
+        <html><body>
+          <div class="scanner-results-product-container">
+            <div class="cc_product_name"><strong>TEST PROD NAME TEST BRAND NAME</strong></div>
+            <div class="product-brand"><span class="branded">TEST BRAND NAME</span></div>
+            <div class="product-item-number"><span class="cc_value">100122</span></div>
+            <div class="product-upc"><span class="cc_value">128937128937</span></div>
+          </div>
+          <div class="cc_row_product_info">
+            <div class="cc_product_name"><strong>Blue Buffalo True Chews Meatball Dog Beef Treat 12 oz C=6</strong></div>
+            <div class="product-brand"><span class="branded">BLUE BUFFALO</span></div>
+            <div class="product-item-number"><span class="cc_value">113065</span></div>
+            <div class="product-upc"><span class="cc_value">10840243156419</span></div>
+          </div>
+        </body></html>
+        """
+
+        result = adapter.extract_from_html(html, "840243156412", "https://shop.phillipspet.com/ccrz__ProductList?searchText=840243156412")
+        assert result.success is True
+        assert result.product["name"].startswith("Blue Buffalo True Chews")
+        assert result.product["brand"] == "BLUE BUFFALO"
+        assert result.sku_match is False
+        assert any("brand/name heuristic" in warning for warning in result.warnings)
+
 
 class TestPetFoodExpertsAdapter:
     """Tests for Pet Food Experts adapter (login required)."""
@@ -259,6 +360,19 @@ class TestPetFoodExpertsAdapter:
         url = adapter.build_search_url("33011808")
         assert "orders.petfoodexperts.com" in url
         assert "33011808" in url
+
+    def test_build_search_url_encodes_special_chars(self):
+        from scrapers.approved_sources.adapters.pet_food_experts import PetFoodExpertsAdapter
+
+        entry = _make_entry(
+            slug="pet_food_experts", adapter="pet_food_experts_crawl4ai",
+            domains=["orders.petfoodexperts.com"], auth=True
+        )
+        plan = _make_plan(sku="A B/C#1")
+        adapter = PetFoodExpertsAdapter(entry, plan)
+
+        url = adapter.build_search_url("A B/C#1")
+        assert "A%20B%2FC%231" in url
 
     def test_requires_auth(self):
         from scrapers.approved_sources.adapters.pet_food_experts import PetFoodExpertsAdapter
@@ -321,6 +435,31 @@ class TestPetFoodExpertsAdapter:
         assert "_md" not in normalized[0]
         assert "_sm" not in normalized[1]
         assert "_thumbnail" not in normalized[2]
+
+    def test_extract_brand_stops_at_next_attribute_label(self):
+        from scrapers.approved_sources.adapters.pet_food_experts import PetFoodExpertsAdapter
+
+        entry = _make_entry(
+            slug="pet_food_experts", adapter="pet_food_experts_crawl4ai",
+            domains=["orders.petfoodexperts.com"], auth=True
+        )
+        plan = _make_plan(sku="33011808")
+        adapter = PetFoodExpertsAdapter(entry, plan)
+
+        html = """
+        <html><body>
+          <h1>DAVE'S PET FOOD DOG RESTRICTED BLAND DIET CHICKEN &amp; RICE 13.2OZ - 12 PACK</h1>
+          <div data-test-selector="productDetails_specifications">
+            Attributes Brand: Daves Pet Food Flavor: Chicken Animal: Dog Diet: Sensitive
+          </div>
+          <div data-test-selector="productDetails_productId_1">
+            Item #33011808 UPC#: CAS: 685038118097, EA: 685038118080
+          </div>
+        </body></html>
+        """
+        result = adapter.extract_from_html(html, "33011808", "https://orders.petfoodexperts.com/Search?query=33011808")
+        assert result.success is True
+        assert result.product["brand"] == "Daves Pet Food"
 
 
 class TestImageFiltering:

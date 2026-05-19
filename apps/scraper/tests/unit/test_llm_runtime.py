@@ -14,6 +14,19 @@ def test_resolve_llm_runtime_maps_legacy_gemini_provider_to_deepseek() -> None:
     assert runtime.api_key == "deepseek-test-key"
 
 
+def test_resolve_llm_runtime_lmstudio_alias_uses_openai_compatible() -> None:
+    runtime = resolve_llm_runtime(
+        provider="lmstudio",
+        model="local-model",
+        base_url="http://localhost:1234/v1/",
+    )
+
+    assert runtime.provider == "openai_compatible"
+    assert runtime.model == "local-model"
+    assert runtime.base_url == "http://localhost:1234/v1"
+    assert runtime.api_key == LOCAL_OPENAI_COMPATIBLE_API_KEY
+
+
 def test_resolve_llm_runtime_openai_compatible_uses_local_defaults(
     monkeypatch,
 ) -> None:

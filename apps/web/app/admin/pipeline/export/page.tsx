@@ -49,9 +49,10 @@ export default async function PipelineExportPage({ searchParams }: PageProps) {
 
     return (
         <AdminPageShell
-            title="Export Products"
-            description="Generate Excel exports of pipeline products."
+            title="Export"
+            description="Prepare the publishing-stage products for export and downstream handoff."
             icon={<Download className="h-5 w-5" />}
+            eyebrow="Workspace view"
             fullHeight
         >
             <PipelineClient

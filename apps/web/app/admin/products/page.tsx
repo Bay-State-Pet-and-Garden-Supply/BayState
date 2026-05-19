@@ -1,28 +1,27 @@
-import { AdminPageShell } from '@/components/admin/admin-page-shell';
-import { Package } from 'lucide-react';
-import { createClient } from '@/lib/supabase/server';
-import { AdminProductsClient } from '@/components/admin/products/AdminProductsClient';
-import { PublishedProduct } from '@/components/admin/products/ProductEditModal';
-import { normalizeProductStorefrontSettings } from '@/lib/product-storefront-settings';
 import { Metadata } from 'next';
+import { Package } from 'lucide-react';
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminProductsClient } from '@/components/admin/products/AdminProductsClient';
+import type { PublishedProduct } from '@/components/admin/products/ProductEditModal';
+import { normalizeProductStorefrontSettings } from '@/lib/product-storefront-settings';
+import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
-  title: 'Products | Bay State Pet Admin',
+  title: 'Products | Bay State Admin',
   description: 'Manage published products in the storefront.',
 };
 
 export default async function AdminProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; brand?: string; category?: string; stock?: string; featured?: string }>;
+  searchParams: Promise<{ search?: string; brand?: string; category?: string; stock?: string }>;
 }) {
-  const { search, brand, category, stock, featured } = await searchParams;
+  const { search, brand, category, stock } = await searchParams;
   const supabase = await createClient();
   const productCategoriesSelect = category && category !== 'all'
     ? 'product_categories!inner(category_id)'
     : 'product_categories(category_id)';
 
-  // Build the products query
   let productsQuery = supabase
     .from('products')
     .select(
@@ -52,12 +51,11 @@ export default async function AdminProductsPage({
         storefront_settings:product_storefront_settings(is_featured, pickup_only),
         ${productCategoriesSelect}
       `,
-      { count: 'exact' }
+      { count: 'exact' },
     )
     .order('created_at', { ascending: false })
     .limit(50);
 
-  // Apply server-side filters
   if (search) {
     productsQuery = productsQuery.or(`name.ilike.%${search}%,sku.ilike.%${search}%`);
   }
@@ -71,27 +69,19 @@ export default async function AdminProductsPage({
     productsQuery = productsQuery.eq('stock_status', stock);
   }
 
-  // Fetch data in parallel
   const [productsRes, brandsRes, categoriesRes] = await Promise.all([
     productsQuery,
-    supabase
-      .from('brands')
-      .select('id, name')
-      .order('name', { ascending: true }),
-    supabase
-      .from('categories')
-      .select('id, name')
-      .order('name', { ascending: true })
+    supabase.from('brands').select('id, name').order('name', { ascending: true }),
+    supabase.from('categories').select('id, name').order('name', { ascending: true }),
   ]);
 
   const { data: products, count } = productsRes;
   const { data: brands } = brandsRes;
   const { data: categories } = categoriesRes;
-  
-  // Transform products to match PublishedProduct interface
+
   const clientProducts: PublishedProduct[] = (products || []).map((product) => {
     const storefrontSettings = normalizeProductStorefrontSettings(product.storefront_settings);
-    const brand = Array.isArray(product.brand) ? product.brand[0] ?? null : product.brand;
+    const brandRecord = Array.isArray(product.brand) ? product.brand[0] ?? null : product.brand;
 
     return {
       id: product.id,
@@ -105,8 +95,8 @@ export default async function AdminProductsPage({
       is_featured: storefrontSettings.is_featured,
       images: product.images,
       brand_id: product.brand_id,
-      brand_name: brand?.name || null,
-      brand_slug: brand?.slug || null,
+      brand_name: brandRecord?.name || null,
+      brand_slug: brandRecord?.slug || null,
       search_keywords: product.search_keywords || null,
       gtin: product.gtin || null,
       availability: product.availability || null,
@@ -118,18 +108,18 @@ export default async function AdminProductsPage({
       is_taxable: product.is_taxable ?? true,
       product_on_pages: product.shopsite_pages || [],
       category_ids: (product.product_categories || [])
-        .map((pc: { category_id?: string | null }) => pc.category_id)
+        .map((item: { category_id?: string | null }) => item.category_id)
         .filter((value: string | null | undefined): value is string => Boolean(value)),
       created_at: product.created_at,
     };
   });
 
   return (
-    <AdminPageShell 
-      title="Storefront Products"
-      description="Manage published products in the storefront."
+    <AdminPageShell
+      title="Products"
+      description="Search, filter, and open published storefront products without hopping through separate tools."
       icon={<Package className="h-5 w-5" />}
-      compactHeader
+      eyebrow="Queue view"
     >
       <AdminProductsClient
         initialProducts={clientProducts}

@@ -181,27 +181,28 @@ function DistributorCredentialRow({ distributor }: { distributor: DistributorInf
         )}
 
         <div className="grid gap-3 md:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor={`${distributor.slug}-username`}>Username</Label>
-            <Input
-              id={`${distributor.slug}-username`}
-              value={state.username}
-              onChange={(e) => setState(prev => ({ ...prev, username: e.target.value }))}
-              placeholder={state.loginConfigured ? 'Leave blank to keep existing' : 'Enter username'}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor={`${distributor.slug}-password`}>Password</Label>
-            <Input
-              id={`${distributor.slug}-password`}
-              type="password"
-              value={state.password}
-              onChange={(e) => setState(prev => ({ ...prev, password: e.target.value }))}
-              placeholder={state.passwordConfigured ? 'Leave blank to keep existing' : 'Enter password'}
-            />
-          </div>
+        <div className="space-y-1.5">
+        <Label htmlFor={`${distributor.slug}-username`}>Username</Label>
+        <Input
+        id={`${distributor.slug}-username`}
+        value={state.username}
+        onChange={(e) => setState(prev => ({ ...prev, username: e.target.value }))}
+        placeholder={state.loginConfigured ? 'Leave blank to keep existing' : 'Enter username'}
+        autoComplete="new-password"
+        />
         </div>
-
+        <div className="space-y-1.5">
+        <Label htmlFor={`${distributor.slug}-password`}>Password</Label>
+        <Input
+        id={`${distributor.slug}-password`}
+        type="password"
+        value={state.password}
+        onChange={(e) => setState(prev => ({ ...prev, password: e.target.value }))}
+        placeholder={state.passwordConfigured ? 'Leave blank to keep existing' : 'Enter password'}
+        autoComplete="new-password"
+        />
+        </div>
+        </div>
         <div className="flex justify-end gap-2">
           {anyConfigured && (
             <Button type="button" variant="outline" size="sm" onClick={onClear} disabled={state.saving}>

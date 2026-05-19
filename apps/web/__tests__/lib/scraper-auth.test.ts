@@ -125,6 +125,39 @@ describe('scraper-auth', () => {
             });
         });
 
+        it('falls back to runner_api_keys when RPC is unavailable', async () => {
+            const mockRpc = jest.fn().mockResolvedValue({
+                data: null,
+                error: { message: 'No suitable key or wrong key type' },
+            });
+            const single = jest.fn().mockResolvedValue({
+                data: {
+                    id: 'key-456',
+                    runner_name: 'fallback-runner',
+                    allowed_scrapers: ['phillips'],
+                    revoked_at: null,
+                    expires_at: null,
+                },
+                error: null,
+            });
+            const is = jest.fn().mockReturnValue({ single });
+            const eq = jest.fn().mockReturnValue({ is });
+            const select = jest.fn().mockReturnValue({ eq });
+            const from = jest.fn().mockReturnValue({ select });
+
+            mockCreateClient.mockReturnValue({ rpc: mockRpc, from } as never);
+
+            const result = await validateAPIKey('bsr_valid-test-key');
+
+            expect(from).toHaveBeenCalledWith('runner_api_keys');
+            expect(result).toEqual({
+                runnerName: 'fallback-runner',
+                keyId: 'key-456',
+                authMethod: 'api_key',
+                allowedScrapers: ['phillips'],
+            });
+        });
+
         it('returns null for invalid key', async () => {
             const mockRpc = jest.fn().mockResolvedValue({
                 data: [{ is_valid: false }],

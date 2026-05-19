@@ -1,323 +1,501 @@
 'use client';
 
-import { useState, useTransition, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { EmptyState } from '@/components/ui/empty-state';
-import { Input } from '@/components/ui/input';
-import { Spinner } from '@/components/ui/spinner';
+import { useEffect, useMemo, useState, useTransition, useCallback } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { ArrowUpRight, MoreHorizontal, Package, Plus, RefreshCw, Search, Workflow } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { AdminEmptyState } from '@/components/admin/admin-empty-state';
+import { Input } from '@/components/ui/input';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
-import { Plus, Package, ExternalLink, RefreshCw, Search, X } from 'lucide-react';
-import { PublishedProduct } from './ProductEditModal';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { formatCurrency, cn, formatImageUrl } from '@/lib/utils';
+import { AdminControlBar } from '@/components/admin/admin-control-bar';
+import { AdminStatCard } from '@/components/admin/admin-stat-card';
+import { DataTable, type Column } from '@/components/admin/data-table';
+import type { PublishedProduct } from './ProductEditModal';
 import { useDebounce } from '@/hooks/use-debounce';
+import { cn, formatCurrency } from '@/lib/utils';
 
 interface AdminProductsClientProps {
-    initialProducts: PublishedProduct[];
-    totalCount: number;
-    brands: { id: string; name: string }[];
-    categories: { id: string; name: string }[];
+  initialProducts: PublishedProduct[];
+  totalCount: number;
+  brands: { id: string; name: string }[];
+  categories: { id: string; name: string }[];
 }
 
-export function AdminProductsClient({ 
-    initialProducts, 
-    totalCount, 
-    brands,
-    categories
+function getStockBadgeVariant(stockStatus: string): 'success' | 'warning' | 'destructive' | 'secondary' {
+  switch (stockStatus) {
+    case 'in_stock':
+      return 'success';
+    case 'low_stock':
+      return 'warning';
+    case 'out_of_stock':
+      return 'destructive';
+    default:
+      return 'secondary';
+  }
+}
+
+function getStockLabel(stockStatus: string) {
+  switch (stockStatus) {
+    case 'in_stock':
+      return 'In stock';
+    case 'low_stock':
+      return 'Low stock';
+    case 'out_of_stock':
+      return 'Out of stock';
+    case 'pre_order':
+      return 'Pre-order';
+    default:
+      return stockStatus.replace(/_/g, ' ');
+  }
+}
+
+function getPageCount(productPages: PublishedProduct['product_on_pages']) {
+  if (!productPages) return 0;
+  if (Array.isArray(productPages)) return productPages.length;
+  if (typeof productPages === 'string') {
+    try {
+      const parsed = JSON.parse(productPages);
+      return Array.isArray(parsed) ? parsed.length : 0;
+    } catch {
+      return 0;
+    }
+  }
+  return 0;
+}
+
+export function AdminProductsClient({
+  initialProducts,
+  totalCount,
+  brands,
+  categories,
 }: AdminProductsClientProps) {
-    const router = useRouter();
-    const pathname = usePathname();
-    const searchParams = useSearchParams();
-    const [isPending, startTransition] = useTransition();
-    
-    // Sync products with initialProducts prop (which changes on server re-render)
-    const products = initialProducts;
-    
-    // Search state
-    const [search, setSearch] = useState(searchParams.get('search') || '');
-    const debouncedSearch = useDebounce(search, 500);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+  const products = initialProducts;
 
-    // Filter states from URL
-    const brandFilter = searchParams.get('brand') || 'all';
-    const categoryFilter = searchParams.get('category') || 'all';
-    const stockFilter = searchParams.get('stock') || 'all';
-    const featuredFilter = searchParams.get('featured') || 'all';
+  const [search, setSearch] = useState(searchParams.get('search') || '');
+  const debouncedSearch = useDebounce(search, 350);
 
-    // Update URL when filters or search change
-    const updateFilters = useCallback((updates: Record<string, string | null>) => {
-        const params = new URLSearchParams(searchParams.toString());
-        
-        Object.entries(updates).forEach(([key, value]) => {
-            if (value === null || value === 'all' || value === '') {
-                params.delete(key);
-            } else {
-                params.set(key, value);
-            }
-        });
+  const brandFilter = searchParams.get('brand') || 'all';
+  const categoryFilter = searchParams.get('category') || 'all';
+  const stockFilter = searchParams.get('stock') || 'all';
 
-        startTransition(() => {
-            router.push(`${pathname}?${params.toString()}`);
-        });
-    }, [pathname, router, searchParams]);
+  const updateFilters = useCallback(
+    (updates: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams.toString());
 
-    // Handle debounced search update
-    useEffect(() => {
-        if (debouncedSearch !== (searchParams.get('search') || '')) {
-            updateFilters({ search: debouncedSearch });
-        }
-    }, [debouncedSearch, searchParams, updateFilters]);
-
-    const hasActiveFilters = search !== '' || 
-                            brandFilter !== 'all' || 
-                            categoryFilter !== 'all' || 
-                            stockFilter !== 'all' || 
-                            featuredFilter !== 'all';
-
-    const clearFilters = () => {
-        setSearch('');
-        router.push(pathname);
-    };
-
-    const parseImages = (images: unknown): string[] => {
-        if (!images) return [];
-        let parsed: string[] = [];
-        if (Array.isArray(images)) {
-            parsed = images;
-        } else if (typeof images === 'string') {
-            try {
-                parsed = JSON.parse(images);
-            } catch {
-                return [];
-            }
+      Object.entries(updates).forEach(([key, value]) => {
+        if (!value || value === 'all') {
+          params.delete(key);
         } else {
-            return [];
+          params.set(key, value);
         }
+      });
 
-        return parsed.map(img => formatImageUrl(img)).filter((img): img is string => Boolean(img));
-    };
+      startTransition(() => {
+        const next = params.toString();
+        router.push(next ? `${pathname}?${next}` : pathname);
+      });
+    },
+    [pathname, router, searchParams],
+  );
 
-    const isValidImageUrl = (url: string) => {
-        return url && (url.startsWith('/') || url.startsWith('http'));
-    };
+  useEffect(() => {
+    const currentSearch = searchParams.get('search') || '';
+    if (debouncedSearch !== currentSearch) {
+      updateFilters({ search: debouncedSearch });
+    }
+  }, [debouncedSearch, searchParams, updateFilters]);
 
-    const handleRefresh = () => {
-        startTransition(() => {
-            router.refresh();
-        });
-    };
+  const stats = useMemo(() => {
+    const inStock = products.filter((product) => product.stock_status === 'in_stock').length;
+    const attention = products.filter(
+      (product) => product.stock_status === 'low_stock' || product.stock_status === 'out_of_stock',
+    ).length;
+    const featured = products.filter((product) => product.is_featured).length;
 
+    return { inStock, attention, featured };
+  }, [products]);
+
+  const hasActiveFilters =
+    search.trim() !== '' || brandFilter !== 'all' || categoryFilter !== 'all' || stockFilter !== 'all';
+
+  const handleClearFilters = () => {
+    setSearch('');
+    router.push(pathname);
+  };
+
+  const columns = useMemo<Column<PublishedProduct>[]>(
+    () => [
+      {
+        key: 'name',
+        header: 'Product',
+        sortable: true,
+        className: 'min-w-[220px]',
+        render: (_value, product) => (
+          <div className="space-y-1">
+            <div className="font-medium text-foreground">{product.name}</div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span>{product.brand_name || 'No brand'}</span>
+              <span>SKU {product.sku || 'Missing'}</span>
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'stock_status',
+        header: 'Status',
+        sortable: true,
+        className: 'min-w-[160px]',
+        render: (_value, product) => (
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={getStockBadgeVariant(product.stock_status)}>{getStockLabel(product.stock_status)}</Badge>
+            {product.is_featured ? <Badge variant="outline">Featured</Badge> : null}
+            {product.is_special_order ? <Badge variant="secondary">Special order</Badge> : null}
+          </div>
+        ),
+      },
+      {
+        key: 'price',
+        header: 'Price',
+        sortable: true,
+        className: 'min-w-[100px] tabular-nums',
+        render: (value) => <span className="font-medium">{formatCurrency(Number(value || 0))}</span>,
+      },
+      {
+        key: 'quantity',
+        header: 'On hand',
+        sortable: true,
+        className: 'min-w-[100px] tabular-nums',
+        render: (_value, product) => (
+          <div className="space-y-1 text-sm">
+            <div className="font-medium text-foreground">{product.quantity ?? '—'}</div>
+            {product.low_stock_threshold ? (
+              <div className="text-xs text-muted-foreground">Low at {product.low_stock_threshold}</div>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        key: 'product_on_pages',
+        header: 'Storefront',
+        className: 'hidden 2xl:table-cell min-w-[140px]',
+        render: (_value, product) => {
+          const pageCount = getPageCount(product.product_on_pages);
+          return (
+            <div className="space-y-1 text-sm">
+              <div className="font-medium text-foreground">{pageCount} page{pageCount === 1 ? '' : 's'}</div>
+              <div className="text-xs text-muted-foreground">
+                {product.published_at ? 'Published' : 'Not published'}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        key: 'created_at',
+        header: 'Added',
+        sortable: true,
+        className: 'hidden 2xl:table-cell min-w-[110px]',
+        render: (value) => (
+          <span className="text-sm text-muted-foreground">
+            {value ? new Date(String(value)).toLocaleDateString() : '—'}
+          </span>
+        ),
+      },
+    ],
+    [],
+  );
+
+  if (!products.length) {
     return (
-        <div className="flex flex-col gap-6 pb-20">
-            {/* Toolbar & Filters */}
-            <div className="flex flex-col gap-4 rounded-xl border bg-card p-4 shadow-sm">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            type="text"
-                            placeholder="Search across all products by name or SKU…"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="pl-10"
-                            aria-label="Search all products"
-                        />
-                        {isPending && (
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                <Spinner className="size-4" />
-                            </div>
-                        )}
-                    </div>
-                    
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Select value={categoryFilter} onValueChange={(val) => updateFilters({ category: val })}>
-                            <SelectTrigger className="w-[160px]">
-                                <SelectValue placeholder="All Categories" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Categories</SelectItem>
-                                {categories.map(cat => (
-                                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+      <div className="flex flex-col gap-5 pb-6">
+        <AdminControlBar>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative flex-1 max-w-xl">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search by product name or SKU"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="pl-9"
+                aria-label="Search products"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" asChild>
+                <Link href="/admin/pipeline">
+                  <Workflow className="h-4 w-4" />
+                  Open pipeline
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href="/admin/products/new">
+                  <Plus className="h-4 w-4" />
+                  New product
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </AdminControlBar>
 
-                        <Select value={brandFilter} onValueChange={(val) => updateFilters({ brand: val })}>
-                            <SelectTrigger className="w-[160px]">
-                                <SelectValue placeholder="All Brands" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Brands</SelectItem>
-                                {brands.map(brand => (
-                                    <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+        <AdminEmptyState
+          icon={Package}
+          title={hasActiveFilters ? 'No products match these filters.' : 'No published products yet.'}
+          description={
+            hasActiveFilters
+              ? 'Clear the current search or filters, then try again.'
+              : 'Products move here after pipeline review and publication.'
+          }
+          actionLabel={hasActiveFilters ? 'Clear filters' : 'Open pipeline'}
+          actionHref={hasActiveFilters ? undefined : '/admin/pipeline'}
+          onAction={hasActiveFilters ? handleClearFilters : undefined}
+        />
+      </div>
+    );
+  }
 
-                        <Select value={stockFilter} onValueChange={(val) => updateFilters({ stock: val })}>
-                            <SelectTrigger className="w-[140px]">
-                                <SelectValue placeholder="Stock Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Stock</SelectItem>
-                                <SelectItem value="in_stock">In Stock</SelectItem>
-                                <SelectItem value="low_stock">Low Stock</SelectItem>
-                                <SelectItem value="out_of_stock">Out of Stock</SelectItem>
-                                <SelectItem value="pre_order">Pre-order</SelectItem>
-                            </SelectContent>
-                        </Select>
+  return (
+    <div className="flex flex-col gap-5 pb-6">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <AdminStatCard label="Loaded now" value={products.length} hint="Showing up to the newest 50 products for the current filters." icon={<Package className="h-5 w-5" />} />
+        <AdminStatCard label="In stock" value={stats.inStock} hint="Ready to sell now." tone="success" />
+        <AdminStatCard label="Need attention" value={stats.attention} hint="Low stock or out of stock." tone="warning" />
+        <AdminStatCard label="Featured" value={stats.featured} hint="Featured on the storefront." />
+      </div>
 
-                        <Select value={featuredFilter} onValueChange={(val) => updateFilters({ featured: val })}>
-                            <SelectTrigger className="w-[140px]">
-                                <SelectValue placeholder="Featured" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Any Featured</SelectItem>
-                                <SelectItem value="featured">Featured Only</SelectItem>
-                                <SelectItem value="not_featured">Not Featured</SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        <Button 
-                            variant="ghost" 
-                            onClick={handleRefresh}
-                            disabled={isPending}
-                            className="size-9 p-0"
-                            title="Refresh data"
-                        >
-                            <RefreshCw className={cn("size-4", isPending && "animate-spin")} />
-                        </Button>
-
-                        {hasActiveFilters && (
-                            <Button variant="ghost" onClick={clearFilters} className="text-muted-foreground hover:text-foreground h-9 px-2">
-                                <X className="mr-1.5 size-3" />
-                                Clear
-                            </Button>
-                        )}
-                    </div>
-                </div>
-                
-                <div className="flex items-center justify-end border-t pt-4">
-                    <p className="text-xs text-muted-foreground">
-                        {searchParams.get('search') ? (
-                            <>Found <span className="font-semibold text-foreground">{totalCount}</span> matching products</>
-                        ) : (
-                            <>Showing the <span className="font-semibold text-foreground">{products.length}</span> most recent products</>
-                        )}
-                    </p>
-                </div>
+      <AdminControlBar>
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-1 flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="relative flex-1 max-w-xl">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search by product name or SKU"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="pl-9"
+                aria-label="Search products"
+              />
             </div>
 
-            {(!products || products.length === 0) ? (
-                <EmptyState
-                    icon={Package}
-                    title={searchParams.get('search') ? "No matches found" : "No published products yet"}
-                    description={searchParams.get('search') ? "Try adjusting your search or filters" : "Products flow through the pipeline before being published"}
-                    actionLabel={searchParams.get('search') ? "Clear Search" : "Go to Pipeline"}
-                    actionHref={searchParams.get('search') ? undefined : "/admin/pipeline"}
-                    onAction={searchParams.get('search') ? clearFilters : undefined}
-                />
-            ) : (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {products.map((product) => {
-                        const images = parseImages(product.images);
-                        const imageUrl = images[0];
+            <Select value={categoryFilter} onValueChange={(value) => updateFilters({ category: value })}>
+              <SelectTrigger className="w-full lg:w-[200px]">
+                <SelectValue placeholder="All categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All categories</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-                        return (
-                            <Card 
-                                key={product.id} 
-                                className="group flex flex-col overflow-hidden border-border/50 transition-all hover:shadow-md relative"
-                            >
-                                <div className="relative aspect-square overflow-hidden bg-muted/30">
-                                    {imageUrl && isValidImageUrl(imageUrl) ? (
-                                        <Image
-                                            src={imageUrl}
-                                            alt={product.name}
-                                            fill
-                                            className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                                            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-                                            unoptimized
-                                        />
-                                    ) : (
-                                        <div className="flex h-full items-center justify-center text-muted-foreground/30">
-                                            <Package className="size-16" />
-                                        </div>
-                                    )}
-                                    <div className="absolute top-2 right-2 flex flex-col gap-1">
-                                        {product.is_featured && (
-                                            <Badge className="bg-yellow-500 hover:bg-yellow-600 border-none text-white shadow-sm">
-                                                Featured
-                                            </Badge>
-                                        )}
-                                        <Badge 
-                                            variant={
-                                                product.stock_status === 'in_stock' ? 'default' : 
-                                                product.stock_status === 'out_of_stock' ? 'destructive' : 'secondary'
-                                            }
-                                            className="shadow-sm"
-                                        >
-                                            {product.stock_status === 'in_stock' ? 'In Stock' :
-                                                product.stock_status === 'out_of_stock' ? 'Out of Stock' : 'Pre-order'}
-                                        </Badge>
-                                    </div>
-                                </div>
+            <Select value={brandFilter} onValueChange={(value) => updateFilters({ brand: value })}>
+              <SelectTrigger className="w-full lg:w-[200px]">
+                <SelectValue placeholder="All brands" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All brands</SelectItem>
+                {brands.map((brand) => (
+                  <SelectItem key={brand.id} value={brand.id}>
+                    {brand.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-                                <CardHeader className="p-4 pb-2">
-                                    <div className="flex justify-between items-start gap-2">
-                                        <CardTitle className="text-sm font-semibold leading-tight line-clamp-2 min-h-[2.5rem] group-hover:text-primary transition-colors">
-                                            {product.name}
-                                        </CardTitle>
-                                    </div>
-                                    <div className="flex flex-col gap-0.5 mt-1">
-                                        {product.brand_name && (
-                                            <p className="text-xs text-muted-foreground font-medium">{product.brand_name}</p>
-                                        )}
-                                        <p className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wider">{product.sku}</p>
-                                    </div>
-                                </CardHeader>
+            <Select value={stockFilter} onValueChange={(value) => updateFilters({ stock: value })}>
+              <SelectTrigger className="w-full lg:w-[180px]">
+                <SelectValue placeholder="All stock" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All stock</SelectItem>
+                <SelectItem value="in_stock">In stock</SelectItem>
+                <SelectItem value="low_stock">Low stock</SelectItem>
+                <SelectItem value="out_of_stock">Out of stock</SelectItem>
+                <SelectItem value="pre_order">Pre-order</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-                                <CardContent className="flex flex-col gap-4 p-4 mt-auto">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-lg font-bold text-foreground">
-                                            {formatCurrency(Number(product.price))}
-                                        </span>
-                                        {product.quantity !== null && product.quantity !== undefined && (
-                                            <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                                                Qty: {product.quantity}
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                                        <Button variant="secondary" size="sm" asChild className="flex-1 bg-muted/50 hover:bg-muted" title="View in Storefront">
-                                            <Link href={`/products/${product.slug}`} target="_blank">
-                                                <ExternalLink className="mr-2 size-3.5" />
-                                                View Storefront
-                                            </Link>
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        );
-                    })}
-                </div>
-            )}
-
-            {totalCount > products.length && !searchParams.get('search') && (
-                <div className="flex flex-col items-center gap-3 py-6 border-t border-dashed">
-                    <p className="text-sm text-muted-foreground">Only showing the most recent 50 products. Use the search bar to find others.</p>
-                </div>
-            )}
-
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => startTransition(() => router.refresh())}
+              disabled={isPending}
+            >
+              <RefreshCw className={cn('h-4 w-4', isPending && 'animate-spin')} />
+              Refresh
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/admin/pipeline">
+                <Workflow className="h-4 w-4" />
+                Open pipeline
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/admin/products/new">
+                <Plus className="h-4 w-4" />
+                New product
+              </Link>
+            </Button>
+          </div>
         </div>
-    );
+
+        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+          <span>
+            Row click opens product editing. Use the action menu for variants, images, and the live page.
+          </span>
+          {totalCount > products.length ? (
+            <span>Only the newest 50 matching products are loaded into this queue right now.</span>
+          ) : null}
+          {hasActiveFilters ? (
+            <Button variant="ghost" onClick={handleClearFilters} className="h-auto px-0 text-sm text-muted-foreground hover:text-foreground">
+              Clear filters
+            </Button>
+          ) : null}
+        </div>
+      </AdminControlBar>
+
+      <div className="grid gap-4 xl:hidden">
+        {products.map((product) => {
+          const pageCount = getPageCount(product.product_on_pages);
+          return (
+            <div
+              key={product.id}
+              className="rounded-[1rem] border border-border bg-card p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/admin/products/${product.id}/edit`)}
+                    className="text-left text-base font-semibold text-foreground hover:text-primary"
+                  >
+                    {product.name}
+                  </button>
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                    <span>{product.brand_name || 'No brand'}</span>
+                    <span>SKU {product.sku || 'Missing'}</span>
+                  </div>
+                </div>
+                <span className="text-base font-semibold text-foreground tabular-nums">
+                  {formatCurrency(Number(product.price || 0))}
+                </span>
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <Badge variant={getStockBadgeVariant(product.stock_status)}>{getStockLabel(product.stock_status)}</Badge>
+                {product.is_featured ? <Badge variant="outline">Featured</Badge> : null}
+                {product.is_special_order ? <Badge variant="secondary">Special order</Badge> : null}
+              </div>
+
+              <div className="mt-4 grid gap-3 rounded-2xl border border-border bg-muted/20 p-3 sm:grid-cols-3">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">On hand</p>
+                  <p className="mt-1 text-sm font-medium text-foreground">{product.quantity ?? '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Storefront pages</p>
+                  <p className="mt-1 text-sm font-medium text-foreground">{pageCount}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Added</p>
+                  <p className="mt-1 text-sm font-medium text-foreground">
+                    {new Date(product.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/admin/products/${product.id}/edit`}>Open product</Link>
+                </Button>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href={`/products/${product.slug}`} target="_blank">
+                    <ArrowUpRight className="h-4 w-4" />
+                    Live
+                  </Link>
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon-sm" aria-label={`More actions for ${product.name}`}>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40">
+                    <DropdownMenuItem asChild>
+                      <Link href={`/admin/products/${product.id}/images`}>Manage images</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href={`/admin/products/${product.id}/variants`}>Manage variants</Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="hidden xl:block">
+        <DataTable
+          data={products}
+          columns={columns}
+          searchable={false}
+          pageSize={20}
+          emptyMessage="No products match the current filters."
+          onRowClick={(product) => router.push(`/admin/products/${product.id}/edit`)}
+          actions={(product) => (
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="ghost" size="sm" asChild>
+                <Link href={`/products/${product.slug}`} target="_blank">
+                  <ArrowUpRight className="h-4 w-4" />
+                  Live
+                </Link>
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon-sm" aria-label={`More actions for ${product.name}`}>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem asChild>
+                    <Link href={`/admin/products/${product.id}/edit`}>Open product</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href={`/admin/products/${product.id}/images`}>Manage images</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href={`/admin/products/${product.id}/variants`}>Manage variants</Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+        />
+      </div>
+    </div>
+  );
 }

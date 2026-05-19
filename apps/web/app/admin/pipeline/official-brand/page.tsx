@@ -16,9 +16,10 @@ export const metadata: Metadata = {
 export default function OfficialBrandReviewPage() {
   return (
     <AdminPageShell
-      title="Official Brand Review"
+      title="Official brand review"
       description="Deprecated — Approved Source Extraction replaces this workflow."
       icon={<PackageSearch className="h-5 w-5" />}
+      eyebrow="Deprecated workflow"
       actions={
         <Button variant="outline" size="sm" asChild>
           <Link href="/admin/pipeline">
@@ -27,7 +28,6 @@ export default function OfficialBrandReviewPage() {
           </Link>
         </Button>
       }
-      compactHeader
     >
       <div className="rounded-none border border-border bg-card p-6">
         <h2 className="text-lg font-semibold text-foreground">

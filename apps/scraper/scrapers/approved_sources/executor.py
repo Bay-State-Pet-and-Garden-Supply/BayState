@@ -36,6 +36,8 @@ from scrapers.ai_search.enrichment_models import EnrichmentResultV1
 
 logger = logging.getLogger(__name__)
 
+PARTIAL_ACCEPTANCE_CONFIDENCE = 0.6
+
 
 class ApprovedSourceExecutor:
     """Executes an ApprovedSourcePlan with full policy enforcement.
@@ -55,8 +57,10 @@ class ApprovedSourceExecutor:
         self.api_client = api_client
         self.policy = plan.sourcePolicy
 
-        # Attach api_client to extractor for credential checks
-        if hasattr(extractor, "api_client") and api_client:
+        # Attach api_client to extractor for distributor credential resolution.
+        # ProductPageExtractor does not declare this attribute, but adapters read it
+        # dynamically via getattr(extractor, "api_client", None).
+        if api_client is not None:
             extractor.api_client = api_client
 
     async def execute(self) -> EnrichmentResultV1:
@@ -205,13 +209,18 @@ class ApprovedSourceExecutor:
                 # Other failure — continue, may succeed elsewhere
                 continue
 
-            # Partial with some fields? Consider it good enough
+            # Partial with some fields? Consider it good enough when it clears
+            # the same minimum confidence the coordinator accepts as processed.
             if result.status == "partial":
-                if result.confidence and result.confidence.overall >= 0.7:
+                if (
+                    result.confidence
+                    and result.confidence.overall >= PARTIAL_ACCEPTANCE_CONFIDENCE
+                ):
                     logger.info(
                         "[Executor] Source %s returned partial with "
-                        "confidence >= 0.7, accepting",
+                        "confidence >= %.2f, accepting",
                         entry.sourceSlug,
+                        PARTIAL_ACCEPTANCE_CONFIDENCE,
                     )
                     return result
                 continue
@@ -311,6 +320,9 @@ class ApprovedSourceExecutor:
         if result.status == "success":
             return True
         if result.status == "partial":
-            if result.confidence and result.confidence.overall >= 0.7:
+            if (
+                result.confidence
+                and result.confidence.overall >= PARTIAL_ACCEPTANCE_CONFIDENCE
+            ):
                 return True
         return False

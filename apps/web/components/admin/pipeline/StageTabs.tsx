@@ -1,11 +1,10 @@
 "use client";
 
-import { Fragment, type CSSProperties, type ReactNode } from "react";
-import { ChevronRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PIPELINE_TABS, STAGE_CONFIG } from "@/lib/pipeline/types";
-import type { PipelineStage, StatusCount } from "@/lib/pipeline/types";
+import type { ReactNode } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PIPELINE_TABS, STAGE_CONFIG } from '@/lib/pipeline/types';
+import type { PipelineStage, StatusCount } from '@/lib/pipeline/types';
 
 interface StageTabsProps {
   currentStage: PipelineStage;
@@ -20,12 +19,14 @@ export function StageTabs({
   onStageChange,
   actions,
 }: StageTabsProps) {
+  const currentConfig = STAGE_CONFIG[currentStage];
+
   const getCount = (stage: PipelineStage): number => {
     return counts.find((count) => count.status === stage)?.count ?? 0;
   };
 
   return (
-    <div>
+    <div className="admin-panel flex flex-col gap-4 p-4">
       <Tabs
         value={currentStage}
         onValueChange={(value) => {
@@ -35,58 +36,40 @@ export function StageTabs({
           }
         }}
       >
-        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 bg-transparent p-0 border-b border-border">
-          {PIPELINE_TABS.map((stage, index) => {
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 bg-transparent p-0">
+          {PIPELINE_TABS.map((stage) => {
             const config = STAGE_CONFIG[stage];
-            const count = getCount(stage);
-            const isActive = currentStage === stage;
+            const active = currentStage === stage;
 
             return (
-              <Fragment key={stage}>
-                <TabsTrigger
-                  value={stage}
-                  className="flex items-center gap-1.5 data-[state=active]:bg-muted data-[state=active]:text-foreground data-[state=active]:border data-[state=active]:border-border px-2 py-1 h-8 transition-all rounded-md relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-transparent data-[state=active]:after:bg-primary border border-transparent"
-                  style={
-                    {
-                      "--stage-color": config.color,
-                    } as CSSProperties
-                  }
-                >
-                  <span className="text-xs font-semibold">{config.label}</span>
-                  <Badge
-                    variant={isActive ? "default" : "secondary"}
-                    className="ml-0.5 px-1 py-0 min-w-[16px] h-4 text-[9px] justify-center font-semibold rounded-sm border border-border"
-                  >
-                    {count}
-                  </Badge>
-                </TabsTrigger>
-                {index < PIPELINE_TABS.length - 1 && (
-                  <div className="flex items-center px-0.5">
-                    <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" aria-hidden="true" />
-                  </div>
-                )}
-              </Fragment>
+              <TabsTrigger
+                key={stage}
+                value={stage}
+                className="flex h-auto items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-muted-foreground transition-colors data-[state=active]:border-primary/20 data-[state=active]:bg-primary/10 data-[state=active]:text-foreground"
+              >
+                <span>{config.label}</span>
+                <Badge variant={active ? 'default' : 'outline'} className="min-w-[1.75rem] justify-center px-1.5 py-0.5 text-[11px]">
+                  {getCount(stage)}
+                </Badge>
+              </TabsTrigger>
             );
           })}
         </TabsList>
+
         {PIPELINE_TABS.map((stage) => (
-          <TabsContent
-            key={stage}
-            value={stage}
-            forceMount
-            className="sr-only"
-          >
+          <TabsContent key={stage} value={stage} forceMount className="sr-only">
             {STAGE_CONFIG[stage].description}
           </TabsContent>
         ))}
       </Tabs>
 
-      <div className="flex flex-col gap-1 xl:flex-row xl:items-center xl:justify-end">
-        {actions ? (
-          <div className="flex flex-wrap items-center gap-1.5 xl:shrink-0">
-            {actions}
-          </div>
-        ) : null}
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+        <div className="max-w-[52rem] space-y-1">
+          <p className="text-sm font-medium text-foreground">{currentConfig.label}</p>
+          <p className="text-sm leading-6 text-muted-foreground">{currentConfig.description}</p>
+        </div>
+
+        {actions ? <div className="flex flex-wrap items-center gap-2 xl:justify-end">{actions}</div> : null}
       </div>
     </div>
   );

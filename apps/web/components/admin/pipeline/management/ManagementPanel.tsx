@@ -212,29 +212,29 @@ export function ManagementPanel({
 
   if (!cohortId) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-muted-foreground bg-card border-l border-border">
-        <Package className="h-12 w-12 mb-2 opacity-20" />
+      <div className="flex flex-1 flex-col items-center justify-center border-t border-border bg-card p-6 text-center text-muted-foreground xl:border-l xl:border-t-0">
+        <Package className="mb-2 h-12 w-12 opacity-20" />
         <h3 className="text-sm font-semibold text-foreground">No cohort selected</h3>
-        <p className="text-[10px] font-semibold mt-1 uppercase tracking-widest">Select a cohort to manage its assignments.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Select a cohort to manage its assignments.</p>
       </div>
     );
   }
 
   return (
-    <div className="w-[400px] border-l border-border bg-card flex flex-col h-full shrink-0">
+    <div className="flex h-full w-full shrink-0 flex-col border-t border-border bg-card xl:w-[400px] xl:border-l xl:border-t-0">
       {/* Header */}
-      <div className="p-4 border-b border-border bg-muted/30">
-        <div className="text-[10px] font-bold text-brand-gold uppercase tracking-widest mb-1">Management Panel</div>
-        <h2 className="text-sm font-bold truncate">
+      <div className="border-b border-border bg-muted/30 p-4">
+        <div className="mb-1 text-xs font-medium text-primary">Management</div>
+        <h2 className="truncate text-sm font-semibold text-foreground">
           {cohortId === 'ungrouped' ? 'Ungrouped Products' : `Batch: ${cohortId}`}
         </h2>
-        <div className="text-[10px] text-muted-foreground mt-1 font-semibold uppercase tracking-tight">
+        <div className="mt-1 text-sm text-muted-foreground">
           {products.length} Products included
         </div>
       </div>
 
       {/* Scrollable Content Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-8">
+      <div className="flex-1 space-y-8 overflow-y-auto p-4">
         <BrandAssignmentSection 
           selectedBrand={selectedBrand}
           onBrandChange={handleBrandChange}
@@ -253,14 +253,14 @@ export function ManagementPanel({
       </div>
 
       {/* Footer Action */}
-      <div className="p-4 border-t border-border bg-muted/30">
-        <Button 
-          className="w-full rounded-none bg-brand-gold hover:bg-brand-gold/90 text-ledger-charcoal font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all h-12"
+      <div className="border-t border-border bg-muted/30 p-4">
+        <Button
+          className="h-11 w-full bg-brand-gold text-ledger-charcoal hover:bg-brand-gold/90"
           disabled={isSaving}
           onClick={() => handleSave(true)}
         >
           {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-          SAVE & START SCRAPER
+          Save and start scraper
         </Button>
       </div>
     </div>

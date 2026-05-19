@@ -9,7 +9,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 
 from scrapers.approved_sources.executor import ApprovedSourceExecutor
-from scrapers.approved_sources.result_builder import build_success_result
+from scrapers.approved_sources.result_builder import (
+    build_partial_result,
+    build_success_result,
+)
 from scrapers.approved_sources.types import (
     ApprovedSourcePlan,
     ApprovedSourcePlanEntry,
@@ -93,6 +96,34 @@ def _create_plan_with_mock_html(
 
 class TestExecutor:
     """Tests for the ApprovedSourceExecutor orchestration logic."""
+
+    def test_partial_meeting_callback_threshold_is_accepted(self):
+        plan, mock_extractor = _create_plan_with_mock_html()
+        executor = ApprovedSourceExecutor(plan=plan, extractor=mock_extractor)
+        result = build_partial_result(
+            sku="001135",
+            source_slug="bradley",
+            source_type="distributor",
+            evidence_url="https://www.bradleycaldwell.com/search?term=001135",
+            product_fields={"name": "E-Z HANG SCALE", "brand": "KERBL"},
+            matched_fields=["name", "brand"],
+            overall_confidence=0.65,
+        )
+
+        assert executor._is_successful(result) is True
+
+    def test_executor_attaches_api_client_for_credential_resolution(self):
+        """Auth-gated adapters read api_client from the extractor object."""
+        plan, mock_extractor = _create_plan_with_mock_html()
+        api_client = MagicMock()
+
+        ApprovedSourceExecutor(
+            plan=plan,
+            extractor=mock_extractor,
+            api_client=api_client,
+        )
+
+        assert mock_extractor.api_client is api_client
 
     @patch("scrapers.approved_sources.adapters.base.BaseDistributorCrawl4AIAdapter._fetch_html")
     def test_executor_never_returns_none(self, mock_fetch):

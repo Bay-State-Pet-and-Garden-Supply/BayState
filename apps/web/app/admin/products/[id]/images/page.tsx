@@ -1,11 +1,9 @@
+import { ImageIcon } from 'lucide-react';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { createClient } from '@/lib/supabase/server';
 import { getProductImages } from '@/lib/admin/images';
 import { ProductImagesClient } from '@/components/admin/products/images/ProductImagesClient';
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
 
 export default async function ProductImagesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -24,16 +22,14 @@ export default async function ProductImagesPage({ params }: { params: Promise<{ 
   const images = await getProductImages(id);
   
   return (
-    <AdminPageShell title={product.name} description="Manage product images">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/admin/products">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Products
-          </Link>
-        </Button>
-      </div>
-      
+    <AdminPageShell
+      title={product.name}
+      description="Manage product images and legacy image data for this storefront product."
+      icon={<ImageIcon className="h-5 w-5" />}
+      eyebrow="Workspace view"
+      backHref="/admin/products"
+      backLabel="Back to products"
+    >
       <ProductImagesClient
         productId={id}
         productName={product.name}

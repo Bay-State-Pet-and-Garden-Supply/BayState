@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Package,
 } from 'lucide-react';
+import { AdminControlBar } from '@/components/admin/admin-control-bar';
 import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/admin/dashboard/stat-card';
 import type { QualityMetrics } from '@/app/api/admin/quality/route';
@@ -108,21 +109,20 @@ export function QualityDashboard({ initialMetrics }: QualityDashboardProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <CheckCircle className="h-8 w-8 text-green-600" />
-          <div>
-            <h1 className="text-3xl font-bold">Data Quality</h1>
-            <p className="text-muted-foreground">
-              Monitor and improve product data completeness
+      <AdminControlBar>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">Data health snapshot</p>
+            <p className="text-sm text-muted-foreground">
+              Monitor completeness and focus fixes on the fields creating the most friction.
             </p>
           </div>
+          <Button variant="outline" onClick={fetchMetrics} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
-        <Button variant="outline" onClick={fetchMetrics} disabled={loading}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
+      </AdminControlBar>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard

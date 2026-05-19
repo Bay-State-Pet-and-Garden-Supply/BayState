@@ -1,23 +1,11 @@
 "use client";
 
-import { Loader2, Plus, Trash2, Search, Archive, Upload, Globe, Tag, Eye, Sparkles } from "lucide-react";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import type {
-  PersistedPipelineStatus,
-  PipelineStage,
-} from "@/lib/pipeline/types";
-import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { useState } from 'react';
+import { Loader2, Plus, Sparkles, Tag, Trash2, Upload } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ConfirmationDialog } from '@/components/admin/confirmation-dialog';
+import type { PersistedPipelineStatus, PipelineStage } from '@/lib/pipeline/types';
 
-/**
- * Bulk action configuration for each pipeline stage.
- */
 const BULK_ACTIONS: Record<
   PipelineStage,
   {
@@ -28,28 +16,28 @@ const BULK_ACTIONS: Record<
     secondaryAction?: string;
   }
 > = {
-  imported: { label: "", nextStage: null, secondaryAction: "Extract" },
-  extracting: { label: "", nextStage: null },
+  imported: { label: '', nextStage: null, secondaryAction: 'Extract' },
+  extracting: { label: '', nextStage: null },
   processed: {
-    label: "Merge Selected",
-    nextStage: "merging",
-    resetLabel: "Clear & Return to Import",
-    previousStage: "imported",
-    secondaryAction: "Re-enrich",
+    label: 'Merge selected',
+    nextStage: 'merging',
+    resetLabel: 'Return to import',
+    previousStage: 'imported',
+    secondaryAction: 'Re-enrich',
   },
-  merging: { label: "", nextStage: null },
+  merging: { label: '', nextStage: null },
   reviewing: {
-    label: "Publish Selected",
-    nextStage: "publishing",
-    resetLabel: "Return to Processed",
-    previousStage: "processed",
+    label: 'Publish selected',
+    nextStage: 'publishing',
+    resetLabel: 'Return to processed',
+    previousStage: 'processed',
   },
-  publishing: { label: "", nextStage: null },
+  publishing: { label: '', nextStage: null },
   failed: {
-    label: "Return to Import",
-    nextStage: "imported",
-    resetLabel: "Clear & Return to Import",
-    previousStage: "imported",
+    label: 'Return to import',
+    nextStage: 'imported',
+    resetLabel: 'Clear and return to import',
+    previousStage: 'imported',
   },
 };
 
@@ -66,10 +54,9 @@ interface FloatingActionsBarProps {
   onOpenScrapeDialog?: () => void;
   onStartApprovedExtraction?: () => void;
   onAssignBrand?: () => void;
-
   scrapeSelectionValidation?: { allowed: boolean; reason: string | null };
   onDelete?: () => void;
-  actionState?: "upload" | "zip" | null;
+  actionState?: 'upload' | 'zip' | null;
   onUploadShopSite?: () => void;
   onDownloadZip?: () => void;
   showLegacyShopSiteActions?: boolean;
@@ -88,7 +75,6 @@ export function FloatingActionsBar({
   onOpenScrapeDialog,
   onStartApprovedExtraction,
   onAssignBrand,
-  scrapeSelectionValidation,
   onDelete,
   actionState = null,
   onUploadShopSite,
@@ -100,211 +86,115 @@ export function FloatingActionsBar({
   if (selectedCount === 0) return null;
 
   const bulkAction = BULK_ACTIONS[currentStage];
-  const isTerminalStage = currentStage === "publishing";
-  const hasBulkAction =
-    !isTerminalStage &&
-    (bulkAction.nextStage !== null ||
-      (currentStage === "processed" && !!onConsolidate));
+  const isPublishing = currentStage === 'publishing';
   const hasResetAction =
-    !!bulkAction.resetLabel && !!bulkAction.previousStage && !!onResetStage;
-  const hasSecondaryAction =
-    (currentStage === "processed" && !!bulkAction.secondaryAction && !!onOpenScrapeDialog) ||
-    (currentStage === "imported" && !!bulkAction.secondaryAction && !!onStartApprovedExtraction);
-
-  const isPrimaryDisabled = isLoading;
+    Boolean(bulkAction.resetLabel) && Boolean(bulkAction.previousStage) && Boolean(onResetStage);
 
   const handlePrimaryAction = () => {
-    if (isPrimaryDisabled) return;
-    if (currentStage === "processed" && onConsolidate) {
-      onConsolidate();
-    } else if (bulkAction.nextStage) {
-      onBulkAction(bulkAction.nextStage);
-    }
-  };
+    if (isLoading) return;
 
-  const handleResetAction = () => {
-    if (bulkAction.previousStage && onResetStage) {
-      setConfirmResetOpen(true);
+    if (currentStage === 'processed' && onConsolidate) {
+      onConsolidate();
+      return;
+    }
+
+    if (bulkAction.nextStage) {
+      onBulkAction(bulkAction.nextStage);
     }
   };
 
   const handleConfirmReset = () => {
     setConfirmResetOpen(false);
+
     if (bulkAction.previousStage && onResetStage) {
       onResetStage(bulkAction.previousStage);
     }
   };
 
   return (
-    <div className="fixed bottom-10 right-10 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
-      <div className="flex items-center gap-3 rounded-none border border-border bg-background p-2.5">
-        {/* Selection Count */}
-        <div className="flex items-center gap-3 border-r border-border pr-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-none border border-border bg-foreground text-xs font-bold text-background tabular-nums">
-            {selectedCount}
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-semibold text-foreground leading-none">
-              {selectedCount === 1 ? "Product" : "Products"}
-            </span>
-            <button
-              type="button"
-              onClick={onClearSelection}
-              className="text-[9px] font-bold text-muted-foreground hover:text-destructive text-left transition-colors uppercase tracking-widest"
-            >
-              Clear
-            </button>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2">
-          {selectedCount < totalCount && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onSelectAll}
-              disabled={isLoading}
-              className="h-9 px-3 text-[10px] font-semibold text-muted-foreground hover:bg-muted hover:text-foreground rounded-none"
-            >
-              Select All {totalCount}
-            </Button>
-          )}
-
-          {hasResetAction && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleResetAction}
-              disabled={isLoading}
-              className="h-9 border border-border text-[10px] font-semibold text-foreground bg-background hover:bg-muted rounded-none transition-all"
-            >
-              {bulkAction.resetLabel}
-            </Button>
-          )}
-
-          {currentStage === "imported" && hasSecondaryAction && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onStartApprovedExtraction?.()}
-              disabled={isLoading}
-              className="h-9 border border-border text-[10px] font-semibold text-brand-forest-green bg-background hover:bg-brand-forest-green/5 rounded-none transition-all"
-            >
-              <Sparkles className="mr-1 h-3.5 w-3.5" />
-              {bulkAction.secondaryAction}
-            </Button>
-          )}
-
-          {currentStage === "processed" && hasSecondaryAction && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenScrapeDialog?.()}
-              disabled={isLoading}
-              className="h-9 border border-border text-[10px] font-semibold text-brand-forest-green bg-background hover:bg-brand-forest-green/5 rounded-none transition-all"
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              {bulkAction.secondaryAction}
-            </Button>
-          )}
-
-{onAssignBrand && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onAssignBrand}
-              disabled={isLoading}
-              className="h-9 border border-border text-[10px] font-semibold text-brand-forest-green bg-background hover:bg-brand-forest-green/5 rounded-none transition-all"
-            >
-              <Tag className="mr-1 h-3.5 w-3.5" />
-              Set Brand
-            </Button>
-          )}
-          {onDelete && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onDelete}
-              disabled={isLoading}
-              className="h-9 border border-destructive text-[10px] font-semibold text-destructive bg-background hover:bg-destructive/5 rounded-none transition-all"
-            >
-              <Trash2 className="mr-1 h-3.5 w-3.5" />
-              Delete
-            </Button>
-          )}
-
-          {isTerminalStage && showLegacyShopSiteActions && onUploadShopSite && onDownloadZip && (
-            <>
+    <>
+      <div className="shrink-0 border-t border-border bg-[var(--surface-admin-bg)] px-1 pb-1 pt-4">
+        <div className="admin-panel flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-sm font-medium text-foreground">
+                {selectedCount} product{selectedCount === 1 ? '' : 's'} selected
+              </p>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                onClick={onUploadShopSite}
-                disabled={isLoading || actionState !== null}
-                className="h-9 border border-border text-[10px] font-semibold text-foreground bg-background hover:bg-muted rounded-none transition-all"
+                onClick={onClearSelection}
+                className="h-auto px-0 text-sm text-muted-foreground hover:text-foreground"
               >
-                {actionState === "upload" ? (
-                  <>
-                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-                    Uploading…
-                  </>
-                ) : (
-                  <>
-                    <Upload className="mr-1 h-3.5 w-3.5" />
-                    Upload
-                  </>
-                )}
+                Clear selection
               </Button>
-              <Button
-                size="sm"
-                onClick={onDownloadZip}
-                disabled={isLoading || actionState !== null}
-                className="h-9 bg-foreground px-5 text-[10px] font-semibold text-background hover:bg-foreground/90 rounded-none transition-all"
-              >
-                {actionState === "zip" ? (
-                  <>
-                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-                    Zipping…
-                  </>
-                ) : (
-                  <>
-                    <Archive className="mr-1 h-3.5 w-3.5" />
-                    Download ZIP
-                  </>
-                )}
-              </Button>
-            </>
-          )}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Batch actions stay here so operators always know where to confirm the next step.
+            </p>
+          </div>
 
-          {hasBulkAction && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="inline-block">
-                  <Button
-                    onClick={handlePrimaryAction}
-                    disabled={isPrimaryDisabled}
-                    className={cn(
-                      "h-9 border border-border px-6 text-[10px] font-semibold rounded-none transition-all",
-                      isPrimaryDisabled
-                        ? "bg-muted text-muted-foreground cursor-not-allowed border-dashed"
-                        : "bg-brand-forest-green text-background hover:bg-brand-forest-green/90"
-                    )}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        {bulkAction.label}
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </TooltipTrigger>
-            </Tooltip>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedCount < totalCount ? (
+              <Button variant="outline" onClick={onSelectAll} disabled={isLoading}>
+                Select all {totalCount}
+              </Button>
+            ) : null}
+
+            {hasResetAction ? (
+              <Button variant="outline" onClick={() => setConfirmResetOpen(true)} disabled={isLoading}>
+                {bulkAction.resetLabel}
+              </Button>
+            ) : null}
+
+            {currentStage === 'processed' && onOpenScrapeDialog ? (
+              <Button variant="outline" onClick={onOpenScrapeDialog} disabled={isLoading}>
+                <Plus className="h-4 w-4" />
+                {bulkAction.secondaryAction}
+              </Button>
+            ) : null}
+
+            {currentStage === 'imported' && onStartApprovedExtraction ? (
+              <Button variant="outline" onClick={onStartApprovedExtraction} disabled={isLoading}>
+                <Sparkles className="h-4 w-4" />
+                {bulkAction.secondaryAction}
+              </Button>
+            ) : null}
+
+            {onAssignBrand ? (
+              <Button variant="outline" onClick={onAssignBrand} disabled={isLoading}>
+                <Tag className="h-4 w-4" />
+                Set brand
+              </Button>
+            ) : null}
+
+            {onDelete ? (
+              <Button variant="outline" onClick={onDelete} disabled={isLoading} className="text-destructive hover:text-destructive">
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Button>
+            ) : null}
+
+            {!isPublishing && (bulkAction.nextStage || (currentStage === 'processed' && onConsolidate)) ? (
+              <Button onClick={handlePrimaryAction} disabled={isLoading}>
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {bulkAction.label}
+              </Button>
+            ) : null}
+
+            {isPublishing && showLegacyShopSiteActions && onUploadShopSite && onDownloadZip ? (
+              <>
+                <Button variant="outline" onClick={onUploadShopSite} disabled={isLoading || actionState !== null}>
+                  {actionState === 'upload' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  {actionState === 'upload' ? 'Uploading...' : 'Upload'}
+                </Button>
+                <Button onClick={onDownloadZip} disabled={isLoading || actionState !== null}>
+                  {actionState === 'zip' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {actionState === 'zip' ? 'Preparing zip...' : 'Download zip'}
+                </Button>
+              </>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -312,10 +202,12 @@ export function FloatingActionsBar({
         open={confirmResetOpen}
         onOpenChange={setConfirmResetOpen}
         onConfirm={handleConfirmReset}
-        title="Reset Stage"
-        description={`Are you sure you want to ${bulkAction.resetLabel?.toLowerCase()} for ${selectedCount} product${selectedCount !== 1 ? "s" : ""}? This action may clear data.`}
-        confirmLabel={bulkAction.resetLabel ?? "Reset"}
+        title="Move selected products back"
+        description="This changes the selected products back to the earlier stage so they can be reviewed again."
+        confirmLabel={bulkAction.resetLabel || 'Move products'}
+        variant="default"
+        isLoading={isLoading}
       />
-    </div>
+    </>
   );
 }

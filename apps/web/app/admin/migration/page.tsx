@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, ExternalLink, Github, Settings } from 'lucide-react';
+import { AlertTriangle, ExternalLink, Github, Settings, DatabaseZap } from 'lucide-react';
 import { getRecentMigrationLogs } from '@/lib/admin/migration/history';
 import { MigrationHistory } from '@/components/admin/migration/migration-history';
 
@@ -11,8 +11,10 @@ export default async function AdminMigrationPage() {
 
  return (
  <AdminPageShell
- title="Data Migration"
+ title="Migration"
  description="This page is deprecated. ShopSite sync now runs through GitHub Actions on your local runner."
+ icon={<DatabaseZap className="h-5 w-5" />}
+ eyebrow="System workspace"
  >
 
  <Card className="border border-border rounded-none">

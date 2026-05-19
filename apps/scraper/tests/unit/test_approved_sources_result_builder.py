@@ -100,6 +100,21 @@ class TestBuildPartialResult:
         assert result.decision == "llm_fallback"
         assert result.llm_used is True
 
+    def test_partial_can_record_missing_sku_match(self):
+        result = build_partial_result(
+            sku="010199",
+            source_slug="bradley",
+            source_type="distributor",
+            evidence_url="https://www.bradleycaldwell.com/search?term=010199",
+            product_fields={"name": "Some Product"},
+            matched_fields=["name"],
+            overall_confidence=0.42,
+            sku_match=False,
+            missing_required=["sku_match"],
+        )
+        assert result.validation.sku_match is False
+        assert "sku_match" in result.validation.missing_required
+
 
 class TestBuildAuthRequiredResult:
     def test_returns_failed_with_auth_warning(self):
@@ -116,6 +131,7 @@ class TestBuildAuthRequiredResult:
         assert len(result.source_results) == 1
         assert result.source_results[0].sourceSlug == "phillips"
         assert result.source_results[0].confidence == 0.0
+        assert result.source.url == "approved_source_extraction"
         assert result.product.name is None  # No product data
 
     def test_custom_message(self):
@@ -165,8 +181,18 @@ class TestBuildFailedResult:
         assert result.status == "failed"
         assert result.decision == "failed"
         assert result.llm_used is False
+        assert result.source.url == "approved_source_extraction"
         assert len(result.source_results) == 0  # generic failure, no per-source results
         assert any("All sources failed" in w for w in result.validation.warnings)
+
+    def test_prefers_evidence_url_when_available(self):
+        result = build_failed_result(
+            sku="001135",
+            source_slug="bradley",
+            error_message="All sources failed",
+            evidence_url="https://frommfamily.com/products/gold-large-breed-adult",
+        )
+        assert result.source.url == "https://frommfamily.com/products/gold-large-breed-adult"
 
     def test_rejects_none(self):
         """Builder functions never return None."""
@@ -176,3 +202,4 @@ class TestBuildFailedResult:
         )
         assert result is not None
         assert result.status == "failed"
+        assert result.source.url == "approved_source_extraction"

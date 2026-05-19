@@ -121,31 +121,35 @@ LOGIN_CONFIG_MAP: dict[str, LoginAutomationConfig] = {
     "orgill": ORGILL_LOGIN,
     "phillips": PHILLIPS_LOGIN,
     "petfoodex": PFE_LOGIN,
-    "pet_food_experts": PFE_LOGIN,
 }
+
+_CREDENTIAL_REF_ALIASES: dict[str, str] = {
+    "orgill": "orgill",
+    "orgill_crawl4ai": "orgill",
+    "phillips": "phillips",
+    "phillips_crawl4ai": "phillips",
+    "petfoodex": "petfoodex",
+    "pet_food_experts": "petfoodex",
+    "pet-food-experts": "petfoodex",
+    "pet_food_experts_crawl4ai": "petfoodex",
+}
+
+
+def canonicalize_credential_ref(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip().lower()
+    if not normalized:
+        return None
+    return _CREDENTIAL_REF_ALIASES.get(normalized, normalized)
 
 
 def get_login_config(source_slug: str) -> LoginAutomationConfig | None:
     """Get login config for a distributor by slug or credential ref."""
-    # Try exact match
-    if source_slug in LOGIN_CONFIG_MAP:
-        return LOGIN_CONFIG_MAP[source_slug]
-
-    # Try aliases
-    alias_map = {
-        "central_pet": None,
-        "central-pet": None,
-        "bradley": None,
-        "orgill_crawl4ai": "orgill",
-        "phillips_crawl4ai": "phillips",
-        "pet_food_experts_crawl4ai": "pet_food_experts",
-        "pet-food-experts": "pet_food_experts",
-    }
-    resolved = alias_map.get(source_slug)
-    if resolved:
-        return LOGIN_CONFIG_MAP.get(resolved)
-
-    return None
+    resolved = canonicalize_credential_ref(source_slug)
+    if not resolved:
+        return None
+    return LOGIN_CONFIG_MAP.get(resolved)
 
 
 # =============================================================================
@@ -179,7 +183,7 @@ def resolve_credentials(
     Returns (username, password) tuple or None if not found.
     NEVER logs the raw password.
     """
-    ref = credential_ref or source_slug
+    ref = canonicalize_credential_ref(credential_ref or source_slug) or (credential_ref or source_slug)
 
     # Try api_client first
     if api_client and hasattr(api_client, "get_credentials"):

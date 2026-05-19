@@ -7,93 +7,91 @@ import { normalizePipelineStage } from '@/lib/pipeline/types';
 import type { PipelineProduct, PipelineStage, StatusCount } from '@/lib/pipeline/types';
 
 export const metadata: Metadata = {
-    title: 'Pipeline | Admin | Bay State Pet & Garden',
-    description: 'Manage product ingestion workflow from import through exporting.',
-    robots: {
-        index: false,
-        follow: false,
-    },
+  title: 'Pipeline | Admin | Bay State Pet & Garden',
+  description: 'Manage product ingestion workflow from import through exporting.',
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 interface PageProps {
-    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 type StageWithProducts = PipelineStage;
 
 function isStageWithProducts(stage: PipelineStage): stage is StageWithProducts {
-    return Boolean(stage);
+  return Boolean(stage);
 }
 
 export default async function PipelinePage({ searchParams }: PageProps) {
-    const params = await searchParams;
-    const rawStageParam = params.stage ?? params.status;
-    const stageParam = typeof rawStageParam === 'string'
-        ? rawStageParam
-        : undefined;
+  const params = await searchParams;
+  const rawStageParam = params.stage ?? params.status;
+  const stageParam = typeof rawStageParam === 'string' ? rawStageParam : undefined;
 
-    const search = typeof params.search === 'string' ? params.search : undefined;
-    const source = typeof params.source === 'string' ? params.source : undefined;
-    const product_line = typeof params.product_line === 'string' ? params.product_line : undefined;
-    const cohort_id = typeof params.cohort_id === 'string' ? params.cohort_id : undefined;
+  const search = typeof params.search === 'string' ? params.search : undefined;
+  const source = typeof params.source === 'string' ? params.source : undefined;
+  const product_line = typeof params.product_line === 'string' ? params.product_line : undefined;
+  const cohort_id = typeof params.cohort_id === 'string' ? params.cohort_id : undefined;
 
-    const initialStage: PipelineStage =
-        normalizePipelineStage(stageParam) ?? 'imported';
+  const initialStage: PipelineStage = normalizePipelineStage(stageParam) ?? 'imported';
 
-    let initialCounts: StatusCount[] = [];
-    let initialProducts: PipelineProduct[] = [];
-    let initialTotal = 0;
-    let initialSources: string[] = [];
+  let initialCounts: StatusCount[] = [];
+  let initialProducts: PipelineProduct[] = [];
+  let initialTotal = 0;
+  let initialSources: string[] = [];
 
-    try {
-        let counts: StatusCount[] = [];
-        let products: PipelineProduct[] = [];
-        let totalCount = 0;
-        let sources: string[] = [];
+  try {
+    let counts: StatusCount[] = [];
+    let products: PipelineProduct[] = [];
+    let totalCount = 0;
+    let sources: string[] = [];
 
-        if (isStageWithProducts(initialStage)) {
-            const [pResult, countsResult, sourcesResult] = await Promise.all([
-                getProductsByStage(initialStage, {
-                    limit: 500,
-                    search,
-                    source,
-                    product_line,
-                    cohort_id
-                }),
-                getStatusCounts(),
-                getAvailableSourcesByStage(initialStage),
-            ]);
-            products = pResult.products;
-            totalCount = pResult.count;
-            counts = countsResult;
-            sources = sourcesResult;
-        } else {
-            counts = await getStatusCounts();
-        }
-
-        initialCounts = counts;
-        initialProducts = products;
-        initialTotal = totalCount;
-        initialSources = sources;
-    } catch (error) {
-        console.error('Error loading pipeline page:', error);
+    if (isStageWithProducts(initialStage)) {
+      const [pResult, countsResult, sourcesResult] = await Promise.all([
+        getProductsByStage(initialStage, {
+          limit: 500,
+          search,
+          source,
+          product_line,
+          cohort_id,
+        }),
+        getStatusCounts(),
+        getAvailableSourcesByStage(initialStage),
+      ]);
+      products = pResult.products;
+      totalCount = pResult.count;
+      counts = countsResult;
+      sources = sourcesResult;
+    } else {
+      counts = await getStatusCounts();
     }
 
-    return (
-        <AdminPageShell
-            title="Product Pipeline"
-            description="Manage product ingestion workflow from import through exporting."
-            icon={<Activity className="h-5 w-5" />}
-            fullHeight
-            compactHeader
-        >
-            <PipelineClient
-                initialProducts={initialProducts}
-                initialCounts={initialCounts}
-                initialTotal={initialTotal}
-                initialStage={initialStage}
-                initialSources={initialSources}
-            />
-        </AdminPageShell>
-    );
+    initialCounts = counts;
+    initialProducts = products;
+    initialTotal = totalCount;
+    initialSources = sources;
+  } catch (error) {
+    console.error('Error loading pipeline page:', error);
+  }
+
+  return (
+    <AdminPageShell
+      title="Pipeline"
+      description="Move products from import through review, publishing, and export with one stable workspace for each stage."
+      icon={<Activity className="h-5 w-5" />}
+      eyebrow="Workspace view"
+      fullHeight
+      compactHeader
+    >
+      <PipelineClient
+        initialProducts={initialProducts}
+        initialCounts={initialCounts}
+        initialTotal={initialTotal}
+        initialStage={initialStage}
+        initialSources={initialSources}
+      />
+    </AdminPageShell>
+  );
 }

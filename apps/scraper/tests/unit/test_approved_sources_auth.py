@@ -17,6 +17,7 @@ import pytest
 from scrapers.approved_sources.auth import (
     ApprovedSourceLoginManager,
     AuthenticatedSessionState,
+    canonicalize_credential_ref,
     get_login_config,
     resolve_credentials,
     _redact_username,
@@ -73,6 +74,13 @@ class TestGetLoginConfig:
 
     def test_by_source_slug_alias(self):
         assert get_login_config("pet_food_experts") is PFE_LOGIN
+        assert get_login_config("pet-food-experts") is PFE_LOGIN
+        assert get_login_config("pet_food_experts_crawl4ai") is PFE_LOGIN
+
+    def test_canonicalize_credential_ref(self):
+        assert canonicalize_credential_ref("pet_food_experts") == "petfoodex"
+        assert canonicalize_credential_ref("pet-food-experts") == "petfoodex"
+        assert canonicalize_credential_ref("pet_food_experts_crawl4ai") == "petfoodex"
 
     def test_unknown_slug(self):
         assert get_login_config("unknown_distributor") is None
@@ -121,6 +129,22 @@ class TestResolveCredentials:
     def test_rejects_unknown_slug(self):
         creds = resolve_credentials("unknown_slug", None)
         assert creds is None
+
+    def test_alias_uses_canonical_api_client_lookup(self):
+        class FakeClient:
+            def __init__(self) -> None:
+                self.calls: list[str] = []
+
+            def get_credentials(self, scraper_slug: str):
+                self.calls.append(scraper_slug)
+                if scraper_slug == "petfoodex":
+                    return {"username": "user", "password": "pass"}
+                return None
+
+        client = FakeClient()
+        creds = resolve_credentials("pet_food_experts", client)
+        assert creds == ("user", "pass")
+        assert client.calls == ["petfoodex"]
 
 
 class TestSessionCache:

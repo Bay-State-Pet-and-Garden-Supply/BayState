@@ -1,566 +1,804 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { toast } from "sonner";
-import { useRunnerPresence } from "@/lib/realtime/useRunnerPresence";
-import { adminFetch } from "@/lib/admin/api-client";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import {
- Dialog,
- DialogContent,
- DialogDescription,
- DialogFooter,
- DialogHeader,
- DialogTitle,
-} from "@/components/ui/dialog";
+  Activity,
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  Copy,
+  Key,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+  Search,
+  Server,
+  ShieldAlert,
+} from 'lucide-react';
+import { useRunnerPresence } from '@/lib/realtime/useRunnerPresence';
+import { adminFetch } from '@/lib/admin/api-client';
 import {
- Activity,
- Server,
- Clock,
- AlertCircle,
- Plus,
- Copy,
- Key,
- ShieldAlert,
- RefreshCw,
-} from "lucide-react";
-import { RunnerCard } from "@/components/admin/scraper-network/runner-card";
-import { RunnerDetailDrawer } from "@/components/admin/scraper-network/runner-detail-drawer";
-import type { RunnerDetail, RunnerStatus } from "@/components/admin/scraper-network/types";
-import { 
- enableRunner, 
- disableRunner, 
- rotateRunnerKey, 
- renameRunner, 
- deleteRunner 
-} from "@/app/admin/scrapers/network/actions";
+  deleteRunner,
+  disableRunner,
+  enableRunner,
+  renameRunner,
+  rotateRunnerKey,
+} from '@/app/admin/scrapers/network/actions';
+import { AdminControlBar } from '@/components/admin/admin-control-bar';
+import { AdminStatCard } from '@/components/admin/admin-stat-card';
+import { AdminCard, AdminCardContent, AdminCardDescription, AdminCardHeader, AdminCardTitle } from '@/components/admin/admin-card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { RunnerDetailDrawer } from '@/components/admin/scraper-network/runner-detail-drawer';
+import type { RunnerDetail, RunnerStatus } from '@/components/admin/scraper-network/types';
+import { cn } from '@/lib/utils';
 
 interface NetworkStats {
- totalRunners: number;
- online: number;
- busy: number;
- idle: number;
- offline: number;
- disabled: number;
+  totalRunners: number;
+  online: number;
+  busy: number;
+  idle: number;
+  offline: number;
+  disabled: number;
+}
+
+type RunnerFilter = 'all' | 'connected' | 'busy' | 'offline' | 'disabled';
+
+const installCommand =
+  'curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash';
+
+const statusBadgeVariant: Record<RunnerStatus, 'success' | 'warning' | 'outline' | 'destructive' | 'secondary'> = {
+  online: 'success',
+  busy: 'warning',
+  idle: 'outline',
+  offline: 'destructive',
+  polling: 'outline',
+  paused: 'secondary',
+};
+
+const statusLabel: Record<RunnerStatus, string> = {
+  online: 'Online',
+  busy: 'Busy',
+  idle: 'Idle',
+  offline: 'Offline',
+  polling: 'Polling',
+  paused: 'Paused',
+};
+
+const statusOrder: Record<RunnerStatus, number> = {
+  busy: 0,
+  online: 1,
+  polling: 2,
+  idle: 3,
+  paused: 4,
+  offline: 5,
+};
+
+function formatLastSeen(value: string | null) {
+  if (!value) return 'Never';
+
+  const timestamp = new Date(value).getTime();
+  const diffMs = Date.now() - timestamp;
+  const diffMinutes = Math.floor(diffMs / 60000);
+
+  if (diffMinutes < 1) return 'Just now';
+  if (diffMinutes < 60) return `${diffMinutes} min ago`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} hr ago`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+
+  return new Date(value).toLocaleDateString();
+}
+
+function isConnectedStatus(status: RunnerStatus) {
+  return status !== 'offline';
+}
+
+function needsAttention(runner: RunnerDetail) {
+  return (
+    !runner.enabled ||
+    runner.status === 'offline' ||
+    runner.build_check_reason === 'outdated' ||
+    runner.build_check_reason === 'missing'
+  );
 }
 
 export function ScraperNetworkDashboard() {
- const {
- runners,
- isConnected: isRealtimeConnected,
- connect,
- } = useRunnerPresence({
- autoConnect: true,
- });
+  const { runners, isConnected: isRealtimeConnected, connect } = useRunnerPresence({
+    autoConnect: true,
+  });
 
- const [stats, setStats] = useState<NetworkStats>({
- totalRunners: 0,
- online: 0,
- busy: 0,
- idle: 0,
- offline: 0,
- disabled: 0,
- });
+  const [stats, setStats] = useState<NetworkStats>({
+    totalRunners: 0,
+    online: 0,
+    busy: 0,
+    idle: 0,
+    offline: 0,
+    disabled: 0,
+  });
+  const [selectedRunnerId, setSelectedRunnerId] = useState<string | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [enabledOverrides, setEnabledOverrides] = useState<Record<string, boolean>>({});
+  const [showAddRunnerModal, setShowAddRunnerModal] = useState(false);
+  const [newRunnerName, setNewRunnerName] = useState('');
+  const [newRunnerDescription, setNewRunnerDescription] = useState('');
+  const [isCreatingRunner, setIsCreatingRunner] = useState(false);
+  const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
+  const [createdRunnerName, setCreatedRunnerName] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [runnerFilter, setRunnerFilter] = useState<RunnerFilter>('all');
 
- // Drawer State
- const [selectedRunnerId, setSelectedRunnerId] = useState<string | null>(null);
- const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  useEffect(() => {
+    const runnersArray = Object.values(runners);
+    const idleCount = runnersArray.filter((runner) => runner.status === 'idle').length;
+    const onlineCount = runnersArray.filter((runner) => runner.status === 'online').length;
+    const busyCount = runnersArray.filter((runner) => runner.status === 'busy').length;
+    const offlineCount = runnersArray.filter((runner) => runner.status === 'offline').length;
+    const disabledCount = runnersArray.filter((runner) => runner.enabled === false).length;
 
- // Add Runner Modal State
- const [showAddRunnerModal, setShowAddRunnerModal] = useState(false);
- const [newRunnerName, setNewRunnerName] = useState("");
- const [newRunnerDescription, setNewRunnerDescription] = useState("");
- const [isCreatingRunner, setIsCreatingRunner] = useState(false);
- const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
- const [createdRunnerName, setCreatedRunnerName] = useState<string | null>(null);
- const installCommand =
- "curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/BayState/refs/heads/master/apps/scraper/get.sh | bash";
+    setStats({
+      totalRunners: runnersArray.length,
+      online: onlineCount + idleCount,
+      busy: busyCount,
+      idle: idleCount,
+      offline: offlineCount,
+      disabled: disabledCount,
+    });
+  }, [runners]);
 
- const handleOpenDrawer = (runnerId: string) => {
- setSelectedRunnerId(runnerId);
- setIsDrawerOpen(true);
- };
+  const runnersArray = useMemo(
+    () =>
+      Object.values(runners)
+        .map(
+          (runner): RunnerDetail => ({
+            id: runner.runner_id,
+            name: runner.runner_name,
+            status: runner.status as RunnerStatus,
+            enabled: enabledOverrides[runner.runner_id] ?? runner.enabled ?? true,
+            last_seen_at: runner.last_seen,
+            active_jobs: runner.active_jobs,
+            region: (runner.metadata?.region as string) || null,
+            version: runner.version || null,
+            build_check_reason: runner.build_check_reason || null,
+            metadata: runner.metadata || null,
+          }),
+        )
+        .sort((a, b) => {
+          const statusDiff = statusOrder[a.status] - statusOrder[b.status];
+          if (statusDiff !== 0) return statusDiff;
+          return a.name.localeCompare(b.name);
+        }),
+    [enabledOverrides, runners],
+  );
 
- const handleToggleEnabled = async (id: string, enabled: boolean) => {
- const action = enabled ? enableRunner : disableRunner;
- const result = await action(id);
- if (!result.success) {
- toast.error(result.error || `Failed to ${enabled ? 'enable' : 'disable'} runner`);
- throw new Error(result.error);
- }
- toast.success(`Runner ${enabled ? 'enabled' : 'disabled'}`);
- };
+  const filteredRunners = useMemo(() => {
+    return runnersArray.filter((runner) => {
+      const searchMatches =
+        search.trim() === '' ||
+        runner.name.toLowerCase().includes(search.toLowerCase()) ||
+        runner.id.toLowerCase().includes(search.toLowerCase()) ||
+        (runner.region || '').toLowerCase().includes(search.toLowerCase());
 
- const handleRotateApiKey = async (id: string) => {
- if (!confirm("Are you sure you want to rotate the API key? The old key will stop working immediately.")) {
- return;
- }
- const result = await rotateRunnerKey(id);
- if (result.success && result.key) {
- // Show the new key in a toast or modal
- // For now, we'll use a toast but a modal would be better for security
- navigator.clipboard.writeText(result.key);
- toast.success("API key rotated and copied to clipboard");
- } else {
- toast.error(result.error || "Failed to rotate API key");
- }
- };
+      if (!searchMatches) return false;
 
- const handleRename = async (id: string) => {
- const newName = prompt("Enter new name for the runner:", id);
- if (!newName || newName === id) return;
- 
- const result = await renameRunner(id, newName);
- if (result.success) {
- toast.success("Runner renamed successfully");
- } else {
- toast.error(result.error || "Failed to rename runner");
- }
- };
+      switch (runnerFilter) {
+        case 'connected':
+          return isConnectedStatus(runner.status);
+        case 'busy':
+          return runner.status === 'busy';
+        case 'offline':
+          return runner.status === 'offline';
+        case 'disabled':
+          return !runner.enabled;
+        default:
+          return true;
+      }
+    });
+  }, [runnerFilter, runnersArray, search]);
 
- const handleUpdate = (id: string) => {
- // Open drawer to show update options/status
- handleOpenDrawer(id);
- };
+  const attentionCount = useMemo(
+    () => runnersArray.filter((runner) => needsAttention(runner)).length,
+    [runnersArray],
+  );
 
- const handleDelete = async (id: string) => {
- if (!confirm(`Are you sure you want to delete runner "${id}"? This action cannot be undone.`)) {
- return;
- }
- 
- const result = await deleteRunner(id);
- if (result.success) {
- toast.success("Runner deleted successfully");
- } else {
- toast.error(result.error || "Failed to delete runner");
- }
- };
+  const handleOpenDrawer = (runnerId: string) => {
+    setSelectedRunnerId(runnerId);
+    setIsDrawerOpen(true);
+  };
 
- const handleCreateRunner = async () => {
- if (!newRunnerName.trim()) {
- toast.error("Runner name is required");
- return;
- }
+  const handleToggleEnabled = async (id: string, enabled: boolean) => {
+    const previousValue = runnersArray.find((runner) => runner.id === id)?.enabled ?? !enabled;
+    setEnabledOverrides((current) => ({ ...current, [id]: enabled }));
 
- setIsCreatingRunner(true);
- try {
- const response = await adminFetch("/api/admin/runners/accounts", {
- method: "POST",
- headers: { "Content-Type": "application/json" },
- body: JSON.stringify({
- runner_name: newRunnerName.trim(),
- description: newRunnerDescription.trim() || undefined,
- }),
- });
+    const action = enabled ? enableRunner : disableRunner;
+    const result = await action(id);
 
- if (!response.ok) {
- const error = await response.json();
- throw new Error(error.error || "Failed to create runner");
- }
+    if (!result.success) {
+      setEnabledOverrides((current) => ({ ...current, [id]: previousValue }));
+      toast.error(result.error || `We couldn't ${enabled ? 'enable' : 'disable'} this runner.`);
+      throw new Error(result.error);
+    }
 
- const data = await response.json();
- setCreatedApiKey(data.api_key);
- setCreatedRunnerName(data.runner_name);
- toast.success(`Runner "${data.runner_name}" created successfully`);
- setNewRunnerName("");
- setNewRunnerDescription("");
- } catch (err) {
- toast.error(err instanceof Error ? err.message : "Failed to create runner");
- } finally {
- setIsCreatingRunner(false);
- }
- };
+    toast.success(`Runner ${enabled ? 'enabled' : 'disabled'}.`);
+  };
 
- const handleCloseModal = () => {
- setShowAddRunnerModal(false);
- setCreatedApiKey(null);
- setCreatedRunnerName(null);
- setNewRunnerName("");
- setNewRunnerDescription("");
- };
+  const handleRotateApiKey = async (id: string) => {
+    const confirmed = window.confirm(
+      'Rotate the API key for this runner? The old key will stop working right away.',
+    );
+    if (!confirmed) return;
 
- const copyApiKey = () => {
- if (createdApiKey) {
- navigator.clipboard.writeText(createdApiKey);
- toast.success("API key copied to clipboard");
- }
- };
+    const result = await rotateRunnerKey(id);
+    if (result.success && result.key) {
+      await navigator.clipboard.writeText(result.key);
+      toast.success('New API key copied to clipboard.');
+      return;
+    }
 
- const copyInstallCommand = () => {
- navigator.clipboard.writeText(installCommand);
- toast.success("Installer command copied to clipboard");
- };
+    toast.error(result.error || 'We could not rotate the API key.');
+  };
 
- useEffect(() => {
- const runnersArray = Object.values(runners);
- const idleCount = runnersArray.filter((r) => r.status === "idle").length;
- const onlineCount = runnersArray.filter((r) => r.status === "online").length;
- const busy = runnersArray.filter((r) => r.status === "busy").length;
- const offline = runnersArray.filter(
- (r) => r.status === "offline"
- ).length;
- const disabled = runnersArray.filter((r) => r.enabled === false).length;
+  const handleRename = async (id: string) => {
+    const nextName = window.prompt('Enter a new runner name.', id);
+    if (!nextName || nextName === id) return;
 
- setStats({
- totalRunners: runnersArray.length,
- online: onlineCount + idleCount,
- busy,
- idle: idleCount,
- offline,
- disabled,
- });
- }, [runners]);
+    const result = await renameRunner(id, nextName);
+    if (result.success) {
+      toast.success('Runner name updated.');
+      return;
+    }
 
- const runnersArray = Object.values(runners).map((r): RunnerDetail => ({
- id: r.runner_id,
- name: r.runner_name,
- status: r.status as RunnerStatus,
- enabled: r.enabled ?? true,
- last_seen_at: r.last_seen,
- active_jobs: r.active_jobs,
- region: (r.metadata?.region as string) || null,
- version: r.version || null,
- build_check_reason: r.build_check_reason || null,
- metadata: r.metadata || null,
- }));
+    toast.error(result.error || 'We could not rename this runner.');
+  };
 
- return (
- <div className="space-y-6">
- {/* Header */}
- <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[var(--surface-admin-border)] pb-4">
- <div>
+  const handleDelete = async (id: string) => {
+    const confirmed = window.confirm(
+      `Delete runner "${id}"? This removes the runner record and cannot be undone.`,
+    );
+    if (!confirmed) return;
 
- <div className="flex items-center gap-3">
- <div className="flex items-center gap-2 bg-[var(--surface-admin-muted)] border border-[var(--surface-admin-border)] px-2 py-1">
- <span className="text-[10px] font-semibold tracking-tight text-zinc-500">Realtime:</span>
- {isRealtimeConnected ? (
- <div className="flex items-center gap-1.5">
- <div className="h-2 w-2 rounded-sm bg-brand-forest-green border border-[var(--surface-admin-border)]" />
- <span className="text-[10px] font-semibold text-brand-forest-green">Connected</span>
- </div>
- ) : (
- <div className="flex items-center gap-1.5">
- <div className="h-2 w-2 rounded-sm bg-brand-burgundy border border-[var(--surface-admin-border)] animate-pulse" />
- <span className="text-[10px] font-semibold text-brand-burgundy">Disconnected</span>
- </div>
- )}
- </div>
- {!isRealtimeConnected && (
- <Button 
- variant="outline" 
- size="icon-sm" 
- onClick={connect}
- className="h-7 w-7 border-2 border-border hover:bg-brand-gold"
- >
- <RefreshCw className="h-3.5 w-3.5" />
- </Button>
- )}
- </div>
- </div>
- <Button 
- onClick={() => setShowAddRunnerModal(true)} 
- className="bg-brand-burgundy text-white border border-border rounded-lg hover:-translate-y-1 hover: transition-all rounded-none font-semibold h-12 px-6"
- >
- <Plus className="mr-2 h-5 w-5" />
- Add Runner
- </Button>
- </div>
+    const result = await deleteRunner(id);
+    if (result.success) {
+      toast.success('Runner deleted.');
+      return;
+    }
 
- {/* Network Overview Cards */}
- <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
- <div className="bg-card border border-border rounded-lg p-4">
- <div className="flex items-center justify-between mb-2">
- <p className="text-[10px] font-semibold text-zinc-500">Total Runners</p>
- <Server className="h-4 w-4 text-zinc-400" />
- </div>
- <p className="text-3xl font-bold leading-none">{stats.totalRunners}</p>
- </div>
- <div className="bg-card border border-border rounded-lg p-4">
- <div className="flex items-center justify-between mb-2">
- <p className="text-[10px] font-semibold text-zinc-500">Online</p>
- <Activity className="h-4 w-4 text-brand-forest-green" />
- </div>
- <p className="text-3xl font-bold leading-none text-brand-forest-green">{stats.online}</p>
- </div>
- <div className="bg-card border border-border rounded-lg p-4">
- <div className="flex items-center justify-between mb-2">
- <p className="text-[10px] font-semibold text-zinc-500">Busy</p>
- <Clock className="h-4 w-4 text-brand-gold" />
- </div>
- <p className="text-3xl font-bold leading-none text-brand-gold">{stats.busy}</p>
- </div>
- <div className="bg-card border border-border rounded-lg p-4">
- <div className="flex items-center justify-between mb-2">
- <p className="text-[10px] font-semibold text-zinc-500">Disabled</p>
- <ShieldAlert className="h-4 w-4 text-orange-500" />
- </div>
- <p className="text-3xl font-bold leading-none text-orange-600">{stats.disabled}</p>
- </div>
- <div className="bg-card border border-border rounded-lg p-4">
- <div className="flex items-center justify-between mb-2">
- <p className="text-[10px] font-semibold text-zinc-500">Offline</p>
- <AlertCircle className="h-4 w-4 text-brand-burgundy" />
- </div>
- <p className="text-3xl font-bold leading-none text-brand-burgundy">{stats.offline}</p>
- </div>
- </div>
+    toast.error(result.error || 'We could not delete this runner.');
+  };
 
- {/* Network Health (Distribution) */}
- <div className="bg-card border border-border rounded-lg">
- <div className="p-4 border-b-4 border-border bg-muted">
- <h3 className="text-lg font-semibold">Network Health</h3>
- <p className="text-[10px] font-semibold text-zinc-500">
- Distribution of runners by current status
- </p>
- </div>
- <div className="p-6 space-y-6">
- {stats.totalRunners > 0 ? (
- <div className="grid gap-6 md:grid-cols-2">
- <div className="space-y-2">
- <div className="flex items-center justify-between">
- <span className="text-[10px] font-semibold flex items-center gap-2">
- <div className="h-2 w-2 bg-brand-forest-green border border-border" />
- Online
- </span>
- <span className="text-[10px] font-semibold">
- {stats.online} / {stats.totalRunners}
- </span>
- </div>
- <div className="h-4 border-2 border-border bg-muted p-0.5">
- <div 
- className="h-full bg-brand-forest-green transition-all" 
- style={{ width: `${(stats.online / stats.totalRunners) * 100}%` }}
- />
- </div>
- </div>
- <div className="space-y-2">
- <div className="flex items-center justify-between">
- <span className="text-[10px] font-semibold flex items-center gap-2">
- <div className="h-2 w-2 bg-brand-gold border border-border" />
- Busy
- </span>
- <span className="text-[10px] font-semibold">
- {stats.busy} / {stats.totalRunners}
- </span>
- </div>
- <div className="h-4 border-2 border-border bg-muted p-0.5">
- <div 
- className="h-full bg-brand-gold transition-all" 
- style={{ width: `${(stats.busy / stats.totalRunners) * 100}%` }}
- />
- </div>
- </div>
- <div className="space-y-2">
- <div className="flex items-center justify-between">
- <span className="text-[10px] font-semibold flex items-center gap-2">
- <div className="h-2 w-2 bg-orange-500 border border-border" />
- Disabled
- </span>
- <span className="text-[10px] font-semibold">
- {stats.disabled} / {stats.totalRunners}
- </span>
- </div>
- <div className="h-4 border-2 border-border bg-muted p-0.5">
- <div 
- className="h-full bg-orange-500 transition-all" 
- style={{ width: `${(stats.disabled / stats.totalRunners) * 100}%` }}
- />
- </div>
- </div>
- <div className="space-y-2">
- <div className="flex items-center justify-between">
- <span className="text-[10px] font-semibold flex items-center gap-2">
- <div className="h-2 w-2 bg-brand-burgundy border border-border" />
- Offline
- </span>
- <span className="text-[10px] font-semibold">
- {stats.offline} / {stats.totalRunners}
- </span>
- </div>
- <div className="h-4 border-2 border-border bg-muted p-0.5">
- <div 
- className="h-full bg-brand-burgundy transition-all" 
- style={{ width: `${(stats.offline / stats.totalRunners) * 100}%` }}
- />
- </div>
- </div>
- </div>
- ) : (
- <p className="text-sm text-zinc-500 italic">
- No runners registered. Start scraper runner instances to see network status.
- </p>
- )}
- </div>
- </div>
+  const handleCreateRunner = async () => {
+    if (!newRunnerName.trim()) {
+      toast.error('Please enter a runner name.');
+      return;
+    }
 
- {/* Runner Grid */}
- <div className="space-y-4">
- <div className="flex items-center justify-between">
- <h2 className="text-2xl font-semibold">Active Runners</h2>
- <Badge variant="outline" className="border-2 border-border font-semibold">
- {runnersArray.length} Total
- </Badge>
- </div>
- 
- {runnersArray.length > 0 ? (
- <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
- {runnersArray.map((runner) => (
- <div 
- key={runner.id} 
- onClick={() => handleOpenDrawer(runner.id)}
- className="cursor-pointer transition-transform hover:scale-[1.02]"
- >
- <RunnerCard
- runner={runner}
- onToggleEnabled={handleToggleEnabled}
- onUpdate={handleUpdate}
- onRotateApiKey={handleRotateApiKey}
- onRename={handleRename}
- onDelete={handleDelete}
- />
- </div>
- ))}
- </div>
- ) : (
- <div className="bg-muted border-4 border-dashed border-border p-12 text-center">
- <p className="font-semibold text-zinc-400">
- No runners currently connected. Start scraper runner instances to see them here.
- </p>
- </div>
- )}
- </div>
+    setIsCreatingRunner(true);
+    try {
+      const response = await adminFetch('/api/admin/runners/accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          runner_name: newRunnerName.trim(),
+          description: newRunnerDescription.trim() || undefined,
+        }),
+      });
 
- {/* Add Runner Modal */}
- <Dialog open={showAddRunnerModal} onOpenChange={handleCloseModal}>
- <DialogContent className="sm:max-w-lg border border-border rounded-lg rounded-none p-8">
- <DialogHeader className="mb-6">
- <DialogTitle className="flex items-center gap-2 text-2xl font-semibold">
- <Key className="h-6 w-6" />
- {createdApiKey ? "Runner Created" : "Add New Runner"}
- </DialogTitle>
- <DialogDescription className="font-bold text-zinc-500 uppercase tracking-tight text-xs">
- {createdApiKey
- ? "Save this API key now. Then run the installer and paste this key into the setup wizard."
- : "Create a new scraper runner and generate an API key."}
- </DialogDescription>
- </DialogHeader>
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create runner');
+      }
 
- {createdApiKey ? (
- <div className="space-y-4">
- <div className="border-2 border-border bg-muted p-4 space-y-3">
- <div>
- <Label className="text-[10px] font-semibold text-zinc-500">Runner Name</Label>
- <p className="font-semibold">{createdRunnerName}</p>
- </div>
- <div>
- <Label className="text-[10px] font-semibold text-zinc-500">API Key</Label>
- <div className="flex items-center gap-2 mt-1">
- <code className="flex-1 border-2 border-border bg-card px-2 py-1 text-xs font-mono break-all">
- {createdApiKey}
- </code>
- <Button 
- size="sm" 
- variant="outline" 
- onClick={copyApiKey}
- className="border-2 border-border hover:bg-brand-gold"
- >
- <Copy className="h-4 w-4" />
- </Button>
- </div>
- </div>
- </div>
- <p className="text-xs font-bold text-brand-burgundy uppercase tracking-tight">
- Use this API key to authenticate your runner. Store it securely.
- </p>
- <div className="border-2 border-border bg-muted p-4 space-y-2">
- <Label className="text-[10px] font-semibold text-zinc-500">One-line installer</Label>
- <div className="flex items-center gap-2">
- <code className="flex-1 border-2 border-border bg-card px-2 py-1 text-xs font-mono break-all">
- {installCommand}
- </code>
- <Button 
- size="sm" 
- variant="outline" 
- onClick={copyInstallCommand}
- className="border-2 border-border hover:bg-brand-gold"
- >
- <Copy className="h-4 w-4" />
- </Button>
- </div>
- </div>
- </div>
- ) : (
- <div className="space-y-4 py-4">
- <div className="space-y-2">
- <Label htmlFor="runner-name" className="font-semibold text-xs">Runner Name</Label>
- <Input
- id="runner-name"
- placeholder="e.g., macbook-air, server-us-east"
- value={newRunnerName}
- onChange={(e) => setNewRunnerName(e.target.value)}
- disabled={isCreatingRunner}
- className="border-2 border-border rounded-none focus-visible:ring-0 focus-visible:border-brand-gold"
- />
- <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-tight">
- 3-50 characters, lowercase letters, numbers, and hyphens only
- </p>
- </div>
- <div className="space-y-2">
- <Label htmlFor="runner-description" className="font-semibold text-xs">Description (Optional)</Label>
- <Input
- id="runner-description"
- placeholder="e.g., Production runner on MacBook Air"
- value={newRunnerDescription}
- onChange={(e) => setNewRunnerDescription(e.target.value)}
- disabled={isCreatingRunner}
- className="border-2 border-border rounded-none focus-visible:ring-0 focus-visible:border-brand-gold"
- />
- </div>
- </div>
- )}
+      const data = await response.json();
+      setCreatedApiKey(data.api_key);
+      setCreatedRunnerName(data.runner_name);
+      toast.success(`Runner "${data.runner_name}" created.`);
+      setNewRunnerName('');
+      setNewRunnerDescription('');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create runner.');
+    } finally {
+      setIsCreatingRunner(false);
+    }
+  };
 
- <DialogFooter className="gap-2">
- {createdApiKey ? (
- <Button 
- onClick={handleCloseModal}
- className="bg-zinc-900 text-white border-2 border-border rounded-none font-semibold"
- >
- Done
- </Button>
- ) : (
- <>
- <Button 
- variant="outline" 
- onClick={handleCloseModal} 
- disabled={isCreatingRunner}
- className="border-2 border-border rounded-none font-semibold"
- >
- Cancel
- </Button>
- <Button 
- onClick={handleCreateRunner} 
- disabled={isCreatingRunner || !newRunnerName.trim()}
- className="bg-brand-forest-green text-white border-2 border-border rounded-none font-semibold"
- >
- {isCreatingRunner ? "Creating..." : "Create Runner"}
- </Button>
- </>
- )}
- </DialogFooter>
- </DialogContent>
- </Dialog>
+  const handleCloseModal = () => {
+    setShowAddRunnerModal(false);
+    setCreatedApiKey(null);
+    setCreatedRunnerName(null);
+    setNewRunnerName('');
+    setNewRunnerDescription('');
+  };
 
- {/* Runner Detail Drawer */}
- <RunnerDetailDrawer
- runner={selectedRunnerId ? runnersArray.find(r => r.id === selectedRunnerId) : null}
- runnerId={selectedRunnerId}
- isOpen={isDrawerOpen}
- onClose={() => setIsDrawerOpen(false)}
- />
- </div>
- );
+  const copyApiKey = async () => {
+    if (!createdApiKey) return;
+    await navigator.clipboard.writeText(createdApiKey);
+    toast.success('API key copied to clipboard.');
+  };
+
+  const copyInstallCommand = async () => {
+    await navigator.clipboard.writeText(installCommand);
+    toast.success('Installer command copied to clipboard.');
+  };
+
+  return (
+    <div className="flex h-full flex-col gap-5 pb-6">
+      <AdminControlBar>
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-1 flex-col gap-3 md:flex-row md:items-center">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search by runner name, ID, or region"
+                className="pl-9"
+                aria-label="Search runners"
+              />
+            </div>
+
+            <Select value={runnerFilter} onValueChange={(value) => setRunnerFilter(value as RunnerFilter)}>
+              <SelectTrigger className="w-full md:w-[220px]">
+                <SelectValue placeholder="Filter runners" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All runners</SelectItem>
+                <SelectItem value="connected">Connected now</SelectItem>
+                <SelectItem value="busy">Working now</SelectItem>
+                <SelectItem value="offline">Offline</SelectItem>
+                <SelectItem value="disabled">Disabled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={isRealtimeConnected ? 'success' : 'destructive'} className="px-3 py-1">
+              {isRealtimeConnected ? 'Realtime connected' : 'Realtime disconnected'}
+            </Badge>
+
+            {!isRealtimeConnected ? (
+              <Button variant="outline" onClick={connect}>
+                <RefreshCw className="h-4 w-4" />
+                Reconnect
+              </Button>
+            ) : null}
+
+            <Button onClick={() => setShowAddRunnerModal(true)}>
+              <Plus className="h-4 w-4" />
+              Add runner
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+          <span>
+            <span className="font-semibold text-foreground">{filteredRunners.length}</span>{' '}
+            runner{filteredRunners.length === 1 ? '' : 's'} in view
+          </span>
+          <span className="hidden h-1 w-1 rounded-full bg-border md:inline-block" />
+          <span>
+            <span className="font-semibold text-foreground">{attentionCount}</span>{' '}
+            need attention
+          </span>
+          <span className="hidden h-1 w-1 rounded-full bg-border md:inline-block" />
+          <span>Use a row to open details and recent activity.</span>
+        </div>
+      </AdminControlBar>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <AdminStatCard
+          label="Total runners"
+          value={stats.totalRunners}
+          hint="All registered scraper runners."
+          icon={<Server className="h-5 w-5" />}
+        />
+        <AdminStatCard
+          label="Connected now"
+          value={stats.online}
+          hint="Online or idle runners available for work."
+          tone="success"
+          icon={<CheckCircle2 className="h-5 w-5" />}
+        />
+        <AdminStatCard
+          label="Working now"
+          value={stats.busy}
+          hint="Runners actively processing jobs."
+          tone="warning"
+          icon={<Activity className="h-5 w-5" />}
+        />
+        <AdminStatCard
+          label="Need attention"
+          value={attentionCount}
+          hint="Offline, disabled, or outdated runners."
+          tone="danger"
+          icon={<ShieldAlert className="h-5 w-5" />}
+        />
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <AdminCard variant="panel" className="min-h-0">
+          <AdminCardHeader className="justify-between gap-4 border-b border-border pb-4">
+            <div>
+              <AdminCardTitle>Runner roster</AdminCardTitle>
+              <AdminCardDescription>
+                Open a runner to inspect live history, metadata, and health details.
+              </AdminCardDescription>
+            </div>
+            <Badge variant="outline" className="px-3 py-1">
+              {filteredRunners.length} in view
+            </Badge>
+          </AdminCardHeader>
+
+          <AdminCardContent className="pt-4">
+            {filteredRunners.length > 0 ? (
+              <>
+                <div className="grid gap-3 lg:hidden">
+                  {filteredRunners.map((runner) => {
+                    const attention = needsAttention(runner);
+                    return (
+                      <div key={runner.id} className="rounded-[1rem] border border-border bg-card p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDrawer(runner.id)}
+                            className="min-w-0 text-left"
+                          >
+                            <div className="font-medium text-foreground">{runner.name}</div>
+                            <div className="mt-1 text-xs text-muted-foreground">{runner.id}</div>
+                          </button>
+                          <Badge variant={statusBadgeVariant[runner.status]}>{statusLabel[runner.status]}</Badge>
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          {attention ? <Badge variant="destructive">Needs attention</Badge> : null}
+                          {runner.build_check_reason === 'outdated' ? <Badge variant="outline">Update required</Badge> : null}
+                        </div>
+
+                        <div className="mt-4 grid gap-3 rounded-2xl border border-border bg-muted/20 p-3 sm:grid-cols-3">
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground">Jobs</p>
+                            <p className="mt-1 text-sm font-medium text-foreground">{runner.active_jobs}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground">Version</p>
+                            <p className="mt-1 text-sm font-medium text-foreground">{runner.version || 'Unknown'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground">Last seen</p>
+                            <p className="mt-1 text-sm font-medium text-foreground">{formatLastSeen(runner.last_seen_at)}</p>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={runner.enabled}
+                              onCheckedChange={(checked) => {
+                                void handleToggleEnabled(runner.id, checked);
+                              }}
+                              aria-label={`Toggle ${runner.name}`}
+                            />
+                            <span className="text-sm text-muted-foreground">{runner.enabled ? 'Enabled' : 'Disabled'}</span>
+                          </div>
+                          <Button variant="outline" size="sm" onClick={() => handleOpenDrawer(runner.id)}>
+                            Open details
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${runner.name}`}>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44">
+                              <DropdownMenuItem onClick={() => void handleRotateApiKey(runner.id)}>
+                                Rotate API key
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => void handleRename(runner.id)}>
+                                Rename runner
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => void handleDelete(runner.id)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                Delete runner
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="hidden lg:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Runner</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Access</TableHead>
+                        <TableHead>Jobs</TableHead>
+                        <TableHead>Version</TableHead>
+                        <TableHead>Region</TableHead>
+                        <TableHead>Last seen</TableHead>
+                        <TableHead className="w-[72px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredRunners.map((runner) => {
+                        const attention = needsAttention(runner);
+
+                        return (
+                          <TableRow
+                            key={runner.id}
+                            className="cursor-pointer"
+                            onClick={() => handleOpenDrawer(runner.id)}
+                          >
+                            <TableCell>
+                              <div className="flex min-w-0 items-start gap-3">
+                                <div
+                                  className={cn(
+                                    'mt-1 h-2.5 w-2.5 rounded-full',
+                                    runner.status === 'offline' && 'bg-brand-burgundy',
+                                    runner.status === 'busy' && 'bg-brand-gold',
+                                    (runner.status === 'online' || runner.status === 'idle' || runner.status === 'polling') &&
+                                      'bg-brand-forest-green',
+                                    runner.status === 'paused' && 'bg-muted-foreground',
+                                  )}
+                                />
+                                <div className="min-w-0 space-y-1">
+                                  <div className="truncate font-medium text-foreground">{runner.name}</div>
+                                  <div className="truncate text-xs text-muted-foreground">{runner.id}</div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant={statusBadgeVariant[runner.status]}>{statusLabel[runner.status]}</Badge>
+                                {attention ? <Badge variant="destructive">Needs attention</Badge> : null}
+                              </div>
+                            </TableCell>
+                            <TableCell onClick={(event) => event.stopPropagation()}>
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  checked={runner.enabled}
+                                  onCheckedChange={(checked) => {
+                                    void handleToggleEnabled(runner.id, checked);
+                                  }}
+                                  aria-label={`Toggle ${runner.name}`}
+                                />
+                                <span className="text-sm text-muted-foreground">
+                                  {runner.enabled ? 'Enabled' : 'Disabled'}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="tabular-nums">{runner.active_jobs}</TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <div className="font-medium text-foreground">{runner.version || 'Unknown'}</div>
+                                {runner.build_check_reason === 'outdated' ? (
+                                  <div className="text-xs text-brand-burgundy">Update required</div>
+                                ) : runner.build_check_reason === 'missing' ? (
+                                  <div className="text-xs text-brand-burgundy">Missing version</div>
+                                ) : null}
+                              </div>
+                            </TableCell>
+                            <TableCell>{runner.region || 'Unassigned'}</TableCell>
+                            <TableCell>{formatLastSeen(runner.last_seen_at)}</TableCell>
+                            <TableCell onClick={(event) => event.stopPropagation()}>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${runner.name}`}>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-44">
+                                  <DropdownMenuItem onClick={() => handleOpenDrawer(runner.id)}>
+                                    Open details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => void handleRotateApiKey(runner.id)}>
+                                    Rotate API key
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => void handleRename(runner.id)}>
+                                    Rename runner
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => void handleDelete(runner.id)}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    Delete runner
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            ) : (
+              <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-muted/30 px-6 text-center">
+                <AlertCircle className="h-6 w-6 text-muted-foreground" />
+                <div className="space-y-1">
+                  <p className="font-medium text-foreground">No runners match this view.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Clear the search or filter, or add a new runner to get started.
+                  </p>
+                </div>
+                <Button variant="outline" onClick={() => { setSearch(''); setRunnerFilter('all'); }}>
+                  Clear filters
+                </Button>
+              </div>
+            )}
+          </AdminCardContent>
+        </AdminCard>
+
+        <AdminCard variant="panel">
+          <AdminCardHeader>
+            <div>
+              <AdminCardTitle>What to check first</AdminCardTitle>
+              <AdminCardDescription>
+                A quick pass for scraper operators at the start of the day.
+              </AdminCardDescription>
+            </div>
+          </AdminCardHeader>
+          <AdminCardContent className="space-y-4 text-sm text-muted-foreground">
+            <div className="rounded-2xl border border-border bg-muted/40 p-4">
+              <p className="font-medium text-foreground">1. Realtime connection</p>
+              <p className="mt-1">If realtime is disconnected, reconnect before trusting the roster.</p>
+            </div>
+            <div className="rounded-2xl border border-border bg-muted/40 p-4">
+              <p className="font-medium text-foreground">2. Offline or disabled runners</p>
+              <p className="mt-1">Bring attention counts to zero before launching more scraping work.</p>
+            </div>
+            <div className="rounded-2xl border border-border bg-muted/40 p-4">
+              <p className="font-medium text-foreground">3. Version warnings</p>
+              <p className="mt-1">Update runners marked as outdated before they drift from the web coordinator.</p>
+            </div>
+            <Button variant="outline" className="w-full justify-between" onClick={() => setShowAddRunnerModal(true)}>
+              Add a new runner
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </AdminCardContent>
+        </AdminCard>
+      </div>
+
+      <Dialog open={showAddRunnerModal} onOpenChange={(open) => (!open ? handleCloseModal() : setShowAddRunnerModal(true))}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{createdApiKey ? 'Runner created' : 'Add runner'}</DialogTitle>
+            <DialogDescription>
+              {createdApiKey
+                ? 'Copy this API key now, then run the installer on the machine that should join the scraper network.'
+                : 'Create a runner account and generate the API key used during setup.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {createdApiKey ? (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-border bg-muted/40 p-4">
+                <Label className="text-xs font-medium text-muted-foreground">Runner name</Label>
+                <p className="mt-1 font-medium text-foreground">{createdRunnerName}</p>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-muted/40 p-4">
+                <Label className="text-xs font-medium text-muted-foreground">API key</Label>
+                <div className="mt-2 flex items-start gap-2">
+                  <code className="min-w-0 flex-1 break-all rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground">
+                    {createdApiKey}
+                  </code>
+                  <Button variant="outline" size="icon" onClick={() => void copyApiKey()} aria-label="Copy API key">
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-muted/40 p-4">
+                <Label className="text-xs font-medium text-muted-foreground">Installer command</Label>
+                <div className="mt-2 flex items-start gap-2">
+                  <code className="min-w-0 flex-1 break-all rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground">
+                    {installCommand}
+                  </code>
+                  <Button variant="outline" size="icon" onClick={() => void copyInstallCommand()} aria-label="Copy installer command">
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <p className="text-sm text-muted-foreground">
+                Keep the API key secure. Anyone with this key can connect a runner to the network.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="runner-name">Runner name</Label>
+                <Input
+                  id="runner-name"
+                  placeholder="e.g. taunton-counter-mac or warehouse-mini"
+                  value={newRunnerName}
+                  onChange={(event) => setNewRunnerName(event.target.value)}
+                  disabled={isCreatingRunner}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use lowercase letters, numbers, and hyphens so the name is easy to recognize later.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="runner-description">Description</Label>
+                <Input
+                  id="runner-description"
+                  placeholder="Optional note about where this runner lives"
+                  value={newRunnerDescription}
+                  onChange={(event) => setNewRunnerDescription(event.target.value)}
+                  disabled={isCreatingRunner}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            {createdApiKey ? (
+              <Button onClick={handleCloseModal}>Done</Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={handleCloseModal} disabled={isCreatingRunner}>
+                  Cancel
+                </Button>
+                <Button onClick={() => void handleCreateRunner()} disabled={isCreatingRunner || !newRunnerName.trim()}>
+                  <Key className="h-4 w-4" />
+                  {isCreatingRunner ? 'Creating runner...' : 'Create runner'}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <RunnerDetailDrawer
+        runner={selectedRunnerId ? runnersArray.find((runner) => runner.id === selectedRunnerId) ?? null : null}
+        runnerId={selectedRunnerId}
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+      />
+    </div>
+  );
 }
-

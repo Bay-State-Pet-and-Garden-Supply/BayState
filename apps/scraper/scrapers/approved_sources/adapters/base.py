@@ -8,6 +8,7 @@ Provides:
 from __future__ import annotations
 
 import logging
+import re
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -25,6 +26,8 @@ from scrapers.approved_sources.auth import (
 import httpx
 
 logger = logging.getLogger(__name__)
+
+_IDENTIFIER_RE = re.compile(r"[^A-Z0-9]+")
 
 
 class ApprovedSourceAdapter(ABC):
@@ -100,6 +103,30 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             self.source_slug = self.entry.sourceSlug
         if self.entry.requiresAuth:
             self.requires_auth = True
+
+    @staticmethod
+    def _normalize_identifier(value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = _IDENTIFIER_RE.sub("", value.strip().upper())
+        return cleaned or None
+
+    def _match_identifier_candidates(
+        self,
+        sku: str,
+        *candidates: str | None,
+    ) -> tuple[bool, list[str]]:
+        normalized_sku = self._normalize_identifier(sku)
+        if not normalized_sku:
+            return False, []
+
+        matches: list[str] = []
+        for candidate in candidates:
+            normalized_candidate = self._normalize_identifier(candidate)
+            if normalized_candidate and normalized_candidate == normalized_sku:
+                matches.append(candidate or "")
+
+        return len(matches) > 0, matches
 
     @abstractmethod
     def build_search_url(self, sku: str) -> str:
@@ -286,13 +313,15 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
         )
 
         sku = self._get_sku()
-        brand = self._get_brand()
-        product_name = self._get_product_name()
 
         # Extract api_client from extractor or executor
         api_client = getattr(extractor, "api_client", None) if extractor else None
 
-        # 1. Credential check
+        # 1. Build search URL
+        search_url = self.build_search_url(sku)
+        logger.info("[%s] Searching: %s", self.adapter_slug, search_url)
+
+        # 2. Credential check
         cred_ok, cred_msg = self.check_credentials(api_client)
         if not cred_ok:
             logger.info("[%s] Auth required for %s: %s", self.adapter_slug, sku, cred_msg)
@@ -300,11 +329,8 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
                 sku=sku,
                 source_slug=self.source_slug,
                 message=cred_msg,
+                evidence_url=search_url,
             )
-
-        # 2. Build search URL
-        search_url = self.build_search_url(sku)
-        logger.info("[%s] Searching: %s", self.adapter_slug, search_url)
 
         # 3. Validate URL against policy
         source_policy = self.plan.sourcePolicy
@@ -337,16 +363,19 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
                     return build_auth_required_result(
                         sku=sku,
                         source_slug=self.source_slug,
+                        evidence_url=search_url,
                     )
                 elif auth_error == "AUTH_FAILED":
                     return build_auth_failed_result(
                         sku=sku,
                         source_slug=self.source_slug,
+                        evidence_url=search_url,
                     )
                 elif auth_error == "AUTH_EXPIRED":
                     return build_auth_expired_result(
                         sku=sku,
                         source_slug=self.source_slug,
+                        evidence_url=search_url,
                     )
                 else:
                     return build_failed_result(
@@ -387,6 +416,23 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
         # 5. Parse HTML deterministically
         det_result = self.extract_from_html(html, sku, search_url)
 
+        if det_result.success and det_result.sku_match is None:
+            generic_identifier_candidates = [
+                det_result.product.get("sku"),
+                det_result.product.get("upc"),
+                det_result.product.get("item_number"),
+                det_result.product.get("model_number"),
+                det_result.product.get("manufacturer_number"),
+                det_result.product.get("bci_item_number"),
+            ]
+            has_generic_identifiers = any(candidate for candidate in generic_identifier_candidates)
+            matched_identifier, _ = self._match_identifier_candidates(
+                sku,
+                *generic_identifier_candidates,
+            )
+            if has_generic_identifiers:
+                det_result.sku_match = matched_identifier
+
         # 6. Process and filter images
         if det_result.success and det_result.product.get("image_urls"):
             raw_images = self.normalize_images(det_result.product["image_urls"])
@@ -411,42 +457,67 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             }
 
         # 8. Build final EnrichmentResultV1
+        evidence_url = det_result.evidence_url or search_url
         if det_result.success:
             confidence = det_result.confidence or 0.75
             matched = det_result.matched_fields or list(det_result.product.keys())
-            if confidence >= 0.7:
+            warnings = list(det_result.warnings or [])
+            missing_required: list[str] = []
+
+            resolved_sku_match = det_result.sku_match
+            heuristic_warning = any("heuristic" in warning.lower() for warning in warnings)
+
+            if resolved_sku_match is not True:
+                missing_required.append("sku_match")
+                if resolved_sku_match is False:
+                    if not heuristic_warning:
+                        warnings.append(
+                            "Returned product page did not deterministically verify the searched SKU.",
+                        )
+                    confidence = min(confidence, 0.69 if heuristic_warning else 0.59)
+                else:
+                    warnings.append(
+                        "No deterministic SKU/UPC/item identifier was available on the returned product page.",
+                    )
+                    confidence = min(confidence, 0.59)
+
+            if confidence >= 0.7 and resolved_sku_match is True:
                 return build_success_result(
                     sku=sku,
                     source_slug=self.source_slug,
                     source_type=self.source_type,
-                    evidence_url=search_url,
+                    evidence_url=evidence_url,
                     product_fields=det_result.product,
                     matched_fields=matched,
                     overall_confidence=confidence,
+                    warnings=warnings,
+                    sku_match=True,
                 )
-            else:
-                return build_partial_result(
-                    sku=sku,
-                    source_slug=self.source_slug,
-                    source_type=self.source_type,
-                    evidence_url=search_url,
-                    product_fields=det_result.product,
-                    matched_fields=matched,
-                    overall_confidence=confidence,
-                    warnings=det_result.warnings,
-                )
+
+            return build_partial_result(
+                sku=sku,
+                source_slug=self.source_slug,
+                source_type=self.source_type,
+                evidence_url=evidence_url,
+                product_fields=det_result.product,
+                matched_fields=matched,
+                overall_confidence=confidence,
+                warnings=warnings,
+                missing_required=missing_required,
+                sku_match=resolved_sku_match is True,
+            )
         elif det_result.failure_code == FailureCode.NO_MATCH:
             return build_no_match_result(
                 sku=sku,
                 source_slug=self.source_slug,
-                evidence_url=search_url,
+                evidence_url=evidence_url,
             )
         else:
             return build_failed_result(
                 sku=sku,
                 source_slug=self.source_slug,
                 error_message=det_result.failure_message or "Extraction failed",
-                evidence_url=search_url,
+                evidence_url=evidence_url,
             )
 
     async def _fetch_html(self, url: str) -> str | None:

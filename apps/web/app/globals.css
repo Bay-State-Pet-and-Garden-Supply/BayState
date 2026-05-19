@@ -236,43 +236,49 @@
   .admin-panel {
     background-color: var(--surface-admin-card);
     border: 1px solid var(--surface-admin-border);
-    border-radius: 0.75rem;
+    border-radius: 1rem;
   }
 
   .admin-panel-muted {
     background-color: var(--surface-admin-muted);
     border: 1px solid var(--surface-admin-border);
-    border-radius: 0.75rem;
+    border-radius: 1rem;
   }
 
   .admin-toolbar {
-    background-color: color-mix(in srgb, var(--surface-admin-card) 92%, white);
+    background-color: color-mix(in srgb, var(--surface-admin-card) 96%, white);
     border: 1px solid var(--surface-admin-border);
-    border-radius: 0.875rem;
+    border-radius: 1rem;
   }
 
   .admin-page-title {
-    @apply text-3xl font-semibold text-foreground md:text-4xl;
+    @apply text-[1.375rem] font-semibold tracking-tight text-foreground md:text-[1.75rem];
   }
 
   .admin-page-copy {
-    @apply text-sm font-medium text-muted-foreground md:text-base;
+    @apply max-w-[72ch] text-sm leading-6 text-muted-foreground md:text-[0.9375rem];
   }
 
-  /* ── Admin Surface: dark design tokens + shadcn remap ── */
-  [data-ui-surface="admin"] {
-    /* Admin surface tokens - DARK THEME */
-    --surface-admin-bg: oklch(15% 0.02 160);
-    --surface-admin-card: oklch(18% 0.02 160);
-    --surface-admin-muted: oklch(22% 0.02 160);
-    --surface-admin-border: oklch(30% 0.03 160);
-    --surface-admin-text: oklch(95% 0.02 90);
-    --surface-admin-heading: oklch(98% 0.01 90);
-    --surface-admin-muted-text: oklch(75% 0.02 160);
-    --surface-admin-accent: oklch(45% 0.08 160);
-    --surface-admin-radius: 0.5rem;
+  .admin-kicker {
+    color: var(--surface-admin-accent);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
 
-    /* shadcn variable remapping — all bg-card, text-muted-foreground, etc. use admin tokens */
+  /* ── Admin Surface: light workbench tokens + shadcn remap ── */
+  [data-ui-surface="admin"] {
+    --surface-admin-bg: oklch(97.8% 0.006 95);
+    --surface-admin-card: oklch(99.2% 0.003 95);
+    --surface-admin-muted: oklch(95.6% 0.009 150);
+    --surface-admin-border: oklch(88.2% 0.017 155);
+    --surface-admin-text: oklch(28% 0.014 155);
+    --surface-admin-heading: oklch(22% 0.015 155);
+    --surface-admin-muted-text: oklch(48% 0.012 155);
+    --surface-admin-accent: oklch(36% 0.078 160);
+    --surface-admin-sidebar: oklch(31% 0.055 160);
+    --surface-admin-radius: 0.875rem;
+
     --background: var(--surface-admin-bg);
     --foreground: var(--surface-admin-heading);
     --card: var(--surface-admin-card);
@@ -285,29 +291,77 @@
     --secondary-foreground: var(--surface-admin-text);
     --muted: var(--surface-admin-muted);
     --muted-foreground: var(--surface-admin-muted-text);
-    --accent: var(--surface-admin-accent);
-    --accent-foreground: oklch(98% 0.01 90);
-    --destructive: oklch(45% 0.12 25);
+    --accent: color-mix(in oklab, var(--surface-admin-accent) 10%, white);
+    --accent-foreground: var(--surface-admin-heading);
+    --destructive: oklch(44% 0.13 24);
     --destructive-foreground: oklch(98% 0.01 90);
     --border: var(--surface-admin-border);
-    --input: var(--surface-admin-border);
-    --ring: var(--surface-admin-accent);
+    --input: oklch(82% 0.015 150);
+    --ring: color-mix(in oklab, var(--surface-admin-accent) 42%, white);
     --radius: var(--surface-admin-radius);
-    --sidebar: var(--surface-admin-accent);
+    --sidebar: var(--surface-admin-sidebar);
     --sidebar-foreground: oklch(98% 0.01 90);
-    --sidebar-primary: var(--surface-admin-accent);
-    --sidebar-primary-foreground: oklch(98% 0.01 90);
-    --sidebar-accent: oklch(30% 0.05 160);
-    --sidebar-accent-foreground: oklch(95% 0.02 90);
-    --sidebar-border: var(--surface-admin-border);
-    --sidebar-ring: var(--surface-admin-accent);
+    --sidebar-primary: oklch(98% 0.01 90);
+    --sidebar-primary-foreground: var(--surface-admin-sidebar);
+    --sidebar-accent: color-mix(in oklab, var(--surface-admin-sidebar) 85%, white);
+    --sidebar-accent-foreground: oklch(98% 0.01 90);
+    --sidebar-border: color-mix(in oklab, var(--surface-admin-sidebar) 78%, white);
+    --sidebar-ring: color-mix(in oklab, var(--surface-admin-sidebar) 52%, white);
 
-    /* High-contrast brand overrides for dark surface */
-    --brand-burgundy: oklch(70% 0.15 25);
-    --brand-forest-green: oklch(75% 0.1 160);
-    --brand-gold: oklch(90% 0.15 95);
+    --brand-burgundy: oklch(41% 0.13 24);
+    --brand-forest-green: oklch(36% 0.078 160);
+    --brand-gold: oklch(79% 0.14 95);
 
     background-color: var(--surface-admin-bg);
+    color: var(--surface-admin-text);
+  }
+
+  [data-ui-surface="admin"] [data-slot="button"] {
+    border-radius: 0.8rem;
+    letter-spacing: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  [data-ui-surface="admin"] [data-slot="input"],
+  [data-ui-surface="admin"] select,
+  [data-ui-surface="admin"] textarea {
+    border-color: var(--surface-admin-border);
+    border-radius: 0.8rem;
+    background-color: var(--surface-admin-card);
+    color: var(--surface-admin-text);
+  }
+
+  [data-ui-surface="admin"] [data-slot="card"],
+  [data-ui-surface="admin"] [data-slot="table-container"] {
+    border-color: var(--surface-admin-border);
+    border-radius: 1rem;
+    box-shadow: none;
+  }
+
+  [data-ui-surface="admin"] [data-slot="badge"] {
+    border-color: var(--surface-admin-border);
+    border-radius: 999px;
+    box-shadow: none;
+    font-weight: 600;
+  }
+
+  [data-ui-surface="admin"] [data-slot="table-head"] {
+    color: var(--surface-admin-muted-text);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  [data-ui-surface="admin"] [data-slot="table-cell"] {
+    font-size: 0.875rem;
+  }
+
+  [data-ui-surface="admin"] [data-slot="table-row"] {
+    background-color: transparent;
+  }
+
+  [data-ui-surface="admin"] [data-slot="table-row"]:hover {
+    background-color: color-mix(in oklab, var(--surface-admin-muted) 55%, white);
   }
 
   /* Admin: button transforms suppressed */

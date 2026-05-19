@@ -85,7 +85,7 @@ export function AnalyticsClient({ initialRange = '7days' }: AnalyticsClientProps
         <div className="flex items-center gap-3">
           <BarChart3 className="h-8 w-8 text-purple-600" />
           <div>
-            <h1 className="text-3xl font-bold">Store Analytics</h1>
+            <h2 className="text-2xl font-semibold">Store Analytics</h2>
             <p className="text-muted-foreground">
               {data?.period.label || 'Loading...'}
             </p>

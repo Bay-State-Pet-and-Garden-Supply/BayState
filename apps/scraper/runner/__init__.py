@@ -43,6 +43,35 @@ LOG_LEVEL_NUMBERS = {
 }
 
 
+def _llm_kwargs_from_attempt(
+    attempt: ClaimedEnrichment,
+    fallback_model: str | None = None,
+) -> dict[str, Any]:
+    """Return ProductPageExtractor LLM kwargs from coordinator credentials.
+
+    The coordinator resolves and decrypts the job's traced AI provider profile
+    at claim time. The runner should prefer those values over process env so a
+    queued job uses the provider recorded in enrichment_jobs.config_id.
+    """
+    credentials = attempt.ai_credentials if isinstance(attempt.ai_credentials, dict) else {}
+    provider = credentials.get("llm_provider") if isinstance(credentials.get("llm_provider"), str) else None
+    model = credentials.get("llm_model") if isinstance(credentials.get("llm_model"), str) else None
+    base_url = credentials.get("llm_base_url") if isinstance(credentials.get("llm_base_url"), str) else None
+    api_key = credentials.get("llm_api_key") if isinstance(credentials.get("llm_api_key"), str) else None
+
+    if not api_key and provider == "deepseek":
+        api_key = credentials.get("deepseek_api_key") if isinstance(credentials.get("deepseek_api_key"), str) else None
+    if not api_key and provider == "openai":
+        api_key = credentials.get("openai_api_key") if isinstance(credentials.get("openai_api_key"), str) else None
+
+    return {
+        "llm_provider": provider,
+        "llm_model": model or fallback_model or "deepseek-chat",
+        "llm_api_key": api_key,
+        "llm_base_url": base_url,
+    }
+
+
 def _emit_runner_log(
     *,
     job_id: str,
@@ -191,9 +220,9 @@ async def _run_enrichment_job(
 
     extractor = ProductPageExtractor(
         headless=settings.browser_settings["headless"],
-        llm_model=model,
         cache_enabled=True,
         extraction_strategy="llm",
+        **_llm_kwargs_from_attempt(attempt, model),
     )
 
     extraction_result = await extractor.extract(
@@ -388,9 +417,9 @@ async def _run_approved_source_extraction(
         model = getattr(attempt, "model", None) or job_payload.get("model", "deepseek-chat")
         extractor = ProductPageExtractor(
             headless=settings.browser_settings["headless"],
-            llm_model=model,
             cache_enabled=True,
             extraction_strategy="llm",
+            **_llm_kwargs_from_attempt(attempt, model),
         )
 
         executor = ApprovedSourceExecutor(

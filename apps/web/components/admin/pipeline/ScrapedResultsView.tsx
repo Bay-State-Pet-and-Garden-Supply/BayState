@@ -586,11 +586,11 @@ export function ScrapedResultsView({
                             </span>
                           )}
                         </div>
-                        <h1 className="text-xl font-semibold text-foreground leading-tight">
+                        <h2 className="text-xl font-semibold leading-tight text-foreground">
                           {currentSourceData.title ||
                             currentSourceData.name ||
-                            "Untitled Product"}
-                        </h1>
+                            'Untitled Product'}
+                        </h2>
                         <div className="flex flex-wrap items-center gap-y-1.5 gap-x-3">
                           {currentSourceData.brand && (
                             <p className="text-[10px] font-semibold text-muted-foreground">

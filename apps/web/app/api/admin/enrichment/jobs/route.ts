@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
 import { createAdminClient } from "@/lib/supabase/server";
 import { buildApprovedSourcePlans } from "@/lib/approved-sources/source-plan";
+import { getAIScrapingRuntimeCredentials } from "@/lib/ai-scraping/credentials";
 
 // =============================================================================
 // POST - Create Enrichment Job
@@ -250,9 +251,14 @@ export async function POST(request: NextRequest) {
       jobConfig.source_type = "approved_source_extraction";
     }
 
+    // Resolve the active AI runtime once at enqueue time so the job model
+    // and config trace match the profile that will be used by the runner.
+    const aiRuntimeCreds = await getAIScrapingRuntimeCredentials();
+    const aiConfigId = aiRuntimeCreds.config_id ?? null;
+
     // Create enrichment_jobs row
     const jobMode = mode ?? "mixed";
-    const jobModel = model ?? null;
+    const jobModel = model ?? aiRuntimeCreds.llm_model;
 
     const { data: job, error: jobError } = await supabase
       .from("enrichment_jobs")
@@ -265,6 +271,7 @@ export async function POST(request: NextRequest) {
         model: jobModel,
         mode: jobMode,
         config: jobConfig,
+        config_id: aiConfigId,
         created_by: auth.user.id,
       })
       .select()
@@ -286,6 +293,7 @@ export async function POST(request: NextRequest) {
       mode: jobMode,
       model: jobModel,
       source_url: useApprovedSources ? null : targetMap[sku],
+      config_id: aiConfigId,
     }));
 
     const { error: attemptError } = await supabase

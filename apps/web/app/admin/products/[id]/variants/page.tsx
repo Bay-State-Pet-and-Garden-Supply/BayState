@@ -1,11 +1,9 @@
+import { SplitSquareVertical } from 'lucide-react';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { createClient } from '@/lib/supabase/server';
 import { getProductVariants, getProductOptions } from '@/lib/admin/variants';
 import { ProductVariantsClient } from '@/components/admin/products/variants/ProductVariantsClient';
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
 
 export default async function ProductVariantsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -27,16 +25,14 @@ export default async function ProductVariantsPage({ params }: { params: Promise<
   ]);
   
   return (
-    <AdminPageShell title={product.name} description="Manage product options and variants">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/admin/products">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Products
-          </Link>
-        </Button>
-      </div>
-      
+    <AdminPageShell
+      title={product.name}
+      description="Manage options, variant pricing, and the storefront buying structure for this product."
+      icon={<SplitSquareVertical className="h-5 w-5" />}
+      eyebrow="Workspace view"
+      backHref="/admin/products"
+      backLabel="Back to products"
+    >
       <ProductVariantsClient
         productId={id}
         productName={product.name}

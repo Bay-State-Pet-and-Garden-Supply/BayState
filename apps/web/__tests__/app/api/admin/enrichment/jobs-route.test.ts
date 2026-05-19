@@ -53,9 +53,14 @@ jest.mock('@/lib/approved-sources/source-plan', () => ({
     buildApprovedSourcePlans: jest.fn(),
 }));
 
+jest.mock('@/lib/ai-scraping/credentials', () => ({
+    getAIScrapingRuntimeCredentials: jest.fn(),
+}));
+
 const { requireAdminAuth } = require('@/lib/admin/api-auth');
 const { createAdminClient } = require('@/lib/supabase/server');
 const { buildApprovedSourcePlans } = require('@/lib/approved-sources/source-plan');
+const { getAIScrapingRuntimeCredentials } = require('@/lib/ai-scraping/credentials');
 
 describe('/api/admin/enrichment/jobs route', () => {
     let mockSupabase: any;
@@ -63,6 +68,13 @@ describe('/api/admin/enrichment/jobs route', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         (requireAdminAuth as jest.Mock).mockResolvedValue({ authorized: true, user: { id: 'admin-1' } });
+        (getAIScrapingRuntimeCredentials as jest.Mock).mockResolvedValue({
+            llm_provider: 'deepseek',
+            llm_model: 'deepseek-chat',
+            llm_base_url: 'https://api.deepseek.com/v1',
+            llm_api_key: 'test-key',
+            config_id: 'config-1',
+        });
         
         mockSupabase = {
             from: jest.fn().mockReturnThis(),
@@ -234,5 +246,14 @@ describe('/api/admin/enrichment/jobs route', () => {
             skuCount: 1,
             attemptCount: 1,
         });
+        expect(mockSupabase.insert).toHaveBeenCalledWith(
+            expect.objectContaining({
+                config_id: 'config-1',
+                model: 'deepseek-chat',
+            }),
+        );
+        expect(mockSupabase.insert).not.toHaveBeenCalledWith(
+            expect.objectContaining({ ai_credentials: expect.anything() }),
+        );
     });
 });

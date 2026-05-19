@@ -17,7 +17,7 @@ export default async function AdminCategoriesPage() {
       title="Categories"
       description="Organize your products into a hierarchical category structure."
       icon={<FolderTree className="h-5 w-5" />}
-      compactHeader
+      eyebrow="Queue view"
     >
       <AdminCategoriesClient
         initialCategories={(categories || []) as Category[]}

@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Package,
   Plus,
   Database,
   Layers,
@@ -12,9 +11,7 @@ import {
 } from "lucide-react";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 import type { Brand } from "@/lib/types";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PipelineFilters } from "./PipelineFilters";
@@ -116,11 +113,11 @@ export function ImportedResultsView({
 
   // 5. Render logic
   return (
-    <div data-testid="product-table" className="flex flex-1 min-h-0 border border-border rounded-none overflow-hidden bg-card max-w-full">
+    <div data-testid="product-table" className="flex max-w-full flex-1 min-h-0 flex-col overflow-hidden rounded-[var(--surface-admin-radius)] border border-border bg-card xl:flex-row">
       {/* Left Column: Product List */}
-      <div className="w-96 min-w-[384px] max-w-[384px] border-r border-border flex flex-col shrink-0 bg-background overflow-x-hidden">
+      <div className="flex min-h-[260px] w-full shrink-0 flex-col overflow-x-hidden border-b border-border bg-background xl:w-96 xl:min-w-[384px] xl:max-w-[384px] xl:border-b-0 xl:border-r">
         <div className="flex flex-col border-b border-border bg-card">
-          <div className="flex items-center gap-2 p-2">
+          <div className="flex flex-col gap-2 p-2 sm:flex-row sm:items-center">
             <PipelineSearchField
               value={search || ""}
               onChange={(value) => onSearchChange?.(value)}
@@ -133,13 +130,13 @@ export function ImportedResultsView({
                 onFilterChange={onFilterChange}
                 availableSources={availableSources}
                 showSourceFilter={false}
-                className="h-9 w-9 shrink-0 p-0 border border-border"
+                className="h-9 w-full shrink-0 justify-center border border-border p-0 sm:w-9"
               />
             ) : null}
           </div>
 
           {(onImportCsv || onManualAdd) && (
-            <div className="flex items-center gap-2 px-2 pb-2">
+            <div className="flex flex-col gap-2 px-2 pb-2 sm:flex-row sm:items-center">
               {onImportCsv && (
                 <Button
                   variant="outline"
@@ -186,14 +183,14 @@ export function ImportedResultsView({
       </div>
 
       {/* Right Column: Master-Detail Area */}
-      <div className="flex-1 flex flex-row bg-card overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden bg-card xl:flex-row">
         {activeCohortId && cohortProducts.length > 0 ? (
           <>
             {/* Center: Product List/Preview (Master) */}
-            <div className="flex-1 flex flex-col overflow-hidden border-r border-border">
+            <div className="flex min-h-[320px] flex-1 flex-col overflow-hidden border-b border-border xl:border-b-0 xl:border-r">
               {/* Header */}
               <div className="bg-card border-b border-border flex-shrink-0 z-10">
-                <div className="p-4 sm:p-6 flex justify-between items-start">
+                <div className="flex flex-col gap-3 p-4 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
                   <div className="flex flex-col gap-2 min-w-0">
                     <div className="flex items-center gap-2">
                       <Layers className="h-5 w-5 text-primary shrink-0" />
@@ -227,7 +224,7 @@ export function ImportedResultsView({
                         )}
                       </div>
                       {activeCohortBrand && (
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex flex-wrap items-center gap-2 shrink-0">
                           <Badge variant="outline" className={cn(
                             "font-semibold rounded-none",
                             hasConfiguredDomains
@@ -264,7 +261,7 @@ export function ImportedResultsView({
               </div>
 
               {/* Details Content (Product Preview Grid) */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-background">
+              <div className="flex-1 overflow-y-auto bg-background p-4 sm:p-6">
                 <div className="max-w-4xl mx-auto space-y-4">
                   <h3 className="text-xs font-semibold text-foreground border-b border-border pb-2">Products in Cohort</h3>
 
@@ -305,10 +302,10 @@ export function ImportedResultsView({
             />
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
+          <div className="flex flex-1 flex-col items-center justify-center p-6 text-center text-muted-foreground">
             <Layers className="h-12 w-12 mb-2 opacity-20" />
             <h3 className="text-lg font-semibold text-foreground">Select a cohort</h3>
-            <p className="text-[10px] font-semibold mt-1">Choose a cohort from the list to view its contents.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Choose a cohort from the list to view its contents.</p>
           </div>
         )}
       </div>

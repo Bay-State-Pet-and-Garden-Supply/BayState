@@ -1,379 +1,229 @@
 "use client";
 
-import Link from "next/link";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { useCallback, useSyncExternalStore } from "react";
-import {
- Home,
- Settings,
- LogOut,
- Network,
- Activity,
- BarChart3,
- LayoutGrid,
- ChevronLeft,
- ChevronRight,
- User,
- ShieldCheck,
- Package,
- DollarSign,
- GitBranch,
- ShoppingBag,
- ClipboardList,
- RefreshCw,
- Rocket,
- HeartPulse,
- Database,
- } from "lucide-react";
+import Image from 'next/image';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react';
+import { useCallback, useSyncExternalStore } from 'react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { adminNavSections, isAdminNavItemActive } from './navigation';
 
- import { cn } from "@/lib/utils";
-import {
- Tooltip,
- TooltipContent,
- TooltipProvider,
- TooltipTrigger,
-} from "@/components/ui/tooltip";
-
-interface NavItem {
- href: string;
- label: string;
- icon: React.ElementType;
- adminOnly?: boolean;
-}
-
-interface NavSection {
- title?: string;
- items: NavItem[];
- adminOnly?: boolean;
-}
-
-const navSections: NavSection[] = [
-  {
-    items: [
-      {
-        href: "/admin",
-        label: "Dashboard",
-        icon: Home,
-      },
-      {
-        href: "/admin/analytics",
-        label: "Analytics",
-        icon: BarChart3,
-      },
-      {
-        href: "/admin/scrapers/network",
-        label: "Network",
-        icon: Network,
-      },
-    ],
-  },
-  {
-    title: "Catalog",
-    items: [
-      {
-        href: "/admin/products",
-        label: "Products",
-        icon: Package,
-      },
-    ],
-  },
-  {
-    title: "Pipeline",
-    adminOnly: true,
-    items: [
-      {
-        href: "/admin/pipeline",
-        label: "Pipeline",
-        icon: LayoutGrid,
-        adminOnly: true,
-      },
-    ],
-  },
-  {
-    title: "System",
-    adminOnly: true,
-    items: [
-      {
-        href: "/admin/settings",
-        label: "Settings",
-        icon: Settings,
-        adminOnly: true,
-      },
-    ],
-  },
-];
-
-const SIDEBAR_STORAGE_KEY = "adminSidebarCollapsed";
-const SIDEBAR_STORAGE_EVENT = "admin-sidebar-storage";
+const SIDEBAR_STORAGE_KEY = 'adminSidebarCollapsed';
+const SIDEBAR_STORAGE_EVENT = 'admin-sidebar-storage';
 
 function getCollapsedSnapshot(): boolean {
- if (typeof window === "undefined") return true;
- try {
- const stored = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
- return stored === null ? true : stored === "true";
- } catch {
- return true;
- }
+  if (typeof window === 'undefined') return false;
+
+  try {
+    const stored = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
+    return stored === 'true';
+  } catch {
+    return false;
+  }
 }
 
 function subscribeToCollapsedState(onStoreChange: () => void): () => void {
- if (typeof window === "undefined") return () => {};
- const handleChange = (event: Event) => {
- if (
- event instanceof StorageEvent &&
- event.key !== null &&
- event.key !== SIDEBAR_STORAGE_KEY
- ) {
- return;
- }
- onStoreChange();
- };
- window.addEventListener("storage", handleChange);
- window.addEventListener(SIDEBAR_STORAGE_EVENT, handleChange);
- return () => {
- window.removeEventListener("storage", handleChange);
- window.removeEventListener(SIDEBAR_STORAGE_EVENT, handleChange);
- };
+  if (typeof window === 'undefined') return () => {};
+
+  const handleChange = (event: Event) => {
+    if (
+      event instanceof StorageEvent &&
+      event.key !== null &&
+      event.key !== SIDEBAR_STORAGE_KEY
+    ) {
+      return;
+    }
+
+    onStoreChange();
+  };
+
+  window.addEventListener('storage', handleChange);
+  window.addEventListener(SIDEBAR_STORAGE_EVENT, handleChange);
+
+  return () => {
+    window.removeEventListener('storage', handleChange);
+    window.removeEventListener(SIDEBAR_STORAGE_EVENT, handleChange);
+  };
 }
 
 function setCollapsedPreference(value: boolean) {
- if (typeof window === "undefined") return;
- try {
- window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(value));
- window.dispatchEvent(new Event(SIDEBAR_STORAGE_EVENT));
- } catch {
- /* ignore */
- }
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(value));
+    window.dispatchEvent(new Event(SIDEBAR_STORAGE_EVENT));
+  } catch {
+    // ignore storage failures
+  }
 }
 
 interface AdminSidebarProps {
- userRole?: "admin" | "staff" | "customer";
+  userRole?: 'admin' | 'staff' | 'customer';
+  forceExpanded?: boolean;
 }
 
-export function AdminSidebar({ userRole = "staff" }: AdminSidebarProps) {
- const pathname = usePathname();
- const isAdmin = userRole === "admin";
- const collapsed = useSyncExternalStore(
- subscribeToCollapsedState,
- getCollapsedSnapshot,
- () => true,
- );
+export function AdminSidebar({ userRole = 'staff', forceExpanded = false }: AdminSidebarProps) {
+  const pathname = usePathname();
+  const storedCollapsed = useSyncExternalStore(
+    subscribeToCollapsedState,
+    getCollapsedSnapshot,
+    () => false,
+  );
+  const collapsed = forceExpanded ? false : storedCollapsed;
 
- const visibleSections = navSections
- .filter((section) => !section.adminOnly || isAdmin)
- .map((section) => ({
- ...section,
- items: section.items.filter((item) => !item.adminOnly || isAdmin),
- }))
- .filter((section) => section.items.length > 0);
+  const toggleCollapsed = useCallback(() => {
+    setCollapsedPreference(!collapsed);
+  }, [collapsed]);
 
- const toggleCollapsed = useCallback(() => {
- setCollapsedPreference(!collapsed);
- }, [collapsed]);
+  return (
+    <aside
+      className={cn(
+        'flex h-full flex-col border-r border-white/12 bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-out',
+        collapsed ? 'w-[92px]' : 'w-[280px]',
+      )}
+    >
+      <div className="border-b border-white/10 px-4 py-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className={cn('flex min-w-0 items-center gap-3', collapsed && 'justify-center')}>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/12 bg-white/8">
+              <Image
+                src="/icon.png"
+                alt="Bay State app icon"
+                width={24}
+                height={24}
+                className="h-6 w-6 object-contain"
+              />
+            </div>
 
- return (
- <aside
- className={cn(
- "relative z-50 flex h-full flex-col border-r border-white/12 bg-brand-forest-green text-white transition-all duration-300 ease-in-out",
- collapsed ? "w-[80px]" : "w-[240px]",
- )}
- >
- {/* Header */}
- <div className="mb-2 flex h-20 items-center border-b border-white/10 bg-brand-forest-green px-4">
- <div
- className={cn(
- "flex items-center gap-2.5 transition-opacity duration-300",
- collapsed
- ? "opacity-0 invisible w-0"
- : "opacity-100 visible w-full",
- )}
- >
- <div className="shrink-0 rounded-xl bg-card/12 p-2 ring-1 ring-white/15 backdrop-blur-sm">
- <Image
- src="/icon.png"
- alt="Bay State app icon"
- width={20}
- height={20}
- className="h-5 w-5 object-contain"
- />
- </div>
- <div className="min-w-0">
- <h1 className="truncate text-sm font-semibold leading-tight text-white">
- Bay State
- </h1>
- <p className="truncate text-[11px] font-medium text-white/72">
- Admin Control
- </p>
- </div>
- </div>
+            {!collapsed ? (
+              <div className="min-w-0 space-y-1">
+                <h1 className="truncate text-sm font-semibold text-white">Bay State Admin</h1>
+                <p className="truncate text-xs text-white/70">Calm tools for catalog, scraping, and storefront work.</p>
+              </div>
+            ) : null}
+          </div>
 
- {collapsed && (
- <div className="absolute inset-x-0 top-0 flex justify-center py-6">
- <Image
- src="/icon.png"
- alt="Bay State app icon"
- width={32}
- height={32}
- className="h-8 w-8 object-contain"
- />
- </div>
- )}
+          {!collapsed ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={toggleCollapsed}
+              className="border-white/10 bg-white/6 text-white hover:bg-white/10 hover:text-white"
+              aria-label="Collapse navigation"
+              disabled={forceExpanded}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          ) : null}
+        </div>
 
- <button
- type="button"
- onClick={toggleCollapsed}
- className={cn(
- "absolute -right-4 top-1/2 z-50 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-card text-brand-forest-green shadow-[var(--shadow-md)] transition-colors duration-150 hover:bg-card/90 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-forest-green",
- collapsed && "right-[-16px]",
- )}
- aria-label={collapsed ? "Expand" : "Collapse"}
- >
- {collapsed ? (
- <ChevronRight className="h-4 w-4" />
- ) : (
- <ChevronLeft className="h-4 w-4" />
- )}
- </button>
- </div>
+        {collapsed ? (
+          <div className="mt-3 flex justify-center">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={toggleCollapsed}
+              className="border-white/10 bg-white/6 text-white hover:bg-white/10 hover:text-white"
+              aria-label="Expand navigation"
+              disabled={forceExpanded}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : null}
+      </div>
 
- {/* Navigation */}
- <nav
- className={cn(
- "flex-1 space-y-6 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent py-4",
- collapsed ? "px-4" : "px-4",
- )}
- >
- <TooltipProvider delayDuration={0}>
- {visibleSections.map((section) => (
- <div
- key={section.title ?? section.items[0]?.href ?? "section"}
- className="space-y-2"
- >
- {section.title && !collapsed && (
- <h2 className="truncate px-3 py-1 text-[11px] font-medium tracking-[0.08em] text-white/55">
- {section.title}
- </h2>
- )}
- {section.title && collapsed && (
- <div className="h-0.5 bg-card/10 mx-2 my-4" />
- )}
+      <nav className={cn('flex-1 space-y-6 overflow-y-auto py-5', collapsed ? 'px-3' : 'px-4')}>
+        <TooltipProvider delayDuration={0}>
+          {adminNavSections.map((section) => (
+            <div key={section.title} className="space-y-2">
+              {!collapsed ? (
+                <h2 className="px-3 text-[11px] font-medium text-white/58">{section.title}</h2>
+              ) : (
+                <div className="mx-2 h-px bg-white/10" />
+              )}
 
- <div className="space-y-1">
- {section.items.map((item) => {
- const Icon = item.icon;
- const isActive =
- pathname === item.href ||
- (item.href !== "/admin" && pathname.startsWith(item.href));
+              <div className="space-y-1">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const active = isAdminNavItemActive(pathname, item.href);
 
- const content = (
- <Link
- href={item.href}
- aria-label={item.label}
- className={cn(
- "group relative flex items-center rounded-xl px-3 py-2.5 text-sm transition-all duration-200",
- collapsed ? "justify-center" : "gap-2.5",
- isActive
- ? "bg-card text-brand-forest-green shadow-[var(--shadow-sm)]"
- : "text-white/78 hover:bg-card/12 hover:text-white",
- )}
- >
- <Icon
- className={cn(
- "h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110",
- isActive
- ? "text-brand-forest-green"
- : "text-white/60 group-hover:text-white",
- )}
- />
- {!collapsed && (
- <span className="truncate font-medium">
- {item.label}
- </span>
- )}
- </Link>
- );
+                  const content = (
+                    <Link
+                      href={item.href}
+                      aria-label={item.label}
+                      className={cn(
+                        'group flex items-start gap-3 rounded-2xl px-3 py-2.5 transition-colors',
+                        collapsed && 'justify-center px-0',
+                        active
+                          ? 'bg-white/12 text-white'
+                          : 'text-white/76 hover:bg-white/7 hover:text-white',
+                      )}
+                    >
+                      <Icon
+                        className={cn(
+                          'mt-0.5 h-4 w-4 shrink-0 transition-transform duration-150',
+                          active ? 'text-white' : 'text-white/68 group-hover:text-white',
+                        )}
+                      />
 
- if (collapsed) {
- return (
- <Tooltip key={item.href}>
- <TooltipTrigger asChild>{content}</TooltipTrigger>
- <TooltipContent
- side="right"
- sideOffset={20}
- className="border border-white/20 bg-card px-4 py-2 text-xs font-medium text-brand-forest-green shadow-[var(--shadow-md)]"
- >
- {item.label}
- </TooltipContent>
- </Tooltip>
- );
- }
+                      {!collapsed ? (
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium">{item.label}</div>
+                          {item.description ? (
+                            <div className="truncate text-xs text-white/60">{item.description}</div>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </Link>
+                  );
 
- return <div key={item.href}>{content}</div>;
- })}
- </div>
- </div>
- ))}
- </TooltipProvider>
- </nav>
+                  if (!collapsed) {
+                    return <div key={item.href}>{content}</div>;
+                  }
 
- {/* Footer / User Profile */}
- <div className="mt-auto border-t border-white/10 bg-black/8 p-3 backdrop-blur-sm">
- <div
- className={cn(
- "flex items-center",
- collapsed ? "justify-center" : "gap-2.5 px-1",
- )}
- >
- <div className="relative shrink-0">
- <div className="flex h-10 w-10 items-center justify-center rounded-full bg-card text-brand-forest-green ring-1 ring-white/10">
- <User className="h-5 w-5 text-brand-forest-green" />
- </div>
- </div>
+                  return (
+                    <Tooltip key={item.href}>
+                      <TooltipTrigger asChild>{content}</TooltipTrigger>
+                      <TooltipContent side="right" sideOffset={12} className="border border-border bg-card px-3 py-2 text-xs text-foreground shadow-[var(--shadow-md)]">
+                        {item.label}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </TooltipProvider>
+      </nav>
 
- {!collapsed && (
- <div className="flex-1 min-w-0">
- <p className="truncate text-xs font-semibold leading-tight text-white">
- Staff Account
- </p>
- <div className="flex items-center gap-1 mt-0.5">
- <ShieldCheck
- className={cn(
- "h-2.5 w-2.5",
- isAdmin ? "text-brand-gold" : "text-white/60",
- )}
- />
- <span
- className={cn(
- "truncate text-[11px] font-medium",
- isAdmin ? "text-brand-gold" : "text-white/60",
- )}
- >
- {userRole}
- </span>
- </div>
- </div>
- )}
- </div>
+      <div className="border-t border-white/10 px-4 py-4">
+        <div className={cn('flex items-center gap-3 rounded-2xl bg-white/6 px-3 py-3', collapsed && 'justify-center px-0')}>
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-sidebar">
+            <ShieldCheck className="h-4 w-4" />
+          </div>
 
- <div
- className={cn(
- "mt-3 flex flex-col gap-1",
- collapsed ? "items-center" : "",
- )}
- >
- <Link
- href="/"
- className={cn(
- "flex items-center rounded-xl px-2.5 py-2 text-[11px] font-medium text-white/70 transition-all hover:bg-card/10 hover:text-white",
- collapsed ? "justify-center" : "gap-2.5",
- )}
- >
- <LogOut className="h-4 w-4 rotate-180" />
- {!collapsed && <span className="truncate">Exit Portal</span>}
- </Link>
- </div>
- </div>
- </aside>
- );
+          {!collapsed ? (
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-white">All staff access</p>
+              <p className="truncate text-xs text-white/64">Signed in as {userRole}</p>
+            </div>
+          ) : null}
+        </div>
+
+        {!collapsed ? (
+          <Link
+            href="/"
+            className="mt-3 inline-flex text-sm font-medium text-white/70 transition-colors hover:text-white"
+          >
+            Return to storefront
+          </Link>
+        ) : null}
+      </div>
+    </aside>
+  );
 }

@@ -31,6 +31,19 @@ interface AICredentialStatus {
   updated_at: string | null;
 }
 
+export interface AIProviderConfig {
+  id: string;
+  name: string;
+  provider_type: LLMProvider;
+  base_url: string | null;
+  default_model: string;
+  encrypted_key: string;
+  iv: string;
+  auth_tag: string;
+  is_active: boolean;
+  updated_at: string | null;
+}
+
 export interface AIScrapingRuntimeCredentials {
   llm_provider: LLMProvider;
   llm_model: string;
@@ -40,6 +53,7 @@ export interface AIScrapingRuntimeCredentials {
   openai_api_key?: string;
   serper_api_key?: string;
   serpapi_api_key?: string;
+  config_id?: string;
 }
 
 interface AIConsolidationRuntimeConfig {
@@ -768,18 +782,114 @@ export async function getAIScrapingProviderSecret(provider: AIProvider): Promise
   );
 }
 
+function toAIProviderConfig(data: Record<string, unknown> | null): AIProviderConfig | null {
+  if (!data) return null;
+
+  return {
+    id: data.id as string,
+    name: data.name as string,
+    provider_type: data.provider_type as LLMProvider,
+    base_url: (data.base_url as string | null) ?? null,
+    default_model: data.default_model as string,
+    encrypted_key: data.encrypted_key as string,
+    iv: data.iv as string,
+    auth_tag: data.auth_tag as string,
+    is_active: Boolean(data.is_active),
+    updated_at: (data.updated_at as string | null) ?? null,
+  };
+}
+
+export async function getActiveAIProviderConfig(): Promise<AIProviderConfig | null> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from('ai_provider_configs')
+    .select('*')
+    .eq('is_active', true)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[Scraper API] Failed to fetch active AI provider config:', error);
+    return null;
+  }
+
+  return toAIProviderConfig(data);
+}
+
+export async function getAIProviderConfigById(configId: string): Promise<AIProviderConfig | null> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from('ai_provider_configs')
+    .select('*')
+    .eq('id', configId)
+    .maybeSingle();
+
+  if (error) {
+    console.error(`[Scraper API] Failed to fetch AI provider config ${configId}:`, error);
+    return null;
+  }
+
+  return toAIProviderConfig(data);
+}
+
+function buildRuntimeCredentialsFromProviderConfig(
+  config: AIProviderConfig,
+  legacySearchKey: string | null,
+): AIScrapingRuntimeCredentials {
+  const decryptedKey = decryptStoredProviderSecret(config.provider_type as AIProvider, {
+    encryptedValue: config.encrypted_key,
+    iv: config.iv,
+    authTag: config.auth_tag,
+    last4: null,
+    updatedAt: config.updated_at,
+  });
+
+  const credentials: AIScrapingRuntimeCredentials = {
+    llm_provider: config.provider_type,
+    llm_model: config.default_model,
+    llm_base_url:
+      config.provider_type === 'deepseek'
+        ? getDeepSeekOpenAICompatibleBaseURL(config.base_url)
+        : config.base_url || undefined,
+    llm_api_key: decryptedKey || undefined,
+    config_id: config.id,
+  };
+
+  if (config.provider_type === 'deepseek' && decryptedKey) {
+    credentials.deepseek_api_key = decryptedKey;
+  }
+  if (config.provider_type === 'openai' && decryptedKey) {
+    credentials.openai_api_key = decryptedKey;
+  }
+  if (legacySearchKey) {
+    credentials.serper_api_key = legacySearchKey;
+    credentials.serpapi_api_key = legacySearchKey;
+  }
+
+  return credentials;
+}
+
 export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRuntimeCredentials> {
-  const defaults = await getAIScrapingDefaults();
-  const [selectedKey, deepseekKey, legacySearchKey] = await Promise.all([
-    getAIScrapingProviderSecret(defaults.llm_provider as AIProvider),
+  const [defaults, activeConfig, deepseekKey, legacySearchKey] = await Promise.all([
+    getAIScrapingDefaults(),
+    getActiveAIProviderConfig(),
     getAIScrapingProviderSecret('deepseek'),
     getAIScrapingProviderSecret('serpapi'),
   ]);
 
+  // If we have an active config, it overrides the legacy defaults for provider/model/url/key.
+  if (activeConfig) {
+    return buildRuntimeCredentialsFromProviderConfig(activeConfig, legacySearchKey);
+  }
+
   const resolvedDeepSeek = resolveDeepSeekApiKey(deepseekKey);
-  const llmApiKey = defaults.llm_provider === 'openai_compatible'
-    ? selectedKey
-    : resolvedDeepSeek;
+  const selectedKey = defaults.llm_provider === 'deepseek'
+    ? deepseekKey
+    : await getAIScrapingProviderSecret(defaults.llm_provider as AIProvider);
+  const llmApiKey = defaults.llm_provider === 'deepseek'
+    ? resolvedDeepSeek
+    : selectedKey;
 
   const credentials: AIScrapingRuntimeCredentials = {
     llm_provider: defaults.llm_provider,
@@ -796,6 +906,9 @@ export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRunti
   if (defaults.llm_provider === 'deepseek' && resolvedDeepSeek) {
     credentials.deepseek_api_key = resolvedDeepSeek;
   }
+  if (defaults.llm_provider === 'openai' && llmApiKey) {
+    credentials.openai_api_key = llmApiKey;
+  }
   if (legacySearchKey) {
     credentials.serper_api_key = legacySearchKey;
     credentials.serpapi_api_key = legacySearchKey;
@@ -804,17 +917,61 @@ export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRunti
   return credentials;
 }
 
-export async function getAIConsolidationRuntimeConfig(): Promise<AIConsolidationRuntimeConfig> {
-  const defaults = await getAIConsolidationDefaults();
+export async function getAIScrapingRuntimeCredentialsForConfig(
+  configId: string | null | undefined,
+): Promise<AIScrapingRuntimeCredentials> {
+  if (!configId) {
+    return getAIScrapingRuntimeCredentials();
+  }
 
-  const [selectedKey, deepseekKey, openaiKey] = await Promise.all([
-    getAIScrapingProviderSecret(defaults.llm_provider as AIProvider),
+  const [config, legacySearchKey] = await Promise.all([
+    getAIProviderConfigById(configId),
+    getAIScrapingProviderSecret('serpapi'),
+  ]);
+
+  if (!config) {
+    console.warn(`[Scraper API] AI provider config ${configId} was not found; falling back to active/default credentials.`);
+    return getAIScrapingRuntimeCredentials();
+  }
+
+  return buildRuntimeCredentialsFromProviderConfig(config, legacySearchKey);
+}
+
+export async function getAIConsolidationRuntimeConfig(): Promise<AIConsolidationRuntimeConfig> {
+  const [defaults, activeConfig, deepseekKey, openaiKey] = await Promise.all([
+    getAIConsolidationDefaults(),
+    getActiveAIProviderConfig(),
     getAIScrapingProviderSecret('deepseek'),
     getAIScrapingProviderSecret('openai'),
   ]);
 
   const resolvedDeepSeek = resolveDeepSeekApiKey(deepseekKey);
   const resolvedOpenAI = resolveOpenAIApiKey(openaiKey);
+
+  if (activeConfig) {
+    const decryptedKey = decryptStoredProviderSecret(activeConfig.provider_type as AIProvider, {
+      encryptedValue: activeConfig.encrypted_key,
+      iv: activeConfig.iv,
+      authTag: activeConfig.auth_tag,
+      last4: null,
+      updatedAt: activeConfig.updated_at
+    });
+
+    return {
+      llm_provider: activeConfig.provider_type,
+      llm_model: activeConfig.default_model,
+      llm_base_url: activeConfig.provider_type === 'deepseek'
+        ? getDeepSeekOpenAICompatibleBaseURL(activeConfig.base_url)
+        : activeConfig.base_url,
+      llm_api_key: decryptedKey,
+      ...(activeConfig.provider_type === 'deepseek' && decryptedKey ? { deepseek_api_key: decryptedKey } : (resolvedDeepSeek ? { deepseek_api_key: resolvedDeepSeek } : {})),
+      ...(resolvedOpenAI ? { openai_api_key: resolvedOpenAI } : {}),
+      confidence_threshold: defaults.confidence_threshold,
+      llm_supports_batch_api: defaults.llm_supports_batch_api,
+    };
+  }
+
+  const selectedKey = await getAIScrapingProviderSecret(defaults.llm_provider as AIProvider);
   const llmApiKey = defaults.llm_provider === 'lmstudio' || defaults.llm_provider === 'openai_compatible'
     ? selectedKey
     : resolvedDeepSeek;

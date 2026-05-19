@@ -42,7 +42,7 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
 
     def build_search_url(self, sku: str) -> str:
         """Build the Phillips Salesforce Commerce Cloud quick search URL."""
-        return self.search_url_template.format(sku=quote(sku))
+        return self.search_url_template.format(sku=quote(str(sku), safe=""))
 
     def extract_from_html(
         self, html: str, sku: str, url: str
@@ -98,130 +98,162 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
 
         soup = BeautifulSoup(html, "html.parser")
 
-        # --- Name (check FIRST before no-results text, since Salesforce CC
-        #     renders "no results found" in initial HTML that gets replaced via XHR) ---
-        name_elem = soup.select_one("#plp-desktop-row .cc_product_name strong")
-        if not name_elem:
-            name_elem = soup.select_one("h1")
-        if not name_elem:
-            name_elem = soup.select_one("[data-testid='product-name']")
-        
-        # --- Check for no results (only if no product name was found) ---
-        empty_state = soup.select_one(".plp-empty-state-message-container h3")
-        if empty_state and not name_elem:
-            text = empty_state.get_text(strip=True).lower()
-            if "no results" in text or "no products" in text or "no items" in text:
-                result.success = False
-                result.failure_code = FailureCode.NO_MATCH
-                result.failure_message = f"No match found for SKU {sku}"
-                return result
+        # Salesforce search pages can include unrelated scanner/test rows before the
+        # actual quick-search match. Build per-card candidates and rank them instead
+        # of taking the first global .product-item-number/.product-upc nodes.
+        expected_name = self._get_product_name() or ""
+        expected_brand = self._get_brand() or ""
 
-        # Also check common text patterns (only if no product name was found)
-        if not name_elem:
-            page_text = soup.get_text(" ", strip=True).lower()
-            if any(
-                pattern in page_text
-                for pattern in [
-                    "no results found",
-                    "your search returned no results",
-                    "0 items",
-                ]
-            ):
-                result.success = False
-                result.failure_code = FailureCode.NO_MATCH
-                result.failure_message = f"No match found for SKU {sku}"
-                return result
+        def _normalize_text(value: str | None) -> str:
+            return re.sub(r"[^a-z0-9]+", " ", (value or "").lower()).strip()
 
-        if name_elem:
-            product["name"] = name_elem.get_text(strip=True)
-            matched.append("name")
+        def _token_overlap(candidate: str | None, expected: str | None) -> float:
+            candidate_tokens = {token for token in _normalize_text(candidate).split() if len(token) > 1}
+            expected_tokens = {token for token in _normalize_text(expected).split() if len(token) > 1}
+            if not candidate_tokens or not expected_tokens:
+                return 0.0
+            return len(candidate_tokens & expected_tokens) / max(len(expected_tokens), 1)
 
-        # --- Brand ---
-        brand_elem = soup.select_one(".product-brand .branded")
-        if brand_elem:
-            btext = brand_elem.get_text(strip=True)
-            if btext:
-                product["brand"] = btext
-                matched.append("brand")
+        def _extract_text(container, selector: str) -> str | None:
+            node = container.select_one(selector)
+            if not node:
+                return None
+            text = node.get_text(" ", strip=True)
+            return text or None
 
-        # --- UPC ---
-        upc_elem = soup.select_one(".product-upc .cc_value")
-        if upc_elem:
-            uptext = upc_elem.get_text(strip=True)
-            if uptext:
-                product["upc"] = uptext
-                matched.append("upc")
-
-        # --- Item Number ---
-        item_elem = soup.select_one(".product-item-number .cc_value")
-        if item_elem:
-            itext = item_elem.get_text(strip=True)
-            if itext:
-                product["item_number"] = itext
-                matched.append("item_number")
-
-        # --- Image URLs ---
-        images = []
-        plp_row = soup.select_one("#plp-desktop-row")
-        if plp_row:
-            for img in plp_row.select(".cc_product_image img"):
+        def _extract_images(container) -> list[str]:
+            urls: list[str] = []
+            for img in container.select(".cc_product_image img, img[src*='product']"):
                 src = img.get("src") or img.get("data-src") or ""
-                if src:
-                    if src.startswith("//"):
-                        src = "https:" + src
-                    elif src.startswith("/"):
-                        src = urljoin(self.base_url, src)
-                    images.append(src)
-        # Fallback: any product image
-        if not images:
-            for img in soup.select("img[src*='product']"):
-                src = img.get("src") or ""
-                if src:
-                    if src.startswith("//"):
-                        src = "https:" + src
-                    elif src.startswith("/"):
-                        src = urljoin(self.base_url, src)
-                    images.append(src)
-        if images:
-            product["image_urls"] = images
-            matched.append("image_urls")
+                if not src:
+                    continue
+                if src.startswith("//"):
+                    src = "https:" + src
+                elif src.startswith("/"):
+                    src = urljoin(self.base_url, src)
+                urls.append(src)
+            return urls
 
-        # --- Weight ---
-        weight_elem = soup.select_one(
-            ".product-weight .cc_value, .product-ship-weight .cc_value"
-        )
-        if weight_elem:
-            wtext = weight_elem.get_text(strip=True)
-            if wtext:
-                product["weight"] = wtext
-                matched.append("weight")
+        candidate_containers = []
+        seen_container_ids: set[int] = set()
+        for selector in (
+            "#plp-desktop-row",
+            ".cc_row_product_info",
+            ".scanner-results-product-container",
+            ".scanner-results-product-container-mobile",
+        ):
+            for container in soup.select(selector):
+                container_id = id(container)
+                if container_id in seen_container_ids:
+                    continue
+                seen_container_ids.add(container_id)
+                candidate_containers.append(container)
 
-        # --- Description ---
-        desc_elem = soup.select_one(
-            ".product-description, .cc_product_description"
-        )
-        if desc_elem:
-            dtext = desc_elem.get_text(strip=True)
-            if dtext:
-                product["description"] = dtext
-                matched.append("description")
+        candidates: list[dict] = []
+        for container in candidate_containers:
+            candidate_name = _extract_text(container, ".cc_product_name strong") or _extract_text(container, ".cc_product_name")
+            candidate_brand = _extract_text(container, ".product-brand .branded")
+            candidate_upc = _extract_text(container, ".product-upc .cc_value")
+            candidate_item = _extract_text(container, ".product-item-number .cc_value")
+            candidate_weight = _extract_text(container, ".product-weight .cc_value, .product-ship-weight .cc_value")
+            candidate_desc = _extract_text(container, ".product-description, .cc_product_description")
+            candidate_features = [li.get_text(" ", strip=True) for li in container.select(".product-features li, .cc_product_features li") if li.get_text(" ", strip=True)]
+            candidate_images = _extract_images(container)
 
-        # --- Features ---
-        features = []
-        feats = soup.select(".product-features li, .cc_product_features li")
-        for li in feats:
-            text = li.get_text(strip=True)
-            if text:
-                features.append(text)
-        if features:
-            product["features"] = features
-            matched.append("features")
+            if not any([candidate_name, candidate_brand, candidate_upc, candidate_item]):
+                continue
 
-        if not product.get("name"):
-            # Maybe we're searching but Phillips returned the search page
+            identifier_match, matched_identifiers = self._match_identifier_candidates(
+                sku,
+                candidate_item,
+                candidate_upc,
+            )
+            brand_match = bool(expected_brand) and _normalize_text(expected_brand) in _normalize_text(candidate_brand)
+            name_overlap = _token_overlap(candidate_name, expected_name)
+            score = (100 if identifier_match else 0) + (20 if brand_match else 0) + int(name_overlap * 50)
+
+            candidates.append({
+                "name": candidate_name,
+                "brand": candidate_brand,
+                "upc": candidate_upc,
+                "item_number": candidate_item,
+                "weight": candidate_weight,
+                "description": candidate_desc,
+                "features": candidate_features,
+                "image_urls": candidate_images,
+                "identifier_match": identifier_match,
+                "matched_identifiers": matched_identifiers,
+                "brand_match": brand_match,
+                "name_overlap": name_overlap,
+                "score": score,
+            })
+
+        if not candidates:
+            empty_state = soup.select_one(".plp-empty-state-message-container h3")
+            if empty_state:
+                text = empty_state.get_text(strip=True).lower()
+                if "no results" in text or "no products" in text or "no items" in text:
+                    result.success = False
+                    result.failure_code = FailureCode.NO_MATCH
+                    result.failure_message = f"No match found for SKU {sku}"
+                    return result
+
             result.success = False
             result.failure_code = FailureCode.NO_MATCH
             result.failure_message = f"No product match found for SKU {sku}"
+            return result
+
+        best_candidate = max(candidates, key=lambda candidate: candidate["score"])
+
+        if best_candidate.get("name"):
+            product["name"] = best_candidate["name"]
+            matched.append("name")
+        if best_candidate.get("brand"):
+            product["brand"] = best_candidate["brand"]
+            matched.append("brand")
+        if best_candidate.get("upc"):
+            product["upc"] = best_candidate["upc"]
+            matched.append("upc")
+        if best_candidate.get("item_number"):
+            product["item_number"] = best_candidate["item_number"]
+            matched.append("item_number")
+        if best_candidate.get("image_urls"):
+            product["image_urls"] = best_candidate["image_urls"]
+            matched.append("image_urls")
+        if best_candidate.get("weight"):
+            product["weight"] = best_candidate["weight"]
+            matched.append("weight")
+        if best_candidate.get("description"):
+            product["description"] = best_candidate["description"]
+            matched.append("description")
+        if best_candidate.get("features"):
+            product["features"] = best_candidate["features"]
+            matched.append("features")
+
+        if not product.get("name"):
+            result.success = False
+            result.failure_code = FailureCode.NO_MATCH
+            result.failure_message = f"No product match found for SKU {sku}"
+            return result
+
+        heuristic_match = best_candidate["brand_match"] and best_candidate["name_overlap"] >= 0.45
+        if best_candidate["identifier_match"]:
+            matched_identifiers = best_candidate["matched_identifiers"]
+            sku_match = True
+        elif heuristic_match:
+            matched_identifiers = []
+            sku_match = False
+            warnings.append(
+                "Phillips result matched by brand/name heuristic after quick-search; exact identifier differed.",
+            )
+        else:
+            identifier_candidates = [best_candidate.get("item_number"), best_candidate.get("upc")]
+            result.success = False
+            result.failure_code = FailureCode.NO_MATCH
+            result.failure_message = (
+                f"Phillips identifier mismatch for searched SKU {sku}: "
+                f"saw {', '.join(matched for matched in identifier_candidates if matched)}"
+            )
             return result
 
         # Calculate confidence
@@ -235,6 +267,7 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
         result.product = product
         result.matched_fields = matched
         result.confidence = confidence
+        result.sku_match = sku_match
         result.warnings = warnings
         return result
 

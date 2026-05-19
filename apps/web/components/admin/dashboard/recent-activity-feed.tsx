@@ -101,10 +101,10 @@ export function RecentActivityFeed({ limit = 5 }: { limit?: number }) {
                     <Icon className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
+                    <p className="text-sm font-medium leading-5 text-foreground break-words sm:line-clamp-1">
                       {activity.title}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className="text-xs leading-5 text-muted-foreground break-words sm:line-clamp-1">
                       {activity.description}
                     </p>
                     <p className="mt-1 text-[10px] text-muted-foreground/70">
@@ -118,7 +118,7 @@ export function RecentActivityFeed({ limit = 5 }: { limit?: number }) {
 
               if (activity.href) {
                 return (
-                  <Link key={activity.id} href={activity.href}>
+                  <Link key={activity.id} href={activity.href} className="block min-w-0">
                     {content}
                   </Link>
                 );

@@ -405,120 +405,127 @@ export function AIScrapingSettingsCard() {
               </h3>
               
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="deepseek-api-key" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    DeepSeek API Key
-                  </Label>
-                  <Input
-                    id="deepseek-api-key"
-                    type="password"
-                    value={deepseekApiKey}
-                    onChange={(e) => setDeepseekApiKey(e.target.value)}
-                    placeholder="sk-..."
-                    className="h-9 rounded-none focus-visible:ring-brand-gold"
-                  />
-                  <div className="text-xs text-muted-foreground">
-                    {statuses.deepseek.configured
-                      ? `Configured (ending in ${statuses.deepseek.last4 ?? "****"})`
-                      : "Required for AI scraping and consolidation"}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="openai-api-key" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    OpenAI API Key
-                  </Label>
-                  <Input
-                    id="openai-api-key"
-                    type="password"
-                    value={openaiApiKey}
-                    onChange={(e) => setOpenaiApiKey(e.target.value)}
-                    placeholder="sk-proj-..."
-                    className="h-9 rounded-none focus-visible:ring-brand-gold"
-                  />
-                  <div className="text-xs text-muted-foreground">
-                    {statuses.openai.configured
-                      ? `Configured (ending in ${statuses.openai.last4 ?? "****"})`
-                      : "Optional for OpenAI direct usage"}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="gemini-api-key" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Google Gemini API Key
-                  </Label>
-                  <Input
-                    id="gemini-api-key"
-                    type="password"
-                    value={geminiApiKey}
-                    onChange={(e) => setGeminiApiKey(e.target.value)}
-                    placeholder="AIza..."
-                    className="h-9 rounded-none focus-visible:ring-brand-gold"
-                  />
-                  <div className="text-xs text-muted-foreground">
-                    {statuses.gemini.configured
-                      ? `Configured (ending in ${statuses.gemini.last4 ?? "****"})`
-                      : "Optional for Gemini model usage"}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="lmstudio-api-key" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    LM Studio API Key / Token
-                  </Label>
-                  <Input
-                    id="lmstudio-api-key"
-                    type="password"
-                    value={lmstudioApiKey}
-                    onChange={(e) => setLmstudioApiKey(e.target.value)}
-                    placeholder="Enter LM Studio token..."
-                    className="h-9 rounded-none focus-visible:ring-brand-gold"
-                  />
-                  <div className="text-xs text-muted-foreground">
-                    {statuses.lmstudio.configured
-                      ? `Configured (ending in ${statuses.lmstudio.last4 ?? "****"})`
-                      : "Optional for local developer token"}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="openai-compatible-api-key" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    OpenAI Compatible API Key
-                  </Label>
-                  <Input
-                    id="openai-compatible-api-key"
-                    type="password"
-                    value={openaiCompatibleApiKey}
-                    onChange={(e) => setOpenaiCompatibleApiKey(e.target.value)}
-                    placeholder="Enter Custom API Token..."
-                    className="h-9 rounded-none focus-visible:ring-brand-gold"
-                  />
-                  <div className="text-xs text-muted-foreground">
-                    {statuses.openai_compatible.configured
-                      ? `Configured (ending in ${statuses.openai_compatible.last4 ?? "****"})`
-                      : "Optional for custom gateway tokens"}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="serper-api-key" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Serper API Key
-                  </Label>
-                  <Input
-                    id="serper-api-key"
-                    type="password"
-                    value={serperApiKey}
-                    onChange={(e) => setSerperApiKey(e.target.value)}
-                    placeholder="Paste Serper key..."
-                    className="h-9 rounded-none focus-visible:ring-brand-gold"
-                  />
-                  <div className="text-xs text-muted-foreground">
-                    {statuses.serpapi.configured
-                      ? `Configured (ending in ${statuses.serpapi.last4 ?? "****"})`
-                      : "Required for search-backed discovery"}
-                  </div>
-                </div>
+              <div className="space-y-2">
+              <Label htmlFor="deepseek-api-key" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              DeepSeek API Key
+              </Label>
+              <Input
+              id="deepseek-api-key"
+              type="password"
+              value={deepseekApiKey}
+              onChange={(e) => setDeepseekApiKey(e.target.value)}
+              placeholder="sk-..."
+              className="h-9 rounded-none focus-visible:ring-brand-gold"
+              autoComplete="new-password"
+              />
+              <div className="text-xs text-muted-foreground">
+              {statuses.deepseek.configured
+              ? `Configured (ending in ${statuses.deepseek.last4 ?? "****"})`
+              : "Required for AI scraping and consolidation"}
               </div>
+              </div>
+
+              <div className="space-y-2">
+              <Label htmlFor="openai-api-key" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              OpenAI API Key
+              </Label>
+              <Input
+              id="openai-api-key"
+              type="password"
+              value={openaiApiKey}
+              onChange={(e) => setOpenaiApiKey(e.target.value)}
+              placeholder="sk-proj-..."
+              className="h-9 rounded-none focus-visible:ring-brand-gold"
+              autoComplete="new-password"
+              />
+              <div className="text-xs text-muted-foreground">
+              {statuses.openai.configured
+              ? `Configured (ending in ${statuses.openai.last4 ?? "****"})`
+              : "Optional for OpenAI direct usage"}
+              </div>
+              </div>
+
+              <div className="space-y-2">
+              <Label htmlFor="gemini-api-key" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Google Gemini API Key
+              </Label>
+              <Input
+              id="gemini-api-key"
+              type="password"
+              value={geminiApiKey}
+              onChange={(e) => setGeminiApiKey(e.target.value)}
+              placeholder="AIza..."
+              className="h-9 rounded-none focus-visible:ring-brand-gold"
+              autoComplete="new-password"
+              />
+              <div className="text-xs text-muted-foreground">
+              {statuses.gemini.configured
+              ? `Configured (ending in ${statuses.gemini.last4 ?? "****"})`
+              : "Optional for Gemini model usage"}
+              </div>
+              </div>
+
+              <div className="space-y-2">
+              <Label htmlFor="lmstudio-api-key" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              LM Studio API Key / Token
+              </Label>
+              <Input
+              id="lmstudio-api-key"
+              type="password"
+              value={lmstudioApiKey}
+              onChange={(e) => setLmstudioApiKey(e.target.value)}
+              placeholder="Enter LM Studio token..."
+              className="h-9 rounded-none focus-visible:ring-brand-gold"
+              autoComplete="new-password"
+              />
+              <div className="text-xs text-muted-foreground">
+              {statuses.lmstudio.configured
+              ? `Configured (ending in ${statuses.lmstudio.last4 ?? "****"})`
+              : "Optional for local developer token"}
+              </div>
+              </div>
+
+              <div className="space-y-2">
+              <Label htmlFor="openai-compatible-api-key" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              OpenAI Compatible API Key
+              </Label>
+              <Input
+              id="openai-compatible-api-key"
+              type="password"
+              value={openaiCompatibleApiKey}
+              onChange={(e) => setOpenaiCompatibleApiKey(e.target.value)}
+              placeholder="Enter Custom API Token..."
+              className="h-9 rounded-none focus-visible:ring-brand-gold"
+              autoComplete="new-password"
+              />
+              <div className="text-xs text-muted-foreground">
+              {statuses.openai_compatible.configured
+              ? `Configured (ending in ${statuses.openai_compatible.last4 ?? "****"})`
+              : "Optional for custom gateway tokens"}
+              </div>
+              </div>
+
+              <div className="space-y-2">
+              <Label htmlFor="serper-api-key" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Serper API Key
+              </Label>
+              <Input
+              id="serper-api-key"
+              type="password"
+              value={serperApiKey}
+              onChange={(e) => setSerperApiKey(e.target.value)}
+              placeholder="Paste Serper key..."
+              className="h-9 rounded-none focus-visible:ring-brand-gold"
+              autoComplete="new-password"
+              />
+              <div className="text-xs text-muted-foreground">
+              {statuses.serpapi.configured
+              ? `Configured (ending in ${statuses.serpapi.last4 ?? "****"})`
+              : "Required for search-backed discovery"}
+              </div>
+              </div>
+              </div>
+
             </div>
 
             {/* Badges and action footer */}

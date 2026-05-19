@@ -213,9 +213,9 @@ export function DataTable<T extends { id: string | number }>({
   const someSelected = selectedIds.size > 0 && selectedIds.size < paginatedData.length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Search and Page Size */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="admin-toolbar flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
         {searchable && (
           <div className="relative max-w-sm flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -230,12 +230,12 @@ export function DataTable<T extends { id: string | number }>({
         )}
         {!searchable && <div className="flex-1" />}
 
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Show</span>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Rows per page</span>
           <select
             value={pageSize}
             onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-            className="rounded-md border px-2 py-1 text-sm"
+            className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground"
           >
             {pageSizeOptions.map((size) => (
               <option key={size} value={size}>
@@ -243,19 +243,19 @@ export function DataTable<T extends { id: string | number }>({
               </option>
             ))}
           </select>
-          <span className="text-sm text-muted-foreground">entries</span>
+          <span>rows</span>
         </div>
       </div>
 
       {/* Selection info */}
       {selectable && selectedIds.size > 0 && (
-        <div className="rounded-md bg-primary/10 border border-primary/20 px-4 py-2 text-sm text-primary font-medium">
-          {selectedIds.size} row(s) selected
+        <div className="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
+          {selectedIds.size} row{selectedIds.size === 1 ? '' : 's'} selected
         </div>
       )}
 
       {/* Table */}
-      <div className="rounded-lg border">
+      <div className="overflow-hidden rounded-[1rem] border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50">

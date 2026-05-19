@@ -10,8 +10,9 @@ export default function AdminSettingsPage() {
   return (
     <AdminPageShell
       title="Settings"
-      description="Manage shared credentials and DeepSeek-powered external integrations."
+      description="Manage shared credentials, AI providers, and the system settings the rest of the admin depends on."
       icon={<Settings className="h-5 w-5" />}
+      eyebrow="System workspace"
       contentClassName="space-y-6"
     >
       <Alert className="border-emerald-200 bg-emerald-50/80 text-emerald-950 [&>svg]:text-emerald-700">

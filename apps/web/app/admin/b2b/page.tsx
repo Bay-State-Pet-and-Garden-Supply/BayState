@@ -45,9 +45,10 @@ export default async function B2BPage() {
 
   return (
     <AdminPageShell
-      title="B2B Data Feeds"
-      description="Monitor and manage distributor product data streams"
+      title="B2B data feeds"
+      description="Monitor distributor product streams and recent sync activity in one operations surface."
       icon={<Database className="h-5 w-5" />}
+      eyebrow="Queue view"
     >
 
       <div className="space-y-4">

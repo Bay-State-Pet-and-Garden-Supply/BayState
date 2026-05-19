@@ -157,21 +157,18 @@ Local bootstrap should provide at minimum:
 - 1+ pickup-only product
 - sample orders for admin testing
 
-## Baseline squash plan
-When the migration chain is finally squashed, split the baseline into:
-- `baseline_schema.sql`
-- `baseline_rls.sql`
-- `baseline_functions_views.sql`
-- `baseline_realtime.sql`
-- `baseline_seed_taxonomy.sql`
+## Baseline squash (applied)
+The 213-item migration chain has been squashed into a single cumulative baseline:
 
-Reference sources today:
-- `supabase/migrations/20260513031718_remote_schema.sql`
-- `supabase/migrations/20260513171932_remote_schema.sql`
-- `supabase/migrations/20260509131500_seed_retail_taxonomy_and_pet_types.sql`
+| File | Purpose |
+|---|---|
+| `migrations/20250101000000_baseline.sql` | Cumulative schema: tables, enums, functions, views, RLS, triggers, seed taxonomy |
+| `migrations/20260518093000_external_sources_and_shopsite_sync.sql` | Follow-up: `external_sources`, `shopsite_product_sync`, RPC updates |
+
+213 historical migrations have been archived to `supabase/migrations_archive/`. Do not restore them — they are superseded by the baseline. If you need to inspect a specific migration for context, the archive preserves filenames unchanged.
 
 ## Required safety steps before destructive schema work
 1. Take a full `pg_dump` of production.
 2. Back up: `products`, `products_ingestion`, `brands`, `categories`, `product_categories`, `facet_*`, `orders*`, `integration_sync_runs`, `inventory_reconciliation_items`, `scraper_configs`, `scraper_credentials`, `cohort_*`.
-3. Validate `db:reset`, `local:verify`, tests, and typecheck on the squash branch.
-4. Prefer additive-safe baseline SQL before deleting historical migrations.
+3. Validate `db:reset`, `local:verify`, tests, and typecheck before any destructive migration.
+4. Prefer additive-safe migrations over destructive DDL.

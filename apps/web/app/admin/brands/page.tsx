@@ -16,7 +16,7 @@ export default async function AdminBrandsPage() {
       title="Brands"
       description="Manage product brands and their official domains."
       icon={<Tag className="h-5 w-5" />}
-      compactHeader
+      eyebrow="Queue view"
     >
       <AdminBrandsClient
         initialBrands={(brands || []) as Brand[]}

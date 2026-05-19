@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Pencil, Trash2, Plus, Wrench, ToggleRight, ToggleLeft } from 'lucide-react';
+import { Pencil, Trash2, Plus, ToggleRight, ToggleLeft } from 'lucide-react';
+import { AdminControlBar } from '@/components/admin/admin-control-bar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DataTable, type Column } from '@/components/admin/data-table';
@@ -210,25 +211,24 @@ export function AdminServicesClient({ initialServices, totalCount }: AdminServic
     );
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Wrench className="h-8 w-8 text-blue-600" />
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Services</h1>
-                        <p className="text-muted-foreground">{totalCount} services</p>
+        <div className="space-y-5 pb-6">
+            <AdminControlBar>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="space-y-1">
+                        <p className="text-sm font-medium text-foreground">Service catalog</p>
+                        <p className="text-sm text-muted-foreground">{totalCount} service listings in this view.</p>
                     </div>
+                    <Button onClick={handleCreate}>
+                        <Plus className="h-4 w-4" /> Add service
+                    </Button>
                 </div>
-                <Button onClick={handleCreate}>
-                    <Plus className="mr-2 h-4 w-4" /> Add Service
-                </Button>
-            </div>
+            </AdminControlBar>
 
             <div className="space-y-4">
                 {selected.length > 0 && (
-                    <div className="flex items-center justify-between rounded-lg bg-primary/5 border border-primary/10 px-4 py-2">
+                    <div className="flex flex-col gap-3 rounded-[1rem] border border-primary/15 bg-primary/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                         <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
-                            {selected.length} service(s) selected
+                            {selected.length} service{selected.length === 1 ? '' : 's'} selected
                         </Badge>
                         <div className="flex gap-2">
                             <Button

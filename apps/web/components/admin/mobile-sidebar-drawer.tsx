@@ -4,11 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 
 interface MobileSidebarDrawerProps {
   children: React.ReactNode;
@@ -19,7 +15,6 @@ export function MobileSidebarDrawer({ children }: MobileSidebarDrawerProps) {
   const pathname = usePathname();
   const prevPathname = useRef(pathname);
 
-  // Close drawer on navigation
   useEffect(() => {
     if (prevPathname.current !== pathname) {
       prevPathname.current = pathname;
@@ -30,22 +25,22 @@ export function MobileSidebarDrawer({ children }: MobileSidebarDrawerProps) {
   return (
     <>
       <Button
-        variant="default"
-        size="icon"
+        variant="outline"
         onClick={() => setOpen(true)}
-        className="fixed left-4 top-4 z-50 rounded-full border border-border bg-card text-foreground shadow-[var(--shadow-md)] md:hidden"
-        aria-label="Open navigation menu"
+        className="fixed left-4 top-4 z-50 gap-2 border-border bg-card/96 px-3 text-foreground shadow-[var(--shadow-sm)] backdrop-blur md:hidden"
+        aria-label="Open admin navigation"
       >
-        <Menu className="h-5 w-5" />
+        <Menu className="h-4 w-4" />
+        Menu
       </Button>
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="left"
-          className="w-[240px] border-r border-border bg-card p-0"
+          className="w-[280px] border-r border-border bg-card p-0 shadow-[var(--shadow-float)]"
           showCloseButton={false}
         >
-          <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+          <SheetTitle className="sr-only">Admin navigation</SheetTitle>
           {children}
         </SheetContent>
       </Sheet>

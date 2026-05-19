@@ -171,4 +171,25 @@ describe('GET /api/scraper/v1/credentials/[id]', () => {
     expect(eq).toHaveBeenCalledWith('scraper_slug', 'orgill');
     expect(res.status).toBe(200);
   });
+
+  it('accepts hyphenated adapter allowlist entries for pet food experts credentials', async () => {
+    const login = encryptSecret('user@example.com', encryptionKey);
+    const password = encryptSecret('super-secret', encryptionKey);
+    const { eq } = mockCredentialRows([
+      { ...login, credential_type: 'login' },
+      { ...password, credential_type: 'password' },
+    ]);
+    mockValidateRunnerAuth.mockResolvedValue({
+      runnerName: 'test-runner',
+      authMethod: 'api_key',
+      allowedScrapers: ['pet-food-experts-crawl4ai'],
+    });
+
+    const res = await GET(createRequest({ 'x-api-key': 'bsr_test' }), {
+      params: Promise.resolve({ id: 'petfoodex' }),
+    });
+
+    expect(eq).toHaveBeenCalledWith('scraper_slug', 'petfoodex');
+    expect(res.status).toBe(200);
+  });
 });

@@ -132,6 +132,7 @@ export function ShopSiteCredentialsCard() {
  value={merchantId}
  onChange={(e) => setMerchantId(e.target.value)}
  placeholder="ShopSite merchant ID"
+ autoComplete="new-password"
  />
  </div>
 
@@ -143,6 +144,7 @@ export function ShopSiteCredentialsCard() {
  value={password}
  onChange={(e) => setPassword(e.target.value)}
  placeholder={passwordConfigured ? 'Leave blank to keep existing password' : 'ShopSite API password'}
+ autoComplete="new-password"
  />
  <div className="text-xs text-muted-foreground">
  {passwordConfigured ? 'Password is configured' : 'Password not configured'}

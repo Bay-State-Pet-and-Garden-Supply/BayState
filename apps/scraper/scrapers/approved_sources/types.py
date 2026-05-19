@@ -107,6 +107,7 @@ class ApprovedSourceExtractionResult:
     product: dict[str, Any] = field(default_factory=dict)
     matched_fields: list[str] = field(default_factory=list)
     confidence: float = 0.0
+    sku_match: bool | None = None
     failure_code: FailureCode | None = None
     failure_message: str | None = None
     warnings: list[str] = field(default_factory=list)

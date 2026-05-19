@@ -29,6 +29,20 @@ const CREDENTIAL_KEYS: Record<string, { username: string; password: string }> = 
   shopsite: { username: 'shopsite_username', password: 'shopsite_password' },
 };
 
+const SCRAPER_CREDENTIAL_ALIASES: Record<string, string> = {
+  'pet-food-experts': 'petfoodex',
+  'pet_food_experts': 'petfoodex',
+  'pet_food_experts_crawl4ai': 'petfoodex',
+  'pet-food-experts-crawl4ai': 'petfoodex',
+  'phillips-crawl4ai': 'phillips',
+  'orgill-crawl4ai': 'orgill',
+};
+
+function canonicalizeScraperCredentialSlug(value: string): string {
+  const normalized = normalizeScraperSlug(value);
+  return SCRAPER_CREDENTIAL_ALIASES[normalized] ?? normalized;
+}
+
 async function getLegacyCredentials(
   supabase: Awaited<ReturnType<typeof createAdminClient>>,
   scraperSlug: string
@@ -63,11 +77,25 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const scraperSlug = normalizeScraperSlug(id);
+    const requestedSlug = normalizeScraperSlug(id);
+    const scraperSlug = canonicalizeScraperCredentialSlug(id);
 
-    // Check allowed scrapers if configured
-    if (auth.allowedScrapers && auth.allowedScrapers.length > 0 && !auth.allowedScrapers.includes(scraperSlug)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    // Check allowed scrapers if configured. Normalize both adapter slugs and
+    // credential aliases so a runner scoped to e.g. pet-food-experts-crawl4ai
+    // can still fetch /credentials/petfoodex.
+    if (auth.allowedScrapers && auth.allowedScrapers.length > 0) {
+      const allowedCredentialSlugs = auth.allowedScrapers.map((value) =>
+        canonicalizeScraperCredentialSlug(value),
+      );
+
+      if (
+        !auth.allowedScrapers.includes(requestedSlug) &&
+        !auth.allowedScrapers.includes(scraperSlug) &&
+        !allowedCredentialSlugs.includes(requestedSlug) &&
+        !allowedCredentialSlugs.includes(scraperSlug)
+      ) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
 
     const supabase = await createAdminClient();

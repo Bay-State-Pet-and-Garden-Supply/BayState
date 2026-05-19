@@ -16,6 +16,7 @@ import {
  Filter,
  Sparkles,
 } from "lucide-react";
+import { AdminControlBar } from "@/components/admin/admin-control-bar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -128,15 +129,15 @@ function StatCard({
  color: string;
 }) {
  return (
- <Card className="rounded-none border border-border">
- <CardContent className="p-6">
- <div className="flex items-center justify-between">
- <div>
- <p className="text-[10px] font-semibold text-zinc-500 mb-1">{title}</p>
- <p className="text-3xl font-bold tracking-tighter text-foreground">{value}</p>
+ <Card className="border border-border shadow-none">
+ <CardContent className="p-5">
+ <div className="flex items-start justify-between gap-3">
+ <div className="space-y-1">
+ <p className="text-xs font-medium text-muted-foreground">{title}</p>
+ <p className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">{value}</p>
  </div>
- <div className={`rounded-none border border-border p-3 ${color}`}>
- <Icon className="h-5 w-5 text-white" />
+ <div className={`rounded-full p-3 ${color}`}>
+ <Icon className="h-4 w-4 text-white" />
  </div>
  </div>
  </CardContent>
@@ -280,14 +281,13 @@ export function CohortDashboardClient() {
  }
 
  return (
- <div className="space-y-6 h-full flex flex-col">
- <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 shrink-0">
- <div>
- <h1 className="text-4xl font-semibold text-foreground">
- Cohort Monitoring
- </h1>
- <p className="mt-1 text-xs font-bold uppercase tracking-widest text-zinc-600">
- Real-time monitoring of product line scraping cohorts.
+ <div className="flex h-full flex-col space-y-6">
+ <AdminControlBar>
+ <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+ <div className="space-y-1">
+ <p className="text-sm font-medium text-foreground">Live batch queue</p>
+ <p className="text-sm text-muted-foreground">
+ Track product-line cohorts, brand readiness, and scraper assignment without leaving the main queue.
  </p>
  </div>
  <div className="flex items-center gap-3">
@@ -297,15 +297,34 @@ export function CohortDashboardClient() {
  size="sm"
  onClick={handleRefresh}
  disabled={isRefreshing}
- className="rounded-none border border-border"
  >
- <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+ <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
  Refresh
  </Button>
  </div>
  </div>
 
- <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 shrink-0">
+ <div className="flex flex-wrap items-center gap-2 rounded-[1rem] border border-border bg-muted/40 p-2 w-fit">
+ <Filter className="h-4 w-4 text-foreground" />
+ <div className="flex flex-wrap items-center gap-1">
+ {(["all", "pending", "processing", "completed", "failed"] as const).map(
+ (filter) => (
+ <Button
+ key={filter}
+ variant={statusFilter === filter ? "default" : "ghost"}
+ size="sm"
+ onClick={() => handleStatusFilterChange(filter)}
+ className={statusFilter === filter ? "" : "hover:bg-muted"}
+ >
+ {filter === "all" ? "All" : STATUS_CONFIG[filter].label}
+ </Button>
+ )
+ )}
+ </div>
+ </div>
+ </AdminControlBar>
+
+ <div className="grid gap-4 shrink-0 sm:grid-cols-2 lg:grid-cols-5">
  <StatCard
  title="Total Cohorts"
  value={stats.total}
@@ -336,25 +355,6 @@ export function CohortDashboardClient() {
  icon={XCircle}
  color="bg-brand-burgundy"
  />
- </div>
-
- <div className="flex items-center gap-3 p-2 bg-muted border border-border rounded-none w-fit shrink-0">
- <Filter className="h-4 w-4 text-foreground" />
- <div className="flex items-center gap-1">
- {(["all", "pending", "processing", "completed", "failed"] as const).map(
- (filter) => (
- <Button
- key={filter}
- variant={statusFilter === filter ? "default" : "ghost"}
- size="sm"
- onClick={() => handleStatusFilterChange(filter)}
- className={statusFilter === filter ? "" : "hover:bg-muted"}
- >
- {filter === "all" ? "All" : STATUS_CONFIG[filter].label}
- </Button>
- )
- )}
- </div>
  </div>
 
  {cohorts.length === 0 ? (

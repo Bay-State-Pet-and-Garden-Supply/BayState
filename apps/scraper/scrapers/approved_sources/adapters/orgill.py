@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 import re
-from urllib.parse import urljoin
+from urllib.parse import quote, urljoin
 
 from scrapers.approved_sources.adapters.base import BaseDistributorCrawl4AIAdapter
 from scrapers.approved_sources.types import (
@@ -38,7 +38,7 @@ class OrgillAdapter(BaseDistributorCrawl4AIAdapter):
 
     def build_search_url(self, sku: str) -> str:
         """Build the Orgill search URL from a SKU."""
-        return self.search_url_template.format(sku=sku)
+        return self.search_url_template.format(sku=quote(str(sku), safe=""))
 
     def extract_from_html(
         self, html: str, sku: str, url: str
@@ -136,28 +136,18 @@ class OrgillAdapter(BaseDistributorCrawl4AIAdapter):
                 product["model_number"] = mtext
                 matched.append("model_number")
 
-        # --- Orgill Item Number (SKU verification) ---
+        # --- Orgill Item Number ---
         orgill_sku_elem = soup.select_one("#cphMainContent_ctl00_lblOrgillItemNumber")
         if orgill_sku_elem:
             orgill_sku = orgill_sku_elem.get_text(strip=True)
             if orgill_sku:
                 product["item_number"] = orgill_sku
                 matched.append("item_number")
-                # Verify the product SKU matches what we searched for
-                # When Orgill search redirects to a different product (nearest match),
-                # the returned SKU differs from the searched SKU.
-                if orgill_sku != sku:
-                    result.success = False
-                    result.failure_code = FailureCode.NO_MATCH
-                    result.failure_message = (
-                        f"SKU mismatch for Orgill: searched {sku} but got product "
-                        f"{orgill_sku}. This SKU '{sku}' may no longer be in Orgill's catalog."
-                    )
-                    result.warnings = warnings
-                    return result
 
         # --- UPC ---
-        upc_elem = soup.select_one("#cphMainContent_ctl00_lblUPCCode")
+        upc_elem = soup.select_one(
+            "#cphMainContent_ctl00_lblUPCCode, #cphMainContent_ctl00_lblRetailUpc"
+        )
         if upc_elem:
             uptext = upc_elem.get_text(strip=True)
             if uptext:
@@ -249,6 +239,28 @@ class OrgillAdapter(BaseDistributorCrawl4AIAdapter):
             result.failure_message = f"Could not find product name for SKU {sku}"
             return result
 
+        identifier_candidates = [
+            product.get("item_number"),
+            product.get("upc"),
+            product.get("model_number"),
+        ]
+        has_identifier = any(candidate for candidate in identifier_candidates)
+        identifier_match, matched_identifiers = self._match_identifier_candidates(
+            sku,
+            product.get("item_number"),
+            product.get("upc"),
+            product.get("model_number"),
+        )
+        if has_identifier and not identifier_match:
+            result.success = False
+            result.failure_code = FailureCode.NO_MATCH
+            result.failure_message = (
+                f"Orgill identifier mismatch for searched SKU {sku}: "
+                f"saw {', '.join(matched for matched in identifier_candidates if matched)}"
+            )
+            result.warnings = warnings
+            return result
+
         # Calculate confidence
         required = ["name", "brand"]
         found_required = [f for f in required if f in product]
@@ -260,6 +272,7 @@ class OrgillAdapter(BaseDistributorCrawl4AIAdapter):
         result.product = product
         result.matched_fields = matched
         result.confidence = confidence
+        result.sku_match = True if matched_identifiers else None
         return result
 
     def _extract_with_regex(

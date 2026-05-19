@@ -105,7 +105,7 @@ export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: Run
             </Button>
           )}
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-foreground">{runner.name}</h1>
+            <h2 className="text-xl font-semibold text-foreground">{runner.name}</h2>
             <p className="text-sm text-muted-foreground">Runner ID: {runner.id}</p>
           </div>
           <div className="flex items-center gap-2">
@@ -154,12 +154,12 @@ export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: Run
       {/* Quick Stats */}
       <div className={cn(
         "grid gap-6 md:grid-cols-2 lg:grid-cols-4",
-        isEmbedded && "grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4"
+        isEmbedded && "grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-2"
       )}>
         {/* Status Card */}
-        <Card className={cn(isEmbedded && "border-2 border-zinc-900 shadow-[4px_4px_0px_rgba(0,0,0,1)] rounded-none")}>
-          <CardHeader className={cn(isEmbedded && "pb-2")}>
-            <CardTitle className={cn("text-sm font-medium", isEmbedded && "text-xs font-black uppercase tracking-tighter")}>
+        <Card className={cn(isEmbedded && 'border border-border shadow-none')}>
+          <CardHeader className={cn(isEmbedded && 'pb-2')}>
+            <CardTitle className={cn('text-sm font-medium', isEmbedded && 'text-sm font-semibold tracking-normal')}>
               Status
             </CardTitle>
           </CardHeader>
@@ -178,9 +178,9 @@ export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: Run
         </Card>
 
         {/* Last Seen Card */}
-        <Card className={cn(isEmbedded && "border-2 border-zinc-900 shadow-[4px_4px_0px_rgba(0,0,0,1)] rounded-none")}>
-          <CardHeader className={cn(isEmbedded && "pb-2")}>
-            <CardTitle className={cn("text-sm font-medium", isEmbedded && "text-xs font-black uppercase tracking-tighter")}>
+        <Card className={cn(isEmbedded && 'border border-border shadow-none')}>
+          <CardHeader className={cn(isEmbedded && 'pb-2')}>
+            <CardTitle className={cn('text-sm font-medium', isEmbedded && 'text-sm font-semibold tracking-normal')}>
               Last Seen
             </CardTitle>
           </CardHeader>
@@ -190,9 +190,9 @@ export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: Run
         </Card>
 
         {/* Region Card */}
-        <Card className={cn(isEmbedded && "border-2 border-zinc-900 shadow-[4px_4px_0px_rgba(0,0,0,1)] rounded-none")}>
-          <CardHeader className={cn(isEmbedded && "pb-2")}>
-            <CardTitle className={cn("text-sm font-medium", isEmbedded && "text-xs font-black uppercase tracking-tighter")}>
+        <Card className={cn(isEmbedded && 'border border-border shadow-none')}>
+          <CardHeader className={cn(isEmbedded && 'pb-2')}>
+            <CardTitle className={cn('text-sm font-medium', isEmbedded && 'text-sm font-semibold tracking-normal')}>
               Region
             </CardTitle>
           </CardHeader>
@@ -203,13 +203,13 @@ export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: Run
 
         {/* Version Card */}
         <Card className={cn(
-          isEmbedded && "border-2 border-zinc-900 shadow-[4px_4px_0px_rgba(0,0,0,1)] rounded-none",
+          isEmbedded && 'border border-border shadow-none',
           (runner.build_check_reason === 'outdated' || runner.build_check_reason === 'missing') ? 'border-destructive/50 bg-destructive/5' : ''
         )}>
-          <CardHeader className={cn("pb-2", isEmbedded && "pb-2")}>
+          <CardHeader className={cn('pb-2', isEmbedded && 'pb-2')}>
             <CardTitle className={cn(
-              "text-sm font-medium flex items-center justify-between",
-              isEmbedded && "text-xs font-black uppercase tracking-tighter"
+              'text-sm font-medium flex items-center justify-between',
+              isEmbedded && 'text-sm font-semibold tracking-normal'
             )}>
               Version
               {runner.build_check_reason === 'current' ? (
@@ -243,7 +243,7 @@ export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: Run
 
       {/* Tabs for detailed sections */}
       <Tabs defaultValue="runs" className="space-y-4">
-        <TabsList variant="line" className={cn(isEmbedded && "w-full justify-start border-b border-zinc-200 rounded-none")}>
+        <TabsList variant="line" className={cn(isEmbedded && 'w-full justify-start border-b border-border')}>
           <TabsTrigger value="runs">Run History</TabsTrigger>
           <TabsTrigger value="console" className="gap-2">
             <Terminal className="h-3.5 w-3.5" />
@@ -258,16 +258,16 @@ export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: Run
           <RunnerRunHistory runnerId={runner.id} runnerName={runner.name} />
         </TabsContent>
 
-        <TabsContent value="console" className="h-[600px] border-2 border-zinc-900 shadow-[4px_4px_0px_rgba(0,0,0,1)] bg-white overflow-hidden flex flex-col">
-           <div className="p-4 border-b-2 border-zinc-900 bg-zinc-50 flex items-center justify-between">
+        <TabsContent value="console" className="flex h-[600px] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-none">
+           <div className="flex items-center justify-between border-b border-border bg-muted/40 p-4">
               <div>
-                <h3 className="text-sm font-black uppercase tracking-tighter">Active Runner Diagnostics</h3>
-                <p className="text-[10px] text-zinc-500 font-mono">Monitoring logs for: {runner.name}</p>
+                <h3 className="text-sm font-semibold text-foreground">Live runner diagnostics</h3>
+                <p className="text-xs text-muted-foreground">Monitoring logs for {runner.name}.</p>
               </div>
               {runner.status === 'busy' && (
-                <div className="flex items-center gap-2 bg-brand-gold px-2 py-1 border border-zinc-900">
-                  <div className="h-2 w-2 bg-zinc-900 animate-pulse" />
-                  <span className="text-[10px] font-black uppercase tracking-tighter">Job In Progress</span>
+                <div className="flex items-center gap-2 rounded-full bg-brand-gold/20 px-3 py-1 text-xs font-medium text-amber-900">
+                  <div className="h-2 w-2 animate-pulse rounded-full bg-amber-900" />
+                  Job in progress
                 </div>
               )}
            </div>
@@ -317,13 +317,13 @@ export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: Run
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="rounded-lg bg-red-50 p-4 text-sm text-red-800">
+            <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-red-900">
               <strong>Warning:</strong> All API keys for this runner will be revoked immediately.
               Any running jobs will be affected.
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                Type <code className="bg-muted px-1 rounded">{runner.name}</code> to confirm
+                Type <code className="rounded bg-muted px-1">{runner.name}</code> to confirm
               </label>
               <Input
                 value={deleteConfirmName}

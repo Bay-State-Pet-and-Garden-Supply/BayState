@@ -46,7 +46,7 @@ def normalize_llm_provider(value: str | None) -> LLMProvider:
         return "deepseek"
     if normalized == "openai":
         return "openai"
-    if normalized == "openai_compatible":
+    if normalized in {"openai_compatible", "lmstudio"}:
         return "openai_compatible"
     return "deepseek"
 

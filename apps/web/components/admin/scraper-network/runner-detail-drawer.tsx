@@ -1,13 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { RunnerDetailClient } from './runner-detail-client';
 import type { RunnerDetail } from './types';
 import { createClient } from '@/lib/supabase/client';
@@ -68,49 +62,46 @@ export function RunnerDetailDrawer({
               metadata,
             });
           }
-        } catch (err) {
-          console.error('Error fetching runner in drawer:', err);
+        } catch (error) {
+          console.error('Error fetching runner in drawer:', error);
         } finally {
           setIsLoading(false);
         }
       };
-      fetchRunner();
-    }
-  }, [isOpen, runnerId, initialRunner]);
 
-  // Reset runner when drawer closes if it was fetched via runnerId
+      void fetchRunner();
+    }
+  }, [initialRunner, isOpen, runnerId]);
+
   useEffect(() => {
     if (!isOpen && runnerId && !initialRunner) {
       setRunner(null);
     }
-  }, [isOpen, runnerId, initialRunner]);
+  }, [initialRunner, isOpen, runnerId]);
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent
-        side="right"
-        className="sm:max-w-2xl border-l-4 border-zinc-900 shadow-[8px_8px_0px_rgba(0,0,0,1)] p-0 flex flex-col rounded-none"
-      >
-        <SheetHeader className="p-6 border-b-4 border-zinc-900 bg-zinc-50 space-y-1">
-          <SheetTitle className="text-2xl font-black uppercase tracking-tighter">
-            {isLoading ? 'Loading...' : runner?.name || 'Runner Details'}
-          </SheetTitle>
-          <SheetDescription className="font-mono text-xs text-zinc-500">
-            {runner ? `ID: ${runner.id}` : 'Fetching runner information...'}
+      <SheetContent side="right" className="flex w-full max-w-[840px] flex-col p-0 sm:max-w-[840px]">
+        <SheetHeader className="border-b border-border bg-card px-6 py-5 text-left">
+          <SheetTitle>{isLoading ? 'Loading runner' : runner?.name || 'Runner details'}</SheetTitle>
+          <SheetDescription>
+            {runner ? `Review access, recent activity, and configuration for ${runner.name}.` : 'Fetching runner details.'}
           </SheetDescription>
         </SheetHeader>
-        <div className="flex-1 overflow-y-auto p-6 bg-white">
+
+        <div className="flex-1 overflow-y-auto bg-[var(--surface-admin-bg)] px-6 py-5">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-64 space-y-4">
-              <div className="animate-spin rounded-none h-12 w-12 border-4 border-zinc-900 border-t-transparent"></div>
-              <p className="font-black uppercase tracking-tighter text-sm">Synchronizing...</p>
+            <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary" />
+              <p className="text-sm text-muted-foreground">Loading runner details...</p>
             </div>
           ) : runner ? (
-            <RunnerDetailClient runner={runner} isEmbedded={true} />
+            <RunnerDetailClient runner={runner} isEmbedded />
           ) : (
-            <div className="text-center py-12 border-4 border-dashed border-zinc-200">
-              <p className="font-black uppercase tracking-tighter text-zinc-400">
-                Runner not found or failed to load.
+            <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-card px-6 text-center">
+              <p className="font-medium text-foreground">Runner details are not available.</p>
+              <p className="text-sm text-muted-foreground">
+                Try reopening this row. If the issue continues, refresh runner health and try again.
               </p>
             </div>
           )}

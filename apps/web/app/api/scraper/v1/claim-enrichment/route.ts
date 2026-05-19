@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { getAIScrapingRuntimeCredentialsForConfig } from "@/lib/ai-scraping/credentials";
 import { validateRunnerAuth } from "@/lib/scraper-auth";
 import { SUPABASE_SECRET_KEY, SUPABASE_URL } from "@/lib/supabase/config";
 
@@ -99,6 +100,26 @@ export async function POST(request: NextRequest) {
     }
 
     const jobsById = new Map((jobs ?? []).map((j) => [j.id, j]));
+
+    const aiCredentialsByJobId = new Map<string, unknown>();
+    await Promise.all(
+      jobIds.map(async (jobId) => {
+        const job = jobsById.get(jobId);
+        const configId = typeof job?.config_id === "string" ? job.config_id : null;
+        try {
+          aiCredentialsByJobId.set(
+            jobId,
+            await getAIScrapingRuntimeCredentialsForConfig(configId),
+          );
+        } catch (error) {
+          console.error(
+            `[Claim Enrichment] Failed to resolve AI credentials for job ${jobId}:`,
+            error,
+          );
+          aiCredentialsByJobId.set(jobId, null);
+        }
+      }),
+    );
 
     // Map job ID to the lease info we should use for it
     const jobLeases = new Map<string, { token: string; expiresAt: string }>();
@@ -196,7 +217,7 @@ export async function POST(request: NextRequest) {
         target_id: attempt.target_id ?? null,
         config: jobConfig,
         source_plan: perSkuSourcePlan,
-        ai_credentials: job?.ai_credentials ?? null,
+        ai_credentials: aiCredentialsByJobId.get(jobId) ?? null,
         lease_token: lease.token,
         lease_expires_at: lease.expiresAt,
         test_mode: job?.test_mode ?? false,

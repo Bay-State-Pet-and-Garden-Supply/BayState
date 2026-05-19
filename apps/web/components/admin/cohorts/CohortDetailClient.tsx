@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import Link from "next/link";
 import {
- ArrowLeft,
  Tag,
  Loader2,
  AlertCircle,
@@ -16,6 +14,7 @@ import {
  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AdminControlBar } from "@/components/admin/admin-control-bar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -265,57 +264,49 @@ export function CohortDetailClient({ cohortId }: { cohortId: string }) {
  });
 
  return (
- <div className="h-full flex flex-col min-h-0">
- {/* Header */}
- <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
- <div className="flex items-start gap-4">
- <Button variant="ghost" size="sm" asChild className="rounded-none border border-border hover:bg-muted">
- <Link href="/admin/cohorts/dashboard">
- <ArrowLeft className="mr-2 h-4 w-4" />
- Back
- </Link>
- </Button>
- <div>
- <div className="flex items-center gap-3">
- <h1 className="text-3xl font-semibold text-foreground">
- {cohort.product_line || `Cohort ${cohort.id.slice(0, 8)}`}
- </h1>
- <Badge className={`rounded-none border border-border font-semibold text-[10px] ${statusBadge.className}`}>
+ <div className="flex h-full min-h-0 flex-col gap-6">
+ <AdminControlBar>
+ <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+ <div className="space-y-2">
+ <div className="flex flex-wrap items-center gap-2">
+ <p className="text-sm font-medium text-foreground">
+ {cohort.product_line || `Batch ${cohort.id.slice(0, 8)}`}
+ </p>
+ <Badge className={`rounded-full border border-border px-2.5 py-1 text-[11px] font-medium ${statusBadge.className}`}>
  {statusBadge.label}
  </Badge>
  </div>
- <p className="mt-1 text-xs font-bold uppercase tracking-widest text-zinc-600 flex flex-wrap items-center gap-x-3 gap-y-1">
- <span>UPC Prefix: <code className="font-mono bg-zinc-950 text-white px-1 py-0.5">{cohort.upc_prefix}</code></span>
+ <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+ <span>UPC prefix <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-foreground">{cohort.upc_prefix}</code></span>
  <span>{members.length} products</span>
  {officialDomains.length > 0 && (
  <a
  href={`https://${officialDomains[0]}`}
  target="_blank"
  rel="noreferrer"
- className="inline-flex items-center gap-1 text-brand-forest-green hover:underline lowercase tracking-normal font-mono"
+ className="inline-flex items-center gap-1 text-brand-forest-green hover:underline"
  >
  <Globe className="h-3 w-3" />
  {officialDomains[0]}
  </a>
  )}
- </p>
  </div>
  </div>
  <Button
  variant="outline"
  size="sm"
- className="rounded-none border border-border"
  onClick={() => {
  void fetchCohort();
  void fetchRecommendations();
  }}
  >
- <RefreshCw className="mr-2 h-4 w-4" />
+ <RefreshCw className="h-4 w-4" />
  Refresh
  </Button>
  </div>
+ </AdminControlBar>
 
- <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
+ <div className="flex-1 flex flex-col gap-6 min-h-0 lg:flex-row">
  {/* Left column: Brand + Members */}
  <div className="flex-1 flex flex-col space-y-6 min-h-0">
  {/* Brand Assignment Card */}

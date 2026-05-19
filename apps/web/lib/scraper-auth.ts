@@ -93,27 +93,28 @@ export async function validateAPIKey(
             console.warn('[Runner Auth] RPC unavailable, falling back to direct hash validation:', error.message);
 
             const keyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
-            const { data: runner, error: runnerError } = await supabase
-                .from('scraper_runners')
-                .select('id, name, allowed_scrapers, status')
-                .eq('api_key_hash', keyHash)
+            const { data: runnerKey, error: runnerKeyError } = await supabase
+                .from('runner_api_keys')
+                .select('id, runner_name, allowed_scrapers, revoked_at, expires_at')
+                .eq('key_hash', keyHash)
+                .is('revoked_at', null)
                 .single();
 
-            if (runnerError || !runner) {
-                console.error('[Runner Auth] Fallback validation failed:', runnerError?.message ?? 'runner not found');
+            if (runnerKeyError || !runnerKey) {
+                console.error('[Runner Auth] Fallback validation failed:', runnerKeyError?.message ?? 'runner key not found');
                 return null;
             }
 
-            if (runner.status === 'revoked') {
-                console.error('[Runner Auth] API key is revoked');
+            if (runnerKey.expires_at && new Date(runnerKey.expires_at).getTime() <= Date.now()) {
+                console.error('[Runner Auth] API key is expired');
                 return null;
             }
 
             return {
-                runnerName: runner.name,
-                keyId: runner.id,
+                runnerName: runnerKey.runner_name,
+                keyId: runnerKey.id,
                 authMethod: 'api_key',
-                allowedScrapers: normalizeAllowedScrapers(runner.allowed_scrapers),
+                allowedScrapers: normalizeAllowedScrapers(runnerKey.allowed_scrapers),
             };
         }
 

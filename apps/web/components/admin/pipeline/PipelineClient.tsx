@@ -1178,10 +1178,10 @@ export function PipelineClient({
   };
 
   const headerActions = (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
       {shellControlsBelongToRoute ? (
         <>
-          <div className="flex shrink-0 items-center justify-center h-8 w-8 border border-border bg-card hover:bg-muted/50 transition-colors">
+          <div className="hidden h-8 w-8 shrink-0 items-center justify-center border border-border bg-card transition-colors hover:bg-muted/50 sm:flex">
             <Checkbox
               aria-label="Select all visible products"
               checked={
@@ -1189,7 +1189,7 @@ export function PipelineClient({
                   filteredProducts.every((p) => selectedSkus.has(p.sku))
                   ? true
                   : filteredProducts.some((p) => selectedSkus.has(p.sku))
-                    ? "indeterminate"
+                    ? 'indeterminate'
                     : false
               }
               onCheckedChange={(checked) => {
@@ -1210,11 +1210,7 @@ export function PipelineClient({
               className="h-4 w-4 rounded-none border border-border accent-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground"
             />
           </div>
-          <PipelineSearchField
-            value={search}
-            onChange={setSearch}
-            className="w-48 md:w-64"
-          />
+          <PipelineSearchField value={search} onChange={setSearch} className="w-full min-w-0 sm:w-56 md:w-64" />
         </>
       ) : null}
 
@@ -1224,7 +1220,7 @@ export function PipelineClient({
           onFilterChange={applyFilterState}
           availableSources={sources}
           showSourceFilter={false}
-          className="h-8"
+          className="h-10 w-full justify-center sm:h-8 sm:w-auto"
         />
       ) : null}
 
@@ -1237,11 +1233,11 @@ export function PipelineClient({
   );
 
   return (
-    <div className="flex h-full flex-col min-h-0">
+    <div className="flex h-full min-h-0 flex-col gap-4">
       {/* Stage Tabs & Inline Actions */}
       <div className="shrink-0">
         {hideTabs ? (
-          <div className="flex flex-col gap-1 border-b border-border/50 pb-1 xl:flex-row xl:items-center xl:justify-between">
+          <div className="admin-panel flex flex-col gap-3 p-4 xl:flex-row xl:items-end xl:justify-between">
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
@@ -1257,9 +1253,9 @@ export function PipelineClient({
                   style={{ backgroundColor: stageConfig.color }}
                 />
                 <div>
-                  <h1 className="text-lg font-semibold text-foreground">
+                  <h2 className="text-lg font-semibold text-foreground">
                     {stageConfig.label}
-                  </h1>
+                  </h2>
                   <p className="text-[10px] font-semibold text-muted-foreground">
                     {stageConfig.description}
                   </p>
@@ -1280,13 +1276,13 @@ export function PipelineClient({
 
       {/* Content Area */}
       <div className={cn(
-        "flex-1 min-h-0 relative transition-opacity p-1 pr-4 pb-4",
-        isLiveOperationalTab(currentStage) ? "overflow-y-auto" : "overflow-hidden",
-        (isLoading || isNavigating) && "opacity-50 pointer-events-none"
+        'relative flex-1 min-h-0 px-1 pb-1 transition-opacity',
+        isLiveOperationalTab(currentStage) ? 'overflow-y-auto' : 'overflow-hidden',
+        (isLoading || isNavigating) && 'pointer-events-none opacity-50'
       )}>
         <div className="flex flex-col flex-1 h-full w-full min-h-0">
           {currentStage === "extracting" ? (
-            <div className="grid gap-4 xl:grid-cols-1 p-1 pr-8 pb-8">
+            <div className="grid gap-4 px-1 pb-6 xl:grid-cols-1">
               <AdminCard variant="panel">
                 <AdminCardHeader>
                   <div className="rounded-lg bg-primary/10 p-2">
@@ -1305,7 +1301,7 @@ export function PipelineClient({
               </AdminCard>
             </div>
           ) : currentStage === "merging" ? (
-            <div className="grid gap-4 xl:grid-cols-1 p-1 pr-8 pb-8">
+            <div className="grid gap-4 px-1 pb-6 xl:grid-cols-1">
               <AdminCard variant="panel">
                 <AdminCardHeader>
                   <div className="rounded-lg bg-brand-burgundy/10 p-2">
@@ -1363,7 +1359,12 @@ export function PipelineClient({
                   setCohortIdFilter(newFilters.cohort_id || "");
               }}
               availableSources={sources}
-              groupedProducts={groupedProducts as any}
+              groupedProducts={{
+                groups: groupedProducts.groups,
+                cohortIds: groupedProducts.cohortIds,
+                names: groupedProducts.names,
+                brands: groupedProducts.brandObjects,
+              }}
               cohortBrands={groupedProducts.brands}
               cohortBrandObjects={groupedProducts.brandObjects}
               onEditCohort={
@@ -1636,11 +1637,9 @@ export function PipelineClient({
             aria-live="polite"
             aria-busy={isLoading || isNavigating || isSearching}
           >
-            <div className="flex flex-col items-center gap-2 rounded-[var(--surface-admin-radius)] bg-background/80 px-8 py-6 border border-border shadow-md backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-2 rounded-[var(--surface-admin-radius)] border border-border bg-background/96 px-8 py-6 shadow-[var(--shadow-sm)] backdrop-blur-sm">
               <Activity className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
-              <p className="text-sm font-semibold">
-                Updating Results...
-              </p>
+              <p className="text-sm font-semibold text-foreground">Updating results...</p>
             </div>
           </div>
         )}

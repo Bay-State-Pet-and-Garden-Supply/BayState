@@ -23,6 +23,10 @@ from scrapers.ai_search.enrichment_models import (
 )
 
 
+def _coerce_evidence_url(evidence_url: str | None) -> str:
+    return evidence_url or "approved_source_extraction"
+
+
 def build_success_result(
     sku: str,
     source_slug: str,
@@ -34,6 +38,7 @@ def build_success_result(
     field_confidences: dict[str, float] | None = None,
     llm_used: bool = False,
     warnings: list[str] | None = None,
+    sku_match: bool = True,
 ) -> EnrichmentResultV1:
     """Build a successful enrichment result with deterministic extraction.
 
@@ -43,13 +48,14 @@ def build_success_result(
 
     # Map product fields into EnrichedProductFacts
     product = _map_product_fields(product_fields)
+    resolved_evidence_url = _coerce_evidence_url(evidence_url)
 
     return EnrichmentResultV1(
         schema_version="v1",
         sku=sku,
         source=EnrichmentResultSource(
-            url=evidence_url,
-            domain=_extract_domain(evidence_url),
+            url=resolved_evidence_url,
+            domain=_extract_domain(resolved_evidence_url),
             source_type=source_type,
             source_slug=source_slug,
             evidence="Deterministic extraction matched SKU on approved source",
@@ -63,7 +69,7 @@ def build_success_result(
             fields=field_confidences or {},
         ),
         validation=EnrichmentValidation(
-            sku_match=True,
+            sku_match=sku_match,
             warnings=warnings or [],
             missing_required=[],
         ),
@@ -81,7 +87,7 @@ def build_success_result(
                 sourceType=source_type,
                 confidence=overall_confidence,
                 matchedFields=matched_fields,
-                evidenceUrl=evidence_url,
+                evidenceUrl=resolved_evidence_url,
             )
         ],
     )
@@ -99,6 +105,7 @@ def build_partial_result(
     llm_used: bool = False,
     warnings: list[str] | None = None,
     missing_required: list[str] | None = None,
+    sku_match: bool = True,
 ) -> EnrichmentResultV1:
     """Build a partial enrichment result (some fields found, some missing).
 
@@ -107,13 +114,14 @@ def build_partial_result(
     decision = "llm_fallback" if llm_used else "deterministic_partial"
 
     product = _map_product_fields(product_fields)
+    resolved_evidence_url = _coerce_evidence_url(evidence_url)
 
     return EnrichmentResultV1(
         schema_version="v1",
         sku=sku,
         source=EnrichmentResultSource(
-            url=evidence_url,
-            domain=_extract_domain(evidence_url),
+            url=resolved_evidence_url,
+            domain=_extract_domain(resolved_evidence_url),
             source_type=source_type,
             source_slug=source_slug,
             evidence="Partial extraction on approved source",
@@ -127,7 +135,7 @@ def build_partial_result(
             fields=field_confidences or {},
         ),
         validation=EnrichmentValidation(
-            sku_match=True,
+            sku_match=sku_match,
             warnings=warnings or [],
             missing_required=missing_required or [],
         ),
@@ -145,7 +153,7 @@ def build_partial_result(
                 sourceType=source_type,
                 confidence=overall_confidence,
                 matchedFields=matched_fields,
-                evidenceUrl=evidence_url,
+                evidenceUrl=resolved_evidence_url,
             )
         ],
     )
@@ -164,12 +172,13 @@ def build_auth_required_result(
     warning, so the runner can still progress to the next source.
     """
     warning = message or f"AUTH_REQUIRED: Authentication required for {source_slug}; no usable session"
+    resolved_evidence_url = _coerce_evidence_url(evidence_url)
 
     return EnrichmentResultV1(
         schema_version="v1",
         sku=sku,
         source=EnrichmentResultSource(
-            url=evidence_url or "",
+            url=resolved_evidence_url,
             source_type=source_type,
             source_slug=source_slug,
         ),
@@ -197,7 +206,7 @@ def build_auth_required_result(
                 sourceSlug=source_slug,
                 sourceType=source_type,
                 confidence=0.0,
-                evidenceUrl=evidence_url,
+                evidenceUrl=resolved_evidence_url,
             )
         ],
     )
@@ -216,12 +225,13 @@ def build_auth_failed_result(
     AUTH_FAILED warning, so the runner can progress to the next source.
     """
     warning = message or f"AUTH_FAILED: Login failed for {source_slug}"
+    resolved_evidence_url = _coerce_evidence_url(evidence_url)
 
     return EnrichmentResultV1(
         schema_version="v1",
         sku=sku,
         source=EnrichmentResultSource(
-            url=evidence_url or "",
+            url=resolved_evidence_url,
             source_type=source_type,
             source_slug=source_slug,
         ),
@@ -249,7 +259,7 @@ def build_auth_failed_result(
                 sourceSlug=source_slug,
                 sourceType=source_type,
                 confidence=0.0,
-                evidenceUrl=evidence_url,
+                evidenceUrl=resolved_evidence_url,
             )
         ],
     )
@@ -268,12 +278,13 @@ def build_auth_expired_result(
     AUTH_EXPIRED warning, so the runner can progress to the next source.
     """
     warning = message or f"AUTH_EXPIRED: Session expired for {source_slug}; re-login required"
+    resolved_evidence_url = _coerce_evidence_url(evidence_url)
 
     return EnrichmentResultV1(
         schema_version="v1",
         sku=sku,
         source=EnrichmentResultSource(
-            url=evidence_url or "",
+            url=resolved_evidence_url,
             source_type=source_type,
             source_slug=source_slug,
         ),
@@ -301,7 +312,7 @@ def build_auth_expired_result(
                 sourceSlug=source_slug,
                 sourceType=source_type,
                 confidence=0.0,
-                evidenceUrl=evidence_url,
+                evidenceUrl=resolved_evidence_url,
             )
         ],
     )
@@ -314,11 +325,12 @@ def build_no_match_result(
     evidence_url: str | None = None,
 ) -> EnrichmentResultV1:
     """Build a failed result when a source returned no matching product."""
+    resolved_evidence_url = _coerce_evidence_url(evidence_url)
     return EnrichmentResultV1(
         schema_version="v1",
         sku=sku,
         source=EnrichmentResultSource(
-            url=evidence_url or "",
+            url=resolved_evidence_url,
             source_type=source_type,
             source_slug=source_slug,
         ),
@@ -346,7 +358,7 @@ def build_no_match_result(
                 sourceSlug=source_slug,
                 sourceType=source_type,
                 confidence=0.0,
-                evidenceUrl=evidence_url,
+                evidenceUrl=resolved_evidence_url,
             )
         ],
     )
@@ -407,12 +419,16 @@ def build_failed_result(
     """Build a generic failed enrichment result.
 
     Used when all sources failed (no match, auth required, etc.).
+
+    The web callback contract requires ``source.url`` to be non-empty even for
+    failed results, so fall back to the approved-source sentinel when we do not
+    have a concrete evidence URL.
     """
     return EnrichmentResultV1(
         schema_version="v1",
         sku=sku,
         source=EnrichmentResultSource(
-            url=evidence_url or "",
+            url=_coerce_evidence_url(evidence_url),
             source_type=source_type,
             source_slug=source_slug or "",
         ),

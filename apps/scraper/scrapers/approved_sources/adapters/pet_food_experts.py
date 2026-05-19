@@ -42,7 +42,7 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
 
     def build_search_url(self, sku: str) -> str:
         """Build the Pet Food Experts search URL from a SKU."""
-        return self.search_url_template.format(sku=quote(sku))
+        return self.search_url_template.format(sku=quote(str(sku), safe=""))
 
     def extract_from_html(
         self, html: str, sku: str, url: str
@@ -138,7 +138,10 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
         meta_text = meta_elem.get_text(" ", strip=True) if meta_elem else ""
 
         # --- Extract Brand from Attributes via regex ---
-        brand_match = re.search(r"Brand:\s*([^\n]+)", attrs_text)
+        brand_match = re.search(
+            r"Brand:\s*(.+?)(?=\s+(?:Flavor|Animal|Diet|Food Form|Ingredients|Protein|Weight|Breed Size|Life Stage):|$)",
+            attrs_text,
+        )
         if brand_match:
             product["brand"] = brand_match.group(1).strip()
             matched.append("brand")
@@ -266,6 +269,19 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
             result.failure_message = f"No product name found for SKU {sku}"
             return result
 
+        identifier_candidates = [product.get("item_number"), product.get("upc")]
+        has_identifier = any(candidate for candidate in identifier_candidates)
+        identifier_match, matched_identifiers = self._match_identifier_candidates(
+            sku,
+            product.get("item_number"),
+            product.get("upc"),
+        )
+        if has_identifier and not identifier_match:
+            warnings.append(
+                f"Pet Food Experts identifiers differ from searched SKU {sku}: "
+                f"saw {', '.join(matched for matched in identifier_candidates if matched)}"
+            )
+
         # Calculate confidence
         required = ["name", "brand", "image_urls"]
         found_required = [f for f in required if f in product]
@@ -277,6 +293,8 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
         result.product = product
         result.matched_fields = matched
         result.confidence = confidence
+        result.sku_match = True if identifier_match else (False if has_identifier else None)
+        result.warnings = warnings
         return result
 
     def _extract_with_regex(
