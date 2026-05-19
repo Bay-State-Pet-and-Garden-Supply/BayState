@@ -11,7 +11,7 @@ import {
   deleteRunner,
   updateRunnerMetadata,
   rotateRunnerKey,
-} from '@/app/admin/scrapers/network/actions';
+} from '@/app/admin/pipeline/runners/actions';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -111,7 +111,7 @@ export function RunnerManagementPanel({ runner }: RunnerManagementPanelProps) {
       if (result.success) {
         toast.success('Runner deleted');
         // Navigate back to network page
-        router.push('/admin/scrapers/network');
+        router.push('/admin/pipeline/runners');
       } else {
         toast.error(result.error || 'Failed to delete runner');
       }

@@ -425,11 +425,6 @@ export function JobCard({
  )}
  </Button>
  )}
- <Button variant="outline" size="sm" asChild className="h-7 w-7 p-0 rounded-none">
- <Link href={`/admin/scrapers/runs/${job.id}`}>
- <ExternalLink className="h-3.5 w-3.5" />
- </Link>
- </Button>
  </div>
  </div>
  </div>

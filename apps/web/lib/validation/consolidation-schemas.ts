@@ -6,7 +6,7 @@ function uuid(message: string = 'Invalid UUID') {
     return z.string().regex(uuidRegex, message);
 }
 
-export const BatchExecutionModeSchema = z.enum([
+const BatchExecutionModeSchema = z.enum([
     'direct_chat_chunks',
 ]);
 

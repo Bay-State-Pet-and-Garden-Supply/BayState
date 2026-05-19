@@ -13,7 +13,7 @@ type SupabaseLike = {
   };
 };
 
-export const EXTERNAL_SOURCE_KEYS = [
+const EXTERNAL_SOURCE_KEYS = [
   'shopsite',
   'integra',
   'web',
@@ -23,7 +23,7 @@ export const EXTERNAL_SOURCE_KEYS = [
 
 export type ExternalSourceKey = (typeof EXTERNAL_SOURCE_KEYS)[number];
 
-export const EXTERNAL_SOURCE_DEFINITIONS: Record<
+const EXTERNAL_SOURCE_DEFINITIONS: Record<
   ExternalSourceKey,
   {
     name: string;
@@ -67,7 +67,7 @@ export interface ExternalSourceRecord {
   is_active?: boolean | null;
 }
 
-export async function getExternalSourceByKey(
+async function getExternalSourceByKey(
   supabase: SupabaseLike,
   key: ExternalSourceKey,
 ): Promise<ExternalSourceRecord | null> {

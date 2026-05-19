@@ -128,7 +128,6 @@ export function PipelineClient({
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isScrapeDialogOpen, setIsScrapeDialogOpen] = useState(false);
-  const [isApprovedExtracting, setIsApprovedExtracting] = useState(false);
   const [isBulkAssignBrandOpen, setIsBulkAssignBrandOpen] = useState(false);
   const [isIntegraImportOpen, setIsIntegraImportOpen] = useState(false);
   const [isManualAddOpen, setIsManualAddOpen] = useState(false);
@@ -267,48 +266,6 @@ export function PipelineClient({
 
     return { groups, cohortIds, brands, brandIds, brandObjects, names };
   }, [filteredProducts]);
-
-  const handleStartApprovedExtraction = useCallback(async () => {
-    const skus = Array.from(selectedSkus);
-    if (skus.length === 0) return;
-
-    setIsApprovedExtracting(true);
-    try {
-      const res = await adminFetch("/api/admin/enrichment/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          skus,
-          mode: "mixed",
-          config: {
-            source_type: "approved_source_extraction",
-          },
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        toast.success(
-          `Started approved source extraction for ${data.skuCount} product${data.skuCount !== 1 ? "s" : ""}`,
-        );
-        if (data.skipped_skus?.length > 0) {
-          toast.error(
-            `${data.skipped_skus.length} product${data.skipped_skus.length !== 1 ? "s" : ""} skipped (no brand assigned)`,
-          );
-        }
-        setSelectedSkus(new Set());
-        setSearch("");
-        router.push(`${pathname}?stage=extracting`);
-      } else {
-        const err = await res.json();
-        toast.error(err.error || "Failed to start extraction");
-      }
-    } catch {
-      toast.error("Network error starting extraction");
-    } finally {
-      setIsApprovedExtracting(false);
-    }
-  }, [selectedSkus, router, pathname]);
 
   const scrapeSelectionValidation = useMemo(() => {
     if (currentStage !== "imported" || selectedSkus.size === 0) {
@@ -1659,14 +1616,13 @@ export function PipelineClient({
           selectedCount={selectedSkus.size}
           totalCount={totalCount}
           currentStage={currentStage}
-          isLoading={isLoading || isApprovedExtracting}
+          isLoading={isLoading}
           onClearSelection={handleClearSelection}
           onSelectAll={handleSelectAll}
           onBulkAction={handleBulkAction}
           onResetStage={handleResetStage}
           onConsolidate={() => handleConsolidate(Array.from(selectedSkus))}
           onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
-          onStartApprovedExtraction={handleStartApprovedExtraction}
           onAssignBrand={() => setIsBulkAssignBrandOpen(true)}
           scrapeSelectionValidation={scrapeSelectionValidation}
 

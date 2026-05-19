@@ -27,7 +27,7 @@ const INITIAL_ONBOARDING_PIPELINE_STATUS = "imported";
  * - LIST_PRICE -> price
  * - DESCRIPTION1 + DESCRIPTION2 -> name
  */
-export async function parseIntegraExcel(
+async function parseIntegraExcel(
   buffer: ArrayBuffer,
 ): Promise<IntegraProduct[]> {
   return parseRegisterWorkbook(buffer).map((product) => ({
@@ -40,7 +40,7 @@ export async function parseIntegraExcel(
 /**
  * Compares Integra products against the live website products.
  */
-export async function analyzeIntegraSync(
+async function analyzeIntegraSync(
   integraProducts: IntegraProduct[],
 ): Promise<SyncAnalysis> {
   const supabase = await createClient();
@@ -130,7 +130,7 @@ export async function addToOnboarding(
 /**
  * Create an integration_sync_runs row for an Integra reconciliation.
  */
-export async function createIntegraReconciliationSyncRun(input: {
+async function createIntegraReconciliationSyncRun(input: {
   fileName?: string;
   rowCount: number;
   createdBy?: string | null;
@@ -174,7 +174,7 @@ export async function createIntegraReconciliationSyncRun(input: {
 /**
  * Complete a sync run with final counts.
  */
-export async function completeIntegraReconciliationSyncRun(
+async function completeIntegraReconciliationSyncRun(
   syncRunId: string,
   result: {
     success: boolean;
@@ -203,7 +203,7 @@ export async function completeIntegraReconciliationSyncRun(
  * Analyze Integra workbook data and produce reconciliation issues.
  * Compares register products against the website catalog.
  */
-export async function analyzeIntegraReconciliation(
+async function analyzeIntegraReconciliation(
   workbookProducts: RegisterWorkbookProduct[]
 ): Promise<Omit<IntegraReconciliationResult, 'syncRunId'>> {
   const supabase = await createClient();
@@ -377,7 +377,7 @@ export async function analyzeIntegraReconciliation(
 /**
  * Persist reconciliation issues to the database.
  */
-export async function persistReconciliationIssues(
+async function persistReconciliationIssues(
   syncRunId: string,
   issues: ReconciliationIssue[]
 ): Promise<{ insertedCount: number; errorCount: number }> {

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
-import { updateRunnerMetadata } from '@/app/admin/scrapers/network/actions';
+import { updateRunnerMetadata } from '@/app/admin/pipeline/runners/actions';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';

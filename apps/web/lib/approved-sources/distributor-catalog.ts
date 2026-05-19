@@ -45,7 +45,7 @@ export interface FixedDistributorEntry {
   aliases: string[];
 }
 
-export const FIXED_DISTRIBUTOR_CATALOG: FixedDistributorEntry[] = [
+const FIXED_DISTRIBUTOR_CATALOG: FixedDistributorEntry[] = [
   {
     sourceSlug: "bradley",
     adapterSlug: "bradley_crawl4ai",
@@ -234,7 +234,7 @@ export function buildDistributorPlanEntry(
 /**
  * Build a source policy that allows all catalog distributor domains.
  */
-export function buildDistributorSourcePolicy(): ApprovedSourcePolicy {
+function buildDistributorSourcePolicy(): ApprovedSourcePolicy {
   return {
     allowedDomains: FIXED_DISTRIBUTOR_CATALOG.flatMap((e) => e.domains),
     allowedAssetDomains: FIXED_DISTRIBUTOR_CATALOG.flatMap(

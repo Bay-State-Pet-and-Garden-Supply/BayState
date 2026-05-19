@@ -30,7 +30,12 @@ export async function POST(request: NextRequest) {
       model,
       config,
       selectedDistributorSlug,
+      extractionMode: rawExtractionMode,
+      forceRefresh: rawForceRefresh,
     } = body;
+
+    const extractionMode = rawExtractionMode ?? "mixed";
+    const forceRefresh = rawForceRefresh ?? false;
 
     if (!Array.isArray(skus) || skus.length === 0) {
       return NextResponse.json(
@@ -42,6 +47,17 @@ export async function POST(request: NextRequest) {
     if (skus.length > 500) {
       return NextResponse.json(
         { error: "Cannot process more than 500 SKUs at once" },
+        { status: 400 }
+      );
+    }
+
+    // Validate extractionMode
+    const VALID_EXTRACTION_MODES = ["mixed", "distributor_only", "ai_only"];
+    if (!VALID_EXTRACTION_MODES.includes(extractionMode)) {
+      return NextResponse.json(
+        {
+          error: `Invalid extractionMode "${extractionMode}". Must be one of: ${VALID_EXTRACTION_MODES.join(", ")}`,
+        },
         { status: 400 }
       );
     }
@@ -89,9 +105,11 @@ export async function POST(request: NextRequest) {
       const plans = await buildApprovedSourcePlans(
         supabase,
         validSkus,
-        selectedDistributorSlug
-          ? { selectedDistributorSlug }
-          : undefined,
+        {
+          selectedDistributorSlug,
+          extractionMode,
+          forceRefresh,
+        },
       );
 
       sourcePlansBySku = {};
@@ -121,6 +139,27 @@ export async function POST(request: NextRequest) {
       brandedSkus = Object.keys(sourcePlansBySku);
 
       if (brandedSkus.length === 0) {
+        // Extraction-mode-specific error messages
+        if (extractionMode === "ai_only") {
+          return NextResponse.json(
+            {
+              error: "AI-only extraction requires products to have official brand domains configured.",
+              skipped_skus: skippedSkus,
+            },
+            { status: 400 }
+          );
+        }
+
+        if (extractionMode === "distributor_only") {
+          return NextResponse.json(
+            {
+              error: "Distributor-only extraction requires at least one distributor source to be configured.",
+              skipped_skus: skippedSkus,
+            },
+            { status: 400 }
+          );
+        }
+
         const errorMessages = new Set<string>();
         for (const [sku, result] of Object.entries(plans)) {
           if (!result.ok && result.error) {
@@ -249,6 +288,8 @@ export async function POST(request: NextRequest) {
     if (sourcePlansBySku && Object.keys(sourcePlansBySku).length > 0) {
       jobConfig.source_plans_by_sku = sourcePlansBySku;
       jobConfig.source_type = "approved_source_extraction";
+      jobConfig.extraction_mode = extractionMode;
+      jobConfig.force_refresh = forceRefresh;
     }
 
     // Resolve the active AI runtime once at enqueue time so the job model

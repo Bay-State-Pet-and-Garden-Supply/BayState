@@ -1,6 +1,6 @@
 import { buildFacetSlug, splitMultiValueFacet } from '@/lib/facets/normalization';
 
-export const GENERIC_FACET_FIELDS = {
+export const GENERIC_FACET_METADATA = {
     ProductField18: {
         name: 'life_stage',
         description: 'Normalized ProductField18 values for life stage filtering.',
@@ -43,8 +43,8 @@ export const GENERIC_FACET_FIELDS = {
     },
 } as const;
 
-export type GenericFacetField = keyof typeof GENERIC_FACET_FIELDS;
-export type GenericFacetName = (typeof GENERIC_FACET_FIELDS)[GenericFacetField]['name'];
+export type GenericFacetField = keyof typeof GENERIC_FACET_METADATA;
+export type GenericFacetName = (typeof GENERIC_FACET_METADATA)[GenericFacetField]['name'];
 
 type GenericFacetDefinition = {
     name: GenericFacetName;
@@ -81,7 +81,7 @@ function toTitleCase(value: string): string {
 }
 
 export function getGenericFacetDefinition(field: GenericFacetField): GenericFacetDefinition {
-    const facet = GENERIC_FACET_FIELDS[field];
+    const facet = GENERIC_FACET_METADATA[field];
 
     return {
         name: facet.name,

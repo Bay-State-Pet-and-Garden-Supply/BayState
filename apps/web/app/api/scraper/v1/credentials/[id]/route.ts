@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { normalizeScraperSlug, validateRunnerAuth } from '@/lib/scraper-auth';
+import { normalizeScraperSlug, validateActiveRunner } from '@/lib/scraper-auth';
 import { decryptSecret } from '@/lib/ai-scraping/credentials';
 
 type EncryptedRow = {
@@ -72,9 +72,13 @@ async function getLegacyCredentials(
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const apiKey = request.headers.get('x-api-key');
-    const auth = await validateRunnerAuth({ apiKey, authorization: request.headers.get('authorization') });
-    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const activeRunner = await validateActiveRunner(request);
+    if (!activeRunner.isAuthenticated) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!activeRunner.isEnabled) {
+      if (activeRunner.mismatchResponse) return activeRunner.mismatchResponse;
+      return NextResponse.json({ error: 'Forbidden: Runner is disabled' }, { status: 403 });
+    }
+    const auth = activeRunner.runner!;
 
     const { id } = await params;
     const requestedSlug = normalizeScraperSlug(id);

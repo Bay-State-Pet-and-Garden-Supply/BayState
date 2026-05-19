@@ -75,7 +75,7 @@ export function hasStripePublishableKey(): boolean {
 // ---------------------------------------------------------------------------
 
 /** Convert dollars to cents (Stripe uses integer cents). */
-export function centsFromDollars(amount: number): number {
+function centsFromDollars(amount: number): number {
   return Math.round(amount * 100);
 }
 
@@ -89,7 +89,7 @@ export function dollarsFromCents(cents: number): number {
  * Using the same key for the same order prevents duplicate PaymentIntents
  * on retry.
  */
-export function paymentIntentIdempotencyKey(orderId: string): string {
+function paymentIntentIdempotencyKey(orderId: string): string {
   return `pi:${orderId}`;
 }
 
@@ -168,7 +168,7 @@ export async function retrievePaymentIntent(
   return await stripe.paymentIntents.retrieve(paymentIntentId);
 }
 
-export async function cancelPaymentIntent(
+async function cancelPaymentIntent(
   paymentIntentId: string
 ): Promise<Stripe.PaymentIntent> {
   const stripe = getStripeServerClient();
@@ -179,7 +179,7 @@ export async function cancelPaymentIntent(
 // Refunds
 // ---------------------------------------------------------------------------
 
-export async function createRefund(
+async function createRefund(
   paymentIntentId: string,
   amount?: number // in dollars; if omitted, full refund
 ): Promise<Stripe.Refund> {
@@ -197,7 +197,7 @@ export async function createRefund(
 // Customers
 // ---------------------------------------------------------------------------
 
-export async function createStripeCustomer(
+async function createStripeCustomer(
   email: string,
   name: string,
   metadata?: Record<string, string>
@@ -206,7 +206,7 @@ export async function createStripeCustomer(
   return await stripe.customers.create({ email, name, metadata });
 }
 
-export async function getStripeCustomerByEmail(
+async function getStripeCustomerByEmail(
   email: string
 ): Promise<Stripe.Customer | null> {
   const stripe = getStripeServerClient();

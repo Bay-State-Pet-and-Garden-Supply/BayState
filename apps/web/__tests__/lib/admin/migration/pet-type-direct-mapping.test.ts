@@ -7,7 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { importShopSiteProducts } from '@/lib/admin/migration/product-import';
 import type { ShopSiteProduct } from '@/lib/admin/migration/types';
-import { GENERIC_FACET_FIELDS, getGenericFacetDefinition } from '@/lib/facets/generic-normalization';
+import { GENERIC_FACET_METADATA, getGenericFacetDefinition } from '@/lib/facets/generic-normalization';
 
 type TableName =
     | 'products'
@@ -170,8 +170,8 @@ function createMockQueryBuilder(
 }
 
 function createMockSupabase(partialState: Partial<DatabaseState> = {}) {
-    const facetDefinitions = Object.keys(GENERIC_FACET_FIELDS).map((field, index) => {
-        const definition = getGenericFacetDefinition(field as keyof typeof GENERIC_FACET_FIELDS);
+    const facetDefinitions = Object.keys(GENERIC_FACET_METADATA).map((field, index) => {
+        const definition = getGenericFacetDefinition(field as keyof typeof GENERIC_FACET_METADATA);
 
         return {
             id: `facet-definition-${index + 1}`,

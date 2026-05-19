@@ -59,7 +59,7 @@ function DistributorCredentialRow({ distributor }: { distributor: DistributorInf
   const fetchStatus = useCallback(async () => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const res = await adminFetch(`/api/admin/scrapers/${distributor.slug}/credentials`);
+      const res = await adminFetch(`/api/admin/pipeline/scrapers/${distributor.slug}/credentials`);
       if (!mountedRef.current) return;
       if (!res.ok) throw new Error('Failed to fetch credential status');
       const data = (await res.json()) as CredentialStatusesResponse;
@@ -88,7 +88,7 @@ function DistributorCredentialRow({ distributor }: { distributor: DistributorInf
     setState(prev => ({ ...prev, saving: true, error: null }));
     try {
       if (state.username.trim()) {
-        const loginRes = await adminFetch(`/api/admin/scrapers/${distributor.slug}/credentials`, {
+        const loginRes = await adminFetch(`/api/admin/pipeline/scrapers/${distributor.slug}/credentials`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ type: 'login', value: state.username.trim() }),
@@ -99,7 +99,7 @@ function DistributorCredentialRow({ distributor }: { distributor: DistributorInf
         }
       }
       if (state.password.trim()) {
-        const passRes = await adminFetch(`/api/admin/scrapers/${distributor.slug}/credentials`, {
+        const passRes = await adminFetch(`/api/admin/pipeline/scrapers/${distributor.slug}/credentials`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ type: 'password', value: state.password.trim() }),
@@ -120,14 +120,14 @@ function DistributorCredentialRow({ distributor }: { distributor: DistributorInf
     setState(prev => ({ ...prev, saving: true, error: null }));
     try {
       if (state.loginConfigured) {
-        const delRes = await adminFetch(`/api/admin/scrapers/${distributor.slug}/credentials?type=login`, { method: 'DELETE' });
+        const delRes = await adminFetch(`/api/admin/pipeline/scrapers/${distributor.slug}/credentials?type=login`, { method: 'DELETE' });
         if (!delRes.ok) {
           const err = await delRes.json();
           throw new Error(err.details || err.error || 'Failed to clear login');
         }
       }
       if (state.passwordConfigured) {
-        const delRes = await adminFetch(`/api/admin/scrapers/${distributor.slug}/credentials?type=password`, { method: 'DELETE' });
+        const delRes = await adminFetch(`/api/admin/pipeline/scrapers/${distributor.slug}/credentials?type=password`, { method: 'DELETE' });
         if (!delRes.ok) {
           const err = await delRes.json();
           throw new Error(err.details || err.error || 'Failed to clear password');

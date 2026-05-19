@@ -24,14 +24,13 @@ app/admin/
 ├── migration/        # ShopSite sync tools
 ├── orders/           # Fulfillment, history
 ├── pages/            # CMS pages
-├── pipeline/         # Job scheduling, monitoring
+├── pipeline/         # Job scheduling, monitoring, runner health
 ├── preorder-groups/  # Preorder management
 ├── product-groups/   # Product groups
 ├── products/         # CRUD, variants, images, pricing
 ├── promotions/       # Discounts, coupons
 ├── quality/          # Flagged products, manual review
 ├── reviews/          # Product reviews
-├── scrapers/         # YAML config, test runner, runs
 ├── services/         # Services catalog (rentals, refills)
 ├── settings/         # System settings
 ├── tools/            # Utility tools
@@ -42,11 +41,9 @@ app/admin/
 | Task | Location |
 |------|----------|
 | **Product CRUD** | `app/admin/products/` |
-| **Scraper Config** | `app/admin/scrapers/` |
-| **Job Queue** | `app/admin/scrapers/runs/` |
+| **Runner Health** | `app/admin/pipeline/runners/` |
 | **B2B Sync** | `app/admin/b2b/` |
 | **ShopSite Export** | `app/admin/migration/` |
-| **Scraper Lab (Testing)** | `app/admin/scrapers/` → Testing tab |
 | **B2B Portal Config** | `app/admin/b2b/` |
 | **Analytics** | `app/admin/analytics/` |
 | **Quality Review** | `app/admin/quality/` |

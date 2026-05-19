@@ -6,7 +6,7 @@
 
 import { ShopSiteOrder, ShopSiteOrderItem, AddressInfo } from './types';
 
-export const SHOP_SITE_SOURCE_SYSTEM = 'shopsite_15';
+const SHOP_SITE_SOURCE_SYSTEM = 'shopsite_15';
 
 /**
  * Transform a ShopSite order into the Supabase orders table format.
@@ -87,7 +87,7 @@ export function transformShopSiteOrder(
     };
 }
 
-export function buildShopSiteSourcePayload(transformedOrder: {
+function buildShopSiteSourcePayload(transformedOrder: {
     shopsite_transaction_id?: string;
     billing_address?: AddressInfo;
     shipping_address?: AddressInfo;

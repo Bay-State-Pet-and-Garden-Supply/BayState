@@ -6,17 +6,17 @@
 
 const ADMIN_KEY_STORAGE = 'bs_admin_api_key';
 
-export function getStoredAdminKey(): string | null {
+function getStoredAdminKey(): string | null {
   if (typeof window === 'undefined') return null;
   return sessionStorage.getItem(ADMIN_KEY_STORAGE);
 }
 
-export function storeAdminKey(key: string): void {
+function storeAdminKey(key: string): void {
   if (typeof window === 'undefined') return;
   sessionStorage.setItem(ADMIN_KEY_STORAGE, key);
 }
 
-export function clearAdminKey(): void {
+function clearAdminKey(): void {
   if (typeof window === 'undefined') return;
   sessionStorage.removeItem(ADMIN_KEY_STORAGE);
 }

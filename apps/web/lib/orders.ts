@@ -324,7 +324,7 @@ export interface OrderEvent {
   created_at: string;
 }
 
-export async function updateOrderStatus(
+async function updateOrderStatus(
   id: string,
   status: Order['status']
 ): Promise<boolean> {

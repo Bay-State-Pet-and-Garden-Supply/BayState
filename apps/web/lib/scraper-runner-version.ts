@@ -162,7 +162,7 @@ export function getRunnerBuildCheck(
     };
 }
 
-export function buildRunnerBuildHeaders(check: RunnerBuildCheck): Record<string, string> {
+function buildRunnerBuildHeaders(check: RunnerBuildCheck): Record<string, string> {
     const headers: Record<string, string> = {
         [RUNNER_RELEASE_CHANNEL_HEADER]: check.releaseChannel,
         [RUNNER_BUILD_STATUS_HEADER]: check.status,

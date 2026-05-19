@@ -135,13 +135,13 @@ function isProductImageStorageUrl(value: string): boolean {
   );
 }
 
-export function isDurableProductImageReference(value: string): boolean {
+function isDurableProductImageReference(value: string): boolean {
   const normalized = value.trim();
 
   return isInlineImageDataUrl(normalized) || isProductImageStorageUrl(normalized);
 }
 
-export function isPendingRetryImageReference(value: string): boolean {
+function isPendingRetryImageReference(value: string): boolean {
   return value.trim().startsWith(PENDING_RETRY_IMAGE_PREFIX);
 }
 

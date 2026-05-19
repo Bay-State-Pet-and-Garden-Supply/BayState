@@ -67,7 +67,6 @@ const LEGACY_PIPELINE_STAGE_ALIASES = {
   searching: "imported",
   scraping: "extracting",
   needs_brand: "imported",
-  needs_fallback_review: "imported",
 } as const;
 
 export function isPersistedStatus(

@@ -7,7 +7,7 @@ import {
 import { PetTypeName, resolveCanonicalPetTypes } from './pet-type-inference';
 import type { MigrationError, ShopSiteProduct, SyncResult } from './types';
 import {
-    GENERIC_FACET_FIELDS,
+    GENERIC_FACET_METADATA,
     GenericFacetName,
     getGenericFacetDefinition,
     normalizeGenericFacetValues,
@@ -316,12 +316,12 @@ async function ensureGenericFacetDefinitionId(
         return existingFacetDefinitionId;
     }
 
-    const genericField = Object.entries(GENERIC_FACET_FIELDS).find(([, value]) => value.name === facetName)?.[0];
+    const genericField = Object.entries(GENERIC_FACET_METADATA).find(([, value]) => value.name === facetName)?.[0];
     if (!genericField) {
         throw new Error(`Unsupported generic facet definition: ${facetName}`);
     }
 
-    const definition = getGenericFacetDefinition(genericField as keyof typeof GENERIC_FACET_FIELDS);
+    const definition = getGenericFacetDefinition(genericField as keyof typeof GENERIC_FACET_METADATA);
     const { data: upsertedDefinition, error } = await supabase
         .from('facet_definitions')
         .upsert(
@@ -581,8 +581,8 @@ export async function importShopSiteProducts({
         petTypeMap.set(pt.name as PetTypeName, pt.id);
     }
 
-    const genericFacetDefinitions = Object.keys(GENERIC_FACET_FIELDS).map((field) =>
-        getGenericFacetDefinition(field as keyof typeof GENERIC_FACET_FIELDS),
+    const genericFacetDefinitions = Object.keys(GENERIC_FACET_METADATA).map((field) =>
+        getGenericFacetDefinition(field as keyof typeof GENERIC_FACET_METADATA),
     );
 
     const { data: existingFacetDefinitions } = await supabase

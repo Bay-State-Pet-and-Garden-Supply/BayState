@@ -14,6 +14,7 @@ import {
   type ApprovedSourceLLMPolicy,
   type ApprovedSourceType,
   type ApprovedSearchMode,
+  type ExtractionMode,
   type SourcePlanResult,
   DISALLOWED_DOMAINS,
   DEFAULT_LLM_POLICY,
@@ -150,6 +151,76 @@ export interface BuildSourcePlanOptions {
    * Override the default LLM policy per-SKU or globally.
    */
   llmPolicy?: Partial<ApprovedSourceLLMPolicy>;
+  /**
+   * Extraction mode: mixed (default), distributor_only, or ai_only.
+   */
+  extractionMode?: ExtractionMode;
+  /**
+   * If true, skip deduplication and re-scrape all sources regardless of
+   * existing enrichment data.
+   */
+  forceRefresh?: boolean;
+}
+
+// =============================================================================
+// Dedup helpers
+// =============================================================================
+
+/**
+ * Check whether a given source for a SKU already has a recent successful
+ * enrichment result stored in products_ingestion.sources.enriched.
+ *
+ * Returns true only if ALL of the following hold:
+ *   - sources.enriched.extracted_at exists and is within 48h
+ *   - The enriched result has non-empty name/title
+ *   - The enriched result has non-empty images/image_urls array
+ *   - sources.enriched.source_results[] contains an entry with matching
+ *     sourceSlug and confidence >= 0.6
+ */
+function isSourceRecentlySuccessful(
+  sku: string,
+  sourceSlug: string,
+  existingSourcesBySku: Map<string, any>,
+): boolean {
+  const sources = existingSourcesBySku.get(sku);
+  if (!sources) return false;
+
+  const enriched = sources.enriched;
+  if (!enriched || typeof enriched !== "object") return false;
+
+  // Check extracted_at exists and is within 48 hours
+  const extractedAt = enriched.extracted_at;
+  if (!extractedAt || typeof extractedAt !== "string") return false;
+
+  const extractedTime = new Date(extractedAt).getTime();
+  if (isNaN(extractedTime)) return false;
+
+  const fortyEightHoursAgo = Date.now() - 48 * 60 * 60 * 1000;
+  if (extractedTime < fortyEightHoursAgo) return false;
+
+  // Check non-empty name
+  const name: unknown = enriched.name ?? enriched.title;
+  if (!name || (typeof name === "string" && name.trim().length === 0)) return false;
+
+  // Check non-empty images / image_urls array
+  const images: unknown = enriched.images ?? enriched.image_urls;
+  if (!Array.isArray(images) || images.length === 0) return false;
+
+  // Check source_results for matching sourceSlug with confidence >= 0.6
+  const sourceResults: unknown = enriched.source_results;
+  if (!Array.isArray(sourceResults)) return false;
+
+  const matchingResult = sourceResults.find(
+    (r: any) =>
+      r &&
+      typeof r === "object" &&
+      r.sourceSlug === sourceSlug &&
+      typeof r.confidence === "number" &&
+      r.confidence >= 0.6,
+  );
+  if (!matchingResult) return false;
+
+  return true;
 }
 
 // =============================================================================
@@ -173,6 +244,8 @@ export async function buildApprovedSourcePlans(
     ? normalizeDistributorSlug(options.selectedDistributorSlug)
     : undefined;
   const llmPolicyOverride = options?.llmPolicy;
+  const extractionMode = options?.extractionMode ?? "mixed";
+  const forceRefresh = options?.forceRefresh ?? false;
 
   if (!skus.length) {
     return results;
@@ -225,6 +298,26 @@ export async function buildApprovedSourcePlans(
 
   if (!brandedSkus.length) {
     return results;
+  }
+
+  // ------------------------------------------------------------------
+  // 2b. Load existing sources for dedup (unless forceRefresh)
+  // ------------------------------------------------------------------
+  let existingSourcesBySku: Map<string, any> | undefined;
+  if (!forceRefresh) {
+    const { data: sourcesData, error: sourcesError } = await db
+      .from("products_ingestion")
+      .select("sku, sources")
+      .in("sku", brandedSkus);
+
+    if (!sourcesError && sourcesData) {
+      existingSourcesBySku = new Map(
+        (sourcesData as Array<{ sku: string; sources: any }>).map((row) => [
+          row.sku,
+          row.sources ?? {},
+        ]),
+      );
+    }
   }
 
   // ------------------------------------------------------------------
@@ -387,44 +480,86 @@ export async function buildApprovedSourcePlans(
     // Run-first entries sorted by priority among themselves
     runFirstEntries.sort((a, b) => a.priority - b.priority);
 
-    const orderedEntries = [...runFirstEntries, ...otherEntries];
+    let orderedEntries = [...runFirstEntries, ...otherEntries];
 
-    // ---- Catalog fallback: synthesize from fixed catalog if selected distributor not found ----
-    if (orderedEntries.length === 0 && selectedDistributorSlug) {
-      const catalogEntry = findDistributorInCatalog(selectedDistributorSlug);
-      if (catalogEntry) {
-        const fallbackEntry = buildDistributorPlanEntry(catalogEntry);
-        orderedEntries.push(fallbackEntry);
-        for (const d of catalogEntry.domains) allDomains.add(d);
-        for (const d of catalogEntry.assetDomains) allAssetDomains.add(d);
-      }
-    }
-
-    // ---- Enrichment Config fallback: if no entries exist, check if there are enabled sources in the product's enrichment_config ----
-    if (orderedEntries.length === 0) {
-      const enabledSources = product.enrichment_config?.enabled_sources;
-      if (Array.isArray(enabledSources) && enabledSources.length > 0) {
-        for (const sourceId of enabledSources) {
-          const catalogEntry = findDistributorInCatalog(sourceId);
-          if (catalogEntry) {
-            const fallbackEntry = buildDistributorPlanEntry(catalogEntry);
-            orderedEntries.push(fallbackEntry);
-            for (const d of catalogEntry.domains) allDomains.add(d);
-            for (const d of catalogEntry.assetDomains) allAssetDomains.add(d);
-          }
+    // ---- Dedup: filter out recently successful sources (skip when forceRefresh) ----
+    const skippedSources: string[] = [];
+    if (existingSourcesBySku && orderedEntries.length > 0) {
+      orderedEntries = orderedEntries.filter((entry) => {
+        const isRecent = isSourceRecentlySuccessful(
+          sku,
+          entry.sourceSlug,
+          existingSourcesBySku,
+        );
+        if (isRecent) {
+          skippedSources.push(entry.sourceSlug);
+          return false;
         }
+        return true;
+      });
+
+      if (skippedSources.length > 0) {
+        console.log(
+          `[SourcePlan] SKU ${sku}: skipped ${skippedSources.length} recently successful source(s): ${skippedSources.join(", ")}`,
+        );
       }
     }
 
-    // ---- Empty plan guard ----
-    if (orderedEntries.length === 0) {
+    // ---- AI-only gate: if dedup removed all entries, all sources are already enriched ----
+    if (orderedEntries.length === 0 && extractionMode === "ai_only") {
       results[sku] = {
         ok: false,
         sku,
-        error: `No approved sources configured for brand ${brand.name} (${brand.slug}). ` +
-          "Configure brand sources in the admin panel before extraction.",
+        error:
+          "AI-only mode requested but all sources already enriched within 48h. Use forceRefresh to re-scrape.",
       };
       continue;
+    }
+
+    // ---- AI-only mode: clear entries (no deterministic extraction) ----
+    if (extractionMode === "ai_only") {
+      orderedEntries = [];
+    }
+
+    // ---- Non-AI-only fallbacks: catalog fallback, enrichment config fallback, empty guard ----
+    if (extractionMode !== "ai_only") {
+      // ---- Catalog fallback: synthesize from fixed catalog if selected distributor not found ----
+      if (orderedEntries.length === 0 && selectedDistributorSlug) {
+        const catalogEntry = findDistributorInCatalog(selectedDistributorSlug);
+        if (catalogEntry) {
+          const fallbackEntry = buildDistributorPlanEntry(catalogEntry);
+          orderedEntries.push(fallbackEntry);
+          for (const d of catalogEntry.domains) allDomains.add(d);
+          for (const d of catalogEntry.assetDomains) allAssetDomains.add(d);
+        }
+      }
+
+      // ---- Enrichment Config fallback: if no entries exist, check if there are enabled sources in the product's enrichment_config ----
+      if (orderedEntries.length === 0) {
+        const enabledSources = product.enrichment_config?.enabled_sources;
+        if (Array.isArray(enabledSources) && enabledSources.length > 0) {
+          for (const sourceId of enabledSources) {
+            const catalogEntry = findDistributorInCatalog(sourceId);
+            if (catalogEntry) {
+              const fallbackEntry = buildDistributorPlanEntry(catalogEntry);
+              orderedEntries.push(fallbackEntry);
+              for (const d of catalogEntry.domains) allDomains.add(d);
+              for (const d of catalogEntry.assetDomains) allAssetDomains.add(d);
+            }
+          }
+        }
+      }
+
+      // ---- Empty plan guard ----
+      if (orderedEntries.length === 0) {
+        results[sku] = {
+          ok: false,
+          sku,
+          error: `No approved sources configured for brand ${brand.name} (${brand.slug}). ` +
+            "Configure brand sources in the admin panel before extraction.",
+        };
+        continue;
+      }
     }
 
     // ---- Build source policy ----
@@ -440,6 +575,14 @@ export async function buildApprovedSourcePlans(
       ...DEFAULT_LLM_POLICY,
       ...llmPolicyOverride,
     };
+
+    // ---- Apply extractionMode overrides to LLM policy ----
+    // extractionMode takes precedence over partial llmPolicyOverride for `enabled`
+    if (extractionMode === "distributor_only") {
+      llmPolicy.enabled = false;
+    } else if (extractionMode === "ai_only") {
+      llmPolicy.enabled = true;
+    }
 
     // ---- Assemble plan ----
     const plan: ApprovedSourcePlan = {

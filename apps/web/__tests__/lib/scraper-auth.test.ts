@@ -4,8 +4,10 @@
 import {
     validateAPIKey,
     validateRunnerAuth,
-    generateAPIKey
+    generateAPIKey,
+    validateActiveRunner
 } from '@/lib/scraper-auth';
+
 import { createClient } from '@supabase/supabase-js';
 
 jest.mock('@supabase/supabase-js', () => ({
@@ -193,4 +195,66 @@ describe('scraper-auth', () => {
             expect(result).toBeNull();
         });
     });
+
+    describe('validateActiveRunner', () => {
+        it('returns false for unauthenticated runner', async () => {
+            const mockRpc = jest.fn().mockResolvedValue({
+                data: [],
+                error: null,
+            });
+            mockCreateClient.mockReturnValue({ rpc: mockRpc } as never);
+
+            const request = new Request('https://test.co', {
+                headers: { 'X-API-Key': 'bsr_invalid' }
+            });
+            const result = await validateActiveRunner(request);
+            expect(result).toEqual({ isAuthenticated: false, isEnabled: false });
+        });
+
+        it('returns isEnabled true if runner does not exist in DB yet', async () => {
+            const mockRpc = jest.fn().mockResolvedValue({
+                data: [{ runner_name: 'new-runner', key_id: 'key-123', is_valid: true }],
+                error: null,
+            });
+            const from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null })
+                    })
+                })
+            });
+            mockCreateClient.mockReturnValue({ rpc: mockRpc, from } as never);
+
+            const request = new Request('https://test.co', {
+                headers: { 'X-API-Key': 'bsr_valid' }
+            });
+            const result = await validateActiveRunner(request);
+            expect(result.isAuthenticated).toBe(true);
+            expect(result.isEnabled).toBe(true);
+            expect(result.runner?.runnerName).toBe('new-runner');
+        });
+
+        it('returns isEnabled false if runner is marked disabled', async () => {
+            const mockRpc = jest.fn().mockResolvedValue({
+                data: [{ runner_name: 'disabled-runner', key_id: 'key-123', is_valid: true }],
+                error: null,
+            });
+            const from = jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                    eq: jest.fn().mockReturnValue({
+                        maybeSingle: jest.fn().mockResolvedValue({ data: { enabled: false }, error: null })
+                    })
+                })
+            });
+            mockCreateClient.mockReturnValue({ rpc: mockRpc, from } as never);
+
+            const request = new Request('https://test.co', {
+                headers: { 'X-API-Key': 'bsr_valid' }
+            });
+            const result = await validateActiveRunner(request);
+            expect(result.isAuthenticated).toBe(true);
+            expect(result.isEnabled).toBe(false);
+        });
+    });
 });
+

@@ -23,6 +23,7 @@ LEGACY_UPDATE_SCRIPT="$CONFIG_DIR/update-runner.sh"
 AUTO_UPDATE_CRON_MARKER="baystate-scraper-auto-update"
 
 AUTO_UPDATES_ENABLED="false"
+USE_CRON_UPDATES="false"
 DOCKER_COMPOSE_CMD=()
 WATCHTOWER_DOCKER_API_VERSION=""
 
@@ -131,6 +132,18 @@ is_truthy() {
         *) return 1 ;;
     esac
 }
+
+should_use_cron_updates() {
+    local os
+    os="$(uname -s)"
+    local arch
+    arch="$(uname -m)"
+    if [ "$os" = "Darwin" ] || [ "$arch" = "arm64" ] || [ "$arch" = "aarch64" ]; then
+        return 0
+    fi
+    return 1
+}
+
 
 require_tty() {
     if [ ! -r /dev/tty ]; then
@@ -259,16 +272,26 @@ get_auto_update_preference() {
             AUTO_UPDATES_ENABLED="false"
             echo -e "Auto-update: ${CYAN}disabled${NC} (from SCRAPER_AUTO_UPDATE)"
         fi
+        if [ "$AUTO_UPDATES_ENABLED" = "true" ] && should_use_cron_updates; then
+            USE_CRON_UPDATES="true"
+        fi
         return
     fi
 
     require_tty
 
-    echo -e "Enable Docker-native automatic updates with Watchtower? ${CYAN}[Y/n]${NC}"
+    if should_use_cron_updates; then
+        echo -e "Enable automatic updates via cron schedule? ${CYAN}[Y/n]${NC}"
+    else
+        echo -e "Enable Docker-native automatic updates with Watchtower? ${CYAN}[Y/n]${NC}"
+    fi
     read -r -p "> " AUTO_UPDATE_RESPONSE < /dev/tty
 
     if [ -z "$AUTO_UPDATE_RESPONSE" ] || [[ "$AUTO_UPDATE_RESPONSE" =~ ^[Yy]$ ]]; then
         AUTO_UPDATES_ENABLED="true"
+        if should_use_cron_updates; then
+            USE_CRON_UPDATES="true"
+        fi
     else
         AUTO_UPDATES_ENABLED="false"
     fi
@@ -310,7 +333,7 @@ services:
         max-file: "3"
 EOF
 
-    if [ "$AUTO_UPDATES_ENABLED" = "true" ]; then
+    if [ "$AUTO_UPDATES_ENABLED" = "true" ] && [ "$USE_CRON_UPDATES" = "false" ]; then
         cat >> "$COMPOSE_FILE" <<EOF
     labels:
       com.centurylinklabs.watchtower.enable: "true"
@@ -362,6 +385,87 @@ remove_legacy_auto_update_schedule() {
     fi
 
     rm -f "$LEGACY_UPDATE_SCRIPT"
+}
+
+write_cron_update_script() {
+    mkdir -p "$CONFIG_DIR"
+
+    cat > "$LEGACY_UPDATE_SCRIPT" <<EOF
+#!/usr/bin/env bash
+# baystate-scraper-auto-update
+set -euo pipefail
+
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:\$PATH"
+
+CONFIG_DIR="$CONFIG_DIR"
+COMPOSE_FILE="\$CONFIG_DIR/compose.yml"
+LOG_FILE="\$CONFIG_DIR/update.log"
+
+log_msg() {
+    echo "[\$(date -u +'%Y-%m-%dT%H:%M:%SZ')] \$1"
+}
+
+# Redirect all stdout and stderr to the log file
+exec >> "\$LOG_FILE" 2>&1
+
+log_msg "Starting auto-update check..."
+
+if ! command -v docker >/dev/null 2>&1; then
+    log_msg "Error: docker command not found in PATH."
+    exit 0
+fi
+
+if ! docker info >/dev/null 2>&1; then
+    log_msg "Error: docker daemon not running or not accessible."
+    exit 0
+fi
+
+if docker compose version >/dev/null 2>&1; then
+    DOCKER_COMPOSE_CMD=(docker compose)
+elif command -v docker-compose >/dev/null 2>&1; then
+    DOCKER_COMPOSE_CMD=(docker-compose)
+else
+    log_msg "Error: docker compose command not found."
+    exit 0
+fi
+
+log_msg "Pulling latest images..."
+if "\${DOCKER_COMPOSE_CMD[@]}" -p baystate-scraper -f "\$COMPOSE_FILE" pull; then
+    log_msg "Pull complete. Updating containers if needed..."
+    if "\${DOCKER_COMPOSE_CMD[@]}" -p baystate-scraper -f "\$COMPOSE_FILE" up -d --remove-orphans; then
+        log_msg "Containers started/updated successfully."
+    else
+        log_msg "Error: failed to bring up containers."
+    fi
+else
+    log_msg "Error: docker compose pull failed."
+fi
+
+log_msg "Auto-update check completed."
+EOF
+
+    chmod 755 "$LEGACY_UPDATE_SCRIPT"
+}
+
+setup_cron_update_schedule() {
+    if ! command -v crontab >/dev/null 2>&1; then
+        echo -e "${YELLOW}Warning:${NC} crontab not available; auto-updates were not scheduled."
+        echo -e "Run ${CYAN}$LEGACY_UPDATE_SCRIPT${NC} manually to update."
+        return
+    fi
+
+    local existing_cron
+    existing_cron="$(crontab -l 2>/dev/null || true)"
+
+    local filtered_cron
+    filtered_cron="$(printf '%s\n' "$existing_cron" | grep -v "$AUTO_UPDATE_CRON_MARKER" || true)"
+
+    {
+        if [ -n "$filtered_cron" ]; then
+            echo "$filtered_cron"
+        fi
+        echo "0 * * * * \"$LEGACY_UPDATE_SCRIPT\" # $AUTO_UPDATE_CRON_MARKER"
+    } | crontab -
 }
 
 remove_legacy_container_if_needed() {
@@ -417,7 +521,7 @@ verify_running() {
         exit 1
     fi
 
-    if [ "$AUTO_UPDATES_ENABLED" = "true" ]; then
+    if [ "$AUTO_UPDATES_ENABLED" = "true" ] && [ "$USE_CRON_UPDATES" = "false" ]; then
         local watchtower_status
         watchtower_status="$(compose_service_status "$WATCHTOWER_SERVICE_NAME")"
 
@@ -444,8 +548,14 @@ verify_running() {
     echo -e "  Browser state:  ${CYAN}$BROWSER_STATE_DIR${NC}"
 
     if [ "$AUTO_UPDATES_ENABLED" = "true" ]; then
-        echo -e "  Auto-update:    ${CYAN}Enabled via Watchtower (hourly checks)${NC}"
-        echo -e "  Watchtower:     ${CYAN}${compose_cmd} logs -f watchtower${NC}"
+        if [ "$USE_CRON_UPDATES" = "true" ]; then
+            echo -e "  Auto-update:    ${CYAN}Enabled via cron (hourly updates)${NC}"
+            echo -e "  Update script:  ${CYAN}$LEGACY_UPDATE_SCRIPT${NC}"
+            echo -e "  Update log:     ${CYAN}$CONFIG_DIR/update.log${NC}"
+        else
+            echo -e "  Auto-update:    ${CYAN}Enabled via Watchtower (hourly checks)${NC}"
+            echo -e "  Watchtower:     ${CYAN}${compose_cmd} logs -f watchtower${NC}"
+        fi
     else
         echo -e "  Manual update:  ${CYAN}${compose_cmd} pull && ${compose_cmd} up -d${NC}"
     fi
@@ -460,12 +570,16 @@ main() {
     detect_compose
     get_config
     get_auto_update_preference
-    if [ "$AUTO_UPDATES_ENABLED" = "true" ]; then
+    if [ "$AUTO_UPDATES_ENABLED" = "true" ] && [ "$USE_CRON_UPDATES" = "false" ]; then
         detect_watchtower_api_version
     fi
     persist_config
     write_compose_file
     cleanup_legacy_install
+    if [ "$USE_CRON_UPDATES" = "true" ]; then
+        write_cron_update_script
+        setup_cron_update_schedule
+    fi
     pull_stack_images
     start_stack
     verify_running

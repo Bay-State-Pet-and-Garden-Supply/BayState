@@ -64,7 +64,7 @@ export function parseStructuredConsolidationText(
  * Parse a single line from a batch output file (OpenAI format or direct chat).
  * Each line is either a successful result or an error.
  */
-export function parseBatchResultLine(
+function parseBatchResultLine(
     sku: string,
     content: string,
     categories: string[]

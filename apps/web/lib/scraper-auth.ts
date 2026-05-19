@@ -1,6 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
+import { NextResponse } from 'next/server';
+import {
+    getRunnerBuildCheck,
+    loadExpectedRunnerRelease,
+    buildRunnerBuildMetadata,
+    createRunnerBuildMismatchResponse,
+} from './scraper-runner-version';
 
 interface RunnerAuthResult {
     runnerName: string;
@@ -182,3 +189,92 @@ export function generateAPIKey(): { key: string; hash: string; prefix: string } 
     
     return { key, hash, prefix };
 }
+
+export interface ActiveRunnerResult {
+    isAuthenticated: boolean;
+    isEnabled: boolean;
+    runner?: RunnerAuthResult;
+    mismatchResponse?: NextResponse;
+}
+
+/**
+ * Validates runner authentication, and also ensures that the runner is enabled and compatible.
+ * If the runner is disabled in the database, blocks the request (isEnabled = false).
+ * If the runner is outdated, auto-disables it in the database and returns a 426 mismatch response.
+ */
+export async function validateActiveRunner(
+    request: Request
+): Promise<ActiveRunnerResult> {
+    const apiKey = request.headers.get('X-API-Key');
+    const authorization = request.headers.get('Authorization');
+    
+    const runner = await validateRunnerAuth({ apiKey, authorization });
+    if (!runner) {
+        return { isAuthenticated: false, isEnabled: false };
+    }
+
+    try {
+        const supabase = getSupabaseAdmin();
+        const runnerName = runner.runnerName;
+
+        // Fetch current scraper_runner row
+        const { data: runnerRow, error: dbError } = await supabase
+            .from('scraper_runners')
+            .select('enabled, metadata')
+            .eq('name', runnerName)
+            .maybeSingle();
+
+        if (dbError) {
+            console.error(`[Active Runner Auth] DB error looking up runner ${runnerName}:`, dbError);
+            // On DB error, default to letting it pass if authenticated, to be resilient
+            return { isAuthenticated: true, isEnabled: true, runner };
+        }
+
+        
+        // If runner exists and is disabled, block it immediately
+        if (runnerRow && runnerRow.enabled === false) {
+            console.warn(`[Active Runner Auth] Blocked request from disabled runner: ${runnerName}`);
+            return { isAuthenticated: true, isEnabled: false, runner };
+        }
+
+        // Perform build version verification check
+        const expectedRelease = await loadExpectedRunnerRelease(supabase, request.headers);
+        const versionCheck = getRunnerBuildCheck(request.headers, expectedRelease);
+
+        if (!versionCheck.isCompatible) {
+            const nowIso = new Date().toISOString();
+            const versionMetadata = buildRunnerBuildMetadata(
+                runnerRow?.metadata,
+                versionCheck,
+                nowIso
+            );
+
+            // Auto-disable the runner in DB just like heartbeat does
+            await supabase.from('scraper_runners').update({ 
+                enabled: false, 
+                status: 'offline',
+                metadata: versionMetadata,
+                last_seen_at: nowIso,
+            }).eq('name', runnerName);
+
+            console.warn(`[Active Runner Auth] Outdated build version from runner ${runnerName}. Auto-disabling.`);
+
+            const mismatchResponse = createRunnerBuildMismatchResponse(versionCheck, {
+                'X-Enforced-Runner-Name': runnerName,
+            });
+
+            return {
+                isAuthenticated: true,
+                isEnabled: false,
+                runner,
+                mismatchResponse,
+            };
+        }
+
+        return { isAuthenticated: true, isEnabled: true, runner };
+    } catch (error) {
+        console.error(`[Active Runner Auth] Error validating active runner ${runner.runnerName}:`, error);
+        return { isAuthenticated: true, isEnabled: true, runner };
+    }
+}
+

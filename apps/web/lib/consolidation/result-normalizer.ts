@@ -246,7 +246,7 @@ export function normalizeConsolidationResult(
 /**
  * Parse JSON response from LLM, handling various formats.
  */
-export function parseJsonResponse(text: string): Record<string, unknown> | null {
+function parseJsonResponse(text: string): Record<string, unknown> | null {
     // Try direct parse
     try {
         return JSON.parse(text);

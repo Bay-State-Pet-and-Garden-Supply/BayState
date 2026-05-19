@@ -14,14 +14,14 @@ jest.mock('next/server', () => ({
 import crypto from 'crypto';
 
 import { GET } from '@/app/api/scraper/v1/credentials/[id]/route';
-import { validateRunnerAuth } from '@/lib/scraper-auth';
+import { validateActiveRunner } from '@/lib/scraper-auth';
 import { createAdminClient } from '@/lib/supabase/server';
 
 jest.mock('@/lib/scraper-auth', () => {
   const actual = jest.requireActual('@/lib/scraper-auth');
   return {
     ...actual,
-    validateRunnerAuth: jest.fn(),
+    validateActiveRunner: jest.fn(),
   };
 });
 
@@ -75,7 +75,10 @@ describe('GET /api/scraper/v1/credentials/[id]', () => {
   };
 
   it('returns 401 when runner auth fails', async () => {
-    (validateRunnerAuth as jest.Mock).mockResolvedValue(null);
+    (validateActiveRunner as jest.Mock).mockResolvedValue({
+      isAuthenticated: false,
+      isEnabled: false,
+    });
 
     const res = await GET(createRequest(), { params: Promise.resolve({ id: 'phillips' }) });
 
@@ -85,10 +88,14 @@ describe('GET /api/scraper/v1/credentials/[id]', () => {
 
   it('reconstructs username/password from separate encrypted credential rows', async () => {
     const key = Buffer.from(encryptionKey, 'utf8');
-    (validateRunnerAuth as jest.Mock).mockResolvedValue({
-      runnerName: 'test-runner',
-      authMethod: 'api_key',
-      allowedScrapers: null,
+    (validateActiveRunner as jest.Mock).mockResolvedValue({
+      isAuthenticated: true,
+      isEnabled: true,
+      runner: {
+        runnerName: 'test-runner',
+        authMethod: 'api_key',
+        allowedScrapers: null,
+      },
     });
 
     mockSupabase.order.mockResolvedValue({
@@ -120,10 +127,14 @@ describe('GET /api/scraper/v1/credentials/[id]', () => {
 
   it('supports legacy JSON credential payloads', async () => {
     const key = Buffer.from(encryptionKey, 'utf8');
-    (validateRunnerAuth as jest.Mock).mockResolvedValue({
-      runnerName: 'test-runner',
-      authMethod: 'api_key',
-      allowedScrapers: null,
+    (validateActiveRunner as jest.Mock).mockResolvedValue({
+      isAuthenticated: true,
+      isEnabled: true,
+      runner: {
+        runnerName: 'test-runner',
+        authMethod: 'api_key',
+        allowedScrapers: null,
+      },
     });
 
     mockSupabase.order.mockResolvedValue({
@@ -156,10 +167,14 @@ describe('GET /api/scraper/v1/credentials/[id]', () => {
   it('normalizes scraper slugs and trims the encryption key during decryption', async () => {
     const key = Buffer.from(encryptionKey, 'utf8');
     process.env.AI_CREDENTIALS_ENCRYPTION_KEY = `${encryptionKey} \n`;
-    (validateRunnerAuth as jest.Mock).mockResolvedValue({
-      runnerName: 'test-runner',
-      authMethod: 'api_key',
-      allowedScrapers: ['orgill'],
+    (validateActiveRunner as jest.Mock).mockResolvedValue({
+      isAuthenticated: true,
+      isEnabled: true,
+      runner: {
+        runnerName: 'test-runner',
+        authMethod: 'api_key',
+        allowedScrapers: ['orgill'],
+      },
     });
 
     mockSupabase.order.mockResolvedValue({

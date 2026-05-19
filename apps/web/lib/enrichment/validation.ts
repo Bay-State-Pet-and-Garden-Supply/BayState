@@ -13,13 +13,13 @@ import { z } from "zod";
 // Scalar Schemas
 // =============================================================================
 
-export const enrichmentResultStatusSchema = z.enum([
+const enrichmentResultStatusSchema = z.enum([
   "success",
   "partial",
   "failed",
 ]);
 
-export const enrichmentModeSchema = z.enum([
+const enrichmentModeSchema = z.enum([
   "structured",
   "metadata",
   "llm",
@@ -45,7 +45,7 @@ const sourceResultInfoSchema = z.object({
   evidenceUrl: z.string().nullable().optional(),
 });
 
-export const enrichmentResultSourceV1Schema = z.object({
+const enrichmentResultSourceV1Schema = z.object({
   url: z.string().min(1, "URL is required"),
   domain: z.string().nullable().optional(),
   label: z.string().nullable().optional(),
@@ -60,7 +60,7 @@ export const enrichmentResultSourceV1Schema = z.object({
 // Product Facts Schema
 // =============================================================================
 
-export const enrichedProductFactsV1Schema = z.object({
+const enrichedProductFactsV1Schema = z.object({
   name: z.string().nullable().optional(),
   brand: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
@@ -88,7 +88,7 @@ export const enrichedProductFactsV1Schema = z.object({
 // Confidence Schema
 // =============================================================================
 
-export const enrichmentConfidenceV1Schema = z.object({
+const enrichmentConfidenceV1Schema = z.object({
   overall: z.number().min(0).max(1),
   // Zod v4: record(keyType, valueType)
   fields: z.record(z.string(), z.number().min(0).max(1)),
@@ -98,7 +98,7 @@ export const enrichmentConfidenceV1Schema = z.object({
 // Validation Schema
 // =============================================================================
 
-export const enrichmentValidationV1Schema = z.object({
+const enrichmentValidationV1Schema = z.object({
   sku_match: z.boolean().optional(),
   warnings: z.array(z.string()).optional(),
   missing_required: z.array(z.string()).optional(),
@@ -108,7 +108,7 @@ export const enrichmentValidationV1Schema = z.object({
 // Attempt Summary Schema
 // =============================================================================
 
-export const enrichmentAttemptSummaryV1Schema = z.object({
+const enrichmentAttemptSummaryV1Schema = z.object({
   mode: z.string(),
   status: z.string(),
   error: z.string().nullable().optional(),
@@ -118,7 +118,7 @@ export const enrichmentAttemptSummaryV1Schema = z.object({
 // Top-Level Result Schema
 // =============================================================================
 
-export const enrichmentResultV1Schema = z.object({
+const enrichmentResultV1Schema = z.object({
   schema_version: z.literal("v1"),
   sku: z.string().min(1, "SKU is required"),
   source: enrichmentResultSourceV1Schema,
@@ -164,7 +164,7 @@ export function safeValidateEnrichmentResultV1(
 /**
  * Validates an array of candidate v1 payloads, separating valid from invalid.
  */
-export function validateEnrichmentResultBatch(
+function validateEnrichmentResultBatch(
   candidates: unknown[],
 ): EnrichmentResultBatchResult {
   const valid: EnrichmentResultBatchResult["valid"] = [];

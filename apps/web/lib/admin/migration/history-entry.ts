@@ -100,7 +100,7 @@ function buildFallbackError(
   ];
 }
 
-export function extractLoggedErrors(
+function extractLoggedErrors(
   metadata: unknown,
   errorSummary: string | null | undefined,
   startedAt: string,

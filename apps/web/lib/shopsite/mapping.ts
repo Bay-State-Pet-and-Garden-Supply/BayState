@@ -397,7 +397,7 @@ export function preparePipelineRowsForShopSiteExport(
  * Infers ShopSite pages from a category breadcrumb.
  * Mapping logic based on category names and structures to automate page assignment.
  */
-export function inferShopSitePagesFromCategory(category: string | null): string[] {
+function inferShopSitePagesFromCategory(category: string | null): string[] {
   if (!category) {
     return [];
   }
@@ -540,7 +540,7 @@ export function transformShopSiteProductToStorefrontRecord(
   };
 }
 
-export function buildPipelineInputFromTransformedShopSiteProduct(
+function buildPipelineInputFromTransformedShopSiteProduct(
   transformed: ShopSiteStorefrontProductRecord,
   options: { legacyFilename?: string | null } = {},
 ): ShopSitePipelineInput {

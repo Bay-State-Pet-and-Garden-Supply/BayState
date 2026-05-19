@@ -37,7 +37,7 @@ curl -fsSL https://raw.githubusercontent.com/Bay-State-Pet-and-Garden-Supply/Bay
 3. Run the one-liner above on the target machine.
 4. Paste your API key and follow the prompts.
 
-The installer configures a Docker Compose stack with **Watchtower** for automatic updates by default.
+The installer configures a Docker Compose stack with **Watchtower** (or a **cron schedule** on macOS/ARM64) for automatic updates by default.
 
 ---
 

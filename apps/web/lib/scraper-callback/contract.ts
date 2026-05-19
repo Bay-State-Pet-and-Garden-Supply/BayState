@@ -239,7 +239,7 @@ type CallbackValidationResult<T> =
     | CallbackValidationSuccess<T>
     | CallbackValidationFailure;
 
-export const isCallbackValidationSuccess = <T>(result: CallbackValidationResult<T>): result is CallbackValidationSuccess<T> =>
+const isCallbackValidationSuccess = <T>(result: CallbackValidationResult<T>): result is CallbackValidationSuccess<T> =>
     result.success === true;
 
 function formatSchemaError(issues: ZodIssue[]): string {

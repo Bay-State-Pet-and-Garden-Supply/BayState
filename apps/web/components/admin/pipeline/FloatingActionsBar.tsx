@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Loader2, Plus, Sparkles, Tag, Trash2, Upload } from 'lucide-react';
+import { Loader2, Plus, Tag, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfirmationDialog } from '@/components/admin/confirmation-dialog';
 import type { PersistedPipelineStatus, PipelineStage } from '@/lib/pipeline/types';
@@ -16,7 +16,7 @@ const BULK_ACTIONS: Record<
     secondaryAction?: string;
   }
 > = {
-  imported: { label: '', nextStage: null, secondaryAction: 'Extract' },
+  imported: { label: '', nextStage: null },
   extracting: { label: '', nextStage: null },
   processed: {
     label: 'Merge selected',
@@ -52,7 +52,6 @@ interface FloatingActionsBarProps {
   onResetStage?: (previousStage: PersistedPipelineStatus) => void;
   onConsolidate?: () => void;
   onOpenScrapeDialog?: () => void;
-  onStartApprovedExtraction?: () => void;
   onAssignBrand?: () => void;
   scrapeSelectionValidation?: { allowed: boolean; reason: string | null };
   onDelete?: () => void;
@@ -73,7 +72,6 @@ export function FloatingActionsBar({
   onResetStage,
   onConsolidate,
   onOpenScrapeDialog,
-  onStartApprovedExtraction,
   onAssignBrand,
   onDelete,
   actionState = null,
@@ -150,13 +148,6 @@ export function FloatingActionsBar({
             {currentStage === 'processed' && onOpenScrapeDialog ? (
               <Button variant="outline" onClick={onOpenScrapeDialog} disabled={isLoading}>
                 <Plus className="h-4 w-4" />
-                {bulkAction.secondaryAction}
-              </Button>
-            ) : null}
-
-            {currentStage === 'imported' && onStartApprovedExtraction ? (
-              <Button variant="outline" onClick={onStartApprovedExtraction} disabled={isLoading}>
-                <Sparkles className="h-4 w-4" />
                 {bulkAction.secondaryAction}
               </Button>
             ) : null}

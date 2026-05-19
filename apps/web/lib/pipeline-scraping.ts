@@ -327,7 +327,7 @@ async function createEnrichmentAttempts(
     return { success: true };
 }
 
-export async function cloneScrapeJobForRetry(
+async function cloneScrapeJobForRetry(
     supabase: Awaited<ReturnType<typeof createClient>>,
     originalJob: {
         id: string;

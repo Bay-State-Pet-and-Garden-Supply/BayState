@@ -97,6 +97,18 @@ class ApprovedSourceExecutor:
                     "trying official SERP/AI fallback",
                     sku,
                 )
+
+                # Early check: no priority entries and no official domains means
+                # the official fallback has nothing to search.
+                if len(self.plan.priority) == 0 and len(self._collect_official_domains()) == 0:
+                    return build_failed_result(
+                        sku=sku,
+                        error_message=(
+                            "AI-only mode requested but no official brand "
+                            "domains are available for this product."
+                        ),
+                    )
+
                 official_result = await self._try_official_fallback()
                 if official_result and self._is_successful(official_result):
                     return official_result

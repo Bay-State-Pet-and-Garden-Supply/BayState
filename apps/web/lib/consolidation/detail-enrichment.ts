@@ -1048,5 +1048,4 @@ export function enrichProductDetails(input: EnrichmentInput): EnrichmentResult {
 }
 
 // Re-export for convenience
-export { FACET_PROFILE_APPLICABLE_FIELDS, resolveFacetProfile } from './category-domain';
 export type { DetailField, FacetProfile } from './category-domain';

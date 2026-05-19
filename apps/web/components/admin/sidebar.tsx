@@ -77,6 +77,15 @@ export function AdminSidebar({ userRole = 'staff', forceExpanded = false }: Admi
     setCollapsedPreference(!collapsed);
   }, [collapsed]);
 
+  const isAdmin = userRole === 'admin';
+  const visibleSections = adminNavSections
+    .filter((section) => !section.adminOnly || isAdmin)
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => !item.adminOnly || isAdmin),
+    }))
+    .filter((section) => section.items.length > 0);
+
   return (
     <aside
       className={cn(
@@ -139,7 +148,7 @@ export function AdminSidebar({ userRole = 'staff', forceExpanded = false }: Admi
 
       <nav className={cn('flex-1 space-y-6 overflow-y-auto py-5', collapsed ? 'px-3' : 'px-4')}>
         <TooltipProvider delayDuration={0}>
-          {adminNavSections.map((section) => (
+          {visibleSections.map((section) => (
             <div key={section.title} className="space-y-2">
               {!collapsed ? (
                 <h2 className="px-3 text-[11px] font-medium text-white/58">{section.title}</h2>

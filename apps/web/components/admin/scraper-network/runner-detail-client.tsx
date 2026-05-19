@@ -18,7 +18,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { deleteRunner } from '@/app/admin/scrapers/network/actions';
+import { deleteRunner } from '@/app/admin/pipeline/runners/actions';
 import { RunnerManagementPanel } from './runner-management-panel';
 import { RunnerMetadataEditor } from './runner-metadata-editor';
 import { RunnerRunHistory } from './runner-run-history';
@@ -77,7 +77,7 @@ export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: Run
       if (result.success) {
         toast.success('Runner deleted successfully');
         if (!isEmbedded) {
-          router.push('/admin/scrapers/network');
+          router.push('/admin/pipeline/runners');
         } else {
           router.refresh();
         }

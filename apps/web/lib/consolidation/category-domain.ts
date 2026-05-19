@@ -674,7 +674,7 @@ export function getApplicableFields(
 export type ProductDomain = FacetProfile;
 
 /** @deprecated Use FACET_PROFILE_APPLICABLE_FIELDS instead */
-export const DOMAIN_APPLICABLE_FIELDS = FACET_PROFILE_APPLICABLE_FIELDS;
+const DOMAIN_APPLICABLE_FIELDS = FACET_PROFILE_APPLICABLE_FIELDS;
 
 /** @deprecated Use resolveFacetProfile instead */
 export { resolveFacetProfile as classifyProductDomain };

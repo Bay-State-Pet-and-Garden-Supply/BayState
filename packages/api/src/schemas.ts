@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const paymentMethodSchema = z.enum(['pickup', 'credit_card', 'paypal', 'in_store'])
+const paymentMethodSchema = z.enum(['pickup', 'credit_card', 'paypal', 'in_store'])
 
 export const paginationSchema = z.object({
   limit: z.number().int().positive().max(100).optional(),
@@ -57,13 +57,13 @@ export const promoValidateInputSchema = z.object({
   email: z.string().email().optional(),
 })
 
-export const checkoutItemRequestSchema = z.object({
+const checkoutItemRequestSchema = z.object({
   id: z.string().min(1),
   quantity: z.number().int().positive(),
   preorderBatchId: z.string().uuid().nullable().optional(),
 })
 
-export const deliveryAddressSchema = z.object({
+const deliveryAddressSchema = z.object({
   street: z.string().min(3),
   city: z.string().min(2),
   state: z.string().min(2),

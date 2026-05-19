@@ -1,4 +1,4 @@
-export const DEFAULT_DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
+const DEFAULT_DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
 
 function trimToNull(value: string | null | undefined): string | null {
   if (typeof value !== 'string') {

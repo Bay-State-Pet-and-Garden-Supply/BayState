@@ -1,7 +1,9 @@
 {
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
   "ignorePatterns": [
-    "apps/web/types/supabase.ts"
+    "apps/web/types/supabase.ts",
+    "apps/web/lib/scraper-log-persistence.ts",
+    "apps/web/types/scraper.ts"
   ],
   "usedClassMembers": [
     {

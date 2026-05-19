@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { validateRunnerAuth } from '@/lib/scraper-auth';
+import { validateActiveRunner } from '@/lib/scraper-auth';
 import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 
 export const dynamic = 'force-dynamic';
@@ -25,19 +25,26 @@ function getSupabaseAdmin(): SupabaseClient {
  */
 export async function POST(request: NextRequest) {
     try {
-        // Validate authentication using unified auth function
-        const runner = await validateRunnerAuth({
-            apiKey: request.headers.get('X-API-Key'),
-            authorization: request.headers.get('Authorization'),
-        });
+        const activeRunner = await validateActiveRunner(request);
 
-        if (!runner) {
+        if (!activeRunner.isAuthenticated) {
             return NextResponse.json(
                 { error: 'Unauthorized - invalid or missing authentication' },
                 { status: 401 }
             );
         }
 
+        if (!activeRunner.isEnabled) {
+            if (activeRunner.mismatchResponse) {
+                return activeRunner.mismatchResponse;
+            }
+            return NextResponse.json(
+                { error: 'Forbidden - runner is disabled' },
+                { status: 403 }
+            );
+        }
+
+        const runner = activeRunner.runner!;
         const body = await request.json();
         const { runner_name, metadata = {} } = body;
 
@@ -45,6 +52,13 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
                 { error: 'runner_name is required' },
                 { status: 400 }
+            );
+        }
+
+        if (runner.runnerName && runner_name !== runner.runnerName) {
+            return NextResponse.json(
+                { error: 'Forbidden: runner_name does not match authenticated runner name' },
+                { status: 403 }
             );
         }
 
@@ -108,18 +122,26 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
     try {
-        // Validate authentication using unified auth function
-        const runner = await validateRunnerAuth({
-            apiKey: request.headers.get('X-API-Key'),
-            authorization: request.headers.get('Authorization'),
-        });
+        const activeRunner = await validateActiveRunner(request);
 
-        if (!runner) {
+        if (!activeRunner.isAuthenticated) {
             return NextResponse.json(
                 { valid: false, error: 'Invalid credentials' },
                 { status: 401 }
             );
         }
+
+        if (!activeRunner.isEnabled) {
+            if (activeRunner.mismatchResponse) {
+                return activeRunner.mismatchResponse;
+            }
+            return NextResponse.json(
+                { valid: false, error: 'Forbidden - runner is disabled' },
+                { status: 403 }
+            );
+        }
+
+        const runner = activeRunner.runner!;
 
         return NextResponse.json({
             valid: true,

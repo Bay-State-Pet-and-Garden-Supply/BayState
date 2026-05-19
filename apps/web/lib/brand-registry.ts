@@ -130,7 +130,7 @@ function getBrandRegistryOfficialDomains(
     return ordered.length > 0 ? ordered : undefined;
 }
 
-export function getBrandRegistryPreferredDomains(
+function getBrandRegistryPreferredDomains(
     value: BrandRegistryRow | BrandRegistryRow[] | null | undefined
 ): string[] | undefined {
     const brand = getSingleBrandRecord(value);

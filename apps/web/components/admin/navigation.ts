@@ -27,11 +27,13 @@ export interface AdminNavItem {
   label: string;
   icon: LucideIcon;
   description?: string;
+  adminOnly?: boolean;
 }
 
 export interface AdminNavSection {
   title: string;
   items: AdminNavItem[];
+  adminOnly?: boolean;
 }
 
 export const adminNavSections: AdminNavSection[] = [
@@ -51,7 +53,7 @@ export const adminNavSections: AdminNavSection[] = [
         description: 'Imports, review, publishing',
       },
       {
-        href: '/admin/scrapers/network',
+        href: '/admin/pipeline/runners',
         label: 'Runner health',
         icon: Rocket,
         description: 'Scraper runners and live status',
@@ -166,6 +168,7 @@ export const adminNavSections: AdminNavSection[] = [
         label: 'Users',
         icon: Users,
         description: 'Staff access',
+        adminOnly: true,
       },
       {
         href: '/admin/b2b',

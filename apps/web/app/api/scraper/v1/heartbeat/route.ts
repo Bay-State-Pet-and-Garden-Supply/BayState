@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
         const { data: runnerRows } = await supabase
             .from('scraper_runners')
-            .select('metadata')
+            .select('enabled, metadata')
             .eq('name', runnerName);
 
         const existingMetadata = runnerRows?.[0]?.metadata;
@@ -61,6 +61,13 @@ export async function POST(request: NextRequest) {
             versionCheck,
             nowIso
         );
+
+        if (runnerRows?.[0]?.enabled === false) {
+            return NextResponse.json(
+                { error: 'Forbidden: Runner is disabled' },
+                { status: 403 }
+            );
+        }
 
         if (!versionCheck.isCompatible) {
             await supabase.from('scraper_runners').update({ 

@@ -1,4 +1,4 @@
-import { validateRunnerAuth } from '@/lib/scraper-auth';
+import { validateActiveRunner } from '@/lib/scraper-auth';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { NextRequest, NextResponse } from 'next/server';
@@ -13,13 +13,17 @@ export async function GET(
   try {
     const { slug } = await params;
 
-    const runner = await validateRunnerAuth({
-      apiKey: request.headers.get('X-API-Key'),
-      authorization: request.headers.get('Authorization'),
-    });
+    const activeRunner = await validateActiveRunner(request);
 
-    if (!runner) {
+    if (!activeRunner.isAuthenticated) {
       return NextResponse.json({ error: 'Invalid or missing API key' }, { status: 401 });
+    }
+
+    if (!activeRunner.isEnabled) {
+      if (activeRunner.mismatchResponse) {
+        return activeRunner.mismatchResponse;
+      }
+      return NextResponse.json({ error: 'Forbidden: Runner is disabled' }, { status: 403 });
     }
 
     const filePath = path.join(CONFIGS_DIR, `${slug}.yaml`);

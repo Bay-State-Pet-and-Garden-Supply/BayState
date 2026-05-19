@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { validateRunnerAuth } from '@/lib/scraper-auth';
+import { validateActiveRunner } from '@/lib/scraper-auth';
 import { SUPABASE_SECRET_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 import {
   processTestResultCallback,
@@ -28,18 +28,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const runner = await validateRunnerAuth({
-      apiKey: request.headers.get('X-API-Key'),
-      authorization: request.headers.get('Authorization'),
-    });
+    const activeRunner = await validateActiveRunner(request);
 
-    if (!runner) {
+    if (!activeRunner.isAuthenticated) {
       console.error('[TestCallback] Authentication failed');
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
+
+    if (!activeRunner.isEnabled) {
+      if (activeRunner.mismatchResponse) {
+        return activeRunner.mismatchResponse;
+      }
+      return NextResponse.json(
+        { error: 'Forbidden: Runner is disabled' },
+        { status: 403 }
+      );
+    }
+
+    const runner = activeRunner.runner!;
 
     console.log(`[TestCallback] Authenticated via ${runner.authMethod}: ${runner.runnerName}`);
 

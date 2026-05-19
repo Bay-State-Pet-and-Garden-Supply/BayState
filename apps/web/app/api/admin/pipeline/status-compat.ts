@@ -13,7 +13,6 @@ const LEGACY_ROUTE_STATUS_MAP = {
   searching: 'imported',
   scraping: 'extracting',
   extracting: 'imported',
-  needs_fallback_review: 'imported',
 } as const satisfies Record<string, PersistedPipelineStatus>;
 
 export const PIPELINE_ROUTE_STATUS_VALUES = [

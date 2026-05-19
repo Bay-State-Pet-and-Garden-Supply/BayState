@@ -200,7 +200,7 @@ export function ActiveRunsTab({ className, jobSubtype }: ActiveRunsTabProps) {
     const jobId = pendingCancelJobId;
     setCancellingId(jobId);
     try {
-      const res = await adminFetch(`/api/admin/scrapers/runs/${jobId}/cancel`, {
+      const res = await adminFetch(`/api/admin/pipeline/runs/${jobId}/cancel`, {
         method: "POST",
       });
 
@@ -321,12 +321,6 @@ export function ActiveRunsTab({ className, jobSubtype }: ActiveRunsTabProps) {
             </Button>
           </div>
         </div>
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/admin/scrapers/runs">
-            <History className="mr-2 h-4 w-4" />
-            View All Runs
-          </Link>
-        </Button>
       </div>
 
       {viewMode === "timeline" ? (
@@ -334,7 +328,6 @@ export function ActiveRunsTab({ className, jobSubtype }: ActiveRunsTabProps) {
           jobs={timelineJobs}
           timeRange={timeRange}
           onTimeRangeChange={setTimeRange}
-          onJobClick={(job) => router.push(`/admin/scrapers/runs/${job.id}`)}
         />
       ) : (
         <>

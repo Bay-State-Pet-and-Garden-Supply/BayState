@@ -98,7 +98,7 @@ export async function updateHomepageSettingsAction(formData: FormData) {
     }
 }
 
-export async function updateNavigationSettingsAction(formData: FormData) {
+async function updateNavigationSettingsAction(formData: FormData) {
     const parseJson = <T>(key: string): T[] => {
         try {
             const value = formData.get(key) as string;
@@ -134,7 +134,7 @@ export async function updateNavigationSettingsAction(formData: FormData) {
     }
 }
 
-export async function updateBrandingSettingsAction(formData: FormData) {
+async function updateBrandingSettingsAction(formData: FormData) {
     const parseJson = <T>(key: string): T[] => {
         try {
             const value = formData.get(key) as string;

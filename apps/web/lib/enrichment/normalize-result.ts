@@ -61,7 +61,7 @@ export function normalizeEnrichmentResultForSources(
  * Extract backward-compatible source fields for the consolidation prompt builder.
  * This allows the existing source filtering logic to work with enriched sources.
  */
-export function extractEnrichedSourceAliases(
+function extractEnrichedSourceAliases(
   normalized: NormalizedEnrichedSourceV1
 ): Record<string, unknown> {
   return {

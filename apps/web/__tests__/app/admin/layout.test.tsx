@@ -18,8 +18,7 @@ describe("Admin Layout", () => {
 
     expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Pipeline" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Scrapers" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Network" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Runner health" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Products" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Settings" })).toBeInTheDocument();
   });
@@ -29,30 +28,26 @@ describe("Admin Layout", () => {
 
     expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Products" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Runner health" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Settings" })).toBeInTheDocument();
 
     // Staff should NOT see admin-only items
     expect(
-      screen.queryByRole("link", { name: "Scrapers" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Network" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Settings" }),
+      screen.queryByRole("link", { name: "Users" }),
     ).not.toBeInTheDocument();
   });
 
   it("shows role indicator", () => {
     render(<AdminSidebar userRole="admin" />);
-    expect(screen.getByText("admin")).toBeInTheDocument();
+    expect(screen.getByText("Signed in as admin")).toBeInTheDocument();
   });
 
   it("can toggle collapse state", async () => {
     render(<AdminSidebar userRole="admin" />);
-    const button = screen.getByRole("button", { name: "Collapse" });
+    const button = screen.getByRole("button", { name: "Collapse navigation" });
     expect(button).toBeInTheDocument();
 
     await userEvent.click(button);
-    expect(screen.getByRole("button", { name: "Expand" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Expand navigation" })).toBeInTheDocument();
   });
 });

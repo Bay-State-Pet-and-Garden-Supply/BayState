@@ -15,7 +15,7 @@ jest.mock('@/lib/scraper-auth', () => {
   const actual = jest.requireActual('@/lib/scraper-auth');
   return {
     ...actual,
-    validateRunnerAuth: jest.fn(),
+    validateActiveRunner: jest.fn(),
   };
 });
 
@@ -26,7 +26,7 @@ jest.mock('@/lib/supabase/server', () => ({
 import crypto from 'crypto';
 
 import { GET } from '@/app/api/scraper/v1/credentials/[id]/route';
-import { validateRunnerAuth } from '@/lib/scraper-auth';
+import { validateActiveRunner } from '@/lib/scraper-auth';
 import { createAdminClient } from '@/lib/supabase/server';
 
 function encryptSecret(value: string, key: Buffer) {
@@ -44,16 +44,20 @@ function encryptSecret(value: string, key: Buffer) {
 
 describe('GET /api/scraper/v1/credentials/[id]', () => {
   const encryptionKey = Buffer.from('12345678901234567890123456789012', 'utf8');
-  const mockValidateRunnerAuth = validateRunnerAuth as jest.Mock;
+  const mockValidateActiveRunner = validateActiveRunner as jest.Mock;
   const mockCreateAdminClient = createAdminClient as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.AI_CREDENTIALS_ENCRYPTION_KEY = encryptionKey.toString('utf8');
-    mockValidateRunnerAuth.mockResolvedValue({
-      runnerName: 'test-runner',
-      authMethod: 'api_key',
-      allowedScrapers: null,
+    mockValidateActiveRunner.mockResolvedValue({
+      isAuthenticated: true,
+      isEnabled: true,
+      runner: {
+        runnerName: 'test-runner',
+        authMethod: 'api_key',
+        allowedScrapers: null,
+      },
     });
   });
 
@@ -158,10 +162,14 @@ describe('GET /api/scraper/v1/credentials/[id]', () => {
       { ...login, credential_type: 'login' },
       { ...password, credential_type: 'password' },
     ]);
-    mockValidateRunnerAuth.mockResolvedValue({
-      runnerName: 'test-runner',
-      authMethod: 'api_key',
-      allowedScrapers: ['orgill'],
+    mockValidateActiveRunner.mockResolvedValue({
+      isAuthenticated: true,
+      isEnabled: true,
+      runner: {
+        runnerName: 'test-runner',
+        authMethod: 'api_key',
+        allowedScrapers: ['orgill'],
+      },
     });
 
     const res = await GET(createRequest({ 'x-api-key': 'bsr_test' }), {
@@ -179,10 +187,14 @@ describe('GET /api/scraper/v1/credentials/[id]', () => {
       { ...login, credential_type: 'login' },
       { ...password, credential_type: 'password' },
     ]);
-    mockValidateRunnerAuth.mockResolvedValue({
-      runnerName: 'test-runner',
-      authMethod: 'api_key',
-      allowedScrapers: ['pet-food-experts-crawl4ai'],
+    mockValidateActiveRunner.mockResolvedValue({
+      isAuthenticated: true,
+      isEnabled: true,
+      runner: {
+        runnerName: 'test-runner',
+        authMethod: 'api_key',
+        allowedScrapers: ['pet-food-experts-crawl4ai'],
+      },
     });
 
     const res = await GET(createRequest({ 'x-api-key': 'bsr_test' }), {

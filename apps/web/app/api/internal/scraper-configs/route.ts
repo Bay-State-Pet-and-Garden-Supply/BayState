@@ -1,4 +1,4 @@
-import { validateRunnerAuth } from '@/lib/scraper-auth';
+import { validateActiveRunner } from '@/lib/scraper-auth';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { NextRequest, NextResponse } from 'next/server';
@@ -59,13 +59,17 @@ async function readConfigListItem(fileName: string): Promise<ScraperConfigListIt
 
 export async function GET(request: NextRequest) {
   try {
-    const runner = await validateRunnerAuth({
-      apiKey: request.headers.get('X-API-Key'),
-      authorization: request.headers.get('Authorization'),
-    });
+    const activeRunner = await validateActiveRunner(request);
 
-    if (!runner) {
+    if (!activeRunner.isAuthenticated) {
       return NextResponse.json({ error: 'Invalid or missing API key' }, { status: 401 });
+    }
+
+    if (!activeRunner.isEnabled) {
+      if (activeRunner.mismatchResponse) {
+        return activeRunner.mismatchResponse;
+      }
+      return NextResponse.json({ error: 'Forbidden: Runner is disabled' }, { status: 403 });
     }
 
     const fileNames = (await readdir(CONFIGS_DIR)).filter((fileName) => fileName.endsWith('.yaml'));

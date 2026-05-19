@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Layers, Package, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import type { PipelineProduct } from '@/lib/pipeline/types';
 import type { Brand } from '@/lib/types';
@@ -39,6 +40,9 @@ export function ManagementPanel({
     petfoodex: { configured: false, loading: true },
   });
 
+  const [extractionMode, setExtractionMode] = useState<"mixed" | "distributor_only" | "ai_only">("mixed");
+  const [forceRefresh, setForceRefresh] = useState(false);
+
   // Load credential statuses on mount
   useEffect(() => {
     let active = true;
@@ -47,7 +51,7 @@ export function ManagementPanel({
         const slugs = ['phillips', 'orgill', 'petfoodex'];
         const results = await Promise.all(
           slugs.map(async (slug) => {
-            const res = await fetch(`/api/admin/scrapers/${slug}/credentials`);
+            const res = await fetch(`/api/admin/pipeline/scrapers/${slug}/credentials`);
             if (!res.ok) throw new Error('Failed to load credentials for ' + slug);
             const data = await res.json();
             const login = data.statuses?.find((s: any) => s.type === 'login');
@@ -188,6 +192,8 @@ export function ManagementPanel({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             skus,
+            extractionMode,
+            forceRefresh,
             config: {
               source_type: 'approved_source_extraction',
             },
@@ -253,7 +259,31 @@ export function ManagementPanel({
       </div>
 
       {/* Footer Action */}
-      <div className="border-t border-border bg-muted/30 p-4">
+      <div className="border-t border-border bg-muted/30 p-4 space-y-3">
+        {/* Extraction Mode */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Extraction Mode</label>
+          <select
+            value={extractionMode}
+            onChange={(e) => setExtractionMode(e.target.value as "mixed" | "distributor_only" | "ai_only")}
+            className="flex h-8 w-full rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <option value="mixed">Full Extraction</option>
+            <option value="distributor_only">Distributor Only</option>
+            <option value="ai_only">AI Only</option>
+          </select>
+        </div>
+
+        {/* Force Refresh */}
+        <label className="flex items-center gap-2 cursor-pointer">
+          <Checkbox
+            checked={forceRefresh}
+            onCheckedChange={(checked) => setForceRefresh(checked === true)}
+            className="h-4 w-4"
+          />
+          <span className="text-xs font-medium text-muted-foreground">Force refresh existing data</span>
+        </label>
+
         <Button
           className="h-11 w-full bg-brand-gold text-ledger-charcoal hover:bg-brand-gold/90"
           disabled={isSaving}

@@ -68,7 +68,7 @@ export async function upsertShopSiteSyncByProductIds(
   }
 }
 
-export async function upsertShopSiteSyncBySkus(
+async function upsertShopSiteSyncBySkus(
   options: ShopSiteSyncBySkuOptions,
 ): Promise<{ matchedCount: number; missingSkus: string[] }> {
   const skus = uniqueNonEmpty(options.skus);

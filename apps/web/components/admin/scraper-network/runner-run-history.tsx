@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
 import { format } from 'date-fns';
 import {
-  ExternalLink,
   XCircle,
   RotateCcw,
   CheckCircle2,
@@ -190,21 +188,6 @@ export function RunnerRunHistory({ runnerId, runnerName }: RunnerRunHistoryProps
         if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
         return `${Math.round(seconds / 3600)}h ${Math.round((seconds % 3600) / 60)}m`;
       },
-    },
-    {
-      key: 'actions',
-      header: '',
-      render: (_, row) => (
-        <div className="flex items-center gap-1">
-          {row.status === 'completed' && (
-            <Button variant="ghost" size="sm" asChild>
-              <Link href={`/admin/scrapers/runs/${row.id}`}>
-                <ExternalLink className="h-4 w-4" />
-              </Link>
-            </Button>
-          )}
-        </div>
-      ),
     },
   ];
 
