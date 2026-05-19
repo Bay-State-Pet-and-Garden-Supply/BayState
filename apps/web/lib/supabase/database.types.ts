@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -78,6 +73,54 @@ export type Database = {
           state?: string
           user_id?: string
           zip_code?: string
+        }
+        Relationships: []
+      }
+      ai_provider_configs: {
+        Row: {
+          auth_tag: string
+          base_url: string | null
+          created_at: string
+          default_model: string
+          encrypted_key: string
+          id: string
+          is_active: boolean
+          iv: string
+          key_version: number
+          name: string
+          provider_type: Database["public"]["Enums"]["ai_provider_type"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          auth_tag: string
+          base_url?: string | null
+          created_at?: string
+          default_model: string
+          encrypted_key: string
+          id?: string
+          is_active?: boolean
+          iv: string
+          key_version?: number
+          name: string
+          provider_type: Database["public"]["Enums"]["ai_provider_type"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          auth_tag?: string
+          base_url?: string | null
+          created_at?: string
+          default_model?: string
+          encrypted_key?: string
+          id?: string
+          is_active?: boolean
+          iv?: string
+          key_version?: number
+          name?: string
+          provider_type?: Database["public"]["Enums"]["ai_provider_type"]
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -946,6 +989,7 @@ export type Database = {
           claimed_by: string | null
           completed_at: string | null
           confidence_overall: number | null
+          config_id: string | null
           created_at: string
           error_message: string | null
           field_confidence: Json
@@ -971,6 +1015,7 @@ export type Database = {
           claimed_by?: string | null
           completed_at?: string | null
           confidence_overall?: number | null
+          config_id?: string | null
           created_at?: string
           error_message?: string | null
           field_confidence?: Json
@@ -996,6 +1041,7 @@ export type Database = {
           claimed_by?: string | null
           completed_at?: string | null
           confidence_overall?: number | null
+          config_id?: string | null
           created_at?: string
           error_message?: string | null
           field_confidence?: Json
@@ -1017,6 +1063,13 @@ export type Database = {
           validation?: Json
         }
         Relationships: [
+          {
+            foreignKeyName: "enrichment_attempts_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "ai_provider_configs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "enrichment_attempts_job_id_fkey"
             columns: ["job_id"]
@@ -1068,25 +1121,100 @@ export type Database = {
           },
         ]
       }
+      enrichment_job_logs: {
+        Row: {
+          created_at: string
+          details: Json | null
+          event_id: string | null
+          id: string
+          job_id: string
+          level: string
+          message: string
+          phase: string | null
+          runner_id: string | null
+          runner_name: string | null
+          scraper_name: string | null
+          sequence: number | null
+          sku: string | null
+          source: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          event_id?: string | null
+          id?: string
+          job_id: string
+          level: string
+          message: string
+          phase?: string | null
+          runner_id?: string | null
+          runner_name?: string | null
+          scraper_name?: string | null
+          sequence?: number | null
+          sku?: string | null
+          source?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          event_id?: string | null
+          id?: string
+          job_id?: string
+          level?: string
+          message?: string
+          phase?: string | null
+          runner_id?: string | null
+          runner_name?: string | null
+          scraper_name?: string | null
+          sequence?: number | null
+          sku?: string | null
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scrape_job_logs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "enrichment_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       enrichment_jobs: {
         Row: {
           claimed_by: string | null
           completed_at: string | null
           completed_count: number
           config: Json
+          config_id: string | null
           cost_estimate: number | null
           created_at: string
           created_by: string | null
+          current_sku: string | null
           error_message: string | null
           failed_count: number
+          heartbeat_at: string | null
           id: string
+          items_processed: number | null
+          items_total: number | null
+          last_event_at: string | null
+          last_log_at: string | null
+          last_log_level: string | null
+          last_log_message: string | null
           lease_expires_at: string | null
           lease_token: string | null
           mode: string
           model: string | null
+          progress_details: Json | null
+          progress_message: string | null
+          progress_percent: number | null
+          progress_phase: string | null
+          progress_updated_at: string | null
           skus: string[]
           started_at: string | null
           status: string
+          test_metadata: Json
+          test_mode: boolean
           token_usage: Json
           total_count: number
           updated_at: string
@@ -1096,19 +1224,35 @@ export type Database = {
           completed_at?: string | null
           completed_count?: number
           config?: Json
+          config_id?: string | null
           cost_estimate?: number | null
           created_at?: string
           created_by?: string | null
+          current_sku?: string | null
           error_message?: string | null
           failed_count?: number
+          heartbeat_at?: string | null
           id?: string
+          items_processed?: number | null
+          items_total?: number | null
+          last_event_at?: string | null
+          last_log_at?: string | null
+          last_log_level?: string | null
+          last_log_message?: string | null
           lease_expires_at?: string | null
           lease_token?: string | null
           mode?: string
           model?: string | null
+          progress_details?: Json | null
+          progress_message?: string | null
+          progress_percent?: number | null
+          progress_phase?: string | null
+          progress_updated_at?: string | null
           skus?: string[]
           started_at?: string | null
           status?: string
+          test_metadata?: Json
+          test_mode?: boolean
           token_usage?: Json
           total_count?: number
           updated_at?: string
@@ -1118,24 +1262,48 @@ export type Database = {
           completed_at?: string | null
           completed_count?: number
           config?: Json
+          config_id?: string | null
           cost_estimate?: number | null
           created_at?: string
           created_by?: string | null
+          current_sku?: string | null
           error_message?: string | null
           failed_count?: number
+          heartbeat_at?: string | null
           id?: string
+          items_processed?: number | null
+          items_total?: number | null
+          last_event_at?: string | null
+          last_log_at?: string | null
+          last_log_level?: string | null
+          last_log_message?: string | null
           lease_expires_at?: string | null
           lease_token?: string | null
           mode?: string
           model?: string | null
+          progress_details?: Json | null
+          progress_message?: string | null
+          progress_percent?: number | null
+          progress_phase?: string | null
+          progress_updated_at?: string | null
           skus?: string[]
           started_at?: string | null
           status?: string
+          test_metadata?: Json
+          test_mode?: boolean
           token_usage?: Json
           total_count?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "enrichment_jobs_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "ai_provider_configs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       enrichment_targets: {
         Row: {
@@ -1211,6 +1379,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      external_sources: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          is_active: boolean
+          key: string
+          name: string
+          source_system: string
+          source_type: Database["public"]["Enums"]["order_source_type"]
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key: string
+          name: string
+          source_system: string
+          source_type: Database["public"]["Enums"]["order_source_type"]
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key?: string
+          name?: string
+          source_system?: string
+          source_type?: Database["public"]["Enums"]["order_source_type"]
+          updated_at?: string
+        }
+        Relationships: []
       }
       facet_definitions: {
         Row: {
@@ -1361,6 +1565,7 @@ export type Database = {
           created_by: string | null
           error_count: number | null
           error_summary: string | null
+          external_source_id: string | null
           file_name: string | null
           id: string
           inserted_count: number | null
@@ -1379,6 +1584,7 @@ export type Database = {
           created_by?: string | null
           error_count?: number | null
           error_summary?: string | null
+          external_source_id?: string | null
           file_name?: string | null
           id?: string
           inserted_count?: number | null
@@ -1397,6 +1603,7 @@ export type Database = {
           created_by?: string | null
           error_count?: number | null
           error_summary?: string | null
+          external_source_id?: string | null
           file_name?: string | null
           id?: string
           inserted_count?: number | null
@@ -1410,7 +1617,15 @@ export type Database = {
           sync_kind?: string
           updated_count?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "integration_sync_runs_external_source_id_fkey"
+            columns: ["external_source_id"]
+            isOneToOne: false
+            referencedRelation: "external_sources"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inventory_items: {
         Row: {
@@ -1744,20 +1959,6 @@ export type Database = {
             columns: ["cohort_id"]
             isOneToOne: false
             referencedRelation: "cohort_batches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "official_brand_url_candidates_discovery_job_id_fkey"
-            columns: ["discovery_job_id"]
-            isOneToOne: false
-            referencedRelation: "scrape_jobs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "official_brand_url_candidates_extraction_job_id_fkey"
-            columns: ["extraction_job_id"]
-            isOneToOne: false
-            referencedRelation: "scrape_jobs"
             referencedColumns: ["id"]
           },
           {
@@ -3757,294 +3958,6 @@ export type Database = {
           },
         ]
       }
-      scrape_job_chunks: {
-        Row: {
-          chunk_index: number
-          claimed_at: string | null
-          claimed_by: string | null
-          completed_at: string | null
-          created_at: string | null
-          error_message: string | null
-          id: string
-          job_id: string
-          planned_work_units: number
-          results: Json | null
-          scrapers: string[] | null
-          site_domain: string | null
-          site_group_key: string | null
-          site_group_label: string | null
-          sku_slice_index: number | null
-          skus: string[]
-          skus_failed: number | null
-          skus_processed: number | null
-          skus_successful: number | null
-          started_at: string | null
-          status: string | null
-          telemetry: Json | null
-          updated_at: string | null
-          work_units_processed: number
-        }
-        Insert: {
-          chunk_index: number
-          claimed_at?: string | null
-          claimed_by?: string | null
-          completed_at?: string | null
-          created_at?: string | null
-          error_message?: string | null
-          id?: string
-          job_id: string
-          planned_work_units?: number
-          results?: Json | null
-          scrapers?: string[] | null
-          site_domain?: string | null
-          site_group_key?: string | null
-          site_group_label?: string | null
-          sku_slice_index?: number | null
-          skus: string[]
-          skus_failed?: number | null
-          skus_processed?: number | null
-          skus_successful?: number | null
-          started_at?: string | null
-          status?: string | null
-          telemetry?: Json | null
-          updated_at?: string | null
-          work_units_processed?: number
-        }
-        Update: {
-          chunk_index?: number
-          claimed_at?: string | null
-          claimed_by?: string | null
-          completed_at?: string | null
-          created_at?: string | null
-          error_message?: string | null
-          id?: string
-          job_id?: string
-          planned_work_units?: number
-          results?: Json | null
-          scrapers?: string[] | null
-          site_domain?: string | null
-          site_group_key?: string | null
-          site_group_label?: string | null
-          sku_slice_index?: number | null
-          skus?: string[]
-          skus_failed?: number | null
-          skus_processed?: number | null
-          skus_successful?: number | null
-          started_at?: string | null
-          status?: string | null
-          telemetry?: Json | null
-          updated_at?: string | null
-          work_units_processed?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "scrape_job_chunks_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "scrape_jobs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      scrape_job_logs: {
-        Row: {
-          created_at: string
-          details: Json | null
-          event_id: string | null
-          id: string
-          job_id: string
-          level: string
-          message: string
-          phase: string | null
-          runner_id: string | null
-          runner_name: string | null
-          scraper_name: string | null
-          sequence: number | null
-          sku: string | null
-          source: string | null
-        }
-        Insert: {
-          created_at?: string
-          details?: Json | null
-          event_id?: string | null
-          id?: string
-          job_id: string
-          level: string
-          message: string
-          phase?: string | null
-          runner_id?: string | null
-          runner_name?: string | null
-          scraper_name?: string | null
-          sequence?: number | null
-          sku?: string | null
-          source?: string | null
-        }
-        Update: {
-          created_at?: string
-          details?: Json | null
-          event_id?: string | null
-          id?: string
-          job_id?: string
-          level?: string
-          message?: string
-          phase?: string | null
-          runner_id?: string | null
-          runner_name?: string | null
-          scraper_name?: string | null
-          sequence?: number | null
-          sku?: string | null
-          source?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "scrape_job_logs_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "scrape_jobs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      scrape_jobs: {
-        Row: {
-          attempt_count: number
-          backoff_until: string | null
-          cohort_id: string | null
-          cohort_status: string | null
-          completed_at: string | null
-          config: Json | null
-          created_at: string
-          created_by: string | null
-          current_sku: string | null
-          error_message: string | null
-          github_run_id: number | null
-          heartbeat_at: string | null
-          id: string
-          is_cohort_batch: boolean | null
-          items_processed: number | null
-          items_total: number | null
-          last_event_at: string | null
-          last_log_at: string | null
-          last_log_level: string | null
-          last_log_message: string | null
-          lease_expires_at: string | null
-          lease_token: string | null
-          leased_at: string | null
-          max_attempts: number
-          max_workers: number
-          metadata: Json | null
-          progress_details: Json | null
-          progress_message: string | null
-          progress_percent: number | null
-          progress_phase: string | null
-          progress_updated_at: string | null
-          runner_name: string | null
-          scrapers: string[] | null
-          skus: string[] | null
-          started_at: string | null
-          status: string
-          test_metadata: Json | null
-          test_mode: boolean
-          timeout_at: string | null
-          type: string
-          updated_at: string | null
-        }
-        Insert: {
-          attempt_count?: number
-          backoff_until?: string | null
-          cohort_id?: string | null
-          cohort_status?: string | null
-          completed_at?: string | null
-          config?: Json | null
-          created_at?: string
-          created_by?: string | null
-          current_sku?: string | null
-          error_message?: string | null
-          github_run_id?: number | null
-          heartbeat_at?: string | null
-          id?: string
-          is_cohort_batch?: boolean | null
-          items_processed?: number | null
-          items_total?: number | null
-          last_event_at?: string | null
-          last_log_at?: string | null
-          last_log_level?: string | null
-          last_log_message?: string | null
-          lease_expires_at?: string | null
-          lease_token?: string | null
-          leased_at?: string | null
-          max_attempts?: number
-          max_workers?: number
-          metadata?: Json | null
-          progress_details?: Json | null
-          progress_message?: string | null
-          progress_percent?: number | null
-          progress_phase?: string | null
-          progress_updated_at?: string | null
-          runner_name?: string | null
-          scrapers?: string[] | null
-          skus?: string[] | null
-          started_at?: string | null
-          status?: string
-          test_metadata?: Json | null
-          test_mode?: boolean
-          timeout_at?: string | null
-          type?: string
-          updated_at?: string | null
-        }
-        Update: {
-          attempt_count?: number
-          backoff_until?: string | null
-          cohort_id?: string | null
-          cohort_status?: string | null
-          completed_at?: string | null
-          config?: Json | null
-          created_at?: string
-          created_by?: string | null
-          current_sku?: string | null
-          error_message?: string | null
-          github_run_id?: number | null
-          heartbeat_at?: string | null
-          id?: string
-          is_cohort_batch?: boolean | null
-          items_processed?: number | null
-          items_total?: number | null
-          last_event_at?: string | null
-          last_log_at?: string | null
-          last_log_level?: string | null
-          last_log_message?: string | null
-          lease_expires_at?: string | null
-          lease_token?: string | null
-          leased_at?: string | null
-          max_attempts?: number
-          max_workers?: number
-          metadata?: Json | null
-          progress_details?: Json | null
-          progress_message?: string | null
-          progress_percent?: number | null
-          progress_phase?: string | null
-          progress_updated_at?: string | null
-          runner_name?: string | null
-          scrapers?: string[] | null
-          skus?: string[] | null
-          started_at?: string | null
-          status?: string
-          test_metadata?: Json | null
-          test_mode?: boolean
-          timeout_at?: string | null
-          type?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "scrape_jobs_cohort_id_fkey"
-            columns: ["cohort_id"]
-            isOneToOne: false
-            referencedRelation: "cohort_batches"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       scrape_results: {
         Row: {
           created_at: string
@@ -4067,15 +3980,7 @@ export type Database = {
           job_id?: string
           runner_name?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "scrape_results_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "scrape_jobs"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       scraper_config_test_skus: {
         Row: {
@@ -4406,7 +4311,7 @@ export type Database = {
             foreignKeyName: "scraper_runners_current_job_id_fkey"
             columns: ["current_job_id"]
             isOneToOne: false
-            referencedRelation: "scrape_jobs"
+            referencedRelation: "enrichment_jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -4564,6 +4469,60 @@ export type Database = {
           unit?: string | null
         }
         Relationships: []
+      }
+      shopsite_product_sync: {
+        Row: {
+          created_at: string
+          external_source_id: string
+          id: string
+          last_sync_error: string | null
+          last_synced_at: string | null
+          last_uploaded_at: string | null
+          metadata: Json
+          product_id: string
+          sync_status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          external_source_id: string
+          id?: string
+          last_sync_error?: string | null
+          last_synced_at?: string | null
+          last_uploaded_at?: string | null
+          metadata?: Json
+          product_id: string
+          sync_status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          external_source_id?: string
+          id?: string
+          last_sync_error?: string | null
+          last_synced_at?: string | null
+          last_uploaded_at?: string | null
+          metadata?: Json
+          product_id?: string
+          sync_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopsite_product_sync_external_source_id_fkey"
+            columns: ["external_source_id"]
+            isOneToOne: false
+            referencedRelation: "external_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopsite_product_sync_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_settings: {
         Row: {
@@ -5364,51 +5323,9 @@ export type Database = {
           health_status: string
         }[]
       }
-      claim_next_chunk: {
-        Args: { p_job_id: string; p_runner_name: string }
-        Returns: {
-          chunk_id: string
-          chunk_index: number
-          scrapers: string[]
-          skus: string[]
-        }[]
-      }
-      claim_next_pending_chunk: {
-        Args: { p_job_id?: string; p_runner_name: string }
-        Returns: {
-          chunk_id: string
-          chunk_index: number
-          config: Json
-          job_id: string
-          lease_expires_at: string
-          lease_token: string
-          max_workers: number
-          planned_work_units: number
-          scrapers: string[]
-          site_domain: string
-          site_group_key: string
-          site_group_label: string
-          sku_slice_index: number
-          skus: string[]
-          test_mode: boolean
-          type: string
-        }[]
-      }
       claim_next_pending_enrichment_attempt: {
         Args: { p_claim_duration_minutes?: number; p_runner_name: string }
         Returns: Json
-      }
-      claim_next_pending_job: {
-        Args: { p_runner_name: string }
-        Returns: {
-          config: Json
-          job_id: string
-          max_workers: number
-          scrapers: string[]
-          skus: string[]
-          test_mode: boolean
-          type: string
-        }[]
       }
       exec_sql: { Args: { query: string }; Returns: Json }
       generate_subscription_suggestions: {
@@ -5660,6 +5577,12 @@ export type Database = {
       }
     }
     Enums: {
+      ai_provider_type:
+        | "deepseek"
+        | "openai"
+        | "openai_compatible"
+        | "gemini"
+        | "lmstudio"
       image_error_type:
         | "auth_401"
         | "not_found_404"
@@ -5850,6 +5773,13 @@ export const Constants = {
   },
   public: {
     Enums: {
+      ai_provider_type: [
+        "deepseek",
+        "openai",
+        "openai_compatible",
+        "gemini",
+        "lmstudio",
+      ],
       image_error_type: [
         "auth_401",
         "not_found_404",
@@ -5920,3 +5850,4 @@ export const Constants = {
     },
   },
 } as const
+
