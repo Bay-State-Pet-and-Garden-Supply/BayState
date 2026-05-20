@@ -3,7 +3,7 @@
 Cost Validation Script - crawl4ai Migration ROI Analysis
 
 This script calculates and compares costs between:
-- BEFORE: Browser-use + OpenAI extraction (expensive)
+- BEFORE: Browser-use + LLM extraction (expensive)
 - AFTER: crawl4ai infrastructure + minimal LLM fallback (cheap)
 
 Outputs:
@@ -20,8 +20,8 @@ from dataclasses import dataclass
 # COST CONSTANTS (Based on ai_cost_tracker.py PRICING and crawl4ai analysis)
 # ============================================================================
 
-# OpenAI pricing per 1K tokens (from ai_cost_tracker.py)
-OPENAI_PRICING = {
+# LLM pricing per 1K tokens
+LLM_PRICING = {
     "gpt-4o": {"input": 0.005, "output": 0.015},
     "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
     "gpt-4": {"input": 0.03, "output": 0.06},
@@ -71,13 +71,13 @@ class CostCalculator:
     """Calculate extraction costs for different approaches."""
 
     @staticmethod
-    def calculate_openai_cost(model: str, input_tokens: int, output_tokens: int) -> float:
-        """Calculate OpenAI API cost for given model and token usage."""
+    def calculate_llm_cost(model: str, input_tokens: int, output_tokens: int) -> float:
+        """Calculate LLM API cost for given model and token usage."""
         model_key = model.lower()
-        if model_key not in OPENAI_PRICING:
+        if model_key not in LLM_PRICING:
             model_key = "gpt-4o-mini"  # Default fallback
 
-        pricing = OPENAI_PRICING[model_key]
+        pricing = LLM_PRICING[model_key]
         input_cost = (input_tokens / 1000) * pricing["input"]
         output_cost = (output_tokens / 1000) * pricing["output"]
 
@@ -88,10 +88,10 @@ class CostCalculator:
         """
         Calculate cost BEFORE crawl4ai migration.
 
-        Uses browser-use + OpenAI for every extraction.
+        Uses browser-use + LLM for every extraction.
         """
-        # OpenAI cost per extraction
-        openai_cost = CostCalculator.calculate_openai_cost(
+        # LLM cost per extraction
+        llm_cost = CostCalculator.calculate_llm_cost(
             model=model, input_tokens=TOKENS_PER_EXTRACTION["input"], output_tokens=TOKENS_PER_EXTRACTION["output"]
         )
 
@@ -119,7 +119,7 @@ class CostCalculator:
         infra_cost = CRAWL4AI_INFRASTRUCTURE_COST
 
         # LLM fallback cost (only for 10% of extractions)
-        llm_cost_per_fallback = CostCalculator.calculate_openai_cost(
+        llm_cost_per_fallback = CostCalculator.calculate_llm_cost(
             model=fallback_model, input_tokens=TOKENS_PER_EXTRACTION["input"], output_tokens=TOKENS_PER_EXTRACTION["output"]
         )
         fallback_llm_cost = llm_cost_per_fallback * fallback_rate

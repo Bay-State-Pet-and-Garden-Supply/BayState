@@ -15,18 +15,18 @@ def check_env_vars():
     print("🔑 Checking Environment Variables...")
 
     serper_key = os.getenv("SERPER_API_KEY")
-    openai_key = os.getenv("OPENAI_API_KEY")
+    llm_key = os.getenv("LLM_API_KEY")
 
     if not serper_key:
         print("  ❌ SERPER_API_KEY is not set")
         return False
     print(f"  ✅ SERPER_API_KEY set ({len(serper_key)} chars)")
 
-    if not openai_key:
-        print("  ❌ OPENAI_API_KEY not set")
+    if not llm_key:
+        print("  ❌ LLM_API_KEY not set")
         return False
     else:
-        print(f"  ✅ OPENAI_API_KEY set ({len(openai_key)} chars)")
+        print(f"  ✅ LLM_API_KEY set ({len(llm_key)} chars)")
 
     return True
 
@@ -179,7 +179,7 @@ def main():
         print("⚠️  Some checks failed. Please fix issues before deploying v3.")
         print()
         print("Common fixes:")
-        print("  - Set API keys: export SERPER_API_KEY=... && export OPENAI_API_KEY=...")
+        print("  - Set API keys: export SERPER_API_KEY=... && export LLM_API_KEY=...")
         print("  - Install dependencies: pip install -r requirements.txt")
         print("  - Pull latest code: git pull origin master")
         return 1
