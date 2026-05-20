@@ -799,7 +799,7 @@ function toAIProviderConfig(data: Record<string, unknown> | null): AIProviderCon
   };
 }
 
-async function getActiveAIProviderConfig(): Promise<AIProviderConfig | null> {
+export async function getActiveAIProviderConfig(): Promise<AIProviderConfig | null> {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
     .from('ai_provider_configs')
