@@ -45,6 +45,7 @@ walkthrough.md
 # but keep examples
 !.env.example
 !.env.*.example
+.DS_Store
 
 # Project-specific temporary/data files
 .artifacts/

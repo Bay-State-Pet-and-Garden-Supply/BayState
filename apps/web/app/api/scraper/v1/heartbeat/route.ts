@@ -69,9 +69,13 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        if (!versionCheck.isCompatible) {
+        const isBusyWithValidJob = body.status === 'busy' && body.current_job_id;
+
+        if (!versionCheck.isCompatible && !isBusyWithValidJob) {
+            // Update metadata/status but DO NOT auto-disable.
+            // This prevents runners from being "stuck" in a disabled state while
+            // still ensuring the UI reflects the version mismatch.
             await supabase.from('scraper_runners').update({ 
-                enabled: false, 
                 status: 'offline',
                 metadata: versionMetadata,
                 last_seen_at: nowIso,

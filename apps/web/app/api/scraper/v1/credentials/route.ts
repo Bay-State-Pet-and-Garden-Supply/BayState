@@ -36,12 +36,15 @@ export async function GET(request: NextRequest) {
 
         if (!activeRunner.isEnabled) {
             if (activeRunner.mismatchResponse) {
-                return activeRunner.mismatchResponse;
+                // It's a version mismatch. We allow credentials for outdated runners
+                // to support Graceful Drain (they might need them to finish a job).
+                console.log(`[Credentials] Allowing outdated runner ${activeRunner.runner?.runnerName} to fetch credentials for graceful drain.`);
+            } else {
+                return NextResponse.json(
+                    { error: 'Forbidden: Runner is disabled' },
+                    { status: 403 }
+                );
             }
-            return NextResponse.json(
-                { error: 'Forbidden: Runner is disabled' },
-                { status: 403 }
-            );
         }
 
         const runner = activeRunner.runner!;

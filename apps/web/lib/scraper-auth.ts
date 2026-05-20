@@ -249,15 +249,16 @@ export async function validateActiveRunner(
                 nowIso
             );
 
-            // Auto-disable the runner in DB just like heartbeat does
+            // Update metadata/status but DO NOT auto-disable.
+            // This prevents runners from being "stuck" in a disabled state while
+            // still ensuring the UI reflects the version mismatch.
             await supabase.from('scraper_runners').update({ 
-                enabled: false, 
                 status: 'offline',
                 metadata: versionMetadata,
                 last_seen_at: nowIso,
             }).eq('name', runnerName);
 
-            console.warn(`[Active Runner Auth] Outdated build version from runner ${runnerName}. Auto-disabling.`);
+            console.warn(`[Active Runner Auth] Outdated build version from runner ${runnerName}. Blocking request but leaving enabled for auto-recovery.`);
 
             const mismatchResponse = createRunnerBuildMismatchResponse(versionCheck, {
                 'X-Enforced-Runner-Name': runnerName,
