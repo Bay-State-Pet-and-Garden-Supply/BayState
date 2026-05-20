@@ -1,21 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Layers, Package, Save, Loader2 } from 'lucide-react';
+import { Package, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import type { PipelineProduct } from '@/lib/pipeline/types';
 import type { Brand } from '@/lib/types';
-import { BrandAssignmentSection } from './BrandAssignmentSection';
-import { OfficialDomainsSection } from './OfficialDomainsSection';
 import { DistributorSection } from './DistributorSection';
-import { 
-  updateProductsBatch, 
-  updateCohortBatch, 
-  updateBrandDomains 
-} from '@/app/admin/pipeline/batch-actions';
+import { updateProductsBatch } from '@/app/admin/pipeline/batch-actions';
 
 interface ManagementPanelProps {
   cohortId: string | null;
@@ -40,7 +34,6 @@ export function ManagementPanel({
     petfoodex: { configured: false, loading: true },
   });
 
-  const [extractionMode, setExtractionMode] = useState<"mixed" | "distributor_only" | "ai_only">("mixed");
   const [forceRefresh, setForceRefresh] = useState(false);
 
   // Load credential statuses on mount
@@ -86,7 +79,7 @@ export function ManagementPanel({
     };
   }, []);
 
-  // Initialize state from cohort/products
+  // Initialize state from cohort/products reactively
   useEffect(() => {
     if (products.length > 0) {
       // 1. Resolve Brand
@@ -122,23 +115,12 @@ export function ManagementPanel({
     }
   }, [cohortId, products.length, cohortBrandObjects]);
 
-  // Sync local domains back into the selectedBrand object for the picker UI
-  const handleDomainsChange = (newDomains: string[]) => {
-    setDomains(newDomains);
-    if (selectedBrand) {
-      setSelectedBrand({
-        ...selectedBrand,
-        official_domains: newDomains
-      });
-    }
-  };
+  const isAISerpEnabled = Boolean(selectedBrand && domains && domains.length > 0);
 
-  const handleBrandChange = (brand: Brand | null) => {
-    setSelectedBrand(brand);
-    if (brand?.official_domains) {
-      setDomains(brand.official_domains);
-    }
-  };
+  // Filter out official_brand if AI/SERP is not enabled
+  const effectiveScrapers = isAISerpEnabled 
+    ? activeScrapers 
+    : activeScrapers.filter(s => s !== 'official_brand');
 
   const toggleScraper = (id: string) => {
     setActiveScrapers(prev => 
@@ -149,8 +131,8 @@ export function ManagementPanel({
   };
 
   const handleSave = async (startScraper: boolean = false) => {
-    if (startScraper && (!selectedBrand || domains.length === 0)) {
-      toast.error('Brand and Official Domains are required to start scraping.');
+    if (startScraper && effectiveScrapers.length === 0) {
+      toast.error('At least one extraction method must be selected to start scraping.');
       return;
     }
 
@@ -158,41 +140,38 @@ export function ManagementPanel({
     try {
       const skus = products.map(p => p.sku);
       
-      // 1. Update products in DB
+      // 1. Update products in DB with effective scrapers
       const productResult = await updateProductsBatch(skus, {
         brand_id: selectedBrand?.id || null,
         pipeline_status: undefined,
         enrichment_config: {
-          enabled_sources: activeScrapers,
+          enabled_sources: effectiveScrapers,
           official_domains: domains,
         }
       });
 
       if (!productResult.success) throw new Error(productResult.error);
 
-      // 2. Update cohort if applicable
-      if (cohortId && cohortId !== 'ungrouped') {
-        const cohortResult = await updateCohortBatch(cohortId, {
-          brand_id: selectedBrand?.id || null,
-          brand_name: selectedBrand?.name || null,
-        });
-        if (!cohortResult.success) throw new Error(cohortResult.error);
-      }
-
-      // 3. Update Brand domains if changed (Global update)
-      if (selectedBrand) {
-        const brandResult = await updateBrandDomains(selectedBrand.id, domains);
-        if (!brandResult.success) throw new Error(brandResult.error);
-      }
-
-      // 4. Actually trigger the extraction job if requested
+      // 2. Trigger the extraction job with inferred mode
       if (startScraper) {
+        const hasAI = effectiveScrapers.includes('official_brand');
+        const hasDistributors = effectiveScrapers.some(s => s !== 'official_brand');
+        
+        let inferredExtractionMode: "mixed" | "distributor_only" | "ai_only" = "mixed";
+        if (hasAI && hasDistributors) {
+          inferredExtractionMode = "mixed";
+        } else if (hasAI) {
+          inferredExtractionMode = "ai_only";
+        } else {
+          inferredExtractionMode = "distributor_only";
+        }
+
         const response = await fetch('/api/admin/enrichment/jobs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             skus,
-            extractionMode,
+            extractionMode: inferredExtractionMode,
             forceRefresh,
             config: {
               source_type: 'approved_source_extraction',
@@ -241,39 +220,16 @@ export function ManagementPanel({
 
       {/* Scrollable Content Area */}
       <div className="flex-1 space-y-8 overflow-y-auto p-4">
-        <BrandAssignmentSection 
-          selectedBrand={selectedBrand}
-          onBrandChange={handleBrandChange}
-        />
-
-        <OfficialDomainsSection 
-          domains={domains}
-          onDomainsChange={handleDomainsChange}
-        />
-
         <DistributorSection 
           activeScrapers={activeScrapers}
           onToggleScraper={toggleScraper}
           credentialStatuses={credentialStatuses}
+          isAISerpEnabled={isAISerpEnabled}
         />
       </div>
 
       {/* Footer Action */}
       <div className="border-t border-border bg-muted/30 p-4 space-y-3">
-        {/* Extraction Mode */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Extraction Mode</label>
-          <select
-            value={extractionMode}
-            onChange={(e) => setExtractionMode(e.target.value as "mixed" | "distributor_only" | "ai_only")}
-            className="flex h-8 w-full rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          >
-            <option value="mixed">Full Extraction</option>
-            <option value="distributor_only">Distributor Only</option>
-            <option value="ai_only">AI Only</option>
-          </select>
-        </div>
-
         {/* Force Refresh */}
         <label className="flex items-center gap-2 cursor-pointer">
           <Checkbox
@@ -296,3 +252,4 @@ export function ManagementPanel({
     </div>
   );
 }
+

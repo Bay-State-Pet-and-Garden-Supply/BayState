@@ -8,16 +8,25 @@ import {
   Edit2,
   AlertCircle,
   Globe,
+  X,
 } from "lucide-react";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 import type { Brand } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { PipelineFilters } from "./PipelineFilters";
 import { PipelineSearchField } from "./PipelineSearchField";
 import { PipelineSidebarTable } from "./PipelineSidebarTable";
 import { ManagementPanel } from "./management/ManagementPanel";
+import { CohortBrandPicker } from "../cohorts/CohortBrandPicker";
+import { toast } from "sonner";
+import {
+  updateProductsBatch,
+  updateCohortBatch,
+  updateBrandDomains,
+} from "@/app/admin/pipeline/batch-actions";
 
 interface ImportedResultsViewProps {
   products: PipelineProduct[];
@@ -105,6 +114,71 @@ export function ImportedResultsView({
   const activeCohortBrand = activeCohortId ? cohortBrands[activeCohortId] : null;
   const activeCohortBrandObject = activeCohortId ? cohortBrandObjects[activeCohortId] : null;
   const hasConfiguredDomains = Boolean(activeCohortBrandObject?.official_domains && activeCohortBrandObject.official_domains.length > 0);
+
+  // Handle brand assignment inline
+  const handleAssignBrand = async (brand: Brand | null) => {
+    if (!activeCohortId || activeCohortId === "ungrouped") return;
+
+    try {
+      const skus = cohortProducts.map((p) => p.sku);
+
+      // 1. Update the cohort batch
+      const cohortResult = await updateCohortBatch(activeCohortId, {
+        brand_id: brand?.id || null,
+        brand_name: brand?.name || null,
+      });
+      if (!cohortResult.success) throw new Error(cohortResult.error);
+
+      // 2. Update the products batch
+      const productResult = await updateProductsBatch(skus, {
+        brand_id: brand?.id || null,
+        enrichment_config: {
+          official_domains: brand?.official_domains || [],
+          // preserve existing enabled sources
+          enabled_sources: cohortProducts[0]?.enrichment_config?.enabled_sources || [],
+        },
+      });
+      if (!productResult.success) throw new Error(productResult.error);
+
+      toast.success(brand ? `Brand assigned: ${brand.name}` : "Brand assignment cleared");
+      onRefresh(true); // reload state
+    } catch (error: any) {
+      console.error("Failed to assign brand:", error);
+      toast.error(error.message || "Failed to assign brand");
+    }
+  };
+
+  // Handle domains change inline
+  const handleDomainsChange = async (newDomains: string[]) => {
+    if (!activeCohortId || activeCohortId === "ungrouped") return;
+    if (!activeCohortBrandObject) {
+      toast.error("Please assign a brand first before adding domains.");
+      return;
+    }
+
+    try {
+      const skus = cohortProducts.map((p) => p.sku);
+
+      // 1. Update brand domains globally
+      const brandResult = await updateBrandDomains(activeCohortBrandObject.id, newDomains);
+      if (!brandResult.success) throw new Error(brandResult.error);
+
+      // 2. Update products in this cohort
+      const productResult = await updateProductsBatch(skus, {
+        enrichment_config: {
+          official_domains: newDomains,
+          enabled_sources: cohortProducts[0]?.enrichment_config?.enabled_sources || [],
+        },
+      });
+      if (!productResult.success) throw new Error(productResult.error);
+
+      toast.success("Official domains updated");
+      onRefresh(true); // reload state
+    } catch (error: any) {
+      console.error("Failed to update domains:", error);
+      toast.error(error.message || "Failed to update domains");
+    }
+  };
 
   // Handle cohort change from sidebar
   const handleCohortChange = (cohortId: string) => {
@@ -258,7 +332,75 @@ export function ImportedResultsView({
                     </div>
                   </div>
                 </div>
+
+                {/* Inline Brand & Domain Settings Area */}
+                {activeCohortId && activeCohortId !== "ungrouped" && (
+                  <div className="px-4 py-3 sm:px-6 bg-muted/20 border-t border-border/40 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        Sync Brand
+                      </span>
+                      <CohortBrandPicker
+                        value={activeCohortBrandObject}
+                        onAssign={handleAssignBrand}
+                        triggerClassName="h-8 rounded-none border border-border bg-background"
+                      />
+                    </div>
+
+                    {activeCohortBrandObject && (
+                      <div className="flex flex-1 flex-col gap-2 md:flex-row md:items-center md:gap-4 md:justify-end min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                          {activeCohortBrandObject.official_domains && activeCohortBrandObject.official_domains.map(domain => (
+                            <span
+                              key={domain}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-background border border-border text-[10px] font-semibold text-foreground rounded-none"
+                            >
+                              {domain}
+                              <button
+                                type="button"
+                                className="text-muted-foreground hover:text-brand-burgundy transition-colors"
+                                onClick={() => {
+                                  const updated = (activeCohortBrandObject.official_domains || []).filter(d => d !== domain);
+                                  void handleDomainsChange(updated);
+                                }}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          ))}
+                          
+                          {(!activeCohortBrandObject.official_domains || activeCohortBrandObject.official_domains.length === 0) && (
+                            <span className="text-[10px] font-bold text-brand-burgundy bg-brand-gold/10 border border-brand-gold px-1.5 py-0.5 uppercase italic">
+                              No Domains Configured (AI / SERP extraction will be disabled)
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="w-full md:w-56 shrink-0">
+                          <Input
+                            placeholder="Add domain (e.g. kongs.com) + Enter"
+                            onKeyDown={async (e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                const val = e.currentTarget.value.trim().toLowerCase();
+                                if (val) {
+                                  const current = activeCohortBrandObject.official_domains || [];
+                                  if (!current.includes(val)) {
+                                    await handleDomainsChange([...current, val]);
+                                  }
+                                  e.currentTarget.value = "";
+                                }
+                              }
+                            }}
+                            className="h-8 rounded-none border border-border bg-background text-[11px] focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+
 
               {/* Details Content (Product Preview Grid) */}
               <div className="flex-1 overflow-y-auto bg-background p-4 sm:p-6">
