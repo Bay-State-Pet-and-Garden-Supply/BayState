@@ -37,7 +37,17 @@ export interface EnrichedProductFactsV1 {
   weight?: string | null;
   dimensions?: string | null;
   shipping_weight?: string | null;
-  image_urls?: string[];
+  image_urls?: Array<
+    | string
+    | {
+        status?: "success" | "error";
+        data_url?: string | null;
+        error_type?: string | null;
+        error_message?: string | null;
+        original_url?: string | null;
+        status_code?: number | null;
+      }
+  >;
   ingredients?: string | null;
   features?: string[];
   pet_type?: string | null;
@@ -136,10 +146,28 @@ export interface NormalizedEnrichedSourceV1 {
   description?: string | null;
   category?: string | null;
   weight?: string | null;
-  /** Backward-compatible alias: product image URLs */
-  images?: string[];
-  /** Full resolved URL of the extraction source */
-  image_urls?: string[];
+  images?: Array<
+    | string
+    | {
+        status?: "success" | "error";
+        data_url?: string | null;
+        error_type?: string | null;
+        error_message?: string | null;
+        original_url?: string | null;
+        status_code?: number | null;
+      }
+  >;
+  image_urls?: Array<
+    | string
+    | {
+        status?: "success" | "error";
+        data_url?: string | null;
+        error_type?: string | null;
+        error_message?: string | null;
+        original_url?: string | null;
+        status_code?: number | null;
+      }
+  >;
   url: string;
   /** Backward-compatible alias: overall confidence score */
   confidence_score: number;

@@ -13,6 +13,11 @@ import { SUPABASE_SECRET_KEY, SUPABASE_URL } from "@/lib/supabase/config";
 import { safeValidateEnrichmentResultV1 } from "@/lib/enrichment/validation";
 import { normalizeEnrichmentResultForSources } from "@/lib/enrichment/normalize-result";
 import type { EnrichmentResultV1 } from "@/lib/enrichment/contracts";
+import {
+  replaceInlineImageDataUrls,
+  buildProductImageStorageFolder,
+} from "@/lib/product-image-storage";
+
 
 function getSupabaseAdmin(): SupabaseClient {
   const url = SUPABASE_URL;
@@ -207,9 +212,19 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Make incoming base64 inline images durable by uploading them to Supabase Storage
+      const durableSourcesResult = await replaceInlineImageDataUrls(supabase, updatedSources, {
+        folderPath: buildProductImageStorageFolder('pipeline-sources', enrichedResult.sku),
+        productId: enrichedResult.sku,
+        onError: (message, error) => {
+          console.warn(`[Enrichment Callback] ${message}`, error);
+        },
+      });
+      const durableSources = durableSourcesResult.value;
+
       // Update product
       const updatePayload: Record<string, unknown> = {
-        sources: updatedSources,
+        sources: durableSources,
         pipeline_status: nextStatus,
         confidence_score: enrichedResult.confidence.overall,
         updated_at: new Date().toISOString(),

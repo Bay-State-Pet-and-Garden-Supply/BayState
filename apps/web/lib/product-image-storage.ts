@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import sharp from 'sharp';
 import {
   MAX_RETRIES,
   classifyHttpError,
@@ -168,6 +169,48 @@ function parseInlineImageDataUrl(dataUrl: string): ParsedInlineImageDataUrl {
   };
 }
 
+async function processImageBuffer(
+  buffer: Uint8Array,
+  contentType: string
+): Promise<{ bytes: Uint8Array; contentType: string; extension: string }> {
+  // SVG format is vector-based; preserve as-is without rasterization
+  if (contentType.toLowerCase() === 'image/svg+xml') {
+    return { bytes: buffer, contentType, extension: 'svg' };
+  }
+
+  try {
+    const sharpInstance = sharp(Buffer.from(buffer));
+    const metadata = await sharpInstance.metadata();
+
+    if (metadata.format && ['jpeg', 'jpg', 'png', 'webp', 'gif', 'tiff', 'heif', 'avif'].includes(metadata.format)) {
+      // Standardize size to fit within 1200x1200px (inside fit, without enlarging smaller images)
+      // and encode in modern WebP format for optimal loading performance.
+      const processedBuffer = await sharpInstance
+        .resize(1200, 1200, {
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .webp({ quality: 82 })
+        .toBuffer();
+
+      return {
+        bytes: new Uint8Array(processedBuffer),
+        contentType: 'image/webp',
+        extension: 'webp',
+      };
+    }
+  } catch (err) {
+    console.warn('[Product Image Storage] Sharp image processing failed; falling back to original image.', err);
+  }
+
+  // Fallback to original if sharp fails or format is unsupported
+  return {
+    bytes: buffer,
+    contentType,
+    extension: normalizeContentTypeExtension(contentType),
+  };
+}
+
 async function uploadInlineImageDataUrl(
   supabase: Pick<SupabaseClient, 'storage'>,
   dataUrl: string,
@@ -179,11 +222,15 @@ async function uploadInlineImageDataUrl(
   }
 
   const parsed = parseInlineImageDataUrl(dataUrl);
-  const hash = createHash('sha256').update(parsed.bytes).digest('hex').slice(0, 24);
-  const storagePath = `${folderPath}/${hash}.${parsed.extension}`;
+  
+  // Standardize raster images using sharp before uploading
+  const processed = await processImageBuffer(parsed.bytes, parsed.contentType);
+  
+  const hash = createHash('sha256').update(processed.bytes).digest('hex').slice(0, 24);
+  const storagePath = `${folderPath}/${hash}.${processed.extension}`;
 
-  const { error: uploadError } = await supabase.storage.from(PRODUCT_IMAGES_BUCKET).upload(storagePath, parsed.bytes, {
-    contentType: parsed.contentType,
+  const { error: uploadError } = await supabase.storage.from(PRODUCT_IMAGES_BUCKET).upload(storagePath, processed.bytes, {
+    contentType: processed.contentType,
     cacheControl: '31536000',
     upsert: true,
   });

@@ -467,6 +467,10 @@ class ApprovedSourceLoginManager:
             )
         return self._playwright_browser
 
+    def get_session_page(self, session_id: str) -> Any | None:
+        """Get the authenticated Playwright page for a session."""
+        return self._auth_pages.get(session_id)
+
     async def fetch_authenticated_html(
         self, session_id: str, url: str
     ) -> str | None:

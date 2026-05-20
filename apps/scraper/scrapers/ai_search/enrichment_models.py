@@ -51,7 +51,7 @@ class EnrichedProductFacts(BaseModel):
     weight: Optional[str] = None
     dimensions: Optional[str] = None
     shipping_weight: Optional[str] = None
-    image_urls: list[str] = Field(default_factory=list)
+    image_urls: list[Any] = Field(default_factory=list)
     ingredients: Optional[str] = None
     features: list[str] = Field(default_factory=list)
     pet_type: Optional[str] = None

@@ -37,6 +37,20 @@ const decisionSchema = z.enum([
   "failed",
 ]).nullable().optional();
 
+const scraperImageCaptureResultSchema = z.object({
+  status: z.enum(["success", "error"]).optional(),
+  data_url: z.string().nullable().optional(),
+  error_type: z.string().nullable().optional(),
+  error_message: z.string().nullable().optional(),
+  original_url: z.string().nullable().optional(),
+  status_code: z.number().nullable().optional(),
+});
+
+const imageUrlElementSchema = z.union([
+  z.string(),
+  scraperImageCaptureResultSchema,
+]);
+
 const enrichedProductFactsV1Schema = z.object({
   name: z.string().nullable().optional(),
   brand: z.string().nullable().optional(),
@@ -46,7 +60,7 @@ const enrichedProductFactsV1Schema = z.object({
   weight: z.string().nullable().optional(),
   dimensions: z.string().nullable().optional(),
   shipping_weight: z.string().nullable().optional(),
-  image_urls: z.array(z.string()).optional(),
+  image_urls: z.array(imageUrlElementSchema).optional(),
   ingredients: z.string().nullable().optional(),
   features: z.array(z.string()).optional(),
   pet_type: z.string().nullable().optional(),

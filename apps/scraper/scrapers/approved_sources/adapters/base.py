@@ -444,6 +444,25 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             if post_processed:
                 det_result = post_processed
 
+        # 6c. Download login-protected images if needed
+        if det_result.success and self.requires_auth and det_result.product.get("image_urls"):
+            login_config = self.get_login_config_class()
+            if login_config:
+                credential_ref = self.entry.credentialRef or self.source_slug
+                login_manager = get_default_login_manager()
+                session_id = login_manager._get_stable_session_id(self.source_slug, credential_ref)
+                page = login_manager.get_session_page(session_id)
+                if page:
+                    try:
+                        from scrapers.approved_sources.image_capture import capture_images_authenticated
+                        logger.info("[%s] Capturing %d authenticated images...", self.adapter_slug, len(det_result.product["image_urls"]))
+                        captured = await capture_images_authenticated(page, det_result.product["image_urls"])
+                        det_result.product["image_urls"] = captured
+                    except Exception as e:
+                        logger.error("[%s] Failed to capture authenticated images: %s", self.adapter_slug, e)
+                else:
+                    logger.warning("[%s] No active Playwright page available for authenticated image capture", self.adapter_slug)
+
         # 7. Apply allowedFields filter
         if det_result.success and self.entry.allowedFields:
             # Map 'images' to 'image_urls' for field matching
