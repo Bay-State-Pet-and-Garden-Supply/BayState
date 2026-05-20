@@ -453,7 +453,7 @@ class TestCrawl4AIExtractorOptimization:
             mock_engine.crawl.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_extract_uses_fallback_when_gemini_key_missing(self):
+    async def test_extract_uses_fallback_when_llm_key_missing(self):
         """Test that missing LLM credentials defer to the zero-cost fallback path."""
         url = "https://example.com/p/123"
         sku = "SKU123"
