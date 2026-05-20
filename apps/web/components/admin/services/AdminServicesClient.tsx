@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Pencil, Trash2, Plus, ToggleRight, ToggleLeft } from 'lucide-react';
-import { AdminControlBar } from '@/components/admin/admin-control-bar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DataTable, type Column } from '@/components/admin/data-table';
@@ -18,7 +17,7 @@ interface AdminServicesClientProps {
     totalCount: number;
 }
 
-export function AdminServicesClient({ initialServices, totalCount }: AdminServicesClientProps) {
+export function AdminServicesClient({ initialServices }: AdminServicesClientProps) {
     const router = useRouter();
     const [selected, setSelected] = useState<Service[]>([]);
     const [updating, setUpdating] = useState<string | null>(null);
@@ -212,18 +211,6 @@ export function AdminServicesClient({ initialServices, totalCount }: AdminServic
 
     return (
         <div className="space-y-5 pb-6">
-            <AdminControlBar>
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="space-y-1">
-                        <p className="text-sm font-medium text-foreground">Service catalog</p>
-                        <p className="text-sm text-muted-foreground">{totalCount} service listings in this view.</p>
-                    </div>
-                    <Button onClick={handleCreate}>
-                        <Plus className="h-4 w-4" /> Add service
-                    </Button>
-                </div>
-            </AdminControlBar>
-
             <div className="space-y-4">
                 {selected.length > 0 && (
                     <div className="flex flex-col gap-3 rounded-[1rem] border border-primary/15 bg-primary/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -262,6 +249,11 @@ export function AdminServicesClient({ initialServices, totalCount }: AdminServic
                     emptyMessage="No services found."
                     emptyAction={
                         <Button onClick={handleCreate}>Add Service</Button>
+                    }
+                    toolbarActions={
+                        <Button onClick={handleCreate} size="sm">
+                            <Plus className="mr-2 h-4 w-4" /> Add service
+                        </Button>
                     }
                 />
             </div>

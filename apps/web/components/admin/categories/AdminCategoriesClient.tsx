@@ -9,8 +9,7 @@ import {
     ChevronDown,
     Star,
     GripVertical,
-    Plus,
-    FolderTree
+    Plus
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -59,7 +58,7 @@ function buildCategoryTree(categories: Category[]): CategoryNode[] {
     return rootCategories;
 }
 
-export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCategoriesClientProps) {
+export function AdminCategoriesClient({ initialCategories }: AdminCategoriesClientProps) {
     const router = useRouter();
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [deleting, setDeleting] = useState<string | null>(null);
@@ -267,12 +266,6 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-end">
-                <Button onClick={() => handleCreate(null)}>
-                    <Plus className="mr-2 h-4 w-4" /> Add Category
-                </Button>
-            </div>
-
             {initialCategories.length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted py-16">
                     <p className="text-lg font-medium text-muted-foreground">No categories yet</p>
@@ -286,12 +279,17 @@ export function AdminCategoriesClient({ initialCategories, totalCount }: AdminCa
                 </div>
             ) : (
                 <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={expandAll}>
-                            Expand All
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={collapseAll}>
-                            Collapse All
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" size="sm" onClick={expandAll}>
+                                Expand All
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={collapseAll}>
+                                Collapse All
+                            </Button>
+                        </div>
+                        <Button onClick={() => handleCreate(null)} size="sm">
+                            <Plus className="mr-2 h-4 w-4" /> Add Category
                         </Button>
                     </div>
 

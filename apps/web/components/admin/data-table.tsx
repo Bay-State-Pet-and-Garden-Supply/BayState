@@ -50,6 +50,7 @@ interface DataTableProps<T extends { id: string | number }> {
   totalCount?: number;
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
+  toolbarActions?: React.ReactNode;
 }
 
 type SortDirection = 'asc' | 'desc' | null;
@@ -77,6 +78,7 @@ export function DataTable<T extends { id: string | number }>({
   totalCount: externalTotalCount,
   onPageChange,
   onPageSizeChange,
+  toolbarActions,
 }: DataTableProps<T>) {
   const isServerSide = externalPage !== undefined;
 
@@ -230,20 +232,28 @@ export function DataTable<T extends { id: string | number }>({
         )}
         {!searchable && <div className="flex-1" />}
 
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Rows per page</span>
-          <select
-            value={pageSize}
-            onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-            className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground"
-          >
-            {pageSizeOptions.map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
-          <span>rows</span>
+        <div className="flex flex-wrap items-center gap-4">
+          {toolbarActions && (
+            <div className="flex items-center gap-2">
+              {toolbarActions}
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Rows per page</span>
+            <select
+              value={pageSize}
+              onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+              className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground"
+            >
+              {pageSizeOptions.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+            <span>rows</span>
+          </div>
         </div>
       </div>
 

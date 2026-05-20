@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Pencil, Trash2, ExternalLink, Plus, Tag } from 'lucide-react';
+import { Pencil, Trash2, ExternalLink, Plus } from 'lucide-react';
 import { getBrandUrl } from '@/lib/urls';
 import { Button } from '@/components/ui/button';
 import { DataTable, type Column } from '@/components/admin/data-table';
@@ -19,7 +19,7 @@ interface AdminBrandsClientProps {
     totalCount: number;
 }
 
-export function AdminBrandsClient({ initialBrands, totalCount }: AdminBrandsClientProps) {
+export function AdminBrandsClient({ initialBrands }: AdminBrandsClientProps) {
     const router = useRouter();
     const [selected, setSelected] = useState<Brand[]>([]);
     const [deleting, setDeleting] = useState<string | null>(null);
@@ -192,12 +192,6 @@ export function AdminBrandsClient({ initialBrands, totalCount }: AdminBrandsClie
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-end">
-                <Button onClick={handleCreate}>
-                    <Plus className="mr-2 h-4 w-4" /> Add Brand
-                </Button>
-            </div>
-
             <div className="space-y-4">
                 {selected.length > 0 && (
                     <div className="flex items-center justify-between rounded-lg bg-purple-50 px-4 py-2">
@@ -226,6 +220,11 @@ export function AdminBrandsClient({ initialBrands, totalCount }: AdminBrandsClie
                     emptyMessage="No brands found. Add your first brand!"
                     emptyAction={
                         <Button onClick={handleCreate}>Add Brand</Button>
+                    }
+                    toolbarActions={
+                        <Button onClick={handleCreate} size="sm">
+                            <Plus className="mr-2 h-4 w-4" /> Add Brand
+                        </Button>
                     }
                 />
             </div>
