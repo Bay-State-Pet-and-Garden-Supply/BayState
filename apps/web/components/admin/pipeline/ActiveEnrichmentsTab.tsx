@@ -169,6 +169,17 @@ function ScraperClusterTelemetry() {
   );
 }
 
+function getDisplaySite(url?: string | null): string {
+  if (!url) return "URL Candidate Search";
+  if (url === "approved_source_extraction" || url.includes("approved_source")) return "Approved Sources";
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname.replace("www.", "");
+  } catch {
+    return url.length > 30 ? url.slice(0, 30) + "..." : url;
+  }
+}
+
 /**
  * SKU attempt breakdown section (Live updates)
  */
@@ -201,49 +212,75 @@ function EnrichmentJobAttemptsPanel({ jobId }: { jobId: string }) {
       </div>
       <ScrollArea className="max-h-64">
         <div className="p-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-          {attempts.map((attempt) => (
-            <div
-              key={attempt.id}
-              className={cn(
-                "p-2.5 border rounded-none flex flex-col gap-1.5 transition-colors",
-                attempt.status === "completed" && "bg-teal-50/10 border-teal-500/20 dark:bg-teal-950/5",
-                attempt.status === "failed" && "bg-rose-50/10 border-rose-500/20 dark:bg-rose-950/5",
-                attempt.status === "running" && "bg-emerald-50/10 border-emerald-500/20 dark:bg-emerald-950/5 animate-pulse",
-                attempt.status === "pending" && "bg-zinc-50/50 border-zinc-200 dark:bg-zinc-950/20 dark:border-zinc-800"
-              )}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-xs font-black tracking-tight text-foreground">
-                  {attempt.sku}
-                </span>
-                <span
-                  className={cn(
-                    "text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-none border",
-                    attempt.status === "completed" && "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-950/40 dark:text-teal-400 dark:border-teal-900",
-                    attempt.status === "failed" && "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900",
-                    attempt.status === "running" && "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900",
-                    attempt.status === "pending" && "bg-zinc-100 text-zinc-800 border-zinc-200 dark:bg-zinc-950/40 dark:text-zinc-400 dark:border-zinc-900",
-                    attempt.status === "cancelled" && "bg-zinc-100 text-zinc-800 border-zinc-200 dark:bg-zinc-950/40 dark:text-zinc-400 dark:border-zinc-900"
-                  )}
-                >
-                  {attempt.status}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-[9px] text-muted-foreground font-semibold">
-                <span className="truncate max-w-[120px]">
-                  {attempt.claimed_by ? `Node: ${attempt.claimed_by}` : "Unclaimed"}
-                </span>
-                <span>
-                  {getElapsed(attempt.started_at ?? attempt.created_at, attempt.completed_at ?? undefined)}
-                </span>
-              </div>
-              {attempt.error_message && (
-                <div className="text-[9px] font-mono text-rose-600 bg-rose-500/5 border border-rose-500/10 p-1.5 mt-1 rounded-none break-words whitespace-pre-wrap">
-                  {attempt.error_message}
+          {attempts.map((attempt) => {
+            const isCompleted =
+              attempt.status === "success" ||
+              attempt.status === "partial" ||
+              attempt.status === "completed";
+            const isFailed = attempt.status === "failed";
+            const isRunning = attempt.status === "running";
+            const isQueued =
+              attempt.status === "queued" ||
+              attempt.status === "pending";
+
+            return (
+              <div
+                key={attempt.id}
+                className={cn(
+                  "p-2.5 border rounded-none flex flex-col gap-1.5 transition-colors",
+                  isCompleted && "bg-teal-50/10 border-teal-500/20 dark:bg-teal-950/5",
+                  isFailed && "bg-rose-50/10 border-rose-500/20 dark:bg-rose-950/5",
+                  isRunning && "bg-emerald-50/10 border-emerald-500/20 dark:bg-emerald-950/5 animate-pulse",
+                  isQueued && "bg-zinc-50/50 border-zinc-200 dark:bg-zinc-950/20 dark:border-zinc-800"
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-black tracking-tight text-foreground">
+                    {attempt.sku}
+                  </span>
+                  <span
+                    className={cn(
+                      "text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-none border",
+                      isCompleted && "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-950/40 dark:text-teal-400 dark:border-teal-900",
+                      isFailed && "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900",
+                      isRunning && "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900",
+                      isQueued && "bg-zinc-100 text-zinc-800 border-zinc-200 dark:bg-zinc-950/40 dark:text-zinc-400 dark:border-zinc-900"
+                    )}
+                  >
+                    {attempt.status}
+                  </span>
                 </div>
-              )}
-            </div>
-          ))}
+                
+                <div className="flex items-center justify-between text-[10px]">
+                  <span 
+                    className="text-foreground/80 font-medium truncate max-w-[130px] select-text" 
+                    title={attempt.source_url || ""}
+                  >
+                    {getDisplaySite(attempt.source_url)}
+                  </span>
+                  {attempt.mode && (
+                    <span className="text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider text-[8px] border border-border px-1 bg-muted/10">
+                      {attempt.mode}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between text-[9px] text-muted-foreground font-semibold">
+                  <span className="truncate max-w-[120px]">
+                    {attempt.claimed_by ? `🤖 ${attempt.claimed_by}` : "⏳ Claim pending..."}
+                  </span>
+                  <span>
+                    {getElapsed(attempt.started_at ?? attempt.created_at, attempt.completed_at ?? undefined)}
+                  </span>
+                </div>
+                {attempt.error_message && (
+                  <div className="text-[9px] font-mono text-rose-600 bg-rose-500/5 border border-rose-500/10 p-1.5 mt-1 rounded-none break-words whitespace-pre-wrap">
+                    {attempt.error_message}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </ScrollArea>
     </div>
@@ -386,9 +423,9 @@ interface EnrichmentJobCardProps {
 
 function EnrichmentJobCard({ job, onCancel, cancellingId, onlineRunners }: EnrichmentJobCardProps) {
   const [showLogs, setShowLogs] = useState(false);
-  const [showAttempts, setShowAttempts] = useState(false);
-
   const isActive = job.status === "queued" || job.status === "running" || job.status === "claimed" || job.status === "pending";
+  const [showAttempts, setShowAttempts] = useState(isActive);
+
   const progressPercent = getProgressPercent(job);
 
   // Cross reference job runner status with Scraper network presence
@@ -583,6 +620,7 @@ function EnrichmentJobCard({ job, onCancel, cancellingId, onlineRunners }: Enric
  */
 export function ActiveEnrichmentsTab() {
   const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
+  const [showRecentCompleted, setShowRecentCompleted] = useState(false);
 
   // Connect to Supabase Scraper runner presence
   const { onlineIds: onlineRunners } = useRunnerPresence();
@@ -690,26 +728,33 @@ export function ActiveEnrichmentsTab() {
 
       {/* Recent Completed / Failed Runs */}
       {completedJobs.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-3 pt-4 border-t border-border/40">
           <div className="flex items-center justify-between select-none">
             <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              Recent Extraction Batches
+              Recent Extraction Batches ({completedJobs.length})
             </h3>
-            <span className="text-[10px] font-semibold text-muted-foreground">
-              Last {completedJobs.length} batches
-            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowRecentCompleted(!showRecentCompleted)}
+              className="h-7 text-[10px] font-bold gap-1 rounded-none border border-border"
+            >
+              {showRecentCompleted ? "Hide History" : "Show History"}
+            </Button>
           </div>
-          <div className="space-y-3">
-            {completedJobs.slice(0, 10).map((job) => (
-              <EnrichmentJobCard
-                key={job.id}
-                job={job}
-                onCancel={handleCancelJob}
-                cancellingId={cancellingJobId}
-                onlineRunners={onlineRunners}
-              />
-            ))}
-          </div>
+          {showRecentCompleted && (
+            <div className="space-y-3">
+              {completedJobs.slice(0, 10).map((job) => (
+                <EnrichmentJobCard
+                  key={job.id}
+                  job={job}
+                  onCancel={handleCancelJob}
+                  cancellingId={cancellingJobId}
+                  onlineRunners={onlineRunners}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 

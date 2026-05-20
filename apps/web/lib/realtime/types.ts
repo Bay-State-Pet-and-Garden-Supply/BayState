@@ -238,7 +238,7 @@ export interface EnrichmentAttempt {
   id: string;
   job_id: string;
   sku: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'queued' | 'success' | 'partial';
   attempt_number: number;
   claimed_by: string | null;
   started_at: string | null;
@@ -246,6 +246,8 @@ export interface EnrichmentAttempt {
   error_message: string | null;
   created_at: string;
   updated_at: string;
+  source_url?: string | null;
+  mode?: string | null;
 }
 
 /**

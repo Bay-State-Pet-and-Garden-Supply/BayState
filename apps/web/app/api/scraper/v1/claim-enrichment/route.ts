@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
       .update({
         status: "running",
         started_at: new Date().toISOString(),
+        claimed_by: runner.runnerName,
       })
       .in("id", attemptIds)
       .eq("status", "queued")
