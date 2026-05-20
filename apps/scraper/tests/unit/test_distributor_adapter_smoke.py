@@ -187,7 +187,6 @@ class TestBuildPlanFromEntry:
         assert plan_entry.sourceSlug == "bradley"
         assert plan_entry.adapterSlug == "bradley_crawl4ai"
         assert plan_entry.requiresAuth is False
-        assert plan.llmPolicy.enabled is False
 
     def test_builds_plan_without_brand(self):
         entry = {

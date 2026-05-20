@@ -1,6 +1,6 @@
 """Official Brand Adapter for autonomous SERP/AI fallback.
 
-Runs when no selected distributor succeeds and llmPolicy.enabled.
+Runs as part of the unified prioritized source plan when specified.
 Searches for the product on official brand domains using Serper,
 validates results against source policy, and auto-selects the best
 approved URL. Never extracts from unapproved domains.

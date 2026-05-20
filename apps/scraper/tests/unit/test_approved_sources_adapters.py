@@ -16,7 +16,6 @@ from scrapers.approved_sources.types import (
     ApprovedSourcePlanEntry,
     ApprovedSourceBrand,
     ApprovedSourcePolicy,
-    ApprovedSourceLLMPolicy,
 )
 
 
@@ -53,9 +52,7 @@ def _make_plan(
             disallowedDomains=["amazon.com", "chewy.com", "walmart.com", "petco.com", "petsmart.com"],
             approvedSourcesOnly=True,
         ),
-        llmPolicy=ApprovedSourceLLMPolicy(enabled=True),
     )
-
 
 def _make_entry(
     slug: str = "bradley",

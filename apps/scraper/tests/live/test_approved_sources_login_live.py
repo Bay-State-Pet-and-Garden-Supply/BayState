@@ -35,7 +35,6 @@ from scrapers.approved_sources.types import (
     ApprovedSourcePlanEntry,
     ApprovedSourcePolicy,
     ApprovedSourceBrand,
-    ApprovedSourceLLMPolicy,
 )
 
 
@@ -116,7 +115,6 @@ def _build_live_plan(
             allowedAssetDomains=domains,
             approvedSourcesOnly=True,
         ),
-        llmPolicy=ApprovedSourceLLMPolicy(enabled=False),
     )
 
     return plan, entry

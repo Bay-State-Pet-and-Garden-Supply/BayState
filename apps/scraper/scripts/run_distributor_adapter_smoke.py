@@ -35,7 +35,6 @@ from scrapers.approved_sources.types import (
     ApprovedSourcePlanEntry,
     ApprovedSourcePolicy,
     ApprovedSourceBrand,
-    ApprovedSourceLLMPolicy,
 )
 
 logger = logging.getLogger(__name__)
@@ -172,7 +171,6 @@ def build_plan_from_entry(entry: dict[str, Any]) -> tuple[ApprovedSourcePlan, Ap
             allowedAssetDomains=allowed_asset_domains + ["fixture.local"],
             approvedSourcesOnly=True,
         ),
-        llmPolicy=ApprovedSourceLLMPolicy(enabled=False),
     )
 
     return plan, plan_entry
