@@ -18,15 +18,21 @@ async function fetchModelsFromEndpoint(provider: string, baseUrl: string | null,
   // Try base_url + '/models' or base_url + '/v1/models'
   // Gemini base URL already includes the API version (e.g. .../v1beta)
   const isGemini = provider === 'gemini' || cleanBaseUrl.includes('generativelanguage.googleapis.com');
-  const modelsUrl = isGemini
+  let modelsUrl = isGemini
     ? `${cleanBaseUrl}/models`
     : cleanBaseUrl.endsWith('/v1') ? `${cleanBaseUrl}/models` : `${cleanBaseUrl}/v1/models`;
+
+  // Gemini API requires the key as a query parameter
+  if (isGemini && apiKey) {
+    modelsUrl += `${modelsUrl.includes('?') ? '&' : '?'}key=${apiKey}`;
+  }
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
 
-  if (apiKey) {
+  // Only use Bearer token for non-Gemini providers
+  if (apiKey && !isGemini) {
     headers['Authorization'] = `Bearer ${apiKey}`;
   }
 
@@ -39,11 +45,27 @@ async function fetchModelsFromEndpoint(provider: string, baseUrl: string | null,
   });
 
   if (!res.ok) {
+    const errorBody = await res.text().catch(() => '');
+    console.error(`[AI Settings] Models query failed (${res.status}):`, errorBody);
     throw new Error(`Endpoint returned status ${res.status}`);
   }
 
   const data = await res.json();
   
+  // Handle Gemini response format: { "models": [ { "name": "models/..." } ] }
+  if (isGemini && data && Array.isArray(data.models)) {
+    return data.models
+      .filter((m: any) => m.name && (m.name.includes('gemini') || m.name.includes('learnlm')))
+      .map((m: any) => {
+        const name = m.name || '';
+        const id = name.startsWith('models/') ? name.slice('models/'.length) : name;
+        return {
+          id: id || m.displayName || String(m),
+          label: m.displayName || id || String(m),
+        };
+      });
+  }
+
   // Parse models list. standard format is { data: [ { id: "model-name" } ] }
   if (data && Array.isArray(data.data)) {
     return data.data.map((m: any) => ({

@@ -86,8 +86,10 @@ describe('GeminiClient', () => {
       expect(upKeys).toContain('content-length');
       expect(upKeys).toContain('x-goog-upload-command');
       expect(upKeys).toContain('x-goog-upload-offset');
+      expect(upKeys).toContain('x-goog-api-key');
       expect(Object.values(upHeaders).join(' ')).toContain('upload, finalize');
       expect(Object.values(upHeaders).join(' ')).toContain('0');
+      expect(upHeaders['x-goog-api-key']).toBe('test-gemini-key-abc');
     });
 
     it('falls back to direct multipart upload when no upload URL header', async () => {
@@ -169,7 +171,7 @@ describe('GeminiClient', () => {
       
       const headers = (opts as RequestInit).headers as Record<string, string>;
       expect(headers['Content-Type']).toBe('application/json');
-      expect(headers['Authorization']).toBe('Bearer test-gemini-key-abc');
+      expect(headers['x-goog-api-key']).toBe('test-gemini-key-abc');
 
       const body = JSON.parse((opts as RequestInit).body as string);
       // inputFile.fileUri must be the full file URI, not a resource name
@@ -239,7 +241,7 @@ describe('GeminiClient', () => {
       expect((opts as RequestInit).method).toBe('GET');
       
       const headers = (opts as RequestInit).headers as Record<string, string>;
-      expect(headers['Authorization']).toBe('Bearer test-gemini-key-abc');
+      expect(headers['x-goog-api-key']).toBe('test-gemini-key-abc');
     });
 
     it('throws on non-ok response', async () => {
@@ -277,7 +279,7 @@ describe('GeminiClient', () => {
       expect((opts as RequestInit).method).toBe('POST');
       
       const headers = (opts as RequestInit).headers as Record<string, string>;
-      expect(headers['Authorization']).toBe('Bearer test-gemini-key-abc');
+      expect(headers['x-goog-api-key']).toBe('test-gemini-key-abc');
     });
 
     it('returns success false on non-ok response', async () => {
@@ -363,7 +365,7 @@ describe('GeminiClient', () => {
       expect((opts as RequestInit).method).toBe('GET');
       
       const headers = (opts as RequestInit).headers as Record<string, string>;
-      expect(headers['Authorization']).toBe('Bearer test-gemini-key-abc');
+      expect(headers['x-goog-api-key']).toBe('test-gemini-key-abc');
     });
 
     it('works with bare file ID', async () => {
@@ -470,7 +472,7 @@ describe('GeminiClient', () => {
 
       const headers = (opts as RequestInit).headers as Record<string, string>;
       expect(headers['Content-Type']).toBe('application/json');
-      expect(headers['Authorization']).toBe('Bearer test-gemini-key-abc');
+      expect(headers['x-goog-api-key']).toBe('test-gemini-key-abc');
 
       const body = JSON.parse((opts as RequestInit).body as string);
       expect(body.model).toBe('models/gemini-3.5-flash');
@@ -517,7 +519,7 @@ describe('GeminiClient', () => {
       expect((opts as RequestInit).method).toBe('DELETE');
 
       const headers = (opts as RequestInit).headers as Record<string, string>;
-      expect(headers['Authorization']).toBe('Bearer test-gemini-key-abc');
+      expect(headers['x-goog-api-key']).toBe('test-gemini-key-abc');
       expect(result.success).toBe(true);
     });
 

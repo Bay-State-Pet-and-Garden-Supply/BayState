@@ -113,10 +113,12 @@ export class GeminiClient {
   }
 
   /**
-   * Get the authorization header value.
+   * Get the authorization headers.
    */
-  private authHeader(): string {
-    return `Bearer ${this.apiKey}`;
+  private authHeaders(): Record<string, string> {
+    return {
+      'x-goog-api-key': this.apiKey,
+    };
   }
 
   /**
@@ -180,6 +182,7 @@ export class GeminiClient {
           'X-Goog-Upload-Command': 'start',
           'X-Goog-Upload-Header-Content-Length': String(fileBuffer.length),
           'X-Goog-Upload-Header-Content-Type': mimeType,
+          ...this.authHeaders(),
         },
         body: JSON.stringify({
           file: {
@@ -209,6 +212,7 @@ export class GeminiClient {
           'Content-Length': String(fileBuffer.length),
           'X-Goog-Upload-Command': 'upload, finalize',
           'X-Goog-Upload-Offset': '0',
+          ...this.authHeaders(),
         },
         body: fileBuffer as BodyInit,
         signal: controller.signal,
@@ -254,6 +258,7 @@ export class GeminiClient {
         method: 'POST',
         headers: {
           'Content-Type': multipartBody.type,
+          ...this.authHeaders(),
         },
         body: multipartBody,
         signal: controller.signal,
@@ -367,7 +372,7 @@ export class GeminiClient {
     try {
       const response = await fetch(url, {
         method: 'GET',
-        headers: { 'Authorization': this.authHeader() },
+        headers: this.authHeaders(),
         signal: controller.signal,
       });
 
@@ -436,7 +441,7 @@ export class GeminiClient {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': this.authHeader(),
+          ...this.authHeaders(),
         },
         body: JSON.stringify(body),
         signal: controller.signal,
@@ -468,7 +473,7 @@ export class GeminiClient {
     try {
       const response = await fetch(url, {
         method: 'GET',
-        headers: { 'Authorization': this.authHeader() },
+        headers: this.authHeaders(),
         signal: controller.signal,
       });
 
@@ -495,7 +500,7 @@ export class GeminiClient {
     try {
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Authorization': this.authHeader() },
+        headers: this.authHeaders(),
         signal: controller.signal,
       });
 
@@ -527,7 +532,7 @@ export class GeminiClient {
     try {
       const response = await fetch(url, {
         method: 'GET',
-        headers: { 'Authorization': this.authHeader() },
+        headers: this.authHeaders(),
         signal: controller.signal,
       });
 
@@ -596,7 +601,7 @@ export class GeminiClient {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': this.authHeader(),
+          ...this.authHeaders(),
         },
         body: JSON.stringify(body),
         signal: controller.signal,
@@ -628,7 +633,7 @@ export class GeminiClient {
     try {
       const response = await fetch(url, {
         method: 'DELETE',
-        headers: { 'Authorization': this.authHeader() },
+        headers: this.authHeaders(),
         signal: controller.signal,
       });
 

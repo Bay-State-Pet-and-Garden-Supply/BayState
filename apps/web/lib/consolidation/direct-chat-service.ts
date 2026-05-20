@@ -88,24 +88,41 @@ async function delay(ms: number): Promise<void> {
 export async function preflightModels(
     runtimeConfig: ConsolidationRuntimeConfig
 ): Promise<{ success: true; models: Array<{ id: string }> } | { success: false; error: string }> {
-    const baseUrl = runtimeConfig.llm_base_url?.replace(/\/+$/, '');
+    let baseUrl = runtimeConfig.llm_base_url?.replace(/\/+$/, '');
+    
+    // Default for Gemini if not provided
+    if (!baseUrl && runtimeConfig.provider === 'gemini') {
+        baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
+    }
+
     if (!baseUrl) {
         return { success: false, error: 'LLM base URL is not configured' };
     }
 
     const apiKey = runtimeConfig.llm_api_key || '';
-    const url = `${baseUrl}/models`;
+    const isGemini = runtimeConfig.provider === 'gemini' || baseUrl.includes('generativelanguage.googleapis.com');
+    
+    let url = `${baseUrl}/models`;
+    if (isGemini && apiKey) {
+        url += `${url.includes('?') ? '&' : '?'}key=${apiKey}`;
+    }
 
     try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 10_000);
 
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+        };
+        
+        // Gemini uses API key in URL, others use Bearer token
+        if (apiKey && !isGemini) {
+            headers['Authorization'] = `Bearer ${apiKey}`;
+        }
+
         const response = await fetch(url, {
             method: 'GET',
-            headers: {
-                'Authorization': apiKey ? `Bearer ${apiKey}` : '',
-                'Content-Type': 'application/json',
-            },
+            headers,
             signal: controller.signal,
         });
         clearTimeout(timeout);
@@ -115,9 +132,21 @@ export async function preflightModels(
             return { success: false, error: `LLM preflight failed (${response.status}): ${text.slice(0, 200)}` };
         }
 
-        const data = await response.json() as { data?: Array<{ id: string }> } | Array<{ id: string }>;
+        const data = await response.json();
+        
+        // Gemini returns { models: [...] }
+        if (isGemini && data && Array.isArray(data.models)) {
+            const models = data.models.map((m: any) => {
+                const name = m.name || '';
+                const id = name.startsWith('models/') ? name.slice(7) : name;
+                return { id: id || m.displayName || String(m) };
+            });
+            return { success: true, models };
+        }
+
         // LM Studio returns { data: [...] } or plain [...]
-        const models = Array.isArray(data) ? data : (data.data || []);
+        const modelsRaw = Array.isArray(data) ? data : (data.data || []);
+        const models = modelsRaw.map((m: any) => ({ id: m.id || m.name || String(m) }));
         return { success: true, models };
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Unknown preflight error';
