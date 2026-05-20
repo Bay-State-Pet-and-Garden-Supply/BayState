@@ -17,7 +17,6 @@ SUPPORTED_SEARCH_PROVIDERS = {"auto", "serper"}
 LEGACY_SEARCH_PROVIDER_ALIASES = {
     "brave": "serper",
     "serpapi": "serper",
-    "gemini": "serper",
 }
 DEFAULT_SEARCH_PROVIDER = "serper"
 TRACKING_QUERY_KEYS = {"fbclid", "gclid", "ref", "srsltid"}

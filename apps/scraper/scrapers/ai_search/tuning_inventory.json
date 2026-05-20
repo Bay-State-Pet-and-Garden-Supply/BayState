@@ -64,15 +64,6 @@
       "value": ["\\breview\\b", "\\bbest\\b", "\\btop 10\\b", "\\bcomparison\\b", "\\bvs\\b", "\\breddit\\b", "\\bpinterest\\b", "\\byoutube\\b", "\\bfacebook\\b", "\\binstagram\\b", "\\btiktok\\b", "\\baffiliate\\b", "\\bcoupon\\b", "\\bdeal(?:s)?\\b", "\\bblog\\b", "\\bforum\\b", "\\bgift guide\\b", "\\bbuying guide\\b", "\\btop picks\\b", "\\bbest toys\\b", "\\bbest dog toys\\b", "\\bupc database\\b", "\\bbarcode search\\b", "\\bgtin search\\b", "\\bproduct lookup\\b", "\\bwhere to buy\\b", "\\bfind a store\\b", "\\bstore locator\\b", "\\bfind a retailer\\b", "\\bfind a dealer\\b", "\\b\\d+ best\\b", "\\bpicks for \\d{4}\\b"]
     },
     {
-      "id": "scoring.grounded_explanation_markers",
-      "status": "report-only",
-      "kind": "class_constant",
-      "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
-      "source_symbol": "SearchScorer.GROUNDED_EXPLANATION_MARKERS",
-      "description": "Gemini grounded-result explanation markers treated as low quality.",
-      "value": ["the search for ", "did not return any direct results", "while it is not currently appearing in the indexed results", "however, the upc", "however, the product"]
-    },
-    {
       "id": "scoring.low_quality_url_fragments",
       "status": "allowed",
       "kind": "class_constant",

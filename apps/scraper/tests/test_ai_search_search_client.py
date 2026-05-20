@@ -37,35 +37,6 @@ async def test_search_client_uses_serper_by_default() -> None:
     assert serper_stub.calls == ["Acme Squeaky Ball 12345"]
 
 
-async def test_search_client_allows_explicit_gemini_provider() -> None:
-    class GeminiStub:
-        def __init__(self, response: tuple[list[dict[str, str]], str | None]):
-            self.response = response
-            self.calls: list[str] = []
-
-        async def search(self, query: str) -> tuple[list[dict[str, str]], str | None]:
-            self.calls.append(query)
-            return self.response
-
-    gemini_stub = GeminiStub(([
-        {
-            "url": "https://acmepets.com/products/12345",
-            "title": "Acme Squeaky Ball",
-            "description": "Official page",
-            "provider": "gemini",
-            "result_type": "grounded",
-        }
-    ], None))
-
-    client = SearchClient(max_results=5, provider="gemini")
-    client.serper_client = gemini_stub
-
-    results, error = await client.search("Acme Squeaky Ball 12345")
-
-    assert error is None
-    assert results[0]["provider"] == "gemini"
-    assert gemini_stub.calls == ["Acme Squeaky Ball 12345"]
-
 
 async def test_search_client_uses_cache_on_repeated_queries() -> None:
     class SerperStub:

@@ -59,4 +59,4 @@ Required environment variables depend on the test or benchmark being run, but co
 
 - `SCRAPER_API_KEY`
 - `SERPER_API_KEY`
-- an LLM provider key such as `OPENAI_API_KEY` or `GEMINI_API_KEY`
+- an LLM API key such as `LLM_API_KEY`

@@ -246,11 +246,10 @@ class TestExtractorFallbackBehavior:
         """Create a Crawl4AIExtractor with mocked collaborators."""
         ext = Crawl4AIExtractor(
             headless=True,
-            llm_model="gemini-3.1-flash-lite-preview",
+            llm_model="gpt-4o-mini",
             scoring=MagicMock(),
             matching=MagicMock(),
             extraction_strategy="llm",
-            llm_provider="gemini",
             llm_api_key="test-key",
         )
         # Mock _enrich_images as a passthrough — tests exercise pipeline
@@ -398,11 +397,10 @@ class TestExtractorFallbackBehavior:
         import json
         extractor = Crawl4AIExtractor(
             headless=True,
-            llm_model="gemini-3.1-flash-lite-preview",
+            llm_model="gpt-4o-mini",
             scoring=MagicMock(),
             matching=MagicMock(),
             extraction_strategy="json_css",
-            llm_provider="gemini",
             llm_api_key="test-key",
         )
         async def _passthrough_enrich(result_data, **_kwargs):

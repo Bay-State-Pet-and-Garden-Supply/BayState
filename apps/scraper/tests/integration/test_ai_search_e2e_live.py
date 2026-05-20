@@ -6,7 +6,7 @@ It is gated behind `@pytest.mark.live` so it never runs in normal CI or local
 
 Requires environment variables:
   - SERPER_API_KEY (required) — search provider
-  - OPENAI_API_KEY or GEMINI_API_KEY (required) — LLM extraction
+  - LLM_API_KEY (required) — LLM extraction
 
 This is a manual-only, observability test. It does NOT enforce hard thresholds
 on success rates. Results vary between runs as search rankings and product
@@ -14,7 +14,7 @@ pages change.
 
 Usage:
     export SERPER_API_KEY="your_key"
-    export OPENAI_API_KEY="your_key"
+    export LLM_API_KEY="your_key"
     python -m pytest tests/integration/test_ai_search_e2e_live.py -m live
 """
 
@@ -51,10 +51,9 @@ async def test_live_smoke_runs_and_produces_report(tmp_path: Path) -> None:
     if not os.getenv("SERPER_API_KEY"):
         pytest.skip("SERPER_API_KEY not set — live search unavailable")
 
-    if not os.getenv("OPENAI_API_KEY") and not os.getenv("GEMINI_API_KEY"):
+    if not os.getenv("LLM_API_KEY"):
         pytest.skip(
-            "No LLM API key (OPENAI_API_KEY or GEMINI_API_KEY) — "
-            "extraction requires an LLM provider"
+            "No LLM_API_KEY — extraction requires an LLM provider"
         )
 
     # ---- Guard: dataset must exist ----

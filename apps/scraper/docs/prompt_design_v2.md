@@ -177,7 +177,7 @@ All consistency metrics remained at 100% while achieving a measurable response t
 1. **Concrete examples improve LLM consistency enforcement**: Structured examples with clear pass/fail criteria produced more reliable results than abstract rule descriptions
 2. **Batch mode declaration helps cross-product awareness**: Explicitly stating "you are processing N products from category X" improved field consistency across the batch
 3. **Sibling context of 5 is optimal**: Testing showed no measurable benefit from increasing sibling context beyond 5 products; larger contexts increased token usage without quality gains
-4. **Gemini Flash Lite is cost-effective for consolidation**: Provides sufficient quality for consolidation tasks at significantly lower cost than larger models
+4. **GPT-4o-mini is cost-effective for consolidation**: Provides sufficient quality for consolidation tasks at significantly lower cost than larger models
 
 ### Updated Recommendations
 
@@ -186,13 +186,13 @@ Based on these findings, the following practices are now recommended:
 - **Use structured consistency examples in prompts**: Replace text-based rules with concrete JSON/XML examples showing correct vs incorrect output
 - **Include batch mode declaration for product line processing**: Explicitly state batch size and category context at the start of consolidation prompts
 - **Maintain 5 sibling products in context**: This provides sufficient cross-product awareness without excessive token usage
-- **Deploy hybrid provider strategy**: Use Gemini for search and consolidation tasks, OpenAI for complex extraction tasks requiring higher reasoning capabilities
+- **Use standard provider**: Use the consolidated LLM provider for all search, consolidation, and extraction tasks.
 
 ### Cost Impact
 
 The finetuning effort delivered substantial cost savings:
 
-- **60-70% cost reduction** with hybrid provider approach (Gemini for search/consolidation, OpenAI reserved for extraction)
+- **Efficiency**: Use cost-effective models (like gpt-4o-mini) where quality is sufficient.
 - **No quality degradation**: All consistency metrics maintained at 100%
 - **Faster response times**: 4.4% improvement in average response time
 

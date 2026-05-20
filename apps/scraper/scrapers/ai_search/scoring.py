@@ -198,13 +198,6 @@ class SearchScorer:
         r"\b\d+ best\b",
         r"\bpicks for \d{4}\b",
     ]
-    GROUNDED_EXPLANATION_MARKERS = (
-        "the search for ",
-        "did not return any direct results",
-        "while it is not currently appearing in the indexed results",
-        "however, the upc",
-        "however, the product",
-    )
 
     LOW_QUALITY_URL_FRAGMENTS = [
         "category/",
@@ -697,10 +690,6 @@ class SearchScorer:
         url = str(result.get("url") or "").lower()
         title = str(result.get("title") or "").lower()
         description = str(result.get("description") or "").lower()
-        # Gemini grounded results sometimes attach related-query suggestions in
-        # extra_snippets (for example "reviews" or "reddit discussion") that
-        # are not evidence about the target page itself. Treat only the URL,
-        # title, and main description as quality signals.
         combined = f"{title} {description} {url}"
 
         domain = self.domain_from_url(url)
@@ -716,12 +705,6 @@ class SearchScorer:
 
         if self.is_product_line_page(url):
             return False
-
-        provider = str(result.get("provider") or "").lower()
-        result_type = str(result.get("result_type") or "").lower()
-        if provider == "gemini" and result_type == "grounded":
-            if any(marker in description for marker in self.GROUNDED_EXPLANATION_MARKERS):
-                return True
 
         if any(fragment in combined for fragment in self.LOW_QUALITY_URL_FRAGMENTS):
             return True

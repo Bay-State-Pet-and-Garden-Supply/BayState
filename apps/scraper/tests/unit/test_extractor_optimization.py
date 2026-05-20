@@ -13,11 +13,10 @@ class TestCrawl4AIExtractorOptimization:
         """Initialize extractor with default settings."""
         ext = Crawl4AIExtractor(
             headless=True,
-            llm_model="gemini-3.1-flash-lite-preview",
+            llm_model="gpt-4o-mini",
             scoring=MagicMock(),
             matching=MagicMock(),
             extraction_strategy="llm",
-            llm_provider="gemini",
             llm_api_key="test-key",
         )
         # Mock _enrich_images as a passthrough — these tests exercise the LLM
@@ -461,11 +460,10 @@ class TestCrawl4AIExtractorOptimization:
 
         extractor = Crawl4AIExtractor(
             headless=True,
-            llm_model="gemini-3.1-flash-lite-preview",
+            llm_model="gpt-4o-mini",
             scoring=MagicMock(),
             matching=MagicMock(),
             extraction_strategy="llm",
-            llm_provider="gemini",
             llm_api_key=None,
         )
 
