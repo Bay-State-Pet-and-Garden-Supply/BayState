@@ -20,8 +20,8 @@ env:
   IMAGE_NAME: scraper
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   # Explicitly set tool cache for self-hosted macOS runner to avoid /Users/runner permission errors
-  RUNNER_TOOL_CACHE: /Users/nickborrello/Desktop/Projects/BayState/actions-runner/_work/_tool
-  AGENT_TOOLSDIRECTORY: /Users/nickborrello/Desktop/Projects/BayState/actions-runner/_work/_tool
+  RUNNER_TOOL_CACHE: /Users/nickborrello/.baystate-actions-runner/_work/_tool
+  AGENT_TOOLSDIRECTORY: /Users/nickborrello/.baystate-actions-runner/_work/_tool
 
 jobs:
   changes:
