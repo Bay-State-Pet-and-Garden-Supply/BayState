@@ -109,19 +109,46 @@ class ProductPageExtractor:
         last_error: str | None = None
         final_url = url
         effective_name = product_name or register_name
+        success_results: list[dict[str, Any]] = []
+        source_results: list[dict[str, Any]] = []
+
+        def clean_slug_from_url(url_str: str) -> str:
+            from urllib.parse import urlparse
+            import re
+            try:
+                hostname = urlparse(url_str).hostname or ""
+                slug = hostname.lower()
+                if slug.startswith("www."):
+                    slug = slug[4:]
+                slug = re.sub(r'[^a-z0-9_]', '_', slug)
+                return slug or "standard_url"
+            except Exception:
+                return "standard_url"
 
         for attempt_url in urls_to_try:
             if not attempt_url:
                 continue
-            result = await self._extractor.extract(
-                url=attempt_url,
-                sku=sku,
-                product_name=effective_name,
-                brand=brand,
-            )
+            
+            logger.info("[ProductPageExtractor] Extracting from URL: %s", attempt_url)
+            
+            try:
+                result = await self._extractor.extract(
+                    url=attempt_url,
+                    sku=sku,
+                    product_name=effective_name,
+                    brand=brand,
+                )
+            except Exception as e:
+                logger.error(
+                    "[ProductPageExtractor] Extraction failed for URL %s: %s",
+                    attempt_url,
+                    e
+                )
+                result = {"success": False, "error": str(e)}
+
+            source_slug = clean_slug_from_url(attempt_url)
+
             if result and result.get("success"):
-                # Normalize into the canonical output shape
-                # Model and mode metadata for the enrichment contract
                 model = result.get("model", getattr(self._extractor, "llm_model", "deepseek-chat"))
                 method = result.get("method", "unknown")
 
@@ -154,10 +181,54 @@ class ProductPageExtractor:
                     "token_usage": result.get("token_usage", {}),
                     "telemetry": result.get("telemetry", {}),
                 }
-                return normalized
 
-            last_error = (result.get("error") if result else None) or "Extraction failed"
-            final_url = attempt_url
+                # Construct EnrichedProductFacts structure
+                product_facts = {
+                    "name": result.get("product_name"),
+                    "brand": result.get("brand"),
+                    "description": result.get("description"),
+                    "category": result.get("categories")[0] if isinstance(result.get("categories"), list) and result.get("categories") else None,
+                    "sku": sku,
+                    "weight": result.get("weight") or result.get("size_metrics"),
+                    "dimensions": result.get("dimensions"),
+                    "shipping_weight": result.get("shipping_weight"),
+                    "image_urls": result.get("images") or [],
+                    "ingredients": result.get("ingredients"),
+                    "features": result.get("features", []),
+                    "pet_type": result.get("pet_type"),
+                    "life_stage": result.get("life_stage"),
+                    "food_form": result.get("food_form"),
+                    "flavor": result.get("flavor"),
+                }
+
+                source_results.append({
+                    "sourceSlug": source_slug,
+                    "sourceType": "standard_url",
+                    "confidence": float(result.get("confidence", 0.0) or 0.0),
+                    "matchedFields": [k for k, v in product_facts.items() if v],
+                    "evidenceUrl": attempt_url,
+                    "product": product_facts,
+                })
+                success_results.append(normalized)
+            else:
+                last_error = (result.get("error") if result else None) or "Extraction failed"
+                final_url = attempt_url
+                
+                source_results.append({
+                    "sourceSlug": source_slug,
+                    "sourceType": "standard_url",
+                    "confidence": 0.0,
+                    "matchedFields": [],
+                    "evidenceUrl": attempt_url,
+                    "product": None,
+                })
+
+        if success_results:
+            # Sort successes by confidence descending and select the best one
+            success_results.sort(key=lambda x: x.get("confidence", 0.0) or 0.0, reverse=True)
+            best_result = success_results[0]
+            best_result["source_results"] = source_results
+            return best_result
 
         return {
             "success": False,
@@ -166,7 +237,9 @@ class ProductPageExtractor:
             "url": url,
             "final_url": final_url,
             "error": last_error or "All extraction attempts failed",
+            "source_results": source_results,
         }
+
 
     async def extract_products_from_urls_batch(
         self,

@@ -37,29 +37,6 @@ const decisionSchema = z.enum([
   "failed",
 ]).nullable().optional();
 
-const sourceResultInfoSchema = z.object({
-  sourceSlug: z.string(),
-  sourceType: z.string(),
-  confidence: z.number().min(0).max(1),
-  matchedFields: z.array(z.string()).optional(),
-  evidenceUrl: z.string().nullable().optional(),
-});
-
-const enrichmentResultSourceV1Schema = z.object({
-  url: z.string().min(1, "URL is required"),
-  domain: z.string().nullable().optional(),
-  label: z.string().nullable().optional(),
-  target_id: z.string().uuid().nullable().optional(),
-  source_type: z.string().nullable().optional(),
-  source_slug: z.string().nullable().optional(),
-  approved_source_id: z.string().nullable().optional(),
-  evidence: z.string().nullable().optional(),
-});
-
-// =============================================================================
-// Product Facts Schema
-// =============================================================================
-
 const enrichedProductFactsV1Schema = z.object({
   name: z.string().nullable().optional(),
   brand: z.string().nullable().optional(),
@@ -82,6 +59,26 @@ const enrichedProductFactsV1Schema = z.object({
   packaging_type: z.string().nullable().optional(),
   size: z.string().nullable().optional(),
   color: z.string().nullable().optional(),
+});
+
+const sourceResultInfoSchema = z.object({
+  sourceSlug: z.string(),
+  sourceType: z.string(),
+  confidence: z.number().min(0).max(1),
+  matchedFields: z.array(z.string()).optional(),
+  evidenceUrl: z.string().nullable().optional(),
+  product: enrichedProductFactsV1Schema.nullable().optional(),
+});
+
+const enrichmentResultSourceV1Schema = z.object({
+  url: z.string().min(1, "URL is required"),
+  domain: z.string().nullable().optional(),
+  label: z.string().nullable().optional(),
+  target_id: z.string().uuid().nullable().optional(),
+  source_type: z.string().nullable().optional(),
+  source_slug: z.string().nullable().optional(),
+  approved_source_id: z.string().nullable().optional(),
+  evidence: z.string().nullable().optional(),
 });
 
 // =============================================================================

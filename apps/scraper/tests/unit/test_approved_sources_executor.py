@@ -493,3 +493,66 @@ class TestExecutor:
         assert result.status == "failed"
         assert result.decision == "failed"
         # Should not crash when no adapter slugs are in the plan
+
+    @patch(
+        "scrapers.approved_sources.adapters.official_brand.OfficialBrandAdapter.extract",
+        new_callable=AsyncMock,
+    )
+    @patch("scrapers.approved_sources.adapters.bradley.BradleyAdapter._fetch_html")
+    def test_executor_runs_all_sources_and_aggregates_them(
+        self, mock_bradley_fetch, mock_official_extract
+    ):
+        """When multiple sources are in the plan, executor runs all of them and aggregates results."""
+        mock_bradley_fetch.return_value = SAMPLE_BRADLEY_HTML
+        mock_official_extract.return_value = build_success_result(
+            sku="001135",
+            source_slug="official_brand",
+            source_type="official_brand",
+            evidence_url="https://example.com/product",
+            product_fields={"name": "Official Product", "brand": "Brand"},
+            matched_fields=["name", "brand"],
+            overall_confidence=0.85,
+            llm_used=True,
+        )
+
+        entries = [
+            ApprovedSourcePlanEntry(
+                sourceType="distributor",
+                sourceSlug="bradley",
+                displayName="Bradley Caldwell",
+                domains=["bradleycaldwell.com"],
+                assetDomains=["bradleycaldwell.com"],
+                adapterSlug="bradley_crawl4ai",
+                requiresAuth=False,
+                searchMode="sku_search",
+                allowedFields=["name", "brand"],
+                priority=10,
+                runFirst=True,
+            ),
+            ApprovedSourcePlanEntry(
+                sourceType="official_brand",
+                sourceSlug="official_brand",
+                displayName="Official Brand",
+                domains=["example.com"],
+                adapterSlug="crawl4ai_direct",
+                priority=100,
+            ),
+        ]
+        plan = _make_plan(entries=entries)
+        mock_extractor = MagicMock()
+        mock_extractor.api_client = None
+
+        executor = ApprovedSourceExecutor(plan=plan, extractor=mock_extractor)
+        import asyncio
+
+        result = asyncio.run(executor.execute())
+
+        # Both sources should have been executed
+        mock_official_extract.assert_called_once()
+        assert result.status in ("success", "partial")
+        
+        # Verify both results are in source_results
+        source_slugs = [s.sourceSlug for s in result.source_results]
+        assert "bradley" in source_slugs
+        assert "official_brand" in source_slugs
+

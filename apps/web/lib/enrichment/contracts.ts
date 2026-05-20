@@ -87,6 +87,7 @@ export interface SourceResultInfo {
   confidence: number;
   matchedFields?: string[];
   evidenceUrl?: string | null;
+  product?: EnrichedProductFactsV1 | null;
 }
 
 export interface EnrichmentResultV1 {
@@ -147,13 +148,7 @@ export interface NormalizedEnrichedSourceV1 {
   /** Approved source extraction: whether LLM was used */
   llm_used?: boolean | null;
   /** Approved source extraction: per-source results */
-  source_results?: Array<{
-    sourceSlug: string;
-    sourceType: string;
-    confidence: number;
-    matchedFields?: string[];
-    evidenceUrl?: string | null;
-  }>;
+  source_results?: SourceResultInfo[];
   /** Nested enriched product facts (all extracted fields) */
   extracted: EnrichedProductFactsV1;
   /** Per-field confidence scores */

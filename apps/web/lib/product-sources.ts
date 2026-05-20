@@ -622,9 +622,12 @@ export function buildConsolidationSourcesPayload(
             'availability',
             'minimum_quantity',
             'is_special_order',
-            'is_taxable',
         ].forEach(copyScalarField);
 
+        const productOnPages = (rawInput as Record<string, unknown>).product_on_pages;
+        if (Array.isArray(productOnPages) && productOnPages.length > 0) {
+            shopSiteInputSource.product_on_pages = productOnPages;
+        }
 
         if (Object.keys(shopSiteInputSource).length > 0) {
             payload.shopsite_input = shopSiteInputSource;

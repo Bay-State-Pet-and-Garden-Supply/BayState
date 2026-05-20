@@ -91,6 +91,8 @@ class SourceResultInfo(BaseModel):
     confidence: float = 0.0
     matchedFields: list[str] = Field(default_factory=list)
     evidenceUrl: Optional[str] = None
+    product: Optional[EnrichedProductFacts] = None
+
 
 
 class EnrichmentResultV1(BaseModel):
@@ -214,6 +216,39 @@ def build_v1_from_extraction_result(
     source_results_models: list[SourceResultInfo] = []
     if source_results:
         for sr in source_results:
+            prod_val = sr.get("product")
+            if prod_val is not None:
+                if isinstance(prod_val, dict):
+                    prod = EnrichedProductFacts(**prod_val)
+                elif isinstance(prod_val, EnrichedProductFacts):
+                    prod = prod_val
+                else:
+                    prod = None
+            else:
+                prod = EnrichedProductFacts(
+                    name=name,
+                    brand=product_data.get("brand") or result.get("brand"),
+                    description=product_data.get("description") or result.get("description"),
+                    category=category,
+                    sku=product_data.get("sku") or result.get("sku"),
+                    weight=product_data.get("weight") or result.get("weight"),
+                    dimensions=product_data.get("dimensions") or result.get("dimensions"),
+                    shipping_weight=product_data.get("shipping_weight"),
+                    image_urls=image_urls,
+                    ingredients=product_data.get("ingredients") or result.get("ingredients"),
+                    features=product_data.get("features", []) or result.get("features", []),
+                    pet_type=product_data.get("pet_type"),
+                    life_stage=product_data.get("life_stage"),
+                    pet_size=product_data.get("pet_size"),
+                    food_form=product_data.get("food_form"),
+                    flavor=product_data.get("flavor"),
+                    special_diet=product_data.get("special_diet", []),
+                    health_feature=product_data.get("health_feature", []),
+                    packaging_type=product_data.get("packaging_type"),
+                    size=product_data.get("size"),
+                    color=product_data.get("color"),
+                )
+
             source_results_models.append(
                 SourceResultInfo(
                     sourceSlug=sr.get("sourceSlug", ""),
@@ -221,6 +256,7 @@ def build_v1_from_extraction_result(
                     confidence=sr.get("confidence", 0.0),
                     matchedFields=sr.get("matchedFields", []),
                     evidenceUrl=sr.get("evidenceUrl"),
+                    product=prod,
                 )
             )
 

@@ -196,6 +196,20 @@ export async function POST(request: NextRequest) {
         enriched: normalized as any,
       };
 
+      // Merge per-source results into products_ingestion.sources
+      if (enrichedResult.source_results && Array.isArray(enrichedResult.source_results)) {
+        for (const sr of enrichedResult.source_results) {
+          if (sr.sourceSlug && sr.product) {
+            updatedSources[sr.sourceSlug] = {
+              ...((updatedSources[sr.sourceSlug] as Record<string, unknown>) || {}),
+              ...sr.product,
+              _scraped_at: enrichedResult.extracted_at,
+              _url: sr.evidenceUrl || enrichedResult.source.url,
+            };
+          }
+        }
+      }
+
       // Update product
       const updatePayload: Record<string, unknown> = {
         sources: updatedSources,

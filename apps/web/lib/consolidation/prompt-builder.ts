@@ -30,6 +30,8 @@ const TRUSTED_SOURCE_FRAGMENTS = [
     'manufacturer',
     'catalog',
     'distributor',
+    'official_brand',
+    'official-brand',
 ];
 const MARKETPLACE_SOURCE_FRAGMENTS = ['amazon', 'ebay', 'etsy', 'walmart', 'marketplace', 'seller'];
 const CONSISTENCY_RULES = [

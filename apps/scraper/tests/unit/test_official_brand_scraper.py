@@ -233,6 +233,57 @@ class TestProductPageExtractorExtract:
         assert "official_domain_match" not in result
         assert "candidate_rank" not in result
 
+    @pytest.mark.asyncio
+    async def test_extractor_runs_all_urls_and_aggregates_them(
+        self, extractor: ProductPageExtractor
+    ) -> None:
+        """When multiple URLs/fallbacks are provided, extractor runs all of them and aggregates results."""
+        with patch.object(
+            extractor._extractor, "extract", new_callable=AsyncMock
+        ) as mock_extract:
+            mock_extract.side_effect = [
+                {
+                    "success": True,
+                    "product_name": "Primary Product",
+                    "brand": "Brand",
+                    "images": [],
+                    "categories": [],
+                    "url": "https://primary.com/product",
+                    "confidence": 0.85,
+                    "method": "meta-tags",
+                },
+                {
+                    "success": True,
+                    "product_name": "Fallback Product",
+                    "brand": "Brand",
+                    "images": [],
+                    "categories": [],
+                    "url": "https://fallback.com/product",
+                    "confidence": 0.95,
+                    "method": "json-ld",
+                },
+            ]
+
+            result = await extractor.extract(
+                url="https://primary.com/product",
+                sku="SKU-001",
+                fallback_urls=[
+                    "https://fallback.com/product",
+                ],
+                max_fallbacks=2,
+            )
+
+        assert result["success"] is True
+        # Since fallback has higher confidence, best_result should choose the fallback
+        assert result["product_name"] == "Fallback Product"
+        assert result["final_url"] == "https://fallback.com/product"
+        
+        # Verify both results are in source_results
+        assert "source_results" in result
+        source_slugs = [s["sourceSlug"] for s in result["source_results"]]
+        assert "primary_com" in source_slugs
+        assert "fallback_com" in source_slugs
+
 
 class TestProductPageExtractorBatch:
     """Tests for ProductPageExtractor.extract_products_from_urls_batch()."""

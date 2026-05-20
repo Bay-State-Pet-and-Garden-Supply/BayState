@@ -239,6 +239,7 @@ async def _run_enrichment_job(
         domain=domain,
         model=model,
         mode=mode_str,
+        source_results=extraction_result.get("source_results"),
     )
 
     if extraction_result.get("success"):

@@ -88,6 +88,7 @@ def build_success_result(
                 confidence=overall_confidence,
                 matchedFields=matched_fields,
                 evidenceUrl=resolved_evidence_url,
+                product=product,
             )
         ],
     )
@@ -154,6 +155,7 @@ def build_partial_result(
                 confidence=overall_confidence,
                 matchedFields=matched_fields,
                 evidenceUrl=resolved_evidence_url,
+                product=product,
             )
         ],
     )

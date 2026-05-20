@@ -100,9 +100,9 @@ class ApprovedSourceExecutor:
     async def _try_source_entries(
         self, entries: list[ApprovedSourcePlanEntry]
     ) -> EnrichmentResultV1 | None:
-        """Try all entries in order, returning first success."""
+        """Try all entries in order, combining results."""
         sku = self.plan.sku
-        last_result = None
+        all_results: list[EnrichmentResultV1] = []
 
         for entry in entries:
             logger.info(
@@ -143,67 +143,62 @@ class ApprovedSourceExecutor:
                     entry.sourceSlug,
                     e,
                 )
-                continue
+                from scrapers.approved_sources.result_builder import build_failed_result
+                result = build_failed_result(
+                    sku=sku,
+                    source_slug=entry.sourceSlug,
+                    source_type=entry.sourceType,
+                    error_message=str(e),
+                )
 
             if not result:
                 logger.info(
-                    "[Executor] Source %s returned no result, continuing",
+                    "[Executor] Source %s returned no result",
                     entry.sourceSlug,
                 )
-                continue
-
-            # Track source results
-            last_result = result
-
-            # Check for auth failures — continue to next source
-            if result.status == "failed":
-                auth_warnings = [
-                    w for w in result.validation.warnings
-                    if any(code in (w or "").upper()
-                           for code in ["AUTH_REQUIRED", "AUTH_FAILED", "AUTH_EXPIRED"])
-                ]
-                if auth_warnings:
-                    auth_type = next(
-                        (c for c in ["AUTH_REQUIRED", "AUTH_FAILED", "AUTH_EXPIRED"]
-                         if c in auth_warnings[0].upper()),
-                        "AUTH",
-                    )
-                    logger.info(
-                        "[Executor] Source %s: %s, "
-                        "continuing to next source",
-                        entry.sourceSlug,
-                        auth_type,
-                    )
-                    continue
-
-                # Other failure — continue, may succeed elsewhere
-                continue
-
-            # Partial with some fields? Consider it good enough when it clears
-            # the same minimum confidence the coordinator accepts as processed.
-            if result.status == "partial":
-                if (
-                    result.confidence
-                    and result.confidence.overall >= PARTIAL_ACCEPTANCE_CONFIDENCE
-                ):
-                    logger.info(
-                        "[Executor] Source %s returned partial with "
-                        "confidence >= %.2f, accepting",
-                        entry.sourceSlug,
-                        PARTIAL_ACCEPTANCE_CONFIDENCE,
-                    )
-                    return result
-                continue
-
-            # Success!
-            if result.status == "success":
-                logger.info(
-                    "[Executor] Source %s returned success",
-                    entry.sourceSlug,
+                from scrapers.approved_sources.result_builder import build_failed_result
+                result = build_failed_result(
+                    sku=sku,
+                    source_slug=entry.sourceSlug,
+                    source_type=entry.sourceType,
+                    error_message="No result returned from adapter",
                 )
-                return result
 
-        return last_result
+            all_results.append(result)
+
+        if not all_results:
+            return None
+
+        # Choose the best result:
+        # 1. Successes sorted by confidence descending
+        # 2. Partials sorted by confidence descending
+        # 3. Failures
+        successes = [r for r in all_results if r.status == "success"]
+        partials = [r for r in all_results if r.status == "partial"]
+
+        if successes:
+            best_result = max(successes, key=lambda r: r.confidence.overall if r.confidence else 0.0)
+        elif partials:
+            best_result = max(partials, key=lambda r: r.confidence.overall if r.confidence else 0.0)
+        else:
+            best_result = all_results[0]
+
+        # Combine source results and attempts from all results
+        combined_source_results = []
+        combined_attempts = []
+        for r in all_results:
+            if r.source_results:
+                combined_source_results.extend(r.source_results)
+            if r.attempts:
+                combined_attempts.extend(r.attempts)
+
+        # Build combined EnrichmentResultV1 based on best_result
+        best_result.source_results = combined_source_results
+        best_result.attempts = combined_attempts
+        best_result.llm_used = any(r.llm_used for r in all_results)
+
+        return best_result
+
 
     def _entry_policy_allowed(self, entry: ApprovedSourcePlanEntry) -> bool:
         """Check if an entry is allowed by the source policy."""

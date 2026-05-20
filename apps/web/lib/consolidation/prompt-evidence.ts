@@ -76,6 +76,8 @@ const TRUSTED_SOURCE_FRAGMENTS = [
   'manufacturer',
   'catalog',
   'distributor',
+  'official_brand',
+  'official-brand',
 ];
 
 const ANIMAL_SIGNAL_RULES: Array<{ label: AnimalSignal; patterns: RegExp[] }> = [
