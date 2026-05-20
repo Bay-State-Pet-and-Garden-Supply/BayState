@@ -59,12 +59,6 @@ export const adminNavSections: AdminNavSection[] = [
         description: 'Scraper runners and live status',
       },
       {
-        href: '/admin/cohorts/dashboard',
-        label: 'Batches',
-        icon: SquareStack,
-        description: 'Cohorts and scraper assignment',
-      },
-      {
         href: '/admin/quality',
         label: 'Quality review',
         icon: ClipboardList,
