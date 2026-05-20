@@ -91,6 +91,6 @@ docker/github-actions-runner/_work/
 .superpowers
 .fallow
 .ruff_cache
-
 actions-runner
-
+.antigravitycli/
+.agent_evidence/
