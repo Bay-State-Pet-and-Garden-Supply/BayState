@@ -12,10 +12,10 @@ export async function recohortProducts(
 ) {
   if (!skus.length) return;
 
-  // 1. Fetch products to get their current cohort IDs and UPC prefixes
+  // 1. Fetch products to get their current cohort IDs, brand IDs, and UPC prefixes
   const { data: products, error: fetchError } = await supabase
     .from('products_ingestion')
-    .select('sku, cohort_id, consolidated')
+    .select('sku, cohort_id, brand_id, consolidated')
     .in('sku', skus);
 
   if (fetchError || !products) {
@@ -73,7 +73,7 @@ export async function recohortProducts(
     // Fetch current state for these products to preserve other consolidated fields
     const { data: currentProducts } = await supabase
       .from('products_ingestion')
-      .select('sku, consolidated')
+      .select('sku, brand_id, consolidated')
       .in('sku', groupSkus);
 
     for (const sku of groupSkus) {
@@ -85,10 +85,12 @@ export async function recohortProducts(
         brand_id: brandId
       };
 
-      // Determine status transition: awaiting_brand → imported when brand assigned
+      const oldBrandId = product?.brand_id || null;
+      const brandChanged = brandId !== oldBrandId;
+
+      // Determine status transition: reset to imported when brand is assigned or changed
       const statusUpdate: Record<string, unknown> = {};
-      if (brandId !== null) {
-        // Move from awaiting_brand to imported when brand is assigned
+      if (brandId !== null && brandChanged) {
         statusUpdate.pipeline_status = 'imported';
       }
 

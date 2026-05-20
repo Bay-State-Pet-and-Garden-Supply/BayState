@@ -80,10 +80,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Reset products stuck in 'extracting' status back to 'imported'
+    // Safety: Only reset products that haven't been updated in 15 minutes
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    
     const { data: stuckProducts, error: selectError } = await supabase
       .from("products_ingestion")
       .select("sku")
-      .eq("pipeline_status", "extracting");
+      .eq("pipeline_status", "extracting")
+      .lt("updated_at", fifteenMinutesAgo);
 
     if (selectError) {
       console.error("[Enrichment Reset API] Failed to select stuck products:", selectError);
@@ -97,6 +101,7 @@ export async function POST(request: NextRequest) {
         .from("products_ingestion")
         .update({
           pipeline_status: "imported",
+          error_message: null,
           updated_at: new Date().toISOString(),
         })
         .in("sku", skusToReset);

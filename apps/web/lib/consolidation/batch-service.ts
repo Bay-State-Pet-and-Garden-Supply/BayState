@@ -1558,11 +1558,12 @@ export async function applyConsolidationResults(
         input: unknown;
         image_candidates: unknown;
         selected_images: unknown;
+        brand_id: string | null;
     }> = [];
     if (resultSkus.length > 0) {
         const existingRowsResponse = await supabase
             .from('products_ingestion')
-            .select('sku, consolidated, sources, input, image_candidates, selected_images')
+            .select('sku, consolidated, sources, input, image_candidates, selected_images, brand_id')
             .in('sku', resultSkus);
 
         if (existingRowsResponse.error) {
@@ -1576,6 +1577,7 @@ export async function applyConsolidationResults(
             input: unknown;
             image_candidates: unknown;
             selected_images: unknown;
+            brand_id: string | null;
         }>;
     }
 
@@ -1587,6 +1589,7 @@ export async function applyConsolidationResults(
             input: Record<string, unknown>;
             imageCandidates: string[];
             selectedImages: string[];
+            brand_id: string | null;
         }
     >();
     for (const row of existingRows) {
@@ -1617,6 +1620,7 @@ export async function applyConsolidationResults(
                 input: inputRecord,
                 imageCandidates,
                 selectedImages,
+                brand_id: row.brand_id,
             });
         } else {
             existingBySku.set(row.sku, {
@@ -1625,6 +1629,7 @@ export async function applyConsolidationResults(
                 input: inputRecord,
                 imageCandidates,
                 selectedImages,
+                brand_id: row.brand_id,
             });
         }
     }
@@ -2060,6 +2065,7 @@ export async function applyConsolidationResults(
                     .from('products_ingestion')
                     .update({
                         consolidated: mergedConsolidated,
+                        brand_id: mergedConsolidated.brand_id || null,
                         pipeline_status: row.pipeline_status,
                         confidence_score: row.confidence_score,
                         error_message: row.error_message,
@@ -2105,6 +2111,35 @@ export async function applyConsolidationResults(
                     success: false,
                     error: `Failed to apply consolidation for ${row.sku}: unknown apply state`,
                 };
+            }
+        }
+    }
+
+    // Re-cohort products whose brand has changed or been newly assigned
+    if (updateRows.length > 0) {
+        const { recohortProducts } = await import('@/lib/pipeline/cohorts');
+        const skusByBrand = new Map<string | null, string[]>();
+
+        for (const row of updateRows) {
+            if (row.outcome === 'finalized') {
+                const brandId = row.next_fields.brand_id || null;
+                const existingRow = existingBySku.get(row.sku);
+                const oldBrandId = existingRow?.brand_id || null;
+
+                if (brandId !== oldBrandId) {
+                    const list = skusByBrand.get(brandId) || [];
+                    list.push(row.sku);
+                    skusByBrand.set(brandId, list);
+                }
+            }
+        }
+
+        for (const [brandId, brandSkus] of skusByBrand.entries()) {
+            try {
+                await recohortProducts(supabase, brandSkus, brandId);
+            } catch (err) {
+                console.error(`[applyConsolidationResults] Failed to re-cohort products for brand ${brandId}:`, err);
+                errors.push(`Cohort assignment failed for some products with brand ${brandId}`);
             }
         }
     }

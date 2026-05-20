@@ -51,13 +51,13 @@ function determineNextStatus(
       return { status: "processed", retry: false };
     }
 
-    // Low confidence partial → retry if budget remains
+    // Low confidence partial -> retry if budget remains
     const retryCount = attempt.retry_count ?? 0;
     if (retryCount < failureThreshold) {
       return { status: "extracting", retry: true };
     }
 
-    return { status: "failed", retry: false };
+    return { status: "imported", retry: false };
   }
 
   if (result.status === "failed") {
@@ -65,10 +65,10 @@ function determineNextStatus(
     if (retryCount < failureThreshold) {
       return { status: "extracting", retry: true };
     }
-    return { status: "failed", retry: false };
+    return { status: "imported", retry: false };
   }
 
-  return { status: "failed", retry: false };
+  return { status: "imported", retry: false };
 }
 
 // =============================================================================

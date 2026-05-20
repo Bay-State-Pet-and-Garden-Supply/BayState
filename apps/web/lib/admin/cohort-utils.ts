@@ -49,27 +49,34 @@ interface CohortBatch {
   id: string;
   name: string | null;
   upc_prefix: string;
+  brand_id?: string | null;
+}
+
+interface CohortBatchTarget {
+  upc_prefix: string;
+  brand_id: string | null;
 }
 
 /**
- * Find existing cohort batches by UPC prefix, or create new ones.
- * Returns a map of prefix -> cohort batch.
+ * Find existing cohort batches by UPC prefix and brand, or create new ones.
+ * Returns a map of "prefix:brandId" -> cohort batch.
  */
 async function ensureCohortBatches(
   supabase: SupabaseClient,
-  prefixes: string[],
+  targets: CohortBatchTarget[],
 ): Promise<Map<string, CohortBatch>> {
-  const uniquePrefixes = Array.from(new Set(prefixes));
   const result = new Map<string, CohortBatch>();
 
-  if (uniquePrefixes.length === 0) {
+  if (targets.length === 0) {
     return result;
   }
 
-  // Fetch existing batches
+  const uniquePrefixes = Array.from(new Set(targets.map((t) => t.upc_prefix)));
+
+  // Fetch existing batches matching these prefixes
   const { data: existing, error } = await supabase
     .from("cohort_batches")
-    .select("id, name, upc_prefix")
+    .select("id, name, upc_prefix, brand_id")
     .in("upc_prefix", uniquePrefixes);
 
   if (error) {
@@ -80,30 +87,70 @@ async function ensureCohortBatches(
     throw new Error(`Failed to fetch cohort batches: ${error.message}`);
   }
 
+  // Populate map for existing batches: key is "upc_prefix:brand_id" (null brand_id is mapped as "null")
   for (const batch of existing || []) {
-    result.set(batch.upc_prefix, {
+    const key = `${batch.upc_prefix}:${batch.brand_id || "null"}`;
+    result.set(key, {
       id: batch.id,
       name: batch.name,
       upc_prefix: batch.upc_prefix,
+      brand_id: batch.brand_id,
     });
   }
 
-  // Create missing batches in chunks
-  const missingPrefixes = uniquePrefixes.filter((p) => !result.has(p));
-  if (missingPrefixes.length > 0) {
-    const insertPayload = missingPrefixes.map((prefix) => ({
-      upc_prefix: prefix,
-      name: prefix,
-      product_line: prefix,
-      status: "pending" as const,
-    }));
+  // Identify missing combinations of (upc_prefix, brand_id)
+  const missingTargets: CohortBatchTarget[] = [];
+  const processedTargetKeys = new Set<string>();
+
+  for (const target of targets) {
+    const key = `${target.upc_prefix}:${target.brand_id || "null"}`;
+    if (processedTargetKeys.has(key)) continue;
+    processedTargetKeys.add(key);
+
+    if (!result.has(key)) {
+      missingTargets.push(target);
+    }
+  }
+
+  if (missingTargets.length > 0) {
+    // Look up brand names for the missing cohorts that have brand_id
+    const brandIds = Array.from(
+      new Set(missingTargets.map((t) => t.brand_id).filter(Boolean) as string[]),
+    );
+    const brandNameMap = new Map<string, string>();
+    if (brandIds.length > 0) {
+      const { data: brands, error: brandError } = await supabase
+        .from("brands")
+        .select("id, name")
+        .in("id", brandIds);
+
+      if (brandError) {
+        console.warn("[ensureCohortBatches] Failed to fetch brand names:", brandError);
+      } else {
+        for (const b of brands || []) {
+          brandNameMap.set(b.id, b.name);
+        }
+      }
+    }
+
+    const insertPayload = missingTargets.map((target) => {
+      const brandName = target.brand_id ? brandNameMap.get(target.brand_id) : null;
+      return {
+        upc_prefix: target.upc_prefix,
+        brand_id: target.brand_id,
+        brand_name: brandName || null,
+        name: target.upc_prefix,
+        product_line: target.upc_prefix,
+        status: "pending" as const,
+      };
+    });
 
     for (let i = 0; i < insertPayload.length; i += WRITE_BATCH_SIZE) {
       const batch = insertPayload.slice(i, i + WRITE_BATCH_SIZE);
       const { data: created, error: insertError } = await supabase
         .from("cohort_batches")
         .insert(batch)
-        .select("id, name, upc_prefix");
+        .select("id, name, upc_prefix, brand_id");
 
       if (insertError) {
         console.error(
@@ -116,10 +163,12 @@ async function ensureCohortBatches(
       }
 
       for (const item of created || []) {
-        result.set(item.upc_prefix, {
+        const key = `${item.upc_prefix}:${item.brand_id || "null"}`;
+        result.set(key, {
           id: item.id,
           name: item.name,
           upc_prefix: item.upc_prefix,
+          brand_id: item.brand_id,
         });
       }
     }
@@ -136,7 +185,7 @@ interface CohortAssignmentResult {
 }
 
 /**
- * Assign products to cohorts based on SKU prefix grouping.
+ * Assign products to cohorts based on SKU prefix grouping and brand identity.
  * Updates products_ingestion.cohort_id and inserts/upserts cohort_members.
  *
  * Errors are collected and returned; the function does its best to
@@ -156,14 +205,46 @@ export async function assignProductsToCohorts(
   const ungroupedSkus = grouped.get(UNGROUPED_PREFIX) ?? [];
   grouped.delete(UNGROUPED_PREFIX);
 
-  // Ensure cohort batches exist for all prefixes
-  const prefixes = Array.from(grouped.keys());
+  // 1. Fetch existing brand_id for these SKUs from products_ingestion
+  const { data: productsData, error: fetchError } = await supabase
+    .from("products_ingestion")
+    .select("sku, brand_id")
+    .in("sku", skus);
+
+  if (fetchError) {
+    console.error(
+      "[assignProductsToCohorts] Failed to fetch product brands:",
+      fetchError,
+    );
+    errors.push(`Failed to fetch product brands: ${fetchError.message}`);
+  }
+
+  const skuBrandMap = new Map<string, string | null>();
+  if (productsData) {
+    for (const p of productsData) {
+      skuBrandMap.set(p.sku, p.brand_id);
+    }
+  }
+
+  // 2. Build target (upc_prefix, brand_id) pairs for missing cohort batches
+  const targets: CohortBatchTarget[] = [];
+  for (const [prefix, prefixSkus] of grouped.entries()) {
+    const prefixBrands = new Set<string | null>();
+    for (const sku of prefixSkus) {
+      prefixBrands.add(skuBrandMap.get(sku) || null);
+    }
+    for (const brandId of prefixBrands) {
+      targets.push({ upc_prefix: prefix, brand_id: brandId });
+    }
+  }
+
+  // 3. Ensure cohort batches exist for all targets
   let cohortMap: Map<string, CohortBatch>;
   try {
-    cohortMap = await ensureCohortBatches(supabase, prefixes);
+    cohortMap = await ensureCohortBatches(supabase, targets);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return { assigned: 0, ungrouped: skus.length, cohortCount: 0, errors: [message] };
+    return { assigned: 0, ungrouped: skus.length, cohortCount: 0, errors: [...errors, message] };
   }
 
   // Ensure ungrouped cohort exists if needed
@@ -207,12 +288,14 @@ export async function assignProductsToCohorts(
   // Build SKU -> cohort_id mapping
   const skuToCohortId = new Map<string, string>();
   for (const [prefix, prefixSkus] of grouped.entries()) {
-    const cohort = cohortMap.get(prefix);
-    if (!cohort) {
-      errors.push(`Cohort not found for prefix ${prefix}`);
-      continue;
-    }
     for (const sku of prefixSkus) {
+      const brandId = skuBrandMap.get(sku) || null;
+      const key = `${prefix}:${brandId || "null"}`;
+      const cohort = cohortMap.get(key);
+      if (!cohort) {
+        errors.push(`Cohort not found for prefix ${prefix} and brand ${brandId}`);
+        continue;
+      }
       skuToCohortId.set(sku, cohort.id);
     }
   }
@@ -279,7 +362,7 @@ export async function assignProductsToCohorts(
   }
 
   const assigned = skuToCohortId.size;
-  const cohortCount = grouped.size + (ungroupedSkus.length > 0 ? 1 : 0);
+  const cohortCount = targets.length + (ungroupedSkus.length > 0 ? 1 : 0);
 
   return { assigned, ungrouped: ungroupedSkus.length, cohortCount, errors };
 }
