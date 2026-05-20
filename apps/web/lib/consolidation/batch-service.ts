@@ -2122,7 +2122,7 @@ export async function applyConsolidationResults(
 
         for (const row of updateRows) {
             if (row.outcome === 'finalized') {
-                const brandId = row.next_fields.brand_id || null;
+                const brandId = (row.next_fields.brand_id as string | null) || null;
                 const existingRow = existingBySku.get(row.sku);
                 const oldBrandId = existingRow?.brand_id || null;
 
