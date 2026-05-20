@@ -68,18 +68,6 @@ export interface ApprovedSourcePolicy {
   approvedSourcesOnly: boolean;
 }
 
-// =============================================================================
-// LLM policy
-// =============================================================================
-
-export interface ApprovedSourceLLMPolicy {
-  /** Whether LLM fallback is allowed at all */
-  enabled: boolean;
-  /** If true, LLM may only run after deterministic extraction fails */
-  onlyAfterDeterministicFailure: boolean;
-  /** If true, LLM may only process approved source content */
-  approvedSourcesOnly: boolean;
-}
 
 // =============================================================================
 // Source result
@@ -119,8 +107,6 @@ export interface ApprovedSourcePlan {
   priority: ApprovedSourcePlanEntry[];
   /** Source crawl/asset policy */
   sourcePolicy: ApprovedSourcePolicy;
-  /** LLM fallback policy */
-  llmPolicy: ApprovedSourceLLMPolicy;
 }
 
 // =============================================================================
@@ -167,11 +153,3 @@ export const DISALLOWED_DOMAINS: string[] = [
   "medium.com",
 ];
 
-/**
- * Default LLM policy for approved source extraction.
- */
-export const DEFAULT_LLM_POLICY: ApprovedSourceLLMPolicy = {
-  enabled: true,
-  onlyAfterDeterministicFailure: true,
-  approvedSourcesOnly: true,
-};

@@ -40,15 +40,6 @@ class ApprovedSourcePolicy:
 
 
 @dataclass
-class ApprovedSourceLLMPolicy:
-    """LLM fallback policy."""
-
-    enabled: bool = True
-    onlyAfterDeterministicFailure: bool = True
-    approvedSourcesOnly: bool = True
-
-
-@dataclass
 class ApprovedSourceBrand:
     """Brand info included in the source plan."""
 
@@ -68,7 +59,6 @@ class ApprovedSourcePlan:
     selectedDistributorSlug: str | None = None
     priority: list[ApprovedSourcePlanEntry] = field(default_factory=list)
     sourcePolicy: ApprovedSourcePolicy = field(default_factory=ApprovedSourcePolicy)
-    llmPolicy: ApprovedSourceLLMPolicy = field(default_factory=ApprovedSourceLLMPolicy)
 
 
 # =============================================================================
@@ -178,13 +168,6 @@ def parse_source_policy(raw: dict[str, Any]) -> ApprovedSourcePolicy:
     )
 
 
-def parse_llm_policy(raw: dict[str, Any]) -> ApprovedSourceLLMPolicy:
-    """Parse a raw dict into an ApprovedSourceLLMPolicy."""
-    return ApprovedSourceLLMPolicy(
-        enabled=bool(raw.get("enabled", True)),
-        onlyAfterDeterministicFailure=bool(raw.get("onlyAfterDeterministicFailure", True)),
-        approvedSourcesOnly=bool(raw.get("approvedSourcesOnly", True)),
-    )
 
 
 def parse_source_plan(raw: dict[str, Any]) -> ApprovedSourcePlan:
@@ -211,5 +194,4 @@ def parse_source_plan(raw: dict[str, Any]) -> ApprovedSourcePlan:
         selectedDistributorSlug=raw.get("selectedDistributorSlug"),
         priority=priority,
         sourcePolicy=parse_source_policy(raw.get("sourcePolicy", {})),
-        llmPolicy=parse_llm_policy(raw.get("llmPolicy", {})),
     )

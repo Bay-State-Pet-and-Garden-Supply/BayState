@@ -18,7 +18,6 @@ from scrapers.approved_sources.types import (
     ApprovedSourcePlanEntry,
     ApprovedSourceBrand,
     ApprovedSourcePolicy,
-    ApprovedSourceLLMPolicy,
 )
 
 
@@ -26,7 +25,6 @@ def _make_plan(
     sku: str = "001135",
     selected_distributor: str | None = "bradley",
     entries: list[ApprovedSourcePlanEntry] | None = None,
-    llm_enabled: bool = True,
 ) -> ApprovedSourcePlan:
     if entries is None:
         entries = [
@@ -56,7 +54,6 @@ def _make_plan(
             disallowedDomains=["amazon.com", "chewy.com", "walmart.com", "petco.com", "petsmart.com", "ebay.com", "etsy.com"],
             approvedSourcesOnly=True,
         ),
-        llmPolicy=ApprovedSourceLLMPolicy(enabled=llm_enabled),
     )
 
 
@@ -80,13 +77,11 @@ SAMPLE_NO_MATCH_HTML = """<html><body>
 
 def _create_plan_with_mock_html(
     entries: list[ApprovedSourcePlanEntry] | None = None,
-    llm_enabled: bool = True,
     selected_distributor: str | None = "bradley",
 ) -> tuple[ApprovedSourcePlan, MagicMock]:
     """Helper to create plan + mock extractor for test cases."""
     plan = _make_plan(
         entries=entries,
-        llm_enabled=llm_enabled,
         selected_distributor=selected_distributor,
     )
     mock_extractor = MagicMock()
@@ -141,7 +136,7 @@ class TestExecutor:
     def test_executor_returns_failed_when_no_source(self, mock_fetch):
         """When all sources fail, executor returns failed result."""
         mock_fetch.return_value = SAMPLE_NO_MATCH_HTML
-        plan, mock_extractor = _create_plan_with_mock_html(llm_enabled=False)
+        plan, mock_extractor = _create_plan_with_mock_html()
         executor = ApprovedSourceExecutor(plan=plan, extractor=mock_extractor)
         import asyncio
         result = asyncio.run(executor.execute())
@@ -183,7 +178,7 @@ class TestExecutor:
                 runFirst=True,
             ),
         ]
-        plan = _make_plan(entries=entries, llm_enabled=False)
+        plan = _make_plan(entries=entries)
         mock_extractor = MagicMock()
         mock_extractor.api_client = None
 
@@ -228,7 +223,7 @@ class TestExecutor:
                 runFirst=True,
             ),
         ]
-        plan = _make_plan(entries=entries, llm_enabled=False)
+        plan = _make_plan(entries=entries)
         mock_extractor = MagicMock()
         mock_extractor.api_client = None
 
@@ -236,17 +231,6 @@ class TestExecutor:
         import asyncio
         result = asyncio.run(executor.execute())
         # Should fail since no other source available and no fallback
-        assert result.status == "failed"
-
-    @patch("scrapers.approved_sources.adapters.base.BaseDistributorCrawl4AIAdapter._fetch_html")
-    def test_llm_fallback_disabled(self, mock_fetch):
-        """When llmPolicy.enabled=False, executor should not use official brand fallback."""
-        mock_fetch.return_value = SAMPLE_NO_MATCH_HTML
-        plan, mock_extractor = _create_plan_with_mock_html(llm_enabled=False)
-        executor = ApprovedSourceExecutor(plan=plan, extractor=mock_extractor)
-        import asyncio
-        result = asyncio.run(executor.execute())
-        # Should return failed status (executor always returns a result)
         assert result.status == "failed"
 
     @patch("scrapers.approved_sources.adapters.bradley.BradleyAdapter._fetch_html")
@@ -320,7 +304,7 @@ class TestExecutor:
                 runFirst=True,
             ),
         ]
-        plan = _make_plan(entries=entries, llm_enabled=True)
+        plan = _make_plan(entries=entries)
         mock_extractor = MagicMock()
         mock_extractor.api_client = None
 
@@ -336,8 +320,8 @@ class TestExecutor:
         mock_official_extract.assert_not_called()
 
     @patch("scrapers.approved_sources.adapters.central_pet.CentralPetAdapter._fetch_html")
-    def test_no_match_fallback_disabled_returns_failed(self, mock_cp_fetch):
-        """When Central Pet returns no-match and llmPolicy.enabled=False, result is failed."""
+    def test_no_match_returns_failed(self, mock_cp_fetch):
+        """When Central Pet returns no-match and no fallback is in plan, result is failed."""
         mock_cp_fetch.return_value = SAMPLE_NO_MATCH_HTML
 
         entries = [
@@ -355,7 +339,7 @@ class TestExecutor:
                 runFirst=True,
             ),
         ]
-        plan = _make_plan(entries=entries, llm_enabled=False)
+        plan = _make_plan(entries=entries)
         mock_extractor = MagicMock()
         mock_extractor.api_client = None
 
@@ -373,10 +357,10 @@ class TestExecutor:
         new_callable=AsyncMock,
     )
     @patch("scrapers.approved_sources.adapters.central_pet.CentralPetAdapter._fetch_html")
-    def test_no_match_fallback_enabled_calls_official(
+    def test_no_match_fallback_calls_official_if_in_plan(
         self, mock_cp_fetch, mock_official_extract
     ):
-        """When Central Pet returns no-match and llmPolicy.enabled=True, official fallback runs."""
+        """When Central Pet returns no-match and official_brand is in priority list, it runs."""
         mock_cp_fetch.return_value = SAMPLE_NO_MATCH_HTML
         mock_official_result = build_success_result(
             sku="38777520",
@@ -404,8 +388,16 @@ class TestExecutor:
                 priority=10,
                 runFirst=True,
             ),
+            ApprovedSourcePlanEntry(
+                sourceType="official_brand",
+                sourceSlug="official_brand",
+                displayName="Official Brand",
+                domains=["example.com"],
+                adapterSlug="crawl4ai_direct",
+                priority=100,
+            ),
         ]
-        plan = _make_plan(entries=entries, llm_enabled=True)
+        plan = _make_plan(entries=entries)
         mock_extractor = MagicMock()
         mock_extractor.api_client = None
 
@@ -457,7 +449,7 @@ class TestExecutor:
                 runFirst=False,
             ),
         ]
-        plan = _make_plan(entries=entries, llm_enabled=False)
+        plan = _make_plan(entries=entries)
         mock_extractor = MagicMock()
         mock_extractor.api_client = None
 
@@ -488,7 +480,6 @@ class TestExecutor:
                 disallowedDomains=["amazon.com", "chewy.com"],
                 approvedSourcesOnly=True,
             ),
-            llmPolicy=ApprovedSourceLLMPolicy(enabled=False),
         )
         mock_extractor = MagicMock()
         mock_extractor.api_client = None

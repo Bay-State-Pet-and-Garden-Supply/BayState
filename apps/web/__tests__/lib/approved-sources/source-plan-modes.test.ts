@@ -93,18 +93,19 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
     ];
   }
 
-  it('defaults to mixed mode (llmPolicy.enabled = true)', async () => {
+  it('defaults to mixed mode (includes all sources)', async () => {
     const mockDb = createMockDbForSourcePlan(standardResponses());
     const results = await buildApprovedSourcePlans(mockDb, ['SKU-1']);
 
     const result = results['SKU-1'];
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('Expected ok');
-    expect(result.plan.llmPolicy.enabled).toBe(true);
-    expect(result.plan.priority.length).toBeGreaterThan(0);
+    expect(result.plan.priority.length).toBe(2);
+    expect(result.plan.priority.map(e => e.sourceSlug)).toContain('phillips');
+    expect(result.plan.priority.map(e => e.sourceSlug)).toContain('official_brand');
   });
 
-  it('distributor_only sets llmPolicy.enabled = false', async () => {
+  it('distributor_only mode filters out official_brand', async () => {
     const mockDb = createMockDbForSourcePlan(standardResponses());
     const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
       extractionMode: 'distributor_only',
@@ -113,11 +114,11 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
     const result = results['SKU-1'];
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('Expected ok');
-    expect(result.plan.llmPolicy.enabled).toBe(false);
-    expect(result.plan.priority.length).toBeGreaterThan(0);
+    expect(result.plan.priority.length).toBe(1);
+    expect(result.plan.priority[0].sourceSlug).toBe('phillips');
   });
 
-  it('ai_only clears priority entries and sets llmPolicy.enabled = true', async () => {
+  it('ai_only mode only includes official_brand', async () => {
     const mockDb = createMockDbForSourcePlan(standardResponses());
     const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
       extractionMode: 'ai_only',
@@ -126,8 +127,8 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
     const result = results['SKU-1'];
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('Expected ok');
-    expect(result.plan.llmPolicy.enabled).toBe(true);
-    expect(result.plan.priority.length).toBe(0);
+    expect(result.plan.priority.length).toBe(1);
+    expect(result.plan.priority[0].sourceSlug).toBe('official_brand');
   });
 
   it('distributor_only with no distributors returns error', async () => {

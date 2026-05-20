@@ -11,13 +11,11 @@ import {
   type ApprovedSourcePlan,
   type ApprovedSourcePlanEntry,
   type ApprovedSourcePolicy,
-  type ApprovedSourceLLMPolicy,
   type ApprovedSourceType,
   type ApprovedSearchMode,
   type ExtractionMode,
   type SourcePlanResult,
   DISALLOWED_DOMAINS,
-  DEFAULT_LLM_POLICY,
 } from "./types";
 import { normalizeDistributorSlug, findDistributorInCatalog, buildDistributorPlanEntry } from "./distributor-catalog";
 
@@ -148,10 +146,6 @@ export interface BuildSourcePlanOptions {
    */
   selectedDistributorSlug?: string;
   /**
-   * Override the default LLM policy per-SKU or globally.
-   */
-  llmPolicy?: Partial<ApprovedSourceLLMPolicy>;
-  /**
    * Extraction mode: mixed (default), distributor_only, or ai_only.
    */
   extractionMode?: ExtractionMode;
@@ -243,7 +237,6 @@ export async function buildApprovedSourcePlans(
   const selectedDistributorSlug = options?.selectedDistributorSlug
     ? normalizeDistributorSlug(options.selectedDistributorSlug)
     : undefined;
-  const llmPolicyOverride = options?.llmPolicy;
   const extractionMode = options?.extractionMode ?? "mixed";
   const forceRefresh = options?.forceRefresh ?? false;
 
@@ -505,21 +498,14 @@ export async function buildApprovedSourcePlans(
       }
     }
 
-    // ---- AI-only gate: if dedup removed all entries, all sources are already enriched ----
-    if (orderedEntries.length === 0 && extractionMode === "ai_only") {
-      results[sku] = {
-        ok: false,
-        sku,
-        error:
-          "AI-only mode requested but all sources already enriched within 48h. Use forceRefresh to re-scrape.",
-      };
-      continue;
+    // ---- Extraction Mode filtering ----
+    if (extractionMode === "ai_only") {
+      orderedEntries = orderedEntries.filter(e => e.sourceType === "official_brand");
+    } else if (extractionMode === "distributor_only") {
+      orderedEntries = orderedEntries.filter(e => e.sourceType !== "official_brand");
     }
 
-    // ---- AI-only mode: clear entries (no deterministic extraction) ----
-    if (extractionMode === "ai_only") {
-      orderedEntries = [];
-    }
+    // ---- Dedup: filter out recently successful sources (skip when forceRefresh) ----
 
     // ---- Non-AI-only fallbacks: catalog fallback, enrichment config fallback, empty guard ----
     if (extractionMode !== "ai_only") {
@@ -552,11 +538,23 @@ export async function buildApprovedSourcePlans(
 
       // ---- Empty plan guard ----
       if (orderedEntries.length === 0) {
+        const modeDesc = extractionMode === "mixed" ? "" : ` (${extractionMode} mode)`;
         results[sku] = {
           ok: false,
           sku,
-          error: `No approved sources configured for brand ${brand.name} (${brand.slug}). ` +
+          error: `No approved sources configured for brand ${brand.name} (${brand.slug})${modeDesc}. ` +
             "Configure brand sources in the admin panel before extraction.",
+        };
+        continue;
+      }
+    } else {
+      // AI-only empty guard
+      if (orderedEntries.length === 0) {
+        results[sku] = {
+          ok: false,
+          sku,
+          error: `AI-only mode requested but no official brand sources are configured for ${brand.name}. ` +
+            "Add an 'official_brand' source in the admin panel before extraction.",
         };
         continue;
       }
@@ -570,19 +568,6 @@ export async function buildApprovedSourcePlans(
       approvedSourcesOnly: true,
     };
 
-    // ---- Merge LLM policy ----
-    const llmPolicy: ApprovedSourceLLMPolicy = {
-      ...DEFAULT_LLM_POLICY,
-      ...llmPolicyOverride,
-    };
-
-    // ---- Apply extractionMode overrides to LLM policy ----
-    // extractionMode takes precedence over partial llmPolicyOverride for `enabled`
-    if (extractionMode === "distributor_only") {
-      llmPolicy.enabled = false;
-    } else if (extractionMode === "ai_only") {
-      llmPolicy.enabled = true;
-    }
 
     // ---- Assemble plan ----
     const plan: ApprovedSourcePlan = {
@@ -600,7 +585,6 @@ export async function buildApprovedSourcePlans(
       selectedDistributorSlug: selectedDistributorSlug ?? null,
       priority: orderedEntries,
       sourcePolicy,
-      llmPolicy,
     };
 
     results[sku] = { ok: true, plan };
