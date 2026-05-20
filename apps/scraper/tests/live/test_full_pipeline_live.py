@@ -100,21 +100,11 @@ class TestFullPipelineExtraction:
 
     @pytest.fixture(autouse=True)
     def _check_prerequisites(self):
-        """Skip entire class if no LLM backend is available."""
-        if not has_local_llm() and not has_llm_api_key():
+        """Skip entire class if no LLM API key is available."""
+        if not os.getenv("LLM_API_KEY"):
             pytest.skip(
-                "No LLM backend available. Either:\n"
-                "  - Start LM Studio and set OPENAI_COMPATIBLE_BASE_URL=http://localhost:1234/v1\n"
-                "  - Set DEEPSEEK_API_KEY or OPENAI_API_KEY for cloud LLM"
+                "No LLM_API_KEY available. Please set LLM_API_KEY environment variable."
             )
-
-    @pytest.fixture(autouse=True)
-    def _configure_local_llm(self, monkeypatch):
-        """Auto-configure LLM_PROVIDER when LM Studio is detected."""
-        if has_local_llm() and not os.getenv("LLM_PROVIDER"):
-            monkeypatch.setenv("LLM_PROVIDER", "openai_compatible")
-            if not os.getenv("OPENAI_COMPATIBLE_API_KEY"):
-                monkeypatch.setenv("OPENAI_COMPATIBLE_API_KEY", "baystate-local")
 
     @pytest.mark.parametrize("entry", list(_pipeline_cases()))
     async def test_extraction_from_known_url(self, entry: dict[str, Any]):
@@ -142,9 +132,8 @@ class TestFullPipelineExtraction:
                 scoring=SearchScorer(),
                 matching=MatchingUtils(),
                 prompt_version="v3",
-                llm_provider=os.getenv("LLM_PROVIDER"),
-                llm_base_url=os.getenv("OPENAI_COMPATIBLE_BASE_URL"),
-                llm_api_key=os.getenv("OPENAI_COMPATIBLE_API_KEY") or os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENAI_API_KEY"),
+                llm_base_url=os.getenv("LLM_BASE_URL"),
+                llm_api_key=os.getenv("LLM_API_KEY"),
             )
             result = await extractor.extract(
                 url=url,
@@ -239,9 +228,8 @@ class TestFullPipelineExtraction:
                     scoring=SearchScorer(),
                     matching=MatchingUtils(),
                     prompt_version="v3",
-                    llm_provider=os.getenv("LLM_PROVIDER"),
-                    llm_base_url=os.getenv("OPENAI_COMPATIBLE_BASE_URL"),
-                    llm_api_key=os.getenv("OPENAI_COMPATIBLE_API_KEY") or os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENAI_API_KEY"),
+                    llm_base_url=os.getenv("LLM_BASE_URL"),
+                    llm_api_key=os.getenv("LLM_API_KEY"),
                 )
                 result = await extractor.extract(
                     url=url,

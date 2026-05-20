@@ -102,13 +102,11 @@ class Crawl4AIExtractor:
         cache_enabled: bool = True,
         extraction_strategy: str = "llm",
         prompt_version: str = "v1",
-        llm_provider: str | None = None,
         llm_base_url: str | None = None,
         llm_api_key: str | None = None,
     ):
         self.headless = headless
         self._llm_runtime = resolve_llm_runtime(
-            provider=llm_provider,
             model=llm_model,
             base_url=llm_base_url,
             api_key=llm_api_key,

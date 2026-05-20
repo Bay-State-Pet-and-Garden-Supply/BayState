@@ -1,49 +1,35 @@
 from __future__ import annotations
 
-from scrapers.ai_search.llm_runtime import LOCAL_OPENAI_COMPATIBLE_API_KEY, resolve_llm_runtime
+from scrapers.ai_search.llm_runtime import resolve_llm_runtime
 from scrapers.providers.base import BaseLLMProvider
 from scrapers.providers.openai import OpenAIProvider
 
 
 def create_llm_provider(
     *,
-    provider: str | None = None,
     model: str | None = None,
     base_url: str | None = None,
     api_key: str | None = None,
+    **kwargs,
 ) -> BaseLLMProvider | None:
-    runtime = resolve_llm_runtime(
-        provider=provider,
-        model=model,
-        base_url=base_url,
-        api_key=api_key,
-    )
+    """Create an OpenAI-compatible LLM provider.
 
-    if runtime.provider == "deepseek":
-        if not runtime.api_key:
-            return None
-        return OpenAIProvider(
-            model=runtime.model,
-            api_key=runtime.api_key,
-            base_url=runtime.base_url,
-            provider_name=runtime.provider,
+    All endpoints are now assumed to be OpenAI-compatible.
+    """
+    try:
+        runtime = resolve_llm_runtime(
+            model=model,
+            base_url=base_url,
+            api_key=api_key,
         )
-
-    if runtime.provider == "openai":
-        if not runtime.api_key:
-            return None
-        return OpenAIProvider(
-            model=runtime.model,
-            api_key=runtime.api_key,
-            base_url=runtime.base_url,
-            provider_name=runtime.provider,
-        )
-
-    if not runtime.base_url:
+    except ValueError:
+        # If LLM_API_KEY is missing, resolve_llm_runtime raises ValueError.
+        # We return None to allow the caller to handle it gracefully or fail.
         return None
+
     return OpenAIProvider(
         model=runtime.model,
-        api_key=runtime.api_key or LOCAL_OPENAI_COMPATIBLE_API_KEY,
+        api_key=runtime.api_key,
         base_url=runtime.base_url,
-        provider_name=runtime.provider,
+        provider_name="openai_compatible",
     )

@@ -23,7 +23,17 @@ playwright install chromium
 ```
 
 ### 3. Configure Environment
-Copy `.env.example` to `.env` and configure `SCRAPER_API_URL` and `SCRAPER_API_KEY`.
+1. Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+2. Configure your API keys in `.env`:
+   - `LLM_API_KEY`: For AI extraction (OpenAI, DeepSeek, etc.)
+   - `LLM_MODEL`: The model to use (default: `gpt-4o-mini`)
+   - `LLM_BASE_URL`: (Optional) Custom API endpoint
+   - `SERPER_API_KEY`: For the Official Brand Scraper fallback
+   - `SCRAPER_API_URL`: URL of your BayStateApp instance (e.g., `http://localhost:3000`)
+   - `SCRAPER_API_KEY`: Your runner API key (from Admin UI)
 
 ## Project Structure
 - `daemon.py`: Main polling entry point.

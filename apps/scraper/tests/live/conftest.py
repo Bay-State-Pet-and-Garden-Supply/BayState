@@ -113,24 +113,11 @@ def has_search_api_key() -> bool:
 
 
 def has_local_llm() -> bool:
-    """Check if a local LLM (LM Studio or similar) is configured.
-
-    LM Studio exposes an OpenAI-compatible API, typically at
-    http://localhost:1234/v1. The scraper's llm_runtime.py reads
-    OPENAI_COMPATIBLE_BASE_URL for this purpose.
-    """
-    base_url = os.getenv("OPENAI_COMPATIBLE_BASE_URL", "")
+    """Check if a local LLM is configured via LLM_BASE_URL."""
+    base_url = os.getenv("LLM_BASE_URL", "")
     return bool(base_url and ("localhost" in base_url or "127.0.0.1" in base_url))
 
 
 def has_llm_api_key() -> bool:
-    """Check if a cloud LLM API key is available for extraction."""
-    return any(
-        os.getenv(k)
-        for k in [
-            "OPENAI_API_KEY",
-            "DEEPSEEK_API_KEY",
-            "GOOGLE_API_KEY",
-            "ANTHROPIC_API_KEY",
-        ]
-    )
+    """Check if the required LLM_API_KEY is available."""
+    return bool(os.getenv("LLM_API_KEY"))

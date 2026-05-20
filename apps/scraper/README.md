@@ -78,6 +78,23 @@ The BayStateScraper uses a coordinator-runner pattern with the crawl4ai engine:
 | **LLM**                | 8-15s | $0.01-0.05 | Complex comparisons, unstructured data       |
 | **Mixed** (Default)    | 2-8s  | Varies     | Automatic selection based on page complexity |
 
+---
+
+## ⚙️ Configuration
+
+### Environment Variables
+Configure your environment in `apps/scraper/.env`. See [.env.example](file:///Users/nickborrello/Desktop/Projects/BayState/apps/scraper/.env.example) for all options.
+
+#### API Keys (AI & Search)
+These keys are required for the `crawl4ai` engine to perform AI extraction and for the fallback SERP search:
+
+| Variable | Purpose |
+| :--- | :--- |
+| `LLM_API_KEY` | (Required) Your API key for extraction (OpenAI, DeepSeek, etc.). |
+| `LLM_MODEL` | (Optional) Defaults to `gpt-4o-mini`. |
+| `LLM_BASE_URL`| (Optional) Custom endpoint for OpenRouter/Local LLMs. |
+| `SERPER_API_KEY` | Required for fallback search discovery (finds brand sites). |
+
 ## 🧪 Local Testing
 
 You can test AI extraction locally without the full stack:
