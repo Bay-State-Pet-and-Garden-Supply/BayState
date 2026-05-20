@@ -1,0 +1,22 @@
+[
+  {
+    "retailer": "Amazon",
+    "url": "https://www.amazon.com/dp/B0002AR0I8",
+    "safe_marker": "Amazon.com"
+  },
+  {
+    "retailer": "Chewy",
+    "url": "https://www.chewy.com/dp/38487",
+    "safe_marker": "Chewy.com"
+  },
+  {
+    "retailer": "PetSmart",
+    "url": "https://www.petsmart.com/dog/toys/chew-toys/kong-classic-dog-toy-9633.html",
+    "safe_marker": "PetSmart"
+  },
+  {
+    "retailer": "Petco",
+    "url": "https://www.petco.com/shop/en/petcostore/product/kong-classic-dog-toy",
+    "safe_marker": "Petco"
+  }
+]
