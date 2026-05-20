@@ -174,7 +174,7 @@ As of v0.3.0, the scraper system uses **Crawl4AI** for AI-powered content extrac
 │                           │                                      │
 │                           ▼                                      │
 │                    ┌─────────────────┐                          │
-│                    │  OpenAI LLM     │                          │
+│                    │  Consolidated LLM │                          │
 │                    │  - Parse MD     │                          │
 │                    │  - Extract      │                          │
 │                    │  - Structure    │                          │

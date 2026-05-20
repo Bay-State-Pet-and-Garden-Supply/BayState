@@ -7,20 +7,17 @@ These tests validate:
   2. Whether variant resolution improves accuracy vs raw extraction
   3. Regression detection across pipeline changes
 
-LLM backends (pick one):
-  - Local (LM Studio): Set OPENAI_COMPATIBLE_BASE_URL=http://localhost:1234/v1
-                        and LLM_MODEL to your loaded model name.
-  - DeepSeek cloud:     Set DEEPSEEK_API_KEY.
-  - OpenAI cloud:       Set OPENAI_API_KEY.
+LLM backends:
+  - Configure LLM_API_KEY, LLM_MODEL, and LLM_BASE_URL.
 
 Run with local LM Studio:
-    LLM_PROVIDER=openai_compatible \
-    OPENAI_COMPATIBLE_BASE_URL=http://localhost:1234/v1 \
+    LLM_BASE_URL=http://localhost:1234/v1 \
+    LLM_API_KEY=lm-studio \
     LLM_MODEL=gemma-3-12b-it \
     pytest -m live tests/live/test_full_pipeline_live.py -v
 
 Run with cloud API:
-    DEEPSEEK_API_KEY=xxx pytest -m "live and slow" tests/live/test_full_pipeline_live.py -v
+    LLM_API_KEY=xxx pytest -m "live and slow" tests/live/test_full_pipeline_live.py -v
 """
 
 from __future__ import annotations

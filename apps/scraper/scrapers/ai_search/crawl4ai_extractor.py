@@ -940,7 +940,7 @@ class Crawl4AIExtractor:
                                 from crawl4ai import LLMConfig
                                 from crawl4ai.extraction_strategy import LLMExtractionStrategy
 
-                                if self._llm_runtime.provider not in ("deepseek", "openai") or self._llm_runtime.api_key:
+                                if self._llm_runtime.api_key:
                                     instruction = build_extraction_instruction(sku, brand, product_name, self.prompt_version)
                                     llm_strategy = LLMExtractionStrategy(
                                         llm_config=LLMConfig(
@@ -1044,12 +1044,12 @@ class Crawl4AIExtractor:
                     from crawl4ai import LLMConfig
                     from crawl4ai.extraction_strategy import LLMExtractionStrategy
 
-                    if self._llm_runtime.provider in {"deepseek", "openai"} and not self._llm_runtime.api_key:
-                        logger.info("[AI Search] Hosted LLM API key missing, using fallback extractor instead of LLM second pass")
+                    if not self._llm_runtime.api_key:
+                        logger.info("[AI Search] LLM API key missing, using fallback extractor instead of LLM second pass")
                         return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
 
-                    if self._llm_runtime.provider == "openai_compatible" and not self._llm_runtime.base_url:
-                        logger.info("[AI Search] OpenAI-compatible base URL missing, using fallback extractor instead of LLM second pass")
+                    if not self._llm_runtime.base_url and "localhost" in (self._llm_runtime.model or ""):
+                        logger.info("[AI Search] Local model base URL missing, using fallback extractor instead of LLM second pass")
                         return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
 
                     instruction = build_extraction_instruction(sku, brand, product_name, self.prompt_version)

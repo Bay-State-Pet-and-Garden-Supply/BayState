@@ -27,12 +27,10 @@ def test_brand_source_selector_preserves_runtime_provider_args():
         BrandSourceSelector(
             api_key="local-key",
             model="google/gemma-4-e4b",
-            provider="openai_compatible",
             base_url="http://localhost:1234/v1",
         )
 
     mock_factory.assert_called_once_with(
-        provider="openai_compatible",
         model="google/gemma-4-e4b",
         api_key="local-key",
         base_url="http://localhost:1234/v1",

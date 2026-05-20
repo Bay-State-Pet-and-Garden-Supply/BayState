@@ -48,7 +48,6 @@ class LLMRuntimeConfig:
         """Return model and mode metadata for enrichment contract."""
         return {
             "model": self.model,
-            "provider": "openai_compatible",
         }
 
 

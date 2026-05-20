@@ -85,4 +85,4 @@ class OpenAIProvider(BaseLLMProvider):
 
         if last_error:
             raise last_error
-        raise RuntimeError("OpenAI provider failed without a captured exception")
+        raise RuntimeError("LLM provider failed without a captured exception")

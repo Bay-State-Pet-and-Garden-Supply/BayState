@@ -57,12 +57,12 @@
 #### 1.1 Verify Environment Variables
 ```bash
 # Check on EACH runner
-echo $BRAVE_API_KEY
-echo $OPENAI_API_KEY
+echo $SERPER_API_KEY
+echo $LLM_API_KEY
 
 # Expected:
-# BRAVE_API_KEY: your_brave_key_here
-# OPENAI_API_KEY: your_openai_key_here
+# SERPER_API_KEY: your_serper_key_here
+# LLM_API_KEY: your_llm_key_here
 ```
 
 **Action Required:**
@@ -73,8 +73,8 @@ echo $OPENAI_API_KEY
 #### 1.2 Verify Dependencies
 ```bash
 # Check on EACH runner
-python3 -c "import crawl4ai_engine; print('✓ crawl4ai_engine')"
-python3 -c "import openai; print('✓ openai')"
+python3 -c "import crawl4ai; print('✓ crawl4ai')"
+python3 -c "import openai; print('✓ openai SDK')"
 python3 -c "import playwright; print('✓ playwright')"
 
 # Check prompt loading
@@ -404,8 +404,6 @@ _________________________________
 - **Prompt Issues:** AI/ML team
 - **Runner Issues:** Infrastructure team
 - **API Key Issues:** Platform team
-
-**Emergency Rollback:** Run `export PROMPT_VERSION=v2` on all runners
 
 ---
 
