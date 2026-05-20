@@ -5,25 +5,23 @@ jest.mock('@/components/admin/settings/ShopSiteCredentialsCard', () => ({
   ShopSiteCredentialsCard: () => <div>ShopSite Credentials</div>,
 }));
 
-jest.mock('@/components/admin/settings/AIScrapingSettingsCard', () => ({
-  AIScrapingSettingsCard: () => <div>AI Scraping Settings Card</div>,
+jest.mock('@/components/admin/settings/DistributorCredentialsCard', () => ({
+  DistributorCredentialsCard: () => <div>Distributor Credentials</div>,
 }));
 
-jest.mock('@/components/admin/settings/AIConsolidationSettingsCard', () => ({
-  AIConsolidationSettingsCard: () => <div>AI Consolidation Settings Card</div>,
+jest.mock('@/components/admin/settings/AIProviderProfilesCard', () => ({
+  AIProviderProfilesCard: () => <div>AI Provider Profiles Card</div>,
 }));
 
 describe('Admin Settings Page', () => {
-  it('renders the finalized external stack notice', () => {
+  it('renders the dynamic AI provider stack notice', () => {
     render(<AdminSettingsPage />);
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Settings');
-    expect(screen.getByText('External AI stack finalized')).toBeInTheDocument();
+    expect(screen.getByText('Dynamic AI Provider Stack')).toBeInTheDocument();
     expect(
-      screen.getByText(/Scraping, consolidation, and Finalization Copilot now run on DeepSeek/i)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Legacy Gemini, OpenAI, Brave Search, and SerpAPI credentials are deprecated/i)
+      screen.getByText(/Your AI provider profiles are now dynamic/i)
     ).toBeInTheDocument();
   });
 });
+

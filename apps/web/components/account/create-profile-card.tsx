@@ -1,7 +1,6 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createMissingProfileAction } from '@/lib/account/actions'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
@@ -31,26 +30,36 @@ export function CreateProfileCard({ userEmail, userName }: CreateProfileCardProp
   }
 
   return (
-    <div className="border-4 border-zinc-900 bg-white shadow-sm">
-      <div className="bg-zinc-900 p-4 border-b-4 border-zinc-900 text-white flex items-center gap-3">
-        <UserPlus className="h-6 w-6 text-accent" />
+    <div className="border border-zinc-200 bg-white rounded-2xl shadow-sm overflow-hidden max-w-2xl mx-auto">
+      <div className="p-6 border-b border-zinc-100 flex items-center gap-4 bg-zinc-50/50">
+        <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+            <UserPlus className="h-6 w-6 text-primary" />
+        </div>
         <div className="flex flex-col">
-            <h2 className="text-2xl font-semibold font-display">Complete Your Profile</h2>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">We need to set up your profile to continue.</p>
+            <h2 className="text-xl font-bold font-display text-zinc-900">Complete Your Profile</h2>
+            <p className="text-sm text-zinc-500 font-body">We need to set up your profile to continue.</p>
         </div>
       </div>
-      <div className="p-8 space-y-6">
-        <div className="space-y-3 bg-zinc-50 border-2 border-zinc-100 p-4">
-          <p className="text-xs font-semibold text-zinc-500">ACCOUNT DETAILS</p>
-          <div className="grid gap-2">
-            <p className="text-sm font-bold"><span className="uppercase text-zinc-400 mr-2 text-[10px]">Email:</span> {userEmail}</p>
-            {userName && <p className="text-sm font-bold"><span className="uppercase text-zinc-400 mr-2 text-[10px]">Name:</span> {userName}</p>}
+      <div className="p-8 space-y-8">
+        <div className="space-y-4 bg-zinc-50/50 rounded-xl border border-zinc-100 p-6">
+          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Account Details</p>
+          <div className="grid gap-3">
+            <div className="flex items-center">
+                <span className="text-sm text-zinc-400 w-20">Email:</span>
+                <span className="text-sm font-medium text-zinc-900">{userEmail}</span>
+            </div>
+            {userName && (
+                <div className="flex items-center">
+                    <span className="text-sm text-zinc-400 w-20">Name:</span>
+                    <span className="text-sm font-medium text-zinc-900">{userName}</span>
+                </div>
+            )}
           </div>
         </div>
 
         {error && (
-          <div className="flex items-center gap-3 p-4 border-2 border-primary bg-muted text-foreground font-semibold text-xs">
-            <AlertCircle className="h-5 w-5" />
+          <div className="flex items-center gap-3 p-4 rounded-xl border border-red-100 bg-red-50 text-red-700 font-medium text-sm">
+            <AlertCircle className="h-5 w-5 shrink-0" />
             {error}
           </div>
         )}
@@ -58,7 +67,8 @@ export function CreateProfileCard({ userEmail, userName }: CreateProfileCardProp
         <Button 
           onClick={handleCreateProfile} 
           disabled={isPending}
-          className="w-full h-14 text-lg font-semibold border-b-4 border-black/20 rounded-none shadow-lg active:translate-y-1 active:border-b-0 transition-all"
+          size="lg"
+          className="w-full rounded-xl font-semibold shadow-sm"
         >
           {isPending ? (
             <>
@@ -72,5 +82,4 @@ export function CreateProfileCard({ userEmail, userName }: CreateProfileCardProp
       </div>
     </div>
   )
-
 }

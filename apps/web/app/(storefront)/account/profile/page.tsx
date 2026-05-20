@@ -21,10 +21,10 @@ export default async function ProfilePage() {
     // If profile doesn't exist (legacy user), show the create profile card
     if (!profile) {
         return (
-            <div className="space-y-12">
-                <div className="border-b-2 border-brand-burgundy pb-4">
-                    <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-zinc-900 font-display leading-tight">Profile</h1>
-                    <p className="text-zinc-600 font-medium text-sm mt-2">Manage your personal information.</p>
+            <div className="space-y-10">
+                <div className="border-b border-zinc-200 pb-6">
+                    <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-zinc-900 font-display">Profile</h1>
+                    <p className="text-zinc-500 font-body mt-1">Manage your personal information.</p>
                 </div>
 
                 <CreateProfileCard 
@@ -36,19 +36,19 @@ export default async function ProfilePage() {
     }
 
     return (
-        <div className="space-y-12">
-            <div className="border-b-2 border-brand-burgundy pb-4">
-                <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-zinc-900 font-display leading-tight">Profile</h1>
-                <p className="text-zinc-600 font-medium text-sm mt-2">Manage your personal information.</p>
+        <div className="space-y-10">
+            <div className="border-b border-zinc-200 pb-6">
+                <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-zinc-900 font-display">Profile</h1>
+                <p className="text-zinc-500 font-body mt-1">Manage your personal information.</p>
             </div>
 
-            <div className="border border-zinc-200 rounded-lg bg-white shadow-sm overflow-hidden">
-                <div className="bg-brand-forest-dark p-4 border-b-2 border-brand-burgundy text-white flex items-center justify-between">
+            <div className="border border-zinc-200 rounded-2xl bg-white shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50">
                     <div className="flex flex-col">
-                        <h2 className="text-2xl font-bold font-display">Personal Information</h2>
-                        <p className="text-xs font-bold uppercase tracking-widest text-zinc-200/80">Update your name and contact details.</p>
+                        <h2 className="text-xl font-bold font-display text-zinc-900">Personal Information</h2>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Update your name and contact details.</p>
                     </div>
-                    <User className="h-6 w-6" />
+                    <User className="h-6 w-6 text-zinc-400" />
                 </div>
                 <div className="p-8">
                     <ProfileForm profile={profile} />

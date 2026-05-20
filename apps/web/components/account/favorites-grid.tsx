@@ -13,7 +13,6 @@ import { toast } from 'sonner'
 export function FavoritesGrid({ items }: { items: ProductSummary[] }) {
 
     async function handleRemove(id: string) {
-        // Optimistic update could happen here but server revalidation handles it
         if (!confirm('Remove this item from your favorites?')) return
         await toggleFavoriteAction(id)
         toast.success('Removed from favorites')
@@ -46,13 +45,13 @@ export function FavoritesGrid({ items }: { items: ProductSummary[] }) {
     }
 
     return (
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {items.map(product => {
                 const imageSrc = formatImageUrl(product.images?.[0])
 
                 return (
-                    <div key={product.id} className="border border-zinc-200 rounded-lg bg-white shadow-sm flex flex-col group overflow-hidden transition-all hover:shadow-md">
-                        <div className="aspect-square relative bg-white border-b border-zinc-100 overflow-hidden p-6">
+                    <div key={product.id} className="border border-zinc-200 rounded-2xl bg-white shadow-sm flex flex-col group overflow-hidden transition-all hover:shadow-md">
+                        <div className="aspect-square relative bg-white border-b border-zinc-50 overflow-hidden p-6">
                             {imageSrc ? (
                                 <img
                                     src={imageSrc}
@@ -60,16 +59,16 @@ export function FavoritesGrid({ items }: { items: ProductSummary[] }) {
                                     className="object-contain w-full h-full group-hover:scale-105 transition-transform duration-500"
                                 />
                             ) : (
-                                <div className="flex items-center justify-center h-full text-zinc-300 bg-zinc-50 font-bold uppercase tracking-widest text-[10px]">
+                                <div className="flex items-center justify-center h-full text-zinc-300 bg-zinc-50 font-semibold text-xs font-body">
                                     No Image
                                 </div>
                             )}
-                            <div className="absolute top-4 right-4 bg-brand-burgundy text-white px-3 py-1.5 text-sm font-bold shadow-sm rounded-sm tracking-tight">
+                            <div className="absolute top-4 right-4 bg-primary text-white px-3 py-1.5 text-sm font-bold shadow-sm rounded-xl tracking-tight">
                                 {product.price ? formatCurrency(Number(product.price)) : formatCurrency(0)}
                             </div>
                         </div>
                         <div className="p-6 flex-1 flex flex-col">
-                            <h3 className="text-xl font-bold line-clamp-2 mb-4 font-display leading-tight group-hover:text-brand-forest-green transition-colors">
+                            <h3 className="text-lg font-bold line-clamp-2 mb-6 font-display leading-tight group-hover:text-primary transition-colors text-zinc-900">
                                 <Link href={`/products/${product.slug}`}>
                                     {product.name}
                                 </Link>
@@ -77,16 +76,16 @@ export function FavoritesGrid({ items }: { items: ProductSummary[] }) {
 
                             <div className="flex gap-3 mt-auto">
                                 <Button 
-                                    className="flex-1 h-12 gap-2 bg-brand-forest-dark text-white hover:bg-brand-forest-green rounded-md font-bold text-xs uppercase tracking-widest border-b-4 border-black/20" 
-                                    size="sm"
+                                    className="flex-1 rounded-xl font-semibold shadow-sm" 
+                                    size="lg"
                                     onClick={() => handleAddToCart(product)}
                                 >
-                                    <ShoppingCart className="h-4 w-4" /> Add to Cart
+                                    <ShoppingCart className="h-4 w-4 mr-2" /> Add to Cart
                                 </Button>
                                 <Button
                                     variant="outline"
                                     size="icon"
-                                    className="h-12 w-12 shrink-0 border border-zinc-200 rounded-md text-brand-burgundy hover:text-white hover:bg-brand-burgundy transition-all shadow-sm"
+                                    className="h-12 w-12 shrink-0 border border-zinc-200 rounded-xl text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-all shadow-sm"
                                     onClick={() => handleRemove(product.id)}
                                 >
                                     <Trash2 className="h-5 w-5" />
@@ -100,4 +99,3 @@ export function FavoritesGrid({ items }: { items: ProductSummary[] }) {
         </div>
     )
 }
-

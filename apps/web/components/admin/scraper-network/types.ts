@@ -11,7 +11,6 @@ export interface RunnerDetail {
   enabled: boolean;
   last_seen_at: string | null;
   active_jobs: number;
-  region: string | null;
   version: string | null;
   build_check_reason: string | null;
   latest_build_sha?: string | null;

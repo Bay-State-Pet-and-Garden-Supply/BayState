@@ -4,13 +4,7 @@ import { useEffect, useState } from 'react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { RunnerDetailClient } from './runner-detail-client';
 import type { RunnerDetail } from './types';
-import { createClient } from '@/lib/supabase/client';
-import {
-  coerceRunnerMetadata,
-  getEffectiveRunnerStatus,
-  getRunnerBuildCheckReason,
-  getRunnerVersion,
-} from '@/lib/scraper-runners';
+import { getRunnerDetail } from '@/app/admin/pipeline/runners/actions';
 
 interface RunnerDetailDrawerProps {
   runner?: RunnerDetail | null;
@@ -38,29 +32,9 @@ export function RunnerDetailDrawer({
       const fetchRunner = async () => {
         setIsLoading(true);
         try {
-          const supabase = createClient();
-          const { data, error } = await supabase
-            .from('scraper_runners')
-            .select('name, status, enabled, last_seen_at, current_job_id, metadata, created_at')
-            .eq('name', runnerId)
-            .single();
-
-          if (!error && data) {
-            const metadata = coerceRunnerMetadata(data.metadata) || {};
-            setRunner({
-              id: data.name,
-              name: data.name,
-              status: getEffectiveRunnerStatus(data) as RunnerDetail['status'],
-              enabled: data.enabled,
-              last_seen_at: data.last_seen_at,
-              active_jobs: data.current_job_id ? 1 : 0,
-              region: (metadata.region as string) || null,
-              version: getRunnerVersion(metadata),
-              build_check_reason: getRunnerBuildCheckReason(metadata),
-              latest_build_sha: (metadata.latest_build_sha as string) || null,
-              latest_build_id: (metadata.latest_build_id as string) || null,
-              metadata,
-            });
+          const result = await getRunnerDetail(runnerId);
+          if (result.success && result.runner) {
+            setRunner(result.runner);
           }
         } catch (error) {
           console.error('Error fetching runner in drawer:', error);

@@ -193,7 +193,6 @@ export function ScraperNetworkDashboard() {
             enabled: enabledOverrides[runner.runner_id] ?? runner.enabled ?? true,
             last_seen_at: runner.last_seen,
             active_jobs: runner.active_jobs,
-            region: (runner.metadata?.region as string) || null,
             version: runner.version || null,
             build_check_reason: runner.build_check_reason || null,
             metadata: runner.metadata || null,
@@ -212,8 +211,7 @@ export function ScraperNetworkDashboard() {
       const searchMatches =
         search.trim() === '' ||
         runner.name.toLowerCase().includes(search.toLowerCase()) ||
-        runner.id.toLowerCase().includes(search.toLowerCase()) ||
-        (runner.region || '').toLowerCase().includes(search.toLowerCase());
+        runner.id.toLowerCase().includes(search.toLowerCase());
 
       if (!searchMatches) return false;
 
@@ -366,7 +364,7 @@ export function ScraperNetworkDashboard() {
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search by runner name, ID, or region"
+                placeholder="Search by runner name or ID"
                 className="pl-9"
                 aria-label="Search runners"
               />
@@ -554,7 +552,6 @@ export function ScraperNetworkDashboard() {
                         <TableHead>Access</TableHead>
                         <TableHead>Jobs</TableHead>
                         <TableHead>Version</TableHead>
-                        <TableHead>Region</TableHead>
                         <TableHead>Last seen</TableHead>
                         <TableHead className="w-[72px]">Actions</TableHead>
                       </TableRow>
@@ -618,7 +615,6 @@ export function ScraperNetworkDashboard() {
                                 ) : null}
                               </div>
                             </TableCell>
-                            <TableCell>{runner.region || 'Unassigned'}</TableCell>
                             <TableCell>{formatLastSeen(runner.last_seen_at)}</TableCell>
                             <TableCell onClick={(event) => event.stopPropagation()}>
                               <DropdownMenu>

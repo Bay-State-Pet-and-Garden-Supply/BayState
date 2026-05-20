@@ -99,7 +99,7 @@ const enrichmentConfidenceV1Schema = z.object({
 // =============================================================================
 
 const enrichmentValidationV1Schema = z.object({
-  sku_match: z.boolean().optional(),
+  sku_match: z.boolean().nullable().optional(),
   warnings: z.array(z.string()).optional(),
   missing_required: z.array(z.string()).optional(),
 });
@@ -158,6 +158,7 @@ export function safeValidateEnrichmentResultV1(
   if (result.success) {
     return result.data;
   }
+  console.error("Zod Validation Error for EnrichmentResultV1:", JSON.stringify(result.error.format(), null, 2));
   return null;
 }
 

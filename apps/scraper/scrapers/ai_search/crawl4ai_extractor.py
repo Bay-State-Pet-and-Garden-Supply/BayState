@@ -17,7 +17,7 @@ from scrapers.ai_search.google_redirects import (
     canonicalize_grounding_url,
     is_grounding_redirect_url,
 )
-from scrapers.ai_search.llm_runtime import resolve_llm_runtime
+from scrapers.ai_search.llm_runtime import LLMRuntimeConfig, resolve_llm_runtime
 from scrapers.ai_search.matching import MatchingUtils
 from scrapers.ai_search.scoring import SearchScorer
 from scrapers.schemas.product import ProductData
@@ -102,15 +102,27 @@ class Crawl4AIExtractor:
         cache_enabled: bool = True,
         extraction_strategy: str = "llm",
         prompt_version: str = "v1",
+        llm_provider: str | None = None,
         llm_base_url: str | None = None,
         llm_api_key: str | None = None,
     ):
         self.headless = headless
-        self._llm_runtime = resolve_llm_runtime(
-            model=llm_model,
-            base_url=llm_base_url,
-            api_key=llm_api_key,
-        )
+        try:
+            self._llm_runtime = resolve_llm_runtime(
+                model=llm_model,
+                base_url=llm_base_url,
+                api_key=llm_api_key,
+                provider=llm_provider,
+            )
+        except ValueError as e:
+            if "Missing LLM_API_KEY" in str(e):
+                self._llm_runtime = LLMRuntimeConfig(
+                    model=llm_model or "gpt-4o-mini",
+                    base_url=llm_base_url,
+                    api_key=None,
+                )
+            else:
+                raise
         self.llm_model = self._llm_runtime.model
         self.cache_enabled = cache_enabled
         self.extraction_strategy = extraction_strategy
@@ -724,7 +736,7 @@ class Crawl4AIExtractor:
 
             # Debug log Crawl4AI configuration (without sensitive data)
             logger.debug(
-                f"[AI Search] Crawl4AI config: provider={self._llm_runtime.provider}, model={self.llm_model}, timeout=30000, "
+                f"[AI Search] Crawl4AI config: provider={self._llm_runtime.crawl4ai_provider}, model={self.llm_model}, timeout=30000, "
                 f"strategy={self.extraction_strategy}, headless={self.headless}, "
                 f"cache={self.cache_enabled}, wait_for_images=True, scan_full_page=True"
             )

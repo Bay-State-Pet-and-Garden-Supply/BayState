@@ -799,7 +799,7 @@ function toAIProviderConfig(data: Record<string, unknown> | null): AIProviderCon
   };
 }
 
-async function getActiveAIProviderConfig(): Promise<AIProviderConfig | null> {
+export async function getActiveAIProviderConfig(): Promise<AIProviderConfig | null> {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
     .from('ai_provider_configs')
@@ -817,7 +817,7 @@ async function getActiveAIProviderConfig(): Promise<AIProviderConfig | null> {
   return toAIProviderConfig(data);
 }
 
-async function getAIProviderConfigById(configId: string): Promise<AIProviderConfig | null> {
+export async function getAIProviderConfigById(configId: string): Promise<AIProviderConfig | null> {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
     .from('ai_provider_configs')
@@ -831,6 +831,140 @@ async function getAIProviderConfigById(configId: string): Promise<AIProviderConf
   }
 
   return toAIProviderConfig(data);
+}
+
+export async function listAIProviderConfigs(): Promise<AIProviderConfig[]> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from('ai_provider_configs')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('[Scraper API] Failed to list AI provider configs:', error);
+    throw new Error('Failed to list AI provider configs');
+  }
+
+  return (data || []).map(toAIProviderConfig).filter(Boolean) as AIProviderConfig[];
+}
+
+export async function createAIProviderConfig(
+  payload: Omit<AIProviderConfig, 'id' | 'is_active' | 'updated_at' | 'encrypted_key' | 'iv' | 'auth_tag'> & { api_key: string },
+  userId?: string
+): Promise<AIProviderConfig> {
+  const encrypted = encryptSecret(payload.api_key);
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from('ai_provider_configs')
+    .insert({
+      name: payload.name,
+      provider_type: payload.provider_type,
+      base_url: payload.base_url,
+      default_model: payload.default_model,
+      encrypted_key: encrypted.encryptedValue,
+      iv: encrypted.iv,
+      auth_tag: encrypted.authTag,
+      is_active: false,
+      updated_by: userId || null,
+    })
+    .select('*')
+    .single();
+
+  if (error) {
+    console.error('[Scraper API] Failed to create AI provider config:', error);
+    throw new Error(error.message || 'Failed to create AI provider config');
+  }
+
+  return toAIProviderConfig(data)!;
+}
+
+export async function updateAIProviderConfig(
+  id: string,
+  payload: Partial<Omit<AIProviderConfig, 'id' | 'is_active' | 'updated_at' | 'encrypted_key' | 'iv' | 'auth_tag'>> & { api_key?: string },
+  userId?: string
+): Promise<AIProviderConfig> {
+  const admin = getSupabaseAdmin();
+  
+  // Get current record first
+  const { data: current, error: getError } = await admin
+    .from('ai_provider_configs')
+    .select('*')
+    .eq('id', id)
+    .single();
+    
+  if (getError || !current) {
+    throw new Error('AI provider config not found');
+  }
+
+  const updateData: Record<string, any> = {
+    name: payload.name ?? current.name,
+    provider_type: payload.provider_type ?? current.provider_type,
+    base_url: payload.base_url !== undefined ? payload.base_url : current.base_url,
+    default_model: payload.default_model ?? current.default_model,
+    updated_by: userId || null,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (payload.api_key && payload.api_key !== '••••••••••••') {
+    const encrypted = encryptSecret(payload.api_key);
+    updateData.encrypted_key = encrypted.encryptedValue;
+    updateData.iv = encrypted.iv;
+    updateData.auth_tag = encrypted.authTag;
+  }
+
+  const { data, error } = await admin
+    .from('ai_provider_configs')
+    .update(updateData)
+    .eq('id', id)
+    .select('*')
+    .single();
+
+  if (error) {
+    console.error('[Scraper API] Failed to update AI provider config:', error);
+    throw new Error(error.message || 'Failed to update AI provider config');
+  }
+
+  return toAIProviderConfig(data)!;
+}
+
+export async function deleteAIProviderConfig(id: string): Promise<void> {
+  const admin = getSupabaseAdmin();
+  const { error } = await admin
+    .from('ai_provider_configs')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('[Scraper API] Failed to delete AI provider config:', error);
+    throw new Error(error.message || 'Failed to delete AI provider config');
+  }
+}
+
+export async function setActiveAIProviderConfig(id: string, userId?: string): Promise<void> {
+  const admin = getSupabaseAdmin();
+  
+  // Transaction-like activation via serial updates:
+  // First deactivate all configs
+  const { error: deactivateError } = await admin
+    .from('ai_provider_configs')
+    .update({ is_active: false, updated_at: new Date().toISOString(), updated_by: userId || null })
+    .neq('id', id);
+
+  if (deactivateError) {
+    console.error('[Scraper API] Failed to deactivate other configurations:', deactivateError);
+    throw new Error('Failed to change active configuration');
+  }
+
+  // Then activate the specified config
+  const { error: activateError } = await admin
+    .from('ai_provider_configs')
+    .update({ is_active: true, updated_at: new Date().toISOString(), updated_by: userId || null })
+    .eq('id', id);
+
+  if (activateError) {
+    console.error('[Scraper API] Failed to activate configuration:', activateError);
+    throw new Error('Failed to activate configuration');
+  }
 }
 
 function buildRuntimeCredentialsFromProviderConfig(
@@ -871,50 +1005,16 @@ function buildRuntimeCredentialsFromProviderConfig(
 }
 
 export async function getAIScrapingRuntimeCredentials(): Promise<AIScrapingRuntimeCredentials> {
-  const [defaults, activeConfig, deepseekKey, legacySearchKey] = await Promise.all([
-    getAIScrapingDefaults(),
+  const [activeConfig, legacySearchKey] = await Promise.all([
     getActiveAIProviderConfig(),
-    getAIScrapingProviderSecret('deepseek'),
     getAIScrapingProviderSecret('serpapi'),
   ]);
 
-  // If we have an active config, it overrides the legacy defaults for provider/model/url/key.
-  if (activeConfig) {
-    return buildRuntimeCredentialsFromProviderConfig(activeConfig, legacySearchKey);
+  if (!activeConfig) {
+    throw new Error('No active AI provider profile configured in the database');
   }
 
-  const resolvedDeepSeek = resolveDeepSeekApiKey(deepseekKey);
-  const selectedKey = defaults.llm_provider === 'deepseek'
-    ? deepseekKey
-    : await getAIScrapingProviderSecret(defaults.llm_provider as AIProvider);
-  const llmApiKey = defaults.llm_provider === 'deepseek'
-    ? resolvedDeepSeek
-    : selectedKey;
-
-  const credentials: AIScrapingRuntimeCredentials = {
-    llm_provider: defaults.llm_provider,
-    llm_model: defaults.llm_model,
-    llm_base_url:
-      defaults.llm_provider === 'deepseek'
-        ? getDeepSeekOpenAICompatibleBaseURL(defaults.llm_base_url)
-        : defaults.llm_base_url || undefined,
-  };
-
-  if (llmApiKey) {
-    credentials.llm_api_key = llmApiKey;
-  }
-  if (defaults.llm_provider === 'deepseek' && resolvedDeepSeek) {
-    credentials.deepseek_api_key = resolvedDeepSeek;
-  }
-  if (defaults.llm_provider === 'openai' && llmApiKey) {
-    credentials.openai_api_key = llmApiKey;
-  }
-  if (legacySearchKey) {
-    credentials.serper_api_key = legacySearchKey;
-    credentials.serpapi_api_key = legacySearchKey;
-  }
-
-  return credentials;
+  return buildRuntimeCredentialsFromProviderConfig(activeConfig, legacySearchKey);
 }
 
 export async function getAIScrapingRuntimeCredentialsForConfig(
@@ -930,7 +1030,7 @@ export async function getAIScrapingRuntimeCredentialsForConfig(
   ]);
 
   if (!config) {
-    console.warn(`[Scraper API] AI provider config ${configId} was not found; falling back to active/default credentials.`);
+    console.warn(`[Scraper API] AI provider config ${configId} was not found; falling back to active credentials.`);
     return getAIScrapingRuntimeCredentials();
   }
 
@@ -938,53 +1038,32 @@ export async function getAIScrapingRuntimeCredentialsForConfig(
 }
 
 export async function getAIConsolidationRuntimeConfig(): Promise<AIConsolidationRuntimeConfig> {
-  const [defaults, activeConfig, deepseekKey, openaiKey] = await Promise.all([
+  const [defaults, activeConfig] = await Promise.all([
     getAIConsolidationDefaults(),
     getActiveAIProviderConfig(),
-    getAIScrapingProviderSecret('deepseek'),
-    getAIScrapingProviderSecret('openai'),
   ]);
 
-  const resolvedDeepSeek = resolveDeepSeekApiKey(deepseekKey);
-  const resolvedOpenAI = resolveOpenAIApiKey(openaiKey);
-
-  if (activeConfig) {
-    const decryptedKey = decryptStoredProviderSecret(activeConfig.provider_type as AIProvider, {
-      encryptedValue: activeConfig.encrypted_key,
-      iv: activeConfig.iv,
-      authTag: activeConfig.auth_tag,
-      last4: null,
-      updatedAt: activeConfig.updated_at
-    });
-
-    return {
-      llm_provider: activeConfig.provider_type,
-      llm_model: activeConfig.default_model,
-      llm_base_url: activeConfig.provider_type === 'deepseek'
-        ? getDeepSeekOpenAICompatibleBaseURL(activeConfig.base_url)
-        : activeConfig.base_url,
-      llm_api_key: decryptedKey,
-      ...(activeConfig.provider_type === 'deepseek' && decryptedKey ? { deepseek_api_key: decryptedKey } : (resolvedDeepSeek ? { deepseek_api_key: resolvedDeepSeek } : {})),
-      ...(resolvedOpenAI ? { openai_api_key: resolvedOpenAI } : {}),
-      confidence_threshold: defaults.confidence_threshold,
-      llm_supports_batch_api: defaults.llm_supports_batch_api,
-    };
+  if (!activeConfig) {
+    throw new Error('No active AI provider profile configured in the database');
   }
 
-  const selectedKey = await getAIScrapingProviderSecret(defaults.llm_provider as AIProvider);
-  const llmApiKey = defaults.llm_provider === 'lmstudio' || defaults.llm_provider === 'openai_compatible'
-    ? selectedKey
-    : resolvedDeepSeek;
+  const decryptedKey = decryptStoredProviderSecret(activeConfig.provider_type as AIProvider, {
+    encryptedValue: activeConfig.encrypted_key,
+    iv: activeConfig.iv,
+    authTag: activeConfig.auth_tag,
+    last4: null,
+    updatedAt: activeConfig.updated_at
+  });
 
   return {
-    llm_provider: defaults.llm_provider,
-    llm_model: defaults.llm_model,
-    llm_base_url: defaults.llm_provider === 'deepseek'
-      ? getDeepSeekOpenAICompatibleBaseURL(defaults.llm_base_url)
-      : defaults.llm_base_url,
-    llm_api_key: llmApiKey,
-    ...(resolvedDeepSeek ? { deepseek_api_key: resolvedDeepSeek } : {}),
-    ...(resolvedOpenAI ? { openai_api_key: resolvedOpenAI } : {}),
+    llm_provider: activeConfig.provider_type,
+    llm_model: activeConfig.default_model,
+    llm_base_url: activeConfig.provider_type === 'deepseek'
+      ? getDeepSeekOpenAICompatibleBaseURL(activeConfig.base_url)
+      : activeConfig.base_url,
+    llm_api_key: decryptedKey,
+    ...(activeConfig.provider_type === 'deepseek' && decryptedKey ? { deepseek_api_key: decryptedKey } : {}),
+    ...(activeConfig.provider_type === 'openai' && decryptedKey ? { openai_api_key: decryptedKey } : {}),
     confidence_threshold: defaults.confidence_threshold,
     llm_supports_batch_api: defaults.llm_supports_batch_api,
   };

@@ -31,6 +31,7 @@ def test_brand_source_selector_preserves_runtime_provider_args():
         )
 
     mock_factory.assert_called_once_with(
+        provider="deepseek",
         model="google/gemma-4-e4b",
         api_key="local-key",
         base_url="http://localhost:1234/v1",

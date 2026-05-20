@@ -1,5 +1,4 @@
-import { AIScrapingSettingsCard } from "@/components/admin/settings/AIScrapingSettingsCard";
-import { AIConsolidationSettingsCard } from "@/components/admin/settings/AIConsolidationSettingsCard";
+import { AIProviderProfilesCard } from "@/components/admin/settings/AIProviderProfilesCard";
 import { ShopSiteCredentialsCard } from "@/components/admin/settings/ShopSiteCredentialsCard";
 import { DistributorCredentialsCard } from "@/components/admin/settings/DistributorCredentialsCard";
 import { AdminPageShell } from "@/components/admin/admin-page-shell";
@@ -17,19 +16,15 @@ export default function AdminSettingsPage() {
     >
       <Alert className="border-emerald-200 bg-emerald-50/80 text-emerald-950 [&>svg]:text-emerald-700">
         <Brain className="h-4 w-4" />
-        <AlertTitle>External AI stack finalized</AlertTitle>
+        <AlertTitle>Dynamic AI Provider Stack</AlertTitle>
         <AlertDescription>
-          Scraping, consolidation, and Finalization Copilot now run on DeepSeek,
-          with Serper handling discovery search. Legacy Gemini, OpenAI, Brave
-          Search, and SerpAPI credentials are deprecated across the active admin
-          flow.
+          Your AI provider profiles are now dynamic. Select any profile to set it active; that active profile will automatically drive scraping, consolidation, and the Finalization Copilot.
         </AlertDescription>
       </Alert>
 
       <ShopSiteCredentialsCard />
       <DistributorCredentialsCard />
-      <AIScrapingSettingsCard />
-      <AIConsolidationSettingsCard />
+      <AIProviderProfilesCard />
     </AdminPageShell>
   );
 }

@@ -129,8 +129,8 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
                 <div className="space-y-6">
-                    <div className="flex items-center gap-2 border-l-4 border-zinc-900 pl-3">
-                        <h3 className="text-sm font-semibold text-zinc-900">1. Basic Information</h3>
+                    <div className="flex items-center gap-2 border-l-4 border-primary pl-3">
+                        <h3 className="text-sm font-semibold text-zinc-900 font-display">1. Basic Information</h3>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -139,15 +139,15 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                             name="name"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-xs font-semibold text-zinc-500">Pet Name</FormLabel>
+                                    <FormLabel className="text-sm font-medium text-zinc-600 font-body">Pet Name</FormLabel>
                                     <FormControl>
                                         <Input 
                                             placeholder="e.g. Buddy" 
                                             {...field} 
-                                            className="h-14 border border-zinc-200 rounded-lg rounded-none font-bold focus-visible:ring-0 focus-visible:border-primary"
+                                            className="h-12 border border-zinc-200 rounded-xl font-medium focus-visible:ring-0 focus-visible:border-primary"
                                         />
                                     </FormControl>
-                                    <FormMessage className="text-[10px] font-bold uppercase" />
+                                    <FormMessage className="text-xs font-medium text-red-500 font-body" />
                                 </FormItem>
                             )}
                         />
@@ -157,22 +157,22 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                             name="pet_type_id"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-xs font-semibold text-zinc-500">Pet Type</FormLabel>
+                                    <FormLabel className="text-sm font-medium text-zinc-600 font-body">Pet Type</FormLabel>
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl>
-                                            <SelectTrigger className="h-14 border border-zinc-200 rounded-lg rounded-none font-bold focus:ring-0">
+                                            <SelectTrigger className="h-12 border border-zinc-200 rounded-xl font-medium focus:ring-0">
                                                 <SelectValue placeholder="Select type" />
                                             </SelectTrigger>
                                         </FormControl>
-                                        <SelectContent className="border border-zinc-200 rounded-lg rounded-none shadow-sm">
+                                        <SelectContent className="border border-zinc-200 rounded-xl shadow-sm">
                                             {petTypes.map((type) => (
-                                                <SelectItem key={type.id} value={type.id} className="font-bold">
+                                                <SelectItem key={type.id} value={type.id} className="font-medium">
                                                     {type.name}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <FormMessage className="text-[10px] font-bold uppercase" />
+                                    <FormMessage className="text-xs font-medium text-red-500 font-body" />
                                 </FormItem>
                             )}
                         />
@@ -183,15 +183,15 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                         name="breed"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-xs font-semibold text-zinc-500">Breed (Optional)</FormLabel>
+                                <FormLabel className="text-sm font-medium text-zinc-600 font-body">Breed (Optional)</FormLabel>
                                 <FormControl>
                                     <Input 
                                         placeholder="e.g. Golden Retriever" 
                                         {...field} 
-                                        className="h-14 border border-zinc-200 rounded-lg rounded-none font-bold focus-visible:ring-0 focus-visible:border-primary"
+                                        className="h-12 border border-zinc-200 rounded-xl font-medium focus-visible:ring-0 focus-visible:border-primary"
                                     />
                                 </FormControl>
-                                <FormMessage className="text-[10px] font-bold uppercase" />
+                                <FormMessage className="text-xs font-medium text-red-500 font-body" />
                             </FormItem>
                         )}
                     />
@@ -202,14 +202,14 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                             name="birth_date"
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
-                                    <FormLabel className="text-xs font-semibold text-zinc-500 mb-2">Birth Date (Optional)</FormLabel>
+                                    <FormLabel className="text-sm font-medium text-zinc-600 font-body mb-2">Birth Date (Optional)</FormLabel>
                                     <FormControl>
                                         <BirthDatePicker 
                                             value={field.value} 
                                             onChange={field.onChange} 
                                         />
                                     </FormControl>
-                                    <FormMessage className="text-[10px] font-bold uppercase" />
+                                    <FormMessage className="text-xs font-medium text-red-500 font-body" />
                                 </FormItem>
                             )}
                         />
@@ -219,26 +219,26 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                             name="weight_lbs"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-xs font-semibold text-zinc-500">Weight (lbs)</FormLabel>
+                                    <FormLabel className="text-sm font-medium text-zinc-600 font-body">Weight (lbs)</FormLabel>
                                     <FormControl>
                                         <Input 
                                             type="number" 
                                             step="0.1" 
                                             placeholder="e.g. 15.5" 
                                             {...field} 
-                                            className="h-14 border border-zinc-200 rounded-lg rounded-none font-bold focus-visible:ring-0 focus-visible:border-primary"
+                                            className="h-12 border border-zinc-200 rounded-xl font-medium focus-visible:ring-0 focus-visible:border-primary"
                                         />
                                     </FormControl>
-                                    <FormMessage className="text-[10px] font-bold uppercase" />
+                                    <FormMessage className="text-xs font-medium text-red-500 font-body" />
                                 </FormItem>
                             )}
                         />
                     </div>
                 </div>
 
-                <div className="space-y-6 pt-4 border-t-4 border-zinc-100">
-                    <div className="flex items-center gap-2 border-l-4 border-zinc-900 pl-3">
-                        <h3 className="text-sm font-semibold text-zinc-900">2. Physical Details</h3>
+                <div className="space-y-6 pt-4 border-t border-zinc-100">
+                    <div className="flex items-center gap-2 border-l-4 border-primary pl-3">
+                        <h3 className="text-sm font-semibold text-zinc-900 font-display">2. Physical Details</h3>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -247,19 +247,19 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                             name="gender"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-xs font-semibold text-zinc-500">Gender</FormLabel>
+                                    <FormLabel className="text-sm font-medium text-zinc-600 font-body">Gender</FormLabel>
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl>
-                                            <SelectTrigger className="h-14 border border-zinc-200 rounded-lg rounded-none font-bold focus:ring-0">
+                                            <SelectTrigger className="h-12 border border-zinc-200 rounded-xl font-medium focus:ring-0">
                                                 <SelectValue placeholder="Select gender" />
                                             </SelectTrigger>
                                         </FormControl>
-                                        <SelectContent className="border border-zinc-200 rounded-lg rounded-none shadow-sm">
-                                            <SelectItem value="male" className="font-bold">Male</SelectItem>
-                                            <SelectItem value="female" className="font-bold">Female</SelectItem>
+                                        <SelectContent className="border border-zinc-200 rounded-xl shadow-sm">
+                                            <SelectItem value="male" className="font-medium">Male</SelectItem>
+                                            <SelectItem value="female" className="font-medium">Female</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                    <FormMessage className="text-[10px] font-bold uppercase" />
+                                    <FormMessage className="text-xs font-medium text-red-500 font-body" />
                                 </FormItem>
                             )}
                         />
@@ -268,16 +268,16 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                             control={form.control}
                             name="is_fixed"
                             render={({ field }) => (
-                                <FormItem className="flex flex-row items-center space-x-3 space-y-0 border border-zinc-200 rounded-lg bg-zinc-50 p-4 min-h-[56px] mt-auto">
+                                <FormItem className="flex flex-row items-center space-x-3 space-y-0 border border-zinc-200 rounded-xl bg-zinc-50/50 p-4 min-h-[48px] mt-auto">
                                     <FormControl>
                                         <Checkbox
                                             checked={field.value}
                                             onCheckedChange={field.onChange}
-                                            className="h-6 w-6 border border-zinc-200 rounded-lg rounded-none data-[state=checked]:bg-zinc-900 data-[state=checked]:text-white"
+                                            className="h-5 w-5 border border-zinc-300 rounded data-[state=checked]:bg-primary data-[state=checked]:text-white data-[state=checked]:border-primary"
                                         />
                                     </FormControl>
                                     <div className="space-y-1 leading-none">
-                                        <FormLabel className="text-sm font-semibold">
+                                        <FormLabel className="text-sm font-medium font-body cursor-pointer">
                                             Spayed/Neutered
                                         </FormLabel>
                                     </div>
@@ -292,22 +292,22 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                             name="life_stage"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-xs font-semibold text-zinc-500">Life Stage</FormLabel>
+                                    <FormLabel className="text-sm font-medium text-zinc-600 font-body">Life Stage</FormLabel>
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl>
-                                            <SelectTrigger className="h-14 border border-zinc-200 rounded-lg rounded-none font-bold focus:ring-0">
+                                            <SelectTrigger className="h-12 border border-zinc-200 rounded-xl font-medium focus:ring-0">
                                                 <SelectValue placeholder="Select stage" />
                                             </SelectTrigger>
                                         </FormControl>
-                                        <SelectContent className="border border-zinc-200 rounded-lg rounded-none shadow-sm">
+                                        <SelectContent className="border border-zinc-200 rounded-xl shadow-sm">
                                             {PET_LIFE_STAGES.map((stage) => (
-                                                <SelectItem key={stage.value} value={stage.value} className="font-bold">
+                                                <SelectItem key={stage.value} value={stage.value} className="font-medium">
                                                     {stage.label}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <FormMessage className="text-[10px] font-bold uppercase" />
+                                    <FormMessage className="text-xs font-medium text-red-500 font-body" />
                                 </FormItem>
                             )}
                         />
@@ -317,22 +317,22 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                             name="size_class"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-xs font-semibold text-zinc-500">Size Category</FormLabel>
+                                    <FormLabel className="text-sm font-medium text-zinc-600 font-body">Size Category</FormLabel>
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl>
-                                            <SelectTrigger className="h-14 border border-zinc-200 rounded-lg rounded-none font-bold focus:ring-0">
+                                            <SelectTrigger className="h-12 border border-zinc-200 rounded-xl font-medium focus:ring-0">
                                                 <SelectValue placeholder="Select size" />
                                             </SelectTrigger>
                                         </FormControl>
-                                        <SelectContent className="border border-zinc-200 rounded-lg rounded-none shadow-sm">
+                                        <SelectContent className="border border-zinc-200 rounded-xl shadow-sm">
                                             {PET_SIZE_CLASSES.map((size) => (
-                                                <SelectItem key={size.value} value={size.value} className="font-bold">
+                                                <SelectItem key={size.value} value={size.value} className="font-medium">
                                                     {size.label}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <FormMessage className="text-[10px] font-bold uppercase" />
+                                    <FormMessage className="text-xs font-medium text-red-500 font-body" />
                                 </FormItem>
                             )}
                         />
@@ -343,30 +343,30 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                         name="activity_level"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-xs font-semibold text-zinc-500">Activity Level</FormLabel>
+                                <FormLabel className="text-sm font-medium text-zinc-600 font-body">Activity Level</FormLabel>
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                     <FormControl>
-                                        <SelectTrigger className="h-14 border border-zinc-200 rounded-lg rounded-none font-bold focus:ring-0">
+                                        <SelectTrigger className="h-12 border border-zinc-200 rounded-xl font-medium focus:ring-0">
                                             <SelectValue placeholder="Select activity level" />
                                         </SelectTrigger>
                                     </FormControl>
-                                    <SelectContent className="border border-zinc-200 rounded-lg rounded-none shadow-sm">
+                                    <SelectContent className="border border-zinc-200 rounded-xl shadow-sm">
                                         {PET_ACTIVITY_LEVELS.map((level) => (
-                                            <SelectItem key={level.value} value={level.value} className="font-bold">
+                                            <SelectItem key={level.value} value={level.value} className="font-medium">
                                                 {level.label}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
-                                <FormMessage className="text-[10px] font-bold uppercase" />
+                                <FormMessage className="text-xs font-medium text-red-500 font-body" />
                             </FormItem>
                         )}
                     />
                 </div>
 
-                <div className="space-y-6 pt-4 border-t-4 border-zinc-100">
-                    <div className="flex items-center gap-2 border-l-4 border-zinc-900 pl-3">
-                        <h3 className="text-sm font-semibold text-zinc-900">3. Special Needs & Notes</h3>
+                <div className="space-y-6 pt-4 border-t border-zinc-100">
+                    <div className="flex items-center gap-2 border-l-4 border-primary pl-3">
+                        <h3 className="text-sm font-semibold text-zinc-900 font-display">3. Special Needs & Notes</h3>
                     </div>
 
                     <FormField
@@ -375,7 +375,7 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                         render={() => (
                             <FormItem>
                                 <div className="mb-4">
-                                    <FormLabel className="text-xs font-semibold text-zinc-500">Select all that apply:</FormLabel>
+                                    <FormLabel className="text-sm font-medium text-zinc-600 font-body">Select all that apply:</FormLabel>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {PET_SPECIAL_NEEDS.map((item) => (
@@ -387,7 +387,7 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                                                 return (
                                                     <FormItem
                                                         key={item.value}
-                                                        className="flex flex-row items-center space-x-3 space-y-0 border-2 border-zinc-100 p-3 hover:bg-zinc-50 transition-colors"
+                                                        className="flex flex-row items-center space-x-3 space-y-0 border border-zinc-200 rounded-xl p-3 hover:bg-zinc-50 transition-colors"
                                                     >
                                                         <FormControl>
                                                             <Checkbox
@@ -401,10 +401,10 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                                                                             )
                                                                         )
                                                                 }}
-                                                                className="h-5 w-5 border border-zinc-200 rounded-lg rounded-none data-[state=checked]:bg-zinc-900 data-[state=checked]:text-white"
+                                                                className="h-5 w-5 border border-zinc-300 rounded data-[state=checked]:bg-primary data-[state=checked]:text-white data-[state=checked]:border-primary"
                                                             />
                                                         </FormControl>
-                                                        <FormLabel className="font-bold text-xs uppercase tracking-tight cursor-pointer">
+                                                        <FormLabel className="font-medium text-sm font-body cursor-pointer">
                                                             {item.label}
                                                         </FormLabel>
                                                     </FormItem>
@@ -413,7 +413,7 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                                         />
                                     ))}
                                 </div>
-                                <FormMessage className="text-[10px] font-bold uppercase" />
+                                <FormMessage className="text-xs font-medium text-red-500 font-body" />
                             </FormItem>
                         )}
                     />
@@ -423,15 +423,15 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                         name="dietary_notes"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-xs font-semibold text-zinc-500">Additional Notes</FormLabel>
+                                <FormLabel className="text-sm font-medium text-zinc-600 font-body">Additional Notes</FormLabel>
                                 <FormControl>
                                     <Textarea
                                         placeholder="Any other allergies or preferences..."
-                                        className="min-h-[120px] border border-zinc-200 rounded-lg rounded-none font-bold focus-visible:ring-0 focus-visible:border-primary resize-none"
+                                        className="min-h-[120px] border border-zinc-200 rounded-xl font-medium focus-visible:ring-0 focus-visible:border-primary resize-none p-4"
                                         {...field}
                                     />
                                 </FormControl>
-                                <FormMessage className="text-[10px] font-bold uppercase" />
+                                <FormMessage className="text-xs font-medium text-red-500 font-body" />
                             </FormItem>
                         )}
                     />
@@ -440,10 +440,11 @@ export function PetForm({ pet, petTypes, onSuccess }: PetFormProps) {
                 <div className="pt-6">
                     <Button 
                         type="submit" 
-                        className="w-full h-16 text-xl font-semibold border-b-4 border-black/20 rounded-none shadow-lg active:translate-y-1 active:border-b-0 transition-all bg-zinc-900 hover:bg-zinc-800 text-white" 
+                        size="lg"
+                        className="w-full rounded-xl font-semibold shadow-sm transition-all" 
                         disabled={loading}
                     >
-                        {loading && <Loader2 className="mr-3 h-6 w-6 animate-spin text-accent" />}
+                        {loading && <Loader2 className="mr-3 h-5 w-5 animate-spin" />}
                         {pet ? 'Update Pet Profile' : 'Add Pet to Profile'}
                     </Button>
                 </div>

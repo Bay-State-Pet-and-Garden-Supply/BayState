@@ -35,10 +35,10 @@ export function PetList({ pets, petTypes }: PetListProps) {
                     className="border-dashed border-2 border-zinc-200 bg-white"
                 />
                 <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogContent className="max-h-[90vh] overflow-y-auto border border-zinc-200 rounded-lg shadow-sm p-0 overflow-hidden">
-                        <DialogHeader className="bg-brand-forest-dark text-white p-6 border-b-2 border-brand-burgundy">
-                            <DialogTitle className="text-2xl font-bold font-display">Add a Pet</DialogTitle>
-                            <DialogDescription className="text-zinc-200/80 font-bold uppercase tracking-widest text-[10px]">
+                    <DialogContent className="max-h-[90vh] overflow-y-auto border border-zinc-200 rounded-2xl shadow-sm p-0 overflow-hidden">
+                        <DialogHeader className="bg-zinc-50/50 p-6 border-b border-zinc-100">
+                            <DialogTitle className="text-2xl font-bold font-display text-zinc-900">Add a Pet</DialogTitle>
+                            <DialogDescription className="text-zinc-500 font-medium">
                                 Tell us about your pet to get personalized recommendations.
                             </DialogDescription>
                         </DialogHeader>
@@ -63,20 +63,20 @@ export function PetList({ pets, petTypes }: PetListProps) {
 
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
-                    <div className="flex h-full min-h-[240px] cursor-pointer flex-col items-center justify-center border-2 border-dashed border-zinc-200 bg-zinc-50 hover:bg-zinc-100 transition-all rounded-lg p-8 text-center group">
-                        <div className="bg-white border border-zinc-200 p-4 shadow-sm mb-4 group-hover:border-brand-burgundy transition-all rounded-full">
-                            <Plus className="h-8 w-8 text-zinc-400 group-hover:text-brand-burgundy transition-colors" />
+                    <div className="flex h-full min-h-[240px] cursor-pointer flex-col items-center justify-center border-2 border-dashed border-zinc-200 bg-white hover:bg-zinc-50 hover:border-primary/50 transition-all rounded-2xl p-8 text-center group">
+                        <div className="bg-zinc-50 border border-zinc-200 p-4 shadow-sm mb-4 group-hover:border-primary transition-all rounded-full">
+                            <Plus className="h-8 w-8 text-zinc-400 group-hover:text-primary transition-colors" />
                         </div>
-                        <h3 className="font-bold text-xl tracking-tight mb-1 font-display">Add a Pet</h3>
-                        <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">
+                        <h3 className="font-bold text-xl tracking-tight mb-1 font-display text-zinc-900">Add a Pet</h3>
+                        <p className="text-sm font-medium text-zinc-500 font-body">
                             Get better recommendations
                         </p>
                     </div>
                 </DialogTrigger>
-                <DialogContent className="max-h-[90vh] overflow-y-auto border border-zinc-200 rounded-lg shadow-sm p-0 overflow-hidden">
-                    <DialogHeader className="bg-brand-forest-dark text-white p-6 border-b-2 border-brand-burgundy">
-                        <DialogTitle className="text-2xl font-bold font-display">Add a Pet</DialogTitle>
-                        <DialogDescription className="text-zinc-200/80 font-bold uppercase tracking-widest text-[10px]">
+                <DialogContent className="max-h-[90vh] overflow-y-auto border border-zinc-200 rounded-2xl shadow-sm p-0 overflow-hidden">
+                    <DialogHeader className="bg-zinc-50/50 p-6 border-b border-zinc-100">
+                        <DialogTitle className="text-2xl font-bold font-display text-zinc-900">Add a Pet</DialogTitle>
+                        <DialogDescription className="text-zinc-500 font-medium font-body">
                             Tell us about your pet to get personalized recommendations.
                         </DialogDescription>
                     </DialogHeader>

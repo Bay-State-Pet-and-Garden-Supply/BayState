@@ -5,39 +5,47 @@ import { Button } from '@/components/ui/button'
 import { ShoppingCart, RotateCcw, Package } from 'lucide-react'
 import Link from 'next/link'
 import { formatCurrency, formatImageUrl } from '@/lib/utils'
+import { useCartStore } from '@/lib/cart-store'
+import { toast } from 'sonner'
 
 interface BuyAgainSectionProps {
     products: FrequentProduct[]
 }
 
 export function BuyAgainSection({ products }: BuyAgainSectionProps) {
+    const addItem = useCartStore(state => state.addItem)
+
     if (!products || products.length === 0) {
         return (
-            <div className="border-4 border-dashed border-zinc-200 p-12 text-center bg-zinc-50">
+            <div className="border border-dashed border-zinc-200 p-12 text-center bg-zinc-50/50 rounded-2xl">
                 <Package className="mx-auto h-12 w-12 text-zinc-300 mb-4" />
-                <h3 className="font-semibold text-xl text-zinc-900">No recurring purchases yet</h3>
-                <p className="text-sm font-medium text-zinc-600 mt-2 max-w-sm mx-auto">
+                <h3 className="font-semibold text-lg text-zinc-900 font-display">No recurring purchases yet</h3>
+                <p className="text-sm text-zinc-500 mt-2 max-w-sm mx-auto font-body">
                     Products you order multiple times will appear here for quick reordering.
                 </p>
-                <Button asChild variant="outline" className="mt-6 border border-zinc-200 rounded-lg rounded-none font-semibold">
+                <Button asChild variant="outline" className="mt-6 rounded-xl font-semibold">
                     <Link href="/products">Start Shopping</Link>
                 </Button>
             </div>
         )
     }
 
-    async function handleAddToCart(productId: string) {
-        // TODO: Integrate with cart store/action
-        console.log('Add to cart:', productId)
-        // For now, just show alert
-        alert('Added to cart! (Cart integration coming soon)')
+    function handleAddToCart(product: FrequentProduct) {
+        addItem({
+            id: product.id,
+            name: product.name,
+            slug: product.slug,
+            price: Number(product.price),
+            imageUrl: formatImageUrl(product.images?.[0]) || null,
+        })
+        toast.success('Added to cart')
     }
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-2 border-l-8 border-accent pl-4">
-                <RotateCcw className="h-6 w-6 text-zinc-900" />
-                <h3 className="font-bold text-2xl uppercase tracking-tighter font-display">Buy Again</h3>
+            <div className="flex items-center gap-3 border-l-4 border-primary pl-4">
+                <RotateCcw className="h-6 w-6 text-primary" />
+                <h3 className="text-xl font-bold font-display text-zinc-900">Buy Again</h3>
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -45,44 +53,44 @@ export function BuyAgainSection({ products }: BuyAgainSectionProps) {
                     const imageSrc = formatImageUrl(product.images?.[0])
                     
                     return (
-                        <div key={product.id} className="border-4 border-zinc-900 bg-white shadow-sm hover:shadow-sm transition-all overflow-hidden flex flex-row">
-                            <div className="w-28 h-28 shrink-0 bg-white border-r-4 border-zinc-900 p-2">
+                        <div key={product.id} className="border border-zinc-200 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-row group">
+                            <div className="w-24 h-24 shrink-0 bg-white border-r border-zinc-100 p-2">
                                 {imageSrc ? (
                                     <img
                                         src={imageSrc}
                                         alt={product.name}
-                                        className="w-full h-full object-contain"
+                                        className="w-full h-full object-contain group-hover:scale-105 transition-transform"
                                     />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-zinc-300 text-xs font-semibold bg-zinc-50">
+                                    <div className="w-full h-full flex items-center justify-center text-zinc-300 text-[10px] font-semibold bg-zinc-50 rounded-lg">
                                         No img
                                     </div>
                                 )}
                             </div>
 
                             <div className="flex-1 p-4 flex flex-col justify-between min-w-0">
-                                <div>
+                                <div className="space-y-1">
                                     <Link
                                         href={`/products/${product.slug}`}
-                                        className="font-bold text-sm uppercase leading-tight line-clamp-2 hover:text-primary transition-colors"
+                                        className="font-semibold text-sm leading-snug line-clamp-2 hover:text-primary transition-colors font-body text-zinc-900"
                                     >
                                         {product.name}
                                     </Link>
-                                    <p className="text-[10px] font-semibold text-zinc-500 mt-1">
-                                        Ordered {product.order_count} times
+                                    <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                                        Ordered {product.order_count}x
                                     </p>
                                 </div>
                 
-                                <div className="flex items-center justify-between mt-3">
-                                    <span className="font-bold text-lg tracking-tighter">
+                                <div className="flex items-center justify-between mt-2">
+                                    <span className="font-bold text-base text-zinc-900 font-body">
                                         {formatCurrency(Number(product.price))}
                                     </span>
                                     <Button
                                         size="sm"
-                                        className="h-8 px-3 gap-2 bg-zinc-900 text-white hover:bg-zinc-800 rounded-none font-semibold text-xs"
-                                        onClick={() => handleAddToCart(product.id)}
+                                        className="h-8 px-3 rounded-lg font-semibold text-xs shadow-sm"
+                                        onClick={() => handleAddToCart(product)}
                                     >
-                                        <ShoppingCart className="h-3 w-3" />
+                                        <ShoppingCart className="h-3 w-3 mr-1.5" />
                                         Add
                                     </Button>
                                 </div>
@@ -94,4 +102,3 @@ export function BuyAgainSection({ products }: BuyAgainSectionProps) {
         </div>
     )
 }
-

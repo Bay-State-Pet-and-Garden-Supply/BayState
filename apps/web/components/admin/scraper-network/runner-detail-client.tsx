@@ -189,18 +189,6 @@ export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: Run
           </CardContent>
         </Card>
 
-        {/* Region Card */}
-        <Card className={cn(isEmbedded && 'border border-border shadow-none')}>
-          <CardHeader className={cn(isEmbedded && 'pb-2')}>
-            <CardTitle className={cn('text-sm font-medium', isEmbedded && 'text-sm font-semibold tracking-normal')}>
-              Region
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm font-mono">{runner.region ?? 'Unknown'}</p>
-          </CardContent>
-        </Card>
-
         {/* Version Card */}
         <Card className={cn(
           isEmbedded && 'border border-border shadow-none',

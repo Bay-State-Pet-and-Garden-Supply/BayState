@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'
 import { addAddressAction } from '@/lib/account/actions'
-import { Loader2 } from 'lucide-react'
+import { Loader2, AlertCircle } from 'lucide-react'
 
 // Replicate schema from server for client validation
 const formSchema = z.object({
@@ -62,16 +62,17 @@ export function AddressForm({ onSuccess }: { onSuccess: () => void }) {
 
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                 {serverError && (
-                    <div className="p-4 border-2 border-primary bg-muted text-foreground font-semibold text-xs">
+                    <div className="p-4 rounded-xl border border-red-100 bg-red-50 text-red-700 flex items-center gap-3 font-medium text-sm">
+                        <AlertCircle className="h-5 w-5 shrink-0" />
                         {serverError}
                     </div>
                 )}
 
                 <div className="space-y-6">
-                    <div className="flex items-center gap-2 border-l-4 border-zinc-900 pl-3">
-                        <h3 className="text-sm font-semibold text-zinc-900">Delivery Information</h3>
+                    <div className="border-l-4 border-primary pl-4">
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-900">Delivery Information</h3>
                     </div>
                     
                     <FormField
@@ -79,16 +80,16 @@ export function AddressForm({ onSuccess }: { onSuccess: () => void }) {
                         name="fullName"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-xs font-semibold text-zinc-500">Full Name</FormLabel>
+                                <FormLabel className="text-sm font-semibold text-zinc-700">Full Name</FormLabel>
                                 <FormControl>
                                     <Input 
                                         placeholder="John Doe" 
                                         {...field} 
                                         disabled={loading} 
-                                        className="h-14 text-lg font-bold border border-zinc-200 rounded-lg rounded-none focus-visible:ring-0 focus-visible:border-primary transition-all" 
+                                        className="rounded-xl border-zinc-200 focus-visible:ring-primary h-11" 
                                     />
                                 </FormControl>
-                                <FormMessage className="text-xs font-bold uppercase tracking-tight" />
+                                <FormMessage className="text-xs text-red-600" />
                             </FormItem>
                         )}
                     />
@@ -99,16 +100,16 @@ export function AddressForm({ onSuccess }: { onSuccess: () => void }) {
                             name="addressLine1"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-xs font-semibold text-zinc-500">Address Line 1</FormLabel>
+                                    <FormLabel className="text-sm font-semibold text-zinc-700">Address Line 1</FormLabel>
                                     <FormControl>
                                         <Input 
                                             placeholder="123 Main St" 
                                             {...field} 
                                             disabled={loading} 
-                                            className="h-14 text-lg font-bold border border-zinc-200 rounded-lg rounded-none focus-visible:ring-0 focus-visible:border-primary transition-all" 
+                                            className="rounded-xl border-zinc-200 focus-visible:ring-primary h-11" 
                                         />
                                     </FormControl>
-                                    <FormMessage className="text-xs font-bold uppercase tracking-tight" />
+                                    <FormMessage className="text-xs text-red-600" />
                                 </FormItem>
                             )}
                         />
@@ -117,16 +118,16 @@ export function AddressForm({ onSuccess }: { onSuccess: () => void }) {
                             name="addressLine2"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-xs font-semibold text-zinc-500">Address Line 2 (Optional)</FormLabel>
+                                    <FormLabel className="text-sm font-semibold text-zinc-700">Address Line 2 (Optional)</FormLabel>
                                     <FormControl>
                                         <Input 
                                             placeholder="Apt 4B" 
                                             {...field} 
                                             disabled={loading} 
-                                            className="h-14 text-lg font-bold border border-zinc-200 rounded-lg rounded-none focus-visible:ring-0 focus-visible:border-primary transition-all" 
+                                            className="rounded-xl border-zinc-200 focus-visible:ring-primary h-11" 
                                         />
                                     </FormControl>
-                                    <FormMessage className="text-xs font-bold uppercase tracking-tight" />
+                                    <FormMessage className="text-xs text-red-600" />
                                 </FormItem>
                             )}
                         />
@@ -138,16 +139,16 @@ export function AddressForm({ onSuccess }: { onSuccess: () => void }) {
                             name="city"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-xs font-semibold text-zinc-500">City</FormLabel>
+                                    <FormLabel className="text-sm font-semibold text-zinc-700">City</FormLabel>
                                     <FormControl>
                                         <Input 
                                             placeholder="Anytown" 
                                             {...field} 
                                             disabled={loading} 
-                                            className="h-14 text-lg font-bold border border-zinc-200 rounded-lg rounded-none focus-visible:ring-0 focus-visible:border-primary transition-all" 
+                                            className="rounded-xl border-zinc-200 focus-visible:ring-primary h-11" 
                                         />
                                     </FormControl>
-                                    <FormMessage className="text-xs font-bold uppercase tracking-tight" />
+                                    <FormMessage className="text-xs text-red-600" />
                                 </FormItem>
                             )}
                         />
@@ -156,16 +157,16 @@ export function AddressForm({ onSuccess }: { onSuccess: () => void }) {
                             name="state"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-xs font-semibold text-zinc-500">State</FormLabel>
+                                    <FormLabel className="text-sm font-semibold text-zinc-700">State</FormLabel>
                                     <FormControl>
                                         <Input 
                                             placeholder="MA" 
                                             {...field} 
                                             disabled={loading} 
-                                            className="h-14 text-lg font-bold border border-zinc-200 rounded-lg rounded-none focus-visible:ring-0 focus-visible:border-primary transition-all" 
+                                            className="rounded-xl border-zinc-200 focus-visible:ring-primary h-11" 
                                         />
                                     </FormControl>
-                                    <FormMessage className="text-xs font-bold uppercase tracking-tight" />
+                                    <FormMessage className="text-xs text-red-600" />
                                 </FormItem>
                             )}
                         />
@@ -174,16 +175,16 @@ export function AddressForm({ onSuccess }: { onSuccess: () => void }) {
                             name="zipCode"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-xs font-semibold text-zinc-500">Zip Code</FormLabel>
+                                    <FormLabel className="text-sm font-semibold text-zinc-700">Zip Code</FormLabel>
                                     <FormControl>
                                         <Input 
                                             placeholder="01234" 
                                             {...field} 
                                             disabled={loading} 
-                                            className="h-14 text-lg font-bold border border-zinc-200 rounded-lg rounded-none focus-visible:ring-0 focus-visible:border-primary transition-all" 
+                                            className="rounded-xl border-zinc-200 focus-visible:ring-primary h-11" 
                                         />
                                     </FormControl>
-                                    <FormMessage className="text-xs font-bold uppercase tracking-tight" />
+                                    <FormMessage className="text-xs text-red-600" />
                                 </FormItem>
                             )}
                         />
@@ -194,17 +195,17 @@ export function AddressForm({ onSuccess }: { onSuccess: () => void }) {
                         name="phone"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-xs font-semibold text-zinc-500">Phone (Optional)</FormLabel>
+                                <FormLabel className="text-sm font-semibold text-zinc-700">Phone (Optional)</FormLabel>
                                 <FormControl>
                                     <Input 
                                         placeholder="" 
                                         {...field} 
                                         disabled={loading} 
-                                        className="h-14 text-lg font-bold border border-zinc-200 rounded-lg rounded-none focus-visible:ring-0 focus-visible:border-primary transition-all" 
+                                        className="rounded-xl border-zinc-200 focus-visible:ring-primary h-11" 
                                     />
                                 </FormControl>
-                                <FormDescription className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">For delivery updates.</FormDescription>
-                                <FormMessage className="text-xs font-bold uppercase tracking-tight" />
+                                <FormDescription className="text-xs text-zinc-400">For delivery updates.</FormDescription>
+                                <FormMessage className="text-xs text-red-600" />
                             </FormItem>
                         )}
                     />
@@ -213,16 +214,16 @@ export function AddressForm({ onSuccess }: { onSuccess: () => void }) {
                         control={form.control}
                         name="isDefault"
                         render={({ field }) => (
-                            <FormItem className="flex flex-row items-center space-x-3 space-y-0 border border-zinc-200 rounded-lg bg-zinc-50 p-4 min-h-[64px]">
+                            <FormItem className="flex flex-row items-center space-x-3 space-y-0 border border-zinc-100 rounded-2xl bg-zinc-50/50 p-4">
                                 <FormControl>
                                     <Checkbox
                                         checked={field.value}
                                         onCheckedChange={field.onChange}
-                                        className="h-6 w-6 border border-zinc-200 rounded-lg rounded-none data-[state=checked]:bg-zinc-900 data-[state=checked]:text-white"
+                                        className="h-5 w-5 rounded-md border-zinc-300 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                                     />
                                 </FormControl>
                                 <div className="space-y-1 leading-none">
-                                    <FormLabel className="text-sm font-semibold">Set as default address</FormLabel>
+                                    <FormLabel className="text-sm font-medium text-zinc-700">Set as default address</FormLabel>
                                 </div>
                             </FormItem>
                         )}
@@ -233,9 +234,10 @@ export function AddressForm({ onSuccess }: { onSuccess: () => void }) {
                     <Button 
                         type="submit" 
                         disabled={loading} 
-                        className="w-full sm:w-auto h-16 px-12 text-lg font-semibold border-b-4 border-black/20 rounded-none shadow-lg active:translate-y-1 active:border-b-0 transition-all bg-zinc-900 hover:bg-zinc-800 text-white"
+                        size="lg"
+                        className="w-full sm:w-auto px-12 rounded-xl font-semibold shadow-sm"
                     >
-                        {loading && <Loader2 className="mr-3 h-6 w-6 animate-spin text-accent" />}
+                        {loading && <Loader2 className="mr-3 h-5 w-5 animate-spin" />}
                         {loading ? "Saving..." : "Save Address"}
                     </Button>
                 </div>

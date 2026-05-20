@@ -31,12 +31,39 @@ export async function GET() {
       throw error;
     }
 
+    // Load the latest expected runner release to perform a live check for staleness
+    const { data: latestReleaseData } = await supabase
+      .from('site_settings')
+      .select('value')
+      .eq('key', 'scraper_runner_release_latest')
+      .maybeSingle();
+    
+    const latestRelease = latestReleaseData?.value as any;
+    const latestBuildId = latestRelease?.build_id;
+    const latestBuildSha = latestRelease?.digest?.replace(/^sha256:/, '') || latestRelease?.build_sha;
+
     const runners = ((runnersData ?? []) as RunnerData[]).map((runner) => {
-      const metadata = coerceRunnerMetadata(runner.metadata);
+      const metadata = coerceRunnerMetadata(runner.metadata) || {};
       const durableStatus = getEffectiveRunnerStatus(runner);
       const status = getRunnerConnectivityStatus(durableStatus);
       const version = getRunnerVersion(metadata);
-      const buildCheckReason = getRunnerBuildCheckReason(metadata);
+      
+      const runnerBuildId = metadata.build_id as string | undefined;
+      let buildCheckReason = getRunnerBuildCheckReason(metadata);
+
+      // Perform a live check for staleness if we have latest info
+      if (latestBuildId && runnerBuildId && runnerBuildId !== latestBuildId) {
+        buildCheckReason = 'outdated';
+      }
+
+      // Build an effective metadata object that contains the actual latest version info
+      const effectiveMetadata = {
+        ...metadata,
+        latest_build_id: latestBuildId ?? metadata.latest_build_id,
+        latest_build_sha: latestBuildSha ?? metadata.latest_build_sha,
+        build_check_reason: buildCheckReason,
+        build_compatible: buildCheckReason === 'current' || buildCheckReason === 'unconfigured',
+      };
 
       return {
         id: runner.name,
@@ -51,7 +78,7 @@ export async function GET() {
         enabled: runner.enabled,
         version,
         build_check_reason: buildCheckReason,
-        metadata,
+        metadata: effectiveMetadata,
       };
     });
 

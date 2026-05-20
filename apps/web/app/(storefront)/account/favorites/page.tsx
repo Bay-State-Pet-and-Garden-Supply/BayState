@@ -10,10 +10,10 @@ export default async function FavoritesPage() {
     const favorites = await getFavorites()
 
     return (
-        <div className="space-y-12">
-            <div className="border-b-2 border-brand-burgundy pb-4">
-                <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-zinc-900 font-display leading-tight">Favorites</h1>
-                <p className="text-zinc-600 font-medium text-sm mt-2">Save items to buy later.</p>
+        <div className="space-y-10">
+            <div className="border-b border-zinc-200 pb-6">
+                <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-zinc-900 font-display">Favorites</h1>
+                <p className="text-zinc-500 font-body mt-1">Save items to buy later.</p>
             </div>
 
             <FavoritesGrid items={favorites} />

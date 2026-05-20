@@ -24,19 +24,19 @@ export function AddressList({ initialAddresses }: { initialAddresses: Address[] 
     return (
         <div className="space-y-8">
             {!isAdding && (
-                <Button onClick={() => setIsAdding(true)} className="h-14 px-8 text-lg font-bold border-b-4 border-brand-burgundy/20 rounded-md shadow-lg active:translate-y-1 active:border-b-0 transition-all bg-brand-forest-dark hover:bg-brand-forest-green text-white font-display uppercase tracking-widest">
-                    <Plus className="mr-2 h-6 w-6" /> Add New Address
+                <Button onClick={() => setIsAdding(true)} size="lg" className="rounded-xl font-semibold shadow-sm">
+                    <Plus className="mr-2 h-5 w-5" /> Add New Address
                 </Button>
             )}
 
             {isAdding && (
-                <div className="border border-zinc-200 rounded-lg bg-white shadow-sm overflow-hidden">
-                    <div className="bg-brand-forest-dark p-4 border-b-2 border-brand-burgundy text-white flex justify-between items-center">
+                <div className="border border-zinc-200 rounded-2xl bg-white shadow-sm overflow-hidden max-w-2xl">
+                    <div className="p-6 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/50">
                         <div className="flex flex-col">
-                            <h3 className="text-2xl font-bold font-display">New Address</h3>
-                            <p className="text-xs font-bold uppercase tracking-widest text-zinc-200/80">Add a location for your deliveries.</p>
+                            <h3 className="text-lg font-bold font-display text-zinc-900">New Address</h3>
+                            <p className="text-sm text-zinc-500 font-body">Add a location for your deliveries.</p>
                         </div>
-                        <Button variant="outline" onClick={() => setIsAdding(false)} className="bg-white text-primary border border-zinc-200 rounded-md font-semibold text-xs">Cancel</Button>
+                        <Button variant="outline" size="sm" onClick={() => setIsAdding(false)} className="rounded-xl">Cancel</Button>
                     </div>
                     <div className="p-8">
                         <AddressForm onSuccess={() => setIsAdding(false)} />
@@ -44,33 +44,33 @@ export function AddressList({ initialAddresses }: { initialAddresses: Address[] 
                 </div>
             )}
 
-            <div className="grid gap-8 grid-cols-1 md:grid-cols-2">
+            <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
                 {initialAddresses.map(addr => (
                     <div key={addr.id} className={cn(
-                        "border border-zinc-200 rounded-lg bg-white flex flex-col shadow-sm overflow-hidden transition-all",
-                        addr.is_default ? "ring-2 ring-brand-burgundy" : ""
+                        "border border-zinc-200 rounded-2xl bg-white flex flex-col shadow-sm overflow-hidden transition-all",
+                        addr.is_default ? "ring-2 ring-primary/20" : ""
                     )}>
                         <div className="p-6 relative flex-1">
                             {addr.is_default && (
-                                <div className="absolute top-4 right-4 flex items-center text-[10px] font-bold text-white bg-brand-burgundy px-3 py-1.5 rounded-sm shadow-sm uppercase tracking-widest">
-                                    <CheckCircle className="mr-1.5 h-3 w-3 text-accent" /> Default
+                                <div className="absolute top-4 right-4 flex items-center text-[10px] font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-full uppercase tracking-wider">
+                                    <CheckCircle className="mr-1.5 h-3 w-3" /> Default
                                 </div>
                             )}
-                            <div className="font-bold text-2xl tracking-tight pr-24 font-display leading-tight">{addr.full_name}</div>
-                            <div className="text-base font-medium text-zinc-600 mt-4 space-y-1">
+                            <div className="font-bold text-xl tracking-tight pr-24 font-display text-zinc-900 leading-tight">{addr.full_name}</div>
+                            <div className="text-sm text-zinc-600 mt-4 space-y-1 font-body">
                                 <div>{addr.address_line1}</div>
                                 {addr.address_line2 && <div>{addr.address_line2}</div>}
-                                <div className="text-zinc-900 font-bold">{addr.city}, {addr.state} {addr.zip_code}</div>
-                                {addr.phone && <div className="mt-4 pt-4 border-t border-zinc-100 text-xs font-bold uppercase tracking-widest text-zinc-400">TEL: {addr.phone}</div>}
+                                <div className="text-zinc-900 font-semibold">{addr.city}, {addr.state} {addr.zip_code}</div>
+                                {addr.phone && <div className="mt-4 pt-4 border-t border-zinc-50 text-xs font-medium text-zinc-400">Phone: {addr.phone}</div>}
                             </div>
                         </div>
 
-                        <div className="flex border-t border-zinc-100 bg-zinc-50">
+                        <div className="flex border-t border-zinc-100 bg-zinc-50/50 p-2 gap-2">
                             {!addr.is_default && (
                                 <button 
                                     type="button"
                                     onClick={() => handleSetDefault(addr.id)} 
-                                    className="flex-1 py-4 text-xs font-bold uppercase tracking-widest text-zinc-600 hover:text-brand-forest-green hover:bg-white border-r border-zinc-100 transition-all font-display"
+                                    className="flex-1 py-2 text-xs font-semibold text-zinc-500 hover:text-primary hover:bg-white rounded-lg transition-all font-body"
                                 >
                                     Set as Default
                                 </button>
@@ -79,7 +79,7 @@ export function AddressList({ initialAddresses }: { initialAddresses: Address[] 
                                 type="button"
                                 aria-label={addr.is_default ? 'Delete address' : `Delete address for ${addr.full_name}`}
                                 className={cn(
-                                    "py-4 px-6 text-brand-burgundy hover:bg-brand-burgundy hover:text-white transition-all font-display font-bold uppercase tracking-widest text-xs",
+                                    "py-2 px-4 text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-all font-body font-semibold text-xs rounded-lg",
                                     addr.is_default ? "w-full text-center" : ""
                                 )}
                                 onClick={() => handleDelete(addr.id)}
@@ -105,5 +105,4 @@ export function AddressList({ initialAddresses }: { initialAddresses: Address[] 
             </div>
         </div>
     )
-
 }

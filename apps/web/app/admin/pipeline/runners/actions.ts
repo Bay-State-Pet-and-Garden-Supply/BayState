@@ -444,3 +444,84 @@ export async function rotateRunnerKey(id: string): Promise<{ success: boolean; k
         key // Return the plain text key so it can be shown once
     };
 }
+
+/**
+ * Get runner details with live version check
+ */
+export async function getRunnerDetail(id: string): Promise<{ success: boolean; runner?: any; error?: string }> {
+    const { error: adminError } = await verifyAdminAccess();
+    if (adminError) {
+        return { success: false, error: adminError };
+    }
+
+    const supabase = getServiceRoleClient();
+
+    // Fetch runner
+    const { data: runner, error: fetchError } = await supabase
+        .from('scraper_runners')
+        .select('name, status, enabled, last_seen_at, current_job_id, metadata, created_at')
+        .eq('name', id)
+        .single();
+
+    if (fetchError || !runner) {
+        return { success: false, error: 'Runner not found' };
+    }
+
+    // Load expected release
+    const { data: latestReleaseData } = await supabase
+      .from('site_settings')
+      .select('value')
+      .eq('key', 'scraper_runner_release_latest')
+      .maybeSingle();
+    
+    const latestRelease = latestReleaseData?.value as any;
+    const latestBuildId = latestRelease?.build_id;
+    const latestBuildSha = latestRelease?.digest?.replace(/^sha256:/, '') || latestRelease?.build_sha;
+
+    const {
+      coerceRunnerMetadata,
+      getEffectiveRunnerStatus,
+      getRunnerBuildCheckReason,
+      getRunnerConnectivityStatus,
+      getRunnerVersion,
+      getRunnerLastSeen,
+    } = await import('@/lib/scraper-runners');
+
+    const metadata = coerceRunnerMetadata(runner.metadata) || {};
+    const durableStatus = getEffectiveRunnerStatus(runner);
+    const status = getRunnerConnectivityStatus(durableStatus);
+    const version = getRunnerVersion(metadata);
+    
+    const runnerBuildId = metadata.build_id as string | undefined;
+    let buildCheckReason = getRunnerBuildCheckReason(metadata);
+
+    // Live staleness check
+    if (latestBuildId && runnerBuildId && runnerBuildId !== latestBuildId) {
+      buildCheckReason = 'outdated';
+    }
+
+    const effectiveMetadata = {
+      ...metadata,
+      latest_build_id: latestBuildId ?? metadata.latest_build_id,
+      latest_build_sha: latestBuildSha ?? metadata.latest_build_sha,
+      build_check_reason: buildCheckReason,
+      build_compatible: buildCheckReason === 'current' || buildCheckReason === 'unconfigured',
+    };
+
+    return {
+        success: true,
+        runner: {
+            id: runner.name,
+            name: runner.name,
+            status: durableStatus, // Using durableStatus to match UI expectations
+            enabled: runner.enabled,
+            last_seen_at: runner.last_seen_at,
+            active_jobs: runner.current_job_id ? 1 : 0,
+            version,
+            build_check_reason: buildCheckReason,
+            latest_build_sha: latestBuildSha ?? ((metadata.latest_build_sha as string) || null),
+            latest_build_id: latestBuildId ?? ((metadata.latest_build_id as string) || null),
+            metadata: effectiveMetadata,
+        }
+    };
+}

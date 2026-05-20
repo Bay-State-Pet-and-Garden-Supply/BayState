@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { updateProfileAction } from '@/lib/account/actions'
 import { Profile } from '@/lib/auth/roles'
+import { CheckCircle2, AlertCircle } from 'lucide-react'
 
 const formSchema = z.object({
     fullName: z.string().min(2, "Name must be at least 2 characters").max(100),
@@ -46,33 +47,34 @@ export function ProfileForm({ profile }: { profile: Profile }) {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8 max-w-2xl">
             {message && (
-                <div className={`p-4 border-l-4 font-bold text-sm uppercase tracking-widest ${
+                <div className={`p-4 rounded-xl border flex items-center gap-3 font-medium text-sm ${
                     message.type === 'success' 
-                        ? 'bg-green-50 border-brand-forest-green text-brand-forest-green' 
-                        : 'bg-red-50 border-brand-burgundy text-brand-burgundy'
+                        ? 'bg-green-50 border-green-100 text-green-700' 
+                        : 'bg-red-50 border-red-100 text-red-700'
                     }`}>
+                    {message.type === 'success' ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
                     {message.text}
                 </div>
             )}
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <FormField
                         control={form.control}
                         name="fullName"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-xs font-bold uppercase tracking-widest text-zinc-500">Full Name</FormLabel>
+                                <FormLabel className="text-sm font-semibold text-zinc-700">Full Name</FormLabel>
                                 <FormControl>
                                     <Input 
                                         placeholder="Your Name" 
                                         {...field} 
                                         disabled={loading} 
-                                        className="h-14 text-lg font-bold border border-zinc-200 rounded-md focus-visible:ring-2 focus-visible:ring-brand-forest-green focus-visible:border-transparent transition-all px-6" 
+                                        className="rounded-xl border-zinc-200 focus-visible:ring-primary h-11" 
                                     />
                                 </FormControl>
-                                <FormMessage className="text-xs font-bold uppercase tracking-tight text-brand-burgundy" />
+                                <FormMessage className="text-xs text-red-600" />
                             </FormItem>
                         )}
                     />
@@ -82,16 +84,16 @@ export function ProfileForm({ profile }: { profile: Profile }) {
                         name="phone"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-xs font-bold uppercase tracking-widest text-zinc-500">Phone Number</FormLabel>
+                                <FormLabel className="text-sm font-semibold text-zinc-700">Phone Number</FormLabel>
                                 <FormControl>
                                     <Input 
                                         placeholder="(555) 123-4567" 
                                         {...field} 
                                         disabled={loading} 
-                                        className="h-14 text-lg font-bold border border-zinc-200 rounded-md focus-visible:ring-2 focus-visible:ring-brand-forest-green focus-visible:border-transparent transition-all px-6" 
+                                        className="rounded-xl border-zinc-200 focus-visible:ring-primary h-11" 
                                     />
                                 </FormControl>
-                                <FormMessage className="text-xs font-bold uppercase tracking-tight text-brand-burgundy" />
+                                <FormMessage className="text-xs text-red-600" />
                             </FormItem>
                         )}
                     />
@@ -100,7 +102,8 @@ export function ProfileForm({ profile }: { profile: Profile }) {
                         <Button 
                             type="submit" 
                             disabled={loading} 
-                            className="w-full sm:w-auto h-14 px-12 text-lg font-bold bg-brand-forest-dark hover:bg-brand-forest-green text-white border-b-4 border-black/20 rounded-md shadow-lg active:translate-y-1 active:border-b-0 transition-all font-display uppercase tracking-widest"
+                            size="lg"
+                            className="w-full sm:w-auto px-8 rounded-xl font-semibold shadow-sm"
                         >
                             {loading ? "Saving..." : "Save Changes"}
                         </Button>
@@ -109,5 +112,4 @@ export function ProfileForm({ profile }: { profile: Profile }) {
             </Form>
         </div>
     )
-
 }

@@ -58,7 +58,7 @@ export interface EnrichmentConfidenceV1 {
 }
 
 export interface EnrichmentValidationV1 {
-  sku_match?: boolean;
+  sku_match?: boolean | null;
   warnings?: string[];
   missing_required?: string[];
 }
