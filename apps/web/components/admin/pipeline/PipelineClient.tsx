@@ -709,14 +709,25 @@ export function PipelineClient({
           const data = await res.json();
           const completed = data.completed_item_count ?? 0;
           const failed = data.failed_item_count ?? 0;
-          toast.success(
-            `Consolidated ${completed} of ${data.product_count} product${data.product_count !== 1 ? "s" : ""}`,
-            {
-              description: failed > 0
-                ? `${failed} failed. Open Consolidating to review.`
-                : `Job ${data.batch_id?.slice(0, 12) ?? "unknown"} is ready to review.`,
-            },
-          );
+
+          // Gemini batch: show async toast
+          if (data.execution_mode === 'gemini_batch' || data.provider === 'gemini') {
+            toast.info(
+              `Queued ${data.product_count} product${data.product_count !== 1 ? 's' : ''} for Gemini consolidation`,
+              {
+                description: 'Image prep and batch processing may take up to 24 hours. Check back in the Consolidating tab.',
+              },
+            );
+          } else {
+            toast.success(
+              `Consolidated ${completed} of ${data.product_count} product${data.product_count !== 1 ? "s" : ""}`,
+              {
+                description: failed > 0
+                  ? `${failed} failed. Open Consolidating to review.`
+                  : `Job ${data.batch_id?.slice(0, 12) ?? "unknown"} is ready to review.`,
+              },
+            );
+          }
           setSelectedSkus(new Set());
           handleStageChange("merging");
           await fetchCounts();

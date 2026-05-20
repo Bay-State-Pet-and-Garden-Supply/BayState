@@ -30,6 +30,7 @@ import {
 } from './taxonomy-validator';
 import { parseStructuredConsolidationText } from './result-parsing';
 import { calculateAICost } from '@/lib/ai-scraping/pricing';
+import { getAIScrapingProviderSecret } from '@/lib/ai-scraping/credentials';
 import { extractImageCandidatesFromSources, normalizeProductSources, normalizeImageUrl } from '@/lib/product-sources';
 import { buildFacetSlug, canonicalizeBrandName, normalizeBrandName } from '@/lib/facets/normalization';
 import { parseShopSitePages } from '@/lib/shopsite/constants';
@@ -55,8 +56,17 @@ import {
     aggregateDirectChatStatus,
     retrieveDirectChatResults,
     cancelDirectChatBatch,
-
 } from './direct-chat-service';
+
+import {
+    createGeminiBatchJob,
+    prepareGeminiBatchChunk,
+    submitPreparedGeminiBatch,
+    syncGeminiBatchStatus,
+    retrieveGeminiBatchResults,
+    cancelGeminiBatch as cancelGeminiBatchProvider,
+    buildGeminiBatchStatus,
+} from './gemini-batch-service';
 import { enrichProductDetails } from './detail-enrichment';
 
 // =============================================================================
@@ -346,13 +356,18 @@ interface BatchRowLookup {
     parent_batch_id?: string | null;
 }
 
-type BatchProviderKey = 'deepseek' | 'openai_compatible';
+
+
+type BatchProviderKey = 'deepseek' | 'gemini';
 
 function normalizeBatchProvider(value: unknown): BatchProviderKey {
+    if (typeof value === 'string' && value === 'gemini') {
+        return 'gemini';
+    }
     if (typeof value === 'string' && value === 'deepseek') {
         return 'deepseek';
     }
-    // All legacy providers (openai, gemini, lmstudio) and unknown values normalize to deepseek
+    // All legacy providers (openai, lmstudio, openai_compatible) normalize to deepseek
     return 'deepseek';
 }
 
@@ -394,7 +409,7 @@ async function findBatchJobRow(
     if (!isUuid(batchIdentifier)) {
         const { data, error } = await supabase
             .from('batch_jobs')
-            .select('id, provider, provider_batch_id, openai_batch_id, total_requests, completed_requests, failed_requests, metadata')
+            .select('id, provider, provider_batch_id, openai_batch_id, total_requests, completed_requests, failed_requests, metadata, execution_mode')
             .or(`provider_batch_id.eq.${batchIdentifier},openai_batch_id.eq.${batchIdentifier}`)
             .limit(1)
             .maybeSingle();
@@ -408,6 +423,7 @@ async function findBatchJobRow(
                 row: {
                     id: String(rowData.id),
                     provider: normalizeBatchProvider(rowData.provider),
+                    execution_mode: rowData.execution_mode as string | null | undefined,
                     provider_batch_id:
                         typeof rowData.provider_batch_id === 'string'
                             ? rowData.provider_batch_id
@@ -431,7 +447,7 @@ async function findBatchJobRow(
     if (isUuid(batchIdentifier)) {
         const { data, error } = await supabase
             .from('batch_jobs')
-            .select('id, provider, provider_batch_id, openai_batch_id, total_requests, completed_requests, failed_requests, metadata')
+            .select('id, provider, provider_batch_id, openai_batch_id, total_requests, completed_requests, failed_requests, metadata, execution_mode')
             .eq('id', batchIdentifier)
             .limit(1)
             .maybeSingle();
@@ -449,6 +465,7 @@ async function findBatchJobRow(
             row: {
                 id: String(rowData.id),
                 provider: normalizeBatchProvider(rowData.provider),
+                execution_mode: rowData.execution_mode as string | null | undefined,
                 provider_batch_id:
                     typeof rowData.provider_batch_id === 'string'
                         ? rowData.provider_batch_id
@@ -1054,7 +1071,9 @@ async function submitDirectChatBatchToRuntime(
 }
 
 /**
- * Submit a batch job — routes to direct chat (the only consolidation path).
+ * Submit a batch job — routes to the appropriate provider service.
+ * - Gemini → creates local gemini_batch job (async, returns immediately)
+ * - DeepSeek → creates direct_chat_chunks job with preflight
  */
 export async function submitBatch(
     products: ProductSource[],
@@ -1071,6 +1090,28 @@ export async function submitBatch(
             return runtime;
         }
 
+        // Route Gemini batches to the async gemini-batch service
+        if (runtime.provider === 'gemini') {
+            const geminiApiKey = runtime.gemini_api_key || runtime.llm_api_key;
+            if (!geminiApiKey) {
+                return { success: false, error: 'Gemini API key not configured' };
+            }
+
+            // Create local batch job (no provider calls, returns immediately)
+            return await createGeminiBatchJob(
+                products,
+                runtime.model,
+                geminiApiKey,
+                {
+                    ...metadata,
+                    routing_key: routingKey,
+                    llm_provider: 'gemini',
+                    llm_model: runtime.model,
+                }
+            );
+        }
+
+        // DeepSeek/OpenAI-compatible path with preflight
         const preflight = await preflightModels(runtime);
         if (!preflight.success) {
             return {
@@ -1157,9 +1198,62 @@ export async function getBatchStatus(batchId: string): Promise<BatchStatus | Bat
             return buildBatchJobStatusFromRow(foundRow as Record<string, unknown>);
         }
 
+        const executionMode = (rowData as Record<string, unknown>).execution_mode as string;
+
         // Use the direct-chat read-only snapshot if applicable
-        if ((rowData as Record<string, unknown>).execution_mode === 'direct_chat_chunks') {
+        if (executionMode === 'direct_chat_chunks') {
             return await getDirectChatStatusSnapshot(batchId);
+        }
+
+        // For Gemini batch jobs, sync with provider if the job is still active
+        if (executionMode === 'gemini_batch') {
+            const statusFromDb = buildGeminiBatchStatus(rowData as Record<string, unknown>);
+
+            // If the batch is still in progress (not terminal), poll the provider
+            if (statusFromDb.is_processing || statusFromDb.status === 'pending') {
+                try {
+                    const geminiKey = await getAIScrapingProviderSecret('gemini');
+                    if (geminiKey) {
+                        // Advance pre-provider jobs: if no provider_batch_id, run prep/submit
+                        // before calling syncGeminiBatchStatus. This ensures explicit status
+                        // refresh (e.g. from /api/admin/consolidation/{batchId}) progresses
+                        // newly queued Gemini jobs the same way that /sync does.
+                        const hasProviderBatch = !!(rowData as Record<string, unknown>).provider_batch_id;
+                        if (!hasProviderBatch) {
+                            const geminiMetadata = (rowData as Record<string, unknown>).metadata as Record<string, unknown> || {};
+                            const geminiStage = geminiMetadata.gemini_stage as string || 'preparing';
+                            if (geminiStage === 'preparing') {
+                                await prepareGeminiBatchChunk(batchId, { limit: 5, geminiApiKey: geminiKey });
+                            }
+                            // Check if ready to submit
+                            const { data: refreshedPrepItems } = await supabase
+                                .from('batch_job_items')
+                                .select('status')
+                                .eq('batch_job_id', batchId);
+                            const pending = (refreshedPrepItems || []).filter(i => i.status === 'pending').length;
+                            if (pending === 0) {
+                                await submitPreparedGeminiBatch(batchId, geminiKey);
+                            }
+                        }
+
+                        const syncResult = await syncGeminiBatchStatus(batchId, geminiKey);
+                        // Return fresh status after sync
+                        const { data: refreshedRow } = await supabase
+                            .from('batch_jobs')
+                            .select('*')
+                            .eq('id', batchId)
+                            .single();
+                        if (refreshedRow) {
+                            return buildGeminiBatchStatus(refreshedRow as Record<string, unknown>);
+                        }
+                    }
+                } catch (err) {
+                    console.warn('[Consolidation] Failed to sync Gemini batch status:', err);
+                    // Return DB status as fallback
+                }
+            }
+
+            return statusFromDb;
         }
 
         // Legacy/historical jobs: build status from stored DB row counts
@@ -1313,30 +1407,78 @@ export async function processAllQueues(options?: { limit?: number }): Promise<{
         .eq('execution_mode', 'direct_chat_chunks')
         .in('status', ['pending', 'in_progress']);
 
-    if (!activeJobs || activeJobs.length === 0) {
-        return {
-            processed_job_count: 0,
-            processed_item_count: 0,
-            completed_item_count: 0,
-            failed_item_count: 0,
-            errors: [],
-        };
+    if (activeJobs && activeJobs.length > 0) {
+        for (const job of activeJobs) {
+            try {
+                const result = await processBatchQueue(job.id, { limit });
+                if ('success' in result) {
+                    errors.push(`${job.id}: ${result.error}`);
+                } else {
+                    processedJobCount++;
+                    processedItemCount += result.processed;
+                    completedItemCount += result.completed;
+                    failedItemCount += result.failed;
+                }
+            } catch (err) {
+                errors.push(`${job.id}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+            }
+        }
     }
 
-    for (const job of activeJobs) {
-        try {
-            const result = await processBatchQueue(job.id, { limit });
-            if ('success' in result) {
-                errors.push(`${job.id}: ${result.error}`);
-            } else {
-                processedJobCount++;
-                processedItemCount += result.processed;
-                completedItemCount += result.completed;
-                failedItemCount += result.failed;
+    // Process Gemini batch prep/poll
+    try {
+        const { data: geminiJobs } = await supabase
+            .from('batch_jobs')
+            .select('id, status, metadata')
+            .eq('execution_mode', 'gemini_batch')
+            .in('status', ['pending', 'in_progress'])
+            .limit(3);
+
+        if (geminiJobs && geminiJobs.length > 0) {
+            // Resolve Gemini API key from stored credentials, not from current consolidation defaults.
+            // This ensures existing Gemini jobs still sync even after the admin switches the
+            // consolidation default provider (e.g., from Gemini back to DeepSeek).
+            const geminiApiKey = await getAIScrapingProviderSecret('gemini') || '';
+
+            if (geminiApiKey) {
+                for (const geminiJob of geminiJobs) {
+                    try {
+                        const geminiMetadata = (geminiJob.metadata as Record<string, unknown>) || {};
+                        const stage = geminiMetadata.gemini_stage as string || 'preparing';
+
+                        if (stage === 'preparing' || geminiJob.status === 'pending') {
+                            const prepResult = await prepareGeminiBatchChunk(geminiJob.id, {
+                                limit: 5,
+                                geminiApiKey,
+                            });
+                            processedItemCount += prepResult.prepared;
+                            errors.push(...prepResult.errors.map((e) => `gemini-${geminiJob.id}: ${e}`));
+
+                            if (prepResult.ready_to_submit) {
+                                const submitResult = await submitPreparedGeminiBatch(geminiJob.id, geminiApiKey);
+                                if (submitResult.success) {
+                                    processedJobCount++;
+                                } else {
+                                    errors.push(`gemini-submit-${geminiJob.id}: ${submitResult.error || 'unknown'}`);
+                                }
+                            }
+                        } else if (['in_progress', 'finalizing'].includes(stage)) {
+                            const syncResult = await syncGeminiBatchStatus(geminiJob.id, geminiApiKey);
+                            if (syncResult.is_complete) {
+                                completedItemCount += syncResult.items_updated;
+                            }
+                            if (syncResult.error && !syncResult.is_complete) {
+                                errors.push(`gemini-sync-${geminiJob.id}: ${syncResult.error}`);
+                            }
+                        }
+                    } catch (err) {
+                        errors.push(`gemini-${geminiJob.id}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                    }
+                }
             }
-        } catch (err) {
-            errors.push(`${job.id}: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
+    } catch (err) {
+        errors.push(`gemini-batch: ${err instanceof Error ? err.message : 'Failed to process Gemini batches'}`);
     }
 
     return {
@@ -1388,6 +1530,11 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
             }
 
             return directResults.length > 0 ? directResults : { success: false, error: 'No results found' };
+        }
+
+        // Route Gemini batch results
+        if (lookupRow && lookupRow.execution_mode === 'gemini_batch') {
+            return await retrieveGeminiBatchResults(batchId);
         }
 
         // Fetch taxonomy for validation
@@ -1846,6 +1993,7 @@ export async function applyConsolidationResults(
                 validateRequiredConsolidationFields({
                     name: nextFields.name,
                     brand: nextFields.brand,
+                    category: nextFields.category,
                     description: nextFields.description,
                     search_keywords: nextFields.search_keywords,
                     confidence_score: result.confidence_score,
@@ -2322,6 +2470,18 @@ export async function cancelBatch(batchId: string): Promise<{ status: string } |
 
             // Cancel local batch
             return await cancelDirectChatBatch(batchId) as unknown as { status: string } | BatchErrorResponse;
+        }
+
+        // Route Gemini cancellation. Resolve the Gemini provider secret directly
+        // instead of using mutable current consolidation defaults so existing
+        // Gemini jobs can still be cancelled after admins switch providers.
+        if (lookupRow && lookupRow.execution_mode === 'gemini_batch') {
+            const geminiApiKey = await getAIScrapingProviderSecret('gemini');
+            const result = await cancelGeminiBatchProvider(batchId, geminiApiKey || '');
+            if ('success' in result && !result.success) {
+                return result;
+            }
+            return { status: 'cancelled' };
         }
 
         // Use createClient (not createAdminClient) for status update — matches existing test mocks

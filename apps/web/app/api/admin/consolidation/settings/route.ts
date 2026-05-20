@@ -22,12 +22,10 @@ export async function GET(request: NextRequest) {
       getAIScrapingCredentialStatuses(),
     ]);
 
-    const deepseekStatus = statuses.deepseek;
-
     return NextResponse.json({
       defaults,
       statuses,
-      deepseek_fallback_status: deepseekStatus,
+      deepseek_fallback_status: statuses.deepseek,
     });
   } catch (error) {
     console.error('[Consolidation Settings] GET failed:', error);
@@ -49,12 +47,14 @@ export async function POST(req: NextRequest) {
       deepseek_api_key?: string;
       openai_api_key?: string;
       lmstudio_api_key?: string;
+      gemini_api_key?: string;
       defaults?: Partial<AIConsolidationDefaults>;
     };
     const {
       deepseek_api_key,
       openai_api_key,
       lmstudio_api_key,
+      gemini_api_key,
       defaults,
       ...rawDefaults
     } = body;
@@ -75,12 +75,17 @@ export async function POST(req: NextRequest) {
       await setAIScrapingProviderSecret('lmstudio', lmstudio_api_key, auth.user.id);
     }
 
-    // If no defaults to save and we only saved a key, return key-only message
+    if (gemini_api_key && gemini_api_key.trim()) {
+      await setAIScrapingProviderSecret('gemini', gemini_api_key, auth.user.id);
+    }
+
+    // If no defaults to save and we only saved keys, return key-only message
     if (Object.keys(nextDefaults).length === 0) {
       const savedKeys: string[] = [];
       if (deepseek_api_key?.trim()) savedKeys.push('DeepSeek');
       if (openai_api_key?.trim()) savedKeys.push('OpenAI');
       if (lmstudio_api_key?.trim()) savedKeys.push('LM Studio');
+      if (gemini_api_key?.trim()) savedKeys.push('Gemini');
       return NextResponse.json({
         message: savedKeys.length > 0
           ? `${savedKeys.join(', ')} API key updated successfully`
@@ -89,7 +94,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Enforce provider-appropriate settings
-    if (nextDefaults.llm_provider === 'lmstudio') {
+    if (nextDefaults.llm_provider === 'gemini') {
+      nextDefaults.llm_supports_batch_api = true;
+      nextDefaults.llm_base_url = null;
+
+      // Use gemini-3.5-flash as default model if none specified
+      if (!nextDefaults.llm_model) {
+        nextDefaults.llm_model = 'gemini-3.5-flash';
+      }
+    } else if (nextDefaults.llm_provider === 'lmstudio') {
       nextDefaults.llm_supports_batch_api = false;
 
       // Validate base URL for LM Studio

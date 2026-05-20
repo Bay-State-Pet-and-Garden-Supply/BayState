@@ -81,6 +81,7 @@ describe('useJobSubscription', () => {
       expect(result.current.isConnected).toBe(false);
       expect(result.current.error).toBeNull();
       expect(result.current.jobs).toEqual({
+        queued: [],
         pending: [],
         running: [],
         completed: [],
@@ -88,6 +89,7 @@ describe('useJobSubscription', () => {
         cancelled: [],
       });
       expect(result.current.counts).toEqual({
+        queued: 0,
         pending: 0,
         running: 0,
         completed: 0,

@@ -30,12 +30,17 @@ export function getAIModelLabel(value: string): string {
 
 type GeminiModelOption = AIModelOption;
 
-const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_MODEL_VALUES = [DEFAULT_GEMINI_MODEL, 'gemini-2.5-pro'] as const;
+const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
+const GEMINI_MODEL_VALUES = [DEFAULT_GEMINI_MODEL, 'gemini-2.5-flash', 'gemini-2.5-pro'] as const;
 
 const GEMINI_MODEL_OPTIONS: GeminiModelOption[] = [
   {
     value: DEFAULT_GEMINI_MODEL,
+    label: 'Gemini 3.5 Flash',
+    description: 'Primary Gemini model for multimodal consolidation via Batch API.',
+  },
+  {
+    value: 'gemini-2.5-flash',
     label: 'Gemini 2.5 Flash',
     description: 'Legacy Gemini default retained for historical compatibility only.',
   },

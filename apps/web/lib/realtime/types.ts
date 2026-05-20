@@ -107,6 +107,15 @@ export interface JobAssignment {
   last_log_message?: string | null;
   /** Optional job configuration */
   config?: Record<string, unknown> | null;
+  total_count?: number | null;
+  completed_count?: number | null;
+  failed_count?: number | null;
+  cost_estimate?: number | null;
+  error_message?: string | null;
+  mode?: string | null;
+  model?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
 }
 
 /**

@@ -209,7 +209,27 @@ export function getConsolidationStageLabel(
   pendingCount: number,
   runningCount: number,
   totalItems: number,
+  executionMode?: string,
 ): string {
+  // Gemini-specific stage labels
+  if (executionMode === 'gemini_batch') {
+    if (status === 'queued') {
+      return 'Preparing product images...';
+    }
+    if (status === 'running') {
+      return 'Submitted to Gemini — results may take up to 24h';
+    }
+    if (status === 'completed' || status === 'completed_with_errors') {
+      return 'Ready to apply';
+    }
+    if (status === 'failed') {
+      return 'Gemini batch failed — review errors';
+    }
+    if (status === 'cancelled') {
+      return 'Gemini batch cancelled';
+    }
+  }
+
   if (status === "completed" || status === "completed_with_errors") {
     return "Settled — review errors or apply results";
   }

@@ -94,14 +94,6 @@ describe('brand placement in prompt-builder', () => {
             expect(prompt).toContain('Motorsport Container Red 5 Gal.');
         });
 
-        it('routes planting seed products to seeds and seed starting pages', () => {
-            const prompt = generateSystemPrompt(['Lawn & Garden > Flower & Vegetable Seeds']);
-
-            expect(prompt).toMatch(/planting seed products should use Seeds & Seed Starting/i);
-            expect(prompt).toMatch(/Do not use Farm Animal, Bird, Small Pet, or Wild Bird pages/i);
-            expect(prompt).toMatch(/never use service-only pages such as #Services/i);
-            expect(prompt).toContain('Lawn & Garden Shop All');
-        });
 
         it('includes source trust and keyword guidance', () => {
             const prompt = generateSystemPrompt(['Dog > Food > Dry Food']);

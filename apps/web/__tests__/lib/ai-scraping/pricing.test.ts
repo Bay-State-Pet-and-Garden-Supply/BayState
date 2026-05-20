@@ -124,9 +124,41 @@ describe('calculateAICost — shared pricing catalog consumption', () => {
     expect(cost).toBeCloseTo(expected, 6);
   });
 
+  it('computes gemini-3.5-flash sync cost from catalog', () => {
+    const promptTokens = 2_000_000;
+    const completionTokens = 1_000_000;
+    const cost = calculateAICost('gemini-3.5-flash', promptTokens, completionTokens, false);
+
+    // Pricing from catalog: input=0.10, output=0.40 (per 1M tokens)
+    const expected = (2_000_000 / 1_000_000) * 0.10 + (1_000_000 / 1_000_000) * 0.40;
+    expect(cost).toBeCloseTo(0.60, 6);
+  });
+
+  it('computes gemini-3.5-flash batch cost from catalog', () => {
+    const promptTokens = 2_000_000;
+    const completionTokens = 1_000_000;
+    const cost = calculateAICost('gemini-3.5-flash', promptTokens, completionTokens, true);
+
+    // Pricing from catalog: input=0.05, output=0.20 (per 1M tokens) — 50% batch discount
+    const expected = (2_000_000 / 1_000_000) * 0.05 + (1_000_000 / 1_000_000) * 0.20;
+    expect(cost).toBeCloseTo(0.30, 6);
+  });
+
+  it('returns non-zero cost for gemini-3.5-flash model', () => {
+    const cost = calculateAICost('gemini-3.5-flash', 100_000, 50_000, true);
+    expect(cost).toBeGreaterThan(0);
+  });
+
   it('returns 0 cost when both token counts are 0', () => {
     const cost = calculateAICost('gpt-4o-mini', 0, 0, true);
     expect(cost).toBe(0);
+  });
+
+  it('calculates gemini-3.5-flash batch vs sync differently', () => {
+    const syncCost = calculateAICost('gemini-3.5-flash', 1_000_000, 500_000, false);
+    const batchCost = calculateAICost('gemini-3.5-flash', 1_000_000, 500_000, true);
+    // Batch should be 50% of sync
+    expect(batchCost).toBeCloseTo(syncCost * 0.5, 5);
   });
 });
 

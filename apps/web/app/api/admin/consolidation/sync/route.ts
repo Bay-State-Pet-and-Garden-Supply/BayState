@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
-import { getConsolidationConfig } from '@/lib/consolidation/openai-client';
 import { processAllQueues } from '@/lib/consolidation';
 
 function clampLimit(value: unknown): number {
@@ -11,20 +10,18 @@ function clampLimit(value: unknown): number {
 
 /**
  * POST /api/admin/consolidation/sync
- * Compatibility route name: explicitly processes local DeepSeek queue jobs.
- * This is not a remote provider status sync.
+ * Processes local DeepSeek queue jobs and Gemini batch prep/poll steps.
+ * This is not a remote provider status sync for OpenAI — it's the local queue processor.
  */
 export async function POST(request: NextRequest) {
     const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
-    const runtimeConfig = await getConsolidationConfig();
-    if (!runtimeConfig.llm_api_key) {
-        return NextResponse.json(
-            { error: 'No configured LLM provider is available' },
-            { status: 503 }
-        );
-    }
+    // Note: Do NOT gate on getConsolidationConfig() here.
+    // processAllQueues() resolves provider credentials internally
+    // (Gemini via getAIScrapingProviderSecret, DeepSeek/OpenAI via
+    // getConsolidationConfig), so existing Gemini jobs continue
+    // syncing even if admin changes the consolidation defaults.
 
     let body: { limit?: unknown } = {};
     try {
@@ -36,13 +33,23 @@ export async function POST(request: NextRequest) {
     try {
         const result = await processAllQueues({ limit: clampLimit(body.limit) });
 
+        const messageParts: string[] = [];
+        if (result.processed_job_count > 0 || result.processed_item_count > 0) {
+            messageParts.push(`Processed ${result.processed_item_count} direct-chat item${result.processed_item_count === 1 ? '' : 's'}`);
+        }
+        if (result.completed_item_count > 0) {
+            messageParts.push(`${result.completed_item_count} Gemini batch result${result.completed_item_count === 1 ? '' : 's'} synced`);
+        }
+        if (result.errors.length > 0) {
+            messageParts.push(`${result.errors.length} error${result.errors.length === 1 ? '' : 's'}`);
+        }
+
         return NextResponse.json({
             ...result,
-            // Deprecated alias retained for existing callers during UI/API migration.
             synced_count: result.processed_job_count,
-            message: result.processed_job_count === 0
-                ? 'No active queue jobs to process'
-                : `Processed ${result.processed_item_count} queue item${result.processed_item_count === 1 ? '' : 's'}`,
+            message: messageParts.length > 0
+                ? messageParts.join('; ')
+                : 'No active queue jobs or Gemini batches to process',
         });
     } catch (error) {
         console.error('[Consolidation Queue API] Process queue error:', error);

@@ -103,7 +103,7 @@ function getDefaultModelForProvider(provider: LLMProvider): string {
     return LEGACY_OPENAI_MODEL;
   }
   if (provider === 'gemini') {
-    return 'gemini-2.5-flash';
+    return 'gemini-3.5-flash';
   }
   if (provider === 'lmstudio' || provider === 'openai_compatible') {
     return 'google/gemma-4-e4b';
@@ -1043,6 +1043,20 @@ export async function getAIConsolidationRuntimeConfig(): Promise<AIConsolidation
     getActiveAIProviderConfig(),
   ]);
 
+  // When consolidation provider is Gemini, resolve the Gemini API key independently
+  // from the active scraping provider. This allows DeepSeek scraping + Gemini consolidation.
+  if (defaults.llm_provider === 'gemini') {
+    const geminiKey = await getAIScrapingProviderSecret('gemini');
+    return {
+      llm_provider: 'gemini',
+      llm_model: defaults.llm_model || 'gemini-3.5-flash',
+      llm_base_url: null,
+      llm_api_key: geminiKey,
+      confidence_threshold: defaults.confidence_threshold,
+      llm_supports_batch_api: true,
+    };
+  }
+
   if (!activeConfig) {
     throw new Error('No active AI provider profile configured in the database');
   }
@@ -1057,7 +1071,7 @@ export async function getAIConsolidationRuntimeConfig(): Promise<AIConsolidation
 
   return {
     llm_provider: activeConfig.provider_type,
-    llm_model: activeConfig.default_model,
+    llm_model: defaults.llm_model || activeConfig.default_model,
     llm_base_url: activeConfig.provider_type === 'deepseek'
       ? getDeepSeekOpenAICompatibleBaseURL(activeConfig.base_url)
       : activeConfig.base_url,

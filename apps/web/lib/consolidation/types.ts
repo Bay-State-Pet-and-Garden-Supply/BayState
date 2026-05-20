@@ -26,7 +26,7 @@ import type { LLMProvider } from '@/lib/ai-scraping/credentials';
  *
  * @deprecated Use kind/execution mode from PipelineRunSummary instead.
  */
-export type BatchExecutionMode = 'batch_api' | 'direct_chat_chunks';
+export type BatchExecutionMode = 'batch_api' | 'direct_chat_chunks' | 'gemini_batch';
 
 // =============================================================================
 // Batch Job Types
@@ -143,6 +143,9 @@ export interface ProductSource {
     sku: string;
     sources: Record<string, unknown>;
     /** Optional context about sibling products from the same product line. */
+    /** Optional image URLs for multimodal processing (Gemini Batch API). */
+    imageUrls?: string[];
+    /** Optional context about sibling products from the same product line. */
     productLineContext?: {
         productLine: string;
         siblings: Array<{
@@ -205,6 +208,8 @@ export interface SubmitBatchResponse {
     provider: LLMProvider;
     provider_batch_id: string;
     product_count: number;
+    execution_mode?: BatchExecutionMode;
+    /** For async batch jobs (gemini_batch), the provider_batch_id may be null until submission */
     _batch_groups?: Array<{
         batch_id: string;
         product_count: number;

@@ -51,9 +51,9 @@ function BatchHistoryCard({
   const executionMode = job.execution_mode as string | undefined;
   const openaiBatchId = job.openai_batch_id as string | undefined;
   const providerLabel = getProviderLabel(llmProvider || job.provider);
-  const applyId = executionMode === "direct_chat_chunks"
-    ? (dbId || job.id)
-    : (providerBatchId || openaiBatchId || dbId || job.id);
+  // Always use the local DB ID for apply actions — provider batch IDs may
+  // contain slashes (Gemini resource names) and are unsafe as URL path segments.
+  const applyId = dbId || job.id;
   const isApplied = !!applySummary;
   const canApply = job.status === "completed" && !isApplied;
 

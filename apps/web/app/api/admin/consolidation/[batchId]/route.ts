@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { createAdminClient } from '@/lib/supabase/server';
-import { getBatchStatus, cancelBatch, retrieveResults, isOpenAIConfigured } from '@/lib/consolidation';
+import { getBatchStatus, cancelBatch, retrieveResults } from '@/lib/consolidation';
 
 interface RouteContext {
     params: Promise<{ batchId: string }>;
@@ -17,9 +17,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const { batchId } = await context.params;
 
-    if (!(await isOpenAIConfigured())) {
-        return NextResponse.json({ error: 'No configured LLM provider is available' }, { status: 503 });
-    }
+    // Note: Do not gate on isOpenAIConfigured() here.
+    // getBatchStatus() resolves credentials internally per provider,
+    // so existing Gemini jobs continue syncing even if admin changes
+    // consolidation defaults.
 
     try {
         const status = await getBatchStatus(batchId);
@@ -63,9 +64,8 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const url = new URL(request.url);
     const shouldDelete = url.searchParams.get('delete') === 'true';
 
-    if (!(await isOpenAIConfigured())) {
-        return NextResponse.json({ error: 'No configured LLM provider is available' }, { status: 503 });
-    }
+    // Note: Do not gate on isOpenAIConfigured() here.
+    // cancelBatch() and the delete logic handle provider resolution internally.
 
     try {
         if (shouldDelete) {

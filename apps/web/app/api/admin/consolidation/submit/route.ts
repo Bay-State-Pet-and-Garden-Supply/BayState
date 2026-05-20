@@ -8,6 +8,11 @@ import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
 /**
  * POST /api/admin/consolidation/submit
  * Submit a provider-neutral batch of products for LLM consolidation.
+ *
+ * Provider behavior:
+ * - DeepSeek: Creates batch and immediately processes items (direct chat)
+ * - Gemini: Creates batch job only; returns immediately with queued/preparing status.
+ *   Image prep and provider submission happen asynchronously via /sync.
  */
 export async function POST(request: NextRequest) {
     const auth = await requireAdminAuth(request);
@@ -31,7 +36,7 @@ export async function POST(request: NextRequest) {
         const supabase = await createAdminClient();
         const { data: products, error: fetchError } = await supabase
             .from('products_ingestion')
-            .select('sku, input, sources')
+            .select('sku, input, sources, selected_images, image_candidates')
             .in('sku', skus);
 
         if (fetchError) {
@@ -43,11 +48,71 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'No products found for provided SKUs' }, { status: 404 });
         }
 
+        // Derive image URLs with priority: selected_images -> image_candidates -> sources
+        function deriveImageUrls(p: { selected_images?: unknown; image_candidates?: unknown; sources: unknown; sku: string }): string[] {
+            const urls: string[] = [];
+            const maxImages = 2;
+
+            // 1. selected_images (highest priority — user-curated / processed images)
+            const selectedImgs = p.selected_images;
+            if (Array.isArray(selectedImgs)) {
+                for (const item of selectedImgs) {
+                    if (urls.length >= maxImages) break;
+                    if (typeof item === 'string' && item.trim()) {
+                        urls.push(item.trim());
+                    } else if (item && typeof item === 'object' && 'url' in item && typeof (item as {url: unknown}).url === 'string') {
+                        urls.push((item as {url: string}).url.trim());
+                    }
+                }
+            }
+
+            // 2. image_candidates (fallback)
+            if (urls.length < maxImages) {
+                const candidates = p.image_candidates;
+                if (Array.isArray(candidates)) {
+                    for (const item of candidates) {
+                        if (urls.length >= maxImages) break;
+                        if (typeof item === 'string' && item.trim() && !urls.includes(item.trim())) {
+                            urls.push(item.trim());
+                        }
+                    }
+                }
+            }
+
+            // 3. Source images (last resort)
+            if (urls.length < maxImages) {
+                const sources = p.sources;
+                if (sources && typeof sources === 'object') {
+                    const seen = new Set(urls);
+                    for (const [, srcData] of Object.entries(sources as Record<string, unknown>)) {
+                        if (urls.length >= maxImages) break;
+                        if (srcData && typeof srcData === 'object') {
+                            const src = srcData as Record<string, unknown>;
+                            const images = (src.images ?? src.image_urls ?? src.image_url ?? src.image) as unknown[] | undefined;
+                            if (Array.isArray(images)) {
+                                for (const img of images) {
+                                    if (urls.length >= maxImages) break;
+                                    const url = typeof img === 'string' ? img : (img && typeof img === 'object' && 'url' in img) ? (img as {url: unknown}).url as string : undefined;
+                                    if (typeof url === 'string' && url.trim() && !seen.has(url.trim())) {
+                                        seen.add(url.trim());
+                                        urls.push(url.trim());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return urls.slice(0, maxImages);
+        }
+
         const productsWithSources: ProductSource[] = products
             .filter((p) => p.sources && Object.keys(p.sources).length > 0)
             .map((p) => ({
                 sku: p.sku,
                 sources: buildConsolidationSourcesPayload(p.sources, p.input),
+                imageUrls: deriveImageUrls(p as { selected_images?: unknown; image_candidates?: unknown; sources: unknown; sku: string }),
                 productLineContext: productLineContext?.[p.sku] ?? undefined,
             }));
 
@@ -69,6 +134,36 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: result.error }, { status: 500 });
         }
 
+        // For Gemini batch, return immediately without processing items.
+        // Do not call getBatchStatus() here: Gemini status refresh performs
+        // bounded image prep/provider submission, which would make submit
+        // side-effecting and potentially slow. Image prep and batch submission
+        // happen asynchronously via /sync or explicit status refresh.
+        if (result.execution_mode === 'gemini_batch') {
+            return NextResponse.json({
+                success: true,
+                batch_id: result.batch_id,
+                provider: 'gemini',
+                execution_mode: 'gemini_batch',
+                product_count: result.product_count,
+                skipped_count: skus.length - productsWithSources.length,
+                message: `Queued ${result.product_count} products for Gemini consolidation. Image prep and batch processing may take up to 24 hours.`,
+                status: {
+                    id: result.batch_id,
+                    status: 'pending',
+                    is_complete: false,
+                    is_failed: false,
+                    is_processing: true,
+                    total_requests: result.product_count,
+                    completed_requests: 0,
+                    failed_requests: 0,
+                    progress_percent: 0,
+                    metadata: { gemini_stage: 'preparing' },
+                },
+            });
+        }
+
+        // DeepSeek direct-chat: process items immediately
         let processedItemCount = 0;
         let completedItemCount = 0;
         let failedItemCount = 0;

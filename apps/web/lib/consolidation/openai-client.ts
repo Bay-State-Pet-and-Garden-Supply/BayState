@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import type { LLMProvider } from '@/lib/ai-scraping/credentials';
 import {
     getAIConsolidationRuntimeConfig,
 } from '@/lib/ai-scraping/credentials';
@@ -10,6 +11,7 @@ let lastClientSignature: string | null = null;
 let openaiClient: OpenAI | null = null;
 
 export interface ConsolidationRuntimeConfig {
+    provider: LLMProvider;
     model: string;
     maxTokens: number;
     temperature: number;
@@ -17,6 +19,8 @@ export interface ConsolidationRuntimeConfig {
     llm_api_key: string | null;
     confidence_threshold: number;
     routing_key: string | null;
+    llm_supports_batch_api: boolean;
+    gemini_api_key?: string | null;
 }
 
 interface ConsolidationConfigOptions {
@@ -28,14 +32,19 @@ function resolveProviderModel(configuredModel: string): string {
 }
 
 function resolveProviderBaseUrl(configuredBaseUrl: string | null): string | null {
+    // Only apply DeepSeek URL normalization for DeepSeek-compatible providers
     return getDeepSeekOpenAICompatibleBaseURL(configuredBaseUrl);
 }
 
 /**
- * Get the OpenAI-compatible client instance for DeepSeek.
+ * Get the OpenAI-compatible client instance for DeepSeek/OpenAI-compatible providers.
+ * Returns null for Gemini provider.
  */
 export async function getOpenAIClient(options?: ConsolidationConfigOptions): Promise<OpenAI | null> {
     const runtimeConfig = await getConsolidationConfig(options);
+    if (runtimeConfig.provider === 'gemini') {
+        return null; // Gemini uses its own client
+    }
     if (!runtimeConfig.llm_api_key) {
         console.error('[Consolidation] LLM API key not set');
         return null;
@@ -94,30 +103,55 @@ export async function getConsolidationConfig(
 ): Promise<ConsolidationRuntimeConfig> {
     try {
         const runtimeConfig = await getAIConsolidationRuntimeConfig();
+        const provider = runtimeConfig.llm_provider;
         const model = resolveProviderModel(runtimeConfig.llm_model || CONSOLIDATION_CONFIG.model);
+
+        // For Gemini, use the Gemini API key directly, no DeepSeek URL normalization
+        if (provider === 'gemini') {
+            return {
+                provider: 'gemini',
+                model: model || 'gemini-3.5-flash',
+                maxTokens: CONSOLIDATION_CONFIG.maxTokens,
+                temperature: CONSOLIDATION_CONFIG.temperature,
+                llm_base_url: null,
+                llm_api_key: runtimeConfig.llm_api_key ?? null,
+                gemini_api_key: runtimeConfig.llm_api_key ?? null,
+                confidence_threshold: runtimeConfig.confidence_threshold,
+                routing_key: options?.routingKey ?? null,
+                llm_supports_batch_api: true,
+            };
+        }
+
+        // DeepSeek/OpenAI-compatible path
         const apiKey = runtimeConfig.deepseek_api_key ?? runtimeConfig.llm_api_key;
         const baseUrl = resolveProviderBaseUrl(runtimeConfig.llm_base_url);
 
         return {
+            provider,
             model,
             maxTokens: resolveMaxTokensForModel(model),
             temperature: CONSOLIDATION_CONFIG.temperature,
             llm_base_url: baseUrl,
             llm_api_key: apiKey ?? null,
+            gemini_api_key: null,
             confidence_threshold: runtimeConfig.confidence_threshold,
             routing_key: options?.routingKey ?? null,
+            llm_supports_batch_api: runtimeConfig.llm_supports_batch_api,
         };
     } catch (err) {
         console.error('[Consolidation] Failed to load config from DB, using hardcoded defaults:', err);
         const baseUrl = getDeepSeekOpenAICompatibleBaseURL(null);
         return {
+            provider: 'deepseek',
             model: CONSOLIDATION_CONFIG.model,
             maxTokens: resolveMaxTokensForModel(CONSOLIDATION_CONFIG.model),
             temperature: CONSOLIDATION_CONFIG.temperature,
             llm_base_url: baseUrl,
             llm_api_key: null,
+            gemini_api_key: null,
             confidence_threshold: 0.7,
             routing_key: options?.routingKey ?? null,
+            llm_supports_batch_api: false,
         };
     }
 }

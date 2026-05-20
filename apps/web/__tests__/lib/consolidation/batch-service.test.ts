@@ -16,6 +16,27 @@ jest.mock('@/lib/consolidation/openai-client', () => ({
     },
 }));
 
+jest.mock('@/lib/consolidation/gemini-client', () => ({
+    createGeminiClient: jest.fn(() => ({
+        uploadFile: jest.fn(),
+        createBatch: jest.fn(),
+        getBatchStatus: jest.fn(),
+        downloadFileText: jest.fn(),
+        cancelBatch: jest.fn(),
+        parseBatchOutput: jest.fn(),
+    })),
+}));
+
+jest.mock('@/lib/consolidation/image-prep', () => ({
+    prepareProductImages: jest.fn().mockResolvedValue({ imageParts: [], errors: [] }),
+    uploadJsonlToGemini: jest.fn(),
+    clearImageUploadCache: jest.fn(),
+}));
+
+jest.mock('@/lib/pipeline/cohorts', () => ({
+    recohortProducts: jest.fn().mockResolvedValue(undefined),
+}));
+
 type PromptPayload = {
     sku: string;
     sources: Array<{
@@ -394,7 +415,7 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
         const productsIngestionSelect = jest.fn((columns: string) => {
-            if (columns === 'sku, consolidated, sources, input, image_candidates, selected_images') {
+            if (columns.startsWith('sku, consolidated, sources, input, image_candidates, selected_images')) {
                 return productsIngestionSelectBySkuIn;
             }
             if (columns === 'consolidated, updated_at') {
@@ -453,7 +474,7 @@ describe('consolidation batch service', () => {
         expect('status' in response && response.status === 'applied').toBe(true);
         expect(productsIngestionUpdate).toHaveBeenCalledWith(
             expect.objectContaining({
-                pipeline_status: 'finalizing',
+                pipeline_status: 'reviewing',
                 confidence_score: 0.94,
                 error_message: null,
                 consolidated: expect.objectContaining({
@@ -520,7 +541,7 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
         const productsIngestionSelect = jest.fn((columns: string) => {
-            if (columns === 'sku, consolidated, sources, input, image_candidates, selected_images') {
+            if (columns.startsWith('sku, consolidated, sources, input, image_candidates, selected_images')) {
                 return productsIngestionSelectBySkuIn;
             }
             if (columns === 'consolidated, updated_at') {
@@ -583,7 +604,7 @@ describe('consolidation batch service', () => {
         });
         expect(productsIngestionUpdate).toHaveBeenCalledWith(
             expect.objectContaining({
-                pipeline_status: 'finalizing',
+                pipeline_status: 'reviewing',
                 confidence_score: 0.92,
                 error_message: null,
                 consolidated: expect.objectContaining({
@@ -649,7 +670,7 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
         const productsIngestionSelect = jest.fn((columns: string) => {
-            if (columns === 'sku, consolidated, sources, input, image_candidates, selected_images') {
+            if (columns.startsWith('sku, consolidated, sources, input, image_candidates, selected_images')) {
                 return productsIngestionSelectBySkuIn;
             }
             if (columns === 'consolidated, updated_at') {
@@ -701,11 +722,12 @@ describe('consolidation batch service', () => {
         expect('status' in response && response.status === 'applied').toBe(true);
         expect(productsIngestionUpdate).toHaveBeenCalledWith(
             expect.objectContaining({
+                pipeline_status: 'reviewing',
                 consolidated: expect.objectContaining({
+                    name: 'Acme Crunchy Bites 10 oz.',
                     description: 'Short shelf-ready description.',
-                    long_description: 'Longer detail-page description with more product context.',
-                    product_on_pages: ['Dog Food Dry', 'Dog Food Shop All'],
                     search_keywords: 'dog treats, crunchy bites, acme treats',
+                    category: 'Dog',
                 }),
             })
         );
@@ -763,7 +785,7 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
         const productsIngestionSelect = jest.fn((columns: string) => {
-            if (columns === 'sku, consolidated, sources, input, image_candidates, selected_images') {
+            if (columns.startsWith('sku, consolidated, sources, input, image_candidates, selected_images')) {
                 return productsIngestionSelectBySkuIn;
             }
             if (columns === 'consolidated, updated_at') {
@@ -808,7 +830,7 @@ describe('consolidation batch service', () => {
         expect('status' in response && response.status === 'applied').toBe(true);
         expect(productsIngestionUpdate).toHaveBeenCalledWith(
             expect.objectContaining({
-                pipeline_status: 'scraped',
+                pipeline_status: 'processed',
                 error_message: expect.stringContaining('below threshold'),
             })
         );
@@ -868,7 +890,7 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
         const productsIngestionSelect = jest.fn((columns: string) => {
-            if (columns === 'sku, consolidated, sources, input, image_candidates, selected_images') {
+            if (columns.startsWith('sku, consolidated, sources, input, image_candidates, selected_images')) {
                 return productsIngestionSelectBySkuIn;
             }
             if (columns === 'consolidated, updated_at') {
@@ -920,7 +942,7 @@ describe('consolidation batch service', () => {
 
         expect(productsIngestionUpdate).toHaveBeenCalledWith(
             expect.objectContaining({
-                pipeline_status: 'finalizing',
+                pipeline_status: 'reviewing',
             })
         );
     });
@@ -984,7 +1006,7 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
         const productsIngestionSelect = jest.fn((columns: string) => {
-            if (columns === 'sku, consolidated, sources, input, image_candidates, selected_images') {
+            if (columns.startsWith('sku, consolidated, sources, input, image_candidates, selected_images')) {
                 return productsIngestionSelectBySkuIn;
             }
             if (columns === 'consolidated, updated_at') {
@@ -1054,14 +1076,14 @@ describe('consolidation batch service', () => {
         expect(productsIngestionUpdate).toHaveBeenNthCalledWith(
             1,
             expect.objectContaining({
-                pipeline_status: 'finalizing',
+                pipeline_status: 'reviewing',
                 error_message: null,
             })
         );
         expect(productsIngestionUpdate).toHaveBeenNthCalledWith(
             2,
             expect.objectContaining({
-                pipeline_status: 'finalizing',
+                pipeline_status: 'reviewing',
                 error_message: null,
             })
         );

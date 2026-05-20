@@ -27,6 +27,17 @@ export {
 // OpenAI Client
 export { isOpenAIConfigured } from './openai-client';
 
+// Gemini Batch Service
+export {
+    createGeminiBatchJob,
+    prepareGeminiBatchChunk,
+    submitPreparedGeminiBatch,
+    syncGeminiBatchStatus,
+    retrieveGeminiBatchResults,
+    cancelGeminiBatch as cancelGeminiBatch,
+    buildGeminiBatchStatus,
+} from './gemini-batch-service';
+
 // Prompt Builder
 
 // Taxonomy Validator

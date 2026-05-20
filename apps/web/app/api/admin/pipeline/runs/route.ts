@@ -164,6 +164,7 @@ export async function GET(request: NextRequest) {
           pendingCount,
           runningCount,
           total,
+          job.execution_mode,
         ),
         nextAction:
           normalizedStatus === "completed"

@@ -74,6 +74,28 @@
       "output_price": 10.00,
       "effective_date": "2025-06-17",
       "source_url": "https://ai.google.dev/gemini-api/docs/pricing"
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-3.5-flash",
+      "mode": "sync",
+      "input_price": 0.10,
+      "output_price": 0.40,
+      "effective_date": "2026-05-20",
+      "source_url": "https://ai.google.dev/gemini-api/docs/pricing",
+      "estimated": true,
+      "notes": "⚠ Estimate — official Gemini 3.5 Flash pricing not yet confirmed against https://ai.google.dev/gemini-api/docs/pricing"
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-3.5-flash",
+      "mode": "batch",
+      "input_price": 0.05,
+      "output_price": 0.20,
+      "effective_date": "2026-05-20",
+      "source_url": "https://ai.google.dev/gemini-api/docs/pricing",
+      "estimated": true,
+      "notes": "⚠ Estimate — 50% batch discount assumed; official Gemini 3.5 Flash batch pricing not yet confirmed"
     }
   ]
 }

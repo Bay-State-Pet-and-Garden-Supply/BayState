@@ -16,7 +16,11 @@ async function fetchModelsFromEndpoint(provider: string, baseUrl: string | null,
 
   // DeepSeek, OpenAI, Gemini, LM Studio, etc.
   // Try base_url + '/models' or base_url + '/v1/models'
-  const modelsUrl = cleanBaseUrl.endsWith('/v1') ? `${cleanBaseUrl}/models` : `${cleanBaseUrl}/v1/models`;
+  // Gemini base URL already includes the API version (e.g. .../v1beta)
+  const isGemini = provider === 'gemini' || cleanBaseUrl.includes('generativelanguage.googleapis.com');
+  const modelsUrl = isGemini
+    ? `${cleanBaseUrl}/models`
+    : cleanBaseUrl.endsWith('/v1') ? `${cleanBaseUrl}/models` : `${cleanBaseUrl}/v1/models`;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',

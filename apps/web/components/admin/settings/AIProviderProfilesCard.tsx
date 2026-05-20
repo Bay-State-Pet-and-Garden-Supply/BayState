@@ -446,7 +446,7 @@ export function AIProviderProfilesCard() {
                     setFormProvider(provider);
                     setFormModel(
                       provider === 'openai' ? 'gpt-4o-mini' :
-                      provider === 'gemini' ? 'gemini-2.5-flash' : 'deepseek-chat'
+                      provider === 'gemini' ? 'gemini-3.5-flash' : 'deepseek-chat'
                     );
                     setFormBaseUrl('');
                   }}
