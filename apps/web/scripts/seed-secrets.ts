@@ -11,7 +11,7 @@ if (existsSync(envPath)) {
   content.split('\n').forEach(line => {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) return;
-    const match = line.match(/^([A-Za-z0-9_]+)=(.*)$/);
+    const match = trimmed.match(/^([A-Za-z0-9_]+)=(.*)$/);
     if (match) {
       const key = match[1].trim();
       let val = match[2].trim();

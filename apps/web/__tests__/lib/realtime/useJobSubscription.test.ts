@@ -85,6 +85,7 @@ describe('useJobSubscription', () => {
         pending: [],
         running: [],
         completed: [],
+        completed_with_errors: [],
         failed: [],
         cancelled: [],
       });
@@ -93,6 +94,7 @@ describe('useJobSubscription', () => {
         pending: 0,
         running: 0,
         completed: 0,
+        completed_with_errors: 0,
         failed: 0,
         cancelled: 0,
         total: 0,
