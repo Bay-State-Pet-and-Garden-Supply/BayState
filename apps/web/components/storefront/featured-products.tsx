@@ -21,7 +21,7 @@ export function FeaturedProducts({ products, title }: FeaturedProductsProps) {
   return (
     <section className="mb-12">
       <div className="mb-8 flex items-center justify-between border-b-2 border-primary/20 pb-4">
-        <h2 className="text-4xl sm:text-6xl font-bold text-zinc-900 tracking-tighter font-display">
+        <h2 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
           {title ? title : toTitleCase('Featured products')}
         </h2>
         <Button variant="ghost" asChild className="font-semibold text-xs tracking-widest hover:underline">
