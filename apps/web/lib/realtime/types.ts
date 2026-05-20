@@ -64,7 +64,7 @@ export interface JobAssignment {
   /** Target SKUs to scrape */
   skus: string[];
   /** Current status of the job assignment */
-  status: 'pending' | 'queued' | 'claimed' | 'running' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'queued' | 'claimed' | 'running' | 'completed' | 'completed_with_errors' | 'failed' | 'cancelled';
   /** ISO 8601 timestamp when the assignment was created */
   created_at: string;
   /** ISO 8601 timestamp when the assignment was last updated */
@@ -126,7 +126,7 @@ const jobAssignmentSchema = z.object({
   job_id: z.string().optional(),
   scrapers: z.array(z.string()).optional(),
   skus: z.array(z.string()),
-  status: z.enum(['pending', 'queued', 'claimed', 'running', 'completed', 'failed', 'cancelled']),
+  status: z.enum(['pending', 'queued', 'claimed', 'running', 'completed', 'completed_with_errors', 'failed', 'cancelled']),
   created_at: z.string(),
   claimed_by: z.string().nullable().optional(),
   runner_id: z.string().optional(),

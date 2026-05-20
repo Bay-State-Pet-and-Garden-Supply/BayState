@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Lease token mismatch' }, { status: 409 });
     }
 
-    if (['completed', 'failed', 'cancelled'].includes(job.status)) {
+    if (['completed', 'completed_with_errors', 'failed', 'cancelled'].includes(job.status)) {
       return NextResponse.json({
         success: true,
         ignored: true,

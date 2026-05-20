@@ -321,6 +321,7 @@ export function ScraperNetworkDashboard() {
       ...jobs.queued,
       ...jobs.pending,
       ...jobs.completed,
+      ...jobs.completed_with_errors,
       ...jobs.failed,
       ...jobs.cancelled,
     ]
@@ -1054,6 +1055,7 @@ export function ScraperNetworkDashboard() {
                           <span className={cn(
                             "capitalize font-bold text-[9px] px-1.5 py-0.5 rounded border tracking-wider uppercase",
                             job.status === 'completed' && "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+                            job.status === 'completed_with_errors' && "bg-amber-500/10 text-amber-500 border-amber-500/20",
                             job.status === 'failed' && "bg-red-500/10 text-red-500 border-red-500/20",
                             (job.status === 'running' || job.status === 'claimed') && "bg-blue-500/10 text-blue-500 border-blue-500/20",
                             (job.status === 'pending' || job.status === 'queued') && "bg-amber-500/10 text-amber-500 border-amber-500/20",

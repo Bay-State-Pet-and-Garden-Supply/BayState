@@ -44,18 +44,18 @@ export function useJobStats() {
 
       // Calculate stats
       const totalJobs = data.length;
-      const activeJobs = data.filter((job) => job.status === 'running' || job.status === 'claimed').length;
+      const activeJobs = data.filter((job) => job.status === 'running' || job.status === 'claimed' || job.status === 'pending' || job.status === 'queued').length;
       
-      const completedJobs = data.filter((job) => job.status === 'completed');
+      const successfulJobs = data.filter((job) => job.status === 'completed' || job.status === 'completed_with_errors');
       const successRate = totalJobs > 0 
-        ? (completedJobs.length / totalJobs) * 100 
+        ? (successfulJobs.length / totalJobs) * 100 
         : 0;
 
-      // Calculate items per minute based on completed jobs
+      // Calculate items per minute based on successful jobs
       let totalItems = 0;
       let totalDurationMs = 0;
 
-      completedJobs.forEach((job) => {
+      successfulJobs.forEach((job) => {
         if (job.created_at && job.completed_at && job.skus) {
           const start = new Date(job.created_at).getTime();
           const end = new Date(job.completed_at).getTime();

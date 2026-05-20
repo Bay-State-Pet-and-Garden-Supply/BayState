@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
       "id, status, skus, total_count, completed_count, failed_count, model, mode, config, token_usage, cost_estimate, error_message, created_by, claimed_by, started_at, completed_at, created_at, updated_at",
     )
     .or(
-      `status.not.in.(completed,failed,cancelled),and(status.in.(completed,failed,cancelled),created_at.gt.${last48Hours})`,
+      `status.not.in.(completed,completed_with_errors,failed,cancelled),and(status.in.(completed,completed_with_errors,failed,cancelled),created_at.gt.${last48Hours})`,
     )
     .order("created_at", { ascending: false })
     .limit(20);

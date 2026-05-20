@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 
-type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+type JobStatus = 'pending' | 'running' | 'completed' | 'completed_with_errors' | 'failed' | 'cancelled';
 type TimeRange = '1h' | '6h' | '24h' | '7d' | '30d';
 
 interface TimelineJob {
@@ -27,6 +27,7 @@ const STATUS_COLORS: Record<JobStatus, string> = {
   pending: 'bg-brand-gold',
   running: 'bg-blue-600',
   completed: 'bg-brand-forest-green',
+  completed_with_errors: 'bg-amber-600',
   failed: 'bg-brand-burgundy',
   cancelled: 'bg-muted-foreground',
 };

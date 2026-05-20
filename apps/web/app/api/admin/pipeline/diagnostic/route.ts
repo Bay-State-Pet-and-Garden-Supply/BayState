@@ -70,7 +70,7 @@ export async function GET() {
         } else {
             (jobsData || []).forEach((job: { job_type?: string; status?: string }) => {
                 // Count jobs that are not completed/failed/cancelled
-                const isActive = job.status && !['completed', 'failed', 'cancelled'].includes(job.status);
+                const isActive = job.status && !['completed', 'completed_with_errors', 'failed', 'cancelled'].includes(job.status);
                 if (isActive) {
                     if (job.job_type === 'consolidation') {
                         consolidationCount++;

@@ -20,6 +20,7 @@ interface JobSubscriptionState {
     queued: JobAssignment[];
     running: JobAssignment[];
     completed: JobAssignment[];
+    completed_with_errors: JobAssignment[];
     failed: JobAssignment[];
     cancelled: JobAssignment[];
   };
@@ -31,6 +32,7 @@ interface JobSubscriptionState {
     queued: number;
     running: number;
     completed: number;
+    completed_with_errors: number;
     failed: number;
     cancelled: number;
     total: number;
@@ -123,6 +125,7 @@ function createEmptyJobs(): JobBuckets {
     queued: [],
     running: [],
     completed: [],
+    completed_with_errors: [],
     failed: [],
     cancelled: [],
   };
@@ -137,6 +140,7 @@ function createInitialDataState(): JobSubscriptionData {
       queued: 0,
       running: 0,
       completed: 0,
+      completed_with_errors: 0,
       failed: 0,
       cancelled: 0,
       total: 0,
@@ -149,6 +153,7 @@ function calculateCounts(jobs: JobBuckets): JobCounts {
   const queued = jobs.queued.length;
   const running = jobs.running.length;
   const completed = jobs.completed.length;
+  const completed_with_errors = jobs.completed_with_errors.length;
   const failed = jobs.failed.length;
   const cancelled = jobs.cancelled.length;
 
@@ -157,14 +162,23 @@ function calculateCounts(jobs: JobBuckets): JobCounts {
     queued,
     running,
     completed,
+    completed_with_errors,
     failed,
     cancelled,
-    total: pending + queued + running + completed + failed + cancelled,
+    total: pending + queued + running + completed + completed_with_errors + failed + cancelled,
   };
 }
 
 function getLatestJob(jobs: JobBuckets): JobAssignment | null {
-  const allJobs = [...jobs.pending, ...jobs.queued, ...jobs.running, ...jobs.completed, ...jobs.failed, ...jobs.cancelled];
+  const allJobs = [
+    ...jobs.pending,
+    ...jobs.queued,
+    ...jobs.running,
+    ...jobs.completed,
+    ...jobs.completed_with_errors,
+    ...jobs.failed,
+    ...jobs.cancelled,
+  ];
 
   if (allJobs.length === 0) {
     return null;
@@ -317,8 +331,8 @@ export function useJobSubscription(
         return 'running';
       }
 
-      if (status === 'completed' || status === 'failed' || status === 'cancelled' || status === 'queued') {
-        return status;
+      if (status === 'completed' || status === 'completed_with_errors' || status === 'failed' || status === 'cancelled' || status === 'queued') {
+        return status as keyof JobSubscriptionState['jobs'];
       }
 
       return 'pending';
@@ -350,6 +364,7 @@ export function useJobSubscription(
           queued: [...previousState.jobs.queued],
           running: [...previousState.jobs.running],
           completed: [...previousState.jobs.completed],
+          completed_with_errors: [...previousState.jobs.completed_with_errors],
           failed: [...previousState.jobs.failed],
           cancelled: [...previousState.jobs.cancelled],
         };
@@ -359,6 +374,7 @@ export function useJobSubscription(
           nextJobs.queued = nextJobs.queued.filter((candidate) => candidate.id !== oldJob.id);
           nextJobs.running = nextJobs.running.filter((candidate) => candidate.id !== oldJob.id);
           nextJobs.completed = nextJobs.completed.filter((candidate) => candidate.id !== oldJob.id);
+          nextJobs.completed_with_errors = nextJobs.completed_with_errors.filter((candidate) => candidate.id !== oldJob.id);
           nextJobs.failed = nextJobs.failed.filter((candidate) => candidate.id !== oldJob.id);
           nextJobs.cancelled = nextJobs.cancelled.filter((candidate) => candidate.id !== oldJob.id);
         } else if (job) {
@@ -366,6 +382,7 @@ export function useJobSubscription(
           nextJobs.queued = nextJobs.queued.filter((candidate) => candidate.id !== job.id);
           nextJobs.running = nextJobs.running.filter((candidate) => candidate.id !== job.id);
           nextJobs.completed = nextJobs.completed.filter((candidate) => candidate.id !== job.id);
+          nextJobs.completed_with_errors = nextJobs.completed_with_errors.filter((candidate) => candidate.id !== job.id);
           nextJobs.failed = nextJobs.failed.filter((candidate) => candidate.id !== job.id);
           nextJobs.cancelled = nextJobs.cancelled.filter((candidate) => candidate.id !== job.id);
 
@@ -576,6 +593,7 @@ export function useJobSubscription(
         dataState.jobs.queued.find((job) => job.id === jobId) ||
         dataState.jobs.running.find((job) => job.id === jobId) ||
         dataState.jobs.completed.find((job) => job.id === jobId) ||
+        dataState.jobs.completed_with_errors.find((job) => job.id === jobId) ||
         dataState.jobs.failed.find((job) => job.id === jobId) ||
         dataState.jobs.cancelled.find((job) => job.id === jobId)
       );
@@ -593,6 +611,7 @@ export function useJobSubscription(
         ...dataState.jobs.queued,
         ...dataState.jobs.running,
         ...dataState.jobs.completed,
+        ...dataState.jobs.completed_with_errors,
         ...dataState.jobs.failed,
         ...dataState.jobs.cancelled,
       ].filter((job) => job.claimed_by === runnerId || job.runner_id === runnerId);

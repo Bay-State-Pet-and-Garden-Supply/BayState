@@ -635,6 +635,7 @@ export function ActiveEnrichmentsTab() {
   const completedJobs = useMemo(() => {
     const combined = [
       ...realtimeJobs.completed,
+      ...realtimeJobs.completed_with_errors,
       ...realtimeJobs.failed,
       ...realtimeJobs.cancelled,
     ];
