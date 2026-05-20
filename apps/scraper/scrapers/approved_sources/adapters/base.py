@@ -465,6 +465,10 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             missing_required: list[str] = []
 
             resolved_sku_match = det_result.sku_match
+            if self.source_type == "distributor":
+                confidence = 1.0
+                resolved_sku_match = True
+
             heuristic_warning = any("heuristic" in warning.lower() for warning in warnings)
 
             if resolved_sku_match is not True:

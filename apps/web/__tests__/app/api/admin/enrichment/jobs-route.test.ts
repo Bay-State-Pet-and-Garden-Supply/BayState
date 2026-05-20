@@ -257,6 +257,77 @@ describe('/api/admin/enrichment/jobs route', () => {
         );
     });
 
+    it('sets model to null when extractionMode is distributor_only', async () => {
+        // 1. Mock products_ingestion search to find SKU
+        mockSupabase.in.mockResolvedValueOnce({
+            data: [{ sku: 'SKU-1', pipeline_status: 'imported' }],
+            error: null,
+        });
+
+        // 2. Mock source plan building
+        (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
+            'SKU-1': {
+                ok: true,
+                plan: {
+                    sku: 'SKU-1',
+                    priority: [
+                        {
+                            sourceType: 'distributor',
+                            sourceSlug: 'phillips',
+                            requiresAuth: true,
+                            credentialRef: 'phillips',
+                        },
+                    ],
+                },
+            },
+        });
+
+        // 3. Mock scraper_credentials query
+        mockSupabase.in.mockResolvedValueOnce({
+            data: [
+                { scraper_slug: 'phillips', credential_type: 'login' },
+                { scraper_slug: 'phillips', credential_type: 'password' },
+            ],
+            error: null,
+        });
+
+        mockSupabase.insert = jest.fn().mockImplementation((arg) => {
+            if (Array.isArray(arg)) {
+                return Promise.resolve({ error: null });
+            }
+            return mockSupabase;
+        });
+
+        mockSupabase.single.mockResolvedValue({
+            data: { id: 'job-1' },
+            error: null,
+        });
+
+        mockSupabase.in.mockResolvedValueOnce({
+            error: null,
+        });
+
+        const response = await POST(
+            new NextRequest('http://localhost/api/admin/enrichment/jobs', {
+                body: JSON.stringify({
+                    skus: ['SKU-1'],
+                    extractionMode: 'distributor_only',
+                    config: {
+                        source_type: 'approved_source_extraction',
+                    },
+                }),
+            } as any),
+        );
+        const payload = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(mockSupabase.insert).toHaveBeenCalledWith(
+            expect.objectContaining({
+                model: null,
+            }),
+        );
+    });
+
     it('rejects invalid extractionMode', async () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/enrichment/jobs', {

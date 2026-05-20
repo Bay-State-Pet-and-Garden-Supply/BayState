@@ -298,8 +298,8 @@ export async function POST(request: NextRequest) {
     const aiConfigId = aiRuntimeCreds.config_id ?? null;
 
     // Create enrichment_jobs row
-    const jobMode = mode ?? "mixed";
-    const jobModel = model ?? aiRuntimeCreds.llm_model;
+    const jobMode = mode ?? extractionMode ?? "mixed";
+    const jobModel = jobMode === "distributor_only" ? null : (model ?? aiRuntimeCreds.llm_model);
 
     const { data: job, error: jobError } = await supabase
       .from("enrichment_jobs")

@@ -123,6 +123,21 @@ function isSourceDetails(value: unknown): value is SourceDetails {
   return typeof value === "object" && value !== null;
 }
 
+const SOURCE_FRIENDLY_NAMES: Record<string, string> = {
+  phillips: "Phillips Pet",
+  orgill: "Orgill",
+  petfoodex: "Pet Food Experts",
+};
+
+function formatSourceSlug(slug: string): string {
+  const friendly = SOURCE_FRIENDLY_NAMES[slug.toLowerCase()];
+  if (friendly) return friendly;
+  return slug
+    .split(/[-_]/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 export function ProcessedResultsView({
   products,
   selectedSkus,
@@ -614,8 +629,27 @@ export function ProcessedResultsView({
                             value={key}
                             className="text-[10px] px-2.5 h-6 font-semibold rounded-none data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-none flex items-center gap-1.5"
                           >
-                            {key === "enriched" && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
-                            {key}
+                            {key === "enriched" ? (
+                              <>
+                                <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                {(() => {
+                                  const sourceResults = srcData?.["source_results"] as any[];
+                                  if (Array.isArray(sourceResults) && sourceResults.length > 0) {
+                                    const names = Array.from(
+                                      new Set(
+                                        sourceResults.map((sr) => formatSourceSlug(sr.sourceSlug))
+                                      )
+                                    );
+                                    if (names.length > 0) {
+                                      return `Enriched (${names.join(", ")})`;
+                                    }
+                                  }
+                                  return "Enriched";
+                                })()}
+                              </>
+                            ) : (
+                              formatSourceSlug(key)
+                            )}
                             {provBadge ? (
                               <span className={`text-[7px] px-1 py-0.5 font-bold uppercase tracking-wider ${provBadge.className} rounded-none`}>
                                 {provBadge.label}
@@ -761,7 +795,24 @@ export function ProcessedResultsView({
                               variant="outline"
                               className="bg-foreground text-background border border-foreground rounded-none font-semibold text-[9px]"
                             >
-                              {activeSource.toUpperCase()}
+                              {activeSource === "enriched" ? (
+                                (() => {
+                                  const sourceResults = currentSourceData?.["source_results"] as any[];
+                                  if (Array.isArray(sourceResults) && sourceResults.length > 0) {
+                                    const names = Array.from(
+                                      new Set(
+                                        sourceResults.map((sr) => formatSourceSlug(sr.sourceSlug))
+                                      )
+                                    );
+                                    if (names.length > 0) {
+                                      return `ENRICHED (${names.join(", ").toUpperCase()})`;
+                                    }
+                                  }
+                                  return "ENRICHED";
+                                })()
+                              ) : (
+                                formatSourceSlug(activeSource).toUpperCase()
+                              )}
                             </Badge>
                             {(() => {
                               const prov = getProvenance(currentSourceData as unknown as Record<string, unknown>);

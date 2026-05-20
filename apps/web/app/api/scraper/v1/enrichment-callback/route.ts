@@ -224,22 +224,47 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Update enrichment_jobs counters
-    const { data: jobCounts } = await supabase
+    // If result indicates retry, create next attempt
+    if (nextAttempt.retry) {
+      await supabase.from("enrichment_attempts").insert({
+        job_id: attemptData.job_id,
+        sku: enrichedResult.sku,
+        attempt_number: attemptData.retry_count + 2,
+        status: "queued",
+        mode: enrichedResult.mode,
+        model: enrichedResult.model,
+        source_url: enrichedResult.source.url,
+      });
+    }
+
+    // Update enrichment_jobs counters based on the latest attempt per SKU
+    const { data: jobAttempts } = await supabase
       .from("enrichment_attempts")
-      .select("status")
+      .select("sku, attempt_number, status")
       .eq("job_id", attemptData.job_id);
 
-    if (jobCounts) {
-      const completed = jobCounts.filter(
-        (a: { status: string }) =>
-          a.status === "success" || a.status === "partial" || a.status === "failed"
+    if (jobAttempts) {
+      const latestAttemptsBySku = new Map<string, { attempt_number: number; status: string }>();
+      for (const attempt of jobAttempts) {
+        const existing = latestAttemptsBySku.get(attempt.sku);
+        if (!existing || attempt.attempt_number > existing.attempt_number) {
+          latestAttemptsBySku.set(attempt.sku, {
+            attempt_number: attempt.attempt_number,
+            status: attempt.status,
+          });
+        }
+      }
+
+      const latestAttempts = Array.from(latestAttemptsBySku.values());
+
+      const completed = latestAttempts.filter(
+        (a) => a.status === "success" || a.status === "partial" || a.status === "failed"
       ).length;
-      const failed = jobCounts.filter(
-        (a: { status: string }) => a.status === "failed"
+      const failed = latestAttempts.filter(
+        (a) => a.status === "failed"
       ).length;
 
-      const isComplete = completed >= jobCounts.length;
+      const isComplete = completed >= latestAttempts.length;
       const jobStatus = isComplete
         ? failed > 0
           ? "completed_with_errors"
@@ -255,19 +280,6 @@ export async function POST(request: NextRequest) {
           completed_at: isComplete ? new Date().toISOString() : null,
         })
         .eq("id", attemptData.job_id);
-    }
-
-    // If result indicates retry, create next attempt
-    if (nextAttempt.retry) {
-      await supabase.from("enrichment_attempts").insert({
-        job_id: attemptData.job_id,
-        sku: enrichedResult.sku,
-        attempt_number: attemptData.retry_count + 2,
-        status: "queued",
-        mode: enrichedResult.mode,
-        model: enrichedResult.model,
-        source_url: enrichedResult.source.url,
-      });
     }
 
     return NextResponse.json({
