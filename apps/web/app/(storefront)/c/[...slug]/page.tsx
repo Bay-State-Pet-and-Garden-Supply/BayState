@@ -175,19 +175,19 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
           <div className="flex items-center justify-between mb-6">
             {/* Breadcrumb Navigation - Now inline with results */}
             <Breadcrumb>
-              <BreadcrumbList className="text-2xl text-zinc-900 font-bold sm:gap-3">
+              <BreadcrumbList>
                 <BreadcrumbItem>
                   <BreadcrumbLink href="/">
-                    <Home className="h-5 w-5" />
+                    <Home className="h-4 w-4" />
                     <span className="sr-only">Home</span>
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 {breadcrumbTrail.map((crumb, index) => (
                   <Fragment key={crumb.id}>
-                    <BreadcrumbSeparator className="[&>svg]:size-5" />
+                    <BreadcrumbSeparator />
                     <BreadcrumbItem>
                       {index === breadcrumbTrail.length - 1 ? (
-                        <BreadcrumbPage className="font-bold capitalize text-zinc-900">{crumb.name}</BreadcrumbPage>
+                        <BreadcrumbPage className="font-medium capitalize text-zinc-900">{crumb.name}</BreadcrumbPage>
                       ) : (
                         <BreadcrumbLink href={getCategoryUrl(crumb.slug)} className="capitalize">
                           {crumb.name}

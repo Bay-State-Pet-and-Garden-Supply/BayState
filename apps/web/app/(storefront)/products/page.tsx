@@ -105,16 +105,16 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           <div className="flex items-center justify-between mb-6">
             {/* Breadcrumb Navigation */}
             <Breadcrumb>
-              <BreadcrumbList className="text-2xl text-zinc-900 font-bold sm:gap-3">
+              <BreadcrumbList>
                 <BreadcrumbItem>
                   <BreadcrumbLink href="/">
-                    <Home className="h-5 w-5" />
+                    <Home className="h-4 w-4" />
                     <span className="sr-only">Home</span>
                   </BreadcrumbLink>
                 </BreadcrumbItem>
-                <BreadcrumbSeparator className="[&>svg]:size-5" />
+                <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbPage className="font-bold text-zinc-900">Products</BreadcrumbPage>
+                  <BreadcrumbPage className="font-medium text-zinc-900">Products</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
