@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PIPELINE_TABS, STAGE_CONFIG } from '@/lib/pipeline/types';
 import type { PipelineStage, StatusCount } from '@/lib/pipeline/types';
 import { Activity } from 'lucide-react';
@@ -20,8 +20,6 @@ export function StageTabs({
   onStageChange,
   actions,
 }: StageTabsProps) {
-  const currentConfig = STAGE_CONFIG[currentStage];
-
   const getCount = (stage: PipelineStage): number => {
     return counts.find((count) => count.status === stage)?.count ?? 0;
   };

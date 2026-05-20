@@ -99,9 +99,6 @@ export async function POST(request: NextRequest) {
     const attemptId = (rawBody as Record<string, unknown>)._attempt_id as
       | string
       | undefined;
-    const leaseToken = (rawBody as Record<string, unknown>)._lease_token as
-      | string
-      | undefined;
 
     // Validate the core EnrichmentResultV1 payload (transport fields stripped by Zod)
     const enrichedResult = safeValidateEnrichmentResultV1(rawBody);
@@ -155,7 +152,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const isTestJob = (attemptData as any).enrichment_jobs?.test_mode === true;
+    const isTestJob = (attemptData as Record<string, { test_mode?: boolean }>).enrichment_jobs?.test_mode === true;
 
     // Update the enrichment attempt
     const nextAttempt = determineNextStatus(enrichedResult, attemptData);
@@ -164,8 +161,8 @@ export async function POST(request: NextRequest) {
       .from("enrichment_attempts")
       .update({
         status: enrichedResult.status,
-        result: rawBody as any,
-        normalized_source: normalized as any,
+        result: rawBody as Record<string, unknown>,
+        normalized_source: normalized as unknown as Record<string, unknown>,
         confidence_overall: enrichedResult.confidence.overall,
         field_confidence: enrichedResult.confidence.fields,
         validation: enrichedResult.validation,
@@ -191,9 +188,9 @@ export async function POST(request: NextRequest) {
         .single();
 
       const currentSources = (product?.sources as Record<string, unknown>) ?? {};
-      const updatedSources = {
+      const updatedSources: Record<string, unknown> = {
         ...currentSources,
-        enriched: normalized as any,
+        enriched: normalized as unknown as Record<string, unknown>,
       };
 
       // Merge per-source results into products_ingestion.sources

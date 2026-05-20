@@ -29,7 +29,7 @@ describe('Gemini Multimodal Prompt Builder', () => {
 
       expect(request.key).toBe('SKU-001');
       expect(request.request.model).toBe('models/gemini-3.5-flash');
-      expect(request.request.systemInstruction.parts[0].text).toBe(systemPrompt);
+      expect(request.request.systemInstruction!.parts[0].text).toBe(systemPrompt);
       expect(request.request.contents[0].role).toBe('user');
 
       // First part should be text

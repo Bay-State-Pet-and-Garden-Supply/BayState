@@ -8,17 +8,14 @@ import {
   useMemo,
   useTransition,
 } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";import { toast } from "sonner";
 import {
-  Activity,
-  Brain,
   ChevronRight,
   ArrowLeft,
   Layers,
   Tag,
   Edit2,
-  Globe,
+  Activity,
 } from "lucide-react";
 import { StageTabs } from "./StageTabs";
 import { ProductTable } from "./ProductTable";
@@ -32,13 +29,6 @@ import { PipelineFilters, type PipelineFiltersState } from "./PipelineFilters";
 import { PipelineSearchField } from "./PipelineSearchField";
 import { formatPipelineBatchLabel } from "./view-utils";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
-import {
-  AdminCard,
-  AdminCardHeader,
-  AdminCardTitle,
-  AdminCardDescription,
-  AdminCardContent,
-} from "@/components/admin/admin-card";
 import {
   Accordion,
   AccordionContent,

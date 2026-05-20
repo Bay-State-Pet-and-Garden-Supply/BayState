@@ -1,5 +1,4 @@
 import { Metadata } from 'next';
-import { Activity } from 'lucide-react';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { PipelineClient } from '@/components/admin/pipeline/PipelineClient';
 import { getProductsByStage, getStatusCounts, getAvailableSourcesByStage } from '@/lib/pipeline';
