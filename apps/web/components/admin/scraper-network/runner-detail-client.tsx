@@ -261,7 +261,7 @@ export function RunnerDetailClient({ runner, backHref, isEmbedded = false }: Run
            </div>
            <div className="flex-1 overflow-hidden relative">
               <JobConsoleDrawer 
-                jobId={null} // TODO: Track active jobId from runner presence
+                jobId={(runner.metadata?.current_job_id as string) || null}
                 isOpen={true} 
                 onClose={() => {}} 
               />

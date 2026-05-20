@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
       } else if (provider === 'lmstudio') {
         baseUrl = 'http://localhost:1234/v1';
       } else if (provider === 'openai_compatible') {
-        baseUrl = process.env.OPENAI_BASE_URL || '';
+        baseUrl = process.env.OPENAI_BASE_URL || 'https://api.deepseek.com';
       }
     }
 
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
       } else if (provider === 'lmstudio') {
         baseUrl = 'http://localhost:1234/v1';
       } else if (provider === 'openai_compatible') {
-        baseUrl = process.env.OPENAI_BASE_URL || '';
+        baseUrl = process.env.OPENAI_BASE_URL || 'https://api.deepseek.com';
       }
     }
 

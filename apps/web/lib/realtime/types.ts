@@ -222,13 +222,32 @@ const scrapeJobLogSchema = z.object({
 });
 
 /**
+ * Enrichment attempt tracking record.
+ * Tracks granular SKU-level outcomes within a job.
+ */
+export interface EnrichmentAttempt {
+  id: string;
+  job_id: string;
+  sku: string;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  attempt_number: number;
+  claimed_by: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
  * Union type for all realtime event payloads.
  */
 type RealtimeEventPayload =
   | RunnerPresence
   | JobAssignment
   | BroadcastEvent
-  | ScrapeJobLog;
+  | ScrapeJobLog
+  | EnrichmentAttempt;
 
 /**
  * Union type for all realtime event schemas.
@@ -238,3 +257,4 @@ type RealtimeEventSchema =
   | typeof jobAssignmentSchema
   | typeof broadcastEventSchema
   | typeof scrapeJobLogSchema;
+

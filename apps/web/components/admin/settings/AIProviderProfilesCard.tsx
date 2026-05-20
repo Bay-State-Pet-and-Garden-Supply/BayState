@@ -74,10 +74,10 @@ export function AIProviderProfilesCard() {
   useEffect(() => {
     if (!showForm) return;
 
-    // Determine default base URLs for non-custom providers to help fetching
+    // Determine default base URLs for providers to help fetching models list
     let effectiveBaseUrl = formBaseUrl.trim();
     if (!effectiveBaseUrl) {
-      if (formProvider === 'deepseek') effectiveBaseUrl = 'https://api.deepseek.com';
+      if (formProvider === 'openai_compatible' || formProvider === 'deepseek') effectiveBaseUrl = 'https://api.deepseek.com';
       else if (formProvider === 'openai') effectiveBaseUrl = 'https://api.openai.com/v1';
       else if (formProvider === 'gemini') effectiveBaseUrl = 'https://generativelanguage.googleapis.com/v1beta';
       else if (formProvider === 'lmstudio') effectiveBaseUrl = 'http://localhost:1234/v1';
@@ -138,7 +138,7 @@ export function AIProviderProfilesCard() {
   const handleCreateNew = () => {
     setEditingId(null);
     setFormName('');
-    setFormProvider('deepseek');
+    setFormProvider('openai_compatible');
     setFormBaseUrl('');
     setFormApiKey('');
     setFormModel('deepseek-chat');
@@ -436,22 +436,23 @@ export function AIProviderProfilesCard() {
                 </Label>
                 <select
                   id="form-profile-provider"
-                  value={formProvider}
+                  value={
+                    formProvider === 'deepseek' || formProvider === 'lmstudio'
+                      ? 'openai_compatible'
+                      : formProvider
+                  }
                   onChange={(e) => {
                     const provider = e.target.value as any;
                     setFormProvider(provider);
                     setFormModel(
-                      provider === 'deepseek' ? 'deepseek-chat' :
-                      provider === 'gemini' ? 'gemini-2.5-flash' :
-                      provider === 'openai' ? 'gpt-4o-mini' : 'google/gemma-4-e4b'
+                      provider === 'openai' ? 'gpt-4o-mini' :
+                      provider === 'gemini' ? 'gemini-2.5-flash' : 'deepseek-chat'
                     );
                     setFormBaseUrl('');
                   }}
                   className="flex h-9 w-full rounded-none border border-input bg-background px-3 py-1 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-gold disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <option value="deepseek">DeepSeek (Production Default)</option>
-                  <option value="openai_compatible">OpenAI Compatible (Custom API)</option>
-                  <option value="lmstudio">LM Studio (Local Host)</option>
+                  <option value="openai_compatible">OpenAI Compatible (Custom API, DeepSeek, LM Studio)</option>
                   <option value="openai">OpenAI (Direct API)</option>
                   <option value="gemini">Google Gemini (Direct API)</option>
                 </select>
@@ -466,11 +467,9 @@ export function AIProviderProfilesCard() {
                   id="form-profile-baseurl"
                   type="text"
                   placeholder={
-                    formProvider === 'deepseek' ? 'https://api.deepseek.com (default)' :
                     formProvider === 'openai' ? 'https://api.openai.com/v1 (default)' :
                     formProvider === 'gemini' ? 'https://generativelanguage.googleapis.com/v1beta (default)' :
-                    formProvider === 'lmstudio' ? 'http://localhost:1234/v1 (default)' :
-                    'https://api.yourgateway.com/v1'
+                    'https://api.deepseek.com/v1'
                   }
                   value={formBaseUrl}
                   onChange={(e) => setFormBaseUrl(e.target.value)}
