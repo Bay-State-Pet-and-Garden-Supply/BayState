@@ -7,12 +7,13 @@ import { toTitleCase } from '@/lib/utils';
 
 interface FeaturedProductsProps {
   products: Product[];
+  title?: string;
 }
 
 /**
  * FeaturedProducts - Grid display of featured products on homepage.
  */
-export function FeaturedProducts({ products }: FeaturedProductsProps) {
+export function FeaturedProducts({ products, title }: FeaturedProductsProps) {
   if (products.length === 0) {
     return null;
   }
@@ -21,7 +22,7 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
     <section className="mb-12">
       <div className="mb-8 flex items-center justify-between border-b-2 border-primary/20 pb-4">
         <h2 className="text-4xl sm:text-6xl font-bold text-zinc-900 tracking-tighter font-display">
-          {toTitleCase('Featured products')}
+          {title ? title : toTitleCase('Featured products')}
         </h2>
         <Button variant="ghost" asChild className="font-semibold text-xs tracking-widest hover:underline">
           <Link href="/products">

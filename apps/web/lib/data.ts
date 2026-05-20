@@ -131,4 +131,5 @@ export async function getBrandBySlug(slug: string): Promise<Brand | null> {
 export {
   getFeaturedProducts,
   getFilteredProducts as getProducts,
+  getProductsByIds,
 } from '@/lib/products';

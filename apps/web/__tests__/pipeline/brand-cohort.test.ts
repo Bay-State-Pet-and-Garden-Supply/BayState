@@ -163,10 +163,10 @@ describe('Brand-aware Cohort Auto-Assignment', () => {
                     }
                     return { data: [], error: null };
                 }),
-                eq: jest.fn().mockImplementation(function (col: string, val: any) {
+                eq: jest.fn().mockImplementation(function (this: any, col: string, val: any) {
                     return this;
                 }),
-                is: jest.fn().mockImplementation(function (col: string, val: any) {
+                is: jest.fn().mockImplementation(function (this: any, col: string, val: any) {
                     return this;
                 }),
                 maybeSingle: async function () {
@@ -223,7 +223,7 @@ describe('Brand-aware Cohort Auto-Assignment', () => {
                     });
                     return { error: null };
                 }),
-                delete: jest.fn().mockImplementation(function () {
+                delete: jest.fn().mockImplementation(function (this: any) {
                     return this;
                 }),
             };

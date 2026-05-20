@@ -34,12 +34,55 @@ export interface HeroSlide {
   linkText?: string;
 }
 
+export interface PromoGridItem {
+  title: string;
+  imageUrl: string;
+  linkUrl: string;
+}
+
+export interface PromoGridSettings {
+  leftBanner: PromoGridItem;
+  rightCard1: PromoGridItem;
+  rightCard2: PromoGridItem;
+}
+
+export interface MidBannerSettings {
+  enabled: boolean;
+  title: string;
+  imageUrl: string;
+  linkUrl: string;
+}
+
+export interface DepartmentItem {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface DepartmentSettings {
+  enabled: boolean;
+  title: string;
+  items: DepartmentItem[];
+}
+
+export interface BrandsSettings {
+  enabled: boolean;
+  title: string;
+  limit: number;
+}
+
 export interface HomepageSettings {
   hero: HeroSettings;
   heroSlides: HeroSlide[];
   heroSlideInterval: number; // ms between slides
+  heroMode?: 'carousel' | 'single' | 'hidden';
   featuredProductIds: string[];
+  featuredTitle?: string;
   storeHours: string; // Markdown or simple text
+  promoGrid?: PromoGridSettings;
+  midBanner?: MidBannerSettings;
+  departments?: DepartmentSettings;
+  brandsSection?: BrandsSettings;
 }
 
 export interface NavLink {
@@ -94,6 +137,8 @@ const defaultSettings: SiteSettings = {
       ctaText: 'Shop Now',
       ctaLink: '/products',
     },
+    heroMode: 'carousel',
+    featuredTitle: 'Featured Products',
     featuredProductIds: [],
     heroSlides: [
       {
@@ -139,6 +184,45 @@ const defaultSettings: SiteSettings = {
     ],
     heroSlideInterval: 5000,
     storeHours: 'Mon-Fri: 9am - 6pm\nSat: 9am - 5pm\nSun: 10am - 4pm',
+    promoGrid: {
+      leftBanner: {
+        title: 'Winter Essentials',
+        imageUrl: '/images/legacy/img1.png',
+        linkUrl: '/c/lawn-garden-seasonal-outdoor-utility',
+      },
+      rightCard1: {
+        title: 'Bee Nuc Pre-Order',
+        imageUrl: '/images/legacy/img2.png',
+        linkUrl: '/c/farm-animal',
+      },
+      rightCard2: {
+        title: 'Wood Pellets Sale',
+        imageUrl: '/images/legacy/img3.png',
+        linkUrl: '/c/home',
+      },
+    },
+    midBanner: {
+      enabled: true,
+      title: 'Country Gift Shop',
+      imageUrl: '/images/legacy/img4.png',
+      linkUrl: '/c/home',
+    },
+    departments: {
+      enabled: true,
+      title: 'Shop by department',
+      items: [
+        { id: 'dog', name: 'Pet Supplies', slug: 'dog' },
+        { id: 'farm-animal', name: 'Farm & Livestock', slug: 'farm-animal' },
+        { id: 'lawn-garden', name: 'Lawn & Garden', slug: 'lawn-garden' },
+        { id: 'home', name: 'Home & Fuel', slug: 'home' },
+        { id: 'lawn-garden-seasonal-outdoor-utility', name: 'Seasonal Shoppe', slug: 'lawn-garden-seasonal-outdoor-utility' },
+      ],
+    },
+    brandsSection: {
+      enabled: true,
+      title: 'Brands we carry',
+      limit: 10,
+    },
   },
   navigation: {
     headerLinks: [
@@ -283,11 +367,53 @@ export async function updateCampaignBanner(
  */
 export async function getHomepageSettings(): Promise<HomepageSettings> {
   const settings = await getSetting('homepage');
-  // Merge with defaults to ensure all fields exist
+  const defaultHome = defaultSettings.homepage;
+
   return {
-    ...defaultSettings.homepage,
+    ...defaultHome,
     ...settings,
-    hero: { ...defaultSettings.homepage.hero, ...settings?.hero },
+    hero: { ...defaultHome.hero, ...settings?.hero },
+    promoGrid: settings?.promoGrid 
+      ? {
+          leftBanner: {
+            title: settings.promoGrid.leftBanner?.title ?? defaultHome.promoGrid!.leftBanner.title,
+            imageUrl: settings.promoGrid.leftBanner?.imageUrl ?? defaultHome.promoGrid!.leftBanner.imageUrl,
+            linkUrl: settings.promoGrid.leftBanner?.linkUrl ?? defaultHome.promoGrid!.leftBanner.linkUrl,
+          },
+          rightCard1: {
+            title: settings.promoGrid.rightCard1?.title ?? defaultHome.promoGrid!.rightCard1.title,
+            imageUrl: settings.promoGrid.rightCard1?.imageUrl ?? defaultHome.promoGrid!.rightCard1.imageUrl,
+            linkUrl: settings.promoGrid.rightCard1?.linkUrl ?? defaultHome.promoGrid!.rightCard1.linkUrl,
+          },
+          rightCard2: {
+            title: settings.promoGrid.rightCard2?.title ?? defaultHome.promoGrid!.rightCard2.title,
+            imageUrl: settings.promoGrid.rightCard2?.imageUrl ?? defaultHome.promoGrid!.rightCard2.imageUrl,
+            linkUrl: settings.promoGrid.rightCard2?.linkUrl ?? defaultHome.promoGrid!.rightCard2.linkUrl,
+          },
+        }
+      : defaultHome.promoGrid,
+    midBanner: settings?.midBanner
+      ? {
+          enabled: settings.midBanner.enabled ?? defaultHome.midBanner!.enabled,
+          title: settings.midBanner.title ?? defaultHome.midBanner!.title,
+          imageUrl: settings.midBanner.imageUrl ?? defaultHome.midBanner!.imageUrl,
+          linkUrl: settings.midBanner.linkUrl ?? defaultHome.midBanner!.linkUrl,
+        }
+      : defaultHome.midBanner,
+    departments: settings?.departments
+      ? {
+          enabled: settings.departments.enabled ?? defaultHome.departments!.enabled,
+          title: settings.departments.title ?? defaultHome.departments!.title,
+          items: settings.departments.items ?? defaultHome.departments!.items,
+        }
+      : defaultHome.departments,
+    brandsSection: settings?.brandsSection
+      ? {
+          enabled: settings.brandsSection.enabled ?? defaultHome.brandsSection!.enabled,
+          title: settings.brandsSection.title ?? defaultHome.brandsSection!.title,
+          limit: settings.brandsSection.limit ?? defaultHome.brandsSection!.limit,
+        }
+      : defaultHome.brandsSection,
   };
 }
 
@@ -303,7 +429,7 @@ export async function updateHomepageSettings(
 /**
  * Fetches the navigation settings.
  */
-async function getNavigationSettings(): Promise<NavigationSettings> {
+export async function getNavigationSettings(): Promise<NavigationSettings> {
   const settings = await getSetting('navigation');
   return {
     ...defaultSettings.navigation,
@@ -323,7 +449,7 @@ export async function updateNavigationSettings(
 /**
  * Fetches the branding settings.
  */
-async function getBrandingSettings(): Promise<BrandingSettings> {
+export async function getBrandingSettings(): Promise<BrandingSettings> {
   const settings = await getSetting('branding');
   return {
     ...defaultSettings.branding,

@@ -1,7 +1,13 @@
 import { Brush } from 'lucide-react';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
-import { getCampaignBanner, getHomepageSettings } from '@/lib/settings';
+import { 
+  getCampaignBanner, 
+  getHomepageSettings, 
+  getNavigationSettings, 
+  getBrandingSettings 
+} from '@/lib/settings';
 import { DesignTabs } from './design-tabs';
+import { getNavCategories, getBrands, getProductsByIds } from '@/lib/data';
 
 export const metadata = {
   title: 'Site Design | Bay State Pet & Garden',
@@ -9,10 +15,25 @@ export const metadata = {
 };
 
 export default async function DesignPage() {
-  const [campaignBanner, homepageSettings] = await Promise.all([
+  const [
+    campaignBanner, 
+    homepageSettings, 
+    navigationSettings, 
+    brandingSettings,
+    categories,
+    brands
+  ] = await Promise.all([
     getCampaignBanner(),
     getHomepageSettings(),
+    getNavigationSettings(),
+    getBrandingSettings(),
+    getNavCategories(),
+    getBrands(),
   ]);
+
+  const initialFeaturedProducts = homepageSettings.featuredProductIds && homepageSettings.featuredProductIds.length > 0
+    ? await getProductsByIds(homepageSettings.featuredProductIds)
+    : [];
 
   return (
     <AdminPageShell
@@ -24,6 +45,11 @@ export default async function DesignPage() {
       <DesignTabs
         initialBannerSettings={campaignBanner}
         initialHomepageSettings={homepageSettings}
+        initialNavigationSettings={navigationSettings}
+        initialBrandingSettings={brandingSettings}
+        categories={categories}
+        brands={brands}
+        initialFeaturedProducts={initialFeaturedProducts}
       />
     </AdminPageShell>
   );

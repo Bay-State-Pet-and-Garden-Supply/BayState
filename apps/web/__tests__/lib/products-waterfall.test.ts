@@ -41,7 +41,11 @@ describe('Issue #3: Data Fetching Waterfall - VERIFIED', () => {
         });
         
         const mockOrder = jest.fn().mockImplementation(function() {
-            return { range: mockRange }; // Return object with range
+            const chain = {
+                range: mockRange,
+                order: mockOrder,
+            };
+            return chain;
         });
         
         // Create chainable query object

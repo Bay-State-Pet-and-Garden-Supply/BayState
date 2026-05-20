@@ -1,18 +1,41 @@
 'use client';
 
 import { useState } from 'react';
-import { Megaphone, Home, Navigation, Paintbrush, Clock } from 'lucide-react';
+import { Megaphone, Home, Navigation, Paintbrush } from 'lucide-react';
 import { BannersTab } from './banners-tab';
 import { HomepageTab } from './homepage-tab';
+import { NavigationTab } from './navigation-tab';
+import { BrandingTab } from './branding-tab';
 import type {
  CampaignBannerSettings,
  HomepageSettings,
+ NavLink,
+ SocialLink,
 } from '@/lib/settings';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface DesignTabsProps {
  initialBannerSettings: CampaignBannerSettings;
  initialHomepageSettings: HomepageSettings;
+ initialNavigationSettings: {
+   headerLinks: NavLink[];
+   footerShopLinks: NavLink[];
+   footerServiceLinks: NavLink[];
+   footerLegalLinks: NavLink[];
+ };
+ initialBrandingSettings: {
+   siteName: string;
+   tagline: string;
+   logoUrl: string;
+   primaryColor: string;
+   accentColor: string;
+   contactAddress: string;
+   contactEmail: string;
+   contactPhones: string[];
+   socialLinks: SocialLink[];
+ };
+ categories: any[];
+ brands: any[];
+ initialFeaturedProducts: any[];
 }
 
 type TabId = 'banners' | 'homepage' | 'navigation' | 'branding';
@@ -27,47 +50,18 @@ interface Tab {
 const tabs: Tab[] = [
  { id: 'banners', label: 'Banners', icon: <Megaphone className="h-4 w-4" />, available: true },
  { id: 'homepage', label: 'Homepage', icon: <Home className="h-4 w-4" />, available: true },
- { id: 'navigation', label: 'Navigation', icon: <Navigation className="h-4 w-4" />, available: false },
- { id: 'branding', label: 'Branding', icon: <Paintbrush className="h-4 w-4" />, available: false },
-];
-
-function ComingSoonTab({ tabId }: { tabId: TabId }) {
- const tabLabel = tabs.find(t => t.id === tabId)?.label || 'This section';
- 
- return (
- <Card className="border border-border rounded-none">
- <CardHeader>
- <div className="flex items-center gap-3">
- <div className="flex h-10 w-10 items-center justify-center rounded-none bg-muted">
- <Clock className="h-5 w-5 text-muted-foreground" />
- </div>
- <div>
- <CardTitle>{tabLabel} Settings</CardTitle>
- <CardDescription>
- This feature is coming soon
- </CardDescription>
- </div>
- </div>
- </CardHeader>
- <CardContent>
- <div className="flex flex-col items-center justify-center py-12 text-center">
- <div className="rounded-none bg-muted p-4 mb-4">
- <Clock className="h-8 w-8 text-muted-foreground" />
- </div>
- <h3 className="text-lg font-semibold mb-2">Coming Soon</h3>
- <p className="text-muted-foreground max-w-md">
- The {tabLabel.toLowerCase()} settings feature is currently under development. 
- Check back soon for updates.
- </p>
- </div>
- </CardContent>
- </Card>
- );
-}
+ { id: 'navigation', label: 'Navigation', icon: <Navigation className="h-4 w-4" />, available: true },
+ { id: 'branding', label: 'Branding', icon: <Paintbrush className="h-4 w-4" />, available: true },
+ ];
 
 export function DesignTabs({
  initialBannerSettings,
  initialHomepageSettings,
+ initialNavigationSettings,
+ initialBrandingSettings,
+ categories,
+ brands,
+ initialFeaturedProducts,
 }: DesignTabsProps) {
  const [activeTab, setActiveTab] = useState<TabId>('banners');
 
@@ -106,10 +100,16 @@ export function DesignTabs({
  {activeTab === 'banners' && (
  <BannersTab initialSettings={initialBannerSettings} />
  )}
- {activeTab === 'homepage' && <HomepageTab initialSettings={initialHomepageSettings} />}
- {(activeTab === 'navigation' || activeTab === 'branding') && (
- <ComingSoonTab tabId={activeTab} />
+ {activeTab === 'homepage' && (
+ <HomepageTab 
+   initialSettings={initialHomepageSettings} 
+   categories={categories}
+   brands={brands}
+   initialFeaturedProducts={initialFeaturedProducts}
+ />
  )}
+ {activeTab === 'navigation' && <NavigationTab initialSettings={initialNavigationSettings} />}
+ {activeTab === 'branding' && <BrandingTab initialSettings={initialBrandingSettings} />}
  </div>
  </div>
  );

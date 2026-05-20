@@ -10,6 +10,22 @@ import {
     type NavLink,
     type SocialLink
 } from '@/lib/settings';
+import { getFilteredProducts } from '@/lib/products';
+import type { Product } from '@/lib/types';
+
+/**
+ * Searches storefront products by name or keywords for autocomplete inputs.
+ */
+export async function searchProductsAction(query: string): Promise<Product[]> {
+    if (!query || query.trim().length < 2) return [];
+    try {
+        const { products } = await getFilteredProducts({ search: query, limit: 15 });
+        return products;
+    } catch (error) {
+        console.error('Error searching products in action:', error);
+        return [];
+    }
+}
 
 export async function updateCampaignBannerAction(formData: FormData) {
     // Parse messages from JSON string
@@ -65,6 +81,22 @@ export async function updateHomepageSettingsAction(formData: FormData) {
     }
 
     const heroSlideInterval = parseInt(formData.get('heroSlideInterval') as string, 10) || 5000;
+    const heroMode = (formData.get('heroMode') as 'carousel' | 'single' | 'hidden') || 'carousel';
+    const featuredTitle = (formData.get('featuredTitle') as string) || '';
+
+    const parseJsonField = <T>(fieldName: string, fallback: T): T => {
+        const val = formData.get(fieldName) as string;
+        try {
+            return val ? JSON.parse(val) : fallback;
+        } catch {
+            return fallback;
+        }
+    };
+
+    const promoGrid = parseJsonField('promoGrid', undefined);
+    const midBanner = parseJsonField('midBanner', undefined);
+    const departments = parseJsonField('departments', undefined);
+    const brandsSection = parseJsonField('brandsSection', undefined);
 
     const settings: HomepageSettings = {
         hero: {
@@ -76,8 +108,14 @@ export async function updateHomepageSettingsAction(formData: FormData) {
         },
         heroSlides,
         heroSlideInterval,
+        heroMode,
         featuredProductIds,
+        featuredTitle,
         storeHours: formData.get('storeHours') as string,
+        promoGrid,
+        midBanner,
+        departments,
+        brandsSection,
     };
 
     try {
@@ -98,7 +136,7 @@ export async function updateHomepageSettingsAction(formData: FormData) {
     }
 }
 
-async function updateNavigationSettingsAction(formData: FormData) {
+export async function updateNavigationSettingsAction(formData: FormData) {
     const parseJson = <T>(key: string): T[] => {
         try {
             const value = formData.get(key) as string;
@@ -134,7 +172,7 @@ async function updateNavigationSettingsAction(formData: FormData) {
     }
 }
 
-async function updateBrandingSettingsAction(formData: FormData) {
+export async function updateBrandingSettingsAction(formData: FormData) {
     const parseJson = <T>(key: string): T[] => {
         try {
             const value = formData.get(key) as string;

@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  */
-import { getProductBySlug, getFilteredProducts } from '@/lib/products';
+import { getProductBySlug, getFilteredProducts, getProductsByIds } from '@/lib/products';
 
 // Mock the Supabase client
 jest.mock('@/lib/supabase/server', () => ({
@@ -26,7 +26,16 @@ describe('Products Data Functions', () => {
   const mockRange = jest.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    mockSingle.mockReset();
+    mockSelect.mockReset();
+    mockFrom.mockReset();
+    mockEq.mockReset();
+    mockGte.mockReset();
+    mockLte.mockReset();
+    mockIlike.mockReset();
+    mockIn.mockReset();
+    mockOrder.mockReset();
+    mockRange.mockReset();
 
     const queryChain = {
       single: mockSingle,
@@ -39,14 +48,18 @@ describe('Products Data Functions', () => {
       range: mockRange,
     };
 
-    // Chain mock for product queries
+    const orderChain = {
+      order: mockOrder,
+      range: mockRange,
+      limit: jest.fn().mockImplementation(() => ({ range: mockRange })),
+    };
     mockSingle.mockResolvedValue({ data: null, error: null });
     mockEq.mockReturnValue(queryChain);
     mockIn.mockReturnValue(queryChain);
     mockGte.mockReturnValue(queryChain);
     mockLte.mockReturnValue(queryChain);
     mockIlike.mockReturnValue(queryChain);
-    mockOrder.mockReturnValue({ range: mockRange, limit: jest.fn() });
+    mockOrder.mockReturnValue(orderChain);
     mockRange.mockResolvedValue({ data: [], error: null, count: 0 });
     mockSelect.mockReturnValue(queryChain);
     mockFrom.mockReturnValue({ select: mockSelect });
@@ -66,7 +79,7 @@ describe('Products Data Functions', () => {
         'storefront_settings:product_storefront_settings(is_featured, pickup_only)'
       );
       expect(mockEq).toHaveBeenCalledWith('slug', 'test-product');
-      expect(mockIn).toHaveBeenCalledWith('stock_status', ['in_stock', 'pre_order']);
+      expect(mockIn).toHaveBeenCalledWith('stock_status', ['in_stock', 'pre_order', 'out_of_stock']);
     });
 
     it('returns null on error', async () => {
@@ -148,7 +161,7 @@ describe('Products Data Functions', () => {
     it('excludes out of stock products by default', async () => {
       await getFilteredProducts();
 
-      expect(mockIn).toHaveBeenCalledWith('stock_status', ['in_stock', 'pre_order']);
+      expect(mockIn).toHaveBeenCalledWith('stock_status', ['in_stock', 'pre_order', 'out_of_stock']);
     });
 
     it('returns no products for out of stock filter', async () => {
@@ -156,6 +169,37 @@ describe('Products Data Functions', () => {
 
       expect(result).toEqual({ products: [], count: 0 });
       expect(mockFrom).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getProductsByIds', () => {
+    it('returns empty array if ids is empty', async () => {
+      const result = await getProductsByIds([]);
+      expect(result).toEqual([]);
+      expect(mockFrom).not.toHaveBeenCalled();
+    });
+
+    it('queries products by ids and retains original ordering', async () => {
+      const mockProducts = [
+        { id: '2', name: 'Product B' },
+        { id: '1', name: 'Product A' },
+      ];
+      mockIn.mockResolvedValue({ data: mockProducts, error: null });
+
+      const result = await getProductsByIds(['1', '2']);
+
+      expect(mockFrom).toHaveBeenCalledWith('products');
+      expect(mockIn).toHaveBeenCalledWith('id', ['1', '2']);
+      expect(result[0].id).toBe('1');
+      expect(result[1].id).toBe('2');
+    });
+
+    it('returns empty array on DB error', async () => {
+      mockIn.mockResolvedValue({ data: null, error: { message: 'Database Error' } });
+
+      const result = await getProductsByIds(['1']);
+
+      expect(result).toEqual([]);
     });
   });
 });

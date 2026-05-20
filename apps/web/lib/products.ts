@@ -618,6 +618,10 @@ export async function getFilteredProducts(options?: ProductFilterQueryOptions & 
   const supabase = createPublicClient();
   const stockStatus = options?.stockStatus;
 
+  if (stockStatus && !isStorefrontVisibleStockStatus(stockStatus)) {
+    return { products: [], count: 0 };
+  }
+
   const categoryIds = await resolveCategoryIds(supabase, {
     categoryId: options?.categoryId,
     categorySlug: options?.categorySlug,
@@ -1228,4 +1232,27 @@ async function getProductGroups(
       groupSlug: pg?.slug || '',
     };
   });
+}
+
+/**
+ * Fetches multiple products by their IDs, preserving the order of the input IDs.
+ */
+export async function getProductsByIds(ids: string[]): Promise<Product[]> {
+  if (!ids || ids.length === 0) return [];
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from('products')
+    .select(PRODUCT_SELECT)
+    .in('id', ids);
+
+  if (error) {
+    console.error('Error fetching products by ids:', error);
+    return [];
+  }
+
+  const products = ((data || []) as unknown as ProductRow[]).map(transformProductRow);
+  
+  // Sort the products to match the exact order of the passed-in ids
+  const idMap = new Map(products.map(p => [p.id, p]));
+  return ids.map(id => idMap.get(id)).filter((p): p is Product => !!p);
 }
