@@ -14,7 +14,7 @@ import { normalizeProductSources } from '@/lib/product-sources';
 // Constants
 // =============================================================================
 
-export const RELEVANT_FIELDS = [
+const RELEVANT_FIELDS = [
   'title',
   'brand',
   'weight',
@@ -44,12 +44,12 @@ export const RELEVANT_FIELDS = [
   'image_text',
 ];
 
-export const MAX_PROMPT_SOURCES = 4;
+const MAX_PROMPT_SOURCES = 4;
 const MAX_PROMPT_FALLBACK_FIELDS = 4;
 const MAX_PROMPT_ARRAY_ITEMS = 8;
 const MAX_PROMPT_NESTED_KEYS = 8;
 
-export const EXCLUDED_FROM_LLM = new Set([
+const EXCLUDED_FROM_LLM = new Set([
   'ratings',
   'reviews_count',
   'availability',
@@ -219,7 +219,7 @@ function sanitizeNestedComposite(
  * Filter source data to include only relevant fields for prompt construction.
  * Preserved from batch-service.ts createBatchContent → filterSourceData.
  */
-export function filterSourceData(sourceData: Record<string, unknown>): Record<string, unknown> {
+function filterSourceData(sourceData: Record<string, unknown>): Record<string, unknown> {
   const filteredData: Record<string, unknown> = {};
 
   RELEVANT_FIELDS.forEach((field) => {
@@ -275,7 +275,7 @@ export function filterSourceData(sourceData: Record<string, unknown>): Record<st
 // Source Trust Ranking (preserved from batch-service.ts)
 // =============================================================================
 
-export function getSourceTrustLevel(sourceName: string): SourceTrustLevel {
+function getSourceTrustLevel(sourceName: string): SourceTrustLevel {
   const normalized = sourceName.toLowerCase();
 
   if (normalized === 'shopsite_input') return 'canonical';
@@ -284,7 +284,7 @@ export function getSourceTrustLevel(sourceName: string): SourceTrustLevel {
   return 'standard';
 }
 
-export function getPromptEvidenceSortRank(sourceName: string, trust: SourceTrustLevel): number {
+function getPromptEvidenceSortRank(sourceName: string, trust: SourceTrustLevel): number {
   if (trust === 'canonical') return 0;
   if (sourceName.toLowerCase().includes('manufacturer')) return 1;
   switch (trust) {
@@ -371,7 +371,7 @@ function collectAnimalSignalsFromValue(value: unknown, detected: Set<AnimalSigna
   }
 }
 
-export function collectAnimalSignals(
+function collectAnimalSignals(
   input: Record<string, unknown>,
   sources: Record<string, unknown>
 ): Set<AnimalSignal> {
@@ -387,6 +387,6 @@ export function collectAnimalSignals(
   return detected;
 }
 
-export function summarizeAnimalSignals(signals: Iterable<AnimalSignal>): string {
+function summarizeAnimalSignals(signals: Iterable<AnimalSignal>): string {
   return Array.from(signals).sort().join(', ');
 }
