@@ -377,7 +377,7 @@ class Crawl4AIEngine:
                 except Exception as exc:
                     last_exc = exc
                     error_str = str(exc).lower()
-                    is_transient = any(kw in error_str for kw in ("timeout", "timed out", "connection", "network", "dns"))
+                    is_transient = any(kw in error_str for kw in ("timeout", "timed out", "connection", "network", "dns", "decoding"))
                     if not is_transient or attempt >= max_retries:
                         raise
                     delay = min(1.0 * (2 ** attempt), 10.0) + _random.uniform(0, 0.5)
