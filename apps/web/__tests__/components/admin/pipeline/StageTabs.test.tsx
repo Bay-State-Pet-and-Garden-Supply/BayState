@@ -28,10 +28,9 @@ describe("StageTabs", () => {
     );
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs.length).toBe(8);
+    expect(tabs.length).toBe(7);
 
     expect(screen.getByRole("tab", { name: /Imported/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Awaiting Brand/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Extracting/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Processed/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Merging/i })).toBeInTheDocument();

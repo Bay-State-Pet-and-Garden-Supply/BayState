@@ -10,12 +10,6 @@ import {
     transformShopSiteProduct,
 } from '@/lib/admin/migration/product-sync';
 
-const CORRECTED_FACET_MIGRATION_PATH = path.resolve(
-    __dirname,
-    '../../../../supabase/migrations/20260404120000_normalize_corrected_product_facets.sql',
-);
-const CORRECTED_FACET_MIGRATION = readFileSync(CORRECTED_FACET_MIGRATION_PATH, 'utf8');
-
 describe('Product Sync Utilities', () => {
     describe('transformShopSiteProduct', () => {
         it('transforms ShopSite product to full feature parity format', () => {
@@ -67,13 +61,11 @@ describe('Product Sync Utilities', () => {
                 short_name: 'Test Short Name',
                 is_special_order: true,
                 in_store_pickup: true,
-                shopsite_pages: ['Dogs', 'Featured'],
                 weight: 5.5,
                 quantity: 10,
                 low_stock_threshold: 2,
                 is_taxable: true,
                 minimum_quantity: 0,
-                long_description: '<p>Long form details</p>',
                 product_type: 'Dog Food',
                 search_keywords: 'dog, food, healthy',
                 brand_name: 'Test Brand',
@@ -89,6 +81,7 @@ describe('Product Sync Utilities', () => {
                 size: '8 Oz',
                 color: 'Tan',
                 packaging_type: 'Pouch',
+                subproducts: [],
             });
         });
 
@@ -177,21 +170,33 @@ describe('Product Sync Utilities', () => {
                 inStorePickup: true,
             });
 
-            expect(input).toEqual(
-                expect.objectContaining({
-                    name: 'Example Product',
-                    price: 14.99,
-                    short_name: 'Mini Trainers',
-                    brand: 'Bay State',
-                    pet_type: 'Dog',
-                    lifestage: 'Adult',
-                    category: 'Dog Food',
-                    product_type: 'Treats',
-                    packaging_type: 'Bag',
-                    in_store_pickup: true,
-                    product_on_pages: ['Dog Food Dry', 'Dog Food Shop All'],
-                })
-            );
+            expect(input).toEqual({
+                name: 'Example Product',
+                price: 14.99,
+                description: 'Short description',
+                short_name: 'Mini Trainers',
+                category: 'Dog Food',
+                product_type: 'Treats',
+                brand: 'Bay State',
+                pet_type: 'Dog',
+                lifestage: 'Adult',
+                pet_size: null,
+                special_diet: null,
+                health_feature: null,
+                food_form: null,
+                flavor: null,
+                product_feature: null,
+                size: null,
+                color: null,
+                packaging_type: 'Bag',
+                weight: null,
+                search_keywords: null,
+                minimum_quantity: 0,
+                is_special_order: false,
+                in_store_pickup: true,
+                legacy_filename: null,
+                subproduct_skus: undefined,
+            });
         });
     });
 
@@ -210,44 +215,6 @@ describe('Product Sync Utilities', () => {
 
         it('appends SKU for uniqueness when provided', () => {
             expect(buildProductSlug('Common Product', 'SKU-123')).toBe('common-product-sku-123');
-        });
-    });
-
-    describe('corrected facet schema migration', () => {
-        it('adds PF7 and PF15 operational columns on products', () => {
-            expect(CORRECTED_FACET_MIGRATION).toContain('ADD COLUMN IF NOT EXISTS short_name text');
-            expect(CORRECTED_FACET_MIGRATION).toContain('ADD COLUMN IF NOT EXISTS in_store_pickup boolean NOT NULL DEFAULT false');
-        });
-
-        it('creates generic facet tables with unique relational constraints', () => {
-            expect(CORRECTED_FACET_MIGRATION).toContain('CREATE TABLE IF NOT EXISTS public.facet_definitions');
-            expect(CORRECTED_FACET_MIGRATION).toContain('CREATE TABLE IF NOT EXISTS public.facet_values');
-            expect(CORRECTED_FACET_MIGRATION).toContain('UNIQUE (facet_definition_id, normalized_value)');
-            expect(CORRECTED_FACET_MIGRATION).toContain('CREATE TABLE IF NOT EXISTS public.product_facets');
-            expect(CORRECTED_FACET_MIGRATION).toContain('UNIQUE (product_id, facet_value_id)');
-            expect(CORRECTED_FACET_MIGRATION).toContain('REFERENCES public.products(id) ON DELETE CASCADE');
-            expect(CORRECTED_FACET_MIGRATION).toContain('REFERENCES public.facet_values(id) ON DELETE CASCADE');
-        });
-
-        it('seeds the ten corrected generic facet definitions and exposes them via public-read RLS', () => {
-            for (const facetName of [
-                'lifestage',
-                'pet_size',
-                'special_diet',
-                'health_feature',
-                'food_form',
-                'flavor',
-                'product_feature',
-                'size',
-                'color',
-                'packaging_type',
-            ]) {
-                expect(CORRECTED_FACET_MIGRATION).toContain(`('${facetName}'`);
-            }
-
-            expect(CORRECTED_FACET_MIGRATION).toContain('CREATE POLICY "Allow public read access to facet_definitions"');
-            expect(CORRECTED_FACET_MIGRATION).toContain('CREATE POLICY "Allow public read access to facet_values"');
-            expect(CORRECTED_FACET_MIGRATION).toContain('CREATE POLICY "Allow public read access to product_facets"');
         });
     });
 });

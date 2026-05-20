@@ -1239,43 +1239,9 @@ export function PipelineClient({
       )}>
         <div className="flex flex-col flex-1 h-full w-full min-h-0">
           {currentStage === "extracting" ? (
-            <div className="grid gap-4 px-1 pb-6 xl:grid-cols-1">
-              <AdminCard variant="panel">
-                <AdminCardHeader>
-                  <div className="rounded-lg bg-primary/10 p-2">
-                    <Activity className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <AdminCardTitle>Active Enrichments</AdminCardTitle>
-                    <AdminCardDescription>
-                      Live AI enrichment jobs currently running or queued.
-                    </AdminCardDescription>
-                  </div>
-                </AdminCardHeader>
-                <AdminCardContent>
-                  <ActiveEnrichmentsTab />
-                </AdminCardContent>
-              </AdminCard>
-            </div>
+            <ActiveEnrichmentsTab />
           ) : currentStage === "merging" ? (
-            <div className="grid gap-4 px-1 pb-6 xl:grid-cols-1">
-              <AdminCard variant="panel">
-                <AdminCardHeader>
-                  <div className="rounded-lg bg-brand-burgundy/10 p-2">
-                    <Brain className="h-5 w-5 text-brand-burgundy" />
-                  </div>
-                  <div>
-                    <AdminCardTitle>AI Consolidations</AdminCardTitle>
-                    <AdminCardDescription>
-                      Active consolidation batches and history.
-                    </AdminCardDescription>
-                  </div>
-                </AdminCardHeader>
-                <AdminCardContent>
-                  <ActiveConsolidationsTab />
-                </AdminCardContent>
-              </AdminCard>
-            </div>
+            <ActiveConsolidationsTab />
           ) : currentStage === "processed" ? (
             <ProcessedResultsView
               products={filteredProducts}
