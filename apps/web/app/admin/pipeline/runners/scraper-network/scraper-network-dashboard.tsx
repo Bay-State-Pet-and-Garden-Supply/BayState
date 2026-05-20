@@ -9,7 +9,6 @@ import {
   ChevronRight,
   Copy,
   Key,
-  MoreHorizontal,
   Plus,
   RefreshCw,
   Search,
@@ -47,11 +46,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -178,7 +182,15 @@ export function ScraperNetworkDashboard() {
   const [selectedRunnerId, setSelectedRunnerId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isLogsOpen, setIsLogsOpen] = useState(false);
+
+  // Custom confirmation and rename states
+  const [rotateKeyRunnerId, setRotateKeyRunnerId] = useState<string | null>(null);
+  const [deleteRunnerId, setDeleteRunnerId] = useState<string | null>(null);
+  const [cancelJobId, setCancelJobId] = useState<string | null>(null);
+  const [renameRunnerId, setRenameRunnerId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState<string>('');
   const [retryingSkus, setRetryingSkus] = useState<Record<string, boolean>>({});
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [dbJob, setDbJob] = useState<any>(null);
   const [enabledOverrides, setEnabledOverrides] = useState<Record<string, boolean>>({});
   const [showAddRunnerModal, setShowAddRunnerModal] = useState(false);
@@ -337,11 +349,14 @@ export function ScraperNetworkDashboard() {
     toast.success(`Runner ${enabled ? 'enabled' : 'disabled'}.`);
   };
 
-  const handleRotateApiKey = async (id: string) => {
-    const confirmed = window.confirm(
-      'Rotate the API key for this runner? The old key will stop working right away.',
-    );
-    if (!confirmed) return;
+  const handleRotateApiKey = (id: string) => {
+    setRotateKeyRunnerId(id);
+  };
+
+  const confirmRotateApiKey = async () => {
+    if (!rotateKeyRunnerId) return;
+    const id = rotateKeyRunnerId;
+    setRotateKeyRunnerId(null);
 
     const result = await rotateRunnerKey(id);
     if (result.success && result.key) {
@@ -353,9 +368,19 @@ export function ScraperNetworkDashboard() {
     toast.error(result.error || 'We could not rotate the API key.');
   };
 
-  const handleRename = async (id: string) => {
-    const nextName = window.prompt('Enter a new runner name.', id);
-    if (!nextName || nextName === id) return;
+  const handleRename = (id: string) => {
+    setRenameRunnerId(id);
+    setRenameValue(runnersArray.find((r) => r.id === id)?.name || id);
+  };
+
+  const confirmRenameRunner = async () => {
+    if (!renameRunnerId || !renameValue.trim() || renameValue === renameRunnerId) {
+      setRenameRunnerId(null);
+      return;
+    }
+    const id = renameRunnerId;
+    const nextName = renameValue.trim();
+    setRenameRunnerId(null);
 
     const result = await renameRunner(id, nextName);
     if (result.success) {
@@ -366,11 +391,14 @@ export function ScraperNetworkDashboard() {
     toast.error(result.error || 'We could not rename this runner.');
   };
 
-  const handleDelete = async (id: string) => {
-    const confirmed = window.confirm(
-      `Delete runner "${id}"? This removes the runner record and cannot be undone.`,
-    );
-    if (!confirmed) return;
+  const handleDelete = (id: string) => {
+    setDeleteRunnerId(id);
+  };
+
+  const confirmDeleteRunner = async () => {
+    if (!deleteRunnerId) return;
+    const id = deleteRunnerId;
+    setDeleteRunnerId(null);
 
     const result = await deleteRunner(id);
     if (result.success) {
@@ -458,11 +486,14 @@ export function ScraperNetworkDashboard() {
     }
   };
 
-  const handleCancelJob = async (jobId: string) => {
-    const confirmed = window.confirm(
-      'Are you sure you want to cancel this job? This will stop the runner and abort all pending SKUs.',
-    );
-    if (!confirmed) return;
+  const handleCancelJob = (jobId: string) => {
+    setCancelJobId(jobId);
+  };
+
+  const confirmCancelJob = async () => {
+    if (!cancelJobId) return;
+    const jobId = cancelJobId;
+    setCancelJobId(null);
 
     try {
       const res = await adminFetch(`/api/admin/pipeline/runs/${jobId}/cancel`, {
@@ -602,7 +633,7 @@ export function ScraperNetworkDashboard() {
                       onClick={() => setSelectedRunnerId(runner.id)}
                       className={cn(
                         "p-4 cursor-pointer transition-all flex flex-col gap-2 hover:bg-muted/30",
-                        isSelected ? "bg-muted/60 border-l-4 border-primary" : "border-l-4 border-transparent"
+                        isSelected ? "bg-emerald-500/5 dark:bg-emerald-500/10 border-l border-emerald-600" : "border-l border-transparent"
                       )}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -971,7 +1002,7 @@ export function ScraperNetworkDashboard() {
                     </span>
                   </div>
                   <div className="rounded-xl border border-border p-4 bg-muted/5 flex flex-col justify-between col-span-2 sm:col-span-1">
-                    <span className="text-xs text-muted-foreground font-semibold">Today's Jobs</span>
+                    <span className="text-xs text-muted-foreground font-semibold">{"Today's Jobs"}</span>
                     <span className="text-2xl font-black font-mono text-foreground mt-2">
                       {queueCounts.total}
                     </span>
@@ -1173,6 +1204,82 @@ export function ScraperNetworkDashboard() {
         isOpen={isLogsOpen}
         onClose={() => setIsLogsOpen(false)}
       />
+
+      {/* Rotate Key Confirmation */}
+      <AlertDialog open={rotateKeyRunnerId !== null} onOpenChange={(open) => !open && setRotateKeyRunnerId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rotate API Key</AlertDialogTitle>
+            <AlertDialogDescription>
+              Rotate the API key for this runner? The old key will stop working right away.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void confirmRotateApiKey()}>Rotate Key</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Runner Confirmation */}
+      <AlertDialog open={deleteRunnerId !== null} onOpenChange={(open) => !open && setDeleteRunnerId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Runner</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete runner &quot;{deleteRunnerId}&quot;? This removes the runner record and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void confirmDeleteRunner()} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel Job Confirmation */}
+      <AlertDialog open={cancelJobId !== null} onOpenChange={(open) => !open && setCancelJobId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Scraper Job</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel this job? This will stop the runner and abort all pending SKUs.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void confirmCancelJob()} className="bg-red-600 hover:bg-red-700">Cancel Job</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Rename Runner Dialog */}
+      <Dialog open={renameRunnerId !== null} onOpenChange={(open) => !open && setRenameRunnerId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Runner</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="renameInput">Runner Name</Label>
+              <Input
+                id="renameInput"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                placeholder="Enter new runner name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameRunnerId(null)}>
+              Cancel
+            </Button>
+            <Button onClick={() => void confirmRenameRunner()} disabled={!renameValue.trim() || renameValue === renameRunnerId}>
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

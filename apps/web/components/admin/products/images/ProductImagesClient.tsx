@@ -207,7 +207,7 @@ export function ProductImagesClient({
                       Primary
                     </Badge>
                   )}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <div className="absolute inset-0 bg-[#211414]/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     {!image.is_primary && (
                       <Button
                         size="sm"
@@ -282,7 +282,7 @@ export function ProductImagesClient({
                     className="object-cover"
                     sizes="(max-width: 768px) 50vw, 25vw"
                   />
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <div className="absolute inset-0 bg-[#211414]/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <Button
                       size="sm"
                       onClick={() => handleMigrateLegacy(url)}
