@@ -27,8 +27,8 @@ coverage/
 .antigravitycli/
 .agent_evidence/
 .agents/
+conductor/
 docs/maestro/
-conductor/fix-scraping-status.md
 
 # AI Agent Output Files
 task.md
