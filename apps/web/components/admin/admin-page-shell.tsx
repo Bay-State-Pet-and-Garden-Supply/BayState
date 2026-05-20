@@ -14,6 +14,7 @@ interface AdminPageShellProps {
   contentClassName?: string;
   fullHeight?: boolean;
   compactHeader?: boolean;
+  hideHeader?: boolean;
   eyebrow?: string;
   backHref?: string;
   backLabel?: string;
@@ -31,6 +32,7 @@ export function AdminPageShell({
   contentClassName,
   fullHeight,
   compactHeader,
+  hideHeader,
   eyebrow,
   backHref,
   backLabel,
@@ -38,23 +40,25 @@ export function AdminPageShell({
   return (
     <div
       className={cn(
-        compactHeader ? 'flex flex-col gap-4' : 'flex flex-col gap-6',
+        compactHeader || hideHeader ? 'flex flex-col gap-4' : 'flex flex-col gap-6',
         'flex-1 min-h-0',
         className,
       )}
     >
-      <PageHeader
-        title={title}
-        description={description}
-        icon={icon}
-        meta={meta}
-        actions={actions}
-        controls={controls}
-        compact={compactHeader}
-        eyebrow={eyebrow}
-        backHref={backHref}
-        backLabel={backLabel}
-      />
+      {!hideHeader && (
+        <PageHeader
+          title={title}
+          description={description}
+          icon={icon}
+          meta={meta}
+          actions={actions}
+          controls={controls}
+          compact={compactHeader}
+          eyebrow={eyebrow}
+          backHref={backHref}
+          backLabel={backLabel}
+        />
+      )}
 
       <div
         className={cn(

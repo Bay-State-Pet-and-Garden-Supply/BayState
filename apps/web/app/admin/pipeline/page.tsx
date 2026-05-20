@@ -79,11 +79,8 @@ export default async function PipelinePage({ searchParams }: PageProps) {
   return (
     <AdminPageShell
       title="Pipeline"
-      description="Move products from import through review, publishing, and export with one stable workspace for each stage."
-      icon={<Activity className="h-5 w-5" />}
-      eyebrow="Workspace view"
       fullHeight
-      compactHeader
+      hideHeader
     >
       <PipelineClient
         initialProducts={initialProducts}

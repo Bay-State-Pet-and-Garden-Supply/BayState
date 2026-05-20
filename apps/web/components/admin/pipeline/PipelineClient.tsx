@@ -1201,11 +1201,11 @@ export function PipelineClient({
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
+    <div className="flex h-full min-h-0 flex-col gap-2">
       {/* Stage Tabs & Inline Actions */}
       <div className="shrink-0">
         {hideTabs ? (
-          <div className="admin-panel flex flex-col gap-3 p-4 xl:flex-row xl:items-end xl:justify-between">
+          <div className="admin-panel flex flex-col gap-2 p-3 xl:flex-row xl:items-end xl:justify-between">
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
@@ -1221,10 +1221,10 @@ export function PipelineClient({
                   style={{ backgroundColor: stageConfig.color }}
                 />
                 <div>
-                  <h2 className="text-lg font-semibold text-foreground">
+                  <h2 className="text-lg font-semibold text-foreground leading-none">
                     {stageConfig.label}
                   </h2>
-                  <p className="text-[10px] font-semibold text-muted-foreground">
+                  <p className="text-[10px] font-semibold text-muted-foreground mt-1 uppercase tracking-wider">
                     {stageConfig.description}
                   </p>
                 </div>
@@ -1244,7 +1244,7 @@ export function PipelineClient({
 
       {/* Content Area */}
       <div className={cn(
-        'relative flex-1 min-h-0 px-1 pb-1 transition-opacity',
+        'relative flex-1 min-h-0 px-0.5 pb-0.5 transition-opacity',
         isLiveOperationalTab(currentStage) ? 'overflow-y-auto' : 'overflow-hidden',
         (isLoading || isNavigating) && 'pointer-events-none opacity-50'
       )}>
