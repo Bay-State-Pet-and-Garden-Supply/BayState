@@ -534,7 +534,6 @@ export async function importShopSiteProducts({
 
     const brandMap = new Map<string, string>();
     const categoryMap = new Map<string, string>();
-    const petTypeMap = new Map<PetTypeName, string>();
     const facetDefinitionMap = new Map<GenericFacetName, string>();
     const facetValueMap = new Map<string, string>();
 
@@ -577,8 +576,9 @@ export async function importShopSiteProducts({
     }
 
     const { data: petTypes } = await supabase.from('pet_types').select('id, name');
+    const petTypeMap = new Map<string, string>();
     for (const pt of petTypes || []) {
-        petTypeMap.set(pt.name as PetTypeName, pt.id);
+        petTypeMap.set(pt.name.toLowerCase(), pt.id);
     }
 
     const genericFacetDefinitions = Object.keys(GENERIC_FACET_METADATA).map((field) =>
@@ -603,7 +603,7 @@ export async function importShopSiteProducts({
     }
 
     for (const petTypeName of Array.from(resolvedPetTypeNames)) {
-        if (petTypeMap.has(petTypeName)) {
+        if (petTypeMap.has(petTypeName.toLowerCase())) {
             continue;
         }
 
@@ -620,7 +620,7 @@ export async function importShopSiteProducts({
             throw new Error(`Failed to create pet type "${petTypeName}": ${createdPetTypeError?.message ?? 'Missing pet type row'}`);
         }
 
-        petTypeMap.set(petTypeName, createdPetType.id);
+        petTypeMap.set(petTypeName.toLowerCase(), createdPetType.id);
     }
 
     for (const shopSiteProduct of shopSiteProducts) {
@@ -710,7 +710,7 @@ export async function importShopSiteProducts({
                         petTypeName: pet_type_name ?? shopSiteProduct.petTypeName,
                     });
                     const petTypeIds = resolvedPetTypes.petTypes
-                        .map((petType) => petTypeMap.get(petType))
+                        .map((petType) => petTypeMap.get(petType.toLowerCase()))
                         .filter((petTypeId): petTypeId is string => !!petTypeId);
 
                     await replaceProductPetTypes(supabase, upserted.id, petTypeIds);

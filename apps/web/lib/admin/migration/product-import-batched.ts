@@ -306,7 +306,7 @@ export async function importShopSiteProductsBatched({
         });
 
         for (const petTypeName of resolvedPetTypes.petTypes) {
-            const petTypeId = petTypeMap.get(petTypeName);
+            const petTypeId = petTypeMap.get(petTypeName.toLowerCase());
             if (petTypeId) {
                 petTypesToInsert.push({ product_id: productId, pet_type_id: petTypeId });
             }
@@ -547,7 +547,7 @@ async function loadReferenceData(supabase: SupabaseClient) {
             { depth: c.depth ?? 0, sort_order: c.sort_order ?? 0, slug: c.slug },
         ]),
     );
-    const petTypeMap = new Map(petTypesData.map((p) => [p.name, p.id]));
+    const petTypeMap = new Map(petTypesData.map((p) => [p.name.toLowerCase(), p.id]));
     const facetDefinitionMap = new Map(
         facetDefinitionsData.map((d) => [d.name as GenericFacetName, d.id]),
     );
