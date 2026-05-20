@@ -30,7 +30,7 @@ export async function PetRecommendations() {
       <div className="mb-8 flex items-center justify-between border-b-2 border-primary/20 pb-4">
         <div className="flex items-center gap-4">
           <Heart className="h-8 w-8 text-rose-600 fill-rose-600" />
-          <h2 className="text-4xl sm:text-6xl font-bold text-zinc-900 tracking-tighter font-display">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
             For {toTitleCase(petNamesDisplay)}
           </h2>
         </div>
