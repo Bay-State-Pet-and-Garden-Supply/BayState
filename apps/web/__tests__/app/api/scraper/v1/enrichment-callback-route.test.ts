@@ -52,7 +52,10 @@ jest.mock('@/lib/supabase/config', () => ({
 import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { validateActiveRunner } from '@/lib/scraper-auth';
-import { POST } from '@/app/api/scraper/v1/enrichment-callback/route';
+import {
+  POST,
+  shouldRetryEnrichmentResult,
+} from '@/app/api/scraper/v1/enrichment-callback/route';
 
 function createAttemptLookupChain(attemptData: Record<string, unknown>) {
   const chain: any = {
@@ -275,5 +278,74 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
     expect(response.status).toBe(200);
     expect(payload.next_status).toBe('imported');
     expect(mockSupabase.retryInsertions).toHaveLength(0);
+  });
+
+  it('does not retry mixed approved-source failures with terminal extraction warnings', async () => {
+    const mockSupabase = createMockSupabase({
+      attemptData: {
+        id: 'attempt-1',
+        job_id: 'job-1',
+        mode: 'mixed',
+        attempt_number: 1,
+        retry_count: 0,
+        enrichment_jobs: {
+          test_mode: true,
+          mode: 'mixed',
+          config: { extraction_mode: 'mixed' },
+        },
+      },
+      jobAttemptsData: [
+        { sku: 'SKU-1', attempt_number: 1, status: 'failed' },
+      ],
+    });
+    (createClient as jest.Mock).mockReturnValue(mockSupabase);
+
+    const response = await POST(
+      new NextRequest('http://localhost/api/scraper/v1/enrichment-callback', {
+        body: JSON.stringify(buildCallbackBody({
+          validation: {
+            warnings: ['Could not extract product name from HTML'],
+            missing_required: [],
+          },
+          attempts: [
+            {
+              mode: 'structured',
+              status: 'failed',
+              error: 'Could not extract product name from HTML',
+            },
+          ],
+        })),
+      } as any),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.next_status).toBe('imported');
+    expect(mockSupabase.retryInsertions).toHaveLength(0);
+  });
+
+  it('treats terminal approved-source extraction warnings as non-retryable', () => {
+    const shouldRetry = shouldRetryEnrichmentResult(
+      buildCallbackBody({
+        validation: {
+          warnings: ['Could not extract product name from HTML'],
+          missing_required: [],
+        },
+        attempts: [
+          {
+            mode: 'structured',
+            status: 'failed',
+            error: 'Could not extract product name from HTML',
+          },
+        ],
+      }) as any,
+      {
+        attempt_number: 1,
+        retry_count: 0,
+      },
+      'mixed',
+    );
+
+    expect(shouldRetry).toBe(false);
   });
 });

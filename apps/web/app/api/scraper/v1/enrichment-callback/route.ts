@@ -39,6 +39,7 @@ const REQUESTED_EXTRACTION_MODES: RequestedExtractionMode[] = [
   "distributor_only",
   "ai_only",
 ];
+const MAX_ENRICHMENT_ATTEMPTS = 5;
 
 interface AttemptLike {
   retry_count?: number | null;
@@ -84,9 +85,8 @@ export function shouldRetryEnrichmentResult(
   // Cumulative safety net: never retry more than 5 times total per SKU.
   // Unlike retry_count (which resets per attempt), attempt_number grows
   // across all retries and provides a hard stop against infinite loops.
-  const SKU_MAX_ATTEMPTS = 5;
   const attemptNumber = attempt.attempt_number ?? 1;
-  if (attemptNumber >= SKU_MAX_ATTEMPTS) {
+  if (attemptNumber >= MAX_ENRICHMENT_ATTEMPTS) {
     return false;
   }
 
@@ -102,6 +102,13 @@ export function shouldRetryEnrichmentResult(
   }
 
   if (result.status === "partial" && result.confidence.overall >= 0.6) {
+    return false;
+  }
+
+  if (
+    isApprovedSourceResult(result)
+    && isTerminalApprovedSourceFailure(result.validation?.warnings)
+  ) {
     return false;
   }
 
@@ -257,7 +264,20 @@ export async function POST(request: NextRequest) {
       console.error("Failed to update enrichment attempt:", attemptUpdateError);
     }
 
-    const nextStatus = nextAttempt.status;
+    const nextAttemptNumber = (attemptData.attempt_number ?? 1) + 1;
+    const shouldQueueRetry = nextAttempt.retry && nextAttemptNumber <= MAX_ENRICHMENT_ATTEMPTS;
+    const nextStatus = shouldQueueRetry
+      ? nextAttempt.status
+      : nextAttempt.status === "processed"
+        ? "processed"
+        : "imported";
+
+    if (nextAttempt.retry && !shouldQueueRetry) {
+      console.warn(
+        `[Enrichment Callback] Retry hard cap reached for SKU ${enrichedResult.sku} ` +
+        `(attempt ${attemptData.attempt_number ?? 1}/${MAX_ENRICHMENT_ATTEMPTS}). Finalizing without requeue.`
+      );
+    }
 
     if (isTestJob) {
       console.log(`[Enrichment Callback] Test job detected for SKU ${enrichedResult.sku} - skipping products_ingestion update.`);
@@ -303,6 +323,10 @@ export async function POST(request: NextRequest) {
         sources: durableSources,
         pipeline_status: nextStatus,
         confidence_score: mergedEnriched.confidence_score,
+        error_message:
+          nextStatus === "imported" && enrichedResult.status === "failed"
+            ? enrichedResult.validation?.warnings?.[0] ?? "Enrichment failed"
+            : null,
         updated_at: new Date().toISOString(),
       };
 
@@ -320,11 +344,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (nextAttempt.retry) {
+    if (shouldQueueRetry) {
       await supabase.from("enrichment_attempts").insert({
         job_id: attemptData.job_id,
         sku: enrichedResult.sku,
-        attempt_number: (attemptData.attempt_number ?? 1) + 1,
+        attempt_number: nextAttemptNumber,
         status: "queued",
         mode: requestedMode,
         model: enrichedResult.model,

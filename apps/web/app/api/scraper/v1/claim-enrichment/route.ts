@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
         });
       } else {
         // Claim the job (or overwrite lease if it was someone else's/expired)
-        const updateData: Record<string, any> = {
+        const updateData: Record<string, unknown> = {
           status: "running",
           claimed_by: runner.runnerName,
           lease_token: leaseToken,
