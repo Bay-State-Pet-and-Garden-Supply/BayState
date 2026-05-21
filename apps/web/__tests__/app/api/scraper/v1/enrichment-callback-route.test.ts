@@ -206,7 +206,10 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
 
     const response = await POST(
       new NextRequest('http://localhost/api/scraper/v1/enrichment-callback', {
-        body: JSON.stringify(buildCallbackBody()),
+        body: JSON.stringify(buildCallbackBody({
+          status: 'partial',
+          confidence: { overall: 0.3, fields: {} },
+        })),
       } as any),
     );
     const payload = await response.json();

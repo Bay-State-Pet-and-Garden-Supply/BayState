@@ -443,9 +443,22 @@ export function getApprovedSourceSnapshotSlugs(
 export function isTerminalApprovedSourceFailure(
   warnings: string[] | undefined,
 ): boolean {
+  const terminalTokens = [
+    "AUTH_REQUIRED",
+    "AUTH_FAILED",
+    "AUTH_EXPIRED",
+    "NO MATCH",
+    "NO_MATCH",
+    "POLICY_BLOCKED",
+    "COULD NOT EXTRACT",
+    "EXTRACTION FAILED",
+    "UNABLE TO EXTRACT",
+    "PRODUCT NOT FOUND",
+    "NO RESULT",
+  ];
   return (warnings ?? []).some((warning) => {
     const normalized = warning.toUpperCase();
-    return ["AUTH_REQUIRED", "AUTH_FAILED", "AUTH_EXPIRED", "NO MATCH", "NO_MATCH", "POLICY_BLOCKED"].some((token) => normalized.includes(token));
+    return terminalTokens.some((token) => normalized.includes(token));
   });
 }
 

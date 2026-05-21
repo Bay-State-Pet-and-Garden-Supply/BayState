@@ -42,6 +42,7 @@ const REQUESTED_EXTRACTION_MODES: RequestedExtractionMode[] = [
 
 interface AttemptLike {
   retry_count?: number | null;
+  attempt_number?: number | null;
 }
 
 function isRequestedExtractionMode(value: unknown): value is RequestedExtractionMode {
@@ -80,6 +81,15 @@ export function shouldRetryEnrichmentResult(
   attempt: AttemptLike,
   requestedMode: RequestedExtractionMode,
 ): boolean {
+  // Cumulative safety net: never retry more than 5 times total per SKU.
+  // Unlike retry_count (which resets per attempt), attempt_number grows
+  // across all retries and provides a hard stop against infinite loops.
+  const SKU_MAX_ATTEMPTS = 5;
+  const attemptNumber = attempt.attempt_number ?? 1;
+  if (attemptNumber >= SKU_MAX_ATTEMPTS) {
+    return false;
+  }
+
   const failureThreshold = 3;
   const retryCount = attempt.retry_count ?? 0;
 
@@ -95,11 +105,11 @@ export function shouldRetryEnrichmentResult(
     return false;
   }
 
-  if (
-    requestedMode === "distributor_only"
-    && isApprovedSourceResult(result)
-    && isTerminalApprovedSourceFailure(result.validation?.warnings)
-  ) {
+  // Distributor-only extraction is deterministic: same SKU searched across
+  // the same distributor catalogs will always produce the same result.
+  // "Failed" means the SKU wasn't found (or couldn't be extracted) from any
+  // distributor. Retrying will not change the outcome — just fail it.
+  if (requestedMode === "distributor_only" && result.status === "failed") {
     return false;
   }
 
