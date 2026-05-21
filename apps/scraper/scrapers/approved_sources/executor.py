@@ -38,10 +38,12 @@ class ApprovedSourceExecutor:
         plan: ApprovedSourcePlan,
         extractor: Any,
         api_client: Any | None = None,
+        ai_credentials: dict[str, Any] | None = None,
     ):
         self.plan = plan
         self.extractor = extractor
         self.api_client = api_client
+        self.ai_credentials = ai_credentials
         self.policy = plan.sourcePolicy
 
         if api_client is not None:
@@ -119,6 +121,7 @@ class ApprovedSourceExecutor:
 
             try:
                 adapter = adapter_cls(entry, self.plan)
+                adapter.ai_credentials = getattr(self, "ai_credentials", None)
                 result = await adapter.extract(self.extractor)
             except Exception as exc:  # pragma: no cover - defensive logging branch
                 logger.error(

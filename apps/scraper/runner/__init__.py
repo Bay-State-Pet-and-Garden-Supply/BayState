@@ -437,6 +437,7 @@ async def _run_approved_source_extraction(
             plan=plan,
             extractor=extractor,
             api_client=api_client,
+            ai_credentials=attempt.ai_credentials,
         )
 
         enrichment_result = await executor.execute()

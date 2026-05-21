@@ -204,13 +204,24 @@ class OfficialBrandAdapter(ApprovedSourceAdapter):
             "[OfficialBrandAdapter] Searching approved domains: %s", full_query
         )
 
-        client = SearchClient(max_results=10)
+        api_key = None
+        if hasattr(self, "ai_credentials") and isinstance(self.ai_credentials, dict):
+            api_key = self.ai_credentials.get("serper_api_key") or self.ai_credentials.get("serpapi_api_key")
+
+        client = SearchClient(max_results=10, api_key=api_key)
         results, error = await client.search(full_query)
 
         if not results:
-            logger.info(
-                "[OfficialBrandAdapter] No search results for: %s", full_query
-            )
+            if error:
+                logger.error(
+                    "[OfficialBrandAdapter] Search failed for query '%s': %s",
+                    full_query,
+                    error,
+                )
+            else:
+                logger.info(
+                    "[OfficialBrandAdapter] No search results for: %s", full_query
+                )
             return None
 
         # Filter and rank results
@@ -270,10 +281,20 @@ class OfficialBrandAdapter(ApprovedSourceAdapter):
         )
         query = f"{sku} ({site_constraint})"
 
-        client = SearchClient(max_results=5)
+        api_key = None
+        if hasattr(self, "ai_credentials") and isinstance(self.ai_credentials, dict):
+            api_key = self.ai_credentials.get("serper_api_key") or self.ai_credentials.get("serpapi_api_key")
+
+        client = SearchClient(max_results=5, api_key=api_key)
         results, error = await client.search(query)
 
         if not results:
+            if error:
+                logger.error(
+                    "[OfficialBrandAdapter] SKU search failed for query '%s': %s",
+                    query,
+                    error,
+                )
             return None
 
         source_policy = self.plan.sourcePolicy
