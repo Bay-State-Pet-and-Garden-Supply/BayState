@@ -138,6 +138,13 @@ async def _run_enrichment_job(
     if log_buffer is None:
         log_buffer = []
 
+    model = getattr(attempt, "model", None) or job_payload.get("model", "deepseek-chat")
+    mode_str = (
+        getattr(attempt, "mode", None)
+        or job_payload.get("mode")
+        or job_payload.get("extraction_mode", "mixed")
+    )
+
     _emit_runner_log(
         job_id=job_id,
         runner_name=runner_name,
@@ -147,8 +154,8 @@ async def _run_enrichment_job(
         message=f"Enrichment job {job_id} started",
         details={
             "sku_count": len(skus),
-            "mode": job_payload.get("mode", "mixed"),
-            "model": job_payload.get("model", "deepseek-chat"),
+            "mode": mode_str,
+            "model": model,
         },
         phase="starting",
         flush_immediately=True,
@@ -157,8 +164,6 @@ async def _run_enrichment_job(
     target_url = getattr(attempt, "target_url", None) or job_payload.get("target_url", "")
     target_sku = skus[0] if skus else job_payload.get("sku", "")
     domain = getattr(attempt, "domain", None) or job_payload.get("domain")
-    model = getattr(attempt, "model", None) or job_payload.get("model", "deepseek-chat")
-    mode_str = getattr(attempt, "mode", None) or job_payload.get("mode", "mixed")
 
     if not target_sku:
         error_msg = "Enrichment job missing SKU"
@@ -238,8 +243,9 @@ async def _run_enrichment_job(
         url=target_url,
         domain=domain,
         model=model,
-        mode=mode_str,
+        mode=mode_str if mode_str in {"structured", "metadata", "llm", "mixed"} else "mixed",
         source_results=extraction_result.get("source_results"),
+        requested_extraction_mode=mode_str if mode_str in {"mixed", "distributor_only", "ai_only"} else None,
     )
 
     if extraction_result.get("success"):
@@ -254,6 +260,7 @@ async def _run_enrichment_job(
                 "confidence": enrichment_result.confidence.overall,
                 "scraped_at": enrichment_result.extracted_at,
                 "mode": mode_str,
+                "requested_extraction_mode": enrichment_result.requested_extraction_mode,
                 "model": model,
             }
         }
@@ -344,6 +351,11 @@ async def _run_approved_source_extraction(
     a callback (even on failure).
     """
     job_id = attempt.job_id
+    requested_mode = (
+        getattr(attempt, "mode", None)
+        or job_payload.get("extraction_mode")
+        or job_payload.get("mode", "mixed")
+    )
 
     source_plan_raw = getattr(attempt, "source_plan", None) or job_payload.get("source_plan")
     if not source_plan_raw:
@@ -359,12 +371,12 @@ async def _run_approved_source_extraction(
             phase="failed",
         )
         results["error_message"] = error_msg
-        # Build and submit a failed result
         enrichment_result = build_error_result(
             sku=target_sku,
             url="approved_source_extraction",
             error_message=error_msg,
             mode="mixed",
+            requested_extraction_mode=requested_mode,
         )
         _submit_result(api_client, attempt, job_payload, enrichment_result)
         results["logs"] = job_logging.snapshot() if job_logging else log_buffer
@@ -377,12 +389,11 @@ async def _run_approved_source_extraction(
         log_buffer=log_buffer,
         level="info",
         message=f"Executing Approved Source Extraction for SKU={target_sku}",
-        details={"has_source_plan": True},
+        details={"has_source_plan": True, "requested_extraction_mode": requested_mode},
         sku=target_sku,
         phase="enriching",
     )
 
-    # Parse source plan
     try:
         from scrapers.approved_sources.types import parse_source_plan
 
@@ -405,16 +416,15 @@ async def _run_approved_source_extraction(
             url="approved_source_extraction",
             error_message=error_msg,
             mode="mixed",
+            requested_extraction_mode=requested_mode,
         )
         _submit_result(api_client, attempt, job_payload, enrichment_result)
         results["logs"] = job_logging.snapshot() if job_logging else log_buffer
         return results
 
-    # Execute via executor
     try:
         from scrapers.approved_sources.executor import ApprovedSourceExecutor
 
-        # Create extractor (needed for the adapter interface)
         model = getattr(attempt, "model", None) or job_payload.get("model", "deepseek-chat")
         extractor = ProductPageExtractor(
             headless=settings.browser_settings["headless"],
@@ -448,9 +458,9 @@ async def _run_approved_source_extraction(
             url="approved_source_extraction",
             error_message=error_msg,
             mode="mixed",
+            requested_extraction_mode=requested_mode,
         )
 
-    # Merge executor result into results dict
     if enrichment_result and enrichment_result.status in ("success", "partial"):
         results["skus_processed"] = 1
         results["data"][target_sku] = {
@@ -463,6 +473,7 @@ async def _run_approved_source_extraction(
                 "confidence": enrichment_result.confidence.overall,
                 "scraped_at": enrichment_result.extracted_at,
                 "mode": "approved_source",
+                "requested_extraction_mode": enrichment_result.requested_extraction_mode,
                 "decision": enrichment_result.decision,
                 "llm_used": enrichment_result.llm_used,
                 "source_results": [
@@ -480,12 +491,12 @@ async def _run_approved_source_extraction(
             details={
                 "confidence": enrichment_result.confidence.overall,
                 "decision": enrichment_result.decision,
+                "requested_extraction_mode": enrichment_result.requested_extraction_mode,
             },
             sku=target_sku,
             phase="completed",
         )
     else:
-        status = enrichment_result.status if enrichment_result else "failed"
         confidence = enrichment_result.confidence.overall if enrichment_result else 0.0
         results["data"][target_sku] = {
             "enrichment": {
@@ -493,6 +504,7 @@ async def _run_approved_source_extraction(
                 "confidence": confidence,
                 "scraped_at": now_iso(),
                 "mode": "approved_source",
+                "requested_extraction_mode": getattr(enrichment_result, "requested_extraction_mode", None),
                 "decision": "failed",
                 "source_results": (
                     [sr.model_dump() for sr in enrichment_result.source_results]

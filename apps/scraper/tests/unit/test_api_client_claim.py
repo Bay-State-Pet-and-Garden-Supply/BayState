@@ -40,7 +40,7 @@ def test_claim_enrichment_sends_max_attempts_one():
                 "lease_token": "tok-1",
                 "lease_expires_at": "2026-01-01T00:00:00Z",
                 "test_mode": False,
-                "source_plan": {"sku": "001135", "schemaVersion": "v1"},
+                "source_plan": {"sku": "001135", "schemaVersion": "v1", "extractionMode": "distributor_only"},
             }
         ]
     }
@@ -77,7 +77,7 @@ def test_claim_enrichment_sends_max_attempts_one():
         assert result.lease_token == "tok-1"
         assert result.lease_expires_at == "2026-01-01T00:00:00Z"
         assert result.test_mode is False
-        assert result.source_plan == {"sku": "001135", "schemaVersion": "v1"}
+        assert result.source_plan == {"sku": "001135", "schemaVersion": "v1", "extractionMode": "distributor_only"}
 
 
 def test_claim_enrichment_returns_none_when_no_attempts():

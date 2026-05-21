@@ -52,6 +52,21 @@ class TestBuildSuccessResult:
         assert result.decision == "llm_fallback"
         assert result.llm_used is True
 
+    def test_preserves_requested_extraction_mode(self):
+        result = build_success_result(
+            sku="001135",
+            source_slug="bradley",
+            source_type="distributor",
+            evidence_url="https://www.bradleycaldwell.com/search?term=001135",
+            product_fields={"name": "E-Z HANG SCALE", "brand": "KERBL"},
+            matched_fields=["name", "brand"],
+            overall_confidence=0.9,
+            requested_extraction_mode="distributor_only",
+        )
+
+        assert result.requested_extraction_mode == "distributor_only"
+        assert result.mode == "mixed"
+
     def test_includes_source_provenance(self):
         result = build_success_result(
             sku="001135",
@@ -203,3 +218,13 @@ class TestBuildFailedResult:
         assert result is not None
         assert result.status == "failed"
         assert result.source.url == "approved_source_extraction"
+
+    def test_failed_result_preserves_requested_extraction_mode(self):
+        result = build_failed_result(
+            sku="test",
+            error_message="Something went wrong",
+            requested_extraction_mode="distributor_only",
+        )
+
+        assert result.requested_extraction_mode == "distributor_only"
+        assert result.mode == "mixed"

@@ -30,6 +30,8 @@ EnrichmentDecision = Literal[
     "failed",
 ]
 
+RequestedExtractionMode = Literal["mixed", "distributor_only", "ai_only"]
+
 
 class EnrichmentResultSource(BaseModel):
     url: str
@@ -103,8 +105,9 @@ class EnrichmentResultV1(BaseModel):
     _status_literal: EnrichmentResultStatus = "success"  # marker for type checking
     extracted_at: str  # ISO datetime with timezone offset
     model: Optional[str] = None
-    mode: str = Field(pattern=r"^(structured|metadata|llm|mixed|approved_source)$", default="mixed")
+    mode: str = Field(pattern=r"^(structured|metadata|llm|mixed)$", default="mixed")
     _mode_literal: EnrichmentMode = "mixed"  # marker for type checking
+    requested_extraction_mode: Optional[RequestedExtractionMode] = None
     product: EnrichedProductFacts = Field(default_factory=EnrichedProductFacts)
     confidence: EnrichmentConfidence = Field(default_factory=EnrichmentConfidence)
     validation: EnrichmentValidation = Field(default_factory=EnrichmentValidation)
@@ -126,6 +129,7 @@ def build_error_result(
     error_message: str,
     model: Optional[str] = None,
     mode: str = "llm",
+    requested_extraction_mode: Optional[RequestedExtractionMode] = None,
 ) -> EnrichmentResultV1:
     """Build a failed enrichment result for error cases."""
     return EnrichmentResultV1(
@@ -151,6 +155,7 @@ def build_error_result(
         ],
         decision="failed",
         llm_used=False,
+        requested_extraction_mode=requested_extraction_mode,
     )
 
 
@@ -165,6 +170,7 @@ def build_v1_from_extraction_result(
     decision: Optional[str] = None,
     llm_used: Optional[bool] = None,
     source_results: Optional[list[dict[str, Any]]] = None,
+    requested_extraction_mode: Optional[RequestedExtractionMode] = None,
 ) -> EnrichmentResultV1:
     """
     Build an EnrichmentResultV1 from a Crawl4AIExtractor/extraction result dict.
@@ -313,4 +319,5 @@ def build_v1_from_extraction_result(
         decision=decision,
         llm_used=llm_used or (decision == "llm_fallback"),
         source_results=source_results_models,
+        requested_extraction_mode=requested_extraction_mode,
     )

@@ -26,6 +26,12 @@ const enrichmentModeSchema = z.enum([
   "mixed",
 ]);
 
+const requestedExtractionModeSchema = z.enum([
+  "mixed",
+  "distributor_only",
+  "ai_only",
+]).nullable().optional();
+
 // =============================================================================
 // Source Schema
 // =============================================================================
@@ -101,7 +107,6 @@ const enrichmentResultSourceV1Schema = z.object({
 
 const enrichmentConfidenceV1Schema = z.object({
   overall: z.number().min(0).max(1),
-  // Zod v4: record(keyType, valueType)
   fields: z.record(z.string(), z.number().min(0).max(1)),
 });
 
@@ -137,6 +142,7 @@ const enrichmentResultV1Schema = z.object({
   extracted_at: z.string().datetime({ offset: true }),
   model: z.string().nullable().optional(),
   mode: enrichmentModeSchema,
+  requested_extraction_mode: requestedExtractionModeSchema,
   product: enrichedProductFactsV1Schema,
   confidence: enrichmentConfidenceV1Schema,
   validation: enrichmentValidationV1Schema,

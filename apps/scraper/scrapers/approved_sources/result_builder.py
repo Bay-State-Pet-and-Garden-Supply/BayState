@@ -18,6 +18,7 @@ from scrapers.ai_search.enrichment_models import (
     EnrichmentResultV1,
     EnrichmentValidation,
     EnrichedProductFacts,
+    RequestedExtractionMode,
     SourceResultInfo,
     now_iso,
 )
@@ -25,6 +26,30 @@ from scrapers.ai_search.enrichment_models import (
 
 def _coerce_evidence_url(evidence_url: str | None) -> str:
     return evidence_url or "approved_source_extraction"
+
+
+def _build_source_results(
+    source_slug: str,
+    source_type: str,
+    confidence: float,
+    evidence_url: str | None,
+    matched_fields: list[str] | None = None,
+    product: EnrichedProductFacts | None = None,
+    source_results: list[SourceResultInfo] | None = None,
+) -> list[SourceResultInfo]:
+    if source_results:
+        return source_results
+
+    return [
+        SourceResultInfo(
+            sourceSlug=source_slug,
+            sourceType=source_type,
+            confidence=confidence,
+            matchedFields=matched_fields or [],
+            evidenceUrl=evidence_url,
+            product=product,
+        )
+    ]
 
 
 def build_success_result(
@@ -39,6 +64,8 @@ def build_success_result(
     llm_used: bool = False,
     warnings: list[str] | None = None,
     sku_match: bool = True,
+    requested_extraction_mode: RequestedExtractionMode | None = None,
+    source_results: list[SourceResultInfo] | None = None,
 ) -> EnrichmentResultV1:
     """Build a successful enrichment result with deterministic extraction.
 
@@ -46,7 +73,6 @@ def build_success_result(
     """
     decision = "llm_fallback" if llm_used else "deterministic_success"
 
-    # Map product fields into EnrichedProductFacts
     product = _map_product_fields(product_fields)
     resolved_evidence_url = _coerce_evidence_url(evidence_url)
 
@@ -63,6 +89,7 @@ def build_success_result(
         status="success",
         extracted_at=now_iso(),
         mode="mixed",
+        requested_extraction_mode=requested_extraction_mode,
         product=product,
         confidence=EnrichmentConfidence(
             overall=overall_confidence,
@@ -81,16 +108,15 @@ def build_success_result(
         ],
         decision=decision,
         llm_used=llm_used,
-        source_results=[
-            SourceResultInfo(
-                sourceSlug=source_slug,
-                sourceType=source_type,
-                confidence=overall_confidence,
-                matchedFields=matched_fields,
-                evidenceUrl=resolved_evidence_url,
-                product=product,
-            )
-        ],
+        source_results=_build_source_results(
+            source_slug=source_slug,
+            source_type=source_type,
+            confidence=overall_confidence,
+            evidence_url=resolved_evidence_url,
+            matched_fields=matched_fields,
+            product=product,
+            source_results=source_results,
+        ),
     )
 
 
@@ -107,6 +133,8 @@ def build_partial_result(
     warnings: list[str] | None = None,
     missing_required: list[str] | None = None,
     sku_match: bool = True,
+    requested_extraction_mode: RequestedExtractionMode | None = None,
+    source_results: list[SourceResultInfo] | None = None,
 ) -> EnrichmentResultV1:
     """Build a partial enrichment result (some fields found, some missing).
 
@@ -130,6 +158,7 @@ def build_partial_result(
         status="partial",
         extracted_at=now_iso(),
         mode="mixed",
+        requested_extraction_mode=requested_extraction_mode,
         product=product,
         confidence=EnrichmentConfidence(
             overall=overall_confidence,
@@ -148,16 +177,15 @@ def build_partial_result(
         ],
         decision=decision,
         llm_used=llm_used,
-        source_results=[
-            SourceResultInfo(
-                sourceSlug=source_slug,
-                sourceType=source_type,
-                confidence=overall_confidence,
-                matchedFields=matched_fields,
-                evidenceUrl=resolved_evidence_url,
-                product=product,
-            )
-        ],
+        source_results=_build_source_results(
+            source_slug=source_slug,
+            source_type=source_type,
+            confidence=overall_confidence,
+            evidence_url=resolved_evidence_url,
+            matched_fields=matched_fields,
+            product=product,
+            source_results=source_results,
+        ),
     )
 
 
@@ -167,6 +195,8 @@ def build_auth_required_result(
     source_type: str = "distributor",
     message: str | None = None,
     evidence_url: str | None = None,
+    requested_extraction_mode: RequestedExtractionMode | None = None,
+    source_results: list[SourceResultInfo] | None = None,
 ) -> EnrichmentResultV1:
     """Build a failed result for auth-gated distributors with no usable session.
 
@@ -187,6 +217,7 @@ def build_auth_required_result(
         status="failed",
         extracted_at=now_iso(),
         mode="mixed",
+        requested_extraction_mode=requested_extraction_mode,
         product=EnrichedProductFacts(),
         confidence=EnrichmentConfidence(overall=0.0),
         validation=EnrichmentValidation(
@@ -203,14 +234,13 @@ def build_auth_required_result(
         ],
         decision="failed",
         llm_used=False,
-        source_results=[
-            SourceResultInfo(
-                sourceSlug=source_slug,
-                sourceType=source_type,
-                confidence=0.0,
-                evidenceUrl=resolved_evidence_url,
-            )
-        ],
+        source_results=_build_source_results(
+            source_slug=source_slug,
+            source_type=source_type,
+            confidence=0.0,
+            evidence_url=resolved_evidence_url,
+            source_results=source_results,
+        ),
     )
 
 
@@ -220,6 +250,8 @@ def build_auth_failed_result(
     source_type: str = "distributor",
     message: str | None = None,
     evidence_url: str | None = None,
+    requested_extraction_mode: RequestedExtractionMode | None = None,
+    source_results: list[SourceResultInfo] | None = None,
 ) -> EnrichmentResultV1:
     """Build a failed result when login fails (wrong credentials).
 
@@ -240,6 +272,7 @@ def build_auth_failed_result(
         status="failed",
         extracted_at=now_iso(),
         mode="mixed",
+        requested_extraction_mode=requested_extraction_mode,
         product=EnrichedProductFacts(),
         confidence=EnrichmentConfidence(overall=0.0),
         validation=EnrichmentValidation(
@@ -256,14 +289,13 @@ def build_auth_failed_result(
         ],
         decision="failed",
         llm_used=False,
-        source_results=[
-            SourceResultInfo(
-                sourceSlug=source_slug,
-                sourceType=source_type,
-                confidence=0.0,
-                evidenceUrl=resolved_evidence_url,
-            )
-        ],
+        source_results=_build_source_results(
+            source_slug=source_slug,
+            source_type=source_type,
+            confidence=0.0,
+            evidence_url=resolved_evidence_url,
+            source_results=source_results,
+        ),
     )
 
 
@@ -273,6 +305,8 @@ def build_auth_expired_result(
     source_type: str = "distributor",
     message: str | None = None,
     evidence_url: str | None = None,
+    requested_extraction_mode: RequestedExtractionMode | None = None,
+    source_results: list[SourceResultInfo] | None = None,
 ) -> EnrichmentResultV1:
     """Build a failed result when an existing session has expired.
 
@@ -293,6 +327,7 @@ def build_auth_expired_result(
         status="failed",
         extracted_at=now_iso(),
         mode="mixed",
+        requested_extraction_mode=requested_extraction_mode,
         product=EnrichedProductFacts(),
         confidence=EnrichmentConfidence(overall=0.0),
         validation=EnrichmentValidation(
@@ -309,14 +344,13 @@ def build_auth_expired_result(
         ],
         decision="failed",
         llm_used=False,
-        source_results=[
-            SourceResultInfo(
-                sourceSlug=source_slug,
-                sourceType=source_type,
-                confidence=0.0,
-                evidenceUrl=resolved_evidence_url,
-            )
-        ],
+        source_results=_build_source_results(
+            source_slug=source_slug,
+            source_type=source_type,
+            confidence=0.0,
+            evidence_url=resolved_evidence_url,
+            source_results=source_results,
+        ),
     )
 
 
@@ -325,6 +359,8 @@ def build_no_match_result(
     source_slug: str,
     source_type: str = "distributor",
     evidence_url: str | None = None,
+    requested_extraction_mode: RequestedExtractionMode | None = None,
+    source_results: list[SourceResultInfo] | None = None,
 ) -> EnrichmentResultV1:
     """Build a failed result when a source returned no matching product."""
     resolved_evidence_url = _coerce_evidence_url(evidence_url)
@@ -339,6 +375,7 @@ def build_no_match_result(
         status="failed",
         extracted_at=now_iso(),
         mode="mixed",
+        requested_extraction_mode=requested_extraction_mode,
         product=EnrichedProductFacts(),
         confidence=EnrichmentConfidence(overall=0.0),
         validation=EnrichmentValidation(
@@ -355,14 +392,13 @@ def build_no_match_result(
         ],
         decision="failed",
         llm_used=False,
-        source_results=[
-            SourceResultInfo(
-                sourceSlug=source_slug,
-                sourceType=source_type,
-                confidence=0.0,
-                evidenceUrl=resolved_evidence_url,
-            )
-        ],
+        source_results=_build_source_results(
+            source_slug=source_slug,
+            source_type=source_type,
+            confidence=0.0,
+            evidence_url=resolved_evidence_url,
+            source_results=source_results,
+        ),
     )
 
 
@@ -371,6 +407,8 @@ def build_policy_blocked_result(
     source_slug: str,
     blocked_url: str,
     reason: str = "Domain is not allowed by source policy",
+    requested_extraction_mode: RequestedExtractionMode | None = None,
+    source_results: list[SourceResultInfo] | None = None,
 ) -> EnrichmentResultV1:
     """Build a failed result when a URL is blocked by the domain policy."""
     return EnrichmentResultV1(
@@ -384,6 +422,7 @@ def build_policy_blocked_result(
         status="failed",
         extracted_at=now_iso(),
         mode="mixed",
+        requested_extraction_mode=requested_extraction_mode,
         product=EnrichedProductFacts(),
         confidence=EnrichmentConfidence(overall=0.0),
         validation=EnrichmentValidation(
@@ -400,14 +439,13 @@ def build_policy_blocked_result(
         ],
         decision="failed",
         llm_used=False,
-        source_results=[
-            SourceResultInfo(
-                sourceSlug=source_slug,
-                sourceType="distributor",
-                confidence=0.0,
-                evidenceUrl=blocked_url,
-            )
-        ],
+        source_results=_build_source_results(
+            source_slug=source_slug,
+            source_type="distributor",
+            confidence=0.0,
+            evidence_url=blocked_url,
+            source_results=source_results,
+        ),
     )
 
 
@@ -417,6 +455,8 @@ def build_failed_result(
     source_type: str = "distributor",
     error_message: str = "All approved source extraction attempts failed",
     evidence_url: str | None = None,
+    requested_extraction_mode: RequestedExtractionMode | None = None,
+    source_results: list[SourceResultInfo] | None = None,
 ) -> EnrichmentResultV1:
     """Build a generic failed enrichment result.
 
@@ -426,17 +466,19 @@ def build_failed_result(
     failed results, so fall back to the approved-source sentinel when we do not
     have a concrete evidence URL.
     """
+    resolved_evidence_url = _coerce_evidence_url(evidence_url)
     return EnrichmentResultV1(
         schema_version="v1",
         sku=sku,
         source=EnrichmentResultSource(
-            url=_coerce_evidence_url(evidence_url),
+            url=resolved_evidence_url,
             source_type=source_type,
             source_slug=source_slug or "",
         ),
         status="failed",
         extracted_at=now_iso(),
         mode="mixed",
+        requested_extraction_mode=requested_extraction_mode,
         product=EnrichedProductFacts(),
         confidence=EnrichmentConfidence(overall=0.0),
         validation=EnrichmentValidation(
@@ -452,6 +494,7 @@ def build_failed_result(
         ],
         decision="failed",
         llm_used=False,
+        source_results=source_results or [],
     )
 
 

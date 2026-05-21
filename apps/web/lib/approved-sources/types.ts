@@ -23,6 +23,12 @@ export type ApprovedSearchMode =
   | "feed_lookup";
 
 // =============================================================================
+// Extraction mode
+// =============================================================================
+
+export type ExtractionMode = "mixed" | "distributor_only" | "ai_only";
+
+// =============================================================================
 // Single entry in a source plan
 // =============================================================================
 
@@ -68,7 +74,6 @@ export interface ApprovedSourcePolicy {
   approvedSourcesOnly: boolean;
 }
 
-
 // =============================================================================
 // Source result
 // =============================================================================
@@ -101,6 +106,8 @@ export interface ApprovedSourcePlan {
     name: string;
     slug: string;
   } | null;
+  /** Requested extraction mode for this plan. */
+  extractionMode: ExtractionMode;
   /** Optional distributor slug selected by the user */
   selectedDistributorSlug?: string | null;
   /** Ordered priority list of sources to try */
@@ -109,11 +116,13 @@ export interface ApprovedSourcePlan {
   sourcePolicy: ApprovedSourcePolicy;
 }
 
-// =============================================================================
-// Extraction mode
-// =============================================================================
-
-export type ExtractionMode = "mixed" | "distributor_only" | "ai_only";
+export type SourcePlanFailureCode =
+  | "product_not_found"
+  | "missing_brand"
+  | "no_sources_configured"
+  | "all_sources_fresh"
+  | "ai_only_no_official_brand"
+  | "database_error";
 
 // =============================================================================
 // Build result (per SKU — either a plan or an error)
@@ -121,7 +130,7 @@ export type ExtractionMode = "mixed" | "distributor_only" | "ai_only";
 
 export type SourcePlanResult =
   | { ok: true; plan: ApprovedSourcePlan }
-  | { ok: false; error: string; sku: string };
+  | { ok: false; error: string; sku: string; code?: SourcePlanFailureCode };
 
 // =============================================================================
 // Domain constants
@@ -152,4 +161,3 @@ export const DISALLOWED_DOMAINS: string[] = [
   "wordpress.com",
   "medium.com",
 ];
-

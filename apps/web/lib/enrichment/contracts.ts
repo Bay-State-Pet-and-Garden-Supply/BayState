@@ -13,6 +13,14 @@ export type EnrichmentResultStatus = "success" | "partial" | "failed";
 
 export type EnrichmentMode = "structured" | "metadata" | "llm" | "mixed";
 
+/**
+ * The coordinator/requested extraction mode.
+ *
+ * This is intentionally separate from `EnrichmentMode`, which describes the
+ * worker execution strategy used to produce the result.
+ */
+export type RequestedExtractionMode = "mixed" | "distributor_only" | "ai_only";
+
 export interface EnrichmentResultSourceV1 {
   url: string;
   domain?: string | null;
@@ -85,6 +93,7 @@ export interface EnrichmentAttemptSummaryV1 {
  *
  * Approved source extraction adds optional fields:
  *   - source.source_type / source.source_slug / source.approved_source_id / source.evidence
+ *   - requested_extraction_mode (coordinator/run mode separate from worker execution mode)
  *   - decision ("deterministic_success" | "deterministic_partial" | "llm_fallback" | "failed")
  *   - llm_used
  *   - source_results[] (array of individual source extraction results)
@@ -108,6 +117,8 @@ export interface EnrichmentResultV1 {
   extracted_at: string;
   model?: string | null;
   mode: EnrichmentMode;
+  /** Requested coordinator/run mode (separate from worker execution mode). */
+  requested_extraction_mode?: RequestedExtractionMode | null;
   product: EnrichedProductFactsV1;
   confidence: EnrichmentConfidenceV1;
   validation: EnrichmentValidationV1;
@@ -120,22 +131,7 @@ export interface EnrichmentResultV1 {
   source_results?: SourceResultInfo[];
 }
 
-/**
- * The normalized shape stored into `products_ingestion.sources.enriched`.
- * Contains backward-compatible aliases so existing consolidation can consume it.
- *
- * Key aliases:
- *   - product.name → title, name
- *   - product.image_urls → images, image_urls
- *   - product.brand → brand
- *   - product.description → description
- *   - product.category → category
- *   - product.weight → weight
- *   - product.url → url
- *   - source.url → url
- *   - confidence.overall → confidence_score
- */
-export interface NormalizedEnrichedSourceV1 {
+export interface NormalizedEnrichedSourceBaseV1 {
   schema_version: "v1";
   source_kind: "enriched";
   /** Backward-compatible alias: product name */
@@ -172,9 +168,16 @@ export interface NormalizedEnrichedSourceV1 {
   /** Backward-compatible alias: overall confidence score */
   confidence_score: number;
   /** Approved source extraction: decision type */
-  decision?: string | null;
+  decision?: EnrichmentDecision | null;
   /** Approved source extraction: whether LLM was used */
   llm_used?: boolean | null;
+  /** Requested coordinator/run mode (separate from worker execution mode). */
+  requested_extraction_mode?: RequestedExtractionMode | null;
+  /** Active/summary source slug for this normalized enriched record. */
+  source_slug?: string | null;
+  source_type?: string | null;
+  source_label?: string | null;
+  active_source_slug?: string | null;
   /** Approved source extraction: per-source results */
   source_results?: SourceResultInfo[];
   /** Nested enriched product facts (all extracted fields) */
@@ -188,4 +191,34 @@ export interface NormalizedEnrichedSourceV1 {
   model?: string | null;
   mode: EnrichmentMode;
   extracted_at: string;
+}
+
+/**
+ * A stored snapshot for a single approved/distributor source.
+ *
+ * This keeps the legacy aliases alongside the nested `extracted` fields so the
+ * snapshot can be rendered directly in the admin UI.
+ */
+export type ApprovedSourceSnapshotV1 = NormalizedEnrichedSourceBaseV1;
+
+/**
+ * The normalized shape stored into `products_ingestion.sources.enriched`.
+ * Contains backward-compatible aliases so existing consolidation can consume it.
+ *
+ * Key aliases:
+ *   - product.name → title, name
+ *   - product.image_urls → images, image_urls
+ *   - product.brand → brand
+ *   - product.description → description
+ *   - product.category → category
+ *   - product.weight → weight
+ *   - product.url → url
+ *   - source.url → url
+ *   - confidence.overall → confidence_score
+ *
+ * `approved_sources` preserves per-distributor/per-approved-source identity while
+ * the top-level aliases continue to expose the active summary snapshot.
+ */
+export interface NormalizedEnrichedSourceV1 extends NormalizedEnrichedSourceBaseV1 {
+  approved_sources?: Record<string, ApprovedSourceSnapshotV1>;
 }

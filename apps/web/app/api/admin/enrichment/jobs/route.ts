@@ -99,6 +99,7 @@ export async function POST(request: NextRequest) {
 
     let sourcePlansBySku: Record<string, unknown> | undefined;
     let skippedSkus: string[] = [];
+    let freshSkippedSkus: string[] = [];
     let brandedSkus: string[] = [...validSkus];
 
     if (useApprovedSources) {
@@ -133,12 +134,26 @@ export async function POST(request: NextRequest) {
           }
         } else {
           skippedSkus.push(sku);
+          if (result.code === "all_sources_fresh") {
+            freshSkippedSkus.push(sku);
+          }
         }
       }
 
       brandedSkus = Object.keys(sourcePlansBySku);
 
       if (brandedSkus.length === 0) {
+        if (freshSkippedSkus.length > 0 && freshSkippedSkus.length === skippedSkus.length) {
+          return NextResponse.json({
+            success: true,
+            jobId: null,
+            skuCount: 0,
+            attemptCount: 0,
+            skipped_skus: skippedSkus,
+            message: "All requested approved sources are already fresh. Use Force refresh to re-scrape.",
+          });
+        }
+
         // Extraction-mode-specific error messages
         if (extractionMode === "ai_only") {
           return NextResponse.json(
@@ -370,6 +385,11 @@ export async function POST(request: NextRequest) {
       skuCount: brandedSkus.length,
       attemptCount: attempts.length,
       ...(skippedSkus.length > 0 ? { skipped_skus: skippedSkus } : {}),
+      ...(freshSkippedSkus.length > 0
+        ? {
+            message: `Skipped ${freshSkippedSkus.length} SKU${freshSkippedSkus.length === 1 ? "" : "s"} because the requested approved sources are already fresh.`,
+          }
+        : {}),
     });
   } catch (err) {
     console.error("Error creating enrichment job:", err);

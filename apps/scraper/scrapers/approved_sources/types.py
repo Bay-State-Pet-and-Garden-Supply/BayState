@@ -56,6 +56,7 @@ class ApprovedSourcePlan:
     sku: str = ""
     input: dict[str, Any] = field(default_factory=lambda: {"name": None, "price": None})
     brand: ApprovedSourceBrand | None = None
+    extractionMode: str = "mixed"
     selectedDistributorSlug: str | None = None
     priority: list[ApprovedSourcePlanEntry] = field(default_factory=list)
     sourcePolicy: ApprovedSourcePolicy = field(default_factory=ApprovedSourcePolicy)
@@ -168,8 +169,6 @@ def parse_source_policy(raw: dict[str, Any]) -> ApprovedSourcePolicy:
     )
 
 
-
-
 def parse_source_plan(raw: dict[str, Any]) -> ApprovedSourcePlan:
     """Parse a raw dict (from coordinator JSON) into an ApprovedSourcePlan."""
     brand_raw = raw.get("brand")
@@ -191,6 +190,7 @@ def parse_source_plan(raw: dict[str, Any]) -> ApprovedSourcePlan:
         sku=raw.get("sku", ""),
         input=dict(raw.get("input", {})),
         brand=brand,
+        extractionMode=str(raw.get("extractionMode", "mixed")),
         selectedDistributorSlug=raw.get("selectedDistributorSlug"),
         priority=priority,
         sourcePolicy=parse_source_policy(raw.get("sourcePolicy", {})),

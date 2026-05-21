@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from scrapers.approved_sources.executor import ApprovedSourceExecutor
 from scrapers.approved_sources.result_builder import (
+    build_auth_required_result,
     build_partial_result,
     build_success_result,
 )
@@ -25,6 +26,7 @@ def _make_plan(
     sku: str = "001135",
     selected_distributor: str | None = "bradley",
     entries: list[ApprovedSourcePlanEntry] | None = None,
+    extraction_mode: str = "mixed",
 ) -> ApprovedSourcePlan:
     if entries is None:
         entries = [
@@ -46,6 +48,7 @@ def _make_plan(
         sku=sku,
         input={"name": "E-Z HANG SCALE", "price": None},
         brand=ApprovedSourceBrand(id="brand-1", name="KERBL", slug="kerbl"),
+        extractionMode=extraction_mode,
         selectedDistributorSlug=selected_distributor,
         priority=entries,
         sourcePolicy=ApprovedSourcePolicy(
@@ -232,6 +235,77 @@ class TestExecutor:
         result = asyncio.run(executor.execute())
         # Should fail since no other source available and no fallback
         assert result.status == "failed"
+
+    @patch(
+        "scrapers.approved_sources.adapters.bradley.BradleyAdapter.extract",
+        new_callable=AsyncMock,
+    )
+    @patch(
+        "scrapers.approved_sources.adapters.phillips.PhillipsAdapter.extract",
+        new_callable=AsyncMock,
+    )
+    def test_aggregates_source_results_and_requested_mode(
+        self,
+        mock_phillips_extract,
+        mock_bradley_extract,
+    ):
+        entries = [
+            ApprovedSourcePlanEntry(
+                sourceType="distributor",
+                sourceSlug="phillips",
+                displayName="Phillips",
+                domains=["shop.phillipspet.com"],
+                assetDomains=["shop.phillipspet.com"],
+                adapterSlug="phillips_crawl4ai",
+                requiresAuth=True,
+                searchMode="sku_search",
+                allowedFields=["name"],
+                priority=10,
+                runFirst=True,
+            ),
+            ApprovedSourcePlanEntry(
+                sourceType="distributor",
+                sourceSlug="bradley",
+                displayName="Bradley Caldwell",
+                domains=["bradleycaldwell.com"],
+                assetDomains=["bradleycaldwell.com"],
+                adapterSlug="bradley_crawl4ai",
+                requiresAuth=False,
+                searchMode="sku_search",
+                allowedFields=["name", "brand"],
+                priority=20,
+                runFirst=False,
+            ),
+        ]
+        plan = _make_plan(entries=entries, extraction_mode="distributor_only")
+        mock_extractor = MagicMock()
+        mock_extractor.api_client = None
+
+        mock_phillips_extract.return_value = build_auth_required_result(
+            sku="001135",
+            source_slug="phillips",
+            requested_extraction_mode="distributor_only",
+        )
+        mock_bradley_extract.return_value = build_success_result(
+            sku="001135",
+            source_slug="bradley",
+            source_type="distributor",
+            evidence_url="https://www.bradleycaldwell.com/search?term=001135",
+            product_fields={"name": "E-Z HANG SCALE", "brand": "KERBL"},
+            matched_fields=["name", "brand"],
+            overall_confidence=0.9,
+            requested_extraction_mode="distributor_only",
+        )
+
+        executor = ApprovedSourceExecutor(plan=plan, extractor=mock_extractor)
+        import asyncio
+
+        result = asyncio.run(executor.execute())
+
+        assert result.status == "success"
+        assert result.requested_extraction_mode == "distributor_only"
+        assert [entry.sourceSlug for entry in result.source_results] == ["bradley", "phillips"]
+        assert result.source.source_slug == "bradley"
 
     @patch("scrapers.approved_sources.adapters.bradley.BradleyAdapter._fetch_html")
     def test_returns_success_with_high_confidence(self, mock_fetch):

@@ -405,6 +405,45 @@ describe('/api/admin/enrichment/jobs route', () => {
         expect(payload.error).toContain('Distributor-only extraction requires at least one distributor source to be configured');
     });
 
+    it('returns success with a skip message when all requested sources are already fresh', async () => {
+        mockSupabase.in.mockResolvedValueOnce({
+            data: [{ sku: 'SKU-1', pipeline_status: 'imported' }],
+            error: null,
+        });
+
+        (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
+            'SKU-1': {
+                ok: false,
+                sku: 'SKU-1',
+                code: 'all_sources_fresh',
+                error: 'All requested approved sources are already fresh. Use forceRefresh to re-scrape.',
+            },
+        });
+
+        const response = await POST(
+            new NextRequest('http://localhost/api/admin/enrichment/jobs', {
+                body: JSON.stringify({
+                    skus: ['SKU-1'],
+                    extractionMode: 'distributor_only',
+                    config: {
+                        source_type: 'approved_source_extraction',
+                    },
+                }),
+            } as any),
+        );
+        const payload = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(payload).toEqual({
+            success: true,
+            jobId: null,
+            skuCount: 0,
+            attemptCount: 0,
+            skipped_skus: ['SKU-1'],
+            message: 'All requested approved sources are already fresh. Use Force refresh to re-scrape.',
+        });
+    });
+
     it('stores extractionMode and forceRefresh in jobConfig', async () => {
         mockSupabase.in.mockResolvedValueOnce({
             data: [{ sku: 'SKU-1', pipeline_status: 'imported' }],

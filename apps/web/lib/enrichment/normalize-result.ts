@@ -8,24 +8,62 @@
  */
 
 import type {
+  EnrichmentConfidenceV1,
+  EnrichedProductFactsV1,
+  EnrichmentResultSourceV1,
   EnrichmentResultV1,
   NormalizedEnrichedSourceV1,
-  EnrichedProductFactsV1,
+  RequestedExtractionMode,
 } from "./contracts";
 
+interface NormalizeEnrichmentResultOptions {
+  requestedExtractionMode?: RequestedExtractionMode | null;
+}
+
+interface LegacyEnrichedAliasFields {
+  title: string | null;
+  name: string | null;
+  brand: string | null;
+  description: string | null;
+  category: string | null;
+  weight: string | null;
+  images: EnrichedProductFactsV1["image_urls"];
+  image_urls: EnrichedProductFactsV1["image_urls"];
+  url: string;
+  confidence_score: number;
+}
+
+function resolveSourceSlug(result: EnrichmentResultV1): string | null {
+  if (typeof result.source.source_slug === "string" && result.source.source_slug.trim()) {
+    return result.source.source_slug.trim();
+  }
+
+  const firstSourceSlug = result.source_results?.find((entry) => typeof entry.sourceSlug === "string" && entry.sourceSlug.trim())?.sourceSlug;
+  return typeof firstSourceSlug === "string" && firstSourceSlug.trim()
+    ? firstSourceSlug.trim()
+    : null;
+}
+
+function resolveSourceType(result: EnrichmentResultV1): string | null {
+  if (typeof result.source.source_type === "string" && result.source.source_type.trim()) {
+    return result.source.source_type.trim();
+  }
+
+  const firstSourceType = result.source_results?.find((entry) => typeof entry.sourceType === "string" && entry.sourceType.trim())?.sourceType;
+  return typeof firstSourceType === "string" && firstSourceType.trim()
+    ? firstSourceType.trim()
+    : null;
+}
+
 /**
- * Normalize a v1 enrichment result into the sources.enriched shape.
+ * Build backward-compatible aliases from the nested product/source payload.
  */
-export function normalizeEnrichmentResultForSources(
-  result: EnrichmentResultV1
-): NormalizedEnrichedSourceV1 {
-  const product = result.product;
-
+export function buildLegacyEnrichedAliases(
+  product: EnrichedProductFactsV1,
+  source: EnrichmentResultSourceV1,
+  confidence: EnrichmentConfidenceV1,
+): LegacyEnrichedAliasFields {
   return {
-    schema_version: "v1",
-    source_kind: "enriched",
-
-    // Backward-compatible aliases
     title: product.name ?? null,
     name: product.name ?? null,
     brand: product.brand ?? null,
@@ -34,8 +72,31 @@ export function normalizeEnrichmentResultForSources(
     weight: product.weight ?? null,
     images: product.image_urls ?? [],
     image_urls: product.image_urls ?? [],
-    url: result.source.url,
-    confidence_score: result.confidence.overall,
+    url: source.url,
+    confidence_score: confidence.overall,
+  };
+}
+
+/**
+ * Normalize a v1 enrichment result into the sources.enriched shape.
+ */
+export function normalizeEnrichmentResultForSources(
+  result: EnrichmentResultV1,
+  options?: NormalizeEnrichmentResultOptions,
+): NormalizedEnrichedSourceV1 {
+  const product = result.product;
+  const sourceSlug = resolveSourceSlug(result);
+  const sourceType = resolveSourceType(result);
+  const requestedExtractionMode =
+    options?.requestedExtractionMode
+    ?? result.requested_extraction_mode
+    ?? null;
+
+  return {
+    schema_version: "v1",
+    source_kind: "enriched",
+
+    ...buildLegacyEnrichedAliases(product, result.source, result.confidence),
 
     // Nested enriched product facts (all extracted fields)
     extracted: product,
@@ -50,36 +111,14 @@ export function normalizeEnrichmentResultForSources(
     mode: result.mode,
     extracted_at: result.extracted_at,
 
-    // Approved source extraction evidence
+    // Approved source extraction evidence / provenance
     decision: result.decision ?? null,
     llm_used: result.llm_used ?? null,
-    source_results: result.source_results ?? undefined,
-  };
-}
-
-/**
- * Extract backward-compatible source fields for the consolidation prompt builder.
- * This allows the existing source filtering logic to work with enriched sources.
- */
-function extractEnrichedSourceAliases(
-  normalized: NormalizedEnrichedSourceV1
-): Record<string, unknown> {
-  return {
-    title: normalized.title,
-    name: normalized.name,
-    brand: normalized.brand,
-    description: normalized.description,
-    category: normalized.category,
-    weight: normalized.weight,
-    images: normalized.images,
-    image_urls: normalized.image_urls,
-    url: normalized.url,
-    confidence_score: normalized.confidence_score,
-    // Preserve full enriched data for detail enrichment
-    ...Object.fromEntries(
-      Object.entries(normalized.extracted).filter(
-        ([, value]) => value !== null && value !== undefined
-      )
-    ),
+    requested_extraction_mode: requestedExtractionMode,
+    source_slug: sourceSlug,
+    source_type: sourceType,
+    source_label: result.source.label ?? null,
+    active_source_slug: sourceSlug,
+    source_results: result.source_results?.length ? result.source_results : undefined,
   };
 }

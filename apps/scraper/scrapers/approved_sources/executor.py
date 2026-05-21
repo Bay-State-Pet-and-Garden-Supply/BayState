@@ -9,9 +9,9 @@ Flow:
    a. Validate policy
    b. Get adapter from registry
    c. Execute adapter.extract()
-   d. If success, return immediately
-   e. If auth_required or failed, log and continue to next
-3. If all sources fail, return build_failed_result().
+   d. Accumulate source-level evidence/results
+3. Return the best acceptable result with aggregated source_results/attempts
+4. If all sources fail, return build_failed_result().
 
 NEVER returns None — always returns valid EnrichmentResultV1.
 """
@@ -21,14 +21,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from scrapers.approved_sources.adapters.registry import (
-    get_adapter_class,
-)
-from scrapers.approved_sources.types import (
-    ApprovedSourcePlan,
-    ApprovedSourcePlanEntry,
-)
-from scrapers.ai_search.enrichment_models import EnrichmentResultV1
+from scrapers.approved_sources.adapters.registry import get_adapter_class
+from scrapers.approved_sources.types import ApprovedSourcePlan, ApprovedSourcePlanEntry
+from scrapers.ai_search.enrichment_models import EnrichmentResultV1, SourceResultInfo
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +31,7 @@ PARTIAL_ACCEPTANCE_CONFIDENCE = 0.6
 
 
 class ApprovedSourceExecutor:
-    """Executes an ApprovedSourcePlan with full policy enforcement.
-
-    Owns the complete extraction flow from source plan to EnrichmentResultV1.
-    Returns a valid result for every input — never returns None.
-    """
+    """Executes an ApprovedSourcePlan with full policy enforcement."""
 
     def __init__(
         self,
@@ -53,21 +44,12 @@ class ApprovedSourceExecutor:
         self.api_client = api_client
         self.policy = plan.sourcePolicy
 
-        # Attach api_client to extractor for distributor credential resolution.
-        # ProductPageExtractor does not declare this attribute, but adapters read it
-        # dynamically via getattr(extractor, "api_client", None).
         if api_client is not None:
             extractor.api_client = api_client
 
     async def execute(self) -> EnrichmentResultV1:
-        """Execute the full extraction plan.
-
-        Returns:
-            EnrichmentResultV1 — always valid, never None.
-        """
-        from scrapers.approved_sources.result_builder import (
-            build_failed_result,
-        )
+        """Execute the full extraction plan."""
+        from scrapers.approved_sources.result_builder import build_failed_result
 
         sku = self.plan.sku
         logger.info(
@@ -76,31 +58,39 @@ class ApprovedSourceExecutor:
             len(self.plan.priority),
         )
 
-        # Sort entries: runFirst=True first, then by priority (low to high)
         entries = sorted(
             self.plan.priority,
-            key=lambda x: (not x.runFirst, x.priority),
+            key=lambda entry: (not entry.runFirst, entry.priority),
         )
 
-        # Execute prioritized sources
         result = await self._try_source_entries(entries)
 
+        if result:
+            result.requested_extraction_mode = self.plan.extractionMode
+
         if not self._is_successful(result):
+            if result:
+                return result
+
             error_message = "All sources failed"
             if len(entries) == 0:
                 error_message = "No sources provided in the plan"
-            
+
             return build_failed_result(
                 sku=sku,
                 error_message=error_message,
+                requested_extraction_mode=self.plan.extractionMode,
             )
 
         return result
 
     async def _try_source_entries(
-        self, entries: list[ApprovedSourcePlanEntry]
+        self,
+        entries: list[ApprovedSourcePlanEntry],
     ) -> EnrichmentResultV1 | None:
-        """Try all entries in order, combining results."""
+        """Try all entries in order and return the best combined result."""
+        from scrapers.approved_sources.result_builder import build_failed_result
+
         sku = self.plan.sku
         all_results: list[EnrichmentResultV1] = []
 
@@ -112,7 +102,6 @@ class ApprovedSourceExecutor:
                 entry.adapterSlug,
             )
 
-            # Policy check at entry level
             if not self._entry_policy_allowed(entry):
                 logger.warning(
                     "[Executor] Entry %s blocked by policy",
@@ -120,7 +109,6 @@ class ApprovedSourceExecutor:
                 )
                 continue
 
-            # Resolve adapter
             adapter_cls = get_adapter_class(entry.adapterSlug)
             if not adapter_cls:
                 logger.warning(
@@ -129,26 +117,21 @@ class ApprovedSourceExecutor:
                 )
                 continue
 
-            # Instantiate and run
             try:
                 adapter = adapter_cls(entry, self.plan)
-                # Pass api_client for credential checks
-                if hasattr(adapter, "check_credentials") and self.api_client:
-                    pass  # adapter checks internally
-
                 result = await adapter.extract(self.extractor)
-            except Exception as e:
+            except Exception as exc:  # pragma: no cover - defensive logging branch
                 logger.error(
                     "[Executor] Adapter %s failed with exception: %s",
                     entry.sourceSlug,
-                    e,
+                    exc,
                 )
-                from scrapers.approved_sources.result_builder import build_failed_result
                 result = build_failed_result(
                     sku=sku,
                     source_slug=entry.sourceSlug,
                     source_type=entry.sourceType,
-                    error_message=str(e),
+                    error_message=str(exc),
+                    requested_extraction_mode=self.plan.extractionMode,
                 )
 
             if not result:
@@ -156,58 +139,59 @@ class ApprovedSourceExecutor:
                     "[Executor] Source %s returned no result",
                     entry.sourceSlug,
                 )
-                from scrapers.approved_sources.result_builder import build_failed_result
                 result = build_failed_result(
                     sku=sku,
                     source_slug=entry.sourceSlug,
                     source_type=entry.sourceType,
                     error_message="No result returned from adapter",
+                    requested_extraction_mode=self.plan.extractionMode,
                 )
 
+            result.requested_extraction_mode = self.plan.extractionMode
             all_results.append(result)
 
         if not all_results:
             return None
 
-        # Choose the best result:
-        # 1. Successes sorted by confidence descending
-        # 2. Partials sorted by confidence descending
-        # 3. Failures
-        successes = [r for r in all_results if r.status == "success"]
-        partials = [r for r in all_results if r.status == "partial"]
+        successes = [result for result in all_results if result.status == "success"]
+        partials = [result for result in all_results if result.status == "partial"]
 
         if successes:
-            best_result = max(successes, key=lambda r: r.confidence.overall if r.confidence else 0.0)
+            best_result = max(
+                successes,
+                key=lambda result: result.confidence.overall if result.confidence else 0.0,
+            )
         elif partials:
-            best_result = max(partials, key=lambda r: r.confidence.overall if r.confidence else 0.0)
+            best_result = max(
+                partials,
+                key=lambda result: result.confidence.overall if result.confidence else 0.0,
+            )
         else:
             best_result = all_results[0]
 
-        # Combine source results and attempts from all results
-        combined_source_results = []
+        combined_source_results: list[SourceResultInfo] = []
         combined_attempts = []
-        for r in all_results:
-            if r.source_results:
-                combined_source_results.extend(r.source_results)
-            if r.attempts:
-                combined_attempts.extend(r.attempts)
+        for result in all_results:
+            if result.source_results:
+                combined_source_results = self._merge_source_results(
+                    combined_source_results,
+                    list(result.source_results),
+                )
+            if result.attempts:
+                combined_attempts.extend(result.attempts)
 
-        # Build combined EnrichmentResultV1 based on best_result
         best_result.source_results = combined_source_results
         best_result.attempts = combined_attempts
-        best_result.llm_used = any(r.llm_used for r in all_results)
+        best_result.llm_used = any(bool(result.llm_used) for result in all_results)
+        best_result.requested_extraction_mode = self.plan.extractionMode
 
         return best_result
 
-
     def _entry_policy_allowed(self, entry: ApprovedSourcePlanEntry) -> bool:
         """Check if an entry is allowed by the source policy."""
-        # Always block entries with completely disallowed domains
         from scrapers.approved_sources.policy import check_disallowed_in_allowed
 
-        offenders = check_disallowed_in_allowed(
-            entry.domains, self.policy
-        )
+        offenders = check_disallowed_in_allowed(entry.domains, self.policy)
         if offenders:
             logger.warning(
                 "[Executor] Entry %s has disallowed domains: %s",
@@ -217,7 +201,6 @@ class ApprovedSourceExecutor:
             return False
 
         return True
-
 
     def _is_successful(self, result: EnrichmentResultV1 | None) -> bool:
         """Check if a result is good enough to return as final."""
@@ -232,3 +215,33 @@ class ApprovedSourceExecutor:
             ):
                 return True
         return False
+
+    def _merge_source_results(
+        self,
+        existing: list[SourceResultInfo],
+        incoming: list[SourceResultInfo],
+    ) -> list[SourceResultInfo]:
+        merged: dict[str, SourceResultInfo] = {}
+
+        for result in [*(existing or []), *(incoming or [])]:
+            current = merged.get(result.sourceSlug)
+            if current is None:
+                merged[result.sourceSlug] = result
+                continue
+
+            current_matched_fields = len(current.matchedFields or [])
+            next_matched_fields = len(result.matchedFields or [])
+            should_replace = (
+                result.confidence > current.confidence
+                or (
+                    result.confidence == current.confidence
+                    and next_matched_fields >= current_matched_fields
+                )
+            )
+            if should_replace:
+                merged[result.sourceSlug] = result
+
+        return sorted(
+            merged.values(),
+            key=lambda item: (-item.confidence, item.sourceSlug),
+        )

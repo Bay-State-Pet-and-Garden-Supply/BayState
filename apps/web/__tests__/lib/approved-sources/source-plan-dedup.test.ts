@@ -246,4 +246,21 @@ describe('buildApprovedSourcePlans — dedup', () => {
     expect(slugs).not.toContain('official_brand');
     expect(slugs).toContain('phillips');
   });
+
+  it('returns all_sources_fresh when the selected distributor was skipped by dedup', async () => {
+    const responses = standardResponses([makeRecentEnriched('phillips')]);
+    const mockDb = createMockDbForSourcePlan(responses);
+
+    const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
+      forceRefresh: false,
+      extractionMode: 'distributor_only',
+      selectedDistributorSlug: 'phillips',
+    });
+
+    const result = results['SKU-1'];
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('Expected not ok');
+    expect(result.code).toBe('all_sources_fresh');
+    expect(result.error).toContain('already enriched within 48h');
+  });
 });

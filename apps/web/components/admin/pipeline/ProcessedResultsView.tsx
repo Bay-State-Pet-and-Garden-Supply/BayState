@@ -12,8 +12,6 @@ import {
   RotateCcw,
   Sparkles,
   CheckCircle2,
-  Clock,
-  HelpCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
@@ -28,6 +26,11 @@ import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import { PipelineSearchField } from "./PipelineSearchField";
 import { PipelineSidebarTable } from "./PipelineSidebarTable";
 import { adminFetch } from '@/lib/admin/api-client';
+import {
+  buildProcessedSourceItems,
+  formatPipelineSourceSlug,
+  type ProcessedSourceViewItem,
+} from './enriched-source-view-model';
 
 interface ProcessedResultsViewProps {
   products: PipelineProduct[];
@@ -123,20 +126,6 @@ function isSourceDetails(value: unknown): value is SourceDetails {
   return typeof value === "object" && value !== null;
 }
 
-const SOURCE_FRIENDLY_NAMES: Record<string, string> = {
-  phillips: "Phillips Pet",
-  orgill: "Orgill",
-  petfoodex: "Pet Food Experts",
-};
-
-function formatSourceSlug(slug: string): string {
-  const friendly = SOURCE_FRIENDLY_NAMES[slug.toLowerCase()];
-  if (friendly) return friendly;
-  return slug
-    .split(/[-_]/)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
 
 export function ProcessedResultsView({
   products,
@@ -171,9 +160,13 @@ export function ProcessedResultsView({
   }, [sortedProducts, preferredSku]);
 
   const sources = selectedProduct?.sources || EMPTY_SOURCES;
-  const sourceKeys = useMemo(
-    () => Object.keys(sources).filter((k) => !k.startsWith("_")),
+  const sourceItems = useMemo(
+    () => buildProcessedSourceItems(sources as Record<string, unknown>),
     [sources],
+  );
+  const sourceKeys = useMemo(
+    () => sourceItems.map((item) => item.key),
+    [sourceItems],
   );
 
   const [preferredSource, setPreferredSource] = useState<string>("");
@@ -182,16 +175,18 @@ export function ProcessedResultsView({
     if (preferredSource && sourceKeys.includes(preferredSource)) {
       return preferredSource;
     }
-    // Default to "enriched" if it exists, otherwise the first source key
-    if (sourceKeys.includes("enriched")) return "enriched";
-    return sourceKeys.length > 0 ? sourceKeys[0] : "";
-  }, [preferredSource, sourceKeys]);
+    return sourceItems.find((item) => item.isDefault)?.key ?? sourceItems[0]?.key ?? "";
+  }, [preferredSource, sourceItems, sourceKeys]);
+
+  const activeSourceItem = useMemo<ProcessedSourceViewItem | null>(() => {
+    if (!activeSource) return null;
+    return sourceItems.find((item) => item.key === activeSource) ?? null;
+  }, [activeSource, sourceItems]);
 
   const currentSourceData = useMemo(() => {
-    if (!activeSource) return null;
-    const sourceValue = sources[activeSource];
-    return isSourceDetails(sourceValue) ? sourceValue : null;
-  }, [activeSource, sources]);
+    if (!activeSourceItem?.data) return null;
+    return isSourceDetails(activeSourceItem.data) ? activeSourceItem.data : null;
+  }, [activeSourceItem]);
 
   // 3. UI control states
   const [submitting, setSubmitting] = useState(false);
@@ -442,15 +437,15 @@ export function ProcessedResultsView({
         return;
       }
 
-      if (event.key === "Backspace" && activeSource && !confirmDeleteSourceOpen) {
+      if (event.key === "Backspace" && activeSourceItem?.deleteSourceKey && !confirmDeleteSourceOpen) {
         event.preventDefault();
-        handleDeleteSourceClick(activeSource);
+        handleDeleteSourceClick(activeSourceItem.deleteSourceKey);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeSource, confirmDeleteSourceOpen, showClearDialog, showConsolidationDialog, confirmConsolidateProduct, confirmClearProduct, handleDeleteSourceClick, sourceKeys]);
+  }, [activeSourceItem, confirmDeleteSourceOpen, showClearDialog, showConsolidationDialog, confirmConsolidateProduct, confirmClearProduct, handleDeleteSourceClick, sourceKeys]);
 
   return (
     <div className="flex flex-1 min-h-0 border border-border rounded-none overflow-hidden bg-background max-w-full">
@@ -619,37 +614,18 @@ export function ProcessedResultsView({
                     className="flex-1"
                   >
                     <TabsList className="h-8 justify-start bg-muted rounded-none border border-border p-0.5 w-fit">
-                      {sourceKeys.map((key) => {
-                        const srcData = isSourceDetails(sources[key]) ? sources[key] as Record<string, unknown> : null;
+                      {sourceItems.map((item) => {
+                        const srcData = item.data && isSourceDetails(item.data) ? item.data as Record<string, unknown> : null;
                         const prov = getProvenance(srcData);
                         const provBadge = getProvenanceBadge(prov);
                         return (
                           <TabsTrigger
-                            key={key}
-                            value={key}
+                            key={item.key}
+                            value={item.key}
                             className="text-[10px] px-2.5 h-6 font-semibold rounded-none data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-none flex items-center gap-1.5"
                           >
-                            {key === "enriched" ? (
-                              <>
-                                <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                                {(() => {
-                                  const sourceResults = srcData?.["source_results"] as any[];
-                                  if (Array.isArray(sourceResults) && sourceResults.length > 0) {
-                                    const names = Array.from(
-                                      new Set(
-                                        sourceResults.map((sr) => formatSourceSlug(sr.sourceSlug))
-                                      )
-                                    );
-                                    if (names.length > 0) {
-                                      return `Enriched (${names.join(", ")})`;
-                                    }
-                                  }
-                                  return "Enriched";
-                                })()}
-                              </>
-                            ) : (
-                              formatSourceSlug(key)
-                            )}
+                            {item.isEnriched ? <CheckCircle2 className="h-3 w-3 text-emerald-500" /> : null}
+                            {item.label}
                             {provBadge ? (
                               <span className={`text-[7px] px-1 py-0.5 font-bold uppercase tracking-wider ${provBadge.className} rounded-none`}>
                                 {provBadge.label}
@@ -660,17 +636,17 @@ export function ProcessedResultsView({
                       })}
                     </TabsList>
                   </Tabs>
-                  {activeSource !== "enriched" && (
+                  {activeSourceItem?.deleteSourceKey ? (
                     <Button
                       variant="ghost"
                       size="sm"
                       className="text-destructive h-8 px-3 hover:bg-destructive/10 font-semibold text-[10px] rounded-none border border-transparent hover:border-destructive shrink-0"
-                      onClick={() => handleDeleteSourceClick(activeSource)}
+                      onClick={() => handleDeleteSourceClick(activeSourceItem.deleteSourceKey as string)}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Remove source
                     </Button>
-                  )}
+                  ) : null}
                 </div>
               ) : (
                 <div className="px-3 pb-3">
@@ -795,24 +771,7 @@ export function ProcessedResultsView({
                               variant="outline"
                               className="bg-foreground text-background border border-foreground rounded-none font-semibold text-[9px]"
                             >
-                              {activeSource === "enriched" ? (
-                                (() => {
-                                  const sourceResults = currentSourceData?.["source_results"] as any[];
-                                  if (Array.isArray(sourceResults) && sourceResults.length > 0) {
-                                    const names = Array.from(
-                                      new Set(
-                                        sourceResults.map((sr) => formatSourceSlug(sr.sourceSlug))
-                                      )
-                                    );
-                                    if (names.length > 0) {
-                                      return `ENRICHED (${names.join(", ").toUpperCase()})`;
-                                    }
-                                  }
-                                  return "ENRICHED";
-                                })()
-                              ) : (
-                                formatSourceSlug(activeSource).toUpperCase()
-                              )}
+                              {(activeSourceItem?.label ?? formatPipelineSourceSlug(activeSource)).toUpperCase()}
                             </Badge>
                             {(() => {
                               const prov = getProvenance(currentSourceData as unknown as Record<string, unknown>);

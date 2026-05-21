@@ -14,9 +14,11 @@ import {
   type ApprovedSourceType,
   type ApprovedSearchMode,
   type ExtractionMode,
+  type SourcePlanFailureCode,
   type SourcePlanResult,
   DISALLOWED_DOMAINS,
 } from "./types";
+import { getApprovedSourceSnapshot } from "@/lib/enrichment/merge-enriched-source";
 import { normalizeDistributorSlug, findDistributorInCatalog, buildDistributorPlanEntry } from "./distributor-catalog";
 
 // =============================================================================
@@ -182,8 +184,11 @@ function isSourceRecentlySuccessful(
   const enriched = sources.enriched;
   if (!enriched || typeof enriched !== "object") return false;
 
+  const approvedSourceSnapshot = getApprovedSourceSnapshot(enriched, sourceSlug);
+  const snapshot = (approvedSourceSnapshot ?? enriched) as Record<string, unknown>;
+
   // Check extracted_at exists and is within 48 hours
-  const extractedAt = enriched.extracted_at;
+  const extractedAt = snapshot.extracted_at;
   if (!extractedAt || typeof extractedAt !== "string") return false;
 
   const extractedTime = new Date(extractedAt).getTime();
@@ -193,22 +198,27 @@ function isSourceRecentlySuccessful(
   if (extractedTime < fortyEightHoursAgo) return false;
 
   // Check non-empty name
-  const name: unknown = enriched.name ?? enriched.title;
+  const name: unknown = snapshot.name ?? snapshot.title;
   if (!name || (typeof name === "string" && name.trim().length === 0)) return false;
 
   // Check non-empty images / image_urls array
-  const images: unknown = enriched.images ?? enriched.image_urls;
+  const images: unknown = snapshot.images ?? snapshot.image_urls;
   if (!Array.isArray(images) || images.length === 0) return false;
 
   // Check source_results for matching sourceSlug with confidence >= 0.6
-  const sourceResults: unknown = enriched.source_results;
-  if (!Array.isArray(sourceResults)) return false;
+  const sourceResultsCandidate = Array.isArray(snapshot.source_results)
+    ? snapshot.source_results
+    : Array.isArray((enriched as Record<string, unknown>).source_results)
+      ? (enriched as Record<string, unknown>).source_results
+      : null;
+  if (!Array.isArray(sourceResultsCandidate)) return false;
 
-  const matchingResult = sourceResults.find(
+  const canonicalSourceSlug = normalizeDistributorSlug(sourceSlug);
+  const matchingResult = sourceResultsCandidate.find(
     (r: any) =>
       r &&
       typeof r === "object" &&
-      r.sourceSlug === sourceSlug &&
+      normalizeDistributorSlug(String(r.sourceSlug ?? "")) === canonicalSourceSlug &&
       typeof r.confidence === "number" &&
       r.confidence >= 0.6,
   );
@@ -227,6 +237,19 @@ function isSourceRecentlySuccessful(
  * Returns a map keyed by SKU. Each value is either an ApprovedSourcePlan
  * (ok: true) or a structured error (ok: false).
  */
+function buildFailureResult(
+  sku: string,
+  error: string,
+  code?: SourcePlanFailureCode,
+): SourcePlanResult {
+  return {
+    ok: false,
+    sku,
+    error,
+    code,
+  };
+}
+
 export async function buildApprovedSourcePlans(
   db: SupabaseClient,
   skus: string[],
@@ -255,9 +278,11 @@ export async function buildApprovedSourcePlans(
   if (productError) {
     for (const sku of skus) {
       results[sku] = {
-        ok: false,
-        sku,
-        error: `Database error loading products: ${productError.message}`,
+        ...buildFailureResult(
+          sku,
+          `Database error loading products: ${productError.message}`,
+          "database_error",
+        ),
       };
     }
     return results;
@@ -274,16 +299,15 @@ export async function buildApprovedSourcePlans(
   for (const sku of skus) {
     const product = productMap.get(sku);
     if (!product) {
-      results[sku] = { ok: false, sku, error: "Product not found" };
+      results[sku] = buildFailureResult(sku, "Product not found", "product_not_found");
       continue;
     }
     if (!product.brand_id) {
-      results[sku] = {
-        ok: false,
+      results[sku] = buildFailureResult(
         sku,
-        error:
-          "Product has no assigned brand. Assign a brand before extraction.",
-      };
+        "Product has no assigned brand. Assign a brand before extraction.",
+        "missing_brand",
+      );
       continue;
     }
     brandedSkus.push(sku);
@@ -332,9 +356,11 @@ export async function buildApprovedSourcePlans(
   if (brandError) {
     for (const sku of brandedSkus) {
       results[sku] = {
-        ok: false,
-        sku,
-        error: `Database error loading brands: ${brandError.message}`,
+        ...buildFailureResult(
+          sku,
+          `Database error loading brands: ${brandError.message}`,
+          "database_error",
+        ),
       };
     }
     return results;
@@ -359,9 +385,11 @@ export async function buildApprovedSourcePlans(
   if (sourcesError) {
     for (const sku of brandedSkus) {
       results[sku] = {
-        ok: false,
-        sku,
-        error: `Database error loading brand sources: ${sourcesError.message}`,
+        ...buildFailureResult(
+          sku,
+          `Database error loading brand sources: ${sourcesError.message}`,
+          "database_error",
+        ),
       };
     }
     return results;
@@ -382,11 +410,11 @@ export async function buildApprovedSourcePlans(
     const brand = brandMap.get(product.brand_id!);
 
     if (!brand) {
-      results[sku] = {
-        ok: false,
+      results[sku] = buildFailureResult(
         sku,
-        error: `Brand record not found for brand_id ${product.brand_id}`,
-      };
+        `Brand record not found for brand_id ${product.brand_id}`,
+        "missing_brand",
+      );
       continue;
     }
 
@@ -445,7 +473,7 @@ export async function buildApprovedSourcePlans(
       const isRunFirst =
         selectedDistributorSlug !== undefined &&
         source.source_type === "distributor" &&
-        source.source_slug === selectedDistributorSlug;
+        normalizeDistributorSlug(source.source_slug) === selectedDistributorSlug;
 
       entries.push({
         sourceType: source.source_type as ApprovedSourceType,
@@ -463,17 +491,98 @@ export async function buildApprovedSourcePlans(
       });
     }
 
-    // ---- Reorder: selected distributor first, then by priority ----
-    const runFirstEntries = entries.filter((e) => e.runFirst);
-    const otherEntries = entries.filter((e) => !e.runFirst);
+    const appendCandidateEntry = (entry: ApprovedSourcePlanEntry | null | undefined) => {
+      if (!entry) {
+        return;
+      }
 
-    // Sort other entries by priority ascending
+      const normalizedSourceSlug = entry.sourceType === "distributor"
+        ? normalizeDistributorSlug(entry.sourceSlug)
+        : entry.sourceSlug;
+      const existingIndex = entries.findIndex((candidate) => {
+        const candidateSlug = candidate.sourceType === "distributor"
+          ? normalizeDistributorSlug(candidate.sourceSlug)
+          : candidate.sourceSlug;
+        return candidate.sourceType === entry.sourceType && candidateSlug === normalizedSourceSlug;
+      });
+
+      const normalizedEntry: ApprovedSourcePlanEntry = {
+        ...entry,
+        sourceSlug: normalizedSourceSlug,
+      };
+
+      if (existingIndex >= 0) {
+        entries[existingIndex] = {
+          ...entries[existingIndex],
+          ...normalizedEntry,
+          runFirst: entries[existingIndex].runFirst || normalizedEntry.runFirst,
+        };
+      } else {
+        entries.push(normalizedEntry);
+      }
+
+      normalizedEntry.domains.forEach((domain) => allDomains.add(domain));
+      normalizedEntry.assetDomains.forEach((domain) => allAssetDomains.add(domain));
+    };
+
+    if (extractionMode !== "ai_only" && selectedDistributorSlug) {
+      const hasSelectedDistributor = entries.some((entry) => (
+        entry.sourceType === "distributor"
+        && normalizeDistributorSlug(entry.sourceSlug) === selectedDistributorSlug
+      ));
+
+      if (!hasSelectedDistributor) {
+        const selectedCatalogEntry = findDistributorInCatalog(selectedDistributorSlug);
+        if (selectedCatalogEntry) {
+          appendCandidateEntry(buildDistributorPlanEntry(selectedCatalogEntry));
+        }
+      }
+    }
+
+    if (
+      extractionMode !== "ai_only"
+      && !entries.some((entry) => entry.sourceType === "distributor")
+    ) {
+      const enabledSources = product.enrichment_config?.enabled_sources;
+      if (Array.isArray(enabledSources) && enabledSources.length > 0) {
+        for (const sourceId of enabledSources) {
+          const catalogEntry = findDistributorInCatalog(sourceId);
+          if (catalogEntry) {
+            appendCandidateEntry(buildDistributorPlanEntry(catalogEntry));
+          }
+        }
+      }
+    }
+
+    // ---- Extraction Mode filtering ----
+    let filteredEntries = entries.filter((entry) => {
+      if (extractionMode === "ai_only") {
+        return entry.sourceType === "official_brand";
+      }
+
+      if (extractionMode === "distributor_only") {
+        return entry.sourceType === "distributor";
+      }
+
+      return true;
+    });
+
+    if (selectedDistributorSlug && extractionMode === "distributor_only") {
+      filteredEntries = filteredEntries.filter((entry) => (
+        entry.sourceType === "distributor"
+        && normalizeDistributorSlug(entry.sourceSlug) === selectedDistributorSlug
+      ));
+    }
+
+    // ---- Reorder: selected distributor first, then by priority ----
+    const runFirstEntries = filteredEntries.filter((entry) => entry.runFirst);
+    const otherEntries = filteredEntries.filter((entry) => !entry.runFirst);
+
+    runFirstEntries.sort((a, b) => a.priority - b.priority);
     otherEntries.sort((a, b) => a.priority - b.priority);
 
-    // Run-first entries sorted by priority among themselves
-    runFirstEntries.sort((a, b) => a.priority - b.priority);
-
     let orderedEntries = [...runFirstEntries, ...otherEntries];
+    const preDedupEntries = [...orderedEntries];
 
     // ---- Dedup: filter out recently successful sources (skip when forceRefresh) ----
     const skippedSources: string[] = [];
@@ -498,66 +607,35 @@ export async function buildApprovedSourcePlans(
       }
     }
 
-    // ---- Extraction Mode filtering ----
-    if (extractionMode === "ai_only") {
-      orderedEntries = orderedEntries.filter(e => e.sourceType === "official_brand");
-    } else if (extractionMode === "distributor_only") {
-      orderedEntries = orderedEntries.filter(e => e.sourceType !== "official_brand");
-    }
-
-    // ---- Dedup: filter out recently successful sources (skip when forceRefresh) ----
-
-    // ---- Non-AI-only fallbacks: catalog fallback, enrichment config fallback, empty guard ----
-    if (extractionMode !== "ai_only") {
-      // ---- Catalog fallback: synthesize from fixed catalog if selected distributor not found ----
-      if (orderedEntries.length === 0 && selectedDistributorSlug) {
-        const catalogEntry = findDistributorInCatalog(selectedDistributorSlug);
-        if (catalogEntry) {
-          const fallbackEntry = buildDistributorPlanEntry(catalogEntry);
-          orderedEntries.push(fallbackEntry);
-          for (const d of catalogEntry.domains) allDomains.add(d);
-          for (const d of catalogEntry.assetDomains) allAssetDomains.add(d);
-        }
-      }
-
-      // ---- Enrichment Config fallback: if no entries exist, check if there are enabled sources in the product's enrichment_config ----
-      if (orderedEntries.length === 0) {
-        const enabledSources = product.enrichment_config?.enabled_sources;
-        if (Array.isArray(enabledSources) && enabledSources.length > 0) {
-          for (const sourceId of enabledSources) {
-            const catalogEntry = findDistributorInCatalog(sourceId);
-            if (catalogEntry) {
-              const fallbackEntry = buildDistributorPlanEntry(catalogEntry);
-              orderedEntries.push(fallbackEntry);
-              for (const d of catalogEntry.domains) allDomains.add(d);
-              for (const d of catalogEntry.assetDomains) allAssetDomains.add(d);
-            }
-          }
-        }
-      }
-
-      // ---- Empty plan guard ----
-      if (orderedEntries.length === 0) {
-        const modeDesc = extractionMode === "mixed" ? "" : ` (${extractionMode} mode)`;
-        results[sku] = {
-          ok: false,
+    if (orderedEntries.length === 0) {
+      if (preDedupEntries.length > 0 && skippedSources.length > 0) {
+        const sourceLabel = selectedDistributorSlug
+          ? `selected source ${selectedDistributorSlug}`
+          : "requested sources";
+        results[sku] = buildFailureResult(
           sku,
-          error: `No approved sources configured for brand ${brand.name} (${brand.slug})${modeDesc}. ` +
-            "Configure brand sources in the admin panel before extraction.",
-        };
+          `All ${sourceLabel} are already enriched within 48h. Use forceRefresh to re-scrape.`,
+          "all_sources_fresh",
+        );
         continue;
       }
-    } else {
-      // AI-only empty guard
-      if (orderedEntries.length === 0) {
-        results[sku] = {
-          ok: false,
+
+      if (extractionMode === "ai_only") {
+        results[sku] = buildFailureResult(
           sku,
-          error: `AI-only mode requested but no official brand sources are configured for ${brand.name}. ` +
-            "Add an 'official_brand' source in the admin panel before extraction.",
-        };
+          `AI-only mode requested but no official brand sources are configured for ${brand.name}. Add an 'official_brand' source in the admin panel before extraction.`,
+          "ai_only_no_official_brand",
+        );
         continue;
       }
+
+      const modeDesc = extractionMode === "mixed" ? "" : ` (${extractionMode} mode)`;
+      results[sku] = buildFailureResult(
+        sku,
+        `No approved sources configured for brand ${brand.name} (${brand.slug})${modeDesc}. Configure brand sources in the admin panel before extraction.`,
+        "no_sources_configured",
+      );
+      continue;
     }
 
     // ---- Build source policy ----
@@ -582,6 +660,7 @@ export async function buildApprovedSourcePlans(
         name: brand.name,
         slug: brand.slug,
       },
+      extractionMode,
       selectedDistributorSlug: selectedDistributorSlug ?? null,
       priority: orderedEntries,
       sourcePolicy,

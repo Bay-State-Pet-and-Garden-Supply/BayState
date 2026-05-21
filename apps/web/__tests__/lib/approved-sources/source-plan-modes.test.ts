@@ -100,6 +100,7 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
     const result = results['SKU-1'];
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('Expected ok');
+    expect(result.plan.extractionMode).toBe('mixed');
     expect(result.plan.priority.length).toBe(2);
     expect(result.plan.priority.map(e => e.sourceSlug)).toContain('phillips');
     expect(result.plan.priority.map(e => e.sourceSlug)).toContain('official_brand');
@@ -114,6 +115,7 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
     const result = results['SKU-1'];
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('Expected ok');
+    expect(result.plan.extractionMode).toBe('distributor_only');
     expect(result.plan.priority.length).toBe(1);
     expect(result.plan.priority[0].sourceSlug).toBe('phillips');
   });
@@ -129,6 +131,84 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
     if (!result.ok) throw new Error('Expected ok');
     expect(result.plan.priority.length).toBe(1);
     expect(result.plan.priority[0].sourceSlug).toBe('official_brand');
+  });
+
+  it('distributor_only with selectedDistributorSlug only includes the selected distributor', async () => {
+    const responses = [
+      {
+        data: [
+          {
+            sku: 'SKU-1',
+            brand_id: 'brand-1',
+            input: { name: 'Test Product', price: 10 },
+            enrichment_config: null,
+          },
+        ],
+        error: null,
+      },
+      { data: [], error: null },
+      {
+        data: [
+          {
+            id: 'brand-1',
+            name: 'TestBrand',
+            slug: 'testbrand',
+            official_domains: ['testbrand.com'],
+            preferred_domains: [],
+          },
+        ],
+        error: null,
+      },
+      {
+        data: [
+          {
+            id: 'bs-1',
+            brand_id: 'brand-1',
+            source_type: 'distributor',
+            source_slug: 'phillips',
+            display_name: 'Phillips',
+            domains: ['phillips.com'],
+            asset_domains: [],
+            crawl4ai_adapter_slug: 'phillips_adapter',
+            requires_auth: false,
+            credential_ref: null,
+            search_mode: 'sku_search',
+            allowed_fields: ['name', 'description', 'images'],
+            priority: 1,
+            enabled: true,
+          },
+          {
+            id: 'bs-2',
+            brand_id: 'brand-1',
+            source_type: 'distributor',
+            source_slug: 'orgill',
+            display_name: 'Orgill',
+            domains: ['orgill.com'],
+            asset_domains: [],
+            crawl4ai_adapter_slug: 'orgill_adapter',
+            requires_auth: false,
+            credential_ref: null,
+            search_mode: 'sku_search',
+            allowed_fields: ['name', 'description', 'images'],
+            priority: 2,
+            enabled: true,
+          },
+        ],
+        error: null,
+      },
+    ];
+
+    const mockDb = createMockDbForSourcePlan(responses);
+    const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
+      extractionMode: 'distributor_only',
+      selectedDistributorSlug: 'orgill',
+    });
+
+    const result = results['SKU-1'];
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('Expected ok');
+    expect(result.plan.priority).toHaveLength(1);
+    expect(result.plan.priority[0].sourceSlug).toBe('orgill');
   });
 
   it('distributor_only with no distributors returns error', async () => {

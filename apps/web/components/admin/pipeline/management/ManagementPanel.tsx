@@ -5,7 +5,6 @@ import { Package, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { cn } from '@/lib/utils';
 import type { PipelineProduct } from '@/lib/pipeline/types';
 import type { Brand } from '@/lib/types';
 import { DistributorSection } from './DistributorSection';
@@ -18,11 +17,11 @@ interface ManagementPanelProps {
   onSuccess: () => void;
 }
 
-export function ManagementPanel({ 
-  cohortId, 
-  products, 
-  cohortBrandObjects = {}, 
-  onSuccess 
+export function ManagementPanel({
+  cohortId,
+  products,
+  cohortBrandObjects = {},
+  onSuccess,
 }: ManagementPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
@@ -36,7 +35,6 @@ export function ManagementPanel({
 
   const [forceRefresh, setForceRefresh] = useState(false);
 
-  // Load credential statuses on mount
   useEffect(() => {
     let active = true;
     async function loadStatuses() {
@@ -47,13 +45,13 @@ export function ManagementPanel({
             const res = await fetch(`/api/admin/pipeline/scrapers/${slug}/credentials`);
             if (!res.ok) throw new Error('Failed to load credentials for ' + slug);
             const data = await res.json();
-            const login = data.statuses?.find((s: any) => s.type === 'login');
-            const password = data.statuses?.find((s: any) => s.type === 'password');
+            const login = data.statuses?.find((status: any) => status.type === 'login');
+            const password = data.statuses?.find((status: any) => status.type === 'password');
             return {
               slug,
               configured: (login?.configured && password?.configured) ?? false,
             };
-          })
+          }),
         );
         if (active) {
           const newStatuses: Record<string, { configured: boolean; loading: boolean }> = {};
@@ -79,10 +77,8 @@ export function ManagementPanel({
     };
   }, []);
 
-  // Initialize state from cohort/products reactively
   useEffect(() => {
     if (products.length > 0) {
-      // 1. Resolve Brand
       let brand: Brand | null = null;
       if (cohortId && cohortBrandObjects[cohortId]) {
         brand = cohortBrandObjects[cohortId];
@@ -91,7 +87,6 @@ export function ManagementPanel({
       }
       setSelectedBrand(brand);
 
-      // 2. Resolve Domains
       const firstProduct = products[0];
       const config = firstProduct.enrichment_config;
       if (config?.official_domains && config.official_domains.length > 0) {
@@ -102,7 +97,6 @@ export function ManagementPanel({
         setDomains([]);
       }
 
-      // 3. Resolve Scrapers
       if (config?.enabled_sources) {
         setActiveScrapers(config.enabled_sources);
       } else {
@@ -117,17 +111,16 @@ export function ManagementPanel({
 
   const isAISerpEnabled = Boolean(selectedBrand && domains && domains.length > 0);
 
-  // Filter out official_brand if AI/SERP is not enabled
-  const effectiveScrapers = isAISerpEnabled 
-    ? activeScrapers 
-    : activeScrapers.filter(s => s !== 'official_brand');
+  const effectiveScrapers = isAISerpEnabled
+    ? activeScrapers
+    : activeScrapers.filter((scraper) => scraper !== 'official_brand');
 
   const toggleScraper = (id: string) => {
-    setActiveScrapers(prev => 
-      prev.includes(id) 
-        ? prev.filter(s => s !== id) 
-        : [...prev, id]
-    );
+    setActiveScrapers((previous) => (
+      previous.includes(id)
+        ? previous.filter((scraper) => scraper !== id)
+        : [...previous, id]
+    ));
   };
 
   const handleSave = async (startScraper: boolean = false) => {
@@ -138,32 +131,32 @@ export function ManagementPanel({
 
     setIsSaving(true);
     try {
-      const skus = products.map(p => p.sku);
-      
-      // 1. Update products in DB with effective scrapers
+      const skus = products.map((product) => product.sku);
+
       const productResult = await updateProductsBatch(skus, {
         brand_id: selectedBrand?.id || null,
         pipeline_status: undefined,
         enrichment_config: {
           enabled_sources: effectiveScrapers,
           official_domains: domains,
-        }
+        },
       });
 
       if (!productResult.success) throw new Error(productResult.error);
 
-      // 2. Trigger the extraction job with inferred mode
+      let successMessage = startScraper ? 'Scraper initiated successfully!' : 'Assignments saved successfully.';
+
       if (startScraper) {
         const hasAI = effectiveScrapers.includes('official_brand');
-        const hasDistributors = effectiveScrapers.some(s => s !== 'official_brand');
-        
-        let inferredExtractionMode: "mixed" | "distributor_only" | "ai_only" = "mixed";
+        const hasDistributors = effectiveScrapers.some((scraper) => scraper !== 'official_brand');
+
+        let inferredExtractionMode: 'mixed' | 'distributor_only' | 'ai_only' = 'mixed';
         if (hasAI && hasDistributors) {
-          inferredExtractionMode = "mixed";
+          inferredExtractionMode = 'mixed';
         } else if (hasAI) {
-          inferredExtractionMode = "ai_only";
+          inferredExtractionMode = 'ai_only';
         } else {
-          inferredExtractionMode = "distributor_only";
+          inferredExtractionMode = 'distributor_only';
         }
 
         const response = await fetch('/api/admin/enrichment/jobs', {
@@ -179,13 +172,18 @@ export function ManagementPanel({
           }),
         });
 
+        const payload = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.error || 'Failed to start extraction job');
+          throw new Error(payload.error || 'Failed to start extraction job');
+        }
+
+        if (typeof payload.message === 'string' && payload.message.trim().length > 0) {
+          successMessage = payload.message;
         }
       }
 
-      toast.success(startScraper ? 'Scraper initiated successfully!' : 'Assignments saved successfully.');
+      toast.success(successMessage);
       onSuccess();
     } catch (error: any) {
       console.error('Error saving assignments:', error);
@@ -207,7 +205,6 @@ export function ManagementPanel({
 
   return (
     <div className="flex h-full w-full shrink-0 flex-col border-t border-border bg-card xl:w-[400px] xl:border-l xl:border-t-0">
-      {/* Header */}
       <div className="border-b border-border bg-muted/30 p-4">
         <div className="mb-1 text-xs font-medium text-primary">Management</div>
         <h2 className="truncate text-sm font-semibold text-foreground">
@@ -218,9 +215,8 @@ export function ManagementPanel({
         </div>
       </div>
 
-      {/* Scrollable Content Area */}
       <div className="flex-1 space-y-8 overflow-y-auto p-4">
-        <DistributorSection 
+        <DistributorSection
           activeScrapers={activeScrapers}
           onToggleScraper={toggleScraper}
           credentialStatuses={credentialStatuses}
@@ -228,9 +224,7 @@ export function ManagementPanel({
         />
       </div>
 
-      {/* Footer Action */}
       <div className="border-t border-border bg-muted/30 p-4 space-y-3">
-        {/* Force Refresh */}
         <label className="flex items-center gap-2 cursor-pointer">
           <Checkbox
             checked={forceRefresh}
@@ -252,4 +246,3 @@ export function ManagementPanel({
     </div>
   );
 }
-

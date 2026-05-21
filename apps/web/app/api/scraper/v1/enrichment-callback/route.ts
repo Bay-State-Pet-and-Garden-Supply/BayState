@@ -10,14 +10,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { validateActiveRunner } from "@/lib/scraper-auth";
 import { SUPABASE_SECRET_KEY, SUPABASE_URL } from "@/lib/supabase/config";
-import { safeValidateEnrichmentResultV1 } from "@/lib/enrichment/validation";
-import { normalizeEnrichmentResultForSources } from "@/lib/enrichment/normalize-result";
-import type { EnrichmentResultV1 } from "@/lib/enrichment/contracts";
 import {
   replaceInlineImageDataUrls,
   buildProductImageStorageFolder,
 } from "@/lib/product-image-storage";
-
+import {
+  mergeEnrichedSource,
+  isTerminalApprovedSourceFailure,
+} from "@/lib/enrichment/merge-enriched-source";
+import { safeValidateEnrichmentResultV1 } from "@/lib/enrichment/validation";
+import { normalizeEnrichmentResultForSources } from "@/lib/enrichment/normalize-result";
+import type {
+  EnrichmentResultV1,
+  RequestedExtractionMode,
+} from "@/lib/enrichment/contracts";
 
 function getSupabaseAdmin(): SupabaseClient {
   const url = SUPABASE_URL;
@@ -28,49 +34,97 @@ function getSupabaseAdmin(): SupabaseClient {
   return createClient(url, key);
 }
 
-// =============================================================================
-// Helpers
-// =============================================================================
+const REQUESTED_EXTRACTION_MODES: RequestedExtractionMode[] = [
+  "mixed",
+  "distributor_only",
+  "ai_only",
+];
+
+interface AttemptLike {
+  retry_count?: number | null;
+}
+
+function isRequestedExtractionMode(value: unknown): value is RequestedExtractionMode {
+  return typeof value === "string" && REQUESTED_EXTRACTION_MODES.includes(value as RequestedExtractionMode);
+}
+
+export function determineRequestedExtractionMode(options: {
+  attemptMode?: unknown;
+  jobMode?: unknown;
+  jobConfig?: Record<string, unknown> | null;
+  resultRequestedMode?: unknown;
+}): RequestedExtractionMode {
+  const candidates = [
+    options.attemptMode,
+    options.jobMode,
+    options.jobConfig?.extraction_mode,
+    options.resultRequestedMode,
+  ].filter(isRequestedExtractionMode);
+
+  const specificMode = candidates.find((candidate) => candidate !== "mixed");
+  if (specificMode) {
+    return specificMode;
+  }
+
+  return candidates[0] ?? "mixed";
+}
+
+function isApprovedSourceResult(result: EnrichmentResultV1): boolean {
+  return result.source.url === "approved_source_extraction"
+    || typeof result.source.source_slug === "string"
+    || Boolean(result.source_results?.length);
+}
+
+export function shouldRetryEnrichmentResult(
+  result: EnrichmentResultV1,
+  attempt: AttemptLike,
+  requestedMode: RequestedExtractionMode,
+): boolean {
+  const failureThreshold = 3;
+  const retryCount = attempt.retry_count ?? 0;
+
+  if (retryCount >= failureThreshold) {
+    return false;
+  }
+
+  if (result.status === "success") {
+    return false;
+  }
+
+  if (result.status === "partial" && result.confidence.overall >= 0.6) {
+    return false;
+  }
+
+  if (
+    requestedMode === "distributor_only"
+    && isApprovedSourceResult(result)
+    && isTerminalApprovedSourceFailure(result.validation?.warnings)
+  ) {
+    return false;
+  }
+
+  return true;
+}
 
 /**
  * Determines next pipeline status based on enrichment result quality.
  */
-function determineNextStatus(
+export function determineNextStatus(
   result: EnrichmentResultV1,
-  attempt: { retry_count?: number; id?: string }
+  attempt: AttemptLike,
+  requestedMode: RequestedExtractionMode,
 ): { status: string; retry: boolean } {
-  const failureThreshold = 3;
-
   if (result.status === "success") {
-    // Success: high-confidence → processed, partial → processed with review
-    if (result.confidence.overall >= 0.7) {
-      return { status: "processed", retry: false };
-    }
-    // Low confidence success: still move to processed but could be reviewed
     return { status: "processed", retry: false };
   }
 
-  if (result.status === "partial") {
-    // Partial with acceptable confidence → processed
-    if (result.confidence.overall >= 0.6) {
-      return { status: "processed", retry: false };
-    }
-
-    // Low confidence partial -> retry if budget remains
-    const retryCount = attempt.retry_count ?? 0;
-    if (retryCount < failureThreshold) {
-      return { status: "extracting", retry: true };
-    }
-
-    return { status: "imported", retry: false };
+  if (result.status === "partial" && result.confidence.overall >= 0.6) {
+    return { status: "processed", retry: false };
   }
 
-  if (result.status === "failed") {
-    const retryCount = attempt.retry_count ?? 0;
-    if (retryCount < failureThreshold) {
-      return { status: "extracting", retry: true };
-    }
-    return { status: "imported", retry: false };
+  const retry = shouldRetryEnrichmentResult(result, attempt, requestedMode);
+  if (retry) {
+    return { status: "extracting", retry: true };
   }
 
   return { status: "imported", retry: false };
@@ -95,17 +149,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden: Runner is disabled" }, { status: 403 });
     }
 
-    const runner = activeRunner.runner!;
-
     const supabase = getSupabaseAdmin();
 
-    // Parse body — extract transport fields (_attempt_id, _lease_token etc.)
     const rawBody = await request.json();
-    const attemptId = (rawBody as Record<string, unknown>)._attempt_id as
-      | string
-      | undefined;
+    const attemptId = (rawBody as Record<string, unknown>)._attempt_id as string | undefined;
 
-    // Validate the core EnrichmentResultV1 payload (transport fields stripped by Zod)
     const enrichedResult = safeValidateEnrichmentResultV1(rawBody);
 
     if (!enrichedResult) {
@@ -113,22 +161,22 @@ export async function POST(request: NextRequest) {
         {
           error: "Invalid enrichment result payload",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // Normalize for persistence
-    const normalized = normalizeEnrichmentResultForSources(enrichedResult);
-
-    // Find the enrichment attempt by attempt_id from transport, or fall back to SKU lookup
     let attemptQuery = supabase
       .from("enrichment_attempts")
       .select(`
-        id, 
-        job_id, 
+        id,
+        job_id,
+        mode,
+        attempt_number,
         retry_count,
         enrichment_jobs!inner (
-          test_mode
+          test_mode,
+          mode,
+          config
         )
       `)
       .eq("sku", enrichedResult.sku)
@@ -139,11 +187,15 @@ export async function POST(request: NextRequest) {
       attemptQuery = supabase
         .from("enrichment_attempts")
         .select(`
-          id, 
-          job_id, 
+          id,
+          job_id,
+          mode,
+          attempt_number,
           retry_count,
           enrichment_jobs!inner (
-            test_mode
+            test_mode,
+            mode,
+            config
           )
         `)
         .eq("id", attemptId);
@@ -153,25 +205,40 @@ export async function POST(request: NextRequest) {
     if (!attemptData) {
       return NextResponse.json(
         { error: `No enrichment attempt found for SKU ${enrichedResult.sku}` },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    const isTestJob = (attemptData as Record<string, { test_mode?: boolean }>).enrichment_jobs?.test_mode === true;
+    const requestedMode = determineRequestedExtractionMode({
+      attemptMode: (attemptData as { mode?: unknown }).mode,
+      jobMode: (attemptData as { enrichment_jobs?: { mode?: unknown } }).enrichment_jobs?.mode,
+      jobConfig: ((attemptData as { enrichment_jobs?: { config?: unknown } }).enrichment_jobs?.config ?? null) as Record<string, unknown> | null,
+      resultRequestedMode: enrichedResult.requested_extraction_mode,
+    });
 
-    // Update the enrichment attempt
-    const nextAttempt = determineNextStatus(enrichedResult, attemptData);
+    const normalized = normalizeEnrichmentResultForSources(enrichedResult, {
+      requestedExtractionMode: requestedMode,
+    });
+
+    const isTestJob = (attemptData as { enrichment_jobs?: { test_mode?: boolean } }).enrichment_jobs?.test_mode === true;
+    const nextAttempt = determineNextStatus(enrichedResult, attemptData, requestedMode);
+
+    const resultPayload = {
+      ...(rawBody as Record<string, unknown>),
+      requested_extraction_mode:
+        (rawBody as Record<string, unknown>).requested_extraction_mode ?? requestedMode,
+    };
 
     const { error: attemptUpdateError } = await supabase
       .from("enrichment_attempts")
       .update({
         status: enrichedResult.status,
-        result: rawBody as Record<string, unknown>,
+        result: resultPayload as Record<string, unknown>,
         normalized_source: normalized as unknown as Record<string, unknown>,
         confidence_overall: enrichedResult.confidence.overall,
         field_confidence: enrichedResult.confidence.fields,
         validation: enrichedResult.validation,
-        retry_count: attemptData.retry_count + 1,
+        retry_count: (attemptData.retry_count ?? 0) + 1,
         completed_at: new Date().toISOString(),
       })
       .eq("id", attemptData.id);
@@ -185,7 +252,6 @@ export async function POST(request: NextRequest) {
     if (isTestJob) {
       console.log(`[Enrichment Callback] Test job detected for SKU ${enrichedResult.sku} - skipping products_ingestion update.`);
     } else {
-      // Merge normalized source into product's sources.enriched
       const { data: product } = await supabase
         .from("products_ingestion")
         .select("sources")
@@ -193,28 +259,29 @@ export async function POST(request: NextRequest) {
         .single();
 
       const currentSources = (product?.sources as Record<string, unknown>) ?? {};
+      const mergedEnriched = mergeEnrichedSource(currentSources.enriched, normalized, {
+        incomingStatus: enrichedResult.status,
+      });
       const updatedSources: Record<string, unknown> = {
         ...currentSources,
-        enriched: normalized as unknown as Record<string, unknown>,
+        enriched: mergedEnriched as unknown as Record<string, unknown>,
       };
 
-      // Merge per-source results into products_ingestion.sources
-      if (enrichedResult.source_results && Array.isArray(enrichedResult.source_results)) {
-        for (const sr of enrichedResult.source_results) {
-          if (sr.sourceSlug && sr.product) {
-            updatedSources[sr.sourceSlug] = {
-              ...((updatedSources[sr.sourceSlug] as Record<string, unknown>) || {}),
-              ...sr.product,
+      if (Array.isArray(enrichedResult.source_results)) {
+        for (const sourceResult of enrichedResult.source_results) {
+          if (sourceResult.sourceSlug && sourceResult.product) {
+            updatedSources[sourceResult.sourceSlug] = {
+              ...((updatedSources[sourceResult.sourceSlug] as Record<string, unknown>) || {}),
+              ...sourceResult.product,
               _scraped_at: enrichedResult.extracted_at,
-              _url: sr.evidenceUrl || enrichedResult.source.url,
+              _url: sourceResult.evidenceUrl || enrichedResult.source.url,
             };
           }
         }
       }
 
-      // Make incoming base64 inline images durable by uploading them to Supabase Storage
       const durableSourcesResult = await replaceInlineImageDataUrls(supabase, updatedSources, {
-        folderPath: buildProductImageStorageFolder('pipeline-sources', enrichedResult.sku),
+        folderPath: buildProductImageStorageFolder("pipeline-sources", enrichedResult.sku),
         productId: enrichedResult.sku,
         onError: (message, error) => {
           console.warn(`[Enrichment Callback] ${message}`, error);
@@ -222,19 +289,12 @@ export async function POST(request: NextRequest) {
       });
       const durableSources = durableSourcesResult.value;
 
-      // Update product
       const updatePayload: Record<string, unknown> = {
         sources: durableSources,
         pipeline_status: nextStatus,
-        confidence_score: enrichedResult.confidence.overall,
+        confidence_score: mergedEnriched.confidence_score,
         updated_at: new Date().toISOString(),
       };
-
-      if (nextStatus === "failed") {
-        updatePayload.error_message =
-          (enrichedResult.validation?.warnings ?? []).join("; ") ||
-          "Enrichment failed after retries";
-      }
 
       const { error: productUpdateError } = await supabase
         .from("products_ingestion")
@@ -245,25 +305,23 @@ export async function POST(request: NextRequest) {
         console.error("Failed to update product:", productUpdateError);
         return NextResponse.json(
           { error: productUpdateError.message },
-          { status: 500 }
+          { status: 500 },
         );
       }
     }
 
-    // If result indicates retry, create next attempt
     if (nextAttempt.retry) {
       await supabase.from("enrichment_attempts").insert({
         job_id: attemptData.job_id,
         sku: enrichedResult.sku,
-        attempt_number: attemptData.retry_count + 2,
+        attempt_number: (attemptData.attempt_number ?? 1) + 1,
         status: "queued",
-        mode: enrichedResult.mode,
+        mode: requestedMode,
         model: enrichedResult.model,
         source_url: enrichedResult.source.url,
       });
     }
 
-    // Update enrichment_jobs counters based on the latest attempt per SKU
     const { data: jobAttempts } = await supabase
       .from("enrichment_attempts")
       .select("sku, attempt_number, status")
@@ -284,10 +342,10 @@ export async function POST(request: NextRequest) {
       const latestAttempts = Array.from(latestAttemptsBySku.values());
 
       const completed = latestAttempts.filter(
-        (a) => a.status === "success" || a.status === "partial" || a.status === "failed"
+        (attempt) => attempt.status === "success" || attempt.status === "partial" || attempt.status === "failed",
       ).length;
       const failed = latestAttempts.filter(
-        (a) => a.status === "failed"
+        (attempt) => attempt.status === "failed",
       ).length;
 
       const isComplete = completed >= latestAttempts.length;
@@ -313,12 +371,13 @@ export async function POST(request: NextRequest) {
       sku: enrichedResult.sku,
       next_status: nextStatus,
       confidence: enrichedResult.confidence.overall,
+      requested_extraction_mode: requestedMode,
     });
   } catch (err) {
     console.error("Error processing enrichment callback:", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
