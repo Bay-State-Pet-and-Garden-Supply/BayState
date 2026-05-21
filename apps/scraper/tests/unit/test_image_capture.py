@@ -126,7 +126,8 @@ async def test_capture_image_method2_fallback_success():
     assert res["data_url"].startswith("data:image/png;base64,")
     assert res["original_url"] == url
     assert res["status_code"] == 200
-    page.context.request.get.assert_called_once_with(url)
+    page.context.request.get.assert_called_once()
+    assert page.context.request.get.call_args[0][0] == url
 
 
 @pytest.mark.asyncio
@@ -164,6 +165,44 @@ async def test_capture_image_complete_failure():
     assert res["status"] == "error"
     assert res["error_type"] == "network_timeout"
     assert "Network timeout" in res["error_message"]
+
+
+@pytest.mark.asyncio
+async def test_capture_image_method2_fallback_to_thumb_success():
+    """Verify that if a large image returns 403, we fall back to the thumb variant successfully."""
+    page = AsyncMock()
+    page.url = "https://shop.phillipspet.com/page"
+    page.evaluate.side_effect = Exception("CORS blocked")
+    
+    # Setup context request get calls.
+    # The first call (large image) returns 403.
+    # The second call (thumb image fallback) returns 200.
+    large_response = AsyncMock()
+    large_response.status = 403
+    large_response.ok = False
+    large_response.status_text = "Forbidden"
+    
+    thumb_response = AsyncMock()
+    thumb_response.status = 200
+    thumb_response.ok = True
+    thumb_response.body.return_value = b"thumbdata"
+    thumb_response.headers = {"content-type": "image/jpeg"}
+    
+    page.context.request.get.side_effect = [large_response, thumb_response]
+    
+    url = "https://shop.phillipspet.com/images/large/product.jpg"
+    res = await capture_image_authenticated(page, url)
+    
+    assert res["status"] == "success"
+    assert res["data_url"].startswith("data:image/jpeg;base64,")
+    assert res["original_url"] == url
+    assert res["status_code"] == 200
+    
+    # Verify that get was called twice: once with the large URL, then with the thumb URL
+    assert page.context.request.get.call_count == 2
+    calls = page.context.request.get.call_args_list
+    assert calls[0][0][0] == "https://shop.phillipspet.com/images/large/product.jpg"
+    assert calls[1][0][0] == "https://shop.phillipspet.com/images/thumb/product.jpg"
 
 
 @pytest.mark.asyncio

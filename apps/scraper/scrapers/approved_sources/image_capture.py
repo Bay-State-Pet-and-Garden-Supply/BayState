@@ -94,7 +94,24 @@ async def capture_image_authenticated(page: Any, url: str, max_bytes: int = 5 * 
     # Method 2: Request context fallback (bypasses CORS, shares cookies)
     try:
         logger.debug(f"[Image Capture] Trying context request fallback for {url}")
-        response = await page.context.request.get(url)
+        
+        # Build headers to mimic browser request
+        headers = {}
+        try:
+            page_url = page.url
+            if page_url:
+                headers["Referer"] = page_url
+        except Exception:
+            pass
+            
+        try:
+            user_agent = await page.evaluate("navigator.userAgent")
+            if user_agent:
+                headers["User-Agent"] = user_agent
+        except Exception:
+            pass
+            
+        response = await page.context.request.get(url, headers=headers)
         status_code = response.status
         if response.ok:
             body = await response.body()
@@ -119,6 +136,37 @@ async def capture_image_authenticated(page: Any, url: str, max_bytes: int = 5 * 
         else:
             error_msg = f"HTTP {status_code}: {response.status_text}"
             logger.warning(f"[Image Capture] Context request failed for {url}: {error_msg}")
+            
+            # Self-healing fallback: if it's a normalized high-res URL that doesn't exist, try the thumbnail/medium fallback
+            fallback_url = None
+            if "/large/" in url:
+                fallback_url = url.replace("/large/", "/thumb/")
+            elif "_large" in url:
+                fallback_url = url.replace("_large", "_thumb")
+            elif "_lg" in url:
+                fallback_url = url.replace("_lg", "_md")  # try medium first
+                
+            if fallback_url:
+                logger.info(f"[Image Capture] Trying fallback URL for failed high-resolution image: {fallback_url}")
+                try:
+                    fb_response = await page.context.request.get(fallback_url, headers=headers)
+                    if fb_response.ok:
+                        fb_body = await fb_response.body()
+                        if len(fb_body) <= max_bytes:
+                            fb_content_type = fb_response.headers.get("content-type", "image/jpeg")
+                            fb_base64_data = base64.b64encode(fb_body).decode("utf-8")
+                            fb_data_url = f"data:{fb_content_type};base64,{fb_base64_data}"
+                            logger.info(f"[Image Capture] Successfully captured fallback image: {fallback_url}")
+                            return {
+                                "status": "success",
+                                "data_url": fb_data_url,
+                                "original_url": url,
+                                "status_code": fb_response.status,
+                            }
+                        else:
+                            logger.warning(f"[Image Capture] Fallback image exceeds max size: {fallback_url}")
+                except Exception as fb_err:
+                    logger.debug(f"[Image Capture] Fallback fetch failed for {fallback_url}: {fb_err}")
             
             error_type = "unknown"
             if status_code in (401, 403):
