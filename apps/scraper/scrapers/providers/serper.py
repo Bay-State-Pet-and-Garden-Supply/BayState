@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 
 from scrapers.providers.base import BaseSearchProvider
+from scrapers.utils.url_utils import canonicalize_result_url
 
 logger = logging.getLogger(__name__)
 
@@ -56,17 +57,19 @@ class SerperSearchClient(BaseSearchProvider):
         kg = data.get("knowledgeGraph")
         if isinstance(kg, dict):
             kg_url = str(kg.get("website") or "").strip()
-            if kg_url and kg_url not in seen_urls:
-                seen_urls.add(kg_url)
-                results.append(
-                    {
-                        "url": kg_url,
-                        "title": str(kg.get("title") or "Knowledge Graph").strip(),
-                        "description": "Verified website from Knowledge Graph",
-                        "provider": "serper",
-                        "result_type": "knowledge_graph",
-                    }
-                )
+            if kg_url:
+                canonical_kg_url = canonicalize_result_url(kg_url)
+                if canonical_kg_url and canonical_kg_url not in seen_urls:
+                    seen_urls.add(canonical_kg_url)
+                    results.append(
+                        {
+                            "url": canonical_kg_url,
+                            "title": str(kg.get("title") or "Knowledge Graph").strip(),
+                            "description": "Verified website from Knowledge Graph",
+                            "provider": "serper",
+                            "result_type": "knowledge_graph",
+                        }
+                    )
 
         # 2. Extract organic results
         organic_results = data.get("organic")
@@ -76,13 +79,16 @@ class SerperSearchClient(BaseSearchProvider):
                     continue
 
                 url = str(item.get("link") or "").strip()
-                if not url or url in seen_urls:
+                if not url:
                     continue
-                seen_urls.add(url)
+                canonical_url = canonicalize_result_url(url)
+                if not canonical_url or canonical_url in seen_urls:
+                    continue
+                seen_urls.add(canonical_url)
 
                 results.append(
                     {
-                        "url": url,
+                        "url": canonical_url,
                         "title": str(item.get("title") or "").strip(),
                         "description": str(item.get("snippet") or "").strip(),
                         "provider": "serper",

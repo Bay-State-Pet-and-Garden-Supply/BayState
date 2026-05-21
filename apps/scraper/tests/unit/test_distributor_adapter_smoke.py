@@ -382,7 +382,7 @@ class TestReportWriters:
             report_path = output_dir / "results.json"
             assert report_path.exists()
 
-            report = json.loads(report_path.read_text())
+            report = json.loads(report_path.read_text(encoding="utf-8"))
             assert report["total"] == 3
             assert report["passed"] == 2
             assert report["failed"] == 1
@@ -397,7 +397,7 @@ class TestReportWriters:
             report_path = output_dir / "report.md"
             assert report_path.exists()
 
-            content = report_path.read_text()
+            content = report_path.read_text(encoding="utf-8")
             assert "Distributor Adapter Smoke Test Report" in content
             assert "66.7%" in content  # 2/3 pass rate
             assert "E-Z HANG SCALE" in content
@@ -409,6 +409,6 @@ class TestReportWriters:
             output_dir = Path(tmpdir)
             write_json_report(summary, output_dir)
 
-            report = json.loads((output_dir / "results.json").read_text())
+            report = json.loads((output_dir / "results.json").read_text(encoding="utf-8"))
             assert report["total"] == 0
             assert report["pass_rate"] == "N/A"

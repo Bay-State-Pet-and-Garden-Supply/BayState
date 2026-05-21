@@ -79,3 +79,61 @@ async def test_serper_search_retries_transient_request_errors(monkeypatch: pytes
             "result_type": "organic",
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_serper_search_canonicalizes_and_deduplicates_urls(monkeypatch: pytest.MonkeyPatch) -> None:
+    attempts = [
+        _StubResponse(
+            {
+                "knowledgeGraph": {
+                    "website": "https://example.com/product?srsltid=123",
+                    "title": "Knowledge Graph Title",
+                },
+                "organic": [
+                    {
+                        "link": "https://example.com/product?srsltid=456",
+                        "title": "Duplicate Organic Product",
+                        "snippet": "Snippet 1",
+                    },
+                    {
+                        "link": "https://example.com/other-product?fbclid=abc&utm_source=google",
+                        "title": "Other Product",
+                        "snippet": "Snippet 2",
+                    },
+                    {
+                        "link": "https://example.com/other-product/",
+                        "title": "Duplicate Other Product",
+                        "snippet": "Snippet 3",
+                    }
+                ]
+            }
+        ),
+    ]
+
+    monkeypatch.setattr(
+        "scrapers.providers.serper.httpx.AsyncClient",
+        lambda timeout: _StubAsyncClient(list(attempts)),
+    )
+
+    client = SerperSearchClient(api_key="serper-test-key")
+    results, error = await client.search("test query")
+
+    assert error is None
+    assert results == [
+        {
+            "url": "https://example.com/product",
+            "title": "Knowledge Graph Title",
+            "description": "Verified website from Knowledge Graph",
+            "provider": "serper",
+            "result_type": "knowledge_graph",
+        },
+        {
+            "url": "https://example.com/other-product",
+            "title": "Other Product",
+            "description": "Snippet 2",
+            "provider": "serper",
+            "result_type": "organic",
+        }
+    ]
+

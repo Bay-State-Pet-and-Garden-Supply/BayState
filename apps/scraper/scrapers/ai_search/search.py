@@ -10,6 +10,11 @@ from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from scrapers.providers.serper import SerperSearchClient
+from scrapers.utils.url_utils import (
+    TRACKING_QUERY_KEYS,
+    TRACKING_QUERY_PREFIXES,
+    canonicalize_result_url,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +24,6 @@ LEGACY_SEARCH_PROVIDER_ALIASES = {
     "serpapi": "serper",
 }
 DEFAULT_SEARCH_PROVIDER = "serper"
-TRACKING_QUERY_KEYS = {"fbclid", "gclid", "ref", "srsltid"}
-TRACKING_QUERY_PREFIXES = ("utm_",)
 DEFAULT_PROVIDER_COST_USD = {
     "serper": 0.0,
 }
@@ -35,34 +38,6 @@ def normalize_search_provider(provider: str | None) -> str:
 
     logger.warning("[AI Search] Unsupported search provider '%s', defaulting to auto", provider)
     return "auto"
-
-
-def canonicalize_result_url(url: str) -> str:
-    """Canonicalize URLs so results dedupe reliably across providers."""
-    raw = str(url or "").strip()
-    if not raw:
-        return ""
-
-    parts = urlsplit(raw)
-    if not parts.scheme or not parts.netloc:
-        return raw
-
-    filtered_query = [
-        (key, value)
-        for key, value in parse_qsl(parts.query, keep_blank_values=True)
-        if key.lower() not in TRACKING_QUERY_KEYS and not any(key.lower().startswith(prefix) for prefix in TRACKING_QUERY_PREFIXES)
-    ]
-    path = parts.path.rstrip("/") or "/"
-
-    return urlunsplit(
-        (
-            parts.scheme.lower(),
-            parts.netloc.lower(),
-            path,
-            urlencode(filtered_query, doseq=True),
-            "",
-        )
-    )
 
 
 def _dedupe_results(results: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:

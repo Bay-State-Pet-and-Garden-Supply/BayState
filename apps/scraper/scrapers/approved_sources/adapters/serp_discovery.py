@@ -234,17 +234,36 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
             return []
 
         client = self._get_search_client(max_results=10)
+        search_query = f'"{sku}"'
         logger.info(
             "[SerpDiscoveryAdapter] Phase 1: SKU discovery search query: '%s'",
-            sku,
+            search_query,
         )
-        results, error = await client.search(sku)
+        results, error = await client.search(search_query)
         if error:
             logger.error(
                 "[SerpDiscoveryAdapter] SKU discovery search failed: %s", error
             )
             return []
-        return results
+
+        # Filter out disallowed domains
+        allowed_results = []
+        source_policy = getattr(self.plan, "sourcePolicy", None)
+        disallowed_domains = getattr(source_policy, "disallowedDomains", None) if source_policy else None
+
+        for r in results:
+            url = r.get("url", "")
+            if not url:
+                continue
+            domain = normalize_domain(url)
+            if disallowed_domains and is_disallowed_domain(domain, disallowed_domains):
+                logger.debug(
+                    "[SerpDiscoveryAdapter] Skipping disallowed domain in SKU discovery: %s", url
+                )
+                continue
+            allowed_results.append(r)
+
+        return allowed_results
 
     async def _phase2_consolidate_name(
         self,

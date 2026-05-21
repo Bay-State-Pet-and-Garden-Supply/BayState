@@ -773,3 +773,41 @@ class TestExecutor:
                 ai_credentials=ai_credentials,
             )
 
+    @patch("scrapers.approved_sources.adapters.serp_discovery.SearchClient")
+    def test_serp_discovery_adapter_exact_matches_sku_and_filters_disallowed_domains(self, mock_search_client_class):
+        """SerpDiscoveryAdapter exact matches SKU by wrapping in double quotes and filters disallowed domains in Phase 1."""
+        from scrapers.approved_sources.adapters.serp_discovery import SerpDiscoveryAdapter
+
+        plan = _make_plan(entries=[])
+        plan.sourcePolicy.disallowedDomains = ["amazon.com", "ebay.com"]
+        
+        entry = ApprovedSourcePlanEntry(
+            sourceType="official_brand",
+            sourceSlug="serp_discovery",
+            displayName="Serp Discovery",
+            domains=["example.com"],
+            adapterSlug="serp_discovery",
+            priority=100,
+        )
+
+        adapter = SerpDiscoveryAdapter(entry, plan)
+        
+        mock_client = MagicMock()
+        mock_client.search = AsyncMock(return_value=([
+            {"url": "https://example.com/product", "title": "Good Product"},
+            {"url": "https://www.amazon.com/dp/B001", "title": "Amazon Product"},
+            {"url": "https://ebay.com/itm/123", "title": "eBay Product"},
+            {"url": "https://another-good-site.com/sku", "title": "Another Good Product"},
+        ], None))
+        mock_search_client_class.return_value = mock_client
+        
+        import asyncio
+        results = asyncio.run(adapter._phase1_sku_discovery("SKU123"))
+        
+        mock_client.search.assert_called_once_with('"SKU123"')
+        
+        assert len(results) == 2
+        assert results[0]["url"] == "https://example.com/product"
+        assert results[1]["url"] == "https://another-good-site.com/sku"
+
+
