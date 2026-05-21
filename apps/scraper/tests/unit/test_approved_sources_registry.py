@@ -36,8 +36,9 @@ class TestRegistryAliases:
         assert normalize_adapter_slug("pet_food_experts_crawl4ai") == "pet_food_experts_crawl4ai"
 
     def test_crawl4ai_direct_resolves(self):
-        assert normalize_adapter_slug("crawl4ai_direct") == "crawl4ai_direct"
-        assert normalize_adapter_slug("official_brand") == "crawl4ai_direct"
+        assert normalize_adapter_slug("crawl4ai_direct") == "serp_discovery"
+        assert normalize_adapter_slug("official_brand") == "serp_discovery"
+        assert normalize_adapter_slug("serp_discovery") == "serp_discovery"
 
     def test_unknown_slug_passthrough(self):
         assert normalize_adapter_slug("nonexistent") == "nonexistent"
@@ -85,10 +86,14 @@ class TestGetAdapterClass:
         assert cls is not None
         assert cls.__name__ == "PetFoodExpertsAdapter"
 
-    def test_official_brand_adapter(self):
-        cls = get_adapter_class("crawl4ai_direct")
+    def test_serp_discovery_adapter(self):
+        cls = get_adapter_class("serp_discovery")
         assert cls is not None
-        assert cls.__name__ == "OfficialBrandAdapter"
+        assert cls.__name__ == "SerpDiscoveryAdapter"
+
+        cls_direct = get_adapter_class("crawl4ai_direct")
+        assert cls_direct is not None
+        assert cls_direct.__name__ == "SerpDiscoveryAdapter"
 
 
 class TestListAdapters:
@@ -114,9 +119,9 @@ class TestListAdapters:
         slugs = list_adapters()
         assert "pet_food_experts_crawl4ai" in slugs
 
-    def test_includes_official_brand(self):
+    def test_includes_serp_discovery(self):
         slugs = list_adapters()
-        assert "crawl4ai_direct" in slugs
+        assert "serp_discovery" in slugs
 
 
 class TestListAliases:
@@ -130,5 +135,6 @@ class TestListAliases:
         assert aliases["orgill"] == "orgill_crawl4ai"
         assert aliases["phillips"] == "phillips_crawl4ai"
         assert aliases["petfoodex"] == "pet_food_experts_crawl4ai"
-        assert aliases["crawl4ai_direct"] == "crawl4ai_direct"
-        assert aliases["official_brand"] == "crawl4ai_direct"
+        assert aliases["crawl4ai_direct"] == "serp_discovery"
+        assert aliases["official_brand"] == "serp_discovery"
+        assert aliases["serp_discovery"] == "serp_discovery"

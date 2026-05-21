@@ -194,139 +194,20 @@ async def _run_enrichment_job(
             results=results,
         )
 
-    # ---- STANDARD URL EXTRACTION PATH ----
-    if not target_url:
-        error_msg = "Enrichment job missing target_url"
-        _emit_runner_log(
-            job_id=job_id,
-            runner_name=runner_name,
-            job_logging=job_logging,
-            log_buffer=log_buffer,
-            level="error",
-            message=error_msg,
-            phase="failed",
-            flush_immediately=True,
-        )
-        results["error_message"] = error_msg
-        results["logs"] = job_logging.snapshot() if job_logging else log_buffer
-        return results
-
+    # All other target_urls (direct extraction) are deprecated/removed.
+    error_msg = f"Direct URL extraction (url={target_url}) is deprecated. Only approved source extraction is supported."
     _emit_runner_log(
         job_id=job_id,
         runner_name=runner_name,
         job_logging=job_logging,
         log_buffer=log_buffer,
-        level="info",
-        message=f"Enriching SKU={target_sku} URL={target_url}",
-        details={"model": model, "mode": mode_str},
-        sku=target_sku,
-        phase="enriching",
-    )
-
-    extractor = ProductPageExtractor(
-        headless=settings.browser_settings["headless"],
-        cache_enabled=True,
-        extraction_strategy="llm",
-        **_llm_kwargs_from_attempt(attempt, model),
-    )
-
-    extraction_result = await extractor.extract(
-        url=target_url,
-        sku=target_sku,
-        brand=job_payload.get("brand"),
-        product_name=job_payload.get("product_name"),
-    )
-
-    enrichment_result = build_v1_from_extraction_result(
-        result=extraction_result,
-        sku=target_sku,
-        url=target_url,
-        domain=domain,
-        model=model,
-        mode=mode_str if mode_str in {"structured", "metadata", "llm", "mixed"} else "mixed",
-        source_results=extraction_result.get("source_results"),
-        requested_extraction_mode=mode_str if mode_str in {"mixed", "distributor_only", "ai_only"} else None,
-    )
-
-    if extraction_result.get("success"):
-        results["skus_processed"] = 1
-        results["data"][target_sku] = {
-            "enrichment": {
-                "title": enrichment_result.product.name,
-                "brand": enrichment_result.product.brand,
-                "weight": enrichment_result.product.weight,
-                "description": enrichment_result.product.description,
-                "images": enrichment_result.product.image_urls,
-                "confidence": enrichment_result.confidence.overall,
-                "scraped_at": enrichment_result.extracted_at,
-                "mode": mode_str,
-                "requested_extraction_mode": enrichment_result.requested_extraction_mode,
-                "model": model,
-            }
-        }
-        _emit_runner_log(
-            job_id=job_id,
-            runner_name=runner_name,
-            job_logging=job_logging,
-            log_buffer=log_buffer,
-            level="info",
-            message=f"Enrichment succeeded for SKU={target_sku}",
-            details={
-                "confidence": enrichment_result.confidence.overall,
-                "fields_found": len(
-                    [
-                        f
-                        for f in [
-                            enrichment_result.product.name,
-                            enrichment_result.product.brand,
-                            enrichment_result.product.weight,
-                            enrichment_result.product.description,
-                        ]
-                        if f
-                    ]
-                ),
-            },
-            sku=target_sku,
-            phase="completed",
-        )
-    else:
-        error = extraction_result.get("error", "Extraction returned no data")
-        results["data"][target_sku] = {
-            "enrichment": {
-                "error": error,
-                "confidence": 0.0,
-                "scraped_at": enrichment_result.extracted_at,
-            }
-        }
-        _emit_runner_log(
-            job_id=job_id,
-            runner_name=runner_name,
-            job_logging=job_logging,
-            log_buffer=log_buffer,
-            level="warning",
-            message=f"Enrichment failed for SKU={target_sku}: {error}",
-            sku=target_sku,
-            phase="failed",
-        )
-
-    # Submit enrichment result via callback
-    _submit_result(api_client, attempt, job_payload, enrichment_result)
-
-    results["enrichment_results"] = [enrichment_result.model_dump()]
-    results["logs"] = job_logging.snapshot() if job_logging else log_buffer
-    results["telemetry"] = {"steps": [], "selectors": [], "extractions": []}
-
-    _emit_runner_log(
-        job_id=job_id,
-        runner_name=runner_name,
-        job_logging=job_logging,
-        log_buffer=log_buffer,
-        level="info",
-        message=f"Enrichment job complete for {results['skus_processed']} SKUs",
-        phase="completed",
+        level="error",
+        message=error_msg,
+        phase="failed",
         flush_immediately=True,
     )
-
+    results["error_message"] = error_msg
+    results["logs"] = job_logging.snapshot() if job_logging else log_buffer
     return results
 
 

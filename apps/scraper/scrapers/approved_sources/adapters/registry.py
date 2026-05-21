@@ -44,8 +44,9 @@ ADAPTER_ALIASES: dict[str, str] = {
     "pet-food-experts": "pet_food_experts_crawl4ai",
     "pet_food_experts_crawl4ai": "pet_food_experts_crawl4ai",
     # Generic / official brand
-    "crawl4ai_direct": "crawl4ai_direct",
-    "official_brand": "crawl4ai_direct",
+    "crawl4ai_direct": "serp_discovery",
+    "official_brand": "serp_discovery",
+    "serp_discovery": "serp_discovery",
 }
 
 
@@ -133,9 +134,9 @@ def _ensure_loaded() -> None:
         logger.debug("[Registry] PetFoodExpertsAdapter not available: %s", e)
 
     try:
-        from scrapers.approved_sources.adapters.official_brand import OfficialBrandAdapter
-        _ADAPTER_CLASS_MAP["crawl4ai_direct"] = OfficialBrandAdapter
+        from scrapers.approved_sources.adapters.serp_discovery import SerpDiscoveryAdapter
+        _ADAPTER_CLASS_MAP["serp_discovery"] = SerpDiscoveryAdapter
     except ImportError as e:
-        logger.debug("[Registry] OfficialBrandAdapter not available: %s", e)
+        logger.debug("[Registry] SerpDiscoveryAdapter not available: %s", e)
 
     _loaded = True

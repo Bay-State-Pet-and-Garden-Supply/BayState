@@ -343,7 +343,7 @@ class TestExecutor:
     # ------------------------------------------------------------------ #
 
     @patch(
-        "scrapers.approved_sources.adapters.official_brand.OfficialBrandAdapter.extract",
+        "scrapers.approved_sources.adapters.serp_discovery.SerpDiscoveryAdapter.extract",
         new_callable=AsyncMock,
     )
     @patch("scrapers.approved_sources.adapters.bradley.BradleyAdapter._fetch_html")
@@ -354,7 +354,7 @@ class TestExecutor:
         mock_bradley_fetch.return_value = SAMPLE_BRADLEY_HTML
         mock_official_extract.return_value = build_success_result(
             sku="001135",
-            source_slug="official_brand",
+            source_slug="serp_discovery",
             source_type="official_brand",
             evidence_url="https://example.com/product",
             product_fields={"name": "Official Product", "brand": "Brand"},
@@ -427,7 +427,7 @@ class TestExecutor:
         # No fallback means the official brand adapter is never instantiated
 
     @patch(
-        "scrapers.approved_sources.adapters.official_brand.OfficialBrandAdapter.extract",
+        "scrapers.approved_sources.adapters.serp_discovery.SerpDiscoveryAdapter.extract",
         new_callable=AsyncMock,
     )
     @patch("scrapers.approved_sources.adapters.central_pet.CentralPetAdapter._fetch_html")
@@ -438,7 +438,7 @@ class TestExecutor:
         mock_cp_fetch.return_value = SAMPLE_NO_MATCH_HTML
         mock_official_result = build_success_result(
             sku="38777520",
-            source_slug="official_brand",
+            source_slug="serp_discovery",
             source_type="official_brand",
             evidence_url="https://www.example.com/product",
             product_fields={"name": "Official Product Name", "brand": "Official Brand"},
@@ -484,7 +484,7 @@ class TestExecutor:
         mock_official_extract.assert_called_once()
         # Result should be the official fallback result
         assert result.status == "success"
-        assert result.source.source_slug == "official_brand"
+        assert result.source.source_slug == "serp_discovery"
 
     @patch("scrapers.approved_sources.adapters.bradley.BradleyAdapter._fetch_html")
     @patch("scrapers.approved_sources.adapters.phillips.PhillipsAdapter.check_credentials")
@@ -569,7 +569,7 @@ class TestExecutor:
         # Should not crash when no adapter slugs are in the plan
 
     @patch(
-        "scrapers.approved_sources.adapters.official_brand.OfficialBrandAdapter.extract",
+        "scrapers.approved_sources.adapters.serp_discovery.SerpDiscoveryAdapter.extract",
         new_callable=AsyncMock,
     )
     @patch("scrapers.approved_sources.adapters.bradley.BradleyAdapter._fetch_html")
@@ -580,7 +580,7 @@ class TestExecutor:
         mock_bradley_fetch.return_value = SAMPLE_BRADLEY_HTML
         mock_official_extract.return_value = build_success_result(
             sku="001135",
-            source_slug="official_brand",
+            source_slug="serp_discovery",
             source_type="official_brand",
             evidence_url="https://example.com/product",
             product_fields={"name": "Official Product", "brand": "Brand"},
@@ -628,25 +628,25 @@ class TestExecutor:
         # Verify both results are in source_results
         source_slugs = [s.sourceSlug for s in result.source_results]
         assert "bradley" in source_slugs
-        assert "official_brand" in source_slugs
+        assert "serp_discovery" in source_slugs
 
-    @patch("scrapers.approved_sources.adapters.official_brand.SearchClient")
-    def test_official_brand_adapter_uses_ai_credentials_for_search(self, mock_search_client_class):
-        """OfficialBrandAdapter extracts serper_api_key/serpapi_api_key from ai_credentials and passes to SearchClient."""
-        from scrapers.approved_sources.adapters.official_brand import OfficialBrandAdapter
+    @patch("scrapers.approved_sources.adapters.serp_discovery.SearchClient")
+    def test_serp_discovery_adapter_uses_ai_credentials_for_search(self, mock_search_client_class):
+        """SerpDiscoveryAdapter extracts serper_api_key/serpapi_api_key from ai_credentials and passes to SearchClient."""
+        from scrapers.approved_sources.adapters.serp_discovery import SerpDiscoveryAdapter
 
         plan = _make_plan(entries=[])
         entry = ApprovedSourcePlanEntry(
             sourceType="official_brand",
-            sourceSlug="official_brand",
-            displayName="Official Brand",
+            sourceSlug="serp_discovery",
+            displayName="Serp Discovery",
             domains=["example.com"],
-            adapterSlug="crawl4ai_direct",
+            adapterSlug="serp_discovery",
             priority=100,
         )
         
         # Test case 1: serper_api_key present
-        adapter = OfficialBrandAdapter(entry, plan)
+        adapter = SerpDiscoveryAdapter(entry, plan)
         adapter.ai_credentials = {"serper_api_key": "test_serper_key_123"}
         
         mock_client = MagicMock()
@@ -654,39 +654,39 @@ class TestExecutor:
         mock_search_client_class.return_value = mock_client
         
         import asyncio
-        asyncio.run(adapter._search_approved_domains("SKU123", "Test Product", ["example.com"]))
+        asyncio.run(adapter._phase1_sku_discovery("SKU123"))
         
         mock_search_client_class.assert_any_call(max_results=10, api_key="test_serper_key_123")
         mock_search_client_class.reset_mock()
         
         # Test case 2: serpapi_api_key present
         adapter.ai_credentials = {"serpapi_api_key": "test_serpapi_key_456"}
-        asyncio.run(adapter._search_sku_only("SKU123", ["example.com"]))
-        mock_search_client_class.assert_any_call(max_results=5, api_key="test_serpapi_key_456")
+        asyncio.run(adapter._phase1_sku_discovery("SKU123"))
+        mock_search_client_class.assert_any_call(max_results=10, api_key="test_serpapi_key_456")
         mock_search_client_class.reset_mock()
 
         # Test case 3: no ai_credentials or empty dict
         adapter.ai_credentials = {}
-        asyncio.run(adapter._search_approved_domains("SKU123", "Test Product", ["example.com"]))
+        asyncio.run(adapter._phase1_sku_discovery("SKU123"))
         mock_search_client_class.assert_any_call(max_results=10, api_key=None)
 
-    @patch("scrapers.approved_sources.adapters.official_brand.logger")
-    @patch("scrapers.approved_sources.adapters.official_brand.SearchClient")
-    def test_official_brand_adapter_logs_search_failures(self, mock_search_client_class, mock_logger):
-        """OfficialBrandAdapter should log errors if SearchClient returns empty results but an error."""
-        from scrapers.approved_sources.adapters.official_brand import OfficialBrandAdapter
+    @patch("scrapers.approved_sources.adapters.serp_discovery.logger")
+    @patch("scrapers.approved_sources.adapters.serp_discovery.SearchClient")
+    def test_serp_discovery_adapter_logs_search_failures(self, mock_search_client_class, mock_logger):
+        """SerpDiscoveryAdapter should log errors if SearchClient returns empty results but an error."""
+        from scrapers.approved_sources.adapters.serp_discovery import SerpDiscoveryAdapter
 
         plan = _make_plan(entries=[])
         entry = ApprovedSourcePlanEntry(
             sourceType="official_brand",
-            sourceSlug="official_brand",
-            displayName="Official Brand",
+            sourceSlug="serp_discovery",
+            displayName="Serp Discovery",
             domains=["example.com"],
-            adapterSlug="crawl4ai_direct",
+            adapterSlug="serp_discovery",
             priority=100,
         )
         
-        adapter = OfficialBrandAdapter(entry, plan)
+        adapter = SerpDiscoveryAdapter(entry, plan)
         adapter.ai_credentials = {"serper_api_key": "test_serper_key"}
         
         mock_client = MagicMock()
@@ -694,23 +694,16 @@ class TestExecutor:
         mock_search_client_class.return_value = mock_client
         
         import asyncio
-        asyncio.run(adapter._search_approved_domains("SKU123", "Test Product", ["example.com"]))
+        asyncio.run(adapter._phase1_sku_discovery("SKU123"))
         
         assert mock_logger.error.called
         args, kwargs = mock_logger.error.call_args
-        assert "Search failed for query" in args[0]
-        assert args[2] == "API Key Expired"
-        
-        mock_logger.reset_mock()
-        asyncio.run(adapter._search_sku_only("SKU123", ["example.com"]))
-        assert mock_logger.error.called
-        args, kwargs = mock_logger.error.call_args
-        assert "SKU search failed for query" in args[0]
-        assert args[2] == "API Key Expired"
+        assert "SKU discovery search failed" in args[0]
+        assert args[1] == "API Key Expired"
 
     def test_executor_propagates_ai_credentials_to_adapters(self):
         """Executor should propagate the provided ai_credentials to instantiated adapters."""
-        from scrapers.approved_sources.adapters.official_brand import OfficialBrandAdapter
+        from scrapers.approved_sources.adapters.serp_discovery import SerpDiscoveryAdapter
 
         entries = [
             ApprovedSourcePlanEntry(
@@ -727,13 +720,13 @@ class TestExecutor:
         mock_extractor.api_client = None
         
         captured_instances = []
-        original_extract = OfficialBrandAdapter.extract
+        original_extract = SerpDiscoveryAdapter.extract
         
         async def mock_extract(self, extractor):
             captured_instances.append(self)
             return None
             
-        OfficialBrandAdapter.extract = mock_extract
+        SerpDiscoveryAdapter.extract = mock_extract
         try:
             ai_credentials = {"serper_api_key": "executor_key_abc"}
             executor = ApprovedSourceExecutor(
@@ -748,7 +741,7 @@ class TestExecutor:
             assert len(captured_instances) == 1
             assert captured_instances[0].ai_credentials == ai_credentials
         finally:
-            OfficialBrandAdapter.extract = original_extract
+            SerpDiscoveryAdapter.extract = original_extract
 
     def test_orchestrator_passes_ai_credentials_to_executor(self):
         """Orchestrator constructor should accept and pass ai_credentials to Executor."""
