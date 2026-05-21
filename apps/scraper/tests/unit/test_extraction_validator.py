@@ -216,6 +216,41 @@ class TestExtractionValidatorRejection:
         assert VALID_IMAGE_URL in extraction_copy["images"]
         assert "https://example.com/images/logo.png" not in extraction_copy["images"]
 
+    def test_validator_filters_screenshot_and_social_images(self) -> None:
+        """Test that validator filters out screenshot and social media share images."""
+        validator = ExtractionValidator(confidence_threshold=0.7)
+
+        extraction_result = {
+            "success": True,
+            "product_name": "Advantage Cat Food",
+            "brand": "Advantage",
+            "description": "Cat food",
+            "images": [
+                "https://example.com/wp-content/uploads/screenshot.png",  # Should be filtered
+                "https://example.com/images/social-share-preview.jpg",  # Should be filtered
+                VALID_IMAGE_URL,
+            ],
+            "confidence": 0.85,
+        }
+
+        extraction_copy = extraction_result.copy()
+        extraction_copy["images"] = extraction_result["images"].copy()
+
+        is_acceptable, reason = validator.validate_extraction_match(
+            extraction_result=extraction_copy,
+            sku="12345",
+            product_name="Advantage Cat Food",
+            brand="Advantage",
+            source_url="https://www.chewy.com/product/12345",
+        )
+
+        assert is_acceptable is True
+        # VALID_IMAGE_URL should be kept, screenshot/social-share should be filtered
+        assert VALID_IMAGE_URL in extraction_copy["images"]
+        assert "https://example.com/wp-content/uploads/screenshot.png" not in extraction_copy["images"]
+        assert "https://example.com/images/social-share-preview.jpg" not in extraction_copy["images"]
+
+
 
 class TestBrandMatching:
     """Tests for brand matching logic in ExtractionValidator."""

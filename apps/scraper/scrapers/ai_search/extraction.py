@@ -150,7 +150,7 @@ class ExtractionUtils:
     _DEMANDWARE_VARIATION_ID_PATTERN = re.compile(r'"variant"\s*:\s*"([^"]+)"', flags=re.IGNORECASE)
 
     # Image scoring heuristics
-    _NAV_KEYWORDS = {"logo", "icon", "nav", "menu", "category", "banner", "social", "footer", "cart", "account", "search"}
+    _NAV_KEYWORDS = {"logo", "icon", "nav", "menu", "category", "banner", "social", "footer", "cart", "account", "search", "screenshot"}
     _GALLERY_KEYWORDS = {"product", "gallery", "carousel", "pdp", "main", "hero", "detail", "item", "thumb"}
     _BADGE_KEYWORDS = {"free", "shipping", "guarantee", "badge", "icon", "feature", "made-in", "usa", "natural", "organic"}
     _NON_PRODUCT_SECTION_MARKERS = [

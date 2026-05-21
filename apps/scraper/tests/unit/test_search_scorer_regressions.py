@@ -1268,3 +1268,46 @@ def test_category_domain_bonus_for_matching_category() -> None:
 
     # Pet specialist should score higher due to category bonus
     assert pet_score > generic_score
+
+
+def test_category_url_misclassification_fix() -> None:
+    """Test that wholesomespetfood.com/products/treats is classified as category-like.
+    
+    Also check that it is a product line page on brand domain, but is classified
+    as category-like (meaning is_category_like_url is True), and scores lower than
+    an actual product page.
+    """
+    scorer = SearchScorer()
+
+    category_url = "https://wholesomespetfood.com/products/treats"
+    pdp_url = "https://wholesomespetfood.com/product/rewards-chewy-beef-sticks-25-oz"
+
+    assert scorer.is_product_line_page(category_url) is False
+    assert scorer.is_category_like_url(category_url) is True
+
+    # Chewy should NOT be classified as product_line_page even with products/treats path
+    chewy_category_url = "https://chewy.com/products/treats"
+    assert scorer.is_product_line_page(chewy_category_url) is False
+
+    # Score comparisons
+    category_res = _result(category_url, "Treats for Dogs | Wholesomes", "All treats products listing.")
+    pdp_res = _result(pdp_url, "Rewards Chewy Beef Sticks 2.5 oz | Wholesomes", "Delicious beef sticks.")
+
+    category_score = scorer.score_search_result(
+        category_res,
+        sku="034846727043",
+        brand="Wholesomes",
+        product_name="Wholesomes Rewards Chewy Beef Sticks Dog Treats 2.5 oz",
+        category="Dog Treats",
+    )
+
+    pdp_score = scorer.score_search_result(
+        pdp_res,
+        sku="034846727043",
+        brand="Wholesomes",
+        product_name="Wholesomes Rewards Chewy Beef Sticks Dog Treats 2.5 oz",
+        category="Dog Treats",
+    )
+
+    assert pdp_score > category_score
+

@@ -281,6 +281,18 @@ class SearchScorer:
         "search",
         "shop-all",
         "where-to-buy",
+        "treats",
+        "dog-food",
+        "cat-food",
+        "supplements",
+        "toys",
+        "chews",
+        "food",
+        "litter",
+        "seed",
+        "seeds",
+        "bulbs",
+        "fertilizer",
     }
 
     CATEGORY_DOMAIN_PREFERENCES = (

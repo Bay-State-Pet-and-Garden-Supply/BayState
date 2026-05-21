@@ -28,6 +28,8 @@ _LOGO_PLACEHOLDER_PATTERNS = [
     re.compile(r"/blank\.", re.IGNORECASE),
     re.compile(r"/1x1\.", re.IGNORECASE),
     re.compile(r"/s_\d+x\d+\.", re.IGNORECASE),  # spacer pixels (s_1x2.gif, etc.)
+    re.compile(r"/screenshot\.", re.IGNORECASE),
+    re.compile(r"/social[_-]?(media)?[_-]?(share|image|preview)", re.IGNORECASE),
     re.compile(r"/social[_-]?share", re.IGNORECASE),
     re.compile(r"/og[_-]?(image|default)", re.IGNORECASE),
 ]
