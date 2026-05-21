@@ -30,6 +30,7 @@ from scrapers.approved_sources.policy import (
     normalize_domain,
 )
 from scrapers.providers.factory import create_llm_provider
+from scrapers.utils.url_utils import canonicalize_result_url
 
 logger = logging.getLogger(__name__)
 
@@ -246,8 +247,9 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
             )
             return []
 
-        # Filter out disallowed domains
+        # Filter out disallowed domains and deduplicate by canonical URL
         allowed_results = []
+        seen_urls = set()
         source_policy = getattr(self.plan, "sourcePolicy", None)
         disallowed_domains = getattr(source_policy, "disallowedDomains", None) if source_policy else None
 
@@ -255,13 +257,23 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
             url = r.get("url", "")
             if not url:
                 continue
-            domain = normalize_domain(url)
-            if disallowed_domains and is_disallowed_domain(domain, disallowed_domains):
+
+            canonical_url = canonicalize_result_url(url)
+            if canonical_url in seen_urls:
+                continue
+            seen_urls.add(canonical_url)
+
+            domain = normalize_domain(canonical_url)
+            is_blocked = is_disallowed_domain(domain) or (disallowed_domains and is_disallowed_domain(domain, disallowed_domains))
+            if is_blocked:
                 logger.debug(
-                    "[SerpDiscoveryAdapter] Skipping disallowed domain in SKU discovery: %s", url
+                    "[SerpDiscoveryAdapter] Skipping disallowed domain in SKU discovery: %s", canonical_url
                 )
                 continue
-            allowed_results.append(r)
+
+            r_copy = dict(r)
+            r_copy["url"] = canonical_url
+            allowed_results.append(r_copy)
 
         return allowed_results
 
@@ -370,7 +382,23 @@ Return JSON in this format:
             )
             return None
 
-        candidates = self._score_candidates(results, sku, consolidated_name, brand_domain)
+        # Deduplicate and canonicalize URLs
+        seen_urls = set()
+        deduped_results = []
+        for r in results:
+            url = r.get("url", "")
+            if not url:
+                continue
+            canonical_url = canonicalize_result_url(url)
+            if canonical_url in seen_urls:
+                continue
+            seen_urls.add(canonical_url)
+            
+            r_copy = dict(r)
+            r_copy["url"] = canonical_url
+            deduped_results.append(r_copy)
+
+        candidates = self._score_candidates(deduped_results, sku, consolidated_name, brand_domain)
         if not candidates:
             return None
 
@@ -410,20 +438,33 @@ Return JSON in this format:
             )
             return None
 
-        # Filter out disallowed domains
+        # Filter out disallowed domains and deduplicate by canonical URL
         allowed_results = []
+        seen_urls = set()
         source_policy = self.plan.sourcePolicy
+        disallowed_domains = getattr(source_policy, "disallowedDomains", None) if source_policy else None
+
         for r in results:
             url = r.get("url", "")
             if not url:
                 continue
-            domain = normalize_domain(url)
-            if is_disallowed_domain(domain, source_policy.disallowedDomains):
+
+            canonical_url = canonicalize_result_url(url)
+            if canonical_url in seen_urls:
+                continue
+            seen_urls.add(canonical_url)
+
+            domain = normalize_domain(canonical_url)
+            is_blocked = is_disallowed_domain(domain) or (disallowed_domains and is_disallowed_domain(domain, disallowed_domains))
+            if is_blocked:
                 logger.debug(
-                    "[SerpDiscoveryAdapter] Skipping disallowed domain: %s", url
+                    "[SerpDiscoveryAdapter] Skipping disallowed domain: %s", canonical_url
                 )
                 continue
-            allowed_results.append(r)
+
+            r_copy = dict(r)
+            r_copy["url"] = canonical_url
+            allowed_results.append(r_copy)
 
         candidates = self._score_candidates(allowed_results, sku, consolidated_name, None)
         if not candidates:

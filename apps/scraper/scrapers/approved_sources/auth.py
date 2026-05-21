@@ -252,7 +252,8 @@ class ApprovedSourceLoginManager:
         self._session_cookies: dict[str, dict[str, str]] = {}  # session_id -> cookie_dict
         self._playwright: Any = None  # Lazy-initialized Playwright
         self._playwright_browser: Any = None  # Lazy-initialized Playwright browser
-        self._auth_pages: dict[str, Any] = {}  # session_id -> Playwright page
+        self._auth_pages: dict[str, Any] = {}  # session_id -> Playwright page (legacy, unused)
+        self._auth_contexts: dict[str, Any] = {}  # session_id -> Playwright BrowserContext
 
     def _store_cookies(self, session_id: str, cookies: dict[str, str]) -> None:
         """Store cookies for an authenticated session."""
@@ -468,22 +469,38 @@ class ApprovedSourceLoginManager:
         return self._playwright_browser
 
     def get_session_page(self, session_id: str) -> Any | None:
-        """Get the authenticated Playwright page for a session."""
-        return self._auth_pages.get(session_id)
+        """Get the authenticated Playwright page for a session (Legacy, returns None).
+        
+        Use create_session_page(session_id) asynchronously instead.
+        """
+        return None
+
+    async def create_session_page(self, session_id: str) -> Any | None:
+        """Create a new Playwright page inside the authenticated context."""
+        if session_id not in self._auth_contexts:
+            logger.warning("[Auth] No authenticated context for session %s", session_id[:12])
+            return None
+        context = self._auth_contexts[session_id]
+        try:
+            page = await context.new_page()
+            return page
+        except Exception as e:
+            logger.error("[Auth] Failed to create new page in context: %s", e)
+            return None
 
     async def fetch_authenticated_html(
         self, session_id: str, url: str
     ) -> str | None:
         """Fetch HTML using an authenticated Playwright session.
 
-        Reuses the existing authenticated page for the given session_id
-        to navigate to the URL and return the rendered HTML.
+        Creates a new page in the cached context, navigates, and returns HTML.
         """
-        if session_id not in self._auth_pages:
-            logger.warning("[Auth] No authenticated page for session %s", session_id[:12])
+        if session_id not in self._auth_contexts:
+            logger.warning("[Auth] No authenticated context for session %s", session_id[:12])
             return None
 
-        page = self._auth_pages[session_id]
+        context = self._auth_contexts[session_id]
+        page = await context.new_page()
         try:
             await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             try:
@@ -495,6 +512,8 @@ class ApprovedSourceLoginManager:
         except Exception as e:
             logger.error("[Auth] Authenticated fetch failed for %s: %s", url, e)
             return None
+        finally:
+            await page.close()
 
     async def _crawl_for_login(
         self,
@@ -506,14 +525,15 @@ class ApprovedSourceLoginManager:
         """Perform a login attempt using Playwright for reliable form interaction.
 
         Uses Playwright (not Crawl4AI js_code) to:
-        1. Navigate to the login URL
-        2. Wait for the username/password selectors (handles JS-rendered forms)
-        3. Fill the form fields
-        4. Click the submit button
-        5. Wait for the success indicator or detect failure
+        1. Create a new BrowserContext
+        2. Navigate a new page to the login URL
+        3. Wait for the username/password selectors (handles JS-rendered forms)
+        4. Fill the form fields
+        5. Click the submit button
+        6. Wait for the success indicator or detect failure
 
-        After successful login, the Playwright page is kept alive in
-        self._auth_pages for subsequent authenticated product fetches.
+        After successful login, the Playwright context is kept alive in
+        self._auth_contexts for subsequent authenticated fetches.
         """
         try:
             browser = await self._ensure_playwright_browser()
@@ -530,7 +550,8 @@ class ApprovedSourceLoginManager:
             session_id[:12],
         )
 
-        page = await browser.new_page()
+        context = await browser.new_context()
+        page = await context.new_page()
         page.set_default_timeout(login_config.timeout_seconds * 1000)
 
         final_url = login_config.login_url
@@ -549,6 +570,8 @@ class ApprovedSourceLoginManager:
                     timeout=login_config.timeout_seconds * 1000,
                 )
             except Exception:
+                await page.close()
+                await context.close()
                 return LoginResult(
                     success=False,
                     failure_type="AUTH_FAILED",
@@ -586,13 +609,15 @@ class ApprovedSourceLoginManager:
                     login_config.success_indicator,
                     timeout=5000,
                 )
-                # Login succeeded! Keep page alive for authenticated fetches
-                self._auth_pages[session_id] = page
+                # Login succeeded! Keep context alive for authenticated fetches
+                self._auth_contexts[session_id] = context
 
                 logger.info(
-                    "[Auth] Login successful for %s (page kept alive)",
+                    "[Auth] Login successful for %s (context kept alive)",
                     login_config.credential_ref,
                 )
+                # Close the login page to free up resources
+                await page.close()
 
                 return LoginResult(
                     success=True,
@@ -603,13 +628,14 @@ class ApprovedSourceLoginManager:
                 # Success indicator not found
                 html = await page.content()
                 failure_reason = self._check_login_failure(html, login_config)
+                await page.close()
+                await context.close()
                 if failure_reason:
                     logger.warning(
                         "[Auth] Login failed for %s: %s",
                         login_config.credential_ref,
                         failure_reason,
                     )
-                    await page.close()
                     return LoginResult(
                         success=False,
                         session_id=session_id,
@@ -618,7 +644,6 @@ class ApprovedSourceLoginManager:
                         redirected_url=final_url,
                     )
 
-                await page.close()
                 return LoginResult(
                     success=False,
                     session_id=session_id,
@@ -631,6 +656,7 @@ class ApprovedSourceLoginManager:
 
         except Exception as e:
             await page.close()
+            await context.close()
             logger.error(
                 "[Auth] Login error for %s: %s",
                 login_config.credential_ref,
@@ -768,12 +794,13 @@ class ApprovedSourceLoginManager:
                 logger.warning("[Auth] Error cleaning up engine: %s", e)
             self._engine = None
 
-        # Close Playwright auth pages
-        for session_id, page in self._auth_pages.items():
+        # Close Playwright auth contexts
+        for session_id, context in self._auth_contexts.items():
             try:
-                await page.close()
+                await context.close()
             except Exception:
                 pass
+        self._auth_contexts.clear()
         self._auth_pages.clear()
 
         # Close Playwright browser

@@ -7,6 +7,7 @@ Provides:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from abc import ABC, abstractmethod
@@ -28,6 +29,34 @@ import httpx
 logger = logging.getLogger(__name__)
 
 _IDENTIFIER_RE = re.compile(r"[^A-Z0-9]+")
+
+_shared_browser_engine = None
+_shared_browser_engine_lock = asyncio.Lock()
+
+
+async def get_shared_browser_engine():
+    global _shared_browser_engine
+    if _shared_browser_engine is None:
+        async with _shared_browser_engine_lock:
+            if _shared_browser_engine is None:
+                from src.crawl4ai_engine.engine import Crawl4AIEngine
+                engine_config = {
+                    "browser": {
+                        "headless": True,
+                        "viewport_width": 1280,
+                        "viewport_height": 800,
+                        "light_mode": True,
+                    },
+                    "crawler": {
+                        "page_timeout": 30000,
+                        "delay_before_return_html": 1000,
+                        "remove_overlay_elements": True,
+                    },
+                }
+                engine = Crawl4AIEngine(engine_config)
+                await engine.initialize()
+                _shared_browser_engine = engine
+    return _shared_browser_engine
 
 
 class ApprovedSourceAdapter(ABC):
@@ -451,7 +480,7 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
                 credential_ref = self.entry.credentialRef or self.source_slug
                 login_manager = get_default_login_manager()
                 session_id = login_manager._get_stable_session_id(self.source_slug, credential_ref)
-                page = login_manager.get_session_page(session_id)
+                page = await login_manager.create_session_page(session_id)
                 if page:
                     try:
                         from scrapers.approved_sources.image_capture import capture_images_authenticated
@@ -460,6 +489,11 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
                         det_result.product["image_urls"] = captured
                     except Exception as e:
                         logger.error("[%s] Failed to capture authenticated images: %s", self.adapter_slug, e)
+                    finally:
+                        try:
+                            await page.close()
+                        except Exception as close_err:
+                            logger.warning("[%s] Failed to close page after image capture: %s", self.adapter_slug, close_err)
                 else:
                     logger.warning("[%s] No active Playwright page available for authenticated image capture", self.adapter_slug)
 
@@ -606,25 +640,12 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
         Uses a short page timeout to avoid blocking too long.
         """
         try:
-            from src.crawl4ai_engine.engine import Crawl4AIEngine
             from crawl4ai import CrawlerRunConfig, CacheMode
 
-            engine_config = {
-                "browser": {
-                    "headless": True,
-                    "viewport_width": 1280,
-                    "viewport_height": 800,
-                    "light_mode": True,
-                },
-                "crawler": {
-                    "page_timeout": 30000,
-                    "delay_before_return_html": 1000,
-                    "remove_overlay_elements": True,
-                },
-            }
-
-            engine = Crawl4AIEngine(engine_config)
-            await engine.initialize()
+            engine = await get_shared_browser_engine()
+            if not engine:
+                logger.warning("[%s] Crawl4AI engine is not available for browser fetch", self.adapter_slug)
+                return None
 
             run_config = CrawlerRunConfig(
                 cache_mode=CacheMode.BYPASS,
@@ -636,7 +657,6 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             )
 
             result = await engine.crawler.arun(url=url, config=run_config)
-            await engine.cleanup()
 
             if result and getattr(result, "success", False):
                 html = getattr(result, "html", None) or ""

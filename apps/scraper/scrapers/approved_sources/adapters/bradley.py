@@ -53,14 +53,13 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
             return None
 
         try:
-            from src.crawl4ai_engine.engine import Crawl4AIEngine
+            from scrapers.approved_sources.adapters.base import get_shared_browser_engine
             from crawl4ai import CrawlerRunConfig, CacheMode
 
-            engine = Crawl4AIEngine({
-                "browser": {"headless": True, "viewport_width": 1280, "viewport_height": 800, "light_mode": True},
-                "crawler": {"page_timeout": 30000, "delay_before_return_html": 1500, "remove_overlay_elements": True},
-            })
-            await engine.initialize()
+            engine = await get_shared_browser_engine()
+            if not engine:
+                logger.warning("[%s] Shared Crawl4AI engine not available for product page images", self.adapter_slug)
+                return det_result
 
             config = CrawlerRunConfig(
                 cache_mode=CacheMode.BYPASS,
@@ -70,7 +69,6 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
             )
 
             page_result = await engine.crawler.arun(url=self._product_page_url, config=config)
-            await engine.cleanup()
 
             if page_result and getattr(page_result, "success", False):
                 page_html = getattr(page_result, "html", None) or ""
@@ -83,11 +81,14 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
                     if src and "stencil" in src:
                         if src.startswith("//"):
                             src = "https:" + src
+                        elif src.startswith("/"):
+                            src = urljoin(self.base_url, src)
                         images.append(src)
                 if images:
                     from scrapers.approved_sources.policy import filter_allowed_assets
                     det_result.product["image_urls"] = filter_allowed_assets(images, source_policy)
-                    det_result.matched_fields.append("image_urls")
+                    if "image_urls" not in det_result.matched_fields:
+                        det_result.matched_fields.append("image_urls")
                     logger.info(
                         "[%s] Found %d images from product page: %s",
                         self.adapter_slug, len(images), self._product_page_url,
@@ -269,16 +270,82 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
         """
         # Find product links that look like product pages
         # BigCommerce headless uses slug-based URLs like /e-z-hang-scale-silver-up-to-55-lb-001135
+        # We iterate over all a[href] links, skip non-product links, climb up the DOM tree (max 5 levels),
+        # and search if the SKU (UPC or BCI#) is in the container's text or the link's href.
         product_link = None
+        product_container = None
+        found_card = False
+
+        # Clean SKU for matching
+        sku_clean = re.sub(r'[^a-zA-Z0-9]', '', sku.lower())
+
         for a in soup.select('a[href]'):
             href = a.get('href', '')
             text = a.get_text(strip=True)
-            # Match product links: href contains the SKU or text looks like a product name
-            if sku in href and '/' in href and len(text) > 3:
-                product_link = a
+            
+            # Skip non-product links
+            href_lower = href.lower()
+            if any(x in href_lower for x in ['/cart', '/checkout', '/account', '/login', '/register', '/wishlist', '/search', '/contact', '/about', '/blog', '/faq']):
+                continue
+            if href in ['', '#', '/']:
+                continue
+            if href.startswith(('javascript:', 'mailto:', 'tel:')):
+                continue
+
+            # Climb up to 5 levels
+            container = a
+            for level in range(5):
+                if container is None or not hasattr(container, 'get_text'):
+                    break
+                
+                # Stop climbing if we hit high-level generic page containers
+                if getattr(container, 'name', None) in ('body', 'html', 'main', 'form'):
+                    break
+
+                # Avoid matching list/grid containers that hold multiple products.
+                # If this container contains other active product links, stop climbing.
+                other_product_links = 0
+                for other_a in container.select('a[href]'):
+                    other_href = other_a.get('href', '')
+                    if other_href == href or other_href == href + '/' or href == other_href + '/':
+                        continue
+                    other_href_lower = other_href.lower()
+                    if any(x in other_href_lower for x in ['/cart', '/checkout', '/account', '/login', '/register', '/wishlist', '/search', '/contact', '/about', '/blog', '/faq']):
+                        continue
+                    if other_href in ['', '#', '/'] or other_href.startswith(('javascript:', 'mailto:', 'tel:')):
+                        continue
+                    other_product_links += 1
+
+                if other_product_links > 0:
+                    break
+
+                container_text = container.get_text()
+                container_text_lower = container_text.lower()
+                
+                # Check direct substring match
+                sku_in_text = sku.lower() in container_text_lower
+                sku_in_href = sku.lower() in href_lower
+                
+                # Check normalized match
+                norm_container_text = re.sub(r'[^a-zA-Z0-9]', '', container_text_lower)
+                norm_href = re.sub(r'[^a-zA-Z0-9]', '', href_lower)
+                
+                norm_sku_in_text = sku_clean and (sku_clean in norm_container_text)
+                norm_sku_in_href = sku_clean and (sku_clean in norm_href)
+
+                if sku_in_text or sku_in_href or norm_sku_in_text or norm_sku_in_href:
+                    # Let's ensure the link has text (potential product title)
+                    if len(text) > 3 and "search results" not in text.lower():
+                        product_link = a
+                        product_container = container
+                        found_card = True
+                        break
+                
+                container = container.parent
+            if found_card:
                 break
 
-        if not product_link:
+        if not product_link or not product_container:
             return
 
         # Store product page URL for image extraction in post-processing
@@ -287,24 +354,11 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
         product["name"] = product_link.get_text(strip=True)
         matched.append("name")
 
-        # Find the parent container that has all product details
-        # Walk up to find a div that contains both the link and detail text
-        container = product_link.parent
-        for _ in range(5):  # Max 5 levels up
-            if container is None or not hasattr(container, 'get_text'):
-                break
-            text = container.get_text()
-            if sku in text and 'BCI#' in text:
-                break
-            container = container.parent
-
-        if container is None:
-            return
+        card_text = product_container.get_text()
 
         # Extract brand: look for a span near the product name
         # In BigCommerce headless, brand is in a span.block.text-sm
-        card_text = container.get_text()
-        for span in container.select('span[class*="text-sm"]'):
+        for span in product_container.select('span[class*="text-sm"]'):
             text = span.get_text(strip=True)
             if text and len(text) < 50 and text != product.get('name'):
                 if not any(c.isdigit() for c in text) and ':' not in text:
@@ -312,33 +366,38 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
                     matched.append('brand')
                     break
 
-        # Extract detail fields from text content
+        # Extract detail fields from text content using flexible regex patterns
+        # Matching different UPC/BCI# formats and other details (e.g., UPC Code:, BCI#:)
         detail_patterns = {
-            r'BCI#:\s*(\S+)': 'bci_item_number',
-            r'Manufacturer #:\s*(\S+)': 'manufacturer_number',
-            r'UPC Code:\s*(\S+)': 'upc',
-            r'Size:\s*([^A-Z]+)': 'size',
-            r'Type:\s*(\S+)': 'type',
-            r'Case Pack:\s*(\S+)': 'case_pack',
+            r'(?:BCI#|BCI\s*Number|Item\s*#)\s*:\s*(\S+)': 'bci_item_number',
+            r'(?:Manufacturer\s*#|MFG\s*#|Model\s*#)\s*:\s*(\S+)': 'manufacturer_number',
+            r'(?:UPC\s*Code|UPC)\s*:\s*(\S+)': 'upc',
+            r'(?:Size)\s*:\s*([^:\n]+)': 'size',
+            r'(?:Type)\s*:\s*(\S+)': 'type',
+            r'(?:Case\s*Pack|Pack)\s*:\s*(\S+)': 'case_pack',
         }
         for pattern, field in detail_patterns.items():
-            match = re.search(pattern, card_text)
+            match = re.search(pattern, card_text, re.IGNORECASE)
             if match:
-                product[field] = match.group(1).strip()
+                val = match.group(1).strip().rstrip(',.;')
+                product[field] = val
                 if field not in matched:
                     matched.append(field)
 
         # Extract images from the product card area
         images = []
-        for img in container.select('img[src]'):
+        for img in product_container.select('img[src]'):
             src = img.get('src', '')
             if src and ('bigcommerce' in src or 'products' in src or 'cdn' in src):
                 if src.startswith('//'):
                     src = 'https:' + src
+                elif src.startswith('/'):
+                    src = urljoin(self.base_url, src)
                 images.append(src)
         if images:
             product['image_urls'] = images
-            matched.append('image_urls')
+            if 'image_urls' not in matched:
+                matched.append('image_urls')
 
     def _extract_with_regex(
         self, html: str, sku: str, url: str
