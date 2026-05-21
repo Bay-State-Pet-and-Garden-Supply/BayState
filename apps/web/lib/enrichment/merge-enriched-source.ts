@@ -110,7 +110,7 @@ function rankSourceResult(result: SourceResultInfo): number {
   return (result.confidence * 1000) + matchedFieldsCount;
 }
 
-export function mergeSourceResults(
+function mergeSourceResults(
   ...collections: Array<SourceResultInfo[] | undefined>
 ): SourceResultInfo[] {
   const merged = new Map<string, SourceResultInfo>();
@@ -147,7 +147,8 @@ function coerceSnapshot(raw: unknown): ApprovedSourceSnapshotV1 | null {
     return null;
   }
 
-  const { approved_sources: _ignoredApprovedSources, ...rest } = raw;
+  const rest = { ...raw };
+  delete rest.approved_sources;
   return rest as unknown as ApprovedSourceSnapshotV1;
 }
 

@@ -3,7 +3,8 @@
   "ignorePatterns": [
     "apps/web/types/supabase.ts",
     "apps/web/lib/scraper-log-persistence.ts",
-    "apps/web/types/scraper.ts"
+    "apps/web/types/scraper.ts",
+    "apps/web/scripts/backfill-enriched-approved-sources.ts"
   ],
   "usedClassMembers": [
     {
@@ -12,6 +13,15 @@
         "fetchCatalog",
         "healthCheck"
       ]
-    }
+    },
+    "uploadFile",
+    "createBatch",
+    "getBatchStatus",
+    "cancelBatch",
+    "downloadFileText",
+    "parseBatchOutput",
+    "createCache",
+    "deleteCache",
+    "cleanup"
   ]
 }

@@ -50,7 +50,7 @@ function isRequestedExtractionMode(value: unknown): value is RequestedExtraction
   return typeof value === "string" && REQUESTED_EXTRACTION_MODES.includes(value as RequestedExtractionMode);
 }
 
-export function determineRequestedExtractionMode(options: {
+function determineRequestedExtractionMode(options: {
   attemptMode?: unknown;
   jobMode?: unknown;
   jobConfig?: Record<string, unknown> | null;
@@ -126,7 +126,7 @@ export function shouldRetryEnrichmentResult(
 /**
  * Determines next pipeline status based on enrichment result quality.
  */
-export function determineNextStatus(
+function determineNextStatus(
   result: EnrichmentResultV1,
   attempt: AttemptLike,
   requestedMode: RequestedExtractionMode,

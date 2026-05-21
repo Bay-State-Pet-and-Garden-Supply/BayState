@@ -666,15 +666,4 @@ export function getApplicableFields(
     return FACET_PROFILE_APPLICABLE_FIELDS[profile];
 }
 
-// =============================================================================
-// Backwards-compatible aliases (deprecated)
-// =============================================================================
 
-/** @deprecated Use FacetProfile instead */
-export type ProductDomain = FacetProfile;
-
-/** @deprecated Use FACET_PROFILE_APPLICABLE_FIELDS instead */
-const DOMAIN_APPLICABLE_FIELDS = FACET_PROFILE_APPLICABLE_FIELDS;
-
-/** @deprecated Use resolveFacetProfile instead */
-export { resolveFacetProfile as classifyProductDomain };

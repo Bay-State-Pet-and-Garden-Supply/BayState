@@ -58,7 +58,7 @@ function resolveSourceType(result: EnrichmentResultV1): string | null {
 /**
  * Build backward-compatible aliases from the nested product/source payload.
  */
-export function buildLegacyEnrichedAliases(
+function buildLegacyEnrichedAliases(
   product: EnrichedProductFactsV1,
   source: EnrichmentResultSourceV1,
   confidence: EnrichmentConfidenceV1,
