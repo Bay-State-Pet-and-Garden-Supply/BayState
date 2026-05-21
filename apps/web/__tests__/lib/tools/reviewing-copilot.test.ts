@@ -1,11 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
-import { createFinalizationCopilotTools } from "@/lib/tools/finalization-copilot";
+import { createFinalizationCopilotTools } from "@/lib/tools/reviewing-copilot";
 
 const mockServices: any = {
   searchBrands: jest.fn(async () => []),
 };
 
-describe("finalization copilot tool definitions", () => {
+describe("reviewing copilot tool definitions", () => {
   const tools = createFinalizationCopilotTools(mockServices);
 
   describe("setProductFields", () => {
@@ -201,10 +201,6 @@ describe("finalization copilot tool definitions", () => {
       "assignBrand",
       "bulkAssignBrand",
       "createBrand",
-      "setStorePages",
-      "bulkUpdateStorePages",
-      "addStorePages",
-      "removeStorePages",
       "replaceSelectedImages",
       "addSelectedImages",
       "removeSelectedImages",

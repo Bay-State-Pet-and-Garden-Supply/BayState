@@ -56,18 +56,6 @@ const PERSISTED_PIPELINE_STATUS_SET = new Set<string>(
 
 const DERIVED_PIPELINE_TAB_SET = new Set<string>(DERIVED_PIPELINE_TABS);
 const PIPELINE_STAGE_SET = new Set<string>(PIPELINE_TABS);
-const LEGACY_PIPELINE_STAGE_ALIASES = {
-  finalized: "reviewing",
-  finalizing: "reviewing",
-  export: "publishing",
-  published: "publishing",
-  scraped: "processed",
-  consolidating: "merging",
-  exporting: "publishing",
-  searching: "imported",
-  scraping: "extracting",
-  needs_brand: "imported",
-} as const;
 
 export function isPersistedStatus(
   value: string,
@@ -90,15 +78,7 @@ export function normalizePipelineStage(
     return null;
   }
 
-  if (isPipelineStage(value)) {
-    return value;
-  }
-
-  return (
-    LEGACY_PIPELINE_STAGE_ALIASES[
-      value as keyof typeof LEGACY_PIPELINE_STAGE_ALIASES
-    ] ?? null
-  );
+  return isPipelineStage(value) ? value : null;
 }
 
 /**

@@ -1,7 +1,7 @@
 import {
   EMPTY_FINALIZATION_DRAFT,
   type FinalizationDraft,
-} from "@/lib/pipeline/finalization-draft";
+} from "@/lib/pipeline/reviewing-draft";
 
 export interface PendingCopilotDraftReview {
   skus: string[];

@@ -53,8 +53,8 @@ jest.mock('@/components/admin/pipeline/ActiveRunsTab', () => ({
 jest.mock('@/components/admin/pipeline/ActiveConsolidationsTab', () => ({
     ActiveConsolidationsTab: () => <div data-testid="active-consolidations" />,
 }));
-jest.mock('@/components/admin/pipeline/FinalizingResultsView', () => ({
-    FinalizingResultsView: () => <div data-testid="finalizing-results" />,
+jest.mock('@/components/admin/pipeline/ReviewingResultsView', () => ({
+    ReviewingResultsView: () => <div data-testid="reviewing-results" />,
 }));
 
 const counts: StatusCount[] = [
@@ -157,7 +157,7 @@ describe('export tab actions', () => {
         );
 
         fireEvent.click(screen.getByRole('button', { name: 'Upload' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Download ZIP' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Download zip' }));
 
         expect(onUploadShopSite).toHaveBeenCalledTimes(1);
         expect(onDownloadZip).toHaveBeenCalledTimes(1);

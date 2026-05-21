@@ -225,7 +225,7 @@ export function PipelineProductDetail({
         throw new Error(data.error || 'Failed to save');
       }
 
-      toast.success(andApprove ? 'Product moved to exporting!' : 'Product saved successfully');
+      toast.success(andApprove ? 'Product moved to publishing!' : 'Product saved successfully');
       onSave();
       onClose();
     } catch (err) {

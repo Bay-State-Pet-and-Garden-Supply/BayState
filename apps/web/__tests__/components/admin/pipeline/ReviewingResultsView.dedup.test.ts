@@ -65,7 +65,7 @@ function toStringArray(value: unknown): string[] {
   return Array.from(deduped.values());
 }
 
-describe("FinalizingResultsView image deduplication", () => {
+describe("ReviewingResultsView image deduplication", () => {
   describe("buildImageDedupKey", () => {
     it("strips host for Amazon images", () => {
       const url1 = "https://m.media-amazon.com/images/I/71hero.jpg";

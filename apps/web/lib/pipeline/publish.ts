@@ -221,10 +221,10 @@ export async function publishToStorefront(sku: string) {
         .eq("sku", sku);
 
       if (statusError) {
-        console.error(`[Publish] Failed to move ${sku} into exporting:`, statusError);
+        console.error(`[Publish] Failed to move ${sku} into publishing:`, statusError);
         return {
           success: false as const,
-          error: "Failed to move product into exporting",
+          error: "Failed to move product into publishing",
         };
       }
 

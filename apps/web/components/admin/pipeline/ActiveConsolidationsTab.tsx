@@ -258,7 +258,7 @@ export function ActiveConsolidationsTab({
   };
 
   const handleDeleteJob = async (batchId: string) => {
-    if (!window.confirm("Delete this consolidation job? Products still in consolidating will be returned to scraped.")) return;
+    if (!window.confirm("Delete this consolidation job? Products still in merging will be returned to processed.")) return;
 
     setDeletingId(batchId);
     try {
@@ -289,7 +289,7 @@ export function ActiveConsolidationsTab({
 
   // Recover stuck products
   const handleRecoverStranded = async () => {
-    if (!window.confirm("This will reset all products stuck in 'consolidating' back to 'scraped'. Please ensure there are no active batches before proceeding. Continue?")) return;
+    if (!window.confirm("This will reset all products stuck in 'merging' back to 'processed'. Please ensure there are no active batches before proceeding. Continue?")) return;
     
     setResettingStranded(true);
     try {
@@ -299,7 +299,7 @@ export function ActiveConsolidationsTab({
       const data = await res.json();
       if (res.ok) {
         if (data.reset_count > 0) {
-          toast.success(`Recovered ${data.reset_count} stranded product${data.reset_count !== 1 ? "s" : ""} back to scraped stage`);
+          toast.success(`Recovered ${data.reset_count} stranded product${data.reset_count !== 1 ? "s" : ""} back to processed stage`);
         } else {
           toast.info("No stranded products found");
         }
@@ -386,7 +386,7 @@ export function ActiveConsolidationsTab({
       </div>
 
       <div className="rounded-none border border-border bg-muted/20 px-4 py-3 text-[10px] font-semibold text-muted-foreground tracking-tight">
-        <span className="text-foreground">Product Consolidation</span>: Click consolidate on the scraped tab to submit a job.
+        <span className="text-foreground">Product Consolidation</span>: Click consolidate on the processed tab to submit a job.
         This tab shows progress, lets you apply completed results, cancel running jobs, and recover stranded products.
       </div>
 

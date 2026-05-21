@@ -3,18 +3,18 @@ import { z } from "zod";
 import {
   FINALIZATION_STOCK_STATUS_VALUES,
   finalizationDraftSchema,
-} from "@/lib/pipeline/finalization-draft";
+} from "@/lib/pipeline/reviewing-draft";
 import {
   finalizationProductScopeSchema,
   finalizationWorkspaceProductSummarySchema,
   listWorkspaceProductsInputSchema,
   previewProductScopeInputSchema,
-} from "@/lib/pipeline/finalization-copilot-workspace";
+} from "@/lib/pipeline/reviewing-copilot-workspace";
 
 export type {
   ListWorkspaceProductsInput,
   PreviewProductScopeInput,
-} from "@/lib/pipeline/finalization-copilot-workspace";
+} from "@/lib/pipeline/reviewing-copilot-workspace";
 
 const toolSummarySchema = z.object({
   summary: z.string(),
@@ -290,7 +290,7 @@ export function createFinalizationCopilotTools(
   return {
     listWorkspaceProducts: tool({
       description:
-        "List products in the finalizing workspace. You can search by generic query or target specific fields like name, description, or brand. Use this before multi-product actions to narrow scope.",
+        "List products in the reviewing workspace. You can search by generic query or target specific fields like name, description, or brand. Use this before multi-product actions to narrow scope.",
       inputSchema: listWorkspaceProductsInputSchema,
       outputSchema: listWorkspaceProductsOutputSchema,
     }),
@@ -311,14 +311,14 @@ export function createFinalizationCopilotTools(
 
     inspectSourceData: tool({
       description:
-        "Inspect a specific scraped source record for a product when you need facts instead of guessing. If sku is omitted, inspect the currently selected product.",
+        "Inspect a specific processed source record for a product when you need facts instead of guessing. If sku is omitted, inspect the currently selected product.",
       inputSchema: inspectSourceDataInputSchema,
       outputSchema: inspectSourceDataOutputSchema,
     }),
 
     listImageSources: tool({
       description:
-        "List grouped image candidates from each scraped source and show which images are selected for a product. If sku is omitted, use the currently selected product.",
+        "List grouped image candidates from each processed source and show which images are selected for a product. If sku is omitted, use the currently selected product.",
       inputSchema: listImageSourcesInputSchema,
       outputSchema: listImageSourcesOutputSchema,
     }),
@@ -345,7 +345,7 @@ export function createFinalizationCopilotTools(
 
     bulkSetProductFields: tool({
       description:
-        "Apply the same exact final field values to multiple products in the finalizing workspace. Use this only when every targeted product should receive the identical final value. Never use this to rewrite product names based on their current text.",
+        "Apply the same exact final field values to multiple products in the reviewing workspace. Use this only when every targeted product should receive the identical final value. Never use this to rewrite product names based on their current text.",
       inputSchema: bulkSetProductFieldsInputSchema,
       outputSchema: toolSummarySchema,
     }),
@@ -366,7 +366,7 @@ export function createFinalizationCopilotTools(
 
     bulkAssignBrand: tool({
       description:
-        "Assign the same existing brand id to multiple products in the finalizing workspace. Use previewProductScope first and searchBrands unless you already know the exact brand id.",
+        "Assign the same existing brand id to multiple products in the reviewing workspace. Use previewProductScope first and searchBrands unless you already know the exact brand id.",
       inputSchema: bulkAssignBrandInputSchema,
       outputSchema: toolSummarySchema,
     }),
@@ -423,7 +423,7 @@ export function createFinalizationCopilotTools(
 
     saveDraft: tool({
       description:
-        "Save the current draft back to the finalizing product record without moving workflow stages.",
+        "Save the current draft back to the reviewing product record without moving workflow stages.",
       inputSchema: saveDraftInputSchema,
       outputSchema: toolSummarySchema,
     }),
@@ -437,7 +437,7 @@ export function createFinalizationCopilotTools(
 
     approveProduct: tool({
       description:
-        "Save the current draft and move the product into exporting. Only use this when the user explicitly wants approval.",
+        "Save the current draft and move the product into publishing. Only use this when the user explicitly wants approval.",
       inputSchema: approveProductInputSchema,
       outputSchema: toolSummarySchema,
     }),
@@ -451,14 +451,14 @@ export function createFinalizationCopilotTools(
 
     rejectProduct: tool({
       description:
-        "Send the product back to the scraped stage. Only use this when the user explicitly wants to reject or send the product back.",
+        "Send the product back to the processed stage. Only use this when the user explicitly wants to reject or send the product back.",
       inputSchema: rejectProductInputSchema,
       outputSchema: toolSummarySchema,
     }),
 
     rejectProducts: tool({
       description:
-        "Send multiple products back to the scraped stage. Only use this for bulk scopes when the user explicitly wants those products rejected or sent back.",
+        "Send multiple products back to the processed stage. Only use this for bulk scopes when the user explicitly wants those products rejected or sent back.",
       inputSchema: scopedRejectProductInputSchema,
       outputSchema: toolSummarySchema,
     }),

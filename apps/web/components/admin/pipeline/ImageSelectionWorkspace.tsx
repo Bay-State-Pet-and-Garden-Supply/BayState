@@ -13,7 +13,7 @@ interface ImageSelectionWorkspaceProps {
   onClose: () => void;
   /** Callback when images are saved (optional) */
   onSave?: () => void;
-  /** Callback when product advances to finalizing (optional) */
+  /** Callback when product advances to reviewing (optional) */
   onFinalize?: () => void;
 }
 
@@ -121,14 +121,13 @@ export function ImageSelectionWorkspace({
         throw new Error(data.error || 'Failed to save images');
       }
 
-      // Then transition into finalizing for manual review/export approval
+      // Then transition into reviewing for manual review and publishing approval
       const transitionRes = await adminFetch('/api/admin/pipeline/transition', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sku,
-          fromStatus: 'scraped',
-          toStatus: 'finalizing',
+          toStatus: 'reviewing',
         }),
       });
 
@@ -137,11 +136,11 @@ export function ImageSelectionWorkspace({
         throw new Error(data.error || 'Failed to transition status');
       }
 
-      toast.success('Product moved to finalizing');
+      toast.success('Product moved to reviewing');
       onFinalize?.();
       onClose();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to move product to finalizing';
+      const message = err instanceof Error ? err.message : 'Failed to move product to reviewing';
       toast.error(message);
     } finally {
       setIsFinalizing(false);
@@ -311,7 +310,7 @@ export function ImageSelectionWorkspace({
               className="px-4 py-2 text-xs font-semibold text-background bg-primary border border-primary rounded-none hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isFinalizing && <Loader2 className="h-4 w-4 animate-spin" />}
-              Move to Finalizing
+              Move to Reviewing
             </button>
           </div>
         </div>

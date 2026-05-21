@@ -9,7 +9,7 @@ import {
   finalizationCopilotProductSchema,
   finalizationDraftSchema,
   type FinalizationDraft,
-} from "@/lib/pipeline/finalization-draft";
+} from "@/lib/pipeline/reviewing-draft";
 
 export const finalizationWorkspaceProductSummarySchema = z.object({
   sku: z.string(),

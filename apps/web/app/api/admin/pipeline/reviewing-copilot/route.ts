@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAgentUIStreamResponse } from "ai";
 import { z } from "zod";
 import { requireAdminAuth } from "@/lib/admin/api-auth";
-import { finalizationCopilotAgent } from "@/lib/agents/finalization-copilot-agent";
-import { finalizationCopilotContextSchema } from "@/lib/pipeline/finalization-copilot-workspace";
+import { finalizationCopilotAgent } from "@/lib/agents/reviewing-copilot-agent";
+import { finalizationCopilotContextSchema } from "@/lib/pipeline/reviewing-copilot-workspace";
 
 export const maxDuration = 30;
 
@@ -25,10 +25,10 @@ export async function POST(request: NextRequest) {
       options: payload.context,
     });
   } catch (error) {
-    console.error("Failed to start finalization copilot:", error);
+    console.error("Failed to start reviewing copilot:", error);
 
     return NextResponse.json(
-      { error: "Invalid finalization copilot request" },
+      { error: "Invalid reviewing copilot request" },
       { status: 400 },
     );
   }

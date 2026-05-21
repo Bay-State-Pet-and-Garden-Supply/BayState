@@ -44,7 +44,7 @@ const CANONICAL_EXPORT_STATUS_MESSAGE = `Invalid status. Expected one of: ${[
   'all',
 ].join(', ')}`;
 
-describe('pipeline export route compatibility boundary', () => {
+describe('pipeline export route', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (requireAdminAuth as jest.Mock).mockResolvedValue({
@@ -54,37 +54,9 @@ describe('pipeline export route compatibility boundary', () => {
     });
   });
 
-  it('maps legacy registered status to canonical imported exactly once at the route boundary', async () => {
-    const { from, queryBuilder } = createSupabaseMock();
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-
-    (createAdminClient as jest.Mock).mockResolvedValue({ from });
-
+  it('rejects deprecated statuses with canonical status help text', async () => {
     const response = await GET(
       new NextRequest('http://localhost/api/admin/pipeline/export?status=registered')
-    );
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(response.status).toBe(200);
-    expect(queryBuilder.select).toHaveBeenCalledWith(
-      'sku, input, consolidated, selected_images, pipeline_status, updated_at'
-    );
-    expect(queryBuilder.is).toHaveBeenCalledWith('exported_at', null);
-    expect(queryBuilder.eq).toHaveBeenCalledWith('pipeline_status', 'imported');
-    expect(warnSpy).toHaveBeenCalledTimes(1);
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("mapped legacy status 'registered' to canonical 'imported'")
-    );
-
-    warnSpy.mockRestore();
-    errorSpy.mockRestore();
-  });
-
-  it('rejects unknown statuses with canonical status help text', async () => {
-    const response = await GET(
-      new NextRequest('http://localhost/api/admin/pipeline/export?status=registered-again')
     );
 
     expect(response.status).toBe(400);
@@ -93,7 +65,7 @@ describe('pipeline export route compatibility boundary', () => {
     });
   });
 
-  it('exports a selected SKU subset from the exporting queue via POST', async () => {
+  it('exports a selected SKU subset from the publishing queue via POST', async () => {
     const { from, queryBuilder } = createSupabaseMock();
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 

@@ -144,7 +144,7 @@ export async function PATCH(
       if (pipeline_status === 'published') {
         return NextResponse.json(
           {
-            error: 'Published is no longer a workflow state. Use finalizing/exporting instead.',
+            error: 'Published is no longer a workflow state. Use reviewing/publishing instead.',
           },
           { status: 400 }
         );

@@ -7,11 +7,11 @@ import {
   listFinalizationProductImageSources,
   listWorkspaceProducts,
   resolveFinalizationProductScope,
-} from "@/lib/pipeline/finalization-copilot-workspace";
+} from "@/lib/pipeline/reviewing-copilot-workspace";
 import {
   buildInitialFinalizationDraft,
   type FinalizationDraft,
-} from "@/lib/pipeline/finalization-draft";
+} from "@/lib/pipeline/reviewing-draft";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 
 function createProduct(
@@ -87,7 +87,7 @@ function createProduct(
   };
 }
 
-describe("finalization copilot workspace helpers", () => {
+describe("reviewing copilot workspace helpers", () => {
   it("lists workspace products with query filtering, selection, and dirty state", () => {
     const alpha = createProduct("SKU-ALPHA");
     const beta = createProduct("SKU-BETA", {

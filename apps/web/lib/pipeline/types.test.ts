@@ -54,17 +54,18 @@ describe('isPipelineStage', () => {
 
 
 describe('normalizePipelineStage', () => {
-  it('maps legacy stage names onto canonical ones', () => {
-    expect(normalizePipelineStage('finalized')).toBe('reviewing');
-    expect(normalizePipelineStage('export')).toBe('publishing');
-    expect(normalizePipelineStage('published')).toBe('publishing');
-    expect(normalizePipelineStage('scraped')).toBe('processed');
-    expect(normalizePipelineStage('consolidating')).toBe('merging');
-    expect(normalizePipelineStage('exporting')).toBe('publishing');
+  it('accepts canonical stages only', () => {
+    expect(normalizePipelineStage('reviewing')).toBe('reviewing');
+    expect(normalizePipelineStage('publishing')).toBe('publishing');
   });
 
-  it('passes through canonical stages and rejects unknown values', () => {
-    expect(normalizePipelineStage('reviewing')).toBe('reviewing');
+  it('rejects deprecated aliases and unknown values', () => {
+    expect(normalizePipelineStage('finalized')).toBeNull();
+    expect(normalizePipelineStage('export')).toBeNull();
+    expect(normalizePipelineStage('published')).toBeNull();
+    expect(normalizePipelineStage('scraped')).toBeNull();
+    expect(normalizePipelineStage('consolidating')).toBeNull();
+    expect(normalizePipelineStage('exporting')).toBeNull();
     expect(normalizePipelineStage('unknown')).toBeNull();
     expect(normalizePipelineStage(undefined)).toBeNull();
   });

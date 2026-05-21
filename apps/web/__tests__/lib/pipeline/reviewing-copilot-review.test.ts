@@ -1,10 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
-import type { FinalizationDraft } from "@/lib/pipeline/finalization-draft";
+import type { FinalizationDraft } from "@/lib/pipeline/reviewing-draft";
 import {
   filterPendingCopilotDraftReview,
   restorePendingCopilotDraftReview,
   stagePendingCopilotDraftReview,
-} from "@/lib/pipeline/finalization-copilot-review";
+} from "@/lib/pipeline/reviewing-copilot-review";
 
 const draftA: FinalizationDraft = {
   name: "Alpha Seeds",
@@ -45,7 +45,7 @@ const draftB: FinalizationDraft = {
   selectedImages: ["https://cdn.example.com/beta.jpg"],
 };
 
-describe("finalization copilot review helpers", () => {
+describe("reviewing copilot review helpers", () => {
   it("captures original drafts once and accumulates staged summaries", () => {
     const first = stagePendingCopilotDraftReview({
       pendingReview: null,

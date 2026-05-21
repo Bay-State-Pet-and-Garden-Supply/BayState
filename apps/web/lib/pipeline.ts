@@ -616,6 +616,10 @@ export async function getSkusByStage(
   };
 }
 
+function isVisiblePipelineSourceKey(key: string): boolean {
+  return !key.startsWith("_") && key !== "enriched";
+}
+
 /**
  * Fetches unique source keys from the sources JSONB column for a given status.
  */
@@ -632,7 +636,7 @@ export async function getAvailableSources(
     if (!error && data) {
       return (data as { source_key: string }[])
         .map((row) => row.source_key)
-        .filter((key) => !key.startsWith("_"))
+        .filter(isVisiblePipelineSourceKey)
         .sort();
     }
 
@@ -660,7 +664,7 @@ export async function getAvailableSources(
   (data || []).forEach((row: { sources: Record<string, unknown> | null }) => {
     if (row.sources && typeof row.sources === "object") {
       Object.keys(row.sources)
-        .filter((key) => !key.startsWith("_"))
+        .filter(isVisiblePipelineSourceKey)
         .forEach((key) => allSources.add(key));
     }
   });
@@ -683,7 +687,7 @@ export async function getAvailableSourcesByStage(
       if (!error && data) {
         return (data as { source_key: string }[])
           .map((row) => row.source_key)
-          .filter((key) => !key.startsWith("_"))
+          .filter(isVisiblePipelineSourceKey)
           .sort();
       }
 
@@ -727,7 +731,7 @@ export async function getAvailableSourcesByStage(
   (data || []).forEach((row: { sources: Record<string, unknown> | null }) => {
     if (row.sources && typeof row.sources === "object") {
       Object.keys(row.sources)
-        .filter((key) => !key.startsWith("_"))
+        .filter(isVisiblePipelineSourceKey)
         .forEach((key) => allSources.add(key));
     }
   });

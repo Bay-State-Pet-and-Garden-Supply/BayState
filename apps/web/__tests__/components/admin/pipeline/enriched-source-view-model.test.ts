@@ -16,7 +16,7 @@ describe('formatPipelineSourceSlug', () => {
 });
 
 describe('buildProcessedSourceItems', () => {
-  it('keeps legacy enriched records as a single enriched tab', () => {
+  it('does not render a legacy enriched summary tab without per-source success snapshots', () => {
     const items = buildProcessedSourceItems({
       enriched: {
         source_results: [
@@ -26,25 +26,40 @@ describe('buildProcessedSourceItems', () => {
       },
     });
 
-    expect(items).toHaveLength(1);
-    expect(items[0]).toMatchObject({
-      key: 'enriched',
-      isEnriched: true,
-      isVirtual: false,
-      isDefault: true,
-    });
-    expect(items[0]?.label).toContain('Enriched');
-    expect(items[0]?.label).toContain('Phillips Pet');
-    expect(items[0]?.label).toContain('Orgill');
+    expect(items).toEqual([]);
   });
 
-  it('creates separate virtual tabs for approved source snapshots plus a summary tab', () => {
+  it('creates separate tabs for successful approved source snapshots and hides summary clutter', () => {
     const items = buildProcessedSourceItems({
       enriched: {
         active_source_slug: 'phillips',
         approved_sources: {
-          phillips: { name: 'Phillips Product' },
-          orgill: { name: 'Orgill Product' },
+          phillips: {
+            name: 'Phillips Product',
+            extracted: { name: 'Phillips Product' },
+            confidence: { overall: 1, fields: {} },
+            validation: {},
+            attempts: [],
+            mode: 'mixed',
+            extracted_at: '2026-05-21T00:00:00.000Z',
+            schema_version: 'v1',
+            source_kind: 'enriched',
+            url: 'https://phillips.test',
+            confidence_score: 1,
+          },
+          orgill: {
+            name: 'Orgill Product',
+            extracted: { name: 'Orgill Product' },
+            confidence: { overall: 0.9, fields: {} },
+            validation: {},
+            attempts: [],
+            mode: 'mixed',
+            extracted_at: '2026-05-21T00:00:00.000Z',
+            schema_version: 'v1',
+            source_kind: 'enriched',
+            url: 'https://orgill.test',
+            confidence_score: 0.9,
+          },
         },
       },
     });
@@ -52,18 +67,11 @@ describe('buildProcessedSourceItems', () => {
     expect(items.map((item) => item.key)).toEqual([
       'enriched:phillips',
       'enriched:orgill',
-      'enriched:summary',
     ]);
     expect(items[0]).toMatchObject({
       key: 'enriched:phillips',
-      label: 'Phillips Pet (Enriched)',
+      label: 'Phillips Pet',
       isDefault: true,
-      isVirtual: true,
-      deleteSourceKey: null,
-    });
-    expect(items[2]).toMatchObject({
-      key: 'enriched:summary',
-      label: 'Enriched Summary',
       isVirtual: true,
       deleteSourceKey: null,
     });
@@ -75,7 +83,19 @@ describe('buildProcessedSourceItems', () => {
       enriched: {
         active_source_slug: 'phillips',
         approved_sources: {
-          phillips: { name: 'Phillips Product' },
+          phillips: {
+            name: 'Phillips Product',
+            extracted: { name: 'Phillips Product' },
+            confidence: { overall: 1, fields: {} },
+            validation: {},
+            attempts: [],
+            mode: 'mixed',
+            extracted_at: '2026-05-21T00:00:00.000Z',
+            schema_version: 'v1',
+            source_kind: 'enriched',
+            url: 'https://phillips.test',
+            confidence_score: 1,
+          },
         },
       },
     });
@@ -89,14 +109,38 @@ describe('buildProcessedSourceItems', () => {
     });
   });
 
-  it('does not duplicate virtual enriched tabs when a top-level source key already exists', () => {
+  it('does not duplicate tabs when a top-level successful source already exists', () => {
     const items = buildProcessedSourceItems({
       phillips: { name: 'Phillips Raw' },
       enriched: {
         active_source_slug: 'phillips',
         approved_sources: {
-          phillips: { name: 'Phillips Product' },
-          orgill: { name: 'Orgill Product' },
+          phillips: {
+            name: 'Phillips Product',
+            extracted: { name: 'Phillips Product' },
+            confidence: { overall: 1, fields: {} },
+            validation: {},
+            attempts: [],
+            mode: 'mixed',
+            extracted_at: '2026-05-21T00:00:00.000Z',
+            schema_version: 'v1',
+            source_kind: 'enriched',
+            url: 'https://phillips.test',
+            confidence_score: 1,
+          },
+          orgill: {
+            name: 'Orgill Product',
+            extracted: { name: 'Orgill Product' },
+            confidence: { overall: 0.9, fields: {} },
+            validation: {},
+            attempts: [],
+            mode: 'mixed',
+            extracted_at: '2026-05-21T00:00:00.000Z',
+            schema_version: 'v1',
+            source_kind: 'enriched',
+            url: 'https://orgill.test',
+            confidence_score: 0.9,
+          },
         },
       },
     });
@@ -104,7 +148,43 @@ describe('buildProcessedSourceItems', () => {
     expect(items.map((item) => item.key)).toEqual([
       'phillips',
       'enriched:orgill',
-      'enriched:summary',
     ]);
+  });
+
+  it('filters out failed or empty approved source snapshots', () => {
+    const items = buildProcessedSourceItems({
+      enriched: {
+        active_source_slug: 'phillips',
+        approved_sources: {
+          phillips: {
+            name: 'Phillips Product',
+            extracted: { name: 'Phillips Product' },
+            confidence: { overall: 1, fields: {} },
+            validation: {},
+            attempts: [],
+            mode: 'mixed',
+            extracted_at: '2026-05-21T00:00:00.000Z',
+            schema_version: 'v1',
+            source_kind: 'enriched',
+            url: 'https://phillips.test',
+            confidence_score: 1,
+          },
+          central_pet: {
+            extracted: {},
+            confidence: { overall: 0, fields: {} },
+            validation: { warnings: ['NO_MATCH'] },
+            attempts: [{ mode: 'structured', status: 'failed', error: 'No match' }],
+            mode: 'mixed',
+            extracted_at: '2026-05-21T00:00:00.000Z',
+            schema_version: 'v1',
+            source_kind: 'enriched',
+            url: 'https://central.test',
+            confidence_score: 0,
+          },
+        },
+      },
+    });
+
+    expect(items.map((item) => item.key)).toEqual(['enriched:phillips']);
   });
 });

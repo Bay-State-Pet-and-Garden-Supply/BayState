@@ -4,7 +4,7 @@ import {
   buildInitialFinalizationDraft,
   createPersistedFinalizationDraftSnapshot,
   type FinalizationDraft,
-} from "@/lib/pipeline/finalization-draft";
+} from "@/lib/pipeline/reviewing-draft";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 
 function createProduct(overrides: Partial<PipelineProduct> = {}): PipelineProduct {

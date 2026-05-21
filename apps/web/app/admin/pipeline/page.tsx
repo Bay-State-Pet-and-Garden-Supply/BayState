@@ -7,7 +7,7 @@ import type { PipelineProduct, PipelineStage, StatusCount } from '@/lib/pipeline
 
 export const metadata: Metadata = {
   title: 'Pipeline | Admin | Bay State Pet & Garden',
-  description: 'Manage product ingestion workflow from import through exporting.',
+  description: 'Manage product ingestion workflow from import through publishing.',
   robots: {
     index: false,
     follow: false,

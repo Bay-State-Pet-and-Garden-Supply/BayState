@@ -1,4 +1,8 @@
-import { getApprovedSourceSnapshotSlugs } from "@/lib/enrichment/merge-enriched-source";
+import {
+  getApprovedSourceSnapshot,
+  getApprovedSourceSnapshotSlugs,
+  isMeaningfulApprovedSourceSnapshot,
+} from "@/lib/enrichment/merge-enriched-source";
 
 export interface ProcessedSourceViewItem {
   key: string;
@@ -27,26 +31,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function getEnrichedSourceResultsLabel(enrichedSource: Record<string, unknown>): string {
-  const sourceResults = Array.isArray(enrichedSource.source_results)
-    ? enrichedSource.source_results
-    : [];
-  if (sourceResults.length === 0) {
-    return "Enriched";
-  }
-
-  const names = Array.from(new Set(
-    sourceResults
-      .map((sourceResult) => isRecord(sourceResult) ? sourceResult.sourceSlug : null)
-      .filter((sourceSlug): sourceSlug is string => typeof sourceSlug === "string" && sourceSlug.trim().length > 0)
-      .map((sourceSlug) => formatPipelineSourceSlug(sourceSlug)),
-  ));
-
-  if (names.length === 0) {
-    return "Enriched";
-  }
-
-  return `Enriched (${names.join(", ")})`;
+function orderSourceSlugs(sourceSlugs: string[], activeSourceSlug: string | null): string[] {
+  return [
+    ...(activeSourceSlug && sourceSlugs.includes(activeSourceSlug) ? [activeSourceSlug] : []),
+    ...sourceSlugs.filter((sourceSlug) => sourceSlug !== activeSourceSlug),
+  ];
 }
 
 export function formatPipelineSourceSlug(sourceSlug: string): string {
@@ -66,86 +55,64 @@ export function buildProcessedSourceItems(
 ): ProcessedSourceViewItem[] {
   const sources = rawSources ?? {};
   const items: ProcessedSourceViewItem[] = [];
+  const enrichedSource = isRecord(sources.enriched) ? sources.enriched : null;
+  const activeSourceSlug = typeof enrichedSource?.active_source_slug === "string"
+    ? enrichedSource.active_source_slug
+    : null;
 
-  for (const [sourceKey, rawSource] of Object.entries(sources)) {
-    if (sourceKey.startsWith("_")) {
-      continue;
-    }
+  const topLevelSourceKeys = orderSourceSlugs(
+    Object.keys(sources).filter((sourceKey) => sourceKey !== "enriched" && !sourceKey.startsWith("_")),
+    activeSourceSlug,
+  );
 
+  topLevelSourceKeys.forEach((sourceKey, index) => {
+    const rawSource = sources[sourceKey];
     const sourceData = isRecord(rawSource) ? rawSource : null;
-    if (sourceKey !== "enriched") {
-      items.push({
-        key: sourceKey,
-        label: formatPipelineSourceSlug(sourceKey),
-        sourceKey,
-        data: sourceData,
-        deleteSourceKey: sourceKey,
-        isEnriched: false,
-        isVirtual: false,
-      });
-      continue;
-    }
-
-    const approvedSourceSlugs = sourceData ? getApprovedSourceSnapshotSlugs(sourceData) : [];
-    if (approvedSourceSlugs.length === 0) {
-      items.push({
-        key: sourceKey,
-        label: sourceData ? getEnrichedSourceResultsLabel(sourceData) : "Enriched",
-        sourceKey,
-        data: sourceData,
-        deleteSourceKey: null,
-        isEnriched: true,
-        isVirtual: false,
-        isDefault: true,
-      });
-      continue;
-    }
-
-    const activeSourceSlug = typeof sourceData?.active_source_slug === "string"
-      ? sourceData.active_source_slug
-      : approvedSourceSlugs[0];
-    const topLevelSourceKeys = new Set(
-      Object.keys(sources).filter((sourceName) => sourceName !== 'enriched' && !sourceName.startsWith('_')),
-    );
-    const orderedSourceSlugs = [
-      ...(approvedSourceSlugs.includes(activeSourceSlug) ? [activeSourceSlug] : []),
-      ...approvedSourceSlugs.filter((sourceSlug) => sourceSlug !== activeSourceSlug).sort((left, right) => left.localeCompare(right)),
-    ];
-
-    orderedSourceSlugs.forEach((sourceSlug, index) => {
-      if (topLevelSourceKeys.has(sourceSlug)) {
-        return;
-      }
-      const approvedSources = isRecord(sourceData?.approved_sources)
-        ? sourceData.approved_sources
-        : null;
-      const snapshot = approvedSources && isRecord(approvedSources[sourceSlug])
-        ? approvedSources[sourceSlug] as Record<string, unknown>
-        : null;
-
-      items.push({
-        key: `enriched:${sourceSlug}`,
-        label: `${formatPipelineSourceSlug(sourceSlug)} (Enriched)`,
-        sourceKey: "enriched",
-        data: snapshot,
-        deleteSourceKey: null,
-        isEnriched: true,
-        isVirtual: true,
-        sourceSlug,
-        isDefault: index === 0,
-      });
-    });
 
     items.push({
-      key: "enriched:summary",
-      label: "Enriched Summary",
-      sourceKey: "enriched",
+      key: sourceKey,
+      label: formatPipelineSourceSlug(sourceKey),
+      sourceKey,
       data: sourceData,
+      deleteSourceKey: sourceKey,
+      isEnriched: false,
+      isVirtual: false,
+      isDefault: index === 0,
+    });
+  });
+
+  if (!enrichedSource) {
+    return items;
+  }
+
+  const meaningfulApprovedSourceSlugs = orderSourceSlugs(
+    getApprovedSourceSnapshotSlugs(enrichedSource).filter((sourceSlug) => {
+      if (topLevelSourceKeys.includes(sourceSlug)) {
+        return false;
+      }
+
+      return isMeaningfulApprovedSourceSnapshot(
+        getApprovedSourceSnapshot(enrichedSource, sourceSlug),
+      );
+    }),
+    activeSourceSlug,
+  );
+
+  meaningfulApprovedSourceSlugs.forEach((sourceSlug, index) => {
+    const snapshot = getApprovedSourceSnapshot(enrichedSource, sourceSlug);
+
+    items.push({
+      key: `enriched:${sourceSlug}`,
+      label: formatPipelineSourceSlug(sourceSlug),
+      sourceKey: "enriched",
+      data: snapshot as Record<string, unknown> | null,
       deleteSourceKey: null,
       isEnriched: true,
       isVirtual: true,
+      sourceSlug,
+      isDefault: items.length === 0 && index === 0,
     });
-  }
+  });
 
   return items;
 }

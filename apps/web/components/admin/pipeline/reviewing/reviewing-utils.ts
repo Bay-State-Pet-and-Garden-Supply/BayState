@@ -1,5 +1,5 @@
 import { normalizeImageUrl } from "@/lib/product-sources";
-import { extractSelectedImageUrls } from "@/lib/pipeline/finalization-draft";
+import { extractSelectedImageUrls } from "@/lib/pipeline/reviewing-draft";
 
 interface ImageSourceOption {
   id: string;

@@ -2,21 +2,19 @@ import { PassThrough, Readable } from 'node:stream';
 import ExcelJS from 'exceljs';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
-import { PERSISTED_PIPELINE_STATUSES } from '@/lib/pipeline/types';
-import { createAdminClient } from '@/lib/supabase/server';
 import {
-  normalizePipelineRouteStatus,
-  PIPELINE_ROUTE_STATUS_VALUES,
-  type PipelineRouteStatus,
-} from '@/app/api/admin/pipeline/status-compat';
+  PERSISTED_PIPELINE_STATUSES,
+  type PersistedPipelineStatus,
+} from '@/lib/pipeline/types';
+import { createAdminClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
 const EXPORT_FILENAME = 'products-export.xlsx';
 const PAGE_SIZE = 200;
-const ALLOWED_STATUSES = PIPELINE_ROUTE_STATUS_VALUES;
+const ALLOWED_STATUSES = [...PERSISTED_PIPELINE_STATUSES, 'all'] as const;
 
-type ExportStatus = PipelineRouteStatus;
+type ExportStatus = PersistedPipelineStatus | 'all';
 interface ExportRequestBody {
   skus?: unknown;
 }
@@ -269,9 +267,7 @@ export async function GET(request: NextRequest) {
   if (!auth.authorized) return auth.response;
 
   const statusParam = request.nextUrl.searchParams.get('status') ?? 'publishing';
-  const normalizedStatus = normalizePipelineRouteStatus(statusParam, '/api/admin/pipeline/export');
-
-  if (!normalizedStatus) {
+  if (!(ALLOWED_STATUSES as readonly string[]).includes(statusParam)) {
     return NextResponse.json(
       {
         error: `Invalid status. Expected one of: ${[...PERSISTED_PIPELINE_STATUSES, 'all'].join(', ')}`,
@@ -282,7 +278,7 @@ export async function GET(request: NextRequest) {
 
   const output = new PassThrough();
 
-  void streamWorkbook(normalizedStatus, output).catch((error: unknown) => {
+  void streamWorkbook(statusParam as ExportStatus, output).catch((error: unknown) => {
     console.error('Pipeline export stream failed:', error);
     output.destroy(error instanceof Error ? error : new Error('Pipeline export failed'));
   });

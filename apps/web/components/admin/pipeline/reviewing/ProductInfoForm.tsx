@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import type { FinalizationDraft } from "@/lib/pipeline/finalization-draft";
+import type { FinalizationDraft } from "@/lib/pipeline/reviewing-draft";
 
 interface ProductInfoFormProps {
   formData: FinalizationDraft;

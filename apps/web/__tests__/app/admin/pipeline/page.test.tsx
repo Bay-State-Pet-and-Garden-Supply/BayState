@@ -33,29 +33,29 @@ describe("admin pipeline page stage params", () => {
     mockGetAvailableSourcesByStage.mockResolvedValue([]);
   });
 
-  it("maps the legacy published stage param to the export workspace", async () => {
+  it("falls back to imported for deprecated stage params", async () => {
     render(await PipelinePage({ searchParams: Promise.resolve({ stage: "published" }) }));
 
     expect(mockGetProductsByStage).toHaveBeenCalledWith(
-      "publishing",
+      "imported",
       expect.objectContaining({ limit: 500 }),
     );
     expect(lastPipelineClientProps).toMatchObject({
-      initialStage: "publishing",
+      initialStage: "imported",
       initialProducts: [],
       initialTotal: 0,
     });
   });
 
-  it("hydrates reviewing from finalized products", async () => {
+  it("falls back to imported for removed workflow aliases", async () => {
     render(await PipelinePage({ searchParams: Promise.resolve({ stage: "finalizing" }) }));
 
     expect(mockGetProductsByStage).toHaveBeenCalledWith(
-      "reviewing",
+      "imported",
       expect.objectContaining({ limit: 500 }),
     );
     expect(lastPipelineClientProps).toMatchObject({
-      initialStage: "reviewing",
+      initialStage: "imported",
     });
   });
 

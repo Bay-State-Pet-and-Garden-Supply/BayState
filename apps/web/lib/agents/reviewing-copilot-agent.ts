@@ -12,15 +12,15 @@ import { createClient } from "@/lib/supabase/server";
 import {
   type FinalizationCopilotContext,
   finalizationCopilotContextSchema,
-} from "@/lib/pipeline/finalization-copilot-workspace";
+} from "@/lib/pipeline/reviewing-copilot-workspace";
 import {
   createFinalizationCopilotTools,
   type FinalizationCopilotToolSet,
-} from "@/lib/tools/finalization-copilot";
+} from "@/lib/tools/reviewing-copilot";
 
 const FINALIZATION_COPILOT_MODEL = DEFAULT_AI_MODEL;
 const FINALIZATION_COPILOT_MISSING_KEY_ERROR =
-  "DeepSeek API key is not configured. Save it in Admin -> Settings -> AI Scraping Settings before using Finalization Copilot.";
+  "DeepSeek API key is not configured. Save it in Admin -> Settings -> AI Scraping Settings before using Reviewing Copilot.";
 
 function buildFinalizationCopilotModel(apiKey: string, modelId: string, baseURL?: string) {
   return createDeepSeek({
@@ -59,13 +59,13 @@ function buildInstructions(context: FinalizationCopilotContext): string {
       ].join("\n")
     : "No product selected.";
 
-  return `You are Bay State's finalization copilot for product approvals.
+  return `You are Bay State's reviewing copilot for product approvals.
 
-You help admins make last-minute, approval-time product changes with precision across either the currently selected product or the full finalizing workspace.
+You help admins make last-minute, approval-time product changes with precision across either the currently selected product or the full reviewing workspace.
 Prefer tools over free-form claims whenever a fact, mutation, save, approval, rejection, brand lookup, image decision, or bulk targeting decision is involved.
 
 Workspace context:
-- Loaded finalizing products: ${context.workspace.totalProducts}
+- Loaded reviewing products: ${context.workspace.totalProducts}
 - Selected SKU: ${context.workspace.selectedSku ?? "None"}
 - Drafts with unsaved changes: ${dirtyCount}
 
@@ -82,7 +82,7 @@ Rules:
 - Use listWorkspaceProducts to inspect the full workspace before making claims about multiple products.
 - Use previewProductScope before any bulk mutation, save, approval, or rejection.
 - Use getProductSnapshot if you need the authoritative current draft, saved draft, pages, or source keys for a specific product.
-- Use inspectSourceData and listImageSources instead of guessing facts from scraped data.
+- Use inspectSourceData and listImageSources instead of guessing facts from processed source data.
 - Batch related field edits into one setProductFields or bulkSetProductFields call when possible.
 - bulkSetProductFields is only for exact same final values across the entire scope. Do not use it for product names when the result depends on each product's current name.
 - Use bulkTransformProductNames for prefix, suffix, or replace operations that must preserve each product's existing name. Use replace mode with an empty value to remove text from a product name.
@@ -93,13 +93,13 @@ Rules:
 - Draft-edit tools stage changes for human review. After staging edits, tell the user to review them. Accepting staged changes autosaves; rejecting staged changes restores the prior draft.
 - Do not call saveDraft, saveProducts, approveProduct, approveProducts, rejectProduct, or rejectProducts in the same response after staging draft edits.
 - Use saveDraft or saveProducts only when the user wants to save and there are no staged copilot edits waiting for review.
-- Use approveProduct or approveProducts only when the user explicitly wants approval/exporting and there are no staged copilot edits waiting for review.
-- Use rejectProduct or rejectProducts only when the user explicitly wants to send products back to scraped and there are no staged copilot edits waiting for review.
-- Never assume "all products" from a vague request; only use scope.type="all" when the user explicitly asks for all finalizing products.
+- Use approveProduct or approveProducts only when the user explicitly wants approval/publishing and there are no staged copilot edits waiting for review.
+- Use rejectProduct or rejectProducts only when the user explicitly wants to send products back to processed and there are no staged copilot edits waiting for review.
+- Never assume "all products" from a vague request; only use scope.type="all" when the user explicitly asks for all reviewing products.
 - After any tool calls, briefly summarize what changed, the scope that changed, and mention any unresolved ambiguity.
 
 Image workflow rules:
-- When the user asks to change, replace, or set images, ALWAYS call listImageSources first to discover available image URLs from each scraped source.
+- When the user asks to change, replace, or set images, ALWAYS call listImageSources first to discover available image URLs from each processed source.
 - Use the image URLs from listImageSources output (the "candidates" arrays) as arguments to replaceSelectedImages, addSelectedImages, or removeSelectedImages. Never fabricate image URLs.
 - If the user provides explicit image URLs, you may use those directly without calling listImageSources.
 - If the user says something like "use the images from [source name]", call listImageSources, find the matching source, and use its candidate URLs.
@@ -119,7 +119,7 @@ export const finalizationCopilotAgent = new ToolLoopAgent({
   callOptionsSchema: finalizationCopilotContextSchema,
   stopWhen: stepCountIs(16),
   instructions:
-    "You are Bay State's finalization copilot. Use tools to inspect and update selected products or explicit workspace scopes safely.",
+    "You are Bay State's reviewing copilot. Use tools to inspect and update selected products or explicit workspace scopes safely.",
   prepareCall: async ({ options, ...settings }) => {
     const runtimeConfig = await getAIConsolidationRuntimeConfig();
     const deepseekApiKey = (

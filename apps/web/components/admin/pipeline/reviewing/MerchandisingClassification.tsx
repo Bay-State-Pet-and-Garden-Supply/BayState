@@ -10,8 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useState, useMemo } from "react";
-import { FINALIZATION_STOCK_STATUS_VALUES } from "@/lib/pipeline/finalization-draft";
-import type { FinalizationDraft } from "@/lib/pipeline/finalization-draft";
+import { FINALIZATION_STOCK_STATUS_VALUES } from "@/lib/pipeline/reviewing-draft";
+import type { FinalizationDraft } from "@/lib/pipeline/reviewing-draft";
 import type { TaxonomyCategoryNode } from "@/lib/taxonomy";
 
 interface Brand {

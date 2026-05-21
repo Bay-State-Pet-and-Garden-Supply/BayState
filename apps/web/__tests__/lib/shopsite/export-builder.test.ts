@@ -55,7 +55,7 @@ describe('preparePublishedShopSiteExport', () => {
             gtin: '011641750056',
             availability: 'in stock',
             minimum_quantity: 0,
-            shopsite_pages: ['Wild Bird Seed & Seed Mixes', 'Wild Bird Food Shop All'],
+            shopsite_pages: ['Wild Bird Food Shop All'],
             image_sources: [
                 'https://cdn.example.com/source/feathered-friend-favorite-front.png',
                 'https://cdn.example.com/source/feathered-friend-favorite-back.png',
@@ -103,7 +103,7 @@ describe('preparePublishedShopSiteExport', () => {
 });
 
 describe('loadPublishedShopSiteExport', () => {
-    it('loads active exporting rows directly from products_ingestion', async () => {
+    it('loads active publishing rows directly from products_ingestion', async () => {
         const publishedRange = jest.fn().mockResolvedValue({
             data: [
                 {
@@ -152,7 +152,7 @@ describe('loadPublishedShopSiteExport', () => {
         const result = await loadPublishedShopSiteExport();
 
         expect(supabase.from).toHaveBeenCalledWith('products_ingestion');
-        expect(ingestionQuery.eq).toHaveBeenCalledWith('pipeline_status', 'exporting');
+        expect(ingestionQuery.eq).toHaveBeenCalledWith('pipeline_status', 'publishing');
         expect(ingestionQuery.is).toHaveBeenCalledWith('exported_at', null);
         expect(publishedRange).toHaveBeenCalledWith(0, 199);
         expect(result.products).toHaveLength(1);
@@ -162,7 +162,7 @@ describe('loadPublishedShopSiteExport', () => {
         });
     });
 
-    it('can load specifically requested exporting SKUs even after they have been marked exported', async () => {
+    it('can load specifically requested publishing SKUs even after they have been marked exported', async () => {
         const publishedRange = jest.fn().mockResolvedValue({
             data: [
                 {
@@ -213,7 +213,7 @@ describe('loadPublishedShopSiteExport', () => {
             includeExportedRequestedSkus: true,
         });
 
-        expect(ingestionQuery.eq).toHaveBeenCalledWith('pipeline_status', 'exporting');
+        expect(ingestionQuery.eq).toHaveBeenCalledWith('pipeline_status', 'publishing');
         expect(ingestionQuery.in).toHaveBeenCalledWith('sku', ['SKU-ARCHIVED']);
         expect(ingestionQuery.is).not.toHaveBeenCalledWith('exported_at', null);
         expect(result.products).toHaveLength(1);

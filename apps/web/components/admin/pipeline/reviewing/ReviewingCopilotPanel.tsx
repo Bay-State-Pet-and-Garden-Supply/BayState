@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { FinalizationCopilotUIMessage } from "@/lib/agents/finalization-copilot-agent";
+import type { FinalizationCopilotUIMessage } from "@/lib/agents/reviewing-copilot-agent";
 import type {
   AddSelectedImagesInput,
   AddSourceUrlInput,
@@ -55,8 +55,8 @@ import type {
   ScopedRejectProductInput,
   SetProductFieldsInput,
   ToolSummary,
-} from "@/lib/tools/finalization-copilot";
-import type { FinalizationCopilotContext } from "@/lib/pipeline/finalization-copilot-workspace";
+} from "@/lib/tools/reviewing-copilot";
+import type { FinalizationCopilotContext } from "@/lib/pipeline/reviewing-copilot-workspace";
 
 const TERMINAL_TOOL_NAMES = new Set([
   "approveProduct",
@@ -94,9 +94,9 @@ const TOOL_LABELS: Record<string, string> = {
 
 const STARTER_PROMPTS = [
   "Tighten the product title for clarity.",
-  "List the products in finalizing, then tell me which ones look risky or incomplete.",
-  "Preview a workspace-wide change that updates availability text across all finalizing products.",
-  "Check the scraped sources and assign the best matching brand for the selected draft.",
+  "List the products in reviewing, then tell me which ones look risky or incomplete.",
+  "Preview a workspace-wide change that updates availability text across all reviewing products.",
+  "Check the processed sources and assign the best matching brand for the selected draft.",
   "Append Seed Packet to product names that need it without replacing the rest of the name.",
   "Review the image sources and stage the strongest set of images for review.",
   "Audit the selected draft for anything risky before approval.",
@@ -149,7 +149,7 @@ function shouldAutoSendAfterTools({
     .some((part) => TERMINAL_TOOL_NAMES.has(getToolName(part)));
 }
 
-interface FinalizationCopilotPanelProps {
+interface ReviewingCopilotPanelProps {
   selectedSku: string | null;
   workspaceProductCount: number;
   dirtyProductCount: number;
@@ -240,7 +240,7 @@ type ClientToolName =
   | "rejectProduct"
   | "rejectProducts";
 
-export function FinalizationCopilotPanel({
+export function ReviewingCopilotPanel({
   selectedSku,
   workspaceProductCount,
   dirtyProductCount,
@@ -274,7 +274,7 @@ export function FinalizationCopilotPanel({
   onApproveProducts,
   onRejectProduct,
   onRejectProducts,
-}: FinalizationCopilotPanelProps) {
+}: ReviewingCopilotPanelProps) {
   const [input, setInput] = useState("");
 
   const {
@@ -287,7 +287,7 @@ export function FinalizationCopilotPanel({
     stop,
   } = useChat<FinalizationCopilotUIMessage>({
     transport: new DefaultChatTransport({
-      api: "/api/admin/pipeline/finalization-copilot",
+      api: "/api/admin/pipeline/reviewing-copilot",
       body: () => ({ context: getContext() }),
     }),
     sendAutomaticallyWhen: shouldAutoSendAfterTools,
@@ -581,16 +581,16 @@ export function FinalizationCopilotPanel({
               <Sparkles className="h-4 w-4" />
             </div>
             <div>
-              <div className="text-sm font-semibold text-foreground">Finalization Copilot</div>
+              <div className="text-sm font-semibold text-foreground">Review Copilot</div>
               <div className="text-[10px] font-semibold text-muted-foreground">
-                AI assistance for finalizing products.
+                AI assistance for products in reviewing.
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap justify-end">
             <Badge variant="outline" className="text-[9px] font-semibold rounded-none border border-border bg-muted text-foreground">
-              {workspaceProductCount} in finalizing
+              {workspaceProductCount} in reviewing
             </Badge>
             <Badge variant="outline" className="text-[9px] font-semibold rounded-none border border-border bg-muted text-foreground">
               {dirtyProductCount} unsaved
@@ -665,7 +665,7 @@ export function FinalizationCopilotPanel({
           <div className="space-y-4">
             <div className="rounded-none border border-dashed border-border/20 bg-card px-4 py-5 text-sm font-semibold text-muted-foreground text-center">
               Ask the copilot to inspect the selected product, preview a scope
-              across finalizing, and stage changes for review.
+              across reviewing, and stage changes for review.
             </div>
 
             <div className="grid gap-2">
@@ -778,8 +778,8 @@ export function FinalizationCopilotPanel({
               hasPendingCopilotReview
                 ? "Accept or reject the staged copilot changes before sending another request."
                 : workspaceProductCount > 0
-                ? "Ask the copilot about the selected product or a scope across finalizing..."
-                : "No products are loaded in finalizing."
+                ? "Ask the copilot about the selected product or a scope across reviewing..."
+                : "No products are loaded in reviewing."
             }
             disabled={
               workspaceProductCount === 0

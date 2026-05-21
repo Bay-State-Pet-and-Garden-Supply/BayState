@@ -6,7 +6,7 @@ jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
 }));
 
-jest.mock('@/lib/tools/finalization-copilot', () => ({
+jest.mock('@/lib/tools/reviewing-copilot', () => ({
   createFinalizationCopilotTools: jest.fn(),
 }));
 
@@ -21,12 +21,12 @@ jest.mock('@ai-sdk/deepseek', () => ({
 
 import { createDeepSeek } from '@ai-sdk/deepseek';
 import { getAIConsolidationRuntimeConfig } from '@/lib/ai-scraping/credentials';
-import { finalizationCopilotAgent } from '@/lib/agents/finalization-copilot-agent';
+import { finalizationCopilotAgent } from '@/lib/agents/reviewing-copilot-agent';
 import { createClient } from '@/lib/supabase/server';
-import { EMPTY_FINALIZATION_DRAFT } from '@/lib/pipeline/finalization-draft';
-import { createFinalizationCopilotTools } from '@/lib/tools/finalization-copilot';
+import { EMPTY_FINALIZATION_DRAFT } from '@/lib/pipeline/reviewing-draft';
+import { createFinalizationCopilotTools } from '@/lib/tools/reviewing-copilot';
 
-describe('finalizationCopilotAgent', () => {
+describe('reviewingCopilotAgent', () => {
   const mockSupabase = {
     from: jest.fn(() => ({
       select: jest.fn(() => ({
@@ -118,7 +118,7 @@ describe('finalizationCopilotAgent', () => {
         options: context,
       })
     ).rejects.toThrow(
-      'DeepSeek API key is not configured. Save it in Admin -> Settings -> AI Scraping Settings before using Finalization Copilot.'
+      'DeepSeek API key is not configured. Save it in Admin -> Settings -> AI Scraping Settings before using Reviewing Copilot.'
     );
   });
 });

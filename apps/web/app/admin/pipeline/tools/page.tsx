@@ -6,7 +6,7 @@ export default function PipelineToolsPage() {
     return (
         <AdminPageShell
             title="Pipeline tools"
-            description="Open supporting actions for importing, exporting, and image-related pipeline work."
+            description="Open supporting actions for importing, publishing, and image-related pipeline work."
             icon={<Wrench className="h-5 w-5" />}
             eyebrow="Workspace view"
         >
