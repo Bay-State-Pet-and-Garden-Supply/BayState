@@ -23,6 +23,46 @@ class _DomainStats:
 _DOMAIN_HISTORY: dict[str, _DomainStats] = {}
 _DOMAIN_HISTORY_LOCK = Lock()
 
+STATS_FILE_PATH = "/Users/nickborrello/Desktop/Projects/BayState/apps/scraper/.data/domain_stats.json"
+
+
+def _load_domain_history() -> None:
+    try:
+        import os
+        if os.path.exists(STATS_FILE_PATH):
+            with open(STATS_FILE_PATH, "r") as f:
+                data = json.load(f)
+                for domain, stats_dict in data.items():
+                    _DOMAIN_HISTORY[domain] = _DomainStats(
+                        attempts=stats_dict.get("attempts", 0),
+                        successes=stats_dict.get("successes", 0),
+                        last_updated=stats_dict.get("last_updated")
+                    )
+    except Exception:
+        pass
+
+
+def _save_domain_history() -> None:
+    try:
+        import os
+        os.makedirs(os.path.dirname(STATS_FILE_PATH), exist_ok=True)
+        data = {
+            domain: {
+                "attempts": stats.attempts,
+                "successes": stats.successes,
+                "last_updated": stats.last_updated
+            }
+            for domain, stats in _DOMAIN_HISTORY.items()
+        }
+        with open(STATS_FILE_PATH, "w") as f:
+            json.dump(data, f, indent=2)
+    except Exception:
+        pass
+
+
+# Load persisted domain stats at module initialization time
+_load_domain_history()
+
 
 def get_domain_success_rate(domain: str) -> float:
     """Get success rate for a domain."""
@@ -44,12 +84,14 @@ def record_domain_attempt(domain: str, success: bool) -> None:
         if success:
             stats.successes += 1
         stats.last_updated = datetime.now(timezone.utc).isoformat()
+        _save_domain_history()
 
 
 def reset_domain_history() -> None:
-    """Clear in-memory domain history used by ranking heuristics."""
+    """Clear domain history used by ranking heuristics."""
     with _DOMAIN_HISTORY_LOCK:
         _DOMAIN_HISTORY.clear()
+        _save_domain_history()
 
 
 from scrapers.ai_search.matching import MatchingUtils

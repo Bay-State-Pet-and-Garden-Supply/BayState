@@ -530,6 +530,10 @@ def _map_product_fields(fields: dict[str, Any]) -> EnrichedProductFacts:
         packaging_type=fields.get("packaging_type"),
         size=fields.get("size"),
         color=fields.get("color"),
+        guaranteed_analysis=fields.get("guaranteed_analysis"),
+        npk_ratio=fields.get("npk_ratio"),
+        unit_value=fields.get("unit_value"),
+        unit_type=fields.get("unit_type"),
     )
 
 

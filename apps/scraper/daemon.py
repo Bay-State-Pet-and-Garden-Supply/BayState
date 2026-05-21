@@ -367,37 +367,61 @@ async def main_async():
     work_units_completed = 0
     last_heartbeat = 0
     consecutive_idle_polls = 0
+    MAX_CONCURRENT_JOBS = int(os.environ.get("MAX_CONCURRENT_JOBS", "4"))
+    running_tasks: set[asyncio.Task] = set()
 
     logger.info("[Daemon] Entering main polling loop")
 
     while not _shutdown_requested:
         try:
+            # Clean up completed tasks
+            for t in list(running_tasks):
+                if t.done():
+                    running_tasks.discard(t)
+                    try:
+                        await t
+                        work_units_completed += 1
+                    except Exception as e:
+                        logger.error(f"[Daemon] Task raised unhandled exception: {e}")
+
             if work_units_completed >= MAX_JOBS_BEFORE_RESTART:
-                logger.info(f"Completed {work_units_completed} work units. Exiting for container restart (memory hygiene).")
+                if running_tasks:
+                    logger.info(f"Completed {work_units_completed} work units. Waiting for remaining {len(running_tasks)} tasks to finish before restarting...")
+                    await asyncio.gather(*running_tasks, return_exceptions=True)
+                logger.info("Exiting for container restart (memory hygiene).")
                 break
+
+            # If we've hit our concurrency limit, wait for at least one task to finish
+            if len(running_tasks) >= MAX_CONCURRENT_JOBS:
+                logger.debug(f"[Daemon] Concurrency limit ({MAX_CONCURRENT_JOBS}) reached. Waiting for a task to complete...")
+                done, pending = await asyncio.wait(running_tasks, return_when=asyncio.FIRST_COMPLETED)
+                continue
 
             logger.info("[Daemon] Claiming next enrichment attempt...")
 
             enrichment_attempt = await asyncio.to_thread(client.claim_enrichment, runner_name=client.runner_name)
 
             if enrichment_attempt:
-                # Process enrichment work immediately
+                # Process enrichment work in a background task
                 consecutive_idle_polls = 0
                 logger.info(
                     f"[Enrichment {enrichment_attempt.attempt_id}] Claimed - "
                     f"job={enrichment_attempt.job_id}, sku={enrichment_attempt.sku}"
                 )
-                await _process_enrichment(enrichment_attempt, client, rm)
-                work_units_completed += 1
+                task = asyncio.create_task(_process_enrichment(enrichment_attempt, client, rm))
+                running_tasks.add(task)
+                # Yield control briefly to let the task start executing
+                await asyncio.sleep(0.1)
                 continue
             else:
                 # No work available - idle backoff
                 consecutive_idle_polls += 1
                 now = time.time()
                 if now - last_heartbeat >= HEARTBEAT_INTERVAL:
-                    await asyncio.to_thread(client.heartbeat, status="idle")
+                    status = "busy" if running_tasks else "idle"
+                    await asyncio.to_thread(client.heartbeat, status=status)
                     last_heartbeat = now
-                    logger.debug("Heartbeat sent")
+                    logger.debug(f"Heartbeat ({status}) sent")
 
                 import random
 
@@ -405,6 +429,11 @@ async def main_async():
                 base_interval = POLL_INTERVAL
                 backoff = base_interval * (1.5 ** (consecutive_idle_polls - 1))
                 current_interval = min(max_interval, backoff)
+                
+                # Cap polling interval when we have active background tasks to claim new work quickly
+                if running_tasks:
+                    current_interval = min(current_interval, 10.0)
+
                 jitter = current_interval * 0.1
                 sleep_time = current_interval + random.uniform(-jitter, jitter)
                 logger.debug(f"No jobs found. Backing off for {sleep_time:.1f}s")
@@ -426,6 +455,11 @@ async def main_async():
 
     if rm:
         await rm.disconnect()
+
+    # Graceful shutdown of remaining concurrent tasks
+    if running_tasks:
+        logger.info(f"Shutdown requested. Waiting for {len(running_tasks)} active tasks to complete gracefully...")
+        await asyncio.gather(*running_tasks, return_exceptions=True)
 
     # Shutdown metrics server if running
     try:

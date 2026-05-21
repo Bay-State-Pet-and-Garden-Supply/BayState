@@ -213,7 +213,7 @@ class MatchingUtils:
         token_overlap = len(expected_tokens.intersection(actual_tokens)) / max(1, len(expected_tokens))
         ratio = SequenceMatcher(None, expected_normalized, actual_normalized).ratio()
 
-        return token_overlap >= 0.35 or ratio >= 0.6
+        return token_overlap >= 0.60 or ratio >= 0.70
 
     def has_specific_token_overlap(
         self,

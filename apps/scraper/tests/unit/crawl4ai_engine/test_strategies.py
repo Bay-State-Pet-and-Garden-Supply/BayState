@@ -597,8 +597,8 @@ class TestExtractorFallbackBehavior:
         recovered_html = """
         <html>
           <head>
-            <title>Pepper Hot Fresno Chili - Item #232</title>
-            <meta property="og:title" content="Pepper Hot Fresno Chili - Item #232" />
+            <title>Lake Valley Seed Pepper Hot Fresno Chili - Item #232</title>
+            <meta property="og:title" content="Lake Valley Seed Pepper Hot Fresno Chili - Item #232" />
             <meta property="og:description" content="Smoky-sweet pepper variety." />
             <meta property="og:image" content="https://lakevalleyseed.com/wp-content/uploads/2021/08/232-pepper-fresnochili.jpg" />
           </head>
@@ -633,7 +633,7 @@ class TestExtractorFallbackBehavior:
 
         assert result["success"] is True
         assert result["url"] == "https://lakevalleyseed.com/product/item-232-pepper-hot-fresno-chili/"
-        assert result["product_name"] == "Pepper Hot Fresno Chili - Item #232"
+        assert result["product_name"] == "Lake Valley Seed Pepper Hot Fresno Chili - Item #232"
 
     @pytest.mark.asyncio
     async def test_fallback_extractor_does_not_recover_wrong_product_from_site_search(self):

@@ -66,6 +66,10 @@ class EnrichedProductFacts(BaseModel):
     packaging_type: Optional[str] = None
     size: Optional[str] = None
     color: Optional[str] = None
+    guaranteed_analysis: Optional[str] = None
+    npk_ratio: Optional[str] = None
+    unit_value: Optional[float] = None
+    unit_type: Optional[str] = None
 
 
 class EnrichmentConfidence(BaseModel):
@@ -253,6 +257,10 @@ def build_v1_from_extraction_result(
                     packaging_type=product_data.get("packaging_type"),
                     size=product_data.get("size"),
                     color=product_data.get("color"),
+                    guaranteed_analysis=product_data.get("guaranteed_analysis") or result.get("guaranteed_analysis"),
+                    npk_ratio=product_data.get("npk_ratio") or result.get("npk_ratio"),
+                    unit_value=product_data.get("unit_value") if product_data.get("unit_value") is not None else result.get("unit_value"),
+                    unit_type=product_data.get("unit_type") or result.get("unit_type"),
                 )
 
             source_results_models.append(
@@ -299,6 +307,10 @@ def build_v1_from_extraction_result(
             packaging_type=product_data.get("packaging_type"),
             size=product_data.get("size"),
             color=product_data.get("color"),
+            guaranteed_analysis=product_data.get("guaranteed_analysis") or result.get("guaranteed_analysis"),
+            npk_ratio=product_data.get("npk_ratio") or result.get("npk_ratio"),
+            unit_value=product_data.get("unit_value") if product_data.get("unit_value") is not None else result.get("unit_value"),
+            unit_type=product_data.get("unit_type") or result.get("unit_type"),
         ),
         confidence=EnrichmentConfidence(
             overall=overall_confidence,

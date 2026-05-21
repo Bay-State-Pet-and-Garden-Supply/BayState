@@ -174,6 +174,10 @@ class ProductPageExtractor:
                     "life_stage": result.get("life_stage"),
                     "food_form": result.get("food_form"),
                     "flavor": result.get("flavor"),
+                    "guaranteed_analysis": result.get("guaranteed_analysis"),
+                    "npk_ratio": result.get("npk_ratio"),
+                    "unit_value": result.get("unit_value"),
+                    "unit_type": result.get("unit_type"),
                     "method": method,
                     "confidence": result.get("confidence", 0.0),
                     "model": model,
@@ -199,6 +203,10 @@ class ProductPageExtractor:
                     "life_stage": result.get("life_stage"),
                     "food_form": result.get("food_form"),
                     "flavor": result.get("flavor"),
+                    "guaranteed_analysis": result.get("guaranteed_analysis"),
+                    "npk_ratio": result.get("npk_ratio"),
+                    "unit_value": result.get("unit_value"),
+                    "unit_type": result.get("unit_type"),
                 }
 
                 source_results.append({

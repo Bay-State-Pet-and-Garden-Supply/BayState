@@ -350,6 +350,10 @@ class Crawl4AIExtractor:
             "packaging_type": raw_result.get("packaging_type"),
             "size": raw_result.get("size"),
             "color": raw_result.get("color"),
+            "guaranteed_analysis": raw_result.get("guaranteed_analysis"),
+            "npk_ratio": raw_result.get("npk_ratio"),
+            "unit_value": raw_result.get("unit_value"),
+            "unit_type": raw_result.get("unit_type"),
             # Confidence and validation
             "confidence": float(raw_result.get("confidence", 0.0)),
             "field_confidence": {},
@@ -369,7 +373,8 @@ class Crawl4AIExtractor:
 
         product_fields = ["name", "brand", "description", "category", "weight", "dimensions",
                          "shipping_weight", "ingredients", "pet_type", "life_stage", "pet_size",
-                         "food_form", "flavor", "packaging_type", "size", "color"]
+                         "food_form", "flavor", "packaging_type", "size", "color",
+                         "guaranteed_analysis", "npk_ratio", "unit_value", "unit_type"]
 
         for field in product_fields:
             if result.get(field):
