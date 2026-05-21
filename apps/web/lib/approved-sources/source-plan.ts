@@ -40,7 +40,7 @@ interface BrandRow {
   name: string;
   slug: string;
   official_domains: string[];
-  preferred_domains: string[];
+  preferred_domains?: string[];
 }
 
 interface BrandSourceRow {
@@ -350,7 +350,7 @@ export async function buildApprovedSourcePlans(
 
   const { data: brands, error: brandError } = await db
     .from("brands")
-    .select("id, name, slug, official_domains, preferred_domains")
+    .select("id, name, slug, official_domains")
     .in("id", brandIds);
 
   if (brandError) {
@@ -447,10 +447,9 @@ export async function buildApprovedSourcePlans(
         source.source_type === "official_brand" &&
         (!source.domains || source.domains.length === 0)
       ) {
-        // Merge official + preferred as seed domains
+        // Fall back to official domains as seed domains
         entryDomains = [
           ...(brand.official_domains ?? []),
-          ...(brand.preferred_domains ?? []),
         ];
       } else {
         entryDomains = [...(source.domains ?? [])];

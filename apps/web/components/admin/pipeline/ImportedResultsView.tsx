@@ -25,7 +25,6 @@ import { toast } from "sonner";
 import {
   updateProductsBatch,
   updateCohortBatch,
-  updateBrandDomains,
 } from "@/app/admin/pipeline/batch-actions";
 
 interface ImportedResultsViewProps {
@@ -148,37 +147,7 @@ export function ImportedResultsView({
     }
   };
 
-  // Handle domains change inline
-  const handleDomainsChange = async (newDomains: string[]) => {
-    if (!activeCohortId || activeCohortId === "ungrouped") return;
-    if (!activeCohortBrandObject) {
-      toast.error("Please assign a brand first before adding domains.");
-      return;
-    }
 
-    try {
-      const skus = cohortProducts.map((p) => p.sku);
-
-      // 1. Update brand domains globally
-      const brandResult = await updateBrandDomains(activeCohortBrandObject.id, newDomains);
-      if (!brandResult.success) throw new Error(brandResult.error);
-
-      // 2. Update products in this cohort
-      const productResult = await updateProductsBatch(skus, {
-        enrichment_config: {
-          official_domains: newDomains,
-          enabled_sources: cohortProducts[0]?.enrichment_config?.enabled_sources || [],
-        },
-      });
-      if (!productResult.success) throw new Error(productResult.error);
-
-      toast.success("Official domains updated");
-      onRefresh(true); // reload state
-    } catch (error: any) {
-      console.error("Failed to update domains:", error);
-      toast.error(error.message || "Failed to update domains");
-    }
-  };
 
   // Handle cohort change from sidebar
   const handleCohortChange = (cohortId: string) => {
@@ -353,19 +322,10 @@ export function ImportedResultsView({
                           {activeCohortBrandObject.official_domains && activeCohortBrandObject.official_domains.map(domain => (
                             <span
                               key={domain}
-                              className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-background border border-border text-[10px] font-semibold text-foreground rounded-none"
+                              className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-background border border-border text-[10px] font-semibold text-foreground rounded-none"
                             >
+                              <Globe className="h-3 w-3 text-muted-foreground" />
                               {domain}
-                              <button
-                                type="button"
-                                className="text-muted-foreground hover:text-brand-burgundy transition-colors"
-                                onClick={() => {
-                                  const updated = (activeCohortBrandObject.official_domains || []).filter(d => d !== domain);
-                                  void handleDomainsChange(updated);
-                                }}
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
                             </span>
                           ))}
                           
@@ -376,24 +336,17 @@ export function ImportedResultsView({
                           )}
                         </div>
 
-                        <div className="w-full md:w-56 shrink-0">
-                          <Input
-                            placeholder="Add domain (e.g. kongs.com) + Enter"
-                            onKeyDown={async (e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                const val = e.currentTarget.value.trim().toLowerCase();
-                                if (val) {
-                                  const current = activeCohortBrandObject.official_domains || [];
-                                  if (!current.includes(val)) {
-                                    await handleDomainsChange([...current, val]);
-                                  }
-                                  e.currentTarget.value = "";
-                                }
-                              }
-                            }}
-                            className="h-8 rounded-none border border-border bg-background text-[11px] focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0"
-                          />
+                        <div className="shrink-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                            className="h-8 rounded-none border border-border bg-background text-[11px] font-semibold transition-all hover:bg-muted"
+                          >
+                            <a href="/admin/brands">
+                              Configure Brand & Domains →
+                            </a>
+                          </Button>
                         </div>
                       </div>
                     )}

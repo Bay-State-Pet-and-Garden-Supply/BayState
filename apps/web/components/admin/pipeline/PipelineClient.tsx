@@ -279,10 +279,7 @@ export function PipelineClient({
 
       if (!brand?.id) {
         unreadyCohorts.push(brandName);
-      } else if (
-        (!brand.official_domains || brand.official_domains.length === 0)
-        && (!brand.preferred_domains || brand.preferred_domains.length === 0)
-      ) {
+      } else if (!brand.official_domains || brand.official_domains.length === 0) {
         missingUrlCohorts.push(brandName);
       }
     });

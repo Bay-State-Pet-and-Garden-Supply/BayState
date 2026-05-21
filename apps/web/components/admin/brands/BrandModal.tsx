@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Save, Tag, Loader2, Pin, Sparkles, Trash2 } from 'lucide-react';
+import { Save, Tag, Loader2, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,14 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Switch } from '@/components/ui/switch';
 import {
     createBrand,
     updateBrand,
-    getAvailableScraperConfigsAction,
-    getBrandScraperMappingsAction,
-    updateBrandScraperMappings,
 } from '@/app/admin/brands/actions';
 import type { Brand } from '@/components/admin/brands/types';
 import { AlertBanner } from '@/components/admin/pipeline/AlertBanner';
@@ -36,24 +31,9 @@ const brandSchema = z.object({
     logo_url: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
     description: z.string().max(500, 'Description is too long').optional(),
     official_domains: z.string().optional(),
-    preferred_domains: z.string().optional(),
 });
 
 type BrandFormValues = z.infer<typeof brandSchema>;
-
-interface ScraperOption {
-    id: string;
-    slug: string;
-    name: string;
-    display_name: string;
-}
-
-interface MappingFormValue {
-    scraperConfigId: string;
-    priority: number;
-    notes: string;
-    isActive: boolean;
-}
 
 interface BrandModalProps {
     brand?: Brand;
@@ -69,10 +49,6 @@ export function BrandModal({
     initialName,
 }: BrandModalProps) {
     const [serverError, setServerError] = useState<string | null>(null);
-    const [availableScrapers, setAvailableScrapers] = useState<ScraperOption[]>([]);
-    const [scraperMappings, setScraperMappings] = useState<MappingFormValue[]>([]);
-    const [scrapersLoading, setScrapersLoading] = useState(false);
-    const [scrapersError, setScrapersError] = useState<string | null>(null);
     const isEditing = !!brand;
 
     const {
@@ -89,7 +65,6 @@ export function BrandModal({
             logo_url: brand?.logo_url ?? '',
             description: brand?.description ?? '',
             official_domains: (brand?.official_domains ?? []).join(', '),
-            preferred_domains: (brand?.preferred_domains ?? []).join(', '),
         },
     });
 
@@ -104,70 +79,6 @@ export function BrandModal({
         }
     }, [nameValue, brand, setValue]);
 
-    // Load available scrapers and existing mappings
-    useEffect(() => {
-        let cancelled = false;
-
-        async function load() {
-            setScrapersLoading(true);
-            setScrapersError(null);
-            try {
-                const [scraperResult, mappingResult] = await Promise.all([
-                    getAvailableScraperConfigsAction(),
-                    brand ? getBrandScraperMappingsAction(brand.id) : Promise.resolve({ success: true, mappings: [] }),
-                ]);
-
-                if (cancelled) return;
-
-                if (!scraperResult.success) {
-                    setScrapersError(scraperResult.error || 'Failed to load scrapers');
-                } else {
-                    setAvailableScrapers(scraperResult.scrapers ?? []);
-                }
-
-                if (mappingResult.success && mappingResult.mappings) {
-                    setScraperMappings(
-                        mappingResult.mappings.map((m) => ({
-                            scraperConfigId: m.scraper_config_id,
-                            priority: m.priority,
-                            notes: m.notes ?? '',
-                            isActive: m.is_active,
-                        }))
-                    );
-                }
-            } catch (err) {
-                if (!cancelled) {
-                    setScrapersError(err instanceof Error ? err.message : 'Failed to load scraper data');
-                }
-            } finally {
-                if (!cancelled) setScrapersLoading(false);
-            }
-        }
-
-        load();
-        return () => { cancelled = true; };
-    }, [brand]);
-
-    const toggleScraper = useCallback((id: string) => {
-        setScraperMappings((prev) => {
-            const exists = prev.find((m) => m.scraperConfigId === id);
-            if (exists) {
-                return prev.filter((m) => m.scraperConfigId !== id);
-            }
-            return [...prev, { scraperConfigId: id, priority: prev.length + 1, notes: '', isActive: true }];
-        });
-    }, []);
-
-    const updateMapping = useCallback((slug: string, updates: Partial<MappingFormValue>) => {
-        setScraperMappings((prev) =>
-            prev.map((m) => (m.scraperConfigId === slug ? { ...m, ...updates } : m))
-        );
-    }, []);
-
-    const removeMapping = useCallback((slug: string) => {
-        setScraperMappings((prev) => prev.filter((m) => m.scraperConfigId !== slug));
-    }, []);
-
     const onSubmit = useCallback(async (data: BrandFormValues) => {
         setServerError(null);
 
@@ -178,7 +89,6 @@ export function BrandModal({
             formData.append('logo_url', (data.logo_url ?? '').trim());
             formData.append('description', (data.description ?? '').trim());
             formData.append('official_domains', (data.official_domains ?? '').trim());
-            formData.append('preferred_domains', (data.preferred_domains ?? '').trim());
 
             const result = brand
                 ? await updateBrand(brand.id, formData)
@@ -186,22 +96,6 @@ export function BrandModal({
 
             if (!result.success) {
                 throw new Error(result.error || 'Failed to save brand');
-            }
-
-            // Save scraper mappings if editing
-            if (brand) {
-                const mappingResult = await updateBrandScraperMappings(
-                    brand.id,
-                    scraperMappings.map((m) => ({
-                        scraperConfigId: m.scraperConfigId,
-                        priority: m.priority,
-                        notes: m.notes || undefined,
-                        isActive: m.isActive,
-                    }))
-                );
-                if (!mappingResult.success) {
-                    throw new Error(mappingResult.error || 'Failed to save scraper mappings');
-                }
             }
 
             toast.success(brand ? 'Brand updated successfully' : 'Brand created successfully');
@@ -212,7 +106,7 @@ export function BrandModal({
             setServerError(message);
             toast.error(message);
         }
-    }, [brand, onClose, onSave, scraperMappings]);
+    }, [brand, onClose, onSave]);
 
     // Ctrl+S keyboard shortcut
     const handleKeyDown = useCallback(
@@ -229,8 +123,6 @@ export function BrandModal({
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [handleKeyDown]);
-
-    const assignedSlugs = new Set(scraperMappings.map((m) => m.scraperConfigId));
 
     return (
         <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
@@ -323,189 +215,25 @@ export function BrandModal({
 
                     <div className="p-4 border-2 border-border bg-muted shadow-sm">
                         <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                            <span className="w-3 h-3 bg-foreground" />
-                            AI Scraper Settings
+                            <Globe className="h-4 w-4 text-muted-foreground" />
+                            Official Brand Settings
                         </h3>
 
-                        <div className="space-y-6">
+                        <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="official_domains" className="text-[10px] font-semibold text-muted-foreground">Official Domains</Label>
                                 <Input
                                     id="official_domains"
                                     {...register('official_domains')}
                                     placeholder="scottsmiraclegro.com, mannapro.com"
-                                    className="rounded-none border-2 border-border focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0 bg-card"
+                                    className="rounded-none border-2 border-border focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0 bg-card text-xs"
                                 />
                                 <p className="text-[10px] font-bold text-muted-foreground uppercase leading-tight italic">
-                                    URLs <strong>must</strong> match one of these domains.
-                                </p>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="preferred_domains" className="text-[10px] font-semibold text-muted-foreground">Preferred Domains</Label>
-                                <Input
-                                    id="preferred_domains"
-                                    {...register('preferred_domains')}
-                                    placeholder="homedepot.com, chewy.com"
-                                    className="rounded-none border-2 border-border focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0 bg-card"
-                                />
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase leading-tight italic">
-                                    Priority search domains (retailers, etc).
+                                    URLs <strong>must</strong> match one of these domains for extraction to run.
                                 </p>
                             </div>
                         </div>
                     </div>
-
-                    {isEditing && (
-                        <div className="p-4 border-2 border-border bg-muted shadow-sm">
-                            <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                                <Pin className="h-4 w-4" />
-                                Scraper Defaults
-                            </h3>
-
-                            {scrapersLoading && (
-                                <div className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Loading scrapers...
-                                </div>
-                            )}
-
-                            {scrapersError && (
-                                <AlertBanner
-                                    severity="error"
-                                    title="Scraper Load Error"
-                                    message={scrapersError}
-                                    onDismiss={() => setScrapersError(null)}
-                                />
-                            )}
-
-                            {!scrapersLoading && !scrapersError && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <h4 className="text-[10px] font-semibold text-muted-foreground">
-                                            Available Scrapers
-                                        </h4>
-                                        <div className="border-2 border-border bg-card max-h-[240px] overflow-y-auto">
-                                            {availableScrapers.length === 0 ? (
-                                                <p className="p-3 text-[10px] font-bold uppercase text-muted-foreground">
-                                                    No scrapers found.
-                                                </p>
-                                            ) : (
-                                                availableScrapers.map((scraper) => (
-                                                    <label
-                                                        key={scraper.id}
-                                                        className="flex items-center gap-2 p-2 border-b border-border last:border-b-0 cursor-pointer hover:bg-muted"
-                                                    >
-                                                        <Checkbox
-                                                            checked={assignedSlugs.has(scraper.id)}
-                                                            onCheckedChange={() => toggleScraper(scraper.id)}
-                                                        />
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-xs font-bold text-foreground truncate">
-                                                                {scraper.display_name || scraper.name}
-                                                            </p>
-                                                            <p className="text-[10px] font-bold uppercase text-muted-foreground truncate">
-                                                                {scraper.slug}
-                                                            </p>
-                                                        </div>
-                                                        {assignedSlugs.has(scraper.id) ? (
-                                                            <Pin className="h-3 w-3 text-foreground shrink-0" />
-                                                        ) : (
-                                                            <Sparkles className="h-3 w-3 text-muted shrink-0" />
-                                                        )}
-                                                    </label>
-                                                ))
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <h4 className="text-[10px] font-semibold text-muted-foreground">
-                                            Assigned Scrapers ({scraperMappings.length})
-                                        </h4>
-                                        <div className="border-2 border-border bg-card max-h-[240px] overflow-y-auto">
-                                            {scraperMappings.length === 0 ? (
-                                                <p className="p-3 text-[10px] font-bold uppercase text-muted-foreground">
-                                                    No scrapers assigned. Check scrapers on the left to assign them.
-                                                </p>
-                                            ) : (
-                                                scraperMappings.map((mapping) => {
-                                                    const scraper = availableScrapers.find(
-                                                        (s) => s.id === mapping.scraperConfigId
-                                                    );
-                                                    return (
-                                                        <div
-                                                            key={mapping.scraperConfigId}
-                                                            className="p-2 border-b border-border last:border-b-0 space-y-2"
-                                                        >
-                                                            <div className="flex items-center justify-between gap-2">
-                                                                <div className="flex items-center gap-2 min-w-0">
-                                                                    <Pin className="h-3 w-3 text-foreground shrink-0" />
-                                                                    <span className="text-xs font-bold text-foreground truncate">
-                                                                        {scraper?.display_name || scraper?.name || mapping.scraperConfigId}
-                                                                    </span>
-                                                                </div>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => removeMapping(mapping.scraperConfigId)}
-                                                                    className="shrink-0 p-1 hover:bg-red-900/20 text-muted-foreground hover:text-red-500 transition-colors"
-                                                                    title="Remove"
-                                                                >
-                                                                    <Trash2 className="h-3 w-3" />
-                                                                </button>
-                                                            </div>
-                                                            <div className="grid grid-cols-2 gap-2">
-                                                                <div>
-                                                                    <Label className="text-[9px] font-semibold text-muted-foreground">
-                                                                        Priority
-                                                                    </Label>
-                                                                    <Input
-                                                                        type="number"
-                                                                        value={mapping.priority}
-                                                                        onChange={(e) =>
-                                                                            updateMapping(mapping.scraperConfigId, {
-                                                                                priority: parseInt(e.target.value, 10) || 0,
-                                                                            })
-                                                                        }
-                                                                        className="h-7 rounded-none border-2 border-border text-xs focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0 bg-card"
-                                                                    />
-                                                                </div>
-                                                                <div className="flex items-end pb-1">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Switch
-                                                                            checked={mapping.isActive}
-                                                                            onCheckedChange={(checked) =>
-                                                                                updateMapping(mapping.scraperConfigId, {
-                                                                                    isActive: checked,
-                                                                                })
-                                                                            }
-                                                                        />
-                                                                        <span className="text-[10px] font-bold uppercase text-muted-foreground">
-                                                                            {mapping.isActive ? 'Active' : 'Inactive'}
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <Input
-                                                                placeholder="Notes"
-                                                                value={mapping.notes}
-                                                                onChange={(e) =>
-                                                                    updateMapping(mapping.scraperConfigId, {
-                                                                        notes: e.target.value,
-                                                                    })
-                                                                }
-                                                                className="h-7 rounded-none border-2 border-border text-xs focus-visible:ring-0 focus-visible:border-border focus-visible:ring-offset-0 bg-card"
-                                                            />
-                                                        </div>
-                                                    );
-                                                })
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
 
                     <DialogFooter className="flex-col sm:flex-row gap-4 pt-6 border-t-2 border-border">
                         <div className="flex-1 text-[10px] font-semibold text-muted-foreground flex items-center">

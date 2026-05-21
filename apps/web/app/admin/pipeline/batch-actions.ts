@@ -90,35 +90,6 @@ export async function updateProductsBatch(
   }
 }
 
-export async function updateBrandDomains(
-  brandId: string,
-  official_domains: string[]
-): Promise<ActionState> {
-  const user = await requireAdminOrStaff();
-  if (!user) {
-    return { success: false, error: 'Forbidden: Admin or staff access required' };
-  }
-
-  try {
-    const supabase = await createClient();
-    
-    const { error } = await supabase
-      .from('brands')
-      .update({ official_domains })
-      .eq('id', brandId);
-
-    if (error) {
-      console.error('Database Error in updateBrandDomains:', error);
-      return { success: false, error: 'Failed to update brand domains' };
-    }
-    
-    return { success: true };
-  } catch (err) {
-    console.error('Unexpected error in updateBrandDomains:', err);
-    return { success: false, error: 'An unexpected error occurred' };
-  }
-}
-
 const cohortBatchUpdateSchema = z.object({
   brand_id: z.string().uuid().nullable().optional(),
   brand_name: z.string().nullable().optional(),

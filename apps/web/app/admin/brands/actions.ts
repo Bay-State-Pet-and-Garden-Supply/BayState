@@ -5,12 +5,6 @@ import { revalidatePath } from 'next/cache';
 import * as z from 'zod';
 import type { ActionState } from '@/lib/types';
 import type { BrandActionState } from '@/components/admin/brands/types';
-import {
-  getBrandScraperMappings,
-  setBrandScraperMappings,
-  type MappingInput,
-  type BrandScraperMapping,
-} from '@/lib/admin/brand-scraper-mappings';
 
 const brandSchema = z.object({
     name: z.string().min(1, 'Name is required'),
@@ -42,7 +36,6 @@ export async function createBrand(formData: FormData): Promise<BrandActionState>
         logo_url: formData.get('logo_url'),
         description: formData.get('description'),
         official_domains: parseDomainList(formData.get('official_domains')).map(d => d.toLowerCase()),
-        preferred_domains: parseDomainList(formData.get('preferred_domains')).map(d => d.toLowerCase()),
     };
 
     try {
@@ -55,9 +48,12 @@ export async function createBrand(formData: FormData): Promise<BrandActionState>
             .single();
 
         if (error) {
-            console.error('Database Error:', error);
+            console.error('Database Error in createBrand:', error);
             return { success: false, error: 'Failed to create brand' };
         }
+
+        // Auto-sync official brand source in brand_sources
+        await syncOfficialBrandSource(supabase, data.id, data.slug, data.name, data.official_domains ?? []);
 
         revalidatePath('/admin/brands');
         revalidatePath('/');
@@ -82,7 +78,6 @@ export async function updateBrand(id: string, formData: FormData): Promise<Brand
         logo_url: formData.get('logo_url'),
         description: formData.get('description'),
         official_domains: parseDomainList(formData.get('official_domains')).map(d => d.toLowerCase()),
-        preferred_domains: parseDomainList(formData.get('preferred_domains')).map(d => d.toLowerCase()),
     };
 
     try {
@@ -96,9 +91,12 @@ export async function updateBrand(id: string, formData: FormData): Promise<Brand
             .single();
 
         if (error) {
-            console.error('Database Error:', error);
+            console.error('Database Error in updateBrand:', error);
             return { success: false, error: 'Failed to update brand' };
         }
+
+        // Auto-sync official brand source in brand_sources
+        await syncOfficialBrandSource(supabase, data.id, data.slug, data.name, data.official_domains ?? []);
 
         revalidatePath('/admin/brands');
         revalidatePath('/');
@@ -123,7 +121,7 @@ export async function deleteBrand(id: string): Promise<ActionState> {
         .eq('id', id);
 
     if (error) {
-        console.error('Database Error:', error);
+        console.error('Database Error in deleteBrand:', error);
         return { success: false, error: 'Failed to delete brand' };
     }
 
@@ -133,6 +131,55 @@ export async function deleteBrand(id: string): Promise<ActionState> {
     revalidatePath('/products');
     revalidatePath('/', 'layout');
     return { success: true };
+}
+
+async function syncOfficialBrandSource(
+  supabase: any,
+  brandId: string,
+  slug: string,
+  name: string,
+  officialDomains: string[]
+): Promise<void> {
+  if (!officialDomains || officialDomains.length === 0) {
+    // If no official domains are set, remove any existing official_brand source for this brand
+    const { error } = await supabase
+      .from('brand_sources')
+      .delete()
+      .eq('brand_id', brandId)
+      .eq('source_type', 'official_brand');
+    
+    if (error) {
+      console.error('Error deleting official brand source during sync:', error);
+    }
+    return;
+  }
+
+  // Upsert the official_brand source
+  const sourceData = {
+    brand_id: brandId,
+    source_type: 'official_brand',
+    source_slug: slug,
+    display_name: name,
+    domains: officialDomains,
+    asset_domains: [],
+    crawl4ai_adapter_slug: 'crawl4ai_direct',
+    requires_auth: false,
+    credential_ref: null,
+    search_mode: 'domain_search',
+    allowed_fields: ['title', 'description', 'images', 'ingredients', 'guaranteed_analysis', 'category'],
+    priority: 50,
+    enabled: true,
+  };
+
+  const { error } = await supabase
+    .from('brand_sources')
+    .upsert(sourceData, {
+      onConflict: 'brand_id,source_type,source_slug'
+    });
+
+  if (error) {
+    console.error('Error upserting official brand source during sync:', error);
+  }
 }
 
 async function requireAdminOrStaff(): Promise<{ id: string; email?: string } | null> {
@@ -153,89 +200,4 @@ async function requireAdminOrStaff(): Promise<{ id: string; email?: string } | n
     }
 
     return { id: user.id, email: user.email };
-}
-
-export async function getAvailableScraperConfigsAction(): Promise<{
-    success: boolean;
-    scrapers?: { id: string; slug: string; name: string; display_name: string }[];
-    error?: string;
-}> {
-    const user = await requireAdminOrStaff();
-    if (!user) {
-        return { success: false, error: 'Forbidden: Admin or staff access required' };
-    }
-
-    try {
-        const supabase = await createClient();
-        const { data, error } = await supabase
-            .from('scraper_configs')
-            .select('id, slug, display_name')
-            .order('display_name', { ascending: true });
-
-        if (error) {
-            throw error;
-        }
-
-        return {
-            success: true,
-            scrapers: (data || []).map((c: { id: string; slug: string; display_name: string | null }) => ({
-                id: c.id,
-                slug: c.slug,
-                name: c.slug,
-                display_name: c.display_name || c.slug,
-            })),
-        };
-    } catch (err) {
-        console.error('Error fetching scraper configs:', err);
-        return { success: false, error: 'Failed to fetch scraper configs' };
-    }
-}
-
-export async function getBrandScraperMappingsAction(brandId: string): Promise<{
-    success: boolean;
-    mappings?: BrandScraperMapping[];
-    error?: string;
-}> {
-    const user = await requireAdminOrStaff();
-    if (!user) {
-        return { success: false, error: 'Forbidden: Admin or staff access required' };
-    }
-
-    try {
-        const mappings = await getBrandScraperMappings(brandId);
-        return { success: true, mappings };
-    } catch (err) {
-        console.error('Error fetching brand scraper mappings:', err);
-        return { success: false, error: 'Failed to fetch brand scraper mappings' };
-    }
-}
-
-const mappingSchema = z.array(z.object({
-    scraperConfigId: z.string().uuid(),
-    priority: z.number().int(),
-    notes: z.string().max(500).optional(),
-    isActive: z.boolean().optional().default(true),
-})).max(50);
-
-export async function updateBrandScraperMappings(
-    brandId: string,
-    mappings: MappingInput[]
-): Promise<ActionState> {
-    const user = await requireAdminOrStaff();
-    if (!user) {
-        return { success: false, error: 'Forbidden: Admin or staff access required' };
-    }
-
-    try {
-        const validatedMappings = mappingSchema.parse(mappings);
-        await setBrandScraperMappings(brandId, validatedMappings, user.id);
-        revalidatePath('/admin/brands');
-        return { success: true };
-    } catch (err) {
-        if (err instanceof z.ZodError) {
-            return { success: false, error: 'Validation failed: ' + err.issues[0].message };
-        }
-        console.error('Error updating brand scraper mappings:', err);
-        return { success: false, error: 'Failed to update brand scraper mappings' };
-    }
 }
