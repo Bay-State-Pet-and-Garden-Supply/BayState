@@ -88,7 +88,7 @@ interface SourceDetails extends Record<string, unknown> {
   image_url?: string;
   url?: string;
   price?: number | string;
-  images?: string[];
+  image_urls?: string[];
   categories?: string[];
   availability?: string;
 }
@@ -671,23 +671,23 @@ export function ProcessedResultsView({
                     {/* Left: Image Carousel */}
                     <div className="space-y-3">
                       <div className="aspect-square rounded-none border border-border bg-muted flex items-center justify-center overflow-hidden relative group">
-                        {currentSourceData.images && currentSourceData.images.length > 0 ? (
+                        {currentSourceData.image_urls && currentSourceData.image_urls.length > 0 ? (
                           <>
                             <img
-                              src={currentSourceData.images[currentImageIndex]}
+                              src={currentSourceData.image_urls[currentImageIndex]}
                               alt={currentSourceData.title || currentSourceData.name}
                               className="w-full h-full object-contain transition-all duration-300"
                               data-testid="scraped-primary-image"
                             />
                             
                             {/* Left/Right controls */}
-                            {currentSourceData.images.length > 1 && (
+                            {currentSourceData.image_urls.length > 1 && (
                               <>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setCurrentImageIndex((prev) => 
-                                      prev === 0 ? currentSourceData.images!.length - 1 : prev - 1
+                                      prev === 0 ? currentSourceData.image_urls!.length - 1 : prev - 1
                                     );
                                   }}
                                   aria-label="Previous image"
@@ -699,7 +699,7 @@ export function ProcessedResultsView({
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setCurrentImageIndex((prev) => 
-                                      prev === currentSourceData.images!.length - 1 ? 0 : prev + 1
+                                      prev === currentSourceData.image_urls!.length - 1 ? 0 : prev + 1
                                     );
                                   }}
                                   aria-label="Next image"
@@ -709,7 +709,7 @@ export function ProcessedResultsView({
                                 </button>
                                 
                                 <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-card px-1.5 py-0.5 rounded-none text-[9px] font-semibold text-foreground border border-border">
-                                  {currentImageIndex + 1} / {currentSourceData.images.length}
+                                  {currentImageIndex + 1} / {currentSourceData.image_urls.length}
                                 </div>
                               </>
                             )}
@@ -741,9 +741,9 @@ export function ProcessedResultsView({
                       </div>
 
                       {/* Thumbnails strip */}
-                      {currentSourceData.images && currentSourceData.images.length > 1 && (
+                      {currentSourceData.image_urls && currentSourceData.image_urls.length > 1 && (
                         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-                          {currentSourceData.images.map((img, i) => (
+                          {currentSourceData.image_urls.map((img, i) => (
                             <div
                               key={i}
                               onClick={() => setCurrentImageIndex(i)}
