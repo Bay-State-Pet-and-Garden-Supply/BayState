@@ -553,6 +553,28 @@ export async function buildApprovedSourcePlans(
       }
     }
 
+    if (
+      extractionMode === "ai_only" &&
+      !entries.some((entry) => entry.sourceType === "official_brand") &&
+      brand.official_domains &&
+      brand.official_domains.length > 0
+    ) {
+      appendCandidateEntry({
+        sourceType: "official_brand",
+        sourceSlug: brand.slug,
+        displayName: brand.name,
+        domains: brand.official_domains,
+        assetDomains: [],
+        adapterSlug: "crawl4ai_direct",
+        requiresAuth: false,
+        credentialRef: null,
+        searchMode: "domain_search",
+        allowedFields: ["title", "description", "images", "ingredients", "guaranteed_analysis", "category"],
+        priority: 50,
+        runFirst: false,
+      });
+    }
+
     // ---- Extraction Mode filtering ----
     let filteredEntries = entries.filter((entry) => {
       if (extractionMode === "ai_only") {
@@ -622,8 +644,8 @@ export async function buildApprovedSourcePlans(
       if (extractionMode === "ai_only") {
         results[sku] = buildFailureResult(
           sku,
-          `AI-only mode requested but no official brand sources are configured for ${brand.name}. Add an 'official_brand' source in the admin panel before extraction.`,
-          "ai_only_no_official_brand",
+          `AI-only extraction requires official domains to be configured for brand ${brand.name}. Please configure official domains in the admin panel.`,
+          "ai_only_no_official_domains",
         );
         continue;
       }

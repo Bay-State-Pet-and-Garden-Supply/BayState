@@ -142,40 +142,20 @@ export async function POST(request: NextRequest) {
 
       brandedSkus = Object.keys(sourcePlansBySku);
 
-      if (brandedSkus.length === 0) {
-        if (freshSkippedSkus.length > 0 && freshSkippedSkus.length === skippedSkus.length) {
-          return NextResponse.json({
-            success: true,
-            jobId: null,
-            skuCount: 0,
-            attemptCount: 0,
-            skipped_skus: skippedSkus,
-            message: "All requested approved sources are already fresh. Use Force refresh to re-scrape.",
-          });
-        }
-
-        // Extraction-mode-specific error messages
-        if (extractionMode === "ai_only") {
-          return NextResponse.json(
-            {
-              error: "AI-only extraction requires products to have official brand domains configured.",
+        // Branded SKUs length check moved down to after source plan building
+        if (brandedSkus.length === 0) {
+          if (freshSkippedSkus.length > 0 && freshSkippedSkus.length === skippedSkus.length) {
+            return NextResponse.json({
+              success: true,
+              jobId: null,
+              skuCount: 0,
+              attemptCount: 0,
               skipped_skus: skippedSkus,
-            },
-            { status: 400 }
-          );
-        }
+              message: "All requested approved sources are already fresh. Use Force refresh to re-scrape.",
+            });
+          }
 
-        if (extractionMode === "distributor_only") {
-          return NextResponse.json(
-            {
-              error: "Distributor-only extraction requires at least one distributor source to be configured.",
-              skipped_skus: skippedSkus,
-            },
-            { status: 400 }
-          );
-        }
-
-        const errorMessages = new Set<string>();
+          const errorMessages = new Set<string>();
         for (const [sku, result] of Object.entries(plans)) {
           if (!result.ok && result.error) {
             errorMessages.add(result.error);

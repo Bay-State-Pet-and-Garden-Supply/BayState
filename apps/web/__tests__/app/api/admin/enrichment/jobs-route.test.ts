@@ -353,7 +353,7 @@ describe('/api/admin/enrichment/jobs route', () => {
             'SKU-1': {
                 ok: false,
                 sku: 'SKU-1',
-                error: 'AI-only mode requested but all sources already enriched within 48h. Use forceRefresh to re-scrape.',
+                error: 'AI-only extraction requires official domains to be configured for brand TestBrand. Please configure official domains in the admin panel.',
             },
         });
 
@@ -371,7 +371,7 @@ describe('/api/admin/enrichment/jobs route', () => {
         const payload = await response.json();
 
         expect(response.status).toBe(400);
-        expect(payload.error).toContain('AI-only extraction requires products to have official brand domains configured');
+        expect(payload.error).toContain('AI-only extraction requires official domains to be configured');
     });
 
     it('returns specific error for distributor_only when all plans fail', async () => {
@@ -402,7 +402,7 @@ describe('/api/admin/enrichment/jobs route', () => {
         const payload = await response.json();
 
         expect(response.status).toBe(400);
-        expect(payload.error).toContain('Distributor-only extraction requires at least one distributor source to be configured');
+        expect(payload.error).toContain('No approved sources configured for brand TestBrand');
     });
 
     it('returns success with a skip message when all requested sources are already fresh', async () => {

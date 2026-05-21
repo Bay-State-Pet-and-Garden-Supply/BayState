@@ -133,6 +133,50 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
     expect(result.plan.priority[0].sourceSlug).toBe('official_brand');
   });
 
+  it('ai_only mode synthesizes official_brand if missing from brand_sources but domains exist', async () => {
+    const responses = [
+      {
+        data: [
+          {
+            sku: 'SKU-1',
+            brand_id: 'brand-1',
+            input: { name: 'Test Product', price: 10 },
+            enrichment_config: null,
+          },
+        ],
+        error: null,
+      },
+      { data: [], error: null },
+      {
+        data: [
+          {
+            id: 'brand-1',
+            name: 'TestBrand',
+            slug: 'testbrand',
+            official_domains: ['testbrand.com'],
+            preferred_domains: [],
+          },
+        ],
+        error: null,
+      },
+      // brand_sources is empty
+      { data: [], error: null },
+    ];
+
+    const mockDb = createMockDbForSourcePlan(responses);
+    const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
+      extractionMode: 'ai_only',
+    });
+
+    const result = results['SKU-1'];
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('Expected ok');
+    expect(result.plan.priority.length).toBe(1);
+    expect(result.plan.priority[0].sourceType).toBe('official_brand');
+    expect(result.plan.priority[0].domains).toContain('testbrand.com');
+    expect(result.plan.priority[0].sourceSlug).toBe('testbrand'); // uses brand.slug
+  });
+
   it('distributor_only with selectedDistributorSlug only includes the selected distributor', async () => {
     const responses = [
       {
@@ -288,6 +332,6 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
     const result = results['SKU-1'];
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('Expected not ok');
-    expect(result.error).toContain('AI-only mode requested');
+    expect(result.error).toContain('AI-only extraction requires official domains to be configured');
   });
 });

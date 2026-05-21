@@ -121,7 +121,7 @@ export type SourcePlanFailureCode =
   | "missing_brand"
   | "no_sources_configured"
   | "all_sources_fresh"
-  | "ai_only_no_official_brand"
+  | "ai_only_no_official_domains"
   | "database_error";
 
 // =============================================================================
