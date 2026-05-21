@@ -301,25 +301,22 @@ Return JSON in this format:
             "required": ["consolidated_name"],
         }
 
-        response = await llm.generate_text(
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            temperature=0.0,
-            response_schema=schema,
-        )
-
-        self._llm_used_in_discovery = True
-
         try:
+            response = await llm.generate_text(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                temperature=0.0,
+                response_schema=schema,
+            )
+            self._llm_used_in_discovery = True
             data = json.loads(response.text)
             name = data.get("consolidated_name", "").strip()
             if name:
                 return name
         except Exception as e:
             logger.warning(
-                "[SerpDiscoveryAdapter] Failed to parse LLM response for name consolidation: %s. Raw: %s",
+                "[SerpDiscoveryAdapter] LLM name consolidation failed: %s. Using register name.",
                 e,
-                response.text,
             )
 
         return register_name
@@ -535,16 +532,14 @@ Return JSON in this format:
             "required": ["selected_url", "explanation"],
         }
 
-        response = await llm.generate_text(
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            temperature=0.0,
-            response_schema=schema,
-        )
-
-        self._llm_used_in_discovery = True
-
         try:
+            response = await llm.generate_text(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                temperature=0.0,
+                response_schema=schema,
+            )
+            self._llm_used_in_discovery = True
             data = json.loads(response.text)
             selected_url = data.get("selected_url")
             explanation = data.get("explanation", "")
@@ -556,9 +551,8 @@ Return JSON in this format:
                 return selected_url
         except Exception as e:
             logger.warning(
-                "[SerpDiscoveryAdapter] Failed to parse LLM URL selection response: %s. Raw: %s",
+                "[SerpDiscoveryAdapter] Failed to select URL via LLM: %s. Falling back to top candidate.",
                 e,
-                response.text,
             )
 
         # Fallback to top scored candidate

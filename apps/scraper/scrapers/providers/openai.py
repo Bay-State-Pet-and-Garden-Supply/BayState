@@ -82,6 +82,20 @@ class OpenAIProvider(BaseLLMProvider):
                 if attempt >= self._max_retries - 1:
                     raise
                 await asyncio.sleep(2 ** attempt)
+            except Exception as exc:
+                # Catch BadRequestError dynamically (e.g. from openai.BadRequestError)
+                # to handle cases where the target provider/endpoint does not support json_schema
+                from openai import BadRequestError
+                if isinstance(exc, BadRequestError):
+                    err_msg = str(exc).lower()
+                    if response_schema is not None and ("response_format" in err_msg or "response_schema" in err_msg or "schema" in err_msg):
+                        # Fallback to json_object response format
+                        payload["response_format"] = {"type": "json_object"}
+                        # Append instructions to output JSON to user prompt
+                        if "json" not in payload["messages"][-1]["content"].lower():
+                            payload["messages"][-1]["content"] += "\n\nRespond in JSON format."
+                        continue
+                raise exc
 
         if last_error:
             raise last_error
