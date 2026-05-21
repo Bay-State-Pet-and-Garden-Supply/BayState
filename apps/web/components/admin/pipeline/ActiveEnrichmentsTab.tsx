@@ -110,7 +110,7 @@ function LiveTimer({
 
     update();
     const isActive = status === "running" || status === "claimed" || status === "queued";
-    if (isActive && !completedAt) {
+    if (isActive && startedAt && !completedAt) {
       const interval = setInterval(update, 1000);
       return () => clearInterval(interval);
     }
@@ -210,8 +210,8 @@ function EnrichmentJobAttemptsPanel({ jobId }: { jobId: string }) {
           <RefreshCw className="h-2.5 w-2.5" /> Force Sync
         </Button>
       </div>
-      <ScrollArea className="max-h-64">
-        <div className="p-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+      <ScrollArea className="max-h-96">
+        <div className="p-2 pb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
           {attempts.map((attempt) => {
             const isCompleted =
               attempt.status === "success" ||
@@ -270,7 +270,7 @@ function EnrichmentJobAttemptsPanel({ jobId }: { jobId: string }) {
                     {attempt.claimed_by ? `🤖 ${attempt.claimed_by}` : "⏳ Claim pending..."}
                   </span>
                   <span>
-                    {getElapsed(attempt.started_at ?? attempt.created_at, attempt.completed_at ?? undefined)}
+                    {getElapsed(attempt.started_at, attempt.completed_at ?? undefined)}
                   </span>
                 </div>
                 {attempt.error_message && (
