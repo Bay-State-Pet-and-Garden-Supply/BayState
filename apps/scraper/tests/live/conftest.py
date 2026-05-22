@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,20 @@ logger = logging.getLogger("tests.live")
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 VARIANT_FIXTURE = FIXTURES_DIR / "variant_resolution_ground_truth.json"
 SNAPSHOTS_DIR = FIXTURES_DIR / "crawl4ai" / "snapshots"
+
+# Patterns for sensitive keys to redact from snapshots
+REDACTION_PATTERNS = [
+    (r"AIzaSy[a-zA-Z0-9\-_]{33}", "REDACTED_GOOGLE_API_KEY"),
+    (r"sk-[a-zA-Z0-9]{20,}", "REDACTED_OPENAI_KEY"),
+]
+
+
+def _redact_html(html: str) -> str:
+    """Replace sensitive patterns in HTML with redaction placeholders."""
+    redacted = html
+    for pattern, replacement in REDACTION_PATTERNS:
+        redacted = re.sub(pattern, replacement, redacted)
+    return redacted
 
 
 # ---------------------------------------------------------------------------
@@ -77,23 +92,28 @@ def non_family_entries(variant_ground_truth: list[dict[str, Any]]) -> list[dict[
 def save_html_snapshot(entry: dict[str, Any], html: str) -> Path:
     """Save fetched HTML to a snapshot file for offline debugging.
 
+    Sensitive data like API keys are automatically redacted.
     Returns the path to the saved snapshot.
     """
     SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
-    upc= entry.get("upc", "unknown").replace("/", "_")
+    upc = entry.get("upc", "unknown").replace("/", "_")
     domain = entry.get("expected_source_domain", "unknown")
-    filename = f"{sku}_{domain}.html"
+    filename = f"{upc}_{domain}.html"
     path = SNAPSHOTS_DIR / filename
-    path.write_text(html, encoding="utf-8")
-    logger.info("Saved HTML snapshot: %s (%d bytes)", path, len(html))
+    
+    # Redact sensitive info before saving
+    redacted_html = _redact_html(html)
+    path.write_text(redacted_html, encoding="utf-8")
+    
+    logger.info("Saved HTML snapshot: %s (%d bytes)", path, len(redacted_html))
     return path
 
 
 def load_html_snapshot(entry: dict[str, Any]) -> str | None:
     """Load a previously saved HTML snapshot, if it exists."""
-    upc= entry.get("upc", "unknown").replace("/", "_")
+    upc = entry.get("upc", "unknown").replace("/", "_")
     domain = entry.get("expected_source_domain", "unknown")
-    filename = f"{sku}_{domain}.html"
+    filename = f"{upc}_{domain}.html"
     path = SNAPSHOTS_DIR / filename
     if path.exists():
         return path.read_text(encoding="utf-8")

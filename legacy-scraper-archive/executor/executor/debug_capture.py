@@ -8,11 +8,26 @@ from __future__ import annotations
 
 import base64
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
+
+# Patterns for sensitive keys to redact from snapshots
+REDACTION_PATTERNS = [
+    (r"AIzaSy[a-zA-Z0-9\-_]{33}", "REDACTED_GOOGLE_API_KEY"),
+    (r"sk-[a-zA-Z0-9]{20,}", "REDACTED_OPENAI_KEY"),
+]
+
+
+def _redact_html(html: str) -> str:
+    """Replace sensitive patterns in HTML with redaction placeholders."""
+    redacted = html
+    for pattern, replacement in REDACTION_PATTERNS:
+        redacted = re.sub(pattern, replacement, redacted)
+    return redacted
 
 
 class BrowserPage(Protocol):
@@ -101,7 +116,8 @@ class DebugArtifactCapture:
         if page and hasattr(page, "content"):
             try:
                 page_source = await page.content()
-                self._dump_to_file("debug_dump.html", page_source)
+                redacted_source = _redact_html(page_source)
+                self._dump_to_file("debug_dump.html", redacted_source)
                 debug_data["page_source_path"] = str(self.output_dir / "debug_dump.html")
             except Exception as dump_e:
                 logger.debug(f"Failed to dump page source to file: {dump_e}")
@@ -123,7 +139,7 @@ class DebugArtifactCapture:
             try:
                 if hasattr(page, "content"):
                     page_source = await page.content()
-                    debug_data["page_source"] = page_source
+                    debug_data["page_source"] = _redact_html(page_source)
             except Exception as e:
                 logger.debug(f"Failed to capture page source: {e}")
 
@@ -226,7 +242,7 @@ class DebugArtifactCapture:
                 filename = f"debug_source{job_part}_{timestamp}.html"
 
             filepath = self.output_dir / filename
-            filepath.write_text(page_source, encoding="utf-8")
+            filepath.write_text(_redact_html(page_source), encoding="utf-8")
 
             logger.debug(f"Saved page source to {filepath}")
             return str(filepath)
@@ -248,7 +264,7 @@ class DebugArtifactCapture:
         """
         try:
             filepath = self.output_dir / filename
-            filepath.write_text(content, encoding="utf-8")
+            filepath.write_text(_redact_html(content), encoding="utf-8")
             logger.debug(f"Dumped content to {filepath}")
             return str(filepath)
         except Exception as e:
