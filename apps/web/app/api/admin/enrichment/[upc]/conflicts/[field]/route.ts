@@ -6,18 +6,18 @@ import { getAllSources } from '@/lib/enrichment/sources';
 import { isEnrichableField, type EnrichableField } from '@/lib/enrichment/types';
 
 /**
- * GET /api/admin/enrichment/[sku]/conflicts/[field]
+ * GET /api/admin/enrichment/[upc]/conflicts/[field]
  * 
  * Get all available values for a conflicting field from different sources.
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ sku: string; field: string }> }
+  { params }: { params: Promise<{ upc: string; field: string }> }
 ) {
-  const { sku, field } = await params;
+  const { upc, field } = await params;
 
-  if (!sku || !field) {
-    return NextResponse.json({ error: 'SKU and field are required' }, { status: 400 });
+  if (!upc || !field) {
+    return NextResponse.json({ error: 'UPC and field are required' }, { status: 400 });
   }
 
   if (!isEnrichableField(field)) {
@@ -30,7 +30,7 @@ export async function GET(
   const supabase = await createAdminClient();
 
   try {
-    const summary = await getProductEnrichmentSummary(sku);
+    const summary = await getProductEnrichmentSummary(upc);
 
     if (!summary) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
@@ -56,7 +56,7 @@ export async function GET(
 
     return NextResponse.json({
       field,
-      sku,
+      upc,
       options,
       currentSource: summary.resolved[field as EnrichableField]?.source ?? null,
     });

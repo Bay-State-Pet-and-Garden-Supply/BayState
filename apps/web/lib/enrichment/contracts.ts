@@ -5,7 +5,7 @@
  * Stores into `products_ingestion.sources.enriched` with backward-compatible aliases
  * so the existing consolidation pipeline can consume it unchanged.
  *
- * Protected fields (price, sku, stock_status, manufacturer_part_number, product_line)
+ * Protected fields (price, upc, stock_status, manufacturer_part_number, product_line)
  * are NEVER sourced from enrichment — they come from the original import only.
  */
 
@@ -41,7 +41,7 @@ export interface EnrichedProductFactsV1 {
   brand?: string | null;
   description?: string | null;
   category?: string | null;
-  sku?: string | null;
+  upc?: string | null;
   weight?: string | null;
   dimensions?: string | null;
   shipping_weight?: string | null;
@@ -76,7 +76,7 @@ export interface EnrichmentConfidenceV1 {
 }
 
 export interface EnrichmentValidationV1 {
-  sku_match?: boolean | null;
+  upc_match?: boolean | null;
   warnings?: string[];
   missing_required?: string[];
 }
@@ -111,7 +111,7 @@ export interface SourceResultInfo {
 
 export interface EnrichmentResultV1 {
   schema_version: "v1";
-  sku: string;
+  upc: string;
   source: EnrichmentResultSourceV1;
   status: EnrichmentResultStatus;
   extracted_at: string;

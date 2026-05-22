@@ -44,12 +44,12 @@ function getBrandIdsFromRows(rows: ShopSiteExportSourceRow[]): string[] {
 }
 
 export async function loadStorefrontShopSiteExport(
-  options: { skus?: string[]; includeExportedRequestedSkus?: boolean } = {},
+  options: { upcs?: string[]; includeExportedRequestedUpcs?: boolean } = {},
 ): Promise<PreparedShopSiteExport> {
   const supabase = await createAdminClient();
-  const requestedSkus = uniqueStrings(options.skus ?? []);
-  const includeExportedRequestedSkus =
-    options.includeExportedRequestedSkus === true && requestedSkus.length > 0;
+  const requestedUpcs = uniqueStrings(options.upcs ?? []);
+  const includeExportedRequestedUpcs =
+    options.includeExportedRequestedUpcs === true && requestedUpcs.length > 0;
   const rows: ShopSiteExportSourceRow[] = [];
   let page = 0;
 
@@ -59,16 +59,16 @@ export async function loadStorefrontShopSiteExport(
 
     let exportQueueQuery = supabase
       .from("products_ingestion")
-      .select("sku, input, consolidated, selected_images")
+      .select("upc, input, consolidated, selected_images")
       .eq("pipeline_status", "publishing")
-      .order("sku", { ascending: true });
+      .order("upc", { ascending: true });
 
-    if (!includeExportedRequestedSkus) {
+    if (!includeExportedRequestedUpcs) {
       exportQueueQuery = exportQueueQuery.is("exported_at", null);
     }
 
-    if (requestedSkus.length > 0) {
-      exportQueueQuery = exportQueueQuery.in("sku", requestedSkus);
+    if (requestedUpcs.length > 0) {
+      exportQueueQuery = exportQueueQuery.in("upc", requestedUpcs);
     }
 
     const { data, error } = await exportQueueQuery.range(from, to);
@@ -90,12 +90,12 @@ export async function loadStorefrontShopSiteExport(
     page += 1;
   }
 
-  if (requestedSkus.length > 0) {
-    const foundSkus = new Set(rows.map((row) => row.sku));
-    const missingSkus = requestedSkus.filter((sku) => !foundSkus.has(sku));
-    if (missingSkus.length > 0) {
+  if (requestedUpcs.length > 0) {
+    const foundUpcs = new Set(rows.map((row) => row.upc));
+    const missingUpcs = requestedUpcs.filter((upc) => !foundUpcs.has(upc));
+    if (missingUpcs.length > 0) {
       throw new Error(
-        `Some requested products are not in the export queue: ${missingSkus.join(", ")}`,
+        `Some requested products are not in the export queue: ${missingUpcs.join(", ")}`,
       );
     }
   }

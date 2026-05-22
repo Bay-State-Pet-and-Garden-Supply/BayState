@@ -236,9 +236,9 @@ export function ConsolidationJobCard({
           </div>
           <div className="divide-y divide-border">
             {job.recentItems.map((item) => (
-              <div key={`${item.sku}-${item.updated_at || item.created_at || item.status}`} className="flex flex-col gap-1 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+              <div key={`${item.upc}-${item.updated_at || item.created_at || item.status}`} className="flex flex-col gap-1 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs text-foreground">{item.sku}</span>
+                  <span className="font-mono text-xs text-foreground">{item.upc}</span>
                   <StatusBadge status={item.status} />
                 </div>
                 {item.error_message ? (

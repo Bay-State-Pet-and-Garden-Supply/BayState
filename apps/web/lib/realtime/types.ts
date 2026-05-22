@@ -62,7 +62,7 @@ export interface JobAssignment {
   /** List of scraper names to execute */
   scrapers?: string[];
   /** Target SKUs to scrape */
-  skus: string[];
+  upcs: string[];
   /** Current status of the job assignment */
   status: 'pending' | 'queued' | 'claimed' | 'running' | 'completed' | 'completed_with_errors' | 'failed' | 'cancelled';
   /** ISO 8601 timestamp when the assignment was created */
@@ -92,7 +92,7 @@ export interface JobAssignment {
   /** Durable runtime progress update timestamp */
   progress_updated_at?: string | null;
   /** Currently processed SKU */
-  current_sku?: string | null;
+  current_upc?: string | null;
   /** Processed item count */
   items_processed?: number | null;
   /** Total item count */
@@ -125,7 +125,7 @@ const jobAssignmentSchema = z.object({
   id: z.string(),
   job_id: z.string().optional(),
   scrapers: z.array(z.string()).optional(),
-  skus: z.array(z.string()),
+  upcs: z.array(z.string()),
   status: z.enum(['pending', 'queued', 'claimed', 'running', 'completed', 'completed_with_errors', 'failed', 'cancelled']),
   created_at: z.string(),
   claimed_by: z.string().nullable().optional(),
@@ -140,7 +140,7 @@ const jobAssignmentSchema = z.object({
   progress_phase: z.string().nullable().optional(),
   progress_details: z.record(z.string(), z.unknown()).nullable().optional(),
   progress_updated_at: z.string().nullable().optional(),
-  current_sku: z.string().nullable().optional(),
+  current_upc: z.string().nullable().optional(),
   items_processed: z.number().nullable().optional(),
   items_total: z.number().nullable().optional(),
   last_event_at: z.string().nullable().optional(),
@@ -201,7 +201,7 @@ interface ScrapeJobLog {
   /** Optional scraper slug */
   scraper_name?: string;
   /** Optional active SKU */
-  sku?: string;
+  upc?: string;
   /** Optional execution phase */
   phase?: string;
   /** Optional per-job sequence number */
@@ -224,7 +224,7 @@ const scrapeJobLogSchema = z.object({
   timestamp: z.string(),
   source: z.string().optional(),
   scraper_name: z.string().optional(),
-  sku: z.string().optional(),
+  upc: z.string().optional(),
   phase: z.string().optional(),
   sequence: z.number().optional(),
   details: z.record(z.string(), z.unknown()).optional(),
@@ -237,7 +237,7 @@ const scrapeJobLogSchema = z.object({
 export interface EnrichmentAttempt {
   id: string;
   job_id: string;
-  sku: string;
+  upc: string;
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'queued' | 'success' | 'partial';
   attempt_number: number;
   claimed_by: string | null;

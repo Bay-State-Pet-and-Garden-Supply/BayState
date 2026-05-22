@@ -8,14 +8,14 @@ import {
 } from '@/lib/product-image-storage';
 
 interface ProductImageRow {
-    sku: string;
+    upc: string;
     image_candidates: string[] | null;
     consolidated: Record<string, unknown> | null;
     pipeline_status: string | null;
 }
 
 interface ProductImageValidationRow {
-    sku: string;
+    upc: string;
     image_candidates: unknown;
     selected_images: unknown;
     sources: unknown;
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
         .from('products_ingestion')
-        .select('sku, image_candidates, consolidated, pipeline_status')
+        .select('upc, image_candidates, consolidated, pipeline_status')
         .neq('image_candidates', '{}')
         .neq('image_candidates', '[]')
         .or('consolidated.images.is.null,consolidated.images.eq.{}')
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
     }
 
     const products = ((data || []) as ProductImageRow[]).map((row) => ({
-        sku: row.sku,
+        upc: row.upc,
         image_candidates: row.image_candidates,
         consolidated: row.consolidated,
         pipeline_status: row.pipeline_status,
@@ -98,11 +98,11 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { sku, selectedImages } = body;
+        const { upc, selectedImages } = body;
 
-        if (!sku || typeof sku !== 'string') {
+        if (!upc || typeof upc !== 'string') {
             return NextResponse.json(
-                { error: 'Missing or invalid sku' },
+                { error: 'Missing or invalid upc' },
                 { status: 400 }
             );
         }
@@ -123,8 +123,8 @@ export async function POST(request: NextRequest) {
 
         const { data: products, error: fetchError } = await supabase
             .from('products_ingestion')
-            .select('sku, image_candidates, selected_images, sources, consolidated')
-            .eq('sku', sku)
+            .select('upc, image_candidates, selected_images, sources, consolidated')
+            .eq('upc', upc)
             .single();
 
         if (fetchError || !products) {
@@ -158,16 +158,15 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        const currentConsolidated = consolidated;
         const durableSelectedImages = await replaceInlineImageDataUrls(supabase, selectedImages, {
-            folderPath: buildProductImageStorageFolder('pipeline-selected', sku),
+            folderPath: buildProductImageStorageFolder('pipeline-selected', upc),
             onError: (message, error) => {
                 console.error(`[Pipeline Images] ${message}`, error);
             },
         });
 
         const updatedConsolidated = {
-            ...currentConsolidated,
+            ...consolidated,
             images: durableSelectedImages.value,
         };
 
@@ -177,7 +176,7 @@ export async function POST(request: NextRequest) {
                 consolidated: updatedConsolidated,
                 updated_at: new Date().toISOString(),
             })
-            .eq('sku', sku);
+            .eq('upc', upc);
 
         if (updateError) {
             console.error('Error updating product images:', updateError);

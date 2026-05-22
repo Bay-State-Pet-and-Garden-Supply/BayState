@@ -6,7 +6,7 @@ from statistics import mean
 
 @dataclass(frozen=True)
 class DiscoveryResultRow:
-    sku: str
+    upc: str
     brand: str | None
     product_name: str
     expected_official_domains: list[str]

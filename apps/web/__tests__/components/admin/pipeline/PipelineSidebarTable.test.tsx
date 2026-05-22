@@ -16,12 +16,12 @@ jest.mock('@/components/admin/pipeline/VirtualizedPipelineTable', () => ({
   ),
 }));
 
-function makeProduct(sku: string, cohortId: string, cohortName: string): PipelineProduct {
+function makeProduct(upc: string, cohortId: string, cohortName: string): PipelineProduct {
   return {
-    sku,
-    input: { name: `Product ${sku}`, price: 10 },
+    upc,
+    input: { name: `Product ${upc}`, price: 10 },
     sources: {},
-    consolidated: { name: `Product ${sku}`, price: 10 },
+    consolidated: { name: `Product ${upc}`, price: 10 },
     pipeline_status: 'imported',
     cohort_id: cohortId,
     cohort_name: cohortName,
@@ -33,8 +33,8 @@ function makeProduct(sku: string, cohortId: string, cohortName: string): Pipelin
 describe('PipelineSidebarTable', () => {
   it('selects an entire collapsed imported cohort from its header checkbox', () => {
     const products = [
-      makeProduct('SKU001', 'cohort-1', 'Test Batch'),
-      makeProduct('SKU002', 'cohort-1', 'Test Batch'),
+      makeProduct('UPC001', 'cohort-1', 'Test Batch'),
+      makeProduct('UPC002', 'cohort-1', 'Test Batch'),
     ];
     const onSelectAll = jest.fn();
 
@@ -46,20 +46,20 @@ describe('PipelineSidebarTable', () => {
           cohortIds: ['cohort-1'],
           names: { 'cohort-1': 'Test Batch' },
         }}
-        selectedSkus={new Set()}
-        preferredSku={null}
-        onSelectSku={jest.fn()}
+        selectedUpcs={new Set()}
+        preferredUpc={null}
+        onSelectUpc={jest.fn()}
         onSelectAll={onSelectAll}
         onDeselectAll={jest.fn()}
-        onPreferredSkuChange={jest.fn()}
+        onPreferredUpcChange={jest.fn()}
         variant="imported"
       />
     );
 
-    expect(screen.queryByText('SKU001')).not.toBeInTheDocument();
+    expect(screen.queryByText('UPC001')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('checkbox'));
 
-    expect(onSelectAll).toHaveBeenCalledWith(['SKU001', 'SKU002']);
+    expect(onSelectAll).toHaveBeenCalledWith(['UPC001', 'UPC002']);
   });
 });

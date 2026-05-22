@@ -6,25 +6,25 @@ import { generateShopSiteXml } from '@/lib/shopsite/xml-generator';
 export const runtime = 'nodejs';
 
 interface ExportRequestBody {
-    skus?: unknown;
+    upcs?: unknown;
 }
 
-function parseSkuSelection(body: ExportRequestBody): string[] {
-    if (body.skus === undefined) {
+function parseUpcSelection(body: ExportRequestBody): string[] {
+    if (body.upcs === undefined) {
         return [];
     }
 
-    if (!Array.isArray(body.skus)) {
-        throw new Error('Expected "skus" to be an array of SKU strings');
+    if (!Array.isArray(body.upcs)) {
+        throw new Error('Expected "upcs" to be an array of UPC strings');
     }
 
-    return body.skus
-        .map((sku) => (typeof sku === 'string' ? sku.trim() : ''))
-        .filter((sku) => sku.length > 0);
+    return body.upcs
+        .map((upc) => (typeof upc === 'string' ? upc.trim() : ''))
+        .filter((upc) => upc.length > 0);
 }
 
-async function buildXmlResponse(skus?: string[]) {
-    const { products } = await loadStorefrontShopSiteExport({ skus });
+async function buildXmlResponse(upcs?: string[]) {
+    const { products } = await loadStorefrontShopSiteExport({ upcs });
     if (products.length === 0) {
         return NextResponse.json(
             { error: 'No export-ready storefront products available for ShopSite export' },
@@ -64,11 +64,11 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json() as ExportRequestBody;
-        const skus = parseSkuSelection(body);
-        return await buildXmlResponse(skus.length > 0 ? skus : undefined);
+        const upcs = parseUpcSelection(body);
+        return await buildXmlResponse(upcs.length > 0 ? upcs : undefined);
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to generate XML export';
-        const status = message.includes('Expected "skus"') || message.includes('export queue') ? 400 : 500;
+        const status = message.includes('Expected "upcs"') || message.includes('export queue') ? 400 : 500;
         console.error('[ExportXML] Error:', err);
         return NextResponse.json({ error: message }, { status });
     }

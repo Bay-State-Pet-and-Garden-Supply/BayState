@@ -3,7 +3,7 @@
  * 
  * Core type definitions for the product enrichment system.
  * 
- * CRITICAL: Price and SKU are PROTECTED fields that NEVER come from enrichment.
+ * CRITICAL: Price and UPC are PROTECTED fields that NEVER come from enrichment.
  * They are always sourced from the original import (products_ingestion.input).
  */
 
@@ -11,7 +11,7 @@
  * Fields that are NEVER modified by enrichment - they come from the original import only.
  * This is a business-critical constraint to ensure pricing integrity.
  */
-const PROTECTED_FIELDS = ['price', 'sku', 'cost', 'msrp'] as const;
+const PROTECTED_FIELDS = ['price', 'upc', 'cost', 'msrp'] as const;
 type ProtectedField = (typeof PROTECTED_FIELDS)[number];
 
 /**
@@ -32,7 +32,6 @@ export const ENRICHABLE_FIELDS = [
   'ingredients',
   'features',
   'image_urls',
-  'upc',
 
   // Pet-specific attributes
   'pet_type',
@@ -91,7 +90,7 @@ export interface EnrichmentConfig {
    * Key: field name (from ENRICHABLE_FIELDS)
    * Value: source ID that should be used for this field
    * 
-   * IMPORTANT: PROTECTED_FIELDS (price, sku, cost, msrp) cannot be in this map.
+   * IMPORTANT: PROTECTED_FIELDS (price, upc, cost, msrp) cannot be in this map.
    */
   field_overrides?: Partial<Record<EnrichableField, string>>;
 
@@ -122,7 +121,7 @@ export interface SourceEnrichmentData {
  * Aggregated enrichment data for a product from all sources.
  */
 export interface ProductEnrichmentSummary {
-  sku: string;
+  upc: string;
   /** Data from web scrapers (keyed by scraper name) */
   scraperSources: Record<string, SourceEnrichmentData>;
   /** Current enrichment config */
@@ -156,7 +155,7 @@ export function validateEnrichmentConfig(config: EnrichmentConfig): { valid: boo
   if (config.field_overrides) {
     for (const field of Object.keys(config.field_overrides)) {
       if (isProtectedField(field)) {
-        errors.push(`Cannot override protected field: ${field}. Price and SKU always come from original import.`);
+        errors.push(`Cannot override protected field: ${field}. Price and UPC always come from original import.`);
       }
       if (!isEnrichableField(field)) {
         errors.push(`Unknown enrichable field: ${field}`);

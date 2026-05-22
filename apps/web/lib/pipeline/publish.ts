@@ -103,14 +103,14 @@ function resolveStorefrontName(
 }
 
 
-export async function publishToStorefront(sku: string) {
+export async function publishToStorefront(upc: string) {
   const supabase = await createClient();
 
   try {
     const { data: ingestionProduct, error: fetchError } = await supabase
       .from("products_ingestion")
-      .select("sku, input, consolidated, pipeline_status")
-      .eq("sku", sku)
+      .select("upc, input, consolidated, pipeline_status")
+      .eq("upc", upc)
       .single();
 
     if (fetchError || !ingestionProduct) {
@@ -132,7 +132,7 @@ export async function publishToStorefront(sku: string) {
       return { success: false, error: "Product has no name to publish" };
     }
 
-    const slug = buildProductSlug(name, sku);
+    const slug = buildProductSlug(name, upc);
     if (!slug) {
       return { success: false, error: "Product has no valid slug to publish" };
     }
@@ -146,7 +146,7 @@ export async function publishToStorefront(sku: string) {
         supabase,
         sourceImages,
         {
-          folderPath: buildProductImageStorageFolder("pipeline-storefront", sku),
+          folderPath: buildProductImageStorageFolder("pipeline-storefront", upc),
           onError: (message, error) => {
             console.error(`[Publish] ${message}`, error);
           },
@@ -164,11 +164,11 @@ export async function publishToStorefront(sku: string) {
             },
             updated_at: new Date().toISOString(),
           })
-          .eq("sku", sku);
+          .eq("upc", upc);
 
         if (persistenceError) {
           console.error(
-            `[Publish] Failed to persist durable pipeline images for ${sku}:`,
+            `[Publish] Failed to persist durable pipeline images for ${upc}:`,
             persistenceError,
           );
         }
@@ -176,7 +176,7 @@ export async function publishToStorefront(sku: string) {
     }
 
     const productData: Record<string, unknown> = {
-      sku,
+      upc,
       name,
       slug,
       description: coalesceString(consolidated.description, input.description),
@@ -198,7 +198,7 @@ export async function publishToStorefront(sku: string) {
         input.search_keywords,
       ),
       published_at: new Date().toISOString(),
-      gtin: coalesceString(consolidated.gtin, input.gtin, sku),
+      gtin: coalesceString(consolidated.gtin, input.gtin, upc),
       availability:
         coalesceString(consolidated.availability, input.availability) ??
         DEFAULT_AVAILABILITY_TEXT,
@@ -218,10 +218,10 @@ export async function publishToStorefront(sku: string) {
           updated_at: new Date().toISOString(),
           exported_at: null,
         })
-        .eq("sku", sku);
+        .eq("upc", upc);
 
       if (statusError) {
-        console.error(`[Publish] Failed to move ${sku} into publishing:`, statusError);
+        console.error(`[Publish] Failed to move ${upc} into publishing:`, statusError);
         return {
           success: false as const,
           error: "Failed to move product into publishing",
@@ -241,20 +241,20 @@ export async function publishToStorefront(sku: string) {
             lastUploadedAt: null,
             lastSyncError: null,
             metadata: {
-              sku,
+              upc,
               published_at: new Date().toISOString(),
             },
           },
         ]);
       } catch (syncError) {
-        console.error(`[Publish] Failed to persist ShopSite sync row for ${sku}:`, syncError);
+        console.error(`[Publish] Failed to persist ShopSite sync row for ${upc}:`, syncError);
       }
     };
 
     const { data: existingProduct } = await supabase
       .from("products")
       .select("id")
-      .eq("sku", sku)
+      .eq("upc", upc)
       .maybeSingle();
 
     if (existingProduct) {
@@ -264,7 +264,7 @@ export async function publishToStorefront(sku: string) {
         .eq("id", existingProduct.id);
 
       if (updateError) {
-        console.error(`[Publish] Error updating product ${sku}:`, updateError);
+        console.error(`[Publish] Error updating product ${upc}:`, updateError);
         return {
           success: false,
           error: "Failed to update product in storefront",
@@ -288,7 +288,7 @@ export async function publishToStorefront(sku: string) {
       .single();
 
     if (insertError) {
-      console.error(`[Publish] Error inserting product ${sku}:`, insertError);
+      console.error(`[Publish] Error inserting product ${upc}:`, insertError);
       return { success: false, error: "Failed to create product in storefront" };
     }
 
@@ -303,7 +303,7 @@ export async function publishToStorefront(sku: string) {
 
     return { success: true, action: "created", productId: insertedProduct?.id };
   } catch (err) {
-    console.error(`[Publish] Unexpected error for ${sku}:`, err);
+    console.error(`[Publish] Unexpected error for ${upc}:`, err);
     return {
       success: false,
       error: "An unexpected error occurred during publishing",
@@ -311,36 +311,36 @@ export async function publishToStorefront(sku: string) {
   }
 }
 
-export async function bulkPublishToStorefront(skus: string[], userId?: string) {
+export async function bulkPublishToStorefront(upcs: string[], userId?: string) {
   const results = {
     successCount: 0,
     failCount: 0,
-    errors: [] as { sku: string; error: string }[],
-    publishedSkus: [] as string[],
+    errors: [] as { upc: string; error: string }[],
+    publishedUpcs: [] as string[],
   };
 
   const supabase = await createClient();
 
-  for (const sku of skus) {
+  for (const upc of upcs) {
     try {
-      const result = await publishToStorefront(sku);
+      const result = await publishToStorefront(upc);
       if (result.success) {
         results.successCount++;
-        results.publishedSkus.push(sku);
+        results.publishedUpcs.push(upc);
       } else {
         results.failCount++;
-        results.errors.push({ sku, error: result.error || "Unknown error" });
+        results.errors.push({ upc, error: result.error || "Unknown error" });
       }
     } catch (err) {
       results.failCount++;
       results.errors.push({
-        sku,
+        upc,
         error: err instanceof Error ? err.message : "Unexpected error",
       });
     }
   }
 
-  if (results.publishedSkus.length > 0) {
+  if (results.publishedUpcs.length > 0) {
     try {
       const auditPayload = {
         job_type: "status_update",
@@ -350,7 +350,7 @@ export async function bulkPublishToStorefront(skus: string[], userId?: string) {
         actor_id: userId || null,
         actor_type: userId ? "user" : "system",
         metadata: {
-          updated_skus: results.publishedSkus,
+          updated_upcs: results.publishedUpcs,
           updated_count: results.successCount,
           action: "bulk_publish",
           timestamp: new Date().toISOString(),

@@ -3,8 +3,8 @@ import {
     bulkUpdateStatus,
     getProductsByStatus,
     getProductsByStage,
-    getSkusByStatus,
-    getSkusByStage,
+    getUpcsByStatus,
+    getUpcsByStage,
     getAvailableSources,
     getAvailableSourcesByStage,
 } from '@/lib/pipeline';
@@ -62,13 +62,13 @@ export async function GET(request: NextRequest) {
                 products: [],
                 count: 0,
                 availableSources: [],
-                skus: [],
+                upcs: [],
             });
         }
 
         try {
             if (selectAll) {
-                const { skus, count } = await getSkusByStage(stage, {
+                const { upcs, count } = await getUpcsByStage(stage, {
                     search: search || undefined,
                     startDate,
                     endDate,
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
                 });
 
                 return NextResponse.json({
-                    skus,
+                    upcs,
                     count,
                 });
             }
@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
 
     try {
         if (selectAll) {
-            const { skus, count } = await getSkusByStatus(status, {
+            const { upcs, count } = await getUpcsByStatus(status, {
                 search: search || undefined,
                 startDate,
                 endDate,
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
             });
 
             return NextResponse.json({
-                skus,
+                upcs,
                 count,
             });
         }
@@ -171,10 +171,10 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { skus, newStatus } = body as { skus: string[]; newStatus: string };
+        const { upcs, newStatus } = body as { upcs: string[]; newStatus: string };
 
-        if (!skus || !Array.isArray(skus) || skus.length === 0) {
-            return NextResponse.json({ error: 'SKUs array is required' }, { status: 400 });
+        if (!upcs || !Array.isArray(upcs) || upcs.length === 0) {
+            return NextResponse.json({ error: 'UPCs array is required' }, { status: 400 });
         }
 
         if (!newStatus) {
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const result = await bulkUpdateStatus(skus, newStatus);
+        const result = await bulkUpdateStatus(upcs, newStatus);
 
         if (!result.success) {
             return NextResponse.json({ error: result.error }, { status: 500 });

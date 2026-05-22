@@ -82,7 +82,7 @@ def _emit_runner_log(
     message: str,
     details: dict[str, Any] | None = None,
     scraper_name: str | None = None,
-    sku: str | None = None,
+    upc: str | None = None,
     phase: str = "running",
     flush_immediately: bool = False,
 ) -> None:
@@ -93,7 +93,7 @@ def _emit_runner_log(
             "job_id": job_id,
             "runner_name": runner_name,
             "scraper_name": scraper_name,
-            "sku": sku,
+            "upc": upc,
             "phase": phase,
             "details": details,
             "flush_immediately": flush_immediately,
@@ -125,11 +125,11 @@ async def _run_enrichment_job(
     2. Approved Source Extraction: source_plan in payload
     """
     job_id = attempt.job_id
-    skus = [attempt.sku]
+    upcs = [attempt.upc]
     job_payload = attempt.job_config if isinstance(attempt.job_config, dict) else {}
 
     results: Dict[str, Any] = {
-        "skus_processed": 0,
+        "upcs_processed": 0,
         "scrapers_run": ["enrichment"],
         "data": {},
         "enrichment_results": [],
@@ -153,7 +153,7 @@ async def _run_enrichment_job(
         level="info",
         message=f"Enrichment job {job_id} started",
         details={
-            "sku_count": len(skus),
+            "upc_count": len(upcs),
             "mode": mode_str,
             "model": model,
         },
@@ -162,10 +162,10 @@ async def _run_enrichment_job(
     )
 
     target_url = getattr(attempt, "target_url", None) or job_payload.get("target_url", "")
-    target_sku = skus[0] if skus else job_payload.get("sku", "")
+    target_upc = upcs[0] if upcs else job_payload.get("upc", "")
     domain = getattr(attempt, "domain", None) or job_payload.get("domain")
 
-    if not target_sku:
+    if not target_upc:
         error_msg = "Enrichment job missing SKU"
         _emit_runner_log(
             job_id=job_id,
@@ -186,7 +186,7 @@ async def _run_enrichment_job(
         return await _run_approved_source_extraction(
             attempt=attempt,
             job_payload=job_payload,
-            target_sku=target_sku,
+            target_upc=target_upc,
             runner_name=runner_name,
             log_buffer=log_buffer,
             api_client=api_client,
@@ -219,7 +219,7 @@ async def _run_enrichment_job(
 async def _run_approved_source_extraction(
     attempt: ClaimedEnrichment,
     job_payload: dict[str, Any],
-    target_sku: str,
+    target_upc: str,
     runner_name: str | None,
     log_buffer: list[dict[str, Any]],
     api_client: Any | None,
@@ -240,7 +240,7 @@ async def _run_approved_source_extraction(
 
     source_plan_raw = getattr(attempt, "source_plan", None) or job_payload.get("source_plan")
     if not source_plan_raw:
-        error_msg = f"Approved source extraction for SKU={target_sku} missing source_plan"
+        error_msg = f"Approved source extraction for SKU={target_upc} missing source_plan"
         _emit_runner_log(
             job_id=job_id,
             runner_name=runner_name,
@@ -248,12 +248,12 @@ async def _run_approved_source_extraction(
             log_buffer=log_buffer,
             level="error",
             message=error_msg,
-            sku=target_sku,
+            upc=target_upc,
             phase="failed",
         )
         results["error_message"] = error_msg
         enrichment_result = build_error_result(
-            sku=target_sku,
+            upc=target_upc,
             url="approved_source_extraction",
             error_message=error_msg,
             mode="mixed",
@@ -269,9 +269,9 @@ async def _run_approved_source_extraction(
         job_logging=job_logging,
         log_buffer=log_buffer,
         level="info",
-        message=f"Executing Approved Source Extraction for SKU={target_sku}",
+        message=f"Executing Approved Source Extraction for SKU={target_upc}",
         details={"has_source_plan": True, "requested_extraction_mode": requested_mode},
-        sku=target_sku,
+        upc=target_upc,
         phase="enriching",
     )
 
@@ -280,7 +280,7 @@ async def _run_approved_source_extraction(
 
         plan = parse_source_plan(source_plan_raw)
     except Exception as e:
-        error_msg = f"Failed to parse source plan for SKU={target_sku}: {e}"
+        error_msg = f"Failed to parse source plan for SKU={target_upc}: {e}"
         _emit_runner_log(
             job_id=job_id,
             runner_name=runner_name,
@@ -288,12 +288,12 @@ async def _run_approved_source_extraction(
             log_buffer=log_buffer,
             level="error",
             message=error_msg,
-            sku=target_sku,
+            upc=target_upc,
             phase="failed",
         )
         results["error_message"] = error_msg
         enrichment_result = build_error_result(
-            sku=target_sku,
+            upc=target_upc,
             url="approved_source_extraction",
             error_message=error_msg,
             mode="mixed",
@@ -323,7 +323,7 @@ async def _run_approved_source_extraction(
 
         enrichment_result = await executor.execute()
     except Exception as e:
-        error_msg = f"Executor failed for SKU={target_sku}: {e}"
+        error_msg = f"Executor failed for SKU={target_upc}: {e}"
         _emit_runner_log(
             job_id=job_id,
             runner_name=runner_name,
@@ -331,12 +331,12 @@ async def _run_approved_source_extraction(
             log_buffer=log_buffer,
             level="error",
             message=error_msg,
-            sku=target_sku,
+            upc=target_upc,
             phase="failed",
         )
         results["error_message"] = error_msg
         enrichment_result = build_error_result(
-            sku=target_sku,
+            upc=target_upc,
             url="approved_source_extraction",
             error_message=error_msg,
             mode="mixed",
@@ -344,8 +344,8 @@ async def _run_approved_source_extraction(
         )
 
     if enrichment_result and enrichment_result.status in ("success", "partial"):
-        results["skus_processed"] = 1
-        results["data"][target_sku] = {
+        results["upcs_processed"] = 1
+        results["data"][target_upc] = {
             "enrichment": {
                 "title": enrichment_result.product.name,
                 "brand": enrichment_result.product.brand,
@@ -369,18 +369,18 @@ async def _run_approved_source_extraction(
             job_logging=job_logging,
             log_buffer=log_buffer,
             level="info",
-            message=f"Approved source extraction succeeded for SKU={target_sku}",
+            message=f"Approved source extraction succeeded for SKU={target_upc}",
             details={
                 "confidence": enrichment_result.confidence.overall,
                 "decision": enrichment_result.decision,
                 "requested_extraction_mode": enrichment_result.requested_extraction_mode,
             },
-            sku=target_sku,
+            upc=target_upc,
             phase="completed",
         )
     else:
         confidence = enrichment_result.confidence.overall if enrichment_result else 0.0
-        results["data"][target_sku] = {
+        results["data"][target_upc] = {
             "enrichment": {
                 "error": "All approved sources failed",
                 "confidence": confidence,
@@ -401,8 +401,8 @@ async def _run_approved_source_extraction(
             job_logging=job_logging,
             log_buffer=log_buffer,
             level="warning",
-            message=f"Approved source extraction failed for SKU={target_sku}",
-            sku=target_sku,
+            message=f"Approved source extraction failed for SKU={target_upc}",
+            upc=target_upc,
             phase="failed",
         )
 

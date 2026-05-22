@@ -7,7 +7,7 @@
   },
   "entries": [
     {
-      "sku": "850012047735",
+      "upc": "850012047735",
       "product_name": "The Honest Kitchen Grain Free Turkey & Chicken Clusters Dry Cat Food 1 lb",
       "brand": "The Honest Kitchen",
       "expected_official_domains": [
@@ -53,7 +53,7 @@
       ]
     },
     {
-      "sku": "072318200618",
+      "upc": "072318200618",
       "product_name": "FirstMate Chicken Meal with Blueberries Formula Dry Cat Food 3.96lb",
       "brand": "FirstMate",
       "expected_official_domains": [
@@ -99,7 +99,7 @@
       ]
     },
     {
-      "sku": "045663976866",
+      "upc": "045663976866",
       "product_name": "Four Paws Wee-Wee Cat Pads 11x17 10ct",
       "brand": "Four Paws",
       "expected_official_domains": [
@@ -145,7 +145,7 @@
       ]
     },
     {
-      "sku": "856595005308",
+      "upc": "856595005308",
       "product_name": "Etta Says Flavor Fusion Salmon & Sweet Potato 1.75 oz",
       "brand": "Etta Says!",
       "expected_official_domains": [
@@ -191,7 +191,7 @@
       ]
     },
     {
-      "sku": "813347001018",
+      "upc": "813347001018",
       "product_name": "Stud Muffins Horse Treats 10 oz Tub",
       "brand": "Stud Muffins",
       "expected_official_domains": [
@@ -237,7 +237,7 @@
       ]
     },
     {
-      "sku": "813347003043",
+      "upc": "813347003043",
       "product_name": "Stud Muffins Horse Treats 45 oz Tub",
       "brand": "Stud Muffins",
       "expected_official_domains": [
@@ -283,7 +283,7 @@
       ]
     },
     {
-      "sku": "072318100680",
+      "upc": "072318100680",
       "product_name": "FirstMate Grain-Free Chicken Meal with Blueberries 5 lb.",
       "brand": "FirstMate",
       "expected_official_domains": [
@@ -329,7 +329,7 @@
       ]
     },
     {
-      "sku": "4059433816098",
+      "upc": "4059433816098",
       "product_name": "Schleich Clydesdale Gelding Horse Toy Figurine",
       "brand": "Schleich",
       "expected_official_domains": [
@@ -375,7 +375,7 @@
       ]
     },
     {
-      "sku": "032247886598",
+      "upc": "032247886598",
       "product_name": "Scotts Nature Scapes Color Enhanced Mulch Deep Forest Brown 1.5 cu. ft.",
       "brand": "Scotts",
       "expected_official_domains": [
@@ -421,7 +421,7 @@
       ]
     },
     {
-      "sku": "095668480400",
+      "upc": "095668480400",
       "product_name": "Manna Pro Fresh Flakes Poultry Bedding 12 Lb",
       "brand": "Manna Pro",
       "expected_official_domains": [

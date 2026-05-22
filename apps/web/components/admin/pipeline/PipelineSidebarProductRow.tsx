@@ -15,8 +15,8 @@ interface PipelineSidebarProductRowProps {
   variant: PipelineSidebarTableVariant;
   isFocused: boolean;
   isSelected: boolean;
-  onSelectSku: (sku: string, isSelected: boolean, index?: number, isShiftClick?: boolean, visibleProducts?: PipelineProduct[]) => void;
-  onPreferredSkuChange: (sku: string) => void;
+  onSelectUpc: (upc: string, isSelected: boolean, index?: number, isShiftClick?: boolean, visibleProducts?: PipelineProduct[]) => void;
+  onPreferredUpcChange: (upc: string) => void;
   showCheckboxes?: boolean;
 }
 
@@ -31,8 +31,8 @@ export function PipelineSidebarProductRow({
   variant,
   isFocused,
   isSelected,
-  onSelectSku,
-  onPreferredSkuChange,
+  onSelectUpc,
+  onPreferredUpcChange,
   showCheckboxes = true,
 }: PipelineSidebarProductRowProps) {
   const name = product.consolidated?.name || product.input?.name || "Unknown";
@@ -43,13 +43,13 @@ export function PipelineSidebarProductRow({
 
   return (
     <TableRow
-      key={product.sku}
-      data-sku={product.sku}
+      key={product.upc}
+      data-upc={product.upc}
       className={cn(
         "cursor-pointer transition-colors duration-300 ease-out relative min-w-0 border-b border-border",
         isFocused ? "bg-primary/5" : "bg-background hover:bg-muted/30"
       )}
-      onClick={() => onPreferredSkuChange(product.sku)}
+      onClick={() => onPreferredUpcChange(product.upc)}
     >
       <TableCell className="p-4 whitespace-normal max-w-0 w-full overflow-hidden">
         <div className="flex items-start gap-3 w-full">
@@ -58,8 +58,8 @@ export function PipelineSidebarProductRow({
               className="mt-0.5 shrink-0"
               onClick={(e) => {
                 e.stopPropagation();
-                onSelectSku(
-                  product.sku,
+                onSelectUpc(
+                  product.upc,
                   !isSelected,
                   index,
                   e.shiftKey,
@@ -72,8 +72,8 @@ export function PipelineSidebarProductRow({
                 onCheckedChange={(checked) => {
                   // Handle keyboard interaction for checkbox
                   if (typeof window !== 'undefined' && !(window.event instanceof MouseEvent)) {
-                    onSelectSku(
-                      product.sku,
+                    onSelectUpc(
+                      product.upc,
                       checked === true,
                       index,
                       false,
@@ -83,8 +83,8 @@ export function PipelineSidebarProductRow({
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onSelectSku(
-                    product.sku,
+                  onSelectUpc(
+                    product.upc,
                     !isSelected,
                     index,
                     e.shiftKey,
@@ -98,7 +98,7 @@ export function PipelineSidebarProductRow({
           <div className="flex-1 min-w-0 overflow-hidden">
             <div className="flex justify-between items-start gap-2 min-w-0">
               <div className="font-semibold text-xs text-muted-foreground truncate flex-1 uppercase tracking-wider">
-                {product.sku}
+                {product.upc}
               </div>
               {price !== undefined && (
                 <div className="text-sm font-bold text-foreground shrink-0">
@@ -139,4 +139,3 @@ export function PipelineSidebarProductRow({
     </TableRow>
   );
 }
-

@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
   const { data: enrichmentJobs, error: enrichmentError } = await supabase
     .from("enrichment_jobs")
     .select(
-      "id, status, skus, total_count, completed_count, failed_count, model, mode, config, token_usage, cost_estimate, error_message, created_by, claimed_by, started_at, completed_at, created_at, updated_at",
+      "id, status, upcs, total_count, completed_count, failed_count, model, mode, config, token_usage, cost_estimate, error_message, created_by, claimed_by, started_at, completed_at, created_at, updated_at",
     )
     .or(
       `status.not.in.(completed,completed_with_errors,failed,cancelled),and(status.in.(completed,completed_with_errors,failed,cancelled),created_at.gt.${last48Hours})`,

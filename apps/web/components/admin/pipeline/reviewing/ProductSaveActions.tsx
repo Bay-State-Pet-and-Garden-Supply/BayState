@@ -9,7 +9,7 @@ interface ProductSaveActionsProps {
   productName: string;
   originalName: string;
   productPrice: string;
-  selectedSku: string | null;
+  selectedUpc: string | null;
   isDirty: boolean;
   hasPendingCopilotReview: boolean;
   saving: boolean;
@@ -25,7 +25,7 @@ export function ProductSaveActions({
   productName,
   originalName,
   productPrice,
-  selectedSku,
+  selectedUpc,
   isDirty,
   hasPendingCopilotReview,
   saving,
@@ -50,7 +50,7 @@ export function ProductSaveActions({
             </h2>
             <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
               <span className="rounded-sm bg-muted border border-border px-1.5 py-0.5 font-semibold text-foreground">
-                {selectedSku}
+                {selectedUpc}
               </span>
               <span>•</span>
               <span className="font-bold text-foreground">

@@ -45,7 +45,7 @@ class ClaimedEnrichment:
 
     attempt_id: str
     job_id: str
-    sku: str
+    upc: str
     target_url: str
     domain: str | None = None
     model: str | None = None
@@ -411,11 +411,11 @@ class ScraperAPIClient:
                 return None
 
             first = attempts[0]
-            logger.info(f"Claimed enrichment attempt {first.get('id')} for SKU {first.get('sku')}")
+            logger.info(f"Claimed enrichment attempt {first.get('id')} for SKU {first.get('upc')}")
             return ClaimedEnrichment(
                 attempt_id=first.get("id", ""),
                 job_id=first.get("job_id", ""),
-                sku=first.get("sku", ""),
+                upc=first.get("upc", ""),
                 target_url=first.get("source_url", ""),
                 domain=first.get("domain"),
                 model=first.get("model"),
@@ -492,7 +492,7 @@ class ScraperAPIClient:
                 "_attempt_id": attempt_id,
                 "_status": status,
                 "schema_version": "v1",
-                "sku": "",
+                "upc": "",
                 "source": {"url": ""},
                 "status": "failed",
                 "extracted_at": datetime.utcnow().isoformat() if "datetime" in dir() else "",

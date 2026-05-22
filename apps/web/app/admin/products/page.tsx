@@ -27,7 +27,7 @@ export default async function AdminProductsPage({
     .select(
       `
         id,
-        sku,
+        upc,
         name,
         slug,
         description,
@@ -57,7 +57,7 @@ export default async function AdminProductsPage({
     .limit(50);
 
   if (search) {
-    productsQuery = productsQuery.or(`name.ilike.%${search}%,sku.ilike.%${search}%`);
+    productsQuery = productsQuery.or(`name.ilike.%${search}%,upc.ilike.%${search}%`);
   }
   if (brand && brand !== 'all') {
     productsQuery = productsQuery.eq('brand_id', brand);
@@ -85,7 +85,7 @@ export default async function AdminProductsPage({
 
     return {
       id: product.id,
-      sku: product.sku || '',
+      upc: product.upc || '',
       name: product.name,
       slug: product.slug,
       description: product.description,

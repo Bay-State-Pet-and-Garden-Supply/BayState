@@ -28,14 +28,14 @@ class ExcelInputProduct(BaseModel):
     overwritten by scrapers or LLM consolidation.
 
     Attributes:
-        sku: Product SKU - PRIMARY KEY, never changes throughout pipeline
+        upc: Product SKU - PRIMARY KEY, never changes throughout pipeline
         price: Register price - FROZEN, never overwritten by scrapers/LLM
         existing_name: Optional current name from register (for reference)
     """
 
     model_config = ConfigDict(frozen=True)  # Immutable!
 
-    sku: str = Field(..., description="Product SKU - PRIMARY KEY, never changes")
+    upc: str = Field(..., description="Product SKU - PRIMARY KEY, never changes")
     price: str = Field(..., description="Register price - FROZEN, never overwritten")
 
     # Optional metadata from Excel
@@ -45,11 +45,11 @@ class ExcelInputProduct(BaseModel):
 
     def __hash__(self) -> int:
         """Allow use in sets and as dict keys."""
-        return hash(self.sku)
+        return hash(self.upc)
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, ExcelInputProduct):
-            return self.sku == other.sku
+            return self.upc == other.upc
         return False
 
 
@@ -66,7 +66,7 @@ class RawScrapedProduct(BaseModel):
     be used in the final product. Excel price is the source of truth.
 
     Attributes:
-        sku: Reference to Excel SKU
+        upc: Reference to Excel SKU
         source: Which scraper produced this (e.g., "amazon", "chewy")
         name: Product name as scraped
         brand: Brand name as scraped
@@ -79,7 +79,7 @@ class RawScrapedProduct(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    sku: str  # Reference to Excel SKU
+    upc: str  # Reference to Excel SKU
     source: str  # Which scraper produced this (e.g., "amazon", "chewy")
 
     # Enrichment fields (these CAN be used in consolidation)

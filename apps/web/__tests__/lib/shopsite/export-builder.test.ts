@@ -15,7 +15,7 @@ describe('preparePublishedShopSiteExport', () => {
     it('builds ShopSite-ready image paths grouped by brand', () => {
         const rows: ShopSiteExportSourceRow[] = [
             {
-                sku: '011641750056',
+                upc: '011641750056',
                 input: {
                     name: 'Feathered Friend Favorite 20 lb.',
                     price: 24.99,
@@ -70,13 +70,13 @@ describe('preparePublishedShopSiteExport', () => {
     it('falls back to selected image metadata and deconflicts duplicate stems', () => {
         const rows: ShopSiteExportSourceRow[] = [
             {
-                sku: 'SKU-1',
+                upc: 'SKU-1',
                 input: { name: 'Duplicate Product', price: 9.99 },
                 consolidated: { name: 'Duplicate Product', brand_id: 'brand-2' },
                 selected_images: [{ url: 'https://cdn.example.com/source/duplicate-one.png' }],
             },
             {
-                sku: 'SKU-2',
+                upc: 'SKU-2',
                 input: { name: 'Duplicate Product', price: 10.99 },
                 consolidated: {
                     name: 'Duplicate Product',
@@ -107,7 +107,7 @@ describe('loadPublishedShopSiteExport', () => {
         const publishedRange = jest.fn().mockResolvedValue({
             data: [
                 {
-                    sku: 'SKU-1',
+                    upc: 'SKU-1',
                     input: { name: 'Exported Product', price: 12.99 },
                     consolidated: { name: 'Exported Product', brand_id: 'brand-1' },
                     selected_images: [],
@@ -166,7 +166,7 @@ describe('loadPublishedShopSiteExport', () => {
         const publishedRange = jest.fn().mockResolvedValue({
             data: [
                 {
-                    sku: 'SKU-ARCHIVED',
+                    upc: 'SKU-ARCHIVED',
                     input: { name: 'Archived Export', price: 12.99 },
                     consolidated: { name: 'Archived Export', brand_id: 'brand-1' },
                     selected_images: [],
@@ -209,12 +209,12 @@ describe('loadPublishedShopSiteExport', () => {
         (createAdminClient as jest.Mock).mockResolvedValue(supabase);
 
         const result = await loadPublishedShopSiteExport({
-            skus: ['SKU-ARCHIVED'],
-            includeExportedRequestedSkus: true,
+            upcs: ['SKU-ARCHIVED'],
+            includeExportedRequestedUpcs: true,
         });
 
         expect(ingestionQuery.eq).toHaveBeenCalledWith('pipeline_status', 'publishing');
-        expect(ingestionQuery.in).toHaveBeenCalledWith('sku', ['SKU-ARCHIVED']);
+        expect(ingestionQuery.in).toHaveBeenCalledWith('upc', ['SKU-ARCHIVED']);
         expect(ingestionQuery.is).not.toHaveBeenCalledWith('exported_at', null);
         expect(result.products).toHaveLength(1);
         expect(result.products[0].sku).toBe('SKU-ARCHIVED');

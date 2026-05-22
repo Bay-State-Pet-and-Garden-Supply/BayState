@@ -80,7 +80,7 @@ function mergeValidation(
   const next = incoming ?? {};
 
   return {
-    sku_match: next.sku_match ?? current.sku_match ?? null,
+    upc_match: next.upc_match ?? current.upc_match ?? null,
     warnings: Array.from(new Set([...(current.warnings ?? []), ...(next.warnings ?? [])])),
     missing_required: Array.from(new Set([...(current.missing_required ?? []), ...(next.missing_required ?? [])])),
   };

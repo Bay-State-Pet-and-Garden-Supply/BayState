@@ -200,7 +200,7 @@ function withMergedImageCandidates(product: PipelineProduct): PipelineProduct {
     };
   } catch (error) {
     console.error(
-      `Error merging image candidates for SKU ${product.sku}:`,
+      `Error merging image candidates for UPC ${product.upc}:`,
       error,
     );
     return product;
@@ -233,7 +233,7 @@ export async function getProductsByStatus(
       `*, cohort_batches(${COHORT_BATCH_METADATA_SELECT})`,
       { count: "exact" },
     )
-    .order("sku", { ascending: true })
+    .order("upc", { ascending: true })
     .eq("pipeline_status", status)
     .is("exported_at", null);
 
@@ -247,7 +247,7 @@ export async function getProductsByStatus(
 
   if (options?.search) {
     query = query.or(
-      `sku.ilike.%${options.search}%,input->>name.ilike.%${options.search}%`,
+      `upc.ilike.%${options.search}%,input->>name.ilike.%${options.search}%`,
     );
   }
 
@@ -388,7 +388,7 @@ export async function getProductsByStage(
   let query = supabase
     .from(querySource.table)
     .select("*", { count: "exact" })
-    .order("sku", { ascending: true });
+    .order("upc", { ascending: true });
 
   if (querySource.status) {
     query = query.eq("pipeline_status", querySource.status);
@@ -412,7 +412,7 @@ export async function getProductsByStage(
 
   if (options?.search) {
     query = query.or(
-      `sku.ilike.%${options.search}%,input->>name.ilike.%${options.search}%`,
+      `upc.ilike.%${options.search}%,input->>name.ilike.%${options.search}%`,
     );
   }
 
@@ -469,7 +469,7 @@ export async function getProductsByStage(
  * Fetches all SKUs matching a pipeline status + filters.
  * Used by "select all matching" flows in the admin pipeline.
  */
-export async function getSkusByStatus(
+export async function getUpcsByStatus(
   status: PersistedPipelineStatus,
   options?: {
     search?: string;
@@ -481,13 +481,13 @@ export async function getSkusByStatus(
     product_line?: string;
     cohort_id?: string;
   },
-): Promise<{ skus: string[]; count: number }> {
+): Promise<{ upcs: string[]; count: number }> {
   const supabase = await createClient();
 
   let query = supabase
     .from("products_ingestion")
-    .select("sku", { count: "exact" })
-    .order("sku", { ascending: true })
+    .select("upc", { count: "exact" })
+    .order("upc", { ascending: true })
     .eq("pipeline_status", status)
     .is("exported_at", null);
 
@@ -501,7 +501,7 @@ export async function getSkusByStatus(
 
   if (options?.search) {
     query = query.or(
-      `sku.ilike.%${options.search}%,input->>name.ilike.%${options.search}%`,
+      `upc.ilike.%${options.search}%,input->>name.ilike.%${options.search}%`,
     );
   }
 
@@ -528,16 +528,16 @@ export async function getSkusByStatus(
   const { data, error, count } = await query;
   if (error) {
     console.error("Error fetching SKUs by status:", error);
-    return { skus: [], count: 0 };
+    return { upcs: [], count: 0 };
   }
 
   return {
-    skus: (data || []).map((row: { sku: string }) => row.sku).filter(Boolean),
+    upcs: (data || []).map((row: { upc: string }) => row.upc).filter(Boolean),
     count: count || 0,
   };
 }
 
-export async function getSkusByStage(
+export async function getUpcsByStage(
   stage: StageBackedPipelineStage,
   options?: {
     search?: string;
@@ -549,14 +549,14 @@ export async function getSkusByStage(
     product_line?: string;
     cohort_id?: string;
   },
-): Promise<{ skus: string[]; count: number }> {
+): Promise<{ upcs: string[]; count: number }> {
   const supabase = await createClient();
   const querySource = getStageQuerySource(stage);
 
   let query = supabase
     .from(querySource.table)
-    .select("sku", { count: "exact" })
-    .order("sku", { ascending: true });
+    .select("upc", { count: "exact" })
+    .order("upc", { ascending: true });
 
   if (querySource.status) {
     query = query.eq("pipeline_status", querySource.status);
@@ -580,7 +580,7 @@ export async function getSkusByStage(
 
   if (options?.search) {
     query = query.or(
-      `sku.ilike.%${options.search}%,input->>name.ilike.%${options.search}%`,
+      `upc.ilike.%${options.search}%,input->>name.ilike.%${options.search}%`,
     );
   }
 
@@ -607,11 +607,11 @@ export async function getSkusByStage(
   const { data, error, count } = await query;
   if (error) {
     console.error(`Error fetching SKUs for stage ${stage}:`, error);
-    return { skus: [], count: 0 };
+    return { upcs: [], count: 0 };
   }
 
   return {
-    skus: (data || []).map((row: { sku: string }) => row.sku).filter(Boolean),
+    upcs: (data || []).map((row: { upc: string }) => row.upc).filter(Boolean),
     count: count || 0,
   };
 }
@@ -825,13 +825,13 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
 
 /**
  * Updates the status of multiple products.
- * @param skus - Array of SKUs to update
+ * @param upcs - Array of SKUs to update
  * @param newStatus - Target pipeline status
  * @param userId - ID of the user performing the action (for audit log)
  * @param resetResults - If true, clears data for the stages being left
  */
 export async function bulkUpdateStatus(
-  skus: string[],
+  upcs: string[],
   newStatus: PersistedPipelineStatus,
   userId?: string,
   resetResults: boolean = false,
@@ -849,27 +849,27 @@ export async function bulkUpdateStatus(
 
   const { data: currentProducts, error: fetchError } = await supabase
     .from("products_ingestion")
-    .select("sku, pipeline_status")
-    .in("sku", skus);
+    .select("upc, pipeline_status")
+    .in("upc", upcs);
 
   if (fetchError) {
     console.error("Error fetching current product statuses:", fetchError);
     return { success: false, error: fetchError.message, updatedCount: 0 };
   }
 
-  const invalidSkus = (currentProducts || [])
+  const invalidUpcs = (currentProducts || [])
     .filter((product: { pipeline_status: string }) => {
       return (
         !isPersistedStatus(product.pipeline_status) ||
         !validateStatusTransition(product.pipeline_status, targetStatus)
       );
     })
-    .map((product: { sku: string }) => product.sku);
+    .map((product: { upc: string }) => product.upc);
 
-  if (invalidSkus.length > 0) {
+  if (invalidUpcs.length > 0) {
     return {
       success: false,
-      error: `${getInvalidTargetStatusError(targetStatus)} SKU(s): ${invalidSkus.join(", ")}`,
+      error: `${getInvalidTargetStatusError(targetStatus)} SKU(s): ${invalidUpcs.join(", ")}`,
       updatedCount: 0,
     };
   }
@@ -905,7 +905,7 @@ export async function bulkUpdateStatus(
       await supabase
         .from("enrichment_targets")
         .delete()
-        .in("sku", skus);
+        .in("upc", upcs);
     } else if (targetStatus === "processed") {
       updatePayload.consolidated = null;
       updatePayload.image_candidates = [];
@@ -919,7 +919,7 @@ export async function bulkUpdateStatus(
   const { error, count } = await supabase
     .from("products_ingestion")
     .update(updatePayload)
-    .in("sku", skus);
+    .in("upc", upcs);
 
   if (error) {
     console.error("Error bulk updating product status:", error);
@@ -936,8 +936,8 @@ export async function bulkUpdateStatus(
       actor_id: userId || null,
       actor_type: userId ? "user" : "system",
       metadata: {
-        updated_skus: skus,
-        updated_count: count || skus.length,
+        updated_upcs: upcs,
+        updated_count: count || upcs.length,
         timestamp: new Date().toISOString(),
       },
     };
@@ -956,21 +956,21 @@ export async function bulkUpdateStatus(
     console.error("Error logging to audit_log:", err);
   }
 
-  return { success: true, updatedCount: count || skus.length };
+  return { success: true, updatedCount: count || upcs.length };
 }
 
 /**
  * Fetches a single product by SKU.
  */
-async function getProductBySku(
-  sku: string,
+async function getProductByUpc(
+  upc: string,
 ): Promise<PipelineProduct | null> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("products_ingestion")
     .select("*")
-    .eq("sku", sku)
+    .eq("upc", upc)
     .single();
 
   if (error || !data) {
@@ -986,7 +986,7 @@ async function getProductBySku(
  * Logs deletion to pipeline_audit_log for audit trail.
  */
 export async function bulkDeleteProducts(
-  skus: string[],
+  upcs: string[],
   userId?: string,
 ): Promise<{ success: boolean; error?: string; deletedCount: number }> {
   const supabase = await createClient();
@@ -996,7 +996,7 @@ export async function bulkDeleteProducts(
     const { error: deleteError, count } = await supabase
       .from("products_ingestion")
       .delete()
-      .in("sku", skus);
+      .in("upc", upcs);
 
     if (deleteError) {
       console.error("Error deleting products:", deleteError);
@@ -1012,8 +1012,8 @@ export async function bulkDeleteProducts(
       actor_id: userId || null,
       actor_type: userId ? "user" : "system",
       metadata: {
-        deleted_skus: skus,
-        deleted_count: count || skus.length,
+        deleted_upcs: upcs,
+        deleted_count: count || upcs.length,
         timestamp: new Date().toISOString(),
       },
     };
@@ -1030,7 +1030,7 @@ export async function bulkDeleteProducts(
       // Non-fatal: audit log failure shouldn't prevent deletion
     }
 
-    return { success: true, deletedCount: count || skus.length };
+    return { success: true, deletedCount: count || upcs.length };
   } catch (err) {
     const errorMessage =
       err instanceof Error ? err.message : "Unknown error during deletion";
@@ -1045,7 +1045,7 @@ export async function bulkDeleteProducts(
  * to be retried from scratch, including URL review.
  */
 export async function clearEnrichmentResultsAndResetStatus(
-  skus: string[],
+  upcs: string[],
   userId?: string,
 ): Promise<{ success: boolean; error?: string; updatedCount: number }> {
   const supabase = await createClient();
@@ -1065,7 +1065,7 @@ export async function clearEnrichmentResultsAndResetStatus(
         retry_count: 0,
         updated_at: new Date().toISOString(),
       })
-      .in("sku", skus);
+      .in("upc", upcs);
 
     if (error) {
       console.error("Error clearing enrichment results:", error);
@@ -1076,7 +1076,7 @@ export async function clearEnrichmentResultsAndResetStatus(
     await supabase
       .from("enrichment_targets")
       .delete()
-      .in("sku", skus);
+      .in("upc", upcs);
 
     // Log the action to audit_log
     const auditPayload = {
@@ -1087,8 +1087,8 @@ export async function clearEnrichmentResultsAndResetStatus(
       actor_id: userId || null,
       actor_type: userId ? "user" : "system",
       metadata: {
-        cleared_skus: skus,
-        cleared_count: count || skus.length,
+        cleared_upcs: upcs,
+        cleared_count: count || upcs.length,
         timestamp: new Date().toISOString(),
       },
     };
@@ -1104,7 +1104,7 @@ export async function clearEnrichmentResultsAndResetStatus(
       );
     }
 
-    return { success: true, updatedCount: count || skus.length };
+    return { success: true, updatedCount: count || upcs.length };
   } catch (err) {
     const errorMessage =
       err instanceof Error
@@ -1118,13 +1118,13 @@ export async function clearEnrichmentResultsAndResetStatus(
 /**
  * Fetches selected images for a product by SKU.
  */
-async function getSelectedImages(sku: string): Promise<SelectedImage[]> {
+async function getSelectedImages(upc: string): Promise<SelectedImage[]> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("products_ingestion")
     .select("selected_images")
-    .eq("sku", sku)
+    .eq("upc", upc)
     .single();
 
   if (error || !data) {
@@ -1141,7 +1141,7 @@ async function getSelectedImages(sku: string): Promise<SelectedImage[]> {
  * Max 10 images allowed.
  */
 async function setSelectedImages(
-  sku: string,
+  upc: string,
   imageUrls: string[],
   userId?: string,
 ): Promise<{ success: boolean; error?: string }> {
@@ -1157,7 +1157,7 @@ async function setSelectedImages(
     const { data: product, error: fetchError } = await supabase
       .from("products_ingestion")
       .select("image_candidates, selected_images")
-      .eq("sku", sku)
+      .eq("upc", upc)
       .single();
 
     if (fetchError || !product) {
@@ -1191,7 +1191,7 @@ async function setSelectedImages(
         selected_images: selectedImages,
         updated_at: new Date().toISOString(),
       })
-      .eq("sku", sku);
+      .eq("upc", upc);
 
     if (updateError) {
       console.error("Error updating selected images:", updateError);
@@ -1208,7 +1208,7 @@ async function setSelectedImages(
         actor_id: userId || null,
         actor_type: userId ? "user" : "system",
         metadata: {
-          sku,
+          upc,
           selected_images: selectedImages,
           timestamp: new Date().toISOString(),
         },

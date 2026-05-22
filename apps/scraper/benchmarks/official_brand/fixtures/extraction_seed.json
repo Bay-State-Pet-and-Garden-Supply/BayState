@@ -7,7 +7,7 @@
   },
   "entries": [
     {
-      "sku": "850012047735",
+      "upc": "850012047735",
       "product_name": "The Honest Kitchen Grain Free Turkey & Chicken Clusters Dry Cat Food 1 lb",
       "brand": "The Honest Kitchen",
       "source_url": "https://www.thehonestkitchen.com/products/grain-free-turkey-and-chicken-whole-food-clusters-dry-cat-food",
@@ -24,7 +24,7 @@
       }
     },
     {
-      "sku": "072318200618",
+      "upc": "072318200618",
       "product_name": "FirstMate Chicken Meal with Blueberries Formula Dry Cat Food 3.96lb",
       "brand": "FirstMate",
       "source_url": "https://firstmate.com/product/chicken-meal-with-blueberries-formula-for-cats/",
@@ -41,7 +41,7 @@
       }
     },
     {
-      "sku": "045663976866",
+      "upc": "045663976866",
       "product_name": "Four Paws Wee-Wee Cat Pads 11x17 10ct",
       "brand": "Four Paws",
       "source_url": "https://www.fourpaws.com/products/wee-wee-cat-litter-box-system-pads",
@@ -59,7 +59,7 @@
     },
 
     {
-      "sku": "072318100680",
+      "upc": "072318100680",
       "product_name": "FirstMate Grain-Free Chicken Meal with Blueberries 5 lb.",
       "brand": "FirstMate",
       "source_url": "https://firstmate.com/product/chicken-meal-with-blueberries-formula/",
@@ -76,7 +76,7 @@
       }
     },
     {
-      "sku": "4059433816098",
+      "upc": "4059433816098",
       "product_name": "Schleich Clydesdale Gelding Horse Toy Figurine",
       "brand": "Schleich",
       "source_url": "https://us.schleich-s.com/products/clydesdale-gelding-13808-2",
@@ -93,7 +93,7 @@
       }
     },
     {
-      "sku": "032247886598",
+      "upc": "032247886598",
       "product_name": "Scotts Nature Scapes Color Enhanced Mulch Deep Forest Brown 1.5 cu. ft.",
       "brand": "Scotts",
       "source_url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
@@ -110,7 +110,7 @@
       }
     },
     {
-      "sku": "095668480400",
+      "upc": "095668480400",
       "product_name": "Manna Pro Fresh Flakes Poultry Bedding 12 Lb",
       "brand": "Manna Pro",
       "source_url": "https://mannapro.com/products/fresh-flakes-poultry-bedding",

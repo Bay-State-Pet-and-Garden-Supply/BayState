@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 
 interface PipelineActionsProps {
     selectedCount: number;
-    selectedSkus: string[];
+    selectedUpcs: string[];
     currentStatus: string;
     onApprove: () => void;
     onReject: () => void;

@@ -34,16 +34,16 @@ import {
 
 interface ProcessedResultsViewProps {
   products: PipelineProduct[];
-  selectedSkus: Set<string>;
-  onSelectSku: (
-    sku: string,
+  selectedUpcs: Set<string>;
+  onSelectUpc: (
+    upc: string,
     selected: boolean,
     index?: number,
     isShiftClick?: boolean,
     visibleProducts?: PipelineProduct[],
   ) => void;
-  onSelectAll?: (skus: string[]) => void;
-  onDeselectAll?: (skus: string[]) => void;
+  onSelectAll?: (upcs: string[]) => void;
+  onDeselectAll?: (upcs: string[]) => void;
   onRefresh: (silent?: boolean) => void;
   search?: string;
   onSearchChange?: (value: string) => void;
@@ -129,8 +129,8 @@ function isSourceDetails(value: unknown): value is SourceDetails {
 
 export function ProcessedResultsView({
   products,
-  selectedSkus,
-  onSelectSku,
+  selectedUpcs,
+  onSelectUpc,
   onSelectAll,
   onDeselectAll,
   onRefresh,
@@ -147,17 +147,17 @@ export function ProcessedResultsView({
 }: ProcessedResultsViewProps) {
   // 1. Data Sorting
   const sortedProducts = useMemo(() => {
-    return [...products].sort((a, b) => a.sku.localeCompare(b.sku));
+    return [...products].sort((a, b) => a.upc.localeCompare(b.upc));
   }, [products]);
 
   // 2. Selection states
-  const [preferredSku, setPreferredSku] = useState<string | null>(
-    sortedProducts.length > 0 ? sortedProducts[0].sku : null,
+  const [preferredUpc, setPreferredUpc] = useState<string | null>(
+    sortedProducts.length > 0 ? sortedProducts[0].upc : null,
   );
 
   const selectedProduct = useMemo(() => {
-    return sortedProducts.find((p) => p.sku === preferredSku) || null;
-  }, [sortedProducts, preferredSku]);
+    return sortedProducts.find((p) => p.upc === preferredUpc) || null;
+  }, [sortedProducts, preferredUpc]);
 
   const sources = selectedProduct?.sources || EMPTY_SOURCES;
   const sourceItems = useMemo(
@@ -208,32 +208,32 @@ export function ProcessedResultsView({
   useEffect(() => {
     const prevProducts = prevProductsRef.current;
     if (prevProducts !== sortedProducts) {
-      const currentExists = sortedProducts.some((p) => p.sku === preferredSku);
-      if (!currentExists && preferredSku) {
-        const prevIndex = prevProducts.findIndex((p) => p.sku === preferredSku);
+      const currentExists = sortedProducts.some((p) => p.upc === preferredUpc);
+      if (!currentExists && preferredUpc) {
+        const prevIndex = prevProducts.findIndex((p) => p.upc === preferredUpc);
         if (prevIndex !== -1) {
           const nextIndex = Math.min(prevIndex, sortedProducts.length - 1);
           if (nextIndex >= 0) {
-            setPreferredSku(sortedProducts[nextIndex].sku);
+            setPreferredUpc(sortedProducts[nextIndex].upc);
           } else {
-            setPreferredSku(null);
+            setPreferredUpc(null);
           }
         }
-      } else if (!preferredSku && sortedProducts.length > 0) {
-        setPreferredSku(sortedProducts[0].sku);
+      } else if (!preferredUpc && sortedProducts.length > 0) {
+        setPreferredUpc(sortedProducts[0].upc);
       }
       prevProductsRef.current = sortedProducts;
     }
-  }, [sortedProducts, preferredSku]);
+  }, [sortedProducts, preferredUpc]);
 
   // Reset image carousel index and description expand state when product/source switches
   useEffect(() => {
     setCurrentImageIndex(0);
     setIsDescriptionExpanded(false);
-  }, [preferredSku, activeSource]);
+  }, [preferredUpc, activeSource]);
 
   // 4. Bulk operations callbacks
-  const canBulkSubmit = selectedSkus.size > 0 && !submitting;
+  const canBulkSubmit = selectedUpcs.size > 0 && !submitting;
 
   const handleSubmitForConsolidation = useCallback(async () => {
     if (!canBulkSubmit) return;
@@ -243,7 +243,7 @@ export function ProcessedResultsView({
       const res = await adminFetch("/api/admin/consolidation/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ skus: Array.from(selectedSkus) }),
+        body: JSON.stringify({ upcs: Array.from(selectedUpcs) }),
       });
 
       if (!res.ok) {
@@ -252,7 +252,7 @@ export function ProcessedResultsView({
       }
 
       toast.success(
-        `${selectedSkus.size} product${selectedSkus.size === 1 ? "" : "s"} submitted for consolidation`
+        `${selectedUpcs.size} product${selectedUpcs.size === 1 ? "" : "s"} submitted for consolidation`
       );
       onRefresh(true);
     } catch (err) {
@@ -261,17 +261,17 @@ export function ProcessedResultsView({
       setSubmitting(false);
       setShowConsolidationDialog(false);
     }
-  }, [canBulkSubmit, selectedSkus, onRefresh]);
+  }, [canBulkSubmit, selectedUpcs, onRefresh]);
 
   const handleClearResults = useCallback(async () => {
-    const skus = Array.from(selectedSkus);
+    const upcs = Array.from(selectedUpcs);
     setSubmitting(true);
     try {
       const res = await adminFetch("/api/admin/pipeline/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          skus,
+          upcs,
           toStatus: "imported",
           resetResults: true,
         }),
@@ -282,7 +282,7 @@ export function ProcessedResultsView({
         throw new Error(err.error || "Failed to reset products");
       }
 
-      toast.success(`${skus.length} product${skus.length === 1 ? "" : "s"} returned to Imported`);
+      toast.success(`${upcs.length} product${upcs.length === 1 ? "" : "s"} returned to Imported`);
       onRefresh(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Reset failed");
@@ -290,7 +290,7 @@ export function ProcessedResultsView({
       setSubmitting(false);
       setShowClearDialog(false);
     }
-  }, [selectedSkus, onRefresh]);
+  }, [selectedUpcs, onRefresh]);
 
   // 5. Single product action callbacks
   const handleSingleConsolidate = async (product: PipelineProduct) => {
@@ -299,7 +299,7 @@ export function ProcessedResultsView({
       const res = await adminFetch("/api/admin/consolidation/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ skus: [product.sku] }),
+        body: JSON.stringify({ upcs: [product.upc] }),
       });
 
       if (!res.ok) {
@@ -307,7 +307,7 @@ export function ProcessedResultsView({
         throw new Error(err.error || "Failed to submit for consolidation");
       }
 
-      toast.success(`Product ${product.sku} submitted for consolidation`);
+      toast.success(`Product ${product.upc} submitted for consolidation`);
       onRefresh(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Consolidation submission failed");
@@ -324,7 +324,7 @@ export function ProcessedResultsView({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          skus: [product.sku],
+          upcs: [product.upc],
           toStatus: "imported",
           resetResults: true,
         }),
@@ -335,7 +335,7 @@ export function ProcessedResultsView({
         throw new Error(err.error || "Failed to reset product");
       }
 
-      toast.success(`Product ${product.sku} returned to Imported`);
+      toast.success(`Product ${product.upc} returned to Imported`);
       onRefresh(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Reset failed");
@@ -376,7 +376,7 @@ export function ProcessedResultsView({
       );
       const nextStatus = Object.keys(cleanedSources).length === 0 ? "imported" : undefined;
 
-      const res = await adminFetch(`/api/admin/pipeline/${encodeURIComponent(selectedProduct.sku)}`, {
+      const res = await adminFetch(`/api/admin/pipeline/${encodeURIComponent(selectedProduct.upc)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -456,17 +456,17 @@ export function ProcessedResultsView({
             <Checkbox
               checked={
                 sortedProducts.length > 0 &&
-                sortedProducts.every((p) => selectedSkus.has(p.sku))
+                sortedProducts.every((p) => selectedUpcs.has(p.upc))
                   ? true
-                  : sortedProducts.some((p) => selectedSkus.has(p.sku))
+                  : sortedProducts.some((p) => selectedUpcs.has(p.upc))
                     ? "indeterminate"
                     : false
               }
               onCheckedChange={(checked) => {
                 if (checked) {
-                  onSelectAll?.(sortedProducts.map((p) => p.sku));
+                  onSelectAll?.(sortedProducts.map((p) => p.upc));
                 } else {
-                  onDeselectAll?.(sortedProducts.map((p) => p.sku));
+                  onDeselectAll?.(sortedProducts.map((p) => p.upc));
                 }
               }}
               className="h-4 w-4 rounded-none border border-border accent-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground"
@@ -493,12 +493,12 @@ export function ProcessedResultsView({
         <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b border-border text-xs">
           <div className="flex items-center gap-1 text-muted-foreground font-medium">
             <span>{products.length} processed</span>
-            {selectedSkus.size > 0 && (
-              <span className="text-foreground font-bold">({selectedSkus.size} selected)</span>
+            {selectedUpcs.size > 0 && (
+              <span className="text-foreground font-bold">({selectedUpcs.size} selected)</span>
             )}
           </div>
           <div className="flex items-center gap-1.5">
-            {selectedSkus.size > 0 && (
+            {selectedUpcs.size > 0 && (
               <>
                 <Button
                   size="sm"
@@ -543,13 +543,13 @@ export function ProcessedResultsView({
             <PipelineSidebarTable
               variant="processed"
               products={products}
-              selectedSkus={selectedSkus}
-              onSelectSku={onSelectSku as any}
+              selectedUpcs={selectedUpcs}
+              onSelectUpc={onSelectUpc as any}
               onSelectAll={onSelectAll}
               onDeselectAll={onDeselectAll}
               groupedProducts={groupedProducts as any}
-              preferredSku={preferredSku}
-              onPreferredSkuChange={setPreferredSku}
+              preferredUpc={preferredUpc}
+              onPreferredUpcChange={setPreferredUpc}
               cohortBrands={cohortBrands}
               cohortBrandObjects={cohortBrandObjects}
               onEditCohort={onEditCohort}
@@ -572,7 +572,7 @@ export function ProcessedResultsView({
                       {selectedProduct.consolidated?.name || selectedProduct.input?.name}
                     </h2>
                     <div className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2 mt-0.5">
-                      <span className="bg-muted border border-border px-1.5 py-0.5 rounded-none">{selectedProduct.sku}</span>
+                      <span className="bg-muted border border-border px-1.5 py-0.5 rounded-none">{selectedProduct.upc}</span>
                       <span>•</span>
                       <span className="font-bold text-foreground">
                         ${Number(currentSourceData?.price || selectedProduct.input?.price || 0).toFixed(2)}
@@ -662,7 +662,7 @@ export function ProcessedResultsView({
 
             {/* Source Content Preview */}
             <div
-              key={`${preferredSku}-${activeSource}`}
+              key={`${preferredUpc}-${activeSource}`}
               className="flex-1 overflow-y-auto p-4"
             >
               {currentSourceData ? (
@@ -944,7 +944,7 @@ export function ProcessedResultsView({
         open={showClearDialog}
         onOpenChange={setShowClearDialog}
         title="Return to Imported"
-        description={`${selectedSkus.size} product${selectedSkus.size === 1 ? "" : "s"} will be returned to Imported for re-extraction. All enrichment data will be cleared, but imported data will be preserved.`}
+        description={`${selectedUpcs.size} product${selectedUpcs.size === 1 ? "" : "s"} will be returned to Imported for re-extraction. All enrichment data will be cleared, but imported data will be preserved.`}
         onConfirm={handleClearResults}
         confirmLabel="Return to Imported"
         variant="destructive"
@@ -955,7 +955,7 @@ export function ProcessedResultsView({
         open={showConsolidationDialog}
         onOpenChange={setShowConsolidationDialog}
         title="Submit for Consolidation"
-        description={`${selectedSkus.size} product${selectedSkus.size === 1 ? "" : "s"} will be submitted for AI consolidation. Enrichment results will be merged with imported data.`}
+        description={`${selectedUpcs.size} product${selectedUpcs.size === 1 ? "" : "s"} will be submitted for AI consolidation. Enrichment results will be merged with imported data.`}
         onConfirm={handleSubmitForConsolidation}
         confirmLabel="Submit for Consolidation"
         variant="default"
@@ -966,7 +966,7 @@ export function ProcessedResultsView({
         open={!!confirmConsolidateProduct}
         onOpenChange={(open) => !open && setConfirmConsolidateProduct(null)}
         title="Submit for Consolidation"
-        description={`Product ${confirmConsolidateProduct?.sku} will be submitted for AI consolidation. Enrichment results will be merged with imported data.`}
+        description={`Product ${confirmConsolidateProduct?.upc} will be submitted for AI consolidation. Enrichment results will be merged with imported data.`}
         onConfirm={async () => {
           if (confirmConsolidateProduct) {
             await handleSingleConsolidate(confirmConsolidateProduct);
@@ -981,7 +981,7 @@ export function ProcessedResultsView({
         open={!!confirmClearProduct}
         onOpenChange={(open) => !open && setConfirmClearProduct(null)}
         title="Return to Imported"
-        description={`Product ${confirmClearProduct?.sku} will be returned to Imported for re-extraction. All enrichment data will be cleared, but imported data will be preserved.`}
+        description={`Product ${confirmClearProduct?.upc} will be returned to Imported for re-extraction. All enrichment data will be cleared, but imported data will be preserved.`}
         onConfirm={async () => {
           if (confirmClearProduct) {
             await handleSingleClearResults(confirmClearProduct);

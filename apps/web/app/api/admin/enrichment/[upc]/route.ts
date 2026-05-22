@@ -6,7 +6,7 @@ import { getProductEnrichmentSummary } from '@/lib/enrichment/config';
 import type { EnrichableField } from '@/lib/enrichment/types';
 
 /**
- * GET /api/admin/enrichment/[sku]
+ * GET /api/admin/enrichment/[upc]
  * 
  * Fetches enrichment data for a specific product including:
  * - Available sources
@@ -16,12 +16,12 @@ import type { EnrichableField } from '@/lib/enrichment/types';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ sku: string }> }
+  { params }: { params: Promise<{ upc: string }> }
 ) {
-  const { sku } = await params;
+  const { upc } = await params;
 
-  if (!sku) {
-    return NextResponse.json({ error: 'SKU is required' }, { status: 400 });
+  if (!upc) {
+    return NextResponse.json({ error: 'UPC is required' }, { status: 400 });
   }
 
   const auth = await requireAdminAuth(request);
@@ -34,7 +34,7 @@ export async function GET(
     const allSources = await getAllSources();
 
     // Get product enrichment summary
-    const summary = await getProductEnrichmentSummary(sku);
+    const summary = await getProductEnrichmentSummary(upc);
 
     if (!summary) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
@@ -44,7 +44,7 @@ export async function GET(
     const { data: product } = await supabase
       .from('products_ingestion')
       .select('input')
-      .eq('sku', sku)
+      .eq('upc', upc)
       .single();
 
     const input = product?.input as Record<string, unknown> | null;
@@ -75,7 +75,7 @@ export async function GET(
     const fieldOverrides = summary.config.field_overrides ?? {};
 
     return NextResponse.json({
-      sku,
+      upc,
       sources,
       enabledSourceIds,
       resolvedData,

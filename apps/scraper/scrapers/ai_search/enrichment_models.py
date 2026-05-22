@@ -49,7 +49,7 @@ class EnrichedProductFacts(BaseModel):
     brand: Optional[str] = None
     description: Optional[str] = None
     category: Optional[str] = None
-    sku: Optional[str] = None
+    upc: Optional[str] = None
     weight: Optional[str] = None
     dimensions: Optional[str] = None
     shipping_weight: Optional[str] = None
@@ -78,7 +78,7 @@ class EnrichmentConfidence(BaseModel):
 
 
 class EnrichmentValidation(BaseModel):
-    sku_match: Optional[bool] = None
+    upc_match: Optional[bool] = None
     warnings: list[str] = Field(default_factory=list)
     missing_required: list[str] = Field(default_factory=list)
 
@@ -103,7 +103,7 @@ class SourceResultInfo(BaseModel):
 
 class EnrichmentResultV1(BaseModel):
     schema_version: str = "v1"
-    sku: str
+    upc: str
     source: EnrichmentResultSource
     status: str = Field(pattern=r"^(success|partial|failed)$")
     _status_literal: EnrichmentResultStatus = "success"  # marker for type checking
@@ -128,7 +128,7 @@ def now_iso() -> str:
 
 
 def build_error_result(
-    sku: str,
+    upc: str,
     url: str,
     error_message: str,
     model: Optional[str] = None,
@@ -138,7 +138,7 @@ def build_error_result(
     """Build a failed enrichment result for error cases."""
     return EnrichmentResultV1(
         schema_version="v1",
-        sku=sku,
+        upc=upc,
         source=EnrichmentResultSource(url=url),
         status="failed",
         extracted_at=now_iso(),
@@ -165,7 +165,7 @@ def build_error_result(
 
 def build_v1_from_extraction_result(
     result: dict[str, Any],
-    sku: str,
+    upc: str,
     url: str,
     domain: Optional[str] = None,
     model: Optional[str] = None,
@@ -183,7 +183,7 @@ def build_v1_from_extraction_result(
 
     Args:
         result: Extraction result dict with keys: success, product, confidence, validation, etc.
-        sku: Product SKU.
+        upc: Product SKU.
         url: Source URL that was scraped.
         domain: Domain of the source URL.
         model: LLM model used (if any).
@@ -240,7 +240,7 @@ def build_v1_from_extraction_result(
                     brand=product_data.get("brand") or result.get("brand"),
                     description=product_data.get("description") or result.get("description"),
                     category=category,
-                    sku=product_data.get("sku") or result.get("sku"),
+                    upc=product_data.get("upc") or result.get("upc"),
                     weight=product_data.get("weight") or result.get("weight"),
                     dimensions=product_data.get("dimensions") or result.get("dimensions"),
                     shipping_weight=product_data.get("shipping_weight"),
@@ -276,7 +276,7 @@ def build_v1_from_extraction_result(
 
     return EnrichmentResultV1(
         schema_version="v1",
-        sku=sku,
+        upc=upc,
         source=EnrichmentResultSource(
             url=url,
             domain=domain,
@@ -290,7 +290,7 @@ def build_v1_from_extraction_result(
             brand=product_data.get("brand") or result.get("brand"),
             description=product_data.get("description") or result.get("description"),
             category=category,
-            sku=product_data.get("sku") or result.get("sku"),
+            upc=product_data.get("upc") or result.get("upc"),
             weight=product_data.get("weight") or result.get("weight"),
             dimensions=product_data.get("dimensions") or result.get("dimensions"),
             shipping_weight=product_data.get("shipping_weight"),
@@ -317,7 +317,7 @@ def build_v1_from_extraction_result(
             fields=field_confidences,
         ),
         validation=EnrichmentValidation(
-            sku_match=raw_validation.get("sku_match"),
+            upc_match=raw_validation.get("upc_match"),
             warnings=raw_validation.get("warnings", []),
             missing_required=raw_validation.get("missing_required", []),
         ),

@@ -9,7 +9,7 @@ import { requireAdminAuth } from '@/lib/admin/api-auth';
 import * as z from 'zod';
 
 const transitionSchema = z.object({
-    sku: z.string().min(1, 'SKU is required'),
+    upc: z.string().min(1, 'UPC is required'),
     toStatus: z.enum(PERSISTED_PIPELINE_STATUSES, {
         error: `Invalid toStatus. Must be one of: ${PERSISTED_PIPELINE_STATUSES.join(', ')}`,
     }),
@@ -24,15 +24,15 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
         const parsed = transitionSchema.parse(body) as TransitionBody;
-        const { sku, toStatus } = parsed;
+        const { upc, toStatus } = parsed;
 
         const supabase = await createAdminClient();
 
         // Fetch the product to get current status
         const { data: product, error: fetchError } = await supabase
             .from('products_ingestion')
-            .select('sku, pipeline_status')
-            .eq('sku', sku)
+            .select('upc, pipeline_status')
+            .eq('upc', upc)
             .single();
 
         if (fetchError || !product) {
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
                 pipeline_status: toStatus,
                 updated_at: updatedAt,
             })
-            .eq('sku', sku);
+            .eq('upc', upc);
 
         if (updateError) {
             console.error('Error updating product status:', updateError);
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
                 actor_id: auth.user.id,
                 actor_type: 'user',
                 metadata: {
-                    sku,
+                    upc,
                     timestamp: updatedAt,
                 },
             };

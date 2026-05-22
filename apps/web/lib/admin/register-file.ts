@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 
 export interface RegisterWorkbookProduct {
-  sku: string;
+  upc: string;
   name: string;
   price: number;
   quantityOnHand: number;
@@ -55,11 +55,11 @@ export function parseRegisterRows(
 ): RegisterWorkbookProduct[] {
   const products = rows
     .map((row) => {
-      const sku = String(row["SKU_NO"] || row["SKU"] || "").trim();
+      const upc = String(row["SKU_NO"] || row["SKU"] || "").trim();
       const name = buildProductName(row);
 
       return {
-        sku,
+        upc,
         name,
         price: parseNumericCell(row["LIST_PRICE"] ?? row["PRICE"] ?? 0),
         quantityOnHand: Math.trunc(
@@ -74,12 +74,12 @@ export function parseRegisterRows(
         dateSold: parseDateCell(row["DATE_SOLD"]),
       };
     })
-    .filter((product) => product.sku && product.name);
+    .filter((product) => product.upc && product.name);
 
   const uniqueProducts = new Map<string, RegisterWorkbookProduct>();
   for (const product of products) {
-    if (!uniqueProducts.has(product.sku)) {
-      uniqueProducts.set(product.sku, product);
+    if (!uniqueProducts.has(product.upc)) {
+      uniqueProducts.set(product.upc, product);
     }
   }
 

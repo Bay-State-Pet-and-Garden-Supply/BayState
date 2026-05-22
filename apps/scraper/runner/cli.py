@@ -19,7 +19,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
 
-    parser.add_argument("--sku", help="SKU to extract (enrichment mode)")
+    parser.add_argument("--upc", help="SKU to extract (enrichment mode)")
     parser.add_argument("--url", help="Target URL to extract from (enrichment mode)")
     parser.add_argument("--output", help="Output file path for results JSON (default: stdout)")
     parser.add_argument("--headless", action="store_true", default=True, help="Run browser headless (default: true)")
@@ -52,22 +52,22 @@ def run_enrichment_mode(args: argparse.Namespace) -> None:
     from runner import _run_enrichment_job
     from core.api_client import ClaimedEnrichment
 
-    if not args.sku or not args.url:
-        logger.error("Enrichment mode requires --sku and --url")
+    if not args.upc or not args.url:
+        logger.error("Enrichment mode requires --upc and --url")
         sys.exit(1)
 
     logger.info(
-        f"[Enrichment] Running AI extraction: SKU={args.sku}, URL={args.url}, "
+        f"[Enrichment] Running AI extraction: SKU={args.upc}, URL={args.url}, "
         f"model={args.model}, strategy={args.enrichment_strategy}"
     )
 
     job_id = f"enrichment_local_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     job_payload = {
         "target_url": args.url,
-        "sku": args.sku,
+        "upc": args.upc,
         "model": args.model,
         "mode": args.enrichment_strategy,
-        "attempt_id": f"local_{args.sku}",
+        "attempt_id": f"local_{args.upc}",
     }
     if args.brand:
         job_payload["brand"] = args.brand
@@ -77,9 +77,9 @@ def run_enrichment_mode(args: argparse.Namespace) -> None:
         job_payload["domain"] = args.domain
 
     job_config = ClaimedEnrichment(
-        attempt_id=f"local_{args.sku}",
+        attempt_id=f"local_{args.upc}",
         job_id=job_id,
-        sku=args.sku,
+        upc=args.upc,
         target_url=args.url,
         domain=args.domain,
         model=args.model,
@@ -110,8 +110,8 @@ def run_enrichment_mode(args: argparse.Namespace) -> None:
     else:
         print(output_json)
 
-    skus_processed = results.get("skus_processed", 0)
-    if skus_processed == 0:
+    upcs_processed = results.get("upcs_processed", 0)
+    if upcs_processed == 0:
         sys.exit(1)
 
 
@@ -120,7 +120,7 @@ def main() -> None:
     setup_structured_logging(debug=args.debug)
 
     # Enrichment mode (AI extraction without YAML configs)
-    if args.sku and args.url:
+    if args.upc and args.url:
         run_enrichment_mode(args)
         return
 
@@ -138,5 +138,5 @@ def main() -> None:
         logger.error(f"[Runner] Pre-flight health check failed: {e}")
         sys.exit(1)
 
-    logger.info("[Runner] Local CLI initialized. Use --sku and --url for extraction.")
+    logger.info("[Runner] Local CLI initialized. Use --upc and --url for extraction.")
 

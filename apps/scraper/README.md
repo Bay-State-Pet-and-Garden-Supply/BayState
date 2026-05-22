@@ -101,11 +101,11 @@ You can test AI extraction locally without the full stack:
 
 ```bash
 # Extract data from a specific URL
-python runner.py --sku "MY-SKU" --url "https://example.com/product/123" --debug
+python runner.py --upc "MY-UPC" --url "https://example.com/product/123" --debug
 ```
 
 Flags:
-- `--sku`: Product SKU for tracking.
+- `--upc`: Product UPC for tracking.
 - `--url`: Target page URL.
 - `--no-headless`: Show the browser window for debugging.
 - `--model`: Change LLM model (e.g., `gpt-4o`).

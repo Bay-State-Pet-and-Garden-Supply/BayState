@@ -62,7 +62,7 @@ function makeEnrichedSource(options: {
       fields: {},
     },
     validation: {
-      sku_match: true,
+      upc_match: true,
       warnings: options.warnings ?? [],
       missing_required: [],
     },

@@ -28,8 +28,8 @@ class DebugContext:
                 "end_time": None,
                 "debug_mode": debug_mode,
                 "logs": [],
-                "page_sources": [],  # List of {timestamp, sku, source}
-                "screenshots": [],  # List of {timestamp, sku, base64}
+                "page_sources": [],  # List of {timestamp, upc, source}
+                "screenshots": [],  # List of {timestamp, upc, base64}
                 "current_page_source": None,
                 "current_screenshot": None,
             }
@@ -49,8 +49,8 @@ class DebugContext:
                 entry = {"timestamp": datetime.now().isoformat(), "message": message}
                 session["logs"].append(entry)
 
-    def capture_snapshot(self, job_id: str, sku: str, page_source: str | None = None, screenshot: str | None = None):
-        """Capture a snapshot (source/screenshot) for a SKU."""
+    def capture_snapshot(self, job_id: str, upc: str, page_source: str | None = None, screenshot: str | None = None):
+        """Capture a snapshot (source/screenshot) for a UPC."""
         with self._lock:
             session = self._sessions.get(job_id)
             if not session:
@@ -59,11 +59,11 @@ class DebugContext:
             timestamp = datetime.now().isoformat()
 
             if page_source:
-                session["page_sources"].append({"timestamp": timestamp, "sku": sku, "content": page_source})
+                session["page_sources"].append({"timestamp": timestamp, "upc": upc, "content": page_source})
                 session["current_page_source"] = page_source
 
             if screenshot:
-                session["screenshots"].append({"timestamp": timestamp, "sku": sku, "content": screenshot})
+                session["screenshots"].append({"timestamp": timestamp, "upc": upc, "content": screenshot})
                 session["current_screenshot"] = screenshot
 
     def _resolve_job_id(self, job_id: str | None) -> str | None:
@@ -125,7 +125,7 @@ class DebugContext:
                 return []
             return list(session["logs"][-limit:])
 
-    def get_snapshots(self, job_id: str | None = None, sku: str | None = None, limit: int = 20) -> list[dict[str, Any]]:
+    def get_snapshots(self, job_id: str | None = None, upc: str | None = None, limit: int = 20) -> list[dict[str, Any]]:
         """Get snapshots (metadata only)."""
         actual_job_id = self._resolve_job_id(job_id)
         if not actual_job_id:
@@ -141,15 +141,15 @@ class DebugContext:
             # This is a bit simplified; in reality we might want to pair them up
             # For now just return page sources as the primary "snapshot" list
             for src in session["page_sources"]:
-                if sku and src["sku"] != sku:
+                if upc and src["upc"] != upc:
                     continue
-                snapshots.append({"type": "html", "timestamp": src["timestamp"], "sku": src["sku"], "length": len(src["content"])})
+                snapshots.append({"type": "html", "timestamp": src["timestamp"], "upc": src["upc"], "length": len(src["content"])})
 
             # Add screenshots too?
             for screen in session["screenshots"]:
-                if sku and screen["sku"] != sku:
+                if upc and screen["upc"] != upc:
                     continue
-                snapshots.append({"type": "screenshot", "timestamp": screen["timestamp"], "sku": screen["sku"], "length": len(screen["content"])})
+                snapshots.append({"type": "screenshot", "timestamp": screen["timestamp"], "upc": screen["upc"], "length": len(screen["content"])})
 
             # Sort by timestamp desc and limit
             snapshots.sort(key=lambda x: x["timestamp"], reverse=True)

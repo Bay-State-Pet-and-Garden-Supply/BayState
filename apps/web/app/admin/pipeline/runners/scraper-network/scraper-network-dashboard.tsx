@@ -281,7 +281,7 @@ export function ScraperNetworkDashboard() {
     return (selectedRunner?.metadata?.current_job_id as string) || null;
   }, [selectedRunner]);
 
-  const { attempts: skuAttempts } = useAttemptsSubscription({
+  const { attempts: upcAttempts } = useAttemptsSubscription({
     jobId: activeJobId,
   });
 
@@ -467,23 +467,23 @@ export function ScraperNetworkDashboard() {
     toast.success('Installer command copied to clipboard.');
   };
 
-  const handleRetrySku = async (sku: string, scrapers: string[], testMode: boolean) => {
-    setRetryingSkus((prev) => ({ ...prev, [sku]: true }));
+  const handleRetrySku = async (upc: string, scrapers: string[], testMode: boolean) => {
+    setRetryingSkus((prev) => ({ ...prev, [upc]: true }));
     try {
       const res = await adminFetch('/api/admin/pipeline/scrape', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ skus: [sku], scrapers, testMode }),
+        body: JSON.stringify({ upcs: [upc], scrapers, testMode }),
       });
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || 'Failed to retry SKU');
       }
-      toast.success(`Retry queued for SKU ${sku}`);
+      toast.success(`Retry queued for SKU ${upc}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to queue retry');
     } finally {
-      setRetryingSkus((prev) => ({ ...prev, [sku]: false }));
+      setRetryingSkus((prev) => ({ ...prev, [upc]: false }));
     }
   };
 
@@ -733,7 +733,7 @@ export function ScraperNetworkDashboard() {
                       {activeJob.progress_message || 'Running scraper pipeline...'}
                     </span>
                     <span className="font-mono text-muted-foreground">
-                      {activeJob.progress_percent ?? 0}% ({activeJob.items_processed || 0}/{activeJob.items_total || activeJob.skus?.length || 0})
+                      {activeJob.progress_percent ?? 0}% ({activeJob.items_processed || 0}/{activeJob.items_total || activeJob.upcs?.length || 0})
                     </span>
                   </div>
                   
@@ -773,7 +773,7 @@ export function ScraperNetworkDashboard() {
 
                 {/* SKU Progress Table */}
                 <div className="flex-1 overflow-y-auto">
-                  {skuAttempts.length > 0 ? (
+                  {upcAttempts.length > 0 ? (
                     <Table>
                       <TableHeader className="sticky top-0 bg-card z-10">
                         <TableRow>
@@ -784,12 +784,12 @@ export function ScraperNetworkDashboard() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {skuAttempts.map((attempt) => {
-                          const isRetrying = retryingSkus[attempt.sku];
+                        {upcAttempts.map((attempt) => {
+                          const isRetrying = retryingSkus[attempt.upc];
                           return (
                             <TableRow key={attempt.id} className="hover:bg-muted/10">
                               <TableCell className="font-mono text-xs font-semibold text-foreground">
-                                {attempt.sku}
+                                {attempt.upc}
                               </TableCell>
                               <TableCell>
                                 <span className={cn(
@@ -819,7 +819,7 @@ export function ScraperNetworkDashboard() {
                                     <Button
                                       variant="outline"
                                       size="icon-sm"
-                                      onClick={() => void handleRetrySku(attempt.sku, activeJob.scrapers || [], activeJob.test_mode || false)}
+                                      onClick={() => void handleRetrySku(attempt.upc, activeJob.scrapers || [], activeJob.test_mode || false)}
                                       disabled={isRetrying}
                                       title="Retry SKU scrape"
                                       className="shrink-0"
@@ -1044,7 +1044,7 @@ export function ScraperNetworkDashboard() {
                         <div className="min-w-0">
                           <span className="font-mono text-foreground font-bold">{job.id.slice(0, 8)}...</span>
                           <div className="flex items-center gap-1.5 mt-0.5 text-muted-foreground font-medium">
-                            <span>{job.skus?.length || 0} SKUs</span>
+                            <span>{job.upcs?.length || 0} SKUs</span>
                             <span>•</span>
                             <span className="truncate">
                               {job.runner_name || job.claimed_by || 'Unclaimed'}

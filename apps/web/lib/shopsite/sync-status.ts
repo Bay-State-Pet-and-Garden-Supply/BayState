@@ -10,8 +10,8 @@ interface ProductSyncPatch {
   metadata?: Record<string, unknown>;
 }
 
-interface ShopSiteSyncBySkuOptions {
-  skus: string[];
+interface ShopSiteSyncByUpcOptions {
+  upcs: string[];
   syncStatus: ShopSiteSyncStatus;
   lastSyncedAt?: string | null;
   lastUploadedAt?: string | null;
@@ -68,38 +68,38 @@ export async function upsertShopSiteSyncByProductIds(
   }
 }
 
-async function upsertShopSiteSyncBySkus(
-  options: ShopSiteSyncBySkuOptions,
-): Promise<{ matchedCount: number; missingSkus: string[] }> {
-  const skus = uniqueNonEmpty(options.skus);
-  if (skus.length === 0) {
-    return { matchedCount: 0, missingSkus: [] };
+async function upsertShopSiteSyncByUpcs(
+  options: ShopSiteSyncByUpcOptions,
+): Promise<{ matchedCount: number; missingUpcs: string[] }> {
+  const upcs = uniqueNonEmpty(options.upcs);
+  if (upcs.length === 0) {
+    return { matchedCount: 0, missingUpcs: [] };
   }
 
   const supabase = await createAdminClient();
   const { data, error } = await supabase
     .from('products')
-    .select('id, sku')
-    .in('sku', skus);
+    .select('id, upc')
+    .in('upc', upcs);
 
   if (error) {
     throw new Error(`Failed to resolve products for ShopSite sync: ${error.message}`);
   }
 
-  const products = (data ?? []) as Array<{ id: string; sku: string | null }>;
-  const productIdBySku = new Map<string, string>();
+  const products = (data ?? []) as Array<{ id: string; upc: string | null }>;
+  const productIdByUpc = new Map<string, string>();
 
   for (const product of products) {
-    if (product.sku) {
-      productIdBySku.set(product.sku, product.id);
+    if (product.upc) {
+      productIdByUpc.set(product.upc, product.id);
     }
   }
 
-  const missingSkus = skus.filter((sku) => !productIdBySku.has(sku));
+  const missingUpcs = upcs.filter((upc) => !productIdByUpc.has(upc));
   const patches: ProductSyncPatch[] = [];
 
-  for (const sku of skus) {
-    const productId = productIdBySku.get(sku);
+  for (const upc of upcs) {
+    const productId = productIdByUpc.get(upc);
     if (!productId) {
       continue;
     }
@@ -118,16 +118,16 @@ async function upsertShopSiteSyncBySkus(
 
   return {
     matchedCount: patches.length,
-    missingSkus,
+    missingUpcs,
   };
 }
 
-export async function markShopSiteSyncFailureBySkus(
-  skus: string[],
+export async function markShopSiteSyncFailureByUpcs(
+  upcs: string[],
   message: string,
 ): Promise<void> {
-  await upsertShopSiteSyncBySkus({
-    skus,
+  await upsertShopSiteSyncByUpcs({
+    upcs,
     syncStatus: 'failed',
     lastSyncError: message,
     metadata: {
@@ -136,12 +136,12 @@ export async function markShopSiteSyncFailureBySkus(
   });
 }
 
-export async function markShopSiteSyncSuccessBySkus(
-  skus: string[],
+export async function markShopSiteSyncSuccessByUpcs(
+  upcs: string[],
   syncedAt: string,
 ): Promise<void> {
-  await upsertShopSiteSyncBySkus({
-    skus,
+  await upsertShopSiteSyncByUpcs({
+    upcs,
     syncStatus: 'synced',
     lastSyncedAt: syncedAt,
     lastUploadedAt: syncedAt,

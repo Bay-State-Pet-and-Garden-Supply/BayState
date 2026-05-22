@@ -47,7 +47,7 @@ playwright install chromium
 
 Test AI extraction (Enrichment) directly using `runner.py`:
 ```bash
-python runner.py --sku "TEST-SKU" --url "https://example.com" --debug
+python runner.py --sku "TEST-UPC" --url "https://example.com" --debug
 ```
 
 ## Related Documentation

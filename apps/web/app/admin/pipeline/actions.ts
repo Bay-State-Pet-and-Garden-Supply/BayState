@@ -15,8 +15,8 @@ import { createClient } from '@/lib/supabase/server';
  */
 export async function manualAddProductAction(product: IntegraProduct) {
     try {
-        if (!product.sku || !product.name) {
-            return { success: false, error: 'SKU and Name are required' };
+        if (!product.upc || !product.name) {
+            return { success: false, error: 'UPC and Name are required' };
         }
 
         const result = await addToOnboarding([product]);

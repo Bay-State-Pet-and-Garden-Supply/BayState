@@ -12,7 +12,7 @@ REPORT_SCHEMA_VERSION = "official-brand-benchmark-report-v1"
 
 def _row_to_dict(row: DiscoveryResultRow) -> dict[str, Any]:
     return {
-        "sku": row.sku,
+        "upc": row.upc,
         "brand": row.brand,
         "product_name": row.product_name,
         "expected_official_domains": row.expected_official_domains,

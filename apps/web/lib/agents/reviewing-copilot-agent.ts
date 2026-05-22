@@ -70,7 +70,7 @@ Workspace context:
 - Drafts with unsaved changes: ${dirtyCount}
 
 Selected product context:
-- SKU: ${selectedProduct?.sku ?? "None"}
+- UPC: ${selectedProduct?.upc ?? "None"}
 - Original imported name: ${typeof input.name === "string" ? input.name : "Unknown"}
 - Confidence score: ${typeof selectedProduct?.confidence_score === "number" ? selectedProduct.confidence_score : "Unknown"}
 - Source keys: ${sourceKeys.length > 0 ? sourceKeys.join(", ") : "None"}

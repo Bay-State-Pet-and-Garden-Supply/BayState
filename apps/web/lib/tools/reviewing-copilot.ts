@@ -34,7 +34,7 @@ const brandSearchResultSchema = z.object({
 });
 
 const productSnapshotSchema = z.object({
-  sku: z.string(),
+  upc: z.string(),
   originalName: z.string().nullable(),
   confidenceScore: z.number().nullable(),
   sourceKeys: z.array(z.string()),
@@ -43,7 +43,7 @@ const productSnapshotSchema = z.object({
 });
 
 const productSnapshotInputSchema = z.object({
-  sku: z.string().optional(),
+  upc: z.string().optional(),
 });
 
 export type ProductSnapshotInput = z.infer<typeof productSnapshotInputSchema>;
@@ -57,7 +57,7 @@ const inspectSourceDataOutputSchema = z.object({
 });
 
 const inspectSourceDataInputSchema = z.object({
-  sku: z.string().optional(),
+  upc: z.string().optional(),
   sourceKey: z.string(),
   focus: z.enum(["all", "pricing", "content", "images"]).default("all"),
 });
@@ -78,7 +78,7 @@ const listImageSourcesOutputSchema = z.object({
 });
 
 const listImageSourcesInputSchema = z.object({
-  sku: z.string().optional(),
+  upc: z.string().optional(),
 });
 
 export type ListImageSourcesInput = z.infer<typeof listImageSourcesInputSchema>;
@@ -304,21 +304,21 @@ export function createFinalizationCopilotTools(
 
     getProductSnapshot: tool({
       description:
-        "Read the current draft, last saved draft, and source keys for a specific product. If sku is omitted, use the currently selected product.",
+        "Read the current draft, last saved draft, and source keys for a specific product. If upc is omitted, use the currently selected product.",
       inputSchema: productSnapshotInputSchema,
       outputSchema: productSnapshotSchema,
     }),
 
     inspectSourceData: tool({
       description:
-        "Inspect a specific processed source record for a product when you need facts instead of guessing. If sku is omitted, inspect the currently selected product.",
+        "Inspect a specific processed source record for a product when you need facts instead of guessing. If upc is omitted, inspect the currently selected product.",
       inputSchema: inspectSourceDataInputSchema,
       outputSchema: inspectSourceDataOutputSchema,
     }),
 
     listImageSources: tool({
       description:
-        "List grouped image candidates from each processed source and show which images are selected for a product. If sku is omitted, use the currently selected product.",
+        "List grouped image candidates from each processed source and show which images are selected for a product. If upc is omitted, use the currently selected product.",
       inputSchema: listImageSourcesInputSchema,
       outputSchema: listImageSourcesOutputSchema,
     }),

@@ -19,13 +19,13 @@ import { getAllSources } from './sources';
 /**
  * Gets the enrichment config for a product.
  */
-async function getEnrichmentConfig(sku: string): Promise<EnrichmentConfig | null> {
+async function getEnrichmentConfig(upc: string): Promise<EnrichmentConfig | null> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('products_ingestion')
     .select('enrichment_config')
-    .eq('sku', sku)
+    .eq('upc', upc)
     .single();
 
   if (error || !data) {
@@ -40,7 +40,7 @@ async function getEnrichmentConfig(sku: string): Promise<EnrichmentConfig | null
  * Updates the enrichment config for a product.
  */
 async function updateEnrichmentConfig(
-  sku: string,
+  upc: string,
   config: Partial<EnrichmentConfig>
 ): Promise<{ success: boolean; error?: string }> {
   // Validate the config
@@ -60,7 +60,7 @@ async function updateEnrichmentConfig(
   const { data: existing } = await supabase
     .from('products_ingestion')
     .select('enrichment_config')
-    .eq('sku', sku)
+    .eq('upc', upc)
     .single();
 
   const mergedConfig: EnrichmentConfig = {
@@ -74,7 +74,7 @@ async function updateEnrichmentConfig(
       enrichment_config: mergedConfig,
       updated_at: new Date().toISOString(),
     })
-    .eq('sku', sku);
+    .eq('upc', upc);
 
   if (error) {
     console.error('[Enrichment] Failed to update config:', error);
@@ -88,11 +88,11 @@ async function updateEnrichmentConfig(
  * Enables or disables specific sources for a product.
  */
 export async function toggleSourcesForProduct(
-  sku: string,
+  upc: string,
   sourceIds: string[],
   enabled: boolean
 ): Promise<{ success: boolean; error?: string }> {
-  const currentConfig = await getEnrichmentConfig(sku);
+  const currentConfig = await getEnrichmentConfig(upc);
   const enabledSources = new Set(currentConfig?.enabled_sources ?? []);
 
   // Get all available sources to determine the full list
@@ -113,7 +113,7 @@ export async function toggleSourcesForProduct(
     }
   }
 
-  return updateEnrichmentConfig(sku, {
+  return updateEnrichmentConfig(upc, {
     enabled_sources: Array.from(enabledSources),
   });
 }
@@ -122,13 +122,13 @@ export async function toggleSourcesForProduct(
  * Sets the preferred source for a specific field.
  */
 export async function setFieldSourceOverride(
-  sku: string,
+  upc: string,
   field: EnrichableField,
   sourceId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const currentConfig = await getEnrichmentConfig(sku);
+  const currentConfig = await getEnrichmentConfig(upc);
 
-  return updateEnrichmentConfig(sku, {
+  return updateEnrichmentConfig(upc, {
     field_overrides: {
       ...(currentConfig?.field_overrides ?? {}),
       [field]: sourceId,
@@ -140,14 +140,14 @@ export async function setFieldSourceOverride(
  * Clears the source override for a specific field.
  */
 async function clearFieldSourceOverride(
-  sku: string,
+  upc: string,
   field: EnrichableField
 ): Promise<{ success: boolean; error?: string }> {
-  const currentConfig = await getEnrichmentConfig(sku);
+  const currentConfig = await getEnrichmentConfig(upc);
   const overrides = { ...(currentConfig?.field_overrides ?? {}) };
   delete overrides[field];
 
-  return updateEnrichmentConfig(sku, {
+  return updateEnrichmentConfig(upc, {
     field_overrides: overrides,
   });
 }
@@ -155,13 +155,13 @@ async function clearFieldSourceOverride(
 /**
  * Gets the full enrichment summary for a product, including all source data and conflicts.
  */
-export async function getProductEnrichmentSummary(sku: string): Promise<ProductEnrichmentSummary | null> {
+export async function getProductEnrichmentSummary(upc: string): Promise<ProductEnrichmentSummary | null> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('products_ingestion')
-    .select('sku, sources, enrichment_config')
-    .eq('sku', sku)
+    .select('upc, sources, enrichment_config')
+    .eq('upc', upc)
     .single();
 
   if (error || !data) {
@@ -191,7 +191,7 @@ export async function getProductEnrichmentSummary(sku: string): Promise<ProductE
   const resolved = resolveEnrichmentData(scraperSources, config);
 
   return {
-    sku,
+    upc,
     scraperSources,
     config,
     conflicts,
@@ -289,20 +289,20 @@ function resolveEnrichmentData(
 /**
  * Gets enrichment summaries for multiple products.
  */
-async function getProductEnrichmentSummaries(
-  skus: string[]
+export async function getProductEnrichmentSummaries(
+  upcs: string[]
 ): Promise<Map<string, ProductEnrichmentSummary>> {
   const results = new Map<string, ProductEnrichmentSummary>();
 
   // Fetch in parallel for performance
   const summaries = await Promise.all(
-    skus.map((sku) => getProductEnrichmentSummary(sku))
+    upcs.map((upc) => getProductEnrichmentSummary(upc))
   );
 
-  for (let i = 0; i < skus.length; i++) {
+  for (let i = 0; i < upcs.length; i++) {
     const summary = summaries[i];
     if (summary) {
-      results.set(skus[i], summary);
+      results.set(upcs[i], summary);
     }
   }
 

@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { groupSkusByPrefix } from '@/lib/admin/cohort-utils';
+import { groupUpcsByPrefix } from '@/lib/admin/cohort-utils';
 
 /**
  * Re-cohorts products based on their UPC prefix and a new brand assignment.
@@ -7,16 +7,16 @@ import { groupSkusByPrefix } from '@/lib/admin/cohort-utils';
  */
 export async function recohortProducts(
   supabase: SupabaseClient,
-  skus: string[],
+  upcs: string[],
   brandId: string | null
 ) {
-  if (!skus.length) return;
+  if (!upcs.length) return;
 
   // 1. Fetch products to get their current cohort IDs, brand IDs, and UPC prefixes
   const { data: products, error: fetchError } = await supabase
     .from('products_ingestion')
-    .select('sku, cohort_id, brand_id, consolidated')
-    .in('sku', skus);
+    .select('upc, cohort_id, brand_id, consolidated')
+    .in('upc', upcs);
 
   if (fetchError || !products) {
     console.error('[recohortProducts] Failed to fetch products:', fetchError);
@@ -25,10 +25,10 @@ export async function recohortProducts(
 
   const oldCohortIds = new Set(products.map(p => p.cohort_id).filter(Boolean) as string[]);
   
-  // 2. Group SKUs by UPC prefix
-  const groups = groupSkusByPrefix(skus);
+  // 2. Group UPCs by prefix
+  const groups = groupUpcsByPrefix(upcs);
 
-  for (const [prefix, groupSkus] of groups.entries()) {
+  for (const [prefix, groupUpcs] of groups.entries()) {
     if (prefix === 'UNGROUPED') continue;
 
     // 3. Find or create target cohort for this (prefix, brandId)
@@ -73,11 +73,11 @@ export async function recohortProducts(
     // Fetch current state for these products to preserve other consolidated fields
     const { data: currentProducts } = await supabase
       .from('products_ingestion')
-      .select('sku, brand_id, consolidated')
-      .in('sku', groupSkus);
+      .select('upc, brand_id, consolidated')
+      .in('upc', groupUpcs);
 
-    for (const sku of groupSkus) {
-      const product = currentProducts?.find(p => p.sku === sku);
+    for (const upc of groupUpcs) {
+      const product = currentProducts?.find(p => p.upc === upc);
       const currentConsolidated = (product?.consolidated as Record<string, unknown>) || {};
       
       const updatedConsolidated = {
@@ -103,21 +103,21 @@ export async function recohortProducts(
           pipeline_status: statusUpdate.pipeline_status ?? undefined,
           updated_at: new Date().toISOString()
         })
-        .eq('sku', sku);
+        .eq('upc', upc);
     }
 
     // 5. Update cohort_members
     // Upsert into cohort_members for the target cohort
-    const memberRows = groupSkus.map((sku, index) => ({
+    const memberRows = groupUpcs.map((upc, index) => ({
       cohort_id: targetCohortId,
-      product_sku: sku,
+      product_upc: upc,
       upc_prefix: prefix,
       sort_order: index // Optional: recalculate sort order properly if needed
     }));
 
     await supabase
       .from('cohort_members')
-      .upsert(memberRows, { onConflict: 'cohort_id,product_sku' });
+      .upsert(memberRows, { onConflict: 'cohort_id,product_upc' });
       
     // Remove from old cohorts if they were different
     for (const oldId of oldCohortIds) {
@@ -126,7 +126,7 @@ export async function recohortProducts(
         .from('cohort_members')
         .delete()
         .eq('cohort_id', oldId)
-        .in('product_sku', groupSkus);
+        .in('product_upc', groupUpcs);
     }
   }
 

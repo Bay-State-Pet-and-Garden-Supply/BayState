@@ -9,7 +9,7 @@
   "entries": [
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "850012047735",
+      "upc": "850012047735",
       "product_name": "The Honest Kitchen Grain Free Turkey & Chicken Clusters Dry Cat Food 1 lb",
       "brand": "The Honest Kitchen",
       "source_url": "https://www.thehonestkitchen.com/products/grain-free-turkey-and-chicken-whole-food-clusters-dry-cat-food",
@@ -40,7 +40,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "072318200618",
+      "upc": "072318200618",
       "product_name": "FirstMate Chicken Meal with Blueberries Formula Dry Cat Food 3.96lb",
       "brand": "FirstMate",
       "source_url": "https://firstmate.com/product/chicken-meal-with-blueberries-formula-for-cats/",
@@ -71,7 +71,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "045663976866",
+      "upc": "045663976866",
       "product_name": "Four Paws Wee-Wee Cat Pads 11x17 10ct",
       "brand": "Four Paws",
       "source_url": "https://www.fourpaws.com/products/wee-wee-cat-litter-box-system-pads",
@@ -101,7 +101,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "072318100680",
+      "upc": "072318100680",
       "product_name": "FirstMate Grain-Free Chicken Meal with Blueberries 5 lb.",
       "brand": "FirstMate",
       "source_url": "https://firstmate.com/product/chicken-meal-with-blueberries-formula/",
@@ -132,7 +132,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "4059433816098",
+      "upc": "4059433816098",
       "product_name": "Schleich Clydesdale Gelding Horse Toy Figurine",
       "brand": "Schleich",
       "source_url": "https://us.schleich-s.com/products/clydesdale-gelding-13808-2",
@@ -162,7 +162,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "032247886598",
+      "upc": "032247886598",
       "product_name": "Scotts Nature Scapes Color Enhanced Mulch Deep Forest Brown 1.5 cu. ft.",
       "brand": "Scotts",
       "source_url": "https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
@@ -192,7 +192,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "095668480400",
+      "upc": "095668480400",
       "product_name": "Manna Pro Fresh Flakes Poultry Bedding 12 Lb",
       "brand": "Manna Pro",
       "source_url": "https://mannapro.com/products/fresh-flakes-poultry-bedding",
@@ -222,7 +222,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "019962890727",
+      "upc": "019962890727",
       "product_name": "Wondercide Flea & Tick Spray Lemongrass 4oz",
       "brand": "Wondercide",
       "source_url": "https://www.wondercide.com/products/natural-flea-tick-mosquito-control-for-dogs-evolv",
@@ -257,7 +257,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "019962890925",
+      "upc": "019962890925",
       "product_name": "Wondercide Flea & Tick Spray Lemongrass 32oz",
       "brand": "Wondercide",
       "source_url": "https://www.wondercide.com/products/natural-flea-tick-mosquito-control-for-dogs-evolv",
@@ -292,7 +292,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "022517437179",
+      "upc": "022517437179",
       "product_name": "Catit Pixi Fountain Light Blue",
       "brand": "Catit",
       "source_url": "https://www.catit.com/products/drinking-fountains/pixi-drinking-fountain/",
@@ -327,7 +327,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "072705113408",
+      "upc": "072705113408",
       "product_name": "Fromm Cat Purrsnick Duck Liver Pate 3oz",
       "brand": "Fromm",
       "source_url": "https://frommfamily.com/products/cat/purrsnickitty/can/duck-liver-pate/",
@@ -362,7 +362,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "072705113446",
+      "upc": "072705113446",
       "product_name": "Fromm Cat Purrsnick Duck Stew 3oz",
       "brand": "Fromm",
       "source_url": "https://frommfamily.com/products/cat/purrsnickitty/can/duck-stew/",
@@ -397,7 +397,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "072705113484",
+      "upc": "072705113484",
       "product_name": "Fromm Cat Purrsnick Chicken Shred 3oz",
       "brand": "Fromm",
       "source_url": "https://frommfamily.com/products/cat/purrsnickitty/can/shredded-chicken-entree-in-gelee/",
@@ -432,7 +432,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "072705137008",
+      "upc": "072705137008",
       "product_name": "Fromm Cat Purrsnick Chicken 4lb",
       "brand": "Fromm",
       "source_url": "https://frommfamily.com/products/cat/purrsnickitty/dry/chicken-delight/",
@@ -467,7 +467,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "072705137206",
+      "upc": "072705137206",
       "product_name": "Fromm Cat Purrsnick Game Bird 4lb",
       "brand": "Fromm",
       "source_url": "https://frommfamily.com/products/cat/purrsnickitty/dry/game-bird-grandeur/",
@@ -502,7 +502,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "072705137404",
+      "upc": "072705137404",
       "product_name": "Fromm Cat Purrsnick Salmon 4lb",
       "brand": "Fromm",
       "source_url": "https://frommfamily.com/products/cat/purrsnickitty/dry/salmon-splendor/",
@@ -537,7 +537,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "810075890174",
+      "upc": "810075890174",
       "product_name": "Wondercide Flying Insect Trap",
       "brand": "Wondercide",
       "source_url": "https://www.wondercide.com/products/flying-insect-trap",
@@ -572,7 +572,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "032247761215",
+      "upc": "032247761215",
       "product_name": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
       "brand": "Scotts",
       "source_url": "https://www.scotts.com/en-us/products/spreaders/turf-builder-edgeguard-mini-broadcast-spreader",
@@ -606,7 +606,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "032247279048",
+      "upc": "032247279048",
       "product_name": "Miracle-Gro Potting Mix 50 Quart",
       "brand": "Miracle-Gro",
       "source_url": "https://www.miraclegro.com/en-us/shop/soils/potting-mix/miracle-gro-potting-mix",
@@ -640,7 +640,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "877362001042",
+      "upc": "877362001042",
       "product_name": "Green Juju Beef Bone Broth for Dogs 32 oz",
       "brand": "Green Juju",
       "source_url": "https://greenjuju.com/products/beef-bone-broth",
@@ -674,7 +674,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "017623456789",
+      "upc": "017623456789",
       "product_name": "Fromm Gold Large Breed Adult Dry Dog Food 30 lb",
       "brand": "Fromm",
       "source_url": "https://frommfamily.com/products/gold-large-breed-adult-dog-food",
@@ -708,7 +708,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "018214789012",
+      "upc": "018214789012",
       "product_name": "Taste of the Wild High Prairie Canine Recipe 28 lb",
       "brand": "Taste of the Wild",
       "source_url": "https://www.tasteofthewildpetfood.com/products/high-prairie-canine-recipe",
@@ -742,7 +742,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "019436123456",
+      "upc": "019436123456",
       "product_name": "Wellness CORE Grain Free Chicken & Turkey Dry Dog Food 4 lb",
       "brand": "Wellness",
       "source_url": "https://www.wellnesspetfood.com/products/wellness-core-grain-free-chicken-turkey-dry-dog-food",
@@ -776,7 +776,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "034567890123",
+      "upc": "034567890123",
       "product_name": "KONG Classic Dog Toy Large Red",
       "brand": "KONG",
       "source_url": "https://www.kongcompany.com/products/kong-classic-dog-toy-large",
@@ -810,7 +810,7 @@
     },
     {
       "schema_version": "official-brand-extraction-dataset-v1",
-      "sku": "076543210987",
+      "upc": "076543210987",
       "product_name": "Mazuri Rat & Mouse Diet 50 lb",
       "brand": "Mazuri",
       "source_url": "https://www.mazuri.com/product/rat-mouse-diet-50-lb",

@@ -7,7 +7,7 @@
   },
   "entries": [
     {
-      "sku": "072318200618",
+      "upc": "072318200618",
       "product_name": "FirstMate Chicken Meal with Blueberries Formula Dry Cat Food 3.96lb",
       "brand": "FirstMate",
       "expected_official_domains": [
@@ -39,7 +39,7 @@
       }
     },
     {
-      "sku": "045663976866",
+      "upc": "045663976866",
       "product_name": "Four Paws Wee-Wee Cat Pads 11x17 10ct",
       "brand": "Four Paws",
       "expected_official_domains": [
@@ -71,7 +71,7 @@
       }
     },
     {
-      "sku": "032247886598",
+      "upc": "032247886598",
       "product_name": "Scotts Nature Scapes Color Enhanced Mulch Deep Forest Brown 1.5 cu. ft.",
       "brand": "Scotts",
       "expected_official_domains": [
@@ -103,7 +103,7 @@
       }
     },
     {
-      "sku": "850012047735",
+      "upc": "850012047735",
       "product_name": "The Honest Kitchen Grain Free Turkey & Chicken Clusters Dry Cat Food 1 lb",
       "brand": "The Honest Kitchen",
       "expected_official_domains": [
@@ -135,7 +135,7 @@
       }
     },
     {
-      "sku": "4059433816098",
+      "upc": "4059433816098",
       "product_name": "Schleich Clydesdale Gelding Horse Toy Figurine",
       "brand": "Schleich",
       "expected_official_domains": [
@@ -167,7 +167,7 @@
       }
     },
     {
-      "sku": "095668480400",
+      "upc": "095668480400",
       "product_name": "Manna Pro Fresh Flakes Poultry Bedding 12 Lb",
       "brand": "Manna Pro",
       "expected_official_domains": [

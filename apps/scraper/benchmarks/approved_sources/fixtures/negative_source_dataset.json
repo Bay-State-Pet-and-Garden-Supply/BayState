@@ -8,7 +8,7 @@
   "entries": [
     {
       "dataset_kind": "negative_source",
-      "sku": "072705115310",
+      "upc": "072705115310",
       "product_name": "Fromm Gold Large Breed Dog 30 lb",
       "brand": "Fromm",
       "candidate_url": "https://www.amazon.com/Fromm-Gold-Large-Breed-Dog/dp/B0012ABCDE",
@@ -24,7 +24,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "072705115310",
+      "upc": "072705115310",
       "product_name": "Fromm Gold Large Breed Dog 30 lb",
       "brand": "Fromm",
       "candidate_url": "https://www.chewy.com/fromm-gold-large-breed-adult-dog/dp/170200",
@@ -40,7 +40,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "072705115310",
+      "upc": "072705115310",
       "product_name": "Fromm Gold Large Breed Dog 30 lb",
       "brand": "Fromm",
       "candidate_url": "https://www.walmart.com/ip/Fromm-Gold-Large-Breed/123456789",
@@ -56,7 +56,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "045663976866",
+      "upc": "045663976866",
       "product_name": "Four Paws Wee-Wee Cat Pads 11x17 10ct",
       "brand": "Four Paws",
       "candidate_url": "https://www.petco.com/shop/en/petcostore/product/wee-wee-cat-pads",
@@ -72,7 +72,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "045663976866",
+      "upc": "045663976866",
       "product_name": "Four Paws Wee-Wee Cat Pads 11x17 10ct",
       "brand": "Four Paws",
       "candidate_url": "https://www.petsmart.com/cat/supplies/cat-pads/four-paws-wee-wee-cat-pads-12345.html",
@@ -88,7 +88,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "4059433816098",
+      "upc": "4059433816098",
       "product_name": "Schleich Clydesdale Gelding Horse Toy Figurine",
       "brand": "Schleich",
       "candidate_url": "https://www.ebay.com/itm/123456789012",
@@ -104,7 +104,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "4059433816098",
+      "upc": "4059433816098",
       "product_name": "Schleich Clydesdale Gelding Horse Toy Figurine",
       "brand": "Schleich",
       "candidate_url": "https://www.etsy.com/listing/1234567890/clydesdale-gelding-figurine",
@@ -120,7 +120,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "032247761215",
+      "upc": "032247761215",
       "product_name": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
       "brand": "Scotts",
       "candidate_url": "https://www.target.com/p/scotts-turf-builder-edgeguard/-/A-12345678",
@@ -136,7 +136,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "032247761215",
+      "upc": "032247761215",
       "product_name": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
       "brand": "Scotts",
       "candidate_url": "https://www.instacart.com/products/scotts-turf-builder-edgeguard",
@@ -152,7 +152,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "032247761215",
+      "upc": "032247761215",
       "product_name": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
       "brand": "Scotts",
       "candidate_url": "https://scotts.blogspot.com/2019/review-edgeguard-spreader",
@@ -168,7 +168,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "072318200618",
+      "upc": "072318200618",
       "product_name": "FirstMate Chicken Meal with Blueberries Formula Dry Cat Food 3.96lb",
       "brand": "FirstMate",
       "candidate_url": "https://www.firstmate.com",
@@ -184,7 +184,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "856595005308",
+      "upc": "856595005308",
       "product_name": "Etta Says Flavor Fusion Salmon & Sweet Potato 1.75 oz",
       "brand": "Etta Says!",
       "candidate_url": "https://www.thepetbeastro.com/etta-says-flavor-fusion-dog-treats-or-salmon-and-s.html",
@@ -200,7 +200,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "813347001018",
+      "upc": "813347001018",
       "product_name": "Stud Muffins Horse Treats 10 oz Tub",
       "brand": "Stud Muffins",
       "candidate_url": "https://www.bigdweb.com/stud-muffins-horse-treats-10-oz",
@@ -216,7 +216,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "813347003043",
+      "upc": "813347003043",
       "product_name": "Stud Muffins Horse Treats 45 oz Tub",
       "brand": "Stud Muffins",
       "candidate_url": "https://www.bigdweb.com/stud-muffins-horse-treat-45-oz-bag",
@@ -232,7 +232,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "072705115310",
+      "upc": "072705115310",
       "product_name": "Fromm Gold Large Breed Dog 30 lb",
       "brand": "Fromm",
       "candidate_url": "https://images-na.ssl-images-amazon.com/images/I/81ABCDEFGH.jpg",
@@ -248,7 +248,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "072705115310",
+      "upc": "072705115310",
       "product_name": "Fromm Gold Large Breed Dog 30 lb",
       "brand": "Fromm",
       "candidate_url": "https://www.google.com/products/fromm-gold-large-breed",
@@ -264,7 +264,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "072705115310",
+      "upc": "072705115310",
       "product_name": "Fromm Gold Large Breed Dog 30 lb",
       "brand": "Fromm",
       "candidate_url": "https://www.youtube.com/watch?v=fromm-gold-review",
@@ -280,7 +280,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "072705115310",
+      "upc": "072705115310",
       "product_name": "Fromm Gold Large Breed Dog 30 lb",
       "brand": "Fromm",
       "candidate_url": "https://medium.com/pet-reviews/fromm-gold-review-12345",
@@ -296,7 +296,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "072705115310",
+      "upc": "072705115310",
       "product_name": "Fromm Gold Large Breed Dog 30 lb",
       "brand": "Fromm",
       "candidate_url": "https://mystore.myshopify.com/products/fromm-gold",
@@ -312,7 +312,7 @@
     },
     {
       "dataset_kind": "negative_source",
-      "sku": "850012047735",
+      "upc": "850012047735",
       "product_name": "The Honest Kitchen Grain Free Turkey & Chicken Clusters Dry Cat Food 1 lb",
       "brand": "The Honest Kitchen",
       "candidate_url": "https://www.thehonestkitchen.com",

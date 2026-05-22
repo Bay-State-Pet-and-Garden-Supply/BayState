@@ -27,16 +27,16 @@ import { adminFetch } from '@/lib/admin/api-client';
 
 interface ScrapedResultsViewProps {
   products: PipelineProduct[];
-  selectedSkus: Set<string>;
-  onSelectSku: (
-    sku: string,
+  selectedUpcs: Set<string>;
+  onSelectUpc: (
+    upc: string,
     selected: boolean,
     index?: number,
     isShiftClick?: boolean,
     visibleProducts?: PipelineProduct[],
   ) => void;
-  onSelectAll?: (skus: string[]) => void;
-  onDeselectAll?: (skus: string[]) => void;
+  onSelectAll?: (upcs: string[]) => void;
+  onDeselectAll?: (upcs: string[]) => void;
   onRefresh: (silent?: boolean) => void;
   // Filter props
   search?: string;
@@ -119,8 +119,8 @@ function isSourceDetails(value: unknown): value is SourceDetails {
 
 export function ScrapedResultsView({
   products,
-  selectedSkus,
-  onSelectSku,
+  selectedUpcs,
+  onSelectUpc,
   onSelectAll,
   onDeselectAll,
   onRefresh,
@@ -137,16 +137,16 @@ export function ScrapedResultsView({
 }: ScrapedResultsViewProps) {
   // 1. Data Transformation & Memoized State
   const sortedProducts = useMemo(() => {
-    return [...products].sort((a, b) => a.sku.localeCompare(b.sku));
+    return [...products].sort((a, b) => a.upc.localeCompare(b.upc));
   }, [products]);
 
   // 2. Primary Selection State
   const [preferredSku, setPreferredSku] = useState<string | null>(
-    sortedProducts.length > 0 ? sortedProducts[0].sku : null,
+    sortedProducts.length > 0 ? sortedProducts[0].upc : null,
   );
 
   const selectedProduct = useMemo(() => {
-    return sortedProducts.find((p) => p.sku === preferredSku) || null;
+    return sortedProducts.find((p) => p.upc === preferredSku) || null;
   }, [sortedProducts, preferredSku]);
 
   const sources = selectedProduct?.sources || EMPTY_SOURCES;
@@ -185,22 +185,22 @@ export function ScrapedResultsView({
   useEffect(() => {
     const prevProducts = prevProductsRef.current;
     if (prevProducts !== sortedProducts) {
-      const currentExists = sortedProducts.some((p) => p.sku === preferredSku);
+      const currentExists = sortedProducts.some((p) => p.upc === preferredSku);
       if (!currentExists && preferredSku) {
         // Current SKU was removed.
         // Find where it was in the PREVIOUS list.
-        const prevIndex = prevProducts.findIndex((p) => p.sku === preferredSku);
+        const prevIndex = prevProducts.findIndex((p) => p.upc === preferredSku);
         if (prevIndex !== -1) {
           // Select the product that is now at that same index (or the one before if it was last)
           const nextIndex = Math.min(prevIndex, sortedProducts.length - 1);
           if (nextIndex >= 0) {
-            setPreferredSku(sortedProducts[nextIndex].sku);
+            setPreferredSku(sortedProducts[nextIndex].upc);
           } else {
             setPreferredSku(null);
           }
         }
       } else if (!preferredSku && sortedProducts.length > 0) {
-        setPreferredSku(sortedProducts[0].sku);
+        setPreferredSku(sortedProducts[0].upc);
       }
       prevProductsRef.current = sortedProducts;
     }
@@ -237,7 +237,7 @@ export function ScrapedResultsView({
         Object.entries(newSources).filter(([key]) => !key.startsWith("_")),
       );
       const nextStatus = Object.keys(cleanedSources).length === 0 ? "imported" : undefined;
-      const res = await adminFetch(`/api/admin/pipeline/${encodeURIComponent(selectedProduct.sku)}`, {
+      const res = await adminFetch(`/api/admin/pipeline/${encodeURIComponent(selectedProduct.upc)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -317,17 +317,17 @@ export function ScrapedResultsView({
             <Checkbox
               checked={
                 sortedProducts.length > 0 &&
-                sortedProducts.every((p) => selectedSkus.has(p.sku))
+                sortedProducts.every((p) => selectedUpcs.has(p.upc))
                   ? true
-                  : sortedProducts.some((p) => selectedSkus.has(p.sku))
+                  : sortedProducts.some((p) => selectedUpcs.has(p.upc))
                     ? "indeterminate"
                     : false
               }
               onCheckedChange={(checked) => {
                 if (checked) {
-                  onSelectAll?.(sortedProducts.map((p) => p.sku));
+                  onSelectAll?.(sortedProducts.map((p) => p.upc));
                 } else {
-                  onDeselectAll?.(sortedProducts.map((p) => p.sku));
+                  onDeselectAll?.(sortedProducts.map((p) => p.upc));
                 }
               }}
               className="h-4 w-4 rounded-none border border-border accent-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground"
@@ -355,12 +355,12 @@ export function ScrapedResultsView({
           groupedProducts={groupedProducts}
           cohortBrands={cohortBrands}
           cohortBrandObjects={cohortBrandObjects}
-          selectedSkus={selectedSkus}
-          preferredSku={preferredSku}
-          onSelectSku={onSelectSku}
+          selectedUpcs={selectedUpcs}
+          preferredUpc={preferredSku}
+          onSelectUpc={onSelectUpc}
           onSelectAll={onSelectAll}
           onDeselectAll={onDeselectAll}
-          onPreferredSkuChange={setPreferredSku}
+          onPreferredUpcChange={setPreferredSku}
           variant="processed"
           onEditCohort={onEditCohort}
         />
@@ -381,7 +381,7 @@ export function ScrapedResultsView({
                         selectedProduct.input?.name}
                     </h2>
                     <div className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">
-                      <span className="bg-muted border border-border px-1.5 py-0.5 rounded-none">{selectedProduct.sku}</span>
+                      <span className="bg-muted border border-border px-1.5 py-0.5 rounded-none">{selectedProduct.upc}</span>
                       <span>•</span>
                       <span className="font-bold text-foreground">
                         ${Number(currentSourceData?.price || selectedProduct.input?.price || 0).toFixed(2)}

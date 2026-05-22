@@ -110,7 +110,7 @@ export function PipelineClient({
   const stageFromUrl = searchParams.get("stage");
   const currentStage: PipelineStage =
     normalizePipelineStage(stageFromUrl) ?? initialStage;
-  const [selectedSkus, setSelectedSkus] = useState<Set<string>>(new Set());
+  const [selectedUpcs, setSelectedUpcs] = useState<Set<string>>(new Set());
   const [products, setProducts] = useState<PipelineProduct[]>(initialProducts);
   const [counts, setCounts] = useState<StatusCount[]>(initialCounts);
   const [sources, setSources] = useState<string[]>(initialSources);
@@ -124,8 +124,8 @@ export function PipelineClient({
 
   // Handle bulk brand assignment
   const handleBulkAssignBrand = async (brandId: string | null) => {
-    const skus = Array.from(selectedSkus);
-    if (skus.length === 0) return;
+    const upcs = Array.from(selectedUpcs);
+    if (upcs.length === 0) return;
 
     setIsLoading(true);
     try {
@@ -133,17 +133,17 @@ export function PipelineClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          skus,
+          upcs,
           brandId,
         }),
       });
 
       if (res.ok) {
         toast.success(
-          `Assigned brand to ${skus.length} product${skus.length > 1 ? "s" : ""}`,
+          `Assigned brand to ${upcs.length} product${upcs.length > 1 ? "s" : ""}`,
           { description: "Products are being re-grouped into brand-specific cohorts." }
         );
-        setSelectedSkus(new Set());
+        setSelectedUpcs(new Set());
         await refreshAll();
       } else {
         const error = await res.json();
@@ -205,7 +205,7 @@ export function PipelineClient({
     }
 
     // Apply stable sort by SKU
-    return [...result].sort((a, b) => a.sku.localeCompare(b.sku));
+    return [...result].sort((a, b) => a.upc.localeCompare(b.upc));
   }, [products, sourceFilter, currentStage]);
 
   const groupedProducts = useMemo(() => {
@@ -258,11 +258,11 @@ export function PipelineClient({
   }, [filteredProducts]);
 
   const scrapeSelectionValidation = useMemo(() => {
-    if (currentStage !== "imported" || selectedSkus.size === 0) {
+    if (currentStage !== "imported" || selectedUpcs.size === 0) {
       return { allowed: true, reason: null };
     }
 
-    const selectedProducts = filteredProducts.filter((p) => selectedSkus.has(p.sku));
+    const selectedProducts = filteredProducts.filter((p) => selectedUpcs.has(p.upc));
     const unreadyCohorts: string[] = [];
     const missingUrlCohorts: string[] = [];
 
@@ -299,7 +299,7 @@ export function PipelineClient({
     }
 
     return { allowed: true, reason: null };
-  }, [currentStage, selectedSkus, filteredProducts, groupedProducts.brandObjects, groupedProducts.brands]);
+  }, [currentStage, selectedUpcs, filteredProducts, groupedProducts.brandObjects, groupedProducts.brands]);
 
   // Reset source filter if the selected source is no longer available in the product set
   useEffect(() => {
@@ -314,7 +314,7 @@ export function PipelineClient({
       if (isLiveOperationalTab(stage)) {
         setProducts([]);
         setTotalCount(0);
-        setSelectedSkus(new Set());
+        setSelectedUpcs(new Set());
         return;
       }
 
@@ -389,7 +389,7 @@ export function PipelineClient({
     setCounts(initialCounts);
     setTotalCount(initialTotal);
     setSources(initialSources);
-    setSelectedSkus(new Set());
+    setSelectedUpcs(new Set());
     setIsLoading(false);
 
     // Update tracking ref on sync so we don't re-fetch immediately if initialProducts is already filtered
@@ -434,7 +434,7 @@ export function PipelineClient({
       if (isLiveOperationalTab(currentStage)) {
         setProducts([]);
         setTotalCount(0);
-        setSelectedSkus(new Set());
+        setSelectedUpcs(new Set());
         return;
       }
 
@@ -447,7 +447,7 @@ export function PipelineClient({
       }
 
       if (isMounted) {
-        setSelectedSkus(new Set());
+        setSelectedUpcs(new Set());
         lastFetchedParams.current = {
           search,
           source: sourceFilter,
@@ -578,7 +578,7 @@ export function PipelineClient({
   // Toggle product selection with optional Shift+Click range support
   const handleSelectSku = useCallback(
     (
-      sku: string,
+      upc: string,
       selected: boolean,
       index?: number,
       isShiftClick?: boolean,
@@ -586,54 +586,54 @@ export function PipelineClient({
     ) => {
       const sourceProducts = visibleProducts ?? filteredProducts;
 
-      setSelectedSkus((prev) => {
+      setSelectedUpcs((prev) => {
         const next = new Set(prev);
 
         if (isShiftClick && index !== undefined && lastSelectedSku !== null) {
           const lastIndex = sourceProducts.findIndex(
-            (p) => p.sku === lastSelectedSku,
+            (p) => p.upc === lastSelectedSku,
           );
 
           if (lastIndex !== -1) {
             const [start, end] = [lastIndex, index].sort((a, b) => a - b);
             const rangeSkus = sourceProducts
               .slice(start, end + 1)
-              .map((p) => p.sku);
+              .map((p) => p.upc);
 
             if (selected) {
-              rangeSkus.forEach((skuItem) => {
-                next.add(skuItem);
+              rangeSkus.forEach((upcItem) => {
+                next.add(upcItem);
               });
             } else {
-              rangeSkus.forEach((skuItem) => {
-                next.delete(skuItem);
+              rangeSkus.forEach((upcItem) => {
+                next.delete(upcItem);
               });
             }
           } else {
             // Last selected item is not in this specific list (e.g. different cohort).
             // Default to single selection.
-            if (selected) next.add(sku);
-            else next.delete(sku);
+            if (selected) next.add(upc);
+            else next.delete(upc);
           }
         } else {
           if (selected) {
-            next.add(sku);
+            next.add(upc);
           } else {
-            next.delete(sku);
+            next.delete(upc);
           }
         }
 
         return next;
       });
 
-      setLastSelectedSku(sku);
+      setLastSelectedSku(upc);
     },
     [filteredProducts, lastSelectedSku],
   );
 
   // Select all visible products
   const handleSelectAllVisible = () => {
-    setSelectedSkus(new Set(filteredProducts.map((p) => p.sku)));
+    setSelectedUpcs(new Set(filteredProducts.map((p) => p.upc)));
   };
 
   // Select ALL matching (including beyond visible page) via API
@@ -660,8 +660,8 @@ export function PipelineClient({
       const res = await adminFetch(`/api/admin/pipeline?${params}`);
       if (res.ok) {
         const data = await res.json();
-        const allSkus: string[] = data.skus || [];
-        setSelectedSkus(new Set(allSkus));
+        const allSkus: string[] = data.upcs || [];
+        setSelectedUpcs(new Set(allSkus));
         toast.success(`Selected all ${allSkus.length} products`);
       } else {
         handleSelectAllVisible();
@@ -673,21 +673,21 @@ export function PipelineClient({
 
   // Clear selection
   const handleClearSelection = useCallback(() => {
-    setSelectedSkus(new Set());
+    setSelectedUpcs(new Set());
     setLastSelectedSku(null);
   }, []);
 
   // Handle consolidation submission for scraped products
   const handleConsolidate = useCallback(
-    async (skus: string[]) => {
+    async (upcs: string[]) => {
       setIsLoading(true);
       try {
         const res = await adminFetch("/api/admin/consolidation/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            skus,
-            description: `Consolidation batch for ${skus.length} products`,
+            upcs,
+            description: `Consolidation batch for ${upcs.length} products`,
             auto_apply: false,
           }),
         });
@@ -715,7 +715,7 @@ export function PipelineClient({
               },
             );
           }
-          setSelectedSkus(new Set());
+          setSelectedUpcs(new Set());
           handleStageChange("merging");
           await fetchCounts();
         } else {
@@ -733,29 +733,29 @@ export function PipelineClient({
 
   // Handle product deletion
   const handleDelete = useCallback(async () => {
-    const skus = Array.from(selectedSkus);
-    if (skus.length === 0) return;
+    const upcs = Array.from(selectedUpcs);
+    if (upcs.length === 0) return;
     setConfirmDeleteOpen(true);
-  }, [selectedSkus]);
+  }, [selectedUpcs]);
 
   const handleConfirmDelete = useCallback(async () => {
     setConfirmDeleteOpen(false);
-    const skus = Array.from(selectedSkus);
-    if (skus.length === 0) return;
+    const upcs = Array.from(selectedUpcs);
+    if (upcs.length === 0) return;
 
     setIsLoading(true);
     try {
       const res = await adminFetch("/api/admin/pipeline/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ skus }),
+        body: JSON.stringify({ upcs }),
       });
 
       if (res.ok) {
         toast.success(
-          `Deleted ${skus.length} product${skus.length > 1 ? "s" : ""}`,
+          `Deleted ${upcs.length} product${upcs.length > 1 ? "s" : ""}`,
         );
-        setSelectedSkus(new Set());
+        setSelectedUpcs(new Set());
         await refreshAll();
       } else {
         const error = await res.json();
@@ -766,7 +766,7 @@ export function PipelineClient({
     } finally {
       setIsLoading(false);
     }
-  }, [selectedSkus, refreshAll]);
+  }, [selectedUpcs, refreshAll]);
 
   const downloadResponseToFile = useCallback(
     async (response: Response, fallbackFilename: string) => {
@@ -791,16 +791,16 @@ export function PipelineClient({
 
   const fetchPublishedImageZipResponse = useCallback(
     async (
-      skus?: string[],
+      upcs?: string[],
       options: { includeExportedSelection?: boolean } = {},
     ) => {
-      const hasScopedSelection = !!skus && skus.length > 0;
+      const hasScopedSelection = !!upcs && upcs.length > 0;
       const response = hasScopedSelection
         ? await adminFetch("/api/admin/pipeline/export-zip", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            skus,
+            upcs,
             ...(options.includeExportedSelection
               ? { includeExportedSelection: true }
               : {}),
@@ -819,8 +819,8 @@ export function PipelineClient({
   );
 
   const uploadPublishedProducts = useCallback(
-    async (skus?: string[]) => {
-      const uploadCount = skus?.length ?? totalCount;
+    async (upcs?: string[]) => {
+      const uploadCount = upcs?.length ?? totalCount;
       if (uploadCount === 0) {
         return;
       }
@@ -830,7 +830,7 @@ export function PipelineClient({
         const response = await adminFetch("/api/admin/pipeline/upload-shopsite", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(skus && skus.length > 0 ? { skus } : {}),
+          body: JSON.stringify(upcs && upcs.length > 0 ? { upcs } : {}),
         });
 
         const payload = await response.json().catch(() => ({}));
@@ -855,10 +855,10 @@ export function PipelineClient({
             : null;
         const uploadedSkus = Array.isArray(payload.uploadedSkus)
           ? (payload.uploadedSkus as unknown[]).filter(
-            (sku: unknown): sku is string =>
-              typeof sku === "string" && sku.length > 0,
+            (upc: unknown): upc is string =>
+              typeof upc === "string" && upc.length > 0,
           )
-          : (skus ?? []);
+          : (upcs ?? []);
         let zipDownloaded = false;
 
         try {
@@ -879,7 +879,7 @@ export function PipelineClient({
           );
         }
 
-        setSelectedSkus(new Set());
+        setSelectedUpcs(new Set());
         await refreshAll();
 
         toast.success("ShopSite sync complete", {
@@ -910,15 +910,15 @@ export function PipelineClient({
   );
 
   const downloadPublishedImageZip = useCallback(
-    async (skus?: string[]) => {
-      const exportCount = skus?.length ?? totalCount;
+    async (upcs?: string[]) => {
+      const exportCount = upcs?.length ?? totalCount;
       if (exportCount === 0) {
         return;
       }
 
       setExportActionState("zip");
       try {
-        const response = await fetchPublishedImageZipResponse(skus);
+        const response = await fetchPublishedImageZipResponse(upcs);
         await downloadResponseToFile(response, "shopsite-images.zip");
 
         toast.success("ShopSite ZIP downloaded", {
@@ -938,12 +938,12 @@ export function PipelineClient({
   );
 
   const handleUploadSelectedShopSite = useCallback(() => {
-    void uploadPublishedProducts(Array.from(selectedSkus));
-  }, [uploadPublishedProducts, selectedSkus]);
+    void uploadPublishedProducts(Array.from(selectedUpcs));
+  }, [uploadPublishedProducts, selectedUpcs]);
 
   const handleDownloadSelectedZip = useCallback(() => {
-    void downloadPublishedImageZip(Array.from(selectedSkus));
-  }, [downloadPublishedImageZip, selectedSkus]);
+    void downloadPublishedImageZip(Array.from(selectedUpcs));
+  }, [downloadPublishedImageZip, selectedUpcs]);
 
   // Global Keyboard Shortcuts
   useEffect(() => {
@@ -962,7 +962,7 @@ export function PipelineClient({
       } else if (e.key.toLowerCase() === "r" && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         refreshAll();
-      } else if (selectedSkus.size > 0) {
+      } else if (selectedUpcs.size > 0) {
         if (e.key.toLowerCase() === "s") {
           if (currentStage === "imported") {
             e.preventDefault();
@@ -971,7 +971,7 @@ export function PipelineClient({
         } else if (e.key.toLowerCase() === "c") {
           if (currentStage === "processed") {
             e.preventDefault();
-            handleConsolidate(Array.from(selectedSkus));
+            handleConsolidate(Array.from(selectedUpcs));
           }
         } else if (
           e.key === "Delete" ||
@@ -986,7 +986,7 @@ export function PipelineClient({
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, [
-    selectedSkus,
+    selectedUpcs,
     currentStage,
     handleClearSelection,
     refreshAll,
@@ -996,8 +996,8 @@ export function PipelineClient({
 
   // Handle bulk status transition (non-scrape stages)
   const handleBulkAction = async (nextStage: PersistedPipelineStatus) => {
-    const skus = Array.from(selectedSkus);
-    if (skus.length === 0) return;
+    const upcs = Array.from(selectedUpcs);
+    if (upcs.length === 0) return;
 
     const isReset = nextStage === "imported";
 
@@ -1007,7 +1007,7 @@ export function PipelineClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          skus,
+          upcs,
           toStatus: nextStage,
           resetResults: isReset,
         }),
@@ -1018,13 +1018,13 @@ export function PipelineClient({
         const updatedCount =
           typeof payload?.updatedCount === "number"
             ? payload.updatedCount
-            : skus.length;
+            : upcs.length;
         toast.success(
           nextStage === "publishing"
             ? `Published ${updatedCount} product${updatedCount === 1 ? "" : "s"} to the storefront`
             : `Moved ${updatedCount} product${updatedCount === 1 ? "" : "s"} to ${nextStage}`,
         );
-        setSelectedSkus(new Set());
+        setSelectedUpcs(new Set());
         await refreshAll();
       } else {
         const error = await res.json();
@@ -1039,8 +1039,8 @@ export function PipelineClient({
 
   // Handle stage reset (moving back and clearing results)
   const handleResetStage = async (previousStage: PersistedPipelineStatus) => {
-    const skus = Array.from(selectedSkus);
-    if (skus.length === 0) return;
+    const upcs = Array.from(selectedUpcs);
+    if (upcs.length === 0) return;
 
     setIsLoading(true);
     try {
@@ -1048,7 +1048,7 @@ export function PipelineClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          skus,
+          upcs,
           toStatus: previousStage,
           resetResults: true,
         }),
@@ -1056,9 +1056,9 @@ export function PipelineClient({
 
       if (res.ok) {
         toast.success(
-          `Reset ${skus.length} product${skus.length > 1 ? "s" : ""} to ${previousStage}`,
+          `Reset ${upcs.length} product${upcs.length > 1 ? "s" : ""} to ${previousStage}`,
         );
-        setSelectedSkus(new Set());
+        setSelectedUpcs(new Set());
         await refreshAll();
       } else {
         const error = await res.json();
@@ -1073,8 +1073,8 @@ export function PipelineClient({
 
   // Handle scrape dialog confirm — creates static scraper jobs only
   const handleScrapeConfirm = async (scrapers: string[]) => {
-    const skus = Array.from(selectedSkus);
-    if (skus.length === 0) return;
+    const upcs = Array.from(selectedUpcs);
+    if (upcs.length === 0) return;
 
     const isAdditionalScrape = currentStage === "processed";
 
@@ -1083,7 +1083,7 @@ export function PipelineClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          skus,
+          upcs,
           scrapers,
           cohort_id: cohortIdFilter || undefined,
         }),
@@ -1093,15 +1093,15 @@ export function PipelineClient({
         const data = await res.json();
         toast.success(
           isAdditionalScrape
-            ? `Started additional scrape for ${skus.length} product${skus.length > 1 ? "s" : ""}`
-            : `Created scrape job for ${skus.length} product${skus.length > 1 ? "s" : ""} with ${scrapers.length} scraper${scrapers.length !== 1 ? "s" : ""}`,
+            ? `Started additional scrape for ${upcs.length} product${upcs.length > 1 ? "s" : ""}`
+            : `Created scrape job for ${upcs.length} product${upcs.length > 1 ? "s" : ""} with ${scrapers.length} scraper${scrapers.length !== 1 ? "s" : ""}`,
           {
             description: `Job ID: ${data.jobIds?.[0]?.slice(0, 8) ?? "unknown"}...`,
           },
         );
 
         setIsScrapeDialogOpen(false);
-        setSelectedSkus(new Set());
+        setSelectedUpcs(new Set());
 
         if (isAdditionalScrape) {
           setSearch("");
@@ -1141,25 +1141,25 @@ export function PipelineClient({
               aria-label="Select all visible products"
               checked={
                 filteredProducts.length > 0 &&
-                  filteredProducts.every((p) => selectedSkus.has(p.sku))
+                  filteredProducts.every((p) => selectedUpcs.has(p.upc))
                   ? true
-                  : filteredProducts.some((p) => selectedSkus.has(p.sku))
+                  : filteredProducts.some((p) => selectedUpcs.has(p.upc))
                     ? 'indeterminate'
                     : false
               }
               onCheckedChange={(checked) => {
                 if (checked) {
-                  const next = new Set(selectedSkus);
+                  const next = new Set(selectedUpcs);
                   filteredProducts.forEach((p) => {
-                    next.add(p.sku);
+                    next.add(p.upc);
                   });
-                  setSelectedSkus(next);
+                  setSelectedUpcs(next);
                 } else {
-                  const next = new Set(selectedSkus);
+                  const next = new Set(selectedUpcs);
                   filteredProducts.forEach((p) => {
-                    next.delete(p.sku);
+                    next.delete(p.upc);
                   });
-                  setSelectedSkus(next);
+                  setSelectedUpcs(next);
                 }
               }}
               className="h-4 w-4 rounded-none border border-border accent-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground"
@@ -1243,22 +1243,22 @@ export function PipelineClient({
           ) : currentStage === "processed" ? (
             <ProcessedResultsView
               products={filteredProducts}
-              selectedSkus={selectedSkus}
-              onSelectSku={handleSelectSku}
-              onSelectAll={(skus: string[]) => {
-                setSelectedSkus((prev) => {
+              selectedUpcs={selectedUpcs}
+              onSelectUpc={handleSelectSku}
+              onSelectAll={(upcs: string[]) => {
+                setSelectedUpcs((prev) => {
                   const next = new Set(prev);
-                  skus.forEach((sku) => {
-                    next.add(sku);
+                  upcs.forEach((upc) => {
+                    next.add(upc);
                   });
                   return next;
                 });
               }}
-              onDeselectAll={(skus: string[]) => {
-                setSelectedSkus((prev) => {
+              onDeselectAll={(upcs: string[]) => {
+                setSelectedUpcs((prev) => {
                   const next = new Set(prev);
-                  skus.forEach((sku) => {
-                    next.delete(sku);
+                  upcs.forEach((upc) => {
+                    next.delete(upc);
                   });
                   return next;
                 });
@@ -1328,8 +1328,8 @@ export function PipelineClient({
                     }
                     : undefined
                 }
-                selectedSkus={selectedSkus}
-                onSelectSku={handleSelectSku}
+                selectedUpcs={selectedUpcs}
+                onSelectUpc={handleSelectSku}
                 isSearching={isSearching}
               />
             </div>
@@ -1370,8 +1370,8 @@ export function PipelineClient({
                   groupedProducts.cohortIds[0] === "ungrouped") ? (
                 <ProductTable
                   products={filteredProducts}
-                  selectedSkus={selectedSkus}
-                  onSelectSku={handleSelectSku}
+                  selectedUpcs={selectedUpcs}
+                  onSelectUpc={handleSelectSku}
                   onSelectAll={handleSelectAllVisible}
                   onDeselectAll={handleClearSelection}
                   currentStage={currentStage}
@@ -1389,9 +1389,9 @@ export function PipelineClient({
                     {groupedProducts.cohortIds.map((cohortId) => {
                       const groupProducts =
                         groupedProducts.groups[cohortId] || [];
-                      const cohortSkus = groupProducts.map((p) => p.sku);
-                      const allSelected = groupProducts.length > 0 && groupProducts.every((p) => selectedSkus.has(p.sku));
-                      const someSelected = groupProducts.some((p) => selectedSkus.has(p.sku)) && !allSelected;
+                      const cohortSkus = groupProducts.map((p) => p.upc);
+                      const allSelected = groupProducts.length > 0 && groupProducts.every((p) => selectedUpcs.has(p.upc));
+                      const someSelected = groupProducts.some((p) => selectedUpcs.has(p.upc)) && !allSelected;
 
                       return (
                         <AccordionItem
@@ -1409,17 +1409,17 @@ export function PipelineClient({
                                 }}
                                 onChange={(e) => {
                                   if (e.target.checked) {
-                                    const next = new Set(selectedSkus);
+                                    const next = new Set(selectedUpcs);
                                     cohortSkus.forEach((s) => {
                                       next.add(s);
                                     });
-                                    setSelectedSkus(next);
+                                    setSelectedUpcs(next);
                                   } else {
-                                    const next = new Set(selectedSkus);
+                                    const next = new Set(selectedUpcs);
                                     cohortSkus.forEach((s) => {
                                       next.delete(s);
                                     });
-                                    setSelectedSkus(next);
+                                    setSelectedUpcs(next);
                                   }
                                 }}
                                 className="h-4 w-4 rounded-none border border-border cursor-pointer accent-primary"
@@ -1501,10 +1501,10 @@ export function PipelineClient({
                             )}
                             <ProductTable
                               products={groupProducts}
-                              selectedSkus={selectedSkus}
-                              onSelectSku={(sku, selected, index, isShift) =>
+                              selectedUpcs={selectedUpcs}
+                              onSelectUpc={(upc, selected, index, isShift) =>
                                 handleSelectSku(
-                                  sku,
+                                  upc,
                                   selected,
                                   index,
                                   isShift,
@@ -1512,18 +1512,18 @@ export function PipelineClient({
                                 )
                               }
                               onSelectAll={() => {
-                                const groupSkus = new Set(selectedSkus);
+                                const groupUpcs = new Set(selectedUpcs);
                                 groupProducts.forEach((p) => {
-                                  groupSkus.add(p.sku);
+                                  groupUpcs.add(p.upc);
                                 });
-                                setSelectedSkus(groupSkus);
+                                setSelectedUpcs(groupUpcs);
                               }}
                               onDeselectAll={() => {
-                                const groupSkus = new Set(selectedSkus);
+                                const groupUpcs = new Set(selectedUpcs);
                                 groupProducts.forEach((p) => {
-                                  groupSkus.delete(p.sku);
+                                  groupUpcs.delete(p.upc);
                                 });
-                                setSelectedSkus(groupSkus);
+                                setSelectedUpcs(groupUpcs);
                               }}
                               currentStage={currentStage}
                               search={search}
@@ -1533,11 +1533,11 @@ export function PipelineClient({
                               availableSources={sources}
                               totalCount={groupProducts.length}
                               onSelectAllTotal={() => {
-                                const groupSkus = new Set(selectedSkus);
+                                const groupUpcs = new Set(selectedUpcs);
                                 groupProducts.forEach((p) => {
-                                  groupSkus.add(p.sku);
+                                  groupUpcs.add(p.upc);
                                 });
-                                setSelectedSkus(groupSkus);
+                                setSelectedUpcs(groupUpcs);
                               }}
                             />
                           </AccordionContent>
@@ -1570,14 +1570,14 @@ export function PipelineClient({
       <ScraperSelectDialog
         open={isScrapeDialogOpen}
         onOpenChange={setIsScrapeDialogOpen}
-        selectedSkuCount={selectedSkus.size}
+        selectedUpcCount={selectedUpcs.size}
         onConfirm={handleScrapeConfirm}
       />
 
       {/* Floating Bulk Actions Bar */}
       {!isLiveOperationalTab(currentStage) && currentStage !== "imported" && (
         <FloatingActionsBar
-          selectedCount={selectedSkus.size}
+          selectedCount={selectedUpcs.size}
           totalCount={totalCount}
           currentStage={currentStage}
           isLoading={isLoading}
@@ -1585,7 +1585,7 @@ export function PipelineClient({
           onSelectAll={handleSelectAll}
           onBulkAction={handleBulkAction}
           onResetStage={handleResetStage}
-          onConsolidate={() => handleConsolidate(Array.from(selectedSkus))}
+          onConsolidate={() => handleConsolidate(Array.from(selectedUpcs))}
           onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
           onAssignBrand={() => setIsBulkAssignBrandOpen(true)}
           scrapeSelectionValidation={scrapeSelectionValidation}
@@ -1607,7 +1607,7 @@ export function PipelineClient({
       <BulkAssignBrandDialog
         open={isBulkAssignBrandOpen}
         onOpenChange={setIsBulkAssignBrandOpen}
-        selectedCount={selectedSkus.size}
+        selectedCount={selectedUpcs.size}
         onConfirm={handleBulkAssignBrand}
       />
 
@@ -1627,7 +1627,7 @@ export function PipelineClient({
         onOpenChange={setConfirmDeleteOpen}
         onConfirm={handleConfirmDelete}
         title="Delete Products"
-        description={`Are you sure you want to permanently delete ${selectedSkus.size} product${selectedSkus.size > 1 ? "s" : ""}? This action cannot be undone.`}
+        description={`Are you sure you want to permanently delete ${selectedUpcs.size} product${selectedUpcs.size > 1 ? "s" : ""}? This action cannot be undone.`}
         confirmLabel="Delete"
         variant="destructive"
         isLoading={isLoading}

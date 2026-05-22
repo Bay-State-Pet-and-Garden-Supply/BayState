@@ -34,7 +34,7 @@ class SearchFixture:
 class EndToEndBenchmarkEntry:
     """A single benchmark entry for the full AI Search pipeline."""
 
-    sku: str
+    upc: str
     product_name: str
     brand: str
     expected_official_domains: list[str]
@@ -106,14 +106,14 @@ def load_dataset(dataset_path: Path) -> list[EndToEndBenchmarkEntry]:
         if not isinstance(raw, dict):
             raise ValueError(f"Entry at index {index} is not an object")
 
-        sku = _normalize_string(raw.get("sku"))
+        upc = _normalize_string(raw.get("upc"))
         product_name = _normalize_string(raw.get("product_name"))
         brand = _normalize_string(raw.get("brand"))
         expected_domains = _normalize_domains(raw.get("expected_official_domains"))
         expected_source_url = _normalize_string(raw.get("expected_source_url"))
 
-        if not sku:
-            raise ValueError(f"Entry at index {index} missing required field 'sku'")
+        if not upc:
+            raise ValueError(f"Entry at index {index} missing required field 'upc'")
         if not product_name:
             raise ValueError(f"Entry at index {index} missing required field 'product_name'")
         if not brand:
@@ -129,7 +129,7 @@ def load_dataset(dataset_path: Path) -> list[EndToEndBenchmarkEntry]:
 
         parsed.append(
             EndToEndBenchmarkEntry(
-                sku=sku,
+                upc=upc,
                 product_name=product_name,
                 brand=brand,
                 expected_official_domains=expected_domains,

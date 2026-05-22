@@ -25,14 +25,14 @@ const SCRAPER_SOURCES: Omit<EnrichmentSource, 'status' | 'enabled' | 'lastFetchA
     displayName: 'Walmart',
     type: 'scraper',
     requiresAuth: false,
-    providesFields: ['name', 'brand', 'description', 'images', 'weight', 'upc'],
+    providesFields: ['name', 'brand', 'description', 'images', 'weight'],
   },
   {
     id: 'phillips',
     displayName: 'Phillips Pet Food',
     type: 'scraper',
     requiresAuth: true,
-    providesFields: ['name', 'brand', 'upc', 'images', 'weight'],
+    providesFields: ['name', 'brand', 'images', 'weight'],
   },
   {
     id: 'bradley',
@@ -88,7 +88,7 @@ const SCRAPER_SOURCES: Omit<EnrichmentSource, 'status' | 'enabled' | 'lastFetchA
     displayName: 'K9 Granola Factory',
     type: 'scraper',
     requiresAuth: false,
-    providesFields: ['name', 'brand', 'images', 'description', 'ingredients', 'upc'],
+    providesFields: ['name', 'brand', 'images', 'description', 'ingredients'],
   },
 ];
 
@@ -166,7 +166,7 @@ export async function getAllSources(): Promise<EnrichmentSource[]> {
     requiresAuth: false,
     status: 'healthy',
     enabled: true,
-    providesFields: ['name', 'brand', 'images', 'weight', 'description', 'features', 'upc'],
+    providesFields: ['name', 'brand', 'images', 'weight', 'description', 'features'],
   };
 
   return [...scraperSources, officialBrandSource];

@@ -12,7 +12,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 const formSchema = z.object({
-    sku: z.string().min(1, 'SKU is required').max(50, 'SKU is too long'),
+    upc: z.string().min(1, 'UPC is required').max(50, 'UPC is too long'),
     name: z.string().min(1, 'Product Name is required').max(200, 'Product name is too long'),
     price: z.string().optional(),
 });
@@ -37,7 +37,7 @@ export function ManualAddProductDialog({
     } = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            sku: '',
+            upc: '',
             name: '',
             price: '',
         },
@@ -49,7 +49,7 @@ export function ManualAddProductDialog({
         try {
             const parsedPrice = data.price ? parseFloat(data.price) : 0;
             const result = await manualAddProductAction({
-                sku: data.sku.trim(),
+                upc: data.upc.trim(),
                 name: data.name.trim(),
                 price: isNaN(parsedPrice) ? 0 : parsedPrice,
             });
@@ -89,20 +89,20 @@ export function ManualAddProductDialog({
                 <form onSubmit={handleSubmit(onSubmit)}>
                     <div className="space-y-5 p-6">
                         <div className="space-y-2">
-                            <Label htmlFor="sku" className="text-[10px] font-semibold text-muted-foreground">SKU / Item Number</Label>
+                            <Label htmlFor="upc" className="text-[10px] font-semibold text-muted-foreground">UPC / Item Number</Label>
                             <Input
-                                id="sku"
+                                id="upc"
                                 placeholder="e.g. 12345"
                                 disabled={isSubmitting}
                                 className="rounded-none border border-border bg-background focus:ring-1 focus:ring-primary h-11"
-                                aria-invalid={!!errors.sku}
-                                aria-describedby={errors.sku ? "sku-error" : "sku-hint"}
-                                {...register('sku')}
+                                aria-invalid={!!errors.upc}
+                                aria-describedby={errors.upc ? "upc-error" : "upc-hint"}
+                                {...register('upc')}
                             />
-                            {errors.sku ? (
-                                <p id="sku-error" className="text-[10px] font-semibold text-destructive">{errors.sku.message}</p>
+                            {errors.upc ? (
+                                <p id="upc-error" className="text-[10px] font-semibold text-destructive">{errors.upc.message}</p>
                             ) : (
-                                <p id="sku-hint" className="text-[10px] font-semibold text-foreground/80">Unique identifier used for the product.</p>
+                                <p id="upc-hint" className="text-[10px] font-semibold text-foreground/80">Unique identifier used for the product.</p>
                             )}
                         </div>
                         <div className="space-y-2">

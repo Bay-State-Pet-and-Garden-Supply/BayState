@@ -17,9 +17,9 @@ interface PipelineSidebarHeaderRowProps {
   cohortName?: string | null;
   cohortBrand?: string | null;
   cohortBrandObject?: Brand;
-  selectedSkus: Set<string>;
-  onSelectAll?: (skus: string[]) => void;
-  onDeselectAll?: (skus: string[]) => void;
+  selectedUpcs: Set<string>;
+  onSelectAll?: (upcs: string[]) => void;
+  onDeselectAll?: (upcs: string[]) => void;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: (id: string) => void;
@@ -38,7 +38,7 @@ export function PipelineSidebarHeaderRow({
   cohortName,
   cohortBrand,
   cohortBrandObject,
-  selectedSkus,
+  selectedUpcs,
   onSelectAll,
   onDeselectAll,
   onEditCohort,
@@ -48,8 +48,8 @@ export function PipelineSidebarHeaderRow({
   hideChevron = false,
   showCheckboxes = true,
 }: PipelineSidebarHeaderRowProps) {
-  const allSelected = groupProducts.length > 0 && groupProducts.every((p) => selectedSkus.has(p.sku));
-  const someSelected = groupProducts.some((p) => selectedSkus.has(p.sku)) && !allSelected;
+  const allSelected = groupProducts.length > 0 && groupProducts.every((p) => selectedUpcs.has(p.upc));
+  const someSelected = groupProducts.some((p) => selectedUpcs.has(p.upc)) && !allSelected;
   const hasConfiguredDomains = Boolean(cohortBrandObject?.official_domains && cohortBrandObject.official_domains.length > 0);
 
   return (
@@ -90,11 +90,11 @@ export function PipelineSidebarHeaderRow({
               <Checkbox
                 checked={allSelected ? true : someSelected ? "indeterminate" : false}
                 onCheckedChange={(checked) => {
-                  const cohortSkus = groupProducts.map((p) => p.sku);
+                  const cohortUpcs = groupProducts.map((p) => p.upc);
                   if (checked) {
-                    onSelectAll?.(cohortSkus);
+                    onSelectAll?.(cohortUpcs);
                   } else {
-                    onDeselectAll?.(cohortSkus);
+                    onDeselectAll?.(cohortUpcs);
                   }
                 }}
                 onClick={(e) => e.stopPropagation()}
@@ -145,4 +145,3 @@ export function PipelineSidebarHeaderRow({
     </TableRow>
   );
 }
-

@@ -9,7 +9,7 @@ import type { PipelineProduct } from "@/lib/pipeline/types";
 
 function createProduct(overrides: Partial<PipelineProduct> = {}): PipelineProduct {
   const base: PipelineProduct = {
-    sku: "SKU-1",
+    upc: "SKU-1",
     input: {
       name: "Imported Name",
       description: "Imported description",

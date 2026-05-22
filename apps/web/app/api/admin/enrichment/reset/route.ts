@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     // 1. Identify and cancel all active enrichment jobs
     const { data: activeJobs, error: activeJobsError } = await supabase
       .from("enrichment_jobs")
-      .select("id, skus")
+      .select("id, upcs")
       .in("status", ["queued", "running", "claimed"]);
 
     if (activeJobsError) {
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     
     const { data: stuckProducts, error: selectError } = await supabase
       .from("products_ingestion")
-      .select("sku")
+      .select("upc")
       .eq("pipeline_status", "extracting")
       .lt("updated_at", fifteenMinutesAgo);
 
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (stuckProducts && stuckProducts.length > 0) {
-      const skusToReset = stuckProducts.map((p) => p.sku);
+      const upcsToReset = stuckProducts.map((p) => p.upc);
 
       const { error: resetError } = await supabase
         .from("products_ingestion")
@@ -104,13 +104,13 @@ export async function POST(request: NextRequest) {
           error_message: null,
           updated_at: new Date().toISOString(),
         })
-        .in("sku", skusToReset);
+        .in("upc", upcsToReset);
 
       if (resetError) {
         console.error("[Enrichment Reset API] Failed to reset product statuses:", resetError);
         return NextResponse.json({ error: "Failed to reset product statuses" }, { status: 500 });
       }
-      productsReset = skusToReset.length;
+      productsReset = upcsToReset.length;
     }
 
     return NextResponse.json({

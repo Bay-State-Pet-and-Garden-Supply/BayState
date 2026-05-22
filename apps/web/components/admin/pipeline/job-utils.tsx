@@ -148,15 +148,15 @@ function JobLogPanel({ jobId, logs }: { jobId: string; logs: LogEntry[] }) {
 }
 
 export function toActiveJob(job: JobAssignment): ActiveJob {
- const liveProgress = progressUpdateFromJobRecord(job);
+  const liveProgress = progressUpdateFromJobRecord(job);
 
- return {
- id: job.id,
- jobType: null,
- officialBrandPhase: null,
- cohortId: null,
- skuCount: job.skus?.length ?? 0,
- scrapers: job.scrapers ?? [],
+  return {
+    id: job.id,
+    jobType: null,
+    officialBrandPhase: null,
+    cohortId: null,
+    skuCount: job.upcs?.length ?? 0,
+    scrapers: job.scrapers ?? [],
  status:
  job.status === "claimed"
  ? "running"

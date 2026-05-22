@@ -2,7 +2,7 @@
   "schema_version": "official-brand-benchmark-dataset-v1",
   "entries": [
     {
-      "sku": "032247761215",
+      "upc": "032247761215",
       "brand": "Scotts",
       "product_name": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
       "expected_official_domains": [
@@ -20,7 +20,7 @@
       ]
     },
     {
-      "sku": "032247279048",
+      "upc": "032247279048",
       "brand": "Miracle-Gro",
       "product_name": "Miracle-Gro Potting Mix 50 Quart",
       "expected_official_domains": [

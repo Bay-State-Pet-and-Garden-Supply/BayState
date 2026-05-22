@@ -12,16 +12,16 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { sku } = body;
+        const { upc } = body;
 
-        if (!sku || typeof sku !== 'string') {
+        if (!upc || typeof upc !== 'string') {
             return NextResponse.json(
-                { error: 'Missing or invalid sku' },
+                { error: 'Missing or invalid upc' },
                 { status: 400 }
             );
         }
 
-        const result = await publishToStorefront(sku);
+        const result = await publishToStorefront(upc);
 
         if (!result.success) {
             return NextResponse.json(
@@ -53,11 +53,11 @@ export async function GET(request: NextRequest) {
     if (!auth.authorized) return auth.response;
 
     const searchParams = request.nextUrl.searchParams;
-    const sku = searchParams.get('sku');
+    const upc = searchParams.get('upc');
 
-    if (!sku) {
+    if (!upc) {
         return NextResponse.json(
-            { error: 'Missing sku parameter' },
+            { error: 'Missing upc parameter' },
             { status: 400 }
         );
     }
@@ -67,8 +67,8 @@ export async function GET(request: NextRequest) {
     // Check in ingestion table
     const { data: ingestionProduct } = await supabase
         .from('products_ingestion')
-        .select('sku, pipeline_status, consolidated, input')
-        .eq('sku', sku)
+        .select('upc, pipeline_status, consolidated, input')
+        .eq('upc', upc)
         .single();
 
     if (!ingestionProduct) {
@@ -80,12 +80,12 @@ export async function GET(request: NextRequest) {
 
     const { data: existingProduct } = await supabase
         .from('products')
-        .select('id, sku, name, slug, published_at')
-        .eq('sku', sku)
+        .select('id, upc, name, slug, published_at')
+        .eq('upc', upc)
         .maybeSingle();
 
     return NextResponse.json({
-        sku,
+        upc,
         pipelineStatus: ingestionProduct.pipeline_status,
         inStorefront: !!existingProduct,
         storefrontProductId: existingProduct?.id || null,

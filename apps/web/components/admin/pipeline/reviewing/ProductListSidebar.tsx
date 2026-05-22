@@ -15,8 +15,8 @@ import type { VirtualizedPipelineTableHandle } from "@/components/admin/pipeline
 
 interface ProductListSidebarProps {
   products: PipelineProduct[];
-  selectedSku: string | null;
-  onSelectProduct: (sku: string) => void;
+  selectedUpc: string | null;
+  onSelectProduct: (upc: string) => void;
   scrollContainerRef: RefObject<VirtualizedPipelineTableHandle | null>;
   search?: string;
   onSearchChange?: (value: string) => void;
@@ -33,13 +33,13 @@ interface ProductListSidebarProps {
   cohortBrands?: Record<string, string>;
   cohortBrandObjects?: Record<string, Brand>;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
-  selectedSkus?: Set<string>;
-  onSelectSku?: (sku: string, selected: boolean, index?: number, isShiftClick?: boolean, visibleProducts?: PipelineProduct[]) => void;
+  selectedUpcs?: Set<string>;
+  onSelectUpc?: (upc: string, selected: boolean, index?: number, isShiftClick?: boolean, visibleProducts?: PipelineProduct[]) => void;
 }
 
 export function ProductListSidebar({
   products,
-  selectedSku,
+  selectedUpc,
   onSelectProduct,
   scrollContainerRef,
   search,
@@ -53,19 +53,19 @@ export function ProductListSidebar({
   cohortBrands = {},
   cohortBrandObjects = {},
   onEditCohort,
-  selectedSkus = new Set(),
-  onSelectSku,
+  selectedUpcs = new Set(),
+  onSelectUpc,
 }: ProductListSidebarProps) {
   
-  const onSelectAll = React.useCallback((skus: string[]) => {
-    if (!onSelectSku) return;
-    skus.forEach(sku => onSelectSku(sku, true));
-  }, [onSelectSku]);
+  const onSelectAll = React.useCallback((upcs: string[]) => {
+    if (!onSelectUpc) return;
+    upcs.forEach(upc => onSelectUpc(upc, true));
+  }, [onSelectUpc]);
 
-  const onDeselectAll = React.useCallback((skus: string[]) => {
-    if (!onSelectSku) return;
-    skus.forEach(sku => onSelectSku(sku, false));
-  }, [onSelectSku]);
+  const onDeselectAll = React.useCallback((upcs: string[]) => {
+    if (!onSelectUpc) return;
+    upcs.forEach(upc => onSelectUpc(upc, false));
+  }, [onSelectUpc]);
 
   return (
     <div className="w-96 min-w-[384px] max-w-[384px] border-r border-border flex flex-col shrink-0 bg-muted/10 overflow-hidden">
@@ -74,17 +74,17 @@ export function ProductListSidebar({
           <Checkbox
             checked={
               products.length > 0 &&
-              products.every((p) => selectedSkus.has(p.sku))
+              products.every((p) => selectedUpcs.has(p.upc))
                 ? true
-                : products.some((p) => selectedSkus.has(p.sku))
+                : products.some((p) => selectedUpcs.has(p.upc))
                   ? "indeterminate"
                   : false
             }
             onCheckedChange={(checked) => {
               if (checked) {
-                onSelectAll?.(products.map((p) => p.sku));
+                onSelectAll?.(products.map((p) => p.upc));
               } else {
-                onDeselectAll?.(products.map((p) => p.sku));
+                onDeselectAll?.(products.map((p) => p.upc));
               }
             }}
             className="h-4 w-4 rounded-none border border-border accent-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground"
@@ -114,12 +114,12 @@ export function ProductListSidebar({
           groupedProducts={groupedProducts}
           cohortBrands={cohortBrands}
           cohortBrandObjects={cohortBrandObjects}
-          selectedSkus={selectedSkus}
-          preferredSku={selectedSku}
-          onSelectSku={onSelectSku || (() => {})}
+          selectedUpcs={selectedUpcs}
+          preferredUpc={selectedUpc}
+          onSelectUpc={onSelectUpc || (() => {})}
           onSelectAll={onSelectAll}
           onDeselectAll={onDeselectAll}
-          onPreferredSkuChange={onSelectProduct}
+          onPreferredUpcChange={onSelectProduct}
           onEditCohort={onEditCohort}
           scrollContainerRef={scrollContainerRef}
         />
@@ -127,3 +127,4 @@ export function ProductListSidebar({
     </div>
   );
 }
+

@@ -69,7 +69,7 @@ class ExtractionMetadata:
 class EndToEndResultRow:
     """Complete result for a single benchmark entry."""
 
-    sku: str
+    upc: str
     brand: str
     product_name: str
     expected_source_url: str

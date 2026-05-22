@@ -236,7 +236,7 @@ function EnrichmentJobAttemptsPanel({ jobId }: { jobId: string }) {
               >
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs font-black tracking-tight text-foreground">
-                    {attempt.sku}
+                    {attempt.upc}
                   </span>
                   <span
                     className={cn(

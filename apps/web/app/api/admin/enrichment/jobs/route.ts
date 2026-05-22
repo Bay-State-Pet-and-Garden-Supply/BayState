@@ -1,7 +1,7 @@
 /**
  * Enrichment Jobs API
  *
- * POST  - Create new enrichment jobs for selected SKUs
+ * POST  - Create new enrichment jobs for selected UPCs
  * GET   - List active/recent enrichment jobs
  */
 
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const {
-      skus,
+      upcs,
       targetIds,
       mode,
       model,
@@ -37,16 +37,16 @@ export async function POST(request: NextRequest) {
     const extractionMode = rawExtractionMode ?? "mixed";
     const forceRefresh = rawForceRefresh ?? false;
 
-    if (!Array.isArray(skus) || skus.length === 0) {
+    if (!Array.isArray(upcs) || upcs.length === 0) {
       return NextResponse.json(
-        { error: "skus array is required and must not be empty" },
+        { error: "upcs array is required and must not be empty" },
         { status: 400 }
       );
     }
 
-    if (skus.length > 500) {
+    if (upcs.length > 500) {
       return NextResponse.json(
-        { error: "Cannot process more than 500 SKUs at once" },
+        { error: "Cannot process more than 500 UPCs at once" },
         { status: 400 }
       );
     }
@@ -62,28 +62,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate SKUs exist with valid pipeline status
+    // Validate UPCs exist with valid pipeline status
     const { data: products, error: fetchError } = await supabase
       .from("products_ingestion")
-      .select("sku, pipeline_status")
-      .in("sku", skus);
+      .select("upc, pipeline_status")
+      .in("upc", upcs);
 
     if (fetchError) {
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
     }
 
-    const validSkus = (products || [])
-      .filter((p: { sku: string; pipeline_status: string }) =>
+    const validUpcs = (products || [])
+      .filter((p: { upc: string; pipeline_status: string }) =>
         p.pipeline_status === "imported" ||
         p.pipeline_status === "extracting"
       )
-      .map((p: { sku: string }) => p.sku);
+      .map((p: { upc: string }) => p.upc);
 
-    if (validSkus.length === 0) {
+    if (validUpcs.length === 0) {
       return NextResponse.json(
         {
           error:
-            "None of the selected SKUs are in Imported or Extracting status",
+            "None of the selected UPCs are in Imported or Extracting status",
         },
         { status: 400 }
       );
@@ -97,15 +97,15 @@ export async function POST(request: NextRequest) {
       config?.source_type === "approved_source_extraction" ||
       selectedDistributorSlug !== undefined;
 
-    let sourcePlansBySku: Record<string, unknown> | undefined;
-    let skippedSkus: string[] = [];
-    let freshSkippedSkus: string[] = [];
-    let brandedSkus: string[] = [...validSkus];
+    let sourcePlansByUpc: Record<string, unknown> | undefined;
+    let skippedUpcs: string[] = [];
+    let freshSkippedUpcs: string[] = [];
+    let brandedUpcs: string[] = [...validUpcs];
 
     if (useApprovedSources) {
       const plans = await buildApprovedSourcePlans(
         supabase,
-        validSkus,
+        validUpcs,
         {
           selectedDistributorSlug,
           extractionMode,
@@ -113,12 +113,12 @@ export async function POST(request: NextRequest) {
         },
       );
 
-      sourcePlansBySku = {};
+      sourcePlansByUpc = {};
       const requiredCredentialSlugs = new Set<string>();
 
-      for (const [sku, result] of Object.entries(plans)) {
+      for (const [upc, result] of Object.entries(plans)) {
         if (result.ok) {
-          sourcePlansBySku[sku] = result.plan;
+          sourcePlansByUpc[upc] = result.plan;
           
           // Collect required credentials from the plan priority list
           const plan = result.plan as any;
@@ -133,42 +133,42 @@ export async function POST(request: NextRequest) {
             }
           }
         } else {
-          skippedSkus.push(sku);
+          skippedUpcs.push(upc);
           if (result.code === "all_sources_fresh") {
-            freshSkippedSkus.push(sku);
+            freshSkippedUpcs.push(upc);
           }
         }
       }
 
-      brandedSkus = Object.keys(sourcePlansBySku);
+      brandedUpcs = Object.keys(sourcePlansByUpc);
 
-        // Branded SKUs length check moved down to after source plan building
-        if (brandedSkus.length === 0) {
-          if (freshSkippedSkus.length > 0 && freshSkippedSkus.length === skippedSkus.length) {
+        // Branded UPCs length check moved down to after source plan building
+        if (brandedUpcs.length === 0) {
+          if (freshSkippedUpcs.length > 0 && freshSkippedUpcs.length === skippedUpcs.length) {
             return NextResponse.json({
               success: true,
               jobId: null,
-              skuCount: 0,
+              upcCount: 0,
               attemptCount: 0,
-              skipped_skus: skippedSkus,
+              skipped_upcs: skippedUpcs,
               message: "All requested approved sources are already fresh. Use Force refresh to re-scrape.",
             });
           }
 
           const errorMessages = new Set<string>();
-        for (const [sku, result] of Object.entries(plans)) {
+        for (const [upc, result] of Object.entries(plans)) {
           if (!result.ok && result.error) {
             errorMessages.add(result.error);
           }
         }
         const detailedError = errorMessages.size > 0
           ? Array.from(errorMessages).join("; ")
-          : "None of the selected SKUs have an assigned brand. Assign a brand before starting approved source extraction.";
+          : "None of the selected UPCs have an assigned brand. Assign a brand before starting approved source extraction.";
 
         return NextResponse.json(
           {
             error: detailedError,
-            skipped_skus: skippedSkus,
+            skipped_upcs: skippedUpcs,
           },
           { status: 400 }
         );
@@ -242,37 +242,37 @@ export async function POST(request: NextRequest) {
       if (Array.isArray(targetIds) && targetIds.length > 0) {
         const { data: targets } = await supabase
           .from("enrichment_targets")
-          .select("sku, url")
+          .select("upc, url")
           .in("id", targetIds)
-          .in("sku", brandedSkus);
+          .in("upc", brandedUpcs);
 
         if (targets) {
           for (const t of targets) {
-            targetMap[t.sku] = t.url;
+            targetMap[t.upc] = t.url;
           }
         }
       } else {
         // Use selected targets
         const { data: selectedTargets } = await supabase
           .from("enrichment_targets")
-          .select("sku, url")
-          .in("sku", brandedSkus)
+          .select("upc, url")
+          .in("upc", brandedUpcs)
           .eq("selected", true)
           .eq("status", "selected");
 
         if (selectedTargets) {
           for (const t of selectedTargets) {
-            targetMap[t.sku] = t.url;
+            targetMap[t.upc] = t.url;
           }
         }
 
-        // For SKUs without a selected target, mark them as needing URL review
-        const skusWithoutTargets = brandedSkus.filter(
-          (sku: string) => !targetMap[sku],
+        // For UPCs without a selected target, mark them as needing URL review
+        const upcsWithoutTargets = brandedUpcs.filter(
+          (upc: string) => !targetMap[upc],
         );
-        if (skusWithoutTargets.length > 0) {
-          for (const sku of skusWithoutTargets) {
-            targetMap[sku] = null;
+        if (upcsWithoutTargets.length > 0) {
+          for (const upc of upcsWithoutTargets) {
+            targetMap[upc] = null;
           }
         }
       }
@@ -280,8 +280,8 @@ export async function POST(request: NextRequest) {
 
     // Build job config with optional source plans
     const jobConfig: Record<string, unknown> = config ?? {};
-    if (sourcePlansBySku && Object.keys(sourcePlansBySku).length > 0) {
-      jobConfig.source_plans_by_sku = sourcePlansBySku;
+    if (sourcePlansByUpc && Object.keys(sourcePlansByUpc).length > 0) {
+      jobConfig.source_plans_by_upc = sourcePlansByUpc;
       jobConfig.source_type = "approved_source_extraction";
       jobConfig.extraction_mode = extractionMode;
       jobConfig.force_refresh = forceRefresh;
@@ -300,8 +300,8 @@ export async function POST(request: NextRequest) {
       .from("enrichment_jobs")
       .insert({
         status: "queued",
-        skus: brandedSkus,
-        total_count: brandedSkus.length,
+        upcs: brandedUpcs,
+        total_count: brandedUpcs.length,
         completed_count: 0,
         failed_count: 0,
         model: jobModel,
@@ -321,14 +321,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Create enrichment_attempts rows
-    const attempts = brandedSkus.map((sku: string) => ({
+    const attempts = brandedUpcs.map((upc: string) => ({
       job_id: job.id,
-      sku,
+      upc,
       attempt_number: 1,
       status: "queued",
       mode: jobMode,
       model: jobModel,
-      source_url: useApprovedSources ? null : targetMap[sku],
+      source_url: useApprovedSources ? null : targetMap[upc],
       config_id: aiConfigId,
     }));
 
@@ -352,7 +352,7 @@ export async function POST(request: NextRequest) {
         pipeline_status: "extracting",
         updated_at: new Date().toISOString(),
       })
-      .in("sku", brandedSkus);
+      .in("upc", brandedUpcs);
 
     if (updateError) {
       console.error("Failed to update product statuses:", updateError);
@@ -362,12 +362,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       jobId: job.id,
-      skuCount: brandedSkus.length,
+      upcCount: brandedUpcs.length,
       attemptCount: attempts.length,
-      ...(skippedSkus.length > 0 ? { skipped_skus: skippedSkus } : {}),
-      ...(freshSkippedSkus.length > 0
+      ...(skippedUpcs.length > 0 ? { skipped_upcs: skippedUpcs } : {}),
+      ...(freshSkippedUpcs.length > 0
         ? {
-            message: `Skipped ${freshSkippedSkus.length} SKU${freshSkippedSkus.length === 1 ? "" : "s"} because the requested approved sources are already fresh.`,
+            message: `Skipped ${freshSkippedUpcs.length} UPC${freshSkippedUpcs.length === 1 ? "" : "s"} because the requested approved sources are already fresh.`,
           }
         : {}),
     });
@@ -432,10 +432,10 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // 1. Get the job to know the SKUs
+    // 1. Get the job to know the UPCs
     const { data: job, error: getJobError } = await supabase
       .from("enrichment_jobs")
-      .select("status, skus")
+      .select("status, upcs")
       .eq("id", jobId)
       .single();
 
@@ -486,47 +486,47 @@ export async function DELETE(request: NextRequest) {
       console.error("[Cancel Job API] Failed to cancel attempts:", updateAttemptsError);
     }
 
-    // 4. For any product SKU in this job, check if it's stuck in 'extracting'
+    // 4. For any product UPC in this job, check if it's stuck in 'extracting'
     // and reset back to 'imported' if there are no other active attempts/jobs.
-    if (Array.isArray(job.skus) && job.skus.length > 0) {
-      // Find which of these SKUs are currently in 'extracting'
+    if (Array.isArray(job.upcs) && job.upcs.length > 0) {
+      // Find which of these UPCs are currently in 'extracting'
       const { data: productsToReset, error: productsError } = await supabase
         .from("products_ingestion")
-        .select("sku")
-        .in("sku", job.skus)
+        .select("upc")
+        .in("upc", job.upcs)
         .eq("pipeline_status", "extracting");
 
       if (productsError) {
         console.error("[Cancel Job API] Failed to check products ingestion status:", productsError);
       } else if (productsToReset && productsToReset.length > 0) {
-        const skusToCheck = productsToReset.map((p) => p.sku);
+        const upcsToCheck = productsToReset.map((p) => p.upc);
 
-        // Check if these SKUs have ANY OTHER active attempts (not this job) that are queued or running
+        // Check if these UPCs have ANY OTHER active attempts (not this job) that are queued or running
         const { data: otherActiveAttempts, error: otherAttemptsError } = await supabase
           .from("enrichment_attempts")
-          .select("sku")
-          .in("sku", skusToCheck)
+          .select("upc")
+          .in("upc", upcsToCheck)
           .neq("job_id", jobId)
           .in("status", ["queued", "running"]);
 
         if (otherAttemptsError) {
           console.error("[Cancel Job API] Failed to check other active attempts:", otherAttemptsError);
         } else {
-          const skusWithOtherAttempts = new Set(
-            (otherActiveAttempts || []).map((a) => a.sku)
+          const upcsWithOtherAttempts = new Set(
+            (otherActiveAttempts || []).map((a) => a.upc)
           );
 
-          // SKUs that have no other active attempts can be safely reset to 'imported'
-          const skusToReset = skusToCheck.filter((sku) => !skusWithOtherAttempts.has(sku));
+          // UPCs that have no other active attempts can be safely reset to 'imported'
+          const upcsToReset = upcsToCheck.filter((upc) => !upcsWithOtherAttempts.has(upc));
 
-          if (skusToReset.length > 0) {
+          if (upcsToReset.length > 0) {
             const { error: resetError } = await supabase
               .from("products_ingestion")
               .update({
                 pipeline_status: "imported",
                 updated_at: new Date().toISOString(),
               })
-              .in("sku", skusToReset);
+              .in("upc", upcsToReset);
 
             if (resetError) {
               console.error("[Cancel Job API] Failed to reset product statuses to imported:", resetError);

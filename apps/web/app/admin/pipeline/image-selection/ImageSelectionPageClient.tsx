@@ -4,10 +4,10 @@ import { useRouter } from 'next/navigation';
 import { ImageSelectionWorkspace } from '@/components/admin/pipeline/ImageSelectionWorkspace';
 
 interface ImageSelectionPageClientProps {
-    sku: string;
+    upc: string;
 }
 
-function ImageSelectionPageClient({ sku }: ImageSelectionPageClientProps) {
+function ImageSelectionPageClient({ upc }: ImageSelectionPageClientProps) {
     const router = useRouter();
 
     const handleClose = () => {
@@ -16,7 +16,7 @@ function ImageSelectionPageClient({ sku }: ImageSelectionPageClientProps) {
 
     return (
         <ImageSelectionWorkspace
-            sku={sku}
+            upc={upc}
             onClose={handleClose}
         />
     );

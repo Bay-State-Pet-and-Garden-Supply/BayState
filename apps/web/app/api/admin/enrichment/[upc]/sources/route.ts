@@ -4,18 +4,18 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { toggleSourcesForProduct } from '@/lib/enrichment/config';
 
 /**
- * POST /api/admin/enrichment/[sku]/sources
+ * POST /api/admin/enrichment/[upc]/sources
  * 
  * Toggle a source on/off for a specific product.
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ sku: string }> }
+  { params }: { params: Promise<{ upc: string }> }
 ) {
-  const { sku } = await params;
+  const { upc } = await params;
 
-  if (!sku) {
-    return NextResponse.json({ error: 'SKU is required' }, { status: 400 });
+  if (!upc) {
+    return NextResponse.json({ error: 'UPC is required' }, { status: 400 });
   }
 
   const auth = await requireAdminAuth(request);
@@ -34,7 +34,7 @@ export async function POST(
       );
     }
 
-    const result = await toggleSourcesForProduct(sku, [sourceId], enabled);
+    const result = await toggleSourcesForProduct(upc, [sourceId], enabled);
 
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 400 });

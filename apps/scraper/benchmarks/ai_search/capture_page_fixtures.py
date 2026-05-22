@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 async def capture_page(
     url: str,
-    sku: str,
+    upc: str,
     headless: bool = True,
 ) -> dict[str, object] | None:
     """Capture a single page and return its content."""
@@ -49,7 +49,7 @@ async def capture_page(
         async with Crawl4AIEngine(engine_config) as engine:
             result = await engine.crawl(url)
             if not result.get("success"):
-                logger.warning("[%s] Crawl failed: %s", sku, result.get("error"))
+                logger.warning("[%s] Crawl failed: %s", upc, result.get("error"))
                 return None
 
             html_raw = result.get("html")
@@ -71,7 +71,7 @@ async def capture_page(
                 "status_code": 200,  # Crawl4AI doesn't expose status directly
             }
     except Exception as exc:
-        logger.warning("[%s] Exception during capture: %s", sku, exc)
+        logger.warning("[%s] Exception during capture: %s", upc, exc)
         return None
 
 
@@ -101,16 +101,16 @@ async def main() -> None:
         help="Run browser with visible window",
     )
     parser.add_argument(
-        "--skus",
+        "--upcs",
         nargs="*",
         help="Only capture specific SKUs (default: all)",
     )
     args = parser.parse_args()
 
     entries = load_dataset(args.dataset)
-    if args.skus:
-        sku_set = set(args.skus)
-        entries = [e for e in entries if e.sku in sku_set]
+    if args.upcs:
+        upc_set = set(args.upcs)
+        entries = [e for e in entries if e.upc in upc_set]
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     logger.info("Capturing %d page fixtures to %s", len(entries), args.output_dir)
@@ -120,10 +120,10 @@ async def main() -> None:
 
     async def _capture_one(entry) -> None:
         async with semaphore:
-            logger.info("[%s] Capturing %s ...", entry.sku, entry.expected_source_url)
+            logger.info("[%s] Capturing %s ...", entry.upc, entry.expected_source_url)
             captured = await capture_page(
                 url=entry.expected_source_url,
-                sku=entry.sku,
+                upc=entry.upc,
                 headless=not args.no_headless,
             )
             if captured:
@@ -139,7 +139,7 @@ async def main() -> None:
                 md_len = len(captured["markdown"])
                 logger.info(
                     "  [%s] Saved to %s (html=%d, md=%d)",
-                    entry.sku,
+                    entry.upc,
                     fixture_path.name,
                     html_len,
                     md_len,

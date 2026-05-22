@@ -16,7 +16,7 @@ const ALLOWED_STATUSES = [...PERSISTED_PIPELINE_STATUSES, 'all'] as const;
 
 type ExportStatus = PersistedPipelineStatus | 'all';
 interface ExportRequestBody {
-  skus?: unknown;
+  upcs?: unknown;
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -24,7 +24,7 @@ type SelectedImageRecord = {
   url?: unknown;
 };
 type ExportProduct = {
-  sku: string;
+  upc: string;
   input: unknown;
   consolidated: unknown;
   selected_images: unknown;
@@ -100,7 +100,7 @@ async function streamWorkbookRows(
   const worksheet = workbook.addWorksheet('Products');
 
   worksheet.columns = [
-    { header: 'SKU', key: 'sku', width: 24 },
+    { header: 'UPC', key: 'upc', width: 24 },
     { header: 'Name', key: 'name', width: 40 },
     { header: 'Description', key: 'description', width: 60 },
     { header: 'Price', key: 'price', width: 14 },
@@ -117,7 +117,7 @@ async function streamWorkbookRows(
     const consolidated = asRecord(product.consolidated);
 
     worksheet.addRow({
-      sku: product.sku,
+      upc: product.upc,
       name: asString(consolidated.name) || asString(input.name),
       description: asString(consolidated.description) || asString(input.description),
       price: asNumber(consolidated.price),
@@ -146,10 +146,10 @@ async function streamWorkbook(status: ExportStatus | 'all', output: PassThrough)
       
       let query = supabase
         .from('products_ingestion')
-        .select('sku, input, consolidated, selected_images, pipeline_status, updated_at')
+        .select('upc, input, consolidated, selected_images, pipeline_status, updated_at')
         .is('exported_at', null)
         .order('updated_at', { ascending: false })
-        .order('sku', { ascending: true });
+        .order('upc', { ascending: true });
       
       // Only filter by status if not 'all'
       if (status !== 'all') {
@@ -184,18 +184,18 @@ async function streamWorkbook(status: ExportStatus | 'all', output: PassThrough)
   await streamWorkbookRows(loadProducts(), output);
 }
 
-async function streamWorkbookForSkus(skus: string[], output: PassThrough) {
+async function streamWorkbookForUpcs(upcs: string[], output: PassThrough) {
   const supabase = await createAdminClient();
-  const normalizedSkus = Array.from(
+  const normalizedUpcs = Array.from(
     new Set(
-      skus
-        .map((sku) => (typeof sku === 'string' ? sku.trim() : ''))
-        .filter((sku) => sku.length > 0),
+      upcs
+        .map((upc) => (typeof upc === 'string' ? upc.trim() : ''))
+        .filter((upc) => upc.length > 0),
     ),
   );
 
-  if (normalizedSkus.length === 0) {
-    throw new Error('Expected "skus" to be a non-empty array of SKU strings');
+  if (normalizedUpcs.length === 0) {
+    throw new Error('Expected "upcs" to be a non-empty array of UPC strings');
   }
 
   async function* loadProducts(): AsyncGenerator<ExportProduct> {
@@ -207,12 +207,12 @@ async function streamWorkbookForSkus(skus: string[], output: PassThrough) {
 
       const { data, error } = await supabase
         .from('products_ingestion')
-        .select('sku, input, consolidated, selected_images, pipeline_status, updated_at')
+        .select('upc, input, consolidated, selected_images, pipeline_status, updated_at')
         .eq('pipeline_status', 'publishing')
         .is('exported_at', null)
-        .in('sku', normalizedSkus)
+        .in('upc', normalizedUpcs)
         .order('updated_at', { ascending: false })
-        .order('sku', { ascending: true })
+        .order('upc', { ascending: true })
         .range(from, to);
 
       if (error) {
@@ -238,18 +238,18 @@ async function streamWorkbookForSkus(skus: string[], output: PassThrough) {
   await streamWorkbookRows(loadProducts(), output);
 }
 
-function parseSkuSelection(body: ExportRequestBody): string[] {
-  if (body.skus === undefined) {
+function parseUpcSelection(body: ExportRequestBody): string[] {
+  if (body.upcs === undefined) {
     return [];
   }
 
-  if (!Array.isArray(body.skus)) {
-    throw new Error('Expected "skus" to be an array of SKU strings');
+  if (!Array.isArray(body.upcs)) {
+    throw new Error('Expected "upcs" to be an array of UPC strings');
   }
 
-  return body.skus
-    .map((sku) => (typeof sku === 'string' ? sku.trim() : ''))
-    .filter((sku) => sku.length > 0);
+  return body.upcs
+    .map((upc) => (typeof upc === 'string' ? upc.trim() : ''))
+    .filter((upc) => upc.length > 0);
 }
 
 function buildWorkbookResponse(output: PassThrough) {
@@ -292,16 +292,16 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = (await request.json()) as ExportRequestBody;
-    const skus = parseSkuSelection(body);
-    if (skus.length === 0) {
+    const upcs = parseUpcSelection(body);
+    if (upcs.length === 0) {
       return NextResponse.json(
-        { error: 'Expected "skus" to be a non-empty array of SKU strings' },
+        { error: 'Expected "upcs" to be a non-empty array of UPC strings' },
         { status: 400 },
       );
     }
 
     const output = new PassThrough();
-    void streamWorkbookForSkus(skus, output).catch((error: unknown) => {
+    void streamWorkbookForUpcs(upcs, output).catch((error: unknown) => {
       console.error('Pipeline export stream failed:', error);
       output.destroy(error instanceof Error ? error : new Error('Pipeline export failed'));
     });

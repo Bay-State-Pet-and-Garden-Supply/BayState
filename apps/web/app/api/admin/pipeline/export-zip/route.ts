@@ -13,28 +13,28 @@ export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minutes (max for Vercel Pro)
 
 interface ExportRequestBody {
-    skus?: unknown;
+    upcs?: unknown;
     includeExportedSelection?: unknown;
 }
 
-function parseSkuSelection(body: ExportRequestBody): string[] {
-    if (body.skus === undefined) {
+function parseUpcSelection(body: ExportRequestBody): string[] {
+    if (body.upcs === undefined) {
         return [];
     }
 
-    if (!Array.isArray(body.skus)) {
-        throw new Error('Expected "skus" to be an array of SKU strings');
+    if (!Array.isArray(body.upcs)) {
+        throw new Error('Expected "upcs" to be an array of UPC strings');
     }
 
-    return body.skus
-        .map((sku) => (typeof sku === 'string' ? sku.trim() : ''))
-        .filter((sku) => sku.length > 0);
+    return body.upcs
+        .map((upc) => (typeof upc === 'string' ? upc.trim() : ''))
+        .filter((upc) => upc.length > 0);
 }
 
-async function buildZipResponse(skus?: string[], includeExportedSelection = false) {
+async function buildZipResponse(upcs?: string[], includeExportedSelection = false) {
     const { products } = await loadStorefrontShopSiteExport({
-        skus,
-        includeExportedRequestedSkus: includeExportedSelection,
+        upcs,
+        includeExportedRequestedUpcs: includeExportedSelection,
     });
     if (products.length === 0) {
         return NextResponse.json(
@@ -134,14 +134,14 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json() as ExportRequestBody;
-        const skus = parseSkuSelection(body);
+        const upcs = parseUpcSelection(body);
         return await buildZipResponse(
-            skus.length > 0 ? skus : undefined,
+            upcs.length > 0 ? upcs : undefined,
             body.includeExportedSelection === true,
         );
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to generate ZIP export';
-        const status = message.includes('Expected "skus"') || message.includes('export queue') ? 400 : 500;
+        const status = message.includes('Expected "upcs"') || message.includes('export queue') ? 400 : 500;
         console.error('[ExportZip] Setup error:', err);
         return NextResponse.json({ error: message }, { status });
     }

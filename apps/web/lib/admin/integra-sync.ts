@@ -7,7 +7,7 @@ import type {
 } from "@/lib/admin/integrations/reconciliation-types";
 
 export interface IntegraProduct {
-  sku: string;
+  upc: string;
   name: string;
   price: number;
 }
@@ -23,7 +23,7 @@ const INITIAL_ONBOARDING_PIPELINE_STATUS = "imported";
 /**
  * Parses an Integra Excel export.
  * Mapping:
- * - SKU_NO -> sku
+ * - SKU_NO -> upc
  * - LIST_PRICE -> price
  * - DESCRIPTION1 + DESCRIPTION2 -> name
  */
@@ -31,7 +31,7 @@ async function parseIntegraExcel(
   buffer: ArrayBuffer,
 ): Promise<IntegraProduct[]> {
   return parseRegisterWorkbook(buffer).map((product) => ({
-    sku: product.sku,
+    upc: product.upc,
     name: product.name,
     price: product.price,
   }));
@@ -45,28 +45,26 @@ async function analyzeIntegraSync(
 ): Promise<SyncAnalysis> {
   const supabase = await createClient();
 
-  // Fetch all existing SKUs from website
-  // We might want to do this in batches if there are thousands,
-  // but for now we'll fetch them all or at least the ones in the file.
-  const skusInFile = integraProducts.map((p) => p.sku);
+  // Fetch all existing UPCs from website
+  const upcsInFile = integraProducts.map((p) => p.upc);
 
   const { data: existingProducts, error } = await supabase
     .from("products")
-    .select("sku")
-    .in("sku", skusInFile);
+    .select("upc")
+    .in("upc", upcsInFile);
 
   if (error) {
     console.error("Error fetching existing products:", error);
     throw new Error("Failed to verify existing products");
   }
 
-  const existingSkuSet = new Set(existingProducts?.map((p) => p.sku) || []);
+  const existingUpcSet = new Set(existingProducts?.map((p) => p.upc) || []);
 
-  const newProducts = integraProducts.filter((p) => !existingSkuSet.has(p.sku));
+  const newProducts = integraProducts.filter((p) => !existingUpcSet.has(p.upc));
 
   return {
     totalInFile: integraProducts.length,
-    existingOnWebsite: existingSkuSet.size,
+    existingOnWebsite: existingUpcSet.size,
     newProducts,
   };
 }
@@ -79,16 +77,15 @@ export async function addToOnboarding(
 ): Promise<{ success: boolean; count: number; cohorts?: { assigned: number; ungrouped: number; cohortCount: number; errors: string[] } }> {
   const supabase = await createClient();
 
-  // Remove duplicate SKUs — Postgres will error if the same conflict target
-  // appears more than once in the same INSERT ... ON CONFLICT statement.
+  // Remove duplicate UPCs
   const uniqueMap = new Map<string, IntegraProduct>();
   for (const p of products) {
-    if (!uniqueMap.has(p.sku)) uniqueMap.set(p.sku, p); // keep first occurrence
+    if (!uniqueMap.has(p.upc)) uniqueMap.set(p.upc, p); // keep first occurrence
   }
   const uniqueProducts = Array.from(uniqueMap.values());
 
   const onboardingData = uniqueProducts.map((p) => ({
-    sku: p.sku,
+    upc: p.upc,
     input: {
       name: p.name,
       price: p.price,
@@ -99,14 +96,14 @@ export async function addToOnboarding(
 
   if (uniqueProducts.length !== products.length) {
     console.warn(
-      `[integra-sync] removed ${products.length - uniqueProducts.length} duplicate SKUs before upsert`,
+      `[integra-sync] removed ${products.length - uniqueProducts.length} duplicate UPCs before upsert`,
     );
   }
 
   // Use upsert to avoid duplicate key errors if some products are already in onboarding.
   const { error } = await supabase
     .from("products_ingestion")
-    .upsert(onboardingData, { onConflict: "sku" });
+    .upsert(onboardingData, { onConflict: "upc" });
 
   if (error) {
     console.error("Error adding to onboarding:", error);
@@ -115,7 +112,7 @@ export async function addToOnboarding(
 
   let cohorts;
   try {
-    cohorts = await assignProductsToCohorts(supabase, uniqueProducts.map(p => p.sku));
+    cohorts = await assignProductsToCohorts(supabase, uniqueProducts.map(p => p.upc));
   } catch (cohortError) {
     console.warn("[integra-sync] cohort assignment failed (non-fatal):", cohortError);
   }
@@ -208,27 +205,27 @@ async function analyzeIntegraReconciliation(
 ): Promise<Omit<IntegraReconciliationResult, 'syncRunId'>> {
   const supabase = await createClient();
 
-  // Fetch all website products (SKU → product mapping)
+  // Fetch all website products (UPC → product mapping)
   const { data: websiteProducts } = await supabase
     .from('products')
-    .select('id, sku, name, price, quantity, stock_status');
+    .select('id, upc, name, price, quantity, stock_status');
 
-  const websiteBySku = new Map(
-    (websiteProducts || []).map(p => [p.sku, p])
+  const websiteByUpc = new Map(
+    (websiteProducts || []).map(p => [p.upc, p])
   );
 
   const issues: ReconciliationIssue[] = [];
-  const seenSkus = new Set<string>();
+  const seenUpcs = new Set<string>();
   let matchedProducts = 0;
   let unchangedProducts = 0;
 
   for (const wp of workbookProducts) {
-    // Check for duplicate SKUs in file
-    if (seenSkus.has(wp.sku)) {
+    // Check for duplicate UPCs in file
+    if (seenUpcs.has(wp.upc)) {
       issues.push({
-        sku: wp.sku,
+        upc: wp.upc,
         productId: null,
-        issueType: 'duplicate_sku',
+        issueType: 'duplicate_upc',
         severity: 'medium',
         registerName: wp.name,
         websiteName: null,
@@ -236,19 +233,19 @@ async function analyzeIntegraReconciliation(
         websitePrice: null,
         registerQuantity: wp.quantityOnHand,
         websiteQuantity: null,
-        recommendedAction: 'Review duplicate SKU entries in Integra export',
+        recommendedAction: 'Review duplicate UPC entries in Integra export',
         rawRegisterPayload: { ...wp },
       });
       continue;
     }
-    seenSkus.add(wp.sku);
+    seenUpcs.add(wp.upc);
 
-    const websiteProduct = websiteBySku.get(wp.sku);
+    const websiteProduct = websiteByUpc.get(wp.upc);
 
     if (!websiteProduct) {
       // Register-only product
       issues.push({
-        sku: wp.sku,
+        upc: wp.upc,
         productId: null,
         issueType: 'register_only',
         severity: 'high',
@@ -272,7 +269,7 @@ async function analyzeIntegraReconciliation(
     const websitePrice = Math.round((websiteProduct.price || 0) * 100) / 100;
     if (registerPrice !== websitePrice) {
       productIssues.push({
-        sku: wp.sku,
+        upc: wp.upc,
         productId: websiteProduct.id,
         issueType: 'price_mismatch',
         severity: registerPrice === 0 ? 'high' : 'medium',
@@ -292,7 +289,7 @@ async function analyzeIntegraReconciliation(
     // Check quantity mismatch
     if (wp.quantityOnHand !== websiteProduct.quantity) {
       productIssues.push({
-        sku: wp.sku,
+        upc: wp.upc,
         productId: websiteProduct.id,
         issueType: 'quantity_mismatch',
         severity: 'low',
@@ -311,7 +308,7 @@ async function analyzeIntegraReconciliation(
     const registerStockStatus = wp.quantityOnHand > 0 ? 'in_stock' : 'out_of_stock';
     if (websiteProduct.stock_status && registerStockStatus !== websiteProduct.stock_status) {
       productIssues.push({
-        sku: wp.sku,
+        upc: wp.upc,
         productId: websiteProduct.id,
         issueType: 'stock_status_mismatch',
         severity: 'medium',
@@ -336,9 +333,9 @@ async function analyzeIntegraReconciliation(
   // Detect website-only products (in catalog but not in register file)
   if (workbookProducts.length > 10 && websiteProducts) {
     for (const wp of websiteProducts) {
-      if (!seenSkus.has(wp.sku)) {
+      if (!seenUpcs.has(wp.upc)) {
         issues.push({
-          sku: wp.sku,
+          upc: wp.upc,
           productId: wp.id,
           issueType: 'website_only',
           severity: 'low',
@@ -384,7 +381,7 @@ async function persistReconciliationIssues(
   const supabase = await createClient();
   const rows = issues.map(issue => ({
     sync_run_id: syncRunId,
-    sku: issue.sku,
+    upc: issue.upc,
     product_id: issue.productId,
     register_name: issue.registerName,
     website_name: issue.websiteName,
@@ -509,20 +506,20 @@ export async function pushRegisterOnlyIssuesToPipeline(
     const { error: insertError } = await supabase
       .from('products_ingestion')
       .upsert({
-        sku: issue.sku,
+        upc: issue.upc,
         input: {
-          name: issue.register_name || issue.sku,
+          name: issue.register_name || issue.upc,
           price: issue.register_price,
-          sku: issue.sku,
+          upc: issue.upc,
           source: 'integra',
           sync_run_id: issue.sync_run_id,
           reconciliation_item_id: issue.id,
         },
         pipeline_status: 'imported',
-      }, { onConflict: 'sku' });
+      }, { onConflict: 'upc' });
 
     if (insertError) {
-      errors.push(`Failed to push ${issue.sku}: ${insertError.message}`);
+      errors.push(`Failed to push ${issue.upc}: ${insertError.message}`);
     } else {
       await supabase
         .from('inventory_reconciliation_items')
@@ -534,10 +531,10 @@ export async function pushRegisterOnlyIssuesToPipeline(
 
   // Assign successfully pushed products to cohorts
   if (count > 0) {
-    const pushedSkus = issues.map(i => i.sku).filter(sku => !errors.some(e => e.includes(sku)));
-    if (pushedSkus.length > 0) {
+    const pushedUpcs = issues.map(i => i.upc).filter(upc => !errors.some(e => e.includes(upc)));
+    if (pushedUpcs.length > 0) {
       try {
-        const cohortResult = await assignProductsToCohorts(supabase, pushedSkus);
+        const cohortResult = await assignProductsToCohorts(supabase, pushedUpcs);
         if (cohortResult.errors.length > 0) {
           errors.push(...cohortResult.errors);
         }

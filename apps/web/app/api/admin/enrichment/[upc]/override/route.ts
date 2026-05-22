@@ -5,18 +5,18 @@ import { setFieldSourceOverride } from '@/lib/enrichment/config';
 import { isEnrichableField, isProtectedField } from '@/lib/enrichment/types';
 
 /**
- * POST /api/admin/enrichment/[sku]/override
+ * POST /api/admin/enrichment/[upc]/override
  * 
  * Set a field-level source override for conflict resolution.
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ sku: string }> }
+  { params }: { params: Promise<{ upc: string }> }
 ) {
-  const { sku } = await params;
+  const { upc } = await params;
 
-  if (!sku) {
-    return NextResponse.json({ error: 'SKU is required' }, { status: 400 });
+  if (!upc) {
+    return NextResponse.json({ error: 'UPC is required' }, { status: 400 });
   }
 
   const auth = await requireAdminAuth(request);
@@ -35,7 +35,7 @@ export async function POST(
       );
     }
 
-    // Check if field is protected (price, sku, etc.)
+    // Check if field is protected (price, upc, etc.)
     if (isProtectedField(field)) {
       return NextResponse.json(
         { error: `Cannot override protected field: ${field}. Price and SKU always come from original import.` },
@@ -50,7 +50,7 @@ export async function POST(
       );
     }
 
-    const result = await setFieldSourceOverride(sku, field, sourceId);
+    const result = await setFieldSourceOverride(upc, field, sourceId);
 
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 400 });

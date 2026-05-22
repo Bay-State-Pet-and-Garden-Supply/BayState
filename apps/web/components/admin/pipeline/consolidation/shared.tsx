@@ -23,7 +23,7 @@ import {
 // ============================================================================
 
 export interface ConsolidationJobItemActivity {
- sku: string;
+ upc: string;
  status: string;
  error_message?: string | null;
  updated_at?: string | null;

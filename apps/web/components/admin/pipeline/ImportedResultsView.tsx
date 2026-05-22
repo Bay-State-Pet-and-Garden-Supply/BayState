@@ -80,7 +80,7 @@ export function ImportedResultsView({
 
   // 1. Data Transformation & Memoized State
   const sortedProducts = useMemo(() => {
-    return [...products].sort((a, b) => a.sku.localeCompare(b.sku));
+    return [...products].sort((a, b) => a.upc.localeCompare(b.upc));
   }, [products]);
 
   // 2. Primary Selection State
@@ -119,7 +119,7 @@ export function ImportedResultsView({
     if (!activeCohortId || activeCohortId === "ungrouped") return;
 
     try {
-      const skus = cohortProducts.map((p) => p.sku);
+      const upcs = cohortProducts.map((p) => p.upc);
 
       // 1. Update the cohort batch
       const cohortResult = await updateCohortBatch(activeCohortId, {
@@ -129,7 +129,7 @@ export function ImportedResultsView({
       if (!cohortResult.success) throw new Error(cohortResult.error);
 
       // 2. Update the products batch
-      const productResult = await updateProductsBatch(skus, {
+      const productResult = await updateProductsBatch(upcs, {
         brand_id: brand?.id || null,
         enrichment_config: {
           official_domains: brand?.official_domains || [],
@@ -213,13 +213,13 @@ export function ImportedResultsView({
           groupedProducts={groupedProducts}
           cohortBrands={cohortBrands}
           cohortBrandObjects={cohortBrandObjects}
-          selectedSkus={new Set()}
-          preferredSku={null}
+          selectedUpcs={new Set()}
+          preferredUpc={null}
           preferredCohortId={preferredCohortId}
-          onSelectSku={() => {}}
+          onSelectUpc={() => {}}
           onSelectAll={() => {}}
           onDeselectAll={() => {}}
-          onPreferredSkuChange={() => { }}
+          onPreferredUpcChange={() => { }}
           onPreferredCohortChange={handleCohortChange}
           variant="imported"
         />
@@ -364,13 +364,13 @@ export function ImportedResultsView({
                     {cohortProducts.map(product => {
                       return (
                         <div
-                          key={product.sku}
+                          key={product.upc}
                           className="p-3 bg-card border flex flex-col gap-2 transition-colors group relative border-border"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-2">
                               <div className="text-[9px] font-semibold text-muted-foreground bg-background px-1 py-0.5 rounded-none border border-border shrink-0">
-                                {product.sku}
+                                {product.upc}
                               </div>
                             </div>
                             <div className="text-[10px] font-semibold text-brand-forest-green shrink-0">

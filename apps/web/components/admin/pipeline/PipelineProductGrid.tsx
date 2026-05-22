@@ -58,10 +58,10 @@ export function PipelineProductGrid({
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
                 {products.map((product, index) => (
                     <PipelineProductCard
-                        key={product.sku}
+                        key={product.upc}
                         product={product}
                         index={index}
-                        isSelected={selectedSkus.has(product.sku)}
+                        isSelected={selectedSkus.has(product.upc)}
                         onSelect={onSelect}
                         onView={onView}
                         onEnrich={onEnrich}

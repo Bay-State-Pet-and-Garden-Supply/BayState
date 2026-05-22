@@ -38,7 +38,7 @@ interface ScraperRecommendation {
 interface ScraperSelectDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    selectedSkuCount: number;
+    selectedUpcCount: number;
     onConfirm: (scrapers: string[]) => void;
     /** When provided, fetches and shows scraper recommendations for this brand */
     brandName?: string | null;
@@ -54,7 +54,7 @@ const CONFIDENCE_BADGE: Record<string, { label: string; className: string }> = {
 export function ScraperSelectDialog({
     open,
     onOpenChange,
-    selectedSkuCount,
+    selectedUpcCount,
     onConfirm,
     brandName,
 }: ScraperSelectDialogProps) {
@@ -159,7 +159,7 @@ export function ScraperSelectDialog({
                 <DialogHeader className="space-y-2">
                     <DialogTitle className="text-2xl font-semibold">Start Scrape Jobs</DialogTitle>
                     <DialogDescription className="font-bold text-muted-foreground">
-                        {selectedSkuCount} product{selectedSkuCount !== 1 ? 's' : ''} selected.
+                        {selectedUpcCount} product{selectedUpcCount !== 1 ? 's' : ''} selected.
                         Choose scrapers for standard product page enrichment.
                     </DialogDescription>
                 </DialogHeader>
@@ -280,7 +280,7 @@ export function ScraperSelectDialog({
                             </>
                         ) : (
                             <>
-                                Start Scraping {selectedSkuCount} Product{selectedSkuCount !== 1 ? 's' : ''}
+                                Start Scraping {selectedUpcCount} Product{selectedUpcCount !== 1 ? 's' : ''}
                             </>
                         )}
                     </Button>

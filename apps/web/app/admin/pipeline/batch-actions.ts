@@ -38,7 +38,7 @@ const productBatchUpdateSchema = z.object({
 });
 
 export async function updateProductsBatch(
-  skus: string[],
+  upcs: string[],
   updates: z.infer<typeof productBatchUpdateSchema>
 ): Promise<ActionState> {
   const user = await requireAdminOrStaff();
@@ -46,8 +46,8 @@ export async function updateProductsBatch(
     return { success: false, error: 'Forbidden: Admin or staff access required' };
   }
 
-  if (!skus || skus.length === 0) {
-    return { success: false, error: 'No SKUs provided' };
+  if (!upcs || upcs.length === 0) {
+    return { success: false, error: 'No UPCs provided' };
   }
 
   try {
@@ -59,7 +59,7 @@ export async function updateProductsBatch(
     const { error } = await supabase
       .from('products_ingestion')
       .update(validatedUpdates)
-      .in('sku', skus);
+      .in('upc', upcs);
 
     if (error) {
       console.error('Database Error in updateProductsBatch:', error);
@@ -71,7 +71,7 @@ export async function updateProductsBatch(
       const { error: transitionError } = await supabase
         .from('products_ingestion')
         .update({ pipeline_status: 'imported' })
-        .in('sku', skus)
+        .in('upc', upcs)
         .eq('pipeline_status', 'awaiting_brand');
 
       if (transitionError) {

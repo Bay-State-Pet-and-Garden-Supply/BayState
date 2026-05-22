@@ -10,7 +10,7 @@ DATASET_SCHEMA_VERSION = "official-brand-benchmark-dataset-v1"
 
 @dataclass(frozen=True)
 class OfficialBrandBenchmarkEntry:
-    sku: str
+    upc: str
     product_name: str
     expected_official_domains: list[str]
     brand: str | None = None
@@ -54,11 +54,11 @@ def load_dataset(dataset_path: Path) -> list[OfficialBrandBenchmarkEntry]:
         if not isinstance(raw, dict):
             raise ValueError(f"Entry at index {index} is not an object")
 
-        sku = _normalize_string(raw.get("sku"))
+        upc = _normalize_string(raw.get("upc"))
         product_name = _normalize_string(raw.get("product_name"))
         expected_domains = _normalize_domains(raw.get("expected_official_domains"))
-        if not sku:
-            raise ValueError(f"Entry at index {index} missing required field 'sku'")
+        if not upc:
+            raise ValueError(f"Entry at index {index} missing required field 'upc'")
         if not product_name:
             raise ValueError(f"Entry at index {index} missing required field 'product_name'")
         if not expected_domains:
@@ -68,7 +68,7 @@ def load_dataset(dataset_path: Path) -> list[OfficialBrandBenchmarkEntry]:
         tags = raw.get("tags")
         parsed.append(
             OfficialBrandBenchmarkEntry(
-                sku=sku,
+                upc=upc,
                 product_name=product_name,
                 expected_official_domains=expected_domains,
                 brand=_normalize_string(raw.get("brand")),

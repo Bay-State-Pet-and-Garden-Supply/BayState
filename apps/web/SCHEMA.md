@@ -40,7 +40,7 @@ Operational data that should not be merged into canonical storefront rows.
 
 | Table | Role |
 |---|---|
-| `products_ingestion` | Raw/imported/consolidated pipeline record per SKU |
+| `products_ingestion` | Raw/imported/consolidated pipeline record per UPC |
 | `pipeline_audit_log` | Pipeline status change audit trail |
 | `pipeline_retry_queue` | Retry orchestration |
 | `enrichment_jobs`, `enrichment_attempts`, `enrichment_targets` | Enrichment orchestration |

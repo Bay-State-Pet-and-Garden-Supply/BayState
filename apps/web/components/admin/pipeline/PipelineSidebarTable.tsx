@@ -25,13 +25,13 @@ interface PipelineSidebarTableProps {
   cohortBrandObjects?: Record<string, Brand>;
   
   // Selection
-  selectedSkus: Set<string>;
-  preferredSku: string | null;
+  selectedUpcs: Set<string>;
+  preferredUpc: string | null;
   preferredCohortId?: string | null;
-  onSelectSku: (sku: string, isSelected: boolean, index?: number, isShiftClick?: boolean, visibleProducts?: PipelineProduct[]) => void;
-  onSelectAll?: (skus: string[]) => void;
-  onDeselectAll?: (skus: string[]) => void;
-  onPreferredSkuChange: (sku: string) => void;
+  onSelectUpc: (upc: string, isSelected: boolean, index?: number, isShiftClick?: boolean, visibleProducts?: PipelineProduct[]) => void;
+  onSelectAll?: (upcs: string[]) => void;
+  onDeselectAll?: (upcs: string[]) => void;
+  onPreferredUpcChange: (upc: string) => void;
   onPreferredCohortChange?: (cohortId: string) => void;
   
   // Customization
@@ -49,13 +49,13 @@ export function PipelineSidebarTable({
   groupedProducts,
   cohortBrands = {},
   cohortBrandObjects = {},
-  selectedSkus,
-  preferredSku,
+  selectedUpcs,
+  preferredUpc,
   preferredCohortId,
-  onSelectSku,
+  onSelectUpc,
   onSelectAll,
   onDeselectAll,
-  onPreferredSkuChange,
+  onPreferredUpcChange,
   onPreferredCohortChange,
   variant,
   onEditCohort,
@@ -95,11 +95,11 @@ export function PipelineSidebarTable({
     return ordered;
   }, [groupedProducts, products]);
 
-  // Ensure preferredSku's cohort is expanded so it's visible in the virtualized list
+  // Ensure preferredUpc's cohort is expanded so it's visible in the virtualized list
   React.useEffect(() => {
-    if (preferredSku && groupedProducts && variant !== "imported") {
+    if (preferredUpc && groupedProducts && variant !== "imported") {
       const cohortId = groupedProducts.cohortIds.find(cid => 
-        groupedProducts.groups[cid]?.some(p => p.sku === preferredSku)
+        groupedProducts.groups[cid]?.some(p => p.upc === preferredUpc)
       );
       if (cohortId && !expandedCohortIds.has(cohortId)) {
         setExpandedCohortIds(prev => {
@@ -109,7 +109,7 @@ export function PipelineSidebarTable({
         });
       }
     }
-  }, [preferredSku, groupedProducts, variant]);
+  }, [preferredUpc, groupedProducts, variant]);
 
   // Data flattening logic: handles cohort grouping and "ungrouped" fallback
   const flatItems = React.useMemo(() => {
@@ -146,7 +146,7 @@ export function PipelineSidebarTable({
       // Only add products if expanded
       if (expandedCohortIds.has(cohortId)) {
         groupProducts.forEach((product) => {
-          const globalIndex = products.findIndex(p => p.sku === product.sku);
+          const globalIndex = products.findIndex(p => p.upc === product.upc);
           items.push({ 
             type: 'product', 
             product, 
@@ -186,7 +186,7 @@ export function PipelineSidebarTable({
         
         if (allProductItems.length === 0) return;
 
-        const currentIndex = allProductItems.findIndex(p => p.sku === preferredSku);
+        const currentIndex = allProductItems.findIndex(p => p.upc === preferredUpc);
         let nextIndex = currentIndex;
 
         if (e.key === "ArrowDown") {
@@ -204,34 +204,34 @@ export function PipelineSidebarTable({
         }
 
         const nextProduct = allProductItems[nextIndex];
-        onPreferredSkuChange(nextProduct.sku);
+        onPreferredUpcChange(nextProduct.upc);
       }
 
       if (e.key === " ") { // Space bar
         e.preventDefault();
-        if (preferredSku) {
-          const isSelected = selectedSkus.has(preferredSku);
+        if (preferredUpc) {
+          const isSelected = selectedUpcs.has(preferredUpc);
           
           // Try to find in flatItems first (best for visible products)
-          const item = flatItems.find(item => item.type === 'product' && item.product.sku === preferredSku) as Extract<FlatItem, { type: 'product' }> | undefined;
+          const item = flatItems.find(item => item.type === 'product' && item.product.upc === preferredUpc) as Extract<FlatItem, { type: 'product' }> | undefined;
           
           if (item) {
-            onSelectSku(preferredSku, !isSelected, item.index, false, item.visibleProducts);
+            onSelectUpc(preferredUpc, !isSelected, item.index, false, item.visibleProducts);
           } else {
             // Fallback for products whose cohorts are still expanding
             if (groupedProducts) {
               const cohortId = groupedProducts.cohortIds.find(cid => 
-                groupedProducts.groups[cid]?.some(p => p.sku === preferredSku)
+                groupedProducts.groups[cid]?.some(p => p.upc === preferredUpc)
               );
               if (cohortId) {
                 const groupProducts = groupedProducts.groups[cohortId];
-                const globalIndex = products.findIndex(p => p.sku === preferredSku);
-                onSelectSku(preferredSku, !isSelected, globalIndex === -1 ? 0 : globalIndex, false, groupProducts);
+                const globalIndex = products.findIndex(p => p.upc === preferredUpc);
+                onSelectUpc(preferredUpc, !isSelected, globalIndex === -1 ? 0 : globalIndex, false, groupProducts);
               }
             } else {
-              const globalIndex = products.findIndex(p => p.sku === preferredSku);
+              const globalIndex = products.findIndex(p => p.upc === preferredUpc);
               if (globalIndex !== -1) {
-                onSelectSku(preferredSku, !isSelected, globalIndex, false, products);
+                onSelectUpc(preferredUpc, !isSelected, globalIndex, false, products);
               }
             }
           }
@@ -241,17 +241,17 @@ export function PipelineSidebarTable({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [allProductItems, flatItems, preferredSku, selectedSkus, onPreferredSkuChange, onSelectSku, variant]);
+  }, [allProductItems, flatItems, preferredUpc, selectedUpcs, onPreferredUpcChange, onSelectUpc, variant]);
 
-  // Programmatic scrolling: Scroll to preferred SKU when it changes
+  // Programmatic scrolling: Scroll to preferred UPC when it changes
   React.useLayoutEffect(() => {
-    if (variant !== "imported" && preferredSku && scrollContainerRef.current) {
-      const index = flatItems.findIndex(item => item.type === 'product' && item.product.sku === preferredSku);
+    if (variant !== "imported" && preferredUpc && scrollContainerRef.current) {
+      const index = flatItems.findIndex(item => item.type === 'product' && item.product.upc === preferredUpc);
       if (index !== -1) {
         scrollContainerRef.current.scrollToIndex(index, { align: 'auto' });
       }
     }
-  }, [preferredSku, flatItems, scrollContainerRef, variant]);
+  }, [preferredUpc, flatItems, scrollContainerRef, variant]);
 
   const renderRow = (item: FlatItem) => {
     const showCheckboxes = variant !== "imported";
@@ -265,7 +265,7 @@ export function PipelineSidebarTable({
           cohortName={groupedProducts?.names?.[item.cohortId]}
           cohortBrand={cohortBrands[item.cohortId]}
           cohortBrandObject={cohortBrandObjects[item.cohortId]}
-          selectedSkus={selectedSkus}
+          selectedUpcs={selectedUpcs}
           onSelectAll={onSelectAll}
           onDeselectAll={onDeselectAll}
           onEditCohort={onEditCohort}
@@ -280,15 +280,15 @@ export function PipelineSidebarTable({
 
     return (
       <PipelineSidebarProductRow
-        key={item.product.sku}
+        key={item.product.upc}
         product={item.product}
         index={item.index}
         visibleProducts={item.visibleProducts}
         variant={variant}
-        isFocused={preferredSku === item.product.sku}
-        isSelected={selectedSkus.has(item.product.sku)}
-        onSelectSku={onSelectSku}
-        onPreferredSkuChange={onPreferredSkuChange}
+        isFocused={preferredUpc === item.product.upc}
+        isSelected={selectedUpcs.has(item.product.upc)}
+        onSelectUpc={onSelectUpc}
+        onPreferredUpcChange={onPreferredUpcChange}
         showCheckboxes={showCheckboxes}
       />
     );

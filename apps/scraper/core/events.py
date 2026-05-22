@@ -58,11 +58,11 @@ class EventType(str, Enum):
     SCRAPER_BROWSER_RESTART = "scraper.browser_restart"
 
     # SKU Processing
-    SKU_PROCESSING = "sku.processing"
-    SKU_SUCCESS = "sku.success"
-    SKU_NOT_FOUND = "sku.not_found"
-    SKU_FAILED = "sku.failed"
-    SKU_NO_RESULTS = "sku.no_results"
+    SKU_PROCESSING = "upc.processing"
+    SKU_SUCCESS = "upc.success"
+    SKU_NOT_FOUND = "upc.not_found"
+    SKU_FAILED = "upc.failed"
+    SKU_NO_RESULTS = "upc.no_results"
 
     # Progress Updates (structured replacement for PROGRESS: lines)
     PROGRESS_UPDATE = "progress.update"
@@ -364,14 +364,14 @@ class EventEmitter:
     # Job lifecycle events
     def job_started(
         self,
-        total_skus: int,
+        total_upcs: int,
         scrapers: list[str],
         max_workers: int = 1,
         test_mode: bool = False,
     ) -> ScraperEvent:
         return self._emit(
             EventType.JOB_STARTED,
-            total_skus=total_skus,
+            total_upcs=total_upcs,
             scrapers=scrapers,
             max_workers=max_workers,
             test_mode=test_mode,
@@ -410,13 +410,13 @@ class EventEmitter:
         self,
         scraper: str,
         worker_id: str,
-        total_skus: int,
+        total_upcs: int,
     ) -> ScraperEvent:
         return self._emit(
             EventType.SCRAPER_STARTED,
             scraper=scraper,
             worker_id=worker_id,
-            total_skus=total_skus,
+            total_upcs=total_upcs,
         )
 
     def scraper_completed(
@@ -479,59 +479,59 @@ class EventEmitter:
         )
 
     # SKU processing events
-    def sku_processing(self, scraper: str, worker_id: str, sku: str) -> ScraperEvent:
+    def upc_processing(self, scraper: str, worker_id: str, upc: str) -> ScraperEvent:
         return self._emit(
             EventType.SKU_PROCESSING,
             scraper=scraper,
             worker_id=worker_id,
-            sku=sku,
+            upc=upc,
         )
 
-    def sku_success(
+    def upc_success(
         self,
         scraper: str,
         worker_id: str,
-        sku: str,
+        upc: str,
         data: dict[str, Any] | None = None,
         duration_seconds: float | None = None,
-        sku_type: str = "test",
+        upc_type: str = "test",
         is_passing: bool = True,
     ) -> ScraperEvent:
         return self._emit(
             EventType.SKU_SUCCESS,
             scraper=scraper,
             worker_id=worker_id,
-            sku=sku,
-            sku_type=sku_type,
+            upc=upc,
+            upc_type=upc_type,
             is_passing=is_passing,
             extracted_data=data or {},
             duration_seconds=round(duration_seconds, 2) if duration_seconds else None,
         )
 
-    def sku_not_found(
+    def upc_not_found(
         self,
         scraper: str,
         worker_id: str,
-        sku: str,
-        sku_type: str = "test",
+        upc: str,
+        upc_type: str = "test",
         is_passing: bool = False,
     ) -> ScraperEvent:
         return self._emit(
             EventType.SKU_NOT_FOUND,
             scraper=scraper,
             worker_id=worker_id,
-            sku=sku,
-            sku_type=sku_type,
+            upc=upc,
+            upc_type=upc_type,
             is_passing=is_passing,
         )
 
-    def sku_failed(
+    def upc_failed(
         self,
         scraper: str,
         worker_id: str,
-        sku: str,
+        upc: str,
         error: str,
-        sku_type: str = "test",
+        upc_type: str = "test",
         is_passing: bool = False,
     ) -> ScraperEvent:
         return self._emit(
@@ -539,26 +539,26 @@ class EventEmitter:
             severity=EventSeverity.ERROR,
             scraper=scraper,
             worker_id=worker_id,
-            sku=sku,
-            sku_type=sku_type,
+            upc=upc,
+            upc_type=upc_type,
             is_passing=is_passing,
             error=error,
         )
 
-    def sku_no_results(
+    def upc_no_results(
         self,
         scraper: str,
         worker_id: str,
-        sku: str,
-        sku_type: str = "test",
+        upc: str,
+        upc_type: str = "test",
         is_passing: bool = False,
     ) -> ScraperEvent:
         return self._emit(
             EventType.SKU_NO_RESULTS,
             scraper=scraper,
             worker_id=worker_id,
-            sku=sku,
-            sku_type=sku_type,
+            upc=upc,
+            upc_type=upc_type,
             is_passing=is_passing,
         )
 
@@ -569,7 +569,7 @@ class EventEmitter:
         current: int,
         total: int,
         percentage: int,
-        skus_processed: int,
+        upcs_processed: int,
     ) -> ScraperEvent:
         return self._emit(
             EventType.PROGRESS_UPDATE,
@@ -577,7 +577,7 @@ class EventEmitter:
             current=current,
             total=total,
             percentage=percentage,
-            skus_processed=skus_processed,
+            upcs_processed=upcs_processed,
         )
 
     def worker_progress(
@@ -603,14 +603,14 @@ class EventEmitter:
     def selector_found(
         self,
         scraper: str,
-        sku: str,
+        upc: str,
         selector_name: str,
         value: str,
     ) -> ScraperEvent:
         return self._emit(
             EventType.SELECTOR_FOUND,
             scraper=scraper,
-            sku=sku,
+            upc=upc,
             selector_name=selector_name,
             value=value[:100] if value else None,  # Truncate long values
         )
@@ -618,41 +618,41 @@ class EventEmitter:
     def selector_missing(
         self,
         scraper: str,
-        sku: str,
+        upc: str,
         selector_name: str,
     ) -> ScraperEvent:
         return self._emit(
             EventType.SELECTOR_MISSING,
             severity=EventSeverity.WARNING,
             scraper=scraper,
-            sku=sku,
+            upc=upc,
             selector_name=selector_name,
         )
 
     # Data sync events
     def data_synced(
         self,
-        sku: str,
+        upc: str,
         scraper: str,
         data: dict[str, Any],
     ) -> ScraperEvent:
         return self._emit(
             EventType.DATA_SYNCED,
-            sku=sku,
+            upc=upc,
             scraper=scraper,
             synced_data=data,
         )
 
     def data_sync_failed(
         self,
-        sku: str,
+        upc: str,
         scraper: str,
         error: str,
     ) -> ScraperEvent:
         return self._emit(
             EventType.DATA_SYNC_FAILED,
             severity=EventSeverity.ERROR,
-            sku=sku,
+            upc=upc,
             scraper=scraper,
             error=error,
         )
@@ -673,7 +673,7 @@ class EventEmitter:
         step_index: int,
         action: str,
         name: str | None = None,
-        sku: str | None = None,
+        upc: str | None = None,
     ) -> ScraperEvent:
         """Emit step.started event (v2)."""
         event = ScraperEvent(
@@ -682,7 +682,7 @@ class EventEmitter:
             severity=EventSeverity.INFO,
             data={
                 "scraper": scraper,
-                "sku": sku,
+                "upc": upc,
                 "step": {
                     "index": step_index,
                     "action": action,
@@ -701,7 +701,7 @@ class EventEmitter:
         action: str,
         started_at: str,
         name: str | None = None,
-        sku: str | None = None,
+        upc: str | None = None,
         selectors: dict[str, Any] | None = None,
         extraction: dict[str, Any] | None = None,
         retry_count: int = 0,
@@ -715,7 +715,7 @@ class EventEmitter:
 
         data: dict[str, Any] = {
             "scraper": scraper,
-            "sku": sku,
+            "upc": upc,
             "step": {
                 "index": step_index,
                 "action": action,
@@ -755,7 +755,7 @@ class EventEmitter:
         started_at: str,
         error: str,
         name: str | None = None,
-        sku: str | None = None,
+        upc: str | None = None,
         retry_count: int = 0,
         max_retries: int = 0,
         retryable: bool = True,
@@ -772,7 +772,7 @@ class EventEmitter:
             severity=EventSeverity.ERROR,
             data={
                 "scraper": scraper,
-                "sku": sku,
+                "upc": upc,
                 "step": {
                     "index": step_index,
                     "action": action,
@@ -804,7 +804,7 @@ class EventEmitter:
         action: str,
         reason: str,
         name: str | None = None,
-        sku: str | None = None,
+        upc: str | None = None,
     ) -> ScraperEvent:
         """Emit step.skipped event (v2)."""
         event = ScraperEvent(
@@ -813,7 +813,7 @@ class EventEmitter:
             severity=EventSeverity.WARNING,
             data={
                 "scraper": scraper,
-                "sku": sku,
+                "upc": upc,
                 "step": {
                     "index": step_index,
                     "action": action,
@@ -837,12 +837,12 @@ class EventEmitter:
         count: int = 0,
         attribute: str | None = None,
         error: str | None = None,
-        sku: str | None = None,
+        upc: str | None = None,
     ) -> ScraperEvent:
         """Emit selector.resolved event (v2)."""
         data: dict[str, Any] = {
             "scraper": scraper,
-            "sku": sku,
+            "upc": upc,
             "selector": {
                 "name": selector_name,
                 "value": selector_value,
@@ -874,12 +874,12 @@ class EventEmitter:
         status: str = "SUCCESS",
         confidence: float = 1.0,
         error: str | None = None,
-        sku: str | None = None,
+        upc: str | None = None,
     ) -> ScraperEvent:
         """Emit extraction.completed event (v2)."""
         data: dict[str, Any] = {
             "scraper": scraper,
-            "sku": sku,
+            "upc": upc,
             "extraction": {
                 "field_name": field_name,
                 "value": value,
@@ -937,9 +937,9 @@ def create_emitter(job_id: str) -> EventEmitter:
 
     Usage:
         emitter = create_emitter("job_20241219_143000")
-        emitter.job_started(total_skus=100, scrapers=["bradley", "amazon"])
-        emitter.progress_update(scraper="bradley", current=10, total=100, percentage=10, skus_processed=5)
-        emitter.sku_success(scraper="bradley", worker_id="W1", sku="123456", data={"name": "Product"})
+        emitter.job_started(total_upcs=100, scrapers=["bradley", "amazon"])
+        emitter.progress_update(scraper="bradley", current=10, total=100, percentage=10, upcs_processed=5)
+        emitter.upc_success(scraper="bradley", worker_id="W1", upc="123456", data={"name": "Product"})
     """
     return EventEmitter(event_bus, job_id)
 

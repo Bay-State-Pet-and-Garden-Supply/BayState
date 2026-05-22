@@ -155,7 +155,7 @@ def _create_extractor(headless: bool = True, cache_enabled: bool = False) -> Cra
 async def _run_extraction_fixture(
     extractor: Crawl4AIExtractor,
     url: str,
-    sku: str,
+    upc: str,
     product_name: str,
     brand: str,
     page_fixture: dict[str, Any],
@@ -168,7 +168,7 @@ async def _run_extraction_fixture(
 
     result = await extractor.extract_from_fixture(
         url=url,
-        sku=sku,
+        upc=upc,
         product_name=product_name,
         brand=brand,
         html=html,
@@ -201,12 +201,12 @@ def _estimate_extraction_cost(method: str) -> float:
 async def _run_extraction_live(
     extractor: Crawl4AIExtractor,
     url: str,
-    sku: str,
+    upc: str,
     product_name: str,
     brand: str,
 ) -> dict[str, Any]:
     """Run extraction against a live URL."""
-    result = await extractor.extract(url, sku, product_name, brand)
+    result = await extractor.extract(url, upc, product_name, brand)
     if result is None:
         return {"success": False, "error": "Extraction returned None"}
     return result
@@ -247,7 +247,7 @@ async def _run_single_entry(
     entry_search_client = fixture_client
     entry_cache: TemporaryDirectory | None = None
     if mode == "fixture" and entry.search_fixtures:
-        entry_cache = TemporaryDirectory(prefix=f"e2e-cache-{entry.sku}-")
+        entry_cache = TemporaryDirectory(prefix=f"e2e-cache-{entry.upc}-")
         entry_search_client = _prime_search_fixtures(entry.search_fixtures, Path(entry_cache.name))
 
     scraper = OfficialBrandScraper(
@@ -258,7 +258,7 @@ async def _run_single_entry(
 
     try:
         discovery = await scraper.discover_official_url_candidates(
-            sku=entry.sku,
+            upc=entry.upc,
             brand=entry.brand,
             product_name=entry.product_name,
             official_domains=entry.expected_official_domains,
@@ -306,7 +306,7 @@ async def _run_single_entry(
                 extraction_result = await _run_extraction_fixture(
                     extractor=extractor,
                     url=crawl_url,
-                    sku=entry.sku,
+                    upc=entry.upc,
                     product_name=entry.product_name,
                     brand=entry.brand,
                     page_fixture=page_fixture,
@@ -325,7 +325,7 @@ async def _run_single_entry(
                 extraction_result = await _run_extraction_live(
                     extractor=extractor,
                     url=crawl_url,
-                    sku=entry.sku,
+                    upc=entry.upc,
                     product_name=entry.product_name,
                     brand=entry.brand,
                 )
@@ -376,7 +376,7 @@ async def _run_single_entry(
         try:
             validation_passed, validation_reason = validator.validate_extraction_match(
                 extraction_result=extraction_result,
-                sku=entry.sku,
+                upc=entry.upc,
                 product_name=entry.product_name,
                 brand=entry.brand,
                 source_url=crawl_url,
@@ -441,7 +441,7 @@ async def _run_single_entry(
     total_cost_usd = search_cost_usd + extraction_cost_usd
 
     return EndToEndResultRow(
-        sku=entry.sku,
+        upc=entry.upc,
         brand=entry.brand,
         product_name=entry.product_name,
         expected_source_url=entry.expected_source_url,

@@ -153,7 +153,7 @@ export function AdminProductsClient({
             <div className="font-medium text-foreground">{product.name}</div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span>{product.brand_name || 'No brand'}</span>
-              <span>SKU {product.sku || 'Missing'}</span>
+              <span>UPC {product.upc || 'Missing'}</span>
             </div>
           </div>
         ),
@@ -232,7 +232,7 @@ export function AdminProductsClient({
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Search by product name or SKU"
+                placeholder="Search by product name or UPC"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 className="pl-9"
@@ -288,7 +288,7 @@ export function AdminProductsClient({
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Search by product name or SKU"
+                placeholder="Search by product name or UPC"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 className="pl-9"
@@ -396,7 +396,7 @@ export function AdminProductsClient({
                   </button>
                   <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                     <span>{product.brand_name || 'No brand'}</span>
-                    <span>SKU {product.sku || 'Missing'}</span>
+                    <span>UPC {product.upc || 'Missing'}</span>
                   </div>
                 </div>
                 <span className="text-base font-semibold text-foreground tabular-nums">

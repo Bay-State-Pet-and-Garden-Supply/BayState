@@ -4,7 +4,7 @@ import {
 } from "@/lib/pipeline/reviewing-draft";
 
 export interface PendingCopilotDraftReview {
-  skus: string[];
+  upcs: string[];
   previousDrafts: Record<string, FinalizationDraft>;
   summaries: string[];
 }
@@ -21,27 +21,27 @@ function cloneFinalizationDraft(
 export function stagePendingCopilotDraftReview({
   pendingReview,
   draftsBySku,
-  targetSkus,
+  targetUpcs,
   summary,
 }: {
   pendingReview: PendingCopilotDraftReview | null;
   draftsBySku: Record<string, FinalizationDraft>;
-  targetSkus: string[];
+  targetUpcs: string[];
   summary: string;
 }): PendingCopilotDraftReview {
-  const normalizedSkus = Array.from(
-    new Set(targetSkus.map((sku) => sku.trim()).filter((sku) => sku.length > 0)),
+  const normalizedUpcs = Array.from(
+    new Set(targetUpcs.map((upc) => upc.trim()).filter((upc) => upc.length > 0)),
   );
 
-  if (normalizedSkus.length === 0) {
+  if (normalizedUpcs.length === 0) {
     throw new Error("No products matched the requested scope.");
   }
 
   const previousDrafts = { ...(pendingReview?.previousDrafts ?? {}) };
-  normalizedSkus.forEach((sku) => {
-    if (!previousDrafts[sku]) {
-      previousDrafts[sku] = cloneFinalizationDraft(
-        draftsBySku[sku] ?? EMPTY_FINALIZATION_DRAFT,
+  normalizedUpcs.forEach((upc) => {
+    if (!previousDrafts[upc]) {
+      previousDrafts[upc] = cloneFinalizationDraft(
+        draftsBySku[upc] ?? EMPTY_FINALIZATION_DRAFT,
       );
     }
   });
@@ -53,7 +53,7 @@ export function stagePendingCopilotDraftReview({
   }
 
   return {
-    skus: Array.from(new Set([...(pendingReview?.skus ?? []), ...normalizedSkus])),
+    upcs: Array.from(new Set([...(pendingReview?.upcs ?? []), ...normalizedUpcs])),
     previousDrafts,
     summaries: nextSummaries,
   };
@@ -65,8 +65,8 @@ export function restorePendingCopilotDraftReview(
 ): Record<string, FinalizationDraft> {
   const nextDrafts = { ...draftsBySku };
 
-  Object.entries(pendingReview.previousDrafts).forEach(([sku, draft]) => {
-    nextDrafts[sku] = cloneFinalizationDraft(draft);
+  Object.entries(pendingReview.previousDrafts).forEach(([upc, draft]) => {
+    nextDrafts[upc] = cloneFinalizationDraft(draft);
   });
 
   return nextDrafts;
@@ -74,22 +74,22 @@ export function restorePendingCopilotDraftReview(
 
 export function filterPendingCopilotDraftReview(
   pendingReview: PendingCopilotDraftReview,
-  skusToKeep: string[],
+  upcsToKeep: string[],
 ): PendingCopilotDraftReview | null {
   const keepSet = new Set(
-    skusToKeep.map((sku) => sku.trim()).filter((sku) => sku.length > 0),
+    upcsToKeep.map((upc) => upc.trim()).filter((upc) => upc.length > 0),
   );
-  const nextSkus = pendingReview.skus.filter((sku) => keepSet.has(sku));
+  const nextUpcs = pendingReview.upcs.filter((upc) => keepSet.has(upc));
 
-  if (nextSkus.length === 0) {
+  if (nextUpcs.length === 0) {
     return null;
   }
 
   return {
-    skus: nextSkus,
+    upcs: nextUpcs,
     previousDrafts: Object.fromEntries(
-      Object.entries(pendingReview.previousDrafts).filter(([sku]) =>
-        keepSet.has(sku),
+      Object.entries(pendingReview.previousDrafts).filter(([upc]) =>
+        keepSet.has(upc),
       ),
     ),
     summaries: [...pendingReview.summaries],

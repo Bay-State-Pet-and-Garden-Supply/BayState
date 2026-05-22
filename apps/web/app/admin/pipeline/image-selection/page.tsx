@@ -4,7 +4,7 @@ import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import ImageSelectionPageClient from './ImageSelectionPageClient';
 
 interface PageProps {
-  searchParams: Promise<{ sku?: string }>;
+  searchParams: Promise<{ upc?: string }>;
 }
 
 export const metadata = {
@@ -31,7 +31,7 @@ function ErrorState() {
         </div>
         <h2 className="text-xl font-semibold text-foreground">SKU required</h2>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Open this workspace from the pipeline so the selected product SKU is carried into image review.
+          Open this workspace from the pipeline so the selected product UPC is carried into image review.
         </p>
       </div>
     </div>
@@ -40,7 +40,7 @@ function ErrorState() {
 
 export default async function ImageSelectionPage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const sku = params.sku;
+  const upc = params.upc;
 
   return (
     <AdminPageShell
@@ -52,9 +52,9 @@ export default async function ImageSelectionPage({ searchParams }: PageProps) {
       backLabel="Back to pipeline"
       fullHeight
     >
-      {sku ? (
+      {upc ? (
         <Suspense fallback={<LoadingState />}>
-          <ImageSelectionPageClient sku={sku} />
+          <ImageSelectionPageClient upc={upc} />
         </Suspense>
       ) : (
         <ErrorState />

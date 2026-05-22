@@ -35,9 +35,9 @@ import { type PipelineFiltersState } from "./PipelineFilters";
 
 interface ProductTableProps {
   products: PipelineProduct[];
-  selectedSkus: Set<string>;
-  onSelectSku: (
-    sku: string,
+  selectedUpcs: Set<string>;
+  onSelectUpc: (
+    upc: string,
     selected: boolean,
     index?: number,
     isShiftClick?: boolean,
@@ -112,8 +112,8 @@ function DataTableColumnHeader<TData, TValue>({
 
 export function ProductTable({
   products,
-  selectedSkus,
-  onSelectSku,
+  selectedUpcs,
+  onSelectUpc,
   onSelectAll,
   onDeselectAll,
   currentStage,
@@ -126,7 +126,7 @@ export function ProductTable({
   onSelectAllTotal,
 }: ProductTableProps) {
   const [sorting, setSorting] = useState<SortingState>([
-    { id: "sku", desc: false },
+    { id: "upc", desc: false },
   ]);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -144,12 +144,12 @@ export function ProductTable({
             productsCount > 0 &&
             table
               .getRowModel()
-              .rows.every((r) => selectedSkus.has(r.original.sku));
+              .rows.every((r) => selectedUpcs.has(r.original.upc));
           const someSelected =
             productsCount > 0 &&
             table
               .getRowModel()
-              .rows.some((r) => selectedSkus.has(r.original.sku)) &&
+              .rows.some((r) => selectedUpcs.has(r.original.upc)) &&
             !selectedCount;
 
           return (
@@ -170,7 +170,7 @@ export function ProductTable({
           );
         },
         cell: ({ row, table }) => {
-          const isChecked = selectedSkus.has(row.original.sku);
+          const isChecked = selectedUpcs.has(row.original.upc);
           const visibleRows = table.getRowModel().rows;
           const visibleIndex = row.index;
 
@@ -183,8 +183,8 @@ export function ProductTable({
               }}
               onClick={(e) => {
                 e.stopPropagation();
-                onSelectSku(
-                  row.original.sku,
+                onSelectUpc(
+                  row.original.upc,
                   !isChecked,
                   visibleIndex,
                   e.shiftKey,
@@ -200,17 +200,17 @@ export function ProductTable({
         enableHiding: false,
       },
       {
-        accessorKey: "sku",
+        accessorKey: "upc",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="SKU" />
+          <DataTableColumnHeader column={column} title="UPC" />
         ),
         cell: ({ row }) => (
           <div 
             className="font-mono text-[10px] text-foreground font-semibold tabular-nums"
             role="gridcell"
-            aria-label={String(row.getValue("sku"))}
+            aria-label={String(row.getValue("upc"))}
           >
-            {row.getValue("sku")}
+            {row.getValue("upc")}
           </div>
         ),
       },
@@ -360,8 +360,8 @@ export function ProductTable({
     [
       showSources,
       showConfidence,
-      selectedSkus,
-      onSelectSku,
+      selectedUpcs,
+      onSelectUpc,
       onSelectAll,
       onDeselectAll,
     ],
@@ -421,9 +421,9 @@ export function ProductTable({
           e.preventDefault();
           const row = rows[focusedIndex];
           if (row) {
-            const isChecked = selectedSkus.has(row.original.sku);
-            onSelectSku(
-              row.original.sku,
+            const isChecked = selectedUpcs.has(row.original.upc);
+            onSelectUpc(
+              row.original.upc,
               !isChecked,
               focusedIndex,
               e.shiftKey,
@@ -443,8 +443,8 @@ export function ProductTable({
       rows,
       focusedIndex,
       rowVirtualizer,
-      selectedSkus,
-      onSelectSku,
+      selectedUpcs,
+      onSelectUpc,
       onSelectAll,
     ],
   );
@@ -470,7 +470,7 @@ export function ProductTable({
                 // Define fixed widths for columns to ensure alignment across multiple tables
                 let widthClass = "";
                 if (header.id === "select") widthClass = "w-[40px]";
-                else if (header.id === "sku") widthClass = "w-[120px]";
+                else if (header.id === "upc") widthClass = "w-[120px]";
                 else if (header.id === "name") widthClass = "min-w-0 flex-1";
                 else if (header.id === "price") widthClass = "w-[100px]";
                 else if (
@@ -514,7 +514,7 @@ export function ProductTable({
             virtualRows.map((virtualRow) => {
               const row = rows[virtualRow.index];
               const index = virtualRow.index;
-              const isSelected = selectedSkus.has(row.original.sku);
+              const isSelected = selectedUpcs.has(row.original.upc);
               const isFocused = focusedIndex === index;
 
               return (
@@ -531,8 +531,8 @@ export function ProductTable({
                   )}
                   onClick={(e) => {
                     setFocusedIndex(index);
-                    onSelectSku(
-                      row.original.sku,
+                    onSelectUpc(
+                      row.original.upc,
                       !isSelected,
                       index,
                       e.shiftKey,

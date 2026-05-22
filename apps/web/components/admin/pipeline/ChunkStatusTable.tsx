@@ -21,9 +21,9 @@ export interface ChunkDetail {
   id: string;
   jobId: string;
   chunkIndex: number;
-  skuCount: number;
+  upcCount: number;
   plannedWorkUnits: number;
-  skuSliceIndex: number | null;
+  upcSliceIndex: number | null;
   siteGroupKey: string | null;
   siteGroupLabel: string | null;
   siteDomain: string | null;
@@ -32,9 +32,9 @@ export interface ChunkDetail {
   claimedAt: string | null;
   startedAt: string | null;
   completedAt: string | null;
-  skusProcessed: number;
-  skusSuccessful: number;
-  skusFailed: number;
+  upcsProcessed: number;
+  upcsSuccessful: number;
+  upcsFailed: number;
   errorMessage: string | null;
 }
 
@@ -149,7 +149,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
 
                   {/* SKU Count */}
                   <span className="tabular-nums font-semibold text-muted-foreground">
-                    {chunk.skuCount}
+                    {chunk.upcCount}
                   </span>
 
                   <div className="min-w-0">
@@ -214,17 +214,17 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
                     ) : (
                       <span
                         className={
-                          chunk.skusFailed > 0
+                          chunk.upcsFailed > 0
                             ? "text-brand-burgundy font-bold"
                             : chunk.status === "completed"
                               ? "text-brand-forest-green font-bold"
                               : "text-foreground"
                         }
                       >
-                        {chunk.skusSuccessful}/{chunk.skuCount}
-                        {chunk.skusFailed > 0 && (
+                        {chunk.upcsSuccessful}/{chunk.upcCount}
+                        {chunk.upcsFailed > 0 && (
                           <span className="text-brand-burgundy ml-1">
-                            ({chunk.skusFailed} err)
+                            ({chunk.upcsFailed} err)
                           </span>
                         )}
                       </span>

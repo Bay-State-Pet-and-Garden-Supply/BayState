@@ -15,7 +15,7 @@ REPORT_SCHEMA_VERSION = "ai-search-e2e-benchmark-report-v1"
 def _row_to_dict(row: EndToEndResultRow) -> dict[str, Any]:
     """Convert a result row to a serializable dict."""
     return {
-        "sku": row.sku,
+        "upc": row.upc,
         "brand": row.brand,
         "product_name": row.product_name,
         "expected_source_url": row.expected_source_url,
@@ -154,15 +154,15 @@ def _build_markdown(report: dict[str, Any]) -> str:
 
     failed_rows = [row for row in rows if not row.get("stages", {}).get("end_to_end_success")]
     if failed_rows:
-        lines.append("| SKU | Brand | Failure Stage | Reason | Discovered URL |")
+        lines.append("| UPC | Brand | Failure Stage | Reason | Discovered URL |")
         lines.append("|-----|-------|---------------|--------|----------------|")
         for row in failed_rows[:20]:  # Limit to first 20
-            sku = row.get("sku", "")
+            upc = row.get("upc", "")
             brand = row.get("brand", "")
             stage = row.get("failure_stage", "unknown")
             reason = (row.get("failure_reason") or "")[:60]
             url = (row.get("discovered_url") or "")[:50]
-            lines.append(f"| {sku} | {brand} | {stage} | {reason} | {url} |")
+            lines.append(f"| {upc} | {brand} | {stage} | {reason} | {url} |")
     else:
         lines.append("All entries passed end-to-end.")
 
@@ -173,14 +173,14 @@ def _build_markdown(report: dict[str, Any]) -> str:
     ])
 
     for row in rows:
-        sku = row.get("sku", "")
+        upc = row.get("upc", "")
         stages = row.get("stages", {})
         fq = row.get("field_quality", {})
         em = row.get("extraction_metadata", {})
         timing = row.get("timing", {})
 
         status = "PASS" if stages.get("end_to_end_success") else "FAIL"
-        lines.append(f"### {sku} — {status}")
+        lines.append(f"### {upc} — {status}")
         lines.append("")
         lines.append(f"- **Product:** {row.get('product_name', '')}")
         lines.append(f"- **Expected URL:** {row.get('expected_source_url', '')}")

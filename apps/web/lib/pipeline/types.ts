@@ -95,8 +95,8 @@ export interface SelectedImage {
  */
 export interface PipelineProduct {
   id?: string;
-  /** Unique product identifier (matches SKU) */
-  sku: string;
+  /** Unique product identifier (Universal Product Code) */
+  upc: string;
   /** Raw imported data */
   input: {
     name?: string;

@@ -87,7 +87,7 @@ export function useAttemptsSubscription(
         .from('enrichment_attempts')
         .select('*')
         .eq('job_id', activeJobId)
-        .order('sku', { ascending: true });
+        .order('upc', { ascending: true });
 
       if (dbError) throw dbError;
 
@@ -145,7 +145,7 @@ export function useAttemptsSubscription(
               
               // Insert and keep sorted by SKU
               const next = [...prevAttempts, newRecord];
-              return next.sort((a, b) => a.sku.localeCompare(b.sku));
+              return next.sort((a, b) => a.upc.localeCompare(b.upc));
             }
 
             if (payload.eventType === 'UPDATE' && newRecord) {

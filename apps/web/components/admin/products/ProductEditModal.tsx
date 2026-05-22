@@ -52,7 +52,7 @@ interface ProductPetType {
 
 export interface PublishedProduct {
     id: string;
-    sku: string;
+    upc: string;
     name: string;
     slug: string;
     description: string | null;
@@ -114,7 +114,7 @@ function ProductEditModal({
     // Unique Fields (Disabled in bulk edit)
     const [name, setName] = useState(singleProduct?.name || '');
     const [slug, setSlug] = useState(singleProduct?.slug || '');
-    const [sku, setSku] = useState(singleProduct?.sku || '');
+    const [upc, setUpc] = useState(singleProduct?.upc || '');
     const [description, setDescription] = useState(singleProduct?.description || '');
     const [price, setPrice] = useState(singleProduct ? String(singleProduct.price) : '');
     const [weight, setWeight] = useState(singleProduct?.weight || '');
@@ -271,7 +271,7 @@ function ProductEditModal({
             if (!isBulkEdit && singleProduct) {
                 formData.append('name', name.trim());
                 formData.append('slug', slug.trim());
-                formData.append('sku', sku.trim());
+                formData.append('upc', upc.trim());
                 formData.append('description', description.trim());
                 formData.append('price', price);
                 formData.append('weight', weight.trim());
@@ -333,7 +333,7 @@ function ProductEditModal({
                                 {isBulkEdit ? "Editing " + products.length + " Products" : 'Edit Product'}
                             </DialogTitle>
                             <p className="text-sm text-muted-foreground font-medium">
-                                {isBulkEdit ? "Bulk updating classification facets." : singleProduct?.sku}
+                                {isBulkEdit ? "Bulk updating classification facets." : singleProduct?.upc}
                             </p>
                         </div>
                     </div>
@@ -423,8 +423,8 @@ function ProductEditModal({
                                                 <Input id="price" type={isBulkEdit ? "text" : "number"} step="0.01" min="0" value={isBulkEdit ? "" : price} onChange={(e) => setPrice(e.target.value)} disabled={isBulkEdit} placeholder={placeholderText || "0.00"} className={cn("font-mono", isBulkEdit && "opacity-50")} />
                                             </div>
                                             <div className="flex flex-col gap-2.5">
-                                                <Label htmlFor="sku" className="text-foreground/80">SKU</Label>
-                                                <Input id="sku" value={sku} onChange={(e) => setSku(e.target.value)} disabled={isBulkEdit} placeholder={placeholderText || "Stock Keeping Unit"} className={cn("font-mono", isBulkEdit && "opacity-50")} />
+                                                <Label htmlFor="upc" className="text-foreground/80">UPC</Label>
+                                                <Input id="upc" value={upc} onChange={(e) => setUpc(e.target.value)} disabled={isBulkEdit} placeholder={placeholderText || "Universal Product Code"} className={cn("font-mono", isBulkEdit && "opacity-50")} />
                                             </div>
                                             <div className="flex flex-col gap-2.5">
                                                 <Label htmlFor="quantity" className="text-foreground/80">Quantity (Stock)</Label>

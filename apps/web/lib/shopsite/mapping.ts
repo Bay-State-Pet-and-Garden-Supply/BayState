@@ -11,7 +11,7 @@ import { parseShopSitePages, SHOPSITE_PAGES } from "./constants";
 import type { ShopSiteExportProduct } from "./xml-generator";
 
 export interface ShopSiteExportSourceRow {
-  sku: string;
+  upc: string;
   input: unknown;
   consolidated: unknown;
   selected_images: unknown;
@@ -87,7 +87,7 @@ export interface ShopSitePipelineInput {
   is_special_order?: boolean;
   in_store_pickup?: boolean;
   legacy_filename?: string | null;
-  subproduct_skus?: string[];
+  subproduct_upcs?: string[];
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -228,28 +228,28 @@ function normalizeFileStem(value: string | null): string | null {
 function getNameForSorting(row: ShopSiteExportSourceRow): string {
   const consolidated = asRecord(row.consolidated);
   const input = asRecord(row.input);
-  return coalesceString(consolidated.name, input.name, row.sku) ?? row.sku;
+  return coalesceString(consolidated.name, input.name, row.upc) ?? row.upc;
 }
 
-function buildUniqueStem(base: string, usedStems: Set<string>, sku: string): string {
+function buildUniqueStem(base: string, usedStems: Set<string>, upc: string): string {
   if (!usedStems.has(base)) {
     usedStems.add(base);
     return base;
   }
 
-  const skuStem = buildFacetSlug(sku) || "sku";
-  const skuCandidate = `${base}-${skuStem}`;
-  if (!usedStems.has(skuCandidate)) {
-    usedStems.add(skuCandidate);
-    return skuCandidate;
+  const upcStem = buildFacetSlug(upc) || "upc";
+  const upcCandidate = `${base}-${upcStem}`;
+  if (!usedStems.has(upcCandidate)) {
+    usedStems.add(upcCandidate);
+    return upcCandidate;
   }
 
   let counter = 2;
-  while (usedStems.has(`${skuCandidate}-${counter}`)) {
+  while (usedStems.has(`${upcCandidate}-${counter}`)) {
     counter += 1;
   }
 
-  const finalCandidate = `${skuCandidate}-${counter}`;
+  const finalCandidate = `${upcCandidate}-${counter}`;
   usedStems.add(finalCandidate);
   return finalCandidate;
 }
@@ -262,7 +262,7 @@ function formatOptionalNumber(value: number | null): string | undefined {
   return String(value);
 }
 
-export function buildProductSlug(name: string, sku?: string): string {
+export function buildProductSlug(name: string, upc?: string): string {
   let slug = name
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, "")
@@ -271,9 +271,9 @@ export function buildProductSlug(name: string, sku?: string): string {
     .replace(/^-|-$/g, "")
     .trim();
 
-  if (sku) {
-    const normalizedSku = sku.toLowerCase().replace(/[^a-z0-9-]/g, "");
-    slug = slug.length > 0 ? `${slug}-${normalizedSku}` : normalizedSku;
+  if (upc) {
+    const normalizedUpc = upc.toLowerCase().replace(/[^a-z0-9-]/g, "");
+    slug = slug.length > 0 ? `${slug}-${normalizedUpc}` : normalizedUpc;
   }
 
   return slug;
@@ -291,7 +291,7 @@ export function preparePipelineRowsForShopSiteExport(
       return nameComparison;
     }
 
-    return left.sku.localeCompare(right.sku);
+    return left.upc.localeCompare(right.upc);
   });
 
   const usedFileStems = new Set<string>();
@@ -300,7 +300,7 @@ export function preparePipelineRowsForShopSiteExport(
   return sortedRows.map((row) => {
     const input = asRecord(row.input);
     const consolidated = asRecord(row.consolidated);
-    const name = coalesceString(consolidated.name, input.name, row.sku) ?? row.sku;
+    const name = coalesceString(consolidated.name, input.name, row.upc) ?? row.upc;
     const brandId = coalesceString(consolidated.brand_id);
     const brandRow = brandId ? brandsById.get(brandId) : undefined;
     const brandName = normalizeBrandName(
@@ -324,14 +324,14 @@ export function preparePipelineRowsForShopSiteExport(
         input.fileName,
       ),
     );
-    const generatedStem = buildProductSlug(name) || buildFacetSlug(row.sku) || "product";
+    const generatedStem = buildProductSlug(name) || buildFacetSlug(row.upc) || "product";
     const baseStem = preferredFileStem ?? generatedStem;
-    const fileStem = buildUniqueStem(baseStem, usedFileStems, row.sku);
+    const fileStem = buildUniqueStem(baseStem, usedFileStems, row.upc);
 
     const usedImageStems =
       usedImageStemsByFolder.get(brandFolder) ?? new Set<string>();
     usedImageStemsByFolder.set(brandFolder, usedImageStems);
-    const imageStem = buildUniqueStem(baseStem, usedImageStems, row.sku);
+    const imageStem = buildUniqueStem(baseStem, usedImageStems, row.upc);
 
     const consolidatedImages = toImageUrlArray(consolidated.images);
     const selectedImages = extractSelectedImageUrls(row.selected_images);
@@ -342,10 +342,10 @@ export function preparePipelineRowsForShopSiteExport(
         `${brandFolder}/${imageStem}${index === 0 ? "" : `-${index + 1}`}.jpg`,
     );
 
-    const gtin = row.sku;
+    const gtin = row.upc;
 
     return {
-      sku: row.sku,
+      sku: row.upc, // Preserve "sku" property for ShopSite export
       name,
       price: coalescePrice(consolidated.price, input.price),
       weight: coalesceString(consolidated.weight, input.weight),
@@ -569,7 +569,7 @@ function buildPipelineInputFromTransformedShopSiteProduct(
     is_special_order: transformed.is_special_order,
     in_store_pickup: transformed.in_store_pickup,
     legacy_filename: options.legacyFilename?.trim() || null,
-    subproduct_skus: transformed.subproducts.length > 0 ? transformed.subproducts : undefined,
+    subproduct_upcs: transformed.subproducts.length > 0 ? transformed.subproducts : undefined,
   };
 }
 

@@ -19,10 +19,10 @@ interface PipelineProductCardProps {
     product: PipelineProduct;
     index: number;
     isSelected: boolean;
-    onSelect: (sku: string, index: number, isShiftClick: boolean) => void;
-    onView: (sku: string) => void;
-    onEnrich?: (sku: string) => void;
-    onImageSelection?: (sku: string) => void;
+    onSelect: (upc: string, index: number, isShiftClick: boolean) => void;
+    onView: (upc: string) => void;
+    onEnrich?: (upc: string) => void;
+    onImageSelection?: (upc: string) => void;
     showEnrichButton?: boolean;
     showImageSelectionButton?: boolean;
     readOnly?: boolean;
@@ -90,10 +90,10 @@ export function PipelineProductCard({
     const handleCheckboxChange = (e: React.FormEvent<HTMLInputElement>) => {
         const nativeEvent = e.nativeEvent as unknown as MouseEvent;
         const isShiftClick = nativeEvent.shiftKey;
-        onSelect(product.sku, index, isShiftClick);
+        onSelect(product.upc, index, isShiftClick);
     };
 
-    const registerName = product.input?.name || product.sku;
+    const registerName = product.input?.name || product.upc;
     const cleanName = product.consolidated?.name;
     const price = product.consolidated?.price ?? product.input?.price ?? 0;
     const hasScrapedData = Object.keys(product.sources || {}).length > 0;
@@ -110,14 +110,14 @@ export function PipelineProductCard({
         return (
             <div
                 role="article"
-                aria-label={`Product ${product.sku}${showBatchSelect && isSelected ? ', selected' : ''}`}
+                aria-label={`Product ${product.upc}${showBatchSelect && isSelected ? ', selected' : ''}`}
                 tabIndex={0}
                 onKeyDown={(e) => {
                     if (e.target !== e.currentTarget) return;
                     if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
                         if (showBatchSelect) {
-                            onSelect(product.sku, index, false);
+                            onSelect(product.upc, index, false);
                         }
                     }
                 }}
@@ -136,14 +136,14 @@ export function PipelineProductCard({
                             type="checkbox"
                             checked={isSelected}
                             onChange={handleCheckboxChange}
-                            aria-label={`Select product ${product.sku}`}
+                            aria-label={`Select product ${product.upc}`}
                             className="mt-1 h-5 w-5 rounded-none border border-border cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         />
                     )}
                     <div className="flex-1 min-w-0 pr-16">
                         <div className="flex items-center gap-1.5 mb-1">
                             <Package className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                            <span className="text-[10px] font-semibold text-muted-foreground truncate">{product.sku}</span>
+                            <span className="text-[10px] font-semibold text-muted-foreground truncate">{product.upc}</span>
                         </div>
 
                         <p className="font-semibold text-foreground truncate mb-1" title={registerName}>
@@ -166,16 +166,16 @@ export function PipelineProductCard({
         return (
             <div
                 role="article"
-                aria-label={`Product ${product.sku}${isSelected ? ', selected' : ''}`}
+                aria-label={`Product ${product.upc}${isSelected ? ', selected' : ''}`}
                 tabIndex={0}
                 onKeyDown={(e) => {
                     if (e.target !== e.currentTarget) return;
                     if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
                         if (showBatchSelect) {
-                            onSelect(product.sku, index, false);
+                            onSelect(product.upc, index, false);
                         } else {
-                            onView(product.sku);
+                            onView(product.upc);
                         }
                     }
                 }}
@@ -190,14 +190,14 @@ export function PipelineProductCard({
                             e.stopPropagation();
                             handleCheckboxChange(e);
                         }}
-                        aria-label={`Select product ${product.sku}`}
+                        aria-label={`Select product ${product.upc}`}
                         className="h-5 w-5 rounded-none border border-border cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     />
                 </div>
 
                 <div
                     className="flex h-full flex-col cursor-pointer"
-                    onClick={() => onView(product.sku)}
+                    onClick={() => onView(product.upc)}
                 >
                     <div className="relative aspect-square w-full overflow-hidden bg-muted/50 border-b border-border">
                         {hasValidImage ? (
@@ -231,7 +231,7 @@ export function PipelineProductCard({
 
                     <div className="flex flex-1 flex-col p-4 bg-card">
                         <div className="flex items-center gap-2 mb-2">
-                            <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-none border border-border">{product.sku}</span>
+                            <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-none border border-border">{product.upc}</span>
                         </div>
 
                         <h3 className="mb-2 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-tight text-foreground group-hover:text-primary transition-colors" title={cleanName || registerName}>
@@ -256,16 +256,16 @@ export function PipelineProductCard({
     return (
         <div
             role="article"
-            aria-label={`Product ${product.sku}${isSelected ? ', selected' : ''}`}
+            aria-label={`Product ${product.upc}${isSelected ? ', selected' : ''}`}
             tabIndex={0}
             onKeyDown={(e) => {
                 if (e.target !== e.currentTarget) return;
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     if (showBatchSelect) {
-                        onSelect(product.sku, index, false);
+                        onSelect(product.upc, index, false);
                     } else {
-                        onView(product.sku);
+                        onView(product.upc);
                     }
                 }
             }}
@@ -281,14 +281,14 @@ export function PipelineProductCard({
                     type="checkbox"
                     checked={isSelected}
                     onChange={handleCheckboxChange}
-                    aria-label={`Select product ${product.sku}`}
+                    aria-label={`Select product ${product.upc}`}
                     className="mt-1 h-5 w-5 rounded-none border border-border cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 />
 
                 <div className="flex-1 min-w-0 pr-20">
                     <div className="flex items-center gap-1.5 mb-2">
                         <Package className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                        <span className="text-[10px] font-semibold text-muted-foreground truncate">{product.sku}</span>
+                        <span className="text-[10px] font-semibold text-muted-foreground truncate">{product.upc}</span>
                     </div>
 
                     <div className="space-y-1 mb-2">
@@ -317,7 +317,7 @@ export function PipelineProductCard({
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        onEnrich(product.sku);
+                                        onEnrich(product.upc);
                                     }}
                                     className="flex items-center justify-center h-9 w-9 rounded-none text-foreground hover:bg-muted transition-colors"
                                     title="Configure enrichment sources"
@@ -330,7 +330,7 @@ export function PipelineProductCard({
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        onImageSelection(product.sku);
+                                        onImageSelection(product.upc);
                                     }}
                                     className="flex items-center justify-center h-9 w-9 rounded-none text-foreground hover:bg-muted transition-colors"
                                     title="Select product images"
@@ -342,7 +342,7 @@ export function PipelineProductCard({
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    onView(product.sku);
+                                    onView(product.upc);
                                 }}
                                 className="flex items-center justify-center h-9 px-4 rounded-none text-foreground hover:bg-muted font-semibold transition-colors border border-transparent hover:border-border"
                                 aria-label="Review product"

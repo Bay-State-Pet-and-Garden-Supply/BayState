@@ -9,13 +9,13 @@ interface ActionResult {
   affectedCount?: number;
 }
 
-export async function titleCaseProductName(sku: string): Promise<ActionResult> {
+export async function titleCaseProductName(upc: string): Promise<ActionResult> {
   const supabase = await createClient();
   
   const { data: product, error: fetchError } = await supabase
     .from('products_ingestion')
     .select('consolidated, input')
-    .eq('sku', sku)
+    .eq('upc', upc)
     .single();
   
   if (fetchError || !product) {
@@ -39,7 +39,7 @@ export async function titleCaseProductName(sku: string): Promise<ActionResult> {
   const { error: updateError } = await supabase
     .from('products_ingestion')
     .update({ consolidated, updated_at: new Date().toISOString() })
-    .eq('sku', sku);
+    .eq('upc', upc);
   
   if (updateError) {
     return { success: false, error: updateError.message };
@@ -54,7 +54,7 @@ export async function bulkTitleCaseNames(): Promise<ActionResult> {
   
   const { data: products, error: fetchError } = await supabase
     .from('products_ingestion')
-    .select('sku, consolidated, input');
+    .select('upc, consolidated, input');
   
   if (fetchError) {
     return { success: false, error: fetchError.message };
@@ -84,7 +84,7 @@ export async function bulkTitleCaseNames(): Promise<ActionResult> {
     const { error } = await supabase
       .from('products_ingestion')
       .update({ consolidated, updated_at: new Date().toISOString() })
-      .eq('sku', product.sku);
+      .eq('upc', product.upc);
     
     if (!error) {
       fixedCount++;
@@ -95,13 +95,13 @@ export async function bulkTitleCaseNames(): Promise<ActionResult> {
   return { success: true, affectedCount: fixedCount };
 }
 
-async function assignDefaultBrand(sku: string, brandId: string): Promise<ActionResult> {
+async function assignDefaultBrand(upc: string, brandId: string): Promise<ActionResult> {
   const supabase = await createClient();
   
   const { data: product, error: fetchError } = await supabase
     .from('products_ingestion')
     .select('consolidated')
-    .eq('sku', sku)
+    .eq('upc', upc)
     .single();
   
   if (fetchError || !product) {
@@ -113,7 +113,7 @@ async function assignDefaultBrand(sku: string, brandId: string): Promise<ActionR
   const { error: updateError } = await supabase
     .from('products_ingestion')
     .update({ consolidated, updated_at: new Date().toISOString() })
-    .eq('sku', sku);
+    .eq('upc', upc);
   
   if (updateError) {
     return { success: false, error: updateError.message };
@@ -124,7 +124,7 @@ async function assignDefaultBrand(sku: string, brandId: string): Promise<ActionR
 }
 
 async function updateConsolidatedField(
-  sku: string,
+  upc: string,
   field: string,
   value: unknown
 ): Promise<ActionResult> {
@@ -133,7 +133,7 @@ async function updateConsolidatedField(
   const { data: product, error: fetchError } = await supabase
     .from('products_ingestion')
     .select('consolidated')
-    .eq('sku', sku)
+    .eq('upc', upc)
     .single();
   
   if (fetchError || !product) {
@@ -145,7 +145,7 @@ async function updateConsolidatedField(
   const { error: updateError } = await supabase
     .from('products_ingestion')
     .update({ consolidated, updated_at: new Date().toISOString() })
-    .eq('sku', sku);
+    .eq('upc', upc);
   
   if (updateError) {
     return { success: false, error: updateError.message };

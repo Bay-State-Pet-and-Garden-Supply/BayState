@@ -12,7 +12,7 @@ function makeProducts(suffix: string): PipelineProduct[] {
   return [
     {
       id: `product-${suffix}`,
-      sku: `SKU-${suffix}`,
+      upc: `UPC-${suffix}`,
       input: { name: 'Broken Product', price: 12.5 },
       sources: {
         protected: {
@@ -36,7 +36,7 @@ function makeMultiSourceProducts(): PipelineProduct[] {
   return [
     {
       id: 'product-multi',
-      sku: 'SKU-multi',
+      upc: 'UPC-multi',
       input: { name: 'Multi Source Product', price: 18.5 },
       sources: {
         orgill: {
@@ -84,8 +84,8 @@ describe('ScrapedResultsView', () => {
     render(
       <ScrapedResultsView
         products={products}
-        selectedSkus={new Set()}
-        onSelectSku={jest.fn()}
+        selectedUpcs={new Set()}
+        onSelectUpc={jest.fn()}
         onRefresh={jest.fn()}
       />
     );
@@ -97,7 +97,7 @@ describe('ScrapedResultsView', () => {
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({
-            sku: 'SKU-primary',
+            upc: 'UPC-primary',
             image_url: 'https://images.example.com/primary-broken-primary.jpg',
           }),
         })
@@ -111,8 +111,8 @@ describe('ScrapedResultsView', () => {
     render(
       <ScrapedResultsView
         products={products}
-        selectedSkus={new Set()}
-        onSelectSku={jest.fn()}
+        selectedUpcs={new Set()}
+        onSelectUpc={jest.fn()}
         onRefresh={jest.fn()}
       />
     );
@@ -140,8 +140,8 @@ describe('ScrapedResultsView', () => {
     render(
       <ScrapedResultsView
         products={products}
-        selectedSkus={new Set()}
-        onSelectSku={jest.fn()}
+        selectedUpcs={new Set()}
+        onSelectUpc={jest.fn()}
         onRefresh={jest.fn()}
       />
     );
@@ -153,7 +153,7 @@ describe('ScrapedResultsView', () => {
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({
-            sku: 'SKU-secondary',
+            upc: 'UPC-secondary',
             image_url: 'https://images.example.com/secondary-broken-secondary.jpg',
           }),
         })
@@ -165,8 +165,8 @@ describe('ScrapedResultsView', () => {
     render(
       <ScrapedResultsView
         products={makeMultiSourceProducts()}
-        selectedSkus={new Set()}
-        onSelectSku={jest.fn()}
+        selectedUpcs={new Set()}
+        onSelectUpc={jest.fn()}
         onRefresh={jest.fn()}
       />
     );
@@ -190,8 +190,8 @@ describe('ScrapedResultsView', () => {
     render(
       <ScrapedResultsView
         products={makeMultiSourceProducts()}
-        selectedSkus={new Set()}
-        onSelectSku={jest.fn()}
+        selectedUpcs={new Set()}
+        onSelectUpc={jest.fn()}
         onRefresh={jest.fn()}
       />
     );

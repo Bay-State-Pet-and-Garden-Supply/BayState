@@ -112,7 +112,7 @@ export const finalizationDraftSchema = z.object({
 const nullableUnknownRecordSchema = z.record(z.string(), z.unknown()).nullable();
 
 export const finalizationCopilotProductSchema = z.object({
-  sku: z.string().min(1),
+  upc: z.string().min(1),
   input: nullableUnknownRecordSchema,
   consolidated: nullableUnknownRecordSchema,
   sources: z.record(z.string(), z.unknown()),
@@ -216,7 +216,7 @@ export function buildInitialFinalizationDraft(
       "in stock",
     minimumQuantity: toTrimmedString(consolidated.minimum_quantity ?? input.minimum_quantity) || "0",
     searchKeywords: toTrimmedString(consolidated.search_keywords ?? input.search_keywords),
-    gtin: product.sku,
+    gtin: product.upc,
     customImageUrl: "",
     selectedImages:
       consolidatedImages.length > 0 ? consolidatedImages : metadataSelectedImages,

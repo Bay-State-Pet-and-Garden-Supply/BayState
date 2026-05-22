@@ -2,7 +2,7 @@
   "schema_version": "approved-source-dataset-v1",
   "description": "Golden dataset for distributor extraction via Crawl4AI adapters. Each entry defines search input, expected behavior, and reference to legacy test assertions.",
   "source_notes": {
-    "curation": "Entries seeded from legacy-scraper-archive YAML configs test_skus, test_assertions, and fake_skus. Auth-required entries have expected_status auth_required. Some distributors lack enough test assertions; gaps are documented.",
+    "curation": "Entries seeded from legacy-scraper-archive YAML configs test_upcs, test_assertions, and fake_upcs. Auth-required entries have expected_status auth_required. Some distributors lack enough test assertions; gaps are documented.",
     "legal": "All entries target approved distributor domains. No retailer/marketplace/unapproved URLs are used as positive extraction ground truth."
   },
   "entries": [
@@ -12,11 +12,11 @@
       "adapter_slug": "bradley_crawl4ai",
       "source_type": "distributor",
       "requires_auth": false,
-      "sku": "001135",
+      "upc": "001135",
       "product_name": "E-Z HANG SCALE",
       "brand": "KERBL",
       "search_input": {
-        "sku": "001135",
+        "upc": "001135",
         "name": "E-Z HANG SCALE",
         "brand": "KERBL"
       },
@@ -30,7 +30,7 @@
       "allowed_fields": [
         "name",
         "brand",
-        "sku",
+        "upc",
         "upc",
         "case_pack",
         "images",
@@ -42,7 +42,7 @@
           "E-Z HANG SCALE"
         ],
         "brand": "KERBL",
-        "sku": "001135",
+        "upc": "001135",
         "price_required": false,
         "availability_required": false,
         "case_pack_required": false,
@@ -56,7 +56,7 @@
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/bradley.yaml",
-        "test_sku_source": "test_assertions[0]",
+        "test_upc_source": "test_assertions[0]",
         "notes": "Legacy assertion: title='E-Z HANG SCALE', brand='KERBL'"
       },
       "difficulty": "medium",
@@ -72,11 +72,11 @@
       "adapter_slug": "bradley_crawl4ai",
       "source_type": "distributor",
       "requires_auth": false,
-      "sku": "010199",
+      "upc": "010199",
       "product_name": "",
       "brand": "",
       "search_input": {
-        "sku": "010199",
+        "upc": "010199",
         "name": "",
         "brand": ""
       },
@@ -90,7 +90,7 @@
       "allowed_fields": [
         "name",
         "brand",
-        "sku",
+        "upc",
         "case_pack",
         "images",
         "weight"
@@ -98,7 +98,7 @@
       "ground_truth": {
         "title_contains": [],
         "brand": "",
-        "sku": "010199",
+        "upc": "010199",
         "image_required": false
       },
       "expected": {
@@ -109,7 +109,7 @@
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/bradley.yaml",
-        "test_sku_source": "test_skus[1]",
+        "test_upc_source": "test_upcs[1]",
         "notes": "No assertion for this test SKU; SKU-only fallback test"
       },
       "difficulty": "medium",
@@ -125,11 +125,11 @@
       "adapter_slug": "bradley_crawl4ai",
       "source_type": "distributor",
       "requires_auth": false,
-      "sku": "010202",
+      "upc": "010202",
       "product_name": "",
       "brand": "",
       "search_input": {
-        "sku": "010202",
+        "upc": "010202",
         "name": "",
         "brand": ""
       },
@@ -149,7 +149,7 @@
       "ground_truth": {
         "title_contains": [],
         "brand": "",
-        "sku": "010202",
+        "upc": "010202",
         "image_required": true
       },
       "expected": {
@@ -160,7 +160,7 @@
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/bradley.yaml",
-        "test_sku_source": "test_skus[2]",
+        "test_upc_source": "test_upcs[2]",
         "notes": "No assertion for this test SKU"
       },
       "difficulty": "medium",
@@ -176,11 +176,11 @@
       "adapter_slug": "bradley_crawl4ai",
       "source_type": "distributor",
       "requires_auth": false,
-      "sku": "xyzabc123notexist456",
+      "upc": "xyzabc123notexist456",
       "product_name": "",
       "brand": "",
       "search_input": {
-        "sku": "xyzabc123notexist456",
+        "upc": "xyzabc123notexist456",
         "name": "",
         "brand": ""
       },
@@ -197,7 +197,7 @@
       "ground_truth": {
         "title_contains": [],
         "brand": "",
-        "sku": "",
+        "upc": "",
         "image_required": false
       },
       "expected": {
@@ -208,7 +208,7 @@
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/bradley.yaml",
-        "test_sku_source": "fake_skus[0]",
+        "test_upc_source": "fake_upcs[0]",
         "notes": "Fake SKU should return no match"
       },
       "difficulty": "easy",
@@ -223,11 +223,11 @@
       "adapter_slug": "central_pet_crawl4ai",
       "source_type": "distributor",
       "requires_auth": false,
-      "sku": "38777520",
+      "upc": "38777520",
       "product_name": "KONG Air Dog Squeaker Tennis Ball Dog Toy",
       "brand": "KONG",
       "search_input": {
-        "sku": "38777520",
+        "upc": "38777520",
         "name": "KONG Air Dog Squeaker Tennis Ball Dog Toy",
         "brand": "KONG"
       },
@@ -240,7 +240,7 @@
       "allowed_fields": [
         "name",
         "brand",
-        "sku",
+        "upc",
         "upc",
         "images",
         "description",
@@ -251,7 +251,7 @@
           "KONG Air Dog Squeaker Tennis Ball Dog Toy"
         ],
         "brand": "KONG",
-        "sku": "38777520",
+        "upc": "38777520",
         "image_required": true
       },
       "expected": {
@@ -262,7 +262,7 @@
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/central-pet.yaml",
-        "test_sku_source": "test_assertions[0]",
+        "test_upc_source": "test_assertions[0]",
         "notes": "Legacy assertion: title='KONG Air Dog Squeaker Tennis Ball Dog Toy', brand='KONG'"
       },
       "difficulty": "medium",
@@ -279,11 +279,11 @@
       "adapter_slug": "central_pet_crawl4ai",
       "source_type": "distributor",
       "requires_auth": false,
-      "sku": "43580233",
+      "upc": "43580233",
       "product_name": "IAMS Perfect Portions Grain Free Healthy Pat\u00e9 Kitten Wet Cat Food",
       "brand": "IAMS",
       "search_input": {
-        "sku": "43580233",
+        "upc": "43580233",
         "name": "IAMS Perfect Portions Grain Free Healthy Pat\u00e9 Kitten Wet Cat Food",
         "brand": "IAMS"
       },
@@ -296,7 +296,7 @@
       "allowed_fields": [
         "name",
         "brand",
-        "sku",
+        "upc",
         "upc",
         "images",
         "description"
@@ -306,7 +306,7 @@
           "IAMS Perfect Portions"
         ],
         "brand": "IAMS",
-        "sku": "43580233",
+        "upc": "43580233",
         "image_required": true
       },
       "expected": {
@@ -317,7 +317,7 @@
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/central-pet.yaml",
-        "test_sku_source": "test_assertions[1]",
+        "test_upc_source": "test_assertions[1]",
         "notes": "Legacy assertion: title='IAMS Perfect Portions...', brand='IAMS'"
       },
       "difficulty": "medium",
@@ -333,11 +333,11 @@
       "adapter_slug": "central_pet_crawl4ai",
       "source_type": "distributor",
       "requires_auth": false,
-      "sku": "55599200",
+      "upc": "55599200",
       "product_name": "",
       "brand": "",
       "search_input": {
-        "sku": "55599200",
+        "upc": "55599200",
         "name": "",
         "brand": ""
       },
@@ -356,7 +356,7 @@
       "ground_truth": {
         "title_contains": [],
         "brand": "",
-        "sku": "55599200",
+        "upc": "55599200",
         "image_required": true
       },
       "expected": {
@@ -367,7 +367,7 @@
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/central-pet.yaml",
-        "test_sku_source": "test_skus[2]",
+        "test_upc_source": "test_upcs[2]",
         "notes": "No assertion for this SKU; tests SKU-only fallback"
       },
       "difficulty": "medium",
@@ -383,11 +383,11 @@
       "adapter_slug": "central_pet_crawl4ai",
       "source_type": "distributor",
       "requires_auth": false,
-      "sku": "00000000",
+      "upc": "00000000",
       "product_name": "",
       "brand": "",
       "search_input": {
-        "sku": "00000000",
+        "upc": "00000000",
         "name": "",
         "brand": ""
       },
@@ -403,7 +403,7 @@
       "ground_truth": {
         "title_contains": [],
         "brand": "",
-        "sku": "",
+        "upc": "",
         "image_required": false
       },
       "expected": {
@@ -414,7 +414,7 @@
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/central-pet.yaml",
-        "test_sku_source": "fake_skus[1]",
+        "test_upc_source": "fake_upcs[1]",
         "notes": "Fake SKU should return no match"
       },
       "difficulty": "easy",
@@ -429,11 +429,11 @@
       "adapter_slug": "orgill_crawl4ai",
       "source_type": "distributor",
       "requires_auth": true,
-      "sku": "037193347322",
+      "upc": "037193347322",
       "product_name": "",
       "brand": "",
       "search_input": {
-        "sku": "037193347322",
+        "upc": "037193347322",
         "name": "",
         "brand": ""
       },
@@ -455,7 +455,7 @@
       "ground_truth": {
         "title_contains": [],
         "brand": "",
-        "sku": "037193347322",
+        "upc": "037193347322",
         "image_required": false
       },
       "expected": {
@@ -466,7 +466,7 @@
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/orgill.yaml",
-        "test_sku_source": "test_skus[0]",
+        "test_upc_source": "test_upcs[0]",
         "notes": "Orgill requires login; expected status is auth_required, not success"
       },
       "difficulty": "hard",
@@ -481,11 +481,11 @@
       "adapter_slug": "orgill_crawl4ai",
       "source_type": "distributor",
       "requires_auth": true,
-      "sku": "032700006105",
+      "upc": "032700006105",
       "product_name": "",
       "brand": "",
       "search_input": {
-        "sku": "032700006105",
+        "upc": "032700006105",
         "name": "",
         "brand": ""
       },
@@ -504,7 +504,7 @@
       "ground_truth": {
         "title_contains": [],
         "brand": "",
-        "sku": "032700006105",
+        "upc": "032700006105",
         "image_required": false
       },
       "expected": {
@@ -515,7 +515,7 @@
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/orgill.yaml",
-        "test_sku_source": "test_skus[1]",
+        "test_upc_source": "test_upcs[1]",
         "notes": "Auth-required; cannot extract without login"
       },
       "difficulty": "hard",
@@ -530,11 +530,11 @@
       "adapter_slug": "orgill_crawl4ai",
       "source_type": "distributor",
       "requires_auth": true,
-      "sku": "zzzzqqqq9999xxxx",
+      "upc": "zzzzqqqq9999xxxx",
       "product_name": "",
       "brand": "",
       "search_input": {
-        "sku": "zzzzqqqq9999xxxx",
+        "upc": "zzzzqqqq9999xxxx",
         "name": "",
         "brand": ""
       },
@@ -550,7 +550,7 @@
       "ground_truth": {
         "title_contains": [],
         "brand": "",
-        "sku": "",
+        "upc": "",
         "image_required": false
       },
       "expected": {
@@ -561,7 +561,7 @@
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/orgill.yaml",
-        "test_sku_source": "fake_skus[0]",
+        "test_upc_source": "fake_upcs[0]",
         "notes": "Fake SKU + auth-required"
       },
       "difficulty": "hard",
@@ -576,11 +576,11 @@
       "adapter_slug": "phillips_crawl4ai",
       "source_type": "distributor",
       "requires_auth": true,
-      "sku": "072705115310",
+      "upc": "072705115310",
       "product_name": "Fromm Gold Large Breed Dog 30 lb",
       "brand": "FROMM FAMILY FOODS LLC",
       "search_input": {
-        "sku": "072705115310",
+        "upc": "072705115310",
         "name": "Fromm Gold Large Breed Dog 30 lb",
         "brand": "FROMM FAMILY FOODS LLC"
       },
@@ -593,7 +593,7 @@
       "allowed_fields": [
         "name",
         "brand",
-        "sku",
+        "upc",
         "upc",
         "images",
         "description",
@@ -604,7 +604,7 @@
           "Fromm Gold Large Breed Dog 30 lb"
         ],
         "brand": "FROMM FAMILY FOODS LLC",
-        "sku": "072705115310",
+        "upc": "072705115310",
         "image_required": false
       },
       "expected": {
@@ -615,7 +615,7 @@
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/phillips.yaml",
-        "test_sku_source": "test_assertions[0]",
+        "test_upc_source": "test_assertions[0]",
         "notes": "Legacy assertion: title='Fromm Gold Large Breed Dog 30 lb', brand='FROMM FAMILY FOODS LLC'. Philips requires login."
       },
       "difficulty": "hard",
@@ -631,11 +631,11 @@
       "adapter_slug": "phillips_crawl4ai",
       "source_type": "distributor",
       "requires_auth": true,
-      "sku": "072705104321",
+      "upc": "072705104321",
       "product_name": "",
       "brand": "",
       "search_input": {
-        "sku": "072705104321",
+        "upc": "072705104321",
         "name": "",
         "brand": ""
       },
@@ -652,7 +652,7 @@
       "ground_truth": {
         "title_contains": [],
         "brand": "",
-        "sku": "072705104321",
+        "upc": "072705104321",
         "image_required": false
       },
       "expected": {
@@ -663,7 +663,7 @@
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/phillips.yaml",
-        "test_sku_source": "test_skus[1]",
+        "test_upc_source": "test_upcs[1]",
         "notes": "Auth-required; second test SKU"
       },
       "difficulty": "hard",
@@ -678,11 +678,11 @@
       "adapter_slug": "phillips_crawl4ai",
       "source_type": "distributor",
       "requires_auth": true,
-      "sku": "xyzabc123notexist456",
+      "upc": "xyzabc123notexist456",
       "product_name": "",
       "brand": "",
       "search_input": {
-        "sku": "xyzabc123notexist456",
+        "upc": "xyzabc123notexist456",
         "name": "",
         "brand": ""
       },
@@ -698,7 +698,7 @@
       "ground_truth": {
         "title_contains": [],
         "brand": "",
-        "sku": "",
+        "upc": "",
         "image_required": false
       },
       "expected": {
@@ -709,7 +709,7 @@
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/phillips.yaml",
-        "test_sku_source": "fake_skus[0]",
+        "test_upc_source": "fake_upcs[0]",
         "notes": "Fake SKU + auth-required"
       },
       "difficulty": "hard",
@@ -726,11 +726,11 @@
       "adapter_slug": "pet_food_experts_crawl4ai",
       "source_type": "distributor",
       "requires_auth": true,
-      "sku": "33011808",
+      "upc": "33011808",
       "product_name": "",
       "brand": "",
       "search_input": {
-        "sku": "33011808",
+        "upc": "33011808",
         "name": "",
         "brand": ""
       },
@@ -755,7 +755,7 @@
       "ground_truth": {
         "title_contains": [],
         "brand": "",
-        "sku": "33011808",
+        "upc": "33011808",
         "image_required": false
       },
       "expected": {
@@ -766,7 +766,7 @@
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/petfoodex.yaml",
-        "test_sku_source": "test_skus[0]",
+        "test_upc_source": "test_upcs[0]",
         "notes": "Pet Food Experts requires login; expected status is auth_required"
       },
       "difficulty": "hard",
@@ -781,11 +781,11 @@
       "adapter_slug": "pet_food_experts_crawl4ai",
       "source_type": "distributor",
       "requires_auth": true,
-      "sku": "10158320",
+      "upc": "10158320",
       "product_name": "",
       "brand": "",
       "search_input": {
-        "sku": "10158320",
+        "upc": "10158320",
         "name": "",
         "brand": ""
       },
@@ -805,7 +805,7 @@
       "ground_truth": {
         "title_contains": [],
         "brand": "",
-        "sku": "10158320",
+        "upc": "10158320",
         "image_required": false
       },
       "expected": {
@@ -816,7 +816,7 @@
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/petfoodex.yaml",
-        "test_sku_source": "test_skus[1]",
+        "test_upc_source": "test_upcs[1]",
         "notes": "Auth-required; second test SKU"
       },
       "difficulty": "hard",
@@ -831,11 +831,11 @@
       "adapter_slug": "pet_food_experts_crawl4ai",
       "source_type": "distributor",
       "requires_auth": true,
-      "sku": "xyzabc123notexist456",
+      "upc": "xyzabc123notexist456",
       "product_name": "",
       "brand": "",
       "search_input": {
-        "sku": "xyzabc123notexist456",
+        "upc": "xyzabc123notexist456",
         "name": "",
         "brand": ""
       },
@@ -853,7 +853,7 @@
       "ground_truth": {
         "title_contains": [],
         "brand": "",
-        "sku": "",
+        "upc": "",
         "image_required": false
       },
       "expected": {
@@ -864,7 +864,7 @@
       },
       "legacy_reference": {
         "config_path": "legacy-scraper-archive/configs/petfoodex.yaml",
-        "test_sku_source": "fake_skus[0]",
+        "test_upc_source": "fake_upcs[0]",
         "notes": "Fake SKU + auth-required"
       },
       "difficulty": "hard",

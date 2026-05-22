@@ -49,18 +49,18 @@ function extractSelectedImageUrls(value: unknown): string[] {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ sku: string }> }
+  { params }: { params: Promise<{ upc: string }> }
 ) {
   const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
-  const { sku } = await params;
+  const { upc } = await params;
   const supabase = await createAdminClient();
 
   const { data, error } = await supabase
     .from('products_ingestion')
     .select('*')
-    .eq('sku', sku)
+    .eq('upc', upc)
     .single();
 
   if (error) {
@@ -98,12 +98,12 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ sku: string }> }
+  { params }: { params: Promise<{ upc: string }> }
 ) {
   const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
-  const { sku } = await params;
+  const { upc } = await params;
   const supabase = await createAdminClient();
 
   try {
@@ -124,9 +124,9 @@ export async function PATCH(
           supabase,
           consolidated as Record<string, unknown>,
           {
-            folderPath: buildProductImageStorageFolder('pipeline-consolidated', sku),
+            folderPath: buildProductImageStorageFolder('pipeline-consolidated', upc),
             onError: (message, error) => {
-              console.error(`[Pipeline SKU] ${message}`, error);
+              console.error(`[Pipeline UPC] ${message}`, error);
             },
           }
         );
@@ -153,7 +153,7 @@ export async function PATCH(
       const { data: currentRow, error: fetchError } = await supabase
         .from('products_ingestion')
         .select('pipeline_status')
-        .eq('sku', sku)
+        .eq('upc', upc)
         .single();
 
       if (fetchError || !currentRow) {
@@ -206,7 +206,7 @@ export async function PATCH(
     const { error } = await supabase
       .from('products_ingestion')
       .update(updateData)
-      .eq('sku', sku);
+      .eq('upc', upc);
 
     if (error) {
       console.error('Error updating product:', error);
@@ -222,7 +222,7 @@ export async function PATCH(
       if (brandId !== undefined) {
         // We use wait_for_previous: true to ensure this runs after the update, 
         // though here it's inside the same handler.
-        await recohortProducts(supabase, [sku], brandId as string | null);
+        await recohortProducts(supabase, [upc], brandId as string | null);
       }
     }
 

@@ -85,7 +85,7 @@ async def run_official_brand_fixture_benchmark(
             phase2_result_count = 0
             try:
                 discovery = await scraper.discover_official_url_candidates(
-                    entry.sku,
+                    entry.upc,
                     entry.brand or "",
                     entry.product_name,
                     official_domains=entry.expected_official_domains,
@@ -110,7 +110,7 @@ async def run_official_brand_fixture_benchmark(
 
             rows.append(
                 DiscoveryResultRow(
-                    sku=entry.sku,
+                    upc=entry.upc,
                     brand=entry.brand,
                     product_name=entry.product_name,
                     expected_official_domains=entry.expected_official_domains,

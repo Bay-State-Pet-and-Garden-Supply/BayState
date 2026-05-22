@@ -3,18 +3,18 @@ import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { createAdminClient } from '@/lib/supabase/server';
 
 /**
- * POST /api/admin/enrichment/[sku]/scrape
+ * POST /api/admin/enrichment/[upc]/scrape
  * 
  * Trigger a targeted scrape for specific sources on a single product.
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ sku: string }> }
+  { params }: { params: Promise<{ upc: string }> }
 ) {
-  const { sku } = await params;
+  const { upc } = await params;
 
-  if (!sku) {
-    return NextResponse.json({ error: 'SKU is required' }, { status: 400 });
+  if (!upc) {
+    return NextResponse.json({ error: 'UPC is required' }, { status: 400 });
   }
 
   const auth = await requireAdminAuth(request);
@@ -55,7 +55,7 @@ export async function POST(
       const { data: job, error: jobError } = await supabase
         .from('scrape_jobs')
         .insert({
-          skus: [sku],
+          upcs: [upc],
           scrapers: resolvedSources,
           test_mode: false,
           max_workers: 1,

@@ -154,7 +154,7 @@ export function IntegraImportDialog({
                                 <div className="relative overflow-hidden rounded-none border border-border bg-card p-6">
                                     <p className="text-[10px] font-semibold text-muted-foreground mb-1">Total in File</p>
                                     <h4 className="text-4xl font-semibold text-foreground">{summary?.totalInFile ?? 0}</h4>
-                                    <p className="text-[10px] font-semibold text-muted-foreground mt-2">Unique SKUs analyzed</p>
+                                    <p className="text-[10px] font-semibold text-muted-foreground mt-2">Unique UPCs analyzed</p>
                                 </div>
 
                                 <div className="relative overflow-hidden rounded-none border border-brand-forest-green/20 bg-brand-forest-green/5 p-6">

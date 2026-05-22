@@ -6,14 +6,14 @@ const UNGROUPED_PREFIX = "UNGROUPED";
 const UNGROUPED_NAME = "Ungrouped Products";
 
 /**
- * Extract the first N digits from a SKU to use as a UPC prefix.
- * Returns empty string if SKU is non-numeric or shorter than prefix length.
+ * Extract the first N digits from a UPC to use as a prefix.
+ * Returns empty string if UPC is non-numeric or shorter than prefix length.
  */
 function extractUpcPrefix(
-  sku: string,
+  upc: string,
   prefixLength: number = DEFAULT_PREFIX_LENGTH,
 ): string {
-  const normalized = sku.trim();
+  const normalized = upc.trim();
   if (!normalized || !/^\d+$/.test(normalized)) {
     return "";
   }
@@ -24,22 +24,22 @@ function extractUpcPrefix(
 }
 
 /**
- * Group SKUs by their UPC prefix.
- * Non-numeric/short SKUs are grouped under the UNGROUPED sentinel.
+ * Group UPCs by their prefix.
+ * Non-numeric/short UPCs are grouped under the UNGROUPED sentinel.
  */
-export function groupSkusByPrefix(
-  skus: string[],
+export function groupUpcsByPrefix(
+  upcs: string[],
   prefixLength: number = DEFAULT_PREFIX_LENGTH,
 ): Map<string, string[]> {
   const groups = new Map<string, string[]>();
-  for (const sku of skus) {
-    const prefix = extractUpcPrefix(sku, prefixLength);
+  for (const upc of upcs) {
+    const prefix = extractUpcPrefix(upc, prefixLength);
     const key = prefix || UNGROUPED_PREFIX;
     const existing = groups.get(key);
     if (existing) {
-      existing.push(sku);
+      existing.push(upc);
     } else {
-      groups.set(key, [sku]);
+      groups.set(key, [upc]);
     }
   }
   return groups;
@@ -185,7 +185,7 @@ interface CohortAssignmentResult {
 }
 
 /**
- * Assign products to cohorts based on SKU prefix grouping and brand identity.
+ * Assign products to cohorts based on UPC prefix grouping and brand identity.
  * Updates products_ingestion.cohort_id and inserts/upserts cohort_members.
  *
  * Errors are collected and returned; the function does its best to
@@ -193,23 +193,23 @@ interface CohortAssignmentResult {
  */
 export async function assignProductsToCohorts(
   supabase: SupabaseClient,
-  skus: string[],
+  upcs: string[],
   prefixLength: number = DEFAULT_PREFIX_LENGTH,
 ): Promise<CohortAssignmentResult> {
-  if (skus.length === 0) {
+  if (upcs.length === 0) {
     return { assigned: 0, ungrouped: 0, cohortCount: 0, errors: [] };
   }
 
   const errors: string[] = [];
-  const grouped = groupSkusByPrefix(skus, prefixLength);
-  const ungroupedSkus = grouped.get(UNGROUPED_PREFIX) ?? [];
+  const grouped = groupUpcsByPrefix(upcs, prefixLength);
+  const ungroupedUpcs = grouped.get(UNGROUPED_PREFIX) ?? [];
   grouped.delete(UNGROUPED_PREFIX);
 
-  // 1. Fetch existing brand_id for these SKUs from products_ingestion
+  // 1. Fetch existing brand_id for these UPCs from products_ingestion
   const { data: productsData, error: fetchError } = await supabase
     .from("products_ingestion")
-    .select("sku, brand_id")
-    .in("sku", skus);
+    .select("upc, brand_id")
+    .in("upc", upcs);
 
   if (fetchError) {
     console.error(
@@ -219,19 +219,19 @@ export async function assignProductsToCohorts(
     errors.push(`Failed to fetch product brands: ${fetchError.message}`);
   }
 
-  const skuBrandMap = new Map<string, string | null>();
+  const upcBrandMap = new Map<string, string | null>();
   if (productsData) {
     for (const p of productsData) {
-      skuBrandMap.set(p.sku, p.brand_id);
+      upcBrandMap.set(p.upc, p.brand_id);
     }
   }
 
   // 2. Build target (upc_prefix, brand_id) pairs for missing cohort batches
   const targets: CohortBatchTarget[] = [];
-  for (const [prefix, prefixSkus] of grouped.entries()) {
+  for (const [prefix, prefixUpcs] of grouped.entries()) {
     const prefixBrands = new Set<string | null>();
-    for (const sku of prefixSkus) {
-      prefixBrands.add(skuBrandMap.get(sku) || null);
+    for (const upc of prefixUpcs) {
+      prefixBrands.add(upcBrandMap.get(upc) || null);
     }
     for (const brandId of prefixBrands) {
       targets.push({ upc_prefix: prefix, brand_id: brandId });
@@ -244,12 +244,12 @@ export async function assignProductsToCohorts(
     cohortMap = await ensureCohortBatches(supabase, targets);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return { assigned: 0, ungrouped: skus.length, cohortCount: 0, errors: [...errors, message] };
+    return { assigned: 0, ungrouped: upcs.length, cohortCount: 0, errors: [...errors, message] };
   }
 
   // Ensure ungrouped cohort exists if needed
   let ungroupedCohortId: string | null = null;
-  if (ungroupedSkus.length > 0) {
+  if (ungroupedUpcs.length > 0) {
     try {
       const { data: existingUngrouped } = await supabase
         .from("cohort_batches")
@@ -285,44 +285,44 @@ export async function assignProductsToCohorts(
     }
   }
 
-  // Build SKU -> cohort_id mapping
-  const skuToCohortId = new Map<string, string>();
-  for (const [prefix, prefixSkus] of grouped.entries()) {
-    for (const sku of prefixSkus) {
-      const brandId = skuBrandMap.get(sku) || null;
+  // Build UPC -> cohort_id mapping
+  const upcToCohortId = new Map<string, string>();
+  for (const [prefix, prefixUpcs] of grouped.entries()) {
+    for (const upc of prefixUpcs) {
+      const brandId = upcBrandMap.get(upc) || null;
       const key = `${prefix}:${brandId || "null"}`;
       const cohort = cohortMap.get(key);
       if (!cohort) {
         errors.push(`Cohort not found for prefix ${prefix} and brand ${brandId}`);
         continue;
       }
-      skuToCohortId.set(sku, cohort.id);
+      upcToCohortId.set(upc, cohort.id);
     }
   }
-  for (const sku of ungroupedSkus) {
+  for (const upc of ungroupedUpcs) {
     if (ungroupedCohortId) {
-      skuToCohortId.set(sku, ungroupedCohortId);
+      upcToCohortId.set(upc, ungroupedCohortId);
     }
   }
 
   // Update products_ingestion grouped by cohort_id so .update().in() works
-  const skusByCohortId = new Map<string, string[]>();
-  for (const [sku, cohortId] of skuToCohortId.entries()) {
-    const existing = skusByCohortId.get(cohortId);
+  const upcsByCohortId = new Map<string, string[]>();
+  for (const [upc, cohortId] of upcToCohortId.entries()) {
+    const existing = upcsByCohortId.get(cohortId);
     if (existing) {
-      existing.push(sku);
+      existing.push(upc);
     } else {
-      skusByCohortId.set(cohortId, [sku]);
+      upcsByCohortId.set(cohortId, [upc]);
     }
   }
 
-  for (const [cohortId, skuList] of skusByCohortId.entries()) {
-    for (let i = 0; i < skuList.length; i += WRITE_BATCH_SIZE) {
-      const batch = skuList.slice(i, i + WRITE_BATCH_SIZE);
+  for (const [cohortId, upcList] of upcsByCohortId.entries()) {
+    for (let i = 0; i < upcList.length; i += WRITE_BATCH_SIZE) {
+      const batch = upcList.slice(i, i + WRITE_BATCH_SIZE);
       const { error: updateError } = await supabase
         .from("products_ingestion")
         .update({ cohort_id: cohortId })
-        .in("sku", batch);
+        .in("upc", batch);
 
       if (updateError) {
         console.error(
@@ -337,11 +337,11 @@ export async function assignProductsToCohorts(
   }
 
   // Upsert cohort_members
-  const memberRows = Array.from(skuToCohortId.entries()).map(
-    ([sku, cohortId], index) => ({
+  const memberRows = Array.from(upcToCohortId.entries()).map(
+    ([upc, cohortId], index) => ({
       cohort_id: cohortId,
-      product_sku: sku,
-      upc_prefix: extractUpcPrefix(sku, prefixLength) || UNGROUPED_PREFIX,
+      product_upc: upc,
+      upc_prefix: extractUpcPrefix(upc, prefixLength) || UNGROUPED_PREFIX,
       sort_order: index,
     }),
   );
@@ -350,7 +350,7 @@ export async function assignProductsToCohorts(
     const batch = memberRows.slice(i, i + WRITE_BATCH_SIZE);
     const { error: memberError } = await supabase
       .from("cohort_members")
-      .upsert(batch, { onConflict: "cohort_id,product_sku" });
+      .upsert(batch, { onConflict: "cohort_id,product_upc" });
 
     if (memberError) {
       console.error(
@@ -361,8 +361,8 @@ export async function assignProductsToCohorts(
     }
   }
 
-  const assigned = skuToCohortId.size;
-  const cohortCount = targets.length + (ungroupedSkus.length > 0 ? 1 : 0);
+  const assigned = upcToCohortId.size;
+  const cohortCount = targets.length + (ungroupedUpcs.length > 0 ? 1 : 0);
 
-  return { assigned, ungrouped: ungroupedSkus.length, cohortCount, errors };
+  return { assigned, ungrouped: ungroupedUpcs.length, cohortCount, errors };
 }

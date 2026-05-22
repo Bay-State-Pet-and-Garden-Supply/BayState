@@ -62,7 +62,7 @@ const enrichedProductFactsV1Schema = z.object({
   brand: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
   category: z.string().nullable().optional(),
-  sku: z.string().nullable().optional(),
+  upc: z.string().nullable().optional(),
   weight: z.string().nullable().optional(),
   dimensions: z.string().nullable().optional(),
   shipping_weight: z.string().nullable().optional(),
@@ -115,7 +115,7 @@ const enrichmentConfidenceV1Schema = z.object({
 // =============================================================================
 
 const enrichmentValidationV1Schema = z.object({
-  sku_match: z.boolean().nullable().optional(),
+  upc_match: z.boolean().nullable().optional(),
   warnings: z.array(z.string()).optional(),
   missing_required: z.array(z.string()).optional(),
 });
@@ -136,7 +136,7 @@ const enrichmentAttemptSummaryV1Schema = z.object({
 
 const enrichmentResultV1Schema = z.object({
   schema_version: z.literal("v1"),
-  sku: z.string().min(1, "SKU is required"),
+  upc: z.string().min(1, "UPC is required"),
   source: enrichmentResultSourceV1Schema,
   status: enrichmentResultStatusSchema,
   extracted_at: z.string().datetime({ offset: true }),

@@ -58,7 +58,7 @@ jest.mock("@/components/admin/pipeline/ReviewingResultsView", () => ({
 
 const products: PipelineProduct[] = [
   {
-    sku: "SKU001",
+    upc: "SKU001",
     input: { name: "Product 1", price: 10 },
     sources: {},
     consolidated: { name: "Product 1", price: 10 },
@@ -145,7 +145,7 @@ describe("PipelineClient live tab handling", () => {
       },
       {
         ...products[0],
-        sku: "SKU002",
+        upc: "SKU002",
         input: { name: "Product 2", price: 15 },
         consolidated: { name: "Product 2", price: 15 },
         pipeline_status: "publishing",

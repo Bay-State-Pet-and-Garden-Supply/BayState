@@ -8,8 +8,8 @@ import {
   generateShopSiteXml,
 } from "@/lib/shopsite/xml-generator";
 import {
-  markShopSiteSyncFailureBySkus,
-  markShopSiteSyncSuccessBySkus,
+  markShopSiteSyncFailureByUpcs,
+  markShopSiteSyncSuccessByUpcs,
 } from "@/lib/shopsite/sync-status";
 import { createAdminClient } from "@/lib/supabase/server";
 
@@ -17,21 +17,21 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 interface UploadRequestBody {
-  skus?: unknown;
+  upcs?: unknown;
 }
 
-function parseSkuSelection(body: UploadRequestBody): string[] {
-  if (body.skus === undefined) {
+function parseUpcSelection(body: UploadRequestBody): string[] {
+  if (body.upcs === undefined) {
     return [];
   }
 
-  if (!Array.isArray(body.skus)) {
-    throw new Error('Expected "skus" to be an array of SKU strings');
+  if (!Array.isArray(body.upcs)) {
+    throw new Error('Expected "upcs" to be an array of UPC strings');
   }
 
-  return body.skus
-    .map((sku) => (typeof sku === "string" ? sku.trim() : ""))
-    .filter((sku) => sku.length > 0);
+  return body.upcs
+    .map((upc) => (typeof upc === "string" ? upc.trim() : ""))
+    .filter((upc) => upc.length > 0);
 }
 
 async function parseRequestBody(
@@ -45,13 +45,13 @@ async function parseRequestBody(
   return JSON.parse(rawBody) as UploadRequestBody;
 }
 
-async function markShopSiteSyncFailure(skus: string[], message: string) {
-  if (skus.length === 0) {
+async function markShopSiteSyncFailure(upcs: string[], message: string) {
+  if (upcs.length === 0) {
     return;
   }
 
   try {
-    await markShopSiteSyncFailureBySkus(skus, message);
+    await markShopSiteSyncFailureByUpcs(upcs, message);
   } catch (statusError) {
     console.error("[UploadShopSite] Failed to record ShopSite failure status:", statusError);
   }
@@ -61,14 +61,14 @@ export async function POST(request: NextRequest) {
   const auth = await requireAdminAuth(request);
   if (!auth.authorized) return auth.response;
 
-  let exportSkus: string[] = [];
+  let exportUpcs: string[] = [];
   let shopSiteUploadCompleted = false;
 
   try {
     const body = await parseRequestBody(request);
-    const skus = parseSkuSelection(body);
+    const upcs = parseUpcSelection(body);
     const { products } = await loadStorefrontShopSiteExport({
-      skus: skus.length > 0 ? skus : undefined,
+      upcs: upcs.length > 0 ? upcs : undefined,
     });
 
     if (products.length === 0) {
@@ -78,7 +78,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    exportSkus = products.map((product) => product.sku);
+    // The products from loadStorefrontShopSiteExport still have a .sku property 
+    // mapped from the internal .upc, which we need for ShopSite XML.
+    exportUpcs = products.map((product) => product.sku);
 
     const config = await getStoredShopSiteConfig();
     if (!config) {
@@ -110,7 +112,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createAdminClient();
 
     try {
-      await markShopSiteSyncSuccessBySkus(exportSkus, syncedAt);
+      await markShopSiteSuccessByUpcs(exportUpcs, syncedAt);
     } catch (productSyncError) {
       throw new Error(
         `ShopSite upload succeeded, but failed to record storefront sync status: ${productSyncError instanceof Error ? productSyncError.message : String(productSyncError)}`,
@@ -123,7 +125,7 @@ export async function POST(request: NextRequest) {
         exported_at: syncedAt,
         updated_at: syncedAt,
       })
-      .in("sku", exportSkus)
+      .in("upc", exportUpcs)
       .eq("pipeline_status", "publishing");
 
     if (statusError) {
@@ -146,7 +148,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       uploadedCount: products.length,
-      uploadedSkus: exportSkus,
+      uploadedUpcs: exportUpcs,
       marker,
       publishWarning,
     });
@@ -154,15 +156,19 @@ export async function POST(request: NextRequest) {
     const message =
       err instanceof Error ? err.message : "Failed to sync products to ShopSite";
 
-    if (exportSkus.length > 0 && !shopSiteUploadCompleted) {
-      await markShopSiteSyncFailure(exportSkus, message);
+    if (exportUpcs.length > 0 && !shopSiteUploadCompleted) {
+      await markShopSiteSyncFailure(exportUpcs, message);
     }
 
     const status =
-      message.includes('Expected "skus"') || message.includes("export queue")
+      message.includes('Expected "upcs"') || message.includes("export queue")
         ? 400
         : 500;
     console.error("[UploadShopSite] Error:", err);
     return NextResponse.json({ error: message }, { status });
   }
+}
+
+async function markShopSiteSuccessByUpcs(upcs: string[], syncedAt: string) {
+  return markShopSiteSyncSuccessByUpcs(upcs, syncedAt);
 }

@@ -12,7 +12,7 @@ import {
 } from "@/lib/pipeline/reviewing-draft";
 
 export const finalizationWorkspaceProductSummarySchema = z.object({
-  sku: z.string(),
+  upc: z.string(),
   name: z.string().nullable(),
   price: z.string().nullable(),
   confidenceScore: z.number().nullable(),
@@ -174,14 +174,14 @@ export function buildWorkspaceProductSummary(
   const sourceKeys = Object.keys(normalizeProductSources(product.sources || {}));
 
   return {
-    sku: product.sku,
+    upc: product.upc,
     name: getCurrentProductName(product, draft),
     price: getCurrentProductPrice(product, draft),
     confidenceScore: product.confidence_score ?? null,
     sourceKeys,
     hasBrand: Boolean(draft?.brandId && draft.brandId !== "none"),
     selectedImageCount: draft?.selectedImages.length ?? 0,
-    selected: selectedSku === product.sku,
+    selected: selectedSku === product.upc,
     dirty: isDraftDirty(draft, savedDraft),
   };
 }
@@ -198,7 +198,7 @@ function matchesWorkspaceQuery(
   }
 
   const searchableFields = [
-    product.sku,
+    product.upc,
     summary.name ?? "",
     getSearchableBrandText(product, draft),
     draft?.description ?? "",
@@ -225,15 +225,15 @@ export function listWorkspaceProducts(
   const summaries = products.map((product) =>
     buildWorkspaceProductSummary(
       product,
-      draftsBySku[product.sku],
-      savedDraftsBySku[product.sku],
+      draftsBySku[product.upc],
+      savedDraftsBySku[product.upc],
       selectedSku,
     ),
   );
 
   const filtered = summaries.filter((summary, index) => {
     const product = products[index];
-    const draft = draftsBySku[product.sku];
+    const draft = draftsBySku[product.upc];
 
     // Broad query check
     if (
@@ -286,13 +286,13 @@ export function resolveFinalizationProductScope(
   selectedSku: string | null,
   scope: FinalizationProductScope,
 ): string[] {
-  const availableSkus = new Set(products.map((product) => product.sku));
+  const availableSkus = new Set(products.map((product) => product.upc));
 
   switch (scope.type) {
     case "selected":
       return selectedSku ? [selectedSku] : [];
     case "all":
-      return products.map((product) => product.sku);
+      return products.map((product) => product.upc);
     case "sku_list":
       return Array.from(
         new Set(scope.skus.filter((sku) => availableSkus.has(sku))),
@@ -310,7 +310,7 @@ export function resolveFinalizationProductScope(
           brand: scope.brand,
           limit: scope.limit ?? 200,
         },
-      ).products.map((product) => product.sku);
+      ).products.map((product) => product.upc);
   }
 }
 
@@ -566,7 +566,7 @@ export function buildFinalizationProductSnapshot(
   savedDraft: FinalizationDraft,
 ) {
   return {
-    sku: product.sku,
+    upc: product.upc,
     originalName: toTrimmedString(toRecord(product.input).name),
     confidenceScore: product.confidence_score ?? null,
     sourceKeys: Object.keys(normalizeProductSources(product.sources || {})),

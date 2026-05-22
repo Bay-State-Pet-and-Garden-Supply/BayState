@@ -73,12 +73,12 @@ const SOURCE_FIELD_ALIASES: Record<string, string> = {
     product_title: 'title',
     product_url: 'url',
 
-
     rating: 'ratings',
     ratings: 'ratings',
     review_count: 'reviews_count',
     reviews_count: 'reviews_count',
     scraped_at: 'scraped_at',
+    sku: 'upc',
     size: 'size',
     size_metrics: 'size_metrics',
     size_options: 'size_options',

@@ -6,13 +6,13 @@ export type ReconciliationIssueType =
   | 'price_mismatch'
   | 'quantity_mismatch'
   | 'stock_status_mismatch'
-  | 'duplicate_sku'
+  | 'duplicate_upc'
   | 'invalid_row';
 
 export type ReconciliationIssueSeverity = 'low' | 'medium' | 'high';
 
 export interface ReconciliationIssue {
-  sku: string;
+  upc: string;
   productId: string | null;
   issueType: ReconciliationIssueType;
   severity: ReconciliationIssueSeverity;
@@ -31,7 +31,7 @@ export type ReconciliationIssueStatus = 'open' | 'ignored' | 'resolved' | 'pushe
 export interface InventoryReconciliationItemRow {
   id: string;
   sync_run_id: string;
-  sku: string;
+  upc: string;
   product_id: string | null;
   register_name: string | null;
   website_name: string | null;

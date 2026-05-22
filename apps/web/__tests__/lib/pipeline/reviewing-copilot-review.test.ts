@@ -53,7 +53,7 @@ describe("reviewing copilot review helpers", () => {
         "SKU-A": draftA,
         "SKU-B": draftB,
       },
-      targetSkus: ["SKU-A"],
+      targetUpcs: ["SKU-A"],
       summary: "Prepared a name update for SKU-A.",
     });
 
@@ -66,11 +66,11 @@ describe("reviewing copilot review helpers", () => {
         },
         "SKU-B": draftB,
       },
-      targetSkus: ["SKU-A", "SKU-B"],
+      targetUpcs: ["SKU-A", "SKU-B"],
       summary: "Prepared a page update for SKU-A and SKU-B.",
     });
 
-    expect(second.skus).toEqual(["SKU-A", "SKU-B"]);
+    expect(second.upcs).toEqual(["SKU-A", "SKU-B"]);
     expect(second.previousDrafts["SKU-A"]).toEqual(draftA);
     expect(second.previousDrafts["SKU-B"]).toEqual(draftB);
     expect(second.summaries).toEqual([
@@ -85,7 +85,7 @@ describe("reviewing copilot review helpers", () => {
       draftsBySku: {
         "SKU-A": draftA,
       },
-      targetSkus: ["SKU-A"],
+      targetUpcs: ["SKU-A"],
       summary: "Prepared a rewrite for SKU-A.",
     });
 
@@ -110,12 +110,12 @@ describe("reviewing copilot review helpers", () => {
         "SKU-A": draftA,
         "SKU-B": draftB,
       },
-      targetSkus: ["SKU-A", "SKU-B"],
+      targetUpcs: ["SKU-A", "SKU-B"],
       summary: "Prepared bulk edits.",
     });
 
     expect(filterPendingCopilotDraftReview(pendingReview, ["SKU-B"])).toEqual({
-      skus: ["SKU-B"],
+      upcs: ["SKU-B"],
       previousDrafts: {
         "SKU-B": draftB,
       },

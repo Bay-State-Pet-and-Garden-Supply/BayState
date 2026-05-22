@@ -17,7 +17,7 @@ export async function GET() {
                 .select('pipeline_status, exported_at'),
             supabase
                 .from('products_ingestion')
-                .select('sku', { count: 'exact', head: true })
+                .select('upc', { count: 'exact', head: true })
                 .eq('pipeline_status', 'publishing')
                 .is('exported_at', null),
         ]);

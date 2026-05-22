@@ -8,7 +8,7 @@ import { adminFetch } from '@/lib/admin/api-client';
 
 interface ImageSelectionWorkspaceProps {
   /** Single SKU for image selection */
-  sku: string;
+  upc: string;
   /** Callback when workspace is closed */
   onClose: () => void;
   /** Callback when images are saved (optional) */
@@ -20,7 +20,7 @@ interface ImageSelectionWorkspaceProps {
 const MAX_IMAGES = 10;
 
 export function ImageSelectionWorkspace({
-  sku,
+  upc,
   onClose,
   onSave,
   onFinalize,
@@ -36,7 +36,7 @@ export function ImageSelectionWorkspace({
     setIsLoading(true);
     setError(null);
     try {
-      const res = await adminFetch(`/api/admin/pipeline/${sku}`);
+      const res = await adminFetch(`/api/admin/pipeline/${upc}`);
       if (!res.ok) {
         throw new Error('Failed to fetch product');
       }
@@ -52,7 +52,7 @@ export function ImageSelectionWorkspace({
     } finally {
       setIsLoading(false);
     }
-  }, [sku]);
+  }, [upc]);
 
   useEffect(() => {
     fetchProduct();
@@ -83,7 +83,7 @@ export function ImageSelectionWorkspace({
       const res = await adminFetch('/api/admin/pipeline/images', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sku, selectedImages: selectedUrls }),
+        body: JSON.stringify({ upc, selectedImages: selectedUrls }),
       });
 
       if (!res.ok) {
@@ -113,7 +113,7 @@ export function ImageSelectionWorkspace({
       const saveRes = await adminFetch('/api/admin/pipeline/images', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sku, selectedImages: selectedUrls }),
+        body: JSON.stringify({ upc, selectedImages: selectedUrls }),
       });
 
       if (!saveRes.ok) {
@@ -126,7 +126,7 @@ export function ImageSelectionWorkspace({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sku,
+          upc,
           toStatus: 'reviewing',
         }),
       });
@@ -181,7 +181,7 @@ export function ImageSelectionWorkspace({
   }
 
   const imageCandidates = product?.image_candidates || [];
-  const productName = product?.consolidated?.name || product?.input?.name || sku;
+  const productName = product?.consolidated?.name || product?.input?.name || upc;
   const hasImages = imageCandidates.length > 0;
 
   return (

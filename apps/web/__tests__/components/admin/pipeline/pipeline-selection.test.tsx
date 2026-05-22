@@ -32,30 +32,30 @@ jest.mock("@/components/admin/pipeline/ProductTable", () => ({
     selectedSkus,
     onSelectSku,
   }: {
-    products: Array<{ sku: string }>;
+    products: Array<{ upc: string }>;
     selectedSkus: Set<string>;
     onSelectSku: (
-      sku: string,
+      upc: string,
       selected: boolean,
       index?: number,
       isShiftClick?: boolean,
-      visibleProducts?: Array<{ sku: string }>,
+      visibleProducts?: Array<{ upc: string }>,
     ) => void;
   }) => (
     <div data-testid="product-table">
       {products.map((product, index) => {
-        const isSelected = selectedSkus.has(product.sku);
+        const isSelected = selectedSkus.has(product.upc);
 
         return (
           <button
-            key={product.sku}
+            key={product.upc}
             type="button"
             data-state={isSelected ? "selected" : "unselected"}
             onClick={(event) =>
-              onSelectSku(product.sku, !isSelected, index, event.shiftKey, products)
+              onSelectSku(product.upc, !isSelected, index, event.shiftKey, products)
             }
           >
-            {product.sku}
+            {product.upc}
           </button>
         );
       })}
@@ -76,30 +76,30 @@ jest.mock("@/components/admin/pipeline/PipelineSidebarTable", () => ({
     selectedSkus,
     onSelectSku,
   }: {
-    products: Array<{ sku: string }>;
+    products: Array<{ upc: string }>;
     selectedSkus: Set<string>;
     onSelectSku: (
-      sku: string,
+      upc: string,
       selected: boolean,
       index?: number,
       isShiftClick?: boolean,
-      visibleProducts?: Array<{ sku: string }>,
+      visibleProducts?: Array<{ upc: string }>,
     ) => void;
   }) => (
     <div data-testid="sidebar-table">
       {products.map((product, index) => {
-        const isSelected = selectedSkus.has(product.sku);
+        const isSelected = selectedSkus.has(product.upc);
 
         return (
           <button
-            key={product.sku}
+            key={product.upc}
             type="button"
             data-state={isSelected ? "selected" : "unselected"}
             onClick={(event) =>
-              onSelectSku(product.sku, !isSelected, index, event.shiftKey, products)
+              onSelectSku(product.upc, !isSelected, index, event.shiftKey, products)
             }
           >
-            {product.sku}
+            {product.upc}
           </button>
         );
       })}
@@ -113,28 +113,28 @@ jest.mock("@/components/admin/pipeline/ImportedResultsView", () => ({
     selectedSkus,
     onSelectSku,
   }: {
-    products: Array<{ sku: string }>;
+    products: Array<{ upc: string }>;
     selectedSkus: Set<string>;
     onSelectSku: (
-      sku: string,
+      upc: string,
       selected: boolean,
       index?: number,
       isShiftClick?: boolean,
-      visibleProducts?: Array<{ sku: string }>,
+      visibleProducts?: Array<{ upc: string }>,
     ) => void;
   }) => (
     <div data-testid="imported-results-view">
       {products.map((product, index) => {
-        const isSelected = selectedSkus.has(product.sku);
+        const isSelected = selectedSkus.has(product.upc);
 
         return (
           <button
-            key={product.sku}
+            key={product.upc}
             type="button"
             data-state={isSelected ? "selected" : "unselected"}
-            onClick={() => onSelectSku(product.sku, !isSelected, index, false, products)}
+            onClick={() => onSelectSku(product.upc, !isSelected, index, false, products)}
           >
-            {product.sku}
+            {product.upc}
           </button>
         );
       })}
@@ -144,7 +144,7 @@ jest.mock("@/components/admin/pipeline/ImportedResultsView", () => ({
 
 const products: PipelineProduct[] = [
   {
-    sku: "SKU001",
+    upc: "SKU001",
     input: { name: "Product 1", price: 10.0 },
     sources: {},
     consolidated: { name: "Product 1", price: 10.0 },
@@ -153,7 +153,7 @@ const products: PipelineProduct[] = [
     updated_at: "2026-01-01",
   },
   {
-    sku: "SKU002",
+    upc: "SKU002",
     input: { name: "Product 2", price: 20.0 },
     sources: {},
     consolidated: { name: "Product 2", price: 20.0 },
@@ -162,7 +162,7 @@ const products: PipelineProduct[] = [
     updated_at: "2026-01-02",
   },
   {
-    sku: "SKU003",
+    upc: "SKU003",
     input: { name: "Product 3", price: 30.0 },
     sources: {},
     consolidated: { name: "Product 3", price: 30.0 },
@@ -214,7 +214,7 @@ const importedCounts: StatusCount[] = [
 
 const importedCohortProducts: PipelineProduct[] = [
   {
-    sku: "SKU101",
+    upc: "SKU101",
     input: { name: "Product A", price: 10 },
     sources: {},
     consolidated: null,
@@ -234,7 +234,7 @@ const importedCohortProducts: PipelineProduct[] = [
     updated_at: "2026-01-01",
   },
   {
-    sku: "SKU102",
+    upc: "SKU102",
     input: { name: "Product B", price: 12 },
     sources: {},
     consolidated: null,

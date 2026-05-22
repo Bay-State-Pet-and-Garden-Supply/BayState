@@ -15,52 +15,52 @@ import {
 import type { PipelineProduct } from "@/lib/pipeline/types";
 
 function createProduct(
-  sku: string,
+  upc: string,
   overrides: Partial<PipelineProduct> = {},
 ): PipelineProduct {
   const base: PipelineProduct = {
-    sku,
+    upc,
     input: {
-      name: `${sku} Imported`,
-      description: `${sku} short description`,
+      name: `${upc} Imported`,
+      description: `${upc} short description`,
       price: 19.99,
       weight: "30 lb",
       stock_status: "in_stock",
       availability: "usually ships in 24 hours",
       minimum_quantity: 1,
       is_special_order: false,
-      search_keywords: `${sku.toLowerCase()} pet food`,
+      search_keywords: `${upc.toLowerCase()} pet food`,
       brand: "Acme",
     },
     sources: {
       "source:primary": {
-        title: `${sku} Primary Title`,
-        description: `${sku} source description`,
+        title: `${upc} Primary Title`,
+        description: `${upc} source description`,
         brand: "Acme",
         price: "21.99",
         availability: "in stock",
         images: [
-          `https://cdn.example.com/${sku.toLowerCase()}-hero.jpg`,
-          `https://cdn.example.com/${sku.toLowerCase()}-detail.jpg`,
+          `https://cdn.example.com/${upc.toLowerCase()}-hero.jpg`,
+          `https://cdn.example.com/${upc.toLowerCase()}-detail.jpg`,
         ],
-        url: `https://example.com/products/${sku.toLowerCase()}`,
+        url: `https://example.com/products/${upc.toLowerCase()}`,
       },
       "source:backup": {
-        title: `${sku} Backup Title`,
-        images: [`https://cdn.example.com/${sku.toLowerCase()}-backup.jpg`],
-        url: `https://backup.example.com/products/${sku.toLowerCase()}`,
+        title: `${upc} Backup Title`,
+        images: [`https://cdn.example.com/${upc.toLowerCase()}-backup.jpg`],
+        url: `https://backup.example.com/products/${upc.toLowerCase()}`,
       },
     },
     consolidated: {
-      name: `${sku} Consolidated`,
-      description: `${sku} consolidated description`,
+      name: `${upc} Consolidated`,
+      description: `${upc} consolidated description`,
       price: 24.5,
-      images: [`https://cdn.example.com/${sku.toLowerCase()}-hero.jpg`],
+      images: [`https://cdn.example.com/${upc.toLowerCase()}-hero.jpg`],
       brand_id: "brand-acme",
       weight: "35 lb",
       stock_status: "pre_order",
       is_special_order: false,
-      search_keywords: `${sku.toLowerCase()} premium food`,
+      search_keywords: `${upc.toLowerCase()} premium food`,
       gtin: "0123456789012",
       availability: "pre-order now",
       minimum_quantity: 2,
@@ -68,7 +68,7 @@ function createProduct(
     pipeline_status: "reviewing",
     selected_images: [
       {
-        url: `https://cdn.example.com/${sku.toLowerCase()}-metadata.jpg`,
+        url: `https://cdn.example.com/${upc.toLowerCase()}-metadata.jpg`,
         selectedAt: "2026-01-01T00:00:00.000Z",
       },
     ],
@@ -112,14 +112,14 @@ describe("reviewing copilot workspace helpers", () => {
     const result = listWorkspaceProducts(
       [alpha, beta],
       {
-        [alpha.sku]: alphaDraft,
-        [beta.sku]: betaDraft,
+        [alpha.upc]: alphaDraft,
+        [beta.upc]: betaDraft,
       },
       {
-        [alpha.sku]: alphaSavedDraft,
-        [beta.sku]: betaDraft,
+        [alpha.upc]: alphaSavedDraft,
+        [beta.upc]: betaDraft,
       },
-      alpha.sku,
+      alpha.upc,
       {
         query: "premium",
         limit: 10,
@@ -132,7 +132,7 @@ describe("reviewing copilot workspace helpers", () => {
     });
     expect(result.products).toEqual([
       expect.objectContaining({
-        sku: "SKU-ALPHA",
+        upc: "SKU-ALPHA",
         name: "Premium Chicken Feed",
         selected: true,
         dirty: true,
@@ -163,9 +163,9 @@ describe("reviewing copilot workspace helpers", () => {
     });
 
     const drafts = {
-      [alpha.sku]: buildInitialFinalizationDraft(alpha),
-      [beta.sku]: buildInitialFinalizationDraft(beta),
-      [gamma.sku]: buildInitialFinalizationDraft(gamma),
+      [alpha.upc]: buildInitialFinalizationDraft(alpha),
+      [beta.upc]: buildInitialFinalizationDraft(beta),
+      [gamma.upc]: buildInitialFinalizationDraft(gamma),
     };
 
     expect(
@@ -173,30 +173,30 @@ describe("reviewing copilot workspace helpers", () => {
         [alpha, beta, gamma],
         drafts,
         drafts,
-        beta.sku,
+        beta.upc,
         { type: "selected" },
       ),
-    ).toEqual([beta.sku]);
+    ).toEqual([beta.upc]);
 
     expect(
       resolveFinalizationProductScope(
         [alpha, beta, gamma],
         drafts,
         drafts,
-        beta.sku,
-        { type: "sku_list", skus: [gamma.sku, "missing", gamma.sku] },
+        beta.upc,
+        { type: "sku_list", skus: [gamma.upc, "missing", gamma.upc] },
       ),
-    ).toEqual([gamma.sku]);
+    ).toEqual([gamma.upc]);
 
     expect(
       resolveFinalizationProductScope(
         [alpha, beta, gamma],
         drafts,
         drafts,
-        beta.sku,
+        beta.upc,
         { type: "query", query: "acme", limit: 2 },
       ),
-    ).toEqual([alpha.sku, gamma.sku]);
+    ).toEqual([alpha.upc, gamma.upc]);
   });
 
   it("filters products by description and expanded broad query", () => {
@@ -208,8 +208,8 @@ describe("reviewing copilot workspace helpers", () => {
 
     const resultQuery = listWorkspaceProducts(
       [alpha],
-      { [alpha.sku]: alphaDraft },
-      { [alpha.sku]: alphaDraft },
+      { [alpha.upc]: alphaDraft },
+      { [alpha.upc]: alphaDraft },
       null,
       { query: "schleich" },
     );
@@ -217,8 +217,8 @@ describe("reviewing copilot workspace helpers", () => {
 
     const resultTargeted = listWorkspaceProducts(
       [alpha],
-      { [alpha.sku]: alphaDraft },
-      { [alpha.sku]: alphaDraft },
+      { [alpha.upc]: alphaDraft },
+      { [alpha.upc]: alphaDraft },
       null,
       { description: "figurine" },
     );
@@ -226,8 +226,8 @@ describe("reviewing copilot workspace helpers", () => {
 
     const resultMiss = listWorkspaceProducts(
       [alpha],
-      { [alpha.sku]: alphaDraft },
-      { [alpha.sku]: alphaDraft },
+      { [alpha.upc]: alphaDraft },
+      { [alpha.upc]: alphaDraft },
       null,
       { description: "dragon" },
     );
@@ -432,7 +432,7 @@ describe("buildFinalizationProductSnapshot", () => {
 
     const snapshot = buildFinalizationProductSnapshot(product, draft, savedDraft);
 
-    expect(snapshot.sku).toBe("SKU-SNAP");
+    expect(snapshot.upc).toBe("SKU-SNAP");
     expect(snapshot.originalName).toBe("SKU-SNAP Imported");
     expect(snapshot.confidenceScore).toBe(0.87);
     expect(snapshot.sourceKeys).toEqual(["source:primary", "source:backup"]);

@@ -131,9 +131,9 @@ export function ManagementPanel({
 
     setIsSaving(true);
     try {
-      const skus = products.map((product) => product.sku);
+      const upcs = products.map((product) => product.upc);
 
-      const productResult = await updateProductsBatch(skus, {
+      const productResult = await updateProductsBatch(upcs, {
         brand_id: selectedBrand?.id || null,
         pipeline_status: undefined,
         enrichment_config: {
@@ -163,7 +163,7 @@ export function ManagementPanel({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            skus,
+            upcs,
             extractionMode: inferredExtractionMode,
             forceRefresh,
             config: {

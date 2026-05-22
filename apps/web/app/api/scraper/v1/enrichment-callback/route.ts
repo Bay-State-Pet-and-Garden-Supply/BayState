@@ -82,9 +82,7 @@ export function shouldRetryEnrichmentResult(
   attempt: AttemptLike,
   requestedMode: RequestedExtractionMode,
 ): boolean {
-  // Cumulative safety net: never retry more than 5 times total per SKU.
-  // Unlike retry_count (which resets per attempt), attempt_number grows
-  // across all retries and provides a hard stop against infinite loops.
+  // Cumulative safety net: never retry more than 5 times total per UPC.
   const attemptNumber = attempt.attempt_number ?? 1;
   if (attemptNumber >= MAX_ENRICHMENT_ATTEMPTS) {
     return false;
@@ -112,10 +110,8 @@ export function shouldRetryEnrichmentResult(
     return false;
   }
 
-  // Distributor-only extraction is deterministic: same SKU searched across
+  // Distributor-only extraction is deterministic: same UPC searched across
   // the same distributor catalogs will always produce the same result.
-  // "Failed" means the SKU wasn't found (or couldn't be extracted) from any
-  // distributor. Retrying will not change the outcome — just fail it.
   if (requestedMode === "distributor_only" && result.status === "failed") {
     return false;
   }
@@ -196,7 +192,7 @@ export async function POST(request: NextRequest) {
           config
         )
       `)
-      .eq("sku", enrichedResult.sku)
+      .eq("upc", enrichedResult.upc)
       .order("created_at", { ascending: false })
       .limit(1);
 
@@ -221,7 +217,7 @@ export async function POST(request: NextRequest) {
     const { data: attemptData } = await attemptQuery.single();
     if (!attemptData) {
       return NextResponse.json(
-        { error: `No enrichment attempt found for SKU ${enrichedResult.sku}` },
+        { error: `No enrichment attempt found for UPC ${enrichedResult.upc}` },
         { status: 404 },
       );
     }
@@ -274,18 +270,18 @@ export async function POST(request: NextRequest) {
 
     if (nextAttempt.retry && !shouldQueueRetry) {
       console.warn(
-        `[Enrichment Callback] Retry hard cap reached for SKU ${enrichedResult.sku} ` +
+        `[Enrichment Callback] Retry hard cap reached for UPC ${enrichedResult.upc} ` +
         `(attempt ${attemptData.attempt_number ?? 1}/${MAX_ENRICHMENT_ATTEMPTS}). Finalizing without requeue.`
       );
     }
 
     if (isTestJob) {
-      console.log(`[Enrichment Callback] Test job detected for SKU ${enrichedResult.sku} - skipping products_ingestion update.`);
+      console.log(`[Enrichment Callback] Test job detected for UPC ${enrichedResult.upc} - skipping products_ingestion update.`);
     } else {
       const { data: product } = await supabase
         .from("products_ingestion")
         .select("sources")
-        .eq("sku", enrichedResult.sku)
+        .eq("upc", enrichedResult.upc)
         .single();
 
       const currentSources = (product?.sources as Record<string, unknown>) ?? {};
@@ -311,8 +307,8 @@ export async function POST(request: NextRequest) {
       }
 
       const durableSourcesResult = await replaceInlineImageDataUrls(supabase, updatedSources, {
-        folderPath: buildProductImageStorageFolder("pipeline-sources", enrichedResult.sku),
-        productId: enrichedResult.sku,
+        folderPath: buildProductImageStorageFolder("pipeline-sources", enrichedResult.upc),
+        productId: enrichedResult.upc,
         onError: (message, error) => {
           console.warn(`[Enrichment Callback] ${message}`, error);
         },
@@ -333,7 +329,7 @@ export async function POST(request: NextRequest) {
       const { error: productUpdateError } = await supabase
         .from("products_ingestion")
         .update(updatePayload)
-        .eq("sku", enrichedResult.sku);
+        .eq("upc", enrichedResult.upc);
 
       if (productUpdateError) {
         console.error("Failed to update product:", productUpdateError);
@@ -347,7 +343,7 @@ export async function POST(request: NextRequest) {
     if (shouldQueueRetry) {
       await supabase.from("enrichment_attempts").insert({
         job_id: attemptData.job_id,
-        sku: enrichedResult.sku,
+        upc: enrichedResult.upc,
         attempt_number: nextAttemptNumber,
         status: "queued",
         mode: requestedMode,
@@ -358,22 +354,22 @@ export async function POST(request: NextRequest) {
 
     const { data: jobAttempts } = await supabase
       .from("enrichment_attempts")
-      .select("sku, attempt_number, status")
+      .select("upc, attempt_number, status")
       .eq("job_id", attemptData.job_id);
 
     if (jobAttempts) {
-      const latestAttemptsBySku = new Map<string, { attempt_number: number; status: string }>();
+      const latestAttemptsByUpc = new Map<string, { attempt_number: number; status: string }>();
       for (const attempt of jobAttempts) {
-        const existing = latestAttemptsBySku.get(attempt.sku);
+        const existing = latestAttemptsByUpc.get(attempt.upc);
         if (!existing || attempt.attempt_number > existing.attempt_number) {
-          latestAttemptsBySku.set(attempt.sku, {
+          latestAttemptsByUpc.set(attempt.upc, {
             attempt_number: attempt.attempt_number,
             status: attempt.status,
           });
         }
       }
 
-      const latestAttempts = Array.from(latestAttemptsBySku.values());
+      const latestAttempts = Array.from(latestAttemptsByUpc.values());
 
       const completed = latestAttempts.filter(
         (attempt) => attempt.status === "success" || attempt.status === "partial" || attempt.status === "failed",
@@ -402,7 +398,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      sku: enrichedResult.sku,
+      upc: enrichedResult.upc,
       next_status: nextStatus,
       confidence: enrichedResult.confidence.overall,
       requested_extraction_mode: requestedMode,

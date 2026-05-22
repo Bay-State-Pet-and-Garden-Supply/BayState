@@ -6,23 +6,23 @@
 # All values are floats unless otherwise specified.
 
 # Minimum field-level accuracy required (0-1)
-# At least 80% of fields must match ground truth for a SKU to pass.
+# At least 80% of fields must match ground truth for a UPC to pass.
 min_field_accuracy: 0.80
 
 # Minimum success rate required (0-1)
-# At least 70% of SKUs must be fully extracted to pass.
+# At least 70% of UPCs must be fully extracted to pass.
 min_success_rate: 0.70
 
-# Maximum cost per successful SKU extraction (USD)
-# $0.10 per SKU - helps catch expensive prompts.
-max_cost_per_sku: 0.10
+# Maximum cost per successful UPC extraction (USD)
+# $0.10 per UPC - helps catch expensive prompts.
+max_cost_per_upc: 0.10
 
 # Maximum allowed regression percentage (0-1)
 # 2% performance drop allowed before alerting.
 max_regression_pct: 0.02
 
-# Required fields for SKU to be considered successful
-# If any of these are missing, the SKU fails.
+# Required fields for UPC to be considered successful
+# If any of these are missing, the UPC fails.
 required_fields:
   - product_name
   - brand

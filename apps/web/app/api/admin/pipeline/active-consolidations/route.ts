@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 
 interface ActiveConsolidationJobItemActivity {
-    sku: string;
+    upc: string;
     status: string;
     error_message?: string | null;
     updated_at?: string | null;
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     try {
         const itemQuery = supabase
             .from('batch_job_items')
-            .select('batch_job_id, sku, status, error_message, updated_at, started_at, completed_at, created_at');
+            .select('batch_job_id, upc, status, error_message, updated_at, started_at, completed_at, created_at');
 
         if ('in' in itemQuery && typeof itemQuery.in === 'function') {
             const { data: itemRows } = await itemQuery
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
                 const list = itemsByJob.get(batchJobId) || [];
                 if (list.length < 6) {
                     list.push({
-                        sku: row.sku,
+                        upc: row.upc,
                         status: row.status,
                         error_message: row.error_message,
                         updated_at: row.updated_at,
