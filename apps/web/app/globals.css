@@ -436,6 +436,14 @@
   }
 }
 
+/* Mobile toast positioning override to bottom-center as per design spec */
+@media (max-width: 768px) {
+  [data-sonner-toaster][data-y-position="top"] {
+    top: auto !important;
+    bottom: var(--mobile-toast-bottom, 20px) !important;
+  }
+}
+
 @media print {
   /* Hide UI elements */
   nav,
