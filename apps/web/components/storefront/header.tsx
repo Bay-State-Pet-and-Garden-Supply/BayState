@@ -39,7 +39,7 @@ const desktopNavTriggerClass =
   "h-12 rounded-none border-0 bg-transparent px-4 text-sm font-medium text-white/80 hover:bg-white/8 hover:text-white data-[state=open]:bg-white data-[state=open]:text-zinc-950";
 
 const desktopMegaMenuClass =
-  "left-0 right-0 top-full z-[100] w-full overflow-hidden rounded-b-2xl border border-t-0 border-zinc-200 bg-white text-zinc-900 shadow-lg md:w-full";
+  "left-0 right-0 top-full z-[100] w-full overflow-y-auto max-h-[calc(100vh-8rem)] rounded-b-2xl border border-t-0 border-zinc-200 bg-white text-zinc-900 shadow-lg md:w-full";
 
 function normalizeStorefrontUserRole(user: User | null): string | null {
   const metadataRoles = [user?.app_metadata?.role, user?.user_metadata?.role];
@@ -419,7 +419,7 @@ export function StorefrontHeader({
                     <NavigationMenuTrigger className={desktopNavTriggerClass}>
                       More
                     </NavigationMenuTrigger>
-                    <NavigationMenuContent className="right-0 top-full z-[110] w-72 overflow-hidden rounded-b-xl border border-t-0 border-zinc-200 bg-white text-zinc-900 shadow-md md:left-auto">
+                    <NavigationMenuContent className="right-0 top-full z-[110] w-72 overflow-y-auto max-h-[calc(100vh-8rem)] rounded-b-xl border border-t-0 border-zinc-200 bg-white text-zinc-900 shadow-md md:left-auto">
                       <div className="border-b border-zinc-100 px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
                         Browse more
                       </div>
