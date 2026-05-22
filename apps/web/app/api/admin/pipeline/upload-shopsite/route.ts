@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     const client = new ShopSiteClient(config);
 
     const uploadResult = await client.uploadProductsXml(xml, {
-      uniqueName: "SKU (Products)",
+      uniqueName: "UPC (Products)",
       publish: false,
     });
     shopSiteUploadCompleted = true;

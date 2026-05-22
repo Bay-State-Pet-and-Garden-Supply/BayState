@@ -64,12 +64,12 @@ function dedupeIds(values: string[]): string[] {
     return Array.from(new Set(values));
 }
 
-function normalizeCrossSellSkus(crossSellSkus: ShopSiteProduct['crossSellSkus']): string[] {
-    if (!Array.isArray(crossSellSkus) || crossSellSkus.length === 0) {
+function normalizeCrossSellUpcs(crossSellUpcs: ShopSiteProduct['crossSellUpcs']): string[] {
+    if (!Array.isArray(crossSellUpcs) || crossSellUpcs.length === 0) {
         return [];
     }
 
-    return crossSellSkus
+    return crossSellUpcs
         .flatMap((value) => value.split('|'))
         .map((value) => value.trim())
         .filter((value) => value.length > 0);
@@ -78,9 +78,9 @@ function normalizeCrossSellSkus(crossSellSkus: ShopSiteProduct['crossSellSkus'])
 async function replaceProductCrossSells(
     supabase: SupabaseClient,
     sourceProductId: string,
-    sourceSku: string,
-    crossSellSkus: ShopSiteProduct['crossSellSkus'],
-    productIdBySku: Map<string, string>,
+    sourceUpc: string,
+    crossSellUpcs: ShopSiteProduct['crossSellUpcs'],
+    productIdByUpc: Map<string, string>,
 ): Promise<Omit<CrossSellAuditCounters, 'sourcesProcessed'>> {
     const { error: deleteError } = await supabase
         .from('related_products')
@@ -92,7 +92,7 @@ async function replaceProductCrossSells(
         throw new Error(`Failed to replace product cross-sells: ${deleteError.message}`);
     }
 
-    const normalizedTargets = normalizeCrossSellSkus(crossSellSkus);
+    const normalizedTargets = normalizeCrossSellUpcs(crossSellUpcs);
     if (normalizedTargets.length === 0) {
         return {
             linked: 0,
@@ -103,7 +103,7 @@ async function replaceProductCrossSells(
         };
     }
 
-    const seenTargetSkus = new Set<string>();
+    const seenTargetUpcs = new Set<string>();
     const relationRows: Array<{
         product_id: string;
         related_product_id: string;
@@ -114,20 +114,20 @@ async function replaceProductCrossSells(
     let skippedSelfLinks = 0;
     let skippedMissing = 0;
 
-    for (const targetSku of normalizedTargets) {
-        if (seenTargetSkus.has(targetSku)) {
+    for (const targetUpc of normalizedTargets) {
+        if (seenTargetUpcs.has(targetUpc)) {
             skippedDuplicates++;
             continue;
         }
 
-        seenTargetSkus.add(targetSku);
+        seenTargetUpcs.add(targetUpc);
 
-        if (targetSku === sourceSku) {
+        if (targetUpc === sourceUpc) {
             skippedSelfLinks++;
             continue;
         }
 
-        const targetProductId = productIdBySku.get(targetSku);
+        const targetProductId = productIdByUpc.get(targetUpc);
         if (!targetProductId) {
             skippedMissing++;
             continue;
@@ -453,7 +453,7 @@ export async function importShopSiteProducts({
         skippedSelfLinks: 0,
         skippedMissing: 0,
     };
-    const importedProductIdsBySku = new Map<string, string>();
+    const importedProductIdsByUpc = new Map<string, string>();
 
     const addError = (record: string, message: string) => {
         if (errors.length < MAX_ERRORS) {
@@ -478,15 +478,15 @@ export async function importShopSiteProducts({
     }
 
     const existingSlugs = new Set<string>();
-    const existingSkus = new Set<string>();
-    const existingSlugBySku = new Map<string, string>();
-    const existingProductIdBySku = new Map<string, string>();
+    const existingUpcs = new Set<string>();
+    const existingSlugByUpc = new Map<string, string>();
+    const existingProductIdByUpc = new Map<string, string>();
     const PAGE_SIZE = 1000;
 
     for (let from = 0; ; from += PAGE_SIZE) {
         const { data: existingProductsPage, error: existingProductsError } = await supabase
             .from('products')
-            .select('id, slug, sku')
+            .select('id, slug, upc')
             .range(from, from + PAGE_SIZE - 1);
 
         if (existingProductsError) {
@@ -499,13 +499,13 @@ export async function importShopSiteProducts({
 
         for (const product of existingProductsPage) {
             if (product.slug) existingSlugs.add(product.slug);
-            if (product.sku) {
-                existingSkus.add(product.sku);
+            if (product.upc) {
+                existingUpcs.add(product.upc);
                 if (product.id) {
-                    existingProductIdBySku.set(product.sku, product.id);
+                    existingProductIdByUpc.set(product.upc, product.id);
                 }
                 if (product.slug) {
-                    existingSlugBySku.set(product.sku, product.slug);
+                    existingSlugByUpc.set(product.upc, product.slug);
                 }
             }
         }
@@ -644,7 +644,7 @@ export async function importShopSiteProducts({
 
             // Create record with ONLY valid database columns
             const productRecord = {
-                sku: transformed.sku,
+                upc: transformed.upc,
                 name: transformed.name,
                 slug: '', // Set below
                 price: transformed.price,
@@ -672,10 +672,10 @@ export async function importShopSiteProducts({
                 }
             }
 
-            const isUpdate = existingSkus.has(shopSiteProduct.sku);
+            const isUpdate = existingUpcs.has(shopSiteProduct.upc);
 
             if (isUpdate) {
-                productRecord.slug = existingSlugBySku.get(shopSiteProduct.sku) ?? transformed.slug;
+                productRecord.slug = existingSlugByUpc.get(shopSiteProduct.upc) ?? transformed.slug;
             } else {
                 productRecord.slug = generateUniqueSlug(transformed.slug, existingSlugs);
                 existingSlugs.add(productRecord.slug as string);
@@ -684,18 +684,18 @@ export async function importShopSiteProducts({
             const { data: upserted, error } = await supabase
                 .from('products')
                 .upsert(productRecord, {
-                    onConflict: 'sku',
+                    onConflict: 'upc',
                 })
                 .select('id')
                 .single();
 
             if (error) {
-                addError(shopSiteProduct.sku, error.message);
+                addError(shopSiteProduct.upc, error.message);
                 failed++;
             } else {
                 if (upserted) {
-                    importedProductIdsBySku.set(shopSiteProduct.sku, upserted.id);
-                    existingProductIdBySku.set(shopSiteProduct.sku, upserted.id);
+                    importedProductIdsByUpc.set(shopSiteProduct.upc, upserted.id);
+                    existingProductIdByUpc.set(shopSiteProduct.upc, upserted.id);
                     const mappedSlug = getMappedCategorySlug(shopSiteProduct.categoryName, shopSiteProduct.productTypeName);
                     const categoryIds: string[] = [];
                     if (mappedSlug) {
@@ -736,11 +736,11 @@ export async function importShopSiteProducts({
                     updated++;
                 } else {
                     created++;
-                    existingSkus.add(shopSiteProduct.sku);
+                    existingUpcs.add(shopSiteProduct.upc);
                 }
             }
         } catch (err) {
-            addError(shopSiteProduct.sku, err instanceof Error ? err.message : 'Unknown error');
+            addError(shopSiteProduct.upc, err instanceof Error ? err.message : 'Unknown error');
             failed++;
         }
 
@@ -763,7 +763,7 @@ export async function importShopSiteProducts({
 
     // Phase 4: Sync cross-sells
     for (const shopSiteProduct of shopSiteProducts) {
-        const sourceProductId = importedProductIdsBySku.get(shopSiteProduct.sku);
+        const sourceProductId = importedProductIdsByUpc.get(shopSiteProduct.upc);
         if (!sourceProductId) {
             continue;
         }
@@ -773,9 +773,9 @@ export async function importShopSiteProducts({
             const crossSellResult = await replaceProductCrossSells(
                 supabase,
                 sourceProductId,
-                shopSiteProduct.sku,
-                shopSiteProduct.crossSellSkus,
-                existingProductIdBySku,
+                shopSiteProduct.upc,
+                shopSiteProduct.crossSellUpcs,
+                existingProductIdByUpc,
             );
 
             crossSellAudit.linked += crossSellResult.linked;
@@ -784,7 +784,7 @@ export async function importShopSiteProducts({
             crossSellAudit.skippedSelfLinks += crossSellResult.skippedSelfLinks;
             crossSellAudit.skippedMissing += crossSellResult.skippedMissing;
         } catch (err) {
-            addError(shopSiteProduct.sku, err instanceof Error ? err.message : 'Unknown error');
+            addError(shopSiteProduct.upc, err instanceof Error ? err.message : 'Unknown error');
             failed++;
         }
     }
@@ -797,11 +797,11 @@ export async function importShopSiteProducts({
     
     // Safety check: only purge if we successfully processed a significant number of products
     if (created + updated > 100) {
-        const activeSkus = Array.from(importedProductIdsBySku.keys());
+        const activeUpcs = Array.from(importedProductIdsByUpc.keys());
         const { error: cleanupError, count } = await supabase
             .from('products')
             .delete()
-            .not('sku', 'in', `(${activeSkus.join(',')})`);
+            .not('upc', 'in', `(${activeUpcs.join(',')})`);
             
         if (!cleanupError) {
             deletedCount = count ?? 0;
@@ -838,20 +838,20 @@ async function syncExistingProductsIngestionInputFromShopSite({
         return { updated: 0 };
     }
 
-    const inputBySku = new Map(
-        shopSiteProducts.map((product) => [product.sku, buildPipelineInputFromShopSiteProduct(product)])
+    const inputByUpc = new Map(
+        shopSiteProducts.map((product) => [product.upc, buildPipelineInputFromShopSiteProduct(product)])
     );
     const BATCH_SIZE = 500;
     let updated = 0;
 
     for (let index = 0; index < shopSiteProducts.length; index += BATCH_SIZE) {
         const batchProducts = shopSiteProducts.slice(index, index + BATCH_SIZE);
-        const batchSkus = batchProducts.map((product) => product.sku);
+        const batchUpcs = batchProducts.map((product) => product.upc);
 
         const { data: existingRows, error: existingRowsError } = await supabase
             .from('products_ingestion')
-            .select('sku, input, pipeline_status')
-            .in('sku', batchSkus);
+            .select('upc, input, pipeline_status')
+            .in('upc', batchUpcs);
 
         if (existingRowsError) {
             throw new Error(`Failed to load products_ingestion rows: ${existingRowsError.message}`);
@@ -869,11 +869,11 @@ async function syncExistingProductsIngestionInputFromShopSite({
                     : {};
 
             return {
-                sku: row.sku,
+                upc: row.upc,
                 pipeline_status: row.pipeline_status,
                 input: {
                     ...existingInput,
-                    ...inputBySku.get(row.sku),
+                    ...inputByUpc.get(row.upc),
                 },
                 updated_at: updatedAt,
             };
@@ -881,7 +881,7 @@ async function syncExistingProductsIngestionInputFromShopSite({
 
         const { error: upsertError } = await supabase
             .from('products_ingestion')
-            .upsert(updateRows, { onConflict: 'sku' });
+            .upsert(updateRows, { onConflict: 'upc' });
 
         if (upsertError) {
             throw new Error(`Failed to sync products_ingestion inputs: ${upsertError.message}`);

@@ -32,7 +32,7 @@ export interface ActiveJob {
  jobType?: string | null;
  officialBrandPhase?: string | null;
  cohortId?: string | null;
- skuCount: number;
+ upcCount: number;
  scrapers: string[];
  status: "pending" | "running" | "completed" | "failed" | "cancelled";
  createdAt: string;
@@ -41,7 +41,7 @@ export interface ActiveJob {
  runnerName: string | null;
  progressMessage: string | null;
  progressPhase: string | null;
- currentSku: string | null;
+ currentUpc: string | null;
  itemsProcessed: number | null;
  itemsTotal: number | null;
  lastLogMessage: string | null;
@@ -155,7 +155,7 @@ export function toActiveJob(job: JobAssignment): ActiveJob {
     jobType: null,
     officialBrandPhase: null,
     cohortId: null,
-    skuCount: job.upcs?.length ?? 0,
+    upcCount: job.upcs?.length ?? 0,
     scrapers: job.scrapers ?? [],
  status:
  job.status === "claimed"
@@ -167,7 +167,7 @@ export function toActiveJob(job: JobAssignment): ActiveJob {
  runnerName: job.runner_name ?? liveProgress?.runner_name ?? null,
  progressMessage: liveProgress?.message ?? null,
  progressPhase: liveProgress?.phase ?? null,
- currentSku: liveProgress?.current_sku ?? null,
+ currentUpc: liveProgress?.current_upc ?? null,
  itemsProcessed: liveProgress?.items_processed ?? null,
  itemsTotal: liveProgress?.items_total ?? null,
  lastLogMessage: job.last_log_message ?? null,
@@ -267,7 +267,7 @@ export function JobCard({
  {job.scrapers.join(", ")}
  </p>
  <p className="text-[10px] font-semibold text-muted-foreground/60 mt-0.5">
- {job.skuCount} SKUs • Started{" "}
+ {job.upcCount} UPCs • Started{" "}
  {new Date(job.createdAt).toLocaleString()}
  {job.completedAt && (
  <> • Finished {new Date(job.completedAt).toLocaleString()}</>
@@ -290,9 +290,9 @@ export function JobCard({
  {job.progressPhase}
  </span>
  ) : null}
- {job.currentSku ? (
+ {job.currentUpc ? (
  <span className="font-mono text-[10px] font-bold text-foreground bg-muted border border-border px-1.5 py-0.5">
- {job.currentSku}
+ {job.currentUpc}
  </span>
  ) : null}
  {typeof job.itemsProcessed === "number" &&

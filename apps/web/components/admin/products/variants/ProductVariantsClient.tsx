@@ -77,7 +77,7 @@ export function ProductVariantsClient({
   const [showVariantDialog, setShowVariantDialog] = useState(false);
   const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(null);
   const [variantForm, setVariantForm] = useState({
-    sku: '',
+    upc: '',
     title: '',
     price: '',
     compare_at_price: '',
@@ -162,7 +162,7 @@ export function ProductVariantsClient({
     if (variant) {
       setEditingVariant(variant);
       setVariantForm({
-        sku: variant.sku || '',
+        upc: variant.upc || '',
         title: variant.title || '',
         price: String(variant.price),
         compare_at_price: variant.compare_at_price ? String(variant.compare_at_price) : '',
@@ -172,7 +172,7 @@ export function ProductVariantsClient({
     } else {
       setEditingVariant(null);
       setVariantForm({
-        sku: '',
+        upc: '',
         title: '',
         price: String(basePrice),
         compare_at_price: '',
@@ -194,7 +194,7 @@ export function ProductVariantsClient({
     
     if (editingVariant) {
       const result = await updateProductVariant(editingVariant.id, {
-        sku: variantForm.sku || null,
+        upc: variantForm.upc || null,
         title: variantForm.title || null,
         price,
         compare_at_price: variantForm.compare_at_price ? parseFloat(variantForm.compare_at_price) : null,
@@ -207,7 +207,7 @@ export function ProductVariantsClient({
           v.id === editingVariant.id 
             ? { 
                 ...v, 
-                sku: variantForm.sku || null,
+                upc: variantForm.upc || null,
                 title: variantForm.title || null,
                 price, 
                 compare_at_price: variantForm.compare_at_price ? parseFloat(variantForm.compare_at_price) : null,
@@ -224,7 +224,7 @@ export function ProductVariantsClient({
       }
     } else {
       const result = await createProductVariant(productId, {
-        sku: variantForm.sku || undefined,
+        upc: variantForm.upc || undefined,
         title: variantForm.title || undefined,
         price,
         compare_at_price: variantForm.compare_at_price ? parseFloat(variantForm.compare_at_price) : undefined,
@@ -408,7 +408,7 @@ export function ProductVariantsClient({
               <Package className="h-5 w-5" />
               Variants
             </CardTitle>
-            <CardDescription>Manage purchasable product variants with their own SKU and inventory</CardDescription>
+            <CardDescription>Manage purchasable product variants with their own UPC and inventory</CardDescription>
           </div>
           <Button onClick={() => openVariantDialog()}>
             <Plus className="mr-2 h-4 w-4" />
@@ -424,7 +424,7 @@ export function ProductVariantsClient({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>SKU</TableHead>
+                  <TableHead>UPC</TableHead>
                   <TableHead>Title</TableHead>
                   <TableHead className="text-right">Price</TableHead>
                   <TableHead className="text-right">Quantity</TableHead>
@@ -434,7 +434,7 @@ export function ProductVariantsClient({
               <TableBody>
                 {variants.map(variant => (
                   <TableRow key={variant.id}>
-                    <TableCell className="font-mono text-sm">{variant.sku || '-'}</TableCell>
+                    <TableCell className="font-mono text-sm">{variant.upc || '-'}</TableCell>
                     <TableCell>{variant.title || 'Default'}</TableCell>
                     <TableCell className="text-right">
                       {formatCurrency(variant.price)}
@@ -531,11 +531,11 @@ export function ProductVariantsClient({
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="variantSku">SKU</Label>
+                <Label htmlFor="variantUpc">UPC</Label>
                 <Input
-                  id="variantSku"
-                  value={variantForm.sku}
-                  onChange={(e) => setVariantForm({ ...variantForm, sku: e.target.value })}
+                  id="variantUpc"
+                  value={variantForm.upc}
+                  onChange={(e) => setVariantForm({ ...variantForm, upc: e.target.value })}
                   placeholder="e.g., PROD-001-SM"
                 />
               </div>

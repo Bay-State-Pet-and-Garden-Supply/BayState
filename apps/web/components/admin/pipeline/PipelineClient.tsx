@@ -204,7 +204,7 @@ export function PipelineClient({
       });
     }
 
-    // Apply stable sort by SKU
+    // Apply stable sort by UPC
     return [...result].sort((a, b) => a.upc.localeCompare(b.upc));
   }, [products, sourceFilter, currentStage]);
 
@@ -552,7 +552,7 @@ export function PipelineClient({
       setSourceFilter("");
       setProductLineFilter("");
       setCohortIdFilter("");
-      setLastSelectedSku(null);
+      setLastSelectedUpc(null);
 
       const params = new URLSearchParams(searchParams.toString());
       params.set("stage", stage);
@@ -573,10 +573,10 @@ export function PipelineClient({
     [pathname, router, searchParams],
   );
 
-  const [lastSelectedSku, setLastSelectedSku] = useState<string | null>(null);
+  const [lastSelectedUpc, setLastSelectedUpc] = useState<string | null>(null);
 
   // Toggle product selection with optional Shift+Click range support
-  const handleSelectSku = useCallback(
+  const handleSelectUpc = useCallback(
     (
       upc: string,
       selected: boolean,
@@ -589,23 +589,23 @@ export function PipelineClient({
       setSelectedUpcs((prev) => {
         const next = new Set(prev);
 
-        if (isShiftClick && index !== undefined && lastSelectedSku !== null) {
+        if (isShiftClick && index !== undefined && lastSelectedUpc !== null) {
           const lastIndex = sourceProducts.findIndex(
-            (p) => p.upc === lastSelectedSku,
+            (p) => p.upc === lastSelectedUpc,
           );
 
           if (lastIndex !== -1) {
             const [start, end] = [lastIndex, index].sort((a, b) => a - b);
-            const rangeSkus = sourceProducts
+            const rangeUpcs = sourceProducts
               .slice(start, end + 1)
               .map((p) => p.upc);
 
             if (selected) {
-              rangeSkus.forEach((upcItem) => {
+              rangeUpcs.forEach((upcItem) => {
                 next.add(upcItem);
               });
             } else {
-              rangeSkus.forEach((upcItem) => {
+              rangeUpcs.forEach((upcItem) => {
                 next.delete(upcItem);
               });
             }
@@ -626,9 +626,9 @@ export function PipelineClient({
         return next;
       });
 
-      setLastSelectedSku(upc);
+      setLastSelectedUpc(upc);
     },
-    [filteredProducts, lastSelectedSku],
+    [filteredProducts, lastSelectedUpc],
   );
 
   // Select all visible products
@@ -660,9 +660,9 @@ export function PipelineClient({
       const res = await adminFetch(`/api/admin/pipeline?${params}`);
       if (res.ok) {
         const data = await res.json();
-        const allSkus: string[] = data.upcs || [];
-        setSelectedUpcs(new Set(allSkus));
-        toast.success(`Selected all ${allSkus.length} products`);
+        const allUpcs: string[] = data.upcs || [];
+        setSelectedUpcs(new Set(allUpcs));
+        toast.success(`Selected all ${allUpcs.length} products`);
       } else {
         handleSelectAllVisible();
       }
@@ -674,7 +674,7 @@ export function PipelineClient({
   // Clear selection
   const handleClearSelection = useCallback(() => {
     setSelectedUpcs(new Set());
-    setLastSelectedSku(null);
+    setLastSelectedUpc(null);
   }, []);
 
   // Handle consolidation submission for scraped products
@@ -853,8 +853,8 @@ export function PipelineClient({
             payload.publishWarning.length > 0
             ? payload.publishWarning
             : null;
-        const uploadedSkus = Array.isArray(payload.uploadedSkus)
-          ? (payload.uploadedSkus as unknown[]).filter(
+        const uploadedUpcs = Array.isArray(payload.uploadedUpcs)
+          ? (payload.uploadedUpcs as unknown[]).filter(
             (upc: unknown): upc is string =>
               typeof upc === "string" && upc.length > 0,
           )
@@ -864,7 +864,7 @@ export function PipelineClient({
         try {
           setExportActionState("zip");
           const zipResponse = await fetchPublishedImageZipResponse(
-            uploadedSkus,
+            uploadedUpcs,
             {
               includeExportedSelection: true,
             },
@@ -1244,7 +1244,7 @@ export function PipelineClient({
             <ProcessedResultsView
               products={filteredProducts}
               selectedUpcs={selectedUpcs}
-              onSelectUpc={handleSelectSku}
+              onSelectUpc={handleSelectUpc}
               onSelectAll={(upcs: string[]) => {
                 setSelectedUpcs((prev) => {
                   const next = new Set(prev);
@@ -1329,7 +1329,7 @@ export function PipelineClient({
                     : undefined
                 }
                 selectedUpcs={selectedUpcs}
-                onSelectUpc={handleSelectSku}
+                onSelectUpc={handleSelectUpc}
                 isSearching={isSearching}
               />
             </div>
@@ -1371,7 +1371,7 @@ export function PipelineClient({
                 <ProductTable
                   products={filteredProducts}
                   selectedUpcs={selectedUpcs}
-                  onSelectUpc={handleSelectSku}
+                  onSelectUpc={handleSelectUpc}
                   onSelectAll={handleSelectAllVisible}
                   onDeselectAll={handleClearSelection}
                   currentStage={currentStage}
@@ -1389,7 +1389,7 @@ export function PipelineClient({
                     {groupedProducts.cohortIds.map((cohortId) => {
                       const groupProducts =
                         groupedProducts.groups[cohortId] || [];
-                      const cohortSkus = groupProducts.map((p) => p.upc);
+                      const cohortUpcs = groupProducts.map((p) => p.upc);
                       const allSelected = groupProducts.length > 0 && groupProducts.every((p) => selectedUpcs.has(p.upc));
                       const someSelected = groupProducts.some((p) => selectedUpcs.has(p.upc)) && !allSelected;
 
@@ -1410,13 +1410,13 @@ export function PipelineClient({
                                 onChange={(e) => {
                                   if (e.target.checked) {
                                     const next = new Set(selectedUpcs);
-                                    cohortSkus.forEach((s) => {
+                                    cohortUpcs.forEach((s) => {
                                       next.add(s);
                                     });
                                     setSelectedUpcs(next);
                                   } else {
                                     const next = new Set(selectedUpcs);
-                                    cohortSkus.forEach((s) => {
+                                    cohortUpcs.forEach((s) => {
                                       next.delete(s);
                                     });
                                     setSelectedUpcs(next);
@@ -1495,7 +1495,7 @@ export function PipelineClient({
                           <AccordionContent className="pt-0">
                             {cohortId === "ungrouped" && (
                               <div className="px-4 py-2 bg-muted/30 border-b border-border text-[10px] font-semibold text-muted-foreground">
-                                Products without a valid numeric SKU cannot be
+                                Products without a valid numeric UPC cannot be
                                 auto-grouped into cohorts.
                               </div>
                             )}
@@ -1503,7 +1503,7 @@ export function PipelineClient({
                               products={groupProducts}
                               selectedUpcs={selectedUpcs}
                               onSelectUpc={(upc, selected, index, isShift) =>
-                                handleSelectSku(
+                                handleSelectUpc(
                                   upc,
                                   selected,
                                   index,

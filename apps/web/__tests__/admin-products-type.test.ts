@@ -29,7 +29,7 @@ describe('Issue #4: Type Assertion in Admin Products Page - FIXED', () => {
         const content = readFileSync(adminProductsPath, 'utf-8');
         
         // Verify PublishedProduct is imported
-        expect(content).toContain("import { PublishedProduct } from");
+        expect(content).toMatch(/import\s+(type\s+)?\{[^}]*PublishedProduct[^{}]*\}\s+from/);
         
         // Verify it's used with explicit typing
         expect(content).toContain('clientProducts: PublishedProduct[]');
@@ -54,9 +54,9 @@ describe('Issue #4: Type Assertion in Admin Products Page - FIXED', () => {
         const content = readFileSync(adminProductsPath, 'utf-8');
         
         // Verify transformation logic
-        expect(content).toContain('const brand = Array.isArray(product.brand)');
-        expect(content).toContain('brand?.name');
-        expect(content).toContain('brand?.slug');
+        expect(content).toContain('const brandRecord = Array.isArray(product.brand)');
+        expect(content).toContain('brandRecord?.name');
+        expect(content).toContain('brandRecord?.slug');
         expect(content).toContain('|| null');
         
         // The fix properly handles the nested brand object and flattens it

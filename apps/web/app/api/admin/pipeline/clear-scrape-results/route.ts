@@ -8,13 +8,13 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { skus } = body as { skus: string[] };
+        const { upcs } = body as { upcs: string[] };
 
-        if (!skus || !Array.isArray(skus) || skus.length === 0) {
-            return NextResponse.json({ error: 'SKUs array is required' }, { status: 400 });
+        if (!upcs || !Array.isArray(upcs) || upcs.length === 0) {
+            return NextResponse.json({ error: 'UPCs array is required' }, { status: 400 });
         }
 
-        const result = await clearEnrichmentResultsAndResetStatus(skus, auth.user.id);
+        const result = await clearEnrichmentResultsAndResetStatus(upcs, auth.user.id);
 
         if (!result.success) {
             return NextResponse.json({ error: result.error }, { status: 500 });

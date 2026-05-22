@@ -167,7 +167,7 @@ export async function deleteOptionValue(
 export async function createProductVariant(
   productId: string,
   variantData: {
-    sku?: string;
+    upc?: string;
     title?: string;
     price: number;
     compare_at_price?: number;
@@ -183,7 +183,7 @@ export async function createProductVariant(
     .from('product_variants')
     .insert({
       product_id: productId,
-      sku: variantData.sku || null,
+      upc: variantData.upc || null,
       title: variantData.title || null,
       price: variantData.price,
       compare_at_price: variantData.compare_at_price || null,

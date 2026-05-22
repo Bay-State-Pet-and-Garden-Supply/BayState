@@ -55,7 +55,7 @@ describe('replaceInlineImageDataUrls', () => {
     const result = await replaceInlineImageDataUrls(
       supabase as never,
       { images: [INLINE_PNG_DATA_URL] },
-      { folderPath: 'pipeline-sources/test-sku' }
+      { folderPath: 'pipeline-sources/test-upc' }
     );
 
     expect(result.value).toEqual({
@@ -76,7 +76,7 @@ describe('replaceInlineImageDataUrls', () => {
       supabase as never,
       { images: [INLINE_PNG_DATA_URL] },
       {
-        folderPath: 'pipeline-sources/test-sku',
+        folderPath: 'pipeline-sources/test-upc',
         productId: 'product-123',
         scraperImageMetadata: [
           {
@@ -90,7 +90,7 @@ describe('replaceInlineImageDataUrls', () => {
 
     expect(upload).toHaveBeenCalledTimes(1);
     expect(insert).toHaveBeenCalledWith({
-      sku: 'product-123',
+      upc: 'product-123',
       image_url: 'https://private.example.com/protected-image.jpg',
       error_type: 'unknown',
       retry_count: 0,
@@ -134,7 +134,7 @@ describe('replaceInlineImageDataUrls', () => {
         ],
       },
       {
-        folderPath: 'pipeline-sources/test-sku',
+        folderPath: 'pipeline-sources/test-upc',
         productId: 'product-mixed-789',
         scraperImageMetadata: [
           {
@@ -159,7 +159,7 @@ describe('replaceInlineImageDataUrls', () => {
     // Failure: queued with auth_401
     expect(insert).toHaveBeenCalledTimes(1);
     expect(insert).toHaveBeenCalledWith({
-      sku: 'product-mixed-789',
+      upc: 'product-mixed-789',
       image_url: 'https://vendor.example.com/protected/img2.jpg',
       error_type: 'auth_401',
       retry_count: 0,
@@ -203,14 +203,14 @@ describe('replaceInlineImageDataUrls', () => {
         ],
       },
       {
-        folderPath: 'pipeline-sources/test-sku',
+        folderPath: 'pipeline-sources/test-upc',
         productId: 'product-456',
       }
     );
 
     expect(upload).not.toHaveBeenCalled();
     expect(insert).toHaveBeenCalledWith({
-      sku: 'product-456',
+      upc: 'product-456',
       image_url: 'https://private.example.com/auth-image.jpg',
       error_type: 'auth_401',
       retry_count: 0,

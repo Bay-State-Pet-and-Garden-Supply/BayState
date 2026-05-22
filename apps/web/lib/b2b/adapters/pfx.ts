@@ -2,7 +2,7 @@ import { B2BClient, B2BConfig, B2BProduct } from '../types';
 import { parseCSV, mapCSVToType } from '../utils/csv-parser';
 
 interface PFXProductRecord {
-  distributorSku: string;
+  distributorUpc: string;
   upc: string;
   name: string;
   brand: string;
@@ -14,7 +14,7 @@ interface PFXProductRecord {
 }
 
 const PFX_FIELD_MAPPING = {
-  distributorSku: 'Item #',
+  distributorUpc: 'Item #',
   upc: 'UPC',
   name: 'Description',
   brand: 'Brand',
@@ -69,10 +69,10 @@ export class PFXClient implements B2BClient {
     const records = mapCSVToType<PFXProductRecord>(parseResult.data, PFX_FIELD_MAPPING);
 
     return records
-      .filter(r => r.distributorSku && r.name)
+      .filter(r => r.distributorUpc && r.name)
       .map(r => ({
         source: 'PFX' as const,
-        distributorSku: r.distributorSku,
+        distributorUpc: r.distributorUpc,
         upc: r.upc || undefined,
         name: r.name,
         brand: r.brand || undefined,

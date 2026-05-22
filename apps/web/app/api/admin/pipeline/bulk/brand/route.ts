@@ -15,14 +15,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { skus, brandId } = body as {
-      skus: string[];
+    const { upcs, brandId } = body as {
+      upcs: string[];
       brandId: string | null;
     };
 
-    if (!skus || !Array.isArray(skus) || skus.length === 0) {
+    if (!upcs || !Array.isArray(upcs) || upcs.length === 0) {
       return NextResponse.json(
-        { error: 'SKUs array is required and must be non-empty' },
+        { error: 'UPCs array is required and must be non-empty' },
         { status: 400 }
       );
     }
@@ -30,11 +30,11 @@ export async function POST(request: NextRequest) {
     const supabase = await createAdminClient();
 
     // Trigger re-cohorting (which also handles updating brand_id in products_ingestion)
-    await recohortProducts(supabase, skus, brandId);
+    await recohortProducts(supabase, upcs, brandId);
 
     return NextResponse.json({
       success: true,
-      updatedCount: skus.length,
+      updatedCount: upcs.length,
     });
   } catch (err) {
     console.error('[Bulk Brand API] Error:', err);

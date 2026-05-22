@@ -189,7 +189,7 @@ export function ScraperNetworkDashboard() {
   const [cancelJobId, setCancelJobId] = useState<string | null>(null);
   const [renameRunnerId, setRenameRunnerId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState<string>('');
-  const [retryingSkus, setRetryingSkus] = useState<Record<string, boolean>>({});
+  const [retryingUpcs, setRetryingUpcs] = useState<Record<string, boolean>>({});
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [dbJob, setDbJob] = useState<any>(null);
   const [enabledOverrides, setEnabledOverrides] = useState<Record<string, boolean>>({});
@@ -467,8 +467,8 @@ export function ScraperNetworkDashboard() {
     toast.success('Installer command copied to clipboard.');
   };
 
-  const handleRetrySku = async (upc: string, scrapers: string[], testMode: boolean) => {
-    setRetryingSkus((prev) => ({ ...prev, [upc]: true }));
+  const handleRetryUpc = async (upc: string, scrapers: string[], testMode: boolean) => {
+    setRetryingUpcs((prev) => ({ ...prev, [upc]: true }));
     try {
       const res = await adminFetch('/api/admin/pipeline/scrape', {
         method: 'POST',
@@ -477,13 +477,13 @@ export function ScraperNetworkDashboard() {
       });
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.error || 'Failed to retry SKU');
+        throw new Error(error.error || 'Failed to retry UPC');
       }
-      toast.success(`Retry queued for SKU ${upc}`);
+      toast.success(`Retry queued for UPC ${upc}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to queue retry');
     } finally {
-      setRetryingSkus((prev) => ({ ...prev, [upc]: false }));
+      setRetryingUpcs((prev) => ({ ...prev, [upc]: false }));
     }
   };
 
@@ -771,13 +771,13 @@ export function ScraperNetworkDashboard() {
                   </div>
                 </div>
 
-                {/* SKU Progress Table */}
+                {/* UPC Progress Table */}
                 <div className="flex-1 overflow-y-auto">
                   {upcAttempts.length > 0 ? (
                     <Table>
                       <TableHeader className="sticky top-0 bg-card z-10">
                         <TableRow>
-                          <TableHead className="w-[180px]">SKU</TableHead>
+                          <TableHead className="w-[180px]">UPC</TableHead>
                           <TableHead className="w-[120px]">Status</TableHead>
                           <TableHead className="w-[120px]">Duration</TableHead>
                           <TableHead>Actions / Details</TableHead>
@@ -785,7 +785,7 @@ export function ScraperNetworkDashboard() {
                       </TableHeader>
                       <TableBody>
                         {upcAttempts.map((attempt) => {
-                          const isRetrying = retryingSkus[attempt.upc];
+                          const isRetrying = retryingUpcs[attempt.upc];
                           return (
                             <TableRow key={attempt.id} className="hover:bg-muted/10">
                               <TableCell className="font-mono text-xs font-semibold text-foreground">
@@ -819,9 +819,9 @@ export function ScraperNetworkDashboard() {
                                     <Button
                                       variant="outline"
                                       size="icon-sm"
-                                      onClick={() => void handleRetrySku(attempt.upc, activeJob.scrapers || [], activeJob.test_mode || false)}
+                                      onClick={() => void handleRetryUpc(attempt.upc, activeJob.scrapers || [], activeJob.test_mode || false)}
                                       disabled={isRetrying}
-                                      title="Retry SKU scrape"
+                                      title="Retry UPC scrape"
                                       className="shrink-0"
                                     >
                                       {isRetrying ? (
@@ -843,7 +843,7 @@ export function ScraperNetworkDashboard() {
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2 p-6 text-center">
                       <Activity className="h-7 w-7 animate-pulse text-muted-foreground" />
-                      <p className="text-sm font-semibold">Preparing SKU list...</p>
+                      <p className="text-sm font-semibold">Preparing UPC list...</p>
                       <p className="text-xs text-muted-foreground">The runner is fetching work segments for the queue.</p>
                     </div>
                   )}
@@ -982,7 +982,7 @@ export function ScraperNetworkDashboard() {
                   Network Coordination
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Select a runner from the roster on the left to monitor active logs, check SKU progress, or adjust token configs.
+                  Select a runner from the roster on the left to monitor active logs, check UPC progress, or adjust token configs.
                 </p>
               </div>
 
@@ -1044,7 +1044,7 @@ export function ScraperNetworkDashboard() {
                         <div className="min-w-0">
                           <span className="font-mono text-foreground font-bold">{job.id.slice(0, 8)}...</span>
                           <div className="flex items-center gap-1.5 mt-0.5 text-muted-foreground font-medium">
-                            <span>{job.upcs?.length || 0} SKUs</span>
+                            <span>{job.upcs?.length || 0} UPCs</span>
                             <span>•</span>
                             <span className="truncate">
                               {job.runner_name || job.claimed_by || 'Unclaimed'}
@@ -1245,7 +1245,7 @@ export function ScraperNetworkDashboard() {
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel Scraper Job</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel this job? This will stop the runner and abort all pending SKUs.
+              Are you sure you want to cancel this job? This will stop the runner and abort all pending UPCs.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

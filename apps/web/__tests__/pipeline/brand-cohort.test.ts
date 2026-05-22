@@ -15,10 +15,10 @@ describe('Brand-aware Cohort Auto-Assignment', () => {
 
     beforeEach(() => {
         productsIngestionDb = [
-            { sku: '1234560001', brand_id: 'brand-a', cohort_id: null, consolidated: {} },
-            { sku: '1234560002', brand_id: 'brand-b', cohort_id: null, consolidated: {} },
-            { sku: '1234560003', brand_id: 'brand-a', cohort_id: null, consolidated: {} },
-            { sku: '7890120001', brand_id: null, cohort_id: null, consolidated: {} },
+            { upc: '1234560001', brand_id: 'brand-a', cohort_id: null, consolidated: {} },
+            { upc: '1234560002', brand_id: 'brand-b', cohort_id: null, consolidated: {} },
+            { upc: '1234560003', brand_id: 'brand-a', cohort_id: null, consolidated: {} },
+            { upc: '7890120001', brand_id: null, cohort_id: null, consolidated: {} },
         ];
         cohortBatchesDb = [];
         cohortMembersDb = [];
@@ -33,8 +33,8 @@ describe('Brand-aware Cohort Auto-Assignment', () => {
                     select: jest.fn().mockImplementation((fields: string) => {
                         return {
                             in: jest.fn().mockImplementation(async (column: string, values: any[]) => {
-                                if (table === 'products_ingestion' && column === 'sku') {
-                                    const data = productsIngestionDb.filter(p => values.includes(p.sku));
+                                if (table === 'products_ingestion' && column === 'upc') {
+                                    const data = productsIngestionDb.filter(p => values.includes(p.upc));
                                     return { data, error: null };
                                 }
                                 if (table === 'brands' && column === 'id') {
@@ -73,9 +73,9 @@ describe('Brand-aware Cohort Auto-Assignment', () => {
                     update: jest.fn().mockImplementation((payload: any) => {
                         return {
                             in: jest.fn().mockImplementation(async (column: string, values: any[]) => {
-                                if (table === 'products_ingestion' && column === 'sku') {
+                                if (table === 'products_ingestion' && column === 'upc') {
                                     productsIngestionDb.forEach(p => {
-                                        if (values.includes(p.sku)) {
+                                        if (values.includes(p.upc)) {
                                             Object.assign(p, payload);
                                         }
                                     });
@@ -83,8 +83,8 @@ describe('Brand-aware Cohort Auto-Assignment', () => {
                                 return { error: null };
                             }),
                             eq: jest.fn().mockImplementation(async (column: string, value: any) => {
-                                if (table === 'products_ingestion' && column === 'sku') {
-                                    const product = productsIngestionDb.find(p => p.sku === value);
+                                if (table === 'products_ingestion' && column === 'upc') {
+                                    const product = productsIngestionDb.find(p => p.upc === value);
                                     if (product) {
                                         Object.assign(product, payload);
                                     }
@@ -97,7 +97,7 @@ describe('Brand-aware Cohort Auto-Assignment', () => {
                         const rows = Array.isArray(payload) ? payload : [payload];
                         rows.forEach(r => {
                             const existingIdx = cohortMembersDb.findIndex(
-                                m => m.cohort_id === r.cohort_id && m.product_sku === r.product_sku
+                                m => m.cohort_id === r.cohort_id && m.product_upc === r.product_upc
                             );
                             if (existingIdx >= 0) {
                                 cohortMembersDb[existingIdx] = r;
@@ -113,8 +113,8 @@ describe('Brand-aware Cohort Auto-Assignment', () => {
     });
 
     it('should assign products with different brands to separate cohorts despite sharing prefix', async () => {
-        const skus = ['1234560001', '1234560002', '1234560003'];
-        const result = await assignProductsToCohorts(mockSupabase, skus);
+        const upcs = ['1234560001', '1234560002', '1234560003'];
+        const result = await assignProductsToCohorts(mockSupabase, upcs);
 
         expect(result.assigned).toBe(3);
         expect(result.cohortCount).toBe(2);
@@ -129,15 +129,15 @@ describe('Brand-aware Cohort Auto-Assignment', () => {
         expect(cohortB.brand_name).toBe('Brand Beta');
 
         // Verify products assigned
-        const p1 = productsIngestionDb.find(p => p.sku === '1234560001');
-        const p2 = productsIngestionDb.find(p => p.sku === '1234560002');
+        const p1 = productsIngestionDb.find(p => p.upc === '1234560001');
+        const p2 = productsIngestionDb.find(p => p.upc === '1234560002');
         expect(p1.cohort_id).toBe(cohortA.id);
         expect(p2.cohort_id).toBe(cohortB.id);
 
         // Verify members table entries
         expect(cohortMembersDb.length).toBe(3);
-        expect(cohortMembersDb.some(m => m.product_sku === '1234560001' && m.cohort_id === cohortA.id)).toBe(true);
-        expect(cohortMembersDb.some(m => m.product_sku === '1234560002' && m.cohort_id === cohortB.id)).toBe(true);
+        expect(cohortMembersDb.some(m => m.product_upc === '1234560001' && m.cohort_id === cohortA.id)).toBe(true);
+        expect(cohortMembersDb.some(m => m.product_upc === '1234560002' && m.cohort_id === cohortB.id)).toBe(true);
     });
 
     it('should re-cohort products correctly and transition status to imported when brand changes', async () => {
@@ -158,7 +158,7 @@ describe('Brand-aware Cohort Auto-Assignment', () => {
                 select: jest.fn().mockReturnThis(),
                 in: jest.fn().mockImplementation(async (col: string, vals: any[]) => {
                     if (table === 'products_ingestion') {
-                        const data = productsIngestionDb.filter(p => vals.includes(p.sku));
+                        const data = productsIngestionDb.filter(p => vals.includes(p.upc));
                         return { data, error: null };
                     }
                     return { data: [], error: null };
@@ -199,8 +199,8 @@ describe('Brand-aware Cohort Auto-Assignment', () => {
                 update: jest.fn().mockImplementation((payload: any) => {
                     return {
                         eq: jest.fn().mockImplementation(async (col: string, val: any) => {
-                            if (table === 'products_ingestion' && col === 'sku') {
-                                const product = productsIngestionDb.find(p => p.sku === val);
+                            if (table === 'products_ingestion' && col === 'upc') {
+                                const product = productsIngestionDb.find(p => p.upc === val);
                                 if (product) {
                                     Object.assign(product, payload);
                                 }
@@ -213,7 +213,7 @@ describe('Brand-aware Cohort Auto-Assignment', () => {
                     const rows = Array.isArray(payload) ? payload : [payload];
                     rows.forEach(r => {
                         const existingIdx = cohortMembersDb.findIndex(
-                            m => m.cohort_id === r.cohort_id && m.product_sku === r.product_sku
+                            m => m.cohort_id === r.cohort_id && m.product_upc === r.product_upc
                         );
                         if (existingIdx >= 0) {
                             cohortMembersDb[existingIdx] = r;
@@ -238,7 +238,7 @@ describe('Brand-aware Cohort Auto-Assignment', () => {
         expect(targetCohort).toBeDefined();
 
         // Product should have moved to the new cohort and status updated to imported
-        const product = productsIngestionDb.find(p => p.sku === '1234560001');
+        const product = productsIngestionDb.find(p => p.upc === '1234560001');
         expect(product.cohort_id).toBe(targetCohort.id);
         expect(product.brand_id).toBe('brand-a');
         expect(product.pipeline_status).toBe('imported');

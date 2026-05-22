@@ -65,7 +65,7 @@ function inferBroadcastEvent(payload: unknown): string | null {
   if (
     typeof payload.job_id === 'string' &&
     Array.isArray(payload.scrapers) &&
-    typeof payload.skus_count === 'string' &&
+    typeof payload.upcs_count === 'string' &&
     typeof payload.runner_name === 'string'
   ) {
     return 'job_assigned';

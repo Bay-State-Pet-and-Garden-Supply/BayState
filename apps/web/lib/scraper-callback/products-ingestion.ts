@@ -25,16 +25,16 @@ export interface ProvenanceContext {
     llmModel?: string;
 }
 
-type SourcePayloadBySku = Record<string, Record<string, unknown>>;
+type SourcePayloadByUpc = Record<string, Record<string, unknown>>;
 
-export class MissingProductsIngestionSkusError extends Error {
-  missingSkus: string[];
+export class MissingProductsIngestionUpcsError extends Error {
+  missingUpcs: string[];
 
-  constructor(missingSkus: string[]) {
-    const sortedSkus = [...missingSkus].sort();
-    super(`Missing products_ingestion rows for SKUs: ${sortedSkus.join(', ')}`);
-    this.name = 'MissingProductsIngestionSkusError';
-    this.missingSkus = sortedSkus;
+  constructor(missingUpcs: string[]) {
+    const sortedUpcs = [...missingUpcs].sort();
+    super(`Missing products_ingestion rows for UPCs: ${sortedUpcs.join(', ')}`);
+    this.name = 'MissingProductsIngestionUpcsError';
+    this.missingUpcs = sortedUpcs;
   }
 }
 
@@ -44,18 +44,18 @@ interface PartialPersistenceResult {
 }
 
 interface ProductsIngestionSourceRow {
-  sku: string;
+  upc: string;
   sources: Record<string, unknown>;
 }
 
 async function makeIncomingSourcesDurable(
   supabase: Pick<SupabaseClient, 'from' | 'storage'>,
   productId: string,
-  sku: string,
+  upc: string,
   sources: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
   const durableSources = await replaceInlineImageDataUrls(supabase, sources, {
-    folderPath: buildProductImageStorageFolder('pipeline-sources', sku),
+    folderPath: buildProductImageStorageFolder('pipeline-sources', upc),
     productId,
     onError: (message, error) => {
       console.warn(`[Products Ingestion] ${message}`, error);
@@ -66,53 +66,53 @@ async function makeIncomingSourcesDurable(
 }
 
 /**
- * Loads existing sources from products_ingestion for the given SKUs.
- * Returns only rows that exist — does NOT throw on missing SKUs.
+ * Loads existing sources from products_ingestion for the given UPCs.
+ * Returns only rows that exist — does NOT throw on missing UPCs.
  */
-async function loadProductsIngestionSourcesBySku(
+async function loadProductsIngestionSourcesByUpc(
   supabase: SupabaseClient,
-  skus: string[]
+  upcs: string[]
 ): Promise<Map<string, ProductsIngestionSourceRow>> {
-  if (skus.length === 0) {
+  if (upcs.length === 0) {
     return new Map();
   }
 
-  const uniqueSkus = [...new Set(skus)];
+  const uniqueUpcs = [...new Set(upcs)];
   const { data, error } = await supabase
     .from('products_ingestion')
-    .select('sku, sources')
-    .in('sku', uniqueSkus);
+    .select('upc, sources')
+    .in('upc', uniqueUpcs);
 
   if (error) {
-    throw new Error(`Failed to fetch products_ingestion SKUs: ${error.message}`);
+    throw new Error(`Failed to fetch products_ingestion UPCs: ${error.message}`);
   }
 
-  const sourcesBySku = new Map<string, ProductsIngestionSourceRow>();
+  const sourcesByUpc = new Map<string, ProductsIngestionSourceRow>();
   for (const row of data || []) {
-    sourcesBySku.set(row.sku, {
-      sku: row.sku,
+    sourcesByUpc.set(row.upc, {
+      upc: row.upc,
       sources: (row.sources as Record<string, unknown>) || {},
     });
   }
 
-  return sourcesBySku;
+  return sourcesByUpc;
 }
 
 /**
- * Attach provenance metadata to each source payload in skuData.
+ * Attach provenance metadata to each source payload in upcData.
  * Adds `_provenance` as a sub-object to each source's data, recording
  * the source kind, job id, chunk id, scraper slug, and optional
  * quality scores, serper query, and llm model.
  */
 function attachProvenance(
-  skuData: SourcePayloadBySku,
+  upcData: SourcePayloadByUpc,
   provenance?: ProvenanceContext,
-): SourcePayloadBySku {
-  if (!provenance) return skuData;
+): SourcePayloadByUpc {
+  if (!provenance) return upcData;
 
-  const result: SourcePayloadBySku = {};
+  const result: SourcePayloadByUpc = {};
 
-  for (const [sku, sources] of Object.entries(skuData)) {
+  for (const [upc, sources] of Object.entries(upcData)) {
     const enrichedSources: Record<string, unknown> = {};
 
     for (const [sourceName, sourcePayload] of Object.entries(sources)) {
@@ -138,35 +138,35 @@ function attachProvenance(
       };
     }
 
-    result[sku] = enrichedSources;
+    result[upc] = enrichedSources;
   }
 
   return result;
 }
 
 /**
- * Strict persistence — throws MissingProductsIngestionSkusError if any SKU
+ * Strict persistence — throws MissingProductsIngestionUpcsError if any UPC
  * is missing from products_ingestion. No rows are written in that case.
  */
 export async function persistProductsIngestionSourcesStrict(
   supabase: SupabaseClient,
-  skuData: SourcePayloadBySku,
+  upcData: SourcePayloadByUpc,
   isTestJob: boolean,
   nowIso: string,
   provenance?: ProvenanceContext,
 ): Promise<string[]> {
-  const skus = Object.keys(skuData);
-  if (skus.length === 0) {
+  const upcs = Object.keys(upcData);
+  if (upcs.length === 0) {
     return [];
   }
 
-  const enrichedSkuData = attachProvenance(skuData, provenance);
+  const enrichedUpcData = attachProvenance(upcData, provenance);
 
-  const existingSourcesBySku = await loadProductsIngestionSourcesBySku(supabase, skus);
+  const existingSourcesByUpc = await loadProductsIngestionSourcesByUpc(supabase, upcs);
 
-  const missingSkus = skus.filter((sku) => !existingSourcesBySku.has(sku));
-  if (missingSkus.length > 0) {
-    throw new MissingProductsIngestionSkusError(missingSkus);
+  const missingUpcs = upcs.filter((upc) => !existingSourcesByUpc.has(upc));
+  if (missingUpcs.length > 0) {
+    throw new MissingProductsIngestionUpcsError(missingUpcs);
   }
 
   // Skip pipeline status update for static scraper and enrichment jobs —
@@ -175,15 +175,15 @@ export async function persistProductsIngestionSourcesStrict(
   const isEnrichmentJob = provenance?.sourceKind === 'enrichment';
   const skipStatusUpdate = isStaticScraperJob || isEnrichmentJob;
 
-  const updateRows = await Promise.all(skus.map(async (sku) => {
-    const existingRow = existingSourcesBySku.get(sku)!;
-    const scrapedData = await makeIncomingSourcesDurable(supabase, sku, sku, enrichedSkuData[sku] || skuData[sku]);
+  const updateRows = await Promise.all(upcs.map(async (upc) => {
+    const existingRow = existingSourcesByUpc.get(upc)!;
+    const scrapedData = await makeIncomingSourcesDurable(supabase, upc, upc, enrichedUpcData[upc] || upcData[upc]);
     const hasMeaningfulData = hasMeaningfulProductSourceData(scrapedData);
 
     const updatedSources = mergeProductSources(existingRow.sources, scrapedData);
 
     return {
-      sku,
+      upc,
       sources: updatedSources,
       is_test_run: isTestJob,
       updated_at: nowIso,
@@ -197,45 +197,45 @@ export async function persistProductsIngestionSourcesStrict(
 
   const { error: updateError } = await supabase
     .from('products_ingestion')
-    .upsert(updateRows, { onConflict: 'sku' });
+    .upsert(updateRows, { onConflict: 'upc' });
 
   if (updateError) {
     throw new Error(`Bulk update failed: ${updateError.message}`);
   }
 
-  return skus;
+  return upcs;
 }
 
 /**
- * Partial persistence — persists data for SKUs that exist in products_ingestion,
- * skips missing ones, and reports both lists. Never throws for missing SKUs.
+ * Partial persistence — persists data for UPCs that exist in products_ingestion,
+ * skips missing ones, and reports both lists. Never throws for missing UPCs.
  */
 export async function persistProductsIngestionSourcesPartial(
   supabase: SupabaseClient,
-  skuData: SourcePayloadBySku,
+  upcData: SourcePayloadByUpc,
   isTestJob: boolean,
   nowIso: string,
   provenance?: ProvenanceContext,
 ): Promise<PartialPersistenceResult> {
-  const skus = Object.keys(skuData);
-  if (skus.length === 0) {
+  const upcs = Object.keys(upcData);
+  if (upcs.length === 0) {
     return { persisted: [], missing: [] };
   }
 
-  const enrichedSkuData = attachProvenance(skuData, provenance);
+  const enrichedUpcData = attachProvenance(upcData, provenance);
 
-  const existingSourcesBySku = await loadProductsIngestionSourcesBySku(supabase, skus);
+  const existingSourcesByUpc = await loadProductsIngestionSourcesByUpc(supabase, upcs);
 
-  const missing = skus.filter((sku) => !existingSourcesBySku.has(sku));
-  const toUpdateSkus = skus.filter((sku) => existingSourcesBySku.has(sku));
+  const missing = upcs.filter((upc) => !existingSourcesByUpc.has(upc));
+  const toUpdateUpcs = upcs.filter((upc) => existingSourcesByUpc.has(upc));
 
   if (missing.length > 0) {
     console.warn(
-      `[Products Ingestion] ${missing.length} SKU(s) not found in products_ingestion, skipping: ${missing.join(', ')}`
+      `[Products Ingestion] ${missing.length} UPC(s) not found in products_ingestion, skipping: ${missing.join(', ')}`
     );
   }
 
-  if (toUpdateSkus.length === 0) {
+  if (toUpdateUpcs.length === 0) {
     return { persisted: [], missing };
   }
 
@@ -245,15 +245,15 @@ export async function persistProductsIngestionSourcesPartial(
   const isEnrichmentJob = provenance?.sourceKind === 'enrichment';
   const skipStatusUpdate = isStaticScraperJob || isEnrichmentJob;
 
-  const updateRows = await Promise.all(toUpdateSkus.map(async (sku) => {
-    const existingRow = existingSourcesBySku.get(sku)!;
-    const scrapedData = await makeIncomingSourcesDurable(supabase, sku, sku, enrichedSkuData[sku] || skuData[sku]);
+  const updateRows = await Promise.all(toUpdateUpcs.map(async (upc) => {
+    const existingRow = existingSourcesByUpc.get(upc)!;
+    const scrapedData = await makeIncomingSourcesDurable(supabase, upc, upc, enrichedUpcData[upc] || upcData[upc]);
     const hasMeaningfulData = hasMeaningfulProductSourceData(scrapedData);
 
     const updatedSources = mergeProductSources(existingRow.sources, scrapedData);
 
     return {
-      sku,
+      upc,
       sources: updatedSources,
       is_test_run: isTestJob,
       updated_at: nowIso,
@@ -267,12 +267,12 @@ export async function persistProductsIngestionSourcesPartial(
 
   const { error: updateError } = await supabase
     .from('products_ingestion')
-    .upsert(updateRows, { onConflict: 'sku' });
+    .upsert(updateRows, { onConflict: 'upc' });
 
   if (updateError) {
     console.error(`[Products Ingestion] Bulk update failed: ${updateError.message}`);
     throw new Error(`Bulk update failed: ${updateError.message}`);
   }
 
-  return { persisted: toUpdateSkus, missing };
+  return { persisted: toUpdateUpcs, missing };
 }

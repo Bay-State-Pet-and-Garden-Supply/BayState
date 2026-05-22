@@ -14,7 +14,7 @@ const SHOP_SITE_SOURCE_SYSTEM = 'shopsite_15';
 export function transformShopSiteOrder(
     order: ShopSiteOrder,
     profileIdMap: Map<string, string>, // email -> profile id
-    productIdMap: Map<string, string>  // sku -> product id
+    productIdMap: Map<string, string>  // upc -> product id
 ): {
     order: {
         legacy_order_number: string;
@@ -39,7 +39,7 @@ export function transformShopSiteOrder(
         item_type: string;
         quantity: number;
         unit_price: number;
-        legacy_sku: string;
+        legacy_upc: string;
     }>;
 } {
     // Try to find the profile by email
@@ -52,11 +52,11 @@ export function transformShopSiteOrder(
 
     // Transform order items
     const items = order.items.map((item: ShopSiteOrderItem) => ({
-        item_id: productIdMap.get(item.sku) || null,
+        item_id: productIdMap.get(item.upc) || null,
         item_type: 'product',
         quantity: item.quantity,
         unit_price: item.price,
-        legacy_sku: item.sku,
+        legacy_upc: item.upc,
     }));
 
     return {

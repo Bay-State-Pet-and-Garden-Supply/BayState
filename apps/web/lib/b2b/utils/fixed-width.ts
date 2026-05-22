@@ -115,7 +115,7 @@ function safeSubstring(str: string, start: number, end: number): string {
  */
 export const ORGILL_HD1_FIELDS: FieldDefinition[] = [
   { name: 'recordType', start: 0, end: 3, type: 'string' },
-  { name: 'distributorSku', start: 3, end: 15, type: 'string' },
+  { name: 'distributorUpc', start: 3, end: 15, type: 'string' },
   { name: 'upc', start: 15, end: 27, type: 'string' },
   { name: 'name', start: 27, end: 60, type: 'string' },
   { name: 'price', start: 60, end: 68, type: 'implied-decimal', decimalPlaces: 2 },

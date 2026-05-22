@@ -2,7 +2,7 @@
  * Approved Source Extraction — shared coordinator types
  *
  * These types define the source plan contract between the coordinator (web) and
- * the runner (scraper). The coordinator builds a per-SKU source plan from
+ * the runner (scraper). The coordinator builds a per-UPC source plan from
  * brand_sources and brand state; the runner executes it.
  */
 
@@ -17,7 +17,7 @@ export type ApprovedSourceType =
   | "licensed_feed";
 
 export type ApprovedSearchMode =
-  | "sku_search"
+  | "upc_search"
   | "domain_search"
   | "direct_url"
   | "feed_lookup";
@@ -49,7 +49,7 @@ export interface ApprovedSourcePlanEntry {
   requiresAuth: boolean;
   /** Credential reference key (not the actual credentials) */
   credentialRef: string | null;
-  /** How to search this source for a given SKU */
+  /** How to search this source for a given UPC */
   searchMode: ApprovedSearchMode;
   /** Which fields this source is allowed to provide */
   allowedFields: string[];
@@ -87,14 +87,14 @@ export interface ApprovedSourceResult {
 }
 
 // =============================================================================
-// Full source plan (per-SKU)
+// Full source plan (per-UPC)
 // =============================================================================
 
 export interface ApprovedSourcePlan {
   /** Schema version for forward compatibility */
   schemaVersion: "v1";
-  /** Target SKU */
-  sku: string;
+  /** Target UPC */
+  upc: string;
   /** Minimal product input (name, price) from import */
   input: {
     name?: string | null;
@@ -125,12 +125,12 @@ export type SourcePlanFailureCode =
   | "database_error";
 
 // =============================================================================
-// Build result (per SKU — either a plan or an error)
+// Build result (per UPC — either a plan or an error)
 // =============================================================================
 
 export type SourcePlanResult =
   | { ok: true; plan: ApprovedSourcePlan }
-  | { ok: false; error: string; sku: string; code?: SourcePlanFailureCode };
+  | { ok: false; error: string; upc: string; code?: SourcePlanFailureCode };
 
 // =============================================================================
 // Domain constants

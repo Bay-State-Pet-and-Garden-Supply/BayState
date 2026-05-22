@@ -66,7 +66,7 @@ export const BatchJobSchema = z.object({
     estimated_cost: z.number().min(0),
     retry_count: z.number().int().min(0),
     max_retries: z.number().int().min(0),
-    failed_skus: z.array(z.string()).nullable().optional(),
+    failed_upcs: z.array(z.string()).nullable().optional(),
     parent_batch_id: z.string().nullable().optional(),
     input_file_id: z.string().nullable().optional(),
     output_file_id: z.string().nullable().optional(),
@@ -80,14 +80,14 @@ export const BatchJobSchema = z.object({
 });
 
 export const ProductSourceSchema = z.object({
-    sku: z.string().min(1, 'SKU is required'),
+    upc: z.string().min(1, 'UPC is required'),
     sources: z.record(z.string(), z.unknown()),
     productLineContext: z
         .object({
             productLine: z.string(),
             siblings: z.array(
                 z.object({
-                    sku: z.string(),
+                    upc: z.string(),
                     name: z.string(),
                     sources: z.record(z.string(), z.unknown()),
                 })
@@ -98,7 +98,7 @@ export const ProductSourceSchema = z.object({
 });
 
 export const ConsolidationResultSchema = z.object({
-    sku: z.string().min(1, 'SKU is required'),
+    upc: z.string().min(1, 'UPC is required'),
     name: z.string().optional(),
     brand: z.string().optional(),
     weight: z.string().optional(),
@@ -168,7 +168,7 @@ const ProductTypeSchema = z.object({
 });
 
 export const ConsolidationSubmitSchema = z.object({
-    skus: z.array(z.string().min(1)).min(1, 'At least one SKU is required'),
+    upcs: z.array(z.string().min(1)).min(1, 'At least one UPC is required'),
     description: z.string().optional(),
     auto_apply: z.boolean().optional(),
 });
@@ -213,7 +213,7 @@ export const ScrapeCallbackPayloadSchema = z.object({
     error_message: z.string().optional(),
     results: z
         .object({
-            skus_processed: z.number().int().min(0).optional(),
+            upcs_processed: z.number().int().min(0).optional(),
             scrapers_run: z.array(z.string()).optional(),
             data: z.record(z.string(), ScrapedDataSchema).optional(),
         })

@@ -10,7 +10,7 @@ type ImageRetryQueueInsert = Database['public']['Tables']['image_retry_queue']['
 type BackfillMode = 'dry-run' | 'execute';
 
 interface ProductsIngestionBackfillRow {
-  sku: string;
+  upc: string;
   sources: unknown;
 }
 
@@ -22,7 +22,7 @@ interface SourceBackfillTarget {
 
 interface ProductBackfillCandidate {
   productId: string;
-  sku: string;
+  upc: string;
   targets: SourceBackfillTarget[];
 }
 
@@ -34,7 +34,7 @@ interface ProductSourceHelpers {
 
 interface LoginProtectedImageBackfillOptions {
   mode: BackfillMode;
-  skus?: string[];
+  upcs?: string[];
   limit?: number;
   batchSize?: number;
 }
@@ -211,8 +211,8 @@ export async function collectLoginProtectedImageBackfillCandidates(
 
     return [
       {
-        productId: row.sku,
-        sku: row.sku,
+        productId: row.upc,
+        upc: row.upc,
         targets: dedupedTargets,
       },
     ];
@@ -245,18 +245,18 @@ function resolveBatchSize(options: LoginProtectedImageBackfillOptions): number {
 
 async function loadProductsIngestionRowsBatch(
   supabase: SupabaseClient,
-  options: Pick<LoginProtectedImageBackfillOptions, 'skus' | 'limit'>,
+  options: Pick<LoginProtectedImageBackfillOptions, 'upcs' | 'limit'>,
   offset: number,
   batchSize: number,
 ): Promise<ProductsIngestionBackfillRow[]> {
   let query = supabase
     .from('products_ingestion')
-    .select('sku, sources')
+    .select('upc, sources')
     .order('updated_at', { ascending: false })
     .range(offset, offset + batchSize - 1);
 
-  if (options.skus && options.skus.length > 0) {
-    query = query.in('sku', options.skus);
+  if (options.upcs && options.upcs.length > 0) {
+    query = query.in('upc', options.upcs);
   }
 
   if (typeof options.limit === 'number' && options.limit > 0) {
@@ -288,7 +288,7 @@ async function getExistingQueueEntries(
   const { data, error } = await supabase
     .from('image_retry_queue')
     .select('image_url')
-    .eq('sku', productId)
+    .eq('upc', productId)
     .in('image_url', normalizedUrls);
 
   if (error) {
@@ -361,7 +361,7 @@ export async function executeLoginProtectedImageBackfillWithClient(
     const candidates = await collectLoginProtectedImageBackfillCandidates(rows, loginProtectedScraperSlugs);
 
     for (const candidate of candidates) {
-      productsWithTargets.add(candidate.sku);
+      productsWithTargets.add(candidate.upc);
       totalFound += candidate.targets.length;
 
       try {
@@ -385,30 +385,30 @@ export async function executeLoginProtectedImageBackfillWithClient(
 
           try {
             await insertRetryQueueEntry(supabase, {
-              sku: candidate.productId,
+              upc: candidate.productId,
               image_url: target.normalizedUrl,
               error_type: 'auth_401',
               retry_count: 0,
               status: 'pending',
               scheduled_for: nowIso,
-              last_error: `backfill: detected non-durable login-protected image for ${candidate.sku}`,
+              last_error: `backfill: detected non-durable login-protected image for ${candidate.upc}`,
             });
             newlyQueued += 1;
             console.log(
-              `[Login Image Backfill] queued sku=${candidate.sku} source=${target.sourceName} url=${target.normalizedUrl}`,
+              `[Login Image Backfill] queued upc=${candidate.upc} source=${target.sourceName} url=${target.normalizedUrl}`,
             );
           } catch (error) {
             errors += 1;
             const message = error instanceof Error ? error.message : String(error ?? 'Unknown error');
             console.error(
-              `[Login Image Backfill] failed to queue sku=${candidate.sku} source=${target.sourceName} url=${target.normalizedUrl}: ${message}`,
+              `[Login Image Backfill] failed to queue upc=${candidate.upc} source=${target.sourceName} url=${target.normalizedUrl}: ${message}`,
             );
           }
         }
       } catch (error) {
         errors += candidate.targets.length;
         const message = error instanceof Error ? error.message : String(error ?? 'Unknown error');
-        console.error(`[Login Image Backfill] failed to process sku=${candidate.sku}: ${message}`);
+        console.error(`[Login Image Backfill] failed to process upc=${candidate.upc}: ${message}`);
       }
     }
 
@@ -481,12 +481,12 @@ function parseArgs(argv: string[]): LoginProtectedImageBackfillOptions {
       case '--execute':
         options.mode = 'execute';
         break;
-      case '--sku': {
-        const sku = argv[index + 1]?.trim();
-        if (!sku) {
-          throw new Error('Missing value for --sku');
+      case '--upc': {
+        const upc = argv[index + 1]?.trim();
+        if (!upc) {
+          throw new Error('Missing value for --upc');
         }
-        options.skus = [...(options.skus ?? []), sku];
+        options.upcs = [...(options.upcs ?? []), upc];
         index += 1;
         break;
       }
@@ -508,7 +508,7 @@ function parseArgs(argv: string[]): LoginProtectedImageBackfillOptions {
             'Options:',
             '  --dry-run            Scan and report without inserting queue entries',
             '  --execute            Insert queue entries (default mode)',
-            '  --sku <sku>          Limit to a single SKU (repeatable)',
+            '  --upc <upc>          Limit to a single UPC (repeatable)',
             '  --limit <number>     Maximum products_ingestion rows to scan',
             '  --batch-size <num>   Products processed per batch (default: 100)',
           ].join('\n'),

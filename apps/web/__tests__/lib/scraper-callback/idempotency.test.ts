@@ -23,7 +23,7 @@ describe('idempotency key generation', () => {
   });
 
   it('generates consistent keys for chunk callbacks with same payload', () => {
-    const payload = { 'SKU-1': { price: 10 }, 'SKU-2': { price: 20 } };
+    const payload = { 'UPC-1': { price: 10 }, 'UPC-2': { price: 20 } };
     const key1 = generateIdempotencyKey('job-123', 'chunk', payload);
     const key2 = generateIdempotencyKey('job-123', 'chunk', payload);
     
@@ -32,8 +32,8 @@ describe('idempotency key generation', () => {
   });
 
   it('generates different keys for chunk callbacks with different payloads', () => {
-    const payload1 = { 'SKU-1': { price: 10 } };
-    const payload2 = { 'SKU-1': { price: 20 } };
+    const payload1 = { 'UPC-1': { price: 10 } };
+    const payload2 = { 'UPC-1': { price: 20 } };
     
     const key1 = generateIdempotencyKey('job-123', 'chunk', payload1);
     const key2 = generateIdempotencyKey('job-123', 'chunk', payload2);
@@ -128,7 +128,7 @@ describe('recordCallbackProcessed', () => {
 
   it('successfully records callback with idempotency key', async () => {
     const { supabase, insert } = createSupabaseMock(null);
-    const resultsData = { skus_processed: 5 };
+    const resultsData = { upcs_processed: 5 };
 
     const result = await recordCallbackProcessed(
       supabase,
@@ -143,7 +143,7 @@ describe('recordCallbackProcessed', () => {
       job_id: 'job-123',
       runner_name: 'runner-1',
       data: {
-        skus_processed: 5,
+        upcs_processed: 5,
         _idempotency_key: 'admin:job-123',
         _processed_at: expect.any(String),
       },
@@ -227,7 +227,7 @@ describe('checkIdempotency', () => {
 
   it('generates correct key for chunk callbacks with payload', async () => {
     const { supabase, filter } = createSupabaseMock(false);
-    const payload = { 'SKU-1': { price: 10 } };
+    const payload = { 'UPC-1': { price: 10 } };
 
     const result = await checkIdempotency(supabase, 'job-123', 'chunk', payload);
 

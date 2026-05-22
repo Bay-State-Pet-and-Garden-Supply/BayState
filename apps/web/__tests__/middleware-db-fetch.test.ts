@@ -5,7 +5,9 @@ import { updateSession } from '@/lib/supabase/middleware';
 import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
 
-jest.mock('@supabase/ssr');
+jest.mock('@supabase/ssr', () => ({
+    createServerClient: jest.fn(),
+}));
 const mockCreateServerClient = createServerClient as jest.Mock;
 
 describe('Middleware role resolution', () => {
@@ -18,11 +20,11 @@ describe('Middleware role resolution', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        process.env.SUPABASE_URL = 'https://example.supabase.co';
-        process.env.SUPABASE_PUBLISHABLE_KEY = 'test-anon-key';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'test-anon-key';
         profilesTableCalls = [];
         process.env.SUPABASE_URL = 'https://example.supabase.co';
-        process.env.SUPABASE_PUBLISHABLE_KEY = 'anon-test-key';
+        process.env.SUPABASE_PUBLISHABLE_KEY = 'test-anon-key';
 
         mockGetUser = jest.fn();
         mockFrom = jest.fn().mockImplementation((table: string) => {

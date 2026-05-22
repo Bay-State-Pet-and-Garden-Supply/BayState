@@ -71,8 +71,8 @@ function summarizeBatchResults(results: ConsolidationResult[]): ParallelRunSumma
         total_results: results.length,
         successful_results: successfulResults.length,
         failed_results: failedResults.length,
-        skus: results.map((result) => result.sku),
-        error_skus: failedResults.map((result) => result.sku),
+        upcs: results.map((result) => result.upc),
+        error_upcs: failedResults.map((result) => result.upc),
     };
 }
 
@@ -217,16 +217,16 @@ async function syncParallelRunComparison(parallelRunId: string): Promise<Paralle
         });
     }
 
-    const primaryBySku = new Map(primaryResultsRaw.map((result) => [result.sku, result]));
-    const shadowBySku = new Map(shadowResultsRaw.map((result) => [result.sku, result]));
-    const comparisonSkus = Array.from(
-        new Set([...primaryBySku.keys(), ...shadowBySku.keys()])
+    const primaryByUpc = new Map(primaryResultsRaw.map((result) => [result.upc, result]));
+    const shadowByUpc = new Map(shadowResultsRaw.map((result) => [result.upc, result]));
+    const comparisonUpcs = Array.from(
+        new Set([...primaryByUpc.keys(), ...shadowByUpc.keys()])
     ).sort();
 
-    const comparisons = comparisonSkus.map((sku) =>
+    const comparisons = comparisonUpcs.map((upc) =>
         compareConsolidationResults(
-            primaryBySku.get(sku) ?? { sku, error: 'Missing primary result' },
-            shadowBySku.get(sku) ?? { sku, error: 'Missing shadow result' }
+            primaryByUpc.get(upc) ?? { upc, error: 'Missing primary result' },
+            shadowByUpc.get(upc) ?? { upc, error: 'Missing shadow result' }
         )
     );
 

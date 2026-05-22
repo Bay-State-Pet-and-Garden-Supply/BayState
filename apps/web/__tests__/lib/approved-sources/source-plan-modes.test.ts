@@ -26,7 +26,7 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
       {
         data: [
           {
-            sku: 'SKU-1',
+            upc: 'UPC-1',
             brand_id: 'brand-1',
             input: { name: 'Test Product', price: 10 },
             enrichment_config: null,
@@ -66,7 +66,7 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
             crawl4ai_adapter_slug: 'phillips_adapter',
             requires_auth: false,
             credential_ref: null,
-            search_mode: 'sku_search',
+            search_mode: 'upc_search',
             allowed_fields: ['name', 'description', 'images'],
             priority: 1,
             enabled: true,
@@ -82,7 +82,7 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
             crawl4ai_adapter_slug: 'crawl4ai_direct',
             requires_auth: false,
             credential_ref: null,
-            search_mode: 'sku_search',
+            search_mode: 'upc_search',
             allowed_fields: ['name', 'description', 'images'],
             priority: 2,
             enabled: true,
@@ -95,9 +95,9 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
 
   it('defaults to mixed mode (includes all sources)', async () => {
     const mockDb = createMockDbForSourcePlan(standardResponses());
-    const results = await buildApprovedSourcePlans(mockDb, ['SKU-1']);
+    const results = await buildApprovedSourcePlans(mockDb, ['UPC-1']);
 
-    const result = results['SKU-1'];
+    const result = results['UPC-1'];
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('Expected ok');
     expect(result.plan.extractionMode).toBe('mixed');
@@ -108,11 +108,11 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
 
   it('distributor_only mode filters out official_brand', async () => {
     const mockDb = createMockDbForSourcePlan(standardResponses());
-    const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
+    const results = await buildApprovedSourcePlans(mockDb, ['UPC-1'], {
       extractionMode: 'distributor_only',
     });
 
-    const result = results['SKU-1'];
+    const result = results['UPC-1'];
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('Expected ok');
     expect(result.plan.extractionMode).toBe('distributor_only');
@@ -122,11 +122,11 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
 
   it('ai_only mode only includes official_brand', async () => {
     const mockDb = createMockDbForSourcePlan(standardResponses());
-    const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
+    const results = await buildApprovedSourcePlans(mockDb, ['UPC-1'], {
       extractionMode: 'ai_only',
     });
 
-    const result = results['SKU-1'];
+    const result = results['UPC-1'];
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('Expected ok');
     expect(result.plan.priority.length).toBe(1);
@@ -138,7 +138,7 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
       {
         data: [
           {
-            sku: 'SKU-1',
+            upc: 'UPC-1',
             brand_id: 'brand-1',
             input: { name: 'Test Product', price: 10 },
             enrichment_config: null,
@@ -164,11 +164,11 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
     ];
 
     const mockDb = createMockDbForSourcePlan(responses);
-    const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
+    const results = await buildApprovedSourcePlans(mockDb, ['UPC-1'], {
       extractionMode: 'ai_only',
     });
 
-    const result = results['SKU-1'];
+    const result = results['UPC-1'];
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('Expected ok');
     expect(result.plan.priority.length).toBe(1);
@@ -182,7 +182,7 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
       {
         data: [
           {
-            sku: 'SKU-1',
+            upc: 'UPC-1',
             brand_id: 'brand-1',
             input: { name: 'Test Product', price: 10 },
             enrichment_config: null,
@@ -216,7 +216,7 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
             crawl4ai_adapter_slug: 'phillips_adapter',
             requires_auth: false,
             credential_ref: null,
-            search_mode: 'sku_search',
+            search_mode: 'upc_search',
             allowed_fields: ['name', 'description', 'images'],
             priority: 1,
             enabled: true,
@@ -232,7 +232,7 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
             crawl4ai_adapter_slug: 'orgill_adapter',
             requires_auth: false,
             credential_ref: null,
-            search_mode: 'sku_search',
+            search_mode: 'upc_search',
             allowed_fields: ['name', 'description', 'images'],
             priority: 2,
             enabled: true,
@@ -243,12 +243,12 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
     ];
 
     const mockDb = createMockDbForSourcePlan(responses);
-    const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
+    const results = await buildApprovedSourcePlans(mockDb, ['UPC-1'], {
       extractionMode: 'distributor_only',
       selectedDistributorSlug: 'orgill',
     });
 
-    const result = results['SKU-1'];
+    const result = results['UPC-1'];
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('Expected ok');
     expect(result.plan.priority).toHaveLength(1);
@@ -260,7 +260,7 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
       {
         data: [
           {
-            sku: 'SKU-1',
+            upc: 'UPC-1',
             brand_id: 'brand-1',
             input: { name: 'Test Product', price: 10 },
             enrichment_config: null,
@@ -285,11 +285,11 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
     ];
 
     const mockDb = createMockDbForSourcePlan(responses);
-    const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
+    const results = await buildApprovedSourcePlans(mockDb, ['UPC-1'], {
       extractionMode: 'distributor_only',
     });
 
-    const result = results['SKU-1'];
+    const result = results['UPC-1'];
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('Expected not ok');
     expect(result.error).toContain('No approved sources configured');
@@ -300,7 +300,7 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
       {
         data: [
           {
-            sku: 'SKU-1',
+            upc: 'UPC-1',
             brand_id: 'brand-1',
             input: { name: 'Test Product', price: 10 },
             enrichment_config: null,
@@ -325,11 +325,11 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
     ];
 
     const mockDb = createMockDbForSourcePlan(responses);
-    const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
+    const results = await buildApprovedSourcePlans(mockDb, ['UPC-1'], {
       extractionMode: 'ai_only',
     });
 
-    const result = results['SKU-1'];
+    const result = results['UPC-1'];
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('Expected not ok');
     expect(result.error).toContain('AI-only extraction requires official domains to be configured');

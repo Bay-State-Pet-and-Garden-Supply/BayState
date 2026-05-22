@@ -65,7 +65,7 @@ function isStorefrontVisibleStockStatus(
 
 const PRODUCT_SELECT = `
   id,
-  sku,
+  upc,
   brand_id,
   name,
   slug,
@@ -98,7 +98,7 @@ const PRODUCT_SELECT = `
  */
 interface ProductRow {
   id: string;
-  sku?: string | null;
+  upc?: string | null;
   brand_id?: string | null;
   name: string;
   slug?: string;
@@ -175,7 +175,7 @@ function transformProductRow(row: ProductRow): Product {
   const primaryCategory = categories[0];
   const product: Product = {
     id: row.id,
-    sku: row.sku ?? null,
+    upc: row.upc ?? null,
     brand_id: row.brand_id ?? null,
     name: row.name,
     slug: row.slug ?? row.id,
@@ -344,7 +344,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
 }
 
 /**
- * Fetches a single product by SKU/ID.
+ * Fetches a single product by UPC/ID.
  * Uses products table.
  */
 async function getProductById(id: string): Promise<Product | null> {
@@ -855,7 +855,7 @@ export async function getProductGroupBySlug(
     .select(`
       *,
       product:products!inner(
-        id, sku, name, slug, description, price,
+        id, upc, name, slug, description, price,
         stock_status, images, brand_id, is_special_order, is_taxable,
         weight, search_keywords, shopsite_pages,
         published_at, gtin, availability, minimum_quantity, quantity,
@@ -895,7 +895,7 @@ export async function getProductGroupBySlug(
 
     const productData: Product = {
       id: product.id as string,
-      sku: (product.sku as string | null) ?? null,
+      upc: (product.upc as string | null) ?? null,
       brand_id: product.brand_id as string | null,
       name: product.name as string,
       slug: product.slug as string,

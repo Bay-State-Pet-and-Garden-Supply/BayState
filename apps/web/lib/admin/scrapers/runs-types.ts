@@ -12,7 +12,7 @@ type EnrichmentJobStatus = z.infer<typeof enrichmentJobStatusSchema>;
 export interface ScraperRunRecord {
   id: string;
   status: string; // From EnrichmentJobStatus
-  skus: string[];
+  upcs: string[];
   total_count: number;
   completed_count: number;
   failed_count: number;
@@ -35,7 +35,7 @@ export interface ScraperRunRecord {
   progress_message?: string | null;
   progress_phase?: string | null;
   progress_updated_at?: string | null;
-  current_sku?: string | null;
+  current_upc?: string | null;
   items_processed?: number | null;
   items_total?: number | null;
   last_event_at?: string | null;
@@ -54,7 +54,7 @@ export interface ScraperRunRecord {
 export interface ScraperRunAttempt {
   id: string;
   job_id: string;
-  sku: string;
+  upc: string;
   attempt_number: number;
   status: 'queued' | 'running' | 'completed' | 'failed';
   started_at: string | null;

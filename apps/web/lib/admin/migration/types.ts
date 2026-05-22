@@ -24,11 +24,11 @@ export type ShopSiteConfig = z.infer<typeof ShopSiteConfigSchema>;
 
 export interface ShopSiteSubproduct {
     name: string;
-    sku: string;
+    upc: string;
 }
 
 export interface ShopSiteProduct {
-    sku: string;
+    upc: string;
     name: string;
     price: number;
     saleAmount?: number;              // <SaleAmount> - sale price when on sale
@@ -62,7 +62,7 @@ export interface ShopSiteProduct {
     size?: string;                    // <ProductField27>
     color?: string;                   // <ProductField29>
     packagingType?: string;           // <ProductField30>
-    crossSellSkus?: string[];         // <ProductField32> - pipe-delimited related SKUs
+    crossSellUpcs?: string[];         // <ProductField32> - pipe-delimited related SKUs
     // Subproducts (parent-child relationship)
     subproducts?: ShopSiteSubproduct[];
     // Status fields
@@ -75,13 +75,14 @@ export interface ShopSiteProduct {
     outOfStockLimit?: number;         // <OutOfStockLimit>
     minimumQuantity?: number;         // <MinimumQuantity>
     googleProductCategory?: string;   // <GoogleProductCategory>
+    shopsitePages?: string[];         // <ProductOnPages>
     // Raw payload may still contain audit-only fields like ProductField31.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rawXml?: any;                     // To store in shopsite_data
 }
 
 export interface ShopSiteOrderItem {
-    sku: string;
+    upc: string;
     quantity: number;
     price: number;
 }

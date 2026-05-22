@@ -129,8 +129,8 @@ interface ReviewingResultsViewProps {
 }
 
 interface PersistProductsResult extends ToolSummary {
-  successfulSkus: string[];
-  failedSkus: string[];
+  successfulUpcs: string[];
+  failedUpcs: string[];
 }
 
 async function runWithConcurrency<T, R>(
@@ -200,7 +200,7 @@ export function ReviewingResultsView({
     return [...products].sort((a, b) => a.upc.localeCompare(b.upc));
   }, [products]);
 
-  const [preferredSku, setPreferredSku] = useState<string | null>(
+  const [preferredUpc, setPreferredUpc] = useState<string | null>(
     sortedProducts.length > 0 ? sortedProducts[0].upc : null,
   );
 
@@ -260,7 +260,7 @@ export function ReviewingResultsView({
     },
     [],
   );
-  const draftsBySku = draftsState;
+  const draftsByUpc = draftsState;
   const [savedDraftsState, setSavedDraftsState] = useState<
     Record<string, FinalizationDraft>
   >({});
@@ -285,7 +285,7 @@ export function ReviewingResultsView({
     },
     [],
   );
-  const savedDraftsBySku = savedDraftsState;
+  const savedDraftsByUpc = savedDraftsState;
   const [pendingCopilotReviewState, setPendingCopilotReviewState] =
     useState<PendingCopilotDraftReview | null>(null);
   const pendingCopilotReviewRef = useRef<PendingCopilotDraftReview | null>(null);
@@ -352,57 +352,57 @@ export function ReviewingResultsView({
     return brand;
   }, [setBrands]);
   const [selectedImageSourceId, setSelectedImageSourceId] = useState("");
-  const productsBySku = useMemo(
+  const productsByUpc = useMemo(
     () =>
       Object.fromEntries(sortedProducts.map((product) => [product.upc, product])),
     [sortedProducts],
   );
-  const productsBySkuRef = useRef<Record<string, PipelineProduct>>(productsBySku);
+  const productsByUpcRef = useRef<Record<string, PipelineProduct>>(productsByUpc);
 
   const selectedProduct= useMemo(
     () =>
-      sortedProducts.find((product) => product.upc === preferredSku) ??
+      sortedProducts.find((product) => product.upc === preferredUpc) ??
       sortedProducts[0] ??
       null,
-    [preferredSku, sortedProducts],
+    [preferredUpc, sortedProducts],
   );
   const selectedProductRef = useRef<PipelineProduct | null>(selectedProduct);
 
-  const selectedSku = selectedProduct?.upc ?? null;
+  const selectedUpc = selectedProduct?.upc ?? null;
 
   useEffect(() => {
     selectedProductRef.current = selectedProduct;
   }, [selectedProduct]);
 
   useEffect(() => {
-    productsBySkuRef.current = productsBySku;
-  }, [productsBySku]);
+    productsByUpcRef.current = productsByUpc;
+  }, [productsByUpc]);
 
   // Intelligent selection: When products change, if the current selection is gone,
   // select the next product that was after it.
   useEffect(() => {
     const prevProducts = prevProductsRef.current;
     if (prevProducts !== sortedProducts) {
-      const currentExists = sortedProducts.some((p) => p.upc === preferredSku);
-      if (!currentExists && preferredSku) {
-        // Current SKU was removed (for example, moved into publishing or rejected).
+      const currentExists = sortedProducts.some((p) => p.upc === preferredUpc);
+      if (!currentExists && preferredUpc) {
+        // Current UPC was removed (for example, moved into publishing or rejected).
         // Find where it was in the PREVIOUS list.
-        const prevIndex = prevProducts.findIndex((p) => p.upc === preferredSku);
+        const prevIndex = prevProducts.findIndex((p) => p.upc === preferredUpc);
         if (prevIndex !== -1) {
           // Select the product that is now at that same index (or the one before if it was last)
           const nextIndex = Math.min(prevIndex, sortedProducts.length - 1);
           if (nextIndex >= 0) {
-            setPreferredSku(sortedProducts[nextIndex].upc);
+            setPreferredUpc(sortedProducts[nextIndex].upc);
           } else {
-            setPreferredSku(null);
+            setPreferredUpc(null);
           }
         }
-      } else if (!preferredSku && sortedProducts.length > 0) {
-        setPreferredSku(sortedProducts[0].upc);
+      } else if (!preferredUpc && sortedProducts.length > 0) {
+        setPreferredUpc(sortedProducts[0].upc);
       }
       prevProductsRef.current = sortedProducts;
     }
-  }, [sortedProducts, preferredSku]);
+  }, [sortedProducts, preferredUpc]);
 
   // Fetch brands and categories
   useEffect(() => {
@@ -458,17 +458,17 @@ export function ReviewingResultsView({
 
   useEffect(() => {
     setSelectedImageSourceId("");
-  }, [selectedSku]);
+  }, [selectedUpc]);
 
-  const formData = selectedSku
-    ? draftsBySku[selectedSku] ?? EMPTY_FINALIZATION_DRAFT
+  const formData = selectedUpc
+    ? draftsByUpc[selectedUpc] ?? EMPTY_FINALIZATION_DRAFT
     : EMPTY_FINALIZATION_DRAFT;
-  const dirtySkus = useMemo(
+  const dirtyUpcs = useMemo(
     () =>
       sortedProducts
         .filter((product) => {
-          const draft = draftsBySku[product.upc];
-          const saved = savedDraftsBySku[product.upc];
+          const draft = draftsByUpc[product.upc];
+          const saved = savedDraftsByUpc[product.upc];
 
           return (
             !!draft
@@ -477,11 +477,11 @@ export function ReviewingResultsView({
           );
         })
         .map((product) => product.upc),
-    [draftsBySku, savedDraftsBySku, sortedProducts],
+    [draftsByUpc, savedDraftsByUpc, sortedProducts],
   );
-  const isDirty = selectedSku ? dirtySkus.includes(selectedSku) : false;
+  const isDirty = selectedUpc ? dirtyUpcs.includes(selectedUpc) : false;
 
-  const updateDraftForSku = useCallback(
+  const updateDraftForUpc = useCallback(
     (upc: string, value: SetStateAction<FinalizationDraft>) => {
       setDrafts((prev) => {
         const current = prev[upc] ?? EMPTY_FINALIZATION_DRAFT;
@@ -516,7 +516,7 @@ export function ReviewingResultsView({
     (upcs: string[], summary: string): ToolSummary => {
       const nextPendingReview = stagePendingCopilotDraftReview({
         pendingReview: pendingCopilotReviewRef.current,
-        draftsBySku: draftsRef.current,
+        draftsByUpc: draftsRef.current,
         targetUpcs: upcs,
         summary,
       });
@@ -553,7 +553,7 @@ export function ReviewingResultsView({
       field: K,
       value: FinalizationDraft[K],
     ) => {
-      if (!selectedSku) {
+      if (!selectedUpc) {
         return;
       }
       if (pendingCopilotReviewRef.current) {
@@ -561,27 +561,27 @@ export function ReviewingResultsView({
         return;
       }
 
-      updateDraftForSku(selectedSku, (prev) => ({ ...prev, [field]: value }));
+      updateDraftForUpc(selectedUpc, (prev) => ({ ...prev, [field]: value }));
     },
-    [notifyPendingCopilotReview, selectedSku, updateDraftForSku],
+    [notifyPendingCopilotReview, selectedUpc, updateDraftForUpc],
   );
 
   const handleBrandChange = useCallback(
     (brandId: string, brandName: string) => {
-      if (!selectedSku) {
+      if (!selectedUpc) {
         return;
       }
       if (pendingCopilotReviewRef.current) {
         notifyPendingCopilotReview("editing the draft manually");
         return;
       }
-      updateDraftForSku(selectedSku, (prev) => ({
+      updateDraftForUpc(selectedUpc, (prev) => ({
         ...prev,
         brandId,
         brandName,
       }));
     },
-    [notifyPendingCopilotReview, selectedSku, updateDraftForSku],
+    [notifyPendingCopilotReview, selectedUpc, updateDraftForUpc],
   );
 
   const handleCreateBrand = async () => {
@@ -609,7 +609,7 @@ export function ReviewingResultsView({
   };
 
   const handleNameChange = (newName: string) => {
-    if (!selectedSku) {
+    if (!selectedUpc) {
       return;
     }
     if (pendingCopilotReviewRef.current) {
@@ -617,11 +617,11 @@ export function ReviewingResultsView({
       return;
     }
 
-    updateDraftForSku(selectedSku, (prev) => ({ ...prev, name: newName }));
+    updateDraftForUpc(selectedUpc, (prev) => ({ ...prev, name: newName }));
   };
 
   const toggleImage = (url: string) => {
-    if (!selectedSku) {
+    if (!selectedUpc) {
       return;
     }
     if (pendingCopilotReviewRef.current) {
@@ -629,7 +629,7 @@ export function ReviewingResultsView({
       return;
     }
 
-    updateDraftForSku(selectedSku, (prev) => {
+    updateDraftForUpc(selectedUpc, (prev) => {
       const isSelected = prev.selectedImages.includes(url);
       if (isSelected) {
         return {
@@ -643,7 +643,7 @@ export function ReviewingResultsView({
   };
 
   const addCustomImage = () => {
-    if (!selectedSku) return;
+    if (!selectedUpc) return;
     if (!formData.customImageUrl.trim()) return;
     if (pendingCopilotReviewRef.current) {
       notifyPendingCopilotReview("editing the draft manually");
@@ -657,13 +657,13 @@ export function ReviewingResultsView({
     }
 
     if (!formData.selectedImages.includes(url)) {
-      updateDraftForSku(selectedSku, (prev) => ({
+      updateDraftForUpc(selectedUpc, (prev) => ({
         ...prev,
         selectedImages: [...prev.selectedImages, url],
         customImageUrl: "",
       }));
     } else {
-      updateDraftForSku(selectedSku, (prev) => ({
+      updateDraftForUpc(selectedUpc, (prev) => ({
         ...prev,
         customImageUrl: "",
       }));
@@ -671,7 +671,7 @@ export function ReviewingResultsView({
   };
 
   const addCustomSource = () => {
-    if (!selectedSku) return;
+    if (!selectedUpc) return;
     const url = formData.customSourceUrl.trim();
     if (!url) return;
     if (pendingCopilotReviewRef.current) {
@@ -689,7 +689,7 @@ export function ReviewingResultsView({
     const hostname = new URL(url).hostname.replace("www.", "");
     const sourceKey = `custom:${hostname}`;
 
-    updateDraftForSku(selectedSku, (prev) => ({
+    updateDraftForUpc(selectedUpc, (prev) => ({
       ...prev,
       sources: {
         ...prev.sources,
@@ -705,13 +705,13 @@ export function ReviewingResultsView({
   };
 
   const removeSource = (sourceKey: string) => {
-    if (!selectedSku) return;
+    if (!selectedUpc) return;
     if (pendingCopilotReviewRef.current) {
       notifyPendingCopilotReview("editing the draft manually");
       return;
     }
 
-    updateDraftForSku(selectedSku, (prev) => {
+    updateDraftForUpc(selectedUpc, (prev) => {
       const nextSources = { ...prev.sources };
       delete nextSources[sourceKey];
       return {
@@ -739,11 +739,11 @@ export function ReviewingResultsView({
       andPublish?: boolean;
       silent?: boolean;
     }): Promise<PersistProductsResult> => {
-      const targetSkus = Array.from(
+      const targetUpcs = Array.from(
         new Set(upcs.filter((upc) => upc.trim().length > 0)),
       );
 
-      if (targetSkus.length === 0) {
+      if (targetUpcs.length === 0) {
         throw new Error("No products matched the requested scope.");
       }
 
@@ -754,8 +754,8 @@ export function ReviewingResultsView({
       }
 
       try {
-        const results = await runWithConcurrency(targetSkus, 4, async (upc) => {
-          const currentProduct = productsBySkuRef.current[upc];
+        const results = await runWithConcurrency(targetUpcs, 4, async (upc) => {
+          const currentProduct = productsByUpcRef.current[upc];
           const currentDraft = draftsRef.current[upc];
           const currentSavedDraft = savedDraftsRef.current[upc];
 
@@ -820,13 +820,13 @@ export function ReviewingResultsView({
             }> => result.status === "fulfilled",
           )
           .map((result) => result.value);
-        const failedSkus = results
+        const failedUpcs = results
           .map((result, index) =>
-            result.status === "rejected" ? targetSkus[index] : null,
+            result.status === "rejected" ? targetUpcs[index] : null,
           )
           .filter((upc): upc is string => upc !== null);
 
-        if (successful.length === 0 && failedSkus.length > 0) {
+        if (successful.length === 0 && failedUpcs.length > 0) {
           const firstFailure = results.find(
             (result): result is PromiseRejectedResult =>
               result.status === "rejected",
@@ -834,7 +834,7 @@ export function ReviewingResultsView({
 
           throw (
             firstFailure?.reason
-            ?? new Error(`Failed to update ${failedSkus.join(", ")}.`)
+            ?? new Error(`Failed to update ${failedUpcs.join(", ")}.`)
           );
         }
 
@@ -866,12 +866,12 @@ export function ReviewingResultsView({
           } already up to date.`;
         }
 
-        if (failedSkus.length > 0) {
-          summary += ` ${failedSkus.length} failed: ${failedSkus.join(", ")}.`;
+        if (failedUpcs.length > 0) {
+          summary += ` ${failedUpcs.length} failed: ${failedUpcs.join(", ")}.`;
         }
 
         if (!silent) {
-          if (failedSkus.length > 0) {
+          if (failedUpcs.length > 0) {
             toast.error(summary);
           } else {
             toast.success(summary);
@@ -880,8 +880,8 @@ export function ReviewingResultsView({
 
         return {
           summary,
-          successfulSkus: successful.map((result) => result.upc),
-          failedSkus,
+          successfulUpcs: successful.map((result) => result.upc),
+          failedUpcs,
         };
       } catch (error) {
         if (!silent) {
@@ -907,13 +907,13 @@ export function ReviewingResultsView({
       andPublish?: boolean;
       silent?: boolean;
     } = {}): Promise<ToolSummary> => {
-      const currentSku = selectedProductRef.current?.upc;
-      if (!currentSku) {
+      const currentUpc = selectedProductRef.current?.upc;
+      if (!currentUpc) {
         throw new Error("Select a product before saving.");
       }
 
       return persistProducts({
-        upcs: [currentSku],
+        upcs: [currentUpc],
         andPublish,
         silent,
       });
@@ -934,16 +934,16 @@ export function ReviewingResultsView({
       });
 
       setPendingCopilotReview(
-        filterPendingCopilotDraftReview(currentPendingReview, result.failedSkus),
+        filterPendingCopilotDraftReview(currentPendingReview, result.failedUpcs),
       );
 
-      if (result.failedSkus.length > 0) {
+      if (result.failedUpcs.length > 0) {
         toast.error(
-          `Accepted ${result.successfulSkus.length} copilot ${
-            result.successfulSkus.length === 1 ? "change" : "changes"
-          }, but ${result.failedSkus.length} product${
-            result.failedSkus.length === 1 ? "" : "s"
-          } still need review: ${result.failedSkus.join(", ")}.`,
+          `Accepted ${result.successfulUpcs.length} copilot ${
+            result.successfulUpcs.length === 1 ? "change" : "changes"
+          }, but ${result.failedUpcs.length} product${
+            result.failedUpcs.length === 1 ? "" : "s"
+          } still need review: ${result.failedUpcs.join(", ")}.`,
         );
         return;
       }
@@ -976,8 +976,8 @@ export function ReviewingResultsView({
   }, [setDrafts, setPendingCopilotReview]);
 
   const handleSelectProduct = useCallback(
-    async (newSku: string | null) => {
-      if (newSku === preferredSku) return;
+    async (newUpc: string | null) => {
+      if (newUpc === preferredUpc) return;
 
       if (pendingCopilotReviewRef.current) {
         toast.error(
@@ -986,7 +986,7 @@ export function ReviewingResultsView({
         return;
       }
 
-      if (isDirty && selectedSku && !saving && !publishing) {
+      if (isDirty && selectedUpc && !saving && !publishing) {
         try {
           await persistCurrentDraft({ silent: true });
         } catch (error) {
@@ -998,9 +998,9 @@ export function ReviewingResultsView({
           return;
         }
       }
-      setPreferredSku(newSku);
+      setPreferredUpc(newUpc);
     },
-    [isDirty, selectedSku, preferredSku, persistCurrentDraft, saving, publishing],
+    [isDirty, selectedUpc, preferredUpc, persistCurrentDraft, saving, publishing],
   );
 
   // Keyboard navigation and shortcuts
@@ -1046,7 +1046,7 @@ export function ReviewingResultsView({
   ]);
 
   const handleReject = async () => {
-    if (!selectedSku) return;
+    if (!selectedUpc) return;
     if (pendingCopilotReviewRef.current) {
       notifyPendingCopilotReview("rejecting the product");
       return;
@@ -1062,11 +1062,11 @@ export function ReviewingResultsView({
       upcs: string[];
       silent?: boolean;
     }): Promise<ToolSummary> => {
-      const targetSkus = Array.from(
+      const targetUpcs = Array.from(
         new Set(upcs.filter((upc) => upc.trim().length > 0)),
       );
 
-      if (targetSkus.length === 0) {
+      if (targetUpcs.length === 0) {
         throw new Error("No products matched the requested rejection scope.");
       }
 
@@ -1074,8 +1074,8 @@ export function ReviewingResultsView({
 
       try {
         const res =
-          targetSkus.length === 1
-            ? await adminFetch(`/api/admin/pipeline/${encodeURIComponent(targetSkus[0])}`,
+          targetUpcs.length === 1
+            ? await adminFetch(`/api/admin/pipeline/${encodeURIComponent(targetUpcs[0])}`,
                 {
                   method: "PATCH",
                   headers: { "Content-Type": "application/json" },
@@ -1086,7 +1086,7 @@ export function ReviewingResultsView({
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  upcs: targetSkus,
+                  upcs: targetUpcs,
                   toStatus: "processed",
                 }),
               });
@@ -1097,9 +1097,9 @@ export function ReviewingResultsView({
         }
 
         const summary =
-          targetSkus.length === 1
+          targetUpcs.length === 1
             ? "Moved the product back to the processed stage for additional review."
-            : `Moved ${targetSkus.length} products back to the processed stage for additional review.`;
+            : `Moved ${targetUpcs.length} products back to the processed stage for additional review.`;
 
         if (!silent) {
           toast.success(summary);
@@ -1125,13 +1125,13 @@ export function ReviewingResultsView({
 
   const rejectCurrentProduct = useCallback(
     async ({ silent = false }: { silent?: boolean } = {}): Promise<ToolSummary> => {
-      const currentSku = selectedProductRef.current?.upc;
-      if (!currentSku) {
+      const currentUpc = selectedProductRef.current?.upc;
+      if (!currentUpc) {
         throw new Error("Select a product before rejecting it.");
       }
 
       return rejectProducts({
-        upcs: [currentSku],
+        upcs: [currentUpc],
         silent,
       });
     },
@@ -1139,7 +1139,7 @@ export function ReviewingResultsView({
   );
 
   const handleConfirmReject = async () => {
-    if (!selectedSku) return;
+    if (!selectedUpc) return;
     setConfirmRejectOpen(false);
     try {
       await rejectCurrentProduct();
@@ -1149,30 +1149,30 @@ export function ReviewingResultsView({
   };
 
   const resolveProductWorkspaceState = useCallback((upc?: string) => {
-    const resolvedSku = upc ?? selectedProductRef.current?.upc;
-    if (!resolvedSku) {
-      throw new Error("Select a product or provide a SKU first.");
+    const resolvedUpc = upc ?? selectedProductRef.current?.upc;
+    if (!resolvedUpc) {
+      throw new Error("Select a product or provide a UPC first.");
     }
 
-    const product = productsBySkuRef.current[resolvedSku];
-    const draft = draftsRef.current[resolvedSku];
-    const savedDraft = savedDraftsRef.current[resolvedSku];
+    const product = productsByUpcRef.current[resolvedUpc];
+    const draft = draftsRef.current[resolvedUpc];
+    const savedDraft = savedDraftsRef.current[resolvedUpc];
 
     if (!product || !draft || !savedDraft) {
-      throw new Error(`Product ${resolvedSku} is not available in reviewing.`);
+      throw new Error(`Product ${resolvedUpc} is not available in reviewing.`);
     }
 
     return {
-      upc: resolvedSku,
+      upc: resolvedUpc,
       product,
       draft,
       savedDraft,
     };
   }, []);
 
-  const resolveScopeSkus = useCallback(
+  const resolveScopeUpcs = useCallback(
     (scope: PreviewProductScopeInput["scope"]) => {
-      const matchedSkus = resolveFinalizationProductScope(
+      const matchedUpcs = resolveFinalizationProductScope(
         sortedProducts,
         draftsRef.current,
         savedDraftsRef.current,
@@ -1180,11 +1180,11 @@ export function ReviewingResultsView({
         scope,
       );
 
-      if (matchedSkus.length === 0) {
+      if (matchedUpcs.length === 0) {
         throw new Error("No products matched the requested scope.");
       }
 
-      return matchedSkus;
+      return matchedUpcs;
     },
     [sortedProducts],
   );
@@ -1192,7 +1192,7 @@ export function ReviewingResultsView({
   const buildScopeSummaries = useCallback((upcs: string[]) => {
     return upcs
       .map((upc) => {
-        const product = productsBySkuRef.current[upc];
+        const product = productsByUpcRef.current[upc];
         const draft = draftsRef.current[upc];
         const savedDraft = savedDraftsRef.current[upc];
 
@@ -1235,8 +1235,8 @@ export function ReviewingResultsView({
     return {
       workspace: {
         totalProducts: sortedProducts.length,
-        selectedSku,
-        dirtySkus,
+        selectedUpc,
+        dirtyUpcs,
       },
       selectedProduct: currentProduct
         ? {
@@ -1248,12 +1248,12 @@ export function ReviewingResultsView({
             confidence_score: currentProduct.confidence_score ?? null,
           }
         : null,
-      selectedDraft: selectedSku ? draftsRef.current[selectedSku] ?? null : null,
-      selectedSavedDraft: selectedSku
-        ? savedDraftsRef.current[selectedSku] ?? null
+      selectedDraft: selectedUpc ? draftsRef.current[selectedUpc] ?? null : null,
+      selectedSavedDraft: selectedUpc
+        ? savedDraftsRef.current[selectedUpc] ?? null
         : null,
     };
-  }, [dirtySkus, selectedSku, sortedProducts.length]);
+  }, [dirtyUpcs, selectedUpc, sortedProducts.length]);
 
   const handleCopilotListWorkspaceProducts = useCallback(
     async (input: ListWorkspaceProductsInput) => {
@@ -1277,8 +1277,8 @@ export function ReviewingResultsView({
 
   const handleCopilotPreviewProductScope = useCallback(
     async ({ scope }: PreviewProductScopeInput) => {
-      const matchedSkus = resolveScopeSkus(scope);
-      const products = buildScopeSummaries(matchedSkus);
+      const matchedUpcs = resolveScopeUpcs(scope);
+      const products = buildScopeSummaries(matchedUpcs);
 
       return {
         summary: `Scope matches ${products.length} product${products.length === 1 ? "" : "s"}.`,
@@ -1286,7 +1286,7 @@ export function ReviewingResultsView({
         products,
       };
     },
-    [buildScopeSummaries, resolveScopeSkus],
+    [buildScopeSummaries, resolveScopeUpcs],
   );
 
   const handleCopilotGetProductSnapshot = useCallback(
@@ -1315,25 +1315,25 @@ export function ReviewingResultsView({
 
   const handleCopilotSetProductFields = useCallback(
     async (input: SetProductFieldsInput): Promise<ToolSummary> => {
-      const currentSku = selectedProductRef.current?.upc;
-      if (!currentSku) {
+      const currentUpc = selectedProductRef.current?.upc;
+      if (!currentUpc) {
         throw new Error("Select a product before updating fields.");
       }
 
       const result = applySetProductFieldsToDraft(
-        draftsRef.current[currentSku] ?? EMPTY_FINALIZATION_DRAFT,
+        draftsRef.current[currentUpc] ?? EMPTY_FINALIZATION_DRAFT,
         input,
       );
 
       const review = stageCopilotDraftReview(
-        [currentSku],
-        `Prepared updates for ${result.updatedFields.join(", ")} on ${currentSku}.`,
+        [currentUpc],
+        `Prepared updates for ${result.updatedFields.join(", ")} on ${currentUpc}.`,
       );
-      updateDraftForSku(currentSku, result.draft);
+      updateDraftForUpc(currentUpc, result.draft);
 
       return review;
     },
-    [stageCopilotDraftReview, updateDraftForSku],
+    [stageCopilotDraftReview, updateDraftForUpc],
   );
 
   const handleCopilotBulkSetProductFields = useCallback(
@@ -1341,8 +1341,8 @@ export function ReviewingResultsView({
       scope,
       changes,
     }: BulkSetProductFieldsInput): Promise<ToolSummary> => {
-      const matchedSkus = resolveScopeSkus(scope);
-      if (matchedSkus.length > 1 && changes.name !== undefined) {
+      const matchedUpcs = resolveScopeUpcs(scope);
+      if (matchedUpcs.length > 1 && changes.name !== undefined) {
         throw new Error(
           "Bulk exact name replacement is blocked. Use the name-transform tool for prefix, suffix, or replace operations so existing names are preserved.",
         );
@@ -1350,7 +1350,7 @@ export function ReviewingResultsView({
       const updatedFields = new Set<string>();
       const nextDrafts = { ...draftsRef.current };
 
-      matchedSkus.forEach((upc) => {
+      matchedUpcs.forEach((upc) => {
         const result = applySetProductFieldsToDraft(
           nextDrafts[upc] ?? EMPTY_FINALIZATION_DRAFT,
           changes,
@@ -1362,13 +1362,13 @@ export function ReviewingResultsView({
       setDrafts(nextDrafts);
 
       return stageCopilotDraftReview(
-        matchedSkus,
-        `Prepared updates for ${matchedSkus.length} product${
-          matchedSkus.length === 1 ? "" : "s"
+        matchedUpcs,
+        `Prepared updates for ${matchedUpcs.length} product${
+          matchedUpcs.length === 1 ? "" : "s"
         }: ${Array.from(updatedFields).join(", ")}.`,
       );
     },
-    [resolveScopeSkus, setDrafts, stageCopilotDraftReview],
+    [resolveScopeUpcs, setDrafts, stageCopilotDraftReview],
   );
 
   const handleCopilotBulkTransformProductNames = useCallback(
@@ -1379,12 +1379,12 @@ export function ReviewingResultsView({
       find,
       skipIfContains,
     }: BulkTransformProductNamesInput): Promise<ToolSummary> => {
-      const matchedSkus = resolveScopeSkus(scope);
+      const matchedUpcs = resolveScopeUpcs(scope);
       let changedCount = 0;
-      const changedSkus: string[] = [];
+      const changedUpcs: string[] = [];
       const nextDrafts = { ...draftsRef.current };
 
-      matchedSkus.forEach((upc) => {
+      matchedUpcs.forEach((upc) => {
         const result = applyProductNameTransform(
           nextDrafts[upc] ?? EMPTY_FINALIZATION_DRAFT,
           {
@@ -1396,7 +1396,7 @@ export function ReviewingResultsView({
         );
         if (result.changed) {
           changedCount += 1;
-          changedSkus.push(upc);
+          changedUpcs.push(upc);
           nextDrafts[upc] = result.draft;
         }
       });
@@ -1411,19 +1411,19 @@ export function ReviewingResultsView({
       setDrafts(nextDrafts);
 
       return stageCopilotDraftReview(
-        changedSkus,
+        changedUpcs,
         `Prepared ${mode} name updates for ${changedCount} product${
           changedCount === 1 ? "" : "s"
         }.`,
       );
     },
-    [resolveScopeSkus, setDrafts, stageCopilotDraftReview],
+    [resolveScopeUpcs, setDrafts, stageCopilotDraftReview],
   );
 
   const handleCopilotAssignBrand = useCallback(
     async ({ brandId, brandName }: AssignBrandInput): Promise<ToolSummary> => {
-      const currentSku = selectedProductRef.current?.upc;
-      if (!currentSku) {
+      const currentUpc = selectedProductRef.current?.upc;
+      if (!currentUpc) {
         throw new Error("Select a product before assigning a brand.");
       }
       if (
@@ -1436,10 +1436,10 @@ export function ReviewingResultsView({
       }
 
       const review = stageCopilotDraftReview(
-        [currentSku],
+        [currentUpc],
         brandId === "none"
-          ? `Prepared a cleared brand assignment for ${currentSku}.`
-          : `Prepared a brand assignment to ${brandName} for ${currentSku}.`,
+          ? `Prepared a cleared brand assignment for ${currentUpc}.`
+          : `Prepared a brand assignment to ${brandName} for ${currentUpc}.`,
       );
       handleInputChange("brandId", brandId);
 
@@ -1451,13 +1451,13 @@ export function ReviewingResultsView({
   const handleCopilotCreateBrand = useCallback(
     async ({ name }: CreateBrandInput): Promise<ToolSummary> => {
       const brand = await createBrandRecord(name);
-      const currentSku = selectedProductRef.current?.upc;
-      if (!currentSku) {
+      const currentUpc = selectedProductRef.current?.upc;
+      if (!currentUpc) {
         throw new Error("Select a product before assigning a brand.");
       }
       const review = stageCopilotDraftReview(
-        [currentSku],
-        `Prepared a new brand assignment to ${brand.name} for ${currentSku}.`,
+        [currentUpc],
+        `Prepared a new brand assignment to ${brand.name} for ${currentUpc}.`,
       );
       handleInputChange("brandId", brand.id);
 
@@ -1481,9 +1481,9 @@ export function ReviewingResultsView({
         );
       }
 
-      const matchedSkus = resolveScopeSkus(scope);
+      const matchedUpcs = resolveScopeUpcs(scope);
       const nextDrafts = { ...draftsRef.current };
-      matchedSkus.forEach((upc) => {
+      matchedUpcs.forEach((upc) => {
         nextDrafts[upc] = {
           ...(nextDrafts[upc] ?? EMPTY_FINALIZATION_DRAFT),
           brandId,
@@ -1492,24 +1492,24 @@ export function ReviewingResultsView({
       setDrafts(nextDrafts);
 
       return stageCopilotDraftReview(
-        matchedSkus,
+        matchedUpcs,
         brandId === "none"
-          ? `Prepared cleared brand assignments for ${matchedSkus.length} product${
-              matchedSkus.length === 1 ? "" : "s"
+          ? `Prepared cleared brand assignments for ${matchedUpcs.length} product${
+              matchedUpcs.length === 1 ? "" : "s"
             }.`
-          : `Prepared ${brandName} brand assignments for ${matchedSkus.length} product${
-              matchedSkus.length === 1 ? "" : "s"
+          : `Prepared ${brandName} brand assignments for ${matchedUpcs.length} product${
+              matchedUpcs.length === 1 ? "" : "s"
             }.`,
       );
     },
-    [resolveScopeSkus, setDrafts, stageCopilotDraftReview],
+    [resolveScopeUpcs, setDrafts, stageCopilotDraftReview],
   );
 
 
   const handleCopilotReplaceSelectedImages = useCallback(
     async ({ images }: ReplaceSelectedImagesInput): Promise<ToolSummary> => {
-      const currentSku = selectedProductRef.current?.upc;
-      if (!currentSku) {
+      const currentUpc = selectedProductRef.current?.upc;
+      if (!currentUpc) {
         throw new Error("Select a product before updating images.");
       }
       const nextImages = normalizeSelectedImages(images);
@@ -1518,8 +1518,8 @@ export function ReviewingResultsView({
       }
 
       const review = stageCopilotDraftReview(
-        [currentSku],
-        `Prepared a replacement image set with ${nextImages.length} images for ${currentSku}.`,
+        [currentUpc],
+        `Prepared a replacement image set with ${nextImages.length} images for ${currentUpc}.`,
       );
       handleInputChange("selectedImages", nextImages);
       return review;
@@ -1529,54 +1529,54 @@ export function ReviewingResultsView({
 
   const handleCopilotAddSelectedImages = useCallback(
     async ({ images }: AddSelectedImagesInput): Promise<ToolSummary> => {
-      if (!selectedSku) {
+      if (!selectedUpc) {
         throw new Error("Select a product before updating images.");
       }
       const nextImages = normalizeSelectedImages([
-        ...(selectedSku ? draftsRef.current[selectedSku]?.selectedImages ?? [] : []),
+        ...(selectedUpc ? draftsRef.current[selectedUpc]?.selectedImages ?? [] : []),
         ...images,
       ]);
       const review = stageCopilotDraftReview(
-        [selectedSku],
+        [selectedUpc],
         `Prepared ${normalizeSelectedImages(images).length} added image${
           normalizeSelectedImages(images).length === 1 ? "" : "s"
-        } for ${selectedSku}.`,
+        } for ${selectedUpc}.`,
       );
       handleInputChange("selectedImages", nextImages);
 
       return review;
     },
-    [normalizeSelectedImages, handleInputChange, selectedSku, stageCopilotDraftReview],
+    [normalizeSelectedImages, handleInputChange, selectedUpc, stageCopilotDraftReview],
   );
 
   const handleCopilotRemoveSelectedImages = useCallback(
     async ({ images }: RemoveSelectedImagesInput): Promise<ToolSummary> => {
-      if (!selectedSku) {
+      if (!selectedUpc) {
         throw new Error("Select a product before updating images.");
       }
       const toRemove = new Set(normalizeSelectedImages(images));
       const nextImages = (
-        selectedSku ? draftsRef.current[selectedSku]?.selectedImages ?? [] : []
+        selectedUpc ? draftsRef.current[selectedUpc]?.selectedImages ?? [] : []
       ).filter(
         (image) => !toRemove.has(image),
       );
       const review = stageCopilotDraftReview(
-        [selectedSku],
+        [selectedUpc],
         `Prepared removal of ${toRemove.size} image${
           toRemove.size === 1 ? "" : "s"
-        } for ${selectedSku}.`,
+        } for ${selectedUpc}.`,
       );
       handleInputChange("selectedImages", nextImages);
 
       return review;
     },
-    [normalizeSelectedImages, handleInputChange, selectedSku, stageCopilotDraftReview],
+    [normalizeSelectedImages, handleInputChange, selectedUpc, stageCopilotDraftReview],
   );
 
   const handleCopilotAddSourceUrl = useCallback(
     async ({ url }: AddSourceUrlInput): Promise<ToolSummary> => {
-      const currentSku = selectedProductRef.current?.upc;
-      if (!currentSku) {
+      const currentUpc = selectedProductRef.current?.upc;
+      if (!currentUpc) {
         throw new Error("Select a product before updating sources.");
       }
 
@@ -1587,7 +1587,7 @@ export function ReviewingResultsView({
         throw new Error("Provide a valid source URL.");
       }
 
-      const currentSources = draftsRef.current[currentSku]?.sources ?? {};
+      const currentSources = draftsRef.current[currentUpc]?.sources ?? {};
       const existingSourceKey = Object.entries(currentSources).find(([, sourceData]) => {
         if (!sourceData || typeof sourceData !== "object" || Array.isArray(sourceData)) {
           return false;
@@ -1598,7 +1598,7 @@ export function ReviewingResultsView({
 
       if (existingSourceKey) {
         return {
-          summary: `Source ${existingSourceKey} is already attached to ${currentSku}.`,
+          summary: `Source ${existingSourceKey} is already attached to ${currentUpc}.`,
         };
       }
 
@@ -1612,11 +1612,11 @@ export function ReviewingResultsView({
       }
 
       const review = stageCopilotDraftReview(
-        [currentSku],
-        `Prepared a custom source URL for ${currentSku}: ${normalizedUrl}.`,
+        [currentUpc],
+        `Prepared a custom source URL for ${currentUpc}: ${normalizedUrl}.`,
       );
 
-      updateDraftForSku(currentSku, (prev) => ({
+      updateDraftForUpc(currentUpc, (prev) => ({
         ...prev,
         sources: {
           ...prev.sources,
@@ -1631,27 +1631,27 @@ export function ReviewingResultsView({
 
       return review;
     },
-    [stageCopilotDraftReview, updateDraftForSku],
+    [stageCopilotDraftReview, updateDraftForUpc],
   );
 
   const handleCopilotRemoveSource = useCallback(
     async ({ sourceKey }: RemoveSourceInput): Promise<ToolSummary> => {
-      const currentSku = selectedProductRef.current?.upc;
-      if (!currentSku) {
+      const currentUpc = selectedProductRef.current?.upc;
+      if (!currentUpc) {
         throw new Error("Select a product before updating sources.");
       }
 
-      const currentSources = draftsRef.current[currentSku]?.sources ?? {};
+      const currentSources = draftsRef.current[currentUpc]?.sources ?? {};
       if (!(sourceKey in currentSources)) {
         throw new Error(`Unknown source key: ${sourceKey}`);
       }
 
       const review = stageCopilotDraftReview(
-        [currentSku],
-        `Prepared removal of source ${sourceKey} for ${currentSku}.`,
+        [currentUpc],
+        `Prepared removal of source ${sourceKey} for ${currentUpc}.`,
       );
 
-      updateDraftForSku(currentSku, (prev) => {
+      updateDraftForUpc(currentUpc, (prev) => {
         const nextSources = { ...prev.sources };
         delete nextSources[sourceKey];
         return {
@@ -1662,27 +1662,27 @@ export function ReviewingResultsView({
 
       return review;
     },
-    [stageCopilotDraftReview, updateDraftForSku],
+    [stageCopilotDraftReview, updateDraftForUpc],
   );
 
   const handleCopilotRestoreSavedDraft = useCallback(
     async (): Promise<ToolSummary> => {
-      const currentSku = selectedProductRef.current?.upc;
-      if (!currentSku) {
+      const currentUpc = selectedProductRef.current?.upc;
+      if (!currentUpc) {
         throw new Error("Select a product before restoring its draft.");
       }
 
       const review = stageCopilotDraftReview(
-        [currentSku],
-        `Prepared a restore to the last saved draft for ${currentSku}.`,
+        [currentUpc],
+        `Prepared a restore to the last saved draft for ${currentUpc}.`,
       );
-      updateDraftForSku(
-        currentSku,
-        savedDraftsRef.current[currentSku] ?? EMPTY_FINALIZATION_DRAFT,
+      updateDraftForUpc(
+        currentUpc,
+        savedDraftsRef.current[currentUpc] ?? EMPTY_FINALIZATION_DRAFT,
       );
       return review;
     },
-    [stageCopilotDraftReview, updateDraftForSku],
+    [stageCopilotDraftReview, updateDraftForUpc],
   );
 
   const handleCopilotSaveDraft = useCallback(
@@ -1713,41 +1713,41 @@ export function ReviewingResultsView({
     async ({ scope }: ScopedProductActionInput): Promise<ToolSummary> => {
       ensureNoPendingCopilotReview("saving");
       return persistProducts({
-        upcs: resolveScopeSkus(scope),
+        upcs: resolveScopeUpcs(scope),
         silent: true,
       });
     },
-    [ensureNoPendingCopilotReview, persistProducts, resolveScopeSkus],
+    [ensureNoPendingCopilotReview, persistProducts, resolveScopeUpcs],
   );
 
   const handleCopilotApproveProducts = useCallback(
     async ({ scope }: ScopedProductActionInput): Promise<ToolSummary> => {
       ensureNoPendingCopilotReview("approving");
       return persistProducts({
-        upcs: resolveScopeSkus(scope),
+        upcs: resolveScopeUpcs(scope),
         andPublish: true,
         silent: true,
       });
     },
-    [ensureNoPendingCopilotReview, persistProducts, resolveScopeSkus],
+    [ensureNoPendingCopilotReview, persistProducts, resolveScopeUpcs],
   );
 
   const handleCopilotRejectProducts = useCallback(
     async ({ scope }: ScopedRejectProductInput): Promise<ToolSummary> => {
       ensureNoPendingCopilotReview("rejecting");
       return rejectProducts({
-        upcs: resolveScopeSkus(scope),
+        upcs: resolveScopeUpcs(scope),
         silent: true,
       });
     },
-    [ensureNoPendingCopilotReview, rejectProducts, resolveScopeSkus],
+    [ensureNoPendingCopilotReview, rejectProducts, resolveScopeUpcs],
   );
 
   const renderCopilotPanel = () => (
     <ReviewingCopilotPanel
-      selectedSku={selectedSku}
+      selectedUpc={selectedUpc}
       workspaceProductCount={sortedProducts.length}
-      dirtyProductCount={dirtySkus.length}
+      dirtyProductCount={dirtyUpcs.length}
       hasPendingCopilotReview={hasPendingCopilotReview}
       pendingCopilotReviewCount={pendingCopilotReview?.upcs.length ?? 0}
       pendingCopilotSummaries={pendingCopilotReview?.summaries ?? []}
@@ -1787,7 +1787,7 @@ export function ReviewingResultsView({
         {/* Left Column: Product List */}
         <ProductListSidebar
           products={sortedProducts}
-          selectedUpc={selectedSku}
+          selectedUpc={selectedUpc}
           onSelectProduct={handleSelectProduct}
           scrollContainerRef={scrollContainerRef}
           search={search}
@@ -1816,7 +1816,7 @@ export function ReviewingResultsView({
                   productName={formData.name}
                   originalName={selectedProduct.input?.name || ""}
                   productPrice={formData.price}
-                  selectedUpc={selectedSku}
+                  selectedUpc={selectedUpc}
                   isDirty={isDirty}
                   hasPendingCopilotReview={hasPendingCopilotReview}
                   saving={saving}

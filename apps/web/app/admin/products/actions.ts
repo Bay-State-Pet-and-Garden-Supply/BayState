@@ -9,7 +9,7 @@ import { ActionState } from '@/lib/types';
 const productSchema = z.object({
     name: z.string().min(1),
     slug: z.string().min(1),
-    sku: z.string().optional().nullable(),
+    upc: z.string().optional().nullable(),
     price: z.coerce.number().min(0),
     stock_status: z.string().optional(),
     quantity: z.coerce.number().int().min(0).optional().nullable(),
@@ -37,7 +37,7 @@ export async function updateProduct(id: string, formData: FormData): Promise<Act
     const rawData: Record<string, unknown> = {
         name: formData.get('name'),
         slug: formData.get('slug'),
-        sku: formData.get('sku'),
+        upc: formData.get('upc'),
         price: formData.get('price'),
         stock_status: formData.get('stock_status') || 'in_stock',
         quantity: formData.get('quantity'),

@@ -130,7 +130,7 @@ test('scraper workbench smoke flow', async ({ page }, testInfo) => {
 
   await page.getByTestId('tab-test-lab').click();
   await expect(page.getByTestId('tab-content-test-lab')).toBeVisible();
-  await expect(page.getByTestId('test-sku-manager')).toBeVisible();
+  await expect(page.getByTestId('test-upc-manager')).toBeVisible();
 
   await page.getByTestId('tab-history').click();
   await expect(page.getByTestId('tab-content-history')).toBeVisible();

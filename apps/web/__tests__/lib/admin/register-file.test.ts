@@ -12,10 +12,10 @@ function buildWorkbookBuffer(rows: Array<Record<string, unknown>>): ArrayBuffer 
 }
 
 describe("parseRegisterWorkbook", () => {
-  it("parses quantity-aware register rows and deduplicates SKUs", () => {
+  it("parses quantity-aware register rows and deduplicates UPCs", () => {
     const buffer = buildWorkbookBuffer([
       {
-        SKU_NO: "0001",
+        UPC_NO: "0001",
         DESCRIPTION1: "Alpha",
         DESCRIPTION2: " Product",
         LIST_PRICE: 12.5,
@@ -23,20 +23,20 @@ describe("parseRegisterWorkbook", () => {
         DATE_SOLD: "2026-03-01 00:00:00",
       },
       {
-        SKU_NO: "0001",
+        UPC_NO: "0001",
         DESCRIPTION1: "Alpha Duplicate",
         LIST_PRICE: 50,
         QUANTITY_ON_HAND: 99,
       },
       {
-        SKU_NO: "0002",
+        UPC_NO: "0002",
         NAME: "Beta Product",
         PRICE: "4.95",
         QUANTITY: "0",
         DATE_RECVD: "2026-02-10 00:00:00",
       },
       {
-        DESCRIPTION1: "Missing SKU",
+        DESCRIPTION1: "Missing UPC",
         LIST_PRICE: 1,
       },
     ]);
@@ -45,7 +45,7 @@ describe("parseRegisterWorkbook", () => {
 
     expect(products).toEqual([
       {
-        sku: "0001",
+        upc: "0001",
         name: "Alpha Product",
         price: 12.5,
         quantityOnHand: 3,
@@ -56,7 +56,7 @@ describe("parseRegisterWorkbook", () => {
         dateSold: "2026-03-01 00:00:00",
       },
       {
-        sku: "0002",
+        upc: "0002",
         name: "Beta Product",
         price: 4.95,
         quantityOnHand: 0,
@@ -72,7 +72,7 @@ describe("parseRegisterWorkbook", () => {
   it("normalizes raw ODBC rows with string values", () => {
     const products = parseRegisterRows([
       {
-        SKU_NO: " 013227536917",
+        UPC_NO: " 013227536917",
         DESCRIPTION1: "DOG COLLAR LEAF PRIN",
         DESCRIPTION2: " T LARGE",
         LIST_PRICE: "114.99",
@@ -80,7 +80,7 @@ describe("parseRegisterWorkbook", () => {
         DATE_PRICED: "2026-03-20 00:00:00",
       },
       {
-        SKU_NO: "013227536917",
+        UPC_NO: "013227536917",
         DESCRIPTION1: "Duplicate",
         LIST_PRICE: "999.99",
       },
@@ -88,7 +88,7 @@ describe("parseRegisterWorkbook", () => {
 
     expect(products).toEqual([
       {
-        sku: "013227536917",
+        upc: "013227536917",
         name: "DOG COLLAR LEAF PRIN T LARGE",
         price: 114.99,
         quantityOnHand: 0,

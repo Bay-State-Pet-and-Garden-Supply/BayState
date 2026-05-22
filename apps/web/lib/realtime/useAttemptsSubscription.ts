@@ -2,7 +2,7 @@
  * useAttemptsSubscription - Supabase Postgres Changes hook for subscribing to enrichment_attempts table
  *
  * This hook subscribes to INSERT, UPDATE, and DELETE events on the enrichment_attempts table for a specific jobId.
- * Used for real-time tracking of individual SKU scraping progress within a job.
+ * Used for real-time tracking of individual UPC scraping progress within a job.
  */
 
 import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
@@ -22,7 +22,7 @@ interface UseAttemptsSubscriptionOptions {
 }
 
 interface UseAttemptsSubscriptionReturn {
-  /** The current list of attempts for the job, sorted by SKU */
+  /** The current list of attempts for the job, sorted by UPC */
   attempts: EnrichmentAttempt[];
   /** Whether the realtime subscription is active */
   isConnected: boolean;
@@ -143,7 +143,7 @@ export function useAttemptsSubscription(
               // Trigger callback
               onAttemptCreated?.(newRecord);
               
-              // Insert and keep sorted by SKU
+              // Insert and keep sorted by UPC
               const next = [...prevAttempts, newRecord];
               return next.sort((a, b) => a.upc.localeCompare(b.upc));
             }

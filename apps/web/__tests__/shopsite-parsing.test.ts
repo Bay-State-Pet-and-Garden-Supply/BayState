@@ -29,7 +29,7 @@ describe('ShopSite XML Parsing', () => {
             const products = (client as any).parseProductsXml(xml);
             expect(products).toHaveLength(1);
             expect(products[0]).toMatchObject({
-                sku: 'SKU123',
+                upc: 'SKU123',
                 name: 'Test Product',
                 price: 19.99,
                 description: 'A test product description',
@@ -53,7 +53,7 @@ describe('ShopSite XML Parsing', () => {
             const products = (client as any).parseProductsXml(xml);
             expect(products).toHaveLength(1);
             expect(products[0]).toMatchObject({
-                sku: 'SKU456',
+                upc: 'SKU456',
                 name: 'Pascal Product',
                 price: 25.0,
                 quantityOnHand: 5,
@@ -93,7 +93,7 @@ describe('ShopSite XML Parsing', () => {
             const products = (client as any).parseProductsXml(xml);
             expect(products).toHaveLength(1);
             expect(products[0]).toMatchObject({
-                sku: '71859002217',
+                upc: '71859002217',
                 name: 'Kaytee Bermuda Grass 16 oz.',
                 price: 4.99,
                 saleAmount: 3.99,
@@ -128,7 +128,7 @@ describe('ShopSite XML Parsing', () => {
             const products = (client as any).parseProductsXml(xml);
             expect(products).toHaveLength(1);
             expect(products[0]).toMatchObject({
-                sku: 'CAT-TEST-001',
+                upc: 'CAT-TEST-001',
                 quantityOnHand: 42,
                 outOfStockLimit: 2,
                 googleProductCategory: 'Pet Supplies > Dog Supplies',
@@ -153,7 +153,7 @@ describe('ShopSite XML Parsing', () => {
             `;
             const products = (client as any).parseProductsXml(xml);
             expect(products).toHaveLength(1);
-            expect(products[0].sku).toBe('ENABLED-SKU');
+            expect(products[0].upc).toBe('ENABLED-SKU');
         });
 
         it.each(['checked', 'yes', 'true', '1', 'on', 'disabled'])(
@@ -189,7 +189,7 @@ describe('ShopSite XML Parsing', () => {
             const products = (client as any).parseProductsXml(xml);
 
             expect(products).toHaveLength(1);
-            expect(products[0].sku).toBe('ENABLED-SKU');
+            expect(products[0].upc).toBe('ENABLED-SKU');
         });
 
         it.each(['', 'uncheck', 'unchecked', 'no', 'false', '0'])(
@@ -208,7 +208,7 @@ describe('ShopSite XML Parsing', () => {
                 const products = (client as any).parseProductsXml(xml);
 
                 expect(products).toHaveLength(1);
-                expect(products[0].sku).toBe('ENABLED-SKU');
+                expect(products[0].upc).toBe('ENABLED-SKU');
             },
         );
 
@@ -236,7 +236,7 @@ describe('ShopSite XML Parsing', () => {
 
             expect(products).toHaveLength(1);
             expect(products[0]).toMatchObject({
-                sku: 'V15-SKU',
+                upc: 'V15-SKU',
                 name: 'Version 15 Product',
                 price: 12.34,
                 quantityOnHand: 0,
@@ -279,16 +279,16 @@ describe('ShopSite XML Parsing', () => {
             const products = (client as any).parseProductsXml(xml);
             expect(products).toHaveLength(1);
             expect(products[0].subproducts).toHaveLength(2);
-            expect(products[0].subproducts[0]).toEqual({ name: 'Child Small', sku: 'CHILD-S-001' });
-            expect(products[0].subproducts[1]).toEqual({ name: 'Child Large', sku: 'CHILD-L-001' });
+            expect(products[0].subproducts[0]).toEqual({ name: 'Child Small', upc: 'CHILD-S-001' });
+            expect(products[0].subproducts[1]).toEqual({ name: 'Child Large', upc: 'CHILD-L-001' });
         });
 
         it('should parse corrected ProductFields and keep blank values deterministic', () => {
             const products = (client as any).parseProductsXml(CORRECTED_FIELD_FIXTURE);
-            const directPetProduct = products.find((product: { sku: string; }) => product.sku === 'DIRECT-PET-001');
-            const blankProduct = products.find((product: { sku: string; }) => product.sku === 'FALLBACK-PET-001');
-            const crossSellProduct = products.find((product: { sku: string; }) => product.sku === 'XSELL-SOURCE-001');
-            const canonicalCategoryProduct = products.find((product: { sku: string; }) => product.sku === 'PF24-WINS-001');
+            const directPetProduct = products.find((product: { upc: string; }) => product.upc === 'DIRECT-PET-001');
+            const blankProduct = products.find((product: { upc: string; }) => product.upc === 'FALLBACK-PET-001');
+            const crossSellProduct = products.find((product: { upc: string; }) => product.upc === 'XSELL-SOURCE-001');
+            const canonicalCategoryProduct = products.find((product: { upc: string; }) => product.upc === 'PF24-WINS-001');
 
             expect(directPetProduct).toMatchObject({
                 shortName: 'Mini Trainers',
@@ -308,7 +308,7 @@ describe('ShopSite XML Parsing', () => {
                 size: '8 oz',
                 color: 'Tan',
                 packagingType: 'Pouch',
-                crossSellSkus: [],
+                crossSellUpcs: [],
             });
 
             expect(blankProduct).toMatchObject({
@@ -329,10 +329,10 @@ describe('ShopSite XML Parsing', () => {
                 size: '',
                 color: '',
                 packagingType: '',
-                crossSellSkus: [],
+                crossSellUpcs: [],
             });
 
-            expect(crossSellProduct?.crossSellSkus).toEqual([
+            expect(crossSellProduct?.crossSellUpcs).toEqual([
                 'XSELL-TARGET-001',
                 'XSELL-TARGET-001',
                 'XSELL-SOURCE-001',
@@ -395,7 +395,7 @@ describe('ShopSite XML Parsing', () => {
             });
             expect(orders[0].items).toHaveLength(1);
             expect(orders[0].items[0]).toMatchObject({
-                sku: 'SKU123',
+                upc: 'SKU123',
                 quantity: 2,
                 price: 22.50
             });

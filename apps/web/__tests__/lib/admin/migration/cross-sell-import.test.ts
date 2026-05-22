@@ -254,7 +254,7 @@ function createMockSupabase(partialState: Partial<DatabaseState> = {}) {
 
 function buildShopSiteProduct(overrides: Partial<ShopSiteProduct> = {}): ShopSiteProduct {
     return {
-        sku: overrides.sku ?? 'SKU-1',
+        upc: overrides.upc ?? 'UPC-1',
         name: overrides.name ?? 'Example Product',
         price: overrides.price ?? 9.99,
         description: overrides.description ?? '',
@@ -277,7 +277,7 @@ function buildShopSiteProduct(overrides: Partial<ShopSiteProduct> = {}): ShopSit
         size: overrides.size ?? '',
         color: overrides.color ?? '',
         packagingType: overrides.packagingType ?? '',
-        crossSellSkus: overrides.crossSellSkus ?? [],
+        crossSellUpcs: overrides.crossSellUpcs ?? [],
         ...overrides,
     };
 }
@@ -295,13 +295,13 @@ describe('importShopSiteProducts cross-sell linking', () => {
             updateProgress,
             shopSiteProducts: [
                 buildShopSiteProduct({
-                    sku: 'XSELL-SOURCE-001',
+                    upc: 'XSELL-SOURCE-001',
                     name: 'Cross Sell Source',
                     petTypeName: 'Dog',
-                    crossSellSkus: [' XSELL-TARGET-001|XSELL-TARGET-001|XSELL-SOURCE-001|MISSING-SKU|| '],
+                    crossSellUpcs: [' XSELL-TARGET-001|XSELL-TARGET-001|XSELL-SOURCE-001|MISSING-UPC|| '],
                 }),
                 buildShopSiteProduct({
-                    sku: 'XSELL-TARGET-001',
+                    upc: 'XSELL-TARGET-001',
                     name: 'Cross Sell Target',
                     petTypeName: 'Dog',
                 }),
@@ -341,8 +341,8 @@ describe('importShopSiteProducts cross-sell linking', () => {
         const { supabase, state } = createMockSupabase({
             pet_types: [{ id: 'pet-type-dog', name: 'Dog' }],
             products: [
-                { id: 'existing-source', sku: 'XSELL-SOURCE-001', slug: 'cross-sell-source' },
-                { id: 'existing-target', sku: 'XSELL-TARGET-001', slug: 'cross-sell-target' },
+                { id: 'existing-source', upc: 'XSELL-SOURCE-001', slug: 'cross-sell-source' },
+                { id: 'existing-target', upc: 'XSELL-TARGET-001', slug: 'cross-sell-target' },
             ],
             related_products: [
                 {
@@ -359,10 +359,10 @@ describe('importShopSiteProducts cross-sell linking', () => {
             supabase,
             shopSiteProducts: [
                 buildShopSiteProduct({
-                    sku: 'XSELL-SOURCE-001',
+                    upc: 'XSELL-SOURCE-001',
                     name: 'Cross Sell Source',
                     petTypeName: 'Dog',
-                    crossSellSkus: [],
+                    crossSellUpcs: [],
                 }),
             ],
         });

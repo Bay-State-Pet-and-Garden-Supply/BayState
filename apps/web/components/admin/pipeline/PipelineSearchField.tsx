@@ -17,7 +17,7 @@ interface PipelineSearchFieldProps {
 export function PipelineSearchField({
   value,
   onChange,
-  placeholder = "Search SKUs or names...",
+  placeholder = "Search UPCs or names...",
   className,
   inputClassName,
   isLoading = false,

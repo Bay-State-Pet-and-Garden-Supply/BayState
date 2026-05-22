@@ -9,7 +9,7 @@ expect.extend(toHaveNoViolations);
 
 // Mock data
 const mockProduct = {
-  sku: 'TEST-123',
+  upc: 'TEST-123',
   input: {
     name: 'Test Product',
     price: 10.99,
@@ -126,7 +126,7 @@ describe('Pipeline Accessibility', () => {
 
         const { container } = render(
             <PipelineProductDetail
-                sku="TEST-123"
+                upc="TEST-123"
                 onClose={() => {}}
                 onSave={() => {}}
             />

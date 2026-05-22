@@ -38,7 +38,7 @@ jest.mock('@/lib/pipeline/cohorts', () => ({
 }));
 
 type PromptPayload = {
-    sku: string;
+    upc: string;
     sources: Array<{
         source: string;
         trust: string;
@@ -70,7 +70,7 @@ describe('consolidation batch service', () => {
         const content = createBatchContent(
             [
                 {
-                    sku: 'SKU-1',
+                    upc: 'UPC-1',
                     sources: {
                         ai_discovery: {
                         Name: 'KONG Air Dog Squeaker Tennis Ball',
@@ -115,7 +115,7 @@ describe('consolidation batch service', () => {
         const content = createBatchContent(
             [
                 {
-                    sku: 'SKU-MANUAL',
+                    upc: 'UPC-MANUAL',
                     sources: {
                         distributor_a: {
                             title: 'Acme Deluxe Bird Seed 10 lb.',
@@ -157,7 +157,7 @@ describe('consolidation batch service', () => {
         const content = createBatchContent(
             [
                 {
-                    sku: 'SKU-NESTED',
+                    upc: 'UPC-NESTED',
                     sources: {
                         distributor_b: {
                             title: 'Garden Bucket 5 gal.',
@@ -212,7 +212,7 @@ describe('consolidation batch service', () => {
         const content = createBatchContent(
             [
                 {
-                    sku: 'SKU-LEGACY',
+                    upc: 'UPC-LEGACY',
                     sources: {
                         Name: 'Legacy Product Name',
                         Brand: 'Legacy Brand',
@@ -252,7 +252,7 @@ describe('consolidation batch service', () => {
         const content = createBatchContent(
             [
                 {
-                    sku: '813347001025',
+                    upc: '813347001025',
                     sources: {
                         amazon: {
                             brand: 'Brand: Bubbacare',
@@ -291,7 +291,7 @@ describe('consolidation batch service', () => {
         const content = createBatchContent(
             [
                 {
-                    sku: 'SKU-SOURCE-CAP',
+                    upc: 'UPC-SOURCE-CAP',
                     sources: {
                         shopsite_input: { brand: 'Acme', product_on_pages: ['Dog Toys'] },
                         manufacturer: { brand: 'Acme', title: 'Acme Tug Toy 2 ct.' },
@@ -326,7 +326,7 @@ describe('consolidation batch service', () => {
         const content = createBatchContent(
             [
                 {
-                    sku: 'SKU-TRIM',
+                    upc: 'UPC-TRIM',
                     sources: {
                         distributor_a: {
                             title: 'Acme Deluxe Bird Seed 10 lb.',
@@ -360,7 +360,7 @@ describe('consolidation batch service', () => {
 
     it('applyConsolidationResults merges existing consolidated data and resolves brand ids', async () => {
         const productsIngestionUpdateMaybeSingle = jest.fn().mockResolvedValue({
-            data: { sku: 'SKU-1' },
+            data: { upc: 'UPC-1' },
             error: null,
         });
         const productsIngestionUpdateSelect = jest
@@ -375,11 +375,11 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ eq: productsIngestionUpdateEq });
 
-        const productsIngestionSelectBySkuIn = {
+        const productsIngestionSelectByUpcIn = {
             in: jest.fn().mockResolvedValue({
                 data: [
                     {
-                        sku: 'SKU-1',
+                        upc: 'UPC-1',
                         consolidated: {
                             images: ['https://cdn.example.com/existing.jpg'],
                             stock_status: 'in_stock',
@@ -415,8 +415,8 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
         const productsIngestionSelect = jest.fn((columns: string) => {
-            if (columns.startsWith('sku, consolidated, sources, input, image_candidates, selected_images')) {
-                return productsIngestionSelectBySkuIn;
+            if (columns.startsWith('upc, consolidated, sources, input, image_candidates, selected_images')) {
+                return productsIngestionSelectByUpcIn;
             }
             if (columns === 'consolidated, updated_at') {
                 return {
@@ -454,7 +454,7 @@ describe('consolidation batch service', () => {
 
         const resultWithLegacyKeywordField = [
             {
-                sku: 'SKU-1',
+                upc: 'UPC-1',
                 name: 'KONG Air Dog Squeaker Tennis Ball 3 ct',
                 brand: 'KONG',
                 description: 'Fetch ball toy for dogs',
@@ -486,7 +486,7 @@ describe('consolidation batch service', () => {
                 }),
             })
         );
-        expect(productsIngestionUpdateEq).toHaveBeenCalledWith('sku', 'SKU-1');
+        expect(productsIngestionUpdateEq).toHaveBeenCalledWith('upc', 'UPC-1');
         expect(productsIngestionUpdateEq).toHaveBeenCalledWith('updated_at', '2026-03-18T00:00:00.000Z');
 
         const updatePayload = (productsIngestionUpdate as jest.Mock).mock.calls[0]?.[0] as {
@@ -499,7 +499,7 @@ describe('consolidation batch service', () => {
 
     it('applyConsolidationResults creates a missing brand and writes the new brand id', async () => {
         const productsIngestionUpdateMaybeSingle = jest.fn().mockResolvedValue({
-            data: { sku: 'SKU-NEW' },
+            data: { upc: 'UPC-NEW' },
             error: null,
         });
         const productsIngestionUpdateSelect = jest
@@ -514,11 +514,11 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ eq: productsIngestionUpdateEq });
 
-        const productsIngestionSelectBySkuIn = {
+        const productsIngestionSelectByUpcIn = {
             in: jest.fn().mockResolvedValue({
                 data: [
                     {
-                        sku: 'SKU-NEW',
+                        upc: 'UPC-NEW',
                         consolidated: {},
                         sources: {},
                         input: {},
@@ -541,8 +541,8 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
         const productsIngestionSelect = jest.fn((columns: string) => {
-            if (columns.startsWith('sku, consolidated, sources, input, image_candidates, selected_images')) {
-                return productsIngestionSelectBySkuIn;
+            if (columns.startsWith('upc, consolidated, sources, input, image_candidates, selected_images')) {
+                return productsIngestionSelectByUpcIn;
             }
             if (columns === 'consolidated, updated_at') {
                 return {
@@ -587,7 +587,7 @@ describe('consolidation batch service', () => {
 
         const response = await applyConsolidationResults([
             {
-                sku: 'SKU-NEW',
+                upc: 'UPC-NEW',
                 name: 'Fresh Batch Chicken Recipe 12 lb.',
                 brand: 'Fresh Batch',
                 description: 'Premium dog food',
@@ -626,7 +626,7 @@ describe('consolidation batch service', () => {
 
     it('applyConsolidationResults keeps model descriptions and falls back to input product_on_pages', async () => {
         const productsIngestionUpdateMaybeSingle = jest.fn().mockResolvedValue({
-            data: { sku: 'SKU-PAGES' },
+            data: { upc: 'UPC-PAGES' },
             error: null,
         });
         const productsIngestionUpdateSelect = jest
@@ -641,11 +641,11 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ eq: productsIngestionUpdateEq });
 
-        const productsIngestionSelectBySkuIn = {
+        const productsIngestionSelectByUpcIn = {
             in: jest.fn().mockResolvedValue({
                 data: [
                     {
-                        sku: 'SKU-PAGES',
+                        upc: 'UPC-PAGES',
                         consolidated: {},
                         sources: {},
                         input: {
@@ -670,8 +670,8 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
         const productsIngestionSelect = jest.fn((columns: string) => {
-            if (columns.startsWith('sku, consolidated, sources, input, image_candidates, selected_images')) {
-                return productsIngestionSelectBySkuIn;
+            if (columns.startsWith('upc, consolidated, sources, input, image_candidates, selected_images')) {
+                return productsIngestionSelectByUpcIn;
             }
             if (columns === 'consolidated, updated_at') {
                 return {
@@ -709,7 +709,7 @@ describe('consolidation batch service', () => {
 
         const response = await applyConsolidationResults([
             {
-                sku: 'SKU-PAGES',
+                upc: 'UPC-PAGES',
                 name: 'Acme Crunchy Bites 10 oz.',
                 brand: 'Acme',
                 description: 'Short shelf-ready description.',
@@ -743,7 +743,7 @@ describe('consolidation batch service', () => {
         });
 
         const productsIngestionUpdateMaybeSingle = jest.fn().mockResolvedValue({
-            data: { sku: '045663976866' },
+            data: { upc: '045663976866' },
             error: null,
         });
         const productsIngestionUpdateSelect = jest
@@ -758,11 +758,11 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ eq: productsIngestionUpdateEq });
 
-        const productsIngestionSelectBySkuIn = {
+        const productsIngestionSelectByUpcIn = {
             in: jest.fn().mockResolvedValue({
                 data: [
                     {
-                        sku: '045663976866',
+                        upc: '045663976866',
                         consolidated: {},
                         sources: {},
                         input: {},
@@ -785,8 +785,8 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
         const productsIngestionSelect = jest.fn((columns: string) => {
-            if (columns.startsWith('sku, consolidated, sources, input, image_candidates, selected_images')) {
-                return productsIngestionSelectBySkuIn;
+            if (columns.startsWith('upc, consolidated, sources, input, image_candidates, selected_images')) {
+                return productsIngestionSelectByUpcIn;
             }
             if (columns === 'consolidated, updated_at') {
                 return {
@@ -817,7 +817,7 @@ describe('consolidation batch service', () => {
 
         const response = await applyConsolidationResults([
             {
-                sku: '045663976866',
+                upc: '045663976866',
                 name: 'Litter Box System Cat Pads 11 X 17 10 ct.',
                 brand: 'Four Paws',
                 description: 'Odor control cat pads.',
@@ -839,7 +839,7 @@ describe('consolidation batch service', () => {
 
     it('applyConsolidationResults rejects higher-trust brand conflicts', async () => {
         const productsIngestionUpdateMaybeSingle = jest.fn().mockResolvedValue({
-            data: { sku: '813347001025' },
+            data: { upc: '813347001025' },
             error: null,
         });
         const productsIngestionUpdateSelect = jest
@@ -854,11 +854,11 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ eq: productsIngestionUpdateEq });
 
-        const productsIngestionSelectBySkuIn = {
+        const productsIngestionSelectByUpcIn = {
             in: jest.fn().mockResolvedValue({
                 data: [
                     {
-                        sku: '813347001025',
+                        upc: '813347001025',
                         consolidated: {},
                         sources: {
                             amazon: {
@@ -890,8 +890,8 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
         const productsIngestionSelect = jest.fn((columns: string) => {
-            if (columns.startsWith('sku, consolidated, sources, input, image_candidates, selected_images')) {
-                return productsIngestionSelectBySkuIn;
+            if (columns.startsWith('upc, consolidated, sources, input, image_candidates, selected_images')) {
+                return productsIngestionSelectByUpcIn;
             }
             if (columns === 'consolidated, updated_at') {
                 return {
@@ -930,7 +930,7 @@ describe('consolidation batch service', () => {
 
         await applyConsolidationResults([
             {
-                sku: '813347001025',
+                upc: '813347001025',
                 name: 'Stud Muffins Horse Treats 20 oz.',
                 brand: 'Bubbacare',
                 description: 'Handmade horse treats with flax seed.',
@@ -950,8 +950,8 @@ describe('consolidation batch service', () => {
     it('applyConsolidationResults allows duplicate finalized names with warnings', async () => {
         const productsIngestionUpdateMaybeSingle = jest
             .fn()
-            .mockResolvedValueOnce({ data: { sku: '095668302580' }, error: null })
-            .mockResolvedValueOnce({ data: { sku: '095668929473' }, error: null });
+            .mockResolvedValueOnce({ data: { upc: '095668302580' }, error: null })
+            .mockResolvedValueOnce({ data: { upc: '095668929473' }, error: null });
         const productsIngestionUpdateSelect = jest
             .fn()
             .mockReturnValue({ maybeSingle: productsIngestionUpdateMaybeSingle });
@@ -964,11 +964,11 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ eq: productsIngestionUpdateEq });
 
-        const productsIngestionSelectBySkuIn = {
+        const productsIngestionSelectByUpcIn = {
             in: jest.fn().mockResolvedValue({
                 data: [
                     {
-                        sku: '095668302580',
+                        upc: '095668302580',
                         consolidated: {},
                         sources: {
                             bradley: { brand: 'MANNA PRO', title: 'BITE-SIZE NUGGETS HORSE TREATS' },
@@ -978,7 +978,7 @@ describe('consolidation batch service', () => {
                         selected_images: [],
                     },
                     {
-                        sku: '095668929473',
+                        upc: '095668929473',
                         consolidated: {},
                         sources: {
                             bradley: { brand: 'MANNA PRO', title: 'BITE-SIZE NUGGETS HORSE TREATS' },
@@ -1006,8 +1006,8 @@ describe('consolidation batch service', () => {
             .fn()
             .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
         const productsIngestionSelect = jest.fn((columns: string) => {
-            if (columns.startsWith('sku, consolidated, sources, input, image_candidates, selected_images')) {
-                return productsIngestionSelectBySkuIn;
+            if (columns.startsWith('upc, consolidated, sources, input, image_candidates, selected_images')) {
+                return productsIngestionSelectByUpcIn;
             }
             if (columns === 'consolidated, updated_at') {
                 return {
@@ -1045,7 +1045,7 @@ describe('consolidation batch service', () => {
 
         const result = await applyConsolidationResults([
             {
-                sku: '095668302580',
+                upc: '095668302580',
                 name: 'Bite-size Nuggets Horse Treats 4 lb.',
                 brand: 'Manna Pro',
                 description: 'Pocket-size horse treats with alfalfa and molasses flavor.',
@@ -1054,7 +1054,7 @@ describe('consolidation batch service', () => {
                 confidence_score: 0.95,
             },
             {
-                sku: '095668929473',
+                upc: '095668929473',
                 name: 'Bite-size Nuggets Horse Treats 4 lb.',
                 brand: 'Manna Pro',
                 description: 'Pocket-size horse treats with carrot and spice flavor.',

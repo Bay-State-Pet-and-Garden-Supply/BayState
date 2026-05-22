@@ -69,7 +69,7 @@ function createAttemptLookupChain(attemptData: Record<string, unknown>) {
 
 function createMockSupabase(options: {
   attemptData: Record<string, unknown>;
-  jobAttemptsData?: Array<{ sku: string; attempt_number: number; status: string }>;
+  jobAttemptsData?: Array<{ upc: string; attempt_number: number; status: string }>;
 }) {
   const attemptUpdates: unknown[] = [];
   const retryInsertions: unknown[] = [];
@@ -85,7 +85,7 @@ function createMockSupabase(options: {
           return {
             eq: jest.fn().mockResolvedValue({
               data: options.jobAttemptsData ?? [
-                { sku: 'SKU-1', attempt_number: 1, status: 'failed' },
+                { upc: 'UPC-1', attempt_number: 1, status: 'failed' },
               ],
             }),
           };
@@ -133,7 +133,7 @@ function buildCallbackBody(overrides: Record<string, unknown> = {}) {
   return {
     _attempt_id: 'attempt-1',
     schema_version: 'v1',
-    sku: 'SKU-1',
+    upc: 'UPC-1',
     source: {
       url: 'approved_source_extraction',
       source_type: 'distributor',
@@ -201,8 +201,8 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
         },
       },
       jobAttemptsData: [
-        { sku: 'SKU-1', attempt_number: 1, status: 'failed' },
-        { sku: 'SKU-1', attempt_number: 2, status: 'queued' },
+        { upc: 'UPC-1', attempt_number: 1, status: 'failed' },
+        { upc: 'UPC-1', attempt_number: 2, status: 'queued' },
       ],
     });
     (createClient as jest.Mock).mockReturnValue(mockSupabase);
@@ -222,7 +222,7 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
     expect(mockSupabase.retryInsertions).toHaveLength(1);
     expect(mockSupabase.retryInsertions[0]).toMatchObject({
       job_id: 'job-1',
-      sku: 'SKU-1',
+      upc: 'UPC-1',
       mode: 'distributor_only',
       attempt_number: 2,
     });
@@ -251,7 +251,7 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
         },
       },
       jobAttemptsData: [
-        { sku: 'SKU-1', attempt_number: 1, status: 'failed' },
+        { upc: 'UPC-1', attempt_number: 1, status: 'failed' },
       ],
     });
     (createClient as jest.Mock).mockReturnValue(mockSupabase);
@@ -295,7 +295,7 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
         },
       },
       jobAttemptsData: [
-        { sku: 'SKU-1', attempt_number: 1, status: 'failed' },
+        { upc: 'UPC-1', attempt_number: 1, status: 'failed' },
       ],
     });
     (createClient as jest.Mock).mockReturnValue(mockSupabase);

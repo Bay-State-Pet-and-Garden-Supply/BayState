@@ -56,7 +56,7 @@ describe('Images Pipeline API', () => {
 
             const mockProducts = [
                 {
-                    sku: 'SKU-001',
+                    upc: 'UPC-001',
                     image_candidates: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg'],
                     consolidated: { name: 'Product 1' },
                     pipeline_status: 'finalized',
@@ -91,7 +91,7 @@ describe('Images Pipeline API', () => {
         it('should return 401 if not authorized', async () => {
             const testReq = class extends NextRequest {
                 async json() {
-                    return { sku: 'SKU-001', selectedImages: ['https://example.com/img1.jpg'] };
+                    return { upc: 'UPC-001', selectedImages: ['https://example.com/img1.jpg'] };
                 }
             };
             const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {
@@ -101,7 +101,7 @@ describe('Images Pipeline API', () => {
             expect(res.status).toBe(401);
         });
 
-        it('should return 400 if sku is missing', async () => {
+        it('should return 400 if upc is missing', async () => {
             (requireAdminAuth as jest.Mock).mockResolvedValue({
                 authorized: true,
                 user: { id: 'user-123' },
@@ -120,7 +120,7 @@ describe('Images Pipeline API', () => {
 
             expect(res.status).toBe(400);
             const json = await res.json();
-            expect(json.error).toContain('sku');
+            expect(json.error).toContain('upc');
         });
 
         it('should return 400 if selectedImages is missing', async () => {
@@ -132,7 +132,7 @@ describe('Images Pipeline API', () => {
 
             const testReq = class extends NextRequest {
                 async json() {
-                    return { sku: 'SKU-001' };
+                    return { upc: 'UPC-001' };
                 }
             };
             const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {
@@ -154,7 +154,7 @@ describe('Images Pipeline API', () => {
 
             const testReq = class extends NextRequest {
                 async json() {
-                    return { sku: 'SKU-001', selectedImages: 'not-an-array' };
+                    return { upc: 'UPC-001', selectedImages: 'not-an-array' };
                 }
             };
             const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {
@@ -176,7 +176,7 @@ describe('Images Pipeline API', () => {
 
             const testReq = class extends NextRequest {
                 async json() {
-                    return { sku: 'NONEXISTENT', selectedImages: ['https://example.com/img1.jpg'] };
+                    return { upc: 'NONEXISTENT', selectedImages: ['https://example.com/img1.jpg'] };
                 }
             };
             const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {
@@ -195,7 +195,7 @@ describe('Images Pipeline API', () => {
             });
 
             const mockProduct = {
-                sku: 'SKU-001',
+                upc: 'UPC-001',
                 image_candidates: ['https://example.com/valid1.jpg', 'https://example.com/valid2.jpg'],
                 consolidated: {},
             };
@@ -204,7 +204,7 @@ describe('Images Pipeline API', () => {
 
             const testReq = class extends NextRequest {
                 async json() {
-                    return { sku: 'SKU-001', selectedImages: ['https://example.com/invalid.jpg'] };
+                    return { upc: 'UPC-001', selectedImages: ['https://example.com/invalid.jpg'] };
                 }
             };
             const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {
@@ -226,7 +226,7 @@ describe('Images Pipeline API', () => {
 
             const sourceUrl = 'https://example.com/source-only.jpg';
             const mockProduct = {
-                sku: 'SKU-001',
+                upc: 'UPC-001',
                 image_candidates: [],
                 selected_images: [],
                 sources: {
@@ -248,7 +248,7 @@ describe('Images Pipeline API', () => {
 
             const testReq = class extends NextRequest {
                 async json() {
-                    return { sku: 'SKU-001', selectedImages: [sourceUrl] };
+                    return { upc: 'UPC-001', selectedImages: [sourceUrl] };
                 }
             };
             const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {
@@ -269,7 +269,7 @@ describe('Images Pipeline API', () => {
             });
 
             const mockProduct = {
-                sku: 'SKU-001',
+                upc: 'UPC-001',
                 image_candidates: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg'],
                 consolidated: { name: 'Product 1' },
             };
@@ -285,7 +285,7 @@ describe('Images Pipeline API', () => {
 
             const testReq = class extends NextRequest {
                 async json() {
-                    return { sku: 'SKU-001', selectedImages: ['https://example.com/img1.jpg'] };
+                    return { upc: 'UPC-001', selectedImages: ['https://example.com/img1.jpg'] };
                 }
             };
             const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {
@@ -307,7 +307,7 @@ describe('Images Pipeline API', () => {
 
             const dataUrl = 'data:image/png;base64,QUJD';
             const mockProduct = {
-                sku: 'SKU-001',
+                upc: 'UPC-001',
                 image_candidates: [dataUrl],
                 selected_images: [],
                 sources: {},
@@ -325,7 +325,7 @@ describe('Images Pipeline API', () => {
 
             const testReq = class extends NextRequest {
                 async json() {
-                    return { sku: 'SKU-001', selectedImages: [dataUrl] };
+                    return { upc: 'UPC-001', selectedImages: [dataUrl] };
                 }
             };
             const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {
@@ -338,7 +338,7 @@ describe('Images Pipeline API', () => {
             expect(mockSupabase.update).toHaveBeenCalledWith(
                 expect.objectContaining({
                     consolidated: expect.objectContaining({
-                        images: ['https://cdn.example.com/pipeline-selected/sku-001/b5d4045c3f466fa91fe2cc6a.png'],
+                        images: ['https://cdn.example.com/pipeline-selected/upc-001/b5d4045c3f466fa91fe2cc6a.png'],
                     }),
                 })
             );
@@ -352,7 +352,7 @@ describe('Images Pipeline API', () => {
             });
 
             const mockProduct = {
-                sku: 'SKU-001',
+                upc: 'UPC-001',
                 image_candidates: ['https://example.com/img1.jpg'],
                 consolidated: {},
             };
@@ -368,7 +368,7 @@ describe('Images Pipeline API', () => {
 
             const testReq = class extends NextRequest {
                 async json() {
-                    return { sku: 'SKU-001', selectedImages: ['https://example.com/img1.jpg'] };
+                    return { upc: 'UPC-001', selectedImages: ['https://example.com/img1.jpg'] };
                 }
             };
             const req = new (testReq as any)('http://localhost/api/admin/pipeline/images', {

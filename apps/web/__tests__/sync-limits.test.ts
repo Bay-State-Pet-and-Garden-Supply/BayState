@@ -7,15 +7,15 @@ describe('ShopSite Sync Limits', () => {
     it('should respect the limit when parsing products', () => {
         const xml = `
             <Products>
-                <Product><SKU>P1</SKU><Name>Product 1</Name></Product>
-                <Product><SKU>P2</SKU><Name>Product 2</Name></Product>
-                <Product><SKU>P3</SKU><Name>Product 3</Name></Product>
+                <Product><UPC>P1</UPC><Name>Product 1</Name></Product>
+                <Product><UPC>P2</UPC><Name>Product 2</Name></Product>
+                <Product><UPC>P3</UPC><Name>Product 3</Name></Product>
             </Products>
         `;
         const products = (client as any).parseProductsXml(xml, 2);
         expect(products).toHaveLength(2);
-        expect(products[0].sku).toBe('P1');
-        expect(products[1].sku).toBe('P2');
+        expect(products[0].upc).toBe('P1');
+        expect(products[1].upc).toBe('P2');
     });
 
     it('should respect the limit when parsing customers', () => {

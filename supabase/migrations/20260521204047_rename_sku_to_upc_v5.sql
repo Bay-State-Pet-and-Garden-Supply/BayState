@@ -1,0 +1,70 @@
+-- Drop functions first to avoid return type conflicts
+DROP FUNCTION IF EXISTS public.sync_inventory_to_products() CASCADE;
+DROP FUNCTION IF EXISTS public.is_source_enabled(text, uuid) CASCADE;
+DROP FUNCTION IF EXISTS public.get_pending_image_retries(integer) CASCADE;
+DROP FUNCTION IF EXISTS public.get_product_image_retry_history(text) CASCADE;
+DROP FUNCTION IF EXISTS public.claim_next_pending_enrichment_attempt(text, integer) CASCADE;
+DROP FUNCTION IF EXISTS public.merge_enrichment_attempt_result(text, text, numeric, jsonb) CASCADE;
+DROP FUNCTION IF EXISTS public.get_dashboard_recent_activity(integer) CASCADE;
+DROP FUNCTION IF EXISTS public.get_inventory_drift(integer) CASCADE;
+DROP FUNCTION IF EXISTS public.update_enrichment_job_counters(uuid) CASCADE;
+
+-- Handle products table specifically
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'sku') THEN
+        UPDATE public.products SET upc = sku WHERE upc IS NULL;
+        ALTER TABLE public.products DROP COLUMN sku;
+        ALTER TABLE public.products ALTER COLUMN upc SET NOT NULL;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'products_upc_key') THEN
+            ALTER TABLE public.products ADD CONSTRAINT products_upc_key UNIQUE (upc);
+        END IF;
+    END IF;
+END $$;
+
+-- Rename columns from sku to upc in other active tables
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products_ingestion' AND column_name = 'sku') THEN ALTER TABLE public.products_ingestion RENAME COLUMN sku TO upc; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_items' AND column_name = 'sku') THEN ALTER TABLE public.inventory_items RENAME COLUMN sku TO upc; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_reconciliation_items' AND column_name = 'sku') THEN ALTER TABLE public.inventory_reconciliation_items RENAME COLUMN sku TO upc; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'order_items' AND column_name = 'sku') THEN ALTER TABLE public.order_items RENAME COLUMN sku TO upc; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'enrichment_targets' AND column_name = 'sku') THEN ALTER TABLE public.enrichment_targets RENAME COLUMN sku TO upc; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'enrichment_attempts' AND column_name = 'sku') THEN ALTER TABLE public.enrichment_attempts RENAME COLUMN sku TO upc; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'enrichment_jobs' AND column_name = 'skus') THEN ALTER TABLE public.enrichment_jobs RENAME COLUMN skus TO upcs; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'enrichment_jobs' AND column_name = 'current_sku') THEN ALTER TABLE public.enrichment_jobs RENAME COLUMN current_sku TO current_upc; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'pipeline_finalizing_queue' AND column_name = 'sku') THEN ALTER TABLE public.pipeline_finalizing_queue RENAME COLUMN sku TO upc; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'pipeline_finalized_review' AND column_name = 'sku') THEN ALTER TABLE public.pipeline_finalized_review RENAME COLUMN sku TO upc; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'pipeline_export_queue' AND column_name = 'sku') THEN ALTER TABLE public.pipeline_export_queue RENAME COLUMN sku TO upc; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'product_scraped_sites' AND column_name = 'sku') THEN ALTER TABLE public.product_scraped_sites RENAME COLUMN sku TO upc; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'image_retry_queue' AND column_name = 'sku') THEN ALTER TABLE public.image_retry_queue RENAME COLUMN sku TO upc; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'consolidation_review_requests' AND column_name = 'sku') THEN ALTER TABLE public.consolidation_review_requests RENAME COLUMN sku TO upc; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'official_brand_url_candidates' AND column_name = 'sku') THEN ALTER TABLE public.official_brand_url_candidates RENAME COLUMN sku TO upc; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'cohort_members' AND column_name = 'product_sku') THEN ALTER TABLE public.cohort_members RENAME COLUMN product_sku TO product_upc; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'scraper_config_test_skus' AND column_name = 'sku') THEN ALTER TABLE public.scraper_config_test_skus RENAME COLUMN sku TO upc; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'scraper_config_test_skus' AND column_name = 'sku_type') THEN ALTER TABLE public.scraper_config_test_skus RENAME COLUMN sku_type TO upc_type; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'product_variants' AND column_name = 'sku') THEN ALTER TABLE public.product_variants RENAME COLUMN sku TO upc; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'enrichment_job_logs' AND column_name = 'sku') THEN ALTER TABLE public.enrichment_job_logs RENAME COLUMN sku TO upc; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'batch_jobs' AND column_name = 'failed_skus') THEN ALTER TABLE public.batch_jobs RENAME COLUMN failed_skus TO failed_upcs; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'batch_job_items' AND column_name = 'sku') THEN ALTER TABLE public.batch_job_items RENAME COLUMN sku TO upc; END IF;
+END $$;
+
+-- Recreate Routines
+CREATE OR REPLACE FUNCTION public.sync_inventory_to_products() RETURNS trigger LANGUAGE plpgsql AS $function$ BEGIN INSERT INTO products (upc, input, pipeline_status) VALUES (NEW.upc, jsonb_strip_nulls(jsonb_build_object('price', NEW.price,'name', NEW.name)),'staging') ON CONFLICT (upc) DO UPDATE SET input = products.input || jsonb_strip_nulls(jsonb_build_object('price', NEW.price,'name', NEW.name)), updated_at = NOW(); RETURN NEW; END; $function$;
+
+CREATE OR REPLACE FUNCTION public.is_source_enabled(p_upc text, p_source_id uuid) RETURNS boolean LANGUAGE sql STABLE AS $function$ SELECT CASE WHEN (SELECT enrichment_config->'enabled_sources' FROM products_ingestion WHERE upc = p_upc) IS NULL THEN true ELSE (SELECT enrichment_config->'enabled_sources' ? p_source_id::text FROM products_ingestion WHERE upc = p_upc) END; $function$;
+
+CREATE OR REPLACE FUNCTION public.get_pending_image_retries(p_limit integer) RETURNS SETOF image_retry_queue LANGUAGE sql STABLE AS $function$ SELECT * FROM public.image_retry_queue irq WHERE irq.status = 'pending' AND irq.scheduled_for <= now() AND irq.retry_count < irq.max_retries ORDER BY irq.scheduled_for ASC, irq.retry_count ASC LIMIT p_limit; $function$;
+
+CREATE OR REPLACE FUNCTION public.get_product_image_retry_history(p_upc text) RETURNS SETOF image_retry_queue LANGUAGE sql STABLE AS $function$ SELECT * FROM public.image_retry_queue irq WHERE irq.upc = p_upc ORDER BY irq.created_at DESC; $function$;
+
+CREATE OR REPLACE FUNCTION public.claim_next_pending_enrichment_attempt(p_runner_name text, p_claim_duration_minutes integer) RETURNS jsonb LANGUAGE plpgsql AS $function$ declare v_attempt_id uuid; v_job_id uuid; v_upc text; v_target_id uuid; v_attempt_number int; v_mode text; v_model text; v_source_url text; v_lease_token uuid; v_lease_expires_at timestamptz; v_result jsonb; begin select ea.id, ea.job_id, ea.upc, ea.target_id, ea.attempt_number, ea.mode, ea.model, ea.source_url into v_attempt_id, v_job_id, v_upc, v_target_id, v_attempt_number, v_mode, v_model, v_source_url from public.enrichment_attempts ea where ea.status = 'queued' and (ea.lease_token is null or ea.lease_expires_at < now()) order by case when ea.source_url is not null then 0 else 1 end, ea.created_at asc limit 1 for update skip locked; if not found then return null; end if; v_lease_token := gen_random_uuid(); v_lease_expires_at := now() + (p_claim_duration_minutes || ' minutes')::interval; if v_source_url is null and v_target_id is not null then select url into v_source_url from public.enrichment_targets where id = v_target_id; end if; update public.enrichment_attempts set status = 'running', claimed_by = p_runner_name, lease_token = v_lease_token, lease_expires_at = v_lease_expires_at, started_at = now(), updated_at = now() where id = v_attempt_id; update public.enrichment_jobs set status = case when status = 'queued' then 'running' else status end, updated_at = now() where id = v_job_id; v_result := jsonb_build_object('id', v_attempt_id, 'job_id', v_job_id, 'upc', v_upc, 'target_id', v_target_id, 'attempt_number', v_attempt_number, 'mode', v_mode, 'model', v_model, 'source_url', v_source_url, 'lease_token', v_lease_token, 'lease_expires_at', v_lease_expires_at::text); return v_result; end; $function$;
+
+CREATE OR REPLACE FUNCTION public.merge_enrichment_attempt_result(p_upc text, p_status text, p_confidence numeric, p_source_data jsonb) RETURNS void LANGUAGE plpgsql AS $function$ declare v_current_status text; v_sources jsonb; v_new_status text; begin select pipeline_status, coalesce(sources, '{}'::jsonb) into v_current_status, v_sources from public.products_ingestion where upc = p_upc for update; if not found then raise warning 'Product UPC % not found in products_ingestion', p_upc; return; end if; v_sources := jsonb_set(coalesce(v_sources, '{}'::jsonb), '{enriched}', p_source_data, true); if p_status = 'success' then v_new_status := 'processed'; elsif p_status = 'partial' and p_confidence >= 0.7 then v_new_status := 'processed'; else v_new_status := 'url_review'; end if; update public.products_ingestion set sources = v_sources, pipeline_status = v_new_status::text::public.pipeline_status_five, updated_at = now() where upc = p_upc; end; $function$;
+
+CREATE OR REPLACE FUNCTION public.get_dashboard_recent_activity(limit_count integer) RETURNS TABLE(id uuid, type text, title text, description text, status text, activity_timestamp timestamp with time zone, href text) LANGUAGE plpgsql AS $function$ BEGIN RETURN QUERY ( SELECT j.id, 'pipeline' as type, 'Pipeline Job ' || j.status as title, CASE WHEN j.config->'scrapers' IS NOT NULL THEN (SELECT string_agg(s::text, ', ') FROM jsonb_array_elements_text(j.config->'scrapers') s) ELSE 'General Enrichment' END as description, CASE WHEN j.status = 'completed' THEN 'success' WHEN j.status = 'failed' THEN 'warning' WHEN j.status = 'running' OR j.status = 'claimed' THEN 'info' ELSE 'pending' END as status, j.created_at as activity_timestamp, '/admin/pipeline/active-runs' as href FROM public.enrichment_jobs j ORDER BY j.created_at DESC LIMIT limit_count ) UNION ALL ( SELECT p.id, 'product' as type, 'Product Updated: ' || p.name as title, p.upc as description, 'info' as status, p.updated_at as activity_timestamp, '/admin/products/' || p.id as href FROM public.products p ORDER BY p.updated_at DESC LIMIT limit_count ) ORDER BY activity_timestamp DESC LIMIT limit_count; END; $function$;
+
+CREATE OR REPLACE FUNCTION public.get_inventory_drift(p_days integer) RETURNS TABLE(upc text, name text, field text, before_value text, after_value text, sync_at timestamp with time zone) LANGUAGE plpgsql AS $function$ BEGIN IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role IN ('admin', 'staff')) THEN RAISE EXCEPTION 'Access denied. Admin or staff role required.'; END IF; RETURN QUERY WITH latest_sync AS ( SELECT candidate.preview, candidate.sync_at FROM (SELECT r.metadata->'preview' AS preview, r.started_at AS sync_at FROM public.integration_sync_runs r WHERE r.sync_kind = 'inventory' AND r.status IN ('completed', 'partial') AND r.metadata ? 'preview' AND jsonb_typeof(r.metadata->'preview') = 'array' AND r.started_at >= now() - (p_days || ' days')::interval UNION ALL SELECT ml.metadata->'preview' AS preview, ml.started_at AS sync_at FROM public.migration_log ml WHERE ml.sync_type = 'register_inventory' AND ml.status = 'completed' AND ml.metadata ? 'preview' AND jsonb_typeof(ml.metadata->'preview') = 'array' AND ml.started_at >= now() - (p_days || ' days')::interval) AS candidate ORDER BY candidate.sync_at DESC LIMIT 1 ), expanded_preview AS ( SELECT jsonb_array_elements(preview) AS item, sync_at FROM latest_sync ), expanded_changes AS ( SELECT item->>'sku' AS upc, item->>'name' AS name, jsonb_array_elements(CASE WHEN jsonb_typeof(item->'changes') = 'array' THEN item->'changes' ELSE '[]'::jsonb END) AS change, sync_at FROM expanded_preview ) SELECT ec.upc, ec.name, ec.change->>'field' AS field, ec.change->>'before' AS before_value, ec.change->>'after' AS after_value, ec.sync_at FROM expanded_changes ec; END; $function$;
+
+CREATE OR REPLACE FUNCTION public.update_enrichment_job_counters(p_job_id uuid) RETURNS void LANGUAGE plpgsql AS $function$ declare v_total int; v_completed int; v_failed int; v_status text; begin with latest_attempts as (select distinct on (upc) upc, status, attempt_number from public.enrichment_attempts where job_id = p_job_id order by upc, attempt_number desc) select count(*), count(*) filter (where status in ('success', 'partial', 'failed')), count(*) filter (where status = 'failed') into v_total, v_completed, v_failed from latest_attempts; if v_completed >= v_total then if v_failed > 0 then v_status := 'completed_with_errors'; else v_status := 'completed'; end if; else v_status := 'running'; end if; update public.enrichment_jobs set total_count = v_total, completed_count = v_completed, failed_count = v_failed, status = v_status, completed_at = case when v_completed >= v_total then now() else completed_at end, updated_at = now() where id = p_job_id; end; $function$;
+;

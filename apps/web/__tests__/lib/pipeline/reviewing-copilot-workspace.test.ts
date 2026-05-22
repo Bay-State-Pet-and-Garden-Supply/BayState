@@ -89,14 +89,14 @@ function createProduct(
 
 describe("reviewing copilot workspace helpers", () => {
   it("lists workspace products with query filtering, selection, and dirty state", () => {
-    const alpha = createProduct("SKU-ALPHA");
-    const beta = createProduct("SKU-BETA", {
+    const alpha = createProduct("UPC-ALPHA");
+    const beta = createProduct("UPC-BETA", {
       input: {
-        ...createProduct("SKU-BETA").input,
+        ...createProduct("UPC-BETA").input,
         brand: "Barn Co",
       },
       consolidated: {
-        ...createProduct("SKU-BETA").consolidated,
+        ...createProduct("UPC-BETA").consolidated,
         name: "Barn Hay Cubes",
       },
       confidence_score: 0.42,
@@ -132,7 +132,7 @@ describe("reviewing copilot workspace helpers", () => {
     });
     expect(result.products).toEqual([
       expect.objectContaining({
-        upc: "SKU-ALPHA",
+        upc: "UPC-ALPHA",
         name: "Premium Chicken Feed",
         selected: true,
         dirty: true,
@@ -143,21 +143,21 @@ describe("reviewing copilot workspace helpers", () => {
   });
 
   it("resolves selected, explicit, and query scopes against the live workspace", () => {
-    const alpha = createProduct("SKU-ALPHA");
-    const beta = createProduct("SKU-BETA", {
+    const alpha = createProduct("UPC-ALPHA");
+    const beta = createProduct("UPC-BETA", {
       consolidated: {
-        ...createProduct("SKU-BETA").consolidated,
+        ...createProduct("UPC-BETA").consolidated,
         name: "Farm Bedding",
         brand_id: "brand-barn",
       },
       input: {
-        ...createProduct("SKU-BETA").input,
+        ...createProduct("UPC-BETA").input,
         brand: "Barn Co",
       },
     });
-    const gamma = createProduct("SKU-GAMMA", {
+    const gamma = createProduct("UPC-GAMMA", {
       consolidated: {
-        ...createProduct("SKU-GAMMA").consolidated,
+        ...createProduct("UPC-GAMMA").consolidated,
         name: "Acme Goat Feed",
       },
     });
@@ -184,7 +184,7 @@ describe("reviewing copilot workspace helpers", () => {
         drafts,
         drafts,
         beta.upc,
-        { type: "sku_list", skus: [gamma.upc, "missing", gamma.upc] },
+        { type: "upc_list", upcs: [gamma.upc, "missing", gamma.upc] },
       ),
     ).toEqual([gamma.upc]);
 
@@ -200,7 +200,7 @@ describe("reviewing copilot workspace helpers", () => {
   });
 
   it("filters products by description and expanded broad query", () => {
-    const alpha = createProduct("SKU-ALPHA");
+    const alpha = createProduct("UPC-ALPHA");
     const alphaDraft = {
       ...buildInitialFinalizationDraft(alpha),
       description: "Schleich horse figurine",
@@ -235,7 +235,7 @@ describe("reviewing copilot workspace helpers", () => {
   });
 
   it("applies field patches using persisted finalization draft formats", () => {
-    const product = createProduct("SKU-ALPHA");
+    const product = createProduct("UPC-ALPHA");
     const draft = buildInitialFinalizationDraft(product);
 
     const result = applySetProductFieldsToDraft(draft, {
@@ -269,7 +269,7 @@ describe("reviewing copilot workspace helpers", () => {
   });
 
   it("transforms product names without collapsing them to a shared literal", () => {
-    const product = createProduct("SKU-ALPHA");
+    const product = createProduct("UPC-ALPHA");
     const draft = buildInitialFinalizationDraft(product);
 
     expect(
@@ -282,7 +282,7 @@ describe("reviewing copilot workspace helpers", () => {
       changed: true,
       draft: {
         ...draft,
-        name: "SKU-ALPHA Consolidated Seed Packet",
+        name: "UPC-ALPHA Consolidated Seed Packet",
       },
     });
 
@@ -328,7 +328,7 @@ describe("reviewing copilot workspace helpers", () => {
   });
 
   it("returns focused source inspection data and grouped image sources", () => {
-    const product = createProduct("SKU-ALPHA");
+    const product = createProduct("UPC-ALPHA");
     const draft = buildInitialFinalizationDraft(product);
 
     expect(
@@ -338,11 +338,11 @@ describe("reviewing copilot workspace helpers", () => {
         sourceKey: "source:primary",
         focus: "pricing",
         imageCandidates: [
-          "https://cdn.example.com/sku-alpha-hero.jpg",
-          "https://cdn.example.com/sku-alpha-detail.jpg",
+          "https://cdn.example.com/upc-alpha-hero.jpg",
+          "https://cdn.example.com/upc-alpha-detail.jpg",
         ],
         data: expect.objectContaining({
-          title: "SKU-ALPHA Primary Title",
+          title: "UPC-ALPHA Primary Title",
           brand: "Acme",
           price: "21.99",
           availability: "in stock",
@@ -351,22 +351,22 @@ describe("reviewing copilot workspace helpers", () => {
     );
 
     expect(listFinalizationProductImageSources(product, draft)).toEqual({
-      selectedImages: ["https://cdn.example.com/sku-alpha-hero.jpg"],
+      selectedImages: ["https://cdn.example.com/upc-alpha-hero.jpg"],
       sources: [
         {
           sourceKey: "source:primary",
           label: "Primary",
           candidateCount: 2,
           candidates: [
-            "https://cdn.example.com/sku-alpha-hero.jpg",
-            "https://cdn.example.com/sku-alpha-detail.jpg",
+            "https://cdn.example.com/upc-alpha-hero.jpg",
+            "https://cdn.example.com/upc-alpha-detail.jpg",
           ],
         },
         {
           sourceKey: "source:backup",
           label: "Backup",
           candidateCount: 1,
-          candidates: ["https://cdn.example.com/sku-alpha-backup.jpg"],
+          candidates: ["https://cdn.example.com/upc-alpha-backup.jpg"],
         },
       ],
     });
@@ -377,7 +377,7 @@ describe("reviewing copilot workspace helpers", () => {
   });
 
   it("applies stockStatus changes via setProductFields", () => {
-    const product = createProduct("SKU-ALPHA");
+    const product = createProduct("UPC-ALPHA");
     const draft = buildInitialFinalizationDraft(product);
 
     const result = applySetProductFieldsToDraft(draft, {
@@ -389,7 +389,7 @@ describe("reviewing copilot workspace helpers", () => {
   });
 
   it("applies searchKeywords changes via setProductFields", () => {
-    const product = createProduct("SKU-ALPHA");
+    const product = createProduct("UPC-ALPHA");
     const draft = buildInitialFinalizationDraft(product);
 
     const result = applySetProductFieldsToDraft(draft, {
@@ -401,7 +401,7 @@ describe("reviewing copilot workspace helpers", () => {
   });
 
   it("applies stockStatus and searchKeywords together with other fields", () => {
-    const product = createProduct("SKU-ALPHA");
+    const product = createProduct("UPC-ALPHA");
     const draft = buildInitialFinalizationDraft(product);
 
     const result = applySetProductFieldsToDraft(draft, {
@@ -426,14 +426,14 @@ describe("reviewing copilot workspace helpers", () => {
 
 describe("buildFinalizationProductSnapshot", () => {
   it("builds a complete snapshot from product, draft, and saved draft", () => {
-    const product = createProduct("SKU-SNAP");
+    const product = createProduct("UPC-SNAP");
     const draft = buildInitialFinalizationDraft(product);
     const savedDraft = buildInitialFinalizationDraft(product);
 
     const snapshot = buildFinalizationProductSnapshot(product, draft, savedDraft);
 
-    expect(snapshot.upc).toBe("SKU-SNAP");
-    expect(snapshot.originalName).toBe("SKU-SNAP Imported");
+    expect(snapshot.upc).toBe("UPC-SNAP");
+    expect(snapshot.originalName).toBe("UPC-SNAP Imported");
     expect(snapshot.confidenceScore).toBe(0.87);
     expect(snapshot.sourceKeys).toEqual(["source:primary", "source:backup"]);
     expect(snapshot.draft).toEqual(draft);
@@ -441,7 +441,7 @@ describe("buildFinalizationProductSnapshot", () => {
   });
 
   it("returns null originalName when input has no name", () => {
-    const product = createProduct("SKU-NONAME", {
+    const product = createProduct("UPC-NONAME", {
       input: {},
     });
     const draft = buildInitialFinalizationDraft(product);
@@ -452,7 +452,7 @@ describe("buildFinalizationProductSnapshot", () => {
   });
 
   it("returns null confidenceScore when not available", () => {
-    const product = createProduct("SKU-NOCONF", {
+    const product = createProduct("UPC-NOCONF", {
       confidence_score: undefined as unknown as number,
     });
     const draft = buildInitialFinalizationDraft(product);

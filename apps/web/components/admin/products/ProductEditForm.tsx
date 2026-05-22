@@ -26,7 +26,7 @@ import { adminFetch } from '@/lib/admin/api-client';
 
 interface PublishedProduct {
     id: string;
-    sku: string;
+    upc: string;
     name: string;
     slug: string;
     description: string | null;
@@ -72,7 +72,7 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
     // Form state
     const [name, setName] = useState(product.name);
     const [slug, setSlug] = useState(product.slug);
-    const [sku, setSku] = useState(product.sku || '');
+    const [upc, setUpc] = useState(product.upc || '');
     const [description, setDescription] = useState(product.description || '');
     const [price, setPrice] = useState(String(product.price));
     const [weight, setWeight] = useState(product.weight || '');
@@ -154,7 +154,7 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
             const formData = new FormData();
             formData.append('name', name.trim());
             formData.append('slug', slug.trim());
-            if (sku) formData.append('sku', sku.trim());
+            if (upc) formData.append('upc', upc.trim());
             formData.append('description', description.trim());
             formData.append('price', price);
             if (weight) formData.append('weight', weight.trim());
@@ -244,8 +244,8 @@ export function ProductEditForm({ product }: { product: PublishedProduct }) {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="sku">SKU</Label>
-                            <Input id="sku" value={sku} onChange={(e) => setSku(e.target.value)} />
+                            <Label htmlFor="upc">UPC</Label>
+                            <Input id="upc" value={upc} onChange={(e) => setUpc(e.target.value)} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="description">Short Description</Label>

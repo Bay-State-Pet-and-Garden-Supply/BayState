@@ -7,7 +7,7 @@ import type { BatchStatus, ConsolidationResult, ProductSource } from '@/lib/cons
 import { buildDefaultConsistencyRules, TwoPhaseConsolidationService } from '@/lib/consolidation/two-phase-service';
 import { publishToStorefront } from '@/lib/pipeline/publish';
 import {
-    MissingProductsIngestionSkusError,
+    MissingProductsIngestionUpcsError,
     persistProductsIngestionSourcesStrict,
 } from '@/lib/scraper-callback/products-ingestion';
 import { getBatchStatus, retrieveResults, submitBatch } from '@/lib/consolidation/batch-service';
@@ -29,14 +29,14 @@ jest.mock('@/lib/product-category-sync', () => ({
 }));
 
 jest.mock('@/lib/product-image-storage', () => ({
-    buildProductImageStorageFolder: jest.fn((_scope: string, sku: string) => `pipeline-test/${sku}`),
+    buildProductImageStorageFolder: jest.fn((_scope: string, upc: string) => `pipeline-test/${upc}`),
     replaceInlineImageDataUrls: jest.fn().mockImplementation(async (_supabase: unknown, value: unknown) => ({ value })),
 }));
 
 type IngestionStatus = 'imported' | 'processed' | 'consolidated' | 'reviewing' | 'failed';
 
 interface IngestionRow extends Record<string, unknown> {
-    sku: string;
+    upc: string;
     input: Record<string, unknown>;
     sources: Record<string, unknown>;
     consolidated: Record<string, unknown> | null;
@@ -51,7 +51,7 @@ interface IngestionRow extends Record<string, unknown> {
 
 interface StorefrontProductRow extends Record<string, unknown> {
     id: string;
-    sku: string;
+    upc: string;
 }
 
 interface PipelineState {
@@ -77,12 +77,12 @@ const mockedSyncProductCategoryLinks = syncProductCategoryLinks as jest.MockedFu
 >;
 
 function buildImportedRow(
-    sku: string,
+    upc: string,
     input: Record<string, unknown>,
     sourceSeed: Record<string, unknown> = {}
 ): IngestionRow {
     return {
-        sku,
+        upc,
         input,
         sources: sourceSeed,
         consolidated: null,
@@ -132,37 +132,37 @@ function createFailedBatchStatus(): BatchStatus {
 
 function createMockSupabase(initialRows: IngestionRow[]): MockSupabaseBundle {
     const state: PipelineState = {
-        ingestionRows: new Map(initialRows.map((row) => [row.sku, structuredClone(row)])),
+        ingestionRows: new Map(initialRows.map((row) => [row.upc, structuredClone(row)])),
         storefrontRows: new Map<string, StorefrontProductRow>(),
         nextStorefrontId: 1,
     };
 
     const productsIngestionTable = {
         select: (columns: string) => {
-            if (columns === 'sku, sources') {
+            if (columns === 'upc, sources') {
                 return {
-                    in: async (_column: string, skus: string[]) => ({
-                        data: skus
-                            .map((sku) => state.ingestionRows.get(sku))
+                    in: async (_column: string, upcs: string[]) => ({
+                        data: upcs
+                            .map((upc) => state.ingestionRows.get(upc))
                             .filter((row): row is IngestionRow => Boolean(row))
-                            .map((row) => ({ sku: row.sku, sources: structuredClone(row.sources) })),
+                            .map((row) => ({ upc: row.upc, sources: structuredClone(row.sources) })),
                         error: null,
                     }),
                 };
             }
 
-            if (columns === 'sku, input, consolidated, pipeline_status') {
+            if (columns === 'upc, input, consolidated, pipeline_status') {
                 return {
-                    eq: (_column: string, sku: string) => ({
+                    eq: (_column: string, upc: string) => ({
                         single: async () => {
-                            const row = state.ingestionRows.get(sku);
+                            const row = state.ingestionRows.get(upc);
                             if (!row) {
-                                return { data: null, error: { message: `Missing ingestion row for ${sku}` } };
+                                return { data: null, error: { message: `Missing ingestion row for ${upc}` } };
                             }
 
                             return {
                                 data: {
-                                    sku: row.sku,
+                                    upc: row.upc,
                                     input: structuredClone(row.input),
                                     consolidated: row.consolidated ? structuredClone(row.consolidated) : null,
                                     pipeline_status: row.pipeline_status,
@@ -178,17 +178,17 @@ function createMockSupabase(initialRows: IngestionRow[]): MockSupabaseBundle {
         },
         upsert: async (rows: Array<Record<string, unknown>>) => {
             for (const payload of rows) {
-                const skuValue = payload.sku;
-                if (typeof skuValue !== 'string') {
-                    return { error: { message: 'Missing sku in upsert payload' } };
+                const upcValue = payload.upc;
+                if (typeof upcValue !== 'string') {
+                    return { error: { message: 'Missing upc in upsert payload' } };
                 }
 
-                const existing = state.ingestionRows.get(skuValue);
+                const existing = state.ingestionRows.get(upcValue);
                 if (!existing) {
-                    return { error: { message: `Missing ingestion row for ${skuValue}` } };
+                    return { error: { message: `Missing ingestion row for ${upcValue}` } };
                 }
 
-                state.ingestionRows.set(skuValue, {
+                state.ingestionRows.set(upcValue, {
                     ...existing,
                     ...structuredClone(payload),
                 } as IngestionRow);
@@ -197,13 +197,13 @@ function createMockSupabase(initialRows: IngestionRow[]): MockSupabaseBundle {
             return { error: null };
         },
         update: (payload: Record<string, unknown>) => ({
-            eq: async (_column: string, sku: string) => {
-                const existing = state.ingestionRows.get(sku);
+            eq: async (_column: string, upc: string) => {
+                const existing = state.ingestionRows.get(upc);
                 if (!existing) {
-                    return { error: { message: `Missing ingestion row for ${sku}` } };
+                    return { error: { message: `Missing ingestion row for ${upc}` } };
                 }
 
-                state.ingestionRows.set(sku, {
+                state.ingestionRows.set(upc, {
                     ...existing,
                     ...structuredClone(payload),
                 } as IngestionRow);
@@ -220,9 +220,9 @@ function createMockSupabase(initialRows: IngestionRow[]): MockSupabaseBundle {
             }
 
             return {
-                eq: (_column: string, sku: string) => ({
+                eq: (_column: string, upc: string) => ({
                     maybeSingle: async () => {
-                        const existing = Array.from(state.storefrontRows.values()).find((row) => row.sku === sku);
+                        const existing = Array.from(state.storefrontRows.values()).find((row) => row.upc === upc);
                         return {
                             data: existing ? { id: existing.id } : null,
                             error: null,
@@ -283,9 +283,9 @@ function createMockSupabase(initialRows: IngestionRow[]): MockSupabaseBundle {
 }
 
 function buildProductSources(rows: IngestionRow[]): ProductSource[] {
-    const productLines = new Map<string, { expectedBrand: string; expectedCategory: string; skus: string[] }>([
-        ['Acme Kibble', { expectedBrand: 'Acme', expectedCategory: 'Dog > Food', skus: ['111111110001', '111111110002'] }],
-        ['GardenPro Seed', { expectedBrand: 'GardenPro', expectedCategory: 'Bird > Seed', skus: ['222222220001', '222222220002'] }],
+    const productLines = new Map<string, { expectedBrand: string; expectedCategory: string; upcs: string[] }>([
+        ['Acme Kibble', { expectedBrand: 'Acme', expectedCategory: 'Dog > Food', upcs: ['111111110001', '111111110002'] }],
+        ['GardenPro Seed', { expectedBrand: 'GardenPro', expectedCategory: 'Bird > Seed', upcs: ['222222220001', '222222220002'] }],
     ]);
 
     return rows.map((row) => {
@@ -293,25 +293,25 @@ function buildProductSources(rows: IngestionRow[]): ProductSource[] {
         const line = productLines.get(productLine);
 
         if (!line) {
-            throw new Error(`Unknown product line for ${row.sku}`);
+            throw new Error(`Unknown product line for ${row.upc}`);
         }
 
         return {
-            sku: row.sku,
+            upc: row.upc,
             sources: structuredClone(row.sources),
             productLineContext: {
                 productLine,
-                siblings: line.skus
-                    .filter((sku) => sku !== row.sku)
-                    .map((sku) => {
-                        const sibling = rows.find((candidate) => candidate.sku === sku);
+                siblings: line.upcs
+                    .filter((upc) => upc !== row.upc)
+                    .map((upc) => {
+                        const sibling = rows.find((candidate) => candidate.upc === upc);
 
                         if (!sibling) {
-                            throw new Error(`Missing sibling ${sku} for ${row.sku}`);
+                            throw new Error(`Missing sibling ${upc} for ${row.upc}`);
                         }
 
                         return {
-                            sku,
+                            upc,
                             name: String(sibling.input.name),
                             sources: structuredClone(sibling.sources),
                         };
@@ -328,9 +328,9 @@ function moveConsistencyPassedRowsToFinalized(
     results: Array<ConsolidationResult & { consistencyStatus: 'passed' | 'flagged' | 'skipped' }>
 ): void {
     for (const result of results) {
-        const row = state.ingestionRows.get(result.sku);
+        const row = state.ingestionRows.get(result.upc);
         if (!row) {
-            throw new Error(`Missing ingestion row for ${result.sku}`);
+            throw new Error(`Missing ingestion row for ${result.upc}`);
         }
 
         const sourceImages = Object.values(row.sources)
@@ -363,7 +363,7 @@ function moveConsistencyPassedRowsToFinalized(
             error_message: null,
         };
 
-        state.ingestionRows.set(result.sku, finalizedRow);
+        state.ingestionRows.set(result.upc, finalizedRow);
     }
 }
 
@@ -419,7 +419,7 @@ describe('cohort processing pipeline integration', () => {
         mockedGetBatchStatus.mockResolvedValue(createCompletedBatchStatus());
         mockedRetrieveResults.mockResolvedValue([
             {
-                sku: '111111110001',
+                upc: '111111110001',
                 name: 'Acme Chicken Kibble 5 lb',
                 brand: 'Acme',
                 category: 'Dog > Food',
@@ -429,7 +429,7 @@ describe('cohort processing pipeline integration', () => {
                 confidence_score: 0.96,
             },
             {
-                sku: '111111110002',
+                upc: '111111110002',
                 name: 'Acme Chicken Kibble 15 lb',
                 brand: 'Acme',
                 category: 'Dog > Food',
@@ -439,7 +439,7 @@ describe('cohort processing pipeline integration', () => {
                 confidence_score: 0.97,
             },
             {
-                sku: '222222220001',
+                upc: '222222220001',
                 name: 'GardenPro Finch Seed 5 lb',
                 brand: 'GardenPro',
                 category: 'Bird > Seed',
@@ -449,7 +449,7 @@ describe('cohort processing pipeline integration', () => {
                 confidence_score: 0.91,
             },
             {
-                sku: '222222220002',
+                upc: '222222220002',
                 name: 'GardenPro Finch Seed 20 lb',
                 brand: 'WildHarvest',
                 category: 'Bird > Seed',
@@ -460,7 +460,7 @@ describe('cohort processing pipeline integration', () => {
             },
         ]);
 
-        const scrapedSkus = await persistProductsIngestionSourcesStrict(
+        const scrapedUpcs = await persistProductsIngestionSourcesStrict(
             supabase,
             {
                 '111111110001': {
@@ -496,7 +496,7 @@ describe('cohort processing pipeline integration', () => {
             NOW
         );
 
-        expect(scrapedSkus).toEqual([
+        expect(scrapedUpcs).toEqual([
             '111111110001',
             '111111110002',
             '222222220001',
@@ -535,7 +535,7 @@ describe('cohort processing pipeline integration', () => {
 
         expect(consolidation.phase).toBe('phase2');
         expect(consolidation.consistencyReport.flaggedProducts).toBe(2);
-        expect(consolidation.consistencyReport.bySku['222222220001']).toEqual(
+        expect(consolidation.consistencyReport.byUpc['222222220001']).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
                     ruleId: 'brand_consistent_across_siblings',
@@ -559,7 +559,7 @@ describe('cohort processing pipeline integration', () => {
                 error: expect.stringContaining('Product must be in reviewing'),
             })
         );
-        expect(Array.from(state.storefrontRows.values()).map((row) => row.sku).sort()).toEqual([
+        expect(Array.from(state.storefrontRows.values()).map((row) => row.upc).sort()).toEqual([
             '111111110001',
             '111111110002',
         ]);
@@ -593,7 +593,7 @@ describe('cohort processing pipeline integration', () => {
                 false,
                 NOW
             )
-        ).rejects.toBeInstanceOf(MissingProductsIngestionSkusError);
+        ).rejects.toBeInstanceOf(MissingProductsIngestionUpcsError);
 
         expect(state.ingestionRows.get('333333330001')?.pipeline_status).toBe('imported');
         expect(state.storefrontRows.size).toBe(0);
@@ -617,7 +617,7 @@ describe('cohort processing pipeline integration', () => {
             service.consolidate(
                 [
                     {
-                        sku: '333333330001',
+                        upc: '333333330001',
                         sources: { amazon: { title: 'Cohort Failure Harness' } },
                     },
                 ],

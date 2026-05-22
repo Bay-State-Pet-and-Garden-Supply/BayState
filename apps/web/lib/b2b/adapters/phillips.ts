@@ -2,8 +2,8 @@ import { B2BClient, B2BConfig, B2BProduct } from '../types';
 
 interface PhillipsProductResponse {
   id: string;
-  sku: string;
-  upc?: string;
+  upc: string;
+  gtin?: string;
   name: string;
   description?: string;
   brand?: string;
@@ -17,7 +17,7 @@ interface PhillipsProductResponse {
 }
 
 interface PhillipsInventoryResponse {
-  sku: string;
+  upc: string;
   quantity: number;
   nextAvailable?: string;
 }
@@ -62,7 +62,7 @@ export class PhillipsClient implements B2BClient {
         for (const item of items) {
           products.push({
             source: 'PHILLIPS',
-            distributorSku: item.sku,
+            distributorUpc: item.upc,
             upc: item.upc,
             name: item.name,
             description: item.description,

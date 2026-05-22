@@ -12,8 +12,8 @@ const AssertionResultSchema = z.object({
   passed: z.boolean(),
 });
 
-const SkuAssertionResultSchema = z.object({
-  sku: z.string(),
+const UpcAssertionResultSchema = z.object({
+  upc: z.string(),
   assertions: z.array(AssertionResultSchema),
   passed: z.boolean(),
   summary: z.object({
@@ -34,7 +34,7 @@ const TestResultCallbackSchema = z.object({
   config_id: z.string().min(1, 'config_id is required'),
   status: z.enum(['completed', 'failed']),
   runner_name: z.string().min(1).optional(),
-  assertion_results: z.array(SkuAssertionResultSchema),
+  assertion_results: z.array(UpcAssertionResultSchema),
   summary: TestResultsSummarySchema,
   duration_ms: z.number().int().min(0).optional(),
   error_message: z.string().optional(),
@@ -82,7 +82,7 @@ async function writeTestResults(
       job_id: payload.job_id,
       test_type: 'assertion',
       status: passed ? 'success' : payload.status === 'failed' ? 'failed' : 'partial',
-      skus_tested: payload.assertion_results.length,
+      upcs_tested: payload.assertion_results.length,
       results: payload.summary,
       assertion_results: payload.assertion_results,
       result_data: {

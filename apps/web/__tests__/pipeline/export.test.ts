@@ -37,7 +37,7 @@ describe('CSV Export API', () => {
         // Mock data
         const mockData = [
             {
-                sku: 'SKU-123',
+                upc: 'UPC-123',
                 input: { name: 'Test Product', price: 10.99 },
                 consolidated: { name: 'Consolidated Name', price: 12.99 },
                 pipeline_status: 'staging',

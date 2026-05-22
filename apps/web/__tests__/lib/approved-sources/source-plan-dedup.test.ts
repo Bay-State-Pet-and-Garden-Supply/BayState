@@ -33,7 +33,7 @@ describe('buildApprovedSourcePlans — dedup', () => {
         crawl4ai_adapter_slug: 'phillips_adapter',
         requires_auth: false,
         credential_ref: null,
-        search_mode: 'sku_search',
+        search_mode: 'upc_search',
         allowed_fields: ['name', 'description', 'images'],
         priority: 1,
         enabled: true,
@@ -49,7 +49,7 @@ describe('buildApprovedSourcePlans — dedup', () => {
         crawl4ai_adapter_slug: 'crawl4ai_direct',
         requires_auth: false,
         credential_ref: null,
-        search_mode: 'sku_search',
+        search_mode: 'upc_search',
         allowed_fields: ['name', 'description', 'images'],
         priority: 2,
         enabled: true,
@@ -63,7 +63,7 @@ describe('buildApprovedSourcePlans — dedup', () => {
       {
         data: [
           {
-            sku: 'SKU-1',
+            upc: 'UPC-1',
             brand_id: 'brand-1',
             input: { name: 'Test Product', price: 10 },
             enrichment_config: null,
@@ -107,7 +107,7 @@ describe('buildApprovedSourcePlans — dedup', () => {
 
   function makeRecentEnriched(sourceSlug: string, confidence: number = 0.8) {
     return {
-      sku: 'SKU-1',
+      upc: 'UPC-1',
       sources: {
         enriched: {
           schema_version: 'v1',
@@ -131,11 +131,11 @@ describe('buildApprovedSourcePlans — dedup', () => {
     const responses = standardResponses([makeRecentEnriched('phillips')]);
     const mockDb = createMockDbForSourcePlan(responses);
 
-    const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
+    const results = await buildApprovedSourcePlans(mockDb, ['UPC-1'], {
       forceRefresh: false,
     });
 
-    const result = results['SKU-1'];
+    const result = results['UPC-1'];
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('Expected ok');
     const slugs = result.plan.priority.map((e: any) => e.sourceSlug);
@@ -147,11 +147,11 @@ describe('buildApprovedSourcePlans — dedup', () => {
     const responses = standardResponses([makeRecentEnriched('phillips')], true);
     const mockDb = createMockDbForSourcePlan(responses);
 
-    const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
+    const results = await buildApprovedSourcePlans(mockDb, ['UPC-1'], {
       forceRefresh: true,
     });
 
-    const result = results['SKU-1'];
+    const result = results['UPC-1'];
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('Expected ok');
     const slugs = result.plan.priority.map((e: any) => e.sourceSlug);
@@ -168,11 +168,11 @@ describe('buildApprovedSourcePlans — dedup', () => {
     const responses = standardResponses([stale]);
     const mockDb = createMockDbForSourcePlan(responses);
 
-    const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
+    const results = await buildApprovedSourcePlans(mockDb, ['UPC-1'], {
       forceRefresh: false,
     });
 
-    const result = results['SKU-1'];
+    const result = results['UPC-1'];
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('Expected ok');
     const slugs = result.plan.priority.map((e: any) => e.sourceSlug);
@@ -186,11 +186,11 @@ describe('buildApprovedSourcePlans — dedup', () => {
     const responses = standardResponses([missingName]);
     const mockDb = createMockDbForSourcePlan(responses);
 
-    const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
+    const results = await buildApprovedSourcePlans(mockDb, ['UPC-1'], {
       forceRefresh: false,
     });
 
-    const result = results['SKU-1'];
+    const result = results['UPC-1'];
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('Expected ok');
     const slugs = result.plan.priority.map((e: any) => e.sourceSlug);
@@ -204,11 +204,11 @@ describe('buildApprovedSourcePlans — dedup', () => {
     const responses = standardResponses([missingImages]);
     const mockDb = createMockDbForSourcePlan(responses);
 
-    const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
+    const results = await buildApprovedSourcePlans(mockDb, ['UPC-1'], {
       forceRefresh: false,
     });
 
-    const result = results['SKU-1'];
+    const result = results['UPC-1'];
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('Expected ok');
     const slugs = result.plan.priority.map((e: any) => e.sourceSlug);
@@ -220,11 +220,11 @@ describe('buildApprovedSourcePlans — dedup', () => {
     const responses = standardResponses([lowConfidence]);
     const mockDb = createMockDbForSourcePlan(responses);
 
-    const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
+    const results = await buildApprovedSourcePlans(mockDb, ['UPC-1'], {
       forceRefresh: false,
     });
 
-    const result = results['SKU-1'];
+    const result = results['UPC-1'];
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('Expected ok');
     const slugs = result.plan.priority.map((e: any) => e.sourceSlug);
@@ -235,11 +235,11 @@ describe('buildApprovedSourcePlans — dedup', () => {
     const responses = standardResponses([makeRecentEnriched('official_brand')]);
     const mockDb = createMockDbForSourcePlan(responses);
 
-    const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
+    const results = await buildApprovedSourcePlans(mockDb, ['UPC-1'], {
       forceRefresh: false,
     });
 
-    const result = results['SKU-1'];
+    const result = results['UPC-1'];
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('Expected ok');
     const slugs = result.plan.priority.map((e: any) => e.sourceSlug);
@@ -251,13 +251,13 @@ describe('buildApprovedSourcePlans — dedup', () => {
     const responses = standardResponses([makeRecentEnriched('phillips')]);
     const mockDb = createMockDbForSourcePlan(responses);
 
-    const results = await buildApprovedSourcePlans(mockDb, ['SKU-1'], {
+    const results = await buildApprovedSourcePlans(mockDb, ['UPC-1'], {
       forceRefresh: false,
       extractionMode: 'distributor_only',
       selectedDistributorSlug: 'phillips',
     });
 
-    const result = results['SKU-1'];
+    const result = results['UPC-1'];
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('Expected not ok');
     expect(result.code).toBe('all_sources_fresh');

@@ -64,14 +64,14 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
 
   const { data: fastMovers } = await supabase
     .from('products')
-    .select('sku, name, date_sold, quantity')
+    .select('upc, name, date_sold, quantity')
     .not('date_sold', 'is', null)
     .order('date_sold', { ascending: false })
     .limit(5);
 
   const { data: deadStock } = await supabase
     .from('products')
-    .select('sku, name, date_sold, quantity, date_received')
+    .select('upc, name, date_sold, quantity, date_received')
     .gt('quantity', 0)
     .order('date_sold', { ascending: true, nullsFirst: true })
     .limit(5);

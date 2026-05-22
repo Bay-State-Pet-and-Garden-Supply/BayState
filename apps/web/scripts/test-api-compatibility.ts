@@ -30,9 +30,9 @@ const REQUIRED_FIELDS = [
   'timeout',
   'retries',
   'image_quality',
-  'test_skus',
-  'fake_skus',
-  'edge_case_skus',
+  'test_upcs',
+  'fake_upcs',
+  'edge_case_upcs',
 ] as const satisfies readonly (keyof ScraperConfigPayload)[];
 
 interface DbSelectorRow {
@@ -160,16 +160,16 @@ function validateRequiredFields(slug: string, payload: Record<string, unknown>):
     issues.push('image_quality must be a number');
   }
 
-  if (!Array.isArray(payload.test_skus) || payload.test_skus.some((sku) => typeof sku !== 'string')) {
-    issues.push('test_skus must be an array of strings');
+  if (!Array.isArray(payload.test_upcs) || payload.test_upcs.some((upc) => typeof upc !== 'string')) {
+    issues.push('test_upcs must be an array of strings');
   }
 
-  if (!Array.isArray(payload.fake_skus) || payload.fake_skus.some((sku) => typeof sku !== 'string')) {
-    issues.push('fake_skus must be an array of strings');
+  if (!Array.isArray(payload.fake_upcs) || payload.fake_upcs.some((upc) => typeof upc !== 'string')) {
+    issues.push('fake_upcs must be an array of strings');
   }
 
-  if (!Array.isArray(payload.edge_case_skus) || payload.edge_case_skus.some((sku) => typeof sku !== 'string')) {
-    issues.push('edge_case_skus must be an array of strings');
+  if (!Array.isArray(payload.edge_case_upcs) || payload.edge_case_upcs.some((upc) => typeof upc !== 'string')) {
+    issues.push('edge_case_upcs must be an array of strings');
   }
 
   return issues;

@@ -151,7 +151,7 @@ export function RunnerRunHistory({ runnerId, runnerName }: RunnerRunHistoryProps
     },
     {
       key: 'total_count',
-      header: 'SKUs',
+      header: 'UPCs',
       sortable: true,
       render: (value, row) => {
         const completed = row.completed_count || 0;

@@ -116,7 +116,7 @@ describe('Migration History', () => {
         metadata: {
           errors: [
             {
-              record: 'SKU-1',
+              record: 'UPC-1',
               error: 'One row failed',
               timestamp: '2026-05-17T00:01:00.000Z',
             },

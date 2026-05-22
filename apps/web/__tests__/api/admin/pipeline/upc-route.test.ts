@@ -5,9 +5,9 @@ const {
     requireAdminAuth,
 } = require('@/__tests__/helpers/admin-api-route-harness');
 const { createAdminClient } = require('@/__tests__/helpers/admin-api-route-harness');
-const { GET, PATCH } = require('@/app/api/admin/pipeline/[sku]/route');
+const { GET, PATCH } = require('@/app/api/admin/pipeline/[upc]/route');
 
-describe('Pipeline SKU Route API', () => {
+describe('Pipeline UPC Route API', () => {
     let mockSupabase: any;
 
     beforeEach(() => {
@@ -39,8 +39,8 @@ describe('Pipeline SKU Route API', () => {
     });
 
     it('returns 401 when unauthorized', async () => {
-        const req = new NextRequest('http://localhost/api/admin/pipeline/SKU-001');
-        const res = await GET(req, { params: Promise.resolve({ sku: 'SKU-001' }) });
+        const req = new NextRequest('http://localhost/api/admin/pipeline/UPC-001');
+        const res = await GET(req, { params: Promise.resolve({ upc: 'UPC-001' }) });
         expect(res.status).toBe(401);
     });
 
@@ -53,7 +53,7 @@ describe('Pipeline SKU Route API', () => {
 
         mockSupabase.single.mockResolvedValue({
             data: {
-                sku: 'SKU-001',
+                upc: 'UPC-001',
                 image_candidates: ['https://example.com/stored.jpg'],
                 selected_images: [{ url: 'https://example.com/selected.jpg' }],
                 consolidated: {
@@ -68,8 +68,8 @@ describe('Pipeline SKU Route API', () => {
             error: null,
         });
 
-        const req = new NextRequest('http://localhost/api/admin/pipeline/SKU-001');
-        const res = await GET(req, { params: Promise.resolve({ sku: 'SKU-001' }) });
+        const req = new NextRequest('http://localhost/api/admin/pipeline/UPC-001');
+        const res = await GET(req, { params: Promise.resolve({ upc: 'UPC-001' }) });
 
         expect(res.status).toBe(200);
         const json = await res.json();
@@ -102,17 +102,17 @@ describe('Pipeline SKU Route API', () => {
                 };
             }
         };
-        const req = new (testReq as any)('http://localhost/api/admin/pipeline/SKU-001', {
+        const req = new (testReq as any)('http://localhost/api/admin/pipeline/UPC-001', {
             method: 'PATCH',
         });
-        const res = await PATCH(req, { params: Promise.resolve({ sku: 'SKU-001' }) });
+        const res = await PATCH(req, { params: Promise.resolve({ upc: 'UPC-001' }) });
 
         expect(res.status).toBe(200);
         expect(mockSupabase.storage.from).toHaveBeenCalledWith('product-images');
         expect(mockSupabase.update).toHaveBeenCalledWith(
             expect.objectContaining({
                 consolidated: {
-                    images: ['https://cdn.example.com/pipeline-consolidated/sku-001/b5d4045c3f466fa91fe2cc6a.png'],
+                    images: ['https://cdn.example.com/pipeline-consolidated/upc-001/b5d4045c3f466fa91fe2cc6a.png'],
                 },
             })
         );

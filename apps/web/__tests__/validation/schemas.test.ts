@@ -20,7 +20,7 @@ import { PERSISTED_PIPELINE_STATUSES } from '@/lib/pipeline/types';
 describe('Consolidation Schemas', () => {
     describe('ConsolidationResultSchema', () => {
         const validConsolidationResult = {
-            sku: 'TEST-SKU-123',
+            upc: 'TEST-UPC-123',
             name: 'Premium Dog Food',
             brand: 'Acme Pet',
             weight: '5 lb',
@@ -34,20 +34,20 @@ describe('Consolidation Schemas', () => {
 
         it('should parse valid consolidation result', () => {
             const result = ConsolidationResultSchema.parse(validConsolidationResult);
-            expect(result.sku).toBe('TEST-SKU-123');
+            expect(result.upc).toBe('TEST-UPC-123');
             expect(result.name).toBe('Premium Dog Food');
             expect(result.confidence_score).toBe(0.95);
         });
 
         it('should parse consolidation result with minimal fields', () => {
-            const minimalResult = { sku: 'MINIMAL-SKU' };
+            const minimalResult = { upc: 'MINIMAL-UPC' };
             const result = ConsolidationResultSchema.parse(minimalResult);
-            expect(result.sku).toBe('MINIMAL-SKU');
+            expect(result.upc).toBe('MINIMAL-UPC');
             expect(result.name).toBeUndefined();
         });
 
-        it('should reject consolidation result with empty SKU', () => {
-            const invalidResult = { sku: '' };
+        it('should reject consolidation result with empty UPC', () => {
+            const invalidResult = { upc: '' };
             expect(() => ConsolidationResultSchema.parse(invalidResult)).toThrow();
         });
 
@@ -59,23 +59,23 @@ describe('Consolidation Schemas', () => {
             expect(() => ConsolidationResultSchema.parse(invalidResult)).toThrow();
         });
 
-        it('should reject consolidation result with missing SKU', () => {
-            const invalidResult = { name: 'No SKU Product' };
+        it('should reject consolidation result with missing UPC', () => {
+            const invalidResult = { name: 'No UPC Product' };
             expect(() => ConsolidationResultSchema.parse(invalidResult)).toThrow();
         });
 
-        it('should reject consolidation result with non-string SKU', () => {
-            const invalidResult = { sku: 12345 };
+        it('should reject consolidation result with non-string UPC', () => {
+            const invalidResult = { upc: 12345 };
             expect(() => ConsolidationResultSchema.parse(invalidResult)).toThrow();
         });
 
         it('should accept consolidation result with error field', () => {
             const resultWithError = {
-                sku: 'ERROR-SKU',
+                upc: 'ERROR-UPC',
                 error: 'Failed to consolidate product data',
             };
             const result = ConsolidationResultSchema.parse(resultWithError);
-            expect(result.sku).toBe('ERROR-SKU');
+            expect(result.upc).toBe('ERROR-UPC');
             expect(result.error).toBe('Failed to consolidate product data');
         });
     });
@@ -98,7 +98,7 @@ describe('Consolidation Schemas', () => {
 
     describe('PipelineProductSchema', () => {
         const validPipelineProduct = {
-            sku: 'PROD-001',
+            upc: 'PROD-001',
             input: {
                 name: 'Original Product',
                 price: 19.99,
@@ -123,13 +123,13 @@ describe('Consolidation Schemas', () => {
 
         it('should parse valid pipeline product', () => {
             const result = PipelineProductSchema.parse(validPipelineProduct);
-            expect(result.sku).toBe('PROD-001');
+            expect(result.upc).toBe('PROD-001');
             expect(result.pipeline_status).toBe('scraped');
         });
 
         it('should parse pipeline product with optional fields missing', () => {
             const minimalProduct = {
-                sku: 'MIN-001',
+                upc: 'MIN-001',
                 input: {},
                 sources: {},
                 consolidated: {},
@@ -138,12 +138,12 @@ describe('Consolidation Schemas', () => {
                 updated_at: '2024-01-01T00:00:00Z',
             };
             const result = PipelineProductSchema.parse(minimalProduct);
-            expect(result.sku).toBe('MIN-001');
+            expect(result.upc).toBe('MIN-001');
             expect(result.pipeline_status).toBe('imported');
         });
 
-        it('should reject pipeline product with empty SKU', () => {
-            const invalidProduct = { ...validPipelineProduct, sku: '' };
+        it('should reject pipeline product with empty UPC', () => {
+            const invalidProduct = { ...validPipelineProduct, upc: '' };
             expect(() => PipelineProductSchema.parse(invalidProduct)).toThrow();
         });
 
@@ -180,7 +180,7 @@ describe('Consolidation Schemas', () => {
             estimated_cost: 0.15,
             retry_count: 0,
             max_retries: 3,
-            failed_skus: null,
+            failed_upcs: null,
             parent_batch_id: null,
             input_file_id: 'file-123',
             output_file_id: 'file-456',
@@ -212,7 +212,7 @@ describe('Consolidation Schemas', () => {
 
     describe('ProductSourceSchema', () => {
         const validProductSource = {
-            sku: 'SOURCE-001',
+            upc: 'SOURCE-001',
             sources: {
                 'scraper-1': { price: 10.99, title: 'Product 1' },
                 'scraper-2': { price: 11.99, title: 'Product 2' },
@@ -221,11 +221,11 @@ describe('Consolidation Schemas', () => {
 
         it('should parse valid product source', () => {
             const result = ProductSourceSchema.parse(validProductSource);
-            expect(result.sku).toBe('SOURCE-001');
+            expect(result.upc).toBe('SOURCE-001');
         });
 
         it('should reject product source with empty sources object', () => {
-            const invalidSource = { sku: 'SOURCE-002', sources: {} };
+            const invalidSource = { upc: 'SOURCE-002', sources: {} };
             const result = ProductSourceSchema.parse(invalidSource);
             expect(result.sources).toEqual({});
         });
@@ -305,35 +305,35 @@ describe('Consolidation Schemas', () => {
 
     describe('ConsolidationSubmitSchema', () => {
         const validSubmitRequest = {
-            skus: ['SKU-001', 'SKU-002', 'SKU-003'],
+            upcs: ['UPC-001', 'UPC-002', 'UPC-003'],
             description: 'Submit for consolidation',
             auto_apply: true,
         };
 
         it('should parse valid submit request', () => {
             const result = ConsolidationSubmitSchema.parse(validSubmitRequest);
-            expect(result.skus).toHaveLength(3);
+            expect(result.upcs).toHaveLength(3);
             expect(result.auto_apply).toBe(true);
         });
 
         it('should parse submit request with minimal fields', () => {
-            const minimalSubmit = { skus: ['SKU-001'] };
+            const minimalSubmit = { upcs: ['UPC-001'] };
             const result = ConsolidationSubmitSchema.parse(minimalSubmit);
-            expect(result.skus).toHaveLength(1);
+            expect(result.upcs).toHaveLength(1);
         });
 
-        it('should reject submit request with empty SKUs array', () => {
-            const invalidSubmit = { skus: [] };
+        it('should reject submit request with empty UPCs array', () => {
+            const invalidSubmit = { upcs: [] };
             expect(() => ConsolidationSubmitSchema.parse(invalidSubmit)).toThrow();
         });
 
-        it('should reject submit request with non-array SKUs', () => {
-            const invalidSubmit = { skus: 'SKU-001' };
+        it('should reject submit request with non-array UPCs', () => {
+            const invalidSubmit = { upcs: 'UPC-001' };
             expect(() => ConsolidationSubmitSchema.parse(invalidSubmit)).toThrow();
         });
 
-        it('should reject submit request with empty SKU in array', () => {
-            const invalidSubmit = { skus: ['SKU-001', ''] };
+        it('should reject submit request with empty UPC in array', () => {
+            const invalidSubmit = { upcs: ['UPC-001', ''] };
             expect(() => ConsolidationSubmitSchema.parse(invalidSubmit)).toThrow();
         });
     });
@@ -345,10 +345,10 @@ describe('Consolidation Schemas', () => {
             runner_name: 'runner-01',
             error_message: undefined,
             results: {
-                skus_processed: 50,
+                upcs_processed: 50,
                 scrapers_run: ['scraper-a', 'scraper-b'],
                 data: {
-                    'SKU-001': {
+                    'UPC-001': {
                         'scraper-a': { price: 19.99, title: 'Product 1' },
                         'scraper-b': { price: 18.99, title: 'Product 1b' },
                     },
@@ -408,7 +408,7 @@ describe('Consolidation Schemas', () => {
                 results: {
                     ...validCallbackPayload.results,
                     data: {
-                        'SKU-001': {
+                        'UPC-001': {
                             'scraper-a': {
                                 price: 19.99,
                                 images: ['not-a-valid-url'],

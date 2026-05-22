@@ -61,7 +61,7 @@ export interface JobAssignment {
   job_id?: string;
   /** List of scraper names to execute */
   scrapers?: string[];
-  /** Target SKUs to scrape */
+  /** Target UPCs to scrape */
   upcs: string[];
   /** Current status of the job assignment */
   status: 'pending' | 'queued' | 'claimed' | 'running' | 'completed' | 'completed_with_errors' | 'failed' | 'cancelled';
@@ -91,7 +91,7 @@ export interface JobAssignment {
   progress_details?: Record<string, unknown> | null;
   /** Durable runtime progress update timestamp */
   progress_updated_at?: string | null;
-  /** Currently processed SKU */
+  /** Currently processed UPC */
   current_upc?: string | null;
   /** Processed item count */
   items_processed?: number | null;
@@ -200,7 +200,7 @@ interface ScrapeJobLog {
   source?: string;
   /** Optional scraper slug */
   scraper_name?: string;
-  /** Optional active SKU */
+  /** Optional active UPC */
   upc?: string;
   /** Optional execution phase */
   phase?: string;
@@ -232,7 +232,7 @@ const scrapeJobLogSchema = z.object({
 
 /**
  * Enrichment attempt tracking record.
- * Tracks granular SKU-level outcomes within a job.
+ * Tracks granular UPC-level outcomes within a job.
  */
 export interface EnrichmentAttempt {
   id: string;

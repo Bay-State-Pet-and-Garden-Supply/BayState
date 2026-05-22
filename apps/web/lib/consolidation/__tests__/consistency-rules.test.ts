@@ -7,12 +7,12 @@ import {
 import type { ProductSource } from '@/lib/consolidation/types';
 
 function createProductSource(
-    sku: string,
+    upc: string,
     shopsiteInput: Record<string, unknown>,
     productLineContext?: ProductSource['productLineContext']
 ): ProductSource {
     return {
-        sku,
+        upc,
         sources: {
             shopsite_input: shopsiteInput,
         },
@@ -23,9 +23,9 @@ function createProductSource(
 describe('consistency rules', () => {
     it('flags conflicting brands within a product line', () => {
         const violations = brandConsistencyRule.validate([
-            createProductSource('SKU-1', { brand: 'Acme', category: 'Dog > Food > Dry' }),
-            createProductSource('SKU-2', { brand: 'ACME', category: 'Dog > Food > Dry' }),
-            createProductSource('SKU-3', { brand: 'Bravo', category: 'Dog > Food > Dry' }),
+            createProductSource('UPC-1', { brand: 'Acme', category: 'Dog > Food > Dry' }),
+            createProductSource('UPC-2', { brand: 'ACME', category: 'Dog > Food > Dry' }),
+            createProductSource('UPC-3', { brand: 'Bravo', category: 'Dog > Food > Dry' }),
         ]);
 
         expect(violations).toHaveLength(1);
@@ -34,7 +34,7 @@ describe('consistency rules', () => {
             severity: 'error',
             field: 'brand',
             expected: 'Acme',
-            products: ['SKU-3'],
+            products: ['UPC-3'],
         });
         expect(violations[0].message).toMatch(/expected acme/i);
         expect(violations[0].actual).toMatch(/Acme/);
@@ -43,9 +43,9 @@ describe('consistency rules', () => {
 
     it('tolerates missing brands and whitespace-only brand variation', () => {
         const violations = brandConsistencyRule.validate([
-            createProductSource('SKU-1', { brand: 'Acme' }),
-            createProductSource('SKU-2', { brand: '  acme  ' }),
-            createProductSource('SKU-3', { description: 'Brand missing here.' }),
+            createProductSource('UPC-1', { brand: 'Acme' }),
+            createProductSource('UPC-2', { brand: '  acme  ' }),
+            createProductSource('UPC-3', { description: 'Brand missing here.' }),
         ]);
 
         expect(violations).toEqual([]);
@@ -53,13 +53,13 @@ describe('consistency rules', () => {
 
     it('flags description structure outliers without requiring exact copy', () => {
         const violations = descriptionFormatRule.validate([
-            createProductSource('SKU-1', {
+            createProductSource('UPC-1', {
                 description: 'Balanced dry food for adult dogs. Crafted with chicken and brown rice for everyday nutrition.',
             }),
-            createProductSource('SKU-2', {
+            createProductSource('UPC-2', {
                 description: 'Complete daily nutrition for adult dogs. Supports digestion and healthy skin with added omega oils.',
             }),
-            createProductSource('SKU-3', {
+            createProductSource('UPC-3', {
                 description: '- Crunchy texture\n- Real chicken recipe\n- Great for active dogs',
             }),
         ]);
@@ -69,7 +69,7 @@ describe('consistency rules', () => {
             rule: 'description-format',
             severity: 'warning',
             field: 'description',
-            products: ['SKU-3'],
+            products: ['UPC-3'],
         });
         expect(violations[0].message).toMatch(/similar structure/i);
         expect(violations[0].actual).toMatch(/bullet format/i);
@@ -77,13 +77,13 @@ describe('consistency rules', () => {
 
     it('allows reasonable prose description variation', () => {
         const violations = descriptionFormatRule.validate([
-            createProductSource('SKU-1', {
+            createProductSource('UPC-1', {
                 description: 'Soft chews for daily joint support.',
             }),
-            createProductSource('SKU-2', {
+            createProductSource('UPC-2', {
                 description: 'Soft chews for daily joint support. Includes glucosamine for active dogs.',
             }),
-            createProductSource('SKU-3', {
+            createProductSource('UPC-3', {
                 description: 'Daily joint support chews with a savory chicken flavor.',
             }),
         ]);
@@ -101,12 +101,12 @@ describe('consistency rules', () => {
 
         const violations = validateConsistency(
             [
-                createProductSource('SKU-1', {
+                createProductSource('UPC-1', {
                     brand: 'Acme',
                     category: 'Dog > Food > Dry',
                     description: 'Balanced dry food for adult dogs.',
                 }),
-                createProductSource('SKU-2', {
+                createProductSource('UPC-2', {
                     brand: 'Bravo',
                     category: 'Dog > Food > Dry',
                     description: 'Balanced dry food for adult dogs.',

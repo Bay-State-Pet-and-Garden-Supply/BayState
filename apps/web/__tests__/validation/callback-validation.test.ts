@@ -3,7 +3,7 @@ import { parseScraperCallbackPayload, parseChunkCallbackPayload } from '@/lib/sc
 describe('callback validation - admin payloads', () => {
   describe('missing required fields', () => {
     it('rejects missing job_id', () => {
-      const payload = JSON.stringify({ status: 'completed', results: { data: { 'sku-1': {} } } });
+      const payload = JSON.stringify({ status: 'completed', results: { data: { 'upc-1': {} } } });
       const result = parseScraperCallbackPayload(payload);
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -12,7 +12,7 @@ describe('callback validation - admin payloads', () => {
     });
 
     it('rejects missing status', () => {
-      const payload = JSON.stringify({ job_id: 'job-123', results: { data: { 'sku-1': {} } } });
+      const payload = JSON.stringify({ job_id: 'job-123', results: { data: { 'upc-1': {} } } });
       const result = parseScraperCallbackPayload(payload);
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -21,7 +21,7 @@ describe('callback validation - admin payloads', () => {
     });
 
     it('rejects empty string job_id', () => {
-      const payload = JSON.stringify({ job_id: '', status: 'completed', results: { data: { 'sku-1': {} } } });
+      const payload = JSON.stringify({ job_id: '', status: 'completed', results: { data: { 'upc-1': {} } } });
       const result = parseScraperCallbackPayload(payload);
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -73,7 +73,7 @@ describe('callback validation - admin payloads', () => {
 
   describe('wrong field types', () => {
     it('rejects job_id as number', () => {
-      const payload = JSON.stringify({ job_id: 123, status: 'completed', results: { data: { 'sku-1': {} } } });
+      const payload = JSON.stringify({ job_id: 123, status: 'completed', results: { data: { 'upc-1': {} } } });
       const result = parseScraperCallbackPayload(payload);
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -82,13 +82,13 @@ describe('callback validation - admin payloads', () => {
     });
 
     it('rejects job_id as array', () => {
-      const payload = JSON.stringify({ job_id: ['job-123'], status: 'completed', results: { data: { 'sku-1': {} } } });
+      const payload = JSON.stringify({ job_id: ['job-123'], status: 'completed', results: { data: { 'upc-1': {} } } });
       const result = parseScraperCallbackPayload(payload);
       expect(result.success).toBe(false);
     });
 
     it('rejects job_id as object', () => {
-      const payload = JSON.stringify({ job_id: { id: 'job-123' }, status: 'completed', results: { data: { 'sku-1': {} } } });
+      const payload = JSON.stringify({ job_id: { id: 'job-123' }, status: 'completed', results: { data: { 'upc-1': {} } } });
       const result = parseScraperCallbackPayload(payload);
       expect(result.success).toBe(false);
     });
@@ -160,7 +160,7 @@ describe('callback validation - admin payloads', () => {
         status: 'completed',
         results: {
           data: {
-            'sku-1': { amazon: null }
+            'upc-1': { amazon: null }
           }
         }
       });
@@ -168,26 +168,26 @@ describe('callback validation - admin payloads', () => {
       expect(result.success).toBe(false);
     });
 
-    it('rejects invalid skus_processed type', () => {
+    it('rejects invalid upcs_processed type', () => {
       const payload = JSON.stringify({
         job_id: 'job-123',
         status: 'completed',
         results: {
-          skus_processed: '1',
-          data: { 'sku-1': {} }
+          upcs_processed: '1',
+          data: { 'upc-1': {} }
         }
       });
       const result = parseScraperCallbackPayload(payload);
       expect(result.success).toBe(false);
     });
 
-    it('rejects negative skus_processed', () => {
+    it('rejects negative upcs_processed', () => {
       const payload = JSON.stringify({
         job_id: 'job-123',
         status: 'completed',
         results: {
-          skus_processed: -1,
-          data: { 'sku-1': {} }
+          upcs_processed: -1,
+          data: { 'upc-1': {} }
         }
       });
       const result = parseScraperCallbackPayload(payload);
@@ -200,7 +200,7 @@ describe('callback validation - admin payloads', () => {
         status: 'completed',
         results: {
           scrapers_run: { amazon: true },
-          data: { 'sku-1': {} }
+          data: { 'upc-1': {} }
         }
       });
       const result = parseScraperCallbackPayload(payload);
@@ -213,7 +213,7 @@ describe('callback validation - admin payloads', () => {
         status: 'completed',
         results: {
           scrapers_run: ['amazon', 123],
-          data: { 'sku-1': {} }
+          data: { 'upc-1': {} }
         }
       });
       const result = parseScraperCallbackPayload(payload);
@@ -250,10 +250,10 @@ describe('callback validation - admin payloads', () => {
         job_id: 'job-123',
         status: 'completed',
         results: {
-          skus_processed: 5,
+          upcs_processed: 5,
           scrapers_run: ['amazon', 'chewy'],
           data: {
-            'sku-1': { amazon: { price: 19.99 } }
+            'upc-1': { amazon: { price: 19.99 } }
           }
         }
       });
@@ -286,11 +286,11 @@ describe('callback validation - admin payloads', () => {
         status: 'completed',
         results: {
           data: {
-            'sku-1': { amazon: { price: 12.34 } }
+            'upc-1': { amazon: { price: 12.34 } }
           },
           crawl4ai: {
             extraction_strategy: {
-              'sku-1': 'llm'
+              'upc-1': 'llm'
             },
             cost_breakdown: {
               llm_usd: 0.04,
@@ -422,51 +422,51 @@ describe('callback validation - chunk payloads', () => {
       }
     });
 
-    it('rejects invalid skus_processed type', () => {
+    it('rejects invalid upcs_processed type', () => {
       const payload = JSON.stringify({
         chunk_id: 'chunk-1',
         status: 'completed',
-        results: { skus_processed: '5' }
+        results: { upcs_processed: '5' }
       });
       const result = parseChunkCallbackPayload(payload);
       expect(result.success).toBe(false);
     });
 
-    it('rejects negative skus_processed', () => {
+    it('rejects negative upcs_processed', () => {
       const payload = JSON.stringify({
         chunk_id: 'chunk-1',
         status: 'completed',
-        results: { skus_processed: -1 }
+        results: { upcs_processed: -1 }
       });
       const result = parseChunkCallbackPayload(payload);
       expect(result.success).toBe(false);
     });
 
-    it('rejects negative skus_successful', () => {
+    it('rejects negative upcs_successful', () => {
       const payload = JSON.stringify({
         chunk_id: 'chunk-1',
         status: 'completed',
-        results: { skus_successful: -1 }
+        results: { upcs_successful: -1 }
       });
       const result = parseChunkCallbackPayload(payload);
       expect(result.success).toBe(false);
     });
 
-    it('rejects negative skus_failed', () => {
+    it('rejects negative upcs_failed', () => {
       const payload = JSON.stringify({
         chunk_id: 'chunk-1',
         status: 'completed',
-        results: { skus_failed: -1 }
+        results: { upcs_failed: -1 }
       });
       const result = parseChunkCallbackPayload(payload);
       expect(result.success).toBe(false);
     });
 
-    it('rejects non-integer skus_processed', () => {
+    it('rejects non-integer upcs_processed', () => {
       const payload = JSON.stringify({
         chunk_id: 'chunk-1',
         status: 'completed',
-        results: { skus_processed: 1.5 }
+        results: { upcs_processed: 1.5 }
       });
       const result = parseChunkCallbackPayload(payload);
       expect(result.success).toBe(false);
@@ -500,11 +500,11 @@ describe('callback validation - chunk payloads', () => {
         job_id: 'job-123',
         status: 'completed',
         results: {
-          skus_processed: 10,
-          skus_successful: 9,
-          skus_failed: 1,
+          upcs_processed: 10,
+          upcs_successful: 9,
+          upcs_failed: 1,
           data: {
-            'sku-1': { price: 19.99 }
+            'upc-1': { price: 19.99 }
           }
         }
       });
@@ -530,7 +530,7 @@ describe('callback validation - chunk payloads', () => {
         chunk_id: 'chunk-1',
         status: 'in_progress',
         progress: {
-          sku: 'sku-1',
+          upc: 'upc-1',
           scraper_name: 'amazon',
           data: {
             Name: 'Test Product',
@@ -563,8 +563,8 @@ describe('callback validation - test matrix coverage', () => {
       'completed without results.data',
       'completed with results.data as null',
       'completed with empty results.data object',
-      'invalid nested skus_processed type',
-      'negative skus_processed',
+      'invalid nested upcs_processed type',
+      'negative upcs_processed',
       'scrapers_run as object',
       'scrapers_run with non-string elements',
       'non-JSON input',
@@ -582,9 +582,9 @@ describe('callback validation - test matrix coverage', () => {
       'job_id as number',
       'results as array',
       'results.data as array/string',
-      'invalid nested skus_processed type',
-      'negative skus_processed/skus_successful/skus_failed',
-      'non-integer skus_processed',
+      'invalid nested upcs_processed type',
+      'negative upcs_processed/upcs_successful/upcs_failed',
+      'non-integer upcs_processed',
       'non-JSON input',
       'empty string JSON',
       'JSON array input'

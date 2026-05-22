@@ -9,7 +9,7 @@ interface RouteContext {
 }
 
 interface CohortMember {
-  product_sku: string;
+  product_upc: string;
   upc_prefix: string;
   sort_order: number;
 }
@@ -57,24 +57,24 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   // Fetch member products only if requested
   let members: CohortMember[] = [];
-  let memberProducts: Array<{ sku: string; pipeline_status: string; input: unknown }> = [];
+  let memberProducts: Array<{ upc: string; pipeline_status: string; input: unknown }> = [];
 
   if (includeMembers) {
     const { data: memberData } = await supabase
       .from('cohort_members')
-      .select('product_sku, upc_prefix, sort_order')
+      .select('product_upc, upc_prefix, sort_order')
       .eq('cohort_id', id)
       .order('sort_order');
     
     members = (memberData as CohortMember[]) || [];
 
     // Fetch pipeline status for each member
-    const memberSkus = members.map((m) => m.product_sku);
-    if (memberSkus.length > 0) {
+    const memberUpcs = members.map((m) => m.product_upc);
+    if (memberUpcs.length > 0) {
       const { data: products } = await supabase
         .from('products_ingestion')
-        .select('sku, pipeline_status, input')
-        .in('sku', memberSkus);
+        .select('upc, pipeline_status, input')
+        .in('upc', memberUpcs);
       memberProducts = (products || []) as typeof memberProducts;
     }
   }

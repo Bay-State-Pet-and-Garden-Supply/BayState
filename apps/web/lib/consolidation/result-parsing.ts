@@ -26,14 +26,14 @@ function parseJsonResponse(content: string): Record<string, unknown> | null {
  * Handles category validation and field mapping.
  */
 export function parseStructuredConsolidationText(
-    sku: string,
+    upc: string,
     content: string,
     categories: string[]
 ): ConsolidationResult {
     const parsed = parseJsonResponse(content);
 
     if (!parsed) {
-        return { sku, error: 'Failed to parse JSON response' };
+        return { upc, error: 'Failed to parse JSON response' };
     }
 
     const normalized = normalizeConsolidationResult(parsed);
@@ -49,7 +49,7 @@ export function parseStructuredConsolidationText(
         .filter((value, index, array) => array.indexOf(value) === index);
 
     const result: ConsolidationResult = {
-        sku,
+        upc,
         ...validated,
     } as ConsolidationResult;
 
@@ -65,9 +65,9 @@ export function parseStructuredConsolidationText(
  * Each line is either a successful result or an error.
  */
 function parseBatchResultLine(
-    sku: string,
+    upc: string,
     content: string,
     categories: string[]
 ): ConsolidationResult {
-    return parseStructuredConsolidationText(sku, content, categories);
+    return parseStructuredConsolidationText(upc, content, categories);
 }

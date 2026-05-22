@@ -35,8 +35,8 @@ export const finalizationProductScopeSchema = z.discriminatedUnion("type", [
     type: z.literal("all"),
   }),
   z.object({
-    type: z.literal("sku_list"),
-    skus: z.array(z.string()).min(1),
+    type: z.literal("upc_list"),
+    upcs: z.array(z.string()).min(1),
   }),
   z.object({
     type: z.literal("query"),
@@ -77,8 +77,8 @@ export type PreviewProductScopeInput = z.infer<
 
 const finalizationCopilotWorkspaceSchema = z.object({
   totalProducts: z.number().int().min(0),
-  selectedSku: z.string().nullable(),
-  dirtySkus: z.array(z.string()),
+  selectedUpc: z.string().nullable(),
+  dirtyUpcs: z.array(z.string()),
 });
 
 export const finalizationCopilotContextSchema = z.object({
@@ -169,7 +169,7 @@ export function buildWorkspaceProductSummary(
   product: PipelineProduct,
   draft: FinalizationDraft | undefined,
   savedDraft: FinalizationDraft | undefined,
-  selectedSku: string | null,
+  selectedUpc: string | null,
 ): FinalizationWorkspaceProductSummary {
   const sourceKeys = Object.keys(normalizeProductSources(product.sources || {}));
 
@@ -181,7 +181,7 @@ export function buildWorkspaceProductSummary(
     sourceKeys,
     hasBrand: Boolean(draft?.brandId && draft.brandId !== "none"),
     selectedImageCount: draft?.selectedImages.length ?? 0,
-    selected: selectedSku === product.upc,
+    selected: selectedUpc === product.upc,
     dirty: isDraftDirty(draft, savedDraft),
   };
 }
@@ -213,9 +213,9 @@ function matchesWorkspaceQuery(
 
 export function listWorkspaceProducts(
   products: PipelineProduct[],
-  draftsBySku: Record<string, FinalizationDraft>,
-  savedDraftsBySku: Record<string, FinalizationDraft>,
-  selectedSku: string | null,
+  draftsByUpc: Record<string, FinalizationDraft>,
+  savedDraftsByUpc: Record<string, FinalizationDraft>,
+  selectedUpc: string | null,
   input: ListWorkspaceProductsInput = {},
 ): {
   total: number;
@@ -225,15 +225,15 @@ export function listWorkspaceProducts(
   const summaries = products.map((product) =>
     buildWorkspaceProductSummary(
       product,
-      draftsBySku[product.upc],
-      savedDraftsBySku[product.upc],
-      selectedSku,
+      draftsByUpc[product.upc],
+      savedDraftsByUpc[product.upc],
+      selectedUpc,
     ),
   );
 
   const filtered = summaries.filter((summary, index) => {
     const product = products[index];
-    const draft = draftsBySku[product.upc];
+    const draft = draftsByUpc[product.upc];
 
     // Broad query check
     if (
@@ -281,28 +281,28 @@ export function listWorkspaceProducts(
 
 export function resolveFinalizationProductScope(
   products: PipelineProduct[],
-  draftsBySku: Record<string, FinalizationDraft>,
-  savedDraftsBySku: Record<string, FinalizationDraft>,
-  selectedSku: string | null,
+  draftsByUpc: Record<string, FinalizationDraft>,
+  savedDraftsByUpc: Record<string, FinalizationDraft>,
+  selectedUpc: string | null,
   scope: FinalizationProductScope,
 ): string[] {
-  const availableSkus = new Set(products.map((product) => product.upc));
+  const availableUpcs = new Set(products.map((product) => product.upc));
 
   switch (scope.type) {
     case "selected":
-      return selectedSku ? [selectedSku] : [];
+      return selectedUpc ? [selectedUpc] : [];
     case "all":
       return products.map((product) => product.upc);
-    case "sku_list":
+    case "upc_list":
       return Array.from(
-        new Set(scope.skus.filter((sku) => availableSkus.has(sku))),
+        new Set(scope.upcs.filter((upc) => availableUpcs.has(upc))),
       );
     case "query":
       return listWorkspaceProducts(
         products,
-        draftsBySku,
-        savedDraftsBySku,
-        selectedSku,
+        draftsByUpc,
+        savedDraftsByUpc,
+        selectedUpc,
         {
           query: scope.query,
           name: scope.name,

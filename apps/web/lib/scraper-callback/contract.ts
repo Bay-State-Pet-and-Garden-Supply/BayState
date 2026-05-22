@@ -1,13 +1,13 @@
 import { ZodIssue, ZodSchema, z } from 'zod';
 
-const SkuSourceSchema = z.record(z.string(), z.unknown());
+const UpcSourceSchema = z.record(z.string(), z.unknown());
 const ScraperPayloadEntrySchema = z
-    .record(z.string().min(1, 'scraper name is required'), SkuSourceSchema);
+    .record(z.string().min(1, 'scraper name is required'), UpcSourceSchema);
 
 const ScraperResultsSchema = z.object({
-    skus_processed: z.number().int().min(0).optional(),
+    upcs_processed: z.number().int().min(0).optional(),
     scrapers_run: z.array(z.string()).optional(),
-    data: z.record(z.string().min(1, 'sku is required'), ScraperPayloadEntrySchema).optional(),
+    data: z.record(z.string().min(1, 'upc is required'), ScraperPayloadEntrySchema).optional(),
     extraction_strategy: z
         .union([
             z.enum(['css', 'xpath', 'llm']),
@@ -55,7 +55,7 @@ const ScraperResultsSchema = z.object({
                 runner_name: z.string().optional(),
                 source: z.string().optional(),
                 scraper_name: z.string().optional(),
-                sku: z.string().optional(),
+                upc: z.string().optional(),
                 phase: z.string().optional(),
                 sequence: z.number().int().optional(),
             })
@@ -74,14 +74,14 @@ const ScraperResultsSchema = z.object({
                         duration_ms: z.number().int().optional(),
                         error_message: z.string().optional(),
                         extracted_data: z.record(z.string(), z.unknown()).optional(),
-                        sku: z.string().optional(),
+                        upc: z.string().optional(),
                     })
                 )
                 .optional(),
             selectors: z
                 .array(
                     z.object({
-                        sku: z.string().optional(),
+                        upc: z.string().optional(),
                         selector_name: z.string(),
                         selector_value: z.string(),
                         status: z.enum(['FOUND', 'MISSING', 'ERROR', 'SKIPPED']),
@@ -93,7 +93,7 @@ const ScraperResultsSchema = z.object({
             extractions: z
                 .array(
                     z.object({
-                        sku: z.string().optional(),
+                        upc: z.string().optional(),
                         field_name: z.string(),
                         field_value: z.string().optional(),
                         status: z.enum(['SUCCESS', 'EMPTY', 'ERROR', 'NOT_FOUND']),
@@ -120,12 +120,12 @@ const ScraperResultsSchema = z.object({
 });
 
 const ChunkResultsSchema = z.object({
-    skus_processed: z.number().int().min(0).optional(),
-    skus_successful: z.number().int().min(0).optional(),
-    skus_failed: z.number().int().min(0).optional(),
+    upcs_processed: z.number().int().min(0).optional(),
+    upcs_successful: z.number().int().min(0).optional(),
+    upcs_failed: z.number().int().min(0).optional(),
     work_units_processed: z.number().int().min(0).optional(),
     work_units_total: z.number().int().min(0).optional(),
-    data: z.record(z.string().min(1, 'sku is required'), z.unknown()).optional(),
+    data: z.record(z.string().min(1, 'upc is required'), z.unknown()).optional(),
     logs: z
         .array(
             z.object({
@@ -138,7 +138,7 @@ const ChunkResultsSchema = z.object({
                 runner_name: z.string().optional(),
                 source: z.string().optional(),
                 scraper_name: z.string().optional(),
-                sku: z.string().optional(),
+                upc: z.string().optional(),
                 phase: z.string().optional(),
                 sequence: z.number().int().optional(),
             })
@@ -157,14 +157,14 @@ const ChunkResultsSchema = z.object({
                         duration_ms: z.number().int().optional(),
                         error_message: z.string().optional(),
                         extracted_data: z.record(z.string(), z.unknown()).optional(),
-                        sku: z.string().optional(),
+                        upc: z.string().optional(),
                     })
                 )
                 .optional(),
             selectors: z
                 .array(
                     z.object({
-                        sku: z.string().optional(),
+                        upc: z.string().optional(),
                         selector_name: z.string(),
                         selector_value: z.string(),
                         status: z.enum(['FOUND', 'MISSING', 'ERROR', 'SKIPPED']),
@@ -176,7 +176,7 @@ const ChunkResultsSchema = z.object({
             extractions: z
                 .array(
                     z.object({
-                        sku: z.string().optional(),
+                        upc: z.string().optional(),
                         field_name: z.string(),
                         field_value: z.string().optional(),
                         status: z.enum(['SUCCESS', 'EMPTY', 'ERROR', 'NOT_FOUND']),
@@ -204,7 +204,7 @@ const ChunkResultsSchema = z.object({
 });
 
 const ChunkProgressSchema = z.object({
-    sku: z.string().min(1, 'sku is required'),
+    upc: z.string().min(1, 'upc is required'),
     scraper_name: z.string().min(1, 'scraper_name is required'),
     data: z.record(z.string(), z.unknown()),
 });

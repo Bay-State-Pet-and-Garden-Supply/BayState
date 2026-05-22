@@ -42,11 +42,11 @@ describe('reviewingCopilotAgent', () => {
   const context = {
     workspace: {
       totalProducts: 3,
-      selectedSku: 'SKU-123',
-      dirtySkus: ['SKU-123'],
+      selectedUpc: 'UPC-123',
+      dirtyUpcs: ['UPC-123'],
     },
     selectedProduct: {
-      sku: 'SKU-123',
+      upc: 'UPC-123',
       input: { name: 'Test Product' },
       consolidated: null,
       sources: {},

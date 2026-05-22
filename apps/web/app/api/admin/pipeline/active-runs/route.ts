@@ -10,9 +10,9 @@ interface ChunkDetail {
   id: string;
   jobId: string;
   chunkIndex: number;
-  skuCount: number;
+  upcCount: number;
   plannedWorkUnits: number;
-  skuSliceIndex: number | null;
+  upcSliceIndex: number | null;
   siteGroupKey: string | null;
   siteGroupLabel: string | null;
   siteDomain: string | null;
@@ -21,9 +21,9 @@ interface ChunkDetail {
   claimedAt: string | null;
   startedAt: string | null;
   completedAt: string | null;
-  skusProcessed: number;
-  skusSuccessful: number;
-  skusFailed: number;
+  upcsProcessed: number;
+  upcsSuccessful: number;
+  upcsFailed: number;
   errorMessage: string | null;
 }
 
@@ -32,7 +32,7 @@ interface ActiveJob {
   jobType: string | null;
   officialBrandPhase: string | null;
   cohortId: string | null;
-  skuCount: number;
+  upcCount: number;
   scrapers: string[];
   status: "pending" | "running" | "completed" | "failed" | "cancelled";
   createdAt: string;
@@ -41,7 +41,7 @@ interface ActiveJob {
   runnerName: string | null;
   progressMessage: string | null;
   progressPhase: string | null;
-  currentSku: string | null;
+  currentUpc: string | null;
   itemsProcessed: number | null;
   itemsTotal: number | null;
   lastLogMessage: string | null;
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
   const { data: activeJobs, error: activeJobsError } = await supabase
     .from("enrichment_jobs")
     .select(
-      "id, config, status, created_at, completed_at, updated_at, skus, claimed_by, started_at, heartbeat_at, last_log_message, last_log_level, last_log_at, progress_percent, progress_message, progress_phase, current_sku, items_processed, items_total",
+      "id, config, status, created_at, completed_at, updated_at, upcs, claimed_by, started_at, heartbeat_at, last_log_message, last_log_level, last_log_at, progress_percent, progress_message, progress_phase, current_upc, items_processed, items_total",
     )
     .in("status", ["pending", "claimed", "running"])
     .order("created_at", { ascending: false })
@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
   const { data: recentJobs, error: recentJobsError } = await supabase
     .from("enrichment_jobs")
     .select(
-      "id, config, status, created_at, completed_at, updated_at, skus, claimed_by, started_at, heartbeat_at, last_log_message, last_log_level, last_log_at, progress_percent, progress_message, progress_phase, current_sku, items_processed, items_total",
+      "id, config, status, created_at, completed_at, updated_at, upcs, claimed_by, started_at, heartbeat_at, last_log_message, last_log_level, last_log_at, progress_percent, progress_message, progress_phase, current_upc, items_processed, items_total",
     )
     .in("status", ["completed", "failed"])
     .gte("completed_at", oneHourAgo)
@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
   const { data: attempts, error: attemptsError } = await supabase
     .from("enrichment_attempts")
     .select(
-      "id, job_id, sku, status, claimed_by, started_at, completed_at, error_message",
+      "id, job_id, upc, status, claimed_by, started_at, completed_at, error_message",
     )
     .in("job_id", jobIds);
 
@@ -166,9 +166,9 @@ export async function GET(request: NextRequest) {
       id: attempt.id,
       jobId: attempt.job_id,
       chunkIndex: 0, // Placeholder
-      skuCount: 1,
+      upcCount: 1,
       plannedWorkUnits: 1,
-      skuSliceIndex: null,
+      upcSliceIndex: null,
       siteGroupKey: null,
       siteGroupLabel: null,
       siteDomain: null,
@@ -177,9 +177,9 @@ export async function GET(request: NextRequest) {
       claimedAt: null,
       startedAt: attempt.started_at || null,
       completedAt: attempt.completed_at || null,
-      skusProcessed: 1,
-      skusSuccessful: attempt.status === 'completed' ? 1 : 0,
-      skusFailed: attempt.status === 'failed' ? 1 : 0,
+      upcsProcessed: 1,
+      upcsSuccessful: attempt.status === 'completed' ? 1 : 0,
+      upcsFailed: attempt.status === 'failed' ? 1 : 0,
       errorMessage: attempt.error_message || null,
     };
 
@@ -191,7 +191,7 @@ export async function GET(request: NextRequest) {
   function mapJob(job: (typeof allJobs)[number]): ActiveJob {
     const jobAttempts = attemptsByJob.get(job.id) || [];
     const chunkSummary = {
-      total: jobAttempts.length || job.skus?.length || 0,
+      total: jobAttempts.length || job.upcs?.length || 0,
       pending: jobAttempts.filter((c) => c.status === "pending").length,
       running: jobAttempts.filter((c) => c.status === "running").length,
       completed: jobAttempts.filter((c) => c.status === "completed").length,
@@ -208,7 +208,7 @@ export async function GET(request: NextRequest) {
       jobType: "enrichment",
       officialBrandPhase: null,
       cohortId: getCohortId(job.config),
-      skuCount: Array.isArray(job.skus) ? job.skus.length : 0,
+      upcCount: Array.isArray(job.upcs) ? job.upcs.length : 0,
       scrapers: isRecord(job.config) && Array.isArray(job.config.scrapers) ? (job.config.scrapers as string[]) : [],
       status: job.status as "pending" | "running" | "completed" | "failed" | "cancelled",
       createdAt: job.created_at,
@@ -217,7 +217,7 @@ export async function GET(request: NextRequest) {
       runnerName: job.claimed_by || null,
       progressMessage: job.progress_message || null,
       progressPhase: job.progress_phase || null,
-      currentSku: job.current_sku || null,
+      currentUpc: job.current_upc || null,
       itemsProcessed: job.items_processed || null,
       itemsTotal: job.items_total || null,
       lastLogMessage: job.last_log_message || null,

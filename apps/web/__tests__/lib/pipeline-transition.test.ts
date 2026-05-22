@@ -84,7 +84,7 @@ describe('pipeline status transition CRUD', () => {
         const fetchBuilder = {
             select: jest.fn().mockReturnThis(),
             in: jest.fn().mockResolvedValue({
-                data: [{ sku: 'SKU-1', pipeline_status: 'reviewing' }],
+                data: [{ upc: 'UPC-1', pipeline_status: 'reviewing' }],
                 error: null,
             }),
         };
@@ -101,11 +101,11 @@ describe('pipeline status transition CRUD', () => {
 
         (createClient as jest.Mock).mockResolvedValue({ from });
 
-        const result = await bulkUpdateStatus(['SKU-1'], 'imported');
+        const result = await bulkUpdateStatus(['UPC-1'], 'imported');
 
         expect(result).toEqual({
             success: false,
-            error: "Invalid status transition to 'imported'. Allowed persisted statuses: 'imported', 'awaiting_brand', 'extracting', 'processed', 'merging', 'reviewing', 'publishing', 'failed' SKU(s): SKU-1",
+            error: "Invalid status transition to 'imported'. Allowed persisted statuses: 'imported', 'awaiting_brand', 'extracting', 'processed', 'merging', 'reviewing', 'publishing', 'failed' UPC(s): UPC-1",
             updatedCount: 0,
         });
         expect(updateBuilder.update).not.toHaveBeenCalled();
@@ -115,7 +115,7 @@ describe('pipeline status transition CRUD', () => {
         const fetchBuilder = {
             select: jest.fn().mockReturnThis(),
             in: jest.fn().mockResolvedValue({
-                data: [{ sku: 'SKU-1', pipeline_status: 'imported' }],
+                data: [{ upc: 'UPC-1', pipeline_status: 'imported' }],
                 error: null,
             }),
         };
@@ -137,7 +137,7 @@ describe('pipeline status transition CRUD', () => {
 
         (createClient as jest.Mock).mockResolvedValue({ from });
 
-        const result = await bulkUpdateStatus(['SKU-1'], 'imported', 'user-1');
+        const result = await bulkUpdateStatus(['UPC-1'], 'imported', 'user-1');
 
         expect(result).toEqual({ success: true, updatedCount: 1 });
         expect(updateBuilder.update).toHaveBeenCalledWith(
@@ -158,7 +158,7 @@ describe('pipeline status transition CRUD', () => {
         const fetchBuilder = {
             select: jest.fn().mockReturnThis(),
             in: jest.fn().mockResolvedValue({
-                data: [{ sku: 'SKU-1', pipeline_status: 'reviewing' }],
+                data: [{ upc: 'UPC-1', pipeline_status: 'reviewing' }],
                 error: null,
             }),
         };
@@ -180,7 +180,7 @@ describe('pipeline status transition CRUD', () => {
 
         (createClient as jest.Mock).mockResolvedValue({ from });
 
-        const result = await bulkUpdateStatus(['SKU-1'], 'processed');
+        const result = await bulkUpdateStatus(['UPC-1'], 'processed');
 
         expect(result.success).toBe(true);
         expect(auditBuilder.insert).toHaveBeenCalledWith([
@@ -194,7 +194,7 @@ describe('pipeline status transition CRUD', () => {
         const fetchBuilder = {
             select: jest.fn().mockReturnThis(),
             in: jest.fn().mockResolvedValue({
-                data: [{ sku: 'SKU-1', pipeline_status: 'reviewing' }],
+                data: [{ upc: 'UPC-1', pipeline_status: 'reviewing' }],
                 error: null,
             }),
         };
@@ -216,7 +216,7 @@ describe('pipeline status transition CRUD', () => {
 
         (createClient as jest.Mock).mockResolvedValue({ from });
 
-        const result = await bulkUpdateStatus(['SKU-1'], 'processed', 'user-1', true);
+        const result = await bulkUpdateStatus(['UPC-1'], 'processed', 'user-1', true);
 
         expect(result).toEqual({ success: true, updatedCount: 1 });
         expect(updateBuilder.update).toHaveBeenCalledWith(
@@ -237,7 +237,7 @@ describe('pipeline status transition CRUD', () => {
         const fetchBuilder = {
             select: jest.fn().mockReturnThis(),
             in: jest.fn().mockResolvedValue({
-                data: [{ sku: 'SKU-1', pipeline_status: 'failed' }],
+                data: [{ upc: 'UPC-1', pipeline_status: 'failed' }],
                 error: null,
             }),
         };
@@ -259,7 +259,7 @@ describe('pipeline status transition CRUD', () => {
 
         (createClient as jest.Mock).mockResolvedValue({ from });
 
-        const result = await bulkUpdateStatus(['SKU-1'], 'imported');
+        const result = await bulkUpdateStatus(['UPC-1'], 'imported');
 
         expect(result.success).toBe(true);
         expect(updateBuilder.update).toHaveBeenCalledWith(

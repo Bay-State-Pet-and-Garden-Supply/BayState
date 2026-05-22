@@ -17,7 +17,7 @@ interface RunSeed {
   jobId: string;
   runnerName: string;
   scraperName: string;
-  sku: string;
+  upc: string;
   keyId: string;
 }
 
@@ -114,17 +114,17 @@ async function seedRunner(admin: SupabaseClient, runnerName: string): Promise<Ru
   };
 }
 
-async function seedRealtimeRun(admin: SupabaseClient, options?: { runnerName?: string; scraperName?: string; sku?: string }): Promise<RunSeed> {
+async function seedRealtimeRun(admin: SupabaseClient, options?: { runnerName?: string; scraperName?: string; upc?: string }): Promise<RunSeed> {
   const now = new Date().toISOString();
   const runnerName = options?.runnerName ?? `realtime-runner-${uniqueSuffix()}`;
   const scraperName = options?.scraperName ?? 'realtime-e2e';
-  const sku = options?.sku ?? `RT-${uniqueSuffix()}`;
+  const upc = options?.upc ?? `RT-${uniqueSuffix()}`;
   const jobId = crypto.randomUUID();
   const runner = await seedRunner(admin, runnerName);
 
   const { error: jobError } = await admin.from('enrichment_jobs').insert({
     id: jobId,
-    skus: [sku],
+    upcs: [upc],
     test_mode: true,
     status: 'running',
     claimed_by: runner.runnerName,
@@ -136,7 +136,7 @@ async function seedRealtimeRun(admin: SupabaseClient, options?: { runnerName?: s
     progress_message: 'Waiting for realtime events',
     progress_phase: 'starting',
     progress_updated_at: now,
-    current_sku: sku,
+    current_upc: upc,
     items_processed: 0,
     items_total: 1,
     last_event_at: now,
@@ -166,7 +166,7 @@ async function seedRealtimeRun(admin: SupabaseClient, options?: { runnerName?: s
     keyId: runner.keyId,
     runnerName: runner.runnerName,
     scraperName,
-    sku,
+    upc,
   };
 }
 
@@ -181,7 +181,7 @@ async function emitRunnerProgress(
   request: APIRequestContext,
   run: RunSeed,
   overrides: Partial<{
-    current_sku: string;
+    current_upc: string;
     items_processed: number;
     items_total: number;
     message: string;
@@ -199,7 +199,7 @@ async function emitRunnerProgress(
       progress: overrides.progress ?? 25,
       message: overrides.message ?? 'Realtime progress update',
       phase: overrides.phase ?? 'scraping',
-      current_sku: overrides.current_sku ?? run.sku,
+      current_upc: overrides.current_upc ?? run.upc,
       items_processed: overrides.items_processed ?? 1,
       items_total: overrides.items_total ?? 4,
       runner_name: run.runnerName,
@@ -237,7 +237,7 @@ async function emitRunnerLog(
           runner_name: run.runnerName,
           runner_id: run.runnerName,
           scraper_name: run.scraperName,
-          sku: run.sku,
+          upc: run.upc,
           phase: overrides.phase ?? 'scraping',
           sequence: overrides.sequence ?? Date.now(),
           source: 'playwright-realtime-spec',
@@ -392,8 +392,8 @@ test.describe('Realtime runner logging E2E', () => {
     test.setTimeout(30_000);
 
     const admin = createSupabaseAdmin();
-    const firstRun = await seedRealtimeRun(admin, { scraperName: 'realtime-e2e-alpha', sku: `ALPHA-${uniqueSuffix()}` });
-    const secondRun = await seedRealtimeRun(admin, { scraperName: 'realtime-e2e-beta', sku: `BETA-${uniqueSuffix()}` });
+    const firstRun = await seedRealtimeRun(admin, { scraperName: 'realtime-e2e-alpha', upc: `ALPHA-${uniqueSuffix()}` });
+    const secondRun = await seedRealtimeRun(admin, { scraperName: 'realtime-e2e-beta', upc: `BETA-${uniqueSuffix()}` });
     const secondPage = await context.newPage();
 
     try {

@@ -17,17 +17,17 @@ jest.mock('@/lib/product-sources', () => ({
 describe('Gemini Multimodal Prompt Builder', () => {
   describe('buildGeminiRequest', () => {
     it('builds a request with system instruction, text, and two images', () => {
-      const sku = 'SKU-001';
+      const upc = 'UPC-001';
       const systemPrompt = 'You are a consolidation assistant.';
-      const userPrompt = 'Consolidate this product: {"sku":"SKU-001"}';
+      const userPrompt = 'Consolidate this product: {"upc":"UPC-001"}';
       const imageParts: PreparedImagePart[] = [
         { fileUri: 'files/image1', mimeType: 'image/jpeg' },
         { fileUri: 'files/image2', mimeType: 'image/png' },
       ];
 
-      const request = buildGeminiRequest(sku, systemPrompt, userPrompt, imageParts, 'gemini-3.5-flash');
+      const request = buildGeminiRequest(upc, systemPrompt, userPrompt, imageParts, 'gemini-3.5-flash');
 
-      expect(request.key).toBe('SKU-001');
+      expect(request.key).toBe('UPC-001');
       expect(request.request.model).toBe('models/gemini-3.5-flash');
       expect(request.request.systemInstruction!.parts[0].text).toBe(systemPrompt);
       expect(request.request.contents[0].role).toBe('user');
@@ -47,7 +47,7 @@ describe('Gemini Multimodal Prompt Builder', () => {
     });
 
     it('handles zero image parts (text-only)', () => {
-      const request = buildGeminiRequest('SKU-002', 'system', 'text', [], 'gemini-3.5-flash');
+      const request = buildGeminiRequest('UPC-002', 'system', 'text', [], 'gemini-3.5-flash');
 
       expect(request.request.contents[0].parts.length).toBe(1);
       expect(request.request.contents[0].parts[0].text).toBe('text');
@@ -60,7 +60,7 @@ describe('Gemini Multimodal Prompt Builder', () => {
         { fileUri: 'files/img3', mimeType: 'image/jpeg' },
       ];
 
-      const request = buildGeminiRequest('SKU-003', 'system', 'text', imageParts, 'gemini-3.5-flash');
+      const request = buildGeminiRequest('UPC-003', 'system', 'text', imageParts, 'gemini-3.5-flash');
 
       // 1 text + 2 images max
       expect(request.request.contents[0].parts.length).toBe(3);
@@ -71,7 +71,7 @@ describe('Gemini Multimodal Prompt Builder', () => {
         { fileUri: 'files/img1', mimeType: 'image/jpeg' },
       ];
 
-      const request = buildGeminiRequest('SKU-004', 'system', 'text', imageParts, 'gemini-3.5-flash');
+      const request = buildGeminiRequest('UPC-004', 'system', 'text', imageParts, 'gemini-3.5-flash');
 
       const json = JSON.stringify(request);
       expect(json).not.toContain('base64');
@@ -79,7 +79,7 @@ describe('Gemini Multimodal Prompt Builder', () => {
     });
 
     it('sets cachedContent and omits systemInstruction when cachedContent config is provided', () => {
-      const request = buildGeminiRequest('SKU-001', 'system prompt text', 'user text', [], 'gemini-3.5-flash', {
+      const request = buildGeminiRequest('UPC-001', 'system prompt text', 'user text', [], 'gemini-3.5-flash', {
         cachedContent: 'cachedContents/my-cache-id',
       });
 
@@ -89,16 +89,16 @@ describe('Gemini Multimodal Prompt Builder', () => {
   });
 
   describe('createGeminiBatchJsonl', () => {
-    it('produces valid JSONL lines with SKU keys', () => {
+    it('produces valid JSONL lines with UPC keys', () => {
       const products: ProductSource[] = [
-        { sku: 'SKU-001', sources: { test_source: { title: 'Product A', brand: 'Brand X' } } },
-        { sku: 'SKU-002', sources: { test_source: { title: 'Product B', brand: 'Brand Y' } } },
+        { upc: 'UPC-001', sources: { test_source: { title: 'Product A', brand: 'Brand X' } } },
+        { upc: 'UPC-002', sources: { test_source: { title: 'Product B', brand: 'Brand Y' } } },
       ];
 
-      const imagePartsBySku = new Map<string, PreparedImagePart[]>();
-      imagePartsBySku.set('SKU-001', [{ fileUri: 'files/img1', mimeType: 'image/jpeg' }]);
+      const imagePartsByUpc = new Map<string, PreparedImagePart[]>();
+      imagePartsByUpc.set('UPC-001', [{ fileUri: 'files/img1', mimeType: 'image/jpeg' }]);
 
-      const jsonl = createGeminiBatchJsonl(products, imagePartsBySku, ['Pet Supplies'], 'gemini-3.5-flash');
+      const jsonl = createGeminiBatchJsonl(products, imagePartsByUpc, ['Pet Supplies'], 'gemini-3.5-flash');
 
       const lines = jsonl.trim().split('\n');
       expect(lines.length).toBe(2);
@@ -112,12 +112,12 @@ describe('Gemini Multimodal Prompt Builder', () => {
         expect(parsed.request.generationConfig.responseMimeType).toBe('application/json');
       }
 
-      // First SKU has image, second SKU is text-only
+      // First UPC has image, second UPC is text-only
       const line1 = JSON.parse(lines[0]);
       const line2 = JSON.parse(lines[1]);
 
-      // SKU-001 has 1 text + 1 image
-      if (line1.key === 'SKU-001') {
+      // UPC-001 has 1 text + 1 image
+      if (line1.key === 'UPC-001') {
         expect(line1.request.contents[0].parts.length).toBe(2);
         expect(line2.request.contents[0].parts.length).toBe(1);
       } else {
@@ -129,7 +129,7 @@ describe('Gemini Multimodal Prompt Builder', () => {
 
     it('all lines parse as valid JSON', () => {
       const products: ProductSource[] = [
-        { sku: 'SKU-001', sources: { test: { title: 'Test' } } },
+        { upc: 'UPC-001', sources: { test: { title: 'Test' } } },
       ];
       const jsonl = createGeminiBatchJsonl(products, new Map(), [], 'gemini-3.5-flash');
 
@@ -141,7 +141,7 @@ describe('Gemini Multimodal Prompt Builder', () => {
 
     it('passes cachedContent option and omits systemInstruction in JSONL output', () => {
       const products: ProductSource[] = [
-        { sku: 'SKU-001', sources: { test: { title: 'Test' } } },
+        { upc: 'UPC-001', sources: { test: { title: 'Test' } } },
       ];
       const jsonl = createGeminiBatchJsonl(products, new Map(), [], 'gemini-3.5-flash', {
         cachedContent: 'cachedContents/batch-cache-123',
@@ -156,7 +156,7 @@ describe('Gemini Multimodal Prompt Builder', () => {
   describe('parseGeminiBatchOutputLine', () => {
     it('parses a Gemini batch output line with candidate text', () => {
       const outputLine = JSON.stringify({
-        key: 'SKU-001',
+        key: 'UPC-001',
         response: {
           statusCode: 200,
           body: {
@@ -180,7 +180,7 @@ describe('Gemini Multimodal Prompt Builder', () => {
 
       const result = parseGeminiBatchOutputLine(outputLine);
       expect(result).not.toBeNull();
-      expect(result!.key).toBe('SKU-001');
+      expect(result!.key).toBe('UPC-001');
       expect(result!.text).toContain('Product A');
       expect(result!.usage?.promptTokenCount).toBe(100);
       expect(result!.usage?.totalTokenCount).toBe(150);
@@ -188,13 +188,13 @@ describe('Gemini Multimodal Prompt Builder', () => {
 
     it('handles error lines gracefully', () => {
       const errorLine = JSON.stringify({
-        key: 'SKU-002',
+        key: 'UPC-002',
         error: { code: 400, message: 'Invalid request' },
       });
 
       const result = parseGeminiBatchOutputLine(errorLine);
       expect(result).not.toBeNull();
-      expect(result!.key).toBe('SKU-002');
+      expect(result!.key).toBe('UPC-002');
       expect(result!.error).toBe('Invalid request');
     });
 
@@ -205,7 +205,7 @@ describe('Gemini Multimodal Prompt Builder', () => {
 
     it('extracts error when response has no candidates', () => {
       const outputLine = JSON.stringify({
-        key: 'SKU-003',
+        key: 'UPC-003',
         response: {
           statusCode: 200,
           body: { candidates: [] },
@@ -220,7 +220,7 @@ describe('Gemini Multimodal Prompt Builder', () => {
     it('handles nested response structure variations', () => {
       // Some Gemini responses might put candidates at response level
       const outputLine = JSON.stringify({
-        key: 'SKU-004',
+        key: 'UPC-004',
         response: {
           statusCode: 200,
           candidates: [
@@ -235,7 +235,7 @@ describe('Gemini Multimodal Prompt Builder', () => {
 
       const result = parseGeminiBatchOutputLine(outputLine);
       expect(result).not.toBeNull();
-      expect(result!.key).toBe('SKU-004');
+      expect(result!.key).toBe('UPC-004');
       expect(result!.text).toContain('Product D');
     });
   });

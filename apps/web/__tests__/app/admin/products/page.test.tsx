@@ -23,7 +23,7 @@ jest.mock('@/lib/supabase/server', () => ({
                 data: [
                   {
                     id: '1',
-                    sku: 'SKU001',
+                    upc: 'UPC001',
                     name: 'Test Product 1',
                     slug: 'test-product-1',
                     description: 'A test product',
@@ -49,7 +49,7 @@ jest.mock('@/lib/supabase/server', () => ({
                   },
                   {
                     id: '2',
-                    sku: 'SKU002',
+                    upc: 'UPC002',
                     name: 'Test Product 2',
                     slug: 'test-product-2',
                     description: 'Another test product',

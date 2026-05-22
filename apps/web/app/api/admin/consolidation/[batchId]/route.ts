@@ -72,11 +72,11 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
             const supabase = await createAdminClient();
             const { data: items } = await supabase
                 .from('batch_job_items')
-                .select('sku')
+                .select('upc')
                 .eq('batch_job_id', batchId);
 
-            const skus = Array.from(new Set((items || []).map((item) => item.sku).filter(Boolean)));
-            if (skus.length > 0) {
+            const upcs = Array.from(new Set((items || []).map((item) => item.upc).filter(Boolean)));
+            if (upcs.length > 0) {
                 await supabase
                     .from('products_ingestion')
                     .update({
@@ -84,7 +84,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
                         error_message: null,
                         updated_at: new Date().toISOString(),
                     })
-                    .in('sku', skus)
+                    .in('upc', upcs)
                     .eq('pipeline_status', 'merging');
             }
 
@@ -97,7 +97,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
                 return NextResponse.json({ error: deleteError.message }, { status: 500 });
             }
 
-            return NextResponse.json({ status: 'deleted', reset_count: skus.length });
+            return NextResponse.json({ status: 'deleted', reset_count: upcs.length });
         }
 
         const result = await cancelBatch(batchId);

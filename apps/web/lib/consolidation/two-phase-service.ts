@@ -34,13 +34,13 @@ interface TwoPhaseConsolidationConfig {
 }
 
 interface ConsistencyIssue {
-    sku: string;
+    upc: string;
     ruleId: string;
     field: keyof ConsolidationResult;
     severity: 'low' | 'medium' | 'high';
     message: string;
     productLine?: string;
-    siblingSkus: string[];
+    siblingUpcs: string[];
     observedValue?: string;
     expectedValue?: string;
     conflictingValues?: string[];
@@ -52,7 +52,7 @@ interface ConsistencyReport {
     flaggedProducts: number;
     totalIssues: number;
     issues: ConsistencyIssue[];
-    bySku: Record<string, ConsistencyIssue[]>;
+    byUpc: Record<string, ConsistencyIssue[]>;
     appliedRuleIds: string[];
     skippedReason?: string;
 }
@@ -96,7 +96,7 @@ function normalizeComparisonValue(value: unknown): string | null {
     return normalized ? normalized.toLowerCase() : null;
 }
 
-function uniqueSkus(values: string[]): string[] {
+function uniqueUpcs(values: string[]): string[] {
     return Array.from(new Set(values.filter((value) => value.trim().length > 0)));
 }
 
@@ -107,7 +107,7 @@ function createEmptyReport(totalProducts: number, skippedReason?: string): Consi
         flaggedProducts: 0,
         totalIssues: 0,
         issues: [],
-        bySku: {},
+        byUpc: {},
         appliedRuleIds: [],
         ...(skippedReason ? { skippedReason } : {}),
     };
@@ -220,16 +220,16 @@ export class TwoPhaseConsolidationService {
         config: TwoPhaseConsolidationConfig
     ): TwoPhaseConsolidationResult {
         const rules = config.consistencyRules ?? [];
-        const bySku: Record<string, ConsistencyIssue[]> = {};
+        const byUpc: Record<string, ConsistencyIssue[]> = {};
         const issues: ConsistencyIssue[] = [];
-        const resultsBySku = new Map(phase1Results.map((result) => [result.sku, result]));
-        const productsBySku = new Map(products.map((product) => [product.sku, product]));
+        const resultsByUpc = new Map(phase1Results.map((result) => [result.upc, result]));
+        const productsByUpc = new Map(products.map((product) => [product.upc, product]));
 
         const appendIssue = (issue: ConsistencyIssue) => {
-            if (!bySku[issue.sku]) {
-                bySku[issue.sku] = [];
+            if (!byUpc[issue.upc]) {
+                byUpc[issue.upc] = [];
             }
-            bySku[issue.sku].push(issue);
+            byUpc[issue.upc].push(issue);
             issues.push(issue);
         };
 
@@ -242,19 +242,19 @@ export class TwoPhaseConsolidationService {
                 continue;
             }
 
-            const siblingSkus = uniqueSkus([
-                product.sku,
-                ...context.siblings.slice(0, maxSiblings).map((sibling) => sibling.sku),
+            const siblingUpcs = uniqueUpcs([
+                product.upc,
+                ...context.siblings.slice(0, maxSiblings).map((sibling) => sibling.upc),
             ]);
 
-            const groupKey = `${context.productLine}:${siblingSkus.slice().sort().join('|')}`;
+            const groupKey = `${context.productLine}:${siblingUpcs.slice().sort().join('|')}`;
             if (processedGroups.has(groupKey)) {
                 continue;
             }
             processedGroups.add(groupKey);
 
-            const groupResults = siblingSkus
-                .map((sku) => resultsBySku.get(sku))
+            const groupResults = siblingUpcs
+                .map((upc) => resultsByUpc.get(upc))
                 .filter((result): result is ConsolidationResult => Boolean(result));
 
             if (groupResults.length < 2) {
@@ -284,13 +284,13 @@ export class TwoPhaseConsolidationService {
 
                 for (const result of groupResults) {
                     appendIssue({
-                        sku: result.sku,
+                        upc: result.upc,
                         ruleId: rule.id,
                         field: rule.field,
                         severity: rule.severity ?? 'medium',
                         message: `${String(rule.field)} is inconsistent across sibling products in ${context.productLine}`,
                         productLine: context.productLine,
-                        siblingSkus: siblingSkus.filter((sku) => sku !== result.sku),
+                        siblingUpcs: siblingUpcs.filter((upc) => upc !== result.upc),
                         observedValue: normalizeValue(result[rule.field]) ?? undefined,
                         conflictingValues,
                     });
@@ -299,7 +299,7 @@ export class TwoPhaseConsolidationService {
         }
 
         for (const result of phase1Results) {
-            const product = productsBySku.get(result.sku);
+            const product = productsByUpc.get(result.upc);
             const context = product?.productLineContext;
             if (!context) {
                 continue;
@@ -321,13 +321,13 @@ export class TwoPhaseConsolidationService {
                 }
 
                 appendIssue({
-                    sku: result.sku,
+                    upc: result.upc,
                     ruleId: rule.id,
                     field: rule.field,
                     severity: rule.severity ?? 'medium',
                     message: `${String(rule.field)} does not match expected ${rule.expectedValueSource} for ${context.productLine}`,
                     productLine: context.productLine,
-                    siblingSkus: context.siblings.slice(0, maxSiblings).map((sibling) => sibling.sku),
+                    siblingUpcs: context.siblings.slice(0, maxSiblings).map((sibling) => sibling.upc),
                     observedValue,
                     expectedValue,
                 });
@@ -336,8 +336,8 @@ export class TwoPhaseConsolidationService {
 
         const productsWithIssues = phase1Results.map((result) => ({
             ...result,
-            consistencyIssues: bySku[result.sku] ?? [],
-            consistencyStatus: (bySku[result.sku]?.length ?? 0) > 0 ? 'flagged' as const : 'passed' as const,
+            consistencyIssues: byUpc[result.upc] ?? [],
+            consistencyStatus: (byUpc[result.upc]?.length ?? 0) > 0 ? 'flagged' as const : 'passed' as const,
         }));
 
         const flaggedProducts = productsWithIssues.filter((result) => result.consistencyStatus === 'flagged').length;
@@ -351,7 +351,7 @@ export class TwoPhaseConsolidationService {
                 flaggedProducts,
                 totalIssues: issues.length,
                 issues,
-                bySku,
+                byUpc,
                 appliedRuleIds: rules.map((rule) => rule.id),
             },
         };

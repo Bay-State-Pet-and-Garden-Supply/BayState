@@ -8,11 +8,11 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { skus } = body as { skus: string[] };
+        const { upcs } = body as { upcs: string[] };
 
-        if (!skus || !Array.isArray(skus) || skus.length === 0) {
+        if (!upcs || !Array.isArray(upcs) || upcs.length === 0) {
             return NextResponse.json(
-                { error: 'SKUs array is required and must not be empty' },
+                { error: 'UPCs array is required and must not be empty' },
                 { status: 400 }
             );
         }
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
         // Get user ID from auth context if available
         const userId = auth.user?.id;
 
-        const result = await bulkDeleteProducts(skus, userId);
+        const result = await bulkDeleteProducts(upcs, userId);
 
         if (!result.success) {
             return NextResponse.json(

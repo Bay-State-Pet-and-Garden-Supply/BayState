@@ -14,7 +14,7 @@ describe('Product Sync Utilities', () => {
     describe('transformShopSiteProduct', () => {
         it('transforms ShopSite product to full feature parity format', () => {
             const shopSiteProduct = {
-                sku: 'SKU-001',
+                upc: 'UPC-001',
                 name: 'Test Product',
                 price: 29.99,
                 saleAmount: 24.99,
@@ -51,7 +51,7 @@ describe('Product Sync Utilities', () => {
             const result = transformShopSiteProduct(shopSiteProduct);
 
             expect(result).toEqual({
-                sku: 'SKU-001',
+                upc: 'UPC-001',
                 name: 'Test Product',
                 slug: 'test-product',
                 price: 29.99,
@@ -87,7 +87,7 @@ describe('Product Sync Utilities', () => {
 
         it('ignores ShopSite availability text when quantity is 0', () => {
             const shopSiteProduct = {
-                sku: 'SKU-AVAIL',
+                upc: 'UPC-AVAIL',
                 name: 'Availability Test Product',
                 price: 15.00,
                 description: '',
@@ -103,7 +103,7 @@ describe('Product Sync Utilities', () => {
 
         it('sets stock_status to out_of_stock when quantity is 0', () => {
             const shopSiteProduct = {
-                sku: 'SKU-002',
+                upc: 'UPC-002',
                 name: 'Out of Stock Product',
                 price: 19.99,
                 description: '',
@@ -118,7 +118,7 @@ describe('Product Sync Utilities', () => {
 
         it('handles empty image URL', () => {
             const shopSiteProduct = {
-                sku: 'SKU-003',
+                upc: 'UPC-003',
                 name: 'No Image Product',
                 price: 9.99,
                 description: '',
@@ -133,7 +133,7 @@ describe('Product Sync Utilities', () => {
 
         it('normalizes imported facet values before persistence', () => {
             const shopSiteProduct = {
-                sku: 'SKU-004',
+                upc: 'UPC-004',
                 name: 'Facet Normalization Product',
                 price: 12.99,
                 description: '',
@@ -153,7 +153,7 @@ describe('Product Sync Utilities', () => {
 
         it('builds pipeline input that preserves ProductOnPages for downstream consolidation', () => {
             const input = buildPipelineInputFromShopSiteProduct({
-                sku: 'SKU-PIPE-001',
+                upc: 'UPC-PIPE-001',
                 name: 'Example Product',
                 price: 14.99,
                 description: 'Short description',
@@ -195,7 +195,7 @@ describe('Product Sync Utilities', () => {
                 is_special_order: false,
                 in_store_pickup: true,
                 legacy_filename: null,
-                subproduct_skus: undefined,
+                subproduct_upcs: undefined,
             });
         });
     });
@@ -213,8 +213,8 @@ describe('Product Sync Utilities', () => {
             expect(buildProductSlug('Product   With   Spaces')).toBe('product-with-spaces');
         });
 
-        it('appends SKU for uniqueness when provided', () => {
-            expect(buildProductSlug('Common Product', 'SKU-123')).toBe('common-product-sku-123');
+        it('appends UPC for uniqueness when provided', () => {
+            expect(buildProductSlug('Common Product', 'UPC-123')).toBe('common-product-upc-123');
         });
     });
 });

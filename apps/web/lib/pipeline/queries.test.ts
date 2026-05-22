@@ -79,11 +79,11 @@ function createSupabaseClient(plansByTable: Record<string, QueryPlan[]>): Pipeli
 
 function createProduct(
   id: string,
-  sku: string,
+  upc: string,
   status: PersistedPipelineStatus
 ): {
   id: string;
-  sku: string;
+  upc: string;
   pipeline_status: PersistedPipelineStatus;
   input: { name: string; price: number };
   sources: Record<string, never>;
@@ -93,11 +93,11 @@ function createProduct(
 } {
   return {
     id,
-    sku,
+    upc,
     pipeline_status: status,
-    input: { name: sku, price: 10 },
+    input: { name: upc, price: 10 },
     sources: {},
-    consolidated: { name: sku, price: 10 },
+    consolidated: { name: upc, price: 10 },
     created_at: "2026-04-01T00:00:00.000Z",
     updated_at: "2026-04-01T00:00:00.000Z",
   };
@@ -106,7 +106,7 @@ function createProduct(
 describe("pipeline queries", () => {
   it("queries imported products with normalized pagination", async () => {
     const productsPlan = createQueryPlan({
-      data: [createProduct("p-1", "SKU-1", "imported")],
+      data: [createProduct("p-1", "UPC-1", "imported")],
       error: null,
       count: 1,
     });
@@ -122,14 +122,14 @@ describe("pipeline queries", () => {
     expect(productsPlan.calls).toEqual([
       ["select", "*", { count: "exact" }],
       ["eq", "pipeline_status", "imported"],
-      ["order", "sku", { ascending: true }],
+      ["order", "upc", { ascending: true }],
       ["range", 10, 34],
     ]);
   });
 
   it("queries products for a specific workflow tab", async () => {
     const productsPlan = createQueryPlan({
-      data: [createProduct("p-2", "SKU-2", "reviewing")],
+      data: [createProduct("p-2", "UPC-2", "reviewing")],
       error: null,
       count: 1,
     });
@@ -144,7 +144,7 @@ describe("pipeline queries", () => {
     expect(productsPlan.calls).toEqual([
       ["select", "*", { count: "exact" }],
       ["eq", "pipeline_status", "reviewing"],
-      ["order", "sku", { ascending: true }],
+      ["order", "upc", { ascending: true }],
       ["range", 0, 99],
     ]);
   });

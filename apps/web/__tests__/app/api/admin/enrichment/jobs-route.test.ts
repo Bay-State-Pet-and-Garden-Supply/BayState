@@ -89,11 +89,11 @@ describe('/api/admin/enrichment/jobs route', () => {
         (createAdminClient as jest.Mock).mockResolvedValue(mockSupabase);
     });
 
-    it('rejects requests with empty SKUs array', async () => {
+    it('rejects requests with empty UPCs array', async () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/enrichment/jobs', {
                 body: JSON.stringify({
-                    skus: [],
+                    upcs: [],
                 }),
             } as any),
         );
@@ -101,7 +101,7 @@ describe('/api/admin/enrichment/jobs route', () => {
 
         expect(response.status).toBe(400);
         expect(payload).toEqual({
-            error: 'skus array is required and must not be empty',
+            error: 'upcs array is required and must not be empty',
         });
     });
 
@@ -112,7 +112,7 @@ describe('/api/admin/enrichment/jobs route', () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/enrichment/jobs', {
                 body: JSON.stringify({
-                    skus: ['SKU-1'],
+                    upcs: ['UPC-1'],
                     config: {
                         source_type: 'approved_source_extraction',
                     },
@@ -123,23 +123,23 @@ describe('/api/admin/enrichment/jobs route', () => {
 
         expect(response.status).toBe(400);
         expect(payload).toEqual({
-            error: 'None of the selected SKUs are in Imported or Extracting status',
+            error: 'None of the selected UPCs are in Imported or Extracting status',
         });
     });
 
     it('rejects approved source extraction if required credentials are not configured', async () => {
-        // 1. Mock products_ingestion search to find SKU
+        // 1. Mock products_ingestion search to find UPC
         mockSupabase.in.mockResolvedValueOnce({
-            data: [{ sku: 'SKU-1', pipeline_status: 'imported' }],
+            data: [{ upc: 'UPC-1', pipeline_status: 'imported' }],
             error: null,
         });
 
         // 2. Mock source plan building to return a plan requiring auth for phillips
         (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
-            'SKU-1': {
+            'UPC-1': {
                 ok: true,
                 plan: {
-                    sku: 'SKU-1',
+                    upc: 'UPC-1',
                     priority: [
                         {
                             sourceType: 'distributor',
@@ -161,7 +161,7 @@ describe('/api/admin/enrichment/jobs route', () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/enrichment/jobs', {
                 body: JSON.stringify({
-                    skus: ['SKU-1'],
+                    upcs: ['UPC-1'],
                     config: {
                         source_type: 'approved_source_extraction',
                     },
@@ -175,18 +175,18 @@ describe('/api/admin/enrichment/jobs route', () => {
     });
 
     it('succeeds and creates enrichment job when credentials are configured', async () => {
-        // 1. Mock products_ingestion search to find SKU
+        // 1. Mock products_ingestion search to find UPC
         mockSupabase.in.mockResolvedValueOnce({
-            data: [{ sku: 'SKU-1', pipeline_status: 'imported' }],
+            data: [{ upc: 'UPC-1', pipeline_status: 'imported' }],
             error: null,
         });
 
         // 2. Mock source plan building to return a plan requiring auth for phillips
         (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
-            'SKU-1': {
+            'UPC-1': {
                 ok: true,
                 plan: {
-                    sku: 'SKU-1',
+                    upc: 'UPC-1',
                     priority: [
                         {
                             sourceType: 'distributor',
@@ -230,7 +230,7 @@ describe('/api/admin/enrichment/jobs route', () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/enrichment/jobs', {
                 body: JSON.stringify({
-                    skus: ['SKU-1'],
+                    upcs: ['UPC-1'],
                     config: {
                         source_type: 'approved_source_extraction',
                     },
@@ -243,7 +243,7 @@ describe('/api/admin/enrichment/jobs route', () => {
         expect(payload).toEqual({
             success: true,
             jobId: 'job-1',
-            skuCount: 1,
+            upcCount: 1,
             attemptCount: 1,
         });
         expect(mockSupabase.insert).toHaveBeenCalledWith(
@@ -258,18 +258,18 @@ describe('/api/admin/enrichment/jobs route', () => {
     });
 
     it('sets model to null when extractionMode is distributor_only', async () => {
-        // 1. Mock products_ingestion search to find SKU
+        // 1. Mock products_ingestion search to find UPC
         mockSupabase.in.mockResolvedValueOnce({
-            data: [{ sku: 'SKU-1', pipeline_status: 'imported' }],
+            data: [{ upc: 'UPC-1', pipeline_status: 'imported' }],
             error: null,
         });
 
         // 2. Mock source plan building
         (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
-            'SKU-1': {
+            'UPC-1': {
                 ok: true,
                 plan: {
-                    sku: 'SKU-1',
+                    upc: 'UPC-1',
                     priority: [
                         {
                             sourceType: 'distributor',
@@ -310,7 +310,7 @@ describe('/api/admin/enrichment/jobs route', () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/enrichment/jobs', {
                 body: JSON.stringify({
-                    skus: ['SKU-1'],
+                    upcs: ['UPC-1'],
                     extractionMode: 'distributor_only',
                     config: {
                         source_type: 'approved_source_extraction',
@@ -332,7 +332,7 @@ describe('/api/admin/enrichment/jobs route', () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/enrichment/jobs', {
                 body: JSON.stringify({
-                    skus: ['SKU-1'],
+                    upcs: ['UPC-1'],
                     extractionMode: 'invalid_mode',
                 }),
             } as any),
@@ -345,14 +345,14 @@ describe('/api/admin/enrichment/jobs route', () => {
 
     it('returns specific error for ai_only when all plans fail', async () => {
         mockSupabase.in.mockResolvedValueOnce({
-            data: [{ sku: 'SKU-1', pipeline_status: 'imported' }],
+            data: [{ upc: 'UPC-1', pipeline_status: 'imported' }],
             error: null,
         });
 
         (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
-            'SKU-1': {
+            'UPC-1': {
                 ok: false,
-                sku: 'SKU-1',
+                upc: 'UPC-1',
                 error: 'AI-only extraction requires official domains to be configured for brand TestBrand. Please configure official domains in the admin panel.',
             },
         });
@@ -360,7 +360,7 @@ describe('/api/admin/enrichment/jobs route', () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/enrichment/jobs', {
                 body: JSON.stringify({
-                    skus: ['SKU-1'],
+                    upcs: ['UPC-1'],
                     extractionMode: 'ai_only',
                     config: {
                         source_type: 'approved_source_extraction',
@@ -376,14 +376,14 @@ describe('/api/admin/enrichment/jobs route', () => {
 
     it('returns specific error for distributor_only when all plans fail', async () => {
         mockSupabase.in.mockResolvedValueOnce({
-            data: [{ sku: 'SKU-1', pipeline_status: 'imported' }],
+            data: [{ upc: 'UPC-1', pipeline_status: 'imported' }],
             error: null,
         });
 
         (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
-            'SKU-1': {
+            'UPC-1': {
                 ok: false,
-                sku: 'SKU-1',
+                upc: 'UPC-1',
                 error: 'No approved sources configured for brand TestBrand (testbrand). Configure brand sources in the admin panel before extraction.',
             },
         });
@@ -391,7 +391,7 @@ describe('/api/admin/enrichment/jobs route', () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/enrichment/jobs', {
                 body: JSON.stringify({
-                    skus: ['SKU-1'],
+                    upcs: ['UPC-1'],
                     extractionMode: 'distributor_only',
                     config: {
                         source_type: 'approved_source_extraction',
@@ -407,14 +407,14 @@ describe('/api/admin/enrichment/jobs route', () => {
 
     it('returns success with a skip message when all requested sources are already fresh', async () => {
         mockSupabase.in.mockResolvedValueOnce({
-            data: [{ sku: 'SKU-1', pipeline_status: 'imported' }],
+            data: [{ upc: 'UPC-1', pipeline_status: 'imported' }],
             error: null,
         });
 
         (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
-            'SKU-1': {
+            'UPC-1': {
                 ok: false,
-                sku: 'SKU-1',
+                upc: 'UPC-1',
                 code: 'all_sources_fresh',
                 error: 'All requested approved sources are already fresh. Use forceRefresh to re-scrape.',
             },
@@ -423,7 +423,7 @@ describe('/api/admin/enrichment/jobs route', () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/enrichment/jobs', {
                 body: JSON.stringify({
-                    skus: ['SKU-1'],
+                    upcs: ['UPC-1'],
                     extractionMode: 'distributor_only',
                     config: {
                         source_type: 'approved_source_extraction',
@@ -437,24 +437,24 @@ describe('/api/admin/enrichment/jobs route', () => {
         expect(payload).toEqual({
             success: true,
             jobId: null,
-            skuCount: 0,
+            upcCount: 0,
             attemptCount: 0,
-            skipped_skus: ['SKU-1'],
+            skipped_upcs: ['UPC-1'],
             message: 'All requested approved sources are already fresh. Use Force refresh to re-scrape.',
         });
     });
 
     it('stores extractionMode and forceRefresh in jobConfig', async () => {
         mockSupabase.in.mockResolvedValueOnce({
-            data: [{ sku: 'SKU-1', pipeline_status: 'imported' }],
+            data: [{ upc: 'UPC-1', pipeline_status: 'imported' }],
             error: null,
         });
 
         (buildApprovedSourcePlans as jest.Mock).mockResolvedValue({
-            'SKU-1': {
+            'UPC-1': {
                 ok: true,
                 plan: {
-                    sku: 'SKU-1',
+                    upc: 'UPC-1',
                     priority: [],
                 },
             },
@@ -479,7 +479,7 @@ describe('/api/admin/enrichment/jobs route', () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/enrichment/jobs', {
                 body: JSON.stringify({
-                    skus: ['SKU-1'],
+                    upcs: ['UPC-1'],
                     extractionMode: 'ai_only',
                     forceRefresh: true,
                     config: {

@@ -38,8 +38,8 @@ function LogItem({ log }: { log: ScrapeJobLogEntry }) {
         )}>
           {log.message}
         </span>
-        {log.sku && (
-          <span className="text-[9px] font-bold text-amber-600 uppercase mt-0.5">SKU: {log.sku}</span>
+        {log.upc && (
+          <span className="text-[9px] font-bold text-amber-600 uppercase mt-0.5">UPC: {log.upc}</span>
         )}
       </div>
     </div>

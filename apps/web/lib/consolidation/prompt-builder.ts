@@ -35,14 +35,14 @@ const TRUSTED_SOURCE_FRAGMENTS = [
 ];
 const MARKETPLACE_SOURCE_FRAGMENTS = ['amazon', 'ebay', 'etsy', 'walmart', 'marketplace', 'seller'];
 const CONSISTENCY_RULES = [
-    'Keep the same BRAND across sibling products unless higher-trust evidence for this SKU clearly conflicts.',
+    'Keep the same BRAND across sibling products unless higher-trust evidence for this UPC clearly conflicts.',
     'Keep naming and description style aligned across the product line while preserving real variant differences.',
 ];
 
 type SiblingProduct = NonNullable<ProductSource['productLineContext']>['siblings'][number];
 
 interface SiblingProductPromptSummary {
-    sku: string;
+    upc: string;
     name: string;
     brand?: string;
 }
@@ -56,7 +56,7 @@ interface ProductLinePromptContext {
 }
 
 interface ConsolidationPromptPayload {
-    sku: string;
+    upc: string;
     sources: Array<{
         source: string;
         trust: string;
@@ -121,8 +121,8 @@ function getSiblingBrand(rawSources: Record<string, unknown>): string | undefine
 
 function buildSiblingProductSummary(sibling: SiblingProduct): SiblingProductPromptSummary {
     return {
-        sku: sibling.sku,
-        name: trimString(sibling.name) || sibling.sku,
+        upc: sibling.upc,
+        name: trimString(sibling.name) || sibling.upc,
         ...(getSiblingBrand(sibling.sources) ? { brand: getSiblingBrand(sibling.sources) } : {}),
     };
 }
@@ -147,7 +147,7 @@ function buildProductLinePromptContext(product: ProductSource): ProductLinePromp
     }
 
     return {
-        product_line: trimString(context.productLine) || product.sku,
+        product_line: trimString(context.productLine) || product.upc,
         sibling_products: siblingProducts,
         consistency_rules: [...CONSISTENCY_RULES],
         ...(expectedBrand ? { expected_brand: expectedBrand } : {}),
@@ -162,7 +162,7 @@ export function buildUserPromptPayload(
     const productLineContext = buildProductLinePromptContext(product);
 
     return {
-        sku: product.sku,
+        upc: product.upc,
         sources: sourceEvidence,
         ...(productLineContext ? { product_line_context: productLineContext } : {}),
     };
@@ -275,7 +275,7 @@ Source trust rules:
 
 Sibling product context:
 - Use sibling product context only as consistency guidance when it is provided.
-- Keep supported naming and brand patterns aligned across related SKUs without inventing details from siblings.
+- Keep supported naming and brand patterns aligned across related UPCs without inventing details from siblings.
 
 OCR Packaging Evidence (image_text):
 - When a source provides image_text (OCR extracted from product packaging photos), treat it as authoritative for the physical packaging text.
@@ -295,9 +295,9 @@ Product-name rules:
 - Never truncate words or use ellipses.
 - Never produce identical names for distinguishable variants; include source-supported differentiators and do not invent variant details.
 - Same product, different colors: "Motorsport Container Red 5 Gal.", "Motorsport Container White 5 Gal.", "Motorsport Container Yellow 5 Gal."
-- Same product line, different flavors/scents: "SPOT BAMBONE Coffee Wood Bacon 7 in.", "SPOT BAMBONE Coffee Wood Chicken 7 in." — flavor MUST be included when sources show different flavors for different SKUs.
+- Same product line, different flavors/scents: "SPOT BAMBONE Coffee Wood Bacon 7 in.", "SPOT BAMBONE Coffee Wood Chicken 7 in." — flavor MUST be included when sources show different flavors for different UPCs.
 - Same product line, different materials: "SPOT BAMBONE Eco Knot Bone 7.5 in.", "SPOT BAMBONE Bambone Knot Bone 7.5 in." — material/type MUST be included when sources show different materials.
-- If two SKUs have different flavor, color, scent, or material in their source data, the name MUST include that differentiator. Do not omit it.
+- If two UPCs have different flavor, color, scent, or material in their source data, the name MUST include that differentiator. Do not omit it.
 - Remove special characters like TM, R, and C marks.
 - Use unit periods: lb., oz., ct., in., ft., gal., qt., pt., pk., sq. ft.
 - Expand common abbreviations like Sm, Md, Lg, Blk, Wht, Brn, Grn, Rd, Bl, Yl, Org, Pnk, Prpl, Gry, Asst, Asstd, Med, Lrg, Sml.

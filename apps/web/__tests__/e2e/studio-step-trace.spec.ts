@@ -110,7 +110,7 @@ test.describe('Scraper Studio Step Trace View', () => {
     await page.screenshot({ path: 'test-results/screenshots/task-12-overview-tab.png' });
   });
 
-  test('should show SKU results tab', async ({ page }) => {
+  test('should show UPC results tab', async ({ page }) => {
     const testRunCards = await page.locator('[class*="cursor-pointer"]').count();
     
     if (testRunCards === 0) {
@@ -119,11 +119,11 @@ test.describe('Scraper Studio Step Trace View', () => {
 
     await page.locator('[class*="cursor-pointer"]').first().click();
     
-    await page.click('text=SKU Results');
+    await page.click('text=UPC Results');
     
-    await expect(page.locator('text=SKU Test Results')).toBeVisible();
+    await expect(page.locator('text=UPC Test Results')).toBeVisible();
     
-    await page.screenshot({ path: 'test-results/screenshots/task-12-sku-results.png' });
+    await page.screenshot({ path: 'test-results/screenshots/task-12-upc-results.png' });
   });
 
   test('should navigate back to history list', async ({ page }) => {

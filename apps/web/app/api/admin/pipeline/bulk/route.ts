@@ -20,43 +20,43 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
         const { toStatus, cohort_id, fromStatus, resetResults = false } = body as {
-            skus?: string[];
+            upcs?: string[];
             toStatus: string;
             cohort_id?: string;
             fromStatus?: string;
             resetResults?: boolean;
         };
-        let { skus } = body as {
-            skus?: string[];
+        let { upcs } = body as {
+            upcs?: string[];
             toStatus: string;
             cohort_id?: string;
             fromStatus?: string;
             resetResults?: boolean;
         };
 
-        // If cohort_id is provided, resolve SKUs from the database
+        // If cohort_id is provided, resolve UPCs from the database
         if (cohort_id && fromStatus) {
             const supabase = await createAdminClient();
             const { data: rows, error: queryError } = await supabase
                 .from('products_ingestion')
-                .select('sku')
+                .select('upc')
                 .eq('cohort_id', cohort_id)
                 .eq('pipeline_status', fromStatus);
 
             if (queryError) {
                 return NextResponse.json(
-                    { error: `Failed to load cohort SKUs: ${queryError.message}` },
+                    { error: `Failed to load cohort UPCs: ${queryError.message}` },
                     { status: 500 }
                 );
             }
 
-            skus = (rows ?? []).map((r: { sku?: string }) => r.sku).filter(Boolean) as string[];
+            upcs = (rows ?? []).map((r: { upc?: string }) => r.upc).filter(Boolean) as string[];
         }
 
-        // Validate skus array
-        if (!skus || !Array.isArray(skus) || skus.length === 0) {
+        // Validate upcs array
+        if (!upcs || !Array.isArray(upcs) || upcs.length === 0) {
             return NextResponse.json(
-                { error: 'SKUs array is required and must be non-empty' },
+                { error: 'UPCs array is required and must be non-empty' },
                 { status: 400 }
             );
         }
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (toStatus === 'publishing') {
-            const publishResult = await bulkPublishToStorefront(skus, auth.user.id);
+            const publishResult = await bulkPublishToStorefront(upcs, auth.user.id);
             if (!publishResult.success && publishResult.successCount === 0) {
                 return NextResponse.json(
                     { 
@@ -104,19 +104,19 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        const result = await bulkUpdateStatus(skus, toStatus, auth.user.id, resetResults);
+        const result = await bulkUpdateStatus(upcs, toStatus, auth.user.id, resetResults);
 
         if (!result.success) {
             // Check if error indicates invalid transitions
             if (result.error && result.error.includes('Invalid status transition')) {
-                // Extract invalid SKUs from error message
-                const invalidMatch = result.error.match(/SKU\(s\): (.+)$/);
-                const invalidSkus = invalidMatch ? invalidMatch[1].split(', ') : [];
+                // Extract invalid UPCs from error message
+                const invalidMatch = result.error.match(/UPC\(s\): (.+)$/);
+                const invalidUpcs = invalidMatch ? invalidMatch[1].split(', ') : [];
 
                 return NextResponse.json(
                     {
                         error: 'Invalid transitions',
-                        invalidSkus,
+                        invalidUpcs,
                     },
                     { status: 400 }
                 );

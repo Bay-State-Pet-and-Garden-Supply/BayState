@@ -104,3 +104,4 @@ docker/github-actions-runner/_work/
 .superpowers
 .ruff_cache
 actions-runner
+node_modules

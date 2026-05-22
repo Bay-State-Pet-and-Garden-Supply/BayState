@@ -40,11 +40,11 @@ export interface ScraperConfig {
   anti_detection?: Record<string, unknown>;
   http_status?: Record<string, unknown>;
   validation?: Record<string, unknown>;
-  test_skus?: string[];
-  fake_skus?: string[];
-  edge_case_skus?: string[];
+  test_upcs?: string[];
+  fake_upcs?: string[];
+  edge_case_upcs?: string[];
   test_assertions?: Array<{
-    sku: string;
+    upc: string;
     expected: Record<string, string>;
   }>;
   ai_config?: AIConfig;

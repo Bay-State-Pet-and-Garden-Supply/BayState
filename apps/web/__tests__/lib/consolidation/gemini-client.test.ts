@@ -351,7 +351,7 @@ describe('GeminiClient', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        text: async () => '{"key":"SKU1","text":"Consolidated result"}',
+        text: async () => '{"key":"UPC1","text":"Consolidated result"}',
       } as unknown as Response);
 
       await client.downloadFileText('files/abc123');
@@ -422,21 +422,21 @@ describe('GeminiClient', () => {
     it('parses JSONL text correctly', () => {
       const client = createClient();
       const jsonl = [
-        '{"key":"SKU1","text":"Result 1","usage":{"promptTokenCount":100,"candidatesTokenCount":50,"totalTokenCount":150}}',
-        '{"key":"SKU2","text":"Result 2","usage":{"promptTokenCount":50,"candidatesTokenCount":25,"totalTokenCount":75}}',
+        '{"key":"UPC1","text":"Result 1","usage":{"promptTokenCount":100,"candidatesTokenCount":50,"totalTokenCount":150}}',
+        '{"key":"UPC2","text":"Result 2","usage":{"promptTokenCount":50,"candidatesTokenCount":25,"totalTokenCount":75}}',
       ].join('\n');
 
       const results = client.parseBatchOutput(jsonl);
       expect(results).toHaveLength(2);
-      expect(results[0].key).toBe('SKU1');
+      expect(results[0].key).toBe('UPC1');
     });
 
     it('skips malformed lines', () => {
       const client = createClient();
       const jsonl = [
-        '{"key":"SKU1","text":"OK"}',
+        '{"key":"UPC1","text":"OK"}',
         'not-json',
-        '{"key":"SKU2","text":"Also OK"}',
+        '{"key":"UPC2","text":"Also OK"}',
       ].join('\n');
 
       const results = client.parseBatchOutput(jsonl);

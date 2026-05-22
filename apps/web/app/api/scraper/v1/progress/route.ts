@@ -21,7 +21,7 @@ interface ProgressIngestRequest {
   message?: string;
   phase?: string;
   details?: Record<string, unknown>;
-  current_sku?: string;
+  current_upc?: string;
   items_processed?: number;
   items_total?: number;
   timestamp?: string;
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       progress_phase: progress.phase ?? null,
       progress_details: progress.details ?? null,
       progress_updated_at: progressTimestamp,
-      current_sku: progress.current_sku ?? null,
+      current_upc: progress.current_upc ?? null,
       items_processed: progress.items_processed ?? null,
       items_total: progress.items_total ?? null,
       last_event_at: progressTimestamp,

@@ -11,10 +11,10 @@ export async function POST(
 
     const nowIso = new Date().toISOString();
     
-    // Get the job first so we know which SKUs to revert
+    // Get the job first so we know which UPCs to revert
     const { data: job, error: fetchError } = await supabase
       .from('enrichment_jobs')
-      .select('skus')
+      .select('upcs')
       .eq('id', id)
       .single();
 
@@ -41,7 +41,7 @@ export async function POST(
     }
 
     // Revert products that were in 'scraping' status back to 'imported'
-    if (job?.skus && job.skus.length > 0) {
+    if (job?.upcs && job.upcs.length > 0) {
       const { error: productsError } = await supabase
         .from('products_ingestion')
         .update({
@@ -49,7 +49,7 @@ export async function POST(
           updated_at: nowIso,
           error_message: 'Enrichment job was cancelled'
         })
-        .in('sku', job.skus)
+        .in('upc', job.upcs)
         .eq('pipeline_status', 'scraping');
 
       if (productsError) {

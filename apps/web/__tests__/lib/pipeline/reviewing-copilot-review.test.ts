@@ -49,49 +49,49 @@ describe("reviewing copilot review helpers", () => {
   it("captures original drafts once and accumulates staged summaries", () => {
     const first = stagePendingCopilotDraftReview({
       pendingReview: null,
-      draftsBySku: {
-        "SKU-A": draftA,
-        "SKU-B": draftB,
+      draftsByUpc: {
+        "UPC-A": draftA,
+        "UPC-B": draftB,
       },
-      targetUpcs: ["SKU-A"],
-      summary: "Prepared a name update for SKU-A.",
+      targetUpcs: ["UPC-A"],
+      summary: "Prepared a name update for UPC-A.",
     });
 
     const second = stagePendingCopilotDraftReview({
       pendingReview: first,
-      draftsBySku: {
-        "SKU-A": {
+      draftsByUpc: {
+        "UPC-A": {
           ...draftA,
           name: "Alpha Seed Packet",
         },
-        "SKU-B": draftB,
+        "UPC-B": draftB,
       },
-      targetUpcs: ["SKU-A", "SKU-B"],
-      summary: "Prepared a page update for SKU-A and SKU-B.",
+      targetUpcs: ["UPC-A", "UPC-B"],
+      summary: "Prepared a page update for UPC-A and UPC-B.",
     });
 
-    expect(second.upcs).toEqual(["SKU-A", "SKU-B"]);
-    expect(second.previousDrafts["SKU-A"]).toEqual(draftA);
-    expect(second.previousDrafts["SKU-B"]).toEqual(draftB);
+    expect(second.upcs).toEqual(["UPC-A", "UPC-B"]);
+    expect(second.previousDrafts["UPC-A"]).toEqual(draftA);
+    expect(second.previousDrafts["UPC-B"]).toEqual(draftB);
     expect(second.summaries).toEqual([
-      "Prepared a name update for SKU-A.",
-      "Prepared a page update for SKU-A and SKU-B.",
+      "Prepared a name update for UPC-A.",
+      "Prepared a page update for UPC-A and UPC-B.",
     ]);
   });
 
   it("restores staged drafts back to their original state", () => {
     const pendingReview = stagePendingCopilotDraftReview({
       pendingReview: null,
-      draftsBySku: {
-        "SKU-A": draftA,
+      draftsByUpc: {
+        "UPC-A": draftA,
       },
-      targetUpcs: ["SKU-A"],
-      summary: "Prepared a rewrite for SKU-A.",
+      targetUpcs: ["UPC-A"],
+      summary: "Prepared a rewrite for UPC-A.",
     });
 
     const restored = restorePendingCopilotDraftReview(
       {
-        "SKU-A": {
+        "UPC-A": {
           ...draftA,
           name: "Seed Packet",
           selectedImages: [],
@@ -100,24 +100,24 @@ describe("reviewing copilot review helpers", () => {
       pendingReview,
     );
 
-    expect(restored["SKU-A"]).toEqual(draftA);
+    expect(restored["UPC-A"]).toEqual(draftA);
   });
 
-  it("keeps only failed SKUs after a partial accept", () => {
+  it("keeps only failed UPCs after a partial accept", () => {
     const pendingReview = stagePendingCopilotDraftReview({
       pendingReview: null,
-      draftsBySku: {
-        "SKU-A": draftA,
-        "SKU-B": draftB,
+      draftsByUpc: {
+        "UPC-A": draftA,
+        "UPC-B": draftB,
       },
-      targetUpcs: ["SKU-A", "SKU-B"],
+      targetUpcs: ["UPC-A", "UPC-B"],
       summary: "Prepared bulk edits.",
     });
 
-    expect(filterPendingCopilotDraftReview(pendingReview, ["SKU-B"])).toEqual({
-      upcs: ["SKU-B"],
+    expect(filterPendingCopilotDraftReview(pendingReview, ["UPC-B"])).toEqual({
+      upcs: ["UPC-B"],
       previousDrafts: {
-        "SKU-B": draftB,
+        "UPC-B": draftB,
       },
       summaries: ["Prepared bulk edits."],
     });

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 
 interface ProductIssue {
-  sku: string;
+  upc: string;
   name: string | null;
   completeness: number;
   issues: { field: string; severity: 'required' | 'recommended'; message: string }[];
@@ -72,7 +72,7 @@ export async function GET(request: Request) {
     
     const { data: products, error } = await supabase
       .from('products_ingestion')
-      .select('sku, consolidated, input, pipeline_status')
+      .select('upc, consolidated, input, pipeline_status')
       .order('updated_at', { ascending: false });
     
     if (error) {
@@ -93,7 +93,7 @@ export async function GET(request: Request) {
           }));
         
         return {
-          sku: p.sku,
+          upc: p.upc,
           name: (consolidated.name || input.name || null) as string | null,
           completeness: calculateCompleteness(consolidated),
           issues,

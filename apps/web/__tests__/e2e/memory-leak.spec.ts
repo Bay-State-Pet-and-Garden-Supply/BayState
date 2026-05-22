@@ -27,7 +27,7 @@ interface RunSeed {
   jobId: string;
   runnerName: string;
   scraperName: string;
-  sku: string;
+  upc: string;
   keyId: string;
 }
 
@@ -196,18 +196,18 @@ async function seedRunner(admin: SupabaseClient, runnerName: string): Promise<Ru
   };
 }
 
-async function seedRealtimeRun(admin: SupabaseClient, options?: { runnerName?: string; scraperName?: string; sku?: string }): Promise<RunSeed> {
+async function seedRealtimeRun(admin: SupabaseClient, options?: { runnerName?: string; scraperName?: string; upc?: string }): Promise<RunSeed> {
   const now = new Date().toISOString();
   const runnerName = options?.runnerName ?? `memory-leak-runner-${uniqueSuffix()}`;
   const scraperName = options?.scraperName ?? 'memory-leak-e2e';
-  const sku = options?.sku ?? `ML-${uniqueSuffix()}`;
+  const upc = options?.upc ?? `ML-${uniqueSuffix()}`;
   const jobId = crypto.randomUUID();
   const runner = await seedRunner(admin, runnerName);
 
   const { error: jobError } = await admin.from('scrape_jobs').insert({
     id: jobId,
     scrapers: [scraperName],
-    skus: [sku],
+    upcs: [upc],
     test_mode: true,
     max_workers: 1,
     status: 'running',
@@ -220,7 +220,7 @@ async function seedRealtimeRun(admin: SupabaseClient, options?: { runnerName?: s
     progress_message: 'Waiting for memory leak scenario',
     progress_phase: 'starting',
     progress_updated_at: now,
-    current_sku: sku,
+    current_upc: upc,
     items_processed: 0,
     items_total: 1,
     last_event_at: now,
@@ -249,7 +249,7 @@ async function seedRealtimeRun(admin: SupabaseClient, options?: { runnerName?: s
     keyId: runner.keyId,
     runnerName: runner.runnerName,
     scraperName,
-    sku,
+    upc,
   };
 }
 
@@ -424,7 +424,7 @@ async function emitRunnerLogs(
         runner_name: run.runnerName,
         runner_id: run.runnerName,
         scraper_name: run.scraperName,
-        sku: run.sku,
+        upc: run.upc,
         phase: 'streaming',
         sequence: currentSequence,
         source: 'playwright-memory-leak-spec',

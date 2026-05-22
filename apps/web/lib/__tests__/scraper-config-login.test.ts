@@ -38,7 +38,7 @@ describe('scraperConfigRequiresLogin', () => {
     const config = {
       workflows: [
         { action: 'login', params: {} },
-        { action: 'navigate', params: { url: 'https://example.com/search?q={sku}' } },
+        { action: 'navigate', params: { url: 'https://example.com/search?q={upc}' } },
       ],
     };
     expect(scraperConfigRequiresLogin(config)).toBe(true);
@@ -80,7 +80,7 @@ describe('scraperConfigRequiresLogin', () => {
   it('returns false for a non-login scraper (no login, no workflow keywords)', () => {
     const config = {
       workflows: [
-        { action: 'navigate', params: { url: 'https://example.com/search?q={sku}' } },
+        { action: 'navigate', params: { url: 'https://example.com/search?q={upc}' } },
         { action: 'extract', params: { fields: ['Name', 'Price'] } },
       ],
     };

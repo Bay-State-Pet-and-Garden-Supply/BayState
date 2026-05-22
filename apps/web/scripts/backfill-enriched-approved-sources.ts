@@ -4,14 +4,14 @@ import { normalizeDistributorSlug } from '../lib/approved-sources/distributor-ca
 type BackfillMode = 'dry-run' | 'execute';
 
 interface ProductsIngestionRow {
-  sku: string;
+  upc: string;
   sources: unknown;
 }
 
 interface BackfillOptions {
   mode: BackfillMode;
   limit?: number;
-  skus?: string[];
+  upcs?: string[];
 }
 
 interface BackfillSummary {
@@ -71,7 +71,7 @@ function createSupabaseAdminClient(): SupabaseClient {
 function parseArgs(argv: string[]): BackfillOptions {
   let mode: BackfillMode = 'dry-run';
   let limit: number | undefined;
-  let skus: string[] | undefined;
+  let upcs: string[] | undefined;
 
   argv.forEach((arg) => {
     if (arg === '--execute') {
@@ -92,26 +92,26 @@ function parseArgs(argv: string[]): BackfillOptions {
       return;
     }
 
-    if (arg.startsWith('--skus=')) {
-      skus = arg
-        .slice('--skus='.length)
+    if (arg.startsWith('--upcs=')) {
+      upcs = arg
+        .slice('--upcs='.length)
         .split(',')
-        .map((sku) => sku.trim())
+        .map((upc) => upc.trim())
         .filter(Boolean);
     }
   });
 
-  return { mode, limit, skus };
+  return { mode, limit, upcs };
 }
 
 async function loadRows(supabase: SupabaseClient, options: BackfillOptions): Promise<ProductsIngestionRow[]> {
   let query = supabase
     .from('products_ingestion')
-    .select('sku, sources')
+    .select('upc, sources')
     .order('updated_at', { ascending: false });
 
-  if (options.skus && options.skus.length > 0) {
-    query = query.in('sku', options.skus);
+  if (options.upcs && options.upcs.length > 0) {
+    query = query.in('upc', options.upcs);
   }
 
   if (options.limit) {
@@ -229,7 +229,7 @@ async function runBackfill(options: BackfillOptions): Promise<BackfillSummary> {
 
     if (summary.samples.length < 10) {
       const suffix = uniqueSourceSlugs.length > 1 ? ' (ambiguous legacy collapse)' : '';
-      summary.samples.push(`${row.sku} -> ${activeSourceSlug}${suffix}`);
+      summary.samples.push(`${row.upc} -> ${activeSourceSlug}${suffix}`);
     }
 
     if (options.mode === 'execute') {
@@ -239,10 +239,10 @@ async function runBackfill(options: BackfillOptions): Promise<BackfillSummary> {
           sources: updatedSources,
           updated_at: new Date().toISOString(),
         })
-        .eq('sku', row.sku);
+        .eq('upc', row.upc);
 
       if (error) {
-        throw new Error(`Failed to update SKU ${row.sku}: ${error.message}`);
+        throw new Error(`Failed to update UPC ${row.upc}: ${error.message}`);
       }
     }
 

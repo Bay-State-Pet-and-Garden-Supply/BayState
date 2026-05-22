@@ -47,10 +47,10 @@ export function dedupeProductsByUpc(products: ShopSiteProduct[]): {
     let duplicateCount = 0;
 
     for (const product of products) {
-        if (byUpc.has(product.sku)) {
+        if (byUpc.has(product.upc)) {
             duplicateCount++;
         }
-        byUpc.set(product.sku, product);
+        byUpc.set(product.upc, product);
     }
 
     return {
@@ -90,7 +90,7 @@ export async function runBatchedProductMigration(
 
         // 2. Perform deletes if requested
         if (options.deleteMissing) {
-            const upcsInFeed = new Set(uniqueProducts.map(p => p.sku));
+            const upcsInFeed = new Set(uniqueProducts.map(p => p.upc));
             const upcsToDelete = Array.from(existingUpcs).filter(upc => !upcsInFeed.has(upc));
             
             if (upcsToDelete.length > 0) {
@@ -121,18 +121,18 @@ export async function runBatchedProductMigration(
             
             const productsToUpsert = batch.map(product => {
                 const transformed = transformShopSiteProductToStorefrontRecord(product);
-                const isUpdate = existingUpcs.has(product.sku);
+                const isUpdate = existingUpcs.has(product.upc);
                 
                 // Preserve slug if it's an update
                 let slug = transformed.slug;
                 if (isUpdate) {
-                    slug = slugByUpc.get(product.sku) ?? transformed.slug;
+                    slug = slugByUpc.get(product.upc) ?? transformed.slug;
                 }
 
                 return {
                     ...transformed,
                     slug,
-                    upc: product.sku,
+                    upc: product.upc,
                     updated_at: new Date().toISOString()
                 };
             });
@@ -145,7 +145,7 @@ export async function runBatchedProductMigration(
             if (error) {
                 console.error(`[Batch Import] Batch failed:`, error);
                 batch.forEach(product => {
-                    errors.push({ upc: product.sku, error: error.message });
+                    errors.push({ upc: product.upc, error: error.message });
                     productStats.failed++;
                 });
             } else {
@@ -163,7 +163,7 @@ export async function runBatchedProductMigration(
         // 4. Update relationships (subproducts, cross-sells)
         const importedProducts: Array<{ upc: string; id: string; isUpdate: boolean }> = [];
         // Repopulate importedProducts from productIdByUpc for items we just touched
-        const importedUpcByUpc = new Map(uniqueProducts.map(p => [p.sku, productIdByUpc.get(p.sku)]));
+        const importedUpcByUpc = new Map(uniqueProducts.map(p => [p.upc, productIdByUpc.get(p.upc)]));
         
         // Relationship processing usually needs the full ID map
         await processRelationships(uniqueProducts, context);
@@ -232,12 +232,12 @@ async function processRelationships(
     const { supabase, productIdByUpc } = context;
 
     for (const product of products) {
-        const parentId = productIdByUpc.get(product.sku);
+        const parentId = productIdByUpc.get(product.upc);
         if (!parentId) continue;
 
         // Subproducts
         if (product.subproducts && product.subproducts.length > 0) {
-            const subproductUpcs = product.subproducts.map(sp => sp.sku).filter(Boolean) as string[];
+            const subproductUpcs = product.subproducts.map(sp => sp.upc).filter(Boolean) as string[];
             const subproductIds = subproductUpcs.map(upc => productIdByUpc.get(upc)).filter(Boolean) as string[];
 
             if (subproductIds.length > 0) {

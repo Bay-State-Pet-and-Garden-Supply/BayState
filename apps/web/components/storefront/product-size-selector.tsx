@@ -26,8 +26,8 @@ export function ProductSizeSelector({
 
   const handleSelectProduct = useCallback(
     (productId: string) => {
-      // Navigate to the same page with the new sku parameter
-      const newUrl = `${basePath}?sku=${productId}`
+      // Navigate to the same page with the new upc parameter
+      const newUrl = `${basePath}?upc=${productId}`
       router.push(newUrl, { scroll: false })
     },
     [router, basePath]

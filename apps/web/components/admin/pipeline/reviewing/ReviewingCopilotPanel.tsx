@@ -150,7 +150,7 @@ function shouldAutoSendAfterTools({
 }
 
 interface ReviewingCopilotPanelProps {
-  selectedSku: string | null;
+  selectedUpc: string | null;
   workspaceProductCount: number;
   dirtyProductCount: number;
   hasPendingCopilotReview: boolean;
@@ -241,7 +241,7 @@ type ClientToolName =
   | "rejectProducts";
 
 export function ReviewingCopilotPanel({
-  selectedSku,
+  selectedUpc,
   workspaceProductCount,
   dirtyProductCount,
   hasPendingCopilotReview,
@@ -424,14 +424,14 @@ export function ReviewingCopilotPanel({
               <span className="text-[10px] font-semibold text-muted-foreground">No matching products.</span>
             ) : (
               part.output.products.map((product) =>
-                isRecord(product) && typeof product.sku === "string" ? (
+                isRecord(product) && typeof product.upc === "string" ? (
                   <div
-                    key={product.sku}
+                    key={product.upc}
                     className="rounded-none border border-border bg-muted px-3 py-2"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">
-                        {product.sku}
+                        {product.upc}
                       </span>
                       <div className="flex flex-wrap gap-1">
                         {product.selected === true && (
@@ -596,7 +596,7 @@ export function ReviewingCopilotPanel({
               {dirtyProductCount} unsaved
             </Badge>
             <Badge variant="outline" className="text-[9px] font-semibold rounded-none border border-border bg-foreground text-background">
-              {selectedSku ?? "No Product Selected"}
+              {selectedUpc ?? "No Product Selected"}
             </Badge>
             <Button
               type="button"

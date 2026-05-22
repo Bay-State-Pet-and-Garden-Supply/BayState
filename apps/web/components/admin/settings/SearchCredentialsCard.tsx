@@ -149,7 +149,7 @@ export function SearchCredentialsCard() {
                 autoComplete="new-password"
               />
               <p className="text-[10px] text-muted-foreground/80 leading-normal">
-                Uses serper.dev API key to query search engines for approved domain and SKU enrichment matches.
+                Uses serper.dev API key to query search engines for approved domain and UPC enrichment matches.
               </p>
             </div>
 

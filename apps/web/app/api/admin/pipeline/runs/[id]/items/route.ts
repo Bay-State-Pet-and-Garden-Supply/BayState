@@ -26,7 +26,7 @@ export async function GET(
   const { data: batchItems, error: batchItemsError } = await supabase
     .from("batch_job_items")
     .select(
-      "sku, status, error_message, started_at, completed_at, attempt_count, created_at",
+      "upc, status, error_message, started_at, completed_at, attempt_count, created_at",
     )
     .eq("batch_job_id", id)
     .order("created_at", { ascending: false })
@@ -35,7 +35,7 @@ export async function GET(
   if (!batchItemsError && batchItems && batchItems.length > 0) {
     return NextResponse.json({
       items: batchItems.map((item) => ({
-        sku: item.sku,
+        upc: item.upc,
         status: item.status,
         errorMessage: item.error_message,
         startedAt: item.started_at,
@@ -50,7 +50,7 @@ export async function GET(
   // ---------------------------------------------------------------
   const { data: chunks, error: chunksError } = await supabase
     .from("scrape_job_chunks")
-    .select("status, skus, error_message, started_at, completed_at")
+    .select("status, upcs, error_message, started_at, completed_at")
     .eq("job_id", id)
     .limit(50);
 
@@ -63,9 +63,9 @@ export async function GET(
   }
 
   if (chunks && chunks.length > 0) {
-    // Expand chunks into per-SKU items
+    // Expand chunks into per-UPC items
     const items: Array<{
-      sku: string | null;
+      upc: string | null;
       status: string;
       errorMessage: string | null;
       startedAt: string | null;
@@ -73,11 +73,11 @@ export async function GET(
       attemptCount: number | undefined;
     }> = [];
     for (const chunk of chunks) {
-      const skus = (chunk.skus as string[]) || [];
-      if (skus.length === 0) continue; // skip chunks without SKU lists
-      for (const sku of skus) {
+      const upcs = (chunk.upcs as string[]) || [];
+      if (upcs.length === 0) continue; // skip chunks without UPC lists
+      for (const upc of upcs) {
         items.push({
-          sku,
+          upc,
           status: chunk.status,
           errorMessage: chunk.error_message,
           startedAt: chunk.started_at,

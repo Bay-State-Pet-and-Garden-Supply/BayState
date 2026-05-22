@@ -55,7 +55,7 @@ export function parseRegisterRows(
 ): RegisterWorkbookProduct[] {
   const products = rows
     .map((row) => {
-      const upc = String(row["SKU_NO"] || row["SKU"] || "").trim();
+      const upc = String(row["UPC_NO"] || row["UPC"] || "").trim();
       const name = buildProductName(row);
 
       return {

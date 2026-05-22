@@ -138,13 +138,13 @@ export async function createGeminiBatchJob(
     return { success: false, error: insertError.message };
   }
 
-  // Insert batch_job_items — one per product/SKU
+  // Insert batch_job_items — one per product/UPC
   const items = products.map((product) => ({
     batch_job_id: batchId,
-    sku: product.sku,
+    upc: product.upc,
     status: 'pending' as const,
     request_payload: {
-      sku: product.sku,
+      upc: product.upc,
       model,
       sources: product.sources,
       productLineContext: product.productLineContext,
@@ -161,12 +161,12 @@ export async function createGeminiBatchJob(
   }
 
   // Mark products as merging
-  const skus = products.map((p) => p.sku);
+  const upcs = products.map((p) => p.upc);
   try {
     await supabase
       .from('products_ingestion')
       .update({ pipeline_status: 'merging', updated_at: new Date().toISOString() })
-      .in('sku', skus);
+      .in('upc', upcs);
   } catch (err) {
     console.warn('[GeminiBatch] Failed to mark products as merging:', err);
   }
@@ -278,7 +278,7 @@ export async function prepareGeminiBatchChunk(
   for (const item of pendingItems) {
     const requestPayload = item.request_payload as Record<string, unknown>;
     const sources = requestPayload.sources as Record<string, unknown> || {};
-    const sku = String(requestPayload.sku || item.sku);
+    const upc = String(requestPayload.upc || item.upc);
 
     // Extract image URLs from the product's sources and selected_images
     // The sources may have been normalized by buildConsolidationSourcesPayload
@@ -301,7 +301,7 @@ export async function prepareGeminiBatchChunk(
     );
 
     if (imagePrepResult.errors.length > 0) {
-      imageErrors.push(...imagePrepResult.errors.map((e) => `${sku}: ${e}`));
+      imageErrors.push(...imagePrepResult.errors.map((e) => `${upc}: ${e}`));
     }
 
     // Store the request payload with image file URIs
@@ -430,7 +430,7 @@ export async function submitPreparedGeminiBatch(
   const products: ProductSource[] = items.map((item) => {
     const payload = item.request_payload as Record<string, unknown>;
     return {
-      sku: String(payload.sku || item.sku),
+      upc: String(payload.upc || item.upc),
       sources: (payload.sources as Record<string, unknown>) || {},
       productLineContext: payload.productLineContext as ProductSource['productLineContext'],
       imageUrls: (payload.imageUrls as string[]) || undefined,
@@ -438,11 +438,11 @@ export async function submitPreparedGeminiBatch(
   });
 
   // Build image parts map
-  const imagePartsBySku = new Map<string, PreparedImagePart[]>();
+  const imagePartsByUpc = new Map<string, PreparedImagePart[]>();
   for (const item of items) {
     const payload = item.request_payload as Record<string, unknown>;
     const parts = (payload._imageParts as PreparedImagePart[]) || [];
-    imagePartsBySku.set(item.sku, parts);
+    imagePartsByUpc.set(item.upc, parts);
   }
 
   // Build categories for prompt
@@ -466,7 +466,7 @@ export async function submitPreparedGeminiBatch(
   }
 
   // Build JSONL - pass cachedContent if available
-  const jsonl = createGeminiBatchJsonl(products, imagePartsBySku, categories, model, {
+  const jsonl = createGeminiBatchJsonl(products, imagePartsByUpc, categories, model, {
     cachedContent: cacheName,
   });
 
@@ -700,7 +700,7 @@ async function downloadAndParseGeminiResults(
       const parsedResults = parseGeminiBatchOutput(outputText);
 
       for (const result of parsedResults) {
-        const sku = result.key;
+        const upc = result.key;
 
         if (result.error) {
           // Mark item as failed
@@ -713,14 +713,14 @@ async function downloadAndParseGeminiResults(
               completed_at: new Date().toISOString(),
             })
             .eq('batch_job_id', batchDbId)
-            .eq('sku', sku);
+            .eq('upc', upc);
 
           itemsUpdated++;
           continue;
         }
 
         if (result.text) {
-          const parsed = parseStructuredConsolidationText(sku, result.text, categories);
+          const parsed = parseStructuredConsolidationText(upc, result.text, categories);
 
           // Accumulate tokens
           if (result.usage) {
@@ -739,7 +739,7 @@ async function downloadAndParseGeminiResults(
               completed_at: new Date().toISOString(),
             })
             .eq('batch_job_id', batchDbId)
-            .eq('sku', sku);
+            .eq('upc', upc);
 
           itemsUpdated++;
         }
@@ -872,7 +872,7 @@ export async function retrieveGeminiBatchResults(
       results.push(item.parsed_result as unknown as ConsolidationResult);
     } else if (item.status === 'failed') {
       results.push({
-        sku: item.sku,
+        upc: item.upc,
         error: item.error_message || 'Gemini consolidation failed',
       });
     }

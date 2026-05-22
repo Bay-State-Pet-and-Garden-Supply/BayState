@@ -162,18 +162,18 @@ describe("reviewing copilot tool definitions", () => {
       expect(result.success).toBe(true);
     });
 
-    it("accepts sku_list scope", () => {
+    it("accepts upc_list scope", () => {
       const schema = tools.previewProductScope.inputSchema as any;
       const result = schema.safeParse({
-        scope: { type: "sku_list", skus: ["SKU-1", "SKU-2"] },
+        scope: { type: "upc_list", upcs: ["UPC-1", "UPC-2"] },
       });
       expect(result.success).toBe(true);
     });
 
-    it("rejects sku_list scope with empty list", () => {
+    it("rejects upc_list scope with empty list", () => {
       const schema = tools.previewProductScope.inputSchema as any;
       const result = schema.safeParse({
-        scope: { type: "sku_list", skus: [] },
+        scope: { type: "upc_list", upcs: [] },
       });
       expect(result.success).toBe(false);
     });

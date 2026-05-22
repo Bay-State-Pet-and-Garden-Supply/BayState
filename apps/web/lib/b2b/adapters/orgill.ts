@@ -3,7 +3,7 @@ import { parseFixedWidth, ORGILL_HD1_FIELDS } from '../utils/fixed-width';
 
 interface OrgillHD1Record {
   recordType: string;
-  distributorSku: string;
+  distributorUpc: string;
   upc: string;
   name: string;
   price: number;
@@ -46,7 +46,7 @@ export class OrgillClient implements B2BClient {
   private mapToB2BProduct(record: OrgillHD1Record): B2BProduct {
     return {
       source: 'ORGILL',
-      distributorSku: record.distributorSku,
+      distributorUpc: record.distributorUpc,
       upc: record.upc || undefined,
       name: record.name,
       price: record.price,
@@ -66,7 +66,7 @@ export class OrgillClient implements B2BClient {
     );
 
     return records
-      .filter(r => r.distributorSku && r.name)
+      .filter(r => r.distributorUpc && r.name)
       .map(r => this.mapToB2BProduct(r));
   }
 

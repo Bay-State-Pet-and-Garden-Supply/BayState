@@ -23,7 +23,7 @@ const INITIAL_ONBOARDING_PIPELINE_STATUS = "imported";
 /**
  * Parses an Integra Excel export.
  * Mapping:
- * - SKU_NO -> upc
+ * - UPC_NO -> upc
  * - LIST_PRICE -> price
  * - DESCRIPTION1 + DESCRIPTION2 -> name
  */

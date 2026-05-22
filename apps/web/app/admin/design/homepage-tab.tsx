@@ -821,7 +821,7 @@ export function HomepageTab({
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
-                  placeholder="Search products by name or SKU..."
+                  placeholder="Search products by name or UPC..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 h-9 text-xs"
@@ -861,7 +861,7 @@ export function HomepageTab({
                         )}
                         <div>
                           <span className="font-semibold text-foreground">{prod.name}</span>
-                          <span className="block text-[10px] text-muted-foreground">{prod.brand?.name || 'Store brand'} • SKU: {prod.sku || prod.id.slice(0, 8)}</span>
+                          <span className="block text-[10px] text-muted-foreground">{prod.brand?.name || 'Store brand'} • UPC: {prod.upc || prod.id.slice(0, 8)}</span>
                         </div>
                       </div>
                       <span className="text-[10px] bg-primary/10 text-primary font-medium px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">Add</span>

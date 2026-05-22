@@ -42,7 +42,7 @@ describe('Bulk Delete Functionality', () => {
 
     describe('bulkDeleteProducts', () => {
         it('should successfully delete products and log to audit_log', async () => {
-            const skus = ['SKU001', 'SKU002', 'SKU003'];
+            const upcs = ['UPC001', 'UPC002', 'UPC003'];
             const userId = 'test-user-id';
 
             // Get the mock chains from beforeEach
@@ -62,17 +62,17 @@ describe('Bulk Delete Functionality', () => {
                 error: null,
             });
 
-            const result = await bulkDeleteProducts(skus, userId);
+            const result = await bulkDeleteProducts(upcs, userId);
 
             expect(result.success).toBe(true);
             expect(result.deletedCount).toBe(3);
             expect(mockSupabase.from).toHaveBeenCalledWith('products_ingestion');
             expect(deleteChain.delete).toHaveBeenCalled();
-            expect(deleteChain.in).toHaveBeenCalledWith('sku', skus);
+            expect(deleteChain.in).toHaveBeenCalledWith('upc', upcs);
         });
 
         it('should return error when deletion fails', async () => {
-            const skus = ['SKU001', 'SKU002'];
+            const upcs = ['UPC001', 'UPC002'];
             const userId = 'test-user-id';
             const deleteError = new Error('Database connection failed');
 
@@ -86,16 +86,16 @@ describe('Bulk Delete Functionality', () => {
                 count: 0,
             });
 
-            const result = await bulkDeleteProducts(skus, userId);
+            const result = await bulkDeleteProducts(upcs, userId);
 
             expect(result.success).toBe(false);
             expect(result.error).toBeDefined();
             expect(result.deletedCount).toBe(0);
-            expect(deleteChain.in).toHaveBeenCalledWith('sku', skus);
+            expect(deleteChain.in).toHaveBeenCalledWith('upc', upcs);
         });
 
         it('should log deletion to audit_log with correct metadata', async () => {
-            const skus = ['SKU001', 'SKU002'];
+            const upcs = ['UPC001', 'UPC002'];
             const userId = 'test-user-id';
 
             // Get the mock chains
@@ -114,7 +114,7 @@ describe('Bulk Delete Functionality', () => {
                 error: null,
             });
 
-            await bulkDeleteProducts(skus, userId);
+            await bulkDeleteProducts(upcs, userId);
 
             // Verify audit log insert was called
             expect(insertChain.insert).toHaveBeenCalled();
@@ -123,12 +123,12 @@ describe('Bulk Delete Functionality', () => {
             
             expect(auditPayload.job_type).toBe('product_deletion');
             expect(auditPayload.to_state).toBe('deleted');
-            expect(auditPayload.metadata.deleted_skus).toEqual(skus);
+            expect(auditPayload.metadata.deleted_upcs).toEqual(upcs);
             expect(auditPayload.metadata.deleted_count).toBe(2);
         });
 
         it('should continue deletion even if audit log fails', async () => {
-            const skus = ['SKU001', 'SKU002'];
+            const upcs = ['UPC001', 'UPC002'];
             const userId = 'test-user-id';
 
             // Get the mock chains
@@ -148,7 +148,7 @@ describe('Bulk Delete Functionality', () => {
                 error: new Error('Audit log unavailable'),
             });
 
-            const result = await bulkDeleteProducts(skus, userId);
+            const result = await bulkDeleteProducts(upcs, userId);
 
             // Deletion should still succeed
             expect(result.success).toBe(true);
@@ -156,7 +156,7 @@ describe('Bulk Delete Functionality', () => {
         });
 
         it('should set actor_type to system when no userId provided', async () => {
-            const skus = ['SKU001'];
+            const upcs = ['UPC001'];
 
             // Get the mock chains
             const deleteChain = mockSupabase.from('products_ingestion');
@@ -174,7 +174,7 @@ describe('Bulk Delete Functionality', () => {
                 error: null,
             });
 
-            await bulkDeleteProducts(skus);
+            await bulkDeleteProducts(upcs);
 
             const insertCall = insertChain.insert.mock.calls[0][0];
             const auditPayload = insertCall[0];
@@ -183,7 +183,7 @@ describe('Bulk Delete Functionality', () => {
         });
 
         it('should set actor_type to user when userId provided', async () => {
-            const skus = ['SKU001'];
+            const upcs = ['UPC001'];
             const userId = 'admin-user-123';
 
             // Get the mock chains
@@ -202,7 +202,7 @@ describe('Bulk Delete Functionality', () => {
                 error: null,
             });
 
-            await bulkDeleteProducts(skus, userId);
+            await bulkDeleteProducts(upcs, userId);
 
             const insertCall = insertChain.insert.mock.calls[0][0];
             const auditPayload = insertCall[0];

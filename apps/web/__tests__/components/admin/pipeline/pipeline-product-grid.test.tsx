@@ -8,7 +8,7 @@ import type { PipelineProduct } from '@/lib/pipeline';
 
 const mockProducts: PipelineProduct[] = [
   {
-    upc: 'SKU001',
+    upc: 'UPC001',
     input: { name: 'Product 1', price: 10.99 },
     sources: {},
     consolidated: { name: 'Product 1', price: 10.99 },
@@ -17,7 +17,7 @@ const mockProducts: PipelineProduct[] = [
     updated_at: '2024-01-01',
   },
   {
-    upc: 'SKU002',
+    upc: 'UPC002',
     input: { name: 'Product 2', price: 20.99 },
     sources: {},
     consolidated: { name: 'Product 2', price: 20.99 },
@@ -38,7 +38,7 @@ jest.mock('@/components/admin/pipeline/PipelineProductCard', () => ({
 describe('PipelineProductGrid', () => {
   const defaultProps = {
     products: [],
-    selectedSkus: new Set<string>(),
+    selectedUpcs: new Set<string>(),
     onSelect: jest.fn(),
     onView: jest.fn(),
     loading: false,
@@ -87,7 +87,7 @@ describe('PipelineProductGrid', () => {
       <PipelineProductGrid
         {...defaultProps}
         products={mockProducts}
-        selectedSkus={new Set(['SKU001'])}
+        selectedUpcs={new Set(['UPC001'])}
       />
     );
 

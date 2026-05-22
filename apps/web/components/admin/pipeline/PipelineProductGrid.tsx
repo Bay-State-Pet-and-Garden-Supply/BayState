@@ -8,13 +8,13 @@ import { PipelineProductCard } from './PipelineProductCard';
 
 interface PipelineProductGridProps {
     products: PipelineProduct[];
-    selectedSkus: Set<string>;
-    onSelect: (sku: string, index: number, isShiftClick: boolean) => void;
-    onView: (sku: string) => void;
+    selectedUpcs: Set<string>;
+    onSelect: (upc: string, index: number, isShiftClick: boolean) => void;
+    onView: (upc: string) => void;
     loading: boolean;
     hasMore: boolean;
     onLoadMore: () => void;
-    onEnrich?: (sku: string) => void;
+    onEnrich?: (upc: string) => void;
     showEnrichButton?: boolean;
     readOnly?: boolean;
     showBatchSelect?: boolean;
@@ -24,7 +24,7 @@ interface PipelineProductGridProps {
 
 export function PipelineProductGrid({
     products,
-    selectedSkus,
+    selectedUpcs,
     onSelect,
     onView,
     loading,
@@ -61,7 +61,7 @@ export function PipelineProductGrid({
                         key={product.upc}
                         product={product}
                         index={index}
-                        isSelected={selectedSkus.has(product.upc)}
+                        isSelected={selectedUpcs.has(product.upc)}
                         onSelect={onSelect}
                         onView={onView}
                         onEnrich={onEnrich}

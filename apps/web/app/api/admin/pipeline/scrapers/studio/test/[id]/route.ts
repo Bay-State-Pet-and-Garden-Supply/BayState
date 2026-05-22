@@ -28,7 +28,7 @@ function getSupabaseAdmin(): SupabaseClient {
  *   started_at: string;
  *   completed_at?: string;
  *   duration_ms?: number;
- *   sku_results: [...];
+ *   upc_results: [...];
  *   summary: { passed: number; failed: number; total: number };
  *   timeout_at?: string;
  * }
@@ -88,15 +88,15 @@ async function buildResponse(
   const testMetadata = (job.test_metadata as Record<string, unknown>) || {};
   const config = (job.config as Record<string, unknown>) || {};
   
-  // Fetch attempts to build SKU results
+  // Fetch attempts to build UPC results
   const { data: attempts } = await adminClient
     .from('enrichment_attempts')
     .select('*')
     .eq('job_id', job.id as string)
     .order('created_at', { ascending: true });
 
-  const skuResults = (attempts || []).map(a => ({
-    sku: a.sku,
+  const upcResults = (attempts || []).map(a => ({
+    upc: a.upc,
     status: a.status,
     confidence: a.confidence_overall,
     error: a.error_message,
@@ -134,14 +134,14 @@ async function buildResponse(
     started_at: job.started_at || job.created_at,
     completed_at: job.completed_at || null,
     duration_ms,
-    sku_results: skuResults,
+    upc_results: upcResults,
     summary: responseSummary,
     job_id: job.id,
     job_status: job.status,
     metadata: { ...config, ...testMetadata },
     scraper_id: testMetadata.scraper_slug || config.scraper_slug,
     test_type: testMetadata.test_type || 'studio',
-    skus_tested: job.skus,
+    upcs_tested: job.upcs,
     timeout_at: job.lease_expires_at || null,
     error_message: job.error_message || null,
   });

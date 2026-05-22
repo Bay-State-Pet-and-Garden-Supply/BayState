@@ -18,7 +18,7 @@ import { titleCaseProductName, bulkTitleCaseNames } from '@/app/admin/quality/ac
 import { adminFetch } from '@/lib/admin/api-client';
 
 interface ProductIssue {
- sku: string;
+ upc: string;
  name: string | null;
  completeness: number;
  issues: { field: string; severity: 'required' | 'recommended'; message: string }[];
@@ -63,7 +63,7 @@ export function QualityIssueTable({ initialProducts }: QualityIssueTableProps) {
 
  const filteredProducts = products.filter((p) => {
  const matchesSearch = 
- p.sku.toLowerCase().includes(search.toLowerCase()) ||
+ p.upc.toLowerCase().includes(search.toLowerCase()) ||
  (p.name?.toLowerCase().includes(search.toLowerCase()) ?? false);
  
  if (!matchesSearch) return false;
@@ -79,10 +79,10 @@ export function QualityIssueTable({ initialProducts }: QualityIssueTableProps) {
 
  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
 
- const handleQuickFix = async (sku: string) => {
- setFixing(sku);
+ const handleQuickFix = async (upc: string) => {
+ setFixing(upc);
  try {
- const result = await titleCaseProductName(sku);
+ const result = await titleCaseProductName(upc);
  if (result.success) {
  toast.success('Product name fixed');
  fetchProducts();
@@ -145,7 +145,7 @@ export function QualityIssueTable({ initialProducts }: QualityIssueTableProps) {
  <div className="relative flex-1 sm:w-64 sm:flex-none">
  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
  <Input
- placeholder="Search SKU or name..."
+ placeholder="Search UPC or name..."
  value={search}
  onChange={(e) => {
  setSearch(e.target.value);
@@ -188,11 +188,11 @@ export function QualityIssueTable({ initialProducts }: QualityIssueTableProps) {
  </div>
  ) : (
  paginatedProducts.map((product) => (
- <div key={product.sku} className="flex items-center gap-4 p-4">
+ <div key={product.upc} className="flex items-center gap-4 p-4">
  <div className="flex-1 min-w-0">
  <div className="flex items-center gap-2">
  <span className="font-mono text-sm text-muted-foreground">
- {product.sku}
+ {product.upc}
  </span>
  {product.pipeline_status === 'finalized' ? (
  <Badge variant="success" className="bg-green-100 text-green-700 hover:bg-green-200 border-none capitalize">
@@ -254,8 +254,8 @@ export function QualityIssueTable({ initialProducts }: QualityIssueTableProps) {
  <Button
  variant="ghost"
  size="sm"
- onClick={() => handleQuickFix(product.sku)}
- disabled={fixing === product.sku}
+ onClick={() => handleQuickFix(product.upc)}
+ disabled={fixing === product.upc}
  title="Fix name casing"
  >
  <Wand2 className="h-4 w-4" />
@@ -267,7 +267,7 @@ export function QualityIssueTable({ initialProducts }: QualityIssueTableProps) {
  asChild
  title="Edit in pipeline"
  >
- <a href={`/admin/pipeline?sku=${product.sku}`}>
+ <a href={`/admin/pipeline?upc=${product.upc}`}>
  <ExternalLink className="h-4 w-4" />
  </a>
  </Button>

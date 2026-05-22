@@ -592,7 +592,7 @@ export class ShopSiteClient {
             }
 
             // Core fields - support both lowercase and PascalCase
-            const sku = this.extractXmlValue(productXml, 'sku') || this.extractXmlValue(productXml, 'SKU');
+            const upc = this.extractXmlValue(productXml, 'sku') || this.extractXmlValue(productXml, 'SKU');
             const name = this.extractXmlValue(productXml, 'name') || this.extractXmlValue(productXml, 'Name');
 
             // Brand from custom ProductFields (moved up for filtering)
@@ -602,7 +602,7 @@ export class ShopSiteClient {
 
             // Skip products without SKU or Name
             // Brand is optional; downstream sync will handle missing brand.
-            if (!sku || !name) {
+            if (!upc || !name) {
                 continue;
             }
 
@@ -665,7 +665,7 @@ export class ShopSiteClient {
             const size = this.extractXmlValue(productXml, 'ProductField27');
             const color = this.extractXmlValue(productXml, 'ProductField29');
             const packagingType = this.extractXmlValue(productXml, 'ProductField30');
-            const crossSellSkus = this.parseDelimitedField(this.extractXmlValue(productXml, 'ProductField32'));
+            const crossSellUpcs = this.parseDelimitedField(this.extractXmlValue(productXml, 'ProductField32'));
 
 
             // SEO and content
@@ -680,9 +680,9 @@ export class ShopSiteClient {
                 if (subproductMatches) {
                     for (const subproductXml of subproductMatches) {
                         const sName = this.extractXmlValue(subproductXml, 'Name');
-                        const sSku = this.extractXmlValue(subproductXml, 'SKU');
-                        if (sSku) {
-                            subproducts.push({ name: sName || '', sku: sSku });
+                        const sUpc = this.extractXmlValue(subproductXml, 'SKU');
+                        if (sUpc) {
+                            subproducts.push({ name: sName || '', upc: sUpc });
                         }
                     }
                 }
@@ -692,8 +692,25 @@ export class ShopSiteClient {
             const minQtyRaw = this.extractXmlValue(productXml, 'MinimumQuantity');
             const minimumQuantity = minQtyRaw ? parseInt(minQtyRaw, 10) : undefined;
 
+            // Page links
+            const shopsitePages: string[] = [];
+            const pagesBlock = this.extractXmlValue(productXml, 'ProductOnPages') ||
+                this.extractXmlValue(productXml, 'productOnPages');
+            if (pagesBlock) {
+                const pageMatches = pagesBlock.match(/<PageLink>([\s\S]*?)<\/PageLink>/gi);
+                if (pageMatches) {
+                    for (const pageXml of pageMatches) {
+                        const pageName = this.extractXmlValue(pageXml, 'Name') ||
+                            this.extractXmlValue(pageXml, 'name');
+                        if (pageName) {
+                            shopsitePages.push(pageName);
+                        }
+                    }
+                }
+            }
+
             products.push({
-                sku,
+                upc: upc,
                 name,
                 price,
                 saleAmount,
@@ -723,7 +740,7 @@ export class ShopSiteClient {
                 size,
                 color,
                 packagingType,
-                crossSellSkus,
+                crossSellUpcs,
                 subproducts: subproducts.length > 0 ? subproducts : undefined,
                 isDisabled,
                 fileName,
@@ -732,6 +749,7 @@ export class ShopSiteClient {
                 minimumQuantity,
                 outOfStockLimit,
                 googleProductCategory,
+                shopsitePages: shopsitePages.length > 0 ? shopsitePages : undefined,
                 rawXml: includeRawXml ? productXml : undefined,
             });
 
@@ -831,7 +849,7 @@ export class ShopSiteClient {
                         const itemPrice = parseFloat(this.extractXmlValue(productXml, 'ItemPrice') || '0');
 
                         if (itemSku) {
-                            items.push({ sku: itemSku, quantity, price: itemPrice });
+                            items.push({ upc: itemSku, quantity, price: itemPrice });
                         }
                     }
                 }

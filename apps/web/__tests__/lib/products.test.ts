@@ -92,8 +92,8 @@ describe('Products Data Functions', () => {
 
     it('returns transformed product when found', async () => {
       const mockProduct = {
-        id: 'sku-123',
-        sku: 'SKU-123',
+        id: 'upc-123',
+        upc: 'UPC-123',
         name: 'Test Product',
         slug: 'test-product',
         description: 'A test product',
@@ -127,7 +127,7 @@ describe('Products Data Functions', () => {
       const result = await getProductBySlug('test-product');
 
       expect(result).not.toBeNull();
-      expect(result?.id).toBe('sku-123');
+      expect(result?.id).toBe('upc-123');
       expect(result?.name).toBe('Test Product');
     });
   });

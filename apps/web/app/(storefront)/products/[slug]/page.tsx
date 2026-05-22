@@ -26,7 +26,7 @@ import type { Product } from '@/lib/types';
 
 interface ProductDetailPageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ sku?: string }>;
+  searchParams: Promise<{ upc?: string }>;
 }
 
 export async function generateMetadata({ params }: ProductDetailPageProps): Promise<Metadata> {
@@ -182,7 +182,7 @@ function StockBadge({
 
 export default async function ProductDetailPage({ params, searchParams }: ProductDetailPageProps) {
   const { slug } = await params;
-  const { sku } = await searchParams;
+  const { upc } = await searchParams;
 
   const { group, members, defaultMember } = await getProductGroupBySlug(slug);
 
@@ -192,8 +192,8 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
   if (group && members.length > 0) {
     isGroupPage = true;
 
-    if (sku) {
-      const selectedMember = members.find((m) => m.member.product_id === sku);
+    if (upc) {
+      const selectedMember = members.find((m) => m.member.product_id === upc);
       if (selectedMember) {
         product = selectedMember.product;
       } else {
@@ -305,7 +305,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                 <ShieldCheck className="h-4 w-4 text-brand-forest-green" />
                 Satisfaction guaranteed
               </span>
-              <span>Item {product.sku || product.slug}</span>
+              <span>Item {product.upc || product.slug}</span>
               {product.gtin ? <span>GTIN {product.gtin}</span> : null}
             </div>
           </div>
@@ -398,7 +398,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
               <dl className="divide-y divide-border">
                 <div className="grid grid-cols-[140px_minmax(0,1fr)] gap-3 py-3 text-sm">
                   <dt className="text-muted-foreground">Item number</dt>
-                  <dd className="font-medium text-foreground">{product.sku || product.slug}</dd>
+                  <dd className="font-medium text-foreground">{product.upc || product.slug}</dd>
                 </div>
                 {product.brand ? (
                   <div className="grid grid-cols-[140px_minmax(0,1fr)] gap-3 py-3 text-sm">

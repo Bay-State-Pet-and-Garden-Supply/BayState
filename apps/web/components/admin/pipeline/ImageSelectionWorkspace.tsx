@@ -7,7 +7,7 @@ import type { SelectedImage, PipelineProduct } from '@/lib/pipeline/types';
 import { adminFetch } from '@/lib/admin/api-client';
 
 interface ImageSelectionWorkspaceProps {
-  /** Single SKU for image selection */
+  /** Single UPC for image selection */
   upc: string;
   /** Callback when workspace is closed */
   onClose: () => void;

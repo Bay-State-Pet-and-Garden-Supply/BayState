@@ -29,12 +29,12 @@ jest.mock("next/navigation", () => ({
 jest.mock("@/components/admin/pipeline/ProductTable", () => ({
   ProductTable: ({
     products,
-    selectedSkus,
-    onSelectSku,
+    selectedUpcs,
+    onSelectUpc,
   }: {
     products: Array<{ upc: string }>;
-    selectedSkus: Set<string>;
-    onSelectSku: (
+    selectedUpcs: Set<string>;
+    onSelectUpc: (
       upc: string,
       selected: boolean,
       index?: number,
@@ -44,7 +44,7 @@ jest.mock("@/components/admin/pipeline/ProductTable", () => ({
   }) => (
     <div data-testid="product-table">
       {products.map((product, index) => {
-        const isSelected = selectedSkus.has(product.upc);
+        const isSelected = selectedUpcs.has(product.upc);
 
         return (
           <button
@@ -52,7 +52,7 @@ jest.mock("@/components/admin/pipeline/ProductTable", () => ({
             type="button"
             data-state={isSelected ? "selected" : "unselected"}
             onClick={(event) =>
-              onSelectSku(product.upc, !isSelected, index, event.shiftKey, products)
+              onSelectUpc(product.upc, !isSelected, index, event.shiftKey, products)
             }
           >
             {product.upc}
@@ -73,12 +73,12 @@ jest.mock("@/components/admin/pipeline/ScraperSelectDialog", () => ({
 jest.mock("@/components/admin/pipeline/PipelineSidebarTable", () => ({
   PipelineSidebarTable: ({
     products,
-    selectedSkus,
-    onSelectSku,
+    selectedUpcs,
+    onSelectUpc,
   }: {
     products: Array<{ upc: string }>;
-    selectedSkus: Set<string>;
-    onSelectSku: (
+    selectedUpcs: Set<string>;
+    onSelectUpc: (
       upc: string,
       selected: boolean,
       index?: number,
@@ -88,7 +88,7 @@ jest.mock("@/components/admin/pipeline/PipelineSidebarTable", () => ({
   }) => (
     <div data-testid="sidebar-table">
       {products.map((product, index) => {
-        const isSelected = selectedSkus.has(product.upc);
+        const isSelected = selectedUpcs.has(product.upc);
 
         return (
           <button
@@ -96,7 +96,7 @@ jest.mock("@/components/admin/pipeline/PipelineSidebarTable", () => ({
             type="button"
             data-state={isSelected ? "selected" : "unselected"}
             onClick={(event) =>
-              onSelectSku(product.upc, !isSelected, index, event.shiftKey, products)
+              onSelectUpc(product.upc, !isSelected, index, event.shiftKey, products)
             }
           >
             {product.upc}
@@ -110,12 +110,12 @@ jest.mock("@/components/admin/pipeline/PipelineSidebarTable", () => ({
 jest.mock("@/components/admin/pipeline/ImportedResultsView", () => ({
   ImportedResultsView: ({
     products,
-    selectedSkus,
-    onSelectSku,
+    selectedUpcs,
+    onSelectUpc,
   }: {
     products: Array<{ upc: string }>;
-    selectedSkus: Set<string>;
-    onSelectSku: (
+    selectedUpcs: Set<string>;
+    onSelectUpc: (
       upc: string,
       selected: boolean,
       index?: number,
@@ -125,14 +125,14 @@ jest.mock("@/components/admin/pipeline/ImportedResultsView", () => ({
   }) => (
     <div data-testid="imported-results-view">
       {products.map((product, index) => {
-        const isSelected = selectedSkus.has(product.upc);
+        const isSelected = selectedUpcs.has(product.upc);
 
         return (
           <button
             key={product.upc}
             type="button"
             data-state={isSelected ? "selected" : "unselected"}
-            onClick={() => onSelectSku(product.upc, !isSelected, index, false, products)}
+            onClick={() => onSelectUpc(product.upc, !isSelected, index, false, products)}
           >
             {product.upc}
           </button>
@@ -144,7 +144,7 @@ jest.mock("@/components/admin/pipeline/ImportedResultsView", () => ({
 
 const products: PipelineProduct[] = [
   {
-    upc: "SKU001",
+    upc: "UPC001",
     input: { name: "Product 1", price: 10.0 },
     sources: {},
     consolidated: { name: "Product 1", price: 10.0 },
@@ -153,7 +153,7 @@ const products: PipelineProduct[] = [
     updated_at: "2026-01-01",
   },
   {
-    upc: "SKU002",
+    upc: "UPC002",
     input: { name: "Product 2", price: 20.0 },
     sources: {},
     consolidated: { name: "Product 2", price: 20.0 },
@@ -162,7 +162,7 @@ const products: PipelineProduct[] = [
     updated_at: "2026-01-02",
   },
   {
-    upc: "SKU003",
+    upc: "UPC003",
     input: { name: "Product 3", price: 30.0 },
     sources: {},
     consolidated: { name: "Product 3", price: 30.0 },
@@ -214,7 +214,7 @@ const importedCounts: StatusCount[] = [
 
 const importedCohortProducts: PipelineProduct[] = [
   {
-    upc: "SKU101",
+    upc: "UPC101",
     input: { name: "Product A", price: 10 },
     sources: {},
     consolidated: null,
@@ -234,7 +234,7 @@ const importedCohortProducts: PipelineProduct[] = [
     updated_at: "2026-01-01",
   },
   {
-    upc: "SKU102",
+    upc: "UPC102",
     input: { name: "Product B", price: 12 },
     sources: {},
     consolidated: null,
@@ -271,9 +271,9 @@ describe("PipelineClient shift range selection", () => {
       />,
     );
 
-    const row1 = await screen.findByRole("button", { name: "SKU001" });
-    const row2 = screen.getByRole("button", { name: "SKU002" });
-    const row3 = screen.getByRole("button", { name: "SKU003" });
+    const row1 = await screen.findByRole("button", { name: "UPC001" });
+    const row2 = screen.getByRole("button", { name: "UPC002" });
+    const row3 = screen.getByRole("button", { name: "UPC003" });
 
     fireEvent.click(row1);
     fireEvent.click(row3, { shiftKey: true });
@@ -285,7 +285,7 @@ describe("PipelineClient shift range selection", () => {
     });
   });
 
-  it("opens enrichment dialog with selected SKU count", async () => {
+  it("opens enrichment dialog with selected UPC count", async () => {
     const processedCounts: StatusCount[] = [
       { status: "imported", count: 0 },
       { status: "awaiting_brand", count: 0 },
@@ -311,8 +311,8 @@ describe("PipelineClient shift range selection", () => {
       />,
     );
 
-    const row1 = await screen.findByRole("button", { name: "SKU101" });
-    const row2 = screen.getByRole("button", { name: "SKU102" });
+    const row1 = await screen.findByRole("button", { name: "UPC101" });
+    const row2 = screen.getByRole("button", { name: "UPC102" });
     fireEvent.click(row1);
     fireEvent.click(row2);
 
@@ -347,8 +347,8 @@ describe("PipelineClient shift range selection", () => {
       />,
     );
 
-    const row1 = await screen.findByRole("button", { name: "SKU101" });
-    const row2 = screen.getByRole("button", { name: "SKU102" });
+    const row1 = await screen.findByRole("button", { name: "UPC101" });
+    const row2 = screen.getByRole("button", { name: "UPC102" });
     fireEvent.click(row1);
     fireEvent.click(row2);
 

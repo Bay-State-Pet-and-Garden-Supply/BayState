@@ -51,7 +51,7 @@ export async function POST(
     })
     .eq("batch_job_id", batchId)
     .eq("status", "failed")
-    .select("sku");
+    .select("upc");
 
   if (resetError) {
     console.error(

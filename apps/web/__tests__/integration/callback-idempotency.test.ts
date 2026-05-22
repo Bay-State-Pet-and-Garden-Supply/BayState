@@ -21,12 +21,12 @@ import { persistProductsIngestionSourcesStrict } from '@/lib/scraper-callback/pr
 // Mock the products-ingestion module
 jest.mock('@/lib/scraper-callback/products-ingestion', () => ({
   persistProductsIngestionSourcesStrict: jest.fn(),
-  MissingProductsIngestionSkusError: class MissingProductsIngestionSkusError extends Error {
-    missingSkus: string[];
-    constructor(missingSkus: string[]) {
-      super(`Missing SKUs: ${missingSkus.join(', ')}`);
-      this.name = 'MissingProductsIngestionSkusError';
-      this.missingSkus = missingSkus;
+  MissingProductsIngestionUpcsError: class MissingProductsIngestionUpcsError extends Error {
+    missingUpcs: string[];
+    constructor(missingUpcs: string[]) {
+      super(`Missing UPCs: ${missingUpcs.join(', ')}`);
+      this.name = 'MissingProductsIngestionUpcsError';
+      this.missingUpcs = missingUpcs;
     }
   },
 }));
@@ -55,14 +55,14 @@ describe('Callback Idempotency Integration', () => {
         }),
       };
 
-      mockedPersist.mockResolvedValue(['SKU-1', 'SKU-2']);
+      mockedPersist.mockResolvedValue(['UPC-1', 'UPC-2']);
 
       // Check idempotency
       const idempotencyCheck = await checkIdempotency(
         mockSupabase as any,
         'job-123',
         'admin',
-        { 'SKU-1': { price: 10 } }
+        { 'UPC-1': { price: 10 } }
       );
 
       // Should not be duplicate
@@ -84,9 +84,9 @@ describe('Callback Idempotency Integration', () => {
         }),
       };
 
-      mockedPersist.mockResolvedValue(['SKU-1', 'SKU-2']);
+      mockedPersist.mockResolvedValue(['UPC-1', 'UPC-2']);
 
-      const aggregatedResults = { 'SKU-1': { price: 10 }, 'SKU-2': { price: 20 } };
+      const aggregatedResults = { 'UPC-1': { price: 10 }, 'UPC-2': { price: 20 } };
 
       // Check idempotency
       const idempotencyCheck = await checkIdempotency(
@@ -152,7 +152,7 @@ describe('Callback Idempotency Integration', () => {
         }),
       };
 
-      const aggregatedResults = { 'SKU-1': { price: 10 } };
+      const aggregatedResults = { 'UPC-1': { price: 10 } };
 
       const idempotencyCheck = await checkIdempotency(
         mockSupabase as any,
@@ -183,7 +183,7 @@ describe('Callback Idempotency Integration', () => {
         'job-123',
         'runner-1',
         'admin:job-123',
-        { skus_processed: 5 }
+        { upcs_processed: 5 }
       );
 
       expect(mockInsert).toHaveBeenCalledTimes(1);
@@ -217,7 +217,7 @@ describe('Callback Idempotency Integration', () => {
           'job-123',
           'runner-1',
           'admin:job-123',
-          { skus_processed: 5 }
+          { upcs_processed: 5 }
         );
       }
 
@@ -240,8 +240,8 @@ describe('Callback Idempotency Integration', () => {
     }
 
     it('treats different results as different callbacks for chunks', async () => {
-      const results1 = { 'SKU-1': { price: 10 } };
-      const results2 = { 'SKU-1': { price: 20 } };
+      const results1 = { 'UPC-1': { price: 10 } };
+      const results2 = { 'UPC-1': { price: 20 } };
 
       const check1 = await checkIdempotency(
         createMockSupabase() as any,
@@ -261,7 +261,7 @@ describe('Callback Idempotency Integration', () => {
     });
 
     it('treats same results as duplicate for chunks', async () => {
-      const results = { 'SKU-1': { price: 10 } };
+      const results = { 'UPC-1': { price: 10 } };
 
       const check1 = await checkIdempotency(
         createMockSupabase() as any,

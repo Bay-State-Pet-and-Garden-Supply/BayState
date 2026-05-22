@@ -18,7 +18,7 @@ type AssertionSummary = {
 };
 
 type AssertionResult = {
-    sku: string;
+    upc: string;
     assertions: AssertionField[];
     passed: boolean;
     summary: AssertionSummary;
@@ -28,7 +28,7 @@ type ScraperTestRunRow = {
     id: string;
     scraper_id: string;
     test_type: string;
-    skus_tested: string[];
+    upcs_tested: string[];
     results: unknown;
     status: string;
     started_at: string | null;
@@ -68,7 +68,7 @@ describe('scraper_test_runs assertion_results', () => {
         it('should insert a test run with assertion_results column', async () => {
             const assertionResults = [
                 {
-                    sku: 'ABC123',
+                    upc: 'ABC123',
                     assertions: [
                         { field: 'name', expected: 'Product Name', actual: 'Product Name', passed: true },
                         { field: 'price', expected: '9.99', actual: '8.99', passed: false },
@@ -101,9 +101,9 @@ describe('scraper_test_runs assertion_results', () => {
     });
 
     describe('assertion_results JSONB structure', () => {
-        it('should match expected shape with sku, assertions, passed, and summary', () => {
+        it('should match expected shape with upc, assertions, passed, and summary', () => {
             const assertionResult = {
-                sku: 'TEST-SKU-001',
+                upc: 'TEST-UPC-001',
                 assertions: [
                     { field: 'name', expected: 'Dog Food', actual: 'Dog Food', passed: true },
                     { field: 'price', expected: '12.99', actual: '12.99', passed: true },
@@ -113,7 +113,7 @@ describe('scraper_test_runs assertion_results', () => {
                 summary: { total: 3, passed: 2, failed: 1 },
             };
 
-            expect(assertionResult).toHaveProperty('sku');
+            expect(assertionResult).toHaveProperty('upc');
             expect(assertionResult).toHaveProperty('assertions');
             expect(assertionResult).toHaveProperty('passed');
             expect(assertionResult).toHaveProperty('summary');
@@ -141,16 +141,16 @@ describe('scraper_test_runs assertion_results', () => {
             expect(typeof assertion.passed).toBe('boolean');
         });
 
-        it('should support multiple SKU assertion results in a single run', () => {
+        it('should support multiple UPC assertion results in a single run', () => {
             const assertionResults = [
                 {
-                    sku: 'SKU-001',
+                    upc: 'UPC-001',
                     assertions: [{ field: 'name', expected: 'A', actual: 'A', passed: true }],
                     passed: true,
                     summary: { total: 1, passed: 1, failed: 0 },
                 },
                 {
-                    sku: 'SKU-002',
+                    upc: 'UPC-002',
                     assertions: [
                         { field: 'name', expected: 'B', actual: 'B', passed: true },
                         { field: 'price', expected: '5.00', actual: '4.50', passed: false },
@@ -174,7 +174,7 @@ describe('scraper_test_runs assertion_results', () => {
                     id: 'run-1',
                     scraper_id: 'scraper-1',
                     assertion_results: [
-                        { sku: 'SKU-001', assertions: [], passed: true, summary: { total: 0, passed: 0, failed: 0 } },
+                        { upc: 'UPC-001', assertions: [], passed: true, summary: { total: 0, passed: 0, failed: 0 } },
                     ],
                 },
             ];

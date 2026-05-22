@@ -9,7 +9,7 @@ import YAML from 'yaml';
 // Validation schema for test request
 const testRequestSchema = z.object({
   scraper_slug: z.string().min(1),
-  skus: z.array(z.string()).optional(),
+  upcs: z.array(z.string()).optional(),
   options: z.object({
     timeout: z.number().optional(),
     priority: z.enum(['normal', 'high']).optional(),
@@ -19,15 +19,15 @@ const testRequestSchema = z.object({
 const SCRAPER_APP_DIR = path.join(process.cwd(), '..', 'scraper');
 
 type ParsedScraperYaml = {
-  test_skus?: unknown;
+  test_upcs?: unknown;
 };
 
-function getTestSkusFromYaml(parsedYaml: ParsedScraperYaml): string[] {
-  if (!Array.isArray(parsedYaml.test_skus)) {
+function getTestUpcsFromYaml(parsedYaml: ParsedScraperYaml): string[] {
+  if (!Array.isArray(parsedYaml.test_upcs)) {
     return [];
   }
 
-  return parsedYaml.test_skus.filter((sku): sku is string => typeof sku === 'string' && sku.length > 0);
+  return parsedYaml.test_upcs.filter((upc): upc is string => typeof upc === 'string' && upc.length > 0);
 }
 
 export async function POST(request: NextRequest) {
@@ -62,9 +62,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get SKUs to test
-    let skus: string[] = validatedData.skus || [];
-    if (skus.length === 0) {
+    // Get UPCs to test
+    let upcs: string[] = validatedData.upcs || [];
+    if (upcs.length === 0) {
       const yamlPath = path.join(SCRAPER_APP_DIR, config.file_path);
 
       let parsedYaml: ParsedScraperYaml;
@@ -86,11 +86,11 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      skus = getTestSkusFromYaml(parsedYaml);
+      upcs = getTestUpcsFromYaml(parsedYaml);
 
-      if (skus.length === 0) {
+      if (upcs.length === 0) {
         return NextResponse.json(
-          { error: 'No SKUs specified and no default test SKUs found in config' },
+          { error: 'No UPCs specified and no default test UPCs found in config' },
           { status: 400 }
         );
       }
@@ -103,9 +103,9 @@ export async function POST(request: NextRequest) {
     const { data: job, error: jobError } = await adminClient
       .from('enrichment_jobs')
       .insert({
-        skus: skus,
+        upcs: upcs,
         test_mode: true,
-        total_count: skus.length,
+        total_count: upcs.length,
         status: 'queued',
         test_metadata: {
           file_path: config.file_path,
@@ -136,10 +136,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create attempts for each SKU
-    const attempts = skus.map((sku, index) => ({
+    // Create attempts for each UPC
+    const attempts = upcs.map((upc, index) => ({
       job_id: job.id,
-      sku: sku,
+      upc: upc,
       attempt_number: 1,
       status: 'queued',
       mode: 'llm', // Default to LLM for studio tests
@@ -153,14 +153,14 @@ export async function POST(request: NextRequest) {
       console.error('[Studio Test API] Failed to create enrichment attempts:', attemptError);
     }
 
-    console.log(`[Studio Test API] Created enrichment test job ${job.id} for config ${config.slug} (${skus.length} SKUs)`);
+    console.log(`[Studio Test API] Created enrichment test job ${job.id} for config ${config.slug} (${upcs.length} UPCs)`);
 
     return NextResponse.json({
       test_run_id: job.id,
       job_id: job.id,
       status: 'queued',
       scraper_slug: validatedData.scraper_slug,
-      skus_count: skus.length,
+      upcs_count: upcs.length,
       message: 'Test job created. A runner will pick it up and process it.',
     }, { status: 201 });
 

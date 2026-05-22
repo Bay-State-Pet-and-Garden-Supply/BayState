@@ -29,7 +29,7 @@ function ErrorState() {
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
           <TriangleAlert className="h-6 w-6" />
         </div>
-        <h2 className="text-xl font-semibold text-foreground">SKU required</h2>
+        <h2 className="text-xl font-semibold text-foreground">UPC required</h2>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           Open this workspace from the pipeline so the selected product UPC is carried into image review.
         </p>

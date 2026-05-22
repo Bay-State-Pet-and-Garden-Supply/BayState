@@ -3,7 +3,7 @@ import type { PersistedPipelineStatus } from '@/lib/pipeline/types';
 interface UndoAction {
     id: string;
     type: 'status_change';
-    skus: string[];
+    upcs: string[];
     fromStatus: PersistedPipelineStatus;
     toStatus: PersistedPipelineStatus;
     timestamp: number;

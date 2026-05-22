@@ -117,7 +117,7 @@ export interface BatchJob {
     estimated_cost: number;
     retry_count: number;
     max_retries: number;
-    failed_skus: string[] | null;
+    failed_upcs: string[] | null;
     parent_batch_id: string | null;
     input_file_id: string | null;
     output_file_id: string | null;
@@ -140,7 +140,7 @@ export interface BatchJob {
  * across related products from the same product line.
  */
 export interface ProductSource {
-    sku: string;
+    upc: string;
     sources: Record<string, unknown>;
     /** Optional context about sibling products from the same product line. */
     /** Optional image URLs for multimodal processing (Gemini Batch API). */
@@ -149,7 +149,7 @@ export interface ProductSource {
     productLineContext?: {
         productLine: string;
         siblings: Array<{
-            sku: string;
+            upc: string;
             name: string;
             sources: Record<string, unknown>;
         }>;
@@ -162,7 +162,7 @@ export interface ProductSource {
  * Result of consolidating a product.
  */
 export interface ConsolidationResult {
-    sku: string;
+    upc: string;
     name?: string;
     brand?: string;
     description?: string;
@@ -179,12 +179,12 @@ export interface ConsolidationResult {
 // =============================================================================
 
 /**
- * Per-SKU work item for a direct-chat consolidation batch.
+ * Per-UPC work item for a direct-chat consolidation batch.
  */
 export interface BatchJobItem {
     id: string;
     batch_job_id: string;
-    sku: string;
+    upc: string;
     status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
     request_payload: Record<string, unknown>;
     response_payload: Record<string, unknown> | null;

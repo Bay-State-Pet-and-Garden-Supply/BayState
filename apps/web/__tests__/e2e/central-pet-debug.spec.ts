@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 test('debug central pet search', async ({ page }) => {
-  const sku = '38777520';
-  const url = `https://www.centralpet.com/Search?criteria=${sku}`;
+  const upc = '38777520';
+  const url = `https://www.centralpet.com/Search?criteria=${upc}`;
   
   console.log(`Navigating to ${url}...`);
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });

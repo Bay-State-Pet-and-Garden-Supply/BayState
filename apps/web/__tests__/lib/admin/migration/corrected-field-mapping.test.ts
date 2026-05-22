@@ -14,7 +14,7 @@ type FieldMatrixRow = {
 };
 
 type RawFixtureProduct = {
-    sku: string;
+    upc: string;
     name: string;
     fields: Record<string, string>;
 };
@@ -38,7 +38,7 @@ type NormalizedContractProduct = {
     size: string | null;
     color: string | null;
     packagingType: string | null;
-    crossSellSkus: string[];
+    crossSellUpcs: string[];
     auditOnlyCategory: string | null;
 };
 
@@ -74,8 +74,8 @@ const EXPECTED_FIELD_MATRIX: FieldMatrixRow[] = [
 const FIXTURE_XML = readFileSync(FIXTURE_PATH, 'utf8');
 const MATRIX_DOC = readFileSync(MATRIX_PATH, 'utf8');
 const RAW_PRODUCTS = extractFixtureProducts(FIXTURE_XML);
-const RAW_PRODUCT_MAP = new Map(RAW_PRODUCTS.map((product) => [product.sku, product]));
-const KNOWN_SKUS = new Set(RAW_PRODUCTS.map((product) => product.sku));
+const RAW_PRODUCT_MAP = new Map(RAW_PRODUCTS.map((product) => [product.upc, product]));
+const KNOWN_UPCS = new Set(RAW_PRODUCTS.map((product) => product.upc));
 
 function extractTagValue(xml: string, tag: string): string {
     const match = xml.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, 'i'));
@@ -99,7 +99,7 @@ function extractFixtureProducts(xml: string): RawFixtureProduct[] {
         }
 
         return {
-            sku: extractTagValue(productXml, 'SKU'),
+            upc: extractTagValue(productXml, 'UPC'),
             name: extractTagValue(productXml, 'Name'),
             fields,
         };
@@ -132,7 +132,7 @@ function inferPetType(product: RawFixtureProduct): string | null {
     return null;
 }
 
-function normalizeCrossSells(product: RawFixtureProduct, knownSkus: Set<string>): string[] {
+function normalizeCrossSells(product: RawFixtureProduct, knownUpcs: Set<string>): string[] {
     const raw = normalizeBlank(product.fields.ProductField32);
     if (!raw) {
         return [];
@@ -142,7 +142,7 @@ function normalizeCrossSells(product: RawFixtureProduct, knownSkus: Set<string>)
     const links: string[] = [];
 
     for (const candidate of raw.split('|').map((value) => value.trim()).filter(Boolean)) {
-        if (candidate === product.sku || seen.has(candidate) || !knownSkus.has(candidate)) {
+        if (candidate === product.upc || seen.has(candidate) || !knownUpcs.has(candidate)) {
             continue;
         }
 
@@ -176,16 +176,16 @@ function normalizeContractProduct(product: RawFixtureProduct): NormalizedContrac
         size: normalizeBlank(product.fields.ProductField27),
         color: normalizeBlank(product.fields.ProductField29),
         packagingType: normalizeBlank(product.fields.ProductField30),
-        crossSellSkus: normalizeCrossSells(product, KNOWN_SKUS),
+        crossSellUpcs: normalizeCrossSells(product, KNOWN_UPCS),
         auditOnlyCategory: normalizeBlank(product.fields.ProductField31),
     };
 }
 
-function getFixtureProduct(sku: string): RawFixtureProduct {
-    const product = RAW_PRODUCT_MAP.get(sku);
+function getFixtureProduct(upc: string): RawFixtureProduct {
+    const product = RAW_PRODUCT_MAP.get(upc);
 
     if (!product) {
-        throw new Error(`Missing fixture product: ${sku}`);
+        throw new Error(`Missing fixture product: ${upc}`);
     }
 
     return product;
@@ -217,7 +217,7 @@ describe('corrected ShopSite field mapping contract', () => {
         const rawProduct = getFixtureProduct('PF24-WINS-001');
         const normalized = normalizeContractProduct(rawProduct);
         const parsedProducts = client.parseProductsXml(FIXTURE_XML);
-        const parsedProduct = parsedProducts.find((product) => product.sku === 'PF24-WINS-001');
+        const parsedProduct = parsedProducts.find((product) => product.upc === 'PF24-WINS-001');
 
         expect(parsedProduct).toBeDefined();
         expect(normalized.categoryName).toBe('Dog Food');
@@ -262,15 +262,15 @@ describe('corrected ShopSite field mapping contract', () => {
             size: null,
             color: null,
             packagingType: null,
-            crossSellSkus: [],
+            crossSellUpcs: [],
             isSpecialOrder: false,
             inStorePickup: false,
         });
     });
 
-    it('applies PF32 one-way relation rules by skipping duplicates, self-links, and missing SKUs', () => {
+    it('applies PF32 one-way relation rules by skipping duplicates, self-links, and missing UPCs', () => {
         const normalized = normalizeContractProduct(getFixtureProduct('XSELL-SOURCE-001'));
 
-        expect(normalized.crossSellSkus).toEqual(['XSELL-TARGET-001']);
+        expect(normalized.crossSellUpcs).toEqual(['XSELL-TARGET-001']);
     });
 });

@@ -211,7 +211,7 @@ function createMockSupabase(partialState: Partial<DatabaseState> = {}) {
 
 function buildShopSiteProduct(overrides: Partial<ShopSiteProduct> = {}): ShopSiteProduct {
     return {
-        sku: overrides.sku ?? 'SKU-1',
+        upc: overrides.upc ?? 'UPC-1',
         name: overrides.name ?? 'Example Product',
         price: overrides.price ?? 9.99,
         description: overrides.description ?? '',
@@ -253,7 +253,7 @@ describe('importShopSiteProducts pet-type canonical mapping', () => {
         const result = await importShopSiteProducts({
             supabase,
             shopSiteProducts: [buildShopSiteProduct({
-                sku: 'DIRECT-001',
+                upc: 'DIRECT-001',
                 name: 'Cat Crunchy Snacks',
                 petTypeName: 'Dog',
             })],
@@ -280,9 +280,9 @@ describe('importShopSiteProducts pet-type canonical mapping', () => {
         const result = await importShopSiteProducts({
             supabase,
             shopSiteProducts: [
-                buildShopSiteProduct({ sku: 'DIRECT-HORSE', name: 'Horse Feed', petTypeName: 'Horse' }),
-                buildShopSiteProduct({ sku: 'DIRECT-CHICKEN', name: 'Chicken Feed', petTypeName: 'Chicken & Poultry' }),
-                buildShopSiteProduct({ sku: 'DIRECT-LIVESTOCK', name: 'Goat Feed', petTypeName: 'Farm & Livestock' }),
+                buildShopSiteProduct({ upc: 'DIRECT-HORSE', name: 'Horse Feed', petTypeName: 'Horse' }),
+                buildShopSiteProduct({ upc: 'DIRECT-CHICKEN', name: 'Chicken Feed', petTypeName: 'Chicken & Poultry' }),
+                buildShopSiteProduct({ upc: 'DIRECT-LIVESTOCK', name: 'Goat Feed', petTypeName: 'Farm & Livestock' }),
             ],
         });
 
@@ -306,7 +306,7 @@ describe('importShopSiteProducts pet-type canonical mapping', () => {
         const result = await importShopSiteProducts({
             supabase,
             shopSiteProducts: [buildShopSiteProduct({
-                sku: 'FALLBACK-001',
+                upc: 'FALLBACK-001',
                 name: 'Cat Crunchy Snacks',
                 petTypeName: '',
             })],
@@ -326,7 +326,7 @@ describe('importShopSiteProducts pet-type canonical mapping', () => {
             products: [
                 {
                     id: 'existing-product-1',
-                    sku: 'CLEAR-001',
+                    upc: 'CLEAR-001',
                     slug: 'existing-product',
                     brand_id: 'brand-1',
                     short_name: 'Legacy Short Name',
@@ -353,7 +353,7 @@ describe('importShopSiteProducts pet-type canonical mapping', () => {
         const result = await importShopSiteProducts({
             supabase,
             shopSiteProducts: [buildShopSiteProduct({
-                sku: 'CLEAR-001',
+                upc: 'CLEAR-001',
                 name: 'Garden Hose',
                 shortName: '',
                 brandName: '',
@@ -370,7 +370,7 @@ describe('importShopSiteProducts pet-type canonical mapping', () => {
         expect(state.products).toEqual([
             expect.objectContaining({
                 id: 'existing-product-1',
-                sku: 'CLEAR-001',
+                upc: 'CLEAR-001',
                 slug: 'existing-product',
                 brand_id: null,
                 short_name: null,

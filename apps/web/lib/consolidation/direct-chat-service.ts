@@ -221,7 +221,7 @@ export async function createDirectChatBatch(
         return { success: false, error: insertError.message };
     }
 
-    // Insert batch_job_items — one per product/SKU
+    // Insert batch_job_items — one per product/UPC
     const items = products.map((product, idx) => {
         const requestLine = lines[idx] || lines[0]; // fallback to first if index out of range
         let requestPayload: Record<string, unknown>;
@@ -252,7 +252,7 @@ export async function createDirectChatBatch(
 
         return {
             batch_job_id: batchId,
-            sku: product.sku,
+            upc: product.upc,
             status: 'pending',
             request_payload: requestPayload,
             product_source: product.sources,
@@ -269,12 +269,12 @@ export async function createDirectChatBatch(
     }
 
     // Mark products as merging
-    const skus = products.map((p) => p.sku);
+    const upcs = products.map((p) => p.upc);
     try {
         await supabase
             .from('products_ingestion')
             .update({ pipeline_status: 'merging', updated_at: new Date().toISOString() })
-            .in('sku', skus);
+            .in('upc', upcs);
     } catch (err) {
         console.warn('[DirectChat] Failed to mark products as merging:', err);
     }
@@ -423,7 +423,7 @@ export async function processDirectChatChunk(
                 responsePayload.usage = usage;
                 responsePayload.finish_reason = choice?.finish_reason;
 
-                parsed = parseStructuredConsolidationText(item.sku, content, categories);
+                parsed = parseStructuredConsolidationText(item.upc, content, categories);
 
                 if (!content.trim() || parsed.error) {
                     lastError = new Error(
@@ -716,7 +716,7 @@ export async function retrieveDirectChatResults(
             results.push(item.parsed_result as unknown as ConsolidationResult);
         } else if (item.status === 'failed') {
             results.push({
-                sku: item.sku,
+                upc: item.upc,
                 error: item.error_message || 'Unknown error',
             });
         }

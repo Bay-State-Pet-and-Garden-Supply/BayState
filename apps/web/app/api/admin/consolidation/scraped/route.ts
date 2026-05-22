@@ -8,7 +8,7 @@ import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
  * POST /api/admin/consolidation/scraped
  * Trigger consolidation for products that are processed and ready for consolidation.
  * Backward-compatible with legacy records that only have pipeline_status = 'processed'.
- * Body: { skus?: string[] } - if no SKUs provided, consolidates all processed products
+ * Body: { upcs?: string[] } - if no UPCs provided, consolidates all processed products
  */
 export async function POST(request: NextRequest) {
     const auth = await requireAdminAuth(request);
@@ -16,18 +16,18 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { skus } = body;
+        const { upcs } = body;
 
         const supabase = await createAdminClient();
 
-        // Build query - either specific SKUs or all scraped products
+        // Build query - either specific UPCs or all scraped products
         let query = supabase
             .from('products_ingestion')
-            .select('sku, sources, input')
+            .select('upc, sources, input')
             .eq('pipeline_status', 'processed');
 
-        if (skus && Array.isArray(skus) && skus.length > 0) {
-            query = query.in('sku', skus);
+        if (upcs && Array.isArray(upcs) && upcs.length > 0) {
+            query = query.in('upc', upcs);
         }
 
         const { data: products, error: fetchError } = await query;
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
         // Transform to ProductSource format with sibling context from database
         const productSources = products.map((p) => ({
-            sku: p.sku,
+            upc: p.upc,
             sources: buildConsolidationSourcesPayload(p.sources, p.input),
             productLineContext: p.input?.productLineContext ?? undefined,
         }));

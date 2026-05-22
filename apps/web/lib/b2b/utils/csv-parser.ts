@@ -171,7 +171,7 @@ export function mapCSVToType<T>(
  * Standard column mappings for known B2B providers.
  */
 const PFX_COLUMN_MAP = {
-  distributorSku: 'Item #',
+  distributorUpc: 'Item #',
   upc: 'UPC',
   name: 'Description',
   brand: 'Brand',

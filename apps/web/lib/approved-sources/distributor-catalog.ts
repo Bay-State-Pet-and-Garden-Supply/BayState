@@ -34,7 +34,7 @@ export interface FixedDistributorEntry {
   /** Credential reference for auth resolution */
   credentialRef: string | null;
   /** Search mode */
-  searchMode: "sku_search" | "domain_search" | "direct_url" | "feed_lookup";
+  searchMode: "upc_search" | "domain_search" | "direct_url" | "feed_lookup";
   /** Allowed extraction fields */
   allowedFields: string[];
   /** Default priority (lower = higher priority) */
@@ -54,11 +54,11 @@ const FIXED_DISTRIBUTOR_CATALOG: FixedDistributorEntry[] = [
     assetDomains: ["bradleycaldwell.com"],
     requiresAuth: false,
     credentialRef: null,
-    searchMode: "sku_search",
+    searchMode: "upc_search",
     allowedFields: [
       "name",
       "brand",
-      "sku",
+      "upc",
       "upc",
       "bci_item_number",
       "case_pack",
@@ -80,7 +80,7 @@ const FIXED_DISTRIBUTOR_CATALOG: FixedDistributorEntry[] = [
     assetDomains: ["centralpet.com"],
     requiresAuth: false,
     credentialRef: "central-pet",
-    searchMode: "sku_search",
+    searchMode: "upc_search",
     allowedFields: [
       "name",
       "brand",
@@ -104,7 +104,7 @@ const FIXED_DISTRIBUTOR_CATALOG: FixedDistributorEntry[] = [
     assetDomains: ["orgill.com"],
     requiresAuth: true,
     credentialRef: "orgill",
-    searchMode: "sku_search",
+    searchMode: "upc_search",
     allowedFields: [
       "name",
       "brand",
@@ -129,7 +129,7 @@ const FIXED_DISTRIBUTOR_CATALOG: FixedDistributorEntry[] = [
     assetDomains: ["shop.phillipspet.com", "d56ygyjv466yj.cloudfront.net"],
     requiresAuth: true,
     credentialRef: "phillips",
-    searchMode: "sku_search",
+    searchMode: "upc_search",
     allowedFields: [
       "name",
       "brand",
@@ -156,7 +156,7 @@ const FIXED_DISTRIBUTOR_CATALOG: FixedDistributorEntry[] = [
     ],
     requiresAuth: true,
     credentialRef: "petfoodex",
-    searchMode: "sku_search",
+    searchMode: "upc_search",
     allowedFields: [
       "name",
       "brand",

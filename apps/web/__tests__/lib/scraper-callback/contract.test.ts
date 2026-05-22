@@ -44,7 +44,7 @@ describe('scraper callback contract validation', () => {
             status: 'completed',
             results: {
                 data: {
-                    'SKU-1': {
+                    'UPC-1': {
                         sourceA: {
                             price: 12.99,
                             title: 'Fun toy',
@@ -61,7 +61,7 @@ describe('scraper callback contract validation', () => {
         expect(result.success).toBe(true);
         if (result.success) {
             expect(result.payload.job_id).toBe('job-123');
-            expect(result.payload.results?.data?.['SKU-1']?.sourceA).toBeDefined();
+            expect(result.payload.results?.data?.['UPC-1']?.sourceA).toBeDefined();
         }
     });
 
@@ -71,7 +71,7 @@ describe('scraper callback contract validation', () => {
             status: 'completed',
             results: {
                 data: {
-                    'SKU-2': {
+                    'UPC-2': {
                         sourceA: {
                             title: 'Crawl4AI Product',
                         },
@@ -86,7 +86,7 @@ describe('scraper callback contract validation', () => {
                 },
                 crawl4ai: {
                     extraction_strategy: {
-                        'SKU-2': 'llm',
+                        'UPC-2': 'llm',
                     },
                 },
             },
@@ -126,9 +126,9 @@ describe('chunk callback contract validation', () => {
             chunk_id: 'chunk-1',
             status: 'completed',
             results: {
-                skus_processed: 1,
+                upcs_processed: 1,
                 data: {
-                    'SKU-1': {
+                    'UPC-1': {
                         title: 'chunked',
                     },
                 },
@@ -147,7 +147,7 @@ describe('chunk callback contract validation', () => {
             chunk_id: 'chunk-progress',
             status: 'in_progress',
             progress: {
-                sku: 'SKU-1',
+                upc: 'UPC-1',
                 scraper_name: 'amazon',
                 data: {
                     Name: 'Progress Product',
@@ -159,7 +159,7 @@ describe('chunk callback contract validation', () => {
         const result = parseChunkCallbackPayload(JSON.stringify(payload));
         expect(result.success).toBe(true);
         if (result.success) {
-            expect(result.payload.progress?.sku).toBe('SKU-1');
+            expect(result.payload.progress?.upc).toBe('UPC-1');
             expect(result.payload.progress?.scraper_name).toBe('amazon');
         }
     });
@@ -182,9 +182,9 @@ describe('chunk callback contract validation', () => {
             chunk_id: 'chunk-telemetry',
             status: 'completed',
             results: {
-                skus_processed: 1,
-                skus_successful: 1,
-                skus_failed: 0,
+                upcs_processed: 1,
+                upcs_successful: 1,
+                upcs_failed: 0,
                 data: {
                     '001135': {
                         bradley: {

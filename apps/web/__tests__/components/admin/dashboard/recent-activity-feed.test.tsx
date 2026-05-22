@@ -18,7 +18,7 @@ jest.mock('@/hooks/use-recent-activity', () => ({
         id: '2',
         type: 'product',
         title: 'Product Updated: Dog Food',
-        description: 'SKU-123',
+        description: 'UPC-123',
         status: 'info',
         activity_timestamp: new Date().toISOString(),
         href: '/admin/products/2',

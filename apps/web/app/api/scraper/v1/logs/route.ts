@@ -25,7 +25,7 @@ interface LogEntry {
   runner_name?: string;
   source?: string;
   scraper_name?: string;
-  sku?: string;
+  upc?: string;
   phase?: string;
   sequence?: number;
 }

@@ -9,17 +9,17 @@ jest.mock('@/lib/product-category-sync', () => ({
 }));
 
 jest.mock('@/lib/product-image-storage', () => ({
-    buildProductImageStorageFolder: jest.fn().mockReturnValue('pipeline-published/SKU-1'),
+    buildProductImageStorageFolder: jest.fn().mockReturnValue('pipeline-published/UPC-1'),
     replaceInlineImageDataUrls: jest.fn().mockImplementation(async (_supabase, value) => ({ value })),
 }));
 
 const { createClient } = require('@/lib/supabase/server');
 
 describe('publishToStorefront', () => {
-    it('reuses the existing storefront row by SKU without mutating pipeline_status', async () => {
+    it('reuses the existing storefront row by UPC without mutating pipeline_status', async () => {
         const ingestionEq = jest.fn().mockResolvedValue({
             data: {
-                sku: 'SKU-1',
+                upc: 'UPC-1',
                 input: { name: 'Test Product', price: 12.99 },
                 consolidated: { name: 'Test Product', price: 12.99, images: ['https://cdn.example.com/source.jpg'] },
                 pipeline_status: 'reviewing',
@@ -62,24 +62,24 @@ describe('publishToStorefront', () => {
 
         (createClient as jest.Mock).mockResolvedValue(supabase);
 
-        const result = await publishToStorefront('SKU-1');
+        const result = await publishToStorefront('UPC-1');
 
         expect(result).toEqual({ success: true, action: 'updated', productId: 'product-1' });
-        expect(productsEq).toHaveBeenCalledWith('sku', 'SKU-1');
+        expect(productsEq).toHaveBeenCalledWith('upc', 'UPC-1');
         expect(ingestionTable.update).toHaveBeenCalledWith(
             expect.objectContaining({
                 pipeline_status: 'publishing',
                 exported_at: null,
             })
         );
-        expect(ingestionStatusEq).toHaveBeenCalledWith('sku', 'SKU-1');
+        expect(ingestionStatusEq).toHaveBeenCalledWith('upc', 'UPC-1');
         expect(productsTable.update).toHaveBeenCalled();
     });
 
     it('rejects legacy approved rows that are not in a valid publishable status', async () => {
         const ingestionEq = jest.fn().mockResolvedValue({
             data: {
-                sku: 'SKU-2',
+                upc: 'UPC-2',
                 input: { name: 'Legacy Approved Product', price: 9.99 },
                 consolidated: { name: 'Legacy Approved Product', price: 9.99, images: [] },
                 pipeline_status: 'approved',
@@ -103,7 +103,7 @@ describe('publishToStorefront', () => {
 
         (createClient as jest.Mock).mockResolvedValue(supabase);
 
-        const result = await publishToStorefront('SKU-2');
+        const result = await publishToStorefront('UPC-2');
 
         expect(result.success).toBe(false);
         expect(result.error).toContain('must be in reviewing');

@@ -20,7 +20,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
  id,
  name,
  slug,
- sku,
+ upc,
  description,
  price,
  weight,
@@ -66,7 +66,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
  return (
  <AdminPageShell
    title={`Edit Product: ${product.name}`}
-   description={`Edit details for ${product.sku}`}
+   description={`Edit details for ${product.upc}`}
    icon={<Package className="h-5 w-5" />}
  >
  <div className="max-w-4xl mx-auto space-y-6">

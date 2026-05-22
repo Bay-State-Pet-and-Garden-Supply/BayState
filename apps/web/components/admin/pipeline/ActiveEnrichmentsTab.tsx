@@ -181,7 +181,7 @@ function getDisplaySite(url?: string | null): string {
 }
 
 /**
- * SKU attempt breakdown section (Live updates)
+ * UPC attempt breakdown section (Live updates)
  */
 function EnrichmentJobAttemptsPanel({ jobId }: { jobId: string }) {
   const { attempts, isConnected, refetch } = useAttemptsSubscription({ jobId });
@@ -189,7 +189,7 @@ function EnrichmentJobAttemptsPanel({ jobId }: { jobId: string }) {
   if (attempts.length === 0 && !isConnected) {
     return (
       <div className="p-6 text-center text-xs font-semibold text-muted-foreground/60 border-t border-border bg-muted/5 flex items-center justify-center gap-2">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading SKU attempts breakdown...
+        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading UPC attempts breakdown...
       </div>
     );
   }
@@ -197,7 +197,7 @@ function EnrichmentJobAttemptsPanel({ jobId }: { jobId: string }) {
   if (attempts.length === 0) {
     return (
       <div className="p-6 text-center text-xs font-semibold text-muted-foreground border-t border-border bg-muted/5">
-        No SKUs have been claimed by runners for this run yet.
+        No UPCs have been claimed by runners for this run yet.
       </div>
     );
   }
@@ -205,7 +205,7 @@ function EnrichmentJobAttemptsPanel({ jobId }: { jobId: string }) {
   return (
     <div className="border-t border-border bg-muted/5 divide-y divide-border/40">
       <div className="px-4 py-2 bg-muted/10 flex items-center justify-between text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-        <span>SKU Telemetry</span>
+        <span>UPC Telemetry</span>
         <Button variant="ghost" size="sm" onClick={() => void refetch()} className="h-5 px-1.5 text-[9px] gap-1 rounded-none border border-border">
           <RefreshCw className="h-2.5 w-2.5" /> Force Sync
         </Button>
@@ -506,7 +506,7 @@ function EnrichmentJobCard({ job, onCancel, cancellingId, onlineRunners }: Enric
           <div>
             <span className="text-muted-foreground block font-medium">Telemetry Units</span>
             <p className="font-bold text-foreground font-mono mt-0.5">
-              {job.completed_count ?? 0} / {job.total_count ?? 0} SKUs
+              {job.completed_count ?? 0} / {job.total_count ?? 0} UPCs
             </p>
           </div>
           <div>
@@ -584,7 +584,7 @@ function EnrichmentJobCard({ job, onCancel, cancellingId, onlineRunners }: Enric
               )}
             >
               <Layers className="h-3.5 w-3.5" />
-              SKU Details
+              UPC Details
               {showAttempts ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             </Button>
 

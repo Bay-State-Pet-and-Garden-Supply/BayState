@@ -54,7 +54,7 @@ interface MockScraperConfig {
   id: string;
   name: string;
   test_assertions: Array<{
-    sku: string;
+    upc: string;
     expected: Record<string, unknown>;
   }>;
   health_score: number | null;
@@ -72,7 +72,7 @@ interface MockEnrichmentJob {
   created_at: string;
   completed_at: string | null;
   error_message: string | null;
-  skus: string[] | null;
+  upcs: string[] | null;
   timeout_at: string | null;
   metadata: Record<string, unknown> | null;
 }
@@ -82,7 +82,7 @@ interface MockTestRun {
   scraper_id: string;
   job_id: string;
   status: 'success' | 'failed' | 'partial';
-  skus_tested: number;
+  upcs_tested: number;
   results: Record<string, unknown>;
   assertion_results: unknown[];
   health_score: number;
@@ -105,7 +105,7 @@ const MOCK_SCRAPER_ID = 'scraper-test-001';
 // Test assertions data
 const TEST_ASSERTIONS = [
   {
-    sku: '123456789',
+    upc: '123456789',
     expected: {
       name: 'Test Product Name',
       price: '$9.99',
@@ -113,7 +113,7 @@ const TEST_ASSERTIONS = [
     },
   },
   {
-    sku: '987654321',
+    upc: '987654321',
     expected: {
       name: 'Another Product',
       price: '$19.99',
@@ -215,7 +215,7 @@ function buildMockSupabase(state: TestState) {
           created_at: NOW,
           completed_at: null,
           error_message: null,
-          skus: null,
+          upcs: null,
           timeout_at: null,
           metadata: null,
         };
@@ -253,7 +253,7 @@ function buildMockSupabase(state: TestState) {
         scraper_id: String(payload.scraper_id || ''),
         job_id: String(payload.job_id || ''),
         status: String(payload.status || 'failed') as MockTestRun['status'],
-        skus_tested: Number(payload.skus_tested || 0),
+        upcs_tested: Number(payload.upcs_tested || 0),
         results: (payload.results as Record<string, unknown>) || {},
         assertion_results: (payload.assertion_results as unknown[]) || [],
         health_score: Number((payload.result_data as Record<string, unknown>)?.health_score || 0),
@@ -394,7 +394,7 @@ describe('Scraper QA Callback Flow', () => {
         runner_name: 'test-runner-001',
         assertion_results: [
           {
-            sku: '123456789',
+            upc: '123456789',
             assertions: [
               { field: 'name', expected: 'Test Product Name', actual: 'Test Product Name', passed: true },
               { field: 'price', expected: '$9.99', actual: '$9.99', passed: true },
@@ -404,7 +404,7 @@ describe('Scraper QA Callback Flow', () => {
             summary: { total: 3, passed: 3, failed: 0 },
           },
           {
-            sku: '987654321',
+            upc: '987654321',
             assertions: [
               { field: 'name', expected: 'Another Product', actual: 'Another Product', passed: true },
               { field: 'price', expected: '$19.99', actual: '$19.99', passed: true },
@@ -448,7 +448,7 @@ describe('Scraper QA Callback Flow', () => {
         runner_name: 'test-runner-001',
         assertion_results: [
           {
-            sku: '123456789',
+            upc: '123456789',
             assertions: [
               { field: 'name', expected: 'Test Product Name', actual: 'Test Product Name', passed: true },
               { field: 'price', expected: '$9.99', actual: '$12.99', passed: false },
@@ -457,7 +457,7 @@ describe('Scraper QA Callback Flow', () => {
             summary: { total: 2, passed: 1, failed: 1 },
           },
           {
-            sku: '987654321',
+            upc: '987654321',
             assertions: [
               { field: 'name', expected: 'Another Product', actual: 'Another Product', passed: true },
             ],
@@ -524,7 +524,7 @@ describe('Scraper QA Callback Flow', () => {
         runner_name: 'test-runner-001',
         assertion_results: [
           {
-            sku: '123456789',
+            upc: '123456789',
             assertions: [{ field: 'name', expected: 'Test', actual: 'Test', passed: true }],
             passed: true,
             summary: { total: 1, passed: 1, failed: 0 },

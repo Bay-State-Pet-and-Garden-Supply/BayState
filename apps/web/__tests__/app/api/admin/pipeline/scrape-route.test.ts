@@ -56,7 +56,7 @@ describe('/api/admin/pipeline/scrape route (static-only)', () => {
         (scrapeProducts as jest.Mock).mockResolvedValue({ success: true, jobIds: ['job-1'] });
     });
 
-    it('rejects requests without skus', async () => {
+    it('rejects requests without upcs', async () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/pipeline/scrape', {
                 body: JSON.stringify({ scrapers: ['amazon'] }),
@@ -65,14 +65,14 @@ describe('/api/admin/pipeline/scrape route (static-only)', () => {
         const payload = await response.json();
 
         expect(response.status).toBe(400);
-        expect(payload).toEqual({ error: 'SKUs array is required' });
+        expect(payload).toEqual({ error: 'UPCs array is required' });
         expect(scrapeProducts).not.toHaveBeenCalled();
     });
 
     it('rejects requests without scrapers', async () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/pipeline/scrape', {
-                body: JSON.stringify({ skus: ['SKU-1'] }),
+                body: JSON.stringify({ upcs: ['UPC-1'] }),
             } as any),
         );
         const payload = await response.json();
@@ -86,7 +86,7 @@ describe('/api/admin/pipeline/scrape route (static-only)', () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/pipeline/scrape', {
                 body: JSON.stringify({
-                    skus: ['SKU-1'],
+                    upcs: ['UPC-1'],
                     scrapers: [],
                     enrichment_method: 'official_brand',
                 }),
@@ -103,7 +103,7 @@ describe('/api/admin/pipeline/scrape route (static-only)', () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/pipeline/scrape', {
                 body: JSON.stringify({
-                    skus: ['SKU-1'],
+                    upcs: ['UPC-1'],
                     scrapers: [],
                     cohort_id: 'cohort-1',
                 }),
@@ -120,7 +120,7 @@ describe('/api/admin/pipeline/scrape route (static-only)', () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/pipeline/scrape', {
                 body: JSON.stringify({
-                    skus: ['SKU-1'],
+                    upcs: ['UPC-1'],
                     scrapers: [],
                     deep_research: true,
                 }),
@@ -133,20 +133,20 @@ describe('/api/admin/pipeline/scrape route (static-only)', () => {
         expect(scrapeProducts).not.toHaveBeenCalled();
     });
 
-    it('rejects legacy urls_by_sku field', async () => {
+    it('rejects legacy urls_by_upc field', async () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/pipeline/scrape', {
                 body: JSON.stringify({
-                    skus: ['SKU-1'],
+                    upcs: ['UPC-1'],
                     scrapers: [],
-                    urls_by_sku: { 'SKU-1': 'https://example.com' },
+                    urls_by_upc: { 'UPC-1': 'https://example.com' },
                 }),
             } as any),
         );
         const payload = await response.json();
 
         expect(response.status).toBe(400);
-        expect(payload).toMatchObject({ error: expect.stringContaining('urls_by_sku') });
+        expect(payload).toMatchObject({ error: expect.stringContaining('urls_by_upc') });
         expect(scrapeProducts).not.toHaveBeenCalled();
     });
 
@@ -154,7 +154,7 @@ describe('/api/admin/pipeline/scrape route (static-only)', () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/pipeline/scrape', {
                 body: JSON.stringify({
-                    skus: ['SKU-1', 'SKU-2'],
+                    upcs: ['UPC-1', 'UPC-2'],
                     scrapers: ['amazon', 'chewy'],
                 }),
             } as any),
@@ -165,10 +165,10 @@ describe('/api/admin/pipeline/scrape route (static-only)', () => {
         expect(payload).toMatchObject({
             success: true,
             jobIds: ['job-1'],
-            skuCount: 2,
+            upcCount: 2,
             scraperCount: 2,
         });
-        expect(scrapeProducts).toHaveBeenCalledWith(['SKU-1', 'SKU-2'], {
+        expect(scrapeProducts).toHaveBeenCalledWith(['UPC-1', 'UPC-2'], {
             scrapers: ['amazon', 'chewy'],
             testMode: false,
         });
@@ -178,7 +178,7 @@ describe('/api/admin/pipeline/scrape route (static-only)', () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/pipeline/scrape', {
                 body: JSON.stringify({
-                    skus: ['SKU-1'],
+                    upcs: ['UPC-1'],
                     scrapers: [],
                 }),
             } as any),
@@ -187,7 +187,7 @@ describe('/api/admin/pipeline/scrape route (static-only)', () => {
 
         expect(response.status).toBe(200);
         expect(payload).toMatchObject({ success: true, jobIds: ['job-1'] });
-        expect(scrapeProducts).toHaveBeenCalledWith(['SKU-1'], {
+        expect(scrapeProducts).toHaveBeenCalledWith(['UPC-1'], {
             scrapers: [],
             testMode: false,
         });
@@ -197,7 +197,7 @@ describe('/api/admin/pipeline/scrape route (static-only)', () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/pipeline/scrape', {
                 body: JSON.stringify({
-                    skus: ['SKU-1'],
+                    upcs: ['UPC-1'],
                     scrapers: ['amazon'],
                     testMode: true,
                 }),
@@ -206,7 +206,7 @@ describe('/api/admin/pipeline/scrape route (static-only)', () => {
         const payload = await response.json();
 
         expect(response.status).toBe(200);
-        expect(scrapeProducts).toHaveBeenCalledWith(['SKU-1'], {
+        expect(scrapeProducts).toHaveBeenCalledWith(['UPC-1'], {
             scrapers: ['amazon'],
             testMode: true,
         });
@@ -221,7 +221,7 @@ describe('/api/admin/pipeline/scrape route (static-only)', () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/pipeline/scrape', {
                 body: JSON.stringify({
-                    skus: ['SKU-1'],
+                    upcs: ['UPC-1'],
                     scrapers: ['nonexistent'],
                 }),
             } as any),

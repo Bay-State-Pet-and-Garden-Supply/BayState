@@ -20,12 +20,12 @@ function cloneFinalizationDraft(
 
 export function stagePendingCopilotDraftReview({
   pendingReview,
-  draftsBySku,
+  draftsByUpc,
   targetUpcs,
   summary,
 }: {
   pendingReview: PendingCopilotDraftReview | null;
-  draftsBySku: Record<string, FinalizationDraft>;
+  draftsByUpc: Record<string, FinalizationDraft>;
   targetUpcs: string[];
   summary: string;
 }): PendingCopilotDraftReview {
@@ -41,7 +41,7 @@ export function stagePendingCopilotDraftReview({
   normalizedUpcs.forEach((upc) => {
     if (!previousDrafts[upc]) {
       previousDrafts[upc] = cloneFinalizationDraft(
-        draftsBySku[upc] ?? EMPTY_FINALIZATION_DRAFT,
+        draftsByUpc[upc] ?? EMPTY_FINALIZATION_DRAFT,
       );
     }
   });
@@ -60,10 +60,10 @@ export function stagePendingCopilotDraftReview({
 }
 
 export function restorePendingCopilotDraftReview(
-  draftsBySku: Record<string, FinalizationDraft>,
+  draftsByUpc: Record<string, FinalizationDraft>,
   pendingReview: PendingCopilotDraftReview,
 ): Record<string, FinalizationDraft> {
-  const nextDrafts = { ...draftsBySku };
+  const nextDrafts = { ...draftsByUpc };
 
   Object.entries(pendingReview.previousDrafts).forEach(([upc, draft]) => {
     nextDrafts[upc] = cloneFinalizationDraft(draft);

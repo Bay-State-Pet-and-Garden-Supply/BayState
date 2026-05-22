@@ -86,7 +86,7 @@ export async function GET() {
     
     const { data: products, error } = await supabase
       .from('products_ingestion')
-      .select('sku, consolidated, pipeline_status, updated_at');
+      .select('upc, consolidated, pipeline_status, updated_at');
     
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

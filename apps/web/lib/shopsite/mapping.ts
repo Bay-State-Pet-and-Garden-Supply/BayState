@@ -29,7 +29,7 @@ export interface PreparedShopSiteExportProduct extends ShopSiteExportProduct {
 }
 
 export interface ShopSiteStorefrontProductRecord {
-  sku: string;
+  upc: string;
   name: string;
   slug: string;
   price: number;
@@ -345,7 +345,7 @@ export function preparePipelineRowsForShopSiteExport(
     const gtin = row.upc;
 
     return {
-      sku: row.upc, // Preserve "sku" property for ShopSite export
+      sku: row.upc, // Use internal upc as external SKU for ShopSite
       name,
       price: coalescePrice(consolidated.price, input.price),
       weight: coalesceString(consolidated.weight, input.weight),
@@ -504,7 +504,7 @@ export function transformShopSiteProductToStorefrontRecord(
   }
 
   return {
-    sku: product.sku,
+    upc: product.upc,
     name: product.name,
     slug: buildProductSlug(product.name),
     price: product.price,
@@ -535,8 +535,8 @@ export function transformShopSiteProductToStorefrontRecord(
     color: normalizeGenericFacetValue(product.color),
     packaging_type: normalizeGenericFacetValue(product.packagingType),
     subproducts: (product.subproducts || [])
-      .map((sp) => sp.sku)
-      .filter((sku): sku is string => !!sku),
+      .map((sp) => sp.upc)
+      .filter((upc): upc is string => !!upc),
   };
 }
 

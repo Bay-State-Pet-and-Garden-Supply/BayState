@@ -141,13 +141,13 @@ export function ScrapedResultsView({
   }, [products]);
 
   // 2. Primary Selection State
-  const [preferredSku, setPreferredSku] = useState<string | null>(
+  const [preferredUpc, setPreferredUpc] = useState<string | null>(
     sortedProducts.length > 0 ? sortedProducts[0].upc : null,
   );
 
   const selectedProduct = useMemo(() => {
-    return sortedProducts.find((p) => p.upc === preferredSku) || null;
-  }, [sortedProducts, preferredSku]);
+    return sortedProducts.find((p) => p.upc === preferredUpc) || null;
+  }, [sortedProducts, preferredUpc]);
 
   const sources = selectedProduct?.sources || EMPTY_SOURCES;
   const sourceKeys = useMemo(
@@ -185,26 +185,26 @@ export function ScrapedResultsView({
   useEffect(() => {
     const prevProducts = prevProductsRef.current;
     if (prevProducts !== sortedProducts) {
-      const currentExists = sortedProducts.some((p) => p.upc === preferredSku);
-      if (!currentExists && preferredSku) {
-        // Current SKU was removed.
+      const currentExists = sortedProducts.some((p) => p.upc === preferredUpc);
+      if (!currentExists && preferredUpc) {
+        // Current UPC was removed.
         // Find where it was in the PREVIOUS list.
-        const prevIndex = prevProducts.findIndex((p) => p.upc === preferredSku);
+        const prevIndex = prevProducts.findIndex((p) => p.upc === preferredUpc);
         if (prevIndex !== -1) {
           // Select the product that is now at that same index (or the one before if it was last)
           const nextIndex = Math.min(prevIndex, sortedProducts.length - 1);
           if (nextIndex >= 0) {
-            setPreferredSku(sortedProducts[nextIndex].upc);
+            setPreferredUpc(sortedProducts[nextIndex].upc);
           } else {
-            setPreferredSku(null);
+            setPreferredUpc(null);
           }
         }
-      } else if (!preferredSku && sortedProducts.length > 0) {
-        setPreferredSku(sortedProducts[0].upc);
+      } else if (!preferredUpc && sortedProducts.length > 0) {
+        setPreferredUpc(sortedProducts[0].upc);
       }
       prevProductsRef.current = sortedProducts;
     }
-  }, [sortedProducts, preferredSku]);
+  }, [sortedProducts, preferredUpc]);
 
   // 5. Callbacks
 
@@ -356,11 +356,11 @@ export function ScrapedResultsView({
           cohortBrands={cohortBrands}
           cohortBrandObjects={cohortBrandObjects}
           selectedUpcs={selectedUpcs}
-          preferredUpc={preferredSku}
+          preferredUpc={preferredUpc}
           onSelectUpc={onSelectUpc}
           onSelectAll={onSelectAll}
           onDeselectAll={onDeselectAll}
-          onPreferredUpcChange={setPreferredSku}
+          onPreferredUpcChange={setPreferredUpc}
           variant="processed"
           onEditCohort={onEditCohort}
         />
@@ -446,7 +446,7 @@ export function ScrapedResultsView({
                   <div className="flex items-center gap-2 text-warning-foreground bg-warning/20 p-2 rounded-none border border-warning">
                     <AlertCircle className="h-4 w-4" />
                     <span className="text-[10px] font-semibold">
-                      No results for this SKU yet.
+                      No results for this UPC yet.
                     </span>
                   </div>
                 </div>              )}
@@ -454,7 +454,7 @@ export function ScrapedResultsView({
 
             {/* Product Result Display */}
             <div
-              key={`${preferredSku}-${activeSource}`}
+              key={`${preferredUpc}-${activeSource}`}
               className="flex-1 overflow-y-auto p-2 sm:p-3"
             >
               {currentSourceData ? (

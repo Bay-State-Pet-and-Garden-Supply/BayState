@@ -167,7 +167,7 @@ async function main() {
 
     console.log('Fetching profile and product mappings...');
     const { data: profiles } = await supabase.from('profiles').select('id, email');
-    const { data: products } = await supabase.from('products').select('id, sku');
+    const { data: products } = await supabase.from('products').select('id, upc');
 
     const profileIdMap = new Map<string, string>();
     profiles?.forEach((profile) => {
@@ -176,7 +176,7 @@ async function main() {
 
     const productIdMap = new Map<string, string>();
     products?.forEach((product) => {
-      if (product.sku) productIdMap.set(product.sku, product.id);
+      if (product.upc) productIdMap.set(product.upc, product.id);
     });
 
     let created = 0;
@@ -254,8 +254,8 @@ async function main() {
             order_id: orderId,
             item_type: 'product',
             item_id: item.item_id || UUID_NIL,
-            item_name: `Product ${item.legacy_sku}`,
-            item_slug: item.legacy_sku,
+            item_name: `Product ${item.legacy_upc}`,
+            item_slug: item.legacy_upc,
             quantity: item.quantity,
             unit_price: item.unit_price,
             total_price: item.unit_price * item.quantity,

@@ -6,7 +6,7 @@
  * - multimodal user content (text evidence + up to 2 image fileData parts)
  * - JSON response configuration
  *
- * Each line in the JSONL corresponds to one SKU and references
+ * Each line in the JSONL corresponds to one UPC and references
  * Gemini File API URIs for images (never inline base64).
  */
 
@@ -28,7 +28,7 @@ export interface GeminiMultimodalContentPart {
 }
 
 export interface GeminiBatchJsonlLine {
-  /** Stable correlation key matching the SKU */
+  /** Stable correlation key matching the UPC */
   key: string;
   /** Gemini API request body */
   request: {
@@ -68,7 +68,7 @@ const DEFAULT_MAX_TOKENS = 2048;
 /**
  * Build a single Gemini multimodal request object for a product.
  *
- * @param sku - Product SKU (used as correlation key)
+ * @param upc - Product UPC (used as correlation key)
  * @param systemPrompt - System prompt text (optional if using cachedContent)
  * @param userPrompt - User prompt text with source evidence
  * @param imageParts - Up to 2 prepared image fileData parts
@@ -77,7 +77,7 @@ const DEFAULT_MAX_TOKENS = 2048;
  * @returns A GeminiBatchJsonlLine ready for JSONL serialization
  */
 export function buildGeminiRequest(
-  sku: string,
+  upc: string,
   systemPrompt: string | null,
   userPrompt: string,
   imageParts: PreparedImagePart[],
@@ -125,7 +125,7 @@ export function buildGeminiRequest(
   }
 
   return {
-    key: sku,
+    key: upc,
     request: req,
   };
 }
@@ -138,14 +138,14 @@ export function buildGeminiRequest(
  * Build a complete Gemini Batch JSONL string from products.
  *
  * @param products - Array of ProductSource to consolidate
- * @param imagePartsBySku - Map of SKU → prepared image parts
+ * @param imagePartsByUpc - Map of UPC → prepared image parts
  * @param model - Gemini model name
  * @param config - Optional overrides including cachedContent name
  * @returns Newline-delimited JSON string
  */
 export function createGeminiBatchJsonl(
   products: ProductSource[],
-  imagePartsBySku: Map<string, PreparedImagePart[]>,
+  imagePartsByUpc: Map<string, PreparedImagePart[]>,
   categories: string[],
   model: string,
   config?: {
@@ -163,11 +163,11 @@ export function createGeminiBatchJsonl(
     const sourceEvidence = buildPromptSourceEvidence(filteredSources);
     const userPrompt = buildUserPrompt(product, sourceEvidence);
 
-    // Get image parts for this SKU
-    const imageParts = imagePartsBySku.get(product.sku) ?? [];
+    // Get image parts for this UPC
+    const imageParts = imagePartsByUpc.get(product.upc) ?? [];
 
     const request = buildGeminiRequest(
-      product.sku,
+      product.upc,
       systemPrompt,
       userPrompt,
       imageParts,
@@ -182,7 +182,7 @@ export function createGeminiBatchJsonl(
 }
 
 /**
- * Parse a Gemini batch output JSONL line back to a per-SKU result.
+ * Parse a Gemini batch output JSONL line back to a per-UPC result.
  *
  * @param line - A single JSONL line from Gemini batch output
  * @returns The parsed output with key and response, or null on parse failure
@@ -248,7 +248,7 @@ export function parseGeminiBatchOutputLine(line: string): {
 }
 
 /**
- * Parse full Gemini batch output JSONL text into per-SKU results.
+ * Parse full Gemini batch output JSONL text into per-UPC results.
  */
 export function parseGeminiBatchOutput(
   jsonlText: string

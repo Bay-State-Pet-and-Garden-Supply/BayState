@@ -39,7 +39,7 @@ function buildInstructions(context: FinalizationCopilotContext): string {
   const selectedProduct = context.selectedProduct;
   const input = toRecord(selectedProduct?.input);
   const sourceKeys = Object.keys(selectedProduct?.sources ?? {});
-  const dirtyCount = context.workspace.dirtySkus.length;
+  const dirtyCount = context.workspace.dirtyUpcs.length;
 
   const draftSummary = context.selectedDraft
     ? [
@@ -66,7 +66,7 @@ Prefer tools over free-form claims whenever a fact, mutation, save, approval, re
 
 Workspace context:
 - Loaded reviewing products: ${context.workspace.totalProducts}
-- Selected SKU: ${context.workspace.selectedSku ?? "None"}
+- Selected UPC: ${context.workspace.selectedUpc ?? "None"}
 - Drafts with unsaved changes: ${dirtyCount}
 
 Selected product context:

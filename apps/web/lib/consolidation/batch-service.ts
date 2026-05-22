@@ -391,10 +391,10 @@ function buildBatchRoutingKey(products: ProductSource[], metadata: BatchMetadata
         return explicitKey;
     }
 
-    // Final fallback: SKUs sorted
+    // Final fallback: UPCs sorted
     return products
-        .map((product) => product.sku.trim())
-        .filter((sku) => sku.length > 0)
+        .map((product) => product.upc.trim())
+        .filter((upc) => upc.length > 0)
         .sort()
         .join('|');
 }
@@ -572,7 +572,7 @@ interface PromptSourceEvidence {
 }
 
 interface PendingConsolidationRow {
-    sku: string;
+    upc: string;
     next_fields: Record<string, unknown>;
     pipeline_status: PipelineStatus;
     confidence_score: number | null;
@@ -834,27 +834,27 @@ function insertDifferentiator(name: string, differentiator: string): string {
 }
 
 function tryDisambiguateDuplicateNames(
-    group: Array<{ sku: string; next_fields: Record<string, unknown>; name_key?: string }>,
-    existingBySku: Map<string, { consolidated: Record<string, unknown>; sources: Record<string, unknown>; input: Record<string, unknown>; imageCandidates: string[]; selectedImages: string[] }>
+    group: Array<{ upc: string; next_fields: Record<string, unknown>; name_key?: string }>,
+    existingByUpc: Map<string, { consolidated: Record<string, unknown>; sources: Record<string, unknown>; input: Record<string, unknown>; imageCandidates: string[]; selectedImages: string[] }>
 ): Map<string, string> | null {
     for (const field of DISAMBIGUATOR_FIELDS) {
         const values = new Map<string, string>();
 
         for (const row of group) {
-            const record = existingBySku.get(row.sku);
+            const record = existingByUpc.get(row.upc);
             const value = record ? findFieldInSources(record.sources, field) : null;
             if (value) {
-                values.set(row.sku, value);
+                values.set(row.upc, value);
             }
         }
 
-        // All SKUs must have this field and values must actually differ
+        // All UPCs must have this field and values must actually differ
         if (values.size === group.length && new Set(values.values()).size > 1) {
             const result = new Map<string, string>();
             for (const row of group) {
                 const currentName = row.next_fields.name as string;
-                const differentiator = values.get(row.sku)!;
-                result.set(row.sku, insertDifferentiator(currentName, differentiator));
+                const differentiator = values.get(row.upc)!;
+                result.set(row.upc, insertDifferentiator(currentName, differentiator));
             }
             return result;
         }
@@ -905,7 +905,7 @@ export function createBatchContent(
         const userPrompt = buildUserPrompt(product, sourceEvidence);
 
         const request = {
-            custom_id: product.sku,
+            custom_id: product.upc,
             method: 'POST',
             url: '/v1/chat/completions',
             body: {
@@ -1522,9 +1522,9 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
             if (fallbackBatchId) {
                 const fallbackResults = await retrieveResults(fallbackBatchId);
                 if (Array.isArray(fallbackResults)) {
-                    const directSkus = new Set(directResults.map((r: ConsolidationResult) => r.sku));
+                    const directUpcs = new Set(directResults.map((r: ConsolidationResult) => r.upc));
                     for (const fbResult of fallbackResults) {
-                        if (!directSkus.has(fbResult.sku)) {
+                        if (!directUpcs.has(fbResult.upc)) {
                             directResults.push(fbResult);
                         }
                     }
@@ -1568,40 +1568,40 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
 
                 for (const line of text.trim().split('\n')) {
                     if (!line) continue;
-                    let sku = 'unknown';
+                    let upc = 'unknown';
                     try {
                         const result = JSON.parse(line);
-                        sku = result.custom_id || 'unknown';
+                        upc = result.custom_id || 'unknown';
 
                         if (result.error) {
-                            results.push({ sku, error: result.error.message || 'Unknown error' });
+                            results.push({ upc, error: result.error.message || 'Unknown error' });
                             continue;
                         }
 
                         const response = result.response || {};
                         if (response.status_code !== 200) {
-                            results.push({ sku, error: `API error: ${response.status_code}` });
+                            results.push({ upc, error: `API error: ${response.status_code}` });
                             continue;
                         }
 
                         const body = response.body || {};
                         const choices = body.choices || [];
                         if (choices.length === 0) {
-                            results.push({ sku, error: 'No choices in response' });
+                            results.push({ upc, error: 'No choices in response' });
                             continue;
                         }
 
                         const content = choices[0]?.message?.content || '';
                         results.push(
                             parseStructuredConsolidationText(
-                                sku,
+                                upc,
                                 content,
                                 categories
                             )
                         );
                     } catch (e) {
                         results.push({
-                            sku,
+                            upc,
                             error: e instanceof Error ? e.message : 'Failed to parse structured output',
                         });
                         console.warn('[Consolidation] Failed to parse result line:', e);
@@ -1622,9 +1622,9 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
                     if (!line) continue;
                     try {
                         const errorRecord = JSON.parse(line);
-                        const sku = errorRecord.custom_id || 'unknown';
+                        const upc = errorRecord.custom_id || 'unknown';
                         const errMsg = errorRecord.error?.message || JSON.stringify(errorRecord);
-                        results.push({ sku, error: `Batch Error: ${errMsg}` });
+                        results.push({ upc, error: `Batch Error: ${errMsg}` });
                     } catch (e) {
                         console.warn('[Consolidation] Failed to parse error line:', e);
                     }
@@ -1698,10 +1698,10 @@ export async function applyConsolidationResults(
         batchJobRow = lookup.row;
     }
 
-    const resultSkus = Array.from(new Set(results.map((result) => result.sku).filter((sku) => sku && sku.length > 0)));
+    const resultUpcs = Array.from(new Set(results.map((result) => result.upc).filter((upc) => upc && upc.length > 0)));
 
     let existingRows: Array<{
-        sku: string;
+        upc: string;
         consolidated: unknown;
         sources: unknown;
         input: unknown;
@@ -1709,18 +1709,18 @@ export async function applyConsolidationResults(
         selected_images: unknown;
         brand_id: string | null;
     }> = [];
-    if (resultSkus.length > 0) {
+    if (resultUpcs.length > 0) {
         const existingRowsResponse = await supabase
             .from('products_ingestion')
-            .select('sku, consolidated, sources, input, image_candidates, selected_images, brand_id')
-            .in('sku', resultSkus);
+            .select('upc, consolidated, sources, input, image_candidates, selected_images, brand_id')
+            .in('upc', resultUpcs);
 
         if (existingRowsResponse.error) {
             return { success: false, error: `Failed to load existing products: ${existingRowsResponse.error.message}` };
         }
 
         existingRows = (existingRowsResponse.data || []) as Array<{
-            sku: string;
+            upc: string;
             consolidated: unknown;
             sources: unknown;
             input: unknown;
@@ -1730,7 +1730,7 @@ export async function applyConsolidationResults(
         }>;
     }
 
-    const existingBySku = new Map<
+    const existingByUpc = new Map<
         string,
         {
             consolidated: Record<string, unknown>;
@@ -1763,7 +1763,7 @@ export async function applyConsolidationResults(
                 : {};
 
         if (consolidated && typeof consolidated === 'object' && !Array.isArray(consolidated)) {
-            existingBySku.set(row.sku, {
+            existingByUpc.set(row.upc, {
                 consolidated: consolidatedRecord,
                 sources: sourceRecord,
                 input: inputRecord,
@@ -1772,7 +1772,7 @@ export async function applyConsolidationResults(
                 brand_id: row.brand_id,
             });
         } else {
-            existingBySku.set(row.sku, {
+            existingByUpc.set(row.upc, {
                 consolidated: consolidatedRecord,
                 sources: sourceRecord,
                 input: inputRecord,
@@ -1893,24 +1893,24 @@ export async function applyConsolidationResults(
 
     for (const result of results) {
         try {
-            if (!existingBySku.has(result.sku)) {
+            if (!existingByUpc.has(result.upc)) {
                 errorCount++;
                 if (errors.length < 10) {
-                    errors.push(`${result.sku}: missing products_ingestion row; skipped stale consolidation result`);
+                    errors.push(`${result.upc}: missing products_ingestion row; skipped stale consolidation result`);
                 }
                 continue;
             }
 
-            const existingRecord = existingBySku.get(result.sku);
+            const existingRecord = existingByUpc.get(result.upc);
             const existingConsolidated = existingRecord?.consolidated || {};
 
             if (result.error) {
                 if (errors.length < 10) {
-                    errors.push(`${result.sku}: ${result.error}`);
+                    errors.push(`${result.upc}: ${result.error}`);
                 }
 
                 updateRows.push({
-                    sku: result.sku,
+                    upc: result.upc,
                     next_fields: {},
                     pipeline_status: 'processed',
                     confidence_score: null,
@@ -2037,11 +2037,11 @@ export async function applyConsolidationResults(
             if (gateErrors.length > 0) {
                 const errorMessage = gateErrors.join('; ');
                 if (errors.length < 10) {
-                    errors.push(`${result.sku}: ${errorMessage}`);
+                    errors.push(`${result.upc}: ${errorMessage}`);
                 }
 
                 updateRows.push({
-                    sku: result.sku,
+                    upc: result.upc,
                     next_fields: {},
                     pipeline_status: 'processed',
                     confidence_score: result.confidence_score ?? null,
@@ -2073,7 +2073,7 @@ export async function applyConsolidationResults(
             }
 
             updateRows.push({
-                sku: result.sku,
+                upc: result.upc,
                 next_fields: nextFields,
                 pipeline_status: 'reviewing',
                 confidence_score: result.confidence_score ?? null,
@@ -2085,12 +2085,12 @@ export async function applyConsolidationResults(
         } catch (e: unknown) {
             const errorMessage = e instanceof Error ? e.message : 'Unknown error';
             if (errors.length < 10) {
-                errors.push(`${result.sku}: ${errorMessage}`);
+                errors.push(`${result.upc}: ${errorMessage}`);
             }
 
-            const existingConsolidated = existingBySku.get(result.sku)?.consolidated || {};
+            const existingConsolidated = existingByUpc.get(result.upc)?.consolidated || {};
             updateRows.push({
-                sku: result.sku,
+                upc: result.upc,
                 next_fields: {},
                 pipeline_status: 'processed',
                 confidence_score: typeof result.confidence_score === 'number' ? result.confidence_score : null,
@@ -2128,11 +2128,11 @@ export async function applyConsolidationResults(
                 : 'duplicate consolidation name';
 
         // Try to disambiguate using source variant fields
-        const disambiguated = tryDisambiguateDuplicateNames(group, existingBySku);
+        const disambiguated = tryDisambiguateDuplicateNames(group, existingByUpc);
 
         if (disambiguated) {
             for (const row of group) {
-                const newName = disambiguated.get(row.sku);
+                const newName = disambiguated.get(row.upc);
                 if (newName && typeof row.next_fields.name === 'string') {
                     row.next_fields.name = newName;
                     row.name_key = normalizeLookupKey(newName);
@@ -2142,7 +2142,7 @@ export async function applyConsolidationResults(
         }
 
         // Could not disambiguate — warn but allow through (user can review in reviewing)
-        const warningMessage = `duplicate name "${duplicateName}" across SKUs ${group.map((row) => row.sku).join(', ')} — consider reviewing for flavor/color/material differences`;
+        const warningMessage = `duplicate name "${duplicateName}" across UPCs ${group.map((row) => row.upc).join(', ')} — consider reviewing for flavor/color/material differences`;
         if (warnings.length < 10) {
             warnings.push(warningMessage);
         }
@@ -2178,20 +2178,20 @@ export async function applyConsolidationResults(
                 const { data: latestRow, error: latestError } = await supabase
                     .from('products_ingestion')
                     .select('consolidated, updated_at')
-                    .eq('sku', row.sku)
+                    .eq('upc', row.upc)
                     .maybeSingle();
 
                 if (latestError) {
                     return {
                         success: false,
-                        error: `Failed to load latest products_ingestion row for ${row.sku}: ${latestError.message}`,
+                        error: `Failed to load latest products_ingestion row for ${row.upc}: ${latestError.message}`,
                     };
                 }
 
                 if (!latestRow) {
                     errorCount++;
                     if (errors.length < 10) {
-                        errors.push(`${row.sku}: products_ingestion row deleted before apply; skipped stale consolidation result`);
+                        errors.push(`${row.upc}: products_ingestion row deleted before apply; skipped stale consolidation result`);
                     }
                     applied = true;
                     break;
@@ -2221,20 +2221,20 @@ export async function applyConsolidationResults(
                         error_message: row.error_message,
                         updated_at: applyTimestamp,
                     })
-                    .eq('sku', row.sku);
+                    .eq('upc', row.upc);
 
                 if (typeof latestRow.updated_at === 'string' && latestRow.updated_at.length > 0) {
                     updateQuery = updateQuery.eq('updated_at', latestRow.updated_at);
                 }
 
                 const { data: updatedRow, error: updateError } = await updateQuery
-                    .select('sku')
+                    .select('upc')
                     .maybeSingle();
 
                 if (updateError) {
                     return {
                         success: false,
-                        error: `Failed to apply consolidation for ${row.sku}: ${updateError.message}`,
+                        error: `Failed to apply consolidation for ${row.upc}: ${updateError.message}`,
                     };
                 }
 
@@ -2251,7 +2251,7 @@ export async function applyConsolidationResults(
                 if (attempt === maxAttempts) {
                     return {
                         success: false,
-                        error: `Failed to apply consolidation for ${row.sku}: concurrent update contention`,
+                        error: `Failed to apply consolidation for ${row.upc}: concurrent update contention`,
                     };
                 }
             }
@@ -2259,7 +2259,7 @@ export async function applyConsolidationResults(
             if (!applied) {
                 return {
                     success: false,
-                    error: `Failed to apply consolidation for ${row.sku}: unknown apply state`,
+                    error: `Failed to apply consolidation for ${row.upc}: unknown apply state`,
                 };
             }
         }
@@ -2268,25 +2268,25 @@ export async function applyConsolidationResults(
     // Re-cohort products whose brand has changed or been newly assigned
     if (updateRows.length > 0) {
         const { recohortProducts } = await import('@/lib/pipeline/cohorts');
-        const skusByBrand = new Map<string | null, string[]>();
+        const upcsByBrand = new Map<string | null, string[]>();
 
         for (const row of updateRows) {
             if (row.outcome === 'finalized') {
                 const brandId = (row.next_fields.brand_id as string | null) || null;
-                const existingRow = existingBySku.get(row.sku);
+                const existingRow = existingByUpc.get(row.upc);
                 const oldBrandId = existingRow?.brand_id || null;
 
                 if (brandId !== oldBrandId) {
-                    const list = skusByBrand.get(brandId) || [];
-                    list.push(row.sku);
-                    skusByBrand.set(brandId, list);
+                    const list = upcsByBrand.get(brandId) || [];
+                    list.push(row.upc);
+                    upcsByBrand.set(brandId, list);
                 }
             }
         }
 
-        for (const [brandId, brandSkus] of skusByBrand.entries()) {
+        for (const [brandId, brandUpcs] of upcsByBrand.entries()) {
             try {
-                await recohortProducts(supabase, brandSkus, brandId);
+                await recohortProducts(supabase, brandUpcs, brandId);
             } catch (err) {
                 console.error(`[applyConsolidationResults] Failed to re-cohort products for brand ${brandId}:`, err);
                 errors.push(`Cohort assignment failed for some products with brand ${brandId}`);

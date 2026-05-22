@@ -65,14 +65,14 @@ describe('pipeline export route', () => {
     });
   });
 
-  it('exports a selected SKU subset from the publishing queue via POST', async () => {
+  it('exports a selected UPC subset from the publishing queue via POST', async () => {
     const { from, queryBuilder } = createSupabaseMock();
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
     (createAdminClient as jest.Mock).mockResolvedValue({ from });
 
     const response = await POST({
-      json: async () => ({ skus: ['SKU-1', 'SKU-2'] }),
+      json: async () => ({ upcs: ['UPC-1', 'UPC-2'] }),
     } as never);
 
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -80,7 +80,7 @@ describe('pipeline export route', () => {
     expect(response.status).toBe(200);
     expect(queryBuilder.eq).toHaveBeenCalledWith('pipeline_status', 'publishing');
     expect(queryBuilder.is).toHaveBeenCalledWith('exported_at', null);
-    expect(queryBuilder.in).toHaveBeenCalledWith('sku', ['SKU-1', 'SKU-2']);
+    expect(queryBuilder.in).toHaveBeenCalledWith('upc', ['UPC-1', 'UPC-2']);
 
     errorSpy.mockRestore();
   });

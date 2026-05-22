@@ -9,7 +9,7 @@ import {
 } from '@/lib/brand-registry';
 
 const discoveryRequestSchema = z.object({
-  skus: z.array(z.string().min(1)).min(1),
+  upcs: z.array(z.string().min(1)).min(1),
   product_name: z.string().optional(),
   brand: z.string().optional(),
   config: z
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     const { data: job, error: jobError } = await supabase
       .from('scrape_jobs')
       .insert({
-        skus: body.skus,
+        upcs: body.upcs,
         scrapers: ['ai_discovery'],
         test_mode: body.test_mode ?? false,
         max_workers: maxWorkers,
@@ -105,17 +105,17 @@ export async function POST(request: NextRequest) {
     const chunks: Array<{
       job_id: string;
       chunk_index: number;
-      skus: string[];
+      upcs: string[];
       scrapers: string[];
       status: string;
       updated_at: string;
     }> = [];
 
-    for (let i = 0; i < body.skus.length; i += chunkSize) {
+    for (let i = 0; i < body.upcs.length; i += chunkSize) {
       chunks.push({
         job_id: job.id,
         chunk_index: chunks.length,
-        skus: body.skus.slice(i, i + chunkSize),
+        upcs: body.upcs.slice(i, i + chunkSize),
         scrapers: ['ai_discovery'],
         status: 'pending',
         updated_at: nowIso,
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
         success: true,
         job_id: job.id,
         chunks: chunks.length,
-        skus: body.skus.length,
+        upcs: body.upcs.length,
         message: 'Discovery job created and queued',
       },
       { status: 201 }

@@ -120,7 +120,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
         {/* Header */}
         <div className="grid grid-cols-[3.5rem_4rem_8rem_6.5rem_1fr_6rem_6rem_7rem] gap-2 px-4 py-2.5 text-[10px] font-semibold text-muted-foreground bg-muted/30 border-b border-border">
           <span>Chunk</span>
-          <span>SKUs</span>
+          <span>UPCs</span>
           <span>Site Group</span>
           <span>Status</span>
           <span>Runner</span>
@@ -147,7 +147,7 @@ export function ChunkStatusTable({ chunks }: ChunkStatusTableProps) {
                     #{chunk.chunkIndex}
                   </span>
 
-                  {/* SKU Count */}
+                  {/* UPC Count */}
                   <span className="tabular-nums font-semibold text-muted-foreground">
                     {chunk.upcCount}
                   </span>

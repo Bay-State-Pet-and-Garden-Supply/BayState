@@ -14,7 +14,7 @@ export interface ScrapeOptions {
     maxRunners?: number;
     /** Maximum retry attempts before terminal failure (default: 3) */
     maxAttempts?: number;
-    /** Number of SKUs per chunk (default: 50) */
+    /** Number of UPCs per chunk (default: 50) */
     chunkSize?: number;
 }
 

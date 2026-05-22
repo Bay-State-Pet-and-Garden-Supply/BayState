@@ -37,7 +37,7 @@ test.describe('Scraper Studio Integration Tests', () => {
     });
   });
 
-  test.describe('Config Editing & Test SKU Management', () => {
+  test.describe('Config Editing & Test UPC Management', () => {
     test('should edit config metadata', async ({ page }) => {
       const moreButton = page.locator('button[aria-haspopup="menu"]').first();
       await moreButton.click();
@@ -49,14 +49,14 @@ test.describe('Scraper Studio Integration Tests', () => {
       await page.screenshot({ path: 'test-results/screenshots/task-14-metadata-tab.png' });
     });
 
-    test('should navigate to testing tab for SKU management', async ({ page }) => {
+    test('should navigate to testing tab for UPC management', async ({ page }) => {
       const moreButton = page.locator('button[aria-haspopup="menu"]').first();
       await moreButton.click();
       await page.locator('text=Edit Configuration').click();
 
       await page.locator('button:has-text("Testing")').click();
       await expect(page.locator('button:has-text("Testing")')).toHaveAttribute('data-state', 'active');
-      await expect(page.locator('text=Test SKU Management')).toBeVisible();
+      await expect(page.locator('text=Test UPC Management')).toBeVisible();
 
       await page.screenshot({ path: 'test-results/screenshots/task-14-testing-tab.png' });
     });
@@ -83,7 +83,7 @@ test.describe('Scraper Studio Integration Tests', () => {
         await expect(page.locator('text=Step Trace')).toBeVisible();
         await expect(page.locator('text=Selectors')).toBeVisible();
         await expect(page.locator('text=Overview')).toBeVisible();
-        await expect(page.locator('text=SKU Results')).toBeVisible();
+        await expect(page.locator('text=UPC Results')).toBeVisible();
 
         await page.screenshot({ path: 'test-results/screenshots/task-14-test-run-details.png' });
       } else {
@@ -471,7 +471,7 @@ test.describe('Scraper Studio Integration Tests', () => {
         await page.locator('[class*="cursor-pointer"]').first().click();
         await expect(page.locator('text=Test Run Details')).toBeVisible();
 
-        const detailTabs = ['Step Trace', 'Selectors', 'Overview', 'SKU Results'];
+        const detailTabs = ['Step Trace', 'Selectors', 'Overview', 'UPC Results'];
 
         for (const tabName of detailTabs) {
           const tab = page.locator(`[role="tab"]:has-text("${tabName}")`);

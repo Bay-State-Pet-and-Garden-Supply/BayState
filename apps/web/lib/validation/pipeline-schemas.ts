@@ -33,7 +33,7 @@ const PipelineProductConsolidatedSchema = z.object({
 });
 
 export const PipelineProductSchema = z.object({
-    sku: z.string().min(1, 'SKU is required'),
+    upc: z.string().min(1, 'UPC is required'),
     input: PipelineProductInputSchema,
     sources: z.record(z.string(), z.unknown()),
     consolidated: PipelineProductConsolidatedSchema,
@@ -49,7 +49,7 @@ const StatusCountSchema = z.object({
 });
 
 const BulkUpdateStatusSchema = z.object({
-    skus: z.array(z.string().min(1)).min(1, 'At least one SKU is required'),
+    upcs: z.array(z.string().min(1)).min(1, 'At least one UPC is required'),
     newStatus: PipelineStatusSchema,
 });
 

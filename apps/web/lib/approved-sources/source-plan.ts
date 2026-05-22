@@ -1,7 +1,7 @@
 /**
  * Approved Source Plan Builder
  *
- * Builds per-SKU source plans from the brand_sources table and product brand state.
+ * Builds per-UPC source plans from the brand_sources table and product brand state.
  * This is the coordinator's main function for creating source plans that the
  * runner then executes.
  */
@@ -26,7 +26,7 @@ import { normalizeDistributorSlug, findDistributorInCatalog, buildDistributorPla
 // =============================================================================
 
 interface ProductRow {
-  sku: string;
+  upc: string;
   brand_id: string | null;
   input: {
     name?: string | null;
@@ -163,7 +163,7 @@ export interface BuildSourcePlanOptions {
 // =============================================================================
 
 /**
- * Check whether a given source for a SKU already has a recent successful
+ * Check whether a given source for a UPC already has a recent successful
  * enrichment result stored in products_ingestion.sources.enriched.
  *
  * Returns true only if ALL of the following hold:
@@ -174,11 +174,11 @@ export interface BuildSourcePlanOptions {
  *     sourceSlug and confidence >= 0.6
  */
 function isSourceRecentlySuccessful(
-  sku: string,
+  upc: string,
   sourceSlug: string,
-  existingSourcesBySku: Map<string, any>,
+  existingSourcesByUpc: Map<string, any>,
 ): boolean {
-  const sources = existingSourcesBySku.get(sku);
+  const sources = existingSourcesByUpc.get(upc);
   if (!sources) return false;
 
   const enriched = sources.enriched;
@@ -232,19 +232,19 @@ function isSourceRecentlySuccessful(
 // =============================================================================
 
 /**
- * Build ApprovedSourcePlan objects for one or more SKUs.
+ * Build ApprovedSourcePlan objects for one or more UPCs.
  *
- * Returns a map keyed by SKU. Each value is either an ApprovedSourcePlan
+ * Returns a map keyed by UPC. Each value is either an ApprovedSourcePlan
  * (ok: true) or a structured error (ok: false).
  */
 function buildFailureResult(
-  sku: string,
+  upc: string,
   error: string,
   code?: SourcePlanFailureCode,
 ): SourcePlanResult {
   return {
     ok: false,
-    sku,
+    upc,
     error,
     code,
   };
@@ -252,7 +252,7 @@ function buildFailureResult(
 
 export async function buildApprovedSourcePlans(
   db: SupabaseClient,
-  skus: string[],
+  upcs: string[],
   options?: BuildSourcePlanOptions,
 ): Promise<Record<string, SourcePlanResult>> {
   const results: Record<string, SourcePlanResult> = {};
@@ -263,7 +263,7 @@ export async function buildApprovedSourcePlans(
   const extractionMode = options?.extractionMode ?? "mixed";
   const forceRefresh = options?.forceRefresh ?? false;
 
-  if (!skus.length) {
+  if (!upcs.length) {
     return results;
   }
 
@@ -272,14 +272,14 @@ export async function buildApprovedSourcePlans(
   // ------------------------------------------------------------------
   const { data: products, error: productError } = await db
     .from("products_ingestion")
-    .select("sku, brand_id, input, enrichment_config")
-    .in("sku", skus);
+    .select("upc, brand_id, input, enrichment_config")
+    .in("upc", upcs);
 
   if (productError) {
-    for (const sku of skus) {
-      results[sku] = {
+    for (const upc of upcs) {
+      results[upc] = {
         ...buildFailureResult(
-          sku,
+          upc,
           `Database error loading products: ${productError.message}`,
           "database_error",
         ),
@@ -289,48 +289,48 @@ export async function buildApprovedSourcePlans(
   }
 
   const productMap = new Map<string, ProductRow>(
-    (products ?? []).map((p: ProductRow) => [p.sku, p]),
+    (products ?? []).map((p: ProductRow) => [p.upc, p]),
   );
 
   // ------------------------------------------------------------------
-  // 2. Identify SKUs missing brand_id and reject them early
+  // 2. Identify UPCs missing brand_id and reject them early
   // ------------------------------------------------------------------
-  const brandedSkus: string[] = [];
-  for (const sku of skus) {
-    const product = productMap.get(sku);
+  const brandedUpcs: string[] = [];
+  for (const upc of upcs) {
+    const product = productMap.get(upc);
     if (!product) {
-      results[sku] = buildFailureResult(sku, "Product not found", "product_not_found");
+      results[upc] = buildFailureResult(upc, "Product not found", "product_not_found");
       continue;
     }
     if (!product.brand_id) {
-      results[sku] = buildFailureResult(
-        sku,
+      results[upc] = buildFailureResult(
+        upc,
         "Product has no assigned brand. Assign a brand before extraction.",
         "missing_brand",
       );
       continue;
     }
-    brandedSkus.push(sku);
+    brandedUpcs.push(upc);
   }
 
-  if (!brandedSkus.length) {
+  if (!brandedUpcs.length) {
     return results;
   }
 
   // ------------------------------------------------------------------
   // 2b. Load existing sources for dedup (unless forceRefresh)
   // ------------------------------------------------------------------
-  let existingSourcesBySku: Map<string, any> | undefined;
+  let existingSourcesByUpc: Map<string, any> | undefined;
   if (!forceRefresh) {
     const { data: sourcesData, error: sourcesError } = await db
       .from("products_ingestion")
-      .select("sku, sources")
-      .in("sku", brandedSkus);
+      .select("upc, sources")
+      .in("upc", brandedUpcs);
 
     if (!sourcesError && sourcesData) {
-      existingSourcesBySku = new Map(
-        (sourcesData as Array<{ sku: string; sources: any }>).map((row) => [
-          row.sku,
+      existingSourcesByUpc = new Map(
+        (sourcesData as Array<{ upc: string; sources: any }>).map((row) => [
+          row.upc,
           row.sources ?? {},
         ]),
       );
@@ -342,8 +342,8 @@ export async function buildApprovedSourcePlans(
   // ------------------------------------------------------------------
   const brandIds = [
     ...new Set(
-      brandedSkus
-        .map((sku) => productMap.get(sku)?.brand_id)
+      brandedUpcs
+        .map((upc) => productMap.get(upc)?.brand_id)
         .filter((id): id is string => id !== null),
     ),
   ];
@@ -354,10 +354,10 @@ export async function buildApprovedSourcePlans(
     .in("id", brandIds);
 
   if (brandError) {
-    for (const sku of brandedSkus) {
-      results[sku] = {
+    for (const upc of brandedUpcs) {
+      results[upc] = {
         ...buildFailureResult(
-          sku,
+          upc,
           `Database error loading brands: ${brandError.message}`,
           "database_error",
         ),
@@ -383,10 +383,10 @@ export async function buildApprovedSourcePlans(
     .order("priority", { ascending: true });
 
   if (sourcesError) {
-    for (const sku of brandedSkus) {
-      results[sku] = {
+    for (const upc of brandedUpcs) {
+      results[upc] = {
         ...buildFailureResult(
-          sku,
+          upc,
           `Database error loading brand sources: ${sourcesError.message}`,
           "database_error",
         ),
@@ -403,15 +403,15 @@ export async function buildApprovedSourcePlans(
   }
 
   // ------------------------------------------------------------------
-  // 5. Build a source plan for each branded SKU
+  // 5. Build a source plan for each branded UPC
   // ------------------------------------------------------------------
-  for (const sku of brandedSkus) {
-    const product = productMap.get(sku)!;
+  for (const upc of brandedUpcs) {
+    const product = productMap.get(upc)!;
     const brand = brandMap.get(product.brand_id!);
 
     if (!brand) {
-      results[sku] = buildFailureResult(
-        sku,
+      results[upc] = buildFailureResult(
+        upc,
         `Brand record not found for brand_id ${product.brand_id}`,
         "missing_brand",
       );
@@ -607,12 +607,12 @@ export async function buildApprovedSourcePlans(
 
     // ---- Dedup: filter out recently successful sources (skip when forceRefresh) ----
     const skippedSources: string[] = [];
-    if (existingSourcesBySku && orderedEntries.length > 0) {
+    if (existingSourcesByUpc && orderedEntries.length > 0) {
       orderedEntries = orderedEntries.filter((entry) => {
         const isRecent = isSourceRecentlySuccessful(
-          sku,
+          upc,
           entry.sourceSlug,
-          existingSourcesBySku,
+          existingSourcesByUpc,
         );
         if (isRecent) {
           skippedSources.push(entry.sourceSlug);
@@ -623,7 +623,7 @@ export async function buildApprovedSourcePlans(
 
       if (skippedSources.length > 0) {
         console.log(
-          `[SourcePlan] SKU ${sku}: skipped ${skippedSources.length} recently successful source(s): ${skippedSources.join(", ")}`,
+          `[SourcePlan] UPC ${upc}: skipped ${skippedSources.length} recently successful source(s): ${skippedSources.join(", ")}`,
         );
       }
     }
@@ -633,8 +633,8 @@ export async function buildApprovedSourcePlans(
         const sourceLabel = selectedDistributorSlug
           ? `selected source ${selectedDistributorSlug}`
           : "requested sources";
-        results[sku] = buildFailureResult(
-          sku,
+        results[upc] = buildFailureResult(
+          upc,
           `All ${sourceLabel} are already enriched within 48h. Use forceRefresh to re-scrape.`,
           "all_sources_fresh",
         );
@@ -642,8 +642,8 @@ export async function buildApprovedSourcePlans(
       }
 
       if (extractionMode === "ai_only") {
-        results[sku] = buildFailureResult(
-          sku,
+        results[upc] = buildFailureResult(
+          upc,
           `AI-only extraction requires official domains to be configured for brand ${brand.name}. Please configure official domains in the admin panel.`,
           "ai_only_no_official_domains",
         );
@@ -651,8 +651,8 @@ export async function buildApprovedSourcePlans(
       }
 
       const modeDesc = extractionMode === "mixed" ? "" : ` (${extractionMode} mode)`;
-      results[sku] = buildFailureResult(
-        sku,
+      results[upc] = buildFailureResult(
+        upc,
         `No approved sources configured for brand ${brand.name} (${brand.slug})${modeDesc}. Configure brand sources in the admin panel before extraction.`,
         "no_sources_configured",
       );
@@ -671,7 +671,7 @@ export async function buildApprovedSourcePlans(
     // ---- Assemble plan ----
     const plan: ApprovedSourcePlan = {
       schemaVersion: "v1",
-      sku,
+      upc,
       input: {
         name: product.input?.name ?? null,
         price: product.input?.price ?? null,
@@ -687,7 +687,7 @@ export async function buildApprovedSourcePlans(
       sourcePolicy,
     };
 
-    results[sku] = { ok: true, plan };
+    results[upc] = { ok: true, plan };
   }
 
   return results;

@@ -32,11 +32,11 @@ type DescriptionStructure = 'prose' | 'bullet' | 'mixed';
 interface ObservedValue {
     normalized: string;
     display: string;
-    skus: string[];
+    upcs: string[];
 }
 
 interface DescriptionProfile {
-    sku: string;
+    upc: string;
     structure: DescriptionStructure;
     sentenceCount: number;
     wordCount: number;
@@ -124,28 +124,28 @@ function extractDescription(product: ProductSource, sourcePriority: string[]): s
     return null;
 }
 
-function observeValue(observed: Map<string, ObservedValue>, normalized: string, display: string, sku: string): void {
+function observeValue(observed: Map<string, ObservedValue>, normalized: string, display: string, upc: string): void {
     const existing = observed.get(normalized);
     if (existing) {
-        existing.skus.push(sku);
+        existing.upcs.push(upc);
         return;
     }
 
     observed.set(normalized, {
         normalized,
         display,
-        skus: [sku],
+        upcs: [upc],
     });
 }
 
 function formatObservedValues(values: ObservedValue[]): string {
     return values
-        .map((value) => `${value.display} (${unique(value.skus).join(', ')})`)
+        .map((value) => `${value.display} (${unique(value.upcs).join(', ')})`)
         .join('; ');
 }
 
 function formatOutlierProducts(values: ObservedValue[]): string[] {
-    return unique(values.flatMap((value) => value.skus)).sort();
+    return unique(values.flatMap((value) => value.upcs)).sort();
 }
 
 function getExpectedProductLineValue(
@@ -161,7 +161,7 @@ function getExpectedProductLineValue(
             continue;
         }
 
-        observeValue(observed, normalizer(value), value, product.sku);
+        observeValue(observed, normalizer(value), value, product.upc);
     }
 
     if (observed.size !== 1) {
@@ -177,10 +177,10 @@ function getDominantValue(values: ObservedValue[]): ObservedValue | null {
     }
 
     const sortedValues = [...values].sort(
-        (left, right) => right.skus.length - left.skus.length || left.display.localeCompare(right.display)
+        (left, right) => right.upcs.length - left.upcs.length || left.display.localeCompare(right.display)
     );
 
-    if (sortedValues.length > 1 && sortedValues[0].skus.length === sortedValues[1].skus.length) {
+    if (sortedValues.length > 1 && sortedValues[0].upcs.length === sortedValues[1].upcs.length) {
         return null;
     }
 
@@ -247,7 +247,7 @@ function getDescriptionStructure(value: string): DescriptionStructure {
 
 function buildDescriptionProfile(product: ProductSource, description: string): DescriptionProfile {
     return {
-        sku: product.sku,
+        upc: product.upc,
         structure: getDescriptionStructure(description),
         sentenceCount: countSentences(description),
         wordCount: countWords(description),
@@ -289,7 +289,7 @@ function buildBrandConsistencyRule(config: ConsistencyRulesConfig = {}): Consist
             for (const product of products) {
                 const brand = extractBrand(product, sourcePriority);
                 if (brand) {
-                    observeValue(observedBrands, normalizeText(brand), brand, product.sku);
+                    observeValue(observedBrands, normalizeText(brand), brand, product.upc);
                 }
             }
 
@@ -312,7 +312,7 @@ function buildBrandConsistencyRule(config: ConsistencyRulesConfig = {}): Consist
             const outlierValues = baselineBrand
                 ? observedValues.filter((value) => value.normalized !== baselineBrand.normalized)
                 : observedValues;
-            const affectedSkus = formatOutlierProducts(outlierValues);
+            const affectedUpcs = formatOutlierProducts(outlierValues);
             const expected = baselineBrand?.display ?? 'single brand across the product line';
             const actual = formatObservedValues(observedValues);
             const message = baselineBrand
@@ -324,7 +324,7 @@ function buildBrandConsistencyRule(config: ConsistencyRulesConfig = {}): Consist
                 severity,
                 'brand',
                 message,
-                affectedSkus,
+                affectedUpcs,
                 expected,
                 actual
             );
@@ -384,7 +384,7 @@ function buildDescriptionFormatRule(config: ConsistencyRulesConfig = {}): Consis
             }
 
             const expected = formatBaselineDescription(dominantStructure, medianSentenceCount, medianWordCount);
-            const actual = outliers.map((profile) => `${profile.sku}: ${formatDescriptionProfile(profile)}`).join('; ');
+            const actual = outliers.map((profile) => `${profile.upc}: ${formatDescriptionProfile(profile)}`).join('; ');
             const message = `Descriptions should follow a similar structure across the product line. Expected ${expected}, but found ${actual}.`;
 
             return buildSingleFieldViolation(
@@ -392,7 +392,7 @@ function buildDescriptionFormatRule(config: ConsistencyRulesConfig = {}): Consis
                 severity,
                 'description',
                 message,
-                outliers.map((profile) => profile.sku).sort(),
+                outliers.map((profile) => profile.upc).sort(),
                 expected,
                 actual
             );

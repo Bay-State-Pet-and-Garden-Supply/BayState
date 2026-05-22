@@ -15,7 +15,7 @@ describe('UndoQueue', () => {
     it('should add an action to the queue', () => {
         const action = {
             type: 'status_change' as const,
-            skus: ['SKU-123'],
+            upcs: ['UPC-123'],
             fromStatus: 'imported' as const,
             toStatus: 'extracting' as const,
             revert: jest.fn().mockResolvedValue(undefined),
@@ -31,7 +31,7 @@ describe('UndoQueue', () => {
     it('should remove action after 30 seconds', () => {
         const action = {
             type: 'status_change' as const,
-            skus: ['SKU-123'],
+            upcs: ['UPC-123'],
             fromStatus: 'imported' as const,
             toStatus: 'extracting' as const,
             revert: jest.fn().mockResolvedValue(undefined),
@@ -51,7 +51,7 @@ describe('UndoQueue', () => {
 
         const action = {
             type: 'status_change' as const,
-            skus: ['SKU-123'],
+            upcs: ['UPC-123'],
             fromStatus: 'imported' as const,
             toStatus: 'extracting' as const,
             revert: jest.fn().mockResolvedValue(undefined),
@@ -60,7 +60,7 @@ describe('UndoQueue', () => {
         undoQueue.add(action);
 
         expect(listener).toHaveBeenCalledWith(expect.objectContaining({
-            skus: ['SKU-123'],
+            upcs: ['UPC-123'],
             type: 'status_change'
         }));
 

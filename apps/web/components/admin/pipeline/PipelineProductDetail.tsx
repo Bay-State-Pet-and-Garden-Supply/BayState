@@ -28,7 +28,7 @@ interface Brand {
 }
 
 interface PipelineProductDetailProps {
-  sku: string;
+  upc: string;
   onClose: () => void;
   onSave: () => void;
 }
@@ -44,7 +44,7 @@ const pipelineStatusOptions: { value: PipelineStatus; label: string }[] = [
 ];
 
 export function PipelineProductDetail({
-  sku,
+  upc,
   onClose,
   onSave,
 }: PipelineProductDetailProps) {
@@ -71,7 +71,7 @@ export function PipelineProductDetail({
     async function fetchData() {
       try {
         const [productRes, brandsRes] = await Promise.all([
-          adminFetch(`/api/admin/pipeline/${encodeURIComponent(sku)}`),
+          adminFetch(`/api/admin/pipeline/${encodeURIComponent(upc)}`),
           adminFetch('/api/admin/brands'),
         ]);
 
@@ -124,7 +124,7 @@ export function PipelineProductDetail({
     }
 
     fetchData();
-  }, [sku]);
+  }, [upc]);
 
   // Focus trap
   useEffect(() => {
@@ -214,7 +214,7 @@ export function PipelineProductDetail({
         payload.pipeline_status = requestedStatus;
       }
 
-      const res = await adminFetch(`/api/admin/pipeline/${encodeURIComponent(sku)}`, {
+      const res = await adminFetch(`/api/admin/pipeline/${encodeURIComponent(upc)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -284,7 +284,7 @@ export function PipelineProductDetail({
             <div>
               <h2 id="modal-title" className="text-lg font-semibold text-foreground">Edit Product</h2>
               <div className="flex items-center gap-2 text-sm text-muted-foreground font-mono tabular-nums">
-                <span className="bg-muted px-1.5 py-0.5 rounded-none border border-border/10">{sku}</span>
+                <span className="bg-muted px-1.5 py-0.5 rounded-none border border-border/10">{upc}</span>
                 <span>•</span>
                 <span className="font-bold text-primary tracking-widest uppercase">${Number(price || 0).toFixed(2)}</span>
               </div>

@@ -21,7 +21,7 @@ interface TrendData {
 }
 
 interface InventoryDrift {
-    sku: string;
+    upc: string;
     name: string;
     field: string;
     before_value: string;
@@ -41,7 +41,7 @@ interface SyncHealth {
 }
 
 interface ProductMetric {
-    sku: string;
+    upc: string;
     name: string;
     date_sold: string | null;
     quantity: number;
@@ -391,7 +391,7 @@ function StockAgingVelocity({ fastMovers, deadStock }: { fastMovers: ProductMetr
                     <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-[11px] font-medium text-green-700">Fast movers</span>
                     <div className="space-y-2">
                         {fastMovers.length > 0 ? fastMovers.map((p) => (
-                            <div key={p.sku} className="flex justify-between items-center border-b border-zinc-100 pb-1">
+                            <div key={p.upc} className="flex justify-between items-center border-b border-zinc-100 pb-1">
                                 <div className="flex flex-col">
                                     <span className="w-48 truncate text-sm font-medium text-foreground">{p.name}</span>
                                     <span className="text-[11px] text-zinc-400">Sold: {p.date_sold ? new Date(p.date_sold).toLocaleDateString() : 'Never'}</span>
@@ -407,7 +407,7 @@ function StockAgingVelocity({ fastMovers, deadStock }: { fastMovers: ProductMetr
                     <span className="inline-flex rounded-full bg-muted px-3 py-1 text-[11px] font-medium text-zinc-700">Dead stock</span>
                     <div className="space-y-2">
                         {deadStock.length > 0 ? deadStock.map((p) => (
-                            <div key={p.sku} className="flex justify-between items-center border-b border-zinc-100 pb-1">
+                            <div key={p.upc} className="flex justify-between items-center border-b border-zinc-100 pb-1">
                                 <div className="flex flex-col">
                                     <span className="w-48 truncate text-sm font-medium text-foreground">{p.name}</span>
                                     <span className="text-[11px] text-zinc-400">Received: {p.date_received ? new Date(p.date_received).toLocaleDateString() : 'N/A'}</span>
@@ -443,7 +443,7 @@ function PriceDiscrepancyDetector({ drift }: { drift: InventoryDrift[] }) {
                             <div key={i} className="flex justify-between items-center border-b border-zinc-100 pb-2 last:border-0">
                                 <div className="flex flex-col">
                                     <span className="w-40 truncate text-sm font-medium text-foreground">{item.name}</span>
-                                    <span className="text-[11px] text-zinc-400">{item.sku}</span>
+                                    <span className="text-[11px] text-zinc-400">{item.upc}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs text-zinc-400 line-through">${item.before_value}</span>

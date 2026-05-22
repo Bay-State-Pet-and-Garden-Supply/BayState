@@ -2,7 +2,7 @@
  * OpenAI Client Mock
  *
  * Mock implementation for testing consolidation without making real API calls.
- * Returns predictable consolidation results based on input SKUs.
+ * Returns predictable consolidation results based on input UPCs.
  */
 
 import type { BatchStatus, ConsolidationResult, SubmitBatchResponse } from '../types';
@@ -13,12 +13,12 @@ import type { BatchStatus, ConsolidationResult, SubmitBatchResponse } from '../t
 
 /**
  * Default consolidation results for test products.
- * Maps SKU patterns to predictable outputs.
+ * Maps UPC patterns to predictable outputs.
  */
 const MOCK_CONSOLIDATION_RESULTS: Record<string, ConsolidationResult> = {
     // Default fallback result
     default: {
-        sku: '',
+        upc: '',
         name: 'Test Product',
         brand: 'Test Brand',
         weight: '5 lbs',
@@ -92,7 +92,7 @@ function createMockClient() {
                 const results = generateMockResults();
                 const jsonlLines = results
                     .map((r) => JSON.stringify({
-                        custom_id: r.sku,
+                        custom_id: r.upc,
                         response: {
                             body: {
                                 choices: [
@@ -165,7 +165,7 @@ function createMockClient() {
 function generateMockResults(): ConsolidationResult[] {
     return [
         {
-            sku: 'TEST-SKU-001',
+            upc: 'TEST-UPC-001',
             name: 'Premium Dog Food',
             brand: 'Acme Pet',
             weight: '15 lbs',
@@ -175,7 +175,7 @@ function generateMockResults(): ConsolidationResult[] {
             confidence_score: 0.92,
         },
         {
-            sku: 'TEST-SKU-002',
+            upc: 'TEST-UPC-002',
             name: 'Cat Scratch Post',
             brand: 'Feline Fine',
             weight: '8 lbs',
@@ -185,7 +185,7 @@ function generateMockResults(): ConsolidationResult[] {
             confidence_score: 0.88,
         },
         {
-            sku: 'TEST-SKU-003',
+            upc: 'TEST-UPC-003',
             name: 'Bird Seed Blend',
             brand: 'Wing & Crest',
             weight: '5 lbs',

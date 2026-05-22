@@ -107,7 +107,7 @@ describe('PipelineFilters', () => {
 describe('PipelineClient Integration', () => {
     const mockProducts = [
         {
-            sku: 'TEST-1',
+            upc: 'TEST-1',
             pipeline_status: 'imported',
             sources: {},
             created_at: '2026-01-01T00:00:00.000Z',

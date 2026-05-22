@@ -12,7 +12,7 @@ export interface ScrapeJobLogEntry {
   runner_name?: string | null;
   source?: string | null;
   scraper_name?: string | null;
-  sku?: string | null;
+  upc?: string | null;
   phase?: string | null;
   sequence?: number | null;
   details?: Record<string, unknown> | null;
@@ -128,7 +128,7 @@ export interface ScrapeJobProgressUpdate {
   progress: number;
   message?: string | null;
   phase?: string | null;
-  current_sku?: string | null;
+  current_upc?: string | null;
   items_processed?: number | null;
   items_total?: number | null;
   details?: Record<string, unknown> | null;
@@ -148,7 +148,7 @@ interface ScrapeJobRuntimeRecord {
   progress_phase?: string | null;
   progress_details?: Record<string, unknown> | null;
   progress_updated_at?: string | null;
-  current_sku?: string | null;
+  current_upc?: string | null;
   items_processed?: number | string | null;
   items_total?: number | string | null;
   last_event_at?: string | null;
@@ -240,7 +240,7 @@ export function normalizeScrapeLogEntry(
     message,
     toOptionalString(record.runner_name) ?? '',
     toOptionalString(record.scraper_name) ?? '',
-    toOptionalString(record.sku) ?? '',
+    toOptionalString(record.upc) ?? '',
   ].join(':');
 
   return {
@@ -255,7 +255,7 @@ export function normalizeScrapeLogEntry(
     runner_name: toOptionalString(record.runner_name),
     source: toOptionalString(record.source),
     scraper_name: toOptionalString(record.scraper_name),
-    sku: toOptionalString(record.sku),
+    upc: toOptionalString(record.upc),
     phase: toOptionalString(record.phase),
     sequence,
     details,
@@ -276,7 +276,7 @@ function buildScrapeLogKey(log: ScrapeJobLogEntry): string {
     log.message,
     log.runner_name ?? '',
     log.scraper_name ?? '',
-    log.sku ?? '',
+    log.upc ?? '',
   ].join(':');
 }
 
@@ -355,7 +355,7 @@ export function normalizeScrapeProgressUpdate(
     progress: Math.max(0, Math.min(100, toOptionalNumber(raw.progress) ?? 0)),
     message: toOptionalString(raw.message),
     phase: toOptionalString(raw.phase),
-    current_sku: toOptionalString(raw.current_sku),
+    current_upc: toOptionalString(raw.current_upc),
     items_processed: toOptionalNumber(raw.items_processed),
     items_total: toOptionalNumber(raw.items_total),
     details: isRecord(raw.details) ? raw.details : null,
@@ -379,7 +379,7 @@ export function progressUpdateFromJobRecord(
     progress: Math.max(0, Math.min(100, toOptionalNumber(raw.progress_percent) ?? 0)),
     message: toOptionalString(raw.progress_message) ?? toOptionalString(raw.last_log_message),
     phase: toOptionalString(raw.progress_phase),
-    current_sku: toOptionalString(raw.current_sku),
+    current_upc: toOptionalString(raw.current_upc),
     items_processed: toOptionalNumber(raw.items_processed),
     items_total: toOptionalNumber(raw.items_total),
     details: isRecord(raw.progress_details) ? raw.progress_details : null,
@@ -404,7 +404,7 @@ export function toScrapeJobLogRow(
     runner_name: normalized.runner_name ?? null,
     source: normalized.source ?? null,
     scraper_name: normalized.scraper_name ?? null,
-    sku: normalized.sku ?? null,
+    upc: normalized.upc ?? null,
     phase: normalized.phase ?? null,
     sequence: normalized.sequence ?? null,
     details: normalized.details ?? null,

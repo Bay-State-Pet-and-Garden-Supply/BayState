@@ -178,7 +178,7 @@ describe("getActiveJobsForProduct", () => {
     const supabase = createSupabaseClient({});
 
     await expect(
-      getActiveJobsForProduct({ pipeline_status: "processed", sku: "   " }, supabase)
+      getActiveJobsForProduct({ pipeline_status: "processed", upc: "   " }, supabase)
     ).resolves.toEqual({
       extracting: false,
       merging: false,
@@ -187,7 +187,7 @@ describe("getActiveJobsForProduct", () => {
     expect(supabase.from).not.toHaveBeenCalled();
   });
 
-  it("queries enrichment and consolidation activity by SKU", async () => {
+  it("queries enrichment and consolidation activity by UPC", async () => {
     const enrichPlan = createQueryPlan({
       data: [{ status: "running" }],
       error: null,
@@ -202,7 +202,7 @@ describe("getActiveJobsForProduct", () => {
     });
 
     await expect(
-      getActiveJobsForProduct({ id: 42, sku: "SKU-42", pipeline_status: "processed" }, supabase)
+      getActiveJobsForProduct({ id: 42, upc: "UPC-42", pipeline_status: "processed" }, supabase)
     ).resolves.toEqual({
       extracting: true,
       merging: false,
@@ -210,7 +210,7 @@ describe("getActiveJobsForProduct", () => {
 
     expect(enrichPlan.calls).toEqual([
       ["select", "status"],
-      ["contains", "skus", ["SKU-42"]],
+      ["contains", "upcs", ["UPC-42"]],
       ["in", "status", ACTIVE_ENRICHMENT_JOB_STATUSES],
       ["limit", 1],
     ]);
@@ -222,7 +222,7 @@ describe("getActiveJobsForProduct", () => {
     ]);
   });
 
-  it("queries consolidation by both id and sku", async () => {
+  it("queries consolidation by both id and upc", async () => {
     const enrichPlan = createQueryPlan({
       data: [],
       error: null,
@@ -231,18 +231,18 @@ describe("getActiveJobsForProduct", () => {
       data: [],
       error: null,
     });
-    const consolidationSkuPlan = createQueryPlan({
+    const consolidationUpcPlan = createQueryPlan({
       data: [{ status: "in_progress" }],
       error: null,
     });
     const supabase = createSupabaseClient({
       enrichment_jobs: [enrichPlan],
-      consolidation_batches: [consolidationIdPlan, consolidationSkuPlan],
+      consolidation_batches: [consolidationIdPlan, consolidationUpcPlan],
     });
 
     await expect(
       getActiveJobsForProduct(
-        { id: "product-1", sku: " SKU-123 ", pipeline_status: "reviewing" },
+        { id: "product-1", upc: " UPC-123 ", pipeline_status: "reviewing" },
         supabase
       )
     ).resolves.toEqual({
@@ -256,9 +256,9 @@ describe("getActiveJobsForProduct", () => {
       ["in", "status", ACTIVE_CONSOLIDATION_STATUSES],
       ["limit", 1],
     ]);
-    expect(consolidationSkuPlan.calls).toEqual([
+    expect(consolidationUpcPlan.calls).toEqual([
       ["select", "status"],
-      ["contains", "product_ids", ["SKU-123"]],
+      ["contains", "product_ids", ["UPC-123"]],
       ["in", "status", ACTIVE_CONSOLIDATION_STATUSES],
       ["limit", 1],
     ]);
@@ -276,7 +276,7 @@ describe("getActiveJobsForProduct", () => {
     });
 
     await expect(
-      getActiveJobsForProduct({ id: "product-1", sku: "SKU-1", pipeline_status: "processed" }, supabase)
+      getActiveJobsForProduct({ id: "product-1", upc: "UPC-1", pipeline_status: "processed" }, supabase)
     ).rejects.toThrow("permission denied for relation enrichment_jobs");
   });
 });

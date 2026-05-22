@@ -9,7 +9,7 @@ import type { PipelineProduct } from "@/lib/pipeline/types";
 
 function createProduct(overrides: Partial<PipelineProduct> = {}): PipelineProduct {
   const base: PipelineProduct = {
-    upc: "SKU-1",
+    upc: "UPC-1",
     input: {
       name: "Imported Name",
       description: "Imported description",
@@ -81,7 +81,7 @@ describe("finalization draft helpers", () => {
       availability: "pre-order now",
       minimumQuantity: "5",
       searchKeywords: "premium dog food",
-      gtin: "SKU-1",
+      gtin: "UPC-1",
       isSpecialOrder: false,
       customImageUrl: "",
     });

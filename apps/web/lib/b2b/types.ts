@@ -1,5 +1,5 @@
 export interface B2BProduct {
-  distributorSku: string;
+  distributorUpc: string;
   upc?: string;
   name: string;
   description?: string;
@@ -16,12 +16,12 @@ export interface B2BProduct {
 }
 
 interface B2BInventoryUpdate {
-  distributorSku: string;
+  distributorUpc: string;
   quantity: number;
 }
 
 interface B2BPriceUpdate {
-  distributorSku: string;
+  distributorUpc: string;
   price: number;
   cost?: number;
   msrp?: number;

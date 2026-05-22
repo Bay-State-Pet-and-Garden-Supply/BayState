@@ -184,7 +184,7 @@ describe('Data Fetching Functions', () => {
     it('returns products and count', async () => {
       const mockProducts: Product[] = [{
         id: '1',
-        sku: 'SKU-1',
+        upc: 'UPC-1',
         name: 'Test Product',
         slug: 'test-product',
         description: 'Test',

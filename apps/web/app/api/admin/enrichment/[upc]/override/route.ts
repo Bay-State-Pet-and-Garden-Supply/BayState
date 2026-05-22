@@ -38,7 +38,7 @@ export async function POST(
     // Check if field is protected (price, upc, etc.)
     if (isProtectedField(field)) {
       return NextResponse.json(
-        { error: `Cannot override protected field: ${field}. Price and SKU always come from original import.` },
+        { error: `Cannot override protected field: ${field}. Price and UPC always come from original import.` },
         { status: 400 }
       );
     }

@@ -34,7 +34,7 @@ describe('Performance Benchmarks', () => {
 
     describe('Batch Processing Performance', () => {
         it('should process 500 products in under 30 seconds', async () => {
-            const skus = Array.from({ length: 500 }, (_, i) => `SKU-${i.toString().padStart(4, '0')}`);
+            const upcs = Array.from({ length: 500 }, (_, i) => `UPC-${i.toString().padStart(4, '0')}`);
             
             mockSupabase.in.mockResolvedValue({
                 data: null,
@@ -43,7 +43,7 @@ describe('Performance Benchmarks', () => {
             });
 
             const startTime = Date.now();
-            const result = await bulkUpdateStatus(skus, 'reviewing', 'test-user');
+            const result = await bulkUpdateStatus(upcs, 'reviewing', 'test-user');
             const endTime = Date.now();
             
             const duration = (endTime - startTime) / 1000;
@@ -54,7 +54,7 @@ describe('Performance Benchmarks', () => {
         });
 
         it('should handle smaller batches efficiently', async () => {
-            const skus = Array.from({ length: 100 }, (_, i) => `SKU-${i.toString().padStart(4, '0')}`);
+            const upcs = Array.from({ length: 100 }, (_, i) => `UPC-${i.toString().padStart(4, '0')}`);
             
             mockSupabase.in.mockResolvedValue({
                 data: null,
@@ -63,7 +63,7 @@ describe('Performance Benchmarks', () => {
             });
 
             const startTime = Date.now();
-            const result = await bulkUpdateStatus(skus, 'reviewing', 'test-user');
+            const result = await bulkUpdateStatus(upcs, 'reviewing', 'test-user');
             const endTime = Date.now();
             
             const duration = (endTime - startTime) / 1000;
@@ -77,7 +77,7 @@ describe('Performance Benchmarks', () => {
     describe('Database Query Performance', () => {
         it.skip('should execute filtered queries in under 1 second', async () => {
             const mockData = Array.from({ length: 50 }, (_, i) => ({
-                sku: `SKU-${i}`,
+                upc: `UPC-${i}`,
                 pipeline_status: 'imported',
                 input: { name: `Product ${i}` },
                 updated_at: new Date().toISOString(),
@@ -105,7 +105,7 @@ describe('Performance Benchmarks', () => {
     describe('CSV Export Performance', () => {
         it('should generate CSV for 500 products in under 10 seconds', async () => {
             const mockProducts = Array.from({ length: 500 }, (_, i) => ({
-                sku: `SKU-${i.toString().padStart(4, '0')}`,
+                upc: `UPC-${i.toString().padStart(4, '0')}`,
                 input: { name: `Product ${i}`, price: 10.99 + i },
                 consolidated: { name: `Consolidated Product ${i}`, price: 12.99 + i },
                 pipeline_status: 'imported',
@@ -130,7 +130,7 @@ describe('Performance Benchmarks', () => {
             const startTime = Date.now();
             
             // Simulate CSV generation
-            let csvContent = 'sku,name,price,status,confidence_score,updated_at\n';
+            let csvContent = 'upc,name,price,status,confidence_score,updated_at\n';
             let hasMore = true;
             let page = 0;
             const pageSize = 100;
@@ -146,7 +146,7 @@ describe('Performance Benchmarks', () => {
                 for (const item of data) {
                     const name = item.consolidated?.name || item.input?.name || '';
                     const price = item.consolidated?.price ?? item.input?.price ?? 0;
-                    csvContent += `"${item.sku}","${name}",${price},${item.pipeline_status},${item.confidence_score},${item.updated_at}\n`;
+                    csvContent += `"${item.upc}","${name}",${price},${item.pipeline_status},${item.confidence_score},${item.updated_at}\n`;
                 }
                 
                 if (data.length < pageSize) {
@@ -158,7 +158,7 @@ describe('Performance Benchmarks', () => {
             const endTime = Date.now();
             const duration = (endTime - startTime) / 1000;
             
-            expect(csvContent).toContain('sku,name,price');
+            expect(csvContent).toContain('upc,name,price');
             expect(csvContent.split('\n').length).toBeGreaterThan(500);
             expect(duration).toBeLessThan(10);
             console.log(`CSV export for 500 products took: ${duration.toFixed(2)}s`);

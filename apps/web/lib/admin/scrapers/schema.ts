@@ -193,8 +193,8 @@ const normalizationRuleSchema = z.object({
 
 export type NormalizationRule = z.infer<typeof normalizationRuleSchema>;
 
-const skuAssertionSchema = z.object({
-  sku: z.string().min(1, 'SKU is required'),
+const upcAssertionSchema = z.object({
+  upc: z.string().min(1, 'UPC is required'),
   expected: z.object({
     name: z.string().optional(),
     price: z.string().optional(),
@@ -229,10 +229,10 @@ export const scraperConfigSchema = z.object({
   anti_detection: antiDetectionConfigSchema.optional(),
   http_status: httpStatusConfigSchema.optional(),
   validation: validationConfigSchema.optional(),
-  test_skus: z.array(z.string()).default([]),
-  fake_skus: z.array(z.string()).default([]),
-  edge_case_skus: z.array(z.string()).optional(),
-  test_assertions: z.array(skuAssertionSchema).optional(),
+  test_upcs: z.array(z.string()).default([]),
+  fake_upcs: z.array(z.string()).default([]),
+  edge_case_upcs: z.array(z.string()).optional(),
+  test_assertions: z.array(upcAssertionSchema).optional(),
   ai_config: aiConfigSchema.optional(),
   ocr_config: ocrConfigSchema.optional(),
 });
@@ -273,8 +273,8 @@ const scraperVersionSettingsSchema = z.object({
   image_quality: z.number().min(0).max(100).default(50),
 });
 
-// Test SKU schema
-const scraperTestSkuSchema = z.object({
-  sku: z.string().min(1, 'SKU is required'),
-  sku_type: z.enum(['test', 'fake', 'edge_case']),
+// Test UPC schema
+const scraperTestUpcSchema = z.object({
+  upc: z.string().min(1, 'UPC is required'),
+  upc_type: z.enum(['test', 'fake', 'edge_case']),
 });

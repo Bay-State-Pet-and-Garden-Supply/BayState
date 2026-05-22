@@ -466,7 +466,7 @@ export async function getProductsByStage(
 }
 
 /**
- * Fetches all SKUs matching a pipeline status + filters.
+ * Fetches all UPCs matching a pipeline status + filters.
  * Used by "select all matching" flows in the admin pipeline.
  */
 export async function getUpcsByStatus(
@@ -527,7 +527,7 @@ export async function getUpcsByStatus(
 
   const { data, error, count } = await query;
   if (error) {
-    console.error("Error fetching SKUs by status:", error);
+    console.error("Error fetching UPCs by status:", error);
     return { upcs: [], count: 0 };
   }
 
@@ -606,7 +606,7 @@ export async function getUpcsByStage(
 
   const { data, error, count } = await query;
   if (error) {
-    console.error(`Error fetching SKUs for stage ${stage}:`, error);
+    console.error(`Error fetching UPCs for stage ${stage}:`, error);
     return { upcs: [], count: 0 };
   }
 
@@ -825,7 +825,7 @@ export async function getStatusCounts(): Promise<StatusCount[]> {
 
 /**
  * Updates the status of multiple products.
- * @param upcs - Array of SKUs to update
+ * @param upcs - Array of UPCs to update
  * @param newStatus - Target pipeline status
  * @param userId - ID of the user performing the action (for audit log)
  * @param resetResults - If true, clears data for the stages being left
@@ -869,7 +869,7 @@ export async function bulkUpdateStatus(
   if (invalidUpcs.length > 0) {
     return {
       success: false,
-      error: `${getInvalidTargetStatusError(targetStatus)} SKU(s): ${invalidUpcs.join(", ")}`,
+      error: `${getInvalidTargetStatusError(targetStatus)} UPC(s): ${invalidUpcs.join(", ")}`,
       updatedCount: 0,
     };
   }
@@ -960,7 +960,7 @@ export async function bulkUpdateStatus(
 }
 
 /**
- * Fetches a single product by SKU.
+ * Fetches a single product by UPC.
  */
 async function getProductByUpc(
   upc: string,
@@ -974,7 +974,7 @@ async function getProductByUpc(
     .single();
 
   if (error || !data) {
-    console.error("Error fetching product by SKU:", error);
+    console.error("Error fetching product by UPC:", error);
     return null;
   }
 
@@ -1116,7 +1116,7 @@ export async function clearEnrichmentResultsAndResetStatus(
 }
 
 /**
- * Fetches selected images for a product by SKU.
+ * Fetches selected images for a product by UPC.
  */
 async function getSelectedImages(upc: string): Promise<SelectedImage[]> {
   const supabase = await createClient();
@@ -1136,7 +1136,7 @@ async function getSelectedImages(upc: string): Promise<SelectedImage[]> {
 }
 
 /**
- * Sets selected images for a product by SKU.
+ * Sets selected images for a product by UPC.
  * Validates that images are from the product's image_candidates.
  * Max 10 images allowed.
  */

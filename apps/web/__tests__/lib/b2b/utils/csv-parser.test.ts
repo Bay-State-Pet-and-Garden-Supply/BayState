@@ -68,22 +68,22 @@ Product B,20
   describe('mapCSVToType', () => {
     it('maps rows using string field names', () => {
       const rows = [
-        { 'Item #': 'SKU-001', 'Description': 'Test Product' }
+        { 'Item #': 'UPC-001', 'Description': 'Test Product' }
       ];
       
       interface Product {
-        sku: string;
+        upc: string;
         name: string;
       }
       
       const mapping = {
-        sku: 'Item #',
+        upc: 'Item #',
         name: 'Description',
       };
       
       const result = mapCSVToType<Product>(rows, mapping);
       
-      expect(result[0].sku).toBe('SKU-001');
+      expect(result[0].upc).toBe('UPC-001');
       expect(result[0].name).toBe('Test Product');
     });
 

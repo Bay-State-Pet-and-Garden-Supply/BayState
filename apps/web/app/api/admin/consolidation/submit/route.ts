@@ -27,17 +27,17 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { skus, description, auto_apply, productLineContext } = body;
+        const { upcs, description, auto_apply, productLineContext } = body;
 
-        if (!skus || !Array.isArray(skus) || skus.length === 0) {
-            return NextResponse.json({ error: 'skus array is required' }, { status: 400 });
+        if (!upcs || !Array.isArray(upcs) || upcs.length === 0) {
+            return NextResponse.json({ error: 'upcs array is required' }, { status: 400 });
         }
 
         const supabase = await createAdminClient();
         const { data: products, error: fetchError } = await supabase
             .from('products_ingestion')
-            .select('sku, input, sources, selected_images, image_candidates')
-            .in('sku', skus);
+            .select('upc, input, sources, selected_images, image_candidates')
+            .in('upc', upcs);
 
         if (fetchError) {
             console.error('[Consolidation API] Failed to fetch products:', fetchError);
@@ -45,11 +45,11 @@ export async function POST(request: NextRequest) {
         }
 
         if (!products || products.length === 0) {
-            return NextResponse.json({ error: 'No products found for provided SKUs' }, { status: 404 });
+            return NextResponse.json({ error: 'No products found for provided UPCs' }, { status: 404 });
         }
 
         // Derive image URLs with priority: selected_images -> image_candidates -> sources
-        function deriveImageUrls(p: { selected_images?: unknown; image_candidates?: unknown; sources: unknown; sku: string }): string[] {
+        function deriveImageUrls(p: { selected_images?: unknown; image_candidates?: unknown; sources: unknown; upc: string }): string[] {
             const urls: string[] = [];
             const maxImages = 2;
 
@@ -110,10 +110,10 @@ export async function POST(request: NextRequest) {
         const productsWithSources: ProductSource[] = products
             .filter((p) => p.sources && Object.keys(p.sources).length > 0)
             .map((p) => ({
-                sku: p.sku,
+                upc: p.upc,
                 sources: buildConsolidationSourcesPayload(p.sources, p.input),
-                imageUrls: deriveImageUrls(p as { selected_images?: unknown; image_candidates?: unknown; sources: unknown; sku: string }),
-                productLineContext: productLineContext?.[p.sku] ?? undefined,
+                imageUrls: deriveImageUrls(p as { selected_images?: unknown; image_candidates?: unknown; sources: unknown; upc: string }),
+                productLineContext: productLineContext?.[p.upc] ?? undefined,
             }));
 
         if (productsWithSources.length === 0) {
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
                 provider: 'gemini',
                 execution_mode: 'gemini_batch',
                 product_count: result.product_count,
-                skipped_count: skus.length - productsWithSources.length,
+                skipped_count: upcs.length - productsWithSources.length,
                 message: `Queued ${result.product_count} products for Gemini consolidation. Image prep and batch processing may take up to 24 hours.`,
                 status: {
                     id: result.batch_id,
@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
             provider: result.provider,
             provider_batch_id: result.provider_batch_id,
             product_count: result.product_count,
-            skipped_count: skus.length - productsWithSources.length,
+            skipped_count: upcs.length - productsWithSources.length,
             processed_item_count: processedItemCount,
             completed_item_count: completedItemCount,
             failed_item_count: failedItemCount,

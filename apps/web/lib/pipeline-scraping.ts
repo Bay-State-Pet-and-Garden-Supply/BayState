@@ -23,7 +23,7 @@ export type { ScrapeOptions } from './pipeline-scraping-types';
 
 
 interface PipelineInputRow {
-    sku: string;
+    upc: string;
     cohort_id?: string | null;
     consolidated?: {
         brand_id?: unknown;
@@ -39,7 +39,7 @@ interface PipelineInputRow {
 }
 
 interface ProductCatalogRow {
-    sku?: string | null;
+    upc?: string | null;
     name?: unknown;
     brand?:
         | BrandRegistryRow
@@ -116,7 +116,7 @@ function getLeadingBrandHintCandidates(
 }
 
 interface ScrapeContextItem {
-    sku: string;
+    upc: string;
     product_name?: string;
     register_name?: string;
     price?: number;
@@ -135,7 +135,7 @@ interface CohortLookupRow {
 
 function compactScrapeContextItem(item: ScrapeContextItem): ScrapeContextItem {
     const compacted: ScrapeContextItem = {
-        sku: item.sku,
+        upc: item.upc,
     };
 
     if (item.product_name !== undefined) {
@@ -302,13 +302,13 @@ function getCatalogCategoryName(
 async function createEnrichmentAttempts(
     supabase: Awaited<ReturnType<typeof createClient>>,
     jobId: string,
-    skus: string[],
+    upcs: string[],
     jobMode: string,
     jobModel: string | null,
 ): Promise<{ success: true } | { success: false; error: string }> {
-    const attempts = skus.map((sku) => ({
+    const attempts = upcs.map((upc) => ({
         job_id: jobId,
-        sku,
+        upc,
         attempt_number: 1,
         status: 'queued',
         mode: jobMode,
@@ -331,16 +331,16 @@ async function cloneScrapeJobForRetry(
     supabase: Awaited<ReturnType<typeof createClient>>,
     originalJob: {
         id: string;
-        skus?: string[] | null;
+        upcs?: string[] | null;
         mode?: string | null;
         model?: string | null;
         config?: Record<string, unknown> | null;
     },
 ): Promise<{ success: true; jobId: string } | { success: false; error: string }> {
-    const skus = Array.isArray(originalJob.skus) ? originalJob.skus : [];
+    const upcs = Array.isArray(originalJob.upcs) ? originalJob.upcs : [];
 
-    if (skus.length === 0) {
-        return { success: false, error: 'Original job has no SKUs to retry' };
+    if (upcs.length === 0) {
+        return { success: false, error: 'Original job has no UPCs to retry' };
     }
 
     const nowIso = new Date().toISOString();
@@ -351,8 +351,8 @@ async function cloneScrapeJobForRetry(
         .from('enrichment_jobs')
         .insert({
             status: 'queued',
-            skus,
-            total_count: skus.length,
+            upcs,
+            total_count: upcs.length,
             completed_count: 0,
             failed_count: 0,
             mode: jobMode,
@@ -371,7 +371,7 @@ async function cloneScrapeJobForRetry(
     const attemptResult = await createEnrichmentAttempts(
         supabase,
         newJob.id,
-        skus,
+        upcs,
         jobMode,
         jobModel
     );
@@ -390,7 +390,7 @@ async function cloneScrapeJobForRetry(
 
 async function loadScrapeContextItems(
     supabase: Awaited<ReturnType<typeof createClient>>,
-    skus: string[],
+    upcs: string[],
     options?: {
         preferCatalogContext?: boolean;
         fallbackBrandHint?: string;
@@ -404,12 +404,12 @@ async function loadScrapeContextItems(
     const [{ data: ingestionData, error: ingestionError }, { data: productData, error: productError }] = await Promise.all([
         supabase
             .from('products_ingestion')
-            .select('sku, cohort_id, consolidated, input')
-            .in('sku', skus),
+            .select('upc, cohort_id, consolidated, input')
+            .in('upc', upcs),
         supabase
             .from('products')
-            .select('sku, name, brand:brands(name, official_domains, preferred_domains), product_categories(category:categories(name))')
-            .in('sku', skus),
+            .select('upc, name, brand:brands(name, official_domains, preferred_domains), product_categories(category:categories(name))')
+            .in('upc', upcs),
     ]);
 
     if (ingestionError) {
@@ -421,14 +421,14 @@ async function loadScrapeContextItems(
     }
 
     const ingestionRows = Array.isArray(ingestionData) ? (ingestionData as PipelineInputRow[]) : [];
-    const ingestionBySku = new Map(ingestionRows.map((row) => [row.sku, row]));
+    const ingestionByUpc = new Map(ingestionRows.map((row) => [row.upc, row]));
 
     const productRows = Array.isArray(productData) ? (productData as ProductCatalogRow[]) : [];
-    const productBySku = new Map<string, ProductCatalogRow>();
+    const productByUpc = new Map<string, ProductCatalogRow>();
     productRows.forEach((row) => {
-        const rowSku = toOptionalString(row.sku);
-        if (rowSku) {
-            productBySku.set(rowSku, row);
+        const rowUpc = toOptionalString(row.upc);
+        if (rowUpc) {
+            productByUpc.set(rowUpc, row);
         }
     });
 
@@ -489,10 +489,10 @@ async function loadScrapeContextItems(
         cohortBrandEntries = await loadCohortBrandRegistryEntries(supabase, Array.from(cohortIds));
     }
 
-    return skus.map((sku) => {
-        const ingestion = ingestionBySku.get(sku);
+    return upcs.map((upc) => {
+        const ingestion = ingestionByUpc.get(upc);
         const input = ingestion?.input ?? null;
-        const product = productBySku.get(sku);
+        const product = productByUpc.get(upc);
         const catalogBrandEntry = getCatalogBrandEntry(product?.brand);
         const consolidatedBrandId = toOptionalString(ingestion?.consolidated?.brand_id);
         const nameDerivedBrandHints = getLeadingBrandHintCandidates(input?.name);
@@ -539,7 +539,7 @@ async function loadScrapeContextItems(
         );
 
         return compactScrapeContextItem({
-            sku,
+            upc,
             product_name: preferCatalogContext
                 ? catalogName ?? ingestionName
                 : ingestionName ?? catalogName,
@@ -557,18 +557,18 @@ async function loadScrapeContextItems(
     });
 }
 
-type StandardSkuContext = {
+type StandardUpcContext = {
     product_name?: string;
     price?: number;
     brand?: string;
     category?: string;
 };
 
-function buildStandardSkuContext(items: ScrapeContextItem[]): Record<string, StandardSkuContext> | undefined {
-    const skuContextEntries: Array<readonly [string, StandardSkuContext]> = [];
+function buildStandardUpcContext(items: ScrapeContextItem[]): Record<string, StandardUpcContext> | undefined {
+    const upcContextEntries: Array<readonly [string, StandardUpcContext]> = [];
 
     items.forEach((item) => {
-        const context: StandardSkuContext = {
+        const context: StandardUpcContext = {
             product_name: item.product_name,
             price: item.price,
             brand: item.brand,
@@ -577,23 +577,23 @@ function buildStandardSkuContext(items: ScrapeContextItem[]): Record<string, Sta
 
         const hasContext = Object.values(context).some((value) => value !== undefined);
         if (hasContext) {
-            skuContextEntries.push([item.sku, context]);
+            upcContextEntries.push([item.upc, context]);
         }
     });
 
-    if (skuContextEntries.length === 0) {
+    if (upcContextEntries.length === 0) {
         return undefined;
     }
 
-    return Object.fromEntries(skuContextEntries);
+    return Object.fromEntries(upcContextEntries);
 }
 
 export async function scrapeProducts(
-    skus: string[],
+    upcs: string[],
     options?: ScrapeOptions
 ): Promise<ScrapeResult> {
-    if (!skus || skus.length === 0) {
-        return { success: false, error: 'No SKUs provided' };
+    if (!upcs || upcs.length === 0) {
+        return { success: false, error: 'No UPCs provided' };
     }
 
     const testMode = options?.testMode ?? false;
@@ -622,15 +622,15 @@ export async function scrapeProducts(
     }
 
     const supabase = await createClient();
-    const scrapeContextItems = await loadScrapeContextItems(supabase, skus, {});
-    const standardSkuContext = buildStandardSkuContext(scrapeContextItems);
+    const scrapeContextItems = await loadScrapeContextItems(supabase, upcs, {});
+    const standardUpcContext = buildStandardUpcContext(scrapeContextItems);
     const nowIso = new Date().toISOString();
 
     const jobMode = 'mixed';
     const jobModel = null;
     const jobConfig = {
         scrapers: effectiveScrapers,
-        sku_context: standardSkuContext,
+        upc_context: standardUpcContext,
         test_mode: testMode,
         source: 'pipeline',
         pipeline_version: 'static_first_v1',
@@ -640,15 +640,15 @@ export async function scrapeProducts(
         .from('enrichment_jobs')
         .insert({
             status: 'queued',
-            skus,
-            total_count: skus.length,
+            upcs,
+            total_count: upcs.length,
             completed_count: 0,
             failed_count: 0,
             mode: jobMode,
             model: jobModel,
             config: jobConfig,
             items_processed: 0,
-            items_total: skus.length,
+            items_total: upcs.length,
             updated_at: nowIso,
         })
         .select('id')
@@ -666,7 +666,7 @@ export async function scrapeProducts(
     const attemptResult = await createEnrichmentAttempts(
         supabase,
         job.id,
-        skus,
+        upcs,
         jobMode,
         jobModel
     );
@@ -684,7 +684,7 @@ export async function scrapeProducts(
                 updated_at: new Date().toISOString(),
                 error_message: null,
             })
-            .in('sku', skus);
+            .in('upc', upcs);
 
         if (statusError) {
             console.error('[Pipeline Scraping] Failed to move products into extracting:', statusError);
@@ -694,7 +694,7 @@ export async function scrapeProducts(
         }
     }
 
-    console.log(`[Pipeline Scraping] Created enrichment job ${job.id} for ${skus.length} SKUs`);
+    console.log(`[Pipeline Scraping] Created enrichment job ${job.id} for ${upcs.length} UPCs`);
 
     return {
         success: true,

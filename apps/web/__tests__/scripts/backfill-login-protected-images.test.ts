@@ -66,7 +66,7 @@ describe('backfill-login-protected-images logic', () => {
       [
         {
           id: 'product-1',
-          sku: 'SKU-1',
+          upc: 'UPC-1',
           sources: {
             phillips: {
               images: [
@@ -86,8 +86,8 @@ describe('backfill-login-protected-images logic', () => {
 
     expect(candidates).toHaveLength(1);
     expect(candidates[0]).toEqual({
-      productId: 'SKU-1',
-      sku: 'SKU-1',
+      productId: 'UPC-1',
+      upc: 'UPC-1',
       targets: [
         {
           sourceName: 'phillips',
@@ -101,7 +101,7 @@ describe('backfill-login-protected-images logic', () => {
   it('batches 100 at a time in dry-run and reports counts without inserts', async () => {
     const rows = Array.from({ length: 250 }, (_, index) => ({
       id: `product-${index + 1}`,
-      sku: `SKU-${index + 1}`,
+      upc: `UPC-${index + 1}`,
       sources: {
         phillips: {
           requires_login: true,
@@ -198,7 +198,7 @@ describe('backfill-login-protected-images logic', () => {
                   return {
                     data: [
                       {
-                        sku: 'SKU-1',
+                        upc: 'UPC-1',
                         sources: {
                           phillips: {
                             requires_login: true,
@@ -259,14 +259,14 @@ describe('backfill-login-protected-images logic', () => {
     expect(insertCalls).toHaveLength(2);
     expect(insertCalls[0]).toEqual(
       expect.objectContaining({
-        sku: 'SKU-1',
+        upc: 'UPC-1',
         image_url: 'https://private.example.com/new-entry.jpg',
         priority: 'backfill',
       }),
     );
     expect(insertCalls[1]).toEqual(
       expect.objectContaining({
-        sku: 'SKU-1',
+        upc: 'UPC-1',
         image_url: 'https://private.example.com/new-entry.jpg',
         status: 'pending',
         error_type: 'auth_401',

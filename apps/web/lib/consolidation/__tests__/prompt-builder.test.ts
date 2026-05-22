@@ -109,14 +109,14 @@ describe('brand placement in prompt-builder', () => {
             const prompt = generateSystemPrompt(['Dog > Food > Dry Food']);
 
             expect(prompt).toMatch(/sibling product context/i);
-            expect(prompt).toMatch(/related skus/i);
+            expect(prompt).toMatch(/related upcs/i);
             expect(prompt).toMatch(/without inventing details/i);
         });
 
         it('builds compact sibling product context when available', () => {
             const payload = buildUserPromptPayload(
                 {
-                    sku: 'SKU-123',
+                    upc: 'UPC-123',
                     sources: {
                         shopsite_input: {
                             brand: 'Acme',
@@ -129,7 +129,7 @@ describe('brand placement in prompt-builder', () => {
                         expectedCategory: 'Dog > Food > Dry Food',
                         siblings: [
                             {
-                                sku: 'SIB-1',
+                                upc: 'SIB-1',
                                 name: 'Acme Puppy Recipe Dog Food 4 lb.',
                                 sources: {
                                     shopsite_input: {
@@ -139,7 +139,7 @@ describe('brand placement in prompt-builder', () => {
                                 },
                             },
                             {
-                                sku: 'SIB-2',
+                                upc: 'SIB-2',
                                 name: 'Acme Puppy Recipe Dog Food 15 lb.',
                                 sources: {
                                     amazon: {
@@ -149,7 +149,7 @@ describe('brand placement in prompt-builder', () => {
                                 },
                             },
                             {
-                                sku: 'SIB-3',
+                                upc: 'SIB-3',
                                 name: 'Acme Puppy Recipe Dog Food 30 lb.',
                                 sources: {
                                     manufacturer: {
@@ -159,7 +159,7 @@ describe('brand placement in prompt-builder', () => {
                                 },
                             },
                             {
-                                sku: 'SIB-4',
+                                upc: 'SIB-4',
                                 name: 'Acme Puppy Recipe Dog Food 40 lb.',
                                 sources: {
                                     manufacturer: {
@@ -169,7 +169,7 @@ describe('brand placement in prompt-builder', () => {
                                 },
                             },
                             {
-                                sku: 'SIB-5',
+                                upc: 'SIB-5',
                                 name: 'Acme Puppy Recipe Dog Food 30 lb.',
                                 sources: {
                                     manufacturer: {
@@ -208,7 +208,7 @@ describe('brand placement in prompt-builder', () => {
             );
             expect(payload.product_line_context?.sibling_products).toHaveLength(3);
             expect(payload.product_line_context?.sibling_products[0]).toEqual({
-                sku: 'SIB-1',
+                upc: 'SIB-1',
                 name: 'Acme Puppy Recipe Dog Food 4 lb.',
                 brand: 'Acme',
             });
@@ -217,14 +217,14 @@ describe('brand placement in prompt-builder', () => {
         it('omits sibling context when none is available', () => {
             const payload = buildUserPromptPayload(
                 {
-                    sku: 'SKU-123',
+                    upc: 'UPC-123',
                     sources: {},
                 },
                 []
             );
 
             expect(payload).toEqual({
-                sku: 'SKU-123',
+                upc: 'UPC-123',
                 sources: [],
             });
             expect(payload.product_line_context).toBeUndefined();

@@ -36,7 +36,7 @@ describe('getFeaturedProducts - Data Fetching Waterfall Fix', () => {
         data: [
           {
             id: 'prod-1',
-            sku: 'SKU-1',
+            upc: 'UPC-1',
             name: 'Featured Product 1',
             slug: 'featured-product-1',
             description: 'A featured product',

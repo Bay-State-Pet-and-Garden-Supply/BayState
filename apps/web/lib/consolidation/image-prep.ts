@@ -11,7 +11,7 @@
  * - Strict MIME type validation with magic-byte confirmation
  * - Reject non-image content (octet-stream not allowed without magic-byte confirmation)
  * - Caches upload results per URL within one batch
- * - Graceful failure: if image fetch/upload fails, SKU proceeds text-only
+ * - Graceful failure: if image fetch/upload fails, UPC proceeds text-only
  */
 
 import { createGeminiClient, type GeminiClient } from './gemini-client';
@@ -560,7 +560,7 @@ export function clearImageUploadCache(): void {
  * 4. Upload to Gemini File API (with cache)
  * 5. Return fileData references
  *
- * Failures are non-fatal — the SKU can proceed text-only.
+ * Failures are non-fatal — the UPC can proceed text-only.
  */
 export async function prepareProductImages(
   selectedImages: unknown,

@@ -79,7 +79,7 @@ describe('export tab actions', () => {
             if (url.includes('/api/admin/pipeline/upload-shopsite')) {
                 return Promise.resolve({
                     ok: true,
-                    json: async () => ({ uploadedCount: 2, uploadedSkus: ['SKU001', 'SKU002'] }),
+                    json: async () => ({ uploadedCount: 2, uploadedUpcs: ['UPC001', 'UPC002'] }),
                 });
             }
 

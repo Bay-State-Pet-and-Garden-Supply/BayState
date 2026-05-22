@@ -26,7 +26,7 @@ export function useJobStats() {
 
       const { data, error: fetchError } = await supabase
         .from('enrichment_jobs')
-        .select('status, created_at, completed_at, skus')
+        .select('status, created_at, completed_at, upcs')
         .order('created_at', { ascending: false })
         .limit(100);
 
@@ -56,13 +56,13 @@ export function useJobStats() {
       let totalDurationMs = 0;
 
       successfulJobs.forEach((job) => {
-        if (job.created_at && job.completed_at && job.skus) {
+        if (job.created_at && job.completed_at && job.upcs) {
           const start = new Date(job.created_at).getTime();
           const end = new Date(job.completed_at).getTime();
           const duration = end - start;
           
           if (duration > 0) {
-            totalItems += Array.isArray(job.skus) ? job.skus.length : 0;
+            totalItems += Array.isArray(job.upcs) ? job.upcs.length : 0;
             totalDurationMs += duration;
           }
         }

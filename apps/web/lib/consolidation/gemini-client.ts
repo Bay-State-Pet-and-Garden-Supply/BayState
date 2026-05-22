@@ -548,8 +548,8 @@ export class GeminiClient {
   }
 
   /**
-   * Parse Gemini batch output JSONL text into per-SKU results.
-   * Each line should be a JSON object with a "key" field matching the SKU.
+   * Parse Gemini batch output JSONL text into per-UPC results.
+   * Each line should be a JSON object with a "key" field matching the UPC.
    */
   parseBatchOutput(jsonlText: string): GeminiBatchOutputLine[] {
     const lines = jsonlText.trim().split('\n').filter(Boolean);

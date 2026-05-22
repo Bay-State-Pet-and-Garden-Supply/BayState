@@ -156,10 +156,10 @@ export async function triggerSync(
         products = await client.fetchCatalog();
         break;
       case 'inventory':
-        console.warn('[B2B Sync] Inventory-only sync requires existing SKU list');
+        console.warn('[B2B Sync] Inventory-only sync requires existing UPC list');
         break;
       case 'pricing':
-        console.warn('[B2B Sync] Pricing-only sync requires existing SKU list');
+        console.warn('[B2B Sync] Pricing-only sync requires existing UPC list');
         break;
     }
 
@@ -227,16 +227,16 @@ async function upsertToIngestion(
 
   for (const product of products) {
     try {
-      const sku = product.distributorSku;
+      const upc = product.distributorUpc;
       
       const { data: existing } = await supabase
         .from('products_ingestion')
-        .select('sku, b2b_sources')
-        .eq('sku', sku)
+        .select('upc, b2b_sources')
+        .eq('upc', upc)
         .single();
 
       const b2bData = {
-        distributorSku: product.distributorSku,
+        distributorUpc: product.distributorUpc,
         upc: product.upc,
         name: product.name,
         description: product.description,
@@ -260,14 +260,14 @@ async function upsertToIngestion(
             b2b_sources: updatedSources,
             updated_at: new Date().toISOString(),
           })
-          .eq('sku', sku);
+          .eq('upc', upc);
 
         updated++;
       } else {
         await supabase
           .from('products_ingestion')
           .insert({
-            sku,
+            upc,
             input: { name: product.name, price: product.price },
             b2b_sources: { [distributorCode]: b2bData },
             pipeline_status: 'imported',

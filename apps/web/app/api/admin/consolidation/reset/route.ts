@@ -35,10 +35,10 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 2. Select the skus that are currently stuck
+        // 2. Select the upcs that are currently stuck
         const { data: stuckProducts, error: selectError } = await supabase
             .from('products_ingestion')
-            .select('sku')
+            .select('upc')
             .eq('pipeline_status', 'merging');
 
         if (selectError) {
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: true, reset_count: 0 });
         }
 
-        const skusToReset = stuckProducts.map((p) => p.sku);
+        const upcsToReset = stuckProducts.map((p) => p.upc);
 
         // 3. Reset the status
         const { error: resetError } = await supabase
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
                 pipeline_status: 'processed',
                 updated_at: new Date().toISOString(),
             })
-            .in('sku', skusToReset);
+            .in('upc', upcsToReset);
 
         if (resetError) {
             console.error('[Consolidation Reset API] Failed to reset product statuses:', resetError);
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
             success: true,
-            reset_count: skusToReset.length,
+            reset_count: upcsToReset.length,
         });
     } catch (error) {
         console.error('[Consolidation Reset API] Reset error:', error);

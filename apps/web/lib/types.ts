@@ -20,7 +20,7 @@ export type ShopSiteSyncStatus = 'not_synced' | 'pending' | 'synced' | 'failed';
 
 export interface Product {
   id: string;
-  sku?: string | null;
+  upc?: string | null;
   brand_id: string | null;
   name: string;
   slug: string;
@@ -231,7 +231,7 @@ type WeightUnit = 'lb' | 'oz' | 'kg' | 'g';
 export interface ProductVariant {
   id: string;
   product_id: string;
-  sku: string | null;
+  upc: string | null;
   barcode: string | null;
   title: string | null;
   price: number;

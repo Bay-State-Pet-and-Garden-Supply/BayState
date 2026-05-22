@@ -5,18 +5,18 @@ import { createAdminClient } from '@/lib/supabase/server';
 
 /**
  * POST /api/admin/pipeline/scrape
- * Creates static scraper jobs for the given SKUs.
+ * Creates static scraper jobs for the given UPCs.
  *
  * Static scraping always runs first. Fallback (SERPER/AI) extraction
  * is handled separately via the fallback review/approval flow.
  *
  * Body: {
- *   skus: string[]        — product SKUs to scrape
+ *   upcs: string[]        — product UPCs to scrape
  *   scrapers: string[]    — scraper slugs to use (empty = all)
  *   testMode?: boolean
  * }
  *
- * Legacy fields (enrichment_method, official_brand_phase, urls_by_sku,
+ * Legacy fields (enrichment_method, official_brand_phase, urls_by_upc,
  * cohort_id, deep_research) are rejected with a 400 error.
  */
 export async function POST(request: NextRequest) {
@@ -25,18 +25,18 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { skus, scrapers, testMode } = body as {
-            skus: string[];
+        const { upcs, scrapers, testMode } = body as {
+            upcs: string[];
             scrapers: string[];
             testMode?: boolean;
         };
 
-        if (!skus || !Array.isArray(skus) || skus.length === 0) {
-            return NextResponse.json({ error: 'SKUs array is required' }, { status: 400 });
+        if (!upcs || !Array.isArray(upcs) || upcs.length === 0) {
+            return NextResponse.json({ error: 'UPCs array is required' }, { status: 400 });
         }
 
         // Reject legacy enrichment method fields
-        const legacyFields = ['enrichment_method', 'official_brand_phase', 'urls_by_sku', 'cohort_id', 'deep_research'] as const;
+        const legacyFields = ['enrichment_method', 'official_brand_phase', 'urls_by_upc', 'cohort_id', 'deep_research'] as const;
         for (const field of legacyFields) {
             if (field in body) {
                 return NextResponse.json(
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        const result = await scrapeProducts(skus, {
+        const result = await scrapeProducts(upcs, {
             scrapers,
             testMode: testMode ?? false,
         });
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
             success: true,
             jobIds: result.jobIds,
-            skuCount: skus.length,
+            upcCount: upcs.length,
             scraperCount: scrapers?.length ?? 0,
         });
     } catch (error) {

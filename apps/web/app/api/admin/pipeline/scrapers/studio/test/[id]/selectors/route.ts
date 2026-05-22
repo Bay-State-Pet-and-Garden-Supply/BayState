@@ -20,7 +20,7 @@ interface SelectorResult {
   count: number;
   error_message: string | null;
   duration_ms: number | null;
-  sku: string;
+  upc: string;
 }
 
 export async function GET(
@@ -69,7 +69,7 @@ export async function GET(
       count: 1,
       error_message: sel.error_message,
       duration_ms: sel.duration_ms,
-      sku: sel.sku,
+      upc: sel.upc,
     }));
 
     return NextResponse.json({

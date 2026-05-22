@@ -9,14 +9,14 @@ const { GET, POST } = require('@/app/api/admin/pipeline/route');
 jest.mock('@/lib/pipeline', () => ({
     getProductsByStatus: jest.fn(),
     getProductsByStage: jest.fn(),
-    getSkusByStatus: jest.fn(),
-    getSkusByStage: jest.fn(),
+    getUpcsByStatus: jest.fn(),
+    getUpcsByStage: jest.fn(),
     getAvailableSources: jest.fn(),
     getAvailableSourcesByStage: jest.fn(),
     bulkUpdateStatus: jest.fn(),
 }));
 
-const { getProductsByStatus, getSkusByStatus, getAvailableSources, bulkUpdateStatus } = require('@/lib/pipeline');
+const { getProductsByStatus, getUpcsByStatus, getAvailableSources, bulkUpdateStatus } = require('@/lib/pipeline');
 
 const CANONICAL_STATUS_LIST = PERSISTED_PIPELINE_STATUSES.map(
     (status) => `'${status}'`
@@ -31,7 +31,7 @@ describe('/api/admin/pipeline route', () => {
 
     it('lists canonical statuses with the requested filters', async () => {
         (getProductsByStatus as jest.Mock).mockResolvedValue({
-            products: [{ sku: 'SKU-1', pipeline_status: 'processed' }],
+            products: [{ upc: 'UPC-1', pipeline_status: 'processed' }],
             count: 1,
         });
 
@@ -55,15 +55,15 @@ describe('/api/admin/pipeline route', () => {
             maxConfidence: 0.9,
         });
         expect(payload).toEqual({
-            products: [{ sku: 'SKU-1', pipeline_status: 'processed' }],
+            products: [{ upc: 'UPC-1', pipeline_status: 'processed' }],
             count: 1,
             availableSources: [],
         });
     });
 
     it('uses canonical status filtering for select-all requests', async () => {
-        (getSkusByStatus as jest.Mock).mockResolvedValue({
-            skus: ['SKU-1', 'SKU-2'],
+        (getUpcsByStatus as jest.Mock).mockResolvedValue({
+            upcs: ['UPC-1', 'UPC-2'],
             count: 2,
         });
 
@@ -72,7 +72,7 @@ describe('/api/admin/pipeline route', () => {
         );
         const payload = await response.json();
 
-        expect(getSkusByStatus).toHaveBeenCalledWith('reviewing', {
+        expect(getUpcsByStatus).toHaveBeenCalledWith('reviewing', {
             search: undefined,
             startDate: undefined,
             endDate: undefined,
@@ -82,7 +82,7 @@ describe('/api/admin/pipeline route', () => {
             minConfidence: undefined,
             maxConfidence: undefined,
         });
-        expect(payload).toEqual({ skus: ['SKU-1', 'SKU-2'], count: 2 });
+        expect(payload).toEqual({ upcs: ['UPC-1', 'UPC-2'], count: 2 });
     });
 
     it('rejects legacy status filters at the route boundary', async () => {
@@ -99,7 +99,7 @@ describe('/api/admin/pipeline route', () => {
     it('rejects derived publish status updates at the mutation boundary', async () => {
         const response = await POST(
             new NextRequest('http://localhost/api/admin/pipeline', {
-                body: JSON.stringify({ skus: ['SKU-1'], newStatus: 'published' }),
+                body: JSON.stringify({ upcs: ['UPC-1'], newStatus: 'published' }),
             } as any)
         );
         const payload = await response.json();

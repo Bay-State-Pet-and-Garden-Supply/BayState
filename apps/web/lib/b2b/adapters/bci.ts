@@ -95,7 +95,7 @@ export class BCIClient implements B2BClient {
 
           products.push({
             source: 'BCI',
-            distributorSku: item.ID,
+            distributorUpc: item.ID,
             upc: item.xp?.UPC,
             name: item.Name,
             description: item.Description,

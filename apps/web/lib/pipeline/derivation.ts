@@ -25,7 +25,7 @@ export type WorkflowPipelineTab = Extract<
 export interface ProductTabDerivationInput {
   pipeline_status?: PersistedPipelineStatus | null;
   id?: string | number | null;
-  sku?: string | null;
+  upc?: string | null;
   in_storefront?: boolean | null;
 }
 
@@ -36,7 +36,7 @@ interface ActivePipelineJobs {
 
 interface ActiveJobsLookupOptions {
   enrichmentTable?: string;
-  enrichmentSkuColumn?: string;
+  enrichmentUpcColumn?: string;
   consolidationTable?: string;
   consolidationProductIdsColumn?: string;
 }
@@ -88,7 +88,7 @@ export const ACTIVE_CONSOLIDATION_STATUSES = [
 
 const DEFAULT_ACTIVE_JOB_LOOKUP_OPTIONS: Required<ActiveJobsLookupOptions> = {
   enrichmentTable: 'enrichment_jobs',
-  enrichmentSkuColumn: 'skus',
+  enrichmentUpcColumn: 'upcs',
   consolidationTable: 'consolidation_batches',
   consolidationProductIdsColumn: 'product_ids',
 };
@@ -145,7 +145,7 @@ export async function getActiveJobsForProduct(
 ): Promise<ActivePipelineJobs> {
   const identifiers = getProductIdentifiers(product);
 
-  if (!identifiers.id && !identifiers.sku) {
+  if (!identifiers.id && !identifiers.upc) {
     return { extracting: false, merging: false };
   }
 
@@ -164,35 +164,35 @@ export async function getActiveJobsForProduct(
 
 function getProductIdentifiers(product?: ProductTabDerivationInput | null): {
   id: string | number | null;
-  sku: string | null;
+  upc: string | null;
 } {
   return {
     id:
       typeof product?.id === 'string' || typeof product?.id === 'number'
         ? product.id
         : null,
-    sku:
-      typeof product?.sku === 'string' && product.sku.trim().length > 0
-        ? product.sku.trim()
+    upc:
+      typeof product?.upc === 'string' && product.upc.trim().length > 0
+        ? product.upc.trim()
         : null,
   };
 }
 
 async function findActiveEnrichmentJob(
-  identifiers: { id: string | number | null; sku: string | null },
+  identifiers: { id: string | number | null; upc: string | null },
   supabase: ActiveJobsSupabaseClient,
   options: Required<ActiveJobsLookupOptions>
 ): Promise<boolean> {
   const queries: Array<() => ActiveJobsQueryBuilder> = [];
 
-  if (identifiers.sku) {
-    const sku = identifiers.sku;
+  if (identifiers.upc) {
+    const upc = identifiers.upc;
 
     queries.push(() =>
       supabase
         .from(options.enrichmentTable)
         .select('status')
-        .contains(options.enrichmentSkuColumn, [sku])
+        .contains(options.enrichmentUpcColumn, [upc])
         .in('status', ACTIVE_ENRICHMENT_JOB_STATUSES)
         .limit(1)
     );
@@ -202,7 +202,7 @@ async function findActiveEnrichmentJob(
 }
 
 async function findActiveConsolidationJob(
-  identifiers: { id: string | number | null; sku: string | null },
+  identifiers: { id: string | number | null; upc: string | null },
   supabase: ActiveJobsSupabaseClient,
   options: Required<ActiveJobsLookupOptions>
 ): Promise<boolean> {
@@ -212,8 +212,8 @@ async function findActiveConsolidationJob(
     productIds.push(identifiers.id);
   }
 
-  if (identifiers.sku) {
-    productIds.push(identifiers.sku);
+  if (identifiers.upc) {
+    productIds.push(identifiers.upc);
   }
 
   const queries = productIds.map(

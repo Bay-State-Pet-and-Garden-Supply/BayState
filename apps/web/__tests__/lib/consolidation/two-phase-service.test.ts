@@ -48,7 +48,7 @@ describe('TwoPhaseConsolidationService', () => {
     it('returns phase 1 results unchanged when phase 2 is disabled', async () => {
         const phase1Results: ConsolidationResult[] = [
             {
-                sku: 'SKU-1',
+                upc: 'UPC-1',
                 name: 'Variant One',
                 brand: 'Acme',
                 category: 'Dog > Food',
@@ -62,14 +62,14 @@ describe('TwoPhaseConsolidationService', () => {
         });
 
         const response = await service.consolidate(
-            [{ sku: 'SKU-1', sources: { distributor: { title: 'Variant One' } } }],
+            [{ upc: 'UPC-1', sources: { distributor: { title: 'Variant One' } } }],
             { enablePhase2: false }
         );
 
         expect(response.phase).toBe('phase1');
         expect(response.products).toEqual([
             expect.objectContaining({
-                sku: 'SKU-1',
+                upc: 'UPC-1',
                 name: 'Variant One',
                 consistencyIssues: [],
                 consistencyStatus: 'skipped',
@@ -91,21 +91,21 @@ describe('TwoPhaseConsolidationService', () => {
     it('flags exact-match inconsistencies across sibling products', async () => {
         const products: ProductSource[] = [
             {
-                sku: 'SKU-1',
+                upc: 'UPC-1',
                 sources: { distributor: { title: 'Variant One' } },
                 productLineContext: {
                     productLine: 'Acme Treats',
-                    siblings: [{ sku: 'SKU-2', name: 'Variant Two', sources: {} }],
+                    siblings: [{ upc: 'UPC-2', name: 'Variant Two', sources: {} }],
                     expectedBrand: 'Acme',
                     expectedCategory: 'Dog > Treats',
                 },
             },
             {
-                sku: 'SKU-2',
+                upc: 'UPC-2',
                 sources: { distributor: { title: 'Variant Two' } },
                 productLineContext: {
                     productLine: 'Acme Treats',
-                    siblings: [{ sku: 'SKU-1', name: 'Variant One', sources: {} }],
+                    siblings: [{ upc: 'UPC-1', name: 'Variant One', sources: {} }],
                     expectedBrand: 'Acme',
                     expectedCategory: 'Dog > Treats',
                 },
@@ -114,13 +114,13 @@ describe('TwoPhaseConsolidationService', () => {
 
         mockedRetrieveResults.mockResolvedValue([
             {
-                sku: 'SKU-1',
+                upc: 'UPC-1',
                 name: 'Variant One',
                 brand: 'Acme',
                 category: 'Dog > Treats',
             },
             {
-                sku: 'SKU-2',
+                upc: 'UPC-2',
                 name: 'Variant Two',
                 brand: 'Other Brand',
                 category: 'Dog > Treats',
@@ -151,13 +151,13 @@ describe('TwoPhaseConsolidationService', () => {
         expect(response.consistencyReport.issues).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
-                    sku: 'SKU-1',
+                    upc: 'UPC-1',
                     ruleId: 'brand_consistent_across_siblings',
                     field: 'brand',
                     conflictingValues: ['Acme', 'Other Brand'],
                 }),
                 expect.objectContaining({
-                    sku: 'SKU-2',
+                    upc: 'UPC-2',
                     ruleId: 'brand_consistent_across_siblings',
                     field: 'brand',
                     conflictingValues: ['Acme', 'Other Brand'],
@@ -170,7 +170,7 @@ describe('TwoPhaseConsolidationService', () => {
     it('applies expected-value rules from sibling context', async () => {
         const products: ProductSource[] = [
             {
-                sku: 'SKU-3',
+                upc: 'UPC-3',
                 sources: { distributor: { title: 'Seed Blend' } },
                 productLineContext: {
                     productLine: 'Bird Seed Blend',
@@ -183,7 +183,7 @@ describe('TwoPhaseConsolidationService', () => {
 
         mockedRetrieveResults.mockResolvedValue([
             {
-                sku: 'SKU-3',
+                upc: 'UPC-3',
                 name: 'Seed Blend',
                 brand: 'Unknown Brand',
                 category: 'Bird > Seed',
@@ -204,7 +204,7 @@ describe('TwoPhaseConsolidationService', () => {
         expect(response.consistencyReport.totalIssues).toBe(1);
         expect(response.consistencyReport.issues[0]).toEqual(
             expect.objectContaining({
-                sku: 'SKU-3',
+                upc: 'UPC-3',
                 ruleId: 'brand_matches_expected_product_line',
                 field: 'brand',
                 observedValue: 'Unknown Brand',
@@ -213,7 +213,7 @@ describe('TwoPhaseConsolidationService', () => {
         );
         expect(response.products[0]).toEqual(
             expect.objectContaining({
-                sku: 'SKU-3',
+                upc: 'UPC-3',
                 consistencyStatus: 'flagged',
             })
         );
