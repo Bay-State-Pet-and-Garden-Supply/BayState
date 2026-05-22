@@ -123,7 +123,7 @@ class ScraperAPIHandler(logging.Handler):
                 "message": record.getMessage(),
             }
 
-            for field in ["job_id", "runner_name", "scraper_name", "sku", "step", "worker_id"]:
+            for field in ["job_id", "runner_name", "scraper_name", "upc", "step", "worker_id"]:
                 value = getattr(record, field, None)
                 if value is not None and value != "":
                     log_entry[field] = value

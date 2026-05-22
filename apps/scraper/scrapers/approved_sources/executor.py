@@ -53,10 +53,10 @@ class ApprovedSourceExecutor:
         """Execute the full extraction plan."""
         from scrapers.approved_sources.result_builder import build_failed_result
 
-        sku = self.plan.sku
+        upc = self.plan.upc
         logger.info(
-            "[Executor] Starting execution for SKU=%s with %d source(s)",
-            sku,
+            "[Executor] Starting execution for UPC=%s with %d source(s)",
+            upc,
             len(self.plan.priority),
         )
 
@@ -79,7 +79,7 @@ class ApprovedSourceExecutor:
                 error_message = "No sources provided in the plan"
 
             return build_failed_result(
-                sku=sku,
+                upc=upc,
                 error_message=error_message,
                 requested_extraction_mode=self.plan.extractionMode,
             )
@@ -93,7 +93,7 @@ class ApprovedSourceExecutor:
         """Try all entries in order and return the best combined result."""
         from scrapers.approved_sources.result_builder import build_failed_result
 
-        sku = self.plan.sku
+        upc = self.plan.upc
         all_results: list[EnrichmentResultV1] = []
 
         for entry in entries:
@@ -130,7 +130,7 @@ class ApprovedSourceExecutor:
                     exc,
                 )
                 result = build_failed_result(
-                    sku=sku,
+                    upc=upc,
                     source_slug=entry.sourceSlug,
                     source_type=entry.sourceType,
                     error_message=str(exc),
@@ -143,7 +143,7 @@ class ApprovedSourceExecutor:
                     entry.sourceSlug,
                 )
                 result = build_failed_result(
-                    sku=sku,
+                    upc=upc,
                     source_slug=entry.sourceSlug,
                     source_type=entry.sourceType,
                     error_message="No result returned from adapter",

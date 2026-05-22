@@ -16,7 +16,7 @@ def test_load_dataset_parses_valid_entries(tmp_path: Path) -> None:
                 "schema_version": DATASET_SCHEMA_VERSION,
                 "entries": [
                     {
-                        "sku": "SKU-1",
+                        "upc": "UPC-1",
                         "product_name": "Test Product",
                         "brand": "Acme",
                         "expected_official_domains": ["acme.example"],
@@ -35,7 +35,7 @@ def test_load_dataset_parses_valid_entries(tmp_path: Path) -> None:
                         },
                         "search_fixtures": [
                             {
-                                "query": "site:acme.example SKU-1",
+                                "query": "site:acme.example UPC-1",
                                 "results": [
                                     {
                                         "url": "https://acme.example/products/widget",
@@ -57,7 +57,7 @@ def test_load_dataset_parses_valid_entries(tmp_path: Path) -> None:
     rows = load_dataset(dataset_path)
     assert len(rows) == 1
     entry = rows[0]
-    assert entry.sku == "SKU-1"
+    assert entry.upc == "UPC-1"
     assert entry.product_name == "Test Product"
     assert entry.brand == "Acme"
     assert entry.expected_official_domains == ["acme.example"]
@@ -75,7 +75,7 @@ def test_load_dataset_parses_valid_entries(tmp_path: Path) -> None:
     assert entry.ground_truth.categories == ["Widgets", "Tools"]
     assert entry.search_fixtures is not None
     assert len(entry.search_fixtures) == 1
-    assert entry.search_fixtures[0].query == "site:acme.example SKU-1"
+    assert entry.search_fixtures[0].query == "site:acme.example UPC-1"
 
 
 def test_load_dataset_rejects_bad_schema_version(tmp_path: Path) -> None:
@@ -94,7 +94,7 @@ def test_load_dataset_rejects_missing_required_fields(tmp_path: Path) -> None:
                 "schema_version": DATASET_SCHEMA_VERSION,
                 "entries": [
                     {
-                        "sku": "SKU-1",
+                        "upc": "UPC-1",
                         "product_name": "Test Product",
                         # missing brand
                         "expected_official_domains": ["acme.example"],
@@ -118,7 +118,7 @@ def test_load_dataset_allows_optional_ground_truth(tmp_path: Path) -> None:
                 "schema_version": DATASET_SCHEMA_VERSION,
                 "entries": [
                     {
-                        "sku": "SKU-1",
+                        "upc": "UPC-1",
                         "product_name": "Test Product",
                         "brand": "Acme",
                         "expected_official_domains": ["acme.example"],

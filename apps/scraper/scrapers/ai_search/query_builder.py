@@ -40,9 +40,9 @@ class QueryBuilder:
                 deduped.append(query)
         return deduped
 
-    def build_identifier_query(self, sku: Optional[str]) -> str:
+    def build_identifier_query(self, upc: Optional[str]) -> str:
         """Build the lowest-cost identifier-only query for a product."""
-        return self._clean_text(sku)
+        return self._clean_text(upc)
 
     def build_brand_focused_query(
         self,
@@ -60,9 +60,9 @@ class QueryBuilder:
         """Build the canonical follow-up query from a consolidated product name."""
         return self._clean_text(product_name)
 
-    def build_sku_discovery_query(self, sku: Optional[str], brand: Optional[str] = None) -> str:
-        """Build the Phase 1 SKU-discovery query."""
-        sku_clean = self._clean_text(sku)
+    def build_sku_discovery_query(self, upc: Optional[str], brand: Optional[str] = None) -> str:
+        """Build the Phase 1 UPC-discovery query."""
+        sku_clean = self._clean_text(upc)
         if not sku_clean:
             return ""
         if brand and self.is_ambiguous_identifier(sku_clean):
@@ -84,45 +84,45 @@ class QueryBuilder:
             query += " " + " ".join([f"-site:{excl}" for excl in exclusions])
         return query
 
-    def is_ambiguous_identifier(self, sku: Optional[str]) -> bool:
+    def is_ambiguous_identifier(self, upc: Optional[str]) -> bool:
         """Return True when an identifier-only query is likely too generic to stand on its own."""
-        sku_clean = self._clean_text(sku)
+        sku_clean = self._clean_text(upc)
         return bool(sku_clean) and sku_clean.isdigit() and len(sku_clean) < self._AMBIGUOUS_NUMERIC_IDENTIFIER_MAX_LENGTH
 
     def build_search_query(
         self,
-        sku: str,
+        upc: str,
         product_name: Optional[str],
         brand: Optional[str],
         category: Optional[str] = None,
     ) -> str:
         """Build the preferred discovery query for the current search step."""
         del brand, category
-        return self.build_name_query(product_name) or self.build_identifier_query(sku)
+        return self.build_name_query(product_name) or self.build_identifier_query(upc)
 
     def build_query_variants(
         self,
-        sku: str,
+        upc: str,
         product_name: Optional[str],
         brand: Optional[str],
         category: Optional[str],
     ) -> list[str]:
-        """Build the single follow-up name query used after SKU discovery."""
-        del sku, brand, category
+        """Build the single follow-up name query used after UPC discovery."""
+        del upc, brand, category
         name_query = self.build_name_query(product_name)
         return self._dedupe_queries([name_query] if name_query else [])
 
     def build_site_query_variants(
         self,
         domains: list[str] | None,
-        sku: Optional[str],
+        upc: Optional[str],
         product_name: Optional[str],
         brand: Optional[str],
         category: Optional[str],
     ) -> list[str]:
-        """Build site-constrained rescue queries using only SKU and consolidated name."""
+        """Build site-constrained rescue queries using only UPC and consolidated name."""
         del brand, category
-        sku_clean = self.build_identifier_query(sku)
+        sku_clean = self.build_identifier_query(upc)
         name_clean = self.build_name_query(product_name)
 
         variants: list[str] = []

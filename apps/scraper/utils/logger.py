@@ -40,7 +40,7 @@ class JSONFormatter(logging.Formatter):
         }
 
         # Add optional fields from record if present
-        optional_fields = ["job_id", "runner_name", "scraper_name", "sku", "step", "worker_id"]
+        optional_fields = ["job_id", "runner_name", "scraper_name", "upc", "step", "worker_id"]
         for field in optional_fields:
             value = getattr(record, field, None)
             if value is not None and value != "":

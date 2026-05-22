@@ -53,7 +53,7 @@ def _family_page_cases():
         if vr.get("is_family_page"):
             yield pytest.param(
                 entry,
-                id=f"{entry['brand']}-{entry['sku']}",
+                id=f"{entry['brand']}-{entry["upc"]}",
             )
 
 
@@ -64,7 +64,7 @@ def _non_family_cases():
         if not vr.get("is_family_page"):
             yield pytest.param(
                 entry,
-                id=f"{entry['brand']}-{entry['sku']}",
+                id=f"{entry['brand']}-{entry["upc"]}",
             )
 
 
@@ -142,7 +142,7 @@ class TestVariantResolutionFamilyPages:
     async def test_resolver_returns_expected_status(self, entry: dict[str, Any]):
         """Fetch a real product page and verify the resolver status matches ground truth."""
         url = entry["expected_source_url"]
-        sku = entry["sku"]
+        upc= entry["upc"]
         vr = entry["variant_resolution"]
         expected_status = vr["expected_resolver_status"]
 
@@ -155,7 +155,7 @@ class TestVariantResolutionFamilyPages:
 
         resolved_url, resolved_html, resolved_md, status = await resolve_family_variant(
             url=url,
-            sku=sku,
+            upc=upc,
             product_name=f"{entry.get('name', '')} {entry.get('size_metrics', '')}".strip(),
             brand=entry.get("brand"),
             html=html,
@@ -167,7 +167,7 @@ class TestVariantResolutionFamilyPages:
         # Primary assertion: resolver status
         assert status == expected_status, (
             f"Expected resolver status '{expected_status}' but got '{status}' "
-            f"for SKU {sku} ({entry['brand']} / {entry['name']}). "
+            f"for UPC {upc} ({entry['brand']} / {entry['name']}). "
             f"Platform: {vr.get('platform')}. "
             f"HTML length: {len(html)} bytes."
         )
@@ -180,14 +180,14 @@ class TestVariantResolutionFamilyPages:
             pytest.skip("Not an exact_variant case")
 
         url = entry["expected_source_url"]
-        sku = entry["sku"]
+        upc= entry["upc"]
 
         html = await _fetch_html(url, entry)
         scoring, matching, extraction = _make_mock_utils()
 
         resolved_url, resolved_html, resolved_md, status = await resolve_family_variant(
             url=url,
-            sku=sku,
+            upc=upc,
             product_name=f"{entry.get('name', '')} {entry.get('size_metrics', '')}".strip(),
             brand=entry.get("brand"),
             html=html,
@@ -205,7 +205,7 @@ class TestVariantResolutionFamilyPages:
             )
             assert changed, (
                 f"Resolver returned 'exact_variant' but no output was modified "
-                f"for SKU {sku} ({entry['brand']})"
+                f"for UPC {upc} ({entry['brand']})"
             )
 
     @pytest.mark.parametrize("entry", list(_family_page_cases()))
@@ -276,7 +276,7 @@ class TestVariantResolutionNonFamilyPages:
     async def test_resolver_returns_not_applicable(self, entry: dict[str, Any]):
         """Non-family pages should return ambiguous/not_applicable without modifying output."""
         url = entry["expected_source_url"]
-        sku = entry["sku"]
+        upc= entry["upc"]
 
         html = await _fetch_html(url, entry)
         if len(html) < 100:
@@ -286,7 +286,7 @@ class TestVariantResolutionNonFamilyPages:
 
         resolved_url, resolved_html, resolved_md, status = await resolve_family_variant(
             url=url,
-            sku=sku,
+            upc=sku,
             product_name=entry.get("name"),
             brand=entry.get("brand"),
             html=html,
@@ -298,7 +298,7 @@ class TestVariantResolutionNonFamilyPages:
         # Should NOT return exact_variant for non-family pages
         assert status != "exact_variant", (
             f"Non-family page incorrectly resolved as 'exact_variant' "
-            f"for SKU {sku} ({entry['brand']}). URL: {url}"
+            f"for UPC {sku} ({entry['brand']}). URL: {url}"
         )
 
         # URL should not be modified

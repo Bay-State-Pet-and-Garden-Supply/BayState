@@ -37,13 +37,13 @@ def _load_fixture_catalog() -> dict[str, Any]:
         return json.load(f)
 
 
-def _make_minimal_plan(sku: str, brand_name: str | None = None) -> ApprovedSourcePlan:
+def _make_minimal_plan(upc: str, brand_name: str | None = None) -> ApprovedSourcePlan:
     """Create a minimal ApprovedSourcePlan for fixture testing."""
     brand = None
     if brand_name:
         brand = ApprovedSourceBrand(id="test-id", name=brand_name, slug=brand_name.lower().replace(" ", "_"))
     return ApprovedSourcePlan(
-        sku=sku,
+        upc=sku,
         brand=brand,
         sourcePolicy=ApprovedSourcePolicy(
             allowedDomains=["fixture.local", "bradleycaldwell.com", "centralpet.com",
@@ -113,7 +113,7 @@ def test_product_fixture_extraction(fixture_key: str) -> None:
     adapter_cls = get_adapter_class(adapter_slug)
     assert adapter_cls is not None, f"Adapter class not found for {adapter_slug}"
 
-    plan = _make_minimal_plan(sku=catalog["expected_sku"])
+    plan = _make_minimal_plan(upc=catalog["expected_sku"])
     entry = _make_entry(adapter_slug, source_slug)
     adapter = adapter_cls(entry, plan)
 
@@ -142,7 +142,7 @@ def test_product_fixture_extraction(fixture_key: str) -> None:
             f"Expected item number field for {fixture_key}"
 
     if catalog.get("expected_has_upc"):
-        assert product.get("upc") or product.get("sku"), \
+        assert product.get("upc") or product.get("upc"), \
             f"Expected UPC field for {fixture_key}"
 
     if catalog.get("expected_has_features"):
@@ -170,7 +170,7 @@ def test_partial_fixture_extraction(fixture_key: str) -> None:
     adapter_cls = get_adapter_class(adapter_slug)
     assert adapter_cls is not None
 
-    plan = _make_minimal_plan(sku=catalog["expected_sku"])
+    plan = _make_minimal_plan(upc=catalog["expected_sku"])
     entry = _make_entry(adapter_slug, source_slug)
     adapter = adapter_cls(entry, plan)
 
@@ -210,7 +210,7 @@ def test_no_results_fixture(fixture_key: str) -> None:
     adapter_cls = get_adapter_class(adapter_slug)
     assert adapter_cls is not None
 
-    plan = _make_minimal_plan(sku=catalog["expected_sku"])
+    plan = _make_minimal_plan(upc=catalog["expected_sku"])
     entry = _make_entry(adapter_slug, source_slug)
     adapter = adapter_cls(entry, plan)
 
@@ -241,7 +241,7 @@ def test_bradley_legacy_assertion() -> None:
     adapter_cls = get_adapter_class("bradley_crawl4ai")
     assert adapter_cls is not None
 
-    plan = _make_minimal_plan(sku="001135")
+    plan = _make_minimal_plan(upc="001135")
     entry = _make_entry("bradley_crawl4ai", "bradley")
     adapter = adapter_cls(entry, plan)
 
@@ -260,7 +260,7 @@ def test_phillips_legacy_assertion() -> None:
     adapter_cls = get_adapter_class("phillips_crawl4ai")
     assert adapter_cls is not None
 
-    plan = _make_minimal_plan(sku="072705115310")
+    plan = _make_minimal_plan(upc="072705115310")
     entry = _make_entry("phillips_crawl4ai", "phillips")
     adapter = adapter_cls(entry, plan)
 
@@ -279,7 +279,7 @@ def test_bradley_image_filtering() -> None:
     adapter_cls = get_adapter_class("bradley_crawl4ai")
     assert adapter_cls is not None
 
-    plan = _make_minimal_plan(sku="001135")
+    plan = _make_minimal_plan(upc="001135")
     entry = _make_entry("bradley_crawl4ai", "bradley")
     adapter = adapter_cls(entry, plan)
 
@@ -303,7 +303,7 @@ def test_fixture_with_empty_html() -> None:
     adapter_cls = get_adapter_class("bradley_crawl4ai")
     assert adapter_cls is not None
 
-    plan = _make_minimal_plan(sku="001135")
+    plan = _make_minimal_plan(upc="001135")
     entry = _make_entry("bradley_crawl4ai", "bradley")
     adapter = adapter_cls(entry, plan)
 

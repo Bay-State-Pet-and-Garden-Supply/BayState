@@ -58,13 +58,13 @@ class TestJSONFormatter:
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
-        logger.info("Processing SKU", extra={"job_id": "job-123", "sku": "ABC", "scraper_name": "test"})
+        logger.info("Processing UPC", extra={"job_id": "job-123", "upc": "ABC", "scraper_name": "test"})
 
         output = stream.getvalue()
         parsed = json.loads(output.strip())
 
         assert parsed["job_id"] == "job-123"
-        assert parsed["sku"] == "ABC"
+        assert parsed["upc"] == "ABC"
         assert parsed["scraper_name"] == "test"
 
     def test_format_error_with_exception(self):
@@ -145,7 +145,7 @@ class TestScraperAPIHandler:
 
         logger.info(
             "Processing item",
-            extra={"job_id": "job-456", "scraper_name": "amazon", "sku": "XYZ123", "step": "extract"},
+            extra={"job_id": "job-456", "scraper_name": "amazon", "upc": "XYZ123", "step": "extract"},
         )
 
         time.sleep(0.2)
@@ -154,7 +154,7 @@ class TestScraperAPIHandler:
         entry = handler._buffer[0]
         assert entry["job_id"] == "job-456"
         assert entry["scraper_name"] == "amazon"
-        assert entry["sku"] == "XYZ123"
+        assert entry["upc"] == "XYZ123"
         assert entry["step"] == "extract"
 
         handler.close()

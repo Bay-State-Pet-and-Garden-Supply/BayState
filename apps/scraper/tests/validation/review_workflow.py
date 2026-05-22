@@ -10,7 +10,7 @@ from typing import cast
 
 
 REVIEW_COLUMNS = [
-    "sku",
+    "upc",
     "product_name",
     "source_url",
     "extracted_name",
@@ -32,7 +32,7 @@ REQUIRED_IMPORT_FIELDS = REVIEW_COLUMNS.copy()
 
 @dataclass(frozen=True)
 class ReviewedResult:
-    sku: str
+    upc: str
     product_name: str
     source_url: str
     extracted_name: str
@@ -140,7 +140,7 @@ def _build_template_row(validation_result: object) -> dict[str, str]:
     extracted = _coerce_mapping(payload.get("extracted_data"))
 
     return {
-        "sku": _stringify(payload.get("sku")),
+        "upc": _stringify(payload.get("upc")),
         "product_name": _stringify(payload.get("product_name") or payload.get("name") or extracted.get("product_name") or extracted.get("name")),
         "source_url": _stringify(payload.get("source_url") or payload.get("url") or extracted.get("source_url")),
         "extracted_name": _stringify(extracted.get("name") or payload.get("extracted_name") or payload.get("name")),
@@ -192,7 +192,7 @@ class ReviewWorkflow:
             for row_number, row in enumerate(reader, start=2):
                 imported_results.append(
                     ReviewedResult(
-                        sku=row["sku"].strip(),
+                        upc=row["upc"].strip(),
                         product_name=row["product_name"].strip(),
                         source_url=row["source_url"].strip(),
                         extracted_name=row["extracted_name"].strip(),

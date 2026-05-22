@@ -2,7 +2,7 @@
 
 Legacy config: legacy-scraper-archive/configs/orgill.yaml
 Base URL: https://www.orgill.com
-Search: /SearchResultN.aspx?ddlhQ={sku}
+Search: /SearchResultN.aspx?ddlhQ={upc}
 Auth: LOGIN REQUIRED — returns AUTH_REQUIRED when no credentials
 """
 
@@ -29,19 +29,19 @@ class OrgillAdapter(BaseDistributorCrawl4AIAdapter):
     source_slug = "orgill"
     source_type = "distributor"
     base_url = "https://www.orgill.com"
-    search_url_template = "https://www.orgill.com/SearchResultN.aspx?ddlhQ={sku}"
+    search_url_template = "https://www.orgill.com/SearchResultN.aspx?ddlhQ={upc}"
     requires_auth = True
 
     def get_login_config_class(self):
         """Return the Orgill login config."""
         return ORGILL_LOGIN
 
-    def build_search_url(self, sku: str) -> str:
-        """Build the Orgill search URL from a SKU."""
-        return self.search_url_template.format(sku=quote(str(sku), safe=""))
+    def build_search_url(self, upc: str) -> str:
+        """Build the Orgill search URL from a UPC."""
+        return self.search_url_template.format(upc=quote(str(upc), safe=""))
 
     def extract_from_html(
-        self, html: str, sku: str, url: str
+        self, html: str, upc: str, url: str
     ) -> ApprovedSourceExtractionResult:
         """Extract product data from Orgill HTML using legacy-inspired selectors.
 
@@ -84,14 +84,14 @@ class OrgillAdapter(BaseDistributorCrawl4AIAdapter):
         if has_login_form:
             result.success = False
             result.failure_code = FailureCode.AUTH_REQUIRED
-            result.failure_message = f"Authentication required for Orgill — received login page for SKU {sku}"
+            result.failure_message = f"Authentication required for Orgill — received login page for UPC {upc}"
             result.auth_required = True
             return result
 
         try:
             from bs4 import BeautifulSoup
         except ImportError:
-            return self._extract_with_regex(html, sku, url)
+            return self._extract_with_regex(html, upc, url)
 
         soup = BeautifulSoup(html, "html.parser")
 
@@ -102,14 +102,14 @@ class OrgillAdapter(BaseDistributorCrawl4AIAdapter):
             if "no results" in error_text.lower():
                 result.success = False
                 result.failure_code = FailureCode.NO_MATCH
-                result.failure_message = f"No match found for SKU {sku}: {error_text}"
+                result.failure_message = f"No match found for UPC {upc}: {error_text}"
                 return result
 
         no_results_span = soup.find("span", string=re.compile(r"Found 0 results", re.I))
         if no_results_span:
             result.success = False
             result.failure_code = FailureCode.NO_MATCH
-            result.failure_message = f"No match found for SKU {sku}"
+            result.failure_message = f"No match found for UPC {upc}"
             return result
 
         # --- Name ---
@@ -236,7 +236,7 @@ class OrgillAdapter(BaseDistributorCrawl4AIAdapter):
         if not product.get("name"):
             result.success = False
             result.failure_code = FailureCode.NO_MATCH
-            result.failure_message = f"Could not find product name for SKU {sku}"
+            result.failure_message = f"Could not find product name for UPC {upc}"
             return result
 
         identifier_candidates = [
@@ -246,7 +246,7 @@ class OrgillAdapter(BaseDistributorCrawl4AIAdapter):
         ]
         has_identifier = any(candidate for candidate in identifier_candidates)
         identifier_match, matched_identifiers = self._match_identifier_candidates(
-            sku,
+            upc,
             product.get("item_number"),
             product.get("upc"),
             product.get("model_number"),
@@ -255,7 +255,7 @@ class OrgillAdapter(BaseDistributorCrawl4AIAdapter):
             result.success = False
             result.failure_code = FailureCode.NO_MATCH
             result.failure_message = (
-                f"Orgill identifier mismatch for searched SKU {sku}: "
+                f"Orgill identifier mismatch for searched UPC {upc}: "
                 f"saw {', '.join(matched for matched in identifier_candidates if matched)}"
             )
             result.warnings = warnings
@@ -276,7 +276,7 @@ class OrgillAdapter(BaseDistributorCrawl4AIAdapter):
         return result
 
     def _extract_with_regex(
-        self, html: str, sku: str, url: str
+        self, html: str, upc: str, url: str
     ) -> ApprovedSourceExtractionResult:
         """Fallback regex extraction."""
         result = ApprovedSourceExtractionResult(
@@ -298,7 +298,7 @@ class OrgillAdapter(BaseDistributorCrawl4AIAdapter):
         if has_login_form:
             result.success = False
             result.failure_code = FailureCode.AUTH_REQUIRED
-            result.failure_message = f"Authentication required for Orgill (SKU {sku})"
+            result.failure_message = f"Authentication required for Orgill (UPC {upc})"
             result.auth_required = True
             return result
 
@@ -311,7 +311,7 @@ class OrgillAdapter(BaseDistributorCrawl4AIAdapter):
         if not product.get("name"):
             result.success = False
             result.failure_code = FailureCode.NO_MATCH
-            result.failure_message = f"No match for SKU {sku}"
+            result.failure_message = f"No match for UPC {upc}"
             return result
 
         result.success = True

@@ -39,7 +39,7 @@ LIVE_SMOKE_DATASET = Path("benchmarks/ai_search/fixtures/live_smoke_dataset.json
 
 @pytest.mark.asyncio
 async def test_live_smoke_runs_and_produces_report(tmp_path: Path) -> None:
-    """Run the 3-SKU live smoke profile and verify report artifacts are produced.
+    """Run the 3-UPC live smoke profile and verify report artifacts are produced.
 
     This test exercises real search queries, live page crawling, and LLM-based
     product extraction. Results are logged for human review but no pass/fail
@@ -112,13 +112,13 @@ async def test_live_smoke_runs_and_produces_report(tmp_path: Path) -> None:
 
     # Per-entry logging for detailed review
     for entry in report["entries"]:
-        sku = entry["sku"]
+        upc= entry["upc"]
         stages = entry["stages"]
         quality = entry["field_quality"]
         logger.info(
             "[%s] success=%s, stage=%s, reason=%s, "
             "quality=%.2f, discovery=%s",
-            sku,
+            upc,
             stages["end_to_end_success"],
             entry.get("failure_stage", "none"),
             entry.get("failure_reason", "none"),

@@ -39,7 +39,7 @@ class EventType(str, Enum):
     Grouped by category:
     - JOB_*: Job lifecycle events
     - SCRAPER_*: Per-scraper events
-    - SKU_*: Per-SKU processing events
+    - SKU_*: Per-UPC processing events
     - PROGRESS_*: Progress tracking events
     - SYSTEM_*: System-level events
     """
@@ -57,7 +57,7 @@ class EventType(str, Enum):
     SCRAPER_BROWSER_INIT = "scraper.browser_init"
     SCRAPER_BROWSER_RESTART = "scraper.browser_restart"
 
-    # SKU Processing
+    # UPC Processing
     SKU_PROCESSING = "upc.processing"
     SKU_SUCCESS = "upc.success"
     SKU_NOT_FOUND = "upc.not_found"
@@ -478,7 +478,7 @@ class EventEmitter:
             reason=reason,
         )
 
-    # SKU processing events
+    # UPC processing events
     def upc_processing(self, scraper: str, worker_id: str, upc: str) -> ScraperEvent:
         return self._emit(
             EventType.SKU_PROCESSING,

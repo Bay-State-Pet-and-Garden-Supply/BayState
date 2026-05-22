@@ -29,7 +29,7 @@ def test_claim_enrichment_sends_max_attempts_one():
             {
                 "id": "att-1",
                 "job_id": "job-1",
-                "sku": "001135",
+                "upc": "001135",
                 "source_url": "https://www.bradleycaldwell.com/search?term=001135",
                 "domain": "bradleycaldwell.com",
                 "mode": "mixed",
@@ -40,7 +40,7 @@ def test_claim_enrichment_sends_max_attempts_one():
                 "lease_token": "tok-1",
                 "lease_expires_at": "2026-01-01T00:00:00Z",
                 "test_mode": False,
-                "source_plan": {"sku": "001135", "schemaVersion": "v1", "extractionMode": "distributor_only"},
+                "source_plan": {"upc": "001135", "schemaVersion": "v1", "extractionMode": "distributor_only"},
             }
         ]
     }
@@ -66,7 +66,7 @@ def test_claim_enrichment_sends_max_attempts_one():
         assert isinstance(result, ClaimedEnrichment)
         assert result.attempt_id == "att-1"
         assert result.job_id == "job-1"
-        assert result.sku == "001135"
+        assert result.upc == "001135"
         assert result.target_url == "https://www.bradleycaldwell.com/search?term=001135"
         assert result.domain == "bradleycaldwell.com"
         assert result.mode == "mixed"
@@ -77,7 +77,7 @@ def test_claim_enrichment_sends_max_attempts_one():
         assert result.lease_token == "tok-1"
         assert result.lease_expires_at == "2026-01-01T00:00:00Z"
         assert result.test_mode is False
-        assert result.source_plan == {"sku": "001135", "schemaVersion": "v1", "extractionMode": "distributor_only"}
+        assert result.source_plan == {"upc": "001135", "schemaVersion": "v1", "extractionMode": "distributor_only"}
 
 
 def test_claim_enrichment_returns_none_when_no_attempts():

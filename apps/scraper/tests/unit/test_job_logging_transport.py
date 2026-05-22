@@ -41,10 +41,10 @@ def test_transport_captures_only_matching_job_logs():
         message="Retrying request",
         job_id="job-123",
         scraper_name="amazon",
-        sku="SKU-1",
+        upc="UPC-1",
         phase="request",
         details={"attempt": 2},
-        current_sku="SKU-1",
+        current_sku="UPC-1",
     )
     other_job = build_record(message="Ignore me", job_id="job-999")
 
@@ -56,10 +56,10 @@ def test_transport_captures_only_matching_job_logs():
     assert entry.runner_id == "runner-1"
     assert entry.runner_name == "runner-one"
     assert entry.scraper_name == "amazon"
-    assert entry.sku == "SKU-1"
+    assert entry.upc == "UPC-1"
     assert entry.phase == "request"
     assert entry.source == "scraper.runner"
-    assert entry.details == {"attempt": 2, "current_sku": "SKU-1"}
+    assert entry.details == {"attempt": 2, "current_sku": "UPC-1"}
     assert transport.capture(other_job) is None
     assert transport.snapshot() == [entry.to_result_payload()]
 
@@ -153,9 +153,9 @@ def test_transport_broadcasts_normalized_log_and_progress(monkeypatch):
     transport.emit_progress(
         status="running",
         progress=35,
-        message="Processing SKU-35",
+        message="Processing UPC-35",
         phase="scraping",
-        current_sku="SKU-35",
+        current_sku="UPC-35",
         items_processed=7,
         items_total=20,
         details={"chunk_index": 1},
@@ -180,7 +180,7 @@ def test_transport_broadcasts_normalized_log_and_progress(monkeypatch):
     assert realtime_manager.progress_payloads[0]["runner_id"] == "runner-1"
     assert realtime_manager.progress_payloads[0]["progress"] == 35
     assert realtime_manager.progress_payloads[0]["phase"] == "scraping"
-    assert realtime_manager.progress_payloads[0]["current_sku"] == "SKU-35"
+    assert realtime_manager.progress_payloads[0]["current_sku"] == "UPC-35"
     assert realtime_manager.progress_payloads[0]["items_processed"] == 7
     assert realtime_manager.progress_payloads[0]["items_total"] == 20
     assert realtime_manager.progress_payloads[0]["details"] == {"chunk_index": 1}
@@ -224,9 +224,9 @@ def test_transport_persists_latest_progress_snapshot():
     transport.emit_progress(
         status="running",
         progress=60,
-        message="Processing SKU-60",
+        message="Processing UPC-60",
         phase="scraping",
-        current_sku="SKU-60",
+        current_sku="UPC-60",
         items_processed=6,
         items_total=10,
     )

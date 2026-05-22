@@ -411,7 +411,7 @@ class ScraperAPIClient:
                 return None
 
             first = attempts[0]
-            logger.info(f"Claimed enrichment attempt {first.get('id')} for SKU {first.get('upc')}")
+            logger.info(f"Claimed enrichment attempt {first.get('id')} for UPC {first.get('upc')}")
             return ClaimedEnrichment(
                 attempt_id=first.get("id", ""),
                 job_id=first.get("job_id", ""),

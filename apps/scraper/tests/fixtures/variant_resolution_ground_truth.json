@@ -1,6 +1,6 @@
 [
   {
-    "sku": "OPFM-WCSDF-3.5",
+    "upc": "OPFM-WCSDF-3.5",
     "brand": "Open Farm",
     "name": "Open Farm Wild Caught Salmon Grain Free Dry Dog Food",
     "description": "Wild-caught salmon dry dog food, rich in Omega-3 for dogs. Hypoallergenic and high fiber to support digestive health.",
@@ -21,7 +21,7 @@
     }
   },
   {
-    "sku": "OPFM-HRDD-3.5",
+    "upc": "OPFM-HRDD-3.5",
     "brand": "Open Farm",
     "name": "Open Farm Homestead Turkey & Chicken Grain Free Dry Dog Food",
     "description": "Homestead turkey and chicken recipe dry dog food with ethically sourced poultry.",
@@ -42,7 +42,7 @@
     }
   },
   {
-    "sku": "072357002006",
+    "upc": "072357002006",
     "brand": "Espoma",
     "name": "Espoma Organic Blood Meal 3 lb",
     "description": "All natural organic nitrogen fertilizer. Provides a slow release of nitrogen for steady feeding.",
@@ -62,7 +62,7 @@
     }
   },
   {
-    "sku": "8818",
+    "upc": "8818",
     "brand": "Weruva",
     "name": "Weruva Cats in the Kitchen Goldie Lox Chicken & Salmon Recipe",
     "description": "Grain-free wet cat food featuring chicken and salmon in au jus.",
@@ -83,7 +83,7 @@
     }
   },
   {
-    "sku": "944",
+    "upc": "944",
     "brand": "Muenster",
     "name": "Muenster Natural Chicken & Ancient Grains Dry Dog Food",
     "description": "Slow-roasted chicken recipe with ancient grains for adult dogs.",
@@ -104,7 +104,7 @@
     }
   },
   {
-    "sku": "032247886598",
+    "upc": "032247886598",
     "brand": "Scotts",
     "name": "Scotts NatureScapes Color Enhanced Mulch Deep Forest Brown 1.5 cu ft",
     "description": "Color enhanced mulch with ColorGuard technology for year-long color. Helps soil retain moisture and prevents weeds.",
@@ -125,7 +125,7 @@
     }
   },
   {
-    "sku": "NV-DOG-LAMB-4.5",
+    "upc": "NV-DOG-LAMB-4.5",
     "brand": "Nulo",
     "name": "Nulo Freestyle Grain Free Adult Dog Food Lamb & Chickpeas",
     "description": "High-protein, grain-free dry dog food with deboned lamb as the first ingredient.",
@@ -146,7 +146,7 @@
     }
   },
   {
-    "sku": "073219020014",
+    "upc": "073219020014",
     "brand": "Espoma",
     "name": "Espoma Organic Bone Meal 3 lb",
     "description": "All natural organic phosphorus fertilizer. Promotes root development. Ideal for bulbs and transplanting.",

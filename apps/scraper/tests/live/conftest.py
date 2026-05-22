@@ -80,7 +80,7 @@ def save_html_snapshot(entry: dict[str, Any], html: str) -> Path:
     Returns the path to the saved snapshot.
     """
     SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
-    sku = entry.get("sku", "unknown").replace("/", "_")
+    upc= entry.get("upc", "unknown").replace("/", "_")
     domain = entry.get("expected_source_domain", "unknown")
     filename = f"{sku}_{domain}.html"
     path = SNAPSHOTS_DIR / filename
@@ -91,7 +91,7 @@ def save_html_snapshot(entry: dict[str, Any], html: str) -> Path:
 
 def load_html_snapshot(entry: dict[str, Any]) -> str | None:
     """Load a previously saved HTML snapshot, if it exists."""
-    sku = entry.get("sku", "unknown").replace("/", "_")
+    upc= entry.get("upc", "unknown").replace("/", "_")
     domain = entry.get("expected_source_domain", "unknown")
     filename = f"{sku}_{domain}.html"
     path = SNAPSHOTS_DIR / filename

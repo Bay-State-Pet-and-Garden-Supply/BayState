@@ -280,7 +280,7 @@ class HypothesisTracker:
         Args:
             hypothesis: The hypothesis being tested
             prompt_changes: Description of prompt changes
-            test_skus: List of SKUs to test against
+            test_skus: List of UPCs to test against
             baseline_version: Version of baseline prompt
             challenger_version: Version of challenger prompt
             allow_duplicates: Whether to allow duplicate hypotheses
@@ -500,7 +500,7 @@ class HypothesisTracker:
             if exp.test_skus:
                 lines.extend(
                     [
-                        "### Test SKUs",
+                        "### Test UPCs",
                         "",
                         ", ".join(exp.test_skus[:10])  # Show first 10
                         + (f" (+{len(exp.test_skus) - 10} more)" if len(exp.test_skus) > 10 else ""),
@@ -623,10 +623,10 @@ def main():
         help="Description of prompt changes",
     )
     create_parser.add_argument(
-        "--skus",
+        "--upcs",
         "-s",
         required=True,
-        help="Comma-separated list of test SKUs",
+        help="Comma-separated list of test UPCs",
     )
     create_parser.add_argument(
         "--baseline",
@@ -667,7 +667,7 @@ def main():
     tracker = HypothesisTracker()
 
     if args.command == "create":
-        test_skus = [s.strip() for s in args.skus.split(",")]
+        test_skus = [s.strip() for s in args.upcs.split(",")]
         try:
             exp = tracker.create_experiment(
                 hypothesis=args.hypothesis,
@@ -704,7 +704,7 @@ def main():
             print(f"Git commit: {exp.git_commit}")
             print(f"\nHypothesis: {exp.hypothesis}")
             print(f"\nPrompt Changes: {exp.prompt_changes}")
-            print(f"\nTest SKUs: {', '.join(exp.test_skus)}")
+            print(f"\nTest UPCs: {', '.join(exp.test_skus)}")
             if exp.conclusion:
                 print(f"\nConclusion: {exp.conclusion.value}")
         except KeyError:

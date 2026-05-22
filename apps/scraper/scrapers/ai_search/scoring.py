@@ -684,7 +684,7 @@ class SearchScorer:
     def classify_result_source(
         self,
         result: dict[str, Any],
-        sku: str,
+        upc: str,
         brand: Optional[str],
         product_name: Optional[str],
         official_domains: Optional[list[str]] = None,
@@ -702,7 +702,7 @@ class SearchScorer:
                 str(result.get("description") or ""),
             ]
         )
-        has_identifier = bool(sku) and sku.lower() in combined.lower()
+        has_identifier = bool(upc) and upc.lower() in combined.lower()
         expected_variant_tokens = self._matching.extract_variant_tokens(product_name)
         variant_match = bool(expected_variant_tokens) and self._matching.has_variant_token_overlap(product_name, combined)
         specific_token_overlap = self._matching.has_specific_token_overlap(product_name, combined, effective_brand)
@@ -771,7 +771,7 @@ class SearchScorer:
     def score_search_result(
         self,
         result: dict[str, Any],
-        sku: str,
+        upc: str,
         brand: Optional[str],
         product_name: Optional[str],
         category: Optional[str],
@@ -789,13 +789,13 @@ class SearchScorer:
         expected_tokens = self._matching.tokenize_keywords(product_name)
         brand_tokens = self._matching.tokenize_keywords(brand)
         path_tokens = self._path_tokens(url)
-        source_class = self.classify_result_source(result, sku, brand, product_name, official_domains=official_domains)
+        source_class = self.classify_result_source(result, upc, brand, product_name, official_domains=official_domains)
         combined_tokens = self._matching.tokenize_keywords(combined)
 
         score = 0.0
 
-        # SKU match bonus
-        if sku and sku.lower() in combined:
+        # UPC match bonus
+        if upc and upc.lower() in combined:
             score += 5.0
 
         # Brand token match
@@ -844,7 +844,7 @@ class SearchScorer:
         if source_class == "official_exact":
             # Official manufacturer PDPs are the gold-standard source.
             # The bonus must comfortably exceed major_retailer (2.5) to
-            # prevent retailers with SKU-in-URL or e-commerce signals
+            # prevent retailers with UPC-in-URL or e-commerce signals
             # from overtaking the official site.
             score += 8.0 if prefer_manufacturer else 6.0
             specific_overlap_tokens = len(specific_expected_tokens.intersection(path_tokens.union(self._matching.tokenize_keywords(title))))
@@ -912,7 +912,7 @@ class SearchScorer:
                     break
 
         if domain:
-            if sku and sku.lower() in combined or specific_overlap_count > 0 or self._matching.is_name_match(product_name, title):
+            if upc and upc.lower() in combined or specific_overlap_count > 0 or self._matching.is_name_match(product_name, title):
                 score += self._category_domain_bonus(domain, category)
             score -= self._category_mass_retailer_penalty(domain, category)
 
@@ -942,7 +942,7 @@ class SearchScorer:
         candidate: "ResolvedCandidate",
         *,
         source_result: dict[str, Any] | None,
-        sku: str,
+        upc: str,
         brand: Optional[str],
         product_name: Optional[str],
         category: Optional[str],
@@ -953,7 +953,7 @@ class SearchScorer:
         base_result = source_result or {"url": candidate.source_url}
         score = self.score_search_result(
             result=base_result,
-            sku=sku,
+            upc=upc,
             brand=brand,
             product_name=product_name,
             category=category,
@@ -968,7 +968,7 @@ class SearchScorer:
         if candidate.source_type == "official_family" and candidate.resolved_url and candidate.resolved_url != candidate.source_url:
             score += 4.0
 
-        if sku and (sku.lower() in resolved_url_text or variant_id == sku.lower()):
+        if upc and (upc.lower() in resolved_url_text or variant_id == upc.lower()):
             score += 3.0
 
         if preferred_domains and resolved_domain:
@@ -989,7 +989,7 @@ class SearchScorer:
         candidates: list["ResolvedCandidate"],
         *,
         source_results_by_url: dict[str, dict[str, Any]],
-        sku: str,
+        upc: str,
         brand: Optional[str],
         product_name: Optional[str],
         category: Optional[str],
@@ -1003,7 +1003,7 @@ class SearchScorer:
                 self.score_resolved_candidate(
                     candidate,
                     source_result=source_results_by_url.get(candidate.source_url),
-                    sku=sku,
+                    upc=upc,
                     brand=brand,
                     product_name=product_name,
                     category=category,
@@ -1019,7 +1019,7 @@ class SearchScorer:
     def pick_strong_candidate_url(
         self,
         search_results: list[dict[str, Any]],
-        sku: str,
+        upc: str,
         brand: Optional[str],
         product_name: Optional[str],
         category: Optional[str],
@@ -1034,7 +1034,7 @@ class SearchScorer:
         for result in search_results:
             score = self.score_search_result(
                 result=result,
-                sku=sku,
+                upc=upc,
                 brand=brand,
                 product_name=product_name,
                 category=category,
@@ -1055,7 +1055,7 @@ class SearchScorer:
     def prepare_search_results(
         self,
         search_results: list[dict[str, Any]],
-        sku: str,
+        upc: str,
         brand: Optional[str],
         product_name: Optional[str],
         category: Optional[str],
@@ -1081,7 +1081,7 @@ class SearchScorer:
                 result,
                 self.score_search_result(
                     result,
-                    sku,
+                    upc,
                     brand,
                     product_name,
                     category,

@@ -5,7 +5,7 @@ import math
 from dataclasses import dataclass
 
 from tests.evaluation.baseline_comparator import compare
-from tests.evaluation.ground_truth_loader import get_all_skus
+from tests.evaluation.ground_truth_loader import get_all_upcs
 from tests.finetuning.hypothesis_tracker import (
     ExperimentConclusion,
     ExperimentMetrics,
@@ -144,14 +144,14 @@ class ABTestRunner:
         if not (0.0 < confidence_level < 1.0):
             raise ValueError("confidence_level must be between 0 and 1")
 
-        skus = get_all_skus()
-        if not skus:
-            raise ValueError("no ground-truth SKUs available for baseline calibration")
+        upcs = get_all_upcs()
+        if not upcs:
+            raise ValueError("no ground-truth UPCs available for baseline calibration")
 
         baseline_snapshot = compare(
             baseline=baseline,
             challenger=challenger,
-            skus=skus,
+            upcs=upcs,
             confidence_level=confidence_level,
         )
 

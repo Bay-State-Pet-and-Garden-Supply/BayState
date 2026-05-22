@@ -42,7 +42,7 @@ Usage:
     orchestrator.enqueue("amazon", "SKU123")
     orchestrator.enqueue("petfoodex", "SKU456")
 
-    async def my_scraper(site: str, sku: str) -> dict:
+    async def my_scraper(site: str, upc: str) -> dict:
         # Your scraping logic here
         pass
 
@@ -101,7 +101,7 @@ class SchedulerEvent:
     timestamp: float = field(default_factory=time.time)
     task_id: str | None = None
     site: str | None = None
-    sku: str | None = None
+    upc: str | None = None
     message: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -109,8 +109,8 @@ class SchedulerEvent:
         parts = [f"[{self.event_type.value}]"]
         if self.site:
             parts.append(f"site={self.site}")
-        if self.sku:
-            parts.append(f"sku={self.sku}")
+        if self.upc:
+            parts.append(f"upc={self.upc}")
         if self.task_id:
             parts.append(f"task_id={self.task_id[:8]}")
         if self.message:
@@ -142,7 +142,7 @@ class ScheduledTask:
 
     task_id: str
     site: str
-    sku: str
+    upc: str
     status: TaskStatus = TaskStatus.QUEUED
     result: dict[str, Any] | None = None
     error: Exception | None = None
@@ -205,7 +205,7 @@ class SiteScheduler:
     """Scheduler for a single site with its own queue and concurrency limit.
 
     Each site maintains:
-    - A FIFO queue of SKUs to process
+    - A FIFO queue of UPCs to process
     - A semaphore limiting concurrent workers for this site
     - Statistics tracking
     """
@@ -233,7 +233,7 @@ class SiteScheduler:
         # Per-site semaphore for concurrency control
         self._site_semaphore = asyncio.Semaphore(config.effective_max_workers)
 
-        # FIFO queue for SKUs
+        # FIFO queue for UPCs
         self._queue: asyncio.Queue[ScheduledTask] = asyncio.Queue()
 
         # Track active tasks
@@ -257,11 +257,11 @@ class SiteScheduler:
             f"requires_login={config.requires_login}"
         )
 
-    def enqueue(self, sku: str) -> ScheduledTask:
-        """Add a SKU to the queue for processing.
+    def enqueue(self, upc: str) -> ScheduledTask:
+        """Add a UPC to the queue for processing.
 
         Args:
-            sku: SKU to process
+            upc: UPC to process
 
         Returns:
             ScheduledTask object for tracking
@@ -269,7 +269,7 @@ class SiteScheduler:
         task = ScheduledTask(
             task_id=str(uuid.uuid4()),
             site=self.site_name,
-            sku=sku,
+            upc=upc,
         )
         self._queue.put_nowait(task)
         self._queued_count += 1
@@ -279,7 +279,7 @@ class SiteScheduler:
                 event_type=SchedulerEventType.TASK_QUEUED,
                 task_id=task.task_id,
                 site=self.site_name,
-                sku=sku,
+                upc=upc,
                 metadata={"queue_size": self._queue.qsize()},
             )
         )
@@ -293,7 +293,7 @@ class SiteScheduler:
         """Process all queued tasks for this site.
 
         Args:
-            scraper_func: Async function to execute for each SKU
+            scraper_func: Async function to execute for each UPC
 
         Returns:
             List of completed ScheduledTask objects
@@ -377,7 +377,7 @@ class SiteScheduler:
                         event_type=SchedulerEventType.TASK_STARTED,
                         task_id=task.task_id,
                         site=self.site_name,
-                        sku=task.sku,
+                        upc=task.upc,
                         metadata={
                             "worker_id": worker_id,
                             "queue_time_ms": task.queue_time_ms,
@@ -386,7 +386,7 @@ class SiteScheduler:
                 )
 
                 try:
-                    result = await scraper_func(self.site_name, task.sku)
+                    result = await scraper_func(self.site_name, task.upc)
                     task.result = result
                     task.status = TaskStatus.COMPLETED
                     task.completed_at = time.time()
@@ -397,7 +397,7 @@ class SiteScheduler:
                             event_type=SchedulerEventType.TASK_COMPLETED,
                             task_id=task.task_id,
                             site=self.site_name,
-                            sku=task.sku,
+                            upc=task.upc,
                             metadata={
                                 "duration_ms": task.duration_ms,
                                 "worker_id": worker_id,
@@ -415,7 +415,7 @@ class SiteScheduler:
                             event_type=SchedulerEventType.TASK_CANCELLED,
                             task_id=task.task_id,
                             site=self.site_name,
-                            sku=task.sku,
+                            upc=task.upc,
                         )
                     )
                     raise
@@ -431,7 +431,7 @@ class SiteScheduler:
                             event_type=SchedulerEventType.TASK_FAILED,
                             task_id=task.task_id,
                             site=self.site_name,
-                            sku=task.sku,
+                            upc=task.upc,
                             message=str(e),
                         )
                     )
@@ -566,12 +566,12 @@ class WorkerOrchestrator:
 
         return scheduler
 
-    def enqueue(self, site_name: str, sku: str) -> ScheduledTask:
+    def enqueue(self, site_name: str, upc: str) -> ScheduledTask:
         """Add a task to a site's queue.
 
         Args:
-            site_name: Site to process the SKU
-            sku: SKU to process
+            site_name: Site to process the UPC
+            upc: UPC to process
 
         Returns:
             ScheduledTask for tracking
@@ -585,7 +585,7 @@ class WorkerOrchestrator:
                 f"Call register_site() first or pass site_configs to __init__"
             )
 
-        return self._site_schedulers[site_name].enqueue(sku)
+        return self._site_schedulers[site_name].enqueue(upc)
 
     def enqueue_batch(
         self,
@@ -594,12 +594,12 @@ class WorkerOrchestrator:
         """Enqueue multiple tasks at once.
 
         Args:
-            tasks: List of (site_name, sku) tuples
+            tasks: List of (site_name, upc) tuples
 
         Returns:
             List of ScheduledTask objects
         """
-        return [self.enqueue(site, sku) for site, sku in tasks]
+        return [self.enqueue(site, upc) for site, upc in tasks]
 
     async def run(
         self,
@@ -608,7 +608,7 @@ class WorkerOrchestrator:
         """Run all scheduled tasks across all sites.
 
         Args:
-            scraper_func: Async function(site, sku) -> dict to execute for each task
+            scraper_func: Async function(site, upc) -> dict to execute for each task
 
         Returns:
             List of all completed ScheduledTask objects

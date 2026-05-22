@@ -138,7 +138,7 @@ class Crawl4AIExtractor:
     async def _extract_with_fallback(
         self,
         url: str,
-        sku: str,
+        upc: str,
         product_name: Optional[str],
         brand: Optional[str],
         html: str,
@@ -151,7 +151,7 @@ class Crawl4AIExtractor:
         self._fallback_extractor._last_resolver_status = getattr(self, "_last_resolver_status", "ambiguous")
         return await self._fallback_extractor.extract(
             url,
-            sku,
+            upc,
             product_name,
             brand,
             html=fallback_content,
@@ -161,7 +161,7 @@ class Crawl4AIExtractor:
         self,
         *,
         url: str,
-        sku: str,
+        upc: str,
         product_name: Optional[str],
         brand: Optional[str],
         html: str,
@@ -187,7 +187,7 @@ class Crawl4AIExtractor:
         jsonld_result = self._extraction.extract_product_from_html_jsonld(
             html_text=html_text or markdown_text,
             source_url=response_url,
-            sku=sku,
+            upc=upc,
             product_name=product_name,
             brand=brand,
             matching_utils=self._matching,
@@ -205,7 +205,7 @@ class Crawl4AIExtractor:
                 expected_brand=brand,
             )
             self._log_telemetry(
-                response_url, sku, "fixture-json-ld", True, 0, parse_time_ms, 0, None,
+                response_url, upc, "fixture-json-ld", True, 0, parse_time_ms, 0, None,
                 float(jsonld_result.get("confidence", 0.0)), image_diagnostics=image_diag
             )
             return enriched_jsonld
@@ -230,14 +230,14 @@ class Crawl4AIExtractor:
                 expected_brand=brand,
             )
             self._log_telemetry(
-                response_url, sku, "fixture-meta-tags", True, 0, parse_time_ms, 0, None,
+                response_url, upc, "fixture-meta-tags", True, 0, parse_time_ms, 0, None,
                 float(meta_result.get("confidence", 0.0)), image_diagnostics=image_diag
             )
             return enriched_meta
 
         fallback_result = await self._fallback_extractor.extract(
             response_url,
-            sku,
+            upc,
             product_name,
             brand,
             html=html_text or markdown_text,
@@ -265,7 +265,7 @@ class Crawl4AIExtractor:
     async def extract_to_v1(
         self,
         url: str,
-        sku: str,
+        upc: str,
         product_name: Optional[str] = None,
         brand: Optional[str] = None,
     ) -> dict[str, Any]:
@@ -283,7 +283,7 @@ class Crawl4AIExtractor:
 
         Args:
             url: Product page URL.
-            sku: Product SKU.
+            upc: Product UPC.
             product_name: Expected product name.
             brand: Expected brand.
 
@@ -295,14 +295,14 @@ class Crawl4AIExtractor:
         start_time = time.perf_counter()
 
         # Run the standard extraction pipeline
-        raw_result = await self.extract(url=url, sku=sku, product_name=product_name, brand=brand)
+        raw_result = await self.extract(url=url, upc=upc, product_name=product_name, brand=brand)
         elapsed_ms = int((time.perf_counter() - start_time) * 1000)
 
         success = raw_result.get("success", False)
         if not success:
             return {
                 "success": False,
-                "sku": sku,
+                "upc": upc,
                 "error": raw_result.get("error", "Extraction failed"),
                 "confidence": 0.0,
                 "field_confidence": {},
@@ -325,7 +325,7 @@ class Crawl4AIExtractor:
 
         result: dict[str, Any] = {
             "success": True,
-            "sku": sku,
+            "upc": upc,
             "source_url": url,
             "extracted_url": raw_result.get("url", url),
             # Product facts (v1 contract fields)
@@ -402,7 +402,7 @@ class Crawl4AIExtractor:
     def _log_telemetry(
         self,
         url: str,
-        sku: str,
+        upc: str,
         method: str,
         success: bool,
         fetch_time_ms: int,
@@ -419,7 +419,7 @@ class Crawl4AIExtractor:
         """Log structured extraction telemetry."""
         telemetry = {
             "url": url,
-            "sku": sku,
+            "upc": upc,
             "method": method,
             "success": success,
             "fetch_time_ms": fetch_time_ms,
@@ -674,7 +674,7 @@ class Crawl4AIExtractor:
         self,
         *,
         url: str,
-        sku: str,
+        upc: str,
         product_name: Optional[str],
         brand: Optional[str],
         html: str,
@@ -683,7 +683,7 @@ class Crawl4AIExtractor:
         from scrapers.ai_search.variant_resolvers import resolve_family_variant
         return await resolve_family_variant(
             url=url,
-            sku=sku,
+            upc=upc,
             product_name=product_name,
             brand=brand,
             html=html,
@@ -695,7 +695,7 @@ class Crawl4AIExtractor:
     async def _extract_inner(
         self,
         url: str,
-        sku: str,
+        upc: str,
         product_name: Optional[str],
         brand: Optional[str],
     ) -> Optional[dict[str, Any]]:
@@ -715,7 +715,7 @@ class Crawl4AIExtractor:
 
             async def _fallback_wrapper(failed_url: str):
                 # html and markdown may be populated by the first pass before failure
-                return await self._extract_with_fallback(failed_url, sku, product_name, brand, html, markdown)
+                return await self._extract_with_fallback(failed_url, upc, product_name, brand, html, markdown)
 
             # Centralized engine configuration leveraging new features
             engine_config = {
@@ -785,7 +785,7 @@ class Crawl4AIExtractor:
 
                     resolved_url, resolved_html, resolved_markdown, res_status = await self._resolve_official_family_variant(
                         url=url,
-                        sku=sku,
+                        upc=upc,
                         product_name=product_name,
                         brand=brand,
                         html=html,
@@ -801,14 +801,14 @@ class Crawl4AIExtractor:
                     if html or markdown:
                         if self._looks_like_not_found_page(html, markdown):
                             logger.info("[AI Search] Crawl4AI fetched a not-found page, routing to fallback recovery")
-                            return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
+                            return await self._extract_with_fallback(url, upc, product_name, brand, html, markdown)
 
                         crawl4ai_content = html or markdown
                         parse_start = time.perf_counter()
                         jsonld_result = self._extraction.extract_product_from_html_jsonld(
                             html_text=crawl4ai_content,
                             source_url=url,
-                            sku=sku,
+                            upc=upc,
                             product_name=product_name,
                             brand=brand,
                             matching_utils=self._matching,
@@ -851,7 +851,7 @@ class Crawl4AIExtractor:
                                 )
                                 self._log_telemetry(
                                     url,
-                                    sku,
+                                    upc,
                                     "json-ld",
                                     True,
                                     fetch_time_ms,
@@ -914,7 +914,7 @@ class Crawl4AIExtractor:
                                 )
                                 self._log_telemetry(
                                     url,
-                                    sku,
+                                    upc,
                                     "meta-tags",
                                     True,
                                     fetch_time_ms,
@@ -931,9 +931,9 @@ class Crawl4AIExtractor:
 
                 if not result.get("success"):
                     error = result.get("error") or "Extraction failed or returned no content"
-                    self._log_telemetry(url, sku, "crawl", False, fetch_time_ms, parse_time_ms, llm_time_ms, error)
+                    self._log_telemetry(url, upc, "crawl", False, fetch_time_ms, parse_time_ms, llm_time_ms, error)
                     # Always try fallback extractor — it can fetch via HTTP if we have no HTML
-                    fallback_result = await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
+                    fallback_result = await self._extract_with_fallback(url, upc, product_name, brand, html, markdown)
 
                                         # Completeness check on fallback result: if key fields are missing
                     # or the result looks generic, try LLM extraction as a second pass
@@ -958,7 +958,7 @@ class Crawl4AIExtractor:
                                 from crawl4ai.extraction_strategy import LLMExtractionStrategy
 
                                 if self._llm_runtime.api_key:
-                                    instruction = build_extraction_instruction(sku, brand, product_name, self.prompt_version)
+                                    instruction = build_extraction_instruction(upc, brand, product_name, self.prompt_version)
                                     llm_strategy = LLMExtractionStrategy(
                                         llm_config=LLMConfig(
                                             provider=self._llm_runtime.crawl4ai_provider,
@@ -1026,7 +1026,7 @@ class Crawl4AIExtractor:
                                                 )
                                                 llm_time_ms = int((time.perf_counter() - llm_start) * 1000)
                                                 self._log_telemetry(
-                                                    url, sku, "llm", True, fetch_time_ms, 0, llm_time_ms,
+                                                    url, upc, "llm", True, fetch_time_ms, 0, llm_time_ms,
                                                     None, enriched_llm["confidence"],
                                                     pruning_enabled=True, fit_markdown_used=True,
                                                     fallback_triggered=True,
@@ -1063,13 +1063,13 @@ class Crawl4AIExtractor:
 
                     if not self._llm_runtime.api_key:
                         logger.info("[AI Search] LLM API key missing, using fallback extractor instead of LLM second pass")
-                        return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
+                        return await self._extract_with_fallback(url, upc, product_name, brand, html, markdown)
 
                     if not self._llm_runtime.base_url and "localhost" in (self._llm_runtime.model or ""):
                         logger.info("[AI Search] Local model base URL missing, using fallback extractor instead of LLM second pass")
-                        return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
+                        return await self._extract_with_fallback(url, upc, product_name, brand, html, markdown)
 
-                    instruction = build_extraction_instruction(sku, brand, product_name, self.prompt_version)
+                    instruction = build_extraction_instruction(upc, brand, product_name, self.prompt_version)
                     strategy = LLMExtractionStrategy(
                         llm_config=LLMConfig(
                             provider=self._llm_runtime.crawl4ai_provider,
@@ -1125,11 +1125,11 @@ class Crawl4AIExtractor:
                     if isinstance(extracted_content, str):
                         raw_content = extracted_content.strip()
                         if raw_content.startswith("[") and '"error"' in raw_content.lower() and "auth" in raw_content.lower():
-                            self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, llm_time_ms, "auth error")
+                            self._log_telemetry(url, upc, method, False, fetch_time_ms, 0, llm_time_ms, "auth error")
                             if jsonld_fallback:
                                 logger.info("[AI Search] LLM auth error, returning incomplete JSON-LD result as fallback")
                                 return jsonld_fallback
-                            return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
+                            return await self._extract_with_fallback(url, upc, product_name, brand, html, markdown)
 
                     try:
                         parse_start = time.perf_counter()
@@ -1147,12 +1147,12 @@ class Crawl4AIExtractor:
                             if self._is_llm_error_payload(data[0]):
                                 error_payload = data[0]
                                 llm_error = self._summarize_error(error_payload.get("content") or error_payload.get("error") or "LLM extraction error")
-                                self._log_telemetry(url, sku, method, False, fetch_time_ms, parse_time_ms, llm_time_ms, llm_error)
+                                self._log_telemetry(url, upc, method, False, fetch_time_ms, parse_time_ms, llm_time_ms, llm_error)
                                 logger.warning("[AI Search] Crawl4AI returned an error payload, using fallback extractor")
                                 if jsonld_fallback:
                                     logger.info("[AI Search] LLM error payload, returning incomplete JSON-LD result as fallback")
                                     return jsonld_fallback
-                                return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
+                                return await self._extract_with_fallback(url, upc, product_name, brand, html, markdown)
 
                             if not isinstance(data[0], dict):
                                 raise TypeError(f"Unsupported extracted_content item type: {type(data[0]).__name__}")
@@ -1168,12 +1168,12 @@ class Crawl4AIExtractor:
                             product_data = None
                     except (json.JSONDecodeError, TypeError):
                         parse_time_ms = int((time.perf_counter() - parse_start) * 1000)
-                        self._log_telemetry(url, sku, method, False, fetch_time_ms, parse_time_ms, llm_time_ms, "JSON parse error")
+                        self._log_telemetry(url, upc, method, False, fetch_time_ms, parse_time_ms, llm_time_ms, "JSON parse error")
                         logger.warning("[AI Search] Could not parse Crawl4AI extraction result, using fallback extractor")
                         if jsonld_fallback:
                             logger.info("[AI Search] LLM JSON parse error, returning incomplete JSON-LD result as fallback")
                             return jsonld_fallback
-                        return await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
+                        return await self._extract_with_fallback(url, upc, product_name, brand, html, markdown)
 
                     # Post-parse enrichment (outside try/except to avoid swallowing
                     # TypeError from _enrich_images as a JSON parse error)
@@ -1203,7 +1203,7 @@ class Crawl4AIExtractor:
                         # Log successful extraction telemetry
                         self._log_telemetry(
                             url,
-                            sku,
+                            upc,
                             method,
                             True,
                             fetch_time_ms,
@@ -1223,7 +1223,7 @@ class Crawl4AIExtractor:
                 # Log failed extraction
                 self._log_telemetry(
                     url,
-                    sku,
+                    upc,
                     method,
                     False,
                     fetch_time_ms,
@@ -1234,7 +1234,7 @@ class Crawl4AIExtractor:
                 if jsonld_fallback:
                     logger.info("[AI Search] LLM extraction failed, returning incomplete JSON-LD result as fallback")
                     return jsonld_fallback
-                fallback_res = await self._extract_with_fallback(url, sku, product_name, brand, html, markdown)
+                fallback_res = await self._extract_with_fallback(url, upc, product_name, brand, html, markdown)
                 if fallback_res.get("success"):
                     enriched_fb, image_diag = await self._enrich_images(
                         fallback_res,
@@ -1260,30 +1260,30 @@ class Crawl4AIExtractor:
 
             if is_none_error or is_type_error:
                 logger.warning("[AI Search] Crawl4AI content handling error detected, using fallback extractor")
-                self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, llm_time_ms, "content type error")
+                self._log_telemetry(url, upc, method, False, fetch_time_ms, 0, llm_time_ms, "content type error")
                 if not html and not markdown:
                     return {"success": False, "error": "Crawl4AI returned invalid content type"}
                 # Ensure html/markdown are strings before passing to fallback
                 safe_html = html if isinstance(html, str) else ""
                 safe_markdown = markdown if isinstance(markdown, str) else ""
                 # Always try fallback — it can fetch via HTTP if we have no content
-                return await self._extract_with_fallback(url, sku, product_name, brand, safe_html, safe_markdown)
+                return await self._extract_with_fallback(url, upc, product_name, brand, safe_html, safe_markdown)
 
             safe_html = html if isinstance(html, str) else ""
             safe_markdown = markdown if isinstance(markdown, str) else ""
-            self._log_telemetry(url, sku, method, False, fetch_time_ms, 0, llm_time_ms, error_message)
+            self._log_telemetry(url, upc, method, False, fetch_time_ms, 0, llm_time_ms, error_message)
             # Always try fallback — it can fetch via HTTP if we have no content
-            return await self._extract_with_fallback(url, sku, product_name, brand, safe_html, safe_markdown)
+            return await self._extract_with_fallback(url, upc, product_name, brand, safe_html, safe_markdown)
 
     async def extract(
         self,
         url: str,
-        sku: str,
+        upc: str,
         product_name: Optional[str],
         brand: Optional[str],
     ) -> Optional[dict[str, Any]]:
         """Extract product data using centralized Crawl4AIEngine with variant resolution."""
-        result = await self._extract_inner(url, sku, product_name, brand)
+        result = await self._extract_inner(url, upc, product_name, brand)
         import sys
         if isinstance(result, dict) and not ("pytest" in sys.modules or "unittest" in sys.modules):
             result["resolver_status"] = getattr(self, "_last_resolver_status", "ambiguous")
@@ -1307,7 +1307,7 @@ class FallbackExtractor:
     def _log_telemetry(
         self,
         url: str,
-        sku: str,
+        upc: str,
         method: str,
         success: bool,
         fetch_time_ms: int,
@@ -1319,7 +1319,7 @@ class FallbackExtractor:
         """Log structured extraction telemetry."""
         telemetry = {
             "url": url,
-            "sku": sku,
+            "upc": upc,
             "method": method,
             "success": success,
             "fetch_time_ms": fetch_time_ms,
@@ -1342,7 +1342,7 @@ class FallbackExtractor:
 
     def _build_search_queries(
         self,
-        sku: str,
+        upc: str,
         product_name: Optional[str],
         brand: Optional[str],
     ) -> list[str]:
@@ -1353,7 +1353,7 @@ class FallbackExtractor:
             if text and text not in queries:
                 queries.append(text)
 
-        _append(sku)
+        _append(upc)
         _append(product_name)
         if product_name and brand:
             brand_prefix = re.compile(rf"^\s*{re.escape(self._extraction.clean_text(brand))}[\s:,\-]*", flags=re.IGNORECASE)
@@ -1388,7 +1388,7 @@ class FallbackExtractor:
         source_url: str,
         search_url: str,
         search_html: str,
-        sku: str,
+        upc: str,
         product_name: Optional[str],
         brand: Optional[str],
     ) -> list[str]:
@@ -1421,7 +1421,7 @@ class FallbackExtractor:
                 label = self._extraction.normalize_product_title(parsed.path.rstrip("/").split("/")[-1].replace("-", " "))
 
             score = 0.0
-            has_exact_identifier = bool(sku) and sku.lower() in f"{label} {absolute_url}".lower()
+            has_exact_identifier = bool(upc) and upc.lower() in f"{label} {absolute_url}".lower()
             name_matches = self._has_strong_search_name_match(product_name, brand, label)
             if has_exact_identifier:
                 score += 6.0
@@ -1445,14 +1445,14 @@ class FallbackExtractor:
         self,
         *,
         source_url: str,
-        sku: str,
+        upc: str,
         product_name: Optional[str],
         brand: Optional[str],
         client: Any | None = None,
     ) -> Optional[dict[str, Any]]:
         import httpx
 
-        queries = self._build_search_queries(sku, product_name, brand)
+        queries = self._build_search_queries(upc, product_name, brand)
         if not queries:
             return None
 
@@ -1472,14 +1472,14 @@ class FallbackExtractor:
                         source_url=source_url,
                         search_url=str(response.url),
                         search_html=search_html,
-                        sku=sku,
+                        upc=upc,
                         product_name=product_name,
                         brand=brand,
                     ):
                         logger.info(f"[AI Search] Attempting stale-URL recovery via site search: {source_url} -> {candidate_url}")
                         recovered = await self.extract(
                             candidate_url,
-                            sku,
+                            upc,
                             product_name,
                             brand,
                             recovery_attempted=True,
@@ -1497,7 +1497,7 @@ class FallbackExtractor:
     async def extract(
         self,
         url: str,
-        sku: str,
+        upc: str,
         product_name: Optional[str],
         brand: Optional[str],
         html: Optional[str] = None,
@@ -1507,7 +1507,7 @@ class FallbackExtractor:
 
         Args:
             url: Product page URL.
-            sku: Expected product SKU.
+            upc: Expected product UPC.
             product_name: Expected product name, if known.
             brand: Expected brand, if known.
             html: Pre-fetched HTML to parse. When empty or omitted, the extractor
@@ -1539,7 +1539,7 @@ class FallbackExtractor:
                         if not recovery_attempted:
                             recovered = await self._recover_from_site_search(
                                 source_url=response_url,
-                                sku=sku,
+                                upc=upc,
                                 product_name=product_name,
                                 brand=brand,
                                 client=client,
@@ -1556,13 +1556,13 @@ class FallbackExtractor:
                 if not recovery_attempted:
                     recovered = await self._recover_from_site_search(
                         source_url=response_url,
-                        sku=sku,
+                        upc=upc,
                         product_name=product_name,
                         brand=brand,
                     )
                 if recovered is not None:
                     return recovered
-                self._log_telemetry(response_url, sku, "fallback", False, fetch_time_ms, 0, "not found page")
+                self._log_telemetry(response_url, upc, "fallback", False, fetch_time_ms, 0, "not found page")
                 return {
                     "success": False,
                     "error": "Fallback extraction landed on a not-found page",
@@ -1571,7 +1571,7 @@ class FallbackExtractor:
             jsonld_result = self._extraction.extract_product_from_html_jsonld(
                 html_text=html_text,
                 source_url=response_url,
-                sku=sku,
+                upc=upc,
                 product_name=product_name,
                 brand=brand,
                 matching_utils=self._matching,
@@ -1585,7 +1585,7 @@ class FallbackExtractor:
                     self._grounding_redirect_resolver, self._extraction.coerce_string_list(jsonld_result.get("images"))
                 )
                 # Log JSON-LD extraction success
-                self._log_telemetry(response_url, sku, "jsonld", True, fetch_time_ms, parse_time_ms, None, jsonld_result.get("confidence", 0.0))
+                self._log_telemetry(response_url, upc, "jsonld", True, fetch_time_ms, parse_time_ms, None, jsonld_result.get("confidence", 0.0))
                 return jsonld_result
 
             # Fallback to meta tags
@@ -1613,14 +1613,14 @@ class FallbackExtractor:
                 expected_name=product_name,
             )
             if candidate_name and product_name and not self._matching.is_name_match(product_name, candidate_name):
-                self._log_telemetry(response_url, sku, "meta", False, fetch_time_ms, parse_time_ms, "title mismatch")
+                self._log_telemetry(response_url, upc, "meta", False, fetch_time_ms, parse_time_ms, "title mismatch")
                 return {
                     "success": False,
                     "error": "Fallback extraction title does not match expected product",
                 }
 
             if brand and candidate_name and not self._matching.is_brand_match(brand, inferred_brand or candidate_name, response_url):
-                self._log_telemetry(response_url, sku, "meta", False, fetch_time_ms, parse_time_ms, "brand mismatch")
+                self._log_telemetry(response_url, upc, "meta", False, fetch_time_ms, parse_time_ms, "brand mismatch")
                 return {
                     "success": False,
                     "error": "Fallback extraction brand/domain does not match expected context",
@@ -1628,12 +1628,12 @@ class FallbackExtractor:
 
             if not candidate_name or not images:
                 if http_status is not None and http_status >= 400:
-                    self._log_telemetry(response_url, sku, "fallback", False, fetch_time_ms, parse_time_ms, f"http {http_status}")
+                    self._log_telemetry(response_url, upc, "fallback", False, fetch_time_ms, parse_time_ms, f"http {http_status}")
                     return {
                         "success": False,
                         "error": f"Fallback extraction received HTTP {http_status} with no usable product data",
                     }
-                self._log_telemetry(response_url, sku, "meta", False, fetch_time_ms, parse_time_ms, "no structured data")
+                self._log_telemetry(response_url, upc, "meta", False, fetch_time_ms, parse_time_ms, "no structured data")
                 return {
                     "success": False,
                     "error": "Fallback extraction found no structured product data",
@@ -1665,7 +1665,7 @@ class FallbackExtractor:
             confidence = min(confidence, 0.85)
 
             # Log meta extraction success
-            self._log_telemetry(response_url, sku, "meta", True, fetch_time_ms, parse_time_ms, None, confidence)
+            self._log_telemetry(response_url, upc, "meta", True, fetch_time_ms, parse_time_ms, None, confidence)
 
             return {
                 "success": True,
@@ -1681,7 +1681,7 @@ class FallbackExtractor:
 
         except Exception as error:
             fetch_time_ms = int((time.perf_counter() - fetch_start) * 1000)
-            self._log_telemetry(url, sku, "fallback", False, fetch_time_ms, 0, str(error))
+            self._log_telemetry(url, upc, "fallback", False, fetch_time_ms, 0, str(error))
             return {
                 "success": False,
                 "error": f"Fallback extraction failed: {error}",

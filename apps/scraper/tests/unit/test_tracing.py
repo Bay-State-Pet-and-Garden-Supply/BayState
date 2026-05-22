@@ -118,10 +118,10 @@ class TestTracingCollector:
 
     @pytest.mark.asyncio
     async def test_start_with_sku_and_job_id(self, temp_traces_dir, mock_context):
-        """Test that start() includes SKU and job ID in filename."""
+        """Test that start() includes UPC and job ID in filename."""
         collector = TracingCollector(traces_dir=temp_traces_dir)
 
-        await collector.start(mock_context, "amazon", sku="ABC123", job_id="job-456")
+        await collector.start(mock_context, "amazon", upc="ABC123", job_id="job-456")
 
         assert "amazon_ABC123_job-456_" in str(collector._current_trace_path)
         assert collector._current_trace_path.suffix == ".zip"
@@ -475,7 +475,7 @@ class TestTracingIntegration:
         collector = TracingCollector(traces_dir=temp_traces_dir)
 
         # Simulate a successful scrape
-        await collector.start(mock_context, "amazon", sku="SKU123")
+        await collector.start(mock_context, "amazon", upc="SKU123")
 
         # Verify trace started
         assert collector._is_collecting is True
@@ -497,7 +497,7 @@ class TestTracingIntegration:
         trace_path = temp_traces_dir / "test_failure.zip"
         trace_path.write_bytes(b"dummy trace data")
 
-        await collector.start(mock_context, "amazon", sku="SKU123")
+        await collector.start(mock_context, "amazon", upc="SKU123")
         collector._current_trace_path = trace_path
 
         # Stop with saving (failure case)
@@ -513,7 +513,7 @@ class TestTracingIntegration:
         collector = TracingCollector(traces_dir=temp_traces_dir)
 
         for i in range(3):
-            await collector.start(mock_context, "test_site", sku=f"SKU{i}")
+            await collector.start(mock_context, "test_site", upc=f"UPC{i}")
             assert collector._is_collecting is True
 
             await collector.stop(mock_context, save=False)

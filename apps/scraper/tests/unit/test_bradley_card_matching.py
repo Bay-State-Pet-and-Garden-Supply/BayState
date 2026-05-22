@@ -10,7 +10,7 @@ from scrapers.approved_sources.adapters.bradley import BradleyAdapter
 from scrapers.approved_sources.types import ApprovedSourcePlanEntry, ApprovedSourcePlan
 
 
-def _make_minimal_plan(sku: str) -> ApprovedSourcePlan:
+def _make_minimal_plan(upc: str) -> ApprovedSourcePlan:
     from scrapers.approved_sources.types import ApprovedSourcePolicy
     policy = ApprovedSourcePolicy(
         allowedDomains=["bradleycaldwell.com"],
@@ -19,7 +19,7 @@ def _make_minimal_plan(sku: str) -> ApprovedSourcePlan:
         approvedSourcesOnly=False,
     )
     return ApprovedSourcePlan(
-        sku=sku,
+        upc=sku,
         brand=None,
         input={"name": "E-Z HANG SCALE"},
         sourcePolicy=policy,
@@ -40,7 +40,7 @@ def _make_entry() -> ApprovedSourcePlanEntry:
 
 
 def test_bradley_headless_card_matching_by_container_sku() -> None:
-    """Test that Bradley adapter successfully matches a product card when SKU is only in parent container text, not in the link URL."""
+    """Test that Bradley adapter successfully matches a product card when UPC is only in parent container text, not in the link URL."""
     html_content = """
     <!DOCTYPE html>
     <html>
@@ -60,7 +60,7 @@ def test_bradley_headless_card_matching_by_container_sku() -> None:
         <div>BCI#: 999999</div>
       </div>
 
-      <!-- Target Card: BCI# matches searched SKU "001135", but link href does NOT contain "001135" -->
+      <!-- Target Card: BCI# matches searched UPC "001135", but link href does NOT contain "001135" -->
       <div class="card-container">
         <div class="inner-card">
           <a class="product-title-link" href="/e-z-hang-scale-silver-up-to-55-lb">
@@ -82,7 +82,7 @@ def test_bradley_headless_card_matching_by_container_sku() -> None:
     </html>
     """
 
-    plan = _make_minimal_plan(sku="001135")
+    plan = _make_minimal_plan(upc="001135")
     entry = _make_entry()
     adapter = BradleyAdapter(entry, plan)
 
@@ -112,7 +112,7 @@ def test_bradley_headless_card_matching_flexible_regexes() -> None:
     </div>
     """
 
-    plan = _make_minimal_plan(sku="001135")
+    plan = _make_minimal_plan(upc="001135")
     entry = _make_entry()
     adapter = BradleyAdapter(entry, plan)
 

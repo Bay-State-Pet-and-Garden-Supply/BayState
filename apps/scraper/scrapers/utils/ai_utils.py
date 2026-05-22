@@ -117,7 +117,7 @@ def get_hardcoded_prompt() -> str:
     return """Extract structured product data for a single product detail page.
 
 TARGET HINTS
-- SKU: {sku}
+- UPC: {upc}
 - Expected Brand (soft hint): {brand}
 - Expected Product Name (soft hint): {product_name}
 
@@ -161,7 +161,7 @@ OUTPUT
 - If a text field cannot be verified, return an empty string.
 - If a list field cannot be verified, return []."""
 
-def build_extraction_instruction(sku: str, brand: Optional[str], product_name: Optional[str], prompt_version: str = "v1") -> str:
+def build_extraction_instruction(upc: str, brand: Optional[str], product_name: Optional[str], prompt_version: str = "v1") -> str:
     """Build the LLM extraction instruction."""
     prompt_template = load_prompt_from_file(prompt_version)
 
@@ -176,7 +176,7 @@ def build_extraction_instruction(sku: str, brand: Optional[str], product_name: O
     brand_str = brand if brand else "Unknown"
     product_name_str = product_name if product_name else "Unknown"
 
-    return prompt_template.format(sku=sku, brand=brand_str, product_name=product_name_str)
+    return prompt_template.format(upc=upc, brand=brand_str, product_name=product_name_str)
 
 
 def compute_meta_confidence(

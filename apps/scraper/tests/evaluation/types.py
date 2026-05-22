@@ -44,7 +44,7 @@ class SizeMetrics:
 class GroundTruthProduct:
     """Ground truth data for a product used in evaluation."""
 
-    sku: str
+    upc: str
     brand: str
     name: str
     description: str
@@ -58,7 +58,7 @@ class GroundTruthProduct:
 class EvaluationResult:
     """Result of evaluating an AI extraction against ground truth."""
 
-    sku: str
+    upc: str
     success: bool
     field_comparisons: list[FieldComparison]
     accuracy: float  # Overall accuracy score 0.0 to 1.0

@@ -16,7 +16,7 @@ from benchmarks.ai_search.report import build_report, write_report
 def test_build_report_structure() -> None:
     rows = [
         EndToEndResultRow(
-            sku="SKU-1",
+            upc="UPC-1",
             brand="A",
             product_name="One",
             expected_source_url="https://a.com/1",
@@ -50,7 +50,7 @@ def test_build_report_structure() -> None:
     assert len(report["entries"]) == 1
 
     entry = report["entries"][0]
-    assert entry["sku"] == "SKU-1"
+    assert entry["upc"] == "UPC-1"
     assert entry["stages"]["end_to_end_success"] is True
     assert entry["field_quality"]["brand_score"] == 1.0
     assert entry["extraction_metadata"]["method"] == "json-ld"
@@ -60,7 +60,7 @@ def test_build_report_structure() -> None:
 def test_write_report_creates_json_and_md(tmp_path: Path) -> None:
     rows = [
         EndToEndResultRow(
-            sku="SKU-1",
+            upc="UPC-1",
             brand="A",
             product_name="One",
             expected_source_url="https://a.com/1",
@@ -99,4 +99,4 @@ def test_write_report_creates_json_and_md(tmp_path: Path) -> None:
     md_content = md_path.read_text(encoding="utf-8")
     assert "# AI Search End-to-End Benchmark Report" in md_content
     assert "## Summary" in md_content
-    assert "SKU-1" in md_content
+    assert "UPC-1" in md_content

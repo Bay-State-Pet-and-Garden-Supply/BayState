@@ -225,7 +225,7 @@ def test_extract_product_from_html_jsonld_supports_demandware_variation_payload(
     result = utils.extract_product_from_html_jsonld(
         html_text=__import__("json").dumps(payload),
         source_url="https://scottsmiraclegro.com/en-us/brands/scotts/products/browse-all-scotts-products/scotts-nature-scapes-color-enhanced-mulch.html",
-        sku="032247884594",
+        upc="032247884594",
         product_name="Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
         brand="Scotts",
         matching_utils=utils._matching,

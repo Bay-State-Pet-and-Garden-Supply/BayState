@@ -6,7 +6,7 @@
   "items": {
     "type": "object",
     "required": [
-      "sku",
+      "upc",
       "brand",
       "name",
       "expected_source_url",
@@ -15,9 +15,9 @@
       "expected_fields"
     ],
     "properties": {
-      "sku": {
+      "upc": {
         "type": "string",
-        "description": "Product UPC/SKU identifier. Must be a non-empty string.",
+        "description": "Product UPC/UPC identifier. Must be a non-empty string.",
         "minLength": 1
       },
       "brand": {
@@ -93,7 +93,7 @@
             "price",
             "images",
             "size_metrics",
-            "sku",
+            "upc",
             "categories"
           ]
         },

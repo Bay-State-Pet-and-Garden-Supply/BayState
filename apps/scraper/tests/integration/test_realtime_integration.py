@@ -118,7 +118,7 @@ async def test_should_broadcast_logs_to_supabase_realtime(realtime_manager: Real
         "message": "Runner started",
         "source": "scraper.runner",
         "scraper_name": "amazon",
-        "sku": None,
+        "upc": None,
         "phase": "init",
         "sequence": 1,
         "details": {},

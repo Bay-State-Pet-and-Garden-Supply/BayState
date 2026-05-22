@@ -38,12 +38,12 @@ class TracingCollector:
         collector = TracingCollector(traces_dir="traces", retention_days=7)
 
         # Using context manager (recommended)
-        async with collect_traces(collector, browser.context, "amazon", sku="ABC123"):
+        async with collect_traces(collector, browser.context, "amazon", upc="ABC123"):
             # Execute scraper logic here
             await scrape_page()
 
         # Or using start/stop directly
-        await collector.start(browser.context, "amazon", sku="ABC123")
+        await collector.start(browser.context, "amazon", upc="ABC123")
         try:
             await scrape_page()
         except Exception:
@@ -82,7 +82,7 @@ class TracingCollector:
         self,
         context: BrowserContext,
         site_name: str,
-        sku: Optional[str] = None,
+        upc: Optional[str] = None,
         job_id: Optional[str] = None,
     ) -> None:
         """Start collecting traces for the given browser context.
@@ -90,7 +90,7 @@ class TracingCollector:
         Args:
             context: Playwright BrowserContext to trace
             site_name: Name of the site being scraped
-            sku: Optional SKU identifier for the scrape
+            upc: Optional UPC identifier for the scrape
             job_id: Optional job ID for the scrape
 
         Raises:
@@ -109,8 +109,8 @@ class TracingCollector:
         # Generate trace filename with timestamp for uniqueness
         timestamp = int(time.time())
         parts = [site_name]
-        if sku:
-            parts.append(sku)
+        if upc:
+            parts.append(upc)
         if job_id:
             parts.append(job_id)
         parts.append(str(timestamp))
@@ -274,7 +274,7 @@ async def collect_traces(
     collector: TracingCollector,
     context: BrowserContext,
     site_name: str,
-    sku: Optional[str] = None,
+    upc: Optional[str] = None,
     job_id: Optional[str] = None,
 ):
     """Context manager for trace collection.
@@ -285,7 +285,7 @@ async def collect_traces(
         collector: TracingCollector instance
         context: Playwright BrowserContext to trace
         site_name: Name of the site being scraped
-        sku: Optional SKU identifier
+        upc: Optional UPC identifier
         job_id: Optional job ID
 
     Yields:
@@ -299,7 +299,7 @@ async def collect_traces(
             await scrape_page()
         # If no exception, trace is discarded
     """
-    await collector.start(context, site_name, sku, job_id)
+    await collector.start(context, site_name, upc, job_id)
     try:
         yield collector
     except Exception:

@@ -2,7 +2,7 @@
 
 Legacy config: legacy-scraper-archive/configs/bradley.yaml
 Base URL: https://www.bradleycaldwell.com
-Search: /search?term={sku}
+Search: /search?term={upc}
 Auth: None
 """
 
@@ -31,16 +31,16 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
     source_slug = "bradley"
     source_type = "distributor"
     base_url = "https://www.bradleycaldwell.com"
-    search_url_template = "https://www.bradleycaldwell.com/search?term={sku}"
+    search_url_template = "https://www.bradleycaldwell.com/search?term={upc}"
     requires_auth = False
 
     def __init__(self, entry: ApprovedSourcePlanEntry, plan: ApprovedSourcePlan):
         super().__init__(entry, plan)
         self._product_page_url: str | None = None
 
-    def build_search_url(self, sku: str) -> str:
-        """Build the Bradley search URL from a SKU."""
-        return self.search_url_template.format(sku=sku)
+    def build_search_url(self, upc: str) -> str:
+        """Build the Bradley search URL from a UPC."""
+        return self.search_url_template.format(upc=upc)
 
     async def _post_process_extraction(
         self,
@@ -99,7 +99,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
         return det_result
 
     def extract_from_html(
-        self, html: str, sku: str, url: str
+        self, html: str, upc: str, url: str
     ) -> ApprovedSourceExtractionResult:
         """Extract product data from Bradley Caldwell HTML using legacy-inspired selectors.
 
@@ -129,7 +129,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
             from bs4 import BeautifulSoup
         except ImportError:
             # Fallback: basic string-based extraction
-            return self._extract_with_regex(html, sku, url)
+            return self._extract_with_regex(html, upc, url)
 
         soup = BeautifulSoup(html, "html.parser")
 
@@ -219,7 +219,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
         # Check if we found enough
         if not product.get("name"):
             # Try BigCommerce headless structure (2025+ site redesign)
-            self._extract_bigcommerce_headless(soup, sku, product, matched, warnings)
+            self._extract_bigcommerce_headless(soup, upc, product, matched, warnings)
 
         if not product.get("name"):
             # Check for no-results message
@@ -229,7 +229,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
             if no_results:
                 result.success = False
                 result.failure_code = FailureCode.NO_MATCH
-                result.failure_message = f"No match found for SKU {sku}"
+                result.failure_message = f"No match found for UPC {upc}"
             else:
                 result.success = False
                 result.failure_code = FailureCode.EXTRACTION_FAILED
@@ -255,7 +255,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
     def _extract_bigcommerce_headless(
         self,
         soup: Any,
-        sku: str,
+        upc: str,
         product: dict,
         matched: list[str],
         warnings: list[str],
@@ -264,20 +264,20 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
 
         The new site uses Tailwind CSS classes and client-side rendering.
         Product data appears in search results as:
-        - Name: link with href like /product-slug-sku -> "E-Z HANG SCALE"
+        - Name: link with href like /product-slug-upc -> "E-Z HANG SCALE"
         - Brand: span.block.text-sm ("KERBL")
         - Details: text content with patterns like "BCI#:001135"
         """
         # Find product links that look like product pages
         # BigCommerce headless uses slug-based URLs like /e-z-hang-scale-silver-up-to-55-lb-001135
         # We iterate over all a[href] links, skip non-product links, climb up the DOM tree (max 5 levels),
-        # and search if the SKU (UPC or BCI#) is in the container's text or the link's href.
+        # and search if the UPC (UPC or BCI#) is in the container's text or the link's href.
         product_link = None
         product_container = None
         found_card = False
 
-        # Clean SKU for matching
-        sku_clean = re.sub(r'[^a-zA-Z0-9]', '', sku.lower())
+        # Clean UPC for matching
+        sku_clean = re.sub(r'[^a-zA-Z0-9]', '', upc.lower())
 
         for a in soup.select('a[href]'):
             href = a.get('href', '')
@@ -323,8 +323,8 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
                 container_text_lower = container_text.lower()
                 
                 # Check direct substring match
-                sku_in_text = sku.lower() in container_text_lower
-                sku_in_href = sku.lower() in href_lower
+                sku_in_text = upc.lower() in container_text_lower
+                sku_in_href = upc.lower() in href_lower
                 
                 # Check normalized match
                 norm_container_text = re.sub(r'[^a-zA-Z0-9]', '', container_text_lower)
@@ -400,7 +400,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
                 matched.append('image_urls')
 
     def _extract_with_regex(
-        self, html: str, sku: str, url: str
+        self, html: str, upc: str, url: str
     ) -> ApprovedSourceExtractionResult:
         """Fallback regex-based extraction when BeautifulSoup is not available."""
         result = ApprovedSourceExtractionResult(
@@ -423,7 +423,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
         if re.search(r"Sorry, no results for", html, re.I):
             result.success = False
             result.failure_code = FailureCode.NO_MATCH
-            result.failure_message = f"No match found for SKU {sku}"
+            result.failure_message = f"No match found for UPC {upc}"
             return result
 
         if not product.get("name"):

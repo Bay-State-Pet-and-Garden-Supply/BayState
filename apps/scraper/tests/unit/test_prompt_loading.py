@@ -58,8 +58,8 @@ class TestPromptLoading:
         prompt = load_prompt_from_file("v1")
 
         assert prompt is not None
-        assert "Extract structured product data for a single SKU-locked product page" in prompt
-        assert "{sku}" in prompt
+        assert "Extract structured product data for a single UPC-locked product page" in prompt
+        assert "{upc}" in prompt
         assert "{brand" in prompt
         assert "{product_name" in prompt
 
@@ -67,7 +67,7 @@ class TestPromptLoading:
         prompt = load_prompt_from_file("v2")
 
         assert prompt is not None
-        assert "Extract structured product data for a single SKU-locked product page" in prompt
+        assert "Extract structured product data for a single UPC-locked product page" in prompt
         assert "PRICE NORMALIZATION" in prompt
         assert "AVAILABILITY NORMALIZATION" in prompt
         assert "price: required" in prompt
@@ -88,7 +88,7 @@ class TestPromptLoading:
             assert prompt is None
 
         instruction = build_extraction_instruction(
-            sku="TEST123",
+            upc="TEST123",
             brand="TestBrand",
             product_name="Test Product",
             prompt_version="nonexistent",
@@ -110,24 +110,24 @@ class TestPromptLoading:
         assert prompt2 == "CACHED PROMPT"
 
     def test_variable_substitution_sku(self):
-        instruction = build_extraction_instruction(sku="SKU12345", brand=None, product_name=None)
+        instruction = build_extraction_instruction(upc="SKU12345", brand=None, product_name=None)
 
         assert "SKU12345" in instruction
         assert "Unknown" in instruction
 
     def test_variable_substitution_brand(self):
-        instruction = build_extraction_instruction(sku="SKU12345", brand="Acme Brand", product_name=None)
+        instruction = build_extraction_instruction(upc="SKU12345", brand="Acme Brand", product_name=None)
 
         assert "Acme Brand" in instruction
 
     def test_variable_substitution_product_name(self):
-        instruction = build_extraction_instruction(sku="SKU12345", brand=None, product_name="Amazing Product")
+        instruction = build_extraction_instruction(upc="SKU12345", brand=None, product_name="Amazing Product")
 
         assert "Amazing Product" in instruction
 
     def test_variable_substitution_all_fields(self):
         instruction = build_extraction_instruction(
-            sku="ABC-123-XYZ",
+            upc="ABC-123-XYZ",
             brand="Premium Brand",
             product_name="Super Widget Pro",
         )
@@ -168,7 +168,7 @@ class TestHardcodedPrompt:
     def test_hardcoded_prompt_has_all_placeholders(self):
         prompt = get_hardcoded_prompt()
 
-        assert "{sku}" in prompt
+        assert "{upc}" in prompt
         assert "{brand}" in prompt
         assert "{product_name}" in prompt
 
@@ -203,9 +203,9 @@ class TestPromptVersionHandling:
         assert "PRICE NORMALIZATION" in prompt
 
     def test_fstring_syntax_conversion(self):
-        instruction = build_extraction_instruction(sku="TEST-SKU", brand=None, product_name=None)
+        instruction = build_extraction_instruction(upc="TEST-UPC", brand=None, product_name=None)
 
-        assert "TEST-SKU" in instruction
+        assert "TEST-UPC" in instruction
         assert "Unknown" in instruction
         assert '{brand or "Unknown"}' not in instruction
         assert '{product_name or "Unknown"}' not in instruction

@@ -145,12 +145,12 @@ class TestJSONFormatter:
         logger.addHandler(handler)
 
         logger.info(
-            "Processing SKU",
+            "Processing UPC",
             extra={
                 "job_id": "job-123",
                 "scraper_name": "amazon",
                 "trace_id": "abc12345",
-                "sku": "TEST-SKU",
+                "upc": "TEST-UPC",
             },
         )
 
@@ -160,7 +160,7 @@ class TestJSONFormatter:
         assert parsed["job_id"] == "job-123"
         assert parsed["scraper_name"] == "amazon"
         assert parsed["trace_id"] == "abc12345"
-        assert parsed["sku"] == "TEST-SKU"
+        assert parsed["upc"] == "TEST-UPC"
 
     def test_format_error_with_exception(self):
         """Test log formatting with exception info."""

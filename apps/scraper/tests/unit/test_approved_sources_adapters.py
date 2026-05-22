@@ -20,14 +20,14 @@ from scrapers.approved_sources.types import (
 
 
 def _make_plan(
-    sku: str = "001135",
+    upc: str = "001135",
     brand_name: str = "KERBL",
     selected_distributor: str | None = "bradley",
     name: str = "E-Z HANG SCALE",
     brand_slug: str = "kerbl",
 ) -> ApprovedSourcePlan:
     return ApprovedSourcePlan(
-        sku=sku,
+        upc=sku,
         input={"name": name, "price": None},
         brand=ApprovedSourceBrand(id="brand-1", name=brand_name, slug=brand_slug),
         selectedDistributorSlug=selected_distributor,
@@ -41,7 +41,7 @@ def _make_plan(
                 adapterSlug="bradley_crawl4ai",
                 requiresAuth=False,
                 searchMode="sku_search",
-                allowedFields=["name", "brand", "sku", "image_urls"],
+                allowedFields=["name", "brand", "upc", "image_urls"],
                 priority=10,
                 runFirst=True,
             )
@@ -69,7 +69,7 @@ def _make_entry(
         adapterSlug=adapter,
         requiresAuth=auth,
         searchMode="sku_search",
-        allowedFields=["name", "brand", "sku", "image_urls"],
+        allowedFields=["name", "brand", "upc", "image_urls"],
         priority=10,
         runFirst=True,
     )
@@ -82,7 +82,7 @@ class TestBradleyAdapter:
         from scrapers.approved_sources.adapters.bradley import BradleyAdapter
 
         entry = _make_entry()
-        plan = _make_plan(sku="001135")
+        plan = _make_plan(upc="001135")
         adapter = BradleyAdapter(entry, plan)
 
         url = adapter.build_search_url("001135")
@@ -117,7 +117,7 @@ class TestCentralPetAdapter:
         from scrapers.approved_sources.adapters.central_pet import CentralPetAdapter
 
         entry = _make_entry(slug="central_pet", adapter="central_pet_crawl4ai", domains=["centralpet.com"])
-        plan = _make_plan(sku="38777520")
+        plan = _make_plan(upc="38777520")
         adapter = CentralPetAdapter(entry, plan)
 
         url = adapter.build_search_url("38777520")
@@ -147,7 +147,7 @@ class TestOrgillAdapter:
         from scrapers.approved_sources.adapters.orgill import OrgillAdapter
 
         entry = _make_entry(slug="orgill", adapter="orgill_crawl4ai", domains=["orgill.com"], auth=True)
-        plan = _make_plan(sku="037193347322")
+        plan = _make_plan(upc="037193347322")
         adapter = OrgillAdapter(entry, plan)
 
         url = adapter.build_search_url("037193347322")
@@ -158,7 +158,7 @@ class TestOrgillAdapter:
         from scrapers.approved_sources.adapters.orgill import OrgillAdapter
 
         entry = _make_entry(slug="orgill", adapter="orgill_crawl4ai", domains=["orgill.com"], auth=True)
-        plan = _make_plan(sku="A B/C#1")
+        plan = _make_plan(upc="A B/C#1")
         adapter = OrgillAdapter(entry, plan)
 
         url = adapter.build_search_url("A B/C#1")
@@ -177,7 +177,7 @@ class TestOrgillAdapter:
         from scrapers.approved_sources.types import FailureCode
 
         entry = _make_entry(slug="orgill", adapter="orgill_crawl4ai", domains=["orgill.com"], auth=True)
-        plan = _make_plan(sku="037193347322")
+        plan = _make_plan(upc="037193347322")
         adapter = OrgillAdapter(entry, plan)
 
         # Simulate login page HTML
@@ -217,7 +217,7 @@ class TestOrgillAdapter:
         from scrapers.approved_sources.adapters.orgill import OrgillAdapter
 
         entry = _make_entry(slug="orgill", adapter="orgill_crawl4ai", domains=["orgill.com"], auth=True)
-        plan = _make_plan(sku="037193347322")
+        plan = _make_plan(upc="037193347322")
         adapter = OrgillAdapter(entry, plan)
 
         html = """
@@ -240,7 +240,7 @@ class TestPhillipsAdapter:
         from scrapers.approved_sources.adapters.phillips import PhillipsAdapter
 
         entry = _make_entry(slug="phillips", adapter="phillips_crawl4ai", domains=["shop.phillipspet.com"], auth=True)
-        plan = _make_plan(sku="072705115310")
+        plan = _make_plan(upc="072705115310")
         adapter = PhillipsAdapter(entry, plan)
 
         url = adapter.build_search_url("072705115310")
@@ -251,7 +251,7 @@ class TestPhillipsAdapter:
         from scrapers.approved_sources.adapters.phillips import PhillipsAdapter
 
         entry = _make_entry(slug="phillips", adapter="phillips_crawl4ai", domains=["shop.phillipspet.com"], auth=True)
-        plan = _make_plan(sku="A B/C#1")
+        plan = _make_plan(upc="A B/C#1")
         adapter = PhillipsAdapter(entry, plan)
 
         url = adapter.build_search_url("A B/C#1")
@@ -284,7 +284,7 @@ class TestPhillipsAdapter:
         from scrapers.approved_sources.adapters.phillips import PhillipsAdapter
 
         entry = _make_entry(slug="phillips", adapter="phillips_crawl4ai", domains=["shop.phillipspet.com"], auth=True)
-        plan = _make_plan(sku="072705115310")
+        plan = _make_plan(upc="072705115310")
         adapter = PhillipsAdapter(entry, plan)
 
         html = """
@@ -309,7 +309,7 @@ class TestPhillipsAdapter:
 
         entry = _make_entry(slug="phillips", adapter="phillips_crawl4ai", domains=["shop.phillipspet.com"], auth=True)
         plan = _make_plan(
-            sku="840243156412",
+            upc="840243156412",
             name="BLUE TRUE CHEWS MEAT BALLS BEEF 12OZ",
             brand_name="Blue Buffalo",
             brand_slug="blue-buffalo",
@@ -351,7 +351,7 @@ class TestPetFoodExpertsAdapter:
             slug="pet_food_experts", adapter="pet_food_experts_crawl4ai",
             domains=["orders.petfoodexperts.com"], auth=True
         )
-        plan = _make_plan(sku="33011808")
+        plan = _make_plan(upc="33011808")
         adapter = PetFoodExpertsAdapter(entry, plan)
 
         url = adapter.build_search_url("33011808")
@@ -365,7 +365,7 @@ class TestPetFoodExpertsAdapter:
             slug="pet_food_experts", adapter="pet_food_experts_crawl4ai",
             domains=["orders.petfoodexperts.com"], auth=True
         )
-        plan = _make_plan(sku="A B/C#1")
+        plan = _make_plan(upc="A B/C#1")
         adapter = PetFoodExpertsAdapter(entry, plan)
 
         url = adapter.build_search_url("A B/C#1")
@@ -390,7 +390,7 @@ class TestPetFoodExpertsAdapter:
             slug="pet_food_experts", adapter="pet_food_experts_crawl4ai",
             domains=["orders.petfoodexperts.com"], auth=True
         )
-        plan = _make_plan(sku="33011808")
+        plan = _make_plan(upc="33011808")
         adapter = PetFoodExpertsAdapter(entry, plan)
 
         html = """
@@ -440,7 +440,7 @@ class TestPetFoodExpertsAdapter:
             slug="pet_food_experts", adapter="pet_food_experts_crawl4ai",
             domains=["orders.petfoodexperts.com"], auth=True
         )
-        plan = _make_plan(sku="33011808")
+        plan = _make_plan(upc="33011808")
         adapter = PetFoodExpertsAdapter(entry, plan)
 
         html = """

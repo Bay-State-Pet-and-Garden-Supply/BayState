@@ -2,7 +2,7 @@
 
 Provides Crawl4AI-based login automation for auth-gated distributor portals.
 Uses Crawl4AI's js_code and session_id features to fill login forms and
-maintain authenticated sessions across multiple SKU lookups.
+maintain authenticated sessions across multiple UPC lookups.
 
 Logged-in sessions are cached process-locally with TTL to avoid redundant
 logins. Concurrent login attempts for the same source/credential pair are

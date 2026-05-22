@@ -19,7 +19,7 @@ class MockExtractionPayload(TypedDict):
 
 
 class ProductRecord(TypedDict):
-    sku: str
+    upc: str
     name: str
     brand: str
 
@@ -31,7 +31,7 @@ class MockExtractor:
 
     def __call__(self, product: ProductRecord) -> MockExtractionPayload:
         self.call_count += 1
-        payload = self._payloads.get(product["sku"])
+        payload = self._payloads.get(product["upc"])
         if payload is not None:
             return payload
         return {
@@ -53,12 +53,12 @@ def pytest_configure(config: pytest.Config) -> None:
 @pytest.fixture(scope="session")
 def test_skus() -> list[ProductRecord]:
     return [
-        {"sku": "TEST001", "name": "Purina Pro Plan Adult Dog Food", "brand": "Purina"},
-        {"sku": "TEST002", "name": "KONG Classic Dog Toy", "brand": "KONG"},
-        {"sku": "TEST003", "name": "Greenies Original Dental Treats", "brand": "Greenies"},
-        {"sku": "TEST004", "name": "Frontline Plus Flea and Tick", "brand": "Frontline"},
-        {"sku": "TEST005", "name": "Blue Buffalo Wilderness Cat Food", "brand": "Blue Buffalo"},
-        {"sku": "TEST006", "name": "Feliway Classic Diffuser Refill", "brand": "Feliway"},
+        {"upc": "TEST001", "name": "Purina Pro Plan Adult Dog Food", "brand": "Purina"},
+        {"upc": "TEST002", "name": "KONG Classic Dog Toy", "brand": "KONG"},
+        {"upc": "TEST003", "name": "Greenies Original Dental Treats", "brand": "Greenies"},
+        {"upc": "TEST004", "name": "Frontline Plus Flea and Tick", "brand": "Frontline"},
+        {"upc": "TEST005", "name": "Blue Buffalo Wilderness Cat Food", "brand": "Blue Buffalo"},
+        {"upc": "TEST006", "name": "Feliway Classic Diffuser Refill", "brand": "Feliway"},
     ]
 
 

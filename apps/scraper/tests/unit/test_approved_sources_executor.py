@@ -23,7 +23,7 @@ from scrapers.approved_sources.types import (
 
 
 def _make_plan(
-    sku: str = "001135",
+    upc: str = "001135",
     selected_distributor: str | None = "bradley",
     entries: list[ApprovedSourcePlanEntry] | None = None,
     extraction_mode: str = "mixed",
@@ -45,7 +45,7 @@ def _make_plan(
             )
         ]
     return ApprovedSourcePlan(
-        sku=sku,
+        upc=upc,
         input={"name": "E-Z HANG SCALE", "price": None},
         brand=ApprovedSourceBrand(id="brand-1", name="KERBL", slug="kerbl"),
         extractionMode=extraction_mode,
@@ -99,7 +99,7 @@ class TestExecutor:
         plan, mock_extractor = _create_plan_with_mock_html()
         executor = ApprovedSourceExecutor(plan=plan, extractor=mock_extractor)
         result = build_partial_result(
-            sku="001135",
+            upc="001135",
             source_slug="bradley",
             source_type="distributor",
             evidence_url="https://www.bradleycaldwell.com/search?term=001135",
@@ -131,7 +131,7 @@ class TestExecutor:
         import asyncio
         result = asyncio.run(executor.execute())
         assert result is not None
-        assert result.sku == "001135"
+        assert result.upc == "001135"
         assert result.status in ("success", "partial", "failed")
         assert result.decision is not None
 
@@ -282,12 +282,12 @@ class TestExecutor:
         mock_extractor.api_client = None
 
         mock_phillips_extract.return_value = build_auth_required_result(
-            sku="001135",
+            upc="001135",
             source_slug="phillips",
             requested_extraction_mode="distributor_only",
         )
         mock_bradley_extract.return_value = build_success_result(
-            sku="001135",
+            upc="001135",
             source_slug="bradley",
             source_type="distributor",
             evidence_url="https://www.bradleycaldwell.com/search?term=001135",
@@ -353,7 +353,7 @@ class TestExecutor:
         """When Bradley succeeds, official brand fallback is NOT called."""
         mock_bradley_fetch.return_value = SAMPLE_BRADLEY_HTML
         mock_official_extract.return_value = build_success_result(
-            sku="001135",
+            upc="001135",
             source_slug="serp_discovery",
             source_type="official_brand",
             evidence_url="https://example.com/product",
@@ -437,7 +437,7 @@ class TestExecutor:
         """When Central Pet returns no-match and official_brand is in priority list, it runs."""
         mock_cp_fetch.return_value = SAMPLE_NO_MATCH_HTML
         mock_official_result = build_success_result(
-            sku="38777520",
+            upc="38777520",
             source_slug="serp_discovery",
             source_type="official_brand",
             evidence_url="https://www.example.com/product",
@@ -543,7 +543,7 @@ class TestExecutor:
     def test_empty_priority_plan_fallback_disabled_fails_closed(self):
         """Plan with no priority entries and fallback disabled returns failed."""
         plan = ApprovedSourcePlan(
-            sku="001135",
+            upc="001135",
             input={"name": "Test Product", "price": None},
             brand=ApprovedSourceBrand(id="brand-1", name="KERBL", slug="kerbl"),
             selectedDistributorSlug=None,
@@ -579,7 +579,7 @@ class TestExecutor:
         """When multiple sources are in the plan, executor runs all of them and aggregates results."""
         mock_bradley_fetch.return_value = SAMPLE_BRADLEY_HTML
         mock_official_extract.return_value = build_success_result(
-            sku="001135",
+            upc="001135",
             source_slug="serp_discovery",
             source_type="official_brand",
             evidence_url="https://example.com/product",
@@ -698,7 +698,7 @@ class TestExecutor:
         
         assert mock_logger.error.called
         args, kwargs = mock_logger.error.call_args
-        assert "SKU discovery search failed" in args[0]
+        assert "UPC discovery search failed" in args[0]
         assert args[1] == "API Key Expired"
 
     def test_executor_propagates_ai_credentials_to_adapters(self):
@@ -775,7 +775,7 @@ class TestExecutor:
 
     @patch("scrapers.approved_sources.adapters.serp_discovery.SearchClient")
     def test_serp_discovery_adapter_exact_matches_sku_and_filters_disallowed_domains(self, mock_search_client_class):
-        """SerpDiscoveryAdapter exact matches SKU by wrapping in double quotes and filters disallowed domains in Phase 1."""
+        """SerpDiscoveryAdapter exact matches UPC by wrapping in double quotes and filters disallowed domains in Phase 1."""
         from scrapers.approved_sources.adapters.serp_discovery import SerpDiscoveryAdapter
 
         plan = _make_plan(entries=[])
@@ -797,7 +797,7 @@ class TestExecutor:
             {"url": "https://example.com/product", "title": "Good Product"},
             {"url": "https://www.amazon.com/dp/B001", "title": "Amazon Product"},
             {"url": "https://ebay.com/itm/123", "title": "eBay Product"},
-            {"url": "https://another-good-site.com/sku", "title": "Another Good Product"},
+            {"url": "https://another-good-site.com/upc", "title": "Another Good Product"},
         ], None))
         mock_search_client_class.return_value = mock_client
         
@@ -808,6 +808,6 @@ class TestExecutor:
         
         assert len(results) == 2
         assert results[0]["url"] == "https://example.com/product"
-        assert results[1]["url"] == "https://another-good-site.com/sku"
+        assert results[1]["url"] == "https://another-good-site.com/upc"
 
 

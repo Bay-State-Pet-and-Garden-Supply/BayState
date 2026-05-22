@@ -31,7 +31,7 @@ class ErrorContext:
     step_index: int | None = None
     selector: str | None = None
     url: str | None = None
-    sku: str | None = None
+    upc: str | None = None
     retry_count: int = 0
     max_retries: int = 1
     timeout_multiplier: float = 1.0
@@ -45,7 +45,7 @@ class ErrorContext:
             "step_index": self.step_index,
             "selector": self.selector,
             "url": self.url,
-            "sku": self.sku,
+            "upc": self.upc,
             "retry_count": self.retry_count,
             "max_retries": self.max_retries,
             "timeout_multiplier": self.timeout_multiplier,
@@ -83,8 +83,8 @@ class ScraperError(Exception):
             parts.append(f"site={self.context.site_name}")
         if self.context.action:
             parts.append(f"action={self.context.action}")
-        if self.context.sku:
-            parts.append(f"sku={self.context.sku}")
+        if self.context.upc:
+            parts.append(f"upc={self.context.upc}")
         if self.context.retry_count > 0:
             parts.append(f"retry={self.context.retry_count}/{self.context.max_retries}")
         if self.retry_hint:
@@ -215,16 +215,16 @@ class PageNotFoundError(NonRetryableError):
     """Page/product does not exist (404)."""
 
     severity = ErrorSeverity.LOW
-    # Not retryable, but not critical - just skip this SKU
-    retry_hint = "SKU may be discontinued or incorrect"
+    # Not retryable, but not critical - just skip this UPC
+    retry_hint = "UPC may be discontinued or incorrect"
 
 
 class NoResultsError(NonRetryableError):
-    """No results found for the search/SKU."""
+    """No results found for the search/UPC."""
 
     severity = ErrorSeverity.LOW
     # Not retryable - product doesn't exist on this site
-    retry_hint = "Check if SKU format matches site expectations"
+    retry_hint = "Check if UPC format matches site expectations"
 
 
 class BrowserError(NonRetryableError):

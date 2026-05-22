@@ -6,7 +6,7 @@ from __future__ import annotations
 # Core product fields that the editor ACTUALLY uses (optimized for performance)
 EDITOR_FIELD_MAPPING = {
     # Editor Field -> List of possible ShopSite field names (in priority order)
-    "SKU": ["SKU", "Name"],
+    "UPC": ["UPC", "Name"],
     "Name": ["Name"],
     "Brand": ["ProductField16", "Brand"],
     "Weight": ["Weight"],

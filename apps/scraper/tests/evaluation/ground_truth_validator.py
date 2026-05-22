@@ -1,10 +1,10 @@
 """Ground truth fixture validation helper.
 
 Validates test_skus_ground_truth.json entries against the required schema,
-ensuring every SKU has the mandatory fields for OBS regression testing.
+ensuring every UPC has the mandatory fields for OBS regression testing.
 
 Required fields per entry:
-  - sku: non-empty string (UPC/product identifier)
+  - upc: non-empty string (UPC/product identifier)
   - brand: non-empty string (canonical brand name)
   - name: non-empty string (full product name)
   - expected_source_url: valid http/https URL
@@ -33,7 +33,7 @@ SCHEMA_FILE = FIXTURES_DIR / "ground_truth_schema.json"
 
 # Required fields that MUST be present and non-empty in every entry
 REQUIRED_FIELDS: tuple[str, ...] = (
-    "sku",
+    "upc",
     "brand",
     "name",
     "expected_source_url",
@@ -64,7 +64,7 @@ VALID_EXPECTED_FIELDS: frozenset[str] = frozenset(
         "price",
         "images",
         "size_metrics",
-        "sku",
+        "upc",
         "categories",
     }
 )
@@ -141,9 +141,9 @@ def validate_entry(entry: dict[str, Any], index: int) -> list[FieldError]:
             errors.append(FieldError(index, field, f"Required field '{field}' must not be empty"))
 
     # Validate sku is a non-empty string
-    sku = entry.get("sku")
+    upc= entry.get("upc")
     if sku is not None and not isinstance(sku, str):
-        errors.append(FieldError(index, "sku", f"sku must be a string, got {type(sku).__name__}"))
+        errors.append(FieldError(index, "upc", f"sku must be a string, got {type(sku).__name__}"))
 
     # Validate brand is a non-empty string
     brand = entry.get("brand")
@@ -259,20 +259,20 @@ def validate_fixture(data: list[dict[str, Any]]) -> FixtureValidationResult:
     if entry_count > MAX_ENTRIES:
         errors.append(FieldError(0, "", f"Fixture has {entry_count} entries, maximum is {MAX_ENTRIES}"))
 
-    # Check for duplicate SKUs
-    seen_skus: dict[str, int] = {}
+    # Check for duplicate UPCs
+    seen_upcs: dict[str, int] = {}
     for idx, entry in enumerate(data):
-        sku = entry.get("sku", "")
-        if sku in seen_skus:
+        upc= entry.get("upc", "")
+        if sku in seen_upcs:
             errors.append(
                 FieldError(
                     idx,
-                    "sku",
-                    f"Duplicate SKU: {sku!r} (first seen at index {seen_skus[sku]})",
+                    "upc",
+                    f"Duplicate UPC: {sku!r} (first seen at index {seen_upcs[sku]})",
                 )
             )
         else:
-            seen_skus[sku] = idx
+            seen_upcs[sku] = idx
 
     # Validate each entry
     for idx, entry in enumerate(data):
@@ -282,9 +282,9 @@ def validate_fixture(data: list[dict[str, Any]]) -> FixtureValidationResult:
     # Warnings for missing optional but recommended fields
     for idx, entry in enumerate(data):
         if "description" not in entry or not entry.get("description"):
-            warnings.append(f"Entry {idx} (SKU: {entry.get('sku', 'UNKNOWN')}): missing recommended field 'description'")
+            warnings.append(f"Entry {idx} (UPC: {entry.get("upc", 'UNKNOWN')}): missing recommended field 'description'")
         if "difficulty" not in entry:
-            warnings.append(f"Entry {idx} (SKU: {entry.get('sku', 'UNKNOWN')}): missing optional field 'difficulty' (defaults to 'easy')")
+            warnings.append(f"Entry {idx} (UPC: {entry.get("upc", 'UNKNOWN')}): missing optional field 'difficulty' (defaults to 'easy')")
 
     return FixtureValidationResult(
         valid=len(errors) == 0,

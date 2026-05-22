@@ -31,7 +31,7 @@ class TestCrawl4AIExtractorOptimization:
     async def test_extract_uses_optimized_params(self, extractor):
         """Test that LLMExtractionStrategy is initialized with optimized parameters."""
         url = "https://example.com/p/123"
-        sku = "SKU123"
+        upc= "SKU123"
         
         # Mock dependencies
         mock_engine = AsyncMock()
@@ -59,7 +59,7 @@ class TestCrawl4AIExtractorOptimization:
             # We need to simulate the engine's context manager
             mock_engine.__aenter__.return_value = mock_engine
             
-            await extractor.extract(url, sku, "Test Product", "Test Brand")
+            await extractor.extract(url, upc, "Test Product", "Test Brand")
             
             # Check LLMExtractionStrategy initialization
             assert mock_strategy_cls.called
@@ -105,7 +105,7 @@ class TestCrawl4AIExtractorOptimization:
     async def test_extract_reuses_fit_markdown_for_fallback_when_html_missing(self, extractor):
         """Test that fit markdown is reused for fallback parsing when HTML is unavailable."""
         url = "https://example.com/p/123"
-        sku = "SKU123"
+        upc= "SKU123"
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
@@ -122,11 +122,11 @@ class TestCrawl4AIExtractorOptimization:
             mock_engine.__aenter__.return_value = mock_engine
             extractor._extract_with_fallback = AsyncMock(return_value={"success": False, "error": "fallback"})
 
-            result = await extractor.extract(url, sku, "Test Product", "Test Brand")
+            result = await extractor.extract(url, upc, "Test Product", "Test Brand")
 
             extractor._extract_with_fallback.assert_awaited_once_with(
                 url,
-                sku,
+                upc,
                 "Test Product",
                 "Test Brand",
                 "",
@@ -138,7 +138,7 @@ class TestCrawl4AIExtractorOptimization:
     async def test_extract_bypasses_cache_for_second_pass(self, extractor):
         """Second-pass extraction must bypass the first crawl's cached response."""
         url = "https://example.com/p/123"
-        sku = "SKU123"
+        upc= "SKU123"
         observed_cache_modes = []
 
         mock_engine = AsyncMock()
@@ -185,7 +185,7 @@ class TestCrawl4AIExtractorOptimization:
         ):
             mock_engine.__aenter__.return_value = mock_engine
 
-            result = await extractor.extract(url, sku, "Test Product", "Test Brand")
+            result = await extractor.extract(url, upc, "Test Product", "Test Brand")
 
             assert result is not None
             assert result["success"] is True
@@ -195,7 +195,7 @@ class TestCrawl4AIExtractorOptimization:
     async def test_extract_relaxes_wait_strategy_for_second_pass_after_timeout(self, extractor):
         """LLM second pass should retry with domcontentloaded after a navigation timeout."""
         url = "https://example.com/p/123"
-        sku = "SKU123"
+        upc= "SKU123"
         observed_wait_modes = []
 
         mock_engine = AsyncMock()
@@ -249,7 +249,7 @@ class TestCrawl4AIExtractorOptimization:
         ):
             mock_engine.__aenter__.return_value = mock_engine
 
-            result = await extractor.extract(url, sku, "Test Product", "Test Brand")
+            result = await extractor.extract(url, upc, "Test Product", "Test Brand")
 
             assert result is not None
             assert result["success"] is True
@@ -259,7 +259,7 @@ class TestCrawl4AIExtractorOptimization:
     async def test_extract_accepts_structured_extracted_content_payload(self, extractor):
         """Test that structured extracted_content payloads are accepted without JSON parsing."""
         url = "https://example.com/p/123"
-        sku = "SKU123"
+        upc= "SKU123"
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
@@ -301,7 +301,7 @@ class TestCrawl4AIExtractorOptimization:
         ):
             mock_engine.__aenter__.return_value = mock_engine
 
-            result = await extractor.extract(url, sku, "Test Product", "Test Brand")
+            result = await extractor.extract(url, upc, "Test Product", "Test Brand")
 
             assert result is not None
             assert result["success"] is True
@@ -313,7 +313,7 @@ class TestCrawl4AIExtractorOptimization:
     async def test_extract_normalizes_llm_output_with_aliases_and_meta_images(self, extractor):
         """LLM payloads should be normalized before confidence and return."""
         url = "https://example.com/p/123"
-        sku = "SKU123"
+        upc= "SKU123"
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
@@ -355,7 +355,7 @@ class TestCrawl4AIExtractorOptimization:
         ):
             mock_engine.__aenter__.return_value = mock_engine
 
-            result = await extractor.extract(url, sku, "LV SEED ORGANIC EGGP LANT BLACK HEIRLOOM", None)
+            result = await extractor.extract(url, upc, "LV SEED ORGANIC EGGP LANT BLACK HEIRLOOM", None)
 
             assert result is not None
             assert result["success"] is True
@@ -369,7 +369,7 @@ class TestCrawl4AIExtractorOptimization:
     async def test_extract_replaces_page_relative_files_image_with_meta_image(self, extractor):
         """Malformed `files/...` image paths should fall back to valid OG images."""
         url = "https://bentleyseeds.com/products/turnip-purple-white-globe"
-        sku = "HTG-017"
+        upc= "HTG-017"
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
@@ -411,7 +411,7 @@ class TestCrawl4AIExtractorOptimization:
         ):
             mock_engine.__aenter__.return_value = mock_engine
 
-            result = await extractor.extract(url, sku, "Turnip Purple White Globe", "Bentley Seeds")
+            result = await extractor.extract(url, upc, "Turnip Purple White Globe", "Bentley Seeds")
 
             assert result is not None
             assert result["success"] is True
@@ -423,7 +423,7 @@ class TestCrawl4AIExtractorOptimization:
     async def test_extract_returns_first_pass_jsonld_result(self, extractor):
         """Test that first-pass JSON-LD extraction short-circuits LLM fallback."""
         url = "https://example.com/p/123"
-        sku = "SKU123"
+        upc= "SKU123"
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
@@ -445,7 +445,7 @@ class TestCrawl4AIExtractorOptimization:
         with patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine):
             mock_engine.__aenter__.return_value = mock_engine
 
-            result = await extractor.extract(url, sku, "Structured Product", "Structured Brand")
+            result = await extractor.extract(url, upc, "Structured Product", "Structured Brand")
 
             assert result["product_name"] == "Structured Product"
             assert result["url"] == url
@@ -458,7 +458,7 @@ class TestCrawl4AIExtractorOptimization:
         monkeypatch.delenv("LLM_API_KEY", raising=False)
         monkeypatch.delenv("LLM_BASE_URL", raising=False)
         url = "https://example.com/p/123"
-        sku = "SKU123"
+        upc= "SKU123"
 
         extractor = Crawl4AIExtractor(
             headless=True,
@@ -485,11 +485,11 @@ class TestCrawl4AIExtractorOptimization:
             mock_engine.__aenter__.return_value = mock_engine
             extractor._extract_with_fallback = AsyncMock(return_value={"success": True, "product_name": "Fallback Product"})
 
-            result = await extractor.extract(url, sku, "Test Product", "Test Brand")
+            result = await extractor.extract(url, upc, "Test Product", "Test Brand")
 
             extractor._extract_with_fallback.assert_awaited_once_with(
                 url,
-                sku,
+                upc,
                 "Test Product",
                 "Test Brand",
                 "",
@@ -501,7 +501,7 @@ class TestCrawl4AIExtractorOptimization:
     async def test_extract_falls_back_on_auth_error_payload(self, extractor):
         """Test that auth-shaped LLM responses trigger fallback extraction."""
         url = "https://example.com/p/123"
-        sku = "SKU123"
+        upc= "SKU123"
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
@@ -530,11 +530,11 @@ class TestCrawl4AIExtractorOptimization:
             mock_engine.__aenter__.return_value = mock_engine
             extractor._extract_with_fallback = AsyncMock(return_value={"success": False, "error": "fallback"})
 
-            result = await extractor.extract(url, sku, "Test Product", "Test Brand")
+            result = await extractor.extract(url, upc, "Test Product", "Test Brand")
 
             extractor._extract_with_fallback.assert_awaited_once_with(
                 url,
-                sku,
+                upc,
                 "Test Product",
                 "Test Brand",
                 "<html>fallback</html>",
@@ -546,7 +546,7 @@ class TestCrawl4AIExtractorOptimization:
     async def test_extract_falls_back_on_error_tagged_llm_payload(self, extractor):
         """Provider/Crawl4AI error payloads should not be normalized into fake product data."""
         url = "https://example.com/p/123"
-        sku = "SKU123"
+        upc= "SKU123"
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
@@ -584,11 +584,11 @@ class TestCrawl4AIExtractorOptimization:
             mock_engine.__aenter__.return_value = mock_engine
             extractor._extract_with_fallback = AsyncMock(return_value={"success": False, "error": "fallback"})
 
-            result = await extractor.extract(url, sku, "Test Product", "Test Brand")
+            result = await extractor.extract(url, upc, "Test Product", "Test Brand")
 
             extractor._extract_with_fallback.assert_awaited_once_with(
                 url,
-                sku,
+                upc,
                 "Test Product",
                 "Test Brand",
                 "<html>fallback</html>",
@@ -600,7 +600,7 @@ class TestCrawl4AIExtractorOptimization:
     async def test_extract_uses_fallback_for_soft_404_first_pass(self, extractor):
         """Soft-404 pages should skip second-pass extraction and go straight to fallback recovery."""
         url = "https://example.com/missing-product"
-        sku = "SKU123"
+        upc= "SKU123"
         not_found_html = """
         <html>
           <head>
@@ -625,11 +625,11 @@ class TestCrawl4AIExtractorOptimization:
             mock_engine.__aenter__.return_value = mock_engine
             extractor._extract_with_fallback = AsyncMock(return_value={"success": False, "error": "Fallback extraction landed on a not-found page"})
 
-            result = await extractor.extract(url, sku, "Test Product", "Test Brand")
+            result = await extractor.extract(url, upc, "Test Product", "Test Brand")
 
             extractor._extract_with_fallback.assert_awaited_once_with(
                 url,
-                sku,
+                upc,
                 "Test Product",
                 "Test Brand",
                 not_found_html,
@@ -642,7 +642,7 @@ class TestCrawl4AIExtractorOptimization:
     async def test_extract_falls_back_on_invalid_extracted_content_type(self, extractor):
         """Test that unsupported extracted_content payloads trigger fallback parsing."""
         url = "https://example.com/p/123"
-        sku = "SKU123"
+        upc= "SKU123"
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
@@ -671,11 +671,11 @@ class TestCrawl4AIExtractorOptimization:
             mock_engine.__aenter__.return_value = mock_engine
             extractor._extract_with_fallback = AsyncMock(return_value={"success": True, "product_name": "Fallback"})
 
-            result = await extractor.extract(url, sku, "Test Product", "Test Brand")
+            result = await extractor.extract(url, upc, "Test Product", "Test Brand")
 
             extractor._extract_with_fallback.assert_awaited_once_with(
                 url,
-                sku,
+                upc,
                 "Test Product",
                 "Test Brand",
                 "<html>fallback</html>",
@@ -687,7 +687,7 @@ class TestCrawl4AIExtractorOptimization:
     async def test_extract_uses_fallback_after_content_type_exception_with_existing_content(self, extractor):
         """Test that content-type exceptions reuse first-pass content with fallback extraction."""
         url = "https://example.com/p/123"
-        sku = "SKU123"
+        upc= "SKU123"
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
@@ -713,11 +713,11 @@ class TestCrawl4AIExtractorOptimization:
             mock_engine.__aenter__.return_value = mock_engine
             extractor._extract_with_fallback = AsyncMock(return_value={"success": True, "product_name": "Fallback"})
 
-            result = await extractor.extract(url, sku, "Test Product", "Test Brand")
+            result = await extractor.extract(url, upc, "Test Product", "Test Brand")
 
             extractor._extract_with_fallback.assert_awaited_once_with(
                 url,
-                sku,
+                upc,
                 "Test Product",
                 "Test Brand",
                 "<html>cached</html>",
@@ -729,7 +729,7 @@ class TestCrawl4AIExtractorOptimization:
     async def test_extract_returns_content_type_error_without_existing_content(self, extractor):
         """Test that content-type exceptions without cached content return a clear error."""
         url = "https://example.com/p/123"
-        sku = "SKU123"
+        upc= "SKU123"
 
         mock_engine = AsyncMock()
         mock_engine.config = {}
@@ -738,7 +738,7 @@ class TestCrawl4AIExtractorOptimization:
         with patch("scrapers.ai_search.crawl4ai_extractor.Crawl4AIEngine", return_value=mock_engine):
             mock_engine.__aenter__.return_value = mock_engine
 
-            result = await extractor.extract(url, sku, "Test Product", "Test Brand")
+            result = await extractor.extract(url, upc, "Test Product", "Test Brand")
 
             assert result == {"success": False, "error": "Crawl4AI returned invalid content type"}
 

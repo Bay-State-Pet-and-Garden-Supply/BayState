@@ -73,7 +73,7 @@ class ProductPageExtractor:
         self,
         *,
         url: str,
-        sku: str,
+        upc: str,
         product_name: str | None = None,
         register_name: str | None = None,
         brand: str | None = None,
@@ -87,7 +87,7 @@ class ProductPageExtractor:
 
         Args:
             url: Primary URL to extract from.
-            sku: Product SKU for context.
+            upc: Product UPC for context.
             product_name: Expected product name (used for validation and variant resolution).
             register_name: Alternate name for the product (e.g., register/brand name).
             brand: Expected brand name.
@@ -95,7 +95,7 @@ class ProductPageExtractor:
             max_fallbacks: Maximum number of fallback URLs to attempt (default 3).
 
         Returns:
-            Dict with keys: success, sku, source, url, final_url, product_name,
+            Dict with keys: success, upc, source, url, final_url, product_name,
             brand, description, images, categories, size_metrics, method,
             confidence, telemetry, and error (on failure).
         """
@@ -134,7 +134,7 @@ class ProductPageExtractor:
             try:
                 result = await self._extractor.extract(
                     url=attempt_url,
-                    sku=sku,
+                    upc=upc,
                     product_name=effective_name,
                     brand=brand,
                 )
@@ -154,7 +154,7 @@ class ProductPageExtractor:
 
                 normalized: dict[str, Any] = {
                     "success": True,
-                    "sku": sku,
+                    "upc": upc,
                     "source": "product_page_extraction",
                     "url": url,
                     "final_url": result.get("url") or attempt_url,
@@ -192,7 +192,7 @@ class ProductPageExtractor:
                     "brand": result.get("brand"),
                     "description": result.get("description"),
                     "category": result.get("categories")[0] if isinstance(result.get("categories"), list) and result.get("categories") else None,
-                    "sku": sku,
+                    "upc": upc,
                     "weight": result.get("weight") or result.get("size_metrics"),
                     "dimensions": result.get("dimensions"),
                     "shipping_weight": result.get("shipping_weight"),
@@ -240,7 +240,7 @@ class ProductPageExtractor:
 
         return {
             "success": False,
-            "sku": sku,
+            "upc": upc,
             "source": "product_page_extraction",
             "url": url,
             "final_url": final_url,
@@ -261,7 +261,7 @@ class ProductPageExtractor:
 
         Args:
             products: List of product dicts. Each should have at minimum
-                ``sku`` and one of ``source_url``, ``known_url``, or ``url``.
+                ``upc`` and one of ``source_url``, ``known_url``, or ``url``.
                 Optional fields: product_name, register_name, brand,
                 fallback_urls, max_fallbacks, url_source.
             max_concurrency: Maximum parallel extractions (default 4).
@@ -276,7 +276,7 @@ class ProductPageExtractor:
 
         async def _extract_single(product: dict[str, Any]) -> AISearchResult:
             async with semaphore:
-                sku = str(product.get("sku") or "").strip()
+                upc = str(product.get("upc") or "").strip()
                 brand = str(product.get("brand") or "").strip()
                 primary_url = str(
                     product.get("source_url")
@@ -295,19 +295,19 @@ class ProductPageExtractor:
                 except (ValueError, TypeError):
                     max_fallbacks = 3
 
-                if not sku:
-                    return AISearchResult(success=False, sku=sku, error="Missing SKU")
+                if not upc:
+                    return AISearchResult(success=False, upc=upc, error="Missing UPC")
 
                 if not primary_url:
                     return AISearchResult(
                         success=False,
-                        sku=sku,
+                        upc=upc,
                         error="Missing source URL",
                     )
 
                 result = await self.extract(
                     url=primary_url,
-                    sku=sku,
+                    upc=upc,
                     product_name=product.get("product_name"),
                     register_name=product.get("register_name"),
                     brand=brand or product.get("brand"),
@@ -318,7 +318,7 @@ class ProductPageExtractor:
                 if result.get("success"):
                     return AISearchResult(
                         success=True,
-                        sku=sku,
+                        upc=upc,
                         product_name=result.get("product_name"),
                         brand=result.get("brand") or brand,
                         description=result.get("description"),
@@ -334,7 +334,7 @@ class ProductPageExtractor:
 
                 return AISearchResult(
                     success=False,
-                    sku=sku,
+                    upc=upc,
                     error=result.get("error") or "Extraction failed",
                     url=primary_url,
                     source_website=primary_url,
@@ -377,7 +377,7 @@ class ProductUrlExtractor:
         ``{"success": True/False, "data": ..., "method": ..., "error": ...}``
         """
         # schema_path is ignored — the robust pipeline does not need it
-        result = await self._extractor.extract(url=url, sku="unknown")
+        result = await self._extractor.extract(url=url, upc="unknown")
         if result.get("success"):
             return {
                 "success": True,
@@ -387,7 +387,7 @@ class ProductUrlExtractor:
                     "description": result.get("description"),
                     "images": result.get("images"),
                     "categories": result.get("categories"),
-                    "sku": result.get("sku"),
+                    "upc": result.get("upc"),
                 },
                 "method": result.get("method", "unknown"),
             }

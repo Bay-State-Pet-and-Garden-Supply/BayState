@@ -45,7 +45,7 @@ ROOT_CONTEXT_FIELDS = {
     "runner_id",
     "runner_name",
     "scraper_name",
-    "sku",
+    "upc",
     "phase",
     "source",
     "details",
@@ -184,7 +184,7 @@ class JobLogEntry:
     runner_name: str | None = None
     source: str | None = None
     scraper_name: str | None = None
-    sku: str | None = None
+    upc: str | None = None
     phase: str | None = None
     details: dict[str, Any] | None = None
 
@@ -200,7 +200,7 @@ class JobLogEntry:
             "runner_name": self.runner_name,
             "source": self.source,
             "scraper_name": self.scraper_name,
-            "sku": self.sku,
+            "upc": self.upc,
             "phase": self.phase,
             "details": self.details or None,
         }
@@ -363,7 +363,7 @@ class JobLogTransport:
             runner_name=str(getattr(record, "runner_name", None) or self.runner_name or "") or None,
             source=str(getattr(record, "source", None) or record.name or "") or None,
             scraper_name=str(getattr(record, "scraper_name", None) or "") or None,
-            sku=str(getattr(record, "sku", None) or "") or None,
+            upc=str(getattr(record, "upc", None) or "") or None,
             phase=str(getattr(record, "phase", None) or "") or None,
             details=self._build_details(record),
         )

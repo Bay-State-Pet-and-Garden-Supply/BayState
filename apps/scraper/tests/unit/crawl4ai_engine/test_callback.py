@@ -160,8 +160,8 @@ class TestPayloadTransformation:
         )
 
         raw_results = [
-            {"sku": "SKU001", "name": "Product 1", "price": 29.99},
-            {"sku": "SKU002", "name": "Product 2", "price": 39.99},
+            {"upc": "SKU001", "name": "Product 1", "price": 29.99},
+            {"upc": "SKU002", "name": "Product 2", "price": 39.99},
         ]
 
         transformed = delivery.transform_results(raw_results)
@@ -171,7 +171,7 @@ class TestPayloadTransformation:
         assert transformed["SKU001"]["test-scraper"]["name"] == "Product 1"
 
     def test_transform_list_with_uppercase_sku(self):
-        """Test transforming list with uppercase SKU key."""
+        """Test transforming list with uppercase UPC key."""
         delivery = CallbackDelivery(
             callback_url="https://example.com/callback",
             api_key="test-key",
@@ -180,8 +180,8 @@ class TestPayloadTransformation:
         )
 
         raw_results = [
-            {"SKU": "ABC123", "name": "Product A"},
-            {"sku": "DEF456", "name": "Product B"},
+            {"UPC": "ABC123", "name": "Product A"},
+            {"upc": "DEF456", "name": "Product B"},
         ]
 
         transformed = delivery.transform_results(raw_results)
@@ -199,7 +199,7 @@ class TestPayloadTransformation:
         )
 
         raw_results = [
-            {"sku": "SKU001", "data": {"title": "Product", "price": 29.99}},
+            {"upc": "SKU001", "data": {"title": "Product", "price": 29.99}},
         ]
 
         transformed = delivery.transform_results(raw_results)
@@ -243,15 +243,15 @@ class TestPayloadTransformation:
         )
 
         raw_results = [
-            {"sku": "SKU001", "name": "Product 1"},
-            {"name": "No SKU"},  # Missing SKU
+            {"upc": "SKU001", "name": "Product 1"},
+            {"name": "No UPC"},  # Missing UPC
             "not a dict",
         ]
 
         transformed = delivery.transform_results(raw_results)
 
         assert "SKU001" in transformed
-        assert "No SKU" not in transformed
+        assert "No UPC" not in transformed
 
     def test_transform_non_standard_input(self):
         """Test transforming non-standard input returns empty."""
@@ -294,7 +294,7 @@ class TestBuildPayload:
         assert payload["job_id"] == "job-123"
         assert payload["status"] == "completed"
         assert payload["runner_name"] == "test-runner"
-        assert payload["results"]["skus_processed"] == 2
+        assert payload["results"]["upcs_processed"] == 2
         assert payload["results"]["scrapers_run"] == ["test-scraper"]
         assert payload["results"]["data"] == transformed_results
 

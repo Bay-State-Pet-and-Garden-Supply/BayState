@@ -13,8 +13,8 @@ EVALUATED_FIELDS = REQUIRED_FIELDS + OPTIONAL_FIELDS
 
 
 @dataclass
-class SKUMetrics:
-    sku: str
+class UPCMetrics:
+    upc: str
     field_accuracy: float
     required_fields_success_rate: float
     is_success: bool
@@ -24,7 +24,7 @@ class SKUMetrics:
 
 @dataclass
 class AggregateMetrics:
-    total_skus: int
+    total_upcs: int
     average_field_accuracy: float
     average_required_fields_success_rate: float
     overall_success_rate: float
@@ -64,7 +64,7 @@ def _ground_truth_value(ground_truth: GroundTruthProduct, field_name: str) -> ob
 def calculate_per_sku_metrics(
     extraction_result: AISearchResult,
     ground_truth: GroundTruthProduct | None,
-) -> SKUMetrics:
+) -> UPCMetrics:
     if ground_truth is None:
         raise ValueError("ground_truth is required to calculate metrics")
 
@@ -86,8 +86,8 @@ def calculate_per_sku_metrics(
 
     field_accuracy = sum(comparison.match_score for comparison in field_comparisons) / len(field_comparisons) if field_comparisons else 0.0
 
-    return SKUMetrics(
-        sku=extraction_result.sku,
+    return UPCMetrics(
+        upc=extraction_result.upc,
         field_accuracy=field_accuracy,
         required_fields_success_rate=required_fields_success_rate,
         is_success=len(missing_required_fields) == 0,
@@ -96,36 +96,36 @@ def calculate_per_sku_metrics(
     )
 
 
-def calculate_aggregate_metrics(sku_metrics_list: list[SKUMetrics]) -> AggregateMetrics:
+def calculate_aggregate_metrics(sku_metrics_list: list[UPCMetrics]) -> AggregateMetrics:
     if not sku_metrics_list:
         return AggregateMetrics(
-            total_skus=0,
+            total_upcs=0,
             average_field_accuracy=0.0,
             average_required_fields_success_rate=0.0,
             overall_success_rate=0.0,
         )
 
-    total_skus = len(sku_metrics_list)
-    average_field_accuracy = sum(metric.field_accuracy for metric in sku_metrics_list) / total_skus
-    average_required_fields_success_rate = sum(metric.required_fields_success_rate for metric in sku_metrics_list) / total_skus
-    overall_success_rate = sum(1 for metric in sku_metrics_list if metric.is_success) / total_skus
+    total_upcs = len(sku_metrics_list)
+    average_field_accuracy = sum(metric.field_accuracy for metric in sku_metrics_list) / total_upcs
+    average_required_fields_success_rate = sum(metric.required_fields_success_rate for metric in sku_metrics_list) / total_upcs
+    overall_success_rate = sum(1 for metric in sku_metrics_list if metric.is_success) / total_upcs
 
     return AggregateMetrics(
-        total_skus=total_skus,
+        total_upcs=total_upcs,
         average_field_accuracy=average_field_accuracy,
         average_required_fields_success_rate=average_required_fields_success_rate,
         overall_success_rate=overall_success_rate,
     )
 
 
-def get_per_field_accuracy(sku_metrics_list: list[SKUMetrics]) -> dict[str, float]:
+def get_per_field_accuracy(sku_metrics_list: list[UPCMetrics]) -> dict[str, float]:
     if not sku_metrics_list:
         return {}
 
     field_scores: dict[str, list[float]] = {}
 
-    for sku_metrics in sku_metrics_list:
-        for comparison in sku_metrics.field_comparisons:
+    for upc_metrics in sku_metrics_list:
+        for comparison in upc_metrics.field_comparisons:
             field_scores.setdefault(comparison.field_name, []).append(comparison.match_score)
 
     return {field_name: sum(scores) / len(scores) for field_name, scores in field_scores.items() if scores}

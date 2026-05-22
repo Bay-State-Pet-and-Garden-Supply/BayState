@@ -58,14 +58,14 @@ def _recommendation(crawl4ai: dict[str, float], browser_use: dict[str, float]) -
 
 def build_summary(results: dict[str, Any]) -> dict[str, Any]:
     samples = results.get("samples", [])
-    sku_count = len(samples)
+    upc_count = len(samples)
 
     crawl4ai = _system_summary(samples, "crawl4ai")
     browser_use = _system_summary(samples, "browser_use")
 
     summary = {
         "test_date": datetime.now(timezone.utc).isoformat(),
-        "sku_count": sku_count,
+        "upc_count": upc_count,
         "crawl4ai": crawl4ai,
         "browser_use": browser_use,
         "comparison": {
@@ -95,7 +95,7 @@ def _write_markdown(summary: dict[str, Any]) -> Path:
         "# T17 A/B Test Report",
         "",
         f"**Test Date:** {summary['test_date']}",
-        f"**SKU Count:** {summary['sku_count']}",
+        f"**UPC Count:** {summary['upc_count']}",
         "",
         "## Summary",
         "",

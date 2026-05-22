@@ -1,8 +1,8 @@
 """SERP Discovery Adapter for autonomous SERP/AI fallback.
 
 Flow:
-1. Phase 1: SKU Discovery - Search for raw SKU via Serper API.
-2. Phase 2: LLM Name Consolidation - Use LLM to reconcile register name with SKU search results.
+1. Phase 1: UPC Discovery - Search for raw UPC via Serper API.
+2. Phase 2: LLM Name Consolidation - Use LLM to reconcile register name with UPC search results.
 3. Phase 3: Brand Site Search - Search site:domain <consolidated_name> via Serper API.
    Pick URL via LLM from top candidates.
 4. Phase 3b: Open Web Fallback - If brand site search returns nothing, search <consolidated_name> on open web.
@@ -52,7 +52,7 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
         Returns EnrichmentResultV1 on success/partial, or None if no
         approved candidate was found (caller should fail closed).
         """
-        sku = self.plan.sku
+        upc = self.plan.upc
         register_name = self.plan.input.get("name") if self.plan.input else None
         brand_name = self.plan.brand.name if self.plan.brand else None
         brand_domain = self.entry.domains[0] if self.entry.domains else None
@@ -62,10 +62,10 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
             brand_domain = f"{self.plan.brand.slug}.com"
 
         # 1. Resolve URL via SERP + LLM discovery
-        url = await self._resolve_approved_url(sku, register_name, brand_name, brand_domain)
+        url = await self._resolve_approved_url(upc, register_name, brand_name, brand_domain)
         if not url:
             logger.info(
-                "[SerpDiscoveryAdapter] No approved URL found for SKU=%s", sku
+                "[SerpDiscoveryAdapter] No approved URL found for UPC=%s", upc
             )
             return None
 
@@ -88,7 +88,7 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
         # Pass register_name as the fallback product name to search/validate on the page
         extraction_result = await extractor.extract(
             url=url,
-            sku=sku,
+            upc=upc,
             product_name=register_name,
             brand=brand_name,
         )
@@ -121,7 +121,7 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
 
         result = build_v1_from_extraction_result(
             result=extraction_result,
-            sku=sku,
+            upc=upc,
             url=url,
             domain=urlparse(url).hostname,
             model="deepseek-chat",
@@ -143,21 +143,21 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
 
     async def _resolve_approved_url(
         self,
-        sku: str,
+        upc: str,
         register_name: str | None,
         brand_name: str | None,
         brand_domain: str | None,
     ) -> str | None:
         """Execute Phase 1-3 to find the best approved URL."""
-        # Phase 1: SKU Discovery
-        sku_serp_results = await self._phase1_sku_discovery(sku)
+        # Phase 1: UPC Discovery
+        sku_serp_results = await self._phase1_sku_discovery(upc)
 
         # Phase 2: LLM Name Consolidation
         consolidated_name = register_name
         if sku_serp_results and register_name:
             try:
                 consolidated_name = await self._phase2_consolidate_name(
-                    sku=sku,
+                    upc=upc,
                     register_name=register_name,
                     brand_name=brand_name,
                     serp_results=sku_serp_results,
@@ -178,7 +178,7 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
         if brand_domain and consolidated_name:
             normalized_domain_str = normalize_domain(brand_domain)
             selected_url = await self._phase3_brand_site_search(
-                sku=sku,
+                upc=upc,
                 brand_name=brand_name,
                 brand_domain=normalized_domain_str,
                 consolidated_name=consolidated_name,
@@ -190,7 +190,7 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
                 "[SerpDiscoveryAdapter] Brand site search returned no URL. Trying Open Web fallback..."
             )
             selected_url = await self._phase3b_open_web_fallback(
-                sku=sku,
+                upc=upc,
                 brand_name=brand_name,
                 consolidated_name=consolidated_name,
             )
@@ -229,21 +229,21 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
             api_key = self.ai_credentials.get("serper_api_key") or self.ai_credentials.get("serpapi_api_key")
         return SearchClient(max_results=max_results, api_key=api_key)
 
-    async def _phase1_sku_discovery(self, sku: str) -> list[dict[str, Any]]:
-        """Search for SKU/UPC on the web to identify product metadata."""
-        if not sku:
+    async def _phase1_sku_discovery(self, upc: str) -> list[dict[str, Any]]:
+        """Search for UPC/UPC on the web to identify product metadata."""
+        if not upc:
             return []
 
         client = self._get_search_client(max_results=10)
-        search_query = f'"{sku}"'
+        search_query = f'"{upc}"'
         logger.info(
-            "[SerpDiscoveryAdapter] Phase 1: SKU discovery search query: '%s'",
+            "[SerpDiscoveryAdapter] Phase 1: UPC discovery search query: '%s'",
             search_query,
         )
         results, error = await client.search(search_query)
         if error:
             logger.error(
-                "[SerpDiscoveryAdapter] SKU discovery search failed: %s", error
+                "[SerpDiscoveryAdapter] UPC discovery search failed: %s", error
             )
             return []
 
@@ -267,7 +267,7 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
             is_blocked = is_disallowed_domain(domain) or (disallowed_domains and is_disallowed_domain(domain, disallowed_domains))
             if is_blocked:
                 logger.debug(
-                    "[SerpDiscoveryAdapter] Skipping disallowed domain in SKU discovery: %s", canonical_url
+                    "[SerpDiscoveryAdapter] Skipping disallowed domain in UPC discovery: %s", canonical_url
                 )
                 continue
 
@@ -279,7 +279,7 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
 
     async def _phase2_consolidate_name(
         self,
-        sku: str,
+        upc: str,
         register_name: str,
         brand_name: str | None,
         serp_results: list[dict[str, Any]],
@@ -305,15 +305,15 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
             "Respond ONLY with the requested JSON schema, containing the 'consolidated_name'."
         )
 
-        user_prompt = f"""Target SKU/UPC: {sku}
+        user_prompt = f"""Target UPC/UPC: {upc}
 Register Product Name (abbreviated/raw): {register_name}
 Brand Name: {brand_name or 'Unknown'}
 
-Search Engine Results for SKU {sku}:
+Search Engine Results for UPC {upc}:
 {serp_evidence}
 
 Instructions:
-1. Examine the search results to see if they identify the specific product matching this SKU/UPC.
+1. Examine the search results to see if they identify the specific product matching this UPC/UPC.
 2. The register name often contains abbreviations (e.g. 'CHKN' for 'Chicken', 'SUPP' for 'Supplement', '3.5LB' for '3.5 lb').
 3. Reconcile the register name's structure (especially weights, sizes, flavors, and formulas) with the names found in search results.
 4. Output the full, correct, clean product name. Do not include the brand name at the start of the product name unless it is commonly part of the trademarked name, but do prioritize correct spelling and formatting (e.g. 'Open Farm Good Gut Daily Supplement Chicken Recipe 3.5 lb' instead of 'OPEN FARM GOOD GUT C HKN 3.5LB').
@@ -354,7 +354,7 @@ Return JSON in this format:
 
     async def _phase3_brand_site_search(
         self,
-        sku: str,
+        upc: str,
         brand_name: str | None,
         brand_domain: str,
         consolidated_name: str,
@@ -398,12 +398,12 @@ Return JSON in this format:
             r_copy["url"] = canonical_url
             deduped_results.append(r_copy)
 
-        candidates = self._score_candidates(deduped_results, sku, consolidated_name, brand_domain)
+        candidates = self._score_candidates(deduped_results, upc, consolidated_name, brand_domain)
         if not candidates:
             return None
 
         return await self._llm_select_url(
-            sku=sku,
+            upc=upc,
             consolidated_name=consolidated_name,
             brand_name=brand_name,
             brand_domain=brand_domain,
@@ -412,7 +412,7 @@ Return JSON in this format:
 
     async def _phase3b_open_web_fallback(
         self,
-        sku: str,
+        upc: str,
         brand_name: str | None,
         consolidated_name: str,
     ) -> str | None:
@@ -466,12 +466,12 @@ Return JSON in this format:
             r_copy["url"] = canonical_url
             allowed_results.append(r_copy)
 
-        candidates = self._score_candidates(allowed_results, sku, consolidated_name, None)
+        candidates = self._score_candidates(allowed_results, upc, consolidated_name, None)
         if not candidates:
             return None
 
         return await self._llm_select_url(
-            sku=sku,
+            upc=upc,
             consolidated_name=consolidated_name,
             brand_name=brand_name,
             brand_domain=None,
@@ -481,7 +481,7 @@ Return JSON in this format:
     def _score_candidates(
         self,
         results: list[dict[str, Any]],
-        sku: str,
+        upc: str,
         name: str,
         brand_domain: str | None,
     ) -> list[dict[str, Any]]:
@@ -496,9 +496,9 @@ Return JSON in this format:
             title = (r.get("title", "") or "").lower()
             url_lower = url.lower()
             desc = (r.get("description", "") or "").lower()
-            sku_lower = sku.lower()
+            sku_lower = upc.lower()
 
-            # SKU match (strongest signal)
+            # UPC match (strongest signal)
             if sku_lower in title:
                 score += 0.4
             elif sku_lower in url_lower:
@@ -531,7 +531,7 @@ Return JSON in this format:
 
     async def _llm_select_url(
         self,
-        sku: str,
+        upc: str,
         consolidated_name: str,
         brand_name: str | None,
         brand_domain: str | None,
@@ -563,7 +563,7 @@ Return JSON in this format:
         )
 
         user_prompt = f"""Target Product Name: {consolidated_name}
-Target SKU/UPC: {sku}
+Target UPC/UPC: {upc}
 Brand Name: {brand_name or 'Unknown'}
 Brand Domain: {brand_domain or 'Unknown'}
 
@@ -574,7 +574,7 @@ Instructions:
 1. Review the candidate search results.
 2. Select the single candidate URL that is the best product detail page match for '{consolidated_name}'.
 3. Avoid selecting index/collection/category pages (e.g. URLs ending in /collections, /categories, /brand, or the homepage itself).
-4. If a URL contains the SKU/UPC, that is a strong indicator of a match.
+4. If a URL contains the UPC/UPC, that is a strong indicator of a match.
 5. If none of the candidates match this product or are all generic/unrelated, return null for the 'selected_url'.
 
 Return JSON in this format:

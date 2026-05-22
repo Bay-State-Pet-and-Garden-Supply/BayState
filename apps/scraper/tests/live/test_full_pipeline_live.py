@@ -3,7 +3,7 @@
 Marked @pytest.mark.live + @pytest.mark.slow — excluded from normal CI.
 
 These tests validate:
-  1. End-to-end extraction accuracy from SKU to structured product data
+  1. End-to-end extraction accuracy from UPC to structured product data
   2. Whether variant resolution improves accuracy vs raw extraction
   3. Regression detection across pipeline changes
 
@@ -46,8 +46,8 @@ RESULTS_DIR = Path(__file__).parent.parent.parent / ".agent_evidence" / "evidenc
 
 @dataclass
 class PipelineTestResult:
-    """Result of a single SKU pipeline test."""
-    sku: str
+    """Result of a single UPC pipeline test."""
+    upc: str
     brand: str
     name: str
     success: bool
@@ -81,7 +81,7 @@ def _pipeline_cases():
     for entry in _load_entries():
         yield pytest.param(
             entry,
-            id=f"{entry['brand']}-{entry['sku']}",
+            id=f"{entry['brand']}-{entry['upc']}",
         )
 
 
@@ -119,7 +119,7 @@ class TestFullPipelineExtraction:
             pytest.skip("Scraper modules not importable")
 
         url = entry["expected_source_url"]
-        sku = entry["sku"]
+        upc= entry["upc"]
         start = time.monotonic()
 
         try:
@@ -134,14 +134,14 @@ class TestFullPipelineExtraction:
             )
             result = await extractor.extract(
                 url=url,
-                sku=sku,
+                upc=upc,
                 product_name=entry.get("name"),
                 brand=entry.get("brand"),
             )
             elapsed_ms = (time.monotonic() - start) * 1000
 
             if result is None:
-                pytest.fail(f"Extraction returned None for {sku} at {url}")
+                pytest.fail(f"Extraction returned None for {upc} at {url}")
 
             # Check field matches
             fields_matched = {}
@@ -155,7 +155,7 @@ class TestFullPipelineExtraction:
                 )
 
             pipeline_result = PipelineTestResult(
-                sku=sku,
+                upc=upc,
                 brand=entry.get("brand", ""),
                 name=entry.get("name", ""),
                 success=True,
@@ -168,7 +168,7 @@ class TestFullPipelineExtraction:
 
             logger.info(
                 "Pipeline result for %s: match_rate=%.0f%%, time=%.0fms, resolver=%s",
-                sku,
+                upc,
                 pipeline_result.match_rate * 100,
                 elapsed_ms,
                 pipeline_result.resolver_status,
@@ -193,7 +193,7 @@ class TestFullPipelineExtraction:
     async def test_aggregate_accuracy(self, variant_ground_truth: list[dict[str, Any]]):
         """Run all fixture entries and assert aggregate accuracy >= 70%.
 
-        This is the hard gate — individual SKU failures are acceptable
+        This is the hard gate — individual UPC failures are acceptable
         but the overall pipeline must meet a minimum threshold.
         """
         try:
@@ -215,7 +215,7 @@ class TestFullPipelineExtraction:
 
         for entry in entries:
             url = entry["expected_source_url"]
-            sku = entry["sku"]
+            upc= entry["upc"]
             start = time.monotonic()
 
             try:
@@ -230,7 +230,7 @@ class TestFullPipelineExtraction:
                 )
                 result = await extractor.extract(
                     url=url,
-                    sku=sku,
+                    upc=sku,
                     product_name=entry.get("name"),
                     brand=entry.get("brand"),
                 )
@@ -248,7 +248,7 @@ class TestFullPipelineExtraction:
                         ),
                     }
                     results.append(PipelineTestResult(
-                        sku=sku,
+                        upc=sku,
                         brand=entry.get("brand", ""),
                         name=entry.get("name", ""),
                         success=True,
@@ -257,7 +257,7 @@ class TestFullPipelineExtraction:
                     ))
                 else:
                     results.append(PipelineTestResult(
-                        sku=sku,
+                        upc=sku,
                         brand=entry.get("brand", ""),
                         name=entry.get("name", ""),
                         success=False,
@@ -266,7 +266,7 @@ class TestFullPipelineExtraction:
 
             except Exception as e:
                 results.append(PipelineTestResult(
-                    sku=sku,
+                    upc=sku,
                     brand=entry.get("brand", ""),
                     name=entry.get("name", ""),
                     success=False,
@@ -331,7 +331,7 @@ def _save_results(results: list[PipelineTestResult]) -> None:
         "successful": sum(1 for r in results if r.success),
         "results": [
             {
-                "sku": r.sku,
+                "upc": r.upc,
                 "brand": r.brand,
                 "success": r.success,
                 "match_rate": r.match_rate,

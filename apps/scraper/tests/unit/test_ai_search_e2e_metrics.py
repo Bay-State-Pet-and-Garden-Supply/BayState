@@ -215,7 +215,7 @@ class TestSummarize:
     def test_summarize_mixed_results(self) -> None:
         rows = [
             EndToEndResultRow(
-                sku="SKU-1",
+                upc="UPC-1",
                 brand="A",
                 product_name="One",
                 expected_source_url="https://a.com/1",
@@ -235,7 +235,7 @@ class TestSummarize:
                 timing=TimingMetrics(total_ms=1000),
             ),
             EndToEndResultRow(
-                sku="SKU-2",
+                upc="UPC-2",
                 brand="B",
                 product_name="Two",
                 expected_source_url="https://b.com/2",

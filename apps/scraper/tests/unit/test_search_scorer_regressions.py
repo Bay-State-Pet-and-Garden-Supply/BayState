@@ -71,7 +71,7 @@ def test_scoring_prefers_exact_official_stella_page_over_retailer() -> None:
 
     official_score = scorer.score_search_result(
         official_result,
-        sku="810027374677",
+        upc="810027374677",
         brand="Stella & Chewy's",
         product_name="Stella & Chewy's Dog Topper Shreds Beef Salmon In Broth 2.8 oz",
         category="Dog Food Toppers",
@@ -79,7 +79,7 @@ def test_scoring_prefers_exact_official_stella_page_over_retailer() -> None:
     )
     retailer_score = scorer.score_search_result(
         retailer_result,
-        sku="810027374677",
+        upc="810027374677",
         brand="Stella & Chewy's",
         product_name="Stella & Chewy's Dog Topper Shreds Beef Salmon In Broth 2.8 oz",
         category="Dog Food Toppers",
@@ -90,7 +90,7 @@ def test_scoring_prefers_exact_official_stella_page_over_retailer() -> None:
 
 
 @pytest.mark.parametrize(
-    ("result", "sku", "brand", "product_name"),
+    ("result", "upc", "brand", "product_name"),
     [
         (
             _result(
@@ -123,13 +123,13 @@ def test_scoring_prefers_exact_official_stella_page_over_retailer() -> None:
 )
 def test_clean_official_product_pages_can_remain_generic_classification(
     result: dict[str, object],
-    sku: str,
+    upc: str,
     brand: str,
     product_name: str,
 ) -> None:
     scorer = SearchScorer()
 
-    source_class = scorer.classify_result_source(result, sku=sku, brand=brand, product_name=product_name)
+    source_class = scorer.classify_result_source(result, upc=sku, brand=brand, product_name=product_name)
 
     assert source_class == "official_generic"
 
@@ -144,7 +144,7 @@ def test_conflicting_official_sibling_page_stays_generic_classification() -> Non
 
     source_class = scorer.classify_result_source(
         sibling_result,
-        sku="045663976866",
+        upc="045663976866",
         brand="Four Paws",
         product_name="Four Paws Wee-Wee Cat Pads 11x17 10ct",
     )
@@ -165,7 +165,7 @@ def test_scoring_prefers_exact_official_pdp_over_broader_official_generic_page()
 
     exact_score = scorer.score_search_result(
         exact_result,
-        sku="12345",
+        upc="12345",
         brand="Brand",
         product_name="Brand Chicken Recipe Dog Food 5 lb",
         category="Dog Food Dry",
@@ -173,7 +173,7 @@ def test_scoring_prefers_exact_official_pdp_over_broader_official_generic_page()
     )
     broader_score = scorer.score_search_result(
         broader_result,
-        sku="12345",
+        upc="12345",
         brand="Brand",
         product_name="Brand Chicken Recipe Dog Food 5 lb",
         category="Dog Food Dry",
@@ -196,7 +196,7 @@ def test_scoring_prefers_exact_major_retailer_pdp_over_broader_official_generic_
 
     broader_official_score = scorer.score_search_result(
         broader_official_result,
-        sku="12345",
+        upc="12345",
         brand="Brand",
         product_name="Brand Chicken Recipe Dog Treats 5 lb",
         category="Dog Treats",
@@ -204,7 +204,7 @@ def test_scoring_prefers_exact_major_retailer_pdp_over_broader_official_generic_
     )
     exact_retailer_score = scorer.score_search_result(
         exact_retailer_result,
-        sku="12345",
+        upc="12345",
         brand="Brand",
         product_name="Brand Chicken Recipe Dog Treats 5 lb",
         category="Dog Treats",
@@ -229,7 +229,7 @@ def test_scoring_prefers_exact_retailer_over_official_root_without_variant_evide
 
     homepage_score = scorer.score_search_result(
         homepage_result,
-        sku="813347001018",
+        upc="813347001018",
         brand="Stud Muffins",
         product_name="Stud Muffins Horse Treats 10 oz Tub",
         category="Horse Treats",
@@ -237,7 +237,7 @@ def test_scoring_prefers_exact_retailer_over_official_root_without_variant_evide
     )
     distributor_score = scorer.score_search_result(
         distributor_result,
-        sku="813347001018",
+        upc="813347001018",
         brand="Stud Muffins",
         product_name="Stud Muffins Horse Treats 10 oz Tub",
         category="Horse Treats",
@@ -262,7 +262,7 @@ def test_scoring_prefers_exact_retailer_over_official_root_without_parseable_var
 
     homepage_score = scorer.score_search_result(
         homepage_result,
-        sku="sku-12345",
+        upc="sku-12345",
         brand="Brand",
         product_name="Brand Chicken Recipe Dog Food",
         category="Dog Food Dry",
@@ -270,7 +270,7 @@ def test_scoring_prefers_exact_retailer_over_official_root_without_parseable_var
     )
     retailer_score = scorer.score_search_result(
         retailer_result,
-        sku="sku-12345",
+        upc="sku-12345",
         brand="Brand",
         product_name="Brand Chicken Recipe Dog Food",
         category="Dog Food Dry",
@@ -295,7 +295,7 @@ def test_scoring_prefers_exact_variant_page_over_related_official_page() -> None
 
     exact_score = scorer.score_search_result(
         exact_result,
-        sku="045663976866",
+        upc="045663976866",
         brand="Four Paws",
         product_name="Four Paws Wee-Wee Cat Pads 11x17 10ct",
         category="Cat Litter Accessories",
@@ -303,7 +303,7 @@ def test_scoring_prefers_exact_variant_page_over_related_official_page() -> None
     )
     sibling_score = scorer.score_search_result(
         sibling_result,
-        sku="045663976866",
+        upc="045663976866",
         brand="Four Paws",
         product_name="Four Paws Wee-Wee Cat Pads 11x17 10ct",
         category="Cat Litter Accessories",
@@ -328,7 +328,7 @@ def test_scoring_demotes_brand_homepage_without_variant_evidence() -> None:
 
     homepage_score = scorer.score_search_result(
         homepage_result,
-        sku="813347001018",
+        upc="813347001018",
         brand="Stud Muffins",
         product_name="Stud Muffins Horse Treats 10 oz Tub",
         category="Horse Treats",
@@ -336,7 +336,7 @@ def test_scoring_demotes_brand_homepage_without_variant_evidence() -> None:
     )
     distributor_score = scorer.score_search_result(
         distributor_result,
-        sku="813347001018",
+        upc="813347001018",
         brand="Stud Muffins",
         product_name="Stud Muffins Horse Treats 10 oz Tub",
         category="Horse Treats",
@@ -359,7 +359,7 @@ def test_scoring_prefers_exact_official_fluval_pdp_over_retailer() -> None:
 
     official_score = scorer.score_search_result(
         official_result,
-        sku="015561104982",
+        upc="015561104982",
         brand="Fluval",
         product_name="Fluval Betta Premium Aquarium Kit 2.6 Gallon",
         category="Aquariums",
@@ -367,7 +367,7 @@ def test_scoring_prefers_exact_official_fluval_pdp_over_retailer() -> None:
     )
     retailer_score = scorer.score_search_result(
         retailer_result,
-        sku="015561104982",
+        upc="015561104982",
         brand="Fluval",
         product_name="Fluval Betta Premium Aquarium Kit 2.6 Gallon",
         category="Aquariums",
@@ -390,7 +390,7 @@ def test_scoring_prefers_official_deere_pdp_over_amazon_search_page() -> None:
 
     official_score = scorer.score_search_result(
         official_result,
-        sku="036881472414",
+        upc="036881472414",
         brand="John Deere",
         product_name="John Deere 1:64 Scale 4WD Tractor Toy",
         category="Toy Vehicles",
@@ -398,7 +398,7 @@ def test_scoring_prefers_official_deere_pdp_over_amazon_search_page() -> None:
     )
     amazon_search_score = scorer.score_search_result(
         amazon_search_result,
-        sku="036881472414",
+        upc="036881472414",
         brand="John Deere",
         product_name="John Deere 1:64 Scale 4WD Tractor Toy",
         category="Toy Vehicles",
@@ -421,7 +421,7 @@ def test_scoring_prefers_exact_mannapro_official_pdp_over_exact_small_retailer()
 
     official_score = scorer.score_search_result(
         official_result,
-        sku="095668480400",
+        upc="095668480400",
         brand="Manna Pro",
         product_name="Manna Pro Fresh Flakes Poultry Bedding 12 Lb",
         category="Poultry Bedding",
@@ -429,7 +429,7 @@ def test_scoring_prefers_exact_mannapro_official_pdp_over_exact_small_retailer()
     )
     retailer_score = scorer.score_search_result(
         retailer_result,
-        sku="095668480400",
+        upc="095668480400",
         brand="Manna Pro",
         product_name="Manna Pro Fresh Flakes Poultry Bedding 12 Lb",
         category="Poultry Bedding",
@@ -452,7 +452,7 @@ def test_scoring_prefers_exact_mannapro_official_horse_treat_pdp_over_exact_smal
 
     official_score = scorer.score_search_result(
         official_result,
-        sku="095668302580",
+        upc="095668302580",
         brand="Manna Pro",
         product_name="Manna Pro Bite Size Alfalfa Molasses Nuggets 4 Lb",
         category="Horse Treats",
@@ -460,7 +460,7 @@ def test_scoring_prefers_exact_mannapro_official_horse_treat_pdp_over_exact_smal
     )
     retailer_score = scorer.score_search_result(
         retailer_result,
-        sku="095668302580",
+        upc="095668302580",
         brand="Manna Pro",
         product_name="Manna Pro Bite Size Alfalfa Molasses Nuggets 4 Lb",
         category="Horse Treats",
@@ -483,7 +483,7 @@ def test_scoring_prefers_seed_packets_over_bulk_variant() -> None:
 
     packet_score = scorer.score_search_result(
         packet_result,
-        sku="051589005993",
+        upc="051589005993",
         brand="Bentley Seeds",
         product_name="BENTLEY SUNFLOWER SEED PACKET CHOCOLATE CHERRY",
         category="Garden Seeds",
@@ -491,7 +491,7 @@ def test_scoring_prefers_seed_packets_over_bulk_variant() -> None:
     )
     bulk_score = scorer.score_search_result(
         bulk_result,
-        sku="051589005993",
+        upc="051589005993",
         brand="Bentley Seeds",
         product_name="BENTLEY SUNFLOWER SEED PACKET CHOCOLATE CHERRY",
         category="Garden Seeds",
@@ -514,7 +514,7 @@ def test_scoring_prefers_exact_deere_pdp_over_deere_collection_page() -> None:
 
     pdp_score = scorer.score_search_result(
         pdp_result,
-        sku="036881472414",
+        upc="036881472414",
         brand="John Deere",
         product_name="John Deere 1:64 Scale 4WD Tractor Toy",
         category="Toy Vehicles",
@@ -522,7 +522,7 @@ def test_scoring_prefers_exact_deere_pdp_over_deere_collection_page() -> None:
     )
     collection_score = scorer.score_search_result(
         collection_result,
-        sku="036881472414",
+        upc="036881472414",
         brand="John Deere",
         product_name="John Deere 1:64 Scale 4WD Tractor Toy",
         category="Toy Vehicles",
@@ -547,7 +547,7 @@ def test_scoring_prefers_official_family_page_with_variant_signals_over_small_re
 
     official_score = scorer.score_search_result(
         official_family_result,
-        sku="032247884594",
+        upc="032247884594",
         brand="Scotts",
         product_name="Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
         category="Mulch",
@@ -555,7 +555,7 @@ def test_scoring_prefers_official_family_page_with_variant_signals_over_small_re
     )
     retailer_score = scorer.score_search_result(
         retailer_result,
-        sku="032247884594",
+        upc="032247884594",
         brand="Scotts",
         product_name="Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
         category="Mulch",
@@ -580,7 +580,7 @@ def test_scoring_demotes_noisy_official_review_state_url_below_clean_official_ur
 
     clean_score = scorer.score_search_result(
         clean_result,
-        sku="032247884594",
+        upc="032247884594",
         brand="Scotts",
         product_name="Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
         category="Mulch",
@@ -588,7 +588,7 @@ def test_scoring_demotes_noisy_official_review_state_url_below_clean_official_ur
     )
     noisy_score = scorer.score_search_result(
         noisy_result,
-        sku="032247884594",
+        upc="032247884594",
         brand="Scotts",
         product_name="Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
         category="Mulch",
@@ -611,7 +611,7 @@ def test_scoring_prefers_category_fit_hardware_retailer_over_amazon() -> None:
 
     ace_score = scorer.score_search_result(
         ace_result,
-        sku="699064503017",
+        upc="699064503017",
         brand="St. Gabriel Organics",
         product_name="St. Gabriel Organics GoodEarth Diatomaceous Earth Food Grade 20 oz",
         category="Farm & Garden Pest Control",
@@ -619,7 +619,7 @@ def test_scoring_prefers_category_fit_hardware_retailer_over_amazon() -> None:
     )
     amazon_score = scorer.score_search_result(
         amazon_result,
-        sku="699064503017",
+        upc="699064503017",
         brand="St. Gabriel Organics",
         product_name="St. Gabriel Organics GoodEarth Diatomaceous Earth Food Grade 20 oz",
         category="Farm & Garden Pest Control",
@@ -642,7 +642,7 @@ def test_scoring_prefers_specialty_pet_retailer_over_walmart_for_etta_salmon() -
 
     specialty_score = scorer.score_search_result(
         specialty_result,
-        sku="856595005308",
+        upc="856595005308",
         brand="Etta Says!",
         product_name="Etta Says Flavor Fusion Salmon & Sweet Potato 1.75 oz",
         category="Dog Treats",
@@ -650,7 +650,7 @@ def test_scoring_prefers_specialty_pet_retailer_over_walmart_for_etta_salmon() -
     )
     walmart_score = scorer.score_search_result(
         walmart_result,
-        sku="856595005308",
+        upc="856595005308",
         brand="Etta Says!",
         product_name="Etta Says Flavor Fusion Salmon & Sweet Potato 1.75 oz",
         category="Dog Treats",
@@ -673,7 +673,7 @@ def test_scoring_prefers_chewy_over_small_pet_retailer_for_etta_duck() -> None:
 
     chewy_score = scorer.score_search_result(
         chewy_result,
-        sku="856595005902",
+        upc="856595005902",
         brand="Etta Says!",
         product_name="Etta Says! Flavor Fusion Duck & Pumpkin 1.5 oz",
         category="Dog Treats",
@@ -681,7 +681,7 @@ def test_scoring_prefers_chewy_over_small_pet_retailer_for_etta_duck() -> None:
     )
     retailer_score = scorer.score_search_result(
         retailer_result,
-        sku="856595005902",
+        upc="856595005902",
         brand="Etta Says!",
         product_name="Etta Says! Flavor Fusion Duck & Pumpkin 1.5 oz",
         category="Dog Treats",
@@ -697,14 +697,14 @@ def test_scoring_prefers_chewy_over_small_pet_retailer_for_etta_duck() -> None:
 
 
 def test_sku_in_url_provides_match_bonus() -> None:
-    """SKU matches in URL should provide scoring bonus.
+    """UPC matches in URL should provide scoring bonus.
 
     Ported from: test_batch_search_sku_first.py
-    Rationale: SKU-first search ordering depends on SKU matching in URLs
+    Rationale: UPC-first search ordering depends on UPC matching in URLs
     """
     scorer = SearchScorer()
 
-    # URL with SKU in path should get bonus
+    # URL with UPC in path should get bonus
     sku_match_result = _result(
         "https://retailer.com/products/810027374677",
         "Stella & Chewy's Product",
@@ -716,20 +716,20 @@ def test_sku_in_url_provides_match_bonus() -> None:
 
     sku_score = scorer.score_search_result(
         sku_match_result,
-        sku="810027374677",
+        upc="810027374677",
         brand="Stella & Chewy's",
         product_name="Stella & Chewy's Dog Topper",
         category="Dog Food Toppers",
     )
     no_sku_score = scorer.score_search_result(
         no_sku_result,
-        sku="810027374677",
+        upc="810027374677",
         brand="Stella & Chewy's",
         product_name="Stella & Chewy's Dog Topper",
         category="Dog Food Toppers",
     )
 
-    # SKU match should provide bonus (exact bonus amount varies by implementation)
+    # UPC match should provide bonus (exact bonus amount varies by implementation)
     assert sku_score != no_sku_score
 
 
@@ -767,7 +767,7 @@ def test_context_aware_brand_boost_in_ranking() -> None:
     # With Purina brand context
     brand_score = scorer.score_search_result(
         brand_result,
-        sku="12345",
+        upc="12345",
         brand="Purina",
         product_name="Fancy Feast",
         category="Cat Food",
@@ -776,7 +776,7 @@ def test_context_aware_brand_boost_in_ranking() -> None:
     # Generic domain should score lower for Purina product
     generic_score = scorer.score_search_result(
         generic_result,
-        sku="12345",
+        upc="12345",
         brand="Purina",
         product_name="Fancy Feast",
         category="Cat Food",
@@ -805,14 +805,14 @@ def test_context_aware_name_token_matching() -> None:
 
     matching_score = scorer.score_search_result(
         matching_result,
-        sku="12345",
+        upc="12345",
         brand="Purina",
         product_name="Fancy Feast Salmon Cat Food",
         category="Cat Food",
     )
     unrelated_score = scorer.score_search_result(
         unrelated_result,
-        sku="12345",
+        upc="12345",
         brand="Purina",
         product_name="Fancy Feast Salmon Cat Food",
         category="Cat Food",
@@ -844,7 +844,7 @@ def test_domain_frequency_weighting_in_scoring() -> None:
 
     score = scorer.score_search_result(
         reliable_result,
-        sku="12345",
+        upc="12345",
         brand="Test Brand",
         product_name="Test Product",
         category="Test Category",
@@ -901,14 +901,14 @@ def test_official_family_vs_official_generic_classification() -> None:
 
     family_class = scorer.classify_result_source(
         family_with_signals,
-        sku="032247884594",
+        upc="032247884594",
         brand="Scotts",
         product_name="Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
     )
 
     generic_class = scorer.classify_result_source(
         generic_page,
-        sku="032247884594",
+        upc="032247884594",
         brand="Scotts",
         product_name="Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
     )
@@ -1015,7 +1015,7 @@ def test_tie_breaking_behavior() -> None:
     # Score both with identical parameters
     score1 = scorer.score_search_result(
         result1,
-        sku="12345",
+        upc="12345",
         brand="Test Brand",
         product_name="Test Product Name",
         category="Test Category",
@@ -1023,7 +1023,7 @@ def test_tie_breaking_behavior() -> None:
 
     score2 = scorer.score_search_result(
         result2,
-        sku="12345",
+        upc="12345",
         brand="Test Brand",
         product_name="Test Product Name",
         category="Test Category",
@@ -1036,7 +1036,7 @@ def test_tie_breaking_behavior() -> None:
     results = [result1, result2]
     prepared = scorer.prepare_search_results(
         results,
-        sku="12345",
+        upc="12345",
         brand="Test Brand",
         product_name="Test Product Name",
         category="Test Category",
@@ -1057,7 +1057,7 @@ def test_empty_results_handling() -> None:
     empty_results: list[dict[str, object]] = []
     prepared = scorer.prepare_search_results(
         empty_results,
-        sku="12345",
+        upc="12345",
         brand="Test Brand",
         product_name="Test Product Name",
         category="Test Category",
@@ -1067,7 +1067,7 @@ def test_empty_results_handling() -> None:
     # pick_strong_candidate_url should return None for empty list
     strong_candidate = scorer.pick_strong_candidate_url(
         empty_results,
-        sku="12345",
+        upc="12345",
         brand="Test Brand",
         product_name="Test Product Name",
         category="Test Category",
@@ -1105,7 +1105,7 @@ def test_all_blocked_results_handling() -> None:
     # prepare_search_results should still return ranked results when all are low quality
     prepared = scorer.prepare_search_results(
         blocked_results,
-        sku="12345",
+        upc="12345",
         brand="Test Brand",
         product_name="Test Product Name",
         category="Test Category",
@@ -1130,7 +1130,7 @@ def test_official_root_classification() -> None:
 
     classification = scorer.classify_result_source(
         homepage_result,
-        sku="810027374677",
+        upc="810027374677",
         brand="Stella & Chewy's",
         product_name="Stella & Chewy's Dog Topper Shreds Beef Salmon",
     )
@@ -1160,7 +1160,7 @@ def test_domain_success_rate_bonus_and_penalty() -> None:
 
     score_high = scorer.score_search_result(
         result,
-        sku="12345",
+        upc="12345",
         brand="Test Brand",
         product_name="Test Product Name",
         category="Test Category",
@@ -1181,7 +1181,7 @@ def test_domain_success_rate_bonus_and_penalty() -> None:
 
     score_low = scorer.score_search_result(
         result_low,
-        sku="12345",
+        upc="12345",
         brand="Test Brand",
         product_name="Test Product Name",
         category="Test Category",
@@ -1193,20 +1193,20 @@ def test_domain_success_rate_bonus_and_penalty() -> None:
 
 
 def test_major_retailer_exact_vs_major_retailer_classification() -> None:
-    """Major retailers with SKU/variant match should be classified as exact.
+    """Major retailers with UPC/variant match should be classified as exact.
 
-    Regression: Major retailer URLs with SKU match should get 'major_retailer_exact'
+    Regression: Major retailer URLs with UPC match should get 'major_retailer_exact'
     classification vs plain 'major_retailer'.
     """
     scorer = SearchScorer()
 
-    # Major retailer with SKU in URL
+    # Major retailer with UPC in URL
     exact_result = _result(
         "https://amazon.com/dp/B08N5WRWNW",
         "Test Product - Amazon.com",
     )
 
-    # Major retailer without SKU match
+    # Major retailer without UPC match
     generic_result = _result(
         "https://amazon.com/s?k=test+product",
         "Test Product Search - Amazon.com",
@@ -1214,14 +1214,14 @@ def test_major_retailer_exact_vs_major_retailer_classification() -> None:
 
     exact_class = scorer.classify_result_source(
         exact_result,
-        sku="B08N5WRWNW",
+        upc="B08N5WRWNW",
         brand="Test Brand",
         product_name="Test Product",
     )
 
     generic_class = scorer.classify_result_source(
         generic_result,
-        sku="B08N5WRWNW",
+        upc="B08N5WRWNW",
         brand="Test Brand",
         product_name="Test Product",
     )
@@ -1252,7 +1252,7 @@ def test_category_domain_bonus_for_matching_category() -> None:
 
     pet_score = scorer.score_search_result(
         pet_result,
-        sku="12345",
+        upc="12345",
         brand="Test Brand",
         product_name="Premium Dog Food",
         category="Dog Food",
@@ -1260,7 +1260,7 @@ def test_category_domain_bonus_for_matching_category() -> None:
 
     generic_score = scorer.score_search_result(
         generic_result,
-        sku="12345",
+        upc="12345",
         brand="Test Brand",
         product_name="Premium Dog Food",
         category="Dog Food",
@@ -1295,7 +1295,7 @@ def test_category_url_misclassification_fix() -> None:
 
     category_score = scorer.score_search_result(
         category_res,
-        sku="034846727043",
+        upc="034846727043",
         brand="Wholesomes",
         product_name="Wholesomes Rewards Chewy Beef Sticks Dog Treats 2.5 oz",
         category="Dog Treats",
@@ -1303,7 +1303,7 @@ def test_category_url_misclassification_fix() -> None:
 
     pdp_score = scorer.score_search_result(
         pdp_res,
-        sku="034846727043",
+        upc="034846727043",
         brand="Wholesomes",
         product_name="Wholesomes Rewards Chewy Beef Sticks Dog Treats 2.5 oz",
         category="Dog Treats",

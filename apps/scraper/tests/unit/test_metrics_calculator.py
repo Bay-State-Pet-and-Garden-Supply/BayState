@@ -9,7 +9,7 @@ from tests.evaluation.types import GroundTruthProduct
 
 def _build_ground_truth() -> GroundTruthProduct:
     return GroundTruthProduct(
-        sku="032247886598",
+        upc="032247886598",
         brand="Scotts",
         name="Scotts Mulch",
         description="A premium mulch product",
@@ -21,7 +21,7 @@ def _build_ground_truth() -> GroundTruthProduct:
 
 
 def test_calculate_per_sku_metrics_requires_ground_truth():
-    extraction = AISearchResult(success=True, sku="032247886598")
+    extraction = AISearchResult(success=True, upc="032247886598")
 
     with pytest.raises(ValueError, match="ground_truth is required"):
         _ = calculate_per_sku_metrics(extraction, None)
@@ -31,7 +31,7 @@ def test_calculate_per_sku_metrics_marks_success_when_all_required_fields_presen
     ground_truth = _build_ground_truth()
     extraction = AISearchResult(
         success=True,
-        sku=ground_truth.sku,
+        upc=ground_truth.upc,
         product_name=ground_truth.name,
         brand=ground_truth.brand,
         description=ground_truth.description,
@@ -51,7 +51,7 @@ def test_calculate_per_sku_metrics_tracks_missing_required_fields_only():
     ground_truth = _build_ground_truth()
     extraction = AISearchResult(
         success=True,
-        sku=ground_truth.sku,
+        upc=ground_truth.upc,
         product_name=ground_truth.name,
         brand=None,
         description=None,
@@ -70,7 +70,7 @@ def test_optional_fields_do_not_affect_success_rate():
     ground_truth = _build_ground_truth()
     extraction = AISearchResult(
         success=True,
-        sku=ground_truth.sku,
+        upc=ground_truth.upc,
         product_name=ground_truth.name,
         brand=ground_truth.brand,
         description=None,
@@ -89,7 +89,7 @@ def test_calculate_aggregate_metrics_returns_expected_averages():
     ground_truth = _build_ground_truth()
     good_extraction = AISearchResult(
         success=True,
-        sku=ground_truth.sku,
+        upc=ground_truth.upc,
         product_name=ground_truth.name,
         brand=ground_truth.brand,
         description=ground_truth.description,
@@ -98,7 +98,7 @@ def test_calculate_aggregate_metrics_returns_expected_averages():
     )
     weak_extraction = AISearchResult(
         success=True,
-        sku=ground_truth.sku,
+        upc=ground_truth.upc,
         product_name=ground_truth.name,
         brand="",
         description=None,
@@ -110,7 +110,7 @@ def test_calculate_aggregate_metrics_returns_expected_averages():
     weak_metrics = calculate_per_sku_metrics(weak_extraction, ground_truth)
     aggregate = calculate_aggregate_metrics([good_metrics, weak_metrics])
 
-    assert aggregate.total_skus == 2
+    assert aggregate.total_upcs == 2
     assert abs(aggregate.average_field_accuracy - ((good_metrics.field_accuracy + weak_metrics.field_accuracy) / 2)) < 1e-9
     assert abs(aggregate.average_required_fields_success_rate - ((1.0 + (1.0 / 3.0)) / 2)) < 1e-9
     assert aggregate.overall_success_rate == 0.5
@@ -120,7 +120,7 @@ def test_get_per_field_accuracy_returns_breakdown_for_each_field():
     ground_truth = _build_ground_truth()
     best = AISearchResult(
         success=True,
-        sku=ground_truth.sku,
+        upc=ground_truth.upc,
         product_name=ground_truth.name,
         brand=ground_truth.brand,
         description=ground_truth.description,
@@ -129,7 +129,7 @@ def test_get_per_field_accuracy_returns_breakdown_for_each_field():
     )
     weaker = AISearchResult(
         success=True,
-        sku=ground_truth.sku,
+        upc=ground_truth.upc,
         product_name="Scotts",
         brand="Wrong Brand",
         description="",
@@ -137,11 +137,11 @@ def test_get_per_field_accuracy_returns_breakdown_for_each_field():
         categories=["Garden"],
     )
 
-    sku_metrics = [
+    upc_metrics = [
         calculate_per_sku_metrics(best, ground_truth),
         calculate_per_sku_metrics(weaker, ground_truth),
     ]
-    per_field = get_per_field_accuracy(sku_metrics)
+    per_field = get_per_field_accuracy(upc_metrics)
 
     assert set(per_field.keys()) == {
         "product_name",

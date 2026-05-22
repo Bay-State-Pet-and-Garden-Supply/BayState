@@ -2,10 +2,10 @@
 Unified Product Data Models
 
 This module defines Pydantic models for the entire product data pipeline:
-- ExcelInputProduct: Source of truth for SKU and Price (FROZEN)
+- ExcelInputProduct: Source of truth for UPC and Price (FROZEN)
 - RawScrapedProduct: Scraper output with auto-cleaning validators
 
-CRITICAL: SKU and Price from Excel are immutable throughout the pipeline.
+CRITICAL: UPC and Price from Excel are immutable throughout the pipeline.
 Scrapers and LLM consolidation only provide enrichment data (name, brand, etc.).
 """
 
@@ -24,18 +24,18 @@ class ExcelInputProduct(BaseModel):
     """
     Product data imported from Excel (register system export).
 
-    CRITICAL: SKU and Price are the SOURCE OF TRUTH and must NEVER be
+    CRITICAL: UPC and Price are the SOURCE OF TRUTH and must NEVER be
     overwritten by scrapers or LLM consolidation.
 
     Attributes:
-        upc: Product SKU - PRIMARY KEY, never changes throughout pipeline
+        upc: Product UPC - PRIMARY KEY, never changes throughout pipeline
         price: Register price - FROZEN, never overwritten by scrapers/LLM
         existing_name: Optional current name from register (for reference)
     """
 
     model_config = ConfigDict(frozen=True)  # Immutable!
 
-    upc: str = Field(..., description="Product SKU - PRIMARY KEY, never changes")
+    upc: str = Field(..., description="Product UPC - PRIMARY KEY, never changes")
     price: str = Field(..., description="Register price - FROZEN, never overwritten")
 
     # Optional metadata from Excel
@@ -66,7 +66,7 @@ class RawScrapedProduct(BaseModel):
     be used in the final product. Excel price is the source of truth.
 
     Attributes:
-        upc: Reference to Excel SKU
+        upc: Reference to Excel UPC
         source: Which scraper produced this (e.g., "amazon", "chewy")
         name: Product name as scraped
         brand: Brand name as scraped
@@ -79,7 +79,7 @@ class RawScrapedProduct(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    upc: str  # Reference to Excel SKU
+    upc: str  # Reference to Excel UPC
     source: str  # Which scraper produced this (e.g., "amazon", "chewy")
 
     # Enrichment fields (these CAN be used in consolidation)

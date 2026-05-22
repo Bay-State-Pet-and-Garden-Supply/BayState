@@ -9,7 +9,7 @@ class AISearchResult:
     """Result from AI search scraping."""
 
     success: bool
-    sku: str
+    upc: str
     product_name: Optional[str] = None
     brand: Optional[str] = None
     description: Optional[str] = None

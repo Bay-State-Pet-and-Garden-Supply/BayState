@@ -183,7 +183,7 @@ def build_v1_from_extraction_result(
 
     Args:
         result: Extraction result dict with keys: success, product, confidence, validation, etc.
-        upc: Product SKU.
+        upc: Product UPC.
         url: Source URL that was scraped.
         domain: Domain of the source URL.
         model: LLM model used (if any).

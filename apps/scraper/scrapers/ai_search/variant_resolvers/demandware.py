@@ -27,7 +27,7 @@ class DemandwareVariantResolver(BaseVariantResolver):
         self,
         *,
         url: str,
-        sku: str,
+        upc: str,
         product_name: Optional[str],
         brand: Optional[str],
         html: str,
@@ -65,7 +65,7 @@ class DemandwareVariantResolver(BaseVariantResolver):
                     continue
 
                 selected_variant_id = self.extraction.selected_demandware_variant_id(payload)
-                if sku and sku not in selected_variant_id and sku not in json.dumps(payload).lower():
+                if upc and upc not in selected_variant_id and upc not in json.dumps(payload).lower():
                     variant_text = str(candidate.get("variant_text") or "")
                     if self.matching.has_conflicting_variant_tokens(product_name, variant_text):
                         continue

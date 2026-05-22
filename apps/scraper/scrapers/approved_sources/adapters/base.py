@@ -80,8 +80,8 @@ class ApprovedSourceAdapter(ABC):
         pass
 
     def _get_sku(self) -> str:
-        """Get the SKU from the plan."""
-        return self.plan.sku
+        """Get the UPC from the plan."""
+        return self.plan.upc
 
     def _get_brand(self) -> str | None:
         """Get the brand name from the plan."""
@@ -98,8 +98,8 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
     """Shared base for Crawl4AI distributor adapters.
 
     Subclasses implement:
-    - build_search_url(sku) -> str
-    - extract_from_html(html, sku) -> ApprovedSourceExtractionResult (deterministic)
+    - build_search_url(upc) -> str
+    - extract_from_html(html, upc) -> ApprovedSourceExtractionResult (deterministic)
     - search_patterns_workflow() -> additional search/navigation hints
 
     The main extract() method handles:
@@ -142,10 +142,10 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
 
     def _match_identifier_candidates(
         self,
-        sku: str,
+        upc: str,
         *candidates: str | None,
     ) -> tuple[bool, list[str]]:
-        normalized_sku = self._normalize_identifier(sku)
+        normalized_sku = self._normalize_identifier(upc)
         if not normalized_sku:
             return False, []
 
@@ -158,13 +158,13 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
         return len(matches) > 0, matches
 
     @abstractmethod
-    def build_search_url(self, sku: str) -> str:
-        """Build the URL to search for a product by SKU."""
+    def build_search_url(self, upc: str) -> str:
+        """Build the URL to search for a product by UPC."""
         pass
 
     @abstractmethod
     def extract_from_html(
-        self, html: str, sku: str, url: str
+        self, html: str, upc: str, url: str
     ) -> ApprovedSourceExtractionResult:
         """Extract product data from HTML using legacy-distilled selectors.
 
@@ -321,7 +321,7 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
         Distributor adapters do NOT use ProductPageExtractor for extraction.
         Instead, they:
         1. Check auth - if no credentials, return AUTH_REQUIRED
-        2. Build search URL from SKU
+        2. Build search URL from UPC
         3a. For public distributors: Fetch HTML directly via httpx
         3b. For auth-required distributors: Fetch HTML via authenticated Crawl4AI
         4. Parse HTML deterministically with BeautifulSoup
@@ -341,21 +341,21 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             build_success_result,
         )
 
-        sku = self._get_sku()
+        upc = self._get_sku()
 
         # Extract api_client from extractor or executor
         api_client = getattr(extractor, "api_client", None) if extractor else None
 
         # 1. Build search URL
-        search_url = self.build_search_url(sku)
+        search_url = self.build_search_url(upc)
         logger.info("[%s] Searching: %s", self.adapter_slug, search_url)
 
         # 2. Credential check
         cred_ok, cred_msg = self.check_credentials(api_client)
         if not cred_ok:
-            logger.info("[%s] Auth required for %s: %s", self.adapter_slug, sku, cred_msg)
+            logger.info("[%s] Auth required for %s: %s", self.adapter_slug, upc, cred_msg)
             return build_auth_required_result(
-                sku=sku,
+                upc=upc,
                 source_slug=self.source_slug,
                 message=cred_msg,
                 evidence_url=search_url,
@@ -371,7 +371,7 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             from scrapers.approved_sources.result_builder import build_policy_blocked_result
 
             return build_policy_blocked_result(
-                sku=sku,
+                upc=upc,
                 source_slug=self.source_slug,
                 blocked_url=search_url,
                 reason=f"Search URL blocked: {url_err}",
@@ -386,29 +386,29 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             if auth_error:
                 logger.info(
                     "[%s] Auth result for %s: %s",
-                    self.adapter_slug, sku, auth_error,
+                    self.adapter_slug, upc, auth_error,
                 )
                 if auth_error == "AUTH_REQUIRED":
                     return build_auth_required_result(
-                        sku=sku,
+                        upc=upc,
                         source_slug=self.source_slug,
                         evidence_url=search_url,
                     )
                 elif auth_error == "AUTH_FAILED":
                     return build_auth_failed_result(
-                        sku=sku,
+                        upc=upc,
                         source_slug=self.source_slug,
                         evidence_url=search_url,
                     )
                 elif auth_error == "AUTH_EXPIRED":
                     return build_auth_expired_result(
-                        sku=sku,
+                        upc=upc,
                         source_slug=self.source_slug,
                         evidence_url=search_url,
                     )
                 else:
                     return build_failed_result(
-                        sku=sku,
+                        upc=upc,
                         source_slug=self.source_slug,
                         error_message=auth_error,
                         evidence_url=search_url,
@@ -437,17 +437,17 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
                 "[%s] Failed to fetch HTML for %s", self.adapter_slug, search_url
             )
             return build_no_match_result(
-                sku=sku,
+                upc=upc,
                 source_slug=self.source_slug,
                 evidence_url=search_url,
             )
 
         # 5. Parse HTML deterministically
-        det_result = self.extract_from_html(html, sku, search_url)
+        det_result = self.extract_from_html(html, upc, search_url)
 
         if det_result.success and det_result.sku_match is None:
             generic_identifier_candidates = [
-                det_result.product.get("sku"),
+                det_result.product.get("upc"),
                 det_result.product.get("upc"),
                 det_result.product.get("item_number"),
                 det_result.product.get("model_number"),
@@ -456,7 +456,7 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             ]
             has_generic_identifiers = any(candidate for candidate in generic_identifier_candidates)
             matched_identifier, _ = self._match_identifier_candidates(
-                sku,
+                upc,
                 *generic_identifier_candidates,
             )
             if has_generic_identifiers:
@@ -529,18 +529,18 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
                 if resolved_sku_match is False:
                     if not heuristic_warning:
                         warnings.append(
-                            "Returned product page did not deterministically verify the searched SKU.",
+                            "Returned product page did not deterministically verify the searched UPC.",
                         )
                     confidence = min(confidence, 0.69 if heuristic_warning else 0.59)
                 else:
                     warnings.append(
-                        "No deterministic SKU/UPC/item identifier was available on the returned product page.",
+                        "No deterministic UPC/UPC/item identifier was available on the returned product page.",
                     )
                     confidence = min(confidence, 0.59)
 
             if confidence >= 0.7 and resolved_sku_match is True:
                 return build_success_result(
-                    sku=sku,
+                    upc=upc,
                     source_slug=self.source_slug,
                     source_type=self.source_type,
                     evidence_url=evidence_url,
@@ -552,7 +552,7 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
                 )
 
             return build_partial_result(
-                sku=sku,
+                upc=upc,
                 source_slug=self.source_slug,
                 source_type=self.source_type,
                 evidence_url=evidence_url,
@@ -565,13 +565,13 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             )
         elif det_result.failure_code == FailureCode.NO_MATCH:
             return build_no_match_result(
-                sku=sku,
+                upc=upc,
                 source_slug=self.source_slug,
                 evidence_url=evidence_url,
             )
         else:
             return build_failed_result(
-                sku=sku,
+                upc=upc,
                 source_slug=self.source_slug,
                 error_message=det_result.failure_message or "Extraction failed",
                 evidence_url=evidence_url,
@@ -677,7 +677,7 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
     async def _extract_from_html_fixture(
         self,
         html: str,
-        sku: str,
+        upc: str,
         url: str = "https://fixture.local/product",
     ) -> EnrichmentResultV1 | None:
         """Extract from a fixture HTML file (for deterministic testing).
@@ -695,7 +695,7 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
 
         source_policy = self.plan.sourcePolicy
 
-        det_result = self.extract_from_html(html, sku, url)
+        det_result = self.extract_from_html(html, upc, url)
 
         # Process and filter images
         if det_result.success and det_result.product.get("image_urls"):
@@ -715,7 +715,7 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             matched = det_result.matched_fields or list(det_result.product.keys())
             if confidence >= 0.7:
                 return build_success_result(
-                    sku=sku,
+                    upc=upc,
                     source_slug=self.source_slug,
                     source_type=self.source_type,
                     evidence_url=url,
@@ -725,7 +725,7 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
                 )
             else:
                 return build_partial_result(
-                    sku=sku,
+                    upc=upc,
                     source_slug=self.source_slug,
                     source_type=self.source_type,
                     evidence_url=url,
@@ -736,13 +736,13 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
                 )
         elif det_result.failure_code == FailureCode.NO_MATCH:
             return build_no_match_result(
-                sku=sku,
+                upc=upc,
                 source_slug=self.source_slug,
                 evidence_url=url,
             )
         else:
             return build_failed_result(
-                sku=sku,
+                upc=upc,
                 source_slug=self.source_slug,
                 error_message=det_result.failure_message or "Extraction failed",
                 evidence_url=url,

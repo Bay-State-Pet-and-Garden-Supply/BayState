@@ -109,7 +109,7 @@ class ExtractionValidator:
     def validate_extraction_match(
         self,
         extraction_result: dict[str, Any],
-        sku: str,
+        upc: str,
         product_name: Optional[str],
         brand: Optional[str],
         source_url: str,
@@ -134,7 +134,7 @@ class ExtractionValidator:
 
         validation_context = {
             "url": source_url,
-            "sku": sku,
+            "upc": upc,
             "expected_brand": brand,
             "expected_name": product_name,
             "confidence": confidence,
@@ -198,7 +198,7 @@ class ExtractionValidator:
             return self._log_rejection(validation_context, "Product title missing specific expected variant tokens")
 
         combined = (f"{source_url} {extracted_name} {extracted_brand} {description} {size_metrics}").lower()
-        has_exact_identifier = bool(sku) and sku.lower() in combined
+        has_exact_identifier = bool(upc) and upc.lower() in combined
 
         if source_tier == "marketplace" and not has_exact_identifier:
             return self._log_rejection(validation_context, "Marketplace result missing exact identifier evidence")
@@ -206,7 +206,7 @@ class ExtractionValidator:
         if not brand and not extracted_brand and source_tier not in {"official", "major_retailer"} and not has_exact_identifier:
             return self._log_rejection(validation_context, "Missing brand evidence for non-preferred source")
 
-        if sku:
+        if upc:
             if not has_exact_identifier:
                 has_brand_evidence = brand_matches if brand else bool(extracted_brand) or source_tier == "official"
                 has_variant_evidence = (not product_name) or variant_matches or specific_token_overlap or is_resolved_official_family
@@ -217,7 +217,7 @@ class ExtractionValidator:
                     minimum_signal_confidence = max(0.75, self.confidence_threshold)
                 has_strong_signals = confidence >= minimum_signal_confidence and has_brand_evidence and has_variant_evidence and source_tier != "marketplace"
                 if not has_strong_signals:
-                    return self._log_rejection(validation_context, "SKU not found and weak match signals")
+                    return self._log_rejection(validation_context, "UPC not found and weak match signals")
 
         validation_context["accepted"] = True
         validation_context["rejection_reason"] = None

@@ -869,7 +869,7 @@ class ExtractionUtils:
         self,
         html_text: str,
         source_url: str,
-        sku: str,
+        upc: str,
         product_name: Optional[str],
         brand: Optional[str],
         matching_utils,
@@ -949,7 +949,7 @@ class ExtractionUtils:
                             self.clean_text(demandware_product.get("selectedProductUrl")),
                         ]
                     )
-                    if sku and sku.lower() in combined.lower():
+                    if upc and upc.lower() in combined.lower():
                         score += 5.0
                     if brand and matching_utils.is_brand_match(brand, resolved_brand, source_url):
                         score += 3.0
@@ -1025,10 +1025,10 @@ class ExtractionUtils:
                 explicit_categories=current.get("category"),
                 explicit_brand=resolved_brand or brand,
             )
-            sku_value = self.clean_text(current.get("sku") or current.get("mpn") or current.get("productId") or current.get("gtin12"))
+            sku_value = self.clean_text(current.get("upc") or current.get("mpn") or current.get("productId") or current.get("gtin12"))
 
             score = 0.0
-            if sku and sku.lower() in f"{sku_value} {description_value} {name_value}".lower():
+            if upc and upc.lower() in f"{sku_value} {description_value} {name_value}".lower():
                 score += 4.0
             if brand and matching_utils.is_brand_match(brand, resolved_brand, source_url):
                 score += 3.0

@@ -38,17 +38,17 @@ MINI_DATASET = {
             "adapter_slug": "bradley_crawl4ai",
             "source_type": "distributor",
             "requires_auth": False,
-            "sku": "001135",
+            "upc": "001135",
             "product_name": "E-Z HANG SCALE",
             "brand": "KERBL",
-            "search_input": {"sku": "001135", "name": "E-Z HANG SCALE", "brand": "KERBL"},
+            "search_input": {"upc": "001135", "name": "E-Z HANG SCALE", "brand": "KERBL"},
             "allowed_domains": ["bradleycaldwell.com"],
             "allowed_asset_domains": ["bradleycaldwell.com"],
-            "allowed_fields": ["name", "brand", "sku", "images"],
+            "allowed_fields": ["name", "brand", "upc", "images"],
             "ground_truth": {
                 "title_contains": ["E-Z HANG SCALE"],
                 "brand": "KERBL",
-                "sku": "001135",
+                "upc": "001135",
                 "image_required": True,
             },
             "expected": {
@@ -64,13 +64,13 @@ MINI_DATASET = {
             "adapter_slug": "bradley_crawl4ai",
             "source_type": "distributor",
             "requires_auth": False,
-            "sku": "xyzabc123notexist456",
+            "upc": "xyzabc123notexist456",
             "product_name": "",
             "brand": "",
-            "search_input": {"sku": "xyzabc123notexist456", "name": "", "brand": ""},
+            "search_input": {"upc": "xyzabc123notexist456", "name": "", "brand": ""},
             "allowed_domains": ["bradleycaldwell.com"],
             "allowed_asset_domains": ["bradleycaldwell.com"],
-            "ground_truth": {"title_contains": [], "brand": "", "sku": "xyzabc123notexist456"},
+            "ground_truth": {"title_contains": [], "brand": "", "upc": "xyzabc123notexist456"},
             "expected": {
                 "should_match_identity": True,
                 "minimum_confidence": 0.0,
@@ -84,13 +84,13 @@ MINI_DATASET = {
             "adapter_slug": "orgill_crawl4ai",
             "source_type": "distributor",
             "requires_auth": True,
-            "sku": "037193347322",
+            "upc": "037193347322",
             "product_name": "Premium Chicken Feed",
             "brand": "Purina",
-            "search_input": {"sku": "037193347322", "name": "Premium Chicken Feed", "brand": "Purina"},
+            "search_input": {"upc": "037193347322", "name": "Premium Chicken Feed", "brand": "Purina"},
             "allowed_domains": ["orgill.com"],
             "allowed_asset_domains": ["orgill.com"],
-            "ground_truth": {"title_contains": ["Premium Chicken Feed"], "brand": "Purina", "sku": "037193347322"},
+            "ground_truth": {"title_contains": ["Premium Chicken Feed"], "brand": "Purina", "upc": "037193347322"},
             "expected": {
                 "should_match_identity": True,
                 "minimum_confidence": 0.5,
@@ -104,16 +104,16 @@ MINI_DATASET = {
             "adapter_slug": "central_pet_crawl4ai",
             "source_type": "distributor",
             "requires_auth": False,
-            "sku": "38777520",
+            "upc": "38777520",
             "product_name": "KONG Air Dog Squeaker Tennis Ball Dog Toy",
             "brand": "KONG",
-            "search_input": {"sku": "38777520", "name": "KONG Air Dog Squeaker Tennis Ball Dog Toy", "brand": "KONG"},
+            "search_input": {"upc": "38777520", "name": "KONG Air Dog Squeaker Tennis Ball Dog Toy", "brand": "KONG"},
             "allowed_domains": ["centralpet.com"],
             "allowed_asset_domains": ["centralpet.com"],
             "ground_truth": {
                 "title_contains": ["KONG Air Dog"],
                 "brand": "KONG",
-                "sku": "38777520",
+                "upc": "38777520",
                 "image_required": True,
             },
             "expected": {
@@ -126,7 +126,7 @@ MINI_DATASET = {
         {
             "dataset_kind": "official_extraction",
             "source_slug": "official",
-            "sku": "SKIP_ME",
+            "upc": "SKIP_ME",
         },
     ],
 }
@@ -160,7 +160,7 @@ class TestFilterEntries:
     def test_filters_by_sku(self):
         entries = filter_entries(MINI_DATASET, sku_filter="001135")
         assert len(entries) == 1
-        assert entries[0]["sku"] == "001135"
+        assert entries[0]["upc"] == "001135"
 
     def test_multiple_source_slugs(self):
         entries = filter_entries(MINI_DATASET, source_slugs=["bradley", "central_pet"])
@@ -181,7 +181,7 @@ class TestBuildPlanFromEntry:
         entry = MINI_DATASET["entries"][0]
         plan, plan_entry = build_plan_from_entry(entry)
 
-        assert plan.sku == "001135"
+        assert plan.upc == "001135"
         assert plan.brand is not None
         assert plan.brand.name == "KERBL"
         assert plan_entry.sourceSlug == "bradley"
@@ -193,13 +193,13 @@ class TestBuildPlanFromEntry:
             "dataset_kind": "distributor_extraction",
             "source_slug": "bradley",
             "adapter_slug": "bradley_crawl4ai",
-            "sku": "010199",
+            "upc": "010199",
             "brand": "",
             "allowed_domains": ["bradleycaldwell.com"],
         }
         plan, plan_entry = build_plan_from_entry(entry)
 
-        assert plan.sku == "010199"
+        assert plan.upc == "010199"
         assert plan.brand is None
 
     def test_sets_run_first(self):
@@ -237,7 +237,7 @@ class TestEvaluateResult:
         assert "Expected success" in reason
 
     def test_no_match_expected_and_got_failed(self):
-        entry = MINI_DATASET["entries"][1]  # Negative SKU
+        entry = MINI_DATASET["entries"][1]  # Negative UPC
         passed, reason = evaluate_result(
             entry=entry,
             actual_status="failed",
@@ -337,7 +337,7 @@ class TestReportWriters:
                 SmokeTestResult(
                     entry_key="bradley_001135",
                     source_slug="bradley",
-                    sku="001135",
+                    upc="001135",
                     expected_status="success",
                     actual_status="success",
                     passed=True,
@@ -352,7 +352,7 @@ class TestReportWriters:
                 SmokeTestResult(
                     entry_key="bradley_xyzabc",
                     source_slug="bradley",
-                    sku="xyzabc123notexist456",
+                    upc="xyzabc123notexist456",
                     expected_status="no_match",
                     actual_status="failed",
                     passed=True,
@@ -362,7 +362,7 @@ class TestReportWriters:
                 SmokeTestResult(
                     entry_key="central_pet_99999",
                     source_slug="central_pet",
-                    sku="99999",
+                    upc="99999",
                     expected_status="success",
                     actual_status="failed",
                     passed=False,

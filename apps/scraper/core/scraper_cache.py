@@ -177,15 +177,15 @@ class ScraperCache:
         if persist:
             self._load_cache()
 
-    def _generate_key(self, scraper_name: str, sku: str) -> str:
-        """Generate a cache key from scraper name and SKU."""
-        raw_key = f"{scraper_name}:{sku}"
+    def _generate_key(self, scraper_name: str, upc: str) -> str:
+        """Generate a cache key from scraper name and UPC."""
+        raw_key = f"{scraper_name}:{upc}"
         return hashlib.md5(raw_key.encode()).hexdigest()
 
     def get(
         self,
         scraper_name: str,
-        sku: str,
+        upc: str,
         allow_stale: bool = False,
         allow_expired: bool = False,
     ) -> tuple[dict[str, Any] | None, CacheStatus]:
@@ -194,14 +194,14 @@ class ScraperCache:
 
         Args:
             scraper_name: Name of the scraper
-            sku: SKU to look up
+            upc: UPC to look up
             allow_stale: Whether to return stale entries
             allow_expired: Whether to return expired entries
 
         Returns:
             Tuple of (cached value or None, cache status)
         """
-        key = self._generate_key(scraper_name, sku)
+        key = self._generate_key(scraper_name, upc)
 
         with self._lock:
             entry = self._cache.get(key)
@@ -236,7 +236,7 @@ class ScraperCache:
     def set(
         self,
         scraper_name: str,
-        sku: str,
+        upc: str,
         value: dict[str, Any],
         ttl_seconds: float | None = None,
         metadata: dict[str, Any] | None = None,
@@ -246,7 +246,7 @@ class ScraperCache:
 
         Args:
             scraper_name: Name of the scraper
-            sku: SKU being cached
+            upc: UPC being cached
             value: Result to cache
             ttl_seconds: Custom TTL (uses default if None)
             metadata: Additional metadata to store
@@ -254,7 +254,7 @@ class ScraperCache:
         Returns:
             The created cache entry
         """
-        key = self._generate_key(scraper_name, sku)
+        key = self._generate_key(scraper_name, upc)
         ttl = ttl_seconds or self.ttl_seconds
         now = time.time()
 
@@ -284,18 +284,18 @@ class ScraperCache:
 
         return entry
 
-    def delete(self, scraper_name: str, sku: str) -> bool:
+    def delete(self, scraper_name: str, upc: str) -> bool:
         """
         Delete a cached entry.
 
         Args:
             scraper_name: Name of the scraper
-            sku: SKU to delete
+            upc: UPC to delete
 
         Returns:
             True if entry was deleted, False if not found
         """
-        key = self._generate_key(scraper_name, sku)
+        key = self._generate_key(scraper_name, upc)
 
         with self._lock:
             if key in self._cache:
@@ -311,7 +311,7 @@ class ScraperCache:
     def invalidate(
         self,
         scraper_name: str | None = None,
-        sku: str | None = None,
+        upc: str | None = None,
         older_than: float | None = None,
     ) -> int:
         """
@@ -319,7 +319,7 @@ class ScraperCache:
 
         Args:
             scraper_name: Invalidate entries for this scraper
-            sku: Invalidate entries for this SKU
+            upc: Invalidate entries for this UPC
             older_than: Invalidate entries older than this timestamp
 
         Returns:
@@ -333,7 +333,7 @@ class ScraperCache:
 
                 if scraper_name and entry.source == scraper_name:
                     should_delete = True
-                if sku and sku in entry.key:
+                if upc and upc in entry.key:
                     should_delete = True
                 if older_than and entry.created_at < older_than:
                     should_delete = True
@@ -442,29 +442,29 @@ class ScraperCache:
 
     def get_cached_skus(self, scraper_name: str | None = None) -> list[str]:
         """
-        Get list of SKUs in cache.
+        Get list of UPCs in cache.
 
         Args:
             scraper_name: Filter by scraper name
 
         Returns:
-            List of cached SKUs
+            List of cached UPCs
         """
         with self._lock:
-            skus = []
+            upcs = []
             for entry in self._cache.values():
                 if scraper_name is None or entry.source == scraper_name:
-                    # Extract SKU from metadata if available
-                    sku = entry.metadata.get("sku", entry.key)
-                    skus.append(sku)
-            return skus
+                    # Extract UPC from metadata if available
+                    upc = entry.metadata.get("upc", entry.key)
+                    upcs.append(upc)
+            return upcs
 
 
 class IncrementalScraper:
     """
     Manages incremental scraping with intelligent cache checking.
 
-    Determines which SKUs need to be scraped vs which can use cached data.
+    Determines which UPCs need to be scraped vs which can use cached data.
     """
 
     def __init__(
@@ -488,14 +488,14 @@ class IncrementalScraper:
     def partition_skus(
         self,
         scraper_name: str,
-        skus: list[str],
+        upcs: list[str],
     ) -> tuple[list[str], list[str], list[dict[str, Any]]]:
         """
-        Partition SKUs into those needing scraping vs cached.
+        Partition UPCs into those needing scraping vs cached.
 
         Args:
             scraper_name: Name of the scraper
-            skus: List of SKUs to check
+            upcs: List of UPCs to check
 
         Returns:
             Tuple of (skus_to_scrape, skus_from_cache, cached_results)
@@ -506,27 +506,27 @@ class IncrementalScraper:
         skus_from_cache = []
         cached_results = []
 
-        for sku in skus:
+        for upc in upcs:
             # Check if should force refresh (random sampling)
             force_refresh = random.random() < self.force_refresh_ratio
 
             if force_refresh:
-                skus_to_scrape.append(sku)
+                skus_to_scrape.append(upc)
                 continue
 
             # Check cache
             cached, status = self.cache.get(
                 scraper_name,
-                sku,
+                upc,
                 allow_stale=True,
                 allow_expired=False,
             )
 
             if cached and status == CacheStatus.VALID:
-                skus_from_cache.append(sku)
+                skus_from_cache.append(upc)
                 cached_results.append(cached)
             else:
-                skus_to_scrape.append(sku)
+                skus_to_scrape.append(upc)
 
         logger.info(
             f"Incremental partition: {len(skus_to_scrape)} to scrape, "
@@ -538,7 +538,7 @@ class IncrementalScraper:
     def scrape_incremental(
         self,
         scraper_name: str,
-        skus: list[str],
+        upcs: list[str],
         scrape_func,
     ) -> Iterator[dict[str, Any]]:
         """
@@ -546,45 +546,45 @@ class IncrementalScraper:
 
         Args:
             scraper_name: Name of the scraper
-            skus: SKUs to process
-            scrape_func: Function to scrape a single SKU
+            upcs: UPCs to process
+            scrape_func: Function to scrape a single UPC
 
         Yields:
             Results (from cache or fresh scrape)
         """
-        to_scrape, _from_cache, cached_results = self.partition_skus(scraper_name, skus)
+        to_scrape, _from_cache, cached_results = self.partition_skus(scraper_name, upcs)
 
         # Yield cached results first
         for result in cached_results:
             yield result
 
-        # Scrape remaining SKUs
-        for sku in to_scrape:
+        # Scrape remaining UPCs
+        for upc in to_scrape:
             try:
-                result = scrape_func(sku)
+                result = scrape_func(upc)
                 if result:
                     # Cache the new result
                     self.cache.set(
                         scraper_name,
-                        sku,
+                        upc,
                         result,
-                        metadata={"sku": sku},
+                        metadata={"upc": upc},
                     )
                     yield result
             except Exception as e:
-                logger.error(f"Error scraping {sku}: {e}")
+                logger.error(f"Error scraping {upc}: {e}")
 
     def get_freshness_report(
         self,
         scraper_name: str,
-        skus: list[str],
+        upcs: list[str],
     ) -> dict[str, Any]:
         """
-        Generate a report on cache freshness for given SKUs.
+        Generate a report on cache freshness for given UPCs.
 
         Args:
             scraper_name: Name of the scraper
-            skus: SKUs to check
+            upcs: UPCs to check
 
         Returns:
             Report with freshness statistics
@@ -594,10 +594,10 @@ class IncrementalScraper:
         expired_count = 0
         missing_count = 0
 
-        for sku in skus:
+        for upc in upcs:
             _, status = self.cache.get(
                 scraper_name,
-                sku,
+                upc,
                 allow_stale=True,
                 allow_expired=True,
             )
@@ -612,13 +612,13 @@ class IncrementalScraper:
                 missing_count += 1
 
         return {
-            "total_skus": len(skus),
+            "total_upcs": len(upcs),
             "valid": valid_count,
             "stale": stale_count,
             "expired": expired_count,
             "missing": missing_count,
-            "cache_coverage": (valid_count + stale_count) / len(skus) if skus else 0,
-            "freshness_ratio": valid_count / len(skus) if skus else 0,
+            "cache_coverage": (valid_count + stale_count) / len(upcs) if upcs else 0,
+            "freshness_ratio": valid_count / len(upcs) if upcs else 0,
         }
 
 
@@ -640,7 +640,7 @@ class CacheWarmer:
         self,
         scraper_name: str,
         historical_results: list[dict[str, Any]],
-        sku_field: str = "sku",
+        sku_field: str = "upc",
     ) -> int:
         """
         Warm cache from historical results.
@@ -648,20 +648,20 @@ class CacheWarmer:
         Args:
             scraper_name: Name of the scraper
             historical_results: List of historical results
-            sku_field: Field name containing SKU
+            sku_field: Field name containing UPC
 
         Returns:
             Number of entries added to cache
         """
         count = 0
         for result in historical_results:
-            sku = result.get(sku_field)
-            if sku:
+            upc = result.get(sku_field)
+            if upc:
                 self.cache.set(
                     scraper_name,
-                    sku,
+                    upc,
                     result,
-                    metadata={"sku": sku, "source": "history_warm"},
+                    metadata={"upc": upc, "source": "history_warm"},
                 )
                 count += 1
 
@@ -672,7 +672,7 @@ class CacheWarmer:
         self,
         file_path: str | Path,
         scraper_name: str,
-        sku_field: str = "sku",
+        sku_field: str = "upc",
     ) -> int:
         """
         Warm cache from a JSON file.
@@ -680,7 +680,7 @@ class CacheWarmer:
         Args:
             file_path: Path to JSON file
             scraper_name: Name of the scraper
-            sku_field: Field name containing SKU
+            sku_field: Field name containing UPC
 
         Returns:
             Number of entries added

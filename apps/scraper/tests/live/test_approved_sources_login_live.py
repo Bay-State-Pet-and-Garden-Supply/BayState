@@ -65,7 +65,7 @@ def _credentials_available(source_slug: str) -> bool:
 
 
 def _build_live_plan(
-    sku: str,
+    upc: str,
     source_slug: str,
     adapter_slug: str,
     brand_name: str | None = None,
@@ -98,14 +98,14 @@ def _build_live_plan(
         adapterSlug=adapter_slug,
         requiresAuth=True,
         searchMode="sku_search",
-        allowedFields=["name", "brand", "sku", "upc", "images", "weight", "description"],
+        allowedFields=["name", "brand", "upc", "upc", "images", "weight", "description"],
         priority=10,
         runFirst=True,
     )
 
     plan = ApprovedSourcePlan(
         schemaVersion="v1",
-        sku=sku,
+        upc=sku,
         input={"name": product_name, "price": None},
         brand=brand,
         selectedDistributorSlug=source_slug,
@@ -173,7 +173,7 @@ class TestOrgillLiveExtraction:
     async def test_extract_product_037193347322(self):
         """Test extracting a known Orgill product after login."""
         plan, entry = _build_live_plan(
-            sku="037193347322",
+            upc="037193347322",
             source_slug="orgill",
             adapter_slug="orgill_crawl4ai",
             brand_name="Purina",
@@ -235,7 +235,7 @@ class TestPhillipsLiveExtraction:
     async def test_extract_product_072705115310(self):
         """Test extracting a known Phillips product after login."""
         plan, entry = _build_live_plan(
-            sku="072705115310",
+            upc="072705115310",
             source_slug="phillips",
             adapter_slug="phillips_crawl4ai",
             brand_name="Fromm",
@@ -303,7 +303,7 @@ class TestPFELiveExtraction:
     async def test_extract_product_33011808(self):
         """Test extracting a known PFE product after login."""
         plan, entry = _build_live_plan(
-            sku="33011808",
+            upc="33011808",
             source_slug="pet_food_experts",
             adapter_slug="pet_food_experts_crawl4ai",
             product_name="Wellness CORE Senior Dog Food",

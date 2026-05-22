@@ -1,7 +1,7 @@
 """Unit tests for QueryBuilder discovery query methods.
 
 Tests build_sku_discovery_query and build_name_discovery_query for
-edge cases including short numeric SKUs, long SKUs, missing brand,
+edge cases including short numeric UPCs, long UPCs, missing brand,
 exclusions, and empty inputs.
 """
 
@@ -19,55 +19,55 @@ class TestBuildSkuDiscoveryQuery:
     """Tests for QueryBuilder.build_sku_discovery_query."""
 
     def test_short_numeric_sku_with_brand(self) -> None:
-        """A short numeric SKU (<5 digits) with brand should prepend brand."""
+        """A short numeric UPC (<5 digits) with brand should prepend brand."""
         qb = QueryBuilder()
         result = qb.build_sku_discovery_query("123", "TestBrand")
         assert result == "TestBrand 123"
 
     def test_long_numeric_sku_without_brand(self) -> None:
-        """A long numeric SKU (>=5 digits) should not get brand prefix even if brand absent."""
+        """A long numeric UPC (>=5 digits) should not get brand prefix even if brand absent."""
         qb = QueryBuilder()
         result = qb.build_sku_discovery_query("123456789012", None)
         assert result == "123456789012"
 
     def test_long_numeric_sku_with_brand(self) -> None:
-        """A long numeric SKU with brand should still return just the SKU (not ambiguous)."""
+        """A long numeric UPC with brand should still return just the UPC (not ambiguous)."""
         qb = QueryBuilder()
         result = qb.build_sku_discovery_query("123456789012", "TestBrand")
         assert result == "123456789012"
 
     def test_missing_brand_with_short_sku(self) -> None:
-        """A short numeric SKU without brand should return just the SKU (no brand to prepend)."""
+        """A short numeric UPC without brand should return just the UPC (no brand to prepend)."""
         qb = QueryBuilder()
         result = qb.build_sku_discovery_query("123")
         assert result == "123"
 
     def test_empty_sku_returns_empty_string(self) -> None:
-        """An empty SKU should return an empty string."""
+        """An empty UPC should return an empty string."""
         qb = QueryBuilder()
         result = qb.build_sku_discovery_query("")
         assert result == ""
 
     def test_sku_with_none_value(self) -> None:
-        """A None SKU should return an empty string."""
+        """A None UPC should return an empty string."""
         qb = QueryBuilder()
         result = qb.build_sku_discovery_query(None)
         assert result == ""
 
     def test_alphanumeric_sku_not_ambiguous(self) -> None:
-        """An alphanumeric SKU is not considered ambiguous, so no brand prefix."""
+        """An alphanumeric UPC is not considered ambiguous, so no brand prefix."""
         qb = QueryBuilder()
         result = qb.build_sku_discovery_query("ABC-123", "TestBrand")
         assert result == "ABC-123"
 
     def test_boundary_sku_length_four_is_ambiguous(self) -> None:
-        """A 4-digit SKU is still ambiguous (len < 5), so brand prefix is added."""
+        """A 4-digit UPC is still ambiguous (len < 5), so brand prefix is added."""
         qb = QueryBuilder()
         result = qb.build_sku_discovery_query("1234", "TestBrand")
         assert result == "TestBrand 1234"
 
     def test_boundary_sku_length_five_is_not_ambiguous(self) -> None:
-        """A 5-digit SKU is not ambiguous (len == 5), so no brand prefix."""
+        """A 5-digit UPC is not ambiguous (len == 5), so no brand prefix."""
         qb = QueryBuilder()
         result = qb.build_sku_discovery_query("12345", "TestBrand")
         assert result == "12345"

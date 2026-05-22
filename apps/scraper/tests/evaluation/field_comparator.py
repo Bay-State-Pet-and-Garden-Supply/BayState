@@ -17,7 +17,7 @@ class FieldComparison(BaseFieldComparison):
 
 TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 LIST_FIELDS = {"images", "categories", "tags", "bullets", "features"}
-EXACT_FIELDS = {"brand", "sku"}
+EXACT_FIELDS = {"brand", "upc"}
 
 
 def _normalize_text(value: object | None) -> str:

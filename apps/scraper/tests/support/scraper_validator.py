@@ -4,16 +4,16 @@ from typing import Any
 
 from validation.result_quality import canonicalize_product_payload, sanitize_product_payload
 
-REQUIRED_FIELDS = ("sku", "title")
+REQUIRED_FIELDS = ("upc", "title")
 EXPECTED_FIELDS: dict[str, list[str]] = {
-    "amazon": ["sku", "title", "brand", "images", "ratings", "reviews_count"],
-    "bradley": ["sku", "title", "brand", "images", "item_number", "manufacturer_part_number"],
-    "central_pet": ["sku", "title", "brand", "images", "item_number", "upc"],
-    "coastal": ["sku", "title", "brand", "images", "item_number", "upc"],
-    "mazuri": ["sku", "title", "brand", "images", "ingredients"],
-    "orgill": ["sku", "title", "brand", "images", "upc", "manufacturer_part_number"],
-    "petfoodex": ["sku", "title", "brand", "images", "item_number", "upc", "unit_of_measure"],
-    "phillips": ["sku", "title", "brand", "images", "item_number", "upc"],
+    "amazon": ["upc", "title", "brand", "images", "ratings", "reviews_count"],
+    "bradley": ["upc", "title", "brand", "images", "item_number", "manufacturer_part_number"],
+    "central_pet": ["upc", "title", "brand", "images", "item_number", "upc"],
+    "coastal": ["upc", "title", "brand", "images", "item_number", "upc"],
+    "mazuri": ["upc", "title", "brand", "images", "ingredients"],
+    "orgill": ["upc", "title", "brand", "images", "upc", "manufacturer_part_number"],
+    "petfoodex": ["upc", "title", "brand", "images", "item_number", "upc", "unit_of_measure"],
+    "phillips": ["upc", "title", "brand", "images", "item_number", "upc"],
 }
 
 
@@ -37,7 +37,7 @@ class ScraperValidator:
                 "data_quality_score": 0.0,
             }
 
-        expected_fields = EXPECTED_FIELDS.get(scraper_name, ["sku", "title", "brand", "images"])
+        expected_fields = EXPECTED_FIELDS.get(scraper_name, ["upc", "title", "brand", "images"])
         field_counts = {field: 0 for field in expected_fields}
         errors: list[str] = []
         warnings: list[str] = []

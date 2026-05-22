@@ -61,15 +61,15 @@ async def test_shopify_variant_resolver_success(mock_scoring_utils, mock_matchin
     )
 
     url = "https://example-shopify.com/products/dog-food"
-    sku = "DF-123"
+    upc= "DF-123"
 
     mock_product_js = {
         "title": "Dog Food",
         "vendor": "SuperBrand",
         "description": "Premium dog food.",
         "variants": [
-            {"id": 4567, "sku": "DF-999", "title": "Small Bag", "price": 1000},
-            {"id": 1234, "sku": "DF-123", "title": "Large Bag", "price": 4500},
+            {"id": 4567, "upc": "DF-999", "title": "Small Bag", "price": 1000},
+            {"id": 1234, "upc": "DF-123", "title": "Large Bag", "price": 4500},
         ],
     }
 
@@ -78,7 +78,7 @@ async def test_shopify_variant_resolver_success(mock_scoring_utils, mock_matchin
         mock_client_cls.return_value = mock_client
 
         res_url, res_html, res_md, status = await resolver.resolve(
-            url=url, sku=sku, product_name="Dog Food", brand="SuperBrand", html="<html><body>window.Shopify=true;</body></html>"
+            url=url, upc=upc, product_name="Dog Food", brand="SuperBrand", html="<html><body>window.Shopify=true;</body></html>"
         )
 
         assert status == "exact_variant"
@@ -97,19 +97,19 @@ async def test_woocommerce_variant_resolver_success(mock_scoring_utils, mock_mat
     )
 
     url = "https://example-woocommerce.com/shop/dog-collar"
-    sku = "DC-BLUE-M"
+    upc= "DC-BLUE-M"
 
     variations_json = (
-        '[{"variation_id": 999, "sku": "DC-BLUE-S", "display_price": 15, '
+        '[{"variation_id": 999, "upc": "DC-BLUE-S", "display_price": 15, '
         '"attributes": {"attribute_pa_color": "blue", "attribute_pa_size": "s"}}, '
-        '{"variation_id": 1234, "sku": "DC-BLUE-M", "display_price": 20, '
+        '{"variation_id": 1234, "upc": "DC-BLUE-M", "display_price": 20, '
         '"attributes": {"attribute_pa_color": "blue", "attribute_pa_size": "m"}}]'
     )
     escaped_variations = html_module.escape(variations_json)
     html = f'<html><body><form class="variations_form" data-product_variations="{escaped_variations}"></form>woocommerce</body></html>'
 
     res_url, res_html, res_md, status = await resolver.resolve(
-        url=url, sku=sku, product_name="Dog Collar", brand="SuperBrand", html=html
+        url=url, upc=upc, product_name="Dog Collar", brand="SuperBrand", html=html
     )
 
     assert status == "exact_variant"
@@ -131,7 +131,7 @@ async def test_demandware_variant_resolver_success(mock_scoring_utils, mock_matc
     )
 
     url = "https://example-dw.com/on/demandware.store/Sites-Super-Site/default/Product-Show"
-    sku = "dw-5678"
+    upc= "dw-5678"
 
     html = '<html><body><div id="dw-variant-url" data-action="https://example-dw.com/on/demandware.store/Sites-Super-Site/default/Product-Variation"></div></body></html>'
 
@@ -151,7 +151,7 @@ async def test_demandware_variant_resolver_success(mock_scoring_utils, mock_matc
         mock_client_cls.return_value = mock_client
 
         res_url, res_html, res_md, status = await resolver.resolve(
-            url=url, sku=sku, product_name="Dw Product", brand="Brand", html=html
+            url=url, upc=upc, product_name="Dw Product", brand="Brand", html=html
         )
 
         assert status == "exact_variant"
@@ -166,7 +166,7 @@ async def test_resolve_family_variant_coordinator_shopify_falls_through(
     mock_scoring_utils, mock_matching_utils, mock_extraction_utils
 ):
     url = "https://example.com/products/unknown"
-    sku = "UNKNOWN-SKU"
+    upc= "UNKNOWN-UPC"
 
     with patch("httpx.AsyncClient") as mock_client_cls:
         mock_client = mock_httpx_client({}, status_code=404)
@@ -174,7 +174,7 @@ async def test_resolve_family_variant_coordinator_shopify_falls_through(
 
         res_url, res_html, res_md, status = await resolve_family_variant(
             url=url,
-            sku=sku,
+            upc=upc,
             product_name="Unknown Product",
             brand="Brand",
             html="<html><body>window.Shopify=true;</body></html>",

@@ -7,7 +7,7 @@ from pathlib import Path
 
 from scrapers.ai_search.models import AISearchResult
 from tests.evaluation.ground_truth_loader import get_ground_truth
-from tests.evaluation.metrics_calculator import SKUMetrics
+from tests.evaluation.metrics_calculator import UPCMetrics
 from tests.evaluation.metrics_calculator import calculate_per_sku_metrics
 from tests.evaluation.metrics_calculator import get_per_field_accuracy
 from tests.evaluation.types import GroundTruthProduct
@@ -47,29 +47,29 @@ def _stable_score(*parts: str) -> float:
     return int.from_bytes(digest[:4], "big") / float(2**32)
 
 
-def _cache_key(version: str, skus: list[str]) -> str:
-    sku_fingerprint = hashlib.sha256("|".join(skus).encode("utf-8")).hexdigest()[:12]
+def _cache_key(version: str, upcs: list[str]) -> str:
+    upc_fingerprint = hashlib.sha256("|".join(upcs).encode("utf-8")).hexdigest()[:12]
     safe_version = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in version)
-    return f"{safe_version}_{sku_fingerprint}.json"
+    return f"{safe_version}_{upc_fingerprint}.json"
 
 
 def _serialize_cache_payload(
     version: str,
-    skus: list[str],
+    upcs: list[str],
     accuracy: float,
     per_field_accuracy: dict[str, float],
     per_sku_accuracy: list[float],
 ) -> str:
     serialized_fields = ";".join(f"{field}={value:.12f}" for field, value in sorted(per_field_accuracy.items()))
     serialized_per_sku = ",".join(f"{value:.12f}" for value in per_sku_accuracy)
-    serialized_skus = ",".join(skus)
+    serialized_skus = ",".join(upcs)
     return "\n".join(
         [
             f"version={version}",
-            f"skus={serialized_skus}",
+            f"upcs={serialized_skus}",
             f"accuracy={accuracy:.12f}",
             f"per_field={serialized_fields}",
-            f"per_sku={serialized_per_sku}",
+            f"per_upc={serialized_per_sku}",
         ]
     )
 
@@ -85,13 +85,13 @@ def _parse_cache_payload(payload: str, cache_path: Path) -> tuple[str, list[str]
         key, raw_value = line.split("=", 1)
         values[key.strip()] = raw_value.strip()
 
-    required_keys = {"version", "skus", "accuracy", "per_field", "per_sku"}
+    required_keys = {"version", "upcs", "accuracy", "per_field", "per_upc"}
     missing_keys = required_keys - set(values)
     if missing_keys:
         raise ValueError(f"missing keys in baseline cache {cache_path}: {sorted(missing_keys)}")
 
     parsed_version = values["version"]
-    parsed_skus = [item for item in values["skus"].split(",") if item]
+    parsed_skus = [item for item in values["upcs"].split(",") if item]
     parsed_accuracy = float(values["accuracy"])
 
     parsed_per_field: dict[str, float] = {}
@@ -105,8 +105,8 @@ def _parse_cache_payload(payload: str, cache_path: Path) -> tuple[str, list[str]
             parsed_per_field[field_name] = float(field_value)
 
     parsed_per_sku: list[float] = []
-    if values["per_sku"]:
-        for token in values["per_sku"].split(","):
+    if values["per_upc"]:
+        for token in values["per_upc"].split(","):
             if token:
                 parsed_per_sku.append(float(token))
 
@@ -115,25 +115,25 @@ def _parse_cache_payload(payload: str, cache_path: Path) -> tuple[str, list[str]
 
 def _build_synthetic_extraction(version: str, ground_truth: GroundTruthProduct) -> AISearchResult:
     quality = _quality_for_version(version)
-    sku = ground_truth.sku
+    upc= ground_truth.upc
 
     def maybe_keep_scalar(field_name: str, value: str | None) -> str | None:
         keep_probability = quality
-        roll = _stable_score(version, sku, field_name)
+        roll = _stable_score(version, upc, field_name)
         if roll <= keep_probability:
             return value
         return None
 
     def maybe_keep_list(field_name: str, value: list[str]) -> list[str]:
         keep_probability = quality
-        roll = _stable_score(version, sku, field_name)
+        roll = _stable_score(version, upc, field_name)
         if roll <= keep_probability:
             return value
         return []
 
     return AISearchResult(
         success=True,
-        sku=sku,
+        upc=sku,
         product_name=maybe_keep_scalar("product_name", ground_truth.name),
         brand=maybe_keep_scalar("brand", ground_truth.brand),
         description=maybe_keep_scalar("description", ground_truth.description),
@@ -144,26 +144,26 @@ def _build_synthetic_extraction(version: str, ground_truth: GroundTruthProduct) 
     )
 
 
-def _run_evaluation(version: str, skus: list[str]) -> tuple[float, dict[str, float], list[float]]:
-    sku_metrics: list[SKUMetrics] = []
+def _run_evaluation(version: str, upcs: list[str]) -> tuple[float, dict[str, float], list[float]]:
+    upc_metrics: list[UPCMetrics] = []
 
-    for sku in skus:
+    for sku in upcs:
         ground_truth = get_ground_truth(sku)
         if ground_truth is None:
-            raise ValueError(f"ground truth not found for sku: {sku}")
+            raise ValueError(f"ground truth not found for upc: {sku}")
 
         extraction = _build_synthetic_extraction(version=version, ground_truth=ground_truth)
-        sku_metrics.append(calculate_per_sku_metrics(extraction, ground_truth))
+        upc_metrics.append(calculate_per_sku_metrics(extraction, ground_truth))
 
-    per_sku_accuracy = [metric.field_accuracy for metric in sku_metrics]
+    per_sku_accuracy = [metric.field_accuracy for metric in upc_metrics]
     average_accuracy = sum(per_sku_accuracy) / len(per_sku_accuracy) if per_sku_accuracy else 0.0
-    per_field_accuracy = get_per_field_accuracy(sku_metrics)
+    per_field_accuracy = get_per_field_accuracy(upc_metrics)
     return average_accuracy, per_field_accuracy, per_sku_accuracy
 
 
-def _load_or_create_baseline(version: str, skus: list[str]) -> tuple[float, dict[str, float], list[float]]:
+def _load_or_create_baseline(version: str, upcs: list[str]) -> tuple[float, dict[str, float], list[float]]:
     BASELINE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    cache_path = BASELINE_CACHE_DIR / _cache_key(version, skus)
+    cache_path = BASELINE_CACHE_DIR / _cache_key(version, upcs)
 
     if cache_path.exists():
         parsed_version, cached_skus, cached_accuracy, cached_per_field, cached_per_sku = _parse_cache_payload(
@@ -172,14 +172,14 @@ def _load_or_create_baseline(version: str, skus: list[str]) -> tuple[float, dict
         )
         if parsed_version != version:
             raise ValueError("cached baseline version does not match requested baseline version")
-        if cached_skus != skus:
+        if cached_skus != upcs:
             raise ValueError("cached baseline sku set does not match requested sku set")
         return cached_accuracy, cached_per_field, cached_per_sku
 
-    accuracy, per_field_accuracy, per_sku_accuracy = _run_evaluation(version, skus)
+    accuracy, per_field_accuracy, per_sku_accuracy = _run_evaluation(version, upcs)
     payload = _serialize_cache_payload(
         version=version,
-        skus=skus,
+        upcs=upcs,
         accuracy=accuracy,
         per_field_accuracy=per_field_accuracy,
         per_sku_accuracy=per_sku_accuracy,
@@ -225,18 +225,18 @@ def _determine_recommendation(improvement: float, is_significant: bool) -> str:
 def compare(
     baseline: str,
     challenger: str,
-    skus: list[str],
+    upcs: list[str],
     confidence_level: float = 0.95,
 ) -> BaselineComparison:
-    if not skus:
+    if not upcs:
         raise ValueError("compare requires at least one sku")
 
-    unique_skus = list(dict.fromkeys(skus))
-    if len(unique_skus) != len(skus):
+    unique_upcs = list(dict.fromkeys(upcs))
+    if len(unique_upcs) != len(upcs):
         raise ValueError("compare requires unique sku values")
 
-    baseline_accuracy, baseline_per_field, baseline_per_sku = _load_or_create_baseline(baseline, unique_skus)
-    challenger_accuracy, challenger_per_field, challenger_per_sku = _run_evaluation(challenger, unique_skus)
+    baseline_accuracy, baseline_per_field, baseline_per_sku = _load_or_create_baseline(baseline, unique_upcs)
+    challenger_accuracy, challenger_per_field, challenger_per_sku = _run_evaluation(challenger, unique_upcs)
 
     if len(baseline_per_sku) != len(challenger_per_sku):
         raise ValueError("baseline and challenger must evaluate the same sku set")

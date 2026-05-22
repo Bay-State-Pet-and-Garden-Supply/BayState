@@ -26,7 +26,7 @@ class ShopifyVariantResolver(BaseVariantResolver):
         self,
         *,
         url: str,
-        sku: str,
+        upc: str,
         product_name: Optional[str],
         brand: Optional[str],
         html: str,
@@ -71,12 +71,12 @@ class ShopifyVariantResolver(BaseVariantResolver):
 
         variants = product_data.get("variants") or []
         matched_variant = None
-        target_sku_clean = str(sku or "").strip().lower()
+        target_sku_clean = str(upc or "").strip().lower()
 
-        # Try exact SKU match first
+        # Try exact UPC match first
         if target_sku_clean:
             for variant in variants:
-                var_sku = str(variant.get("sku") or "").strip().lower()
+                var_sku = str(variant.get("upc") or "").strip().lower()
                 if var_sku == target_sku_clean:
                     matched_variant = variant
                     break
@@ -84,12 +84,12 @@ class ShopifyVariantResolver(BaseVariantResolver):
             # Try substring match
             if not matched_variant:
                 for variant in variants:
-                    var_sku = str(variant.get("sku") or "").strip().lower()
+                    var_sku = str(variant.get("upc") or "").strip().lower()
                     if var_sku and (target_sku_clean in var_sku or var_sku in target_sku_clean):
                         matched_variant = variant
                         break
 
-            # Try exact id match if SKU is numeric and matches variant ID
+            # Try exact id match if UPC is numeric and matches variant ID
             if not matched_variant:
                 for variant in variants:
                     var_id = str(variant.get("id") or "").strip().lower()
@@ -109,13 +109,13 @@ class ShopifyVariantResolver(BaseVariantResolver):
             if len(best_matches) == 1:
                 matched_variant = best_matches[0]
 
-        # If no SKU match but we have a single variant, or if we couldn't match SKU,
+        # If no UPC match but we have a single variant, or if we couldn't match UPC,
         # we can't be sure it's the exact one if multiple variants exist.
         if not matched_variant:
             if len(variants) == 1:
                 matched_variant = variants[0]
             else:
-                logger.info("[AI Search] Shopify found %d variants but could not match SKU '%s'", len(variants), sku)
+                logger.info("[AI Search] Shopify found %d variants but could not match UPC '%s'", len(variants), upc)
                 return url, None, None, "family_page_default"
 
         # Construct resolved variant URL
@@ -128,7 +128,7 @@ class ShopifyVariantResolver(BaseVariantResolver):
         full_title = f"{prod_title} - {var_title}" if var_title and var_title.lower() != "default title" else prod_title
         
         var_price = float(matched_variant.get("price", 0)) / 100.0 if matched_variant.get("price") is not None else 0.0
-        var_sku = matched_variant.get("sku") or sku
+        var_sku = matched_variant.get("upc") or upc
         feat_img = matched_variant.get("featured_image")
         var_img = feat_img.get("src") if isinstance(feat_img, dict) else product_data.get("featured_image")
         if not var_img and product_data.get("images"):
@@ -139,7 +139,7 @@ class ShopifyVariantResolver(BaseVariantResolver):
             "@context": "http://schema.org",
             "@type": "Product",
             "name": full_title,
-            "sku": var_sku,
+            "upc": var_sku,
             "description": product_data.get("description") or "",
             "brand": {
                 "@type": "Brand",

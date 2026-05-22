@@ -4,7 +4,7 @@ Validates that:
 1. The fixture file passes validation with all required fields
 2. Invalid entries are correctly rejected with clear error messages
 3. Edge cases (empty fields, wrong types, invalid enums) are caught
-4. The fixture stays within the ≤50 SKU cap
+4. The fixture stays within the ≤50 UPC cap
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ class TestValidateEntry:
 
     def test_valid_entry_passes(self):
         entry = {
-            "sku": "032247886598",
+            "upc": "032247886598",
             "brand": "Scotts",
             "name": "Scotts NatureScapes Mulch",
             "expected_source_url": "https://www.scotts.com/en-us/product",
@@ -60,12 +60,12 @@ class TestValidateEntry:
         }
         errors = validate_entry(entry, 0)
         assert len(errors) == 1
-        assert errors[0].field == "sku"
+        assert errors[0].field == "upc"
         assert "Missing required field" in errors[0].message
 
     def test_missing_required_field_brand(self):
         entry = {
-            "sku": "032247886598",
+            "upc": "032247886598",
             "name": "Scotts NatureScapes Mulch",
             "expected_source_url": "https://www.scotts.com/en-us/product",
             "expected_source_domain": "scotts.com",
@@ -78,7 +78,7 @@ class TestValidateEntry:
 
     def test_missing_required_field_name(self):
         entry = {
-            "sku": "032247886598",
+            "upc": "032247886598",
             "brand": "Scotts",
             "expected_source_url": "https://www.scotts.com/en-us/product",
             "expected_source_domain": "scotts.com",
@@ -91,7 +91,7 @@ class TestValidateEntry:
 
     def test_missing_required_field_expected_source_url(self):
         entry = {
-            "sku": "032247886598",
+            "upc": "032247886598",
             "brand": "Scotts",
             "name": "Scotts NatureScapes Mulch",
             "expected_source_domain": "scotts.com",
@@ -104,7 +104,7 @@ class TestValidateEntry:
 
     def test_missing_required_field_expected_source_domain(self):
         entry = {
-            "sku": "032247886598",
+            "upc": "032247886598",
             "brand": "Scotts",
             "name": "Scotts NatureScapes Mulch",
             "expected_source_url": "https://www.scotts.com/en-us/product",
@@ -117,7 +117,7 @@ class TestValidateEntry:
 
     def test_missing_required_field_expected_source_tier(self):
         entry = {
-            "sku": "032247886598",
+            "upc": "032247886598",
             "brand": "Scotts",
             "name": "Scotts NatureScapes Mulch",
             "expected_source_url": "https://www.scotts.com/en-us/product",
@@ -130,7 +130,7 @@ class TestValidateEntry:
 
     def test_missing_required_field_expected_fields(self):
         entry = {
-            "sku": "032247886598",
+            "upc": "032247886598",
             "brand": "Scotts",
             "name": "Scotts NatureScapes Mulch",
             "expected_source_url": "https://www.scotts.com/en-us/product",
@@ -143,7 +143,7 @@ class TestValidateEntry:
 
     def test_empty_required_field_rejected(self):
         entry = {
-            "sku": "",
+            "upc": "",
             "brand": "",
             "name": "",
             "expected_source_url": "",
@@ -155,13 +155,13 @@ class TestValidateEntry:
         # Should have errors for empty required fields
         assert len(errors) >= 5  # sku, brand, name, expected_source_url, expected_source_domain at minimum
         error_fields = {e.field for e in errors}
-        assert "sku" in error_fields
+        assert "upc" in error_fields
         assert "brand" in error_fields
         assert "name" in error_fields
 
     def test_invalid_url_format_rejected(self):
         entry = {
-            "sku": "032247886598",
+            "upc": "032247886598",
             "brand": "Scotts",
             "name": "Scotts NatureScapes Mulch",
             "expected_source_url": "not-a-url",
@@ -176,7 +176,7 @@ class TestValidateEntry:
 
     def test_invalid_source_tier_rejected(self):
         entry = {
-            "sku": "032247886598",
+            "upc": "032247886598",
             "brand": "Scotts",
             "name": "Scotts NatureScapes Mulch",
             "expected_source_url": "https://www.scotts.com/en-us/product",
@@ -191,7 +191,7 @@ class TestValidateEntry:
 
     def test_invalid_expected_field_name_rejected(self):
         entry = {
-            "sku": "032247886598",
+            "upc": "032247886598",
             "brand": "Scotts",
             "name": "Scotts NatureScapes Mulch",
             "expected_source_url": "https://www.scotts.com/en-us/product",
@@ -206,7 +206,7 @@ class TestValidateEntry:
 
     def test_invalid_difficulty_rejected(self):
         entry = {
-            "sku": "032247886598",
+            "upc": "032247886598",
             "brand": "Scotts",
             "name": "Scotts NatureScapes Mulch",
             "expected_source_url": "https://www.scotts.com/en-us/product",
@@ -223,7 +223,7 @@ class TestValidateEntry:
     def test_all_valid_source_tiers_accepted(self):
         for tier in VALID_SOURCE_TIERS:
             entry = {
-                "sku": "032247886598",
+                "upc": "032247886598",
                 "brand": "Scotts",
                 "name": "Scotts NatureScapes Mulch",
                 "expected_source_url": "https://www.scotts.com/en-us/product",
@@ -238,7 +238,7 @@ class TestValidateEntry:
     def test_all_valid_difficulties_accepted(self):
         for difficulty in VALID_DIFFICULTIES:
             entry = {
-                "sku": "032247886598",
+                "upc": "032247886598",
                 "brand": "Scotts",
                 "name": "Scotts NatureScapes Mulch",
                 "expected_source_url": "https://www.scotts.com/en-us/product",
@@ -253,7 +253,7 @@ class TestValidateEntry:
 
     def test_all_valid_expected_fields_accepted(self):
         entry = {
-            "sku": "032247886598",
+            "upc": "032247886598",
             "brand": "Scotts",
             "name": "Scotts NatureScapes Mulch",
             "expected_source_url": "https://www.scotts.com/en-us/product",
@@ -267,7 +267,7 @@ class TestValidateEntry:
 
     def test_images_must_be_list_of_strings(self):
         entry = {
-            "sku": "032247886598",
+            "upc": "032247886598",
             "brand": "Scotts",
             "name": "Scotts NatureScapes Mulch",
             "expected_source_url": "https://www.scotts.com/en-us/product",
@@ -282,7 +282,7 @@ class TestValidateEntry:
 
     def test_categories_must_be_list_of_strings(self):
         entry = {
-            "sku": "032247886598",
+            "upc": "032247886598",
             "brand": "Scotts",
             "name": "Scotts NatureScapes Mulch",
             "expected_source_url": "https://www.scotts.com/en-us/product",
@@ -308,7 +308,7 @@ class TestValidateFixture:
     def test_valid_fixture_passes(self):
         data = [
             {
-                "sku": "032247886598",
+                "upc": "032247886598",
                 "brand": "Scotts",
                 "name": "Scotts NatureScapes Mulch",
                 "expected_source_url": "https://www.scotts.com/en-us/product",
@@ -325,7 +325,7 @@ class TestValidateFixture:
     def test_duplicate_sku_rejected(self):
         data = [
             {
-                "sku": "032247886598",
+                "upc": "032247886598",
                 "brand": "Scotts",
                 "name": "Product A",
                 "expected_source_url": "https://www.scotts.com/en-us/product-a",
@@ -334,7 +334,7 @@ class TestValidateFixture:
                 "expected_fields": ["name"],
             },
             {
-                "sku": "032247886598",
+                "upc": "032247886598",
                 "brand": "Scotts",
                 "name": "Product B",
                 "expected_source_url": "https://www.scotts.com/en-us/product-b",
@@ -345,13 +345,13 @@ class TestValidateFixture:
         ]
         result = validate_fixture(data)
         assert not result.valid
-        dup_errors = [e for e in result.errors if "Duplicate SKU" in e.message]
+        dup_errors = [e for e in result.errors if "Duplicate UPC" in e.message]
         assert len(dup_errors) == 1
 
     def test_max_entries_exceeded(self):
         data = [
             {
-                "sku": f"SKU{i:04d}",
+                "upc": f"UPC{i:04d}",
                 "brand": "Brand",
                 "name": f"Product {i}",
                 "expected_source_url": "https://example.com/product",
@@ -374,7 +374,7 @@ class TestValidateFixture:
     def test_warnings_for_missing_optional_fields(self):
         data = [
             {
-                "sku": "032247886598",
+                "upc": "032247886598",
                 "brand": "Scotts",
                 "name": "Scotts NatureScapes Mulch",
                 "expected_source_url": "https://www.scotts.com/en-us/product",
@@ -436,8 +436,8 @@ class TestFixtureSchemaCompliance:
         if not GROUND_TRUTH_FILE.exists():
             pytest.skip("Ground truth fixture file not found")
         data, result = load_and_validate_fixture(GROUND_TRUTH_FILE)
-        skus = [entry.get("sku", "") for entry in data]
-        assert len(skus) == len(set(skus)), "Fixture contains duplicate SKUs"
+        upcs = [entry.get("upc", "") for entry in data]
+        assert len(upcs) == len(set(upcs)), "Fixture contains duplicate UPCs"
 
     def test_fixture_all_source_tiers_valid(self):
         if not GROUND_TRUTH_FILE.exists():

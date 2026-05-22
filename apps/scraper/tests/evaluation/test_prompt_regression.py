@@ -12,7 +12,7 @@ from scrapers.ai_search.crawl4ai_extractor import Crawl4AIExtractor
 from scrapers.ai_search.models import AISearchResult
 from tests.evaluation.ground_truth_loader import load_ground_truth
 from tests.evaluation.metrics_calculator import (
-    SKUMetrics,
+    UPCMetrics,
     calculate_aggregate_metrics,
     calculate_per_sku_metrics,
     get_per_field_accuracy,
@@ -29,7 +29,7 @@ EVIDENCE_PATH = WORKSPACE_ROOT / ".agent_evidence" / "evidence" / "task-3-1-regr
 @dataclass(frozen=True)
 class PromptEvaluationRun:
     prompt_version: str
-    sku_metrics: list[SKUMetrics]
+    upc_metrics: list[UPCMetrics]
     aggregate_accuracy: float
     per_field_accuracy: dict[str, float]
     evaluation_results: list[EvaluationResult]
@@ -49,7 +49,7 @@ def _build_extractor(prompt_version: str) -> Crawl4AIExtractor:
 def _build_result(product: GroundTruthProduct, *, index: int, prompt_version: str) -> AISearchResult:
     result = AISearchResult(
         success=True,
-        sku=product.sku,
+        upc=product.upc,
         product_name=product.name,
         brand=product.brand,
         description=product.description,
@@ -83,7 +83,7 @@ def _build_result(product: GroundTruthProduct, *, index: int, prompt_version: st
 
 def _to_evaluation_result(
     product: GroundTruthProduct,
-    metrics: SKUMetrics,
+    metrics: UPCMetrics,
     *,
     cost_usd: float,
     elapsed_ms: float,
@@ -101,7 +101,7 @@ def _to_evaluation_result(
         )
 
     return EvaluationResult(
-        sku=product.sku,
+        upc=product.upc,
         success=metrics.is_success,
         field_comparisons=serialized_comparisons,
         accuracy=metrics.field_accuracy,
@@ -134,7 +134,7 @@ def _evaluate_prompt_version(
     output_dir: Path,
 ) -> PromptEvaluationRun:
     extractor = _build_extractor(prompt_version)
-    sku_metrics: list[SKUMetrics] = []
+    upc_metrics: list[UPCMetrics] = []
     evaluation_results: list[EvaluationResult] = []
 
     for index, product in enumerate(products, start=1):
@@ -144,7 +144,7 @@ def _evaluate_prompt_version(
         extraction = _build_result(product, index=index, prompt_version=prompt_version)
         elapsed_ms = (perf_counter() - started_at) * 1000
         metrics = calculate_per_sku_metrics(extraction, product)
-        sku_metrics.append(metrics)
+        upc_metrics.append(metrics)
         evaluation_results.append(
             _to_evaluation_result(
                 product,
@@ -154,7 +154,7 @@ def _evaluate_prompt_version(
             )
         )
 
-    aggregate = calculate_aggregate_metrics(sku_metrics)
+    aggregate = calculate_aggregate_metrics(upc_metrics)
     report = generate_evaluation_report(
         results=evaluation_results,
         prompt_version=prompt_version,
@@ -162,9 +162,9 @@ def _evaluate_prompt_version(
     )
     return PromptEvaluationRun(
         prompt_version=prompt_version,
-        sku_metrics=sku_metrics,
+        upc_metrics=upc_metrics,
         aggregate_accuracy=aggregate.average_field_accuracy,
-        per_field_accuracy=get_per_field_accuracy(sku_metrics),
+        per_field_accuracy=get_per_field_accuracy(upc_metrics),
         evaluation_results=evaluation_results,
         report_path=report.markdown_path,
     )
@@ -180,14 +180,14 @@ def _render_side_by_side_comparison(
         f"challenger={challenger.prompt_version} accuracy={challenger.aggregate_accuracy:.2%}",
         f"delta={(challenger.aggregate_accuracy - baseline.aggregate_accuracy):+.2%}",
         "",
-        "Per-SKU",
-        "SKU | v1 | v2 | delta",
+        "Per-UPC",
+        "UPC | v1 | v2 | delta",
         "--- | --- | --- | ---",
     ]
 
-    for baseline_metric, challenger_metric in zip(baseline.sku_metrics, challenger.sku_metrics, strict=True):
+    for baseline_metric, challenger_metric in zip(baseline.upc_metrics, challenger.upc_metrics, strict=True):
         delta = challenger_metric.field_accuracy - baseline_metric.field_accuracy
-        lines.append(f"{baseline_metric.sku} | {baseline_metric.field_accuracy:.2%} | {challenger_metric.field_accuracy:.2%} | {delta:+.2%}")
+        lines.append(f"{baseline_metric.upc} | {baseline_metric.field_accuracy:.2%} | {challenger_metric.field_accuracy:.2%} | {delta:+.2%}")
 
     lines.extend(["", "Per-Field", "field | v1 | v2 | delta", "--- | --- | --- | ---"])
     field_names = sorted(set(baseline.per_field_accuracy) | set(challenger.per_field_accuracy))
@@ -244,14 +244,14 @@ def test_prompt_v1_baseline_accuracy(tmp_path: Path) -> None:
         output_dir=tmp_path / "baseline",
     )
 
-    assert len(baseline.sku_metrics) == len(products)
+    assert len(baseline.upc_metrics) == len(products)
     assert baseline.aggregate_accuracy >= MINIMUM_BASELINE_FIELD_ACCURACY
 
 
 def test_prompt_v2_improves_over_v1(prompt_runs: tuple[PromptEvaluationRun, PromptEvaluationRun]) -> None:
     baseline, challenger = prompt_runs
 
-    assert len(baseline.sku_metrics) == len(challenger.sku_metrics)
+    assert len(baseline.upc_metrics) == len(challenger.upc_metrics)
     _assert_no_regression(baseline, challenger)
 
 

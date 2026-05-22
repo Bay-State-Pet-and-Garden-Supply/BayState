@@ -51,7 +51,7 @@ class FailurePatternReport:
 @dataclass(frozen=True)
 class FailureRecord:
     timestamp: datetime
-    sku: str
+    upc: str
     failure_type: str
     error_message: str
     missing_fields: tuple[str, ...] = ()
@@ -243,13 +243,13 @@ class FailurePatternAnalyzer:
                 extracted_data = item.get("extracted_data", {}) if isinstance(item.get("extracted_data"), dict) else {}
                 record = FailureRecord(
                     timestamp=timestamp,
-                    sku=str(item.get("sku", "unknown")),
+                    upc=str(item.get("upc", "unknown")),
                     failure_type=failure_type,
                     error_message=str(item.get("error_message") or item.get("notes") or ""),
                     missing_fields=missing_fields,
                     category=self._extract_category(extracted_data),
                     source_website=str(extracted_data.get("source_website") or "unknown"),
-                    sku_format=self._sku_format(str(item.get("sku", ""))),
+                    sku_format=self._sku_format(str(item.get("upc", ""))),
                     confidence=self._coerce_float(extracted_data.get("confidence")),
                     extraction_time_ms=self._coerce_float(item.get("extraction_time_ms")),
                 )
@@ -263,7 +263,7 @@ class FailurePatternAnalyzer:
         if not isinstance(field_comparisons, list):
             return records
 
-        sku = str(item.get("sku") or "unknown")
+        upc= str(item.get("upc") or "unknown")
         for comparison in field_comparisons:
             if not isinstance(comparison, dict):
                 continue
@@ -283,7 +283,7 @@ class FailurePatternAnalyzer:
             records.append(
                 FailureRecord(
                     timestamp=timestamp,
-                    sku=sku,
+                    upc=sku,
                     failure_type=failure_type,
                     error_message=f"Field mismatch: {field_name}",
                     missing_fields=(field_name,) if failure_type == "missing_fields" else (),
@@ -301,7 +301,7 @@ class FailurePatternAnalyzer:
             return records
 
         extracted_data = item.get("extracted_data", {}) if isinstance(item.get("extracted_data"), dict) else {}
-        sku = str(item.get("sku") or "unknown")
+        upc= str(item.get("upc") or "unknown")
         for field_name, score in field_accuracy.items():
             if not isinstance(score, (int, float)) or float(score) >= 0.8:
                 continue
@@ -313,7 +313,7 @@ class FailurePatternAnalyzer:
             records.append(
                 FailureRecord(
                     timestamp=timestamp,
-                    sku=sku,
+                    upc=sku,
                     failure_type=failure_type,
                     error_message=f"Weekly field score below threshold: {field_name}",
                     category=self._extract_category(extracted_data),
@@ -352,7 +352,7 @@ class FailurePatternAnalyzer:
                 error_message = str(entry.get("error") or entry.get("error_message") or "")
                 record = FailureRecord(
                     timestamp=timestamp,
-                    sku=str(entry.get("sku") or "unknown"),
+                    upc=str(entry.get("upc") or "unknown"),
                     failure_type=self._infer_failure_type(
                         error_message=error_message,
                         missing_fields=missing_fields,
@@ -364,7 +364,7 @@ class FailurePatternAnalyzer:
                     missing_fields=missing_fields,
                     category=self._extract_category(entry),
                     source_website=str(entry.get("source_website") or "unknown"),
-                    sku_format=self._sku_format(str(entry.get("sku") or "")),
+                    sku_format=self._sku_format(str(entry.get("upc") or "")),
                     confidence=self._coerce_float(entry.get("confidence")),
                     extraction_time_ms=self._coerce_float(entry.get("extraction_time_ms")),
                 )
@@ -386,7 +386,7 @@ class FailurePatternAnalyzer:
 
         return FailureRecord(
             timestamp=timestamp,
-            sku=str(item.get("sku") or "unknown"),
+            upc=str(item.get("upc") or "unknown"),
             failure_type=self._infer_failure_type(
                 error_message=error_message,
                 missing_fields=missing_fields,
@@ -398,7 +398,7 @@ class FailurePatternAnalyzer:
             missing_fields=missing_fields,
             category="unknown",
             source_website=str(item.get("source_website") or "unknown"),
-            sku_format=self._sku_format(str(item.get("sku") or "")),
+            sku_format=self._sku_format(str(item.get("upc") or "")),
             confidence=confidence,
             extraction_time_ms=self._coerce_float(item.get("extraction_time_ms")),
         )
@@ -529,7 +529,7 @@ class FailurePatternAnalyzer:
         return "unknown"
 
     @staticmethod
-    def _sku_format(sku: str) -> str:
+    def _sku_format(upc: str) -> str:
         value = sku.strip()
         if not value:
             return "unknown"

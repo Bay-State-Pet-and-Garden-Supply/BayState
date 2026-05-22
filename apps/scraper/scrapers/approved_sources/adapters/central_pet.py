@@ -2,7 +2,7 @@
 
 Legacy config: legacy-scraper-archive/configs/central-pet.yaml
 Base URL: https://www.centralpet.com
-Search: /Search?criteria={sku}
+Search: /Search?criteria={upc}
 Auth: credential_ref (optional for browsing)
 """
 
@@ -28,15 +28,15 @@ class CentralPetAdapter(BaseDistributorCrawl4AIAdapter):
     source_slug = "central_pet"
     source_type = "distributor"
     base_url = "https://www.centralpet.com"
-    search_url_template = "https://www.centralpet.com/Search?criteria={sku}"
+    search_url_template = "https://www.centralpet.com/Search?criteria={upc}"
     requires_auth = False  # Some products may be visible without login
 
-    def build_search_url(self, sku: str) -> str:
-        """Build the Central Pet search URL from a SKU."""
-        return self.search_url_template.format(sku=sku)
+    def build_search_url(self, upc: str) -> str:
+        """Build the Central Pet search URL from a UPC."""
+        return self.search_url_template.format(upc=upc)
 
     def extract_from_html(
-        self, html: str, sku: str, url: str
+        self, html: str, upc: str, url: str
     ) -> ApprovedSourceExtractionResult:
         """Extract product data from Central Pet HTML using legacy-inspired selectors.
 
@@ -66,7 +66,7 @@ class CentralPetAdapter(BaseDistributorCrawl4AIAdapter):
         try:
             from bs4 import BeautifulSoup
         except ImportError:
-            return self._extract_with_regex(html, sku, url)
+            return self._extract_with_regex(html, upc, url)
 
         soup = BeautifulSoup(html, "html.parser")
 
@@ -75,7 +75,7 @@ class CentralPetAdapter(BaseDistributorCrawl4AIAdapter):
         if no_results:
             result.success = False
             result.failure_code = FailureCode.NO_MATCH
-            result.failure_message = f"No match found for SKU {sku}"
+            result.failure_message = f"No match found for UPC {upc}"
             return result
 
         # --- Name ---
@@ -120,8 +120,8 @@ class CentralPetAdapter(BaseDistributorCrawl4AIAdapter):
             product["image_urls"] = images
             matched.append("image_urls")
 
-        # --- Product # / SKU ---
-        sku_elem = soup.select_one("span[itemprop='sku'], .item-num span")
+        # --- Product # / UPC ---
+        sku_elem = soup.select_one("span[itemprop='upc'], .item-num span")
         if sku_elem:
             pn = sku_elem.get_text(strip=True)
             if pn:
@@ -189,7 +189,7 @@ class CentralPetAdapter(BaseDistributorCrawl4AIAdapter):
         if not product.get("name"):
             result.success = False
             result.failure_code = FailureCode.NO_MATCH
-            result.failure_message = f"Could not find product name for SKU {sku}"
+            result.failure_message = f"Could not find product name for UPC {upc}"
             result.warnings = warnings
             return result
 
@@ -208,7 +208,7 @@ class CentralPetAdapter(BaseDistributorCrawl4AIAdapter):
         return result
 
     def _extract_with_regex(
-        self, html: str, sku: str, url: str
+        self, html: str, upc: str, url: str
     ) -> ApprovedSourceExtractionResult:
         """Fallback regex extraction when BeautifulSoup is unavailable."""
         result = ApprovedSourceExtractionResult(
@@ -222,7 +222,7 @@ class CentralPetAdapter(BaseDistributorCrawl4AIAdapter):
         if re.search(r"No results found", html, re.I) and re.search(r"no-results", html, re.I):
             result.success = False
             result.failure_code = FailureCode.NO_MATCH
-            result.failure_message = f"No match found for SKU {sku}"
+            result.failure_message = f"No match found for UPC {upc}"
             return result
 
         # Title extraction

@@ -65,13 +65,13 @@ class TestProductPageExtractorExtract:
 
             result = await extractor.extract(
                 url="https://example.com/product/123",
-                sku="SKU-001",
+                upc="UPC-001",
                 product_name="Test Product",
                 brand="TestBrand",
             )
 
         assert result["success"] is True
-        assert result["sku"] == "SKU-001"
+        assert result["upc"] == "UPC-001"
         assert result["source"] == "product_page_extraction"
         assert result["url"] == "https://example.com/product/123"
         assert result["final_url"] == "https://example.com/product/123"
@@ -100,11 +100,11 @@ class TestProductPageExtractorExtract:
 
             result = await extractor.extract(
                 url="https://example.com/missing",
-                sku="SKU-001",
+                upc="UPC-001",
             )
 
         assert result["success"] is False
-        assert result["sku"] == "SKU-001"
+        assert result["upc"] == "UPC-001"
         assert result["source"] == "product_page_extraction"
         assert result["error"] == "Soft-404 detected"
         assert "url" in result
@@ -135,7 +135,7 @@ class TestProductPageExtractorExtract:
 
             result = await extractor.extract(
                 url="https://primary.com/product",
-                sku="SKU-001",
+                upc="UPC-001",
                 fallback_urls=[
                     "https://fallback1.com/product",
                     "https://fallback2.com/product",
@@ -160,7 +160,7 @@ class TestProductPageExtractorExtract:
 
             result = await extractor.extract(
                 url="https://primary.com/product",
-                sku="SKU-001",
+                upc="UPC-001",
                 fallback_urls=[
                     "https://f1.com",
                     "https://f2.com",
@@ -194,7 +194,7 @@ class TestProductPageExtractorExtract:
 
             await extractor.extract(
                 url="https://example.com/product",
-                sku="SKU-001",
+                upc="UPC-001",
                 register_name="Register Name Product",
             )
 
@@ -223,7 +223,7 @@ class TestProductPageExtractorExtract:
 
             result = await extractor.extract(
                 url="https://any-domain.com/product",
-                sku="SKU-001",
+                upc="UPC-001",
                 brand="Brand",
             )
 
@@ -266,7 +266,7 @@ class TestProductPageExtractorExtract:
 
             result = await extractor.extract(
                 url="https://primary.com/product",
-                sku="SKU-001",
+                upc="UPC-001",
                 fallback_urls=[
                     "https://fallback.com/product",
                 ],
@@ -319,14 +319,14 @@ class TestProductPageExtractorBatch:
             results = await extractor.extract_products_from_urls_batch(
                 [
                     {
-                        "sku": "SKU-A",
+                        "upc": "UPC-A",
                         "source_url": "https://a.com",
                         "product_name": "Product A",
                         "brand": "Brand A",
                         "url_source": "manual",
                     },
                     {
-                        "sku": "SKU-B",
+                        "upc": "UPC-B",
                         "source_url": "https://b.com",
                         "brand": "Brand B",
                         "url_source": "review_selection",
@@ -337,13 +337,13 @@ class TestProductPageExtractorBatch:
 
         assert len(results) == 2
         assert results[0].success is True
-        assert results[0].sku == "SKU-A"
+        assert results[0].upc == "UPC-A"
         assert results[0].product_name == "Product A"
         assert results[0].brand == "Brand A"
         assert results[0].selection_method == "manual"
 
         assert results[1].success is False
-        assert results[1].sku == "SKU-B"
+        assert results[1].upc == "UPC-B"
         assert results[1].error == "Not found"
 
     @pytest.mark.asyncio
@@ -368,12 +368,12 @@ class TestProductPageExtractorBatch:
             results = await extractor.extract_products_from_urls_batch(
                 [
                     {
-                        "sku": "SKU-1",
+                        "upc": "UPC-1",
                         "source_url": "https://example.com/1",
                         "url_source": "manual",
                     },
                     {
-                        "sku": "SKU-2",
+                        "upc": "UPC-2",
                         "source_url": "https://example.com/2",
                         "url_source": "review_selection",
                     },
@@ -391,11 +391,11 @@ class TestProductPageExtractorBatch:
 
     @pytest.mark.asyncio
     async def test_batch_skips_missing_sku(self, extractor: ProductPageExtractor) -> None:
-        """Products with missing SKU return an error result immediately."""
+        """Products with missing UPC return an error result immediately."""
         results = await extractor.extract_products_from_urls_batch(
             [
                 {
-                    "sku": "",
+                    "upc": "",
                     "source_url": "https://example.com",
                 }
             ]
@@ -403,7 +403,7 @@ class TestProductPageExtractorBatch:
 
         assert len(results) == 1
         assert results[0].success is False
-        assert results[0].error == "Missing SKU"
+        assert results[0].error == "Missing UPC"
 
     @pytest.mark.asyncio
     async def test_batch_skips_missing_url(self, extractor: ProductPageExtractor) -> None:
@@ -411,7 +411,7 @@ class TestProductPageExtractorBatch:
         results = await extractor.extract_products_from_urls_batch(
             [
                 {
-                    "sku": "SKU-001",
+                    "upc": "UPC-001",
                     "source_url": "",
                 }
             ]
@@ -445,7 +445,7 @@ class TestProductUrlExtractorBackwardCompat:
                 "description": "Desc",
                 "images": ["img.jpg"],
                 "categories": ["Food"],
-                "sku": "SKU-001",
+                "upc": "UPC-001",
                 "method": "json-ld",
                 "confidence": 0.9,
             }
@@ -462,9 +462,9 @@ class TestProductUrlExtractorBackwardCompat:
         assert result["data"]["description"] == "Desc"
         assert result["data"]["images"] == ["img.jpg"]
         assert result["data"]["categories"] == ["Food"]
-        assert result["data"]["sku"] == "SKU-001"
+        assert result["data"]["upc"] == "UPC-001"
         # schema_path is intentionally ignored
-        mock_extract.assert_awaited_once_with(url="https://example.com/product", sku="unknown")
+        mock_extract.assert_awaited_once_with(url="https://example.com/product", upc="unknown")
 
     @pytest.mark.asyncio
     async def test_extract_data_failure_propagates(
@@ -497,11 +497,11 @@ class TestProductUrlExtractorBackwardCompat:
             from scrapers.ai_search.models import AISearchResult
 
             mock_batch.return_value = [
-                AISearchResult(success=True, sku="SKU-001", product_name="Product")
+                AISearchResult(success=True, upc="UPC-001", product_name="Product")
             ]
 
             results = await scraper.scrape_products_batch(
-                [{"sku": "SKU-001", "source_url": "https://example.com"}]
+                [{"upc": "UPC-001", "source_url": "https://example.com"}]
             )
 
         assert len(results) == 1
@@ -521,18 +521,18 @@ class TestProductUrlExtractorBackwardCompat:
             from scrapers.ai_search.models import AISearchResult
 
             mock_batch.return_value = [
-                AISearchResult(success=True, sku="SKU-001", product_name="Product")
+                AISearchResult(success=True, upc="UPC-001", product_name="Product")
             ]
 
             results = await scraper.extract_products_from_urls_batch(
-                [{"sku": "SKU-001", "source_url": "https://example.com"}],
+                [{"upc": "UPC-001", "source_url": "https://example.com"}],
                 max_concurrency=2,
             )
 
         assert len(results) == 1
         assert results[0].success is True
         mock_batch.assert_awaited_once_with(
-            [{"sku": "SKU-001", "source_url": "https://example.com"}], 2
+            [{"upc": "UPC-001", "source_url": "https://example.com"}], 2
         )
 
 

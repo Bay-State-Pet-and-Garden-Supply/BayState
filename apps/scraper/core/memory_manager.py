@@ -790,9 +790,9 @@ class MemoryEfficientResult:
     Uses __slots__ to reduce memory overhead compared to regular classes.
     """
 
-    __slots__ = ["data", "sku", "source", "timestamp"]
+    __slots__ = ["data", "upc", "source", "timestamp"]
 
-    sku: str
+    upc: str
     source: str
     data: dict[str, Any]
     timestamp: float
@@ -800,7 +800,7 @@ class MemoryEfficientResult:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
-            "sku": self.sku,
+            "upc": self.upc,
             "source": self.source,
             "data": self.data,
             "timestamp": self.timestamp,

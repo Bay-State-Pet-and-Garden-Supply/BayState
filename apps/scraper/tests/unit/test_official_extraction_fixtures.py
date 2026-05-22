@@ -69,34 +69,34 @@ class TestOfficialExtractionDataset:
         for entry in dataset.get("entries", []):
             source_type = entry.get("source_type", "")
             assert source_type != "retailer", \
-                f"Entry {entry.get('sku')} has source_type 'retailer'"
+                f"Entry {entry.get("upc")} has source_type 'retailer'"
 
     def test_all_entries_are_official(self):
         dataset = _load_official_dataset()
         for entry in dataset.get("entries", []):
             source_type = entry.get("source_type", "")
             assert source_type == "official", \
-                f"Entry {entry.get('sku')} has source_type '{source_type}', expected 'official'"
+                f"Entry {entry.get("upc")} has source_type '{source_type}', expected 'official'"
 
     def test_every_entry_has_required_fields(self):
         dataset = _load_official_dataset()
         for entry in dataset.get("entries", []):
-            assert entry.get("sku"), f"Entry missing sku: {entry}"
-            assert entry.get("product_name"), f"Entry {entry.get('sku')} missing product_name"
-            assert entry.get("brand"), f"Entry {entry.get('sku')} missing brand"
-            assert entry.get("source_url"), f"Entry {entry.get('sku')} missing source_url"
-            assert entry.get("source_type"), f"Entry {entry.get('sku')} missing source_type"
-            assert entry.get("ground_truth"), f"Entry {entry.get('sku')} missing ground_truth"
+            assert entry.get("upc"), f"Entry missing upc: {entry}"
+            assert entry.get("product_name"), f"Entry {entry.get("upc")} missing product_name"
+            assert entry.get("brand"), f"Entry {entry.get("upc")} missing brand"
+            assert entry.get("source_url"), f"Entry {entry.get("upc")} missing source_url"
+            assert entry.get("source_type"), f"Entry {entry.get("upc")} missing source_type"
+            assert entry.get("ground_truth"), f"Entry {entry.get("upc")} missing ground_truth"
 
     def test_ground_truth_has_required_fields(self):
         dataset = _load_official_dataset()
         for entry in dataset.get("entries", []):
             gt = entry.get("ground_truth", {})
-            assert gt.get("brand"), f"Entry {entry.get('sku')} ground_truth missing brand"
-            assert gt.get("name"), f"Entry {entry.get('sku')} ground_truth missing name"
+            assert gt.get("brand"), f"Entry {entry.get("upc")} ground_truth missing brand"
+            assert gt.get("name"), f"Entry {entry.get("upc")} ground_truth missing name"
             description_contains = gt.get("description_contains", [])
             assert len(description_contains) > 0, \
-                f"Entry {entry.get('sku')} ground_truth missing description_contains"
+                f"Entry {entry.get('upc')} ground_truth missing description_contains"
 
     def test_every_entry_has_fixture_refs(self):
         dataset = _load_official_dataset()
@@ -107,7 +107,7 @@ class TestOfficialExtractionDataset:
             has_jsonld = refs.get("json_ld")
             # At least one fixture ref should exist
             assert has_html or has_md or has_jsonld, \
-                f"Entry {entry.get('sku')} has no fixture refs"
+                f"Entry {entry.get('upc')} has no fixture refs"
 
     def test_fixture_refs_exist(self):
         """Verify that referenced fixture files actually exist on disk.
@@ -125,7 +125,7 @@ class TestOfficialExtractionDataset:
                 if ref_path:
                     full_path = FIXTURES_DIR / ref_path
                     if not full_path.exists():
-                        missing.append(f"{entry.get('sku')}/{ref_type}: {ref_path}")
+                        missing.append(f"{entry.get('upc')}/{ref_type}: {ref_path}")
         if missing:
             pytest.skip(
                 f"{len(missing)} official fixture file(s) not yet curated. "
@@ -140,7 +140,7 @@ class TestOfficialExtractionDataset:
             url = entry.get("source_url", "")
             for domain in DISALLOWED_DOMAINS:
                 assert domain not in url.lower(), \
-                    f"Entry {entry.get('sku')} source_url contains disallowed domain: {domain}"
+                    f"Entry {entry.get('upc')} source_url contains disallowed domain: {domain}"
 
     def test_approved_domains_contain_source_domain(self):
         """Verify that approved_domains includes the source URL domain."""
@@ -157,7 +157,7 @@ class TestOfficialExtractionDataset:
                         for d in approved
                     )
                     assert domain_match, \
-                        f"Entry {entry.get('sku')} source domain '{domain}' not in approved_domains: {approved}"
+                        f"Entry {entry.get('upc')} source domain '{domain}' not in approved_domains: {approved}"
 
     def test_ground_truth_terms_in_fixture_text(self):
         """Verify ground_truth description_contains terms are in fixture HTML text."""
@@ -176,7 +176,7 @@ class TestOfficialExtractionDataset:
             description_contains = gt.get("description_contains", [])
             for term in description_contains:
                 assert term.lower() in fixture_text.lower(), \
-                    f"Entry {entry.get('sku')}: ground truth term '{term}' not found in fixture {html_ref}"
+                    f"Entry {entry.get('upc')}: ground truth term '{term}' not found in fixture {html_ref}"
 
     def test_image_required_has_images(self):
         """Verify that image_required entries have image URLs in their source_url's HTML."""
@@ -221,4 +221,4 @@ class TestOfficialExtractionSeedSync:
         for entry in seed.get("entries", []):
             source_type = entry.get("source_type", "")
             assert source_type != "retailer", \
-                f"extraction_seed entry {entry.get('sku')} still has source_type retailer"
+                f"extraction_seed entry {entry.get('upc')} still has source_type retailer"

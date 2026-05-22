@@ -209,14 +209,14 @@ async def _process_enrichment(attempt, client, rm):
             realtime_manager=rm,
         ) as job_logging:
             logger.info(
-                f"Processing enrichment attempt {attempt_id} for SKU {attempt.sku}",
+                f"Processing enrichment attempt {attempt_id} for UPC {attempt.upc}",
                 extra={
                     "job_id": job_id,
                     "runner_name": client.runner_name,
                     "phase": "claimed",
                     "details": {
                         "attempt_id": attempt_id,
-                        "sku": attempt.sku,
+                        "upc": attempt.upc,
                         "target_url": attempt.target_url,
                         "model": attempt.model,
                         "mode": attempt.mode,
@@ -232,7 +232,7 @@ async def _process_enrichment(attempt, client, rm):
                 phase="claimed",
                 details={
                     "attempt_id": attempt_id,
-                    "sku": attempt.sku,
+                    "upc": attempt.upc,
                     "target_url": attempt.target_url,
                 },
                 items_total=1,
@@ -256,9 +256,9 @@ async def _process_enrichment(attempt, client, rm):
                     "phase": "completed",
                     "details": {
                         "attempt_id": attempt_id,
-                        "sku": attempt.sku,
+                        "upc": attempt.upc,
                         "elapsed_seconds": round(elapsed, 2),
-                        "success": results.get("skus_processed", 0) > 0,
+                        "success": results.get("upcs_processed", 0) > 0,
                     },
                     "flush_immediately": True,
                 },
@@ -406,7 +406,7 @@ async def main_async():
                 consecutive_idle_polls = 0
                 logger.info(
                     f"[Enrichment {enrichment_attempt.attempt_id}] Claimed - "
-                    f"job={enrichment_attempt.job_id}, sku={enrichment_attempt.sku}"
+                    f"job={enrichment_attempt.job_id}, upc={enrichment_attempt.upc}"
                 )
                 task = asyncio.create_task(_process_enrichment(enrichment_attempt, client, rm))
                 running_tasks.add(task)

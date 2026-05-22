@@ -15,7 +15,7 @@ class BaseVariantResolver:
         self,
         *,
         url: str,
-        sku: str,
+        upc: str,
         product_name: Optional[str],
         brand: Optional[str],
         html: str,

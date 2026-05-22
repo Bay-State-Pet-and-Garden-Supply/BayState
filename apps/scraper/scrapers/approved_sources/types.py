@@ -50,10 +50,10 @@ class ApprovedSourceBrand:
 
 @dataclass
 class ApprovedSourcePlan:
-    """Per-SKU source plan sent from the coordinator to the runner."""
+    """Per-UPC source plan sent from the coordinator to the runner."""
 
     schemaVersion: str = "v1"
-    sku: str = ""
+    upc: str = ""
     input: dict[str, Any] = field(default_factory=lambda: {"name": None, "price": None})
     brand: ApprovedSourceBrand | None = None
     extractionMode: str = "mixed"
@@ -109,7 +109,7 @@ class ApprovedSourceExtractionResult:
 class AdapterSearchInput:
     """Structured input passed to adapters for searching."""
 
-    sku: str
+    upc: str
     name: str | None = None
     brand: str | None = None
     price: float | None = None
@@ -187,7 +187,7 @@ def parse_source_plan(raw: dict[str, Any]) -> ApprovedSourcePlan:
 
     return ApprovedSourcePlan(
         schemaVersion=raw.get("schemaVersion", "v1"),
-        sku=raw.get("sku", ""),
+        upc=raw.get("upc", ""),
         input=dict(raw.get("input", {})),
         brand=brand,
         extractionMode=str(raw.get("extractionMode", "mixed")),

@@ -31,7 +31,7 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
     base_url = "https://shop.phillipspet.com"
     search_url_template = (
         "https://shop.phillipspet.com/ccrz__ProductList"
-        "?cartID=&operation=quickSearch&searchText={sku}"
+        "?cartID=&operation=quickSearch&searchText={upc}"
         "&portalUser=&store=DefaultStore&cclcl=en_US"
     )
     requires_auth = True
@@ -40,12 +40,12 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
         """Return the Phillips login config."""
         return PHILLIPS_LOGIN
 
-    def build_search_url(self, sku: str) -> str:
+    def build_search_url(self, upc: str) -> str:
         """Build the Phillips Salesforce Commerce Cloud quick search URL."""
-        return self.search_url_template.format(sku=quote(str(sku), safe=""))
+        return self.search_url_template.format(upc=quote(str(upc), safe=""))
 
     def extract_from_html(
-        self, html: str, sku: str, url: str
+        self, html: str, upc: str, url: str
     ) -> ApprovedSourceExtractionResult:
         """Extract product data from Phillips HTML using legacy-inspired selectors.
 
@@ -87,14 +87,14 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
         if has_login_form:
             result.success = False
             result.failure_code = FailureCode.AUTH_REQUIRED
-            result.failure_message = f"Authentication required for Phillips — received login page for SKU {sku}"
+            result.failure_message = f"Authentication required for Phillips — received login page for UPC {upc}"
             result.auth_required = True
             return result
 
         try:
             from bs4 import BeautifulSoup
         except ImportError:
-            return self._extract_with_regex(html, sku, url)
+            return self._extract_with_regex(html, upc, url)
 
         soup = BeautifulSoup(html, "html.parser")
 
@@ -164,7 +164,7 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
                 continue
 
             identifier_match, matched_identifiers = self._match_identifier_candidates(
-                sku,
+                upc,
                 candidate_item,
                 candidate_upc,
             )
@@ -195,12 +195,12 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
                 if "no results" in text or "no products" in text or "no items" in text:
                     result.success = False
                     result.failure_code = FailureCode.NO_MATCH
-                    result.failure_message = f"No match found for SKU {sku}"
+                    result.failure_message = f"No match found for UPC {upc}"
                     return result
 
             result.success = False
             result.failure_code = FailureCode.NO_MATCH
-            result.failure_message = f"No product match found for SKU {sku}"
+            result.failure_message = f"No product match found for UPC {upc}"
             return result
 
         best_candidate = max(candidates, key=lambda candidate: candidate["score"])
@@ -233,7 +233,7 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
         if not product.get("name"):
             result.success = False
             result.failure_code = FailureCode.NO_MATCH
-            result.failure_message = f"No product match found for SKU {sku}"
+            result.failure_message = f"No product match found for UPC {upc}"
             return result
 
         heuristic_match = best_candidate["brand_match"] and best_candidate["name_overlap"] >= 0.45
@@ -251,7 +251,7 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
             result.success = False
             result.failure_code = FailureCode.NO_MATCH
             result.failure_message = (
-                f"Phillips identifier mismatch for searched SKU {sku}: "
+                f"Phillips identifier mismatch for searched UPC {upc}: "
                 f"saw {', '.join(matched for matched in identifier_candidates if matched)}"
             )
             return result
@@ -272,7 +272,7 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
         return result
 
     def _extract_with_regex(
-        self, html: str, sku: str, url: str
+        self, html: str, upc: str, url: str
     ) -> ApprovedSourceExtractionResult:
         """Fallback regex extraction."""
         result = ApprovedSourceExtractionResult(
@@ -291,7 +291,7 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
         if has_login_form:
             result.success = False
             result.failure_code = FailureCode.AUTH_REQUIRED
-            result.failure_message = f"Authentication required for Phillips (SKU {sku})"
+            result.failure_message = f"Authentication required for Phillips (UPC {upc})"
             result.auth_required = True
             return result
 
@@ -305,7 +305,7 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
         if not product.get("name"):
             result.success = False
             result.failure_code = FailureCode.NO_MATCH
-            result.failure_message = f"No match for SKU {sku}"
+            result.failure_message = f"No match for UPC {upc}"
             return result
 
         # Try to get brand

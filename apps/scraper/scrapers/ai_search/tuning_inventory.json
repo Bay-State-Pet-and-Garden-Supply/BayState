@@ -185,7 +185,7 @@
       "source_file": "apps/scraper/scrapers/ai_search/scoring.py",
       "source_symbol": "SearchScorer.score_search_result",
       "description": "Existing boolean signal gates; report-only unless changed as part of approved weight/prompt tuning.",
-      "value": ["sku present in combined text", "brand token match", "product-name token overlap", "specific token path overlap", "variant token overlap", "conflicting variant tokens", "category token match", "product URL marker", "source class official_exact", "source class official_family", "source tier major_retailer", "source tier secondary_retailer", "source tier marketplace", "preferred domain match", "domain success history", "category preferred domain", "category mass retailer", "official root missing variant", "category-like URL", "product-line URL", "e-commerce text markers", "low-quality result"]
+      "value": ["upc present in combined text", "brand token match", "product-name token overlap", "specific token path overlap", "variant token overlap", "conflicting variant tokens", "category token match", "product URL marker", "source class official_exact", "source class official_family", "source tier major_retailer", "source tier secondary_retailer", "source tier marketplace", "preferred domain match", "domain success history", "category preferred domain", "category mass retailer", "official root missing variant", "category-like URL", "product-line URL", "e-commerce text markers", "low-quality result"]
     },
     {
       "id": "scoring.pick_strong_candidate_url.thresholds",

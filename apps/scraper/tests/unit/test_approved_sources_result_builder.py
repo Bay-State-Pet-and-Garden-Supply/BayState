@@ -18,16 +18,16 @@ from scrapers.approved_sources.result_builder import (
 class TestBuildSuccessResult:
     def test_returns_valid_result(self):
         result = build_success_result(
-            sku="001135",
+            upc="001135",
             source_slug="bradley",
             source_type="distributor",
             evidence_url="https://www.bradleycaldwell.com/search?term=001135",
-            product_fields={"name": "E-Z HANG SCALE", "brand": "KERBL", "sku": "001135"},
-            matched_fields=["name", "brand", "sku"],
+            product_fields={"name": "E-Z HANG SCALE", "brand": "KERBL", "upc": "001135"},
+            matched_fields=["name", "brand", "upc"],
             overall_confidence=0.85,
         )
         assert result.schema_version == "v1"
-        assert result.sku == "001135"
+        assert result.upc == "001135"
         assert result.status == "success"
         assert result.decision == "deterministic_success"
         assert result.llm_used is False
@@ -40,7 +40,7 @@ class TestBuildSuccessResult:
 
     def test_llm_fallback_decision(self):
         result = build_success_result(
-            sku="001135",
+            upc="001135",
             source_slug="official_brand",
             source_type="official_brand",
             evidence_url="https://frommfamily.com/products/test",
@@ -54,7 +54,7 @@ class TestBuildSuccessResult:
 
     def test_preserves_requested_extraction_mode(self):
         result = build_success_result(
-            sku="001135",
+            upc="001135",
             source_slug="bradley",
             source_type="distributor",
             evidence_url="https://www.bradleycaldwell.com/search?term=001135",
@@ -69,7 +69,7 @@ class TestBuildSuccessResult:
 
     def test_includes_source_provenance(self):
         result = build_success_result(
-            sku="001135",
+            upc="001135",
             source_slug="bradley",
             source_type="distributor",
             evidence_url="https://www.bradleycaldwell.com/search?term=001135",
@@ -87,11 +87,11 @@ class TestBuildSuccessResult:
 class TestBuildPartialResult:
     def test_returns_partial(self):
         result = build_partial_result(
-            sku="010199",
+            upc="010199",
             source_slug="bradley",
             source_type="distributor",
             evidence_url="https://www.bradleycaldwell.com/search?term=010199",
-            product_fields={"name": "Some Product", "sku": "010199"},
+            product_fields={"name": "Some Product", "upc": "010199"},
             matched_fields=["name"],
             overall_confidence=0.45,
             missing_required=["brand", "image_urls"],
@@ -103,7 +103,7 @@ class TestBuildPartialResult:
 
     def test_llm_fallback_partial(self):
         result = build_partial_result(
-            sku="010199",
+            upc="010199",
             source_slug="official_brand",
             source_type="official_brand",
             evidence_url="https://example.com/product",
@@ -117,7 +117,7 @@ class TestBuildPartialResult:
 
     def test_partial_can_record_missing_sku_match(self):
         result = build_partial_result(
-            sku="010199",
+            upc="010199",
             source_slug="bradley",
             source_type="distributor",
             evidence_url="https://www.bradleycaldwell.com/search?term=010199",
@@ -134,7 +134,7 @@ class TestBuildPartialResult:
 class TestBuildAuthRequiredResult:
     def test_returns_failed_with_auth_warning(self):
         result = build_auth_required_result(
-            sku="072705115310",
+            upc="072705115310",
             source_slug="phillips",
             message="No credentials available for phillips",
         )
@@ -151,7 +151,7 @@ class TestBuildAuthRequiredResult:
 
     def test_custom_message(self):
         result = build_auth_required_result(
-            sku="33011808",
+            upc="33011808",
             source_slug="pet_food_experts",
             message="Pet Food Experts login required",
         )
@@ -161,7 +161,7 @@ class TestBuildAuthRequiredResult:
 class TestBuildNoMatchResult:
     def test_returns_failed_no_match(self):
         result = build_no_match_result(
-            sku="999999",
+            upc="999999",
             source_slug="bradley",
             evidence_url="https://www.bradleycaldwell.com/search?term=999999",
         )
@@ -175,7 +175,7 @@ class TestBuildNoMatchResult:
 class TestBuildPolicyBlockedResult:
     def test_returns_failed_blocked(self):
         result = build_policy_blocked_result(
-            sku="001135",
+            upc="001135",
             source_slug="bradley",
             blocked_url="https://www.amazon.com/dp/B0012ABCDE",
             reason="Amazon is disallowed",
@@ -189,7 +189,7 @@ class TestBuildPolicyBlockedResult:
 class TestBuildFailedResult:
     def test_returns_generic_failure(self):
         result = build_failed_result(
-            sku="001135",
+            upc="001135",
             source_slug="bradley",
             error_message="All sources failed",
         )
@@ -202,7 +202,7 @@ class TestBuildFailedResult:
 
     def test_prefers_evidence_url_when_available(self):
         result = build_failed_result(
-            sku="001135",
+            upc="001135",
             source_slug="bradley",
             error_message="All sources failed",
             evidence_url="https://frommfamily.com/products/gold-large-breed-adult",
@@ -212,7 +212,7 @@ class TestBuildFailedResult:
     def test_rejects_none(self):
         """Builder functions never return None."""
         result = build_failed_result(
-            sku="test",
+            upc="test",
             error_message="Something went wrong",
         )
         assert result is not None
@@ -221,7 +221,7 @@ class TestBuildFailedResult:
 
     def test_failed_result_preserves_requested_extraction_mode(self):
         result = build_failed_result(
-            sku="test",
+            upc="test",
             error_message="Something went wrong",
             requested_extraction_mode="distributor_only",
         )

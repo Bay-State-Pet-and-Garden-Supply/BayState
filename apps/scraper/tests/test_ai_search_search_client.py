@@ -109,10 +109,10 @@ async def test_search_client_batches_unique_queries_when_provider_supports_it() 
     client = SearchClient(max_results=5)
     client.serper_client = serper_stub
 
-    results = await client.search_many(["SKU-1", "SKU-1", "SKU-2"])
+    results = await client.search_many(["UPC-1", "UPC-1", "UPC-2"])
 
-    assert serper_stub.batch_calls == [["SKU-1", "SKU-2"]]
-    assert [item[0][0]["title"] for item in results] == ["SKU-1", "SKU-1", "SKU-2"]
+    assert serper_stub.batch_calls == [["UPC-1", "UPC-2"]]
+    assert [item[0][0]["title"] for item in results] == ["UPC-1", "UPC-1", "UPC-2"]
 
 
 async def test_search_client_dedupes_canonicalized_urls() -> None:

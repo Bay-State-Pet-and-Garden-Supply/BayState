@@ -500,7 +500,7 @@ class RealtimeManager:
         event_id: str | None = None,
         source: str | None = None,
         scraper_name: str | None = None,
-        sku: str | None = None,
+        upc: str | None = None,
         phase: str | None = None,
         sequence: int | None = None,
     ) -> None:
@@ -523,7 +523,7 @@ class RealtimeManager:
             "message": message,
             "source": source,
             "scraper_name": scraper_name,
-            "sku": sku,
+            "upc": upc,
             "phase": phase,
             "sequence": sequence,
             "details": details or {},

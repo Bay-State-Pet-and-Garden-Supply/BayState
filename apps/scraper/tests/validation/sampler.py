@@ -27,7 +27,7 @@ CATALOG_SELECT = "sku,name,brand:brands(name),category:categories!products_categ
 
 @dataclass(frozen=True, slots=True)
 class ProductSample:
-    sku: str
+    upc: str
     name: str
     brand: str
     category: str
@@ -35,14 +35,14 @@ class ProductSample:
 
 @dataclass(frozen=True, slots=True)
 class SamplingHistoryEntry:
-    sku: str
+    upc: str
     sampled_date: str
     week_number: int
     year: int
 
 
 class HistoryRecord(TypedDict):
-    sku: str
+    upc: str
     sampled_date: str
     week_number: int
     year: int
@@ -53,7 +53,7 @@ class HistoryBatch(TypedDict):
     week_number: int
     year: int
     seed: SeedValue
-    skus: list[str]
+    upcs: list[str]
 
 
 class HistoryPayload(TypedDict):
@@ -101,9 +101,9 @@ class ProductSampler:
             start += page_size
 
         if not products:
-            raise ValueError("No products with SKU data were returned from the catalog")
+            raise ValueError("No products with UPC data were returned from the catalog")
 
-        self._catalog = sorted(products, key=lambda product: product.sku)
+        self._catalog = sorted(products, key=lambda product: product.upc)
         return list(self._catalog)
 
     def sample_skus(
@@ -118,21 +118,21 @@ class ProductSampler:
         catalog = self.load_catalog()
         filtered_catalog = self._filter_catalog(catalog, categories)
         excluded_skus = self._recently_sampled_skus(exclude_recent_weeks)
-        available_catalog = [product for product in filtered_catalog if product.sku not in excluded_skus]
+        available_catalog = [product for product in filtered_catalog if product.upc not in excluded_skus]
 
         if count > len(available_catalog):
-            raise ValueError(f"Requested {count} SKUs but only {len(available_catalog)} are available after applying filters")
+            raise ValueError(f"Requested {count} UPCs but only {len(available_catalog)} are available after applying filters")
 
         rng = random.Random(self.seed)
         selected = rng.sample(available_catalog, count)
-        return sorted(selected, key=lambda product: product.sku)
+        return sorted(selected, key=lambda product: product.upc)
 
     def get_sample_history(self) -> list[SamplingHistoryEntry]:
         payload = self._read_history_payload()
         return [SamplingHistoryEntry(**entry) for entry in payload["history"]]
 
-    def record_sampled_skus(self, skus: list[ProductSample] | list[str]) -> None:
-        if not skus:
+    def record_sampled_skus(self, upcs: list[ProductSample] | list[str]) -> None:
+        if not upcs:
             return
 
         payload = self._read_history_payload()
@@ -142,14 +142,14 @@ class ProductSampler:
 
         sku_values: list[str] = []
         history_entries = payload["history"]
-        for item in skus:
-            sku = item.sku if isinstance(item, ProductSample) else str(item).strip()
-            if not sku:
+        for item in upcs:
+            upc= item.upc if isinstance(item, ProductSample) else str(item).strip()
+            if not upc:
                 continue
             sku_values.append(sku)
             history_entries.append(
                 {
-                    "sku": sku,
+                    "upc": sku,
                     "sampled_date": sampled_date,
                     "week_number": iso_week,
                     "year": iso_year,
@@ -166,7 +166,7 @@ class ProductSampler:
                 "week_number": iso_week,
                 "year": iso_year,
                 "seed": self.seed,
-                "skus": sku_values,
+                "upcs": sku_values,
             }
         )
 
@@ -194,7 +194,7 @@ class ProductSampler:
         for entry in self.get_sample_history():
             sampled_at = self._parse_timestamp(entry.sampled_date)
             if sampled_at is not None and sampled_at >= cutoff:
-                recent_skus.add(entry.sku)
+                recent_skus.add(entry.upc)
 
         return recent_skus
 
@@ -223,7 +223,7 @@ class ProductSampler:
                 _ = load_dotenv(env_file, override=False)
 
     def _build_product_sample(self, row: dict[str, object]) -> ProductSample | None:
-        sku = self._normalize_value(row.get("sku"))
+        upc= self._normalize_value(row.get("upc"))
         name = self._normalize_value(row.get("name"))
         if not sku or not name:
             return None
@@ -232,7 +232,7 @@ class ProductSampler:
         category_name = self._extract_nested_name(row.get("category"))
 
         return ProductSample(
-            sku=sku,
+            upc=sku,
             name=name,
             brand=brand_name,
             category=category_name,
@@ -276,7 +276,7 @@ class ProductSampler:
                 if not isinstance(entry, dict):
                     continue
                 raw_entry = cast(dict[str, object], entry)
-                sku = str(raw_entry.get("sku", "")).strip()
+                upc= str(raw_entry.get("upc", "")).strip()
                 sampled_date = str(raw_entry.get("sampled_date", "")).strip()
                 week_number = raw_entry.get("week_number")
                 year = raw_entry.get("year")
@@ -286,7 +286,7 @@ class ProductSampler:
                     continue
                 history.append(
                     {
-                        "sku": sku,
+                        "upc": sku,
                         "sampled_date": sampled_date,
                         "week_number": week_number,
                         "year": year,
@@ -304,21 +304,21 @@ class ProductSampler:
                 week_number = raw_batch.get("week_number")
                 year = raw_batch.get("year")
                 seed = raw_batch.get("seed")
-                raw_skus = raw_batch.get("skus")
+                raw_skus = raw_batch.get("upcs")
                 if not sampled_date:
                     continue
                 if not isinstance(week_number, int) or not isinstance(year, int):
                     continue
                 if not isinstance(raw_skus, list):
                     continue
-                skus = [str(sku).strip() for sku in cast(list[object], raw_skus) if str(sku).strip()]
+                upcs = [str(sku).strip() for sku in cast(list[object], raw_skus) if str(sku).strip()]
                 batches.append(
                     {
                         "sampled_date": sampled_date,
                         "week_number": week_number,
                         "year": year,
                         "seed": seed if isinstance(seed, (int, float, str, bytes, bytearray)) else None,
-                        "skus": skus,
+                        "upcs": upcs,
                     }
                 )
 
@@ -356,5 +356,5 @@ def get_sample_history() -> list[SamplingHistoryEntry]:
     return ProductSampler().get_sample_history()
 
 
-def record_sampled_skus(skus: list[ProductSample] | list[str], *, seed: SeedValue = None) -> None:
-    ProductSampler(seed=seed).record_sampled_skus(skus)
+def record_sampled_skus(upcs: list[ProductSample] | list[str], *, seed: SeedValue = None) -> None:
+    ProductSampler(seed=seed).record_sampled_skus(upcs)

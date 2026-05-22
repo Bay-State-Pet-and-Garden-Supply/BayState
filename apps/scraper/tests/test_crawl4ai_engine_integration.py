@@ -250,7 +250,7 @@ class TestCallbackIntegration:
 
             assert payload["job_id"] == "job-123"
             assert payload["status"] == "completed"
-            assert payload["results"]["skus_processed"] == 2
+            assert payload["results"]["upcs_processed"] == 2
 
 
 class TestFullWorkflow:

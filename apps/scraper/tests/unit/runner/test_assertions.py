@@ -12,12 +12,12 @@ from __future__ import annotations
 
 
 # ---------------------------------------------------------------------------
-# Test 1: Exact match — all fields equal → SKU passes
+# Test 1: Exact match — all fields equal → UPC passes
 # ---------------------------------------------------------------------------
 
 
 def test_assert_sku_exact_match_all_fields_pass():
-    """When all expected fields match actual values, the SKU assertion passes.
+    """When all expected fields match actual values, the UPC assertion passes.
 
     The assertion engine should compare name, price, and image fields
     using exact string equality and report overall_passed=True.
@@ -36,7 +36,7 @@ def test_assert_sku_exact_match_all_fields_pass():
 
 
 # ---------------------------------------------------------------------------
-# Test 2: Per-field failure — one field wrong → SKU fails
+# Test 2: Per-field failure — one field wrong → UPC fails
 # ---------------------------------------------------------------------------
 
 
@@ -67,14 +67,14 @@ def test_assert_sku_single_field_mismatch_fails():
 
 
 # ---------------------------------------------------------------------------
-# Test 3: Fake SKU — no data returned → pass
+# Test 3: Fake UPC — no data returned → pass
 # ---------------------------------------------------------------------------
 
 
 def test_assert_fake_sku_no_data_passes():
-    """A fake SKU should pass when no data is returned (empty actual dict).
+    """A fake UPC should pass when no data is returned (empty actual dict).
 
-    Fake SKUs are products that should NOT exist. When the scraper returns
+    Fake UPCs are products that should NOT exist. When the scraper returns
     no data for them, that's the correct behavior.
     """
     from runner.assertions import assert_fake_sku
@@ -85,10 +85,10 @@ def test_assert_fake_sku_no_data_passes():
 
 
 def test_assert_fake_sku_with_data_fails():
-    """A fake SKU should fail when data IS returned (product found unexpectedly).
+    """A fake UPC should fail when data IS returned (product found unexpectedly).
 
-    If a fake SKU returns actual product data, the scraper may be matching
-    too broadly or the SKU isn't truly fake.
+    If a fake UPC returns actual product data, the scraper may be matching
+    too broadly or the UPC isn't truly fake.
     """
     from runner.assertions import assert_fake_sku
 
@@ -199,22 +199,22 @@ def test_assert_sku_returns_per_field_result_structure():
 
 
 # ---------------------------------------------------------------------------
-# Test 7: SKU identifier in result
+# Test 7: UPC identifier in result
 # ---------------------------------------------------------------------------
 
 
 def test_assert_sku_includes_sku_identifier():
-    """The result should include the SKU identifier for traceability.
+    """The result should include the UPC identifier for traceability.
 
-    When displaying results in the Admin UI, we need to know which SKU
+    When displaying results in the Admin UI, we need to know which UPC
     each assertion result belongs to.
     """
     from runner.assertions import assert_sku
 
     result = assert_sku(
-        sku="SKU-12345",
+        upc="UPC-12345",
         expected={"name": "Widget"},
         actual={"name": "Widget"},
     )
 
-    assert result["sku"] == "SKU-12345"
+    assert result["upc"] == "UPC-12345"

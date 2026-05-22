@@ -23,7 +23,7 @@ def test_compare_lists_uses_overlap_percentage():
 
 
 def test_compare_exact_is_case_insensitive():
-    result = compare_exact("SKU-123", "sku-123")
+    result = compare_exact("UPC-123", "sku-123")
 
     assert result.match_score == 1.0
     assert result.match_type == MatchType.EXACT
@@ -31,7 +31,7 @@ def test_compare_exact_is_case_insensitive():
 
 def test_compare_field_dispatches_to_exact_for_brand_and_sku():
     brand_result = compare_field("brand", "Blue Buffalo", "blue buffalo")
-    sku_result = compare_field("sku", "AB-99", "ab-99")
+    sku_result = compare_field("upc", "AB-99", "ab-99")
 
     assert brand_result.match_score == 1.0
     assert brand_result.match_type == MatchType.EXACT

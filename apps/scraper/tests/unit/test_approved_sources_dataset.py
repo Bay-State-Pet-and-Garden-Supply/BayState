@@ -61,12 +61,12 @@ class TestApprovedSourceDataset:
     def test_every_entry_has_required_fields(self, data):
         required = [
             "dataset_kind", "source_slug", "adapter_slug", "source_type",
-            "sku", "search_input", "allowed_domains", "allowed_asset_domains",
+            "upc", "search_input", "allowed_domains", "allowed_asset_domains",
             "expected", "difficulty", "tags",
         ]
         for entry in data["entries"]:
             for field in required:
-                assert field in entry, f"Entry SKU={entry.get('sku')} missing {field}"
+                assert field in entry, f"Entry UPC={entry.get("upc")} missing {field}"
 
     def test_no_retailer_positive_entries(self, data):
         """No positive extraction entry should have a disallowed domain."""
@@ -74,7 +74,7 @@ class TestApprovedSourceDataset:
             for domain in entry.get("allowed_domains", []):
                 for bad in DISALLOWED_DOMAINS:
                     assert bad not in domain, (
-                        f"Entry SKU={entry['sku']} has disallowed domain: {domain}"
+                        f"Entry UPC={entry["upc"]} has disallowed domain: {domain}"
                     )
 
     def test_distributor_domain_matches(self, data):
@@ -85,7 +85,7 @@ class TestApprovedSourceDataset:
                 expected = APPROVED_DISTRIBUTOR_DOMAINS[slug]
                 for domain in entry["allowed_domains"]:
                     assert any(d in domain for d in expected), (
-                        f"SKU={entry['sku']}: {domain} not in expected domains for {slug}"
+                        f"UPC={entry["upc"]}: {domain} not in expected domains for {slug}"
                     )
 
     def test_bradley_minimum_entries(self, data):
@@ -112,7 +112,7 @@ class TestApprovedSourceDataset:
         """Every entry should reference legacy config or document why not."""
         for entry in data["entries"]:
             assert "legacy_reference" in entry or entry.get("notes"), (
-                f"Entry SKU={entry.get('sku')} missing legacy_reference"
+                f"Entry UPC={entry.get("upc")} missing legacy_reference"
             )
 
 
@@ -138,12 +138,12 @@ class TestSERPDataset:
 
     def test_every_entry_has_required_fields(self, data):
         required = [
-            "sku", "brand", "product_name", "expected_official_domains",
+            "upc", "brand", "product_name", "expected_official_domains",
             "source_legality", "expected_behavior",
         ]
         for entry in data["entries"]:
             for field in required:
-                assert field in entry, f"Entry SKU={entry.get('sku')} missing {field}"
+                assert field in entry, f"Entry UPC={entry.get("upc")} missing {field}"
 
     def test_every_entry_has_source_legality(self, data):
         for entry in data["entries"]:
@@ -176,7 +176,7 @@ class TestSERPDataset:
             for domain in entry["source_legality"]["approved_positive_domains"]:
                 for bad in DISALLOWED_DOMAINS:
                     assert bad not in domain, (
-                        f"SKU={entry['sku']}: disallowed domain in approved_positive_domains: {domain}"
+                        f"UPC={entry["upc"]}: disallowed domain in approved_positive_domains: {domain}"
                     )
 
 
@@ -198,29 +198,29 @@ class TestOfficialExtractionDataset:
     def test_no_retailer_source_type(self, data):
         for entry in data["entries"]:
             assert entry.get("source_type") != "retailer", (
-                f"SKU={entry['sku']}: retailer source_type not allowed in official extraction dataset"
+                f"UPC={entry["upc"]}: retailer source_type not allowed in official extraction dataset"
             )
 
     def test_all_entries_are_official(self, data):
         for entry in data["entries"]:
             assert entry.get("source_type") == "official", (
-                f"SKU={entry['sku']}: source_type must be 'official'"
+                f"UPC={entry["upc"]}: source_type must be 'official'"
             )
 
     def test_every_entry_has_required_fields(self, data):
         required = [
-            "sku", "product_name", "brand", "source_url", "source_type",
+            "upc", "product_name", "brand", "source_url", "source_type",
             "approved_domains", "ground_truth", "expected",
         ]
         for entry in data["entries"]:
             for field in required:
-                assert field in entry, f"Entry SKU={entry.get('sku')} missing {field}"
+                assert field in entry, f"Entry UPC={entry.get("upc")} missing {field}"
 
     def test_ground_truth_has_required_fields(self, data):
         for entry in data["entries"]:
             gt = entry["ground_truth"]
             for field in ["brand", "name", "image_required"]:
-                assert field in gt, f"Entry SKU={entry['sku']} ground_truth missing {field}"
+                assert field in gt, f"Entry UPC={entry["upc"]} ground_truth missing {field}"
 
 
 # =============================================================================
@@ -246,10 +246,10 @@ class TestNegativeSourceDataset:
     def test_all_entries_reject_extraction(self, data):
         for entry in data["entries"]:
             assert entry["expected_behavior"]["may_extract"] is False, (
-                f"SKU={entry['sku']}: negative source must not allow extraction"
+                f"UPC={entry['upc']}: negative source must not allow extraction"
             )
             assert entry["expected_behavior"]["may_use_images"] is False, (
-                f"SKU={entry['sku']}: negative source must not allow images"
+                f"UPC={entry['upc']}: negative source must not allow images"
             )
 
     def test_retailer_domains_present(self, data):
@@ -270,10 +270,10 @@ class TestNegativeSourceDataset:
 
     def test_every_entry_has_required_fields(self, data):
         required = [
-            "dataset_kind", "sku", "product_name", "brand",
+            "dataset_kind", "upc", "product_name", "brand",
             "candidate_url", "candidate_domain", "source_type",
             "reason", "expected_behavior",
         ]
         for entry in data["entries"]:
             for field in required:
-                assert field in entry, f"Entry SKU={entry.get('sku')} missing {field}"
+                assert field in entry, f"Entry UPC={entry.get('upc')} missing {field}"

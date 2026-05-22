@@ -53,7 +53,7 @@ def _build_source_results(
 
 
 def build_success_result(
-    sku: str,
+    upc: str,
     source_slug: str,
     source_type: str,
     evidence_url: str,
@@ -78,13 +78,13 @@ def build_success_result(
 
     return EnrichmentResultV1(
         schema_version="v1",
-        sku=sku,
+        upc=upc,
         source=EnrichmentResultSource(
             url=resolved_evidence_url,
             domain=_extract_domain(resolved_evidence_url),
             source_type=source_type,
             source_slug=source_slug,
-            evidence="Deterministic extraction matched SKU on approved source",
+            evidence="Deterministic extraction matched UPC on approved source",
         ),
         status="success",
         extracted_at=now_iso(),
@@ -121,7 +121,7 @@ def build_success_result(
 
 
 def build_partial_result(
-    sku: str,
+    upc: str,
     source_slug: str,
     source_type: str,
     evidence_url: str,
@@ -147,7 +147,7 @@ def build_partial_result(
 
     return EnrichmentResultV1(
         schema_version="v1",
-        sku=sku,
+        upc=upc,
         source=EnrichmentResultSource(
             url=resolved_evidence_url,
             domain=_extract_domain(resolved_evidence_url),
@@ -190,7 +190,7 @@ def build_partial_result(
 
 
 def build_auth_required_result(
-    sku: str,
+    upc: str,
     source_slug: str,
     source_type: str = "distributor",
     message: str | None = None,
@@ -208,7 +208,7 @@ def build_auth_required_result(
 
     return EnrichmentResultV1(
         schema_version="v1",
-        sku=sku,
+        upc=upc,
         source=EnrichmentResultSource(
             url=resolved_evidence_url,
             source_type=source_type,
@@ -245,7 +245,7 @@ def build_auth_required_result(
 
 
 def build_auth_failed_result(
-    sku: str,
+    upc: str,
     source_slug: str,
     source_type: str = "distributor",
     message: str | None = None,
@@ -263,7 +263,7 @@ def build_auth_failed_result(
 
     return EnrichmentResultV1(
         schema_version="v1",
-        sku=sku,
+        upc=upc,
         source=EnrichmentResultSource(
             url=resolved_evidence_url,
             source_type=source_type,
@@ -300,7 +300,7 @@ def build_auth_failed_result(
 
 
 def build_auth_expired_result(
-    sku: str,
+    upc: str,
     source_slug: str,
     source_type: str = "distributor",
     message: str | None = None,
@@ -318,7 +318,7 @@ def build_auth_expired_result(
 
     return EnrichmentResultV1(
         schema_version="v1",
-        sku=sku,
+        upc=upc,
         source=EnrichmentResultSource(
             url=resolved_evidence_url,
             source_type=source_type,
@@ -355,7 +355,7 @@ def build_auth_expired_result(
 
 
 def build_no_match_result(
-    sku: str,
+    upc: str,
     source_slug: str,
     source_type: str = "distributor",
     evidence_url: str | None = None,
@@ -366,7 +366,7 @@ def build_no_match_result(
     resolved_evidence_url = _coerce_evidence_url(evidence_url)
     return EnrichmentResultV1(
         schema_version="v1",
-        sku=sku,
+        upc=upc,
         source=EnrichmentResultSource(
             url=resolved_evidence_url,
             source_type=source_type,
@@ -380,14 +380,14 @@ def build_no_match_result(
         confidence=EnrichmentConfidence(overall=0.0),
         validation=EnrichmentValidation(
             sku_match=False,
-            warnings=[f"No match found for SKU {sku} on {source_slug}"],
+            warnings=[f"No match found for UPC {upc} on {source_slug}"],
             missing_required=["sku_match"],
         ),
         attempts=[
             EnrichmentAttemptSummary(
                 mode="structured",
                 status="failed",
-                error=f"No product match for SKU {sku}",
+                error=f"No product match for UPC {upc}",
             )
         ],
         decision="failed",
@@ -403,7 +403,7 @@ def build_no_match_result(
 
 
 def build_policy_blocked_result(
-    sku: str,
+    upc: str,
     source_slug: str,
     blocked_url: str,
     reason: str = "Domain is not allowed by source policy",
@@ -413,7 +413,7 @@ def build_policy_blocked_result(
     """Build a failed result when a URL is blocked by the domain policy."""
     return EnrichmentResultV1(
         schema_version="v1",
-        sku=sku,
+        upc=upc,
         source=EnrichmentResultSource(
             url=blocked_url,
             source_type="distributor",
@@ -450,7 +450,7 @@ def build_policy_blocked_result(
 
 
 def build_failed_result(
-    sku: str,
+    upc: str,
     source_slug: str | None = None,
     source_type: str = "distributor",
     error_message: str = "All approved source extraction attempts failed",
@@ -469,7 +469,7 @@ def build_failed_result(
     resolved_evidence_url = _coerce_evidence_url(evidence_url)
     return EnrichmentResultV1(
         schema_version="v1",
-        sku=sku,
+        upc=upc,
         source=EnrichmentResultSource(
             url=resolved_evidence_url,
             source_type=source_type,
@@ -513,7 +513,7 @@ def _map_product_fields(fields: dict[str, Any]) -> EnrichedProductFacts:
         brand=fields.get("brand"),
         description=fields.get("description"),
         category=fields.get("category"),
-        sku=fields.get("sku"),
+        upc=fields.get("upc"),
         weight=fields.get("weight"),
         dimensions=fields.get("dimensions"),
         shipping_weight=fields.get("shipping_weight"),

@@ -15,10 +15,10 @@ def test_extraction_seed_has_strict_curated_shape() -> None:
     # 3 retailer rows were moved to negative_source_dataset.json (legal policy)
     assert len(payload["entries"]) >= 7
 
-    seen_skus: set[str] = set()
+    seen_upcs: set[str] = set()
     for entry in payload["entries"]:
-        assert entry["sku"] not in seen_skus
-        seen_skus.add(entry["sku"])
+        assert entry["upc"] not in seen_upcs
+        seen_upcs.add(entry["upc"])
         assert entry["product_name"].strip()
         assert entry["brand"].strip()
         assert entry["source_type"] in {"official", "retailer", "distributor"}

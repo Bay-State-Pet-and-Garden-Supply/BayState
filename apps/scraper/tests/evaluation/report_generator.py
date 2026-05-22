@@ -71,12 +71,12 @@ def _serialize_field_comparison(comparison: FieldComparison) -> dict[str, Any]:
 
 
 def _build_per_sku_results(results: list[EvaluationResult]) -> list[dict[str, Any]]:
-    per_sku: list[dict[str, Any]] = []
+    per_upc: list[dict[str, Any]] = []
     for result in results:
         field_comparisons = [_serialize_field_comparison(item) for item in result.field_comparisons]
-        per_sku.append(
+        per_upc.append(
             {
-                "sku": result.sku,
+                "upc": result.upc,
                 "success": result.success,
                 "passed": result.passed,
                 "accuracy": round(float(result.accuracy), 4),
@@ -86,7 +86,7 @@ def _build_per_sku_results(results: list[EvaluationResult]) -> list[dict[str, An
                 "field_comparisons": field_comparisons,
             }
         )
-    return per_sku
+    return per_upc
 
 
 def _build_field_breakdown(results: list[EvaluationResult]) -> dict[str, dict[str, Any]]:
@@ -148,7 +148,7 @@ def _build_aggregate_metrics(results: list[EvaluationResult], field_breakdown: d
         "field_count": len(field_breakdown),
         "failed_extractions": [
             {
-                "sku": result.sku,
+                "upc": result.upc,
                 "error_message": result.error_message,
                 "accuracy": round(float(result.accuracy), 4),
             }
@@ -244,9 +244,9 @@ def _build_markdown(payload: dict[str, Any], json_path: Path) -> str:
     lines.extend(
         [
             "",
-            "## Per-SKU Details",
+            "## Per-UPC Details",
             "",
-            "| SKU | Success | Passed | Accuracy | Time (ms) | Error |",
+            "| UPC | Success | Passed | Accuracy | Time (ms) | Error |",
             "|-----|---------|--------|----------|-----------|-------|",
         ]
     )
@@ -256,7 +256,7 @@ def _build_markdown(payload: dict[str, Any], json_path: Path) -> str:
         extraction_time = "-" if result["extraction_time_ms"] is None else f"{result['extraction_time_ms']:.2f}"
         lines.append(
             "| {sku} | {success} | {passed} | {accuracy} | {time} | {error} |".format(
-                sku=result["sku"],
+                upc=result["upc"],
                 success="yes" if result["success"] else "no",
                 passed="yes" if result["passed"] else "no",
                 accuracy=_format_percent(result["accuracy"]),
@@ -269,14 +269,14 @@ def _build_markdown(payload: dict[str, Any], json_path: Path) -> str:
     if failed_extractions:
         lines.extend(
             [
-                "| SKU | Accuracy | Error |",
+                "| UPC | Accuracy | Error |",
                 "|-----|----------|-------|",
             ]
         )
         for failure in failed_extractions:
             lines.append(
                 "| {sku} | {accuracy} | {error} |".format(
-                    sku=failure["sku"],
+                    upc=failure["upc"],
                     accuracy=_format_percent(failure["accuracy"]),
                     error=(failure["error_message"] or "-").replace("\n", " "),
                 )
@@ -361,7 +361,7 @@ def _normalize_weekly_result(item: ReviewedResult | EvaluationResult | dict[str,
     if isinstance(item, EvaluationResult):
         field_comparisons = [_serialize_field_comparison(comparison) for comparison in item.field_comparisons]
         return {
-            "sku": item.sku,
+            "upc": item.upc,
             "success": item.success,
             "passed": item.passed,
             "accuracy": round(float(item.accuracy), 4),
@@ -380,7 +380,7 @@ def _normalize_weekly_result(item: ReviewedResult | EvaluationResult | dict[str,
     if isinstance(item, ReviewedResult):
         field_comparisons = _build_reviewed_field_comparisons(item)
         return {
-            "sku": item.sku,
+            "upc": item.upc,
             "success": _derive_review_success(item),
             "passed": _derive_review_success(item),
             "accuracy": _derive_review_accuracy(item),
@@ -407,7 +407,7 @@ def _normalize_weekly_result(item: ReviewedResult | EvaluationResult | dict[str,
         }
 
     payload = _coerce_mapping(item)
-    sku = str(payload.get("sku", "unknown"))
+    upc= str(payload.get("upc", "unknown"))
     field_accuracy_raw = _coerce_mapping(payload.get("field_accuracy", {}))
     extracted_data = _coerce_mapping(payload.get("extracted_data", {}))
     reviewed_data = _coerce_mapping(payload.get("reviewed_data", {}))
@@ -420,7 +420,7 @@ def _normalize_weekly_result(item: ReviewedResult | EvaluationResult | dict[str,
         accuracy_value = _safe_mean(scores)
 
     return {
-        "sku": sku,
+        "upc": sku,
         "success": bool(payload.get("success", accuracy_value >= 0.8 if isinstance(accuracy_value, (int, float)) else False)),
         "passed": bool(payload.get("passed", payload.get("success", False))),
         "accuracy": round(float(accuracy_value or 0.0), 4),
@@ -462,7 +462,7 @@ def _summarize_weekly_metrics(normalized_results: list[dict[str, Any]], field_br
     costs = [float(result["cost"]) for result in normalized_results]
     success_count = sum(1 for result in normalized_results if result["success"])
     return {
-        "skus_tested": total_results,
+        "upcs_tested": total_results,
         "success_count": success_count,
         "success_rate": round(success_count / total_results, 4) if total_results else 0.0,
         "average_accuracy": round(_safe_mean(accuracies), 4),
@@ -489,7 +489,7 @@ def _build_weekly_trends(
 
     success_delta = current_summary["success_rate"] - float(previous_summary.get("success_rate", 0.0)) if previous_summary else 0.0
     accuracy_delta = current_summary["average_accuracy"] - float(previous_summary.get("average_accuracy", 0.0)) if previous_summary else 0.0
-    sku_delta = current_summary["skus_tested"] - int(previous_summary.get("skus_tested", 0)) if previous_summary else current_summary["skus_tested"]
+    sku_delta = current_summary["upcs_tested"] - int(previous_summary.get("upcs_tested", 0)) if previous_summary else current_summary["upcs_tested"]
 
     field_trends: dict[str, dict[str, Any]] = {}
     previous_fields = {} if previous_fields is None else previous_fields
@@ -575,7 +575,7 @@ def _build_weekly_markdown(payload: dict[str, Any], json_path: Path) -> str:
         "",
         "## Executive Summary",
         "",
-        f"- SKUs tested: {summary['skus_tested']}",
+        f"- UPCs tested: {summary['upcs_tested']}",
         f"- Success rate: {_format_percent(summary['success_rate'])}",
         f"- Average accuracy: {_format_percent(summary['average_accuracy'])}",
         "",
@@ -599,7 +599,7 @@ def _build_weekly_markdown(payload: dict[str, Any], json_path: Path) -> str:
                     float(summary["average_accuracy"]) - float(trends["week_over_week"]["average_accuracy_delta"]),
                 ),
                 "",
-                f"- SKU volume delta: {trends['week_over_week']['skus_tested_delta']:+d}",
+                f"- UPC volume delta: {trends['week_over_week']['skus_tested_delta']:+d}",
                 f"- Success rate delta: {_format_delta(trends['week_over_week']['success_rate_delta'])}",
                 f"- Accuracy delta: {_format_delta(trends['week_over_week']['average_accuracy_delta'])}",
             ]
@@ -626,7 +626,7 @@ def _build_weekly_markdown(payload: dict[str, Any], json_path: Path) -> str:
             "",
             "## Per-Product Results",
             "",
-            "| SKU | Success | Accuracy | Extracted Data | Reviewed Data | Notes |",
+            "| UPC | Success | Accuracy | Extracted Data | Reviewed Data | Notes |",
             "|-----|---------|----------|----------------|---------------|-------|",
         ]
     )
@@ -636,7 +636,7 @@ def _build_weekly_markdown(payload: dict[str, Any], json_path: Path) -> str:
         notes = (result.get("notes") or result.get("error_message") or "-").replace("\n", " ")
         lines.append(
             "| {sku} | {success} | {accuracy} | {extracted} | {reviewed} | {notes} |".format(
-                sku=result["sku"],
+                upc=result["upc"],
                 success="yes" if result["success"] else "no",
                 accuracy=_format_percent(result["accuracy"]),
                 extracted=extracted,

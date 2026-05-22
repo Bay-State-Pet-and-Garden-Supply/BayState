@@ -33,7 +33,7 @@ class TestExtractionValidatorAcceptance:
 
         is_acceptable, reason = validator.validate_extraction_match(
             extraction_result=extraction_result,
-            sku="12345",
+            upc="12345",
             product_name="Advantage Large Breed Cat Food",
             brand="Advantage",
             source_url="https://www.chewy.com/product/12345",
@@ -61,7 +61,7 @@ class TestExtractionValidatorAcceptance:
         # Partial name - "Advantage Large Breed" is subset of full name
         is_acceptable, reason = validator.validate_extraction_match(
             extraction_result=extraction_result,
-            sku="12345",
+            upc="12345",
             product_name="Advantage Large Breed",
             brand="Advantage",
             source_url="https://www.chewy.com/product/12345",
@@ -91,7 +91,7 @@ class TestExtractionValidatorRejection:
 
         is_acceptable, reason = validator.validate_extraction_match(
             extraction_result=extraction_result,
-            sku="12345",
+            upc="12345",
             product_name="Some Brand Cat Food",
             brand="ExpectedBrand",
             source_url="https://www.chewy.com/product/12345",
@@ -118,7 +118,7 @@ class TestExtractionValidatorRejection:
 
         is_acceptable, reason = validator.validate_extraction_match(
             extraction_result=extraction_result,
-            sku="12345",
+            upc="12345",
             product_name="Salmon Cat Kibble",
             brand="SomeBrand",
             source_url="https://www.example.com/product",
@@ -145,7 +145,7 @@ class TestExtractionValidatorRejection:
 
         is_acceptable, reason = validator.validate_extraction_match(
             extraction_result=extraction_result,
-            sku="12345",
+            upc="12345",
             product_name="Advantage Cat Food",
             brand="Advantage",
             source_url="https://www.unknownsite.com/product",
@@ -172,7 +172,7 @@ class TestExtractionValidatorRejection:
 
         is_acceptable, reason = validator.validate_extraction_match(
             extraction_result=extraction_result,
-            sku="12345",
+            upc="12345",
             product_name="Advantage Cat Food",
             brand="Advantage",
             source_url="https://www.chewy.com/product/12345",
@@ -205,7 +205,7 @@ class TestExtractionValidatorRejection:
 
         is_acceptable, reason = validator.validate_extraction_match(
             extraction_result=extraction_copy,
-            sku="12345",
+            upc="12345",
             product_name="Advantage Cat Food",
             brand="Advantage",
             source_url="https://www.chewy.com/product/12345",
@@ -238,7 +238,7 @@ class TestExtractionValidatorRejection:
 
         is_acceptable, reason = validator.validate_extraction_match(
             extraction_result=extraction_copy,
-            sku="12345",
+            upc="12345",
             product_name="Advantage Cat Food",
             brand="Advantage",
             source_url="https://www.chewy.com/product/12345",

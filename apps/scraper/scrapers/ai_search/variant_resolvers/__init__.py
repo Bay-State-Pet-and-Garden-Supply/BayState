@@ -9,7 +9,7 @@ logger = logging.getLogger("scrapers.ai_search.variant_resolvers")
 async def resolve_family_variant(
     *,
     url: str,
-    sku: str,
+    upc: str,
     product_name: Optional[str],
     brand: Optional[str],
     html: str,
@@ -29,7 +29,7 @@ async def resolve_family_variant(
         extraction_utils=extraction_utils,
     )
     res_url, res_html, res_md, status = await shopify.resolve(
-        url=url, sku=sku, product_name=product_name, brand=brand, html=html
+        url=url, upc=upc, product_name=product_name, brand=brand, html=html
     )
     if status == "exact_variant":
         return res_url, res_html, res_md, status
@@ -41,7 +41,7 @@ async def resolve_family_variant(
         extraction_utils=extraction_utils,
     )
     res_url, res_html, res_md, status = await woocommerce.resolve(
-        url=url, sku=sku, product_name=product_name, brand=brand, html=html
+        url=url, upc=upc, product_name=product_name, brand=brand, html=html
     )
     if status == "exact_variant":
         return res_url, res_html, res_md, status
@@ -53,7 +53,7 @@ async def resolve_family_variant(
         extraction_utils=extraction_utils,
     )
     res_url, res_html, res_md, status = await demandware.resolve(
-        url=url, sku=sku, product_name=product_name, brand=brand, html=html
+        url=url, upc=upc, product_name=product_name, brand=brand, html=html
     )
     if status == "exact_variant":
         return res_url, res_html, res_md, status

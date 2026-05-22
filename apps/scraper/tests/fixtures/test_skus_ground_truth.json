@@ -1,6 +1,6 @@
 [
   {
-    "sku": "032247886598",
+    "upc": "032247886598",
     "brand": "Scotts",
     "name": "Scotts NatureScapes Color Enhanced Mulch Deep Forest Brown 1.5 cu ft",
     "description": "Scotts NatureScapes Color Enhanced Mulch Deep Forest Brown helps soil retain moisture, prevents weeds, and never has recycled pallet wood with chemicals or harmful debris. Uses ColorGuard technology for year-long color.",
@@ -17,7 +17,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "095668300593",
+    "upc": "095668300593",
     "brand": "Manna Pro",
     "name": "Manna Pro Duckling & Gosling Starter Grower Crumbles 8 lb",
     "description": "Complete non-medicated feed for ducklings and goslings. Contains 22% protein to support healthy growth and muscle development. Fortified with essential vitamins, minerals, and probiotics. No artificial colors or antibiotics.",
@@ -34,7 +34,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "032247761215",
+    "upc": "032247761215",
     "brand": "Scotts",
     "name": "Scotts Turf Builder EdgeGuard Mini Broadcast Spreader",
     "description": "Compact broadcast spreader with patented EdgeGuard technology. Holds up to 5,000 sq ft of lawn products. Keeps product off landscaping, driveways, sidewalks and waterways. Rustproof hopper.",
@@ -51,7 +51,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "032247885591",
+    "upc": "032247885591",
     "brand": "Scotts",
     "name": "Scotts NatureScapes Classic Black Color Enhanced Mulch 1.5 cu ft",
     "description": "Scotts NatureScapes Classic Black Color Enhanced Mulch helps soil retain moisture, prevents weeds, and never has recycled pallet wood. Features ColorGuard technology for year-long color. More colorant than other Scotts mulches.",
@@ -68,7 +68,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "095668001032",
+    "upc": "095668001032",
     "brand": "Manna Pro",
     "name": "Manna Pro Farmhouse Favorites Mini Horse & Donkey Treats",
     "description": "Baked treats specially formulated for mini horses and mini donkeys. Made with wholesome ingredients including wheat flour, alfalfa meal, oats, and sugar. Apple banana flavored. 11% protein minimum.",
@@ -85,7 +85,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "095668225308",
+    "upc": "095668225308",
     "brand": "Manna Pro",
     "name": "Manna Pro 16% All Flock Crumbles with Probiotics 8 lb",
     "description": "Versatile complete feed for mixed flocks of chickens, ducks, geese, turkeys, and gamebirds. 16% protein with added probiotics for gut health. No artificial colors or flavors. Crumble form for easy feeding.",
@@ -102,7 +102,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "032247278140",
+    "upc": "032247278140",
     "brand": "Miracle-Gro",
     "name": "Miracle-Gro Potting Mix 25 Quart",
     "description": "All-purpose potting mix for container plants. Grows plants twice as big (vs unfed plants). Feeds for up to 6 months. Ideal for indoor or outdoor containers, hanging baskets, and planters. Specially formulated for all types of potted plants.",
@@ -119,7 +119,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "032247279048",
+    "upc": "032247279048",
     "brand": "Miracle-Gro",
     "name": "Miracle-Gro Potting Mix 50 Quart",
     "description": "All-purpose potting mix for container plants. Grows plants twice as big (vs unfed plants). Feeds for up to 6 months. Fills approximately 3-12 inch containers. Ideal for flowers, vegetables, shrubs, annuals, and perennials.",
@@ -136,7 +136,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "032247884594",
+    "upc": "032247884594",
     "brand": "Scotts",
     "name": "Scotts NatureScapes Color Enhanced Mulch Sierra Red 1.5 cu ft",
     "description": "Scotts NatureScapes Color Enhanced Mulch Sierra Red helps soil retain moisture, prevents weeds, and never has recycled pallet wood. Features ColorGuard technology for year-long vibrant color.",
@@ -153,7 +153,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "095668302580",
+    "upc": "095668302580",
     "brand": "Manna Pro",
     "name": "Manna Pro Bite-Size Nuggets Alfalfa & Molasses 4 lb",
     "description": "Bite-size nuggets horse treats made with alfalfa and molasses. Irresistible taste horses love. Great for training and pocket-sized for quick rewards. Added lysine, methionine, and B-complex vitamins. Happy horse guaranteed.",
@@ -170,7 +170,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "072705115310",
+    "upc": "072705115310",
     "brand": "Fromm",
     "name": "Fromm Gold Large Breed Adult Dog Food 30 lb",
     "description": "Fromm Gold Nutritionals Large Breed Adult Dry Dog Food. Formulated specifically for large breed adult dogs with reduced fat and calorie levels. Made with fresh duck, chicken, and lamb.",
@@ -185,7 +185,7 @@
     "difficulty": "medium"
   },
   {
-    "sku": "074198600116",
+    "upc": "074198600116",
     "brand": "Purina",
     "name": "Purina Pro Plan Savor Shredded Blend Adult Chicken & Rice Formula",
     "description": "High-protein dog food with real chicken and shredded pieces for a taste dogs love. Combines crunchy kibble and tender shredded pieces. Optimized for adult dogs.",
@@ -200,7 +200,7 @@
     "difficulty": "medium"
   },
   {
-    "sku": "023100130596",
+    "upc": "023100130596",
     "brand": "Purina",
     "name": "Purina Tidy Cats Clumping Cat Litter 24/7 Performance 35 lb",
     "description": "Tidy Cats Clumping Cat Litter with 24/7 Performance. Strong clumping action for easy cleanup. Powerful odor control. Multi-cat formula.",
@@ -215,7 +215,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "038100138319",
+    "upc": "038100138319",
     "brand": "Miracle-Gro",
     "name": "Miracle-Gro Water Soluble All Purpose Plant Food 1.5 lb",
     "description": "Water soluble plant food that feeds instantly. Great for all flowers, vegetables, trees, shrubs, and houseplants. Can be used with any watering can or feeder. Feeds through roots and leaves.",
@@ -230,7 +230,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "072357002006",
+    "upc": "072357002006",
     "brand": "Espoma",
     "name": "Espoma Organic Blood Meal 3 lb",
     "description": "All natural organic nitrogen fertilizer. Provides a slow release of nitrogen for steady feeding. Ideal for heavy feeding plants. Promotes rapid growth and deep green foliage.",
@@ -245,7 +245,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "073219020014",
+    "upc": "073219020014",
     "brand": "Espoma",
     "name": "Espoma Organic Bone Meal 3 lb",
     "description": "All natural organic phosphorus fertilizer. Promotes root development. Ideal for bulbs and transplanting. Safe for people, pets, and the environment.",
@@ -260,7 +260,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "070375000014",
+    "upc": "070375000014",
     "brand": "Ferti-Lome",
     "name": "Ferti-Lome Tree & Shrub Systemic Insect Drench 1 Gallon",
     "description": "Systemic insecticide for trees and shrubs. Absorbed through roots and moves throughout the plant. Protects against aphids, borers, scale, and other listed insects. One application protects for up to 12 months.",
@@ -275,7 +275,7 @@
     "difficulty": "medium"
   },
   {
-    "sku": "070183000018",
+    "upc": "070183000018",
     "brand": "Bonide",
     "name": "Bonide Neem Oil 32 oz Ready-to-Use",
     "description": "Organic neem oil insecticide, miticide, and fungicide. Controls aphids, mites, scale, whiteflies, and other listed pests. Also controls powdery mildew, rust, and black spot. For use on indoor and outdoor plants.",
@@ -290,7 +290,7 @@
     "difficulty": "medium"
   },
   {
-    "sku": "088544001004",
+    "upc": "088544001004",
     "brand": "Kaytee",
     "name": "Kaytee Wild Bird Seed Black Oil Sunflower 5 lb",
     "description": "High-energy black oil sunflower seed for wild birds. Attracts a wide variety of songbirds including cardinals, chickadees, finches, and nuthatches. Rich in oil and protein for energy.",
@@ -305,7 +305,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "071800001016",
+    "upc": "071800001016",
     "brand": "Pennington",
     "name": "Pennington Smart Seed Dense Shade Grass Seed Mix 3 lb",
     "description": "Grass seed mix designed for dense shade areas. Contains just the right amount of seed, fertilizer, and mulch. Requires up to 30% less water. Grows in as few as 8 days.",
@@ -320,7 +320,7 @@
     "difficulty": "medium"
   },
   {
-    "sku": "070924001014",
+    "upc": "070924001014",
     "brand": "Spectracide",
     "name": "Spectracide Weed Stop for Lawns Plus Crabgrass Killer 40 oz",
     "description": "Kills over 200 types of weeds including crabgrass. Won't harm lawn grasses when used as directed. Rainproof in 4 hours. Results in hours. For use on Northern and Southern turf grasses.",
@@ -335,7 +335,7 @@
     "difficulty": "medium"
   },
   {
-    "sku": "070192001019",
+    "upc": "070192001019",
     "brand": "Ortho",
     "name": "Ortho Home Defense Insect Killer for Indoor & Perimeter 1 Gallon",
     "description": "Kills ants, roaches, spiders, and other listed insects. Creates a bug barrier that lasts up to 12 months indoors. Easy-to-use comfort wand. No staining or odor. For indoor and outdoor use.",
@@ -350,7 +350,7 @@
     "difficulty": "medium"
   },
   {
-    "sku": "070115001016",
+    "upc": "070115001016",
     "brand": "Roundup",
     "name": "Roundup Ready-to-Use Weed & Grass Killer III 1 Gallon",
     "description": "Kills weeds and grasses to the root. Rainproof in 10 minutes. Results in 3 hours. For use on patios, walkways, driveways, and along fences. No mixing required.",
@@ -365,7 +365,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "071829001019",
+    "upc": "071829001019",
     "brand": "Sevin",
     "name": "Sevin Insect Bug Killer Concentrate 16 oz",
     "description": "Kills over 100 insect pests on vegetables, fruits, ornamentals, and lawns. Fast-acting formula. Can be used up to day of harvest. Protects for up to 2 weeks.",
@@ -380,7 +380,7 @@
     "difficulty": "medium"
   },
   {
-    "sku": "071829001026",
+    "upc": "071829001026",
     "brand": "Sevin",
     "name": "Sevin Insect Bug Killer Ready-to-Use 32 oz",
     "description": "Kills over 100 insect pests on vegetables, fruits, ornamentals, and lawns. Ready-to-use spray bottle. No mixing required. Can be used up to day of harvest.",
@@ -395,7 +395,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "071829001033",
+    "upc": "071829001033",
     "brand": "Sevin",
     "name": "Sevin Insect Bug Killer Dust 4 lb",
     "description": "Kills over 65 insect pests on vegetables, fruits, and ornamentals. Dust formulation for easy application. Can be used up to day of harvest. Effective against Japanese beetles.",
@@ -410,7 +410,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "071829001040",
+    "upc": "071829001040",
     "brand": "Sevin",
     "name": "Sevin Insect Bug Killer Granules 6 lb",
     "description": "Kills over 100 insect pests on lawns and around home perimeter. Granular formulation for easy application with spreader. Protects for up to 2 weeks. For outdoor use only.",
@@ -425,7 +425,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "071829001057",
+    "upc": "071829001057",
     "brand": "Sevin",
     "name": "Sevin Insect Bug Killer Ready-to-Spray 32 oz",
     "description": "Kills over 100 insect pests on vegetables, fruits, ornamentals, and lawns. Ready-to-spray hose-end sprayer. No mixing required. Can be used up to day of harvest.",
@@ -440,7 +440,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "071829001064",
+    "upc": "071829001064",
     "brand": "Sevin",
     "name": "Sevin Insect Bug Killer Concentrate 32 oz",
     "description": "Kills over 100 insect pests on vegetables, fruits, ornamentals, and lawns. Concentrate formula for economical coverage. Can be used up to day of harvest. Protects for up to 2 weeks.",
@@ -455,7 +455,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "071829001071",
+    "upc": "071829001071",
     "brand": "Sevin",
     "name": "Sevin Insect Bug Killer Granules 10 lb",
     "description": "Kills over 100 insect pests on lawns and around home perimeter. Granular formulation for easy application with spreader. Protects for up to 2 weeks. For outdoor use only.",
@@ -470,7 +470,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "071829001088",
+    "upc": "071829001088",
     "brand": "Sevin",
     "name": "Sevin Insect Bug Killer Ready-to-Use 64 oz",
     "description": "Kills over 100 insect pests on vegetables, fruits, ornamentals, and lawns. Ready-to-use spray bottle. No mixing required. Can be used up to day of harvest.",
@@ -485,7 +485,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "071829001095",
+    "upc": "071829001095",
     "brand": "Sevin",
     "name": "Sevin Insect Bug Killer Dust 8 lb",
     "description": "Kills over 65 insect pests on vegetables, fruits, and ornamentals. Dust formulation for easy application. Can be used up to day of harvest. Effective against Japanese beetles.",
@@ -500,7 +500,7 @@
     "difficulty": "easy"
   },
   {
-    "sku": "071829001102",
+    "upc": "071829001102",
     "brand": "Sevin",
     "name": "Sevin Insect Bug Killer Granules 20 lb",
     "description": "Kills over 100 insect pests on lawns and around home perimeter. Granular formulation for easy application with spreader. Protects for up to 2 weeks. For outdoor use only.",

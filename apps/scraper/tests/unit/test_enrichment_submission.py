@@ -21,7 +21,7 @@ def test_submit_result_uses_attempt_id_from_object():
     attempt = ClaimedEnrichment(
         attempt_id="real-attempt-123",
         job_id="job-abc",
-        sku="sku-999",
+        upc="upc-999",
         target_url="http://example.com",
         lease_token="lease-xyz",
     )
@@ -52,7 +52,7 @@ def test_submit_result_falls_back_to_job_payload():
     class LegacyAttempt:
         def __init__(self):
             self.job_id = "job-abc"
-            self.sku = "sku-999"
+            self.upc = "upc-999"
             self.target_url = "http://example.com"
             self.lease_token = "lease-xyz"
 

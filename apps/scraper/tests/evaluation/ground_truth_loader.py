@@ -20,9 +20,9 @@ GROUND_TRUTH_FILE = FIXTURES_DIR / "test_skus_ground_truth.json"
 
 # Required fields that must be present in each ground truth product
 # Core fields (backward-compatible with GroundTruthProduct dataclass)
-REQUIRED_FIELDS = {"sku", "brand", "name"}
+REQUIRED_FIELDS = {"upc", "brand", "name"}
 # OBS-specific fields required for official brand scraper regression testing
-OBS_REQUIRED_FIELDS = {"sku", "brand", "name", "expected_source_url", "expected_source_domain", "expected_source_tier", "expected_fields"}
+OBS_REQUIRED_FIELDS = {"upc", "brand", "name", "expected_source_url", "expected_source_domain", "expected_source_tier", "expected_fields"}
 
 
 def _parse_size_metrics(size_str: str | None) -> SizeMetrics | None:
@@ -114,7 +114,7 @@ def load_ground_truth() -> list[GroundTruthProduct]:
         # Validate required fields
         missing = _validate_product(product)
         if missing:
-            errors.append(f"Product at index {idx} (SKU: {product.get('sku', 'UNKNOWN')}) missing fields: {missing}")
+            errors.append(f"Product at index {idx} (UPC: {product.get("upc", 'UNKNOWN')}) missing fields: {missing}")
             continue
 
         # Parse size metrics
@@ -122,7 +122,7 @@ def load_ground_truth() -> list[GroundTruthProduct]:
 
         # Build GroundTruthProduct
         gt_product = GroundTruthProduct(
-            sku=product["sku"],
+            upc=product["upc"],
             brand=product["brand"],
             name=product["name"],
             description=product.get("description", ""),
@@ -139,30 +139,30 @@ def load_ground_truth() -> list[GroundTruthProduct]:
     return products
 
 
-def get_ground_truth(sku: str) -> GroundTruthProduct | None:
-    """Get a single ground truth product by SKU.
+def get_ground_truth(upc: str) -> GroundTruthProduct | None:
+    """Get a single ground truth product by UPC.
 
     Args:
-        sku: Product SKU to look up
+        upc: Product UPC to look up
 
     Returns:
         GroundTruthProduct if found, None otherwise
     """
     products = load_ground_truth()
     for product in products:
-        if product.sku == sku:
+        if product.upc == upc:
             return product
     return None
 
 
-def get_all_skus() -> list[str]:
-    """Get list of all ground truth SKUs.
+def get_all_upcs() -> list[str]:
+    """Get list of all ground truth UPCs.
 
     Returns:
-        List of SKU strings
+        List of UPC strings
     """
     products = load_ground_truth()
-    return [p.sku for p in products]
+    return [p.upc for p in products]
 
 
 def load_fixture_raw() -> list[dict[str, Any]]:
@@ -209,11 +209,11 @@ if __name__ == "__main__":
     products = load_ground_truth()
     print(f"Loaded {len(products)} ground truth products")
 
-    test_sku = "032247886598"
-    product = get_ground_truth(test_sku)
+    test_upc = "032247886598"
+    product = get_ground_truth(test_upc)
     if product:
         print(f"Found product: {product.name}")
     else:
-        print(f"Product not found: {test_sku}")
+        print(f"Product not found: {test_upc}")
 
-    print(f"All SKUs: {get_all_skus()}")
+    print(f"All UPCs: {get_all_upcs()}")

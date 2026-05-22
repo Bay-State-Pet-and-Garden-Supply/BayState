@@ -2,7 +2,7 @@
 
 Legacy config: legacy-scraper-archive/configs/petfoodex.yaml
 Base URL: https://orders.petfoodexperts.com
-Search: /Search?query={sku}
+Search: /Search?query={upc}
 Auth: LOGIN REQUIRED — returns AUTH_REQUIRED when no credentials
 
 Note: Pet Food Experts uses data-test-selector attributes heavily.
@@ -33,19 +33,19 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
     source_slug = "pet_food_experts"
     source_type = "distributor"
     base_url = "https://orders.petfoodexperts.com"
-    search_url_template = "https://orders.petfoodexperts.com/Search?query={sku}"
+    search_url_template = "https://orders.petfoodexperts.com/Search?query={upc}"
     requires_auth = True
 
     def get_login_config_class(self):
         """Return the Pet Food Experts login config."""
         return PFE_LOGIN
 
-    def build_search_url(self, sku: str) -> str:
-        """Build the Pet Food Experts search URL from a SKU."""
-        return self.search_url_template.format(sku=quote(str(sku), safe=""))
+    def build_search_url(self, upc: str) -> str:
+        """Build the Pet Food Experts search URL from a UPC."""
+        return self.search_url_template.format(upc=quote(str(upc), safe=""))
 
     def extract_from_html(
-        self, html: str, sku: str, url: str
+        self, html: str, upc: str, url: str
     ) -> ApprovedSourceExtractionResult:
         """Extract product data from Pet Food Experts HTML.
 
@@ -87,7 +87,7 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
             result.failure_code = FailureCode.AUTH_REQUIRED
             result.failure_message = (
                 f"Authentication required for Pet Food Experts — "
-                f"received sign-in page for SKU {sku}"
+                f"received sign-in page for UPC {upc}"
             )
             result.auth_required = True
             return result
@@ -95,7 +95,7 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
         try:
             from bs4 import BeautifulSoup
         except ImportError:
-            return self._extract_with_regex(html, sku, url)
+            return self._extract_with_regex(html, upc, url)
 
         soup = BeautifulSoup(html, "html.parser")
 
@@ -104,7 +104,7 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
         if no_items:
             result.success = False
             result.failure_code = FailureCode.NO_MATCH
-            result.failure_message = f"No match found for SKU {sku}"
+            result.failure_message = f"No match found for UPC {upc}"
             return result
 
         page_title_text = soup.get_text(" ", strip=True).lower()
@@ -114,7 +114,7 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
         ):
             result.success = False
             result.failure_code = FailureCode.NO_MATCH
-            result.failure_message = f"No match found for SKU {sku}"
+            result.failure_message = f"No match found for UPC {upc}"
             return result
 
         # --- Name ---
@@ -266,19 +266,19 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
         if not product.get("name"):
             result.success = False
             result.failure_code = FailureCode.NO_MATCH
-            result.failure_message = f"No product name found for SKU {sku}"
+            result.failure_message = f"No product name found for UPC {upc}"
             return result
 
         identifier_candidates = [product.get("item_number"), product.get("upc")]
         has_identifier = any(candidate for candidate in identifier_candidates)
         identifier_match, matched_identifiers = self._match_identifier_candidates(
-            sku,
+            upc,
             product.get("item_number"),
             product.get("upc"),
         )
         if has_identifier and not identifier_match:
             warnings.append(
-                f"Pet Food Experts identifiers differ from searched SKU {sku}: "
+                f"Pet Food Experts identifiers differ from searched UPC {upc}: "
                 f"saw {', '.join(matched for matched in identifier_candidates if matched)}"
             )
 
@@ -298,7 +298,7 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
         return result
 
     def _extract_with_regex(
-        self, html: str, sku: str, url: str
+        self, html: str, upc: str, url: str
     ) -> ApprovedSourceExtractionResult:
         """Fallback regex extraction."""
         result = ApprovedSourceExtractionResult(
@@ -310,7 +310,7 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
         if (html.count("sign in") > 3 and "#userName" in html) or "SignInPage" in html:
             result.success = False
             result.failure_code = FailureCode.AUTH_REQUIRED
-            result.failure_message = f"Authentication required for Pet Food Experts (SKU {sku})"
+            result.failure_message = f"Authentication required for Pet Food Experts (UPC {upc})"
             result.auth_required = True
             return result
 
@@ -325,7 +325,7 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
         if not product.get("name"):
             result.success = False
             result.failure_code = FailureCode.NO_MATCH
-            result.failure_message = f"No match for SKU {sku}"
+            result.failure_message = f"No match for UPC {upc}"
             return result
 
         result.success = True
