@@ -14,10 +14,10 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-export function UserMenu({ user, userRole }: { user: User | null; userRole: string | null }) {
+export function UserMenu({ user }: { user: User | null }) {
     if (!user) {
         return (
-            <Button asChild variant="ghost" size="sm" className="text-white hover:bg-white/20 rounded-none border border-white/20 px-4 h-10 font-bold uppercase tracking-wider text-xs">
+            <Button asChild variant="ghost" size="sm" className="h-10 border border-white/20 px-4 text-xs font-semibold uppercase tracking-wider text-white hover:bg-white/20 rounded-sm">
                 <Link href="/login" className="flex items-center gap-2">
                     <UserIcon className="h-4 w-4" />
                     <span>Sign In</span>
@@ -34,17 +34,15 @@ export function UserMenu({ user, userRole }: { user: User | null; userRole: stri
         .toUpperCase()
         .slice(0, 2);
     
-    const isAdmin = userRole === 'admin' || userRole === 'staff';
-
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 group outline-none focus:outline-none">
                     <div className="hidden lg:flex flex-col items-end text-white/90 group-hover:text-white transition-colors">
-                        <span className="text-[10px] font-semibold tracking-[0.1em] opacity-70 leading-none mb-1">Account</span>
+                        <span className="text-[10px] font-semibold tracking-[0.1em] opacity-70 leading-none mb-1 uppercase">Account</span>
                         <span className="text-sm font-bold leading-none tracking-tight">{displayName}</span>
                     </div>
-                    <div className="h-10 w-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-bold border-2 border-primary shadow-sm group-hover:shadow-sm group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-all overflow-hidden">
+                    <div className="h-10 w-10 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-bold border-2 border-brand-forest-green shadow-sm group-hover:shadow-sm group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-all overflow-hidden">
                         {user.user_metadata?.avatar_url ? (
                             <img src={user.user_metadata.avatar_url} alt={displayName} className="h-full w-full object-cover" />
                         ) : (
@@ -53,41 +51,32 @@ export function UserMenu({ user, userRole }: { user: User | null; userRole: stri
                     </div>
                 </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-none border border-zinc-200 rounded-lg shadow-sm p-2">
-                <DropdownMenuLabel className="font-semibold text-[10px] text-zinc-400 py-2 px-2">
+            <DropdownMenuContent align="end" className="w-56 p-2 rounded-lg border border-zinc-200 shadow-md">
+                <DropdownMenuLabel className="px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
                     Account Dashboard
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-zinc-100" />
                 
-                <DropdownMenuItem asChild className="cursor-pointer focus:bg-primary/5 rounded-none py-3">
-                    <Link href="/account" className="flex w-full items-center gap-2 font-bold uppercase tracking-tight text-sm">
-                        <UserIcon className="h-4 w-4 text-primary" />
+                <DropdownMenuItem asChild className="cursor-pointer py-2.5 rounded-md focus:bg-zinc-50 focus:text-zinc-950">
+                    <Link href="/account" className="flex w-full items-center gap-2 text-sm font-medium text-zinc-700">
+                        <UserIcon className="h-4 w-4 text-zinc-400" />
                         My Profile
                     </Link>
                 </DropdownMenuItem>
 
-                {isAdmin && (
-                    <DropdownMenuItem asChild className="cursor-pointer focus:bg-red-50 rounded-none py-3">
-                        <Link href="/admin" className="flex w-full items-center gap-2 font-bold uppercase tracking-tight text-sm text-red-700">
-                            <LayoutDashboard className="h-4 w-4" />
-                            Admin Panel
-                        </Link>
-                    </DropdownMenuItem>
-                )}
-
-                <DropdownMenuItem asChild className="cursor-pointer focus:bg-primary/5 rounded-none py-3">
-                    <Link href="/account/orders" className="flex w-full items-center gap-2 font-bold uppercase tracking-tight text-sm">
-                        <Settings className="h-4 w-4 text-primary" />
+                <DropdownMenuItem asChild className="cursor-pointer py-2.5 rounded-md focus:bg-zinc-50 focus:text-zinc-950">
+                    <Link href="/account/orders" className="flex w-full items-center gap-2 text-sm font-medium text-zinc-700">
+                        <Settings className="h-4 w-4 text-zinc-400" />
                         Order History
                     </Link>
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator className="bg-zinc-100" />
                 
-                <DropdownMenuItem asChild className="cursor-pointer focus:bg-zinc-100 rounded-none py-3">
+                <DropdownMenuItem asChild className="cursor-pointer py-2.5 rounded-md focus:bg-zinc-50 focus:text-zinc-950">
                     <form action={signOutAction} className="w-full">
-                        <button type="submit" className="flex w-full items-center gap-2 font-semibold text-[10px] text-zinc-500 hover:text-zinc-900 transition-colors">
-                            <LogOut className="h-4 w-4" />
+                        <button type="submit" className="flex w-full items-center gap-2 text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors">
+                            <LogOut className="h-4 w-4 text-zinc-400" />
                             Sign Out
                         </button>
                     </form>

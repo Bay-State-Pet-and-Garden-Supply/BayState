@@ -233,7 +233,17 @@ export function StorefrontHeader({
             </div>
 
             <div className="flex shrink-0 items-center gap-3">
-              <UserMenu user={resolvedUser} userRole={resolvedUserRole} />
+              {(resolvedUserRole === 'admin' || resolvedUserRole === 'staff') && (
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="h-10 rounded-sm border border-white/20 px-4 text-xs font-semibold uppercase tracking-wider text-white hover:bg-white/20"
+                >
+                  <Link href="/admin">Admin</Link>
+                </Button>
+              )}
+              <UserMenu user={resolvedUser} />
               <div className="mx-1 h-8 w-px bg-white/15" />
               <Link href="/account/favorites">
                 <Button

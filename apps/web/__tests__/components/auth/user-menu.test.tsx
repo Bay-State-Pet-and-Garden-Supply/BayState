@@ -23,13 +23,13 @@ jest.mock('@radix-ui/react-dropdown-menu', () => ({
 
 describe('UserMenu', () => {
     it('renders Sign In link when user is null', () => {
-        render(<UserMenu user={null} userRole={null} />);
+        render(<UserMenu user={null} />);
         expect(screen.getByRole('link', { name: /sign in/i })).toBeInTheDocument();
     });
 
     it('renders Account link and Sign Out button when user exists', () => {
         const mockUser = { email: 'test@example.com', user_metadata: { full_name: 'Test User' } } as unknown as User;
-        render(<UserMenu user={mockUser} userRole="user" />);
+        render(<UserMenu user={mockUser} />);
 
         // Check for menu items (they should be present because of our mock)
         expect(screen.getByRole('menuitem', { name: /my profile/i })).toBeInTheDocument();
