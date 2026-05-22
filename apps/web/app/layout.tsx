@@ -67,7 +67,7 @@ export default function RootLayout({
         className={`${inter.variable} ${arvo.variable} antialiased font-sans`}
       >
         {children}
-        <Toaster position="top-right" duration={3000} closeButton />
+        <Toaster position="top-center" duration={3000} closeButton />
       </body>
     </html>
   );
