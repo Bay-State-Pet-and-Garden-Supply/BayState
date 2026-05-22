@@ -11,7 +11,8 @@
   ],
   "scripts": {
     "bootstrap": "bun install && bun run web:db:start && bun run web:bootstrap && bun run scraper:sync-env",
-    "up": "bun run bootstrap && bunx concurrently -k -n web,stripe,scraper \"bun run web:dev\" \"bun run stripe:listen\" \"bun run scraper:up && docker logs -f baystate-scraper-dev\"",
+    "dev:up": "bun run bootstrap && bunx concurrently -k -n web,stripe,scraper \"bun run web:dev\" \"bun run stripe:listen\" \"bun run scraper:up && docker logs -f baystate-scraper-dev\"",
+    "prod:up": "bun run bootstrap && bun --cwd apps/web x vercel env pull .env.local --environment=production --yes && bunx concurrently -k -n web,stripe,scraper \"bun run web:dev\" \"bun run stripe:listen\" \"bun run scraper:up && docker logs -f baystate-scraper-dev\"",
     "down": "bun run web:db:stop && docker rm -f baystate-stripe-dev 2>/dev/null || true && docker compose -p baystate-dev -f apps/scraper/docker-compose.yml down",
     "check": "bunx turbo run lint typecheck test",
     "build": "bunx turbo run build",
