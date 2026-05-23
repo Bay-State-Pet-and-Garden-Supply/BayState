@@ -10,6 +10,8 @@ import {
   LifeBuoy,
   Search,
   CheckCircle2,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -17,17 +19,19 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import { ConsolidationJobCard } from "@/components/admin/pipeline/consolidation";
-import { BatchHistorySection } from "@/components/admin/pipeline/consolidation";
+import { ConsolidationHistorySection } from "@/components/admin/pipeline/consolidation/BatchHistorySection";
 import type {
   ConsolidationJob,
-  BatchHistoryJob,
+  ConsolidationHistoryJob,
 } from "@/components/admin/pipeline/consolidation";
 import type { PipelineRunSummary } from "@/lib/pipeline/run-types";
 import {
   StatusBadge as PipelineStatusBadge,
   getProviderLabel,
+  isDirectChatMode,
 } from "@/components/admin/pipeline/consolidation/shared";
 import { useDocumentVisible } from "@/hooks/useDocumentVisible";
+import { useRealtimeChannel } from "@/lib/realtime/useRealtimeChannel";
 import { adminFetch } from '@/lib/admin/api-client';
 
 // ============================================================================
@@ -36,6 +40,17 @@ import { adminFetch } from '@/lib/admin/api-client';
 
 interface ActiveConsolidationsTabProps {
   className?: string;
+}
+
+interface RealtimeJobUpdate {
+  type: 'job_update' | 'item_update';
+  job_id: string;
+  status?: string;
+  upc?: string;
+  item_status?: string;
+  error_message?: string | null;
+  completed_at?: string | null;
+  started_at?: string | null;
 }
 
 // ============================================================================
@@ -48,7 +63,7 @@ export function ActiveConsolidationsTab({
   const isDocumentVisible = useDocumentVisible();
   const [jobs, setJobs] = useState<ConsolidationJob[]>([]);
   const [searchRuns, setSearchRuns] = useState<PipelineRunSummary[]>([]);
-  const [historyJobs, setHistoryJobs] = useState<BatchHistoryJob[]>([]);
+  const [historyJobs, setHistoryJobs] = useState<ConsolidationHistoryJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -61,13 +76,44 @@ export function ActiveConsolidationsTab({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [resettingStranded, setResettingStranded] = useState(false);
+
+  // Realtime subscription for consolidation job updates
+  const hasActiveJobs = jobs.some((j) =>
+    j.status === "pending" || j.status === "running" || j.status === "in_progress"
+  );
+  const hasDirectChatJobs = jobs.some((j) => isDirectChatMode(j.execution_mode));
+
+  const handleRealtimeMessage = useCallback((payload: unknown) => {
+    const update = payload as RealtimeJobUpdate;
+    if (!update?.type) return;
+
+    if (update.type === 'job_update' && update.job_id && update.status) {
+      // Refresh jobs list to get latest state
+      // This is faster than trying to merge state manually for complex job objects
+      void fetchJobs();
+    }
+  }, []);
+
+  const handleRealtimeError = useCallback((error: Error) => {
+    console.warn('[Consolidation] Realtime error, falling back to polling:', error.message);
+  }, []);
+
+  const { connectionState: realtimeState } = useRealtimeChannel({
+    channelName: 'consolidation-updates',
+    onMessage: handleRealtimeMessage,
+    onError: handleRealtimeError,
+    autoConnect: hasActiveJobs,
+  });
+
+  const isRealtimeConnected = realtimeState === 'connected';
 
   // Adapter: PipelineRunSummary → ConsolidationJob
   function pipelineRunToConsolidationJob(run: PipelineRunSummary): ConsolidationJob {
     return {
       id: run.id,
       status: run.status,
-      execution_mode: run.executionMode,
+      execution_mode: run.executionMode as ConsolidationJob['execution_mode'],
       provider: run.provider ?? null,
       provider_batch_id: null,
       description: run.label,
@@ -134,17 +180,28 @@ export function ActiveConsolidationsTab({
     void Promise.all([fetchJobs(), fetchHistory()]);
   }, [fetchJobs, fetchHistory]);
 
+  // Dynamic polling: 5s when active direct_chat jobs exist, 15s for batch jobs, 30s fallback
   useEffect(() => {
     if (!isDocumentVisible) {
       return;
     }
 
+    // When realtime is connected and we have active jobs, use slower poll as backup
+    // When no realtime, poll faster for direct chat
+    const pollInterval = isRealtimeConnected
+      ? 15000  // 15s backup poll when realtime is active
+      : hasDirectChatJobs
+        ? 5000   // 5s when direct chat jobs are active and no realtime
+        : hasActiveJobs
+          ? 15000 // 15s when batch jobs are active
+          : 30000; // 30s fallback
+
     const interval = setInterval(() => {
       void Promise.all([fetchJobs(), fetchHistory()]);
-    }, 30000);
+    }, pollInterval);
 
     return () => clearInterval(interval);
-  }, [fetchHistory, fetchJobs, isDocumentVisible]);
+  }, [fetchHistory, fetchJobs, isDocumentVisible, hasActiveJobs, hasDirectChatJobs, isRealtimeConnected]);
 
   // Cancel a batch
   const handleCancelClick = (batchId: string) => {
@@ -279,18 +336,16 @@ export function ActiveConsolidationsTab({
     }
   };
 
-  // Refresh all jobs (read-only — just re-fetch)
+  // Refresh all jobs
   const handleRefreshAll = async () => {
     await Promise.all([fetchJobs(), fetchHistory()]);
     toast.success("Queue refreshed");
   };
 
-  const [resettingStranded, setResettingStranded] = useState(false);
-
   // Recover stuck products
   const handleRecoverStranded = async () => {
     if (!window.confirm("This will reset all products stuck in 'merging' back to 'processed'. Please ensure there are no active batches before proceeding. Continue?")) return;
-    
+
     setResettingStranded(true);
     try {
       const res = await adminFetch("/api/admin/consolidation/reset", {
@@ -335,7 +390,27 @@ export function ActiveConsolidationsTab({
 
   return (
     <div className={`space-y-3 ${className}`}>
-      <div className="flex justify-end gap-2 border-b border-border pb-2">
+      {/* Toolbar */}
+      <div className="flex items-center justify-end gap-2 border-b border-border pb-2">
+        {/* Realtime Connection Indicator */}
+        <div className="mr-auto flex items-center gap-2">
+          {hasActiveJobs && (
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-widest">
+              {isRealtimeConnected ? (
+                <>
+                  <Wifi className="h-3 w-3 text-green-600" />
+                  <span className="text-green-600">Live</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-muted-foreground">Polling</span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
         <Button
           variant="outline"
           size="sm"
@@ -385,9 +460,12 @@ export function ActiveConsolidationsTab({
         </Button>
       </div>
 
+      {/* Info Banner */}
       <div className="rounded-none border border-border bg-muted/20 px-4 py-3 text-[10px] font-semibold text-muted-foreground tracking-tight">
         <span className="text-foreground">Product Consolidation</span>: Click consolidate on the processed tab to submit a job.
-        This tab shows progress, lets you apply completed results, cancel running jobs, and recover stranded products.
+        {hasDirectChatJobs
+          ? " Direct-processing jobs auto-apply when complete. Batch jobs (Gemini) require manual apply."
+          : " This tab shows progress, lets you apply completed results, cancel running jobs, and recover stranded products."}
       </div>
 
       {/* Search Activity — compact summary */}
@@ -481,10 +559,10 @@ export function ActiveConsolidationsTab({
         </div>
       )}
 
-      {/* Batch History Section */}
+      {/* Consolidation History Section */}
       {showHistory && (
         <div className="mt-4">
-          <BatchHistorySection
+          <ConsolidationHistorySection
             historyJobs={historyJobs}
             onApply={handleApply}
             applyingId={applyingId}

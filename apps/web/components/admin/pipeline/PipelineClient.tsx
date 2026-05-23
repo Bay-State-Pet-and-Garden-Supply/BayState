@@ -121,6 +121,10 @@ export function PipelineClient({
   const [isBulkAssignBrandOpen, setIsBulkAssignBrandOpen] = useState(false);
   const [isIntegraImportOpen, setIsIntegraImportOpen] = useState(false);
   const [isManualAddOpen, setIsManualAddOpen] = useState(false);
+  const [consolidationConfig, setConsolidationConfig] = useState<{
+    provider: string;
+    model: string;
+  } | null>(null);
 
   // Handle bulk brand assignment
   const handleBulkAssignBrand = async (brandId: string | null) => {
@@ -363,6 +367,31 @@ export function PipelineClient({
       // Silently fail for counts
     }
   }, []);
+
+  // Fetch consolidation runtime config to show model/provider info
+  const fetchConsolidationConfig = useCallback(async () => {
+    try {
+      const res = await adminFetch("/api/admin/consolidation/settings");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.runtime) {
+          setConsolidationConfig({
+            provider: data.runtime.provider,
+            model: data.runtime.model,
+          });
+        }
+      }
+    } catch {
+      // Silently fail for consolidation config
+    }
+  }, []);
+
+  // Fetch consolidation config when on the processed stage (where Merge is available)
+  useEffect(() => {
+    if (currentStage === 'processed') {
+      void fetchConsolidationConfig();
+    }
+  }, [currentStage, fetchConsolidationConfig]);
 
   // Refresh everything
   const refreshAll = useCallback(
@@ -688,7 +717,7 @@ export function PipelineClient({
           body: JSON.stringify({
             upcs,
             description: `Consolidation batch for ${upcs.length} products`,
-            auto_apply: false,
+            auto_apply: true,
           }),
         });
 
@@ -696,6 +725,7 @@ export function PipelineClient({
           const data = await res.json();
           const completed = data.completed_item_count ?? 0;
           const failed = data.failed_item_count ?? 0;
+          const applied = data.applied_count ?? completed;
 
           // Gemini batch: show async toast
           if (data.execution_mode === 'gemini_batch' || data.provider === 'gemini') {
@@ -707,11 +737,11 @@ export function PipelineClient({
             );
           } else {
             toast.success(
-              `Consolidated ${completed} of ${data.product_count} product${data.product_count !== 1 ? "s" : ""}`,
+              `Consolidated and applied ${applied} of ${data.product_count} product${data.product_count !== 1 ? "s" : ""}`,
               {
                 description: failed > 0
-                  ? `${failed} failed. Open Consolidating to review.`
-                  : `Job ${data.batch_id?.slice(0, 12) ?? "unknown"} is ready to review.`,
+                  ? `${failed} failed. Open Consolidating to review errors.`
+                  : `Results are live in the Consolidating tab.`,
               },
             );
           }
@@ -1586,6 +1616,7 @@ export function PipelineClient({
           onBulkAction={handleBulkAction}
           onResetStage={handleResetStage}
           onConsolidate={() => handleConsolidate(Array.from(selectedUpcs))}
+          consolidationInfo={consolidationConfig}
           onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
           onAssignBrand={() => setIsBulkAssignBrandOpen(true)}
           scrapeSelectionValidation={scrapeSelectionValidation}

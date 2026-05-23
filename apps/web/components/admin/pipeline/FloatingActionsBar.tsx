@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from 'react';
-import { Loader2, Plus, Tag, Trash2, Upload } from 'lucide-react';
+import { Loader2, Plus, Tag, Trash2, Upload, Cpu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ConfirmationDialog } from '@/components/admin/confirmation-dialog';
 import type { PersistedPipelineStatus, PipelineStage } from '@/lib/pipeline/types';
 
@@ -59,6 +60,7 @@ interface FloatingActionsBarProps {
   onUploadShopSite?: () => void;
   onDownloadZip?: () => void;
   showLegacyShopSiteActions?: boolean;
+  consolidationInfo?: { provider: string; model: string } | null;
 }
 
 export function FloatingActionsBar({
@@ -78,6 +80,7 @@ export function FloatingActionsBar({
   onUploadShopSite,
   onDownloadZip,
   showLegacyShopSiteActions = false,
+  consolidationInfo,
 }: FloatingActionsBarProps) {
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
 
@@ -167,10 +170,28 @@ export function FloatingActionsBar({
             ) : null}
 
             {!isPublishing && (bulkAction.nextStage || (currentStage === 'processed' && onConsolidate)) ? (
-              <Button onClick={handlePrimaryAction} disabled={isLoading}>
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {bulkAction.label}
-              </Button>
+              <span className="flex items-center gap-2">
+                {currentStage === 'processed' && consolidationInfo ? (
+                  <Badge
+                    variant="secondary"
+                    className="rounded-none border border-border bg-muted font-semibold text-[10px] h-6 tracking-widest text-muted-foreground gap-1"
+                  >
+                    <Cpu className="h-3 w-3" />
+                    {consolidationInfo.provider === 'deepseek'
+                      ? 'DeepSeek'
+                      : consolidationInfo.provider === 'openai'
+                        ? 'OpenAI'
+                        : consolidationInfo.provider === 'gemini'
+                          ? 'Gemini'
+                          : consolidationInfo.provider}{' '}
+                    {consolidationInfo.model}
+                  </Badge>
+                ) : null}
+                <Button onClick={handlePrimaryAction} disabled={isLoading}>
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {bulkAction.label}
+                </Button>
+              </span>
             ) : null}
 
             {isPublishing && showLegacyShopSiteActions && onUploadShopSite && onDownloadZip ? (

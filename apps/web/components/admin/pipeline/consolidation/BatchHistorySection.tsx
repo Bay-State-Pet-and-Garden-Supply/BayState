@@ -7,32 +7,34 @@ import {
   ChevronUp,
   Zap,
   History,
+  Play,
+  Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { StatusBadge, formatTimestamp, getProviderLabel } from "./shared";
-import type { BatchHistoryJob } from "./shared";
+import { StatusBadge, formatTimestamp, getProviderLabel, isDirectChatMode, getModeLabel } from "./shared";
+import type { ConsolidationHistoryJob } from "./shared";
 
 // ============================================================================
 // Types
 // ============================================================================
 
-interface BatchHistorySectionProps {
-  historyJobs: BatchHistoryJob[];
+interface ConsolidationHistorySectionProps {
+  historyJobs: ConsolidationHistoryJob[];
   onApply: (id: string) => void;
   applyingId: string | null;
 }
 
 // ============================================================================
-// BatchHistoryCard (internal)
+// ConsolidationHistoryCard (internal)
 // ============================================================================
 
-function BatchHistoryCard({
+function ConsolidationHistoryCard({
   job,
   onApply,
   applyingId,
 }: {
-  job: BatchHistoryJob;
+  job: ConsolidationHistoryJob;
   onApply: (id: string) => void;
   applyingId: string | null;
 }) {
@@ -47,15 +49,15 @@ function BatchHistoryCard({
   const llmModel = metadata.llm_model as string | undefined;
   const llmProvider = metadata.llm_provider as string | undefined;
   const dbId = job.db_id as string | undefined;
-  const providerBatchId = job.provider_batch_id as string | undefined;
   const executionMode = job.execution_mode as string | undefined;
-  const openaiBatchId = job.openai_batch_id as string | undefined;
   const providerLabel = getProviderLabel(llmProvider || job.provider);
+  const directChat = isDirectChatMode(executionMode);
+  const modeLabel = getModeLabel(executionMode);
   // Always use the local DB ID for apply actions — provider batch IDs may
   // contain slashes (Gemini resource names) and are unsafe as URL path segments.
   const applyId = dbId || job.id;
   const isApplied = !!applySummary;
-  const canApply = job.status === "completed" && !isApplied;
+  const canApply = job.status === "completed" && !isApplied && !directChat;
 
   return (
     <div className="rounded-none border border-border bg-card p-4 transition-colors hover:bg-accent/5">
@@ -76,6 +78,21 @@ function BatchHistoryCard({
                 {llmModel}
               </Badge>
             )}
+            <Badge
+              variant="outline"
+              className={`text-[9px] px-1.5 py-0 rounded-none font-semibold h-4 tracking-widest ${
+                directChat
+                  ? "border-violet-300 bg-violet-50 text-violet-700"
+                  : "border-amber-300 bg-amber-50 text-amber-700"
+              }`}
+            >
+              {directChat ? (
+                <Play className="mr-0.5 h-2.5 w-2.5 inline" />
+              ) : (
+                <Layers className="mr-0.5 h-2.5 w-2.5 inline" />
+              )}
+              {modeLabel}
+            </Badge>
             {job.auto_apply && (
               <Badge
                 variant="outline"
@@ -92,6 +109,14 @@ function BatchHistoryCard({
                 Applied
               </Badge>
             )}
+            {directChat && isTerminalStatus(job.status) && !isApplied && (
+              <Badge
+                variant="outline"
+                className="text-[9px] px-1.5 py-0 rounded-none border border-brand-forest-green/40 bg-brand-forest-green/5 text-brand-forest-green font-semibold h-4 tracking-widest"
+              >
+                Auto-Applied
+              </Badge>
+            )}
           </div>
 
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold text-muted-foreground tracking-widest">
@@ -101,12 +126,10 @@ function BatchHistoryCard({
             {job.completed_requests > 0 && (
               <>
                 <span>•</span>
-                <span className="text-green-600">
-                  {job.completed_requests} OK
-                </span>
+                <span className="text-green-600">{job.completed_requests} OK</span>
               </>
             )}
-            {job.estimated_cost > 0 && (
+            {!directChat && job.estimated_cost > 0 && (
               <>
                 <span>•</span>
                 <span>${job.estimated_cost.toFixed(3)}</span>
@@ -165,6 +188,22 @@ function BatchHistoryCard({
                 </span>
               </div>
             )}
+            {!directChat && job.provider_batch_id && (
+              <div className="flex flex-col gap-1">
+                <span>Provider Batch ID</span>
+                <span className="font-mono text-foreground normal-case text-xs">
+                  {job.provider_batch_id}
+                </span>
+              </div>
+            )}
+            {!directChat && job.estimated_cost > 0 && (
+              <div className="flex flex-col gap-1">
+                <span>Estimated Cost</span>
+                <span className="text-foreground text-xs">
+                  ${job.estimated_cost.toFixed(4)}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Quality Metrics */}
@@ -188,7 +227,7 @@ function BatchHistoryCard({
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[9px] font-semibold text-muted-foreground tracking-widest">Preserved</span>
-                  <span className="text-sm font-bold text-status-success">{qualityMetrics.preserved_existing_field_count ?? 0}</span>
+                  <span className="text-sm font-bold text-green-600">{qualityMetrics.preserved_existing_field_count ?? 0}</span>
                 </div>
               </div>
             </div>
@@ -196,22 +235,22 @@ function BatchHistoryCard({
 
           {/* Apply Summary */}
           {applySummary && (
-            <div className="rounded-none border border-status-success bg-status-success/10 p-3">
-              <p className="text-[10px] font-semibold text-status-success mb-2">
+            <div className="rounded-none border border-green-600 bg-green-50/40 p-3">
+              <p className="text-[10px] font-semibold text-green-700 mb-2">
                 Finalization Summary
               </p>
               <div className="flex items-center gap-6">
                 <div className="flex flex-col">
-                  <span className="text-[9px] font-semibold text-status-success tracking-widest">Applied</span>
-                  <span className="text-sm font-bold text-status-success">{(applySummary.success_count as number) ?? 0}</span>
+                  <span className="text-[9px] font-semibold text-green-700 tracking-widest">Applied</span>
+                  <span className="text-sm font-bold text-green-700">{(applySummary.success_count as number) ?? 0}</span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[9px] font-semibold text-destructive tracking-widest">Failed</span>
                   <span className="text-sm font-bold text-destructive">{(applySummary.error_count as number) ?? 0}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[9px] font-semibold text-status-success tracking-widest">Total Units</span>
-                  <span className="text-sm font-bold text-status-success">{(applySummary.total as number) ?? 0}</span>
+                  <span className="text-[9px] font-semibold text-green-700 tracking-widest">Total Units</span>
+                  <span className="text-sm font-bold text-green-700">{(applySummary.total as number) ?? 0}</span>
                 </div>
               </div>
             </div>
@@ -222,21 +261,25 @@ function BatchHistoryCard({
   );
 }
 
+function isTerminalStatus(status: string): boolean {
+  return ["completed", "failed", "expired", "cancelled"].includes(status);
+}
+
 // ============================================================================
-// BatchHistorySection
+// ConsolidationHistorySection
 // ============================================================================
 
-export function BatchHistorySection({
+export function ConsolidationHistorySection({
   historyJobs,
   onApply,
   applyingId,
-}: BatchHistorySectionProps) {
+}: ConsolidationHistorySectionProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 border-t border-border pt-4">
         <History className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-semibold text-muted-foreground">
-          Recent Consolidation Jobs
+          Consolidation History
         </h3>
         <span className="text-[10px] font-semibold text-muted-foreground tracking-widest">Last 20</span>
       </div>
@@ -247,7 +290,7 @@ export function BatchHistorySection({
         </p>
       ) : (
         historyJobs.map((job) => (
-          <BatchHistoryCard
+          <ConsolidationHistoryCard
             key={job.id}
             job={job}
             onApply={onApply}
@@ -258,3 +301,6 @@ export function BatchHistorySection({
     </div>
   );
 }
+
+// Backward-compatible export alias
+export { ConsolidationHistorySection as BatchHistorySection };

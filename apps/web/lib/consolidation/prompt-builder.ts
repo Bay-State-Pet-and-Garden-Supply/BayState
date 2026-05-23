@@ -277,12 +277,13 @@ Sibling product context:
 - Use sibling product context only as consistency guidance when it is provided.
 - Keep supported naming and brand patterns aligned across related UPCs without inventing details from siblings.
 
-OCR Packaging Evidence (image_text):
-- When a source provides image_text (OCR extracted from product packaging photos), treat it as authoritative for the physical packaging text.
+OCR Packaging Evidence and Vision Input:
+- When a source provides image_text (OCR extracted from product packaging photos), or when you are provided with physical product packaging images directly, treat this visual/OCR packaging evidence as the absolute source of truth.
 - Match the packaging name, brand, and size/weight as closely as possible. Strip extraneous text: marketing taglines, legal disclaimers, address blocks, barcode numbers, URLs, social handles, and promotional callouts.
-- If image_text conflicts with marketplace or distributor titles on product name or brand, prefer the packaging evidence.
-- If image_text is missing a detail (e.g., weight), backfill from higher-trust structured sources, not marketplace listings.
-- Never fabricate packaging details not present in image_text.
+- If packaging evidence conflicts with marketplace or distributor titles on product name, brand, or other details, prefer the packaging evidence.
+- Inspect the physical product packaging images directly to extract packaging details like brand, product name, weight/size, flavor, scent, life_stage, pet_type, material, color, and package_count. 
+- If images are expected but missing, blurry, or unreadable/illegible, fall back gracefully to the text sources, but set a lower confidence_score (below 0.80) to flag the product for human review.
+- Never fabricate packaging details not present in the images or image_text.
 
 Product-name rules:
 - Brand MUST be the first token in the product name, separated by a space. Never drop the brand from the name.
@@ -306,17 +307,18 @@ Product-name rules:
 
 Field rules:
 - weight: numeric string in pounds only, no units. Preserve source-supported precision up to 2 decimal places. If there is no trustworthy weight, return null.
-- confidence_score: 0.80-1.00 means ready for immediate ShopSite export, 0.50-0.79 means usable with review, and below 0.50 means key fields remain uncertain.
+- confidence_score: 0.80-1.00 means ready for immediate ShopSite export, 0.50-0.79 means usable with review, and below 0.50 means key fields remain uncertain. Set below 0.80 if packaging images are expected but missing or unreadable/illegible.
 
 Output contract — respond with valid JSON matching this structure:
 {
   "name": "string (required) — product name with brand as first token",
   "brand": "string (required) — brand name exactly as in highest-trust source",
   "weight": "string (required) — numeric weight in pounds, no units. null if no trustworthy weight",
-  "confidence_score": "number (required) — 0.0 to 1.0. 0.80+ = export-ready",
+  "confidence_score": "number (required) — 0.0 to 1.0. 0.80+ = export-ready. set below 0.80 if images are missing or unreadable",
   "category": "string (required) — best-fit taxonomy category from allowed list",
   "description": "string (required) — short product description from highest-trust source",
-  "search_keywords": "string (required) — comma-separated keywords from source data"
+  "search_keywords": "string (required) — comma-separated keywords from source data",
+  "packaging_facets": "object (required) — key-value pairs of category-specific detail fields extracted from physical packaging images. The keys must be valid fields from this list: flavor, scent, life_stage, pet_type, breed_size, pet_size, diet_type, treat_type, chew_duration, texture, toy_type, play_style, durability, has_squeaker, garden_product_type, coverage_area, organic, target_pest, active_ingredient, target_condition, feed_type, material, color, dimensions. Only include fields that are visible on the physical packaging; map their values as clean, normalized strings (e.g. 'Chicken' for flavor, 'Puppy' for life_stage)."
 }
 
 Allowed category values (use exactly one). Choose the full breadcrumb (e.g. "Dog > Food > Dry Food") from the allowed categories below:

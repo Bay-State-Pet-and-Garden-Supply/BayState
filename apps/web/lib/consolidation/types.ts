@@ -171,6 +171,7 @@ export interface ConsolidationResult {
     price?: string;
     category?: string;
     confidence_score?: number;
+    packaging_facets?: Record<string, unknown>;
     error?: string;
 }
 

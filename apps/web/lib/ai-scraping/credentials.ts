@@ -41,6 +41,7 @@ export interface AIProviderConfig {
   iv: string;
   auth_tag: string;
   is_active: boolean;
+  is_active_for_consolidation: boolean;
   updated_at: string | null;
 }
 
@@ -65,6 +66,7 @@ interface AIConsolidationRuntimeConfig {
   openai_api_key?: string;
   confidence_threshold: number;
   llm_supports_batch_api: boolean;
+  config_id: string | null;
 }
 
 const AI_DEFAULTS_SETTINGS_KEY = 'ai_scraping_defaults';
@@ -112,7 +114,7 @@ function getDefaultModelForProvider(provider: LLMProvider): string {
   return DEFAULT_AI_MODEL;
 }
 
-function getSupabaseAdmin(): SupabaseClient {
+export function getSupabaseAdmin(): SupabaseClient {
   const url = SUPABASE_URL;
   const key = SUPABASE_SECRET_KEY;
   if (!url || !key) {
@@ -795,6 +797,7 @@ function toAIProviderConfig(data: Record<string, unknown> | null): AIProviderCon
     iv: data.iv as string,
     auth_tag: data.auth_tag as string,
     is_active: Boolean(data.is_active),
+    is_active_for_consolidation: Boolean(data.is_active_for_consolidation),
     updated_at: (data.updated_at as string | null) ?? null,
   };
 }
@@ -815,6 +818,36 @@ export async function getActiveAIProviderConfig(): Promise<AIProviderConfig | nu
   }
 
   return toAIProviderConfig(data);
+}
+
+/**
+ * Get the active AI provider config for consolidation.
+ * Queries for a profile with is_active_for_consolidation = true.
+ * Falls back to the extraction-active profile (is_active = true) if no
+ * consolidation-specific profile exists.
+ */
+export async function getActiveAIProviderConfigForConsolidation(): Promise<AIProviderConfig | null> {
+  const admin = getSupabaseAdmin();
+  
+  // First try consolidation-specific active profile
+  const { data: consolidationConfig, error: consError } = await admin
+    .from('ai_provider_configs')
+    .select('*')
+    .eq('is_active_for_consolidation', true)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (consError) {
+    console.error('[Scraper API] Failed to fetch consolidation-active AI provider config:', consError);
+  }
+
+  if (consolidationConfig) {
+    return toAIProviderConfig(consolidationConfig);
+  }
+
+  // Fall back to extraction-active profile (backward compatible)
+  return getActiveAIProviderConfig();
 }
 
 export async function getAIProviderConfigById(configId: string): Promise<AIProviderConfig | null> {
@@ -849,7 +882,7 @@ export async function listAIProviderConfigs(): Promise<AIProviderConfig[]> {
 }
 
 export async function createAIProviderConfig(
-  payload: Omit<AIProviderConfig, 'id' | 'is_active' | 'updated_at' | 'encrypted_key' | 'iv' | 'auth_tag'> & { api_key: string },
+  payload: Omit<AIProviderConfig, 'id' | 'is_active' | 'is_active_for_consolidation' | 'updated_at' | 'encrypted_key' | 'iv' | 'auth_tag'> & { api_key: string },
   userId?: string
 ): Promise<AIProviderConfig> {
   const encrypted = encryptSecret(payload.api_key);
@@ -880,7 +913,7 @@ export async function createAIProviderConfig(
 
 export async function updateAIProviderConfig(
   id: string,
-  payload: Partial<Omit<AIProviderConfig, 'id' | 'is_active' | 'updated_at' | 'encrypted_key' | 'iv' | 'auth_tag'>> & { api_key?: string },
+  payload: Partial<Omit<AIProviderConfig, 'id' | 'is_active' | 'is_active_for_consolidation' | 'updated_at' | 'encrypted_key' | 'iv' | 'auth_tag'>> & { api_key?: string },
   userId?: string
 ): Promise<AIProviderConfig> {
   const admin = getSupabaseAdmin();
@@ -967,6 +1000,36 @@ export async function setActiveAIProviderConfig(id: string, userId?: string): Pr
   }
 }
 
+/**
+ * Set a provider config as the active consolidation profile.
+ * Deactivates all other consolidation profiles first, then activates the specified one.
+ */
+export async function setActiveConsolidationAIProviderConfig(id: string, userId?: string): Promise<void> {
+  const admin = getSupabaseAdmin();
+
+  // First deactivate all consolidation profiles
+  const { error: deactivateError } = await admin
+    .from('ai_provider_configs')
+    .update({ is_active_for_consolidation: false, updated_at: new Date().toISOString(), updated_by: userId || null })
+    .neq('id', id);
+
+  if (deactivateError) {
+    console.error('[Scraper API] Failed to deactivate other consolidation profiles:', deactivateError);
+    throw new Error('Failed to change active consolidation configuration');
+  }
+
+  // Then activate the specified config for consolidation
+  const { error: activateError } = await admin
+    .from('ai_provider_configs')
+    .update({ is_active_for_consolidation: true, updated_at: new Date().toISOString(), updated_by: userId || null })
+    .eq('id', id);
+
+  if (activateError) {
+    console.error('[Scraper API] Failed to activate consolidation configuration:', activateError);
+    throw new Error('Failed to activate consolidation configuration');
+  }
+}
+
 function buildRuntimeCredentialsFromProviderConfig(
   config: AIProviderConfig,
   legacySearchKey: string | null,
@@ -1038,9 +1101,9 @@ export async function getAIScrapingRuntimeCredentialsForConfig(
 }
 
 export async function getAIConsolidationRuntimeConfig(): Promise<AIConsolidationRuntimeConfig> {
-  const [defaults, activeConfig] = await Promise.all([
+  const [defaults, consolidationConfig] = await Promise.all([
     getAIConsolidationDefaults(),
-    getActiveAIProviderConfig(),
+    getActiveAIProviderConfigForConsolidation(),
   ]);
 
   // When consolidation provider is Gemini, resolve the Gemini API key independently
@@ -1054,31 +1117,46 @@ export async function getAIConsolidationRuntimeConfig(): Promise<AIConsolidation
       llm_api_key: geminiKey,
       confidence_threshold: defaults.confidence_threshold,
       llm_supports_batch_api: true,
+      config_id: null,
     };
   }
 
-  if (!activeConfig) {
-    throw new Error('No active AI provider profile configured in the database');
+  // For non-Gemini providers, use the consolidation-specific active profile.
+  // getActiveAIProviderConfigForConsolidation() first checks for a profile with
+  // is_active_for_consolidation = true, then falls back to the extraction-active
+  // profile (is_active = true) for backward compatibility.
+  if (!consolidationConfig) {
+    throw new Error('No active AI provider profile configured for consolidation');
   }
 
-  const decryptedKey = decryptStoredProviderSecret(activeConfig.provider_type as AIProvider, {
-    encryptedValue: activeConfig.encrypted_key,
-    iv: activeConfig.iv,
-    authTag: activeConfig.auth_tag,
+  const provider = consolidationConfig.provider_type;
+  const decryptedKey = decryptStoredProviderSecret(provider as AIProvider, {
+    encryptedValue: consolidationConfig.encrypted_key,
+    iv: consolidationConfig.iv,
+    authTag: consolidationConfig.auth_tag,
     last4: null,
-    updatedAt: activeConfig.updated_at
+    updatedAt: consolidationConfig.updated_at
   });
 
+  const model = defaults.llm_model || consolidationConfig.default_model;
+
+  // Build base URL: apply DeepSeek URL normalization only for DeepSeek providers
+  let baseUrl: string | null;
+  if (provider === 'deepseek') {
+    baseUrl = getDeepSeekOpenAICompatibleBaseURL(consolidationConfig.base_url);
+  } else {
+    baseUrl = consolidationConfig.base_url;
+  }
+
   return {
-    llm_provider: activeConfig.provider_type,
-    llm_model: defaults.llm_model || activeConfig.default_model,
-    llm_base_url: activeConfig.provider_type === 'deepseek'
-      ? getDeepSeekOpenAICompatibleBaseURL(activeConfig.base_url)
-      : activeConfig.base_url,
+    llm_provider: provider,
+    llm_model: model,
+    llm_base_url: baseUrl,
     llm_api_key: decryptedKey,
-    ...(activeConfig.provider_type === 'deepseek' && decryptedKey ? { deepseek_api_key: decryptedKey } : {}),
-    ...(activeConfig.provider_type === 'openai' && decryptedKey ? { openai_api_key: decryptedKey } : {}),
+    ...(provider === 'deepseek' && decryptedKey ? { deepseek_api_key: decryptedKey } : {}),
+    ...(provider === 'openai' && decryptedKey ? { openai_api_key: decryptedKey } : {}),
     confidence_threshold: defaults.confidence_threshold,
     llm_supports_batch_api: defaults.llm_supports_batch_api,
+    config_id: consolidationConfig.id,
   };
 }

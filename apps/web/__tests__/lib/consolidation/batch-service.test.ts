@@ -947,6 +947,125 @@ describe('consolidation batch service', () => {
         );
     });
 
+    it('applyConsolidationResults unpacks packaging_facets and prioritizes them over post-enrichment', async () => {
+        const productsIngestionUpdateMaybeSingle = jest.fn().mockResolvedValue({
+            data: { upc: 'UPC-VLM-FACETS' },
+            error: null,
+        });
+        const productsIngestionUpdateSelect = jest
+            .fn()
+            .mockReturnValue({ maybeSingle: productsIngestionUpdateMaybeSingle });
+        const productsIngestionUpdateEq = jest.fn();
+        productsIngestionUpdateEq.mockReturnValue({
+            eq: productsIngestionUpdateEq,
+            select: productsIngestionUpdateSelect,
+        });
+        const productsIngestionUpdate = jest
+            .fn()
+            .mockReturnValue({ eq: productsIngestionUpdateEq });
+
+        const productsIngestionSelectByUpcIn = {
+            in: jest.fn().mockResolvedValue({
+                data: [
+                    {
+                        upc: 'UPC-VLM-FACETS',
+                        consolidated: {},
+                        sources: {
+                            chewy: {
+                                title: 'KONG Dog Toy Large Red',
+                            },
+                        },
+                        input: {},
+                        image_candidates: [],
+                        selected_images: [],
+                    },
+                ],
+                error: null,
+            }),
+        };
+
+        const productsIngestionSelectCurrentMaybeSingle = jest.fn().mockResolvedValue({
+            data: {
+                consolidated: {},
+                updated_at: '2026-05-23T00:00:00.000Z',
+            },
+            error: null,
+        });
+        const productsIngestionSelectCurrentEq = jest
+            .fn()
+            .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
+        const productsIngestionSelect = jest.fn((columns: string) => {
+            if (columns.startsWith('upc, consolidated, sources, input, image_candidates, selected_images')) {
+                return productsIngestionSelectByUpcIn;
+            }
+            if (columns === 'consolidated, updated_at') {
+                return {
+                    eq: productsIngestionSelectCurrentEq,
+                };
+            }
+            throw new Error(`Unexpected products_ingestion select columns: ${columns}`);
+        });
+
+        const brandsSelect = jest.fn().mockResolvedValue({
+            data: [{ id: 'brand-uuid-kong', name: 'KONG' }],
+            error: null,
+        });
+
+        const supabaseMock = {
+            from: jest.fn((table: string) => {
+                if (table === 'products_ingestion') {
+                    return {
+                        select: productsIngestionSelect,
+                        update: productsIngestionUpdate,
+                    };
+                }
+                if (table === 'brands') {
+                    return {
+                        select: brandsSelect,
+                    };
+                }
+                throw new Error(`Unexpected table: ${table}`);
+            }),
+        };
+
+        (createAdminClient as jest.Mock).mockResolvedValue(supabaseMock);
+
+        const response = await applyConsolidationResults([
+            {
+                upc: 'UPC-VLM-FACETS',
+                name: 'KONG Squeaker Ball Red Large',
+                brand: 'KONG',
+                description: 'KONG ball toy',
+                search_keywords: 'kong, ball, squeaker',
+                category: 'Dog > Toys > Interactive Toys',
+                confidence_score: 0.95,
+                packaging_facets: {
+                    flavor: 'Bacon Flavor',
+                    life_stage: 'Senior',
+                    toy_type: 'Ball',
+                },
+            },
+        ]);
+
+        expect('status' in response && response.status === 'applied').toBe(true);
+        expect(productsIngestionUpdate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                pipeline_status: 'reviewing',
+                consolidated: expect.objectContaining({
+                    name: 'KONG Squeaker Ball Red Large',
+                    brand: 'KONG',
+                    brand_id: 'brand-uuid-kong',
+                    category: 'Dog > Toys > Interactive Toys',
+                    flavor: 'Bacon Flavor',
+                    life_stage: 'Senior',
+                    toy_type: 'Ball',
+                    animal_type: 'Dog',
+                    has_squeaker: 'Yes',
+                }),
+            })
+        );
+    });
+
     it('applyConsolidationResults allows duplicate finalized names with warnings', async () => {
         const productsIngestionUpdateMaybeSingle = jest
             .fn()

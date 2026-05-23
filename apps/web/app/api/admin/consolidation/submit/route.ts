@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { createAdminClient } from '@/lib/supabase/server';
-import { getBatchStatus, isOpenAIConfigured, processBatchQueue, submitBatch } from '@/lib/consolidation';
+import { getBatchStatus, isOpenAIConfigured, processBatchQueue, submitBatch, applyResults } from '@/lib/consolidation';
 import type { ProductSource } from '@/lib/consolidation';
 import { buildConsolidationSourcesPayload } from '@/lib/product-sources';
 
@@ -189,6 +189,22 @@ export async function POST(request: NextRequest) {
 
         const status = await getBatchStatus(result.batch_id);
 
+        // Auto-apply results for direct_chat_chunks — results are already in
+        // parsed_result after processing, so apply them to consolidated immediately.
+        // This removes the manual "Apply Results" step for direct-chat mode.
+        let appliedCount: number | undefined;
+        try {
+            const applyResult = await applyResults(result.batch_id);
+            if (applyResult && typeof applyResult === 'object' && 'success_count' in applyResult) {
+                appliedCount = applyResult.success_count as number;
+            }
+            if ('success' in applyResult && !applyResult.success) {
+                console.warn('[Consolidation API] Auto-apply warning:', applyResult.error);
+            }
+        } catch (applyError) {
+            console.warn('[Consolidation API] Auto-apply failed (non-fatal):', applyError);
+        }
+
         return NextResponse.json({
             success: true,
             batch_id: result.batch_id,
@@ -199,6 +215,8 @@ export async function POST(request: NextRequest) {
             processed_item_count: processedItemCount,
             completed_item_count: completedItemCount,
             failed_item_count: failedItemCount,
+            applied_count: appliedCount ?? completedItemCount,
+            auto_applied: true,
             status: 'success' in status ? null : status,
         });
     } catch (error) {

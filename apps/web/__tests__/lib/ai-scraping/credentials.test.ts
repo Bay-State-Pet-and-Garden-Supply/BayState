@@ -184,6 +184,36 @@ describe('AI scraping credentials compatibility', () => {
           };
         }
 
+        if (table === 'ai_provider_configs') {
+          return {
+            select: () => ({
+              eq: () => ({
+                order: () => ({
+                  limit: () => ({
+                    maybeSingle: jest.fn().mockResolvedValue({
+                      data: {
+                        id: 'mock-ai-provider-config',
+                        name: 'Test Config',
+                        provider_type: 'deepseek',
+                        base_url: null,
+                        default_model: DEFAULT_AI_MODEL,
+                        encrypted_key: encrypted.encryptedValue,
+                        iv: encrypted.iv,
+                        auth_tag: encrypted.authTag,
+                        key_version: 1,
+                        is_active: true,
+                        is_active_for_consolidation: false,
+                        updated_at: '2026-04-06T20:00:00.000Z',
+                      },
+                      error: null,
+                    }),
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+
         throw new Error(`Unexpected table: ${table}`);
       }),
     });
@@ -276,6 +306,36 @@ describe('AI scraping credentials compatibility', () => {
 
               throw new Error(`Unexpected site_settings select: ${columns}`);
             },
+          };
+        }
+
+        if (table === 'ai_provider_configs') {
+          return {
+            select: () => ({
+              eq: () => ({
+                order: () => ({
+                  limit: () => ({
+                    maybeSingle: jest.fn().mockResolvedValue({
+                      data: {
+                        id: 'mock-ai-provider-config',
+                        name: 'Test Config',
+                        provider_type: 'deepseek',
+                        base_url: null,
+                        default_model: DEFAULT_AI_MODEL,
+                        encrypted_key: encrypted.encryptedValue,
+                        iv: encrypted.iv,
+                        auth_tag: encrypted.authTag,
+                        key_version: 1,
+                        is_active: true,
+                        is_active_for_consolidation: false,
+                        updated_at: '2026-04-06T20:00:00.000Z',
+                      },
+                      error: null,
+                    }),
+                  }),
+                }),
+              }),
+            }),
           };
         }
 

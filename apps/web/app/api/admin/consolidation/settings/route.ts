@@ -4,6 +4,8 @@ import {
   type AIConsolidationDefaults,
   getAIConsolidationDefaults,
   upsertAIConsolidationDefaults,
+  getAIConsolidationRuntimeConfig,
+  getActiveAIProviderConfigForConsolidation,
   getAIScrapingCredentialStatuses,
   setAIScrapingProviderSecret,
 } from '@/lib/ai-scraping/credentials';
@@ -17,14 +19,30 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [defaults, statuses] = await Promise.all([
+    const [defaults, statuses, runtimeConfig, consolidationActiveConfig] = await Promise.all([
       getAIConsolidationDefaults(),
       getAIScrapingCredentialStatuses(),
+      getAIConsolidationRuntimeConfig().catch(() => null),
+      getActiveAIProviderConfigForConsolidation().catch(() => null),
     ]);
 
     return NextResponse.json({
       defaults,
       statuses,
+      runtime: runtimeConfig ? {
+        provider: runtimeConfig.llm_provider,
+        model: runtimeConfig.llm_model,
+        base_url: runtimeConfig.llm_base_url,
+        confidence_threshold: runtimeConfig.confidence_threshold,
+        llm_supports_batch_api: runtimeConfig.llm_supports_batch_api,
+        config_id: runtimeConfig.config_id,
+      } : null,
+      active_consolidation_config: consolidationActiveConfig ? {
+        id: consolidationActiveConfig.id,
+        name: consolidationActiveConfig.name,
+        provider_type: consolidationActiveConfig.provider_type,
+        default_model: consolidationActiveConfig.default_model,
+      } : null,
       deepseek_fallback_status: statuses.deepseek,
     });
   } catch (error) {

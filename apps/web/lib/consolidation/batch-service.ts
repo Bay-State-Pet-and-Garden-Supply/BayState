@@ -1948,6 +1948,15 @@ export async function applyConsolidationResults(
                     : {}),
             };
 
+            // Unpack VLM-extracted packaging facets if present
+            if (result.packaging_facets && typeof result.packaging_facets === 'object') {
+                for (const [key, value] of Object.entries(result.packaging_facets)) {
+                    if (value !== undefined && value !== null && value !== '') {
+                        nextFields[key] = typeof value === 'string' ? value.trim() : value;
+                    }
+                }
+            }
+
             const existingConsolidatedImages = toStringUrlArray(existingConsolidated.images);
             if (existingConsolidatedImages.length > 0) {
                 nextFields.images = existingConsolidatedImages;

@@ -16,6 +16,8 @@ import {
  XCircle,
  AlertTriangle,
  RotateCcw,
+ Cpu,
+ Layers,
 } from "lucide-react";
 
 // ============================================================================
@@ -32,10 +34,12 @@ export interface ConsolidationJobItemActivity {
  created_at?: string | null;
 }
 
+export type ExecutionMode = 'direct_chat_chunks' | 'gemini_batch' | 'batch_api';
+
 export interface ConsolidationJob {
  id: string;
  status: string;
- execution_mode?: string;
+ execution_mode?: ExecutionMode;
  provider?: string | null;
  provider_batch_id?: string | null;
  description: string | null;
@@ -51,7 +55,7 @@ export interface ConsolidationJob {
  metadata: Record<string, unknown> | null;
 }
 
-export interface BatchHistoryJob {
+export interface ConsolidationHistoryJob {
  id: string;
  db_id?: string | null;
  provider?: string | null;
@@ -69,6 +73,9 @@ export interface BatchHistoryJob {
  created_at: string;
  completed_at: string | null;
 }
+
+// Backward-compatible type alias
+export type BatchHistoryJob = ConsolidationHistoryJob;
 
 // ============================================================================
 // Status Badge Configuration
@@ -227,4 +234,42 @@ export function formatTimestamp(ts: string): string {
 
 export function isTerminalStatus(status: string): boolean {
  return ["completed", "failed", "expired", "cancelled"].includes(status);
+}
+
+// ============================================================================
+// Execution Mode Helpers
+// ============================================================================
+
+export function isDirectChatMode(executionMode?: string): boolean {
+ return executionMode === 'direct_chat_chunks';
+}
+
+export function isBatchMode(executionMode?: string): boolean {
+ return executionMode === 'gemini_batch' || executionMode === 'batch_api';
+}
+
+export function getModeLabel(executionMode?: string): string {
+ switch (executionMode) {
+ case 'direct_chat_chunks':
+ return 'Direct Processing';
+ case 'gemini_batch':
+ return 'Gemini Batch';
+ case 'batch_api':
+ return 'Batch API';
+ default:
+ return 'Job';
+ }
+}
+
+export function getModeIcon(executionMode?: string): string {
+ switch (executionMode) {
+ case 'direct_chat_chunks':
+ return 'direct';
+ case 'gemini_batch':
+ return 'batch';
+ case 'batch_api':
+ return 'batch';
+ default:
+ return 'job';
+ }
 }

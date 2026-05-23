@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Save, Trash2, ShieldAlert, Plus, CheckCircle, HelpCircle, Key, RefreshCw, X, Globe, Bot } from 'lucide-react';
+import { Loader2, Save, Trash2, ShieldAlert, Plus, CheckCircle, HelpCircle, Key, RefreshCw, X, Globe, Bot, Brain } from 'lucide-react';
 import { AIModelCombobox } from '@/components/admin/settings/AIModelCombobox';
 import { adminFetch } from '@/lib/admin/api-client';
 
@@ -17,6 +17,7 @@ interface AIProviderConfig {
   base_url: string | null;
   default_model: string;
   is_active: boolean;
+  is_active_for_consolidation: boolean;
   api_key: string; // masked
   updated_at: string | null;
 }
@@ -35,6 +36,8 @@ export function AIProviderProfilesCard() {
   const [formBaseUrl, setFormBaseUrl] = useState('');
   const [formApiKey, setFormApiKey] = useState('');
   const [formModel, setFormModel] = useState('');
+  const [formUseForExtraction, setFormUseForExtraction] = useState(true);
+  const [formUseForConsolidation, setFormUseForConsolidation] = useState(false);
 
   // Models dropdown state
   const [fetchedModels, setFetchedModels] = useState<{ id: string; label?: string }[]>([]);
@@ -142,6 +145,8 @@ export function AIProviderProfilesCard() {
     setFormBaseUrl('');
     setFormApiKey('');
     setFormModel('deepseek-chat');
+    setFormUseForExtraction(true);
+    setFormUseForConsolidation(false);
     setFetchedModels([]);
     setModelFetchError(null);
     setShowForm(true);
@@ -155,6 +160,8 @@ export function AIProviderProfilesCard() {
     setFormBaseUrl(config.base_url || '');
     setFormApiKey(config.api_key); // will be masked "••••••••••••XXXX"
     setFormModel(config.default_model);
+    setFormUseForExtraction(config.is_active);
+    setFormUseForConsolidation(config.is_active_for_consolidation);
     setFetchedModels([]);
     setModelFetchError(null);
     setShowForm(true);
@@ -175,6 +182,46 @@ export function AIProviderProfilesCard() {
         }
         await fetchProfiles();
         setSuccess('Active profile updated successfully.');
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Unknown error');
+      }
+    });
+  };
+
+  const handleActivateForConsolidation = async (id: string) => {
+    setError(null);
+    setSuccess(null);
+    startTransition(async () => {
+      try {
+        const res = await adminFetch(`/api/admin/ai-providers/${id}/activate-consolidation`, {
+          method: 'POST',
+        });
+        if (!res.ok) {
+          const body = await res.json();
+          throw new Error(body?.error || 'Failed to activate profile for consolidation');
+        }
+        await fetchProfiles();
+        setSuccess('Consolidation profile updated successfully.');
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Unknown error');
+      }
+    });
+  };
+
+  const handleDeactivateForConsolidation = async (id: string) => {
+    setError(null);
+    setSuccess(null);
+    startTransition(async () => {
+      try {
+        const res = await adminFetch(`/api/admin/ai-providers/${id}/deactivate-consolidation`, {
+          method: 'POST',
+        });
+        if (!res.ok) {
+          const body = await res.json();
+          throw new Error(body?.error || 'Failed to deactivate profile for consolidation');
+        }
+        await fetchProfiles();
+        setSuccess('Consolidation profile deactivated.');
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Unknown error');
       }
@@ -228,6 +275,8 @@ export function AIProviderProfilesCard() {
         base_url: formBaseUrl.trim() || null,
         default_model: formModel,
         api_key: formApiKey,
+        use_for_extraction: formUseForExtraction,
+        use_for_consolidation: formUseForConsolidation,
       };
 
       const res = await adminFetch('/api/admin/ai-providers', {
@@ -243,7 +292,11 @@ export function AIProviderProfilesCard() {
 
       await fetchProfiles();
       setShowForm(false);
-      setSuccess(`Profile "${formName}" saved successfully.`);
+      const usageTags: string[] = [];
+      if (formUseForExtraction) usageTags.push('extraction');
+      if (formUseForConsolidation) usageTags.push('consolidation');
+      const usageDesc = usageTags.length > 0 ? ` (${usageTags.join(' + ')})` : '';
+      setSuccess(`Profile "${formName}" saved successfully${usageDesc}.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
@@ -262,7 +315,7 @@ export function AIProviderProfilesCard() {
             <div>
               <CardTitle className="text-xl font-bold tracking-tight text-brand-forest-green">AI Provider Profiles</CardTitle>
               <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                Manage custom endpoints, API keys, and model overrides. The active profile drives scraping and consolidation workflows.
+                Manage custom endpoints, API keys, and model overrides. Assign each profile to extraction, consolidation, or both.
               </CardDescription>
             </div>
           </div>
@@ -309,7 +362,7 @@ export function AIProviderProfilesCard() {
                 <HelpCircle className="h-10 w-10 text-muted-foreground/60 mb-2" />
                 <p className="text-sm font-semibold text-muted-foreground">No AI Provider Profiles</p>
                 <p className="text-xs text-muted-foreground max-w-[280px] mt-1">
-                  Create a profile to configure your LLM settings for scraper extraction and batch jobs.
+                  Create a profile to configure your LLM settings for extraction, consolidation, or both.
                 </p>
                 <Button onClick={handleCreateNew} variant="outline" size="sm" className="mt-4 rounded-none h-8 text-xs font-semibold">
                   Create First Profile
@@ -333,7 +386,17 @@ export function AIProviderProfilesCard() {
                           </Badge>
                           {config.is_active && (
                             <Badge className="rounded-none bg-emerald-600 hover:bg-emerald-600 text-white text-[9px] px-1.5 py-0">
-                              Active
+                              Extraction
+                            </Badge>
+                          )}
+                          {config.is_active_for_consolidation && (
+                            <Badge className="rounded-none bg-brand-burgundy hover:bg-brand-burgundy/90 text-white text-[9px] px-1.5 py-0">
+                              Consolidation
+                            </Badge>
+                          )}
+                          {config.is_active && config.is_active_for_consolidation && (
+                            <Badge className="rounded-none border border-muted-foreground/30 bg-muted/40 text-muted-foreground text-[9px] px-1.5 py-0">
+                              Both
                             </Badge>
                           )}
                         </div>
@@ -356,7 +419,8 @@ export function AIProviderProfilesCard() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 self-end md:self-center shrink-0">
-                        {!config.is_active && (
+                        {/* Extraction toggle */}
+                        {!config.is_active ? (
                           <Button
                             variant="outline"
                             size="sm"
@@ -365,9 +429,43 @@ export function AIProviderProfilesCard() {
                             className="rounded-none h-8 text-xs font-semibold hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-200 border-border"
                           >
                             {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
-                            Activate
+                            <Bot className="mr-1 h-3.5 w-3.5" />
+                            Extract
+                          </Button>
+                        ) : (
+                          <Badge className="rounded-none bg-emerald-600/10 text-emerald-700 border border-emerald-200 text-[9px] px-1.5 py-0.5 font-semibold">
+                            Extraction ✓
+                          </Badge>
+                        )}
+
+                        {/* Consolidation toggle */}
+                        {!config.is_active_for_consolidation ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isPending}
+                            onClick={() => void handleActivateForConsolidation(config.id)}
+                            className="rounded-none h-8 text-xs font-semibold hover:bg-brand-burgundy/5 hover:text-brand-burgundy hover:border-brand-burgundy/30 border-border"
+                          >
+                            {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                            <Brain className="mr-1 h-3.5 w-3.5" />
+                            Merge
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isPending}
+                            onClick={() => void handleDeactivateForConsolidation(config.id)}
+                            className="rounded-none h-8 text-xs font-semibold bg-brand-burgundy/10 text-brand-burgundy border-brand-burgundy/30 hover:bg-brand-burgundy/20"
+                          >
+                            {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                            Merge ✓
                           </Button>
                         )}
+
+                        <div className="h-6 w-px bg-border mx-0.5" />
+
                         <Button
                           variant="outline"
                           size="sm"
@@ -379,7 +477,7 @@ export function AIProviderProfilesCard() {
                         <Button
                           variant="outline"
                           size="sm"
-                          disabled={config.is_active || isPending}
+                          disabled={isPending || config.is_active}
                           onClick={() => void handleDelete(config.id)}
                           className="rounded-none h-8 text-xs font-semibold text-destructive hover:bg-destructive/5 hover:text-destructive hover:border-destructive/20 border-border"
                         >
@@ -544,6 +642,43 @@ export function AIProviderProfilesCard() {
                     Model auto-discovery is active. Complete custom Endpoint/API key to retrieve models directly.
                   </p>
                 )}
+              </div>
+            </div>
+
+            {/* Usage Assignment */}
+            <div className="rounded-none border border-border bg-muted/10 p-4 space-y-3">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Bot className="h-3.5 w-3.5" />
+                Assign to Workflows
+              </Label>
+              <p className="text-[10px] text-muted-foreground/80 leading-normal">
+                Choose which pipeline stages use this profile. A profile can power extraction, consolidation, or both.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formUseForExtraction}
+                    onChange={(e) => setFormUseForExtraction(e.target.checked)}
+                    className="h-4 w-4 rounded-none border-border accent-emerald-600"
+                  />
+                  <span className="text-xs font-semibold text-foreground">Use for Extraction</span>
+                  <Badge className="rounded-none bg-emerald-600/10 text-emerald-700 border border-emerald-200 text-[9px] px-1.5 font-semibold">
+                    Scraping &amp; Enrichment
+                  </Badge>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formUseForConsolidation}
+                    onChange={(e) => setFormUseForConsolidation(e.target.checked)}
+                    className="h-4 w-4 rounded-none border-border accent-brand-burgundy"
+                  />
+                  <span className="text-xs font-semibold text-foreground">Use for Consolidation</span>
+                  <Badge className="rounded-none bg-brand-burgundy/10 text-brand-burgundy border border-brand-burgundy/20 text-[9px] px-1.5 font-semibold">
+                    Product Merging
+                  </Badge>
+                </label>
               </div>
             </div>
 
