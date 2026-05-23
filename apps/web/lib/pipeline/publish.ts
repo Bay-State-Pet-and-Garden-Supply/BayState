@@ -5,6 +5,9 @@ import {
 } from "@/lib/product-image-storage";
 import { buildProductSlug } from "@/lib/shopsite/mapping";
 import { upsertShopSiteSyncByProductIds } from "@/lib/shopsite/sync-status";
+import { syncProductCategoryLinks } from "@/lib/product-category-sync";
+import { buildFacetSlug } from "@/lib/facets/normalization";
+import { parseTaxonomyValues, resolveTaxonomySelections } from "@/lib/taxonomy";
 
 const STOREFRONT_PUBLISHABLE_STATUS = "reviewing";
 const DEFAULT_AVAILABILITY_TEXT = "in stock";
@@ -99,7 +102,121 @@ function resolveStorefrontName(
   consolidated: JsonRecord,
   input: JsonRecord,
 ): string | null {
-  return coalesceString(consolidated.name, input.name);
+  const core = asRecord(consolidated.core);
+  return coalesceString(core.name, consolidated.name, input.name);
+}
+
+
+async function syncProductFacets(
+  supabase: any,
+  productId: string,
+  candidateFacets: Array<{
+    definition_slug: string;
+    value: string;
+    confidence_score?: number | null;
+    evidence_source?: string | null;
+  }>
+) {
+  const { error: deleteError } = await supabase
+    .from("product_facets")
+    .delete()
+    .eq("product_id", productId);
+
+  if (deleteError) {
+    throw new Error(`Failed to clear product facets: ${deleteError.message}`);
+  }
+
+  if (candidateFacets.length === 0) {
+    return;
+  }
+
+  const definitionSlugs = Array.from(
+    new Set(
+      candidateFacets
+        .map((f) => f.definition_slug)
+        .filter((slug): slug is string => typeof slug === "string" && slug.trim() !== "")
+    )
+  );
+
+  if (definitionSlugs.length === 0) {
+    return;
+  }
+
+  const { data: definitions, error: defError } = await supabase
+    .from("facet_definitions")
+    .select("id, slug, name")
+    .in("slug", definitionSlugs);
+
+  if (defError || !definitions) {
+    console.error(`[Publish] Failed to fetch facet definitions:`, defError);
+    return;
+  }
+
+  const definitionBySlug = new Map<string, { id: string; name: string }>();
+  for (const def of definitions) {
+    definitionBySlug.set(def.slug, { id: def.id, name: def.name });
+  }
+
+  const productFacetRows: Array<{ product_id: string; facet_value_id: string }> = [];
+
+  for (const facet of candidateFacets) {
+    const def = definitionBySlug.get(facet.definition_slug);
+    if (!def) {
+      console.warn(`[Publish] Skipping facet for unknown definition: ${facet.definition_slug}`);
+      continue;
+    }
+
+    const individualValues = facet.value
+      .split("|")
+      .map((v) => v.trim())
+      .filter((v) => v.length > 0);
+
+    for (const valText of individualValues) {
+      const normalizedValue = valText.toLowerCase();
+      const valSlug = buildFacetSlug(valText);
+
+      const { data: upsertedVal, error: valError } = await supabase
+        .from("facet_values")
+        .upsert(
+          {
+            facet_definition_id: def.id,
+            value: valText,
+            normalized_value: normalizedValue,
+            slug: valSlug,
+          },
+          { onConflict: "facet_definition_id, normalized_value" }
+        )
+        .select("id")
+        .single();
+
+      if (valError || !upsertedVal) {
+        console.error(
+          `[Publish] Failed to upsert facet value "${valText}" for definition "${def.name}":`,
+          valError
+        );
+        continue;
+      }
+
+      productFacetRows.push({
+        product_id: productId,
+        facet_value_id: upsertedVal.id,
+      });
+    }
+  }
+
+  if (productFacetRows.length > 0) {
+    const uniqueLinks = Array.from(
+      new Map(productFacetRows.map((r) => [r.facet_value_id, r])).values()
+    );
+
+    const { error: linkError } = await supabase
+      .from("product_facets")
+      .insert(uniqueLinks);
+
+    if (linkError) {
+      throw new Error(`Failed to link product facets: ${linkError.message}`);
+    }
+  }
 }
 
 
@@ -126,6 +243,7 @@ export async function publishToStorefront(upc: string) {
 
     const consolidated = asRecord(ingestionProduct.consolidated);
     const input = asRecord(ingestionProduct.input);
+    const core = asRecord(consolidated.core);
     const name = resolveStorefrontName(consolidated, input);
 
     if (!name) {
@@ -138,10 +256,18 @@ export async function publishToStorefront(upc: string) {
     }
 
     let images: string[] = [];
-    if (Array.isArray(consolidated.images)) {
-      const sourceImages = (consolidated.images as unknown[]).filter(
+    let sourceImages: string[] = [];
+    if (Array.isArray(consolidated.media)) {
+      sourceImages = consolidated.media
+        .map((m: any) => m?.url)
+        .filter((url): url is string => typeof url === "string" && url.trim() !== "");
+    } else if (Array.isArray(consolidated.images)) {
+      sourceImages = (consolidated.images as unknown[]).filter(
         (img): img is string => typeof img === "string" && img.trim() !== "",
       );
+    }
+
+    if (sourceImages.length > 0) {
       const durableImages = await replaceInlineImageDataUrls(
         supabase,
         sourceImages,
@@ -155,13 +281,20 @@ export async function publishToStorefront(upc: string) {
       images = durableImages.value;
 
       if (images.some((image, index) => image !== sourceImages[index])) {
+        const updatedConsolidated = { ...consolidated };
+        if (Array.isArray(consolidated.media)) {
+          updatedConsolidated.media = consolidated.media.map((m: any, idx: number) => ({
+            ...m,
+            url: images[idx] || m.url,
+          }));
+        } else {
+          updatedConsolidated.images = images;
+        }
+
         const { error: persistenceError } = await supabase
           .from("products_ingestion")
           .update({
-            consolidated: {
-              ...consolidated,
-              images,
-            },
+            consolidated: updatedConsolidated,
             updated_at: new Date().toISOString(),
           })
           .eq("upc", upc);
@@ -175,39 +308,68 @@ export async function publishToStorefront(upc: string) {
       }
     }
 
+    // Resolve canonical category and canonical_category_id
+    const categoryBreadcrumb = coalesceString(
+      core.canonical_category_breadcrumb,
+      consolidated.category,
+      input.category
+    );
+
+    let canonicalCategoryId: string | null = null;
+    if (categoryBreadcrumb) {
+      try {
+        const { data: taxonomyCategories, error: taxError } = await supabase
+          .from("categories")
+          .select("id, name, slug, parent_id, description, display_order, image_url, is_featured, synonym_keywords, breadcrumb");
+        if (!taxError && taxonomyCategories) {
+          const categoryTokens = parseTaxonomyValues(categoryBreadcrumb);
+          const { matched } = resolveTaxonomySelections(categoryTokens, taxonomyCategories);
+          if (matched.length > 0) {
+            canonicalCategoryId = matched[0].id;
+          }
+        }
+      } catch (err) {
+        console.error(`[Publish] Failed to resolve canonical category for ${upc}:`, err);
+      }
+    }
+
     const productData: Record<string, unknown> = {
       upc,
       name,
       slug,
-      description: coalesceString(consolidated.description, input.description),
-      price: parseNonNegativeNumber(consolidated.price, input.price) ?? 0,
-      brand_id: coalesceString(consolidated.brand_id),
+      description: coalesceString(core.description, consolidated.description, input.description),
+      price: parseNonNegativeNumber(core.price, consolidated.price, input.price) ?? 0,
+      brand_id: coalesceString(core.brand_id, consolidated.brand_id),
       stock_status:
-        coalesceString(consolidated.stock_status, input.stock_status) ??
+        coalesceString(core.stock_status, consolidated.stock_status, input.stock_status) ??
         "in_stock",
       images,
       is_special_order: parseBoolean(
         false,
+        core.is_special_order,
         consolidated.is_special_order,
         input.is_special_order,
       ),
-      is_taxable: parseBoolean(true, consolidated.is_taxable, input.is_taxable),
-      weight: parseNonNegativeNumber(consolidated.weight, input.weight),
+      is_taxable: parseBoolean(true, core.is_taxable, consolidated.is_taxable, input.is_taxable),
+      weight: parseNonNegativeNumber(core.weight_lbs, consolidated.weight, input.weight),
       search_keywords: coalesceString(
+        core.search_keywords,
         consolidated.search_keywords,
         input.search_keywords,
       ),
       published_at: new Date().toISOString(),
-      gtin: coalesceString(consolidated.gtin, input.gtin, upc),
+      gtin: coalesceString(core.gtin, consolidated.gtin, input.gtin, upc),
       availability:
-        coalesceString(consolidated.availability, input.availability) ??
+        coalesceString(core.availability, consolidated.availability, input.availability) ??
         DEFAULT_AVAILABILITY_TEXT,
       minimum_quantity: parseNonNegativeInt(
+        core.minimum_quantity,
         consolidated.minimum_quantity,
         input.minimum_quantity,
       ),
       quantity: DEFAULT_QUANTITY,
       low_stock_threshold: DEFAULT_LOW_STOCK_THRESHOLD,
+      canonical_category_id: canonicalCategoryId,
     };
 
     const markProductAsExporting = async () => {
@@ -251,6 +413,8 @@ export async function publishToStorefront(upc: string) {
       }
     };
 
+    const candidateFacets = Array.isArray(consolidated.facets) ? (consolidated.facets as any[]) : [];
+
     const { data: existingProduct } = await supabase
       .from("products")
       .select("id")
@@ -269,6 +433,20 @@ export async function publishToStorefront(upc: string) {
           success: false,
           error: "Failed to update product in storefront",
         };
+      }
+
+      if (categoryBreadcrumb) {
+        try {
+          await syncProductCategoryLinks(supabase, existingProduct.id, categoryBreadcrumb);
+        } catch (err) {
+          console.error(`[Publish] Failed to sync category links for ${upc}:`, err);
+        }
+      }
+
+      try {
+        await syncProductFacets(supabase, existingProduct.id, candidateFacets);
+      } catch (err) {
+        console.error(`[Publish] Failed to sync facets for ${upc}:`, err);
       }
 
       await markProductPendingShopSiteSync(existingProduct.id);
@@ -293,6 +471,20 @@ export async function publishToStorefront(upc: string) {
     }
 
     if (insertedProduct?.id) {
+      if (categoryBreadcrumb) {
+        try {
+          await syncProductCategoryLinks(supabase, insertedProduct.id, categoryBreadcrumb);
+        } catch (err) {
+          console.error(`[Publish] Failed to sync category links for ${upc}:`, err);
+        }
+      }
+
+      try {
+        await syncProductFacets(supabase, insertedProduct.id, candidateFacets);
+      } catch (err) {
+        console.error(`[Publish] Failed to sync facets for ${upc}:`, err);
+      }
+
       await markProductPendingShopSiteSync(insertedProduct.id);
     }
 

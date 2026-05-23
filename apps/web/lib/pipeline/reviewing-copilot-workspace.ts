@@ -339,10 +339,12 @@ export function applySetProductFieldsToDraft(
     size?: string;
     color?: string;
     packagingType?: string;
+    facets?: Record<string, string>;
   },
 ): { draft: FinalizationDraft; updatedFields: string[] } {
   const updatedFields: string[] = [];
   const next = { ...draft };
+  next.facets = { ...draft.facets };
 
   if (input.name !== undefined) {
     next.name = input.name.trim();
@@ -388,49 +390,35 @@ export function applySetProductFieldsToDraft(
     next.gtin = input.gtin.trim();
     updatedFields.push("GTIN");
   }
-  if (input.petType !== undefined) {
-    next.petType = input.petType.trim();
-    updatedFields.push("pet type");
+
+  const legacyMappings: Record<string, keyof typeof input & string> = {
+    animal_type: "petType",
+    life_stage: "lifeStage",
+    breed_size: "petSize",
+    diet_type: "specialDiet",
+    health_focus: "healthFeature",
+    food_form: "foodForm",
+    flavor: "flavor",
+    claims: "productFeature",
+    size: "size",
+    color: "color",
+    packaging_type: "packagingType",
+  };
+
+  for (const [slug, inputKey] of Object.entries(legacyMappings)) {
+    const val = input[inputKey as keyof typeof input];
+    if (val !== undefined) {
+      const valStr = typeof val === "string" ? val.trim() : String(val).trim();
+      next.facets[slug] = valStr;
+      updatedFields.push(inputKey);
+    }
   }
-  if (input.lifeStage !== undefined) {
-    next.lifeStage = input.lifeStage.trim();
-    updatedFields.push("life stage");
-  }
-  if (input.petSize !== undefined) {
-    next.petSize = input.petSize.trim();
-    updatedFields.push("pet size");
-  }
-  if (input.specialDiet !== undefined) {
-    next.specialDiet = input.specialDiet.trim();
-    updatedFields.push("special diet");
-  }
-  if (input.healthFeature !== undefined) {
-    next.healthFeature = input.healthFeature.trim();
-    updatedFields.push("health feature");
-  }
-  if (input.foodForm !== undefined) {
-    next.foodForm = input.foodForm.trim();
-    updatedFields.push("food form");
-  }
-  if (input.flavor !== undefined) {
-    next.flavor = input.flavor.trim();
-    updatedFields.push("flavor");
-  }
-  if (input.productFeature !== undefined) {
-    next.productFeature = input.productFeature.trim();
-    updatedFields.push("product feature");
-  }
-  if (input.size !== undefined) {
-    next.size = input.size.trim();
-    updatedFields.push("size");
-  }
-  if (input.color !== undefined) {
-    next.color = input.color.trim();
-    updatedFields.push("color");
-  }
-  if (input.packagingType !== undefined) {
-    next.packagingType = input.packagingType.trim();
-    updatedFields.push("packaging type");
+
+  if (input.facets !== undefined) {
+    for (const [slug, val] of Object.entries(input.facets)) {
+      next.facets[slug] = (val ?? "").trim();
+      updatedFields.push(`facet:${slug}`);
+    }
   }
 
   return { draft: next, updatedFields };

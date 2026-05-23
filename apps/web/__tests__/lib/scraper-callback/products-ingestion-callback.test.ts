@@ -65,7 +65,7 @@ describe('persistProductsIngestionSourcesStrict', () => {
     );
     expect((upsert.mock.calls as unknown as Array<[Array<Record<string, unknown>>]>)[0][0][0]).toMatchObject(
       expect.objectContaining({
-        pipeline_status: 'scraped',
+        pipeline_status: 'processed',
         is_test_run: false,
         updated_at: nowIso,
       })
@@ -140,7 +140,7 @@ describe('persistProductsIngestionSourcesStrict', () => {
     expect(upsert).toHaveBeenCalledWith(
       expect.arrayContaining([
       expect.objectContaining({
-        pipeline_status: 'scraped',
+        pipeline_status: 'processed',
         sources: {
           ai_discovery: {
             title: 'Discovery Name',
@@ -174,7 +174,7 @@ describe('persistProductsIngestionSourcesStrict', () => {
 
     expect(firstUpsertRow).toMatchObject({
       upc: 'UPC-LEGACY',
-      pipeline_status: 'scraped',
+      pipeline_status: 'processed',
       sources: {
         legacy_feed: { title: 'Old title' },
         amazon: { title: 'New title' },
@@ -242,7 +242,7 @@ describe('persistProductsIngestionSourcesPartial', () => {
     expect(upsert).toHaveBeenCalledWith(
       expect.arrayContaining([
       expect.objectContaining({
-        pipeline_status: 'scraped',
+        pipeline_status: 'processed',
         is_test_run: false,
         updated_at: nowIso,
       })

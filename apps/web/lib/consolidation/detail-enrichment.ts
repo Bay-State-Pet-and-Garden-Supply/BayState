@@ -986,12 +986,16 @@ const FIELD_EXTRACTORS: Record<
 export function enrichProductDetails(input: EnrichmentInput): EnrichmentResult {
     const category = typeof input.consolidated.category === 'string'
         ? input.consolidated.category
-        : null;
+        : typeof (input.consolidated.core as any)?.canonical_category_breadcrumb === 'string'
+            ? (input.consolidated.core as any).canonical_category_breadcrumb
+            : null;
 
     // Accept explicit facet profile from consolidated output (set during consolidation)
     const explicitProfile = typeof input.consolidated.facet_profile === 'string'
         ? input.consolidated.facet_profile
-        : undefined;
+        : typeof (input.consolidated.core as any)?.facet_profile === 'string'
+            ? (input.consolidated.core as any).facet_profile
+            : undefined;
 
     const profile = resolveFacetProfile(category, explicitProfile);
     const applicableFields = [...FACET_PROFILE_APPLICABLE_FIELDS[profile]] as DetailField[];

@@ -137,7 +137,7 @@ describe('ShopSite field mapping contract drift prevention', () => {
 
         it('matrix doc must state PF32 one-way relation rules', () => {
             expect(MATRIX_DOC).toContain('ProductField32` cross-sells are one-way');
-            expect(MATRIX_DOC).toContain('skip duplicates, self-links, and missing UPCs');
+            expect(MATRIX_DOC).toContain('skip duplicates, self-links, and missing SKUs');
         });
 
         it('matrix doc must document rerun clearing semantics', () => {

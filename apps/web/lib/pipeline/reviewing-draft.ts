@@ -28,18 +28,7 @@ export interface FinalizationDraft {
   selectedImages: string[];
   customSourceUrl: string;
   sources: Record<string, unknown>;
-  // Product Details
-  petType: string;
-  lifeStage: string;
-  petSize: string;
-  specialDiet: string;
-  healthFeature: string;
-  foodForm: string;
-  flavor: string;
-  productFeature: string;
-  size: string;
-  color: string;
-  packagingType: string;
+  facets: Record<string, string>;
   isSpecialOrder: boolean;
   inStorePickup: boolean;
 }
@@ -61,18 +50,7 @@ export const EMPTY_FINALIZATION_DRAFT: FinalizationDraft = {
   selectedImages: [],
   customSourceUrl: "",
   sources: {},
-  // Product Details
-  petType: "",
-  lifeStage: "",
-  petSize: "",
-  specialDiet: "",
-  healthFeature: "",
-  foodForm: "",
-  flavor: "",
-  productFeature: "",
-  size: "",
-  color: "",
-  packagingType: "",
+  facets: {},
   isSpecialOrder: false,
   inStorePickup: true,
 };
@@ -94,17 +72,7 @@ export const finalizationDraftSchema = z.object({
   selectedImages: z.array(z.string()),
   customSourceUrl: z.string(),
   sources: z.record(z.string(), z.unknown()),
-  petType: z.string(),
-  lifeStage: z.string(),
-  petSize: z.string(),
-  specialDiet: z.string(),
-  healthFeature: z.string(),
-  foodForm: z.string(),
-  flavor: z.string(),
-  productFeature: z.string(),
-  size: z.string(),
-  color: z.string(),
-  packagingType: z.string(),
+  facets: z.record(z.string(), z.string()),
   isSpecialOrder: z.boolean(),
   inStorePickup: z.boolean(),
 });
@@ -199,42 +167,68 @@ export function buildInitialFinalizationDraft(
 ): FinalizationDraft {
   const consolidated = isRecord(product.consolidated) ? product.consolidated : {};
   const input = isRecord(product.input) ? product.input : {};
-  const consolidatedImages = toFinalizationImageArray(consolidated.images);
+  const core = isRecord(consolidated.core) ? consolidated.core : {};
+
+  let consolidatedImages: string[] = [];
+  if (Array.isArray(consolidated.media)) {
+    consolidatedImages = toFinalizationImageArray(consolidated.media.map((m: any) => m?.url));
+  } else {
+    consolidatedImages = toFinalizationImageArray(consolidated.images);
+  }
   const metadataSelectedImages = extractSelectedImageUrls(product.selected_images);
 
+  const facets: Record<string, string> = {};
+
+  if (Array.isArray(consolidated.facets)) {
+    for (const f of consolidated.facets) {
+      if (f && typeof f.definition_slug === "string" && typeof f.value === "string") {
+        facets[f.definition_slug] = f.value;
+      }
+    }
+  }
+
+  const legacyMappings: Record<string, string> = {
+    animal_type: toTrimmedString(consolidated.pet_type ?? input.pet_type),
+    life_stage: toTrimmedString(consolidated.lifestage ?? consolidated.life_stage ?? input.lifestage ?? input.life_stage),
+    breed_size: toTrimmedString(consolidated.pet_size ?? input.pet_size),
+    diet_type: toTrimmedString(consolidated.special_diet ?? input.special_diet),
+    health_focus: toTrimmedString(consolidated.health_feature ?? input.health_feature),
+    food_form: toTrimmedString(consolidated.food_form ?? input.food_form),
+    flavor: toTrimmedString(consolidated.flavor ?? input.flavor),
+    claims: toTrimmedString(consolidated.product_feature ?? input.product_feature),
+    size: toTrimmedString(consolidated.size ?? input.size),
+    color: toTrimmedString(consolidated.color ?? input.color),
+    packaging_type: toTrimmedString(consolidated.packaging_type ?? input.packaging_type),
+  };
+
+  for (const [slug, val] of Object.entries(legacyMappings)) {
+    if (val && !facets[slug]) {
+      facets[slug] = val;
+    }
+  }
+
   return {
-    name: toTrimmedString(consolidated.name ?? input.name),
-    description: toTrimmedString(consolidated.description ?? input.description),
-    price: toTrimmedString(consolidated.price ?? input.price),
-    weight: toTrimmedString(consolidated.weight ?? input.weight),
-    brandId: toTrimmedString(consolidated.brand_id) || "none",
-    brandName: toTrimmedString(consolidated.brand ?? ""),
-    category: toTrimmedString(consolidated.category ?? ""),
-    stockStatus: toFinalizationStockStatus(consolidated.stock_status ?? input.stock_status),
+    name: toTrimmedString(core.name ?? consolidated.name ?? input.name),
+    description: toTrimmedString(core.description ?? consolidated.description ?? input.description),
+    price: toTrimmedString(core.price ?? consolidated.price ?? input.price),
+    weight: toTrimmedString(core.weight_lbs ?? consolidated.weight ?? input.weight),
+    brandId: toTrimmedString(core.brand_id ?? consolidated.brand_id) || "none",
+    brandName: toTrimmedString(core.brand_name ?? consolidated.brand ?? ""),
+    category: toTrimmedString(core.canonical_category_breadcrumb ?? consolidated.category ?? ""),
+    stockStatus: toFinalizationStockStatus(core.stock_status ?? consolidated.stock_status ?? input.stock_status),
     availability:
-      toTrimmedString(consolidated.availability ?? input.availability) ||
+      toTrimmedString(core.availability ?? consolidated.availability ?? input.availability) ||
       "in stock",
-    minimumQuantity: toTrimmedString(consolidated.minimum_quantity ?? input.minimum_quantity) || "0",
-    searchKeywords: toTrimmedString(consolidated.search_keywords ?? input.search_keywords),
+    minimumQuantity: toTrimmedString(core.minimum_quantity ?? consolidated.minimum_quantity ?? input.minimum_quantity) || "0",
+    searchKeywords: toTrimmedString(core.search_keywords ?? consolidated.search_keywords ?? input.search_keywords),
     gtin: product.upc,
     customImageUrl: "",
     selectedImages:
       consolidatedImages.length > 0 ? consolidatedImages : metadataSelectedImages,
     customSourceUrl: "",
     sources: product.sources || {},
-    // Product Details
-    petType: toTrimmedString(consolidated.pet_type ?? input.pet_type),
-    lifeStage: toTrimmedString(consolidated.lifestage ?? consolidated.life_stage ?? input.lifestage ?? input.life_stage),
-    petSize: toTrimmedString(consolidated.pet_size ?? input.pet_size),
-    specialDiet: toTrimmedString(consolidated.special_diet ?? input.special_diet),
-    healthFeature: toTrimmedString(consolidated.health_feature ?? input.health_feature),
-    foodForm: toTrimmedString(consolidated.food_form ?? input.food_form),
-    flavor: toTrimmedString(consolidated.flavor ?? input.flavor),
-    productFeature: toTrimmedString(consolidated.product_feature ?? input.product_feature),
-    size: toTrimmedString(consolidated.size ?? input.size),
-    color: toTrimmedString(consolidated.color ?? input.color),
-    packagingType: toTrimmedString(consolidated.packaging_type ?? input.packaging_type),
-    isSpecialOrder: !!(consolidated.is_special_order ?? input.is_special_order),
+    facets,
+    isSpecialOrder: !!(core.is_special_order ?? consolidated.is_special_order ?? input.is_special_order),
     inStorePickup: !!(consolidated.in_store_pickup ?? input.in_store_pickup ?? true),
   };
 }
@@ -257,6 +251,13 @@ function parseNonNegativeInt(value: string): number {
 export function createPersistedFinalizationDraftSnapshot(
   draft: FinalizationDraft,
 ): FinalizationDraft {
+  const facets: Record<string, string> = {};
+  if (draft.facets) {
+    for (const [k, v] of Object.entries(draft.facets)) {
+      facets[k] = v.trim();
+    }
+  }
+
   return {
     ...draft,
     name: draft.name.trim(),
@@ -275,17 +276,7 @@ export function createPersistedFinalizationDraftSnapshot(
     selectedImages: toFinalizationImageArray(draft.selectedImages),
     customSourceUrl: "",
     sources: draft.sources,
-    petType: draft.petType.trim(),
-    lifeStage: draft.lifeStage.trim(),
-    petSize: draft.petSize.trim(),
-    specialDiet: draft.specialDiet.trim(),
-    healthFeature: draft.healthFeature.trim(),
-    foodForm: draft.foodForm.trim(),
-    flavor: draft.flavor.trim(),
-    productFeature: draft.productFeature.trim(),
-    size: draft.size.trim(),
-    color: draft.color.trim(),
-    packagingType: draft.packagingType.trim(),
+    facets,
   };
 }
 
@@ -294,7 +285,65 @@ export function buildConsolidatedPayloadFromDraft(
 ): Record<string, unknown> {
   const snapshot = createPersistedFinalizationDraftSnapshot(draft);
 
-  return {
+  const core = {
+    name: snapshot.name,
+    brand_name: normalizeOptionalText(snapshot.brandName),
+    brand_id: snapshot.brandId === "none" ? null : snapshot.brandId,
+    description: normalizeOptionalText(snapshot.description),
+    price: parseNonNegativeFloat(snapshot.price),
+    weight_lbs: parseNonNegativeFloat(snapshot.weight),
+    category_id: null as string | null,
+    canonical_category_breadcrumb: normalizeOptionalText(snapshot.category),
+    search_keywords: normalizeOptionalText(snapshot.searchKeywords),
+    confidence_score: 1.0,
+    stock_status: snapshot.stockStatus,
+    availability: normalizeOptionalText(snapshot.availability) ?? "in stock",
+    minimum_quantity: parseNonNegativeInt(snapshot.minimumQuantity),
+    is_special_order: snapshot.isSpecialOrder,
+    is_taxable: true,
+  };
+
+  const facets = Object.entries(snapshot.facets || {})
+    .filter(([, val]) => val.length > 0)
+    .map(([slug, val]) => ({
+      definition_slug: slug,
+      value: val,
+      confidence_score: 1.0,
+      evidence_source: "manual" as const,
+    }));
+
+  const media = snapshot.selectedImages.map((url) => ({
+    url,
+    role: "product_image",
+    source: "manual",
+    confidence_score: 1.0,
+  }));
+
+  const evidence = {
+    selected_images: snapshot.selectedImages,
+    source_urls: snapshot.customSourceUrl ? [snapshot.customSourceUrl] : [],
+  };
+
+  const legacySlugToProp: Record<string, string> = {
+    animal_type: "pet_type",
+    life_stage: "life_stage",
+    breed_size: "pet_size",
+    diet_type: "special_diet",
+    health_focus: "health_feature",
+    food_form: "food_form",
+    flavor: "flavor",
+    claims: "product_feature",
+    size: "size",
+    color: "color",
+    packaging_type: "packaging_type",
+  };
+
+  const payload: Record<string, unknown> = {
+    core,
+    facets,
+    media,
+    evidence,
+
     name: snapshot.name,
     description: normalizeOptionalText(snapshot.description),
     price: parseNonNegativeFloat(snapshot.price),
@@ -308,17 +357,13 @@ export function buildConsolidatedPayloadFromDraft(
     gtin: normalizeOptionalText(snapshot.gtin),
     availability: normalizeOptionalText(snapshot.availability) ?? "in stock",
     minimum_quantity: parseNonNegativeInt(snapshot.minimumQuantity),
-    // Product Details
-    pet_type: normalizeOptionalText(snapshot.petType),
-    life_stage: normalizeOptionalText(snapshot.lifeStage),
-    pet_size: normalizeOptionalText(snapshot.petSize),
-    special_diet: normalizeOptionalText(snapshot.specialDiet),
-    health_feature: normalizeOptionalText(snapshot.healthFeature),
-    food_form: normalizeOptionalText(snapshot.foodForm),
-    flavor: normalizeOptionalText(snapshot.flavor),
-    product_feature: normalizeOptionalText(snapshot.productFeature),
-    size: normalizeOptionalText(snapshot.size),
-    color: normalizeOptionalText(snapshot.color),
-    packaging_type: normalizeOptionalText(snapshot.packagingType),
+    is_special_order: snapshot.isSpecialOrder,
+    is_taxable: true,
   };
+
+  for (const [slug, propName] of Object.entries(legacySlugToProp)) {
+    payload[propName] = normalizeOptionalText(snapshot.facets[slug] ?? "");
+  }
+
+  return payload;
 }

@@ -98,7 +98,7 @@ describe('ShopSiteClient', () => {
 
             expect(products).toHaveLength(1);
             expect(products[0]).toMatchObject({
-                sku: 'SKU001',
+                upc: 'SKU001',
                 name: 'Test Product',
                 price: 19.99,
                 description: 'A test product',

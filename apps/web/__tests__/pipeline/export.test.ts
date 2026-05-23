@@ -50,7 +50,7 @@ describe('CSV Export API', () => {
         mockSupabase.range.mockResolvedValueOnce({ data: mockData, error: null });
         mockSupabase.range.mockResolvedValueOnce({ data: [], error: null });
 
-        const req = new NextRequest('http://localhost/api/admin/pipeline/export?status=finalizing');
+        const req = new NextRequest('http://localhost/api/admin/pipeline/export?status=reviewing');
         const res = await GET(req);
 
         expect(res.status).toBe(200);
@@ -76,7 +76,7 @@ describe('CSV Export API', () => {
     it('should respect search filter', async () => {
         mockSupabase.range.mockResolvedValue({ data: [], error: null });
 
-        const req = new NextRequest('http://localhost/api/admin/pipeline/export?status=finalizing&search=test');
+        const req = new NextRequest('http://localhost/api/admin/pipeline/export?status=reviewing&search=test');
         const res = await GET(req);
 
         expect(res.status).toBe(200);

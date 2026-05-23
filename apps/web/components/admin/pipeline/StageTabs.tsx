@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { PIPELINE_TABS, STAGE_CONFIG } from '@/lib/pipeline/types';
 import type { PipelineStage, StatusCount } from '@/lib/pipeline/types';
 import { Activity } from 'lucide-react';
@@ -64,6 +64,10 @@ export function StageTabs({
                 );
               })}
             </TabsList>
+            {/* Render hidden content panels to satisfy accessibility validators (aria-controls) */}
+            {PIPELINE_TABS.map((stage) => (
+              <TabsContent key={stage} value={stage} className="hidden" />
+            ))}
           </Tabs>
         </div>
 

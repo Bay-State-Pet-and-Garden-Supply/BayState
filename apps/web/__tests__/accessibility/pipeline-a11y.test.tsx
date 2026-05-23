@@ -102,7 +102,7 @@ describe('Pipeline Accessibility', () => {
       expect(tablist).toBeInTheDocument();
 
       const tabs = screen.getAllByRole('tab');
-      expect(tabs.length).toBe(8);
+      expect(tabs.length).toBe(7);
       expect(screen.getAllByRole('tab', { name: /Imported/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole('tab', { name: /Extracting/i }).length).toBeGreaterThan(0);
       expect(screen.getAllByRole('tab', { name: /Processed/i }).length).toBeGreaterThan(0);

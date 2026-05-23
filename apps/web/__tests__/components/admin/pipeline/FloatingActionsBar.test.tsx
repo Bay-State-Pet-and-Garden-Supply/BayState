@@ -21,13 +21,12 @@ describe("FloatingActionsBar", () => {
       />,
     );
 
-    expect(screen.getByText("4")).toBeInTheDocument();
-    expect(screen.getByText("Products")).toBeInTheDocument();
+    expect(screen.getByText("4 products selected")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Clear" }),
+      screen.getByRole("button", { name: "Clear selection" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Select All 10" }),
+      screen.getByRole("button", { name: "Select all 10" }),
     ).toBeInTheDocument();
   });
 
@@ -55,7 +54,7 @@ describe("FloatingActionsBar", () => {
       screen.getByRole("button", { name: "Upload" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Download ZIP" }),
+      screen.getByRole("button", { name: "Download zip" }),
     ).toBeInTheDocument();
   });
 });

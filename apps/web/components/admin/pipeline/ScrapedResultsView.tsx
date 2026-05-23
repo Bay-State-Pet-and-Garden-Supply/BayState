@@ -176,6 +176,48 @@ export function ScrapedResultsView({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
+  const imageUrls = useMemo(() => {
+    if (!currentSourceData) return [];
+    const urls = currentSourceData.image_urls || (currentSourceData as any).images;
+    if (Array.isArray(urls)) return urls;
+    if (currentSourceData.image_url) return [currentSourceData.image_url];
+    return [];
+  }, [currentSourceData]);
+
+  const retryTimestamps = useRef<Map<string, number>>(new Map());
+
+  const handleImageError = useCallback(async (imageUrl: string) => {
+    if (!selectedProduct || !imageUrl) return;
+
+    const now = Date.now();
+    const lastAttempt = retryTimestamps.current.get(imageUrl) || 0;
+    if (now - lastAttempt < 5 * 60 * 1000) {
+      console.log(`[ImageRetry] Skipping duplicate retry request for ${imageUrl} (debounced)`);
+      return;
+    }
+
+    retryTimestamps.current.set(imageUrl, now);
+
+    try {
+      const res = await fetch("/api/admin/scraping/retry-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          upc: selectedProduct.upc,
+          image_url: imageUrl,
+        }),
+      });
+
+      if (res.ok) {
+        toast.success("Image retry queued successfully");
+      } else {
+        console.error("Failed to queue image retry:", res.statusText);
+      }
+    } catch (err) {
+      console.error("Error queueing image retry:", err);
+    }
+  }, [selectedProduct]);
+
   // track previous products to detect when a product is removed (e.g. moved to imported when last source is deleted)
   const prevProductsRef = useRef<PipelineProduct[]>(sortedProducts);
 
@@ -463,23 +505,24 @@ export function ScrapedResultsView({
                     {/* Left side: Image Carousel */}
                     <div className="space-y-2">
                       <div className="aspect-square rounded-none border border-border bg-muted flex items-center justify-center overflow-hidden relative group">
-                        {currentSourceData.image_urls && currentSourceData.image_urls.length > 0 ? (
+                        {imageUrls.length > 0 ? (
                           <>
                             <img
-                              src={currentSourceData.image_urls[currentImageIndex]}
+                              src={imageUrls[currentImageIndex]}
                               alt={currentSourceData.title || currentSourceData.name}
                               className="w-full h-full object-contain transition-all duration-300"
                               data-testid="scraped-primary-image"
+                              onError={() => handleImageError(imageUrls[currentImageIndex])}
                             />
                             
                             {/* Navigation Arrows */}
-                            {currentSourceData.image_urls.length > 1 && (
+                            {imageUrls.length > 1 && (
                               <>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setCurrentImageIndex((prev) => 
-                                      prev === 0 ? currentSourceData.image_urls!.length - 1 : prev - 1
+                                      prev === 0 ? imageUrls.length - 1 : prev - 1
                                     );
                                   }}
                                   aria-label="Previous image"
@@ -491,7 +534,7 @@ export function ScrapedResultsView({
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setCurrentImageIndex((prev) => 
-                                      prev === currentSourceData.image_urls!.length - 1 ? 0 : prev + 1
+                                      prev === imageUrls.length - 1 ? 0 : prev + 1
                                     );
                                   }}
                                   aria-label="Next image"
@@ -502,18 +545,11 @@ export function ScrapedResultsView({
                                 
                                 {/* Image Counter Overlay */}
                                 <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-card px-1.5 py-0.5 rounded-none text-[9px] font-semibold text-foreground border border-border">
-                                  {currentImageIndex + 1} / {currentSourceData.image_urls.length}
+                                  {currentImageIndex + 1} / {imageUrls.length}
                                 </div>
                               </>
                             )}
                           </>
-                        ) : currentSourceData.image_url ? (
-                          <img
-                            src={currentSourceData.image_url}
-                            alt={currentSourceData.title || currentSourceData.name}
-                            className="w-full h-full object-contain"
-                            data-testid="scraped-primary-image"
-                          />
                         ) : (
                           <div className="flex flex-col items-center text-muted-foreground">
                             <ImageIcon className="h-10 w-10 mb-1 opacity-20" />
@@ -534,9 +570,9 @@ export function ScrapedResultsView({
                       </div>
 
                       {/* Thumbnails */}
-                      {currentSourceData.image_urls && currentSourceData.image_urls.length > 1 && (
+                      {imageUrls.length > 1 && (
                         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-                          {currentSourceData.image_urls.map((img, i) => (
+                          {imageUrls.map((img, i) => (
                             <div
                               key={i}
                               onClick={() => setCurrentImageIndex(i)}
@@ -549,6 +585,7 @@ export function ScrapedResultsView({
                                 alt=""
                                 className="w-full h-full object-contain"
                                 data-testid={i > 0 ? `scraped-secondary-image-${i - 1}` : undefined}
+                                onError={() => handleImageError(img)}
                               />
                             </div>
                           ))}

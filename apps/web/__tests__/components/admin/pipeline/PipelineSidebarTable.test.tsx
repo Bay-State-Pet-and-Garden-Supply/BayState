@@ -52,7 +52,7 @@ describe('PipelineSidebarTable', () => {
         onSelectAll={onSelectAll}
         onDeselectAll={jest.fn()}
         onPreferredUpcChange={jest.fn()}
-        variant="imported"
+        variant="processed"
       />
     );
 

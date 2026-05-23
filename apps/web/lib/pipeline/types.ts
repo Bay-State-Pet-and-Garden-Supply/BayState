@@ -136,6 +136,42 @@ export interface PipelineProduct {
   } | null;
   /** AI-consolidated product data from all sources */
   consolidated: {
+    core?: {
+      name?: string | null;
+      brand_name?: string | null;
+      brand_id?: string | null;
+      description?: string | null;
+      price?: number | null;
+      weight_lbs?: number | null;
+      category_id?: string | null;
+      canonical_category_breadcrumb?: string | null;
+      search_keywords?: string | null;
+      confidence_score?: number | null;
+      stock_status?: string | null;
+      availability?: string | null;
+      minimum_quantity?: number | null;
+      is_special_order?: boolean | null;
+      is_taxable?: boolean | null;
+    } | null;
+    facets?: Array<{
+      definition_slug: string;
+      value: string;
+      confidence_score?: number | null;
+      evidence_source?: string | null;
+    }> | null;
+    media?: Array<{
+      url: string;
+      role?: string | null;
+      source?: string | null;
+      confidence_score?: number | null;
+    }> | null;
+    evidence?: {
+      source_urls?: string[];
+      selected_images?: string[];
+      image_text?: string | null;
+      extraction_notes?: string | null;
+    } | null;
+
     name?: string;
     description?: string;
     price?: number;

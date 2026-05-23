@@ -478,11 +478,15 @@ describe('consolidation batch service', () => {
                 confidence_score: 0.94,
                 error_message: null,
                 consolidated: expect.objectContaining({
-                    brand_id: 'brand-uuid-1',
-                    brand: 'KONG',
-                    images: ['https://cdn.example.com/existing.jpg'],
-                    search_keywords: 'fetch toy, tennis ball',
-                    stock_status: 'in_stock',
+                    core: expect.objectContaining({
+                        brand_id: 'brand-uuid-1',
+                        brand_name: 'KONG',
+                        search_keywords: 'fetch toy, tennis ball',
+                        stock_status: 'in_stock',
+                    }),
+                    media: expect.arrayContaining([
+                        expect.objectContaining({ url: 'https://cdn.example.com/existing.jpg' })
+                    ])
                 }),
             })
         );
@@ -490,11 +494,11 @@ describe('consolidation batch service', () => {
         expect(productsIngestionUpdateEq).toHaveBeenCalledWith('updated_at', '2026-03-18T00:00:00.000Z');
 
         const updatePayload = (productsIngestionUpdate as jest.Mock).mock.calls[0]?.[0] as {
-            consolidated?: Record<string, unknown>;
+            consolidated?: any;
         };
-        expect(updatePayload.consolidated).toHaveProperty('search_keywords', 'fetch toy, tennis ball');
-        expect(updatePayload.consolidated).not.toHaveProperty('is_taxable');
-        expect(updatePayload.consolidated).not.toHaveProperty('taxable');
+        expect(updatePayload.consolidated.core).toHaveProperty('search_keywords', 'fetch toy, tennis ball');
+        expect(updatePayload.consolidated.core).not.toHaveProperty('is_taxable');
+        expect(updatePayload.consolidated.core).not.toHaveProperty('taxable');
     });
 
     it('applyConsolidationResults creates a missing brand and writes the new brand id', async () => {
@@ -608,8 +612,10 @@ describe('consolidation batch service', () => {
                 confidence_score: 0.92,
                 error_message: null,
                 consolidated: expect.objectContaining({
-                    brand: 'Fresh Batch',
-                    brand_id: 'brand-uuid-new',
+                    core: expect.objectContaining({
+                        brand_name: 'Fresh Batch',
+                        brand_id: 'brand-uuid-new',
+                    })
                 }),
             })
         );
@@ -724,10 +730,12 @@ describe('consolidation batch service', () => {
             expect.objectContaining({
                 pipeline_status: 'reviewing',
                 consolidated: expect.objectContaining({
-                    name: 'Acme Crunchy Bites 10 oz.',
-                    description: 'Short shelf-ready description.',
-                    search_keywords: 'dog treats, crunchy bites, acme treats',
-                    category: 'Dog',
+                    core: expect.objectContaining({
+                        name: 'Acme Crunchy Bites 10 oz.',
+                        description: 'Short shelf-ready description.',
+                        search_keywords: 'dog treats, crunchy bites, acme treats',
+                        canonical_category_breadcrumb: 'Dog',
+                    })
                 }),
             })
         );
@@ -1052,15 +1060,19 @@ describe('consolidation batch service', () => {
             expect.objectContaining({
                 pipeline_status: 'reviewing',
                 consolidated: expect.objectContaining({
-                    name: 'KONG Squeaker Ball Red Large',
-                    brand: 'KONG',
-                    brand_id: 'brand-uuid-kong',
-                    category: 'Dog > Toys > Interactive Toys',
-                    flavor: 'Bacon Flavor',
-                    life_stage: 'Senior',
-                    toy_type: 'Ball',
-                    animal_type: 'Dog',
-                    has_squeaker: 'Yes',
+                    core: expect.objectContaining({
+                        name: 'KONG Squeaker Ball Red Large',
+                        brand_name: 'KONG',
+                        brand_id: 'brand-uuid-kong',
+                        canonical_category_breadcrumb: 'Dog > Toys > Interactive Toys',
+                    }),
+                    facets: expect.arrayContaining([
+                        expect.objectContaining({ definition_slug: 'flavor', value: 'Bacon Flavor' }),
+                        expect.objectContaining({ definition_slug: 'life_stage', value: 'Senior' }),
+                        expect.objectContaining({ definition_slug: 'toy_type', value: 'Ball' }),
+                        expect.objectContaining({ definition_slug: 'animal_type', value: 'Dog' }),
+                        expect.objectContaining({ definition_slug: 'has_squeaker', value: 'Yes' }),
+                    ])
                 }),
             })
         );

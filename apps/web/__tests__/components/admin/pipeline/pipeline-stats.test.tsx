@@ -49,7 +49,7 @@ describe('PipelineStats', () => {
 
     render(<PipelineStats counts={emptyCounts} />);
 
-    expect(screen.getAllByText('0')).toHaveLength(8);
+    expect(screen.getAllByText('0')).toHaveLength(7);
   });
 
   it('calls onStatusChange when card is clicked', () => {
@@ -106,7 +106,7 @@ describe('PipelineStats', () => {
     expect(screen.getByText('10')).toBeInTheDocument();
     // Missing statuses should show 0
     const zeros = screen.getAllByText('0');
-    expect(zeros).toHaveLength(7);
+    expect(zeros).toHaveLength(6);
   });
   it('renders correct icons for each status', () => {
     render(<PipelineStats counts={mockCounts} />);

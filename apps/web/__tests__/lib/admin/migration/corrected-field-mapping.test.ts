@@ -99,7 +99,7 @@ function extractFixtureProducts(xml: string): RawFixtureProduct[] {
         }
 
         return {
-            upc: extractTagValue(productXml, 'UPC'),
+            upc: extractTagValue(productXml, 'SKU') || extractTagValue(productXml, 'UPC'),
             name: extractTagValue(productXml, 'Name'),
             fields,
         };

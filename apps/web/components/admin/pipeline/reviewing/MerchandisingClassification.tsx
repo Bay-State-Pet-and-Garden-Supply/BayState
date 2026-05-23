@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { FINALIZATION_STOCK_STATUS_VALUES } from "@/lib/pipeline/reviewing-draft";
 import type { FinalizationDraft } from "@/lib/pipeline/reviewing-draft";
 import type { TaxonomyCategoryNode } from "@/lib/taxonomy";
@@ -40,16 +40,21 @@ interface MerchandisingClassificationProps {
   removeSource: (sourceKey: string) => void;
 }
 
-const PET_TYPES = [
-  "Dog",
-  "Cat",
-  "Bird",
-  "Fish",
-  "Reptile",
-  "Small Animal",
-  "Horse",
-  "Livestock",
-];
+interface FacetValue {
+  id: string;
+  value: string;
+  slug: string;
+}
+
+interface FacetDefinition {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  facet_profile?: string[] | null;
+  is_deprecated?: boolean | null;
+  values: FacetValue[];
+}
 
 export function MerchandisingClassification({
   formData,
@@ -72,6 +77,28 @@ export function MerchandisingClassification({
   removeSource,
 }: MerchandisingClassificationProps) {
   const [currentParentId, setCurrentParentId] = useState<string | null>(null);
+  const [facetDefinitions, setFacetDefinitions] = useState<FacetDefinition[]>([]);
+  const [loadingFacets, setLoadingFacets] = useState(false);
+
+  useEffect(() => {
+    async function loadFacets() {
+      setLoadingFacets(true);
+      try {
+        const response = await fetch("/api/admin/facets");
+        if (response.ok) {
+          const data = await response.json();
+          if (data && Array.isArray(data.facets)) {
+            setFacetDefinitions(data.facets);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load facets:", error);
+      } finally {
+        setLoadingFacets(false);
+      }
+    }
+    loadFacets();
+  }, []);
 
   const displayedCategories = useMemo(() => {
     if (categorySearch.trim()) {
@@ -84,6 +111,40 @@ export function MerchandisingClassification({
     if (!currentParentId) return null;
     return filteredCategories.find((c) => c.id === currentParentId);
   }, [filteredCategories, currentParentId]);
+
+  const resolvedFacetProfile = useMemo(() => {
+    if (!formData.category) return "general";
+
+    let current = filteredCategories.find((c) => c.breadcrumb === formData.category);
+    while (current) {
+      if (current.facet_profile) {
+        return current.facet_profile;
+      }
+      const parentId = current.parent_id;
+      current = parentId ? filteredCategories.find((c) => c.id === parentId) : undefined;
+    }
+
+    return "general";
+  }, [filteredCategories, formData.category]);
+
+  const applicableFacets = useMemo(() => {
+    return facetDefinitions.filter((def) => {
+      const profiles = def.facet_profile || [];
+      return (
+        profiles.length === 0 ||
+        profiles.includes(resolvedFacetProfile) ||
+        profiles.includes("general")
+      );
+    });
+  }, [facetDefinitions, resolvedFacetProfile]);
+
+  const handleFacetChange = (facetSlug: string, value: string) => {
+    const updatedFacets = {
+      ...(formData.facets || {}),
+      [facetSlug]: value,
+    };
+    handleInputChange("facets", updatedFacets);
+  };
 
   return (
     <div className="space-y-4">
@@ -321,147 +382,67 @@ export function MerchandisingClassification({
 
       <div className="space-y-3 border border-border bg-muted/10 p-3">
         <div className="flex items-center justify-between gap-2 mb-1">
-          <Label className="text-[10px] font-semibold text-foreground uppercase tracking-wider">
+          <Label className="text-[10px] font-semibold text-foreground uppercase tracking-wider flex items-center gap-2">
             Product Details
+            {loadingFacets && <span className="text-[9px] font-normal text-muted-foreground animate-pulse">(loading facets...)</span>}
+            {!loadingFacets && (
+              <span className="text-[8px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full uppercase">
+                Profile: {resolvedFacetProfile}
+              </span>
+            )}
           </Label>
         </div>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="product-pet-type" className="text-[10px] font-semibold text-foreground">Pet Type</Label>
-            <Select
-              value={formData.petType}
-              onValueChange={(value) => handleInputChange("petType", value)}
-            >
-              <SelectTrigger
-                id="product-pet-type"
-                className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
-              >
-                <SelectValue placeholder="Select pet type" />
-              </SelectTrigger>
-              <SelectContent className="rounded-none border-border">
-                {PET_TYPES.map((type) => (
-                  <SelectItem
-                    key={type}
-                    value={type}
-                    className="font-semibold text-xs rounded-none"
+          {applicableFacets.map((def) => {
+            const currentValue = formData.facets?.[def.slug] || "";
+            const hasValues = def.values && def.values.length > 0;
+
+            return (
+              <div key={def.id} className="space-y-1.5">
+                <Label htmlFor={`facet-${def.slug}`} className="text-[10px] font-semibold text-foreground">
+                  {def.name}
+                </Label>
+                {hasValues ? (
+                  <Select
+                    value={currentValue}
+                    onValueChange={(value) => handleFacetChange(def.slug, value)}
                   >
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="product-life-stage" className="text-[10px] font-semibold text-foreground">Life Stage</Label>
-            <Input
-              id="product-life-stage"
-              value={formData.lifeStage}
-              onChange={(e) => handleInputChange("lifeStage", e.target.value)}
-              placeholder="e.g. Adult, Puppy"
-              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="product-pet-size" className="text-[10px] font-semibold text-foreground">Pet Size</Label>
-            <Input
-              id="product-pet-size"
-              value={formData.petSize}
-              onChange={(e) => handleInputChange("petSize", e.target.value)}
-              placeholder="e.g. Small Breed"
-              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="product-special-diet" className="text-[10px] font-semibold text-foreground">Special Diet</Label>
-            <Input
-              id="product-special-diet"
-              value={formData.specialDiet}
-              onChange={(e) => handleInputChange("specialDiet", e.target.value)}
-              placeholder="e.g. Grain-Free"
-              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="product-health-feature" className="text-[10px] font-semibold text-foreground">Health Feature</Label>
-            <Input
-              id="product-health-feature"
-              value={formData.healthFeature}
-              onChange={(e) => handleInputChange("healthFeature", e.target.value)}
-              placeholder="e.g. Joint Support"
-              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="product-food-form" className="text-[10px] font-semibold text-foreground">Food Form</Label>
-            <Input
-              id="product-food-form"
-              value={formData.foodForm}
-              onChange={(e) => handleInputChange("foodForm", e.target.value)}
-              placeholder="e.g. Dry Food, Wet Food"
-              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="product-flavor" className="text-[10px] font-semibold text-foreground">Flavor</Label>
-            <Input
-              id="product-flavor"
-              value={formData.flavor}
-              onChange={(e) => handleInputChange("flavor", e.target.value)}
-              placeholder="e.g. Chicken & Rice"
-              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="product-feature" className="text-[10px] font-semibold text-foreground">Product Feature</Label>
-            <Input
-              id="product-feature"
-              value={formData.productFeature}
-              onChange={(e) => handleInputChange("productFeature", e.target.value)}
-              placeholder="e.g. Resealable Bag"
-              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="product-size" className="text-[10px] font-semibold text-foreground">Size</Label>
-            <Input
-              id="product-size"
-              value={formData.size}
-              onChange={(e) => handleInputChange("size", e.target.value)}
-              placeholder="e.g. 30 lb"
-              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="product-color" className="text-[10px] font-semibold text-foreground">Color</Label>
-            <Input
-              id="product-color"
-              value={formData.color}
-              onChange={(e) => handleInputChange("color", e.target.value)}
-              placeholder="e.g. Red"
-              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="product-packaging-type" className="text-[10px] font-semibold text-foreground">Packaging Type</Label>
-            <Input
-              id="product-packaging-type"
-              value={formData.packagingType}
-              onChange={(e) => handleInputChange("packagingType", e.target.value)}
-              placeholder="e.g. Bag, Can"
-              className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
-            />
-          </div>
+                    <SelectTrigger
+                      id={`facet-${def.slug}`}
+                      className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
+                    >
+                      <SelectValue placeholder={`Select ${def.name.toLowerCase()}`} />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-none border-border">
+                      {def.values.map((v) => (
+                        <SelectItem
+                          key={v.id}
+                          value={v.value}
+                          className="font-semibold text-xs rounded-none"
+                        >
+                          {v.value}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id={`facet-${def.slug}`}
+                    value={currentValue}
+                    onChange={(e) => handleFacetChange(def.slug, e.target.value)}
+                    placeholder={`e.g. Enter ${def.name.toLowerCase()}`}
+                    className="h-8 border border-border rounded-none focus-visible:ring-primary font-bold text-xs"
+                  />
+                )}
+              </div>
+            );
+          })}
+          {applicableFacets.length === 0 && !loadingFacets && (
+            <div className="col-span-full py-4 text-center text-[10px] font-semibold text-muted-foreground/50 italic">
+              No product detail facets defined for the category profile "{resolvedFacetProfile}".
+            </div>
+          )}
         </div>
       </div>
 

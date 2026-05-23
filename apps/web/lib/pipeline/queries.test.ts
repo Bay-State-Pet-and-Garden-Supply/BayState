@@ -13,6 +13,7 @@ import { PERSISTED_PIPELINE_STATUSES, type PersistedPipelineStatus } from "./typ
 type QueryCall =
   | ["select", string, { count?: "exact" | "planned" | "estimated" } | undefined]
   | ["eq", string, string]
+  | ["in", string, string[]]
   | ["order", string, { ascending?: boolean } | undefined]
   | ["range", number, number];
 
@@ -38,6 +39,7 @@ function createQueryBuilder(plan: QueryPlan) {
   const builder = Promise.resolve(plan.result) as Promise<typeof plan.result> & {
     select: (columns: string, options?: { count?: "exact" | "planned" | "estimated" }) => typeof builder;
     eq: (column: string, value: string) => typeof builder;
+    in: (column: string, values: string[]) => typeof builder;
     order: (column: string, options?: { ascending?: boolean }) => typeof builder;
     range: (from: number, to: number) => typeof builder;
   };
@@ -48,6 +50,10 @@ function createQueryBuilder(plan: QueryPlan) {
   });
   builder.eq = jest.fn((column: string, value: string) => {
     plan.calls.push(["eq", column, value]);
+    return builder;
+  });
+  builder.in = jest.fn((column: string, values: string[]) => {
+    plan.calls.push(["in", column, values]);
     return builder;
   });
   builder.order = jest.fn((column: string, options?: { ascending?: boolean }) => {
@@ -121,7 +127,7 @@ describe("pipeline queries", () => {
     expect(result.products).toHaveLength(1);
     expect(productsPlan.calls).toEqual([
       ["select", "*", { count: "exact" }],
-      ["eq", "pipeline_status", "imported"],
+      ["in", "pipeline_status", ["imported", "awaiting_brand"]],
       ["order", "upc", { ascending: true }],
       ["range", 10, 34],
     ]);
@@ -143,7 +149,7 @@ describe("pipeline queries", () => {
     expect(result.count).toBe(1);
     expect(productsPlan.calls).toEqual([
       ["select", "*", { count: "exact" }],
-      ["eq", "pipeline_status", "reviewing"],
+      ["in", "pipeline_status", ["reviewing"]],
       ["order", "upc", { ascending: true }],
       ["range", 0, 99],
     ]);

@@ -129,17 +129,6 @@ describe("finalization draft helpers", () => {
       customSourceUrl: "",
       sources: {},
       stockStatus: "in_stock",
-      petType: "",
-      lifeStage: "",
-      petSize: "",
-      specialDiet: "",
-      healthFeature: "",
-      foodForm: "",
-      flavor: "",
-      productFeature: "",
-      size: "",
-      color: "",
-      packagingType: "",
       inStorePickup: false,
       availability: "   ",
       minimumQuantity: "   ",
@@ -152,6 +141,10 @@ describe("finalization draft helpers", () => {
         "https://images-na.ssl-images-amazon.com/images/I/71hero._AC_US500_.jpg",
         "https://cdn.example.com/side.jpg",
       ],
+      facets: {
+        animal_type: "  Dog  ",
+        life_stage: "  Adult  ",
+      },
     };
 
     expect(createPersistedFinalizationDraftSnapshot(draft)).toEqual({
@@ -172,6 +165,10 @@ describe("finalization draft helpers", () => {
         "https://m.media-amazon.com/images/I/71hero.jpg",
         "https://cdn.example.com/side.jpg",
       ],
+      facets: {
+        animal_type: "Dog",
+        life_stage: "Adult",
+      },
     });
   });
 
@@ -185,17 +182,6 @@ describe("finalization draft helpers", () => {
       brandName: "",
       category: "",
       stockStatus: "out_of_stock",
-      petType: "",
-      lifeStage: "",
-      petSize: "",
-      specialDiet: "",
-      healthFeature: "",
-      foodForm: "",
-      flavor: "",
-      productFeature: "",
-      size: "",
-      color: "",
-      packagingType: "",
       inStorePickup: false,
       availability: "   ",
       minimumQuantity: "7",
@@ -206,9 +192,57 @@ describe("finalization draft helpers", () => {
       selectedImages: ["https://cdn.example.com/side.jpg"],
       customSourceUrl: "",
       sources: {},
+      facets: {
+        animal_type: "Dog",
+        life_stage: "Adult",
+      },
     };
 
     expect(buildConsolidatedPayloadFromDraft(draft)).toEqual({
+      core: {
+        name: "Deluxe Chow",
+        brand_name: null,
+        brand_id: null,
+        description: null,
+        price: 19.5,
+        weight_lbs: 0,
+        category_id: null,
+        canonical_category_breadcrumb: null,
+        search_keywords: "dog food, premium",
+        confidence_score: 1.0,
+        stock_status: "out_of_stock",
+        availability: "in stock",
+        minimum_quantity: 7,
+        is_special_order: true,
+        is_taxable: true,
+      },
+      facets: [
+        {
+          definition_slug: "animal_type",
+          value: "Dog",
+          confidence_score: 1.0,
+          evidence_source: "manual",
+        },
+        {
+          definition_slug: "life_stage",
+          value: "Adult",
+          confidence_score: 1.0,
+          evidence_source: "manual",
+        },
+      ],
+      media: [
+        {
+          url: "https://cdn.example.com/side.jpg",
+          role: "product_image",
+          source: "manual",
+          confidence_score: 1.0,
+        },
+      ],
+      evidence: {
+        selected_images: ["https://cdn.example.com/side.jpg"],
+        source_urls: [],
+      },
+
       name: "Deluxe Chow",
       description: null,
       price: 19.5,
@@ -222,17 +256,20 @@ describe("finalization draft helpers", () => {
       gtin: null,
       availability: "in stock",
       minimum_quantity: 7,
-      color: null,
-      flavor: null,
-      food_form: null,
-      health_feature: null,
-      life_stage: null,
-      packaging_type: null,
+      is_special_order: true,
+      is_taxable: true,
+
+      pet_type: "Dog",
+      life_stage: "Adult",
       pet_size: null,
-      pet_type: null,
+      special_diet: null,
+      health_feature: null,
+      food_form: null,
+      flavor: null,
       product_feature: null,
       size: null,
-      special_diet: null,
+      color: null,
+      packaging_type: null,
     });
   });
 });

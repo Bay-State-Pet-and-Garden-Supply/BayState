@@ -725,7 +725,12 @@ function collectExpectedAnimalSignals(
 
 function collectOutputAnimalSignals(nextFields: Record<string, unknown>): Set<AnimalSignal> {
     const detected = new Set<AnimalSignal>();
-    collectAnimalSignalsFromValue(nextFields.category, detected);
+    const category = typeof nextFields.category === 'string'
+        ? nextFields.category
+        : typeof (nextFields.core as any)?.canonical_category_breadcrumb === 'string'
+            ? (nextFields.core as any).canonical_category_breadcrumb
+            : null;
+    collectAnimalSignalsFromValue(category, detected);
     return detected;
 }
 
@@ -852,7 +857,9 @@ function tryDisambiguateDuplicateNames(
         if (values.size === group.length && new Set(values.values()).size > 1) {
             const result = new Map<string, string>();
             for (const row of group) {
-                const currentName = row.next_fields.name as string;
+                const currentName = (typeof row.next_fields.name === 'string'
+                    ? row.next_fields.name
+                    : (row.next_fields.core as any)?.name || '') as string;
                 const differentiator = values.get(row.upc)!;
                 result.set(row.upc, insertDifferentiator(currentName, differentiator));
             }
@@ -1652,6 +1659,118 @@ export async function retrieveResults(batchId: string): Promise<ConsolidationRes
 // Apply Results
 // =============================================================================
 
+const LEGACY_TO_CANONICAL_FACETS: Record<string, string> = {
+    pet_type: 'animal_type',
+    life_stage: 'life_stage',
+    pet_size: 'breed_size',
+    special_diet: 'diet_type',
+    health_feature: 'health_focus',
+    food_form: 'food_form',
+    flavor: 'flavor',
+    product_feature: 'claims',
+    size: 'size',
+    color: 'color',
+    packaging_type: 'packaging_type',
+};
+
+function normalizeConsolidatedRecord(record: any): any {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) {
+        return { core: {}, facets: [], media: [], evidence: {} };
+    }
+    if ('core' in record) {
+        return record;
+    }
+    return {
+        core: {
+            name: record.name,
+            brand_name: record.brand_name || record.brand,
+            brand_id: record.brand_id,
+            description: record.description,
+            price: record.price,
+            weight_lbs: typeof record.weight === 'string' ? parseFloat(record.weight) || undefined : (typeof record.weight_lbs === 'number' ? record.weight_lbs : undefined),
+            canonical_category_breadcrumb: record.canonical_category_breadcrumb || record.category,
+            search_keywords: record.search_keywords,
+            confidence_score: record.confidence_score,
+            facet_profile: record.facet_profile,
+            stock_status: record.stock_status,
+            availability: record.availability,
+            minimum_quantity: record.minimum_quantity,
+            is_special_order: record.is_special_order,
+            is_taxable: record.is_taxable,
+            gtin: record.gtin,
+        },
+        facets: [],
+        media: Array.isArray(record.images) ? record.images.map((url: string, idx: number) => ({
+            url,
+            role: idx === 0 ? 'main' : 'gallery',
+            source: 'scraped',
+            confidence_score: 1.0,
+        })) : [],
+        evidence: {
+            selected_images: Array.isArray(record.images) ? record.images : [],
+        }
+    };
+}
+
+function mergeNestedCandidates(current: any, next: any): any {
+    const normCurrent = normalizeConsolidatedRecord(current);
+    const normNext = normalizeConsolidatedRecord(next);
+
+    const mergedCore = {
+        ...(normCurrent.core || {}),
+        ...(normNext.core || {}),
+    };
+
+    // Prune excluded fields from merged core
+    for (const key of EXCLUDED_FROM_CONSOLIDATED_MERGE) {
+        delete (mergedCore as any)[key];
+    }
+
+    const facetMap = new Map<string, any>();
+    const currentFacets = Array.isArray(normCurrent.facets) ? normCurrent.facets : [];
+    const nextFacets = Array.isArray(normNext.facets) ? normNext.facets : [];
+    
+    for (const f of currentFacets) {
+        if (f.definition_slug) {
+            facetMap.set(f.definition_slug, f);
+        }
+    }
+    for (const f of nextFacets) {
+        if (f.definition_slug) {
+            facetMap.set(f.definition_slug, f);
+        }
+    }
+    const mergedFacets = Array.from(facetMap.values());
+
+    const mediaMap = new Map<string, any>();
+    const currentMedia = Array.isArray(normCurrent.media) ? normCurrent.media : [];
+    const nextMedia = Array.isArray(normNext.media) ? normNext.media : [];
+    
+    for (const m of currentMedia) {
+        if (m.url) {
+            mediaMap.set(m.url, m);
+        }
+    }
+    for (const m of nextMedia) {
+        if (m.url) {
+            mediaMap.set(m.url, m);
+        }
+    }
+    const mergedMedia = Array.from(mediaMap.values());
+
+    const mergedEvidence = {
+        ...(normCurrent.evidence || {}),
+        ...(normNext.evidence || {}),
+    };
+
+    return {
+        core: mergedCore,
+        facets: mergedFacets,
+        media: mergedMedia,
+        evidence: mergedEvidence,
+    };
+}
+
 /**
  * Apply consolidation results to the products_ingestion table.
  */
@@ -1931,82 +2050,32 @@ export async function applyConsolidationResults(
                         ? Number.parseFloat(result.price)
                         : Number.NaN;
 
-            const nextFields: Record<string, unknown> = {
-                ...(typeof result.name === 'string' && result.name.trim() ? { name: result.name.trim() } : {}),
-                ...(typeof result.description === 'string' && result.description.trim()
-                    ? { description: result.description.trim() }
-                    : {}),
-                ...(typeof result.search_keywords === 'string' && result.search_keywords.trim()
-                    ? { search_keywords: result.search_keywords.trim() }
-                    : {}),
-                ...(typeof result.weight === 'string' && result.weight.trim() ? { weight: result.weight.trim() } : {}),
-                ...(Number.isFinite(parsedPrice) ? { price: parsedPrice } : {}),
-                ...(normalizedBrand ? { brand: normalizedBrand } : {}),
-                ...(nextCategory.length > 0 ? { category: nextCategory.join('|') } : {}),
-                ...(typeof result.confidence_score === 'number'
-                    ? { confidence_score: result.confidence_score }
-                    : {}),
-            };
+            const normalizedExisting = normalizeConsolidatedRecord(existingConsolidated);
+            const existingCore = normalizedExisting.core || {};
+            const existingFacets = normalizedExisting.facets || [];
+            const existingMedia = normalizedExisting.media || [];
+            const existingEvidence = normalizedExisting.evidence || {};
 
-            // Unpack VLM-extracted packaging facets if present
-            if (result.packaging_facets && typeof result.packaging_facets === 'object') {
-                for (const [key, value] of Object.entries(result.packaging_facets)) {
-                    if (value !== undefined && value !== null && value !== '') {
-                        nextFields[key] = typeof value === 'string' ? value.trim() : value;
-                    }
-                }
-            }
+            const weightValue = typeof result.weight === 'string' && result.weight.trim()
+                ? result.weight.trim()
+                : (existingCore.weight_lbs !== undefined && existingCore.weight_lbs !== null
+                    ? `${existingCore.weight_lbs} lbs`
+                    : undefined);
 
-            const existingConsolidatedImages = toStringUrlArray(existingConsolidated.images);
-            if (existingConsolidatedImages.length > 0) {
-                nextFields.images = existingConsolidatedImages;
-            } else {
-                const selectedImages = existingRecord?.selectedImages || [];
-                const imageCandidates = existingRecord?.imageCandidates || [];
-                const sourceCandidates = extractImageCandidatesFromSources(
-                    existingRecord?.sources || {},
-                    24,
-                );
-                const fallbackImages =
-                    selectedImages.length > 0
-                        ? selectedImages
-                        : imageCandidates.length > 0
-                            ? imageCandidates.slice(0, 10)
-                            : sourceCandidates.slice(0, 10);
-
-                if (fallbackImages.length > 0) {
-                    nextFields.images = fallbackImages;
-                }
-            }
-
-            // ── Detail enrichment ────────────────────────────────────────
-            // After the LLM assigns a category, deterministically extract
-            // applicable product detail fields (pet_type, flavor, food_form,
-            // etc.) from structured source data and pattern matching.
-            // This is free — no additional LLM call.
-            const enrichment = enrichProductDetails({
-                consolidated: nextFields,
-                sources: existingRecord?.sources || {},
-                input: existingRecord?.input || {},
-            });
-
-            for (const [key, value] of Object.entries(enrichment.fields)) {
-                // Only populate fields that aren't already set by the LLM
-                if (!(key in nextFields) || nextFields[key] === undefined || nextFields[key] === null || nextFields[key] === '') {
-                    nextFields[key] = value;
-                }
-            }
-
+            const draftName = typeof result.name === 'string' && result.name.trim() ? result.name.trim() : (existingCore.name || undefined);
+            const draftCategory = nextCategory.length > 0 ? nextCategory.join('|') : (existingCore.canonical_category_breadcrumb || undefined);
+            const draftDescription = typeof result.description === 'string' && result.description.trim() ? result.description.trim() : (existingCore.description || undefined);
+            const draftSearchKeywords = typeof result.search_keywords === 'string' && result.search_keywords.trim() ? result.search_keywords.trim() : (existingCore.search_keywords || undefined);
 
             const gateErrors: string[] = [];
 
             try {
                 validateRequiredConsolidationFields({
-                    name: nextFields.name,
-                    brand: nextFields.brand,
-                    category: nextFields.category,
-                    description: nextFields.description,
-                    search_keywords: nextFields.search_keywords,
+                    name: draftName,
+                    brand: normalizedBrand || (existingCore.brand_name || undefined),
+                    category: draftCategory,
+                    description: draftDescription,
+                    search_keywords: draftSearchKeywords,
                     confidence_score: result.confidence_score,
                 });
             } catch (validationError: unknown) {
@@ -2025,10 +2094,11 @@ export async function applyConsolidationResults(
                 );
             }
 
-            // Brand conflicts with higher-trust sources are intentionally allowed through.
-            // Human reviewers resolve any disagreements during finalizing.
-
-            const outputAnimalSignals = collectOutputAnimalSignals(nextFields);
+            const outputAnimalSignals = collectOutputAnimalSignals({
+                core: {
+                    canonical_category_breadcrumb: draftCategory
+                }
+            });
             const expectedAnimalSignals = collectExpectedAnimalSignals(
                 existingRecord?.input || {},
                 existingRecord?.sources || {}
@@ -2074,21 +2144,133 @@ export async function applyConsolidationResults(
                 }
             }
 
-            if (resolvedBrandName) {
-                nextFields.brand = resolvedBrandName;
+            const nextCore = {
+                name: draftName,
+                brand_name: resolvedBrandName || normalizedBrand || (existingCore.brand_name || undefined),
+                brand_id: resolvedBrandId || (existingCore.brand_id || undefined),
+                description: draftDescription,
+                price: Number.isFinite(parsedPrice) ? parsedPrice : (typeof existingCore.price === 'number' ? existingCore.price : undefined),
+                weight_lbs: weightValue ? parseFloat(weightValue) || undefined : undefined,
+                canonical_category_breadcrumb: draftCategory,
+                search_keywords: draftSearchKeywords,
+                confidence_score: typeof result.confidence_score === 'number' ? result.confidence_score : (typeof existingCore.confidence_score === 'number' ? existingCore.confidence_score : undefined),
+            };
+
+            const candidateFacetsMap = new Map<string, { value: string; confidence: number; source: string }>();
+
+            const addFacet = (key: string, value: unknown, confidence: number = 0.9, source: string = 'llm') => {
+                if (value === undefined || value === null || value === '') return;
+                const strValue = typeof value === 'string' ? value.trim() : String(value).trim();
+                if (strValue.length === 0) return;
+
+                const canonicalKey = LEGACY_TO_CANONICAL_FACETS[key] || key;
+                if (!candidateFacetsMap.has(canonicalKey)) {
+                    candidateFacetsMap.set(canonicalKey, {
+                        value: strValue,
+                        confidence,
+                        source,
+                    });
+                }
+            };
+
+            // Unpack VLM-extracted packaging facets if present
+            if (result.packaging_facets && typeof result.packaging_facets === 'object') {
+                for (const [key, value] of Object.entries(result.packaging_facets)) {
+                    addFacet(key, value, 0.95, 'vlm_ocr');
+                }
             }
-            if (resolvedBrandId) {
-                nextFields.brand_id = resolvedBrandId;
+
+            // Unpack other fields directly from result
+            const coreKeys = new Set(['upc', 'name', 'brand', 'weight', 'price', 'category', 'description', 'confidence_score', 'search_keywords', 'error', 'packaging_facets']);
+            for (const [key, value] of Object.entries(result)) {
+                if (!coreKeys.has(key)) {
+                    addFacet(key, value, 0.9, 'llm');
+                }
             }
+
+            // ── Detail enrichment ────────────────────────────────────────
+            const tempConsolidated = {
+                name: nextCore.name,
+                category: nextCore.canonical_category_breadcrumb,
+                facet_profile: existingCore.facet_profile || undefined,
+            };
+            const enrichment = enrichProductDetails({
+                consolidated: tempConsolidated,
+                sources: existingRecord?.sources || {},
+                input: existingRecord?.input || {},
+            });
+
+            for (const [key, value] of Object.entries(enrichment.fields)) {
+                addFacet(key, value, 0.85, 'heuristic_enrichment');
+            }
+
+            // Preserve existing facets if not overridden
+            for (const facet of existingFacets) {
+                if (facet.definition_slug && facet.value) {
+                    addFacet(facet.definition_slug, facet.value, facet.confidence_score ?? 0.9, facet.evidence_source ?? 'existing');
+                }
+            }
+
+            // Add facet_profile classification to core
+            (nextCore as any).facet_profile = enrichment.facetProfile;
+
+            // Handle images & media
+            let nextMedia: Array<{ url: string; role?: string; source?: string; confidence_score?: number }> = [];
+            let nextSelectedImages: string[] = [];
+
+            if (existingMedia.length > 0) {
+                nextMedia = [...existingMedia];
+                nextSelectedImages = Array.isArray(existingEvidence.selected_images)
+                    ? existingEvidence.selected_images as string[]
+                    : existingMedia.map((m: any) => m.url);
+            } else {
+                const selectedImages = existingRecord?.selectedImages || [];
+                const imageCandidates = existingRecord?.imageCandidates || [];
+                const sourceCandidates = extractImageCandidatesFromSources(
+                    existingRecord?.sources || {},
+                    24,
+                );
+                const fallbackImages =
+                    selectedImages.length > 0
+                        ? selectedImages
+                        : imageCandidates.length > 0
+                            ? imageCandidates.slice(0, 10)
+                            : sourceCandidates.slice(0, 10);
+
+                if (fallbackImages.length > 0) {
+                    nextMedia = fallbackImages.map((url, idx) => ({
+                        url,
+                        role: idx === 0 ? 'main' : 'gallery',
+                        source: 'scraped',
+                        confidence_score: 1.0,
+                    }));
+                    nextSelectedImages = fallbackImages;
+                }
+            }
+
+            const nextFieldsNested = {
+                core: nextCore,
+                facets: Array.from(candidateFacetsMap.entries()).map(([slug, f]) => ({
+                    definition_slug: slug,
+                    value: f.value,
+                    confidence_score: f.confidence,
+                    evidence_source: f.source,
+                })),
+                media: nextMedia,
+                evidence: {
+                    ...existingEvidence,
+                    selected_images: nextSelectedImages,
+                },
+            };
 
             updateRows.push({
                 upc: result.upc,
-                next_fields: nextFields,
+                next_fields: nextFieldsNested,
                 pipeline_status: 'reviewing',
                 confidence_score: result.confidence_score ?? null,
                 error_message: null,
                 outcome: 'finalized',
-                name_key: typeof nextFields.name === 'string' ? normalizeLookupKey(nextFields.name) : undefined,
+                name_key: typeof nextCore.name === 'string' ? normalizeLookupKey(nextCore.name) : undefined,
                 existing_consolidated: existingConsolidated,
             });
         } catch (e: unknown) {
@@ -2131,10 +2313,13 @@ export async function applyConsolidationResults(
             continue;
         }
 
+        const firstFields = group[0]?.next_fields;
         const duplicateName =
-            typeof group[0]?.next_fields.name === 'string'
-                ? group[0].next_fields.name
-                : 'duplicate consolidation name';
+            firstFields && typeof firstFields.name === 'string'
+                ? firstFields.name
+                : firstFields?.core && typeof (firstFields.core as any).name === 'string'
+                    ? (firstFields.core as any).name
+                    : 'duplicate consolidation name';
 
         // Try to disambiguate using source variant fields
         const disambiguated = tryDisambiguateDuplicateNames(group, existingByUpc);
@@ -2142,8 +2327,12 @@ export async function applyConsolidationResults(
         if (disambiguated) {
             for (const row of group) {
                 const newName = disambiguated.get(row.upc);
-                if (newName && typeof row.next_fields.name === 'string') {
-                    row.next_fields.name = newName;
+                if (newName) {
+                    if (typeof row.next_fields.name === 'string') {
+                        row.next_fields.name = newName;
+                    } else if (row.next_fields.core) {
+                        (row.next_fields.core as any).name = newName;
+                    }
                     row.name_key = normalizeLookupKey(newName);
                 }
             }
@@ -2163,9 +2352,18 @@ export async function applyConsolidationResults(
         }
 
         const existingConsolidated = row.existing_consolidated || {};
-        Object.entries(row.next_fields).forEach(([key, value]) => {
+        const nextFlat = {
+            ...((row.next_fields as any).core || {}),
+            ...Object.fromEntries(((row.next_fields as any).facets || []).map((f: any) => [f.definition_slug, f.value]))
+        };
+        const existingFlat = {
+            ...(normalizeConsolidatedRecord(existingConsolidated).core || {}),
+            ...Object.fromEntries((normalizeConsolidatedRecord(existingConsolidated).facets || []).map((f: any) => [f.definition_slug, f.value]))
+        };
+
+        Object.entries(nextFlat).forEach(([key, value]) => {
             if (value === undefined || value === null) return;
-            const existingValue = existingConsolidated[key];
+            const existingValue = existingFlat[key];
             if (existingValue === undefined || existingValue === null || existingValue === '') {
                 overwrittenFieldCount += 1;
                 return;
@@ -2211,20 +2409,14 @@ export async function applyConsolidationResults(
                         ? (latestRow.consolidated as Record<string, unknown>)
                         : {};
 
-                const prunedCurrentConsolidated = pruneExcludedConsolidatedFields(currentConsolidated);
-                const prunedNextFields = pruneExcludedConsolidatedFields(row.next_fields);
-
-                const mergedConsolidated = {
-                    ...prunedCurrentConsolidated,
-                    ...prunedNextFields,
-                };
+                const mergedConsolidated = mergeNestedCandidates(currentConsolidated, row.next_fields);
 
                 const applyTimestamp = new Date().toISOString();
                 let updateQuery = supabase
                     .from('products_ingestion')
                     .update({
                         consolidated: mergedConsolidated,
-                        brand_id: mergedConsolidated.brand_id || null,
+                        brand_id: mergedConsolidated.core?.brand_id || null,
                         pipeline_status: row.pipeline_status,
                         confidence_score: row.confidence_score,
                         error_message: row.error_message,
@@ -2281,7 +2473,7 @@ export async function applyConsolidationResults(
 
         for (const row of updateRows) {
             if (row.outcome === 'finalized') {
-                const brandId = (row.next_fields.brand_id as string | null) || null;
+                const brandId = ((row.next_fields.core as any)?.brand_id as string | null) || null;
                 const existingRow = existingByUpc.get(row.upc);
                 const oldBrandId = existingRow?.brand_id || null;
 

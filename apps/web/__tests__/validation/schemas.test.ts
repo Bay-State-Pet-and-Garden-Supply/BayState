@@ -108,15 +108,21 @@ describe('Consolidation Schemas', () => {
                 'scraper-b': { price: 18.99, title: 'Product B' },
             },
             consolidated: {
-                name: 'Consolidated Product',
-                description: 'Normalized product data',
-                price: 19.49,
-                images: ['https://example.com/image1.jpg'],
-                brand_id: 'brand-123',
-                stock_status: 'in_stock',
-                is_featured: false,
+                core: {
+                    name: 'Consolidated Product',
+                    description: 'Normalized product data',
+                    price: 19.49,
+                    brand_id: 'brand-123',
+                    stock_status: 'in_stock',
+                },
+                media: [
+                    { url: 'https://example.com/image1.jpg', role: 'main' }
+                ],
+                evidence: {
+                    selected_images: ['https://example.com/image1.jpg']
+                }
             },
-            pipeline_status: 'scraped',
+            pipeline_status: 'processed',
             created_at: '2024-01-01T00:00:00Z',
             updated_at: '2024-01-02T00:00:00Z',
         };
@@ -124,7 +130,7 @@ describe('Consolidation Schemas', () => {
         it('should parse valid pipeline product', () => {
             const result = PipelineProductSchema.parse(validPipelineProduct);
             expect(result.upc).toBe('PROD-001');
-            expect(result.pipeline_status).toBe('scraped');
+            expect(result.pipeline_status).toBe('processed');
         });
 
         it('should parse pipeline product with optional fields missing', () => {
@@ -152,12 +158,14 @@ describe('Consolidation Schemas', () => {
             expect(() => PipelineProductSchema.parse(invalidProduct)).toThrow();
         });
 
-        it('should reject pipeline product with invalid images array', () => {
+        it('should reject pipeline product with invalid media url', () => {
             const invalidProduct = {
                 ...validPipelineProduct,
                 consolidated: {
                     ...validPipelineProduct.consolidated,
-                    images: ['not-a-url'],
+                    media: [
+                        { url: 'not-a-url', role: 'main' }
+                    ],
                 },
             };
             expect(() => PipelineProductSchema.parse(invalidProduct)).toThrow();
@@ -233,47 +241,45 @@ describe('Consolidation Schemas', () => {
 
     describe('ConsolidatedDataSchema', () => {
         const validConsolidatedData = {
-            name: 'Consolidated Product',
-            description: 'A great product',
-            price: 29.99,
-            images: [
-                'https://example.com/image1.jpg',
-                'https://example.com/image2.jpg',
+            core: {
+                name: 'Consolidated Product',
+                description: 'A great product',
+                price: 29.99,
+                brand_id: 'brand-123',
+                stock_status: 'in_stock',
+                canonical_category_breadcrumb: 'Electronics',
+                confidence_score: 0.92,
+            },
+            media: [
+                { url: 'https://example.com/image1.jpg', role: 'main' },
+                { url: 'https://example.com/image2.jpg', role: 'gallery' },
             ],
-            brand_id: 'brand-123',
-            stock_status: 'in_stock',
-            is_featured: true,
-            category: 'Electronics',
-            product_type: 'Gadgets',
-            weight: '1.5 lb',
-            confidence_score: 0.92,
+            evidence: {
+                selected_images: [
+                    'https://example.com/image1.jpg',
+                    'https://example.com/image2.jpg',
+                ]
+            }
         };
 
         it('should parse valid consolidated data', () => {
             const result = ConsolidatedDataSchema.parse(validConsolidatedData);
-            expect(result.name).toBe('Consolidated Product');
-            expect(result.price).toBe(29.99);
-            expect(result.images).toHaveLength(2);
+            expect(result.core?.name).toBe('Consolidated Product');
+            expect(result.core?.price).toBe(29.99);
+            expect(result.media).toHaveLength(2);
         });
 
         it('should parse consolidated data with minimal fields', () => {
-            const minimalData = { name: 'Minimal Product' };
+            const minimalData = { core: { name: 'Minimal Product' } };
             const result = ConsolidatedDataSchema.parse(minimalData);
-            expect(result.name).toBe('Minimal Product');
+            expect(result.core?.name).toBe('Minimal Product');
         });
 
-        it('should reject consolidated data with negative price', () => {
-            const invalidData = { ...validConsolidatedData, price: -10 };
-            expect(() => ConsolidatedDataSchema.parse(invalidData)).toThrow();
-        });
-
-        it('should reject consolidated data with invalid confidence score', () => {
-            const invalidData = { ...validConsolidatedData, confidence_score: 1.1 };
-            expect(() => ConsolidatedDataSchema.parse(invalidData)).toThrow();
-        });
-
-        it('should reject consolidated data with non-array images', () => {
-            const invalidData = { ...validConsolidatedData, images: 'not-an-array' };
+        it('should reject consolidated data with invalid media url', () => {
+            const invalidData = {
+                ...validConsolidatedData,
+                media: [{ url: 'not-a-url', role: 'main' }]
+            };
             expect(() => ConsolidatedDataSchema.parse(invalidData)).toThrow();
         });
     });

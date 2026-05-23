@@ -30,7 +30,7 @@ function createMockQueryBuilder(
     state: DatabaseState,
     counters: Record<string, number>,
 ) {
-    let operation: 'select' | 'insert' | 'upsert' | 'delete' | null = null;
+    let operation: 'select' | 'insert' | 'upsert' | 'update' | 'delete' | null = null;
     let payload: Row | Row[] | null = null;
     let onConflict: string | undefined;
     const filters: Array<{ type: 'eq' | 'in'; field: string; value: unknown }> = [];
@@ -94,6 +94,14 @@ function createMockQueryBuilder(
             return { data: singleRow ? upsertedRows[0] ?? null : upsertedRows, error: null };
         }
 
+        if (operation === 'update') {
+            const rowsToUpdate = applyFilters(state[table]);
+            for (const row of rowsToUpdate) {
+                Object.assign(row, payload as Row);
+            }
+            return { data: singleRow ? rowsToUpdate[0] ?? null : rowsToUpdate, error: null };
+        }
+
         if (operation === 'delete') {
             const rowsToDelete = applyFilters(state[table]);
             state[table] = state[table].filter((row) => !rowsToDelete.includes(row));
@@ -112,6 +120,7 @@ function createMockQueryBuilder(
         select: (_columns?: string) => typeof builder;
         insert: (value: Row | Row[]) => typeof builder;
         upsert: (value: Row | Row[], options?: { onConflict?: string }) => typeof builder;
+        update: (value: Row) => typeof builder;
         delete: () => typeof builder;
         eq: (field: string, value: unknown) => typeof builder;
         in: (field: string, value: unknown[]) => typeof builder;
@@ -137,6 +146,12 @@ function createMockQueryBuilder(
         operation = 'upsert';
         payload = value;
         onConflict = options?.onConflict;
+        return builder;
+    };
+
+    builder.update = (value: Row) => {
+        operation = 'update';
+        payload = value;
         return builder;
     };
 
@@ -245,8 +260,8 @@ describe('importShopSiteProducts pet-type canonical mapping', () => {
                 { id: 'pet-type-dog', name: 'Dog' },
                 { id: 'pet-type-cat', name: 'Cat' },
                 { id: 'pet-type-horse', name: 'Horse' },
-                { id: 'pet-type-poultry', name: 'Chicken & Poultry' },
-                { id: 'pet-type-livestock', name: 'Farm & Livestock' },
+                { id: 'pet-type-poultry', name: 'Bird' },
+                { id: 'pet-type-livestock', name: 'Livestock' },
             ],
         });
 
@@ -272,8 +287,8 @@ describe('importShopSiteProducts pet-type canonical mapping', () => {
         const { supabase, state } = createMockSupabase({
             pet_types: [
                 { id: 'pet-type-horse', name: 'Horse' },
-                { id: 'pet-type-poultry', name: 'Chicken & Poultry' },
-                { id: 'pet-type-livestock', name: 'Farm & Livestock' },
+                { id: 'pet-type-poultry', name: 'Bird' },
+                { id: 'pet-type-livestock', name: 'Livestock' },
             ],
         });
 
