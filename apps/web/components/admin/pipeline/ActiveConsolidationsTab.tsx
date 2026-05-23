@@ -8,14 +8,11 @@ import {
   History,
   Settings,
   LifeBuoy,
-  Search,
-  CheckCircle2,
   Wifi,
   WifiOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import { ConsolidationJobCard } from "@/components/admin/pipeline/consolidation";
@@ -26,8 +23,6 @@ import type {
 } from "@/components/admin/pipeline/consolidation";
 import type { PipelineRunSummary } from "@/lib/pipeline/run-types";
 import {
-  StatusBadge as PipelineStatusBadge,
-  getProviderLabel,
   isDirectChatMode,
 } from "@/components/admin/pipeline/consolidation/shared";
 import { useDocumentVisible } from "@/hooks/useDocumentVisible";
@@ -62,7 +57,6 @@ export function ActiveConsolidationsTab({
 }: ActiveConsolidationsTabProps) {
   const isDocumentVisible = useDocumentVisible();
   const [jobs, setJobs] = useState<ConsolidationJob[]>([]);
-  const [searchRuns, setSearchRuns] = useState<PipelineRunSummary[]>([]);
   const [historyJobs, setHistoryJobs] = useState<ConsolidationHistoryJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +87,7 @@ export function ActiveConsolidationsTab({
       // This is faster than trying to merge state manually for complex job objects
       void fetchJobs();
     }
-  }, []);
+  }, [fetchJobs]);
 
   const handleRealtimeError = useCallback((error: Error) => {
     console.warn('[Consolidation] Realtime error, falling back to polling:', error.message);
@@ -138,18 +132,14 @@ export function ActiveConsolidationsTab({
       const data = await response.json();
       const allRuns: PipelineRunSummary[] = data.runs || [];
 
-      // Separate consolidation runs vs search/scrape runs
+      // Separate consolidation runs
       const consolidationRuns = allRuns.filter(
         (r) => r.kind === "consolidation",
-      );
-      const searchScrapeRuns = allRuns.filter(
-        (r) => r.kind === "enrichment",
       );
 
       // Map consolidation runs to the existing ConsolidationJob type
       const activeJobs = consolidationRuns.map(pipelineRunToConsolidationJob);
       setJobs(activeJobs);
-      setSearchRuns(searchScrapeRuns);
 
       // If no active jobs, show history automatically
       if (activeJobs.length === 0) {
@@ -467,65 +457,6 @@ export function ActiveConsolidationsTab({
           ? " Direct-processing jobs auto-apply when complete. Batch jobs (Gemini) require manual apply."
           : " This tab shows progress, lets you apply completed results, cancel running jobs, and recover stranded products."}
       </div>
-
-      {/* Search Activity — compact summary */}
-      {searchRuns.length > 0 && (
-        <div className="rounded-none border border-border bg-muted/10">
-          <div className="flex items-center gap-2 border-b border-border px-4 py-2">
-            <Search className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-[10px] font-semibold tracking-widest text-muted-foreground">
-              SEARCH &amp; SCRAPE ACTIVITY
-            </span>
-            <span className="ml-auto text-[10px] font-semibold text-muted-foreground">
-              {searchRuns.length} active run{searchRuns.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-          <div className="divide-y divide-border">
-            {searchRuns.map((run) => {
-              const providerLabel = getProviderLabel(run.provider ?? null);
-              return (
-                <div
-                  key={run.id}
-                  className="flex items-center justify-between px-4 py-2"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <PipelineStatusBadge status={run.status} />
-                    <span className="text-xs font-semibold text-foreground truncate">
-                      {run.label}
-                    </span>
-                    {providerLabel && (
-                      <Badge
-                        variant="secondary"
-                        className="rounded-none border border-border bg-muted font-semibold text-[9px] h-4 tracking-widest"
-                      >
-                        {providerLabel}
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 text-[10px] font-semibold text-muted-foreground shrink-0">
-                    <span>
-                      {run.completedItems}/{run.totalItems}
-                    </span>
-                    {run.failedItems > 0 && (
-                      <span className="text-destructive">
-                        {run.failedItems} failed
-                      </span>
-                    )}
-                    {run.status === "running" && (
-                      <span className="text-brand-burgundy">
-                        {run.progressPercent}%
-                      </span>
-                    )}
-                    {run.status === "completed" && (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Active Jobs */}
       {jobs.length === 0 ? (
