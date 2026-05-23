@@ -78,7 +78,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
                 images = []
                 for img in soup.select('img[src]'):
                     src = img.get("src", "")
-                    if src and ("bigcommerce" in src or "products/" in src or "cdn11.bigcommerce.com" in src):
+                    if src and ("bigcommerce" in src or "products/" in src or "cdn" in src):
                         if src.startswith("//"):
                             src = "https:" + src
                         elif src.startswith("/"):
@@ -165,7 +165,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
          # Find product gallery images
         gallery = soup.select_one("[class*='product-gallery']")
         if gallery:
-            for img in gallery.select("img[src*='products/']"):
+            for img in gallery.select("img[src*='products/'], img[src*='bigcommerce.com']"):
                 src = img.get("src") or img.get("data-src") or ""
                 if src:
                     if src.startswith("//"):
@@ -177,7 +177,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
             # Fallback for redesigned PDP page: scan all images on page
             for img in soup.select("img[src]"):
                 src = img.get("src", "")
-                if src and ("bigcommerce" in src or "products/" in src or "cdn11.bigcommerce.com" in src):
+                if src and ("bigcommerce" in src or "products/" in src or "cdn" in src):
                     if src.startswith("//"):
                         src = "https:" + src
                     elif src.startswith("/"):
@@ -188,7 +188,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
             product["image_urls"] = images
             matched.append("image_urls")
 
-        # --- Detail fields (dt+dd pairs) ---
+        # --- Detail fields (dt+dd pairs or flexible text matching) ---
         detail_map = {
             "BCI Item Number": "bci_item_number",
             "Manufacturer #": "manufacturer_number",
@@ -197,7 +197,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
             "Unit of Measure": "unit_of_measure",
         }
         for dt in soup.select("dt"):
-            dt_text = dt.get_text(strip=True)
+            dt_text = dt.get_text(strip=True).rstrip(':')
             if dt_text in detail_map:
                 dd = dt.find_next("dd")
                 if dd:
@@ -209,10 +209,10 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
         if not product.get("upc") or not product.get("bci_item_number"):
             card_text = soup.get_text(" ", strip=True)
             detail_patterns = {
-                r'(?:BCI#|BCI\s*Number|Item\s*#)\s*:\s*(\S+)': 'bci_item_number',
-                r'(?:Manufacturer\s*#|MFG\s*#|Model\s*#)\s*:\s*(\S+)': 'manufacturer_number',
-                r'(?:UPC\s*Code|UPC)\s*:\s*(\S+)': 'upc',
-                r'(?:Case\s*Pack|Pack)\s*:\s*(\S+)': 'case_pack',
+                r'(?:BCI#|BCI\s*Number|Item\s*#)\s*:?\s*(\S+)': 'bci_item_number',
+                r'(?:Manufacturer\s*#|MFG\s*#|Model\s*#)\s*:?\s*(\S+)': 'manufacturer_number',
+                r'(?:UPC\s*Code|UPC)\s*:?\s*(\S+)': 'upc',
+                r'(?:Case\s*Pack|Pack)\s*:?\s*(\S+)': 'case_pack',
             }
             for pattern, field in detail_patterns.items():
                 match = re.search(pattern, card_text, re.IGNORECASE)
@@ -223,8 +223,8 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
                         if field not in matched:
                             matched.append(field)
 
-        # --- Weight ---
-        weight_elem = soup.find("li", string=re.compile(r"Weight:", re.I))
+        # --- Weight & Specifications ---
+        weight_elem = soup.find(["li", "div", "p"], string=re.compile(r"Weight:?", re.I))
         if weight_elem:
             weight = weight_elem.get_text(strip=True)
             product["weight"] = weight
@@ -309,56 +309,61 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
         # Clean UPC for matching
         sku_clean = re.sub(r'[^a-zA-Z0-9]', '', upc.lower())
 
-        for a in soup.select('a[href]'):
-            href = a.get('href', '')
-            text = a.get_text(strip=True)
-            aria_label = a.get('aria-label', '').strip()
-            title_candidate = aria_label if aria_label else text
-            
-            # Skip non-product links
-            href_lower = href.lower()
-            if any(x in href_lower for x in ['/cart', '/checkout', '/account', '/login', '/register', '/wishlist', '/search', '/contact', '/about', '/blog', '/faq']):
-                continue
-            if href in ['', '#', '/']:
-                continue
-            if href.startswith(('javascript:', 'mailto:', 'tel:')):
-                continue
+        # Prioritize h3 a or a.group (common in BigCommerce headless)
+        selectors = ['h3 a[href]', 'a.group.relative.block', 'a[href]']
+        for selector in selectors:
+            for a in soup.select(selector):
+                href = a.get('href', '')
+                text = a.get_text(strip=True)
+                aria_label = a.get('aria-label', '').strip()
+                title_candidate = aria_label if aria_label else text
+                
+                # Skip non-product links
+                href_lower = href.lower()
+                if any(x in href_lower for x in ['/cart', '/checkout', '/account', '/login', '/register', '/wishlist', '/search', '/contact', '/about', '/blog', '/faq']):
+                    continue
+                if href in ['', '#', '/']:
+                    continue
+                if href.startswith(('javascript:', 'mailto:', 'tel:')):
+                    continue
 
-            # Find card container (ancestor that is <article> or has class 'group', 'card', etc.)
-            card_container = None
-            parent = a.parent
-            while parent and parent.name not in ('body', 'html', 'main', 'form'):
-                if parent.name == 'article' or any(c in parent.get('class', []) for c in ('group', 'card', 'product-card')):
-                    card_container = parent
+                # Find card container (ancestor that is <article> or has class 'group', 'card', etc.)
+                card_container = None
+                parent = a.parent
+                while parent and parent.name not in ('body', 'html', 'main', 'form'):
+                    if parent.name == 'article' or any(c in parent.get('class', []) for c in ('group', 'card', 'product-card')):
+                        card_container = parent
+                        break
+                    parent = parent.parent
+
+                # Fall back to a.parent if no card container found
+                if not card_container:
+                    card_container = a.parent or a
+
+                container_text = card_container.get_text(" ", strip=True)
+                container_text_lower = container_text.lower()
+                
+                # Check direct substring match
+                sku_in_text = upc.lower() in container_text_lower
+                sku_in_href = upc.lower() in href_lower
+                
+                # Check normalized match
+                norm_container_text = re.sub(r'[^a-zA-Z0-9]', '', container_text_lower)
+                norm_href = re.sub(r'[^a-zA-Z0-9]', '', href_lower)
+                
+                norm_sku_in_text = sku_clean and (sku_clean in norm_container_text)
+                norm_sku_in_href = sku_clean and (sku_clean in norm_href)
+
+                if sku_in_text or sku_in_href or norm_sku_in_text or norm_sku_in_href:
+                    # Let's ensure the candidate has valid name text
+                    if len(title_candidate) > 3 and "search results" not in title_candidate.lower() and title_candidate.lower() not in {"view product", "view details", "learn more", "details", "add to cart", "buy now", "quick view"}:
+                        product_link = a
+                        product_container = card_container
+                        found_card = True
+                        break
+                
+                if found_card:
                     break
-                parent = parent.parent
-
-            # Fall back to a.parent if no card container found
-            if not card_container:
-                card_container = a.parent or a
-
-            container_text = card_container.get_text(" ", strip=True)
-            container_text_lower = container_text.lower()
-            
-            # Check direct substring match
-            sku_in_text = upc.lower() in container_text_lower
-            sku_in_href = upc.lower() in href_lower
-            
-            # Check normalized match
-            norm_container_text = re.sub(r'[^a-zA-Z0-9]', '', container_text_lower)
-            norm_href = re.sub(r'[^a-zA-Z0-9]', '', href_lower)
-            
-            norm_sku_in_text = sku_clean and (sku_clean in norm_container_text)
-            norm_sku_in_href = sku_clean and (sku_clean in norm_href)
-
-            if sku_in_text or sku_in_href or norm_sku_in_text or norm_sku_in_href:
-                # Let's ensure the candidate has valid name text
-                if len(title_candidate) > 3 and "search results" not in title_candidate.lower() and title_candidate.lower() not in {"view product", "view details", "learn more", "details", "add to cart", "buy now", "quick view"}:
-                    product_link = a
-                    product_container = card_container
-                    found_card = True
-                    break
-            
             if found_card:
                 break
 
@@ -395,12 +400,12 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
         # Extract detail fields from text content using flexible regex patterns
         # Matching different UPC/BCI# formats and other details (e.g., UPC Code:, BCI#:)
         detail_patterns = {
-            r'(?:BCI#|BCI\s*Number|Item\s*#)\s*:\s*(\S+)': 'bci_item_number',
-            r'(?:Manufacturer\s*#|MFG\s*#|Model\s*#)\s*:\s*(\S+)': 'manufacturer_number',
-            r'(?:UPC\s*Code|UPC)\s*:\s*(\S+)': 'upc',
-            r'(?:Size)\s*:\s*(.+?)(?=\s*(?:BCI#|BCI\s*Number|Item\s*#|Manufacturer\s*#|MFG\s*#|Model\s*#|UPC\s*Code|UPC|Type|Case\s*Pack|Pack)\s*:|$)': 'size',
-            r'(?:Type)\s*:\s*(\S+)': 'type',
-            r'(?:Case\s*Pack|Pack)\s*:\s*(\S+)': 'case_pack',
+            r'(?:BCI#|BCI\s*Number|Item\s*#)\s*:?\s*(\S+)': 'bci_item_number',
+            r'(?:Manufacturer\s*#|MFG\s*#|Model\s*#)\s*:?\s*(\S+)': 'manufacturer_number',
+            r'(?:UPC\s*Code|UPC)\s*:?\s*(\S+)': 'upc',
+            r'(?:Size)\s*:?\s*(.+?)(?=\s*(?:BCI#|BCI\s*Number|Item\s*#|Manufacturer\s*#|MFG\s*#|Model\s*#|UPC\s*Code|UPC|Type|Case\s*Pack|Pack)\s*:?|$)': 'size',
+            r'(?:Type)\s*:?\s*(\S+)': 'type',
+            r'(?:Case\s*Pack|Pack)\s*:?\s*(\S+)': 'case_pack',
         }
         for pattern, field in detail_patterns.items():
             match = re.search(pattern, card_text, re.IGNORECASE)
