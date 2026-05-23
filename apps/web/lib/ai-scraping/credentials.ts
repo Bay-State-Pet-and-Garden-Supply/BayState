@@ -1006,22 +1006,38 @@ export async function setActiveAIProviderConfig(id: string, userId?: string): Pr
  */
 export async function setActiveConsolidationAIProviderConfig(id: string, userId?: string): Promise<void> {
   const admin = getSupabaseAdmin();
+  const now = new Date().toISOString();
 
-  // First deactivate all consolidation profiles
-  const { error: deactivateError } = await admin
+  // Find any currently-active consolidation profile (different from target)
+  const { data: currentActive, error: fetchError } = await admin
     .from('ai_provider_configs')
-    .update({ is_active_for_consolidation: false, updated_at: new Date().toISOString(), updated_by: userId || null })
-    .neq('id', id);
+    .select('id')
+    .eq('is_active_for_consolidation', true)
+    .neq('id', id)
+    .maybeSingle();
 
-  if (deactivateError) {
-    console.error('[Scraper API] Failed to deactivate other consolidation profiles:', deactivateError);
-    throw new Error('Failed to change active consolidation configuration');
+  if (fetchError) {
+    console.error('[Scraper API] Failed to check current consolidation profile:', fetchError);
+    throw new Error('Failed to check active consolidation configuration');
   }
 
-  // Then activate the specified config for consolidation
+  // If another profile is active for consolidation, deactivate it first
+  if (currentActive) {
+    const { error: deactivateError } = await admin
+      .from('ai_provider_configs')
+      .update({ is_active_for_consolidation: false, updated_at: now, updated_by: userId || null })
+      .eq('id', currentActive.id);
+
+    if (deactivateError) {
+      console.error('[Scraper API] Failed to deactivate current consolidation profile:', deactivateError);
+      throw new Error('Failed to deactivate current consolidation configuration');
+    }
+  }
+
+  // Activate the target for consolidation
   const { error: activateError } = await admin
     .from('ai_provider_configs')
-    .update({ is_active_for_consolidation: true, updated_at: new Date().toISOString(), updated_by: userId || null })
+    .update({ is_active_for_consolidation: true, updated_at: now, updated_by: userId || null })
     .eq('id', id);
 
   if (activateError) {
