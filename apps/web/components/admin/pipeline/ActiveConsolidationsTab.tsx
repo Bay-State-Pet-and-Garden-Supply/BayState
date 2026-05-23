@@ -78,30 +78,6 @@ export function ActiveConsolidationsTab({
   );
   const hasDirectChatJobs = jobs.some((j) => isDirectChatMode(j.execution_mode));
 
-  const handleRealtimeMessage = useCallback((payload: unknown) => {
-    const update = payload as RealtimeJobUpdate;
-    if (!update?.type) return;
-
-    if (update.type === 'job_update' && update.job_id && update.status) {
-      // Refresh jobs list to get latest state
-      // This is faster than trying to merge state manually for complex job objects
-      void fetchJobs();
-    }
-  }, [fetchJobs]);
-
-  const handleRealtimeError = useCallback((error: Error) => {
-    console.warn('[Consolidation] Realtime error, falling back to polling:', error.message);
-  }, []);
-
-  const { connectionState: realtimeState } = useRealtimeChannel({
-    channelName: 'consolidation-updates',
-    onMessage: handleRealtimeMessage,
-    onError: handleRealtimeError,
-    autoConnect: hasActiveJobs,
-  });
-
-  const isRealtimeConnected = realtimeState === 'connected';
-
   // Adapter: PipelineRunSummary → ConsolidationJob
   function pipelineRunToConsolidationJob(run: PipelineRunSummary): ConsolidationJob {
     return {
@@ -153,6 +129,30 @@ export function ActiveConsolidationsTab({
       setLoading(false);
     }
   }, []);
+
+  const handleRealtimeMessage = useCallback((payload: unknown) => {
+    const update = payload as RealtimeJobUpdate;
+    if (!update?.type) return;
+
+    if (update.type === 'job_update' && update.job_id && update.status) {
+      // Refresh jobs list to get latest state
+      // This is faster than trying to merge state manually for complex job objects
+      void fetchJobs();
+    }
+  }, [fetchJobs]);
+
+  const handleRealtimeError = useCallback((error: Error) => {
+    console.warn('[Consolidation] Realtime error, falling back to polling:', error.message);
+  }, []);
+
+  const { connectionState: realtimeState } = useRealtimeChannel({
+    channelName: 'consolidation-updates',
+    onMessage: handleRealtimeMessage,
+    onError: handleRealtimeError,
+    autoConnect: hasActiveJobs,
+  });
+
+  const isRealtimeConnected = realtimeState === 'connected';
 
   // Fetch batch history
   const fetchHistory = useCallback(async () => {
