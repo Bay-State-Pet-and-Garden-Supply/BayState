@@ -42,7 +42,6 @@ Operational data that should not be merged into canonical storefront rows.
 |---|---|
 | `products_ingestion` | Raw/imported/consolidated pipeline record per UPC |
 | `pipeline_audit_log` | Pipeline status change audit trail |
-| `pipeline_retry_queue` | Retry orchestration |
 | `enrichment_jobs`, `enrichment_attempts`, `enrichment_targets` | Enrichment orchestration |
 | `consolidation_review_requests` | Consolidation review workflow |
 | `cohort_batches`, `cohort_members` | Pipeline grouping / batching |
@@ -93,7 +92,6 @@ Legacy and integration-specific records.
 ### Keep pipeline
 - `products_ingestion`
 - `pipeline_audit_log`
-- `pipeline_retry_queue`
 - `enrichment_jobs`
 - `enrichment_attempts`
 - `enrichment_targets`
@@ -114,21 +112,16 @@ Legacy and integration-specific records.
 
 ### Review / likely merge
 - `app_settings` → prefer `site_settings`
-- `inventory_items`
 - `price_history`
 - `recently_viewed`
 - `related_products`
 - `pages`
 
 ### Drop candidates
-- `product_answers`
 - `product_questions`
 - `product_attributes`
 - `product_tags`
-- `tags`
-- `product_types`
 - `product_scraped_sites`
-- `review_helpful_votes`
 - `service_costs`
 - `subscription_items`
 - `subscription_suggestions`

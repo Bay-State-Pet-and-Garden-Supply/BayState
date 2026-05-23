@@ -90,6 +90,7 @@ export type Database = {
           encrypted_key: string
           id: string
           is_active: boolean
+          is_active_for_consolidation: boolean
           iv: string
           key_version: number
           name: string
@@ -105,6 +106,7 @@ export type Database = {
           encrypted_key: string
           id?: string
           is_active?: boolean
+          is_active_for_consolidation?: boolean
           iv: string
           key_version?: number
           name: string
@@ -120,6 +122,7 @@ export type Database = {
           encrypted_key?: string
           id?: string
           is_active?: boolean
+          is_active_for_consolidation?: boolean
           iv?: string
           key_version?: number
           name?: string
@@ -1540,89 +1543,6 @@ export type Database = {
           },
         ]
       }
-      inventory_items: {
-        Row: {
-          created_at: string | null
-          id: string
-          last_count_at: string | null
-          last_sync_at: string | null
-          location: string
-          metadata: Json | null
-          product_id: string | null
-          quantity_available: number | null
-          quantity_on_hand: number
-          quantity_reserved: number
-          upc: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          last_count_at?: string | null
-          last_sync_at?: string | null
-          location?: string
-          metadata?: Json | null
-          product_id?: string | null
-          quantity_available?: number | null
-          quantity_on_hand?: number
-          quantity_reserved?: number
-          upc: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          last_count_at?: string | null
-          last_sync_at?: string | null
-          location?: string
-          metadata?: Json | null
-          product_id?: string | null
-          quantity_available?: number | null
-          quantity_on_hand?: number
-          quantity_reserved?: number
-          upc?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "inventory_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      inventory_reconciliation: {
-        Row: {
-          completed_at: string | null
-          id: string
-          metadata: Json | null
-          mismatch_count: number | null
-          started_at: string
-          status: string
-          total_items: number | null
-        }
-        Insert: {
-          completed_at?: string | null
-          id?: string
-          metadata?: Json | null
-          mismatch_count?: number | null
-          started_at?: string
-          status?: string
-          total_items?: number | null
-        }
-        Update: {
-          completed_at?: string | null
-          id?: string
-          metadata?: Json | null
-          mismatch_count?: number | null
-          started_at?: string
-          status?: string
-          total_items?: number | null
-        }
-        Relationships: []
-      }
       inventory_reconciliation_items: {
         Row: {
           created_at: string | null
@@ -1678,13 +1598,6 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "inventory_reconciliation_items_reconciliation_id_fkey"
-            columns: ["reconciliation_id"]
-            isOneToOne: false
-            referencedRelation: "inventory_reconciliation"
             referencedColumns: ["id"]
           },
         ]
@@ -2349,57 +2262,6 @@ export type Database = {
         }
         Relationships: []
       }
-      pipeline_retry_queue: {
-        Row: {
-          attempt_count: number
-          created_at: string
-          error_log: string[] | null
-          id: string
-          job_type: string
-          last_attempt_at: string | null
-          max_attempts: number
-          next_attempt_at: string | null
-          original_job_id: string
-          priority: number
-          requested_by: string | null
-          retry_reason: string
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          attempt_count?: number
-          created_at?: string
-          error_log?: string[] | null
-          id?: string
-          job_type: string
-          last_attempt_at?: string | null
-          max_attempts?: number
-          next_attempt_at?: string | null
-          original_job_id: string
-          priority?: number
-          requested_by?: string | null
-          retry_reason: string
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          attempt_count?: number
-          created_at?: string
-          error_log?: string[] | null
-          id?: string
-          job_type?: string
-          last_attempt_at?: string | null
-          max_attempts?: number
-          next_attempt_at?: string | null
-          original_job_id?: string
-          priority?: number
-          requested_by?: string | null
-          retry_reason?: string
-          status?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       preorder_batches: {
         Row: {
           created_at: string | null
@@ -2509,51 +2371,6 @@ export type Database = {
             columns: ["variant_id"]
             isOneToOne: false
             referencedRelation: "product_variants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      product_answers: {
-        Row: {
-          answer: string
-          created_at: string | null
-          helpful_count: number | null
-          id: string
-          is_official: boolean | null
-          question_id: string
-          user_id: string | null
-        }
-        Insert: {
-          answer: string
-          created_at?: string | null
-          helpful_count?: number | null
-          id?: string
-          is_official?: boolean | null
-          question_id: string
-          user_id?: string | null
-        }
-        Update: {
-          answer?: string
-          created_at?: string | null
-          helpful_count?: number | null
-          id?: string
-          is_official?: boolean | null
-          question_id?: string
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_answers_question_id_fkey"
-            columns: ["question_id"]
-            isOneToOne: false
-            referencedRelation: "product_questions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_answers_user_profile_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -3169,35 +2986,7 @@ export type Database = {
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "product_tags_tag_id_fkey"
-            columns: ["tag_id"]
-            isOneToOne: false
-            referencedRelation: "tags"
-            referencedColumns: ["id"]
-          },
         ]
-      }
-      product_types: {
-        Row: {
-          created_at: string | null
-          id: string
-          name: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          name: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          name?: string
-          updated_at?: string | null
-        }
-        Relationships: []
       }
       product_variants: {
         Row: {
@@ -3702,35 +3491,6 @@ export type Database = {
             columns: ["related_product_id"]
             isOneToOne: false
             referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      review_helpful_votes: {
-        Row: {
-          created_at: string | null
-          is_helpful: boolean
-          review_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          is_helpful: boolean
-          review_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          is_helpful?: boolean
-          review_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "review_helpful_votes_review_id_fkey"
-            columns: ["review_id"]
-            isOneToOne: false
-            referencedRelation: "product_reviews"
             referencedColumns: ["id"]
           },
         ]
@@ -4258,39 +4018,6 @@ export type Database = {
         }
         Relationships: []
       }
-      shopsite_credentials: {
-        Row: {
-          api_url: string
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-          name: string
-          password_hash: string
-          updated_at: string | null
-          username: string
-        }
-        Insert: {
-          api_url: string
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          name: string
-          password_hash: string
-          updated_at?: string | null
-          username: string
-        }
-        Update: {
-          api_url?: string
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          password_hash?: string
-          updated_at?: string | null
-          username?: string
-        }
-        Relationships: []
-      }
       shopsite_product_sync: {
         Row: {
           created_at: string
@@ -4399,77 +4126,6 @@ export type Database = {
           received_at?: string
           status?: string
           stripe_object_id?: string | null
-        }
-        Relationships: []
-      }
-      subscriptions: {
-        Row: {
-          created_at: string | null
-          frequency: string
-          id: string
-          last_order_date: string | null
-          name: string
-          next_order_date: string
-          notes: string | null
-          shipping_address_id: string | null
-          status: string
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          frequency: string
-          id?: string
-          last_order_date?: string | null
-          name?: string
-          next_order_date: string
-          notes?: string | null
-          shipping_address_id?: string | null
-          status?: string
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          frequency?: string
-          id?: string
-          last_order_date?: string | null
-          name?: string
-          next_order_date?: string
-          notes?: string | null
-          shipping_address_id?: string | null
-          status?: string
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "subscriptions_shipping_address_id_fkey"
-            columns: ["shipping_address_id"]
-            isOneToOne: false
-            referencedRelation: "addresses"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      tags: {
-        Row: {
-          created_at: string | null
-          id: string
-          name: string
-          slug: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          name: string
-          slug: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          name?: string
-          slug?: string
         }
         Relationships: []
       }
