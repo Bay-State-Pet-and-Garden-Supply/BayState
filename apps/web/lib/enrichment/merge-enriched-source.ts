@@ -261,11 +261,23 @@ function shouldPromoteIncomingSnapshot(
     options.incomingStatus === "success"
     || (options.incomingStatus === "partial" && incomingSnapshot.confidence.overall >= 0.6);
 
-  if (!existingActiveSnapshot) {
-    return true;
+  if (!incomingIsAccepted) {
+    return false;
   }
 
-  return incomingIsAccepted && isMeaningfulSnapshot(incomingSnapshot);
+  if (!existingActiveSnapshot) {
+    return isMeaningfulSnapshot(incomingSnapshot);
+  }
+
+  const existingHasName = !!(toOptionalString(existingActiveSnapshot.name) ?? toOptionalString(existingActiveSnapshot.title));
+  const incomingHasName = !!(toOptionalString(incomingSnapshot.name) ?? toOptionalString(incomingSnapshot.title));
+
+  // Don't downgrade from having a name to not having a name
+  if (existingHasName && !incomingHasName) {
+    return false;
+  }
+
+  return isMeaningfulSnapshot(incomingSnapshot);
 }
 
 function pickActiveSourceSlug(

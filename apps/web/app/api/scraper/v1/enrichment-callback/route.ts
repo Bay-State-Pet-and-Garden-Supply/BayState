@@ -127,11 +127,14 @@ function determineNextStatus(
   attempt: AttemptLike,
   requestedMode: RequestedExtractionMode,
 ): { status: string; retry: boolean } {
-  if (result.status === "success") {
+  const hasName = typeof result.product?.name === "string" && result.product.name.trim().length > 0;
+  const isHighConfidence = result.confidence.overall >= 0.5;
+
+  if (result.status === "success" && hasName && isHighConfidence) {
     return { status: "processed", retry: false };
   }
 
-  if (result.status === "partial" && result.confidence.overall >= 0.6) {
+  if (result.status === "partial" && result.confidence.overall >= 0.6 && hasName) {
     return { status: "processed", retry: false };
   }
 
