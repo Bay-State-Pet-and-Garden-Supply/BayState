@@ -31,11 +31,9 @@ export async function POST(request: NextRequest) {
       config,
       selectedDistributorSlug,
       extractionMode: rawExtractionMode,
-      forceRefresh: rawForceRefresh,
     } = body;
 
     const extractionMode = rawExtractionMode ?? "mixed";
-    const forceRefresh = rawForceRefresh ?? false;
 
     if (!Array.isArray(upcs) || upcs.length === 0) {
       return NextResponse.json(
@@ -99,7 +97,6 @@ export async function POST(request: NextRequest) {
 
     let sourcePlansByUpc: Record<string, unknown> | undefined;
     let skippedUpcs: string[] = [];
-    let freshSkippedUpcs: string[] = [];
     let brandedUpcs: string[] = [...validUpcs];
 
     if (useApprovedSources) {
@@ -109,7 +106,6 @@ export async function POST(request: NextRequest) {
         {
           selectedDistributorSlug,
           extractionMode,
-          forceRefresh,
         },
       );
 
@@ -134,9 +130,6 @@ export async function POST(request: NextRequest) {
           }
         } else {
           skippedUpcs.push(upc);
-          if (result.code === "all_sources_fresh") {
-            freshSkippedUpcs.push(upc);
-          }
         }
       }
 
@@ -144,17 +137,6 @@ export async function POST(request: NextRequest) {
 
         // Branded UPCs length check moved down to after source plan building
         if (brandedUpcs.length === 0) {
-          if (freshSkippedUpcs.length > 0 && freshSkippedUpcs.length === skippedUpcs.length) {
-            return NextResponse.json({
-              success: true,
-              jobId: null,
-              upcCount: 0,
-              attemptCount: 0,
-              skipped_upcs: skippedUpcs,
-              message: "All requested approved sources are already fresh. Use Force refresh to re-scrape.",
-            });
-          }
-
           const errorMessages = new Set<string>();
         for (const [upc, result] of Object.entries(plans)) {
           if (!result.ok && result.error) {
@@ -284,7 +266,6 @@ export async function POST(request: NextRequest) {
       jobConfig.source_plans_by_upc = sourcePlansByUpc;
       jobConfig.source_type = "approved_source_extraction";
       jobConfig.extraction_mode = extractionMode;
-      jobConfig.force_refresh = forceRefresh;
     }
 
     // Resolve the active AI runtime once at enqueue time so the job model
@@ -365,11 +346,6 @@ export async function POST(request: NextRequest) {
       upcCount: brandedUpcs.length,
       attemptCount: attempts.length,
       ...(skippedUpcs.length > 0 ? { skipped_upcs: skippedUpcs } : {}),
-      ...(freshSkippedUpcs.length > 0
-        ? {
-            message: `Skipped ${freshSkippedUpcs.length} UPC${freshSkippedUpcs.length === 1 ? "" : "s"} because the requested approved sources are already fresh.`,
-          }
-        : {}),
     });
   } catch (err) {
     console.error("Error creating enrichment job:", err);

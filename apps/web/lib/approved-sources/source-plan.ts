@@ -18,7 +18,6 @@ import {
   type SourcePlanResult,
   DISALLOWED_DOMAINS,
 } from "./types";
-import { getApprovedSourceSnapshot } from "@/lib/enrichment/merge-enriched-source";
 import { normalizeDistributorSlug, findDistributorInCatalog, buildDistributorPlanEntry } from "./distributor-catalog";
 
 // =============================================================================
@@ -151,80 +150,6 @@ export interface BuildSourcePlanOptions {
    * Extraction mode: mixed (default), distributor_only, or ai_only.
    */
   extractionMode?: ExtractionMode;
-  /**
-   * If true, skip deduplication and re-scrape all sources regardless of
-   * existing enrichment data.
-   */
-  forceRefresh?: boolean;
-}
-
-// =============================================================================
-// Dedup helpers
-// =============================================================================
-
-/**
- * Check whether a given source for a UPC already has a recent successful
- * enrichment result stored in products_ingestion.sources.enriched.
- *
- * Returns true only if ALL of the following hold:
- *   - sources.enriched.extracted_at exists and is within 48h
- *   - The enriched result has non-empty name/title
- *   - The enriched result has non-empty images/image_urls array
- *   - sources.enriched.source_results[] contains an entry with matching
- *     sourceSlug and confidence >= 0.6
- */
-function isSourceRecentlySuccessful(
-  upc: string,
-  sourceSlug: string,
-  existingSourcesByUpc: Map<string, any>,
-): boolean {
-  const sources = existingSourcesByUpc.get(upc);
-  if (!sources) return false;
-
-  const enriched = sources.enriched;
-  if (!enriched || typeof enriched !== "object") return false;
-
-  const approvedSourceSnapshot = getApprovedSourceSnapshot(enriched, sourceSlug);
-  const snapshot = (approvedSourceSnapshot ?? enriched) as Record<string, unknown>;
-
-  // Check extracted_at exists and is within 48 hours
-  const extractedAt = snapshot.extracted_at;
-  if (!extractedAt || typeof extractedAt !== "string") return false;
-
-  const extractedTime = new Date(extractedAt).getTime();
-  if (isNaN(extractedTime)) return false;
-
-  const fortyEightHoursAgo = Date.now() - 48 * 60 * 60 * 1000;
-  if (extractedTime < fortyEightHoursAgo) return false;
-
-  // Check non-empty name
-  const name: unknown = snapshot.name ?? snapshot.title;
-  if (!name || (typeof name === "string" && name.trim().length === 0)) return false;
-
-  // Check non-empty images / image_urls array
-  const images: unknown = snapshot.images ?? snapshot.image_urls;
-  if (!Array.isArray(images) || images.length === 0) return false;
-
-  // Check source_results for matching sourceSlug with confidence >= 0.6
-  const sourceResultsCandidate = Array.isArray(snapshot.source_results)
-    ? snapshot.source_results
-    : Array.isArray((enriched as Record<string, unknown>).source_results)
-      ? (enriched as Record<string, unknown>).source_results
-      : null;
-  if (!Array.isArray(sourceResultsCandidate)) return false;
-
-  const canonicalSourceSlug = normalizeDistributorSlug(sourceSlug);
-  const matchingResult = sourceResultsCandidate.find(
-    (r: any) =>
-      r &&
-      typeof r === "object" &&
-      normalizeDistributorSlug(String(r.sourceSlug ?? "")) === canonicalSourceSlug &&
-      typeof r.confidence === "number" &&
-      r.confidence >= 0.6,
-  );
-  if (!matchingResult) return false;
-
-  return true;
 }
 
 // =============================================================================
@@ -261,7 +186,6 @@ export async function buildApprovedSourcePlans(
     ? normalizeDistributorSlug(options.selectedDistributorSlug)
     : undefined;
   const extractionMode = options?.extractionMode ?? "mixed";
-  const forceRefresh = options?.forceRefresh ?? false;
 
   if (!upcs.length) {
     return results;
@@ -315,26 +239,6 @@ export async function buildApprovedSourcePlans(
 
   if (!brandedUpcs.length) {
     return results;
-  }
-
-  // ------------------------------------------------------------------
-  // 2b. Load existing sources for dedup (unless forceRefresh)
-  // ------------------------------------------------------------------
-  let existingSourcesByUpc: Map<string, any> | undefined;
-  if (!forceRefresh) {
-    const { data: sourcesData, error: sourcesError } = await db
-      .from("products_ingestion")
-      .select("upc, sources")
-      .in("upc", brandedUpcs);
-
-    if (!sourcesError && sourcesData) {
-      existingSourcesByUpc = new Map(
-        (sourcesData as Array<{ upc: string; sources: any }>).map((row) => [
-          row.upc,
-          row.sources ?? {},
-        ]),
-      );
-    }
   }
 
   // ------------------------------------------------------------------
@@ -603,44 +507,8 @@ export async function buildApprovedSourcePlans(
     otherEntries.sort((a, b) => a.priority - b.priority);
 
     let orderedEntries = [...runFirstEntries, ...otherEntries];
-    const preDedupEntries = [...orderedEntries];
-
-    // ---- Dedup: filter out recently successful sources (skip when forceRefresh) ----
-    const skippedSources: string[] = [];
-    if (existingSourcesByUpc && orderedEntries.length > 0) {
-      orderedEntries = orderedEntries.filter((entry) => {
-        const isRecent = isSourceRecentlySuccessful(
-          upc,
-          entry.sourceSlug,
-          existingSourcesByUpc,
-        );
-        if (isRecent) {
-          skippedSources.push(entry.sourceSlug);
-          return false;
-        }
-        return true;
-      });
-
-      if (skippedSources.length > 0) {
-        console.log(
-          `[SourcePlan] UPC ${upc}: skipped ${skippedSources.length} recently successful source(s): ${skippedSources.join(", ")}`,
-        );
-      }
-    }
 
     if (orderedEntries.length === 0) {
-      if (preDedupEntries.length > 0 && skippedSources.length > 0) {
-        const sourceLabel = selectedDistributorSlug
-          ? `selected source ${selectedDistributorSlug}`
-          : "requested sources";
-        results[upc] = buildFailureResult(
-          upc,
-          `All ${sourceLabel} are already enriched within 48h. Use forceRefresh to re-scrape.`,
-          "all_sources_fresh",
-        );
-        continue;
-      }
-
       if (extractionMode === "ai_only") {
         results[upc] = buildFailureResult(
           upc,
