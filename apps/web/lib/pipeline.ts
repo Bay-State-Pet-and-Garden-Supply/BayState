@@ -891,22 +891,22 @@ export async function bulkUpdateStatus(
     exported_at: null,
   };
 
-  if (resetResults) {
-    if (targetStatus === "imported") {
-      updatePayload.sources = {};
-      updatePayload.consolidated = null;
-      updatePayload.image_candidates = [];
-      updatePayload.selected_images = [];
-      updatePayload.confidence_score = null;
-      updatePayload.error_message = null;
-      updatePayload.retry_count = 0;
+  if (targetStatus === "imported") {
+    updatePayload.sources = {};
+    updatePayload.consolidated = null;
+    updatePayload.image_candidates = [];
+    updatePayload.selected_images = [];
+    updatePayload.confidence_score = null;
+    updatePayload.error_message = null;
+    updatePayload.retry_count = 0;
 
-      // Clear enrichment targets on reset to imported
-      await supabase
-        .from("enrichment_targets")
-        .delete()
-        .in("upc", upcs);
-    } else if (targetStatus === "processed") {
+    // Clear enrichment targets on reset to imported
+    await supabase
+      .from("enrichment_targets")
+      .delete()
+      .in("upc", upcs);
+  } else if (resetResults) {
+    if (targetStatus === "processed") {
       updatePayload.consolidated = null;
       updatePayload.image_candidates = [];
       updatePayload.selected_images = [];
