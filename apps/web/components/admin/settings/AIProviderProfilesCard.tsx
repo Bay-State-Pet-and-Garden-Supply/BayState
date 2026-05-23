@@ -198,7 +198,8 @@ export function AIProviderProfilesCard() {
         });
         if (!res.ok) {
           const body = await res.json();
-          throw new Error(body?.error || 'Failed to activate profile for consolidation');
+          const msg = body?.details ? `${body.error}: ${body.details}` : (body?.error || 'Failed to activate profile for consolidation');
+          throw new Error(msg);
         }
         await fetchProfiles();
         setSuccess('Consolidation profile updated successfully.');
@@ -218,7 +219,8 @@ export function AIProviderProfilesCard() {
         });
         if (!res.ok) {
           const body = await res.json();
-          throw new Error(body?.error || 'Failed to deactivate profile for consolidation');
+          const msg = body?.details ? `${body.error}: ${body.details}` : (body?.error || 'Failed to deactivate profile for consolidation');
+          throw new Error(msg);
         }
         await fetchProfiles();
         setSuccess('Consolidation profile deactivated.');
