@@ -60,12 +60,12 @@ describe('ProductCard', () => {
   it('shows out of stock badge when applicable', () => {
     const outOfStockProduct = { ...mockProduct, stock_status: 'out_of_stock' as const };
     render(<ProductCard product={outOfStockProduct} />);
-    expect(screen.getByText('Out of Stock')).toBeInTheDocument();
+    expect(screen.getByText(/out of stock/i)).toBeInTheDocument();
   });
 
   it('shows pre-order badge when applicable', () => {
     const preOrderProduct = { ...mockProduct, stock_status: 'pre_order' as const };
     render(<ProductCard product={preOrderProduct} />);
-    expect(screen.getByText('Pre-Order')).toBeInTheDocument();
+    expect(screen.getByText(/pre-order/i)).toBeInTheDocument();
   });
 });

@@ -129,11 +129,10 @@ INSERT INTO orders (
   notes,
   created_at,
   updated_at,
-  user_id,
+  customer_id,
   payment_method,
   payment_status,
   fulfillment_method,
-  delivery_fee,
   source,
   source_type,
   source_system,
@@ -160,7 +159,6 @@ VALUES
     'credit_card',
     'paid',
     'pickup',
-    0,
     'shopsite',
     'shopsite',
     'shopsite_15',
@@ -186,7 +184,6 @@ VALUES
     'credit_card',
     'paid',
     'pickup',
-    0,
     'web',
     'web',
     'web_storefront',
@@ -209,63 +206,63 @@ ON CONFLICT (order_number) DO UPDATE SET
 INSERT INTO order_items (
   id,
   order_id,
-  item_type,
-  item_id,
-  item_name,
-  item_slug,
+  product_id,
+  upc,
+  name,
   quantity,
   unit_price,
   total_price,
-  created_at
+  created_at,
+  metadata
 )
 VALUES
   (
     '94000000-0000-0000-0000-000000000001',
     '93000000-0000-0000-0000-000000000001',
-    'product',
-    'bd731767-abed-58a8-8409-3b6cb003dae4',
+    'bd731767-abed-58a8-8409-3b6cb003dae4'::uuid,
+    '019962890727',
     'Wondercide Flea & Tick Spray Lemongrass 4oz',
-    'wondercide-flea-tick-spray-lemongrass-4oz-019962890727',
     2,
     14.99,
     29.98,
-    NOW() - INTERVAL '2 days'
+    NOW() - INTERVAL '2 days',
+    '{"item_type": "product"}'::jsonb
   ),
   (
     '94000000-0000-0000-0000-000000000002',
     '93000000-0000-0000-0000-000000000001',
-    'product',
-    '32711615-c441-5063-a1ed-464d3ba6d253',
+    '32711615-c441-5063-a1ed-464d3ba6d253'::uuid,
+    '810075890174',
     'Wondercide Flying Insect Trap',
-    'wondercide-flying-insect-trap-810075890174',
     1,
     14.99,
     14.99,
-    NOW() - INTERVAL '2 days'
+    NOW() - INTERVAL '2 days',
+    '{"item_type": "product"}'::jsonb
   ),
   (
     '94000000-0000-0000-0000-000000000003',
     '93000000-0000-0000-0000-000000000002',
-    'product',
-    'a42e1184-4183-5ece-a0b8-2e60ad3b4a09',
+    'a42e1184-4183-5ece-a0b8-2e60ad3b4a09'::uuid,
+    '072705137008',
     'Fromm Cat Four-Star Chicken 4lb',
-    'fromm-cat-four-star-chicken-4lb-072705137008',
     1,
     21.99,
     21.99,
-    NOW() - INTERVAL '6 hours'
+    NOW() - INTERVAL '6 hours',
+    '{"item_type": "product"}'::jsonb
   ),
   (
     '94000000-0000-0000-0000-000000000004',
     '93000000-0000-0000-0000-000000000002',
-    'service',
-    '44444444-4444-4444-4444-444444444444',
-    'Delivery',
+    NULL,
     'delivery',
+    'Delivery',
     1,
     35.00,
     35.00,
-    NOW() - INTERVAL '6 hours'
+    NOW() - INTERVAL '6 hours',
+    '{"item_type": "service"}'::jsonb
   )
 ON CONFLICT (id) DO UPDATE SET
   quantity = EXCLUDED.quantity,

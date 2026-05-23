@@ -2,6 +2,7 @@ export {};
 const {
   NextRequest,
   createClient,
+  createAdminClient,
   requireAdminAuth,
 } = require('@/__tests__/helpers/admin-api-route-harness');
 const { GET, PATCH } = require('@/app/api/admin/cohorts/[id]/route');
@@ -75,6 +76,7 @@ describe('/api/admin/cohorts/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (requireAdminAuth as jest.Mock).mockResolvedValue({ authorized: true, user: { id: 'admin-1' } });
+    (createAdminClient as jest.Mock).mockImplementation(async () => createClient());
   });
 
   it('returns cohort detail with expanded brand readiness fields', async () => {

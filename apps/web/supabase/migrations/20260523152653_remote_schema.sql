@@ -458,6 +458,10 @@ drop view if exists "public"."products_published";
 
 alter table "public"."b2b_sync_jobs" drop constraint "b2b_sync_jobs_pkey";
 
+alter table "public"."order_events" drop constraint "order_events_order_id_fkey";
+alter table "public"."order_items" drop constraint "order_items_order_id_fkey";
+alter table "public"."order_source_records" drop constraint "order_source_records_order_id_fkey";
+
 alter table "public"."orders" drop constraint "orders_pkey1";
 
 alter table "public"."orders_ingestion" drop constraint "orders_pkey";
@@ -773,11 +777,11 @@ alter table "public"."inventory_items" add column "metadata" jsonb default '{}':
 
 alter table "public"."inventory_items" add column "product_id" uuid;
 
-alter table "public"."inventory_items" add column "quantity_available" integer generated always as ((quantity_on_hand - quantity_reserved)) stored;
-
 alter table "public"."inventory_items" add column "quantity_on_hand" integer not null default 0;
 
 alter table "public"."inventory_items" add column "quantity_reserved" integer not null default 0;
+
+alter table "public"."inventory_items" add column "quantity_available" integer generated always as ((quantity_on_hand - quantity_reserved)) stored;
 
 alter table "public"."inventory_items" add column "upc" text not null;
 
@@ -815,9 +819,9 @@ alter table "public"."inventory_reconciliation_items" alter column "register_pri
 
 alter table "public"."inventory_reconciliation_items" alter column "register_quantity" set data type integer using "register_quantity"::integer;
 
-alter table "public"."inventory_reconciliation_items" alter column "status" set default 'open'::text;
-
 alter table "public"."inventory_reconciliation_items" alter column "status" set data type text using "status"::text;
+
+alter table "public"."inventory_reconciliation_items" alter column "status" set default 'open'::text;
 
 alter table "public"."inventory_reconciliation_items" alter column "website_price" set data type numeric(12,2) using "website_price"::numeric(12,2);
 
@@ -1121,6 +1125,10 @@ alter table "public"."inventory_reconciliation" add constraint "inventory_reconc
 
 alter table "public"."orders" add constraint "orders_pkey" PRIMARY KEY using index "orders_pkey";
 
+alter table "public"."order_events" add constraint "order_events_order_id_fkey" FOREIGN KEY (order_id) REFERENCES public.orders(id) ON DELETE CASCADE;
+alter table "public"."order_items" add constraint "order_items_order_id_fkey" FOREIGN KEY (order_id) REFERENCES public.orders(id) ON DELETE CASCADE;
+alter table "public"."order_source_records" add constraint "order_source_records_order_id_fkey" FOREIGN KEY (order_id) REFERENCES public.orders(id) ON DELETE SET NULL;
+
 alter table "public"."shopsite_credentials" add constraint "shopsite_credentials_pkey" PRIMARY KEY using index "shopsite_credentials_pkey";
 
 alter table "public"."cohort_members" add constraint "cohort_members_pkey" PRIMARY KEY using index "cohort_members_pkey";
@@ -1321,6 +1329,8 @@ create or replace view "public"."ai_scraper_stats" as  SELECT sc.id AS config_id
   ORDER BY cv.created_at DESC;
 
 
+DROP FUNCTION IF EXISTS public.claim_next_pending_enrichment_attempt(p_runner_name text, p_claim_duration_minutes integer);
+
 CREATE OR REPLACE FUNCTION public.claim_next_pending_enrichment_attempt(p_runner_name text, p_claim_duration_minutes integer)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -1434,6 +1444,8 @@ BEGIN
 END;
 $function$
 ;
+
+DROP FUNCTION IF EXISTS public.get_dashboard_recent_activity(limit_count integer);
 
 CREATE OR REPLACE FUNCTION public.get_dashboard_recent_activity(limit_count integer)
  RETURNS TABLE(id uuid, type text, title text, description text, status text, activity_timestamp timestamp with time zone, href text)

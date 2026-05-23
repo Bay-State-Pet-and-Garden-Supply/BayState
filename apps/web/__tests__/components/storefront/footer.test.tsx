@@ -22,7 +22,7 @@ describe('StorefrontFooter', () => {
 
   it('renders Contact & Hours section', () => {
     render(<StorefrontFooter />);
-    expect(screen.getByText('Contact & Hours')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Contact' })).toBeInTheDocument();
     expect(screen.getByText(/sales@baystatepet.com/i)).toBeInTheDocument();
     expect(screen.getByText(/\(508\) 821-3704/i)).toBeInTheDocument();
   });

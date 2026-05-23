@@ -6,11 +6,11 @@
  */
 import { POST } from "@/app/api/scraper/v1/logs/route";
 import { NextRequest } from "next/server";
-import { validateRunnerAuth } from "@/lib/scraper-auth";
+import { validateActiveRunner } from "@/lib/scraper-auth";
 import { createClient } from "@supabase/supabase-js";
 
 jest.mock("@/lib/scraper-auth", () => ({
-  validateRunnerAuth: jest.fn(),
+  validateActiveRunner: jest.fn(),
 }));
 
 jest.mock("@supabase/supabase-js", () => ({
@@ -54,7 +54,7 @@ describe("POST /api/scraper/v1/logs", () => {
   };
 
   it("should return 401 if authentication fails", async () => {
-    (validateRunnerAuth as jest.Mock).mockResolvedValue(null);
+    (validateActiveRunner as jest.Mock).mockResolvedValue({ isAuthenticated: false, isEnabled: false });
 
     const req = createRequest({ job_id: "job-123", logs: [] });
     const res = await POST(req);
@@ -65,8 +65,10 @@ describe("POST /api/scraper/v1/logs", () => {
   });
 
   it("should return 400 if validation fails (missing job_id)", async () => {
-    (validateRunnerAuth as jest.Mock).mockResolvedValue({
-      runnerName: "test-runner",
+    (validateActiveRunner as jest.Mock).mockResolvedValue({
+      isAuthenticated: true,
+      isEnabled: true,
+      runner: { runnerName: "test-runner" },
     });
 
     const req = createRequest({ logs: [] });
@@ -78,8 +80,10 @@ describe("POST /api/scraper/v1/logs", () => {
   });
 
   it("should return 400 if validation fails (missing logs array)", async () => {
-    (validateRunnerAuth as jest.Mock).mockResolvedValue({
-      runnerName: "test-runner",
+    (validateActiveRunner as jest.Mock).mockResolvedValue({
+      isAuthenticated: true,
+      isEnabled: true,
+      runner: { runnerName: "test-runner" },
     });
 
     const req = createRequest({ job_id: "job-123" });
@@ -91,8 +95,10 @@ describe("POST /api/scraper/v1/logs", () => {
   });
 
   it("should successfully insert logs", async () => {
-    (validateRunnerAuth as jest.Mock).mockResolvedValue({
-      runnerName: "test-runner",
+    (validateActiveRunner as jest.Mock).mockResolvedValue({
+      isAuthenticated: true,
+      isEnabled: true,
+      runner: { runnerName: "test-runner" },
     });
     mockSupabase.upsert.mockResolvedValue({ error: null });
 
@@ -153,8 +159,10 @@ describe("POST /api/scraper/v1/logs", () => {
   });
 
   it("should handle database errors gracefully", async () => {
-    (validateRunnerAuth as jest.Mock).mockResolvedValue({
-      runnerName: "test-runner",
+    (validateActiveRunner as jest.Mock).mockResolvedValue({
+      isAuthenticated: true,
+      isEnabled: true,
+      runner: { runnerName: "test-runner" },
     });
     mockSupabase.upsert.mockResolvedValue({ error: { message: "DB Error" } });
 

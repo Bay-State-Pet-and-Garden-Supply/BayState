@@ -246,7 +246,7 @@ describe('DataTable', () => {
       fireEvent.click(checkboxes[1]);
       fireEvent.click(checkboxes[2]);
 
-      expect(screen.getByText('2 row(s) selected')).toBeInTheDocument();
+      expect(screen.getByText('2 rows selected')).toBeInTheDocument();
     });
   });
 

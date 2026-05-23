@@ -4,11 +4,11 @@
 import { NextRequest } from 'next/server';
 
 import { POST } from '@/app/api/scraper/v1/progress/route';
-import { validateRunnerAuth } from '@/lib/scraper-auth';
+import { validateActiveRunner } from '@/lib/scraper-auth';
 import { createClient } from '@supabase/supabase-js';
 
 jest.mock('@/lib/scraper-auth', () => ({
-  validateRunnerAuth: jest.fn(),
+  validateActiveRunner: jest.fn(),
 }));
 
 jest.mock('@supabase/supabase-js', () => ({
@@ -31,7 +31,7 @@ describe('POST /api/scraper/v1/progress', () => {
   });
 
   it('returns 401 when runner auth fails', async () => {
-    (validateRunnerAuth as jest.Mock).mockResolvedValue(null);
+    (validateActiveRunner as jest.Mock).mockResolvedValue({ isAuthenticated: false, isEnabled: false });
 
     const res = await POST(createRequest({ job_id: 'job-1' }));
 
@@ -40,7 +40,11 @@ describe('POST /api/scraper/v1/progress', () => {
   });
 
   it('returns 409 when the lease token does not match', async () => {
-    (validateRunnerAuth as jest.Mock).mockResolvedValue({ runnerName: 'runner-a' });
+    (validateActiveRunner as jest.Mock).mockResolvedValue({
+      isAuthenticated: true,
+      isEnabled: true,
+      runner: { runnerName: 'runner-a' },
+    });
 
     const jobSelectBuilder = {
       select: jest.fn().mockReturnThis(),
@@ -70,7 +74,11 @@ describe('POST /api/scraper/v1/progress', () => {
   });
 
   it('persists durable runtime progress and refreshes runner heartbeat state', async () => {
-    (validateRunnerAuth as jest.Mock).mockResolvedValue({ runnerName: 'runner-a' });
+    (validateActiveRunner as jest.Mock).mockResolvedValue({
+      isAuthenticated: true,
+      isEnabled: true,
+      runner: { runnerName: 'runner-a' },
+    });
 
     const jobSelectBuilder = {
       select: jest.fn().mockReturnThis(),

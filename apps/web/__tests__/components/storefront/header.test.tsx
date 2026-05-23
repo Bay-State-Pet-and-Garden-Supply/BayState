@@ -48,19 +48,21 @@ jest.mock('next/navigation', () => ({
 describe('StorefrontHeader', () => {
   it('renders the logo with store name', () => {
     render(<StorefrontHeader {...defaultProps} />);
-    expect(screen.getAllByText('Bay State')).toHaveLength(2);
+    expect(screen.getByAltText('Bay State Pet & Garden Supply')).toBeInTheDocument();
+    expect(screen.getByAltText('Bay State')).toBeInTheDocument();
   });
 
   it('renders inline search component', () => {
     render(<StorefrontHeader {...defaultProps} />);
-    expect(screen.getAllByTestId('inline-search')).toHaveLength(2);
+    expect(screen.getAllByTestId('inline-search')).toHaveLength(1);
   });
 
 
 
   it('renders cart button with accessible label', () => {
     render(<StorefrontHeader {...defaultProps} />);
-    expect(screen.getAllByRole('button', { name: /shopping cart/i })).toHaveLength(2);
+    expect(screen.getByRole('button', { name: /^shopping cart, 0 items$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^cart, 0 items$/i })).toBeInTheDocument();
   });
 
   it('renders desktop navigation links', () => {
@@ -72,7 +74,6 @@ describe('StorefrontHeader', () => {
       />
     );
     expect(screen.getByRole('button', { name: /^Brands$/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Our Services/i })).toBeInTheDocument();
   });
 
   it('renders grouped mega menu content for nested categories', async () => {

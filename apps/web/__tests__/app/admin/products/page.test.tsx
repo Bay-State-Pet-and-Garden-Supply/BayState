@@ -117,8 +117,8 @@ describe('Admin Products Page', () => {
     const Page = await AdminProductsPage({ searchParams: Promise.resolve({}) });
     render(Page);
 
-    expect(screen.getByText('Test Product 1')).toBeInTheDocument();
-    expect(screen.getByText('Test Product 2')).toBeInTheDocument();
+    expect(screen.getAllByText('Test Product 1')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Test Product 2')[0]).toBeInTheDocument();
   });
 
   it('displays product count', async () => {

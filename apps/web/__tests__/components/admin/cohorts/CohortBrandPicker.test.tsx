@@ -77,7 +77,7 @@ describe('CohortBrandPicker', () => {
     fireEvent.click(screen.getByText('Assign Brand').closest('button') as HTMLButtonElement);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/admin/brands');
+      expect(global.fetch).toHaveBeenCalledWith('/api/admin/brands', expect.any(Object));
     });
 
     fireEvent.change(screen.getByPlaceholderText('Search brands...'), {

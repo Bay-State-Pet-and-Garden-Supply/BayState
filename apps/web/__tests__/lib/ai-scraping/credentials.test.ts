@@ -4,6 +4,11 @@ jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(),
 }));
 
+jest.mock('@/lib/supabase/config', () => ({
+  SUPABASE_URL: 'https://baystate.example.com',
+  SUPABASE_SECRET_KEY: 'sb_service-role-key',
+}));
+
 import {
   encryptSecret,
   getAIScrapingCredentialStatuses,

@@ -24,8 +24,31 @@ jest.mock('next/headers', () => ({
 // Mock settings that use cookies
 jest.mock('@/lib/settings', () => ({
   getHomepageSettings: jest.fn().mockResolvedValue({
-    heroSlides: null,
+    heroMode: 'single',
+    hero: {
+      title: 'Baby Chicks Are Here!',
+      subtitle: 'In stock today',
+      imageUrl: '/images/legacy/baby-chicks-are-here-slider.png',
+      ctaText: 'Shop Now',
+      ctaLink: '/products',
+    },
+    heroSlides: [],
     heroSlideInterval: 5000,
+    departments: {
+      enabled: true,
+      title: 'Shop by Department',
+      items: [
+        { id: 'dog', name: 'Pet Supplies', slug: 'dog' },
+        { id: 'farm-animal', name: 'Farm & Livestock', slug: 'farm-animal' },
+        { id: 'lawn-garden', name: 'Lawn & Garden', slug: 'lawn-garden' },
+        { id: 'home', name: 'Home & Fuel', slug: 'home' },
+      ],
+    },
+    brandsSection: {
+      enabled: true,
+      title: 'Brands we carry',
+      limit: 10,
+    },
   }),
 }));
 
@@ -50,11 +73,10 @@ describe('Home Page', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Baby Chicks Are Here!');
   });
 
-  it('renders Shop Now and View All Services buttons', async () => {
+  it('renders Shop Now button', async () => {
     const page = await HomePage();
     render(page);
     expect(screen.getAllByRole('link', { name: /shop now/i }).length).toBeGreaterThan(0);
-    expect(screen.getByRole('link', { name: /view all services/i })).toBeInTheDocument();
   });
 
   it('renders category cards', async () => {

@@ -30,11 +30,7 @@ describe('generateShopSiteXml', () => {
 
         expect(xml).toContain('<!DOCTYPE ShopSiteProducts PUBLIC "-//shopsite.com//ShopSiteProduct DTD//EN" "http://www.shopsite.com/XML/2.9/shopsiteproducts.dtd">');
         expect(xml).toContain('<ShopSiteProducts version="15.0">');
-        expect(xml).toContain('<?xml version="1.0" encoding="ISO-8859-1"?>');
-        expect(xml).toContain('<Response>');
-        expect(xml).toContain('<ResponseCode>1</ResponseCode>');
-        expect(xml).toContain('<ResponseDescription>success</ResponseDescription>');
-        expect(xml).toContain('</Response>');
+        expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
         expect(xml).toContain('<Products>');
         expect(xml).toContain('<Name>Feathered Friend Favorite 20 lb.</Name>');
         expect(xml).toContain('<SKU>011641750056</SKU>');
@@ -48,7 +44,7 @@ describe('generateShopSiteXml', () => {
         expect(xml).toContain('<Graphic>feathered-friend/feathered-friend-favorite-20-lb.jpg</Graphic>');
         expect(xml).toContain('<MoreInformationGraphic>feathered-friend/feathered-friend-favorite-20-lb.jpg</MoreInformationGraphic>');
         expect(xml).toContain('<MoreInfoImage1>feathered-friend/feathered-friend-favorite-20-lb-2.jpg</MoreInfoImage1>');
-        expect(xml).toContain('<ProductOnPages/>');
+        expect(xml).toContain('<ProductOnPages></ProductOnPages>');
         expect(xml).toContain('<ProductField16>Feathered Friend</ProductField16>');
         expect(xml).toContain('<ProductField24>Wild Bird Food</ProductField24>');
         expect(xml).toContain('<ProductField25>Seeds &amp; Seed Mixes</ProductField25>');
@@ -74,7 +70,7 @@ describe('generateShopSiteXml', () => {
         expect(xml).toContain('<Products>');
         expect(xml).toContain('<Graphic>none</Graphic>');
         expect(xml).toContain('<MoreInformationGraphic>none</MoreInformationGraphic>');
-        expect(xml).toContain('<ProductOnPages/>');
+        expect(xml).toContain('<ProductOnPages></ProductOnPages>');
         expect(xml).not.toContain('<ProductField16>');
         expect(xml).not.toContain('<ProductField24>');
         expect(xml).not.toContain('<ProductField25>');

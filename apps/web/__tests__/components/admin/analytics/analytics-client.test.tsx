@@ -81,7 +81,7 @@ describe('AnalyticsClient', () => {
     render(<AnalyticsClient initialRange="30days" />);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/admin/analytics?range=30days');
+      expect(global.fetch).toHaveBeenCalledWith('/api/admin/analytics?range=30days', expect.any(Object));
     });
   });
 
@@ -96,7 +96,7 @@ describe('AnalyticsClient', () => {
     fireEvent.click(todayButton);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/admin/analytics?range=today');
+      expect(global.fetch).toHaveBeenCalledWith('/api/admin/analytics?range=today', expect.any(Object));
     });
   });
 

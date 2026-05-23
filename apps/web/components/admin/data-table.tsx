@@ -186,7 +186,7 @@ export function DataTable<T extends { id: string | number }>({
     if (isServerSide) {
       onPageChange?.(newPage);
     } else {
-      setPage(newPage);
+      setPage(newPage - 1);
     }
   }, [isServerSide, onPageChange]);
 

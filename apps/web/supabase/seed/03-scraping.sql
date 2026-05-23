@@ -199,11 +199,11 @@ VALUES
   ('b0000000-0000-0000-0000-000000000012', 'extract', 'Extract fields', '{"fields": ["product_name", "product_price", "product_image"]}'::jsonb, 2)
 ON CONFLICT DO NOTHING;
 
-INSERT INTO scraper_config_test_skus (config_id, sku, sku_type)
+INSERT INTO scraper_config_test_skus (config_id, upc, upc_type)
 VALUES
   ('a0000000-0000-0000-0000-000000000011', '019962890727', 'test'),
   ('a0000000-0000-0000-0000-000000000011', 'NO-SUCH-WONDERCIDE-SKU', 'fake'),
   ('a0000000-0000-0000-0000-000000000012', '072705137008', 'test'),
   ('a0000000-0000-0000-0000-000000000012', 'NO-SUCH-FROMM-SKU', 'fake')
-ON CONFLICT (config_id, sku) DO UPDATE SET
-  sku_type = EXCLUDED.sku_type;
+ON CONFLICT (config_id, upc) DO UPDATE SET
+  upc_type = EXCLUDED.upc_type;

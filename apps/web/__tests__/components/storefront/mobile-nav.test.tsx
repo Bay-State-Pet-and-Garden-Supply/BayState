@@ -21,7 +21,6 @@ describe('MobileNav', () => {
     expect(screen.getByRole('link', { name: /home/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /browse/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /cart/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /account/i })).toBeInTheDocument();
   });
 

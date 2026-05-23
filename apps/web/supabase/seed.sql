@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Generated Seed File (do not edit directly)
--- Generated at: 2026-05-22T17:45:25.599Z
+-- Generated at: 2026-05-23T21:13:15.965Z
 -- =====================================================================
 
 -- --- Module: 00-auth.sql ---
@@ -905,7 +905,6 @@ INSERT INTO products (
   slug,
   description,
   upc,
-  sku,
   price,
   stock_status,
   images,
@@ -926,7 +925,6 @@ VALUES
     'wondercide-flea-tick-spray-lemongrass-4oz-019962890727',
     'Plant-powered flea and tick spray for dogs and home surfaces with a fresh lemongrass scent.',
     '019962890727',
-    '019962890727',
     14.99,
     'in_stock',
     ARRAY['https://images.baystate.local/products/wondercide-lemongrass-4oz.webp'],
@@ -945,7 +943,6 @@ VALUES
     'Wondercide Flea & Tick Spray Lemongrass 32oz',
     'wondercide-flea-tick-spray-lemongrass-32oz-019962890925',
     'Large-format Wondercide flea and tick spray for multi-pet households and outdoor use.',
-    '019962890925',
     '019962890925',
     29.99,
     'in_stock',
@@ -966,7 +963,6 @@ VALUES
     'catit-pixi-fountain-light-blue-022517437179',
     'Quiet cat water fountain with ergonomic PIXI face design and triple-action filtration.',
     '022517437179',
-    '022517437179',
     39.99,
     'in_stock',
     ARRAY['https://images.baystate.local/products/catit-pixi-fountain-blue.webp'],
@@ -985,7 +981,6 @@ VALUES
     'Fromm Cat PurrSnickety Chicken Pate 3oz',
     'fromm-cat-purrsnickety-chicken-pate-3oz-072705113408',
     'Protein-rich chicken pate recipe for adult cats with a smooth texture and added vitamins.',
-    '072705113408',
     '072705113408',
     2.49,
     'in_stock',
@@ -1006,7 +1001,6 @@ VALUES
     'fromm-cat-purrsnickety-chicken-stew-3oz-072705113446',
     'Savory chicken stew with tender shreds and broth for cats that prefer a softer meal.',
     '072705113446',
-    '072705113446',
     2.49,
     'in_stock',
     ARRAY['https://images.baystate.local/products/fromm-purrsnickety-chicken-stew-3oz.webp'],
@@ -1025,7 +1019,6 @@ VALUES
     'Fromm Cat PurrSnickety Salmon Shred 3oz',
     'fromm-cat-purrsnickety-salmon-shred-3oz-072705113484',
     'Shredded salmon entree with gravy for picky cats and mixed feeding routines.',
-    '072705113484',
     '072705113484',
     2.59,
     'in_stock',
@@ -1046,7 +1039,6 @@ VALUES
     'fromm-cat-four-star-chicken-4lb-072705137008',
     'Four-Star dry cat food recipe with chicken, probiotics, and balanced nutrition for adult cats.',
     '072705137008',
-    '072705137008',
     21.99,
     'in_stock',
     ARRAY['https://images.baystate.local/products/fromm-four-star-chicken-4lb.webp'],
@@ -1065,7 +1057,6 @@ VALUES
     'Fromm Cat Four-Star Game Bird 4lb',
     'fromm-cat-four-star-game-bird-4lb-072705137206',
     'Game bird dry cat food featuring duck, turkey, and wholesome grains for adult cats.',
-    '072705137206',
     '072705137206',
     23.99,
     'in_stock',
@@ -1086,7 +1077,6 @@ VALUES
     'fromm-cat-four-star-salmon-4lb-072705137404',
     'Salmon-forward dry cat food recipe with balanced omega support and digestible ingredients.',
     '072705137404',
-    '072705137404',
     23.99,
     'in_stock',
     ARRAY['https://images.baystate.local/products/fromm-four-star-salmon-4lb.webp'],
@@ -1105,7 +1095,6 @@ VALUES
     'Wondercide Flying Insect Trap',
     'wondercide-flying-insect-trap-810075890174',
     'Indoor sticky trap for flying insects that pairs with Wondercide attractant cartridges.',
-    '810075890174',
     '810075890174',
     24.99,
     'in_stock',
@@ -1126,7 +1115,6 @@ VALUES
     'catit-pixi-fountain-pink-022517437180',
     'Catit PIXI drinking fountain in pink with ergonomic spout and quiet pump operation.',
     '022517437180',
-    '022517437180',
     39.99,
     'in_stock',
     ARRAY['https://images.baystate.local/products/catit-pixi-fountain-pink.webp'],
@@ -1146,7 +1134,6 @@ VALUES
     'fromm-cat-four-star-chicken-12lb-072705137015',
     'Larger format Four-Star chicken recipe for multi-cat homes and pantry restocks.',
     '072705137015',
-    '072705137015',
     49.99,
     'pre_order',
     ARRAY['https://images.baystate.local/products/fromm-four-star-chicken-12lb.webp'],
@@ -1165,7 +1152,6 @@ ON CONFLICT (id) DO UPDATE SET
   slug = EXCLUDED.slug,
   description = EXCLUDED.description,
   upc = EXCLUDED.upc,
-  sku = EXCLUDED.sku,
   price = EXCLUDED.price,
   stock_status = EXCLUDED.stock_status,
   images = EXCLUDED.images,
@@ -1454,14 +1440,14 @@ VALUES
   ('b0000000-0000-0000-0000-000000000012', 'extract', 'Extract fields', '{"fields": ["product_name", "product_price", "product_image"]}'::jsonb, 2)
 ON CONFLICT DO NOTHING;
 
-INSERT INTO scraper_config_test_skus (config_id, sku, sku_type)
+INSERT INTO scraper_config_test_skus (config_id, upc, upc_type)
 VALUES
   ('a0000000-0000-0000-0000-000000000011', '019962890727', 'test'),
   ('a0000000-0000-0000-0000-000000000011', 'NO-SUCH-WONDERCIDE-SKU', 'fake'),
   ('a0000000-0000-0000-0000-000000000012', '072705137008', 'test'),
   ('a0000000-0000-0000-0000-000000000012', 'NO-SUCH-FROMM-SKU', 'fake')
-ON CONFLICT (config_id, sku) DO UPDATE SET
-  sku_type = EXCLUDED.sku_type;
+ON CONFLICT (config_id, upc) DO UPDATE SET
+  upc_type = EXCLUDED.upc_type;
 
 
 -- --- Module: 04-orders.sql ---
@@ -1596,11 +1582,10 @@ INSERT INTO orders (
   notes,
   created_at,
   updated_at,
-  user_id,
+  customer_id,
   payment_method,
   payment_status,
   fulfillment_method,
-  delivery_fee,
   source,
   source_type,
   source_system,
@@ -1627,7 +1612,6 @@ VALUES
     'credit_card',
     'paid',
     'pickup',
-    0,
     'shopsite',
     'shopsite',
     'shopsite_15',
@@ -1653,7 +1637,6 @@ VALUES
     'credit_card',
     'paid',
     'pickup',
-    0,
     'web',
     'web',
     'web_storefront',
@@ -1676,63 +1659,63 @@ ON CONFLICT (order_number) DO UPDATE SET
 INSERT INTO order_items (
   id,
   order_id,
-  item_type,
-  item_id,
-  item_name,
-  item_slug,
+  product_id,
+  upc,
+  name,
   quantity,
   unit_price,
   total_price,
-  created_at
+  created_at,
+  metadata
 )
 VALUES
   (
     '94000000-0000-0000-0000-000000000001',
     '93000000-0000-0000-0000-000000000001',
-    'product',
-    'bd731767-abed-58a8-8409-3b6cb003dae4',
+    'bd731767-abed-58a8-8409-3b6cb003dae4'::uuid,
+    '019962890727',
     'Wondercide Flea & Tick Spray Lemongrass 4oz',
-    'wondercide-flea-tick-spray-lemongrass-4oz-019962890727',
     2,
     14.99,
     29.98,
-    NOW() - INTERVAL '2 days'
+    NOW() - INTERVAL '2 days',
+    '{"item_type": "product"}'::jsonb
   ),
   (
     '94000000-0000-0000-0000-000000000002',
     '93000000-0000-0000-0000-000000000001',
-    'product',
-    '32711615-c441-5063-a1ed-464d3ba6d253',
+    '32711615-c441-5063-a1ed-464d3ba6d253'::uuid,
+    '810075890174',
     'Wondercide Flying Insect Trap',
-    'wondercide-flying-insect-trap-810075890174',
     1,
     14.99,
     14.99,
-    NOW() - INTERVAL '2 days'
+    NOW() - INTERVAL '2 days',
+    '{"item_type": "product"}'::jsonb
   ),
   (
     '94000000-0000-0000-0000-000000000003',
     '93000000-0000-0000-0000-000000000002',
-    'product',
-    'a42e1184-4183-5ece-a0b8-2e60ad3b4a09',
+    'a42e1184-4183-5ece-a0b8-2e60ad3b4a09'::uuid,
+    '072705137008',
     'Fromm Cat Four-Star Chicken 4lb',
-    'fromm-cat-four-star-chicken-4lb-072705137008',
     1,
     21.99,
     21.99,
-    NOW() - INTERVAL '6 hours'
+    NOW() - INTERVAL '6 hours',
+    '{"item_type": "product"}'::jsonb
   ),
   (
     '94000000-0000-0000-0000-000000000004',
     '93000000-0000-0000-0000-000000000002',
-    'service',
-    '44444444-4444-4444-4444-444444444444',
-    'Delivery',
+    NULL,
     'delivery',
+    'Delivery',
     1,
     35.00,
     35.00,
-    NOW() - INTERVAL '6 hours'
+    NOW() - INTERVAL '6 hours',
+    '{"item_type": "service"}'::jsonb
   )
 ON CONFLICT (id) DO UPDATE SET
   quantity = EXCLUDED.quantity,

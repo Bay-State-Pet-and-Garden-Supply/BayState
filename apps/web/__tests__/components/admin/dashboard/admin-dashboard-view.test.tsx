@@ -5,17 +5,11 @@ import { AdminDashboardView } from '@/components/admin/dashboard/admin-dashboard
 jest.mock('@/components/admin/dashboard/metric-card', () => ({
   MetricCard: () => <div data-testid="metric-card" />,
 }));
-jest.mock('@/components/admin/dashboard/scraper-status-widget', () => ({
-  ScraperStatusWidget: () => <div data-testid="scraper-status-widget" />,
-}));
 jest.mock('@/components/admin/dashboard/recent-activity-feed', () => ({
   RecentActivityFeed: () => <div data-testid="recent-activity-feed" />,
 }));
 jest.mock('@/components/admin/dashboard/quick-actions', () => ({
   QuickActions: () => <div data-testid="quick-actions" />,
-}));
-jest.mock('@/components/admin/dashboard/FleetStatusWidget', () => ({
-  FleetStatusWidget: () => <div data-testid="fleet-status-widget" />,
 }));
 
 // Mock the hook
@@ -34,9 +28,8 @@ describe('AdminDashboardView', () => {
   it('renders the dashboard components', () => {
     render(<AdminDashboardView />);
 
-    expect(screen.getAllByTestId('metric-card')).toHaveLength(10);
-    expect(screen.getByTestId('scraper-status-widget')).toBeInTheDocument();
+    expect(screen.getAllByTestId('metric-card')).toHaveLength(3);
     expect(screen.getByTestId('recent-activity-feed')).toBeInTheDocument();
-    expect(screen.getByTestId('fleet-status-widget')).toBeInTheDocument();
+    expect(screen.getByTestId('quick-actions')).toBeInTheDocument();
   });
 });

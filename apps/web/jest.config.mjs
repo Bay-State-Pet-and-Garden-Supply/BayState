@@ -25,7 +25,7 @@ const customJestConfig = {
         '^react-dom/(.*)$': `${reactDomDir}/$1`,
     },
     // Exclude Playwright tests - they should run via `bunx playwright test` not Jest
-    testPathIgnorePatterns: ['/node_modules/', '/.next/', '/a11y/', '/e2e/'],
+    testPathIgnorePatterns: ['/node_modules/', '/.next/', '/a11y/', '/e2e/', '/helpers/', 'test-helpers'],
 };
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

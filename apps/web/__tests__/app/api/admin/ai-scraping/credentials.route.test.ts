@@ -27,7 +27,7 @@ jest.mock('next/server', () => ({
 }));
 
 import { GET, POST } from '@/app/api/admin/ai-scraping/credentials/route';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import {
   getAIConsolidationDefaults,
   getAIScrapingCredentialStatuses,
@@ -39,6 +39,7 @@ import {
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
+  createAdminClient: jest.fn(),
 }));
 
 jest.mock('@/lib/ai-scraping/credentials', () => ({
@@ -61,6 +62,7 @@ describe('AI scraping credentials admin route', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (createClient as jest.Mock).mockResolvedValue(mockSupabase);
+    (createAdminClient as jest.Mock).mockResolvedValue(mockSupabase);
 
     (mockSupabase.auth.getUser as jest.Mock).mockResolvedValue({
       data: { user: { id: 'user-1' } },

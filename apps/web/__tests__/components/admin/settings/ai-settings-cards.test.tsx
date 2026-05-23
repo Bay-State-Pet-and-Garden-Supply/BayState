@@ -49,7 +49,7 @@ describe('AIProviderProfilesCard', () => {
     });
 
     expect(screen.getByText('Local LM Studio')).toBeInTheDocument();
-    expect(screen.getByText('Active')).toBeInTheDocument();
+    expect(screen.getByText('Extraction')).toBeInTheDocument();
     expect(screen.getByText('deepseek-chat')).toBeInTheDocument();
     expect(screen.getByText('google/gemma-4-e4b')).toBeInTheDocument();
   });

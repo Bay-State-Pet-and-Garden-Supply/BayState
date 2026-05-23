@@ -120,6 +120,7 @@ export default async function AdminProductsPage({
       description="Search, filter, and open published storefront products without hopping through separate tools."
       icon={<Package className="h-5 w-5" />}
       eyebrow="Queue view"
+      meta={`${count || 0} published products total`}
     >
       <AdminProductsClient
         initialProducts={clientProducts}

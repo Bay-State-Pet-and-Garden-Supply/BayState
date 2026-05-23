@@ -20,7 +20,7 @@ describe('Admin Settings Page', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Settings');
     expect(screen.getByText('Dynamic AI Provider Stack')).toBeInTheDocument();
     expect(
-      screen.getByText(/Your AI provider profiles are now dynamic/i)
+      screen.getByText(/Assign profiles to extraction/i)
     ).toBeInTheDocument();
   });
 });
