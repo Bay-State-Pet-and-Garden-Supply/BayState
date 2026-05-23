@@ -33,8 +33,6 @@ export function ManagementPanel({
     petfoodex: { configured: false, loading: true },
   });
 
-  const [forceRefresh, setForceRefresh] = useState(false);
-
   useEffect(() => {
     let active = true;
     async function loadStatuses() {
@@ -165,7 +163,6 @@ export function ManagementPanel({
           body: JSON.stringify({
             upcs,
             extractionMode: inferredExtractionMode,
-            forceRefresh,
             config: {
               source_type: 'approved_source_extraction',
             },
@@ -225,15 +222,6 @@ export function ManagementPanel({
       </div>
 
       <div className="border-t border-border bg-muted/30 p-4 space-y-3">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={forceRefresh}
-            onCheckedChange={(checked) => setForceRefresh(checked === true)}
-            className="h-4 w-4"
-          />
-          <span className="text-xs font-medium text-muted-foreground">Force refresh existing data</span>
-        </label>
-
         <Button
           className="h-11 w-full bg-brand-gold text-ledger-charcoal hover:bg-brand-gold/90"
           disabled={isSaving}
