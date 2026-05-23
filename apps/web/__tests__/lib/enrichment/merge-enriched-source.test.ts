@@ -148,4 +148,25 @@ describe('mergeEnrichedSource', () => {
     expect(merged.approved_sources?.phillips).toBeDefined();
     expect(merged.approved_sources?.orgill).toBeDefined();
   });
+
+  it('does not promote a source that is missing a product name over one that has a name', () => {
+    const existing = makeEnrichedSource({
+      sourceSlug: 'phillips',
+      name: 'Existing Phillips Product',
+    });
+
+    const emptyIncoming = makeEnrichedSource({
+      sourceSlug: 'orgill',
+      name: '', // Empty name
+      confidence: 0.9,
+    });
+
+    const merged = mergeEnrichedSource(existing, emptyIncoming, {
+      incomingStatus: 'success',
+    });
+
+    // Should stay with phillips because orgill has no name
+    expect(merged.active_source_slug).toBe('phillips');
+    expect(merged.name).toBe('Existing Phillips Product');
+  });
 });

@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS "public"."inventory_items" CASCADE;
+DROP TABLE IF EXISTS "public"."shopsite_credentials" CASCADE;
+DROP TABLE IF EXISTS "public"."product_types" CASCADE;
+DROP TABLE IF EXISTS "public"."pipeline_retry_queue" CASCADE;
+DROP TABLE IF EXISTS "public"."review_helpful_votes" CASCADE;
+DROP TABLE IF EXISTS "public"."product_answers" CASCADE;
+DROP TABLE IF EXISTS "public"."subscriptions" CASCADE;
+DROP TABLE IF EXISTS "public"."tags" CASCADE;
+DROP TABLE IF EXISTS "public"."inventory_reconciliation" CASCADE;;

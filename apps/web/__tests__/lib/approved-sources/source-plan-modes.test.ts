@@ -34,12 +34,7 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
         ],
         error: null,
       },
-      // 2. products_ingestion sources (dedup query)
-      {
-        data: [],
-        error: null,
-      },
-      // 3. brands
+      // 2. brands
       {
         data: [
           {
@@ -146,7 +141,6 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
         ],
         error: null,
       },
-      { data: [], error: null },
       {
         data: [
           {
@@ -190,7 +184,6 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
         ],
         error: null,
       },
-      { data: [], error: null },
       {
         data: [
           {
@@ -268,7 +261,6 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
         ],
         error: null,
       },
-      { data: [], error: null },
       {
         data: [
           {
@@ -308,7 +300,6 @@ describe('buildApprovedSourcePlans — extraction modes', () => {
         ],
         error: null,
       },
-      { data: [], error: null },
       {
         data: [
           {

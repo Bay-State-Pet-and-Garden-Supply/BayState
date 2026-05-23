@@ -324,6 +324,45 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
     expect(mockSupabase.retryInsertions).toHaveLength(0);
   });
 
+  it('does not mark as processed if product name is missing even with success status', async () => {
+    const mockSupabase = createMockSupabase({
+      attemptData: {
+        id: 'attempt-1',
+        job_id: 'job-1',
+        mode: 'mixed',
+        attempt_number: 1,
+        retry_count: 0,
+        enrichment_jobs: {
+          test_mode: true,
+          mode: 'mixed',
+          config: { extraction_mode: 'mixed' },
+        },
+      },
+      jobAttemptsData: [
+        { upc: 'UPC-1', attempt_number: 1, status: 'failed' },
+      ],
+    });
+    (createClient as jest.Mock).mockReturnValue(mockSupabase);
+
+    const response = await POST(
+      new NextRequest('http://localhost/api/scraper/v1/enrichment-callback', {
+        body: JSON.stringify(buildCallbackBody({
+          status: 'success',
+          product: {
+            name: '', // Empty name
+            image_urls: ['http://example.com/img.png'],
+          },
+          confidence: { overall: 0.3, fields: {} },
+        })),
+      } as any),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    // It should be imported (terminal failure) or extracting (retry)
+    expect(payload.next_status).toBe('imported');
+  });
+
   it('treats terminal approved-source extraction warnings as non-retryable', () => {
     const shouldRetry = shouldRetryEnrichmentResult(
       buildCallbackBody({

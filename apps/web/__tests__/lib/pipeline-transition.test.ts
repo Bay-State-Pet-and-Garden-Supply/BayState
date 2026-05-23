@@ -120,6 +120,11 @@ describe('pipeline status transition CRUD', () => {
             }),
         };
 
+        const deleteBuilder = {
+            delete: jest.fn().mockReturnThis(),
+            in: jest.fn().mockResolvedValue({ error: null }),
+        };
+
         const updateBuilder = {
             update: jest.fn().mockReturnThis(),
             in: jest.fn().mockResolvedValue({ data: null, error: null, count: 1 }),
@@ -132,6 +137,7 @@ describe('pipeline status transition CRUD', () => {
         const from = jest
             .fn()
             .mockReturnValueOnce(fetchBuilder)
+            .mockReturnValueOnce(deleteBuilder)
             .mockReturnValueOnce(updateBuilder)
             .mockReturnValueOnce(auditBuilder);
 
@@ -242,6 +248,11 @@ describe('pipeline status transition CRUD', () => {
             }),
         };
 
+        const deleteBuilder = {
+            delete: jest.fn().mockReturnThis(),
+            in: jest.fn().mockResolvedValue({ error: null }),
+        };
+
         const updateBuilder = {
             update: jest.fn().mockReturnThis(),
             in: jest.fn().mockResolvedValue({ data: null, error: null, count: 1 }),
@@ -254,6 +265,7 @@ describe('pipeline status transition CRUD', () => {
         const from = jest
             .fn()
             .mockReturnValueOnce(fetchBuilder)
+            .mockReturnValueOnce(deleteBuilder)
             .mockReturnValueOnce(updateBuilder)
             .mockReturnValueOnce(auditBuilder);
 
@@ -265,5 +277,62 @@ describe('pipeline status transition CRUD', () => {
         expect(updateBuilder.update).toHaveBeenCalledWith(
             expect.objectContaining({ pipeline_status: 'imported', exported_at: null })
         );
+    });
+
+    it('always clears results when transitioning to imported, regardless of resetResults', async () => {
+        const fetchBuilder = {
+            select: jest.fn().mockReturnThis(),
+            in: jest.fn().mockResolvedValue({
+                data: [{ upc: 'UPC-1', pipeline_status: 'failed' }],
+                error: null,
+            }),
+        };
+
+        const updateBuilder = {
+            update: jest.fn().mockReturnThis(),
+            in: jest.fn().mockResolvedValue({ data: null, error: null, count: 1 }),
+        };
+
+        const deleteBuilder = {
+            delete: jest.fn().mockReturnThis(),
+            in: jest.fn().mockResolvedValue({ error: null }),
+        };
+
+        const auditBuilder = {
+            insert: jest.fn().mockResolvedValue({ data: null, error: null }),
+        };
+
+        const from = jest
+            .fn()
+            .mockImplementation((table) => {
+                if (table === 'products_ingestion') {
+                    // This is a bit tricky since products_ingestion is used for both fetch and update
+                    // We can return the builders in sequence or check the call
+                    return fetchBuilder.in.mock.calls.length === 0 ? fetchBuilder : updateBuilder;
+                }
+                if (table === 'enrichment_targets') return deleteBuilder;
+                if (table === 'pipeline_audit_log') return auditBuilder;
+                return { select: jest.fn().mockReturnThis(), in: jest.fn() };
+            });
+
+        (createClient as jest.Mock).mockResolvedValue({ from });
+
+        // Call WITHOUT resetResults (it defaults to false)
+        await bulkUpdateStatus(['UPC-1'], 'imported');
+
+        expect(updateBuilder.update).toHaveBeenCalledWith(
+            expect.objectContaining({
+                pipeline_status: 'imported',
+                sources: {},
+                consolidated: null,
+                image_candidates: [],
+                selected_images: [],
+                confidence_score: null,
+                error_message: null,
+                retry_count: 0
+            })
+        );
+        expect(deleteBuilder.delete).toHaveBeenCalled();
+        expect(deleteBuilder.in).toHaveBeenCalledWith('upc', ['UPC-1']);
     });
 });

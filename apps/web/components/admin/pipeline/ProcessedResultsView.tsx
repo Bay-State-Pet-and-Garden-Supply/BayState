@@ -636,17 +636,32 @@ export function ProcessedResultsView({
                       })}
                     </TabsList>
                   </Tabs>
-                  {activeSourceItem?.deleteSourceKey ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive h-8 px-3 hover:bg-destructive/10 font-semibold text-[10px] rounded-none border border-transparent hover:border-destructive shrink-0"
-                      onClick={() => handleDeleteSourceClick(activeSourceItem.deleteSourceKey as string)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Remove source
-                    </Button>
-                  ) : null}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {currentSourceData?.url && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-3 hover:bg-muted font-semibold text-[10px] rounded-none border border-border flex items-center gap-2"
+                        asChild
+                      >
+                        <a href={currentSourceData.url} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          View Source
+                        </a>
+                      </Button>
+                    )}
+                    {activeSourceItem?.deleteSourceKey ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive h-8 px-3 hover:bg-destructive/10 font-semibold text-[10px] rounded-none border border-transparent hover:border-destructive"
+                        onClick={() => handleDeleteSourceClick(activeSourceItem.deleteSourceKey as string)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Remove source
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               ) : (
                 <div className="px-3 pb-3">

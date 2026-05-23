@@ -120,7 +120,6 @@ export type SourcePlanFailureCode =
   | "product_not_found"
   | "missing_brand"
   | "no_sources_configured"
-  | "all_sources_fresh"
   | "ai_only_no_official_domains"
   | "database_error";
 
