@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { Package, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import type { PipelineProduct } from '@/lib/pipeline/types';
 import type { Brand } from '@/lib/types';
 import { DistributorSection } from './DistributorSection';
