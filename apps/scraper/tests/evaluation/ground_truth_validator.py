@@ -140,10 +140,10 @@ def validate_entry(entry: dict[str, Any], index: int) -> list[FieldError]:
         elif entry[field] is None or entry[field] == "":
             errors.append(FieldError(index, field, f"Required field '{field}' must not be empty"))
 
-    # Validate sku is a non-empty string
+    # Validate upc is a non-empty string
     upc= entry.get("upc")
-    if sku is not None and not isinstance(sku, str):
-        errors.append(FieldError(index, "upc", f"sku must be a string, got {type(sku).__name__}"))
+    if upc is not None and not isinstance(upc, str):
+        errors.append(FieldError(index, "upc", f"upc must be a string, got {type(upc).__name__}"))
 
     # Validate brand is a non-empty string
     brand = entry.get("brand")
@@ -263,16 +263,16 @@ def validate_fixture(data: list[dict[str, Any]]) -> FixtureValidationResult:
     seen_upcs: dict[str, int] = {}
     for idx, entry in enumerate(data):
         upc= entry.get("upc", "")
-        if sku in seen_upcs:
+        if upc in seen_upcs:
             errors.append(
                 FieldError(
                     idx,
                     "upc",
-                    f"Duplicate UPC: {sku!r} (first seen at index {seen_upcs[sku]})",
+                    f"Duplicate UPC: {upc!r} (first seen at index {seen_upcs[upc]})",
                 )
             )
         else:
-            seen_upcs[sku] = idx
+            seen_upcs[upc] = idx
 
     # Validate each entry
     for idx, entry in enumerate(data):

@@ -76,14 +76,15 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
                 from bs4 import BeautifulSoup
                 soup = BeautifulSoup(page_html, "html.parser")
                 images = []
-                for img in soup.select('img[src*="bigcommerce"]'):
+                for img in soup.select('img[src]'):
                     src = img.get("src", "")
-                    if src and "stencil" in src:
+                    if src and ("bigcommerce" in src or "products/" in src or "cdn11.bigcommerce.com" in src):
                         if src.startswith("//"):
                             src = "https:" + src
                         elif src.startswith("/"):
                             src = urljoin(self.base_url, src)
-                        images.append(src)
+                        if src not in images:
+                            images.append(src)
                 if images:
                     from scrapers.approved_sources.policy import filter_allowed_assets
                     det_result.product["image_urls"] = filter_allowed_assets(images, source_policy)
@@ -161,7 +162,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
 
         # --- Image URLs ---
         images = []
-        # Find product gallery images
+         # Find product gallery images
         gallery = soup.select_one("[class*='product-gallery']")
         if gallery:
             for img in gallery.select("img[src*='products/']"):
@@ -172,6 +173,17 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
                     elif src.startswith("/"):
                         src = urljoin(self.base_url, src)
                     images.append(src)
+        if not images:
+            # Fallback for redesigned PDP page: scan all images on page
+            for img in soup.select("img[src]"):
+                src = img.get("src", "")
+                if src and ("bigcommerce" in src or "products/" in src or "cdn11.bigcommerce.com" in src):
+                    if src.startswith("//"):
+                        src = "https:" + src
+                    elif src.startswith("/"):
+                        src = urljoin(self.base_url, src)
+                    if src not in images:
+                        images.append(src)
         if images:
             product["image_urls"] = images
             matched.append("image_urls")
@@ -192,6 +204,24 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
                     value = dd.get_text(strip=True)
                     product[detail_map[dt_text]] = value
                     matched.append(detail_map[dt_text])
+
+        # Try to extract detail fields from page text if missing from dt+dd pairs
+        if not product.get("upc") or not product.get("bci_item_number"):
+            card_text = soup.get_text(" ", strip=True)
+            detail_patterns = {
+                r'(?:BCI#|BCI\s*Number|Item\s*#)\s*:\s*(\S+)': 'bci_item_number',
+                r'(?:Manufacturer\s*#|MFG\s*#|Model\s*#)\s*:\s*(\S+)': 'manufacturer_number',
+                r'(?:UPC\s*Code|UPC)\s*:\s*(\S+)': 'upc',
+                r'(?:Case\s*Pack|Pack)\s*:\s*(\S+)': 'case_pack',
+            }
+            for pattern, field in detail_patterns.items():
+                match = re.search(pattern, card_text, re.IGNORECASE)
+                if match:
+                    val = match.group(1).strip().rstrip(',.;')
+                    if field not in product:
+                        product[field] = val
+                        if field not in matched:
+                            matched.append(field)
 
         # --- Weight ---
         weight_elem = soup.find("li", string=re.compile(r"Weight:", re.I))
@@ -282,6 +312,8 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
         for a in soup.select('a[href]'):
             href = a.get('href', '')
             text = a.get_text(strip=True)
+            aria_label = a.get('aria-label', '').strip()
+            title_candidate = aria_label if aria_label else text
             
             # Skip non-product links
             href_lower = href.lower()
@@ -292,56 +324,41 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
             if href.startswith(('javascript:', 'mailto:', 'tel:')):
                 continue
 
-            # Climb up to 5 levels
-            container = a
-            for level in range(5):
-                if container is None or not hasattr(container, 'get_text'):
+            # Find card container (ancestor that is <article> or has class 'group', 'card', etc.)
+            card_container = None
+            parent = a.parent
+            while parent and parent.name not in ('body', 'html', 'main', 'form'):
+                if parent.name == 'article' or any(c in parent.get('class', []) for c in ('group', 'card', 'product-card')):
+                    card_container = parent
                     break
-                
-                # Stop climbing if we hit high-level generic page containers
-                if getattr(container, 'name', None) in ('body', 'html', 'main', 'form'):
+                parent = parent.parent
+
+            # Fall back to a.parent if no card container found
+            if not card_container:
+                card_container = a.parent or a
+
+            container_text = card_container.get_text(" ", strip=True)
+            container_text_lower = container_text.lower()
+            
+            # Check direct substring match
+            sku_in_text = upc.lower() in container_text_lower
+            sku_in_href = upc.lower() in href_lower
+            
+            # Check normalized match
+            norm_container_text = re.sub(r'[^a-zA-Z0-9]', '', container_text_lower)
+            norm_href = re.sub(r'[^a-zA-Z0-9]', '', href_lower)
+            
+            norm_sku_in_text = sku_clean and (sku_clean in norm_container_text)
+            norm_sku_in_href = sku_clean and (sku_clean in norm_href)
+
+            if sku_in_text or sku_in_href or norm_sku_in_text or norm_sku_in_href:
+                # Let's ensure the candidate has valid name text
+                if len(title_candidate) > 3 and "search results" not in title_candidate.lower() and title_candidate.lower() not in {"view product", "view details", "learn more", "details", "add to cart", "buy now", "quick view"}:
+                    product_link = a
+                    product_container = card_container
+                    found_card = True
                     break
-
-                # Avoid matching list/grid containers that hold multiple products.
-                # If this container contains other active product links, stop climbing.
-                other_product_links = 0
-                for other_a in container.select('a[href]'):
-                    other_href = other_a.get('href', '')
-                    if other_href == href or other_href == href + '/' or href == other_href + '/':
-                        continue
-                    other_href_lower = other_href.lower()
-                    if any(x in other_href_lower for x in ['/cart', '/checkout', '/account', '/login', '/register', '/wishlist', '/search', '/contact', '/about', '/blog', '/faq']):
-                        continue
-                    if other_href in ['', '#', '/'] or other_href.startswith(('javascript:', 'mailto:', 'tel:')):
-                        continue
-                    other_product_links += 1
-
-                if other_product_links > 0:
-                    break
-
-                container_text = container.get_text()
-                container_text_lower = container_text.lower()
-                
-                # Check direct substring match
-                sku_in_text = upc.lower() in container_text_lower
-                sku_in_href = upc.lower() in href_lower
-                
-                # Check normalized match
-                norm_container_text = re.sub(r'[^a-zA-Z0-9]', '', container_text_lower)
-                norm_href = re.sub(r'[^a-zA-Z0-9]', '', href_lower)
-                
-                norm_sku_in_text = sku_clean and (sku_clean in norm_container_text)
-                norm_sku_in_href = sku_clean and (sku_clean in norm_href)
-
-                if sku_in_text or sku_in_href or norm_sku_in_text or norm_sku_in_href:
-                    # Let's ensure the link has text (potential product title)
-                    if len(text) > 3 and "search results" not in text.lower():
-                        product_link = a
-                        product_container = container
-                        found_card = True
-                        break
-                
-                container = container.parent
+            
             if found_card:
                 break
 
@@ -351,10 +368,19 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
         # Store product page URL for image extraction in post-processing
         self._product_page_url = urljoin(self.base_url, product_link.get('href', ''))
 
-        product["name"] = product_link.get_text(strip=True)
+        name_text = product_link.get('aria-label', '').strip()
+        if not name_text or name_text.lower() in {"view product", "view details", "learn more", "details", "add to cart", "buy now", "quick view"}:
+            name_text = product_link.get_text(strip=True)
+
+        if name_text.lower() in {"view product", "view details", "learn more", "details", "add to cart", "buy now", "quick view"}:
+            bold_span = product_container.select_one('span[class*="font-bold"], span[class*="title"]')
+            if bold_span:
+                name_text = bold_span.get_text(strip=True)
+
+        product["name"] = name_text
         matched.append("name")
 
-        card_text = product_container.get_text()
+        card_text = product_container.get_text(" ", strip=True)
 
         # Extract brand: look for a span near the product name
         # In BigCommerce headless, brand is in a span.block.text-sm
@@ -372,7 +398,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
             r'(?:BCI#|BCI\s*Number|Item\s*#)\s*:\s*(\S+)': 'bci_item_number',
             r'(?:Manufacturer\s*#|MFG\s*#|Model\s*#)\s*:\s*(\S+)': 'manufacturer_number',
             r'(?:UPC\s*Code|UPC)\s*:\s*(\S+)': 'upc',
-            r'(?:Size)\s*:\s*([^:\n]+)': 'size',
+            r'(?:Size)\s*:\s*(.+?)(?=\s*(?:BCI#|BCI\s*Number|Item\s*#|Manufacturer\s*#|MFG\s*#|Model\s*#|UPC\s*Code|UPC|Type|Case\s*Pack|Pack)\s*:|$)': 'size',
             r'(?:Type)\s*:\s*(\S+)': 'type',
             r'(?:Case\s*Pack|Pack)\s*:\s*(\S+)': 'case_pack',
         }

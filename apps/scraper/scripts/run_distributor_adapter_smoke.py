@@ -109,12 +109,13 @@ def filter_entries(
             logger.debug(
                 "Skipping auth-required entry: %s/%s",
                 entry.get("source_slug"),
-                entry.get("sku"),
+                entry.get("upc") or entry.get("sku"),
             )
             continue
 
         # SKU filter
-        if sku_filter and entry.get("sku") != sku_filter:
+        entry_sku = entry.get("upc") or entry.get("sku")
+        if sku_filter and entry_sku != sku_filter:
             continue
 
         filtered.append(entry)
@@ -124,7 +125,7 @@ def filter_entries(
 
 def build_plan_from_entry(entry: dict[str, Any]) -> tuple[ApprovedSourcePlan, ApprovedSourcePlanEntry]:
     """Build an ApprovedSourcePlan and entry from a dataset entry."""
-    sku = entry["sku"]
+    sku = entry.get("upc") or entry.get("sku")
     source_slug = entry["source_slug"]
     adapter_slug = entry["adapter_slug"]
 
@@ -161,7 +162,7 @@ def build_plan_from_entry(entry: dict[str, Any]) -> tuple[ApprovedSourcePlan, Ap
 
     plan = ApprovedSourcePlan(
         schemaVersion="v1",
-        sku=sku,
+        upc=sku,
         input=entry.get("search_input", {"name": entry.get("product_name")}),
         brand=brand,
         selectedDistributorSlug=source_slug,
@@ -237,7 +238,7 @@ def evaluate_result(
 
 async def run_single_entry(entry: dict[str, Any]) -> SmokeTestResult:
     """Run a single dataset entry against the live distributor."""
-    sku = entry["sku"]
+    sku = entry.get("upc") or entry.get("sku")
     source_slug = entry["source_slug"]
     adapter_slug = entry["adapter_slug"]
     entry_key = f"{source_slug}_{sku}"
@@ -352,7 +353,7 @@ async def run_smoke_tests(
             summary.results.append(SmokeTestResult(
                 entry_key=f"error_{i}",
                 source_slug=entries[i].get("source_slug", "unknown"),
-                sku=entries[i].get("sku", "unknown"),
+                sku=entries[i].get("upc") or entries[i].get("sku", "unknown"),
                 expected_status="unknown",
                 actual_status="error",
                 passed=False,

@@ -27,7 +27,7 @@ def _make_plan(
     brand_slug: str = "kerbl",
 ) -> ApprovedSourcePlan:
     return ApprovedSourcePlan(
-        upc=sku,
+        upc=upc,
         input={"name": name, "price": None},
         brand=ApprovedSourceBrand(id="brand-1", name=brand_name, slug=brand_slug),
         selectedDistributorSlug=selected_distributor,

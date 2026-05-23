@@ -58,8 +58,8 @@ class TestPromptLoading:
         prompt = load_prompt_from_file("v1")
 
         assert prompt is not None
-        assert "Extract structured product data for a single UPC-locked product page" in prompt
-        assert "{upc}" in prompt
+        assert "Extract structured product data for a single SKU-locked product page" in prompt
+        assert "{sku}" in prompt
         assert "{brand" in prompt
         assert "{product_name" in prompt
 
@@ -67,7 +67,7 @@ class TestPromptLoading:
         prompt = load_prompt_from_file("v2")
 
         assert prompt is not None
-        assert "Extract structured product data for a single UPC-locked product page" in prompt
+        assert "Extract structured product data for a single SKU-locked product page" in prompt
         assert "PRICE NORMALIZATION" in prompt
         assert "AVAILABILITY NORMALIZATION" in prompt
         assert "price: required" in prompt

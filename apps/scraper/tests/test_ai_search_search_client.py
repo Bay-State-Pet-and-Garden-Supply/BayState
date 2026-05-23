@@ -202,4 +202,4 @@ async def test_serper_extracts_knowledge_graph():
     results = client._extract_results(data)
     assert len(results) == 2
     assert results[0]["result_type"] == "knowledge_graph"
-    assert results[0]["url"] == "https://example.com"
+    assert results[0]["url"] == "https://example.com/"

@@ -21,6 +21,10 @@ from scrapers.ai_search.llm_runtime import LLMRuntimeConfig, resolve_llm_runtime
 from scrapers.ai_search.matching import MatchingUtils
 from scrapers.ai_search.scoring import SearchScorer
 from scrapers.schemas.product import ProductData
+from scrapers.product_url_extraction.media_selector import (
+    COMMON_FLAVOR_TOKENS,
+    ProductMediaSelector,
+)
 from scrapers.utils.ai_utils import (
     build_extraction_instruction,
     extract_product_from_meta_tags,
@@ -635,6 +639,33 @@ class Crawl4AIExtractor:
             "categories": categories,
         }
 
+    def _apply_context_derivation(
+        self,
+        result_data: dict[str, Any],
+        *,
+        product_name: str | None,
+        url: str,
+        brand: str | None = None,
+    ) -> dict[str, Any]:
+        """Derive missing product fields from name heuristics.
+
+        Only fills fields where ``result_data`` currently has a
+        None/falsy value. Never overwrites extracted data.
+        """
+        context_fields = self._extraction.derive_product_context_fields(
+            product_name=result_data.get("product_name"),
+            expected_name=product_name,
+            categories=result_data.get("categories"),
+            source_url=url,
+            brand=brand,
+        )
+        for field in ("weight", "species", "food_form", "flavor"):
+            if not result_data.get(field) and context_fields.get(field):
+                result_data[field] = context_fields[field]
+        if "field_sources" in context_fields:
+            result_data["field_sources"] = context_fields["field_sources"]
+        return result_data
+
     async def _enrich_images(
         self,
         result_data: dict[str, Any],
@@ -646,29 +677,79 @@ class Crawl4AIExtractor:
         expected_name: Optional[str],
         expected_brand: Optional[str],
     ) -> tuple[dict[str, Any], dict[str, Any]]:
-        """Apply deterministic image enrichment to an extraction result."""
-        final_images, diagnostics = self._extraction.merge_product_images(
+        """Apply deterministic image enrichment to an extraction result.
+
+        Uses ProductMediaSelector for domain-blocked, canonicalized, role-assigned
+        image selection. Keeps merge_product_images call for diagnostic comparison.
+        """
+        # ---- Existing merge_product_images for diagnostic comparison ----
+        _, merge_diagnostics = self._extraction.merge_product_images(
             source_url=url,
             html=html,
             markdown=markdown,
             crawl_media=crawl_media,
             jsonld_images=self._extraction.coerce_string_list(result_data.get("images") if result_data.get("images") else []),
-            meta_images=[], # Already captured in jsonld_images if coming from meta path
+            meta_images=[],
             expected_product_name=expected_name,
             expected_brand=expected_brand,
         )
-        
-        # Resolve any grounding redirects for the new images
-        resolved_images = await _resolve_grounding_images(self._grounding_redirect_resolver, final_images)
-        
+
+        # ---- ProductMediaSelector for production image selection ----
+        # Derive flavor tokens from the expected product name
+        flavor_tokens = None
+        if expected_name:
+            name_lower = expected_name.lower()
+            detected = [t for t in COMMON_FLAVOR_TOKENS if t in name_lower]
+            if detected:
+                flavor_tokens = detected
+
+        selector = ProductMediaSelector(
+            expected_product_name=expected_name,
+            expected_brand=expected_brand,
+            expected_flavor_tokens=flavor_tokens,
+        )
+
+        all_images = self._extraction.coerce_string_list(
+            result_data.get("images") if result_data.get("images") else []
+        )
+
+        media_result = selector.select(
+            crawl_media_images=crawl_media.get("images", []),
+            jsonld_images=all_images,
+            source_url=url,
+            page_html=html,
+        )
+
+        # Build approved URL list from selector output
+        approved_urls: list[str] = []
+        if media_result.primary_image:
+            approved_urls.append(media_result.primary_image.src)
+        for img in media_result.gallery_images:
+            approved_urls.append(img.src)
+
+        # Resolve any grounding redirects for the approved images
+        resolved_images = await _resolve_grounding_images(self._grounding_redirect_resolver, approved_urls)
+
+        # Combine diagnostics
+        combined_diagnostics: dict[str, Any] = {
+            **merge_diagnostics,
+            "media_selector": media_result.to_dict(),
+        }
+
         enriched = dict(result_data)
         enriched["images"] = resolved_images
-        
-        # Add a warning if we suspects underextraction
-        if len(resolved_images) <= 1 and diagnostics.get("total_candidates", 0) >= 4:
-            diagnostics["warning"] = "image_gallery_underextracted"
-            
-        return enriched, diagnostics
+
+        # Add a warning if we suspect underextraction
+        if len(resolved_images) <= 1 and merge_diagnostics.get("total_candidates", 0) >= 4:
+            combined_diagnostics["warning"] = "image_gallery_underextracted"
+
+        # Attach image diagnostics to result for benchmark/report visibility
+        enriched["telemetry"] = {
+            **(enriched.get("telemetry") or {}),
+            "image_diagnostics": combined_diagnostics,
+        }
+
+        return enriched, combined_diagnostics
 
     async def _resolve_official_family_variant(
         self,
@@ -864,6 +945,12 @@ class Crawl4AIExtractor:
                                     fallback_triggered=result.get("fallback_triggered", False),
                                     image_diagnostics=image_diag,
                                 )
+                                enriched_jsonld = self._apply_context_derivation(
+                                    enriched_jsonld,
+                                    product_name=product_name,
+                                    url=url,
+                                    brand=brand,
+                                )
                                 return enriched_jsonld
 
                         parse_start = time.perf_counter()
@@ -926,6 +1013,12 @@ class Crawl4AIExtractor:
                                     fit_markdown_used=False,
                                     fallback_triggered=result.get("fallback_triggered", False),
                                     image_diagnostics=image_diag,
+                                )
+                                enriched_meta = self._apply_context_derivation(
+                                    enriched_meta,
+                                    product_name=product_name,
+                                    url=url,
+                                    brand=brand,
                                 )
                                 return enriched_meta
 
@@ -1033,6 +1126,12 @@ class Crawl4AIExtractor:
                                                     image_diagnostics=image_diag,
                                                 )
                                                 logger.info("[AI Search] LLM second pass succeeded after incomplete fallback")
+                                                enriched_llm = self._apply_context_derivation(
+                                                    enriched_llm,
+                                                    product_name=product_name,
+                                                    url=url,
+                                                    brand=brand,
+                                                )
                                                 return enriched_llm
                             except Exception as llm_exc:
                                 logger.warning("[AI Search] LLM second pass after fallback failed: %s", self._summarize_error(llm_exc))
@@ -1048,6 +1147,12 @@ class Crawl4AIExtractor:
                         crawl_media=result.get("media", {}),
                         expected_name=product_name,
                         expected_brand=brand,
+                    )
+                    enriched_fb = self._apply_context_derivation(
+                        enriched_fb,
+                        product_name=product_name,
+                        url=url,
+                        brand=brand,
                     )
                     return enriched_fb
 
@@ -1218,6 +1323,12 @@ class Crawl4AIExtractor:
                         )
                         logger.info(f"[AI Search] Extraction method used: {method}")
 
+                        enriched_llm = self._apply_context_derivation(
+                            enriched_llm,
+                            product_name=product_name,
+                            url=url,
+                            brand=brand,
+                        )
                         return enriched_llm
 
                 # Log failed extraction
@@ -1244,6 +1355,12 @@ class Crawl4AIExtractor:
                         crawl_media=result.get("media", {}),
                         expected_name=product_name,
                         expected_brand=brand,
+                    )
+                    enriched_fb = self._apply_context_derivation(
+                        enriched_fb,
+                        product_name=product_name,
+                        url=url,
+                        brand=brand,
                     )
                     return enriched_fb
                 return fallback_res
@@ -1612,7 +1729,7 @@ class FallbackExtractor:
                 source_url=response_url,
                 expected_name=product_name,
             )
-            if candidate_name and product_name and not self._matching.is_name_match(product_name, candidate_name):
+            if candidate_name and product_name and not self._matching.is_contextual_product_name_match(product_name, candidate_name, brand, response_url):
                 self._log_telemetry(response_url, upc, "meta", False, fetch_time_ms, parse_time_ms, "title mismatch")
                 return {
                     "success": False,
@@ -1658,7 +1775,7 @@ class FallbackExtractor:
             confidence = 0.65
             if has_structured_data:
                 confidence += 0.15
-            if product_name and self._matching.is_name_match(product_name, candidate_name):
+            if product_name and self._matching.is_contextual_product_name_match(product_name, candidate_name, brand, response_url):
                 confidence += 0.1
             if brand and self._matching.is_brand_match(brand, candidate_name, response_url):
                 confidence += 0.1

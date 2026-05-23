@@ -176,7 +176,7 @@ def build_extraction_instruction(upc: str, brand: Optional[str], product_name: O
     brand_str = brand if brand else "Unknown"
     product_name_str = product_name if product_name else "Unknown"
 
-    return prompt_template.format(upc=upc, brand=brand_str, product_name=product_name_str)
+    return prompt_template.format(sku=upc, upc=upc, brand=brand_str, product_name=product_name_str)
 
 
 def compute_meta_confidence(
@@ -193,7 +193,9 @@ def compute_meta_confidence(
     confidence = 0.65
     if has_structured_data:
         confidence += 0.15
-    if product_name and matching_utils.is_name_match(product_name, candidate_name):
+    if product_name and matching_utils.is_contextual_product_name_match(
+        product_name, candidate_name, brand, source_url,
+    ):
         confidence += 0.1
     brand_candidate = resolved_brand or candidate_name
     if brand and matching_utils.is_brand_match(brand, brand_candidate, source_url):
@@ -231,7 +233,7 @@ def extract_product_from_meta_tags(
     candidate_name = extraction_utils.normalize_product_title(og_title or twitter_title)
     if not candidate_name:
         return None
-    if product_name and not matching_utils.is_name_match(product_name, candidate_name):
+    if product_name and not matching_utils.is_contextual_product_name_match(product_name, candidate_name, brand, source_url):
         return None
 
     candidate_description = extraction_utils.clean_text(og_description or twitter_description)

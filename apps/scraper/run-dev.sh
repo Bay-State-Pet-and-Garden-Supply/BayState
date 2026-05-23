@@ -41,18 +41,17 @@ else
     echo -e "${YELLOW}⚠ No virtual environment found. Using system Python.${NC}"
 fi
 
-# Check if .env.development exists
-if [ ! -f ".env.development" ]; then
-    echo -e "${YELLOW}⚠ .env.development not found!${NC}"
-    echo "Creating from .env..."
-    cp .env .env.development
-    sed -i.bak 's|https://bay-state-app.vercel.app|http://localhost:3000|g' .env.development
-    rm -f .env.development.bak
+# Check if .env exists
+if [ ! -f ".env" ]; then
+    echo -e "${YELLOW}⚠ .env not found!${NC}"
+    echo "Copy .env.example to .env and fill in your API keys."
+    exit 1
 fi
 
 echo -e "${GREEN}✓ Starting scraper in DEV mode${NC}"
 echo -e "${BLUE}  API URL: http://localhost:3000${NC}"
 echo ""
 
-# Run daemon with dev environment
+# Run daemon
+# --env dev is informational (logged); .env is the single config source
 exec python daemon.py --env dev "$@"

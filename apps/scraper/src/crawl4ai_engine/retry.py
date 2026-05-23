@@ -567,13 +567,13 @@ def _to_error_context(context: Mapping[str, object]) -> ErrorContext:
         step_index=_as_int_or_none(context.get("step_index")),
         selector=_as_str(context.get("selector")),
         url=_as_str(context.get("url")),
-        sku=_as_str(context.get("sku")),
+        upc=_as_str(context.get("upc") or context.get("sku")),
         retry_count=_as_int_or_default(context.get("retry_count"), 0),
         max_retries=_as_int_or_default(context.get("max_retries"), 1),
         extra={
             key: value
             for key, value in context.items()
-            if key not in {"site_name", "action", "step_index", "selector", "url", "sku", "retry_count", "max_retries"}
+            if key not in {"site_name", "action", "step_index", "selector", "url", "upc", "sku", "retry_count", "max_retries"}
         },
     )
 

@@ -337,7 +337,7 @@ class TestReportWriters:
                 SmokeTestResult(
                     entry_key="bradley_001135",
                     source_slug="bradley",
-                    upc="001135",
+                    sku="001135",
                     expected_status="success",
                     actual_status="success",
                     passed=True,
@@ -352,7 +352,7 @@ class TestReportWriters:
                 SmokeTestResult(
                     entry_key="bradley_xyzabc",
                     source_slug="bradley",
-                    upc="xyzabc123notexist456",
+                    sku="xyzabc123notexist456",
                     expected_status="no_match",
                     actual_status="failed",
                     passed=True,
@@ -362,7 +362,7 @@ class TestReportWriters:
                 SmokeTestResult(
                     entry_key="central_pet_99999",
                     source_slug="central_pet",
-                    upc="99999",
+                    sku="99999",
                     expected_status="success",
                     actual_status="failed",
                     passed=False,

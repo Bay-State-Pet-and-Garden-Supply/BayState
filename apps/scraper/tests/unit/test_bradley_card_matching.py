@@ -19,7 +19,7 @@ def _make_minimal_plan(upc: str) -> ApprovedSourcePlan:
         approvedSourcesOnly=False,
     )
     return ApprovedSourcePlan(
-        upc=sku,
+        upc=upc,
         brand=None,
         input={"name": "E-Z HANG SCALE"},
         sourcePolicy=policy,

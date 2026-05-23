@@ -96,7 +96,7 @@ def build_success_result(
             fields=field_confidences or {},
         ),
         validation=EnrichmentValidation(
-            sku_match=sku_match,
+            upc_match=sku_match,
             warnings=warnings or [],
             missing_required=[],
         ),
@@ -165,7 +165,7 @@ def build_partial_result(
             fields=field_confidences or {},
         ),
         validation=EnrichmentValidation(
-            sku_match=sku_match,
+            upc_match=sku_match,
             warnings=warnings or [],
             missing_required=missing_required or [],
         ),
@@ -221,7 +221,7 @@ def build_auth_required_result(
         product=EnrichedProductFacts(),
         confidence=EnrichmentConfidence(overall=0.0),
         validation=EnrichmentValidation(
-            sku_match=False,
+            upc_match=False,
             warnings=[warning],
             missing_required=[],
         ),
@@ -276,7 +276,7 @@ def build_auth_failed_result(
         product=EnrichedProductFacts(),
         confidence=EnrichmentConfidence(overall=0.0),
         validation=EnrichmentValidation(
-            sku_match=False,
+            upc_match=False,
             warnings=[warning],
             missing_required=[],
         ),
@@ -331,7 +331,7 @@ def build_auth_expired_result(
         product=EnrichedProductFacts(),
         confidence=EnrichmentConfidence(overall=0.0),
         validation=EnrichmentValidation(
-            sku_match=False,
+            upc_match=False,
             warnings=[warning],
             missing_required=[],
         ),
@@ -379,7 +379,7 @@ def build_no_match_result(
         product=EnrichedProductFacts(),
         confidence=EnrichmentConfidence(overall=0.0),
         validation=EnrichmentValidation(
-            sku_match=False,
+            upc_match=False,
             warnings=[f"No match found for UPC {upc} on {source_slug}"],
             missing_required=["sku_match"],
         ),
@@ -426,7 +426,7 @@ def build_policy_blocked_result(
         product=EnrichedProductFacts(),
         confidence=EnrichmentConfidence(overall=0.0),
         validation=EnrichmentValidation(
-            sku_match=False,
+            upc_match=False,
             warnings=[reason],
             missing_required=[],
         ),
@@ -482,7 +482,7 @@ def build_failed_result(
         product=EnrichedProductFacts(),
         confidence=EnrichmentConfidence(overall=0.0),
         validation=EnrichmentValidation(
-            sku_match=False,
+            upc_match=False,
             warnings=[error_message],
         ),
         attempts=[

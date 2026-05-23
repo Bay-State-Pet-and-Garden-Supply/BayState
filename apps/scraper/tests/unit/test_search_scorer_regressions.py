@@ -129,7 +129,7 @@ def test_clean_official_product_pages_can_remain_generic_classification(
 ) -> None:
     scorer = SearchScorer()
 
-    source_class = scorer.classify_result_source(result, upc=sku, brand=brand, product_name=product_name)
+    source_class = scorer.classify_result_source(result, upc=upc, brand=brand, product_name=product_name)
 
     assert source_class == "official_generic"
 

@@ -13,9 +13,9 @@ Key behaviors:
 - Graceful shutdown on SIGTERM/SIGINT
 
 Usage:
-    python daemon.py                    # Uses .env (production)
-    python daemon.py --env dev          # Uses .env.development (local dev)
-    ENVIRONMENT=dev python daemon.py    # Same as above
+    python daemon.py                    # Loads .env
+    python daemon.py --env dev          # Loads .env (--env is informational only)
+    python daemon.py --env prod         # Loads .env (--env is informational only)
 
 Environment Variables:
     SCRAPER_API_URL: Base URL for BayStateApp API (required)
@@ -23,7 +23,7 @@ Environment Variables:
     RUNNER_NAME: Identifier for this runner (defaults to hostname)
     POLL_INTERVAL: Seconds between polls when idle (default: 30)
     MAX_JOBS_BEFORE_RESTART: Recycle after N jobs to prevent leaks (default: 100)
-    ENVIRONMENT: Set to 'dev' to use .env.development instead of .env
+    ENVIRONMENT: Set to 'dev' or 'prod' (informational; does not change env file)
 """
 
 from __future__ import annotations
@@ -65,17 +65,13 @@ parser.add_argument(
 )
 args, remaining_argv = parser.parse_known_args()
 
-if args.env == "dev":
-    env_file = PROJECT_ROOT / ".env.development"
-    if not env_file.exists():
-        if "SCRAPER_API_URL" not in os.environ:
-            print(f"Warning: {env_file} not found, falling back to .env")
-        env_file = PROJECT_ROOT / ".env"
-else:
-    env_file = PROJECT_ROOT / ".env"
-
+# Single .env file for all environments.
+# Production deployments set env vars via the platform, not this file.
+env_file = PROJECT_ROOT / ".env"
 if env_file.exists():
     load_dotenv(env_file, override=True)
+else:
+    print(f"Warning: {env_file} not found — relying on process environment")
 
 
 try:

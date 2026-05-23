@@ -750,6 +750,7 @@ class TestFallbackExtractor:
     def fallback_extractor(self):
         matching = MagicMock()
         matching.is_name_match.return_value = True
+        matching.is_contextual_product_name_match.return_value = True
         matching.is_brand_match.return_value = True
         return FallbackExtractor(scoring=MagicMock(), matching=matching)
 
@@ -785,6 +786,7 @@ class TestFallbackExtractor:
     async def test_extract_rejects_title_mismatch(self, fallback_extractor):
         """Test fallback extraction rejects mismatched product titles."""
         fallback_extractor._matching.is_name_match.return_value = False
+        fallback_extractor._matching.is_contextual_product_name_match.return_value = False
         html = """
         <html>
           <head>

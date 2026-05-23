@@ -163,9 +163,50 @@ class ExtractionUtils:
         self._scoring = scoring_module
         self._matching = MatchingUtils()
 
+    # DOM/markup artifact markers that leak into extracted text
+    _DIRTY_HTML_MARKERS: list[str] = [
+        "virtual_list",
+        "bottomspacer",
+        "data-qa=",
+        "aria-setsize",
+    ]
+
     def clean_text(self, value: Any) -> str:
         """Normalize arbitrary text extracted from HTML/JSON-LD."""
         return self._MULTISPACE_PATTERN.sub(" ", html_module.unescape(str(value or ""))).strip()
+
+    def clean_description_text(self, text: str) -> str:
+        """Sanitize product description by removing DOM/markup artifacts.
+
+        Known artifacts: virtual_list, bottomSpacer, data-qa=, aria-setsize.
+        If artifacts appear AFTER valid product copy, truncate at first artifact marker.
+        """
+        cleaned = self.clean_text(text)
+        if not cleaned:
+            return cleaned
+
+        # Step 1: Remove standalone HTML attribute sequences like data-qa="value"
+        cleaned = re.sub(
+            r'\s*(?:data-qa|aria-[a-z]+)\s*=\s*"[^"]*"',
+            "",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+
+        # Step 2: Find the earliest artifact marker position
+        lower = cleaned.lower()
+        first_pos: int | None = None
+        for marker in self._DIRTY_HTML_MARKERS:
+            pos = lower.find(marker.lower())
+            if pos != -1 and (first_pos is None or pos < first_pos):
+                first_pos = pos
+
+        if first_pos is not None:
+            cleaned = cleaned[:first_pos].strip()
+
+        # Step 3: Final whitespace normalization
+        cleaned = self._MULTISPACE_PATTERN.sub(" ", cleaned).strip()
+        return cleaned
 
     @staticmethod
     def _normalize_lookup_token(value: Optional[str]) -> str:
@@ -848,11 +889,25 @@ class ExtractionUtils:
             if needle in combined_tokens:
                 add_category(category)
 
+        # Protein/flavor tokens that are valid categories for livestock/feed
+        # but must NOT be used as categories in pet-food context.
+        PROTEIN_AS_CATEGORY_TOKENS = {"poultry", "chicken", "beef", "salmon", "turkey", "fish", "lamb", "duck"}
+        _PET_FOOD_SIGNALS = {"dog", "cat", "puppy", "kitten", "canine", "feline", "pet", "cats", "dogs"}
+        _FOOD_PRODUCT_TOKENS = {"food", "kibble", "meal", "recipe", "formula", "diet", "broth", "treat", "treats", "nutrition", "pate", "pâté", "stew"}
+        _is_pet_food = bool(_PET_FOOD_SIGNALS.intersection(combined_tokens))
+        # Broader food-context: protein token + food token = food product (not category)
+        _is_food_product = bool(
+            PROTEIN_AS_CATEGORY_TOKENS.intersection(combined_tokens)
+            and _FOOD_PRODUCT_TOKENS.intersection(combined_tokens)
+        )
+
         poultry_tokens = {"hen", "duck", "chicken", "poultry", "goose", "geese"}
         if poultry_tokens.intersection(combined_tokens):
-            add_category("Poultry")
-            if {"feed", "starter", "grower", "crumbles", "ration", "layer"}.intersection(combined_tokens):
-                add_category("Poultry Feed")
+            # In pet-food or food-product context, poultry tokens indicate protein/flavor, not category.
+            if not _is_pet_food and not _is_food_product:
+                add_category("Poultry")
+                if {"feed", "starter", "grower", "crumbles", "ration", "layer"}.intersection(combined_tokens):
+                    add_category("Poultry Feed")
 
         if {"treat", "treats", "grasshopper", "grasshoppers", "mealworm", "mealworms", "snack", "snacks"}.intersection(combined_tokens):
             add_category("Treats")
@@ -864,6 +919,156 @@ class ExtractionUtils:
             add_category("Automotive")
 
         return categories
+
+    # ------------------------------------------------------------------
+    # Deterministic field derivation from product name / context
+    # ------------------------------------------------------------------
+
+    _WEIGHT_PATTERN = re.compile(
+        r"\b(\d+(?:\.\d+)?)\s*(lb|lbs|pound|pounds|oz|ounce|ounces|kg|g|gram|grams)\b",
+        flags=re.IGNORECASE,
+    )
+
+    _SPECIES_KEYWORDS: dict[tuple[str, ...], str] = {
+        ("dog", "dogs", "puppy", "puppies", "canine"): "Dog",
+        ("cat", "cats", "kitten", "kittens", "feline"): "Cat",
+    }
+
+    _FOOD_FORM_KEYWORDS: dict[tuple[str, ...], str] = {
+        ("kibble", "dry food", "dry dog food", "dry cat food", "dry kibble"): "Dry Food",
+        ("p\u00e2t\u00e9", "pate", "wet food", "canned", "stew", "gravy", "shreds", "flaked", "loaf"): "Wet Food",
+        ("freeze-dried", "freeze dried", "raw food", "dehydrated", "air-dried"): "Raw",
+        ("treat", "treats", "biscuit", "biscuits", "chew", "chews", "bone", "bones"): "Treat",
+    }
+
+    _FLAVOR_TOKENS: dict[str, str] = {
+        "chicken": "Chicken",
+        "salmon": "Salmon",
+        "beef": "Beef",
+        "turkey": "Turkey",
+        "lamb": "Lamb",
+        "duck": "Duck",
+        "pork": "Pork",
+        "venison": "Venison",
+        "whitefish": "Whitefish",
+        "tuna": "Tuna",
+        "fish": "Whitefish",
+        "bison": "Bison",
+        "rabbit": "Rabbit",
+        "kangaroo": "Kangaroo",
+        "mackerel": "Mackerel",
+        "sardine": "Sardine",
+        "herring": "Herring",
+    }
+
+    def derive_product_context_fields(
+        self,
+        *,
+        product_name: str | None,
+        expected_name: str | None,
+        categories: list[str] | None,
+        source_url: str,
+        brand: str | None = None,
+    ) -> dict[str, Any]:
+        """Derive product fields from name/title heuristics.
+
+        Only fills fields that can be confidently determined from the
+        product name, categories, or URL. Never guesses.
+
+        Returns a dict with keys: ``weight``, ``species``, ``food_form``,
+        ``flavor``, ``field_sources`` (provenance tracking per field).
+        """
+        result: dict[str, Any] = {}
+        field_sources: dict[str, str] = {}
+
+        # Consider both the extracted product_name and the expected_name
+        # (which may come from the caller / dataset). Prefer expected_name
+        # if product_name is very short, but both are checked.
+        name = str(product_name or expected_name or "")
+        alt_name = str(expected_name or product_name or "")
+        combined_names = f"{name} {alt_name}"
+
+        lower_combined = combined_names.lower()
+
+        # ---- weight ----
+        for candidate in (name, alt_name, combined_names):
+            match = self._WEIGHT_PATTERN.search(candidate)
+            if match:
+                val, unit = match.group(1), match.group(2).lower()
+                # Normalize unit
+                if unit in ("pounds", "pound"):
+                    unit = "lb"
+                elif unit in ("ounce", "ounces"):
+                    unit = "oz"
+                elif unit in ("gram", "grams"):
+                    unit = "g"
+                elif unit in ("kilogram", "kilograms"):
+                    unit = "kg"
+                result["weight"] = f"{val} {unit}"
+                field_sources["weight"] = "derived_from_product_name"
+                break
+
+        # ---- species ----
+        species_source = None
+        for tokens, species_val in self._SPECIES_KEYWORDS.items():
+            if any(t in lower_combined for t in tokens):
+                result["species"] = species_val
+                species_source = "derived_from_product_name"
+                break
+        if "species" not in result and categories:
+            cat_combined = " ".join(c.lower() for c in categories if c)
+            for tokens, species_val in self._SPECIES_KEYWORDS.items():
+                if any(t in cat_combined for t in tokens):
+                    result["species"] = species_val
+                    species_source = "derived_from_categories"
+                    break
+        if species_source:
+            field_sources["species"] = species_source
+
+        # ---- food_form ----
+        form_source = None
+        # Search in combined names first
+        for tokens, form_val in self._FOOD_FORM_KEYWORDS.items():
+            if any(t in lower_combined for t in tokens):
+                result["food_form"] = form_val
+                form_source = "derived_from_product_name"
+                break
+        if "food_form" not in result and categories:
+            cat_combined = " ".join(c.lower() for c in categories if c)
+            for tokens, form_val in self._FOOD_FORM_KEYWORDS.items():
+                if any(t in cat_combined for t in tokens):
+                    result["food_form"] = form_val
+                    form_source = "derived_from_categories"
+                    break
+        if form_source:
+            field_sources["food_form"] = form_source
+
+        # ---- flavor / primary_protein ----
+        flavor_tokens_found: list[str] = []
+        if brand:
+            brand_norm = brand.strip().lower()
+        else:
+            brand_norm = None
+
+        for token_key, flavor_val in self._FLAVOR_TOKENS.items():
+            if token_key in lower_combined:
+                # Skip flavor tokens that appear in the brand name
+                if brand_norm and token_key in brand_norm:
+                    continue
+                if flavor_val not in flavor_tokens_found:
+                    flavor_tokens_found.append(flavor_val)
+
+        if flavor_tokens_found:
+            flavor_str = " & ".join(flavor_tokens_found)
+            result["flavor"] = flavor_str
+            result["primary_protein"] = flavor_tokens_found[0]
+            field_sources["flavor"] = "derived_from_product_name"
+            field_sources["primary_protein"] = "derived_from_product_name"
+
+        if field_sources:
+            result["field_sources"] = field_sources
+
+        return result
 
     def extract_product_from_html_jsonld(
         self,
@@ -888,9 +1093,9 @@ class ExtractionUtils:
                 demandware_product = demandware_payload.get("product")
                 if isinstance(demandware_product, dict):
                     product_name_value = self.normalize_product_title(demandware_product.get("productName") or demandware_product.get("productDisplayName"))
-                    short_description = self.clean_text(demandware_product.get("shortDescription"))
+                    short_description = self.clean_description_text(demandware_product.get("shortDescription"))
                     if not short_description:
-                        short_description = self.clean_text(demandware_product.get("pageDescription"))
+                        short_description = self.clean_description_text(demandware_product.get("pageDescription"))
 
                     resolved_brand = self.infer_brand(
                         explicit_brand=demandware_product.get("brand") or brand,
@@ -997,7 +1202,7 @@ class ExtractionUtils:
                 continue
 
             name_value = self.normalize_product_title(current.get("name"))
-            description_value = self.clean_text(current.get("description"))
+            description_value = self.clean_description_text(current.get("description"))
             brand_value_raw = current.get("brand")
             if isinstance(brand_value_raw, dict):
                 brand_value = brand_value_raw.get("name") or brand_value_raw.get("brand") or ""

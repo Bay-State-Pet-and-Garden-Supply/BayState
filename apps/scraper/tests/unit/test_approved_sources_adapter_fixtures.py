@@ -43,7 +43,7 @@ def _make_minimal_plan(upc: str, brand_name: str | None = None) -> ApprovedSourc
     if brand_name:
         brand = ApprovedSourceBrand(id="test-id", name=brand_name, slug=brand_name.lower().replace(" ", "_"))
     return ApprovedSourcePlan(
-        upc=sku,
+        upc=upc,
         brand=brand,
         sourcePolicy=ApprovedSourcePolicy(
             allowedDomains=["fixture.local", "bradleycaldwell.com", "centralpet.com",
@@ -113,11 +113,12 @@ def test_product_fixture_extraction(fixture_key: str) -> None:
     adapter_cls = get_adapter_class(adapter_slug)
     assert adapter_cls is not None, f"Adapter class not found for {adapter_slug}"
 
-    plan = _make_minimal_plan(upc=catalog["expected_sku"])
+    expected_upc = catalog.get("expected_upc") or catalog.get("expected_sku")
+    plan = _make_minimal_plan(upc=expected_upc)
     entry = _make_entry(adapter_slug, source_slug)
     adapter = adapter_cls(entry, plan)
 
-    result = adapter.extract_from_html(html, catalog["expected_sku"], "https://fixture.local/product")
+    result = adapter.extract_from_html(html, expected_upc, "https://fixture.local/product")
 
     assert result is not None
     assert result.success, f"Expected success for {fixture_key}, got failure: {result.failure_message}"
@@ -170,11 +171,12 @@ def test_partial_fixture_extraction(fixture_key: str) -> None:
     adapter_cls = get_adapter_class(adapter_slug)
     assert adapter_cls is not None
 
-    plan = _make_minimal_plan(upc=catalog["expected_sku"])
+    expected_upc = catalog.get("expected_upc") or catalog.get("expected_sku")
+    plan = _make_minimal_plan(upc=expected_upc)
     entry = _make_entry(adapter_slug, source_slug)
     adapter = adapter_cls(entry, plan)
 
-    result = adapter.extract_from_html(html, catalog["expected_sku"], "https://fixture.local/product")
+    result = adapter.extract_from_html(html, expected_upc, "https://fixture.local/product")
 
     assert result is not None
     product = result.product
@@ -210,11 +212,12 @@ def test_no_results_fixture(fixture_key: str) -> None:
     adapter_cls = get_adapter_class(adapter_slug)
     assert adapter_cls is not None
 
-    plan = _make_minimal_plan(upc=catalog["expected_sku"])
+    expected_upc = catalog.get("expected_upc") or catalog.get("expected_sku")
+    plan = _make_minimal_plan(upc=expected_upc)
     entry = _make_entry(adapter_slug, source_slug)
     adapter = adapter_cls(entry, plan)
 
-    result = adapter.extract_from_html(html, catalog["expected_sku"], "https://fixture.local/no-results")
+    result = adapter.extract_from_html(html, expected_upc, "https://fixture.local/no-results")
 
     assert result is not None
     # Should be a failure

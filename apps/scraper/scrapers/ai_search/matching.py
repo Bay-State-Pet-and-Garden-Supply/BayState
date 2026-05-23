@@ -1,6 +1,7 @@
 """Brand and name matching utilities."""
 
 import re
+import unicodedata
 from difflib import SequenceMatcher
 from typing import Optional
 from urllib.parse import urlparse
@@ -70,6 +71,11 @@ class MatchingUtils:
         "lb": "lb",
         "lbs": "lb",
     }
+
+    @staticmethod
+    def _normalize_diacritics(text: str) -> str:
+        """Normalize accented characters to ASCII for matching (Pâté → Pate)."""
+        return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii')
 
     @staticmethod
     def _normalize_dimension_token(first: str, second: str) -> str:
@@ -261,6 +267,147 @@ class MatchingUtils:
             return None
 
         return self._format_brand_tokens(prefix_tokens)
+
+    # Common flavor/protein tokens for conflict detection
+    FLAVOR_TOKENS: set[str] = {
+        "chicken", "salmon", "beef", "turkey", "lamb", "duck",
+        "pork", "venison", "whitefish", "tuna", "fish", "bison",
+        "rabbit", "kangaroo", "mackerel", "sardine", "herring",
+        "liver", "game", "bird", "poultry", "shrimp", "crab",
+        "lobster", "anchovy", "sprat", "trout", "cod",
+    }
+    # Common species tokens for conflict detection
+    SPECIES_TOKENS: set[str] = {
+        "dog", "dogs", "cat", "cats", "puppy", "kitten",
+        "canine", "feline", "horse", "pony",
+    }
+
+    def is_contextual_product_name_match(
+        self,
+        expected_name: str | None,
+        actual_name: str | None,
+        brand: str | None,
+        source_url: str,
+    ) -> bool:
+        """Check if actual page title matches expected product name, with contextual leniency.
+
+        Lenient when the source domain is clearly the brand's official domain
+        but the page title format differs (omits brand prefix, uses diacritics,
+        or has variant/size token variations). Never accepts on domain alone
+        — requires product-specific token overlap.
+
+        Rules:
+        1. Try existing is_name_match first.
+        2. If brand is not clearly in the domain, return standard is_name_match result.
+        3. Standard match is checked for flavor/species conflicts even when it passes.
+        4. Normalize diacritics in both names.
+        5. Tokenize, remove brand and variant/size tokens from expected.
+        6. Require at least 2 meaningful product tokens to overlap.
+        7. Allow prefix/subtoken matches (purrsnick ↔ purrsnickitty).
+        8. Reject if conflicting variant/flavor/species tokens exist.
+        """
+        if not expected_name or not actual_name:
+            return False
+
+        # Normalize diacritics for all comparisons
+        expected_clean = self._normalize_diacritics(expected_name)
+        actual_clean = self._normalize_diacritics(actual_name)
+
+        # Check brand-domain context
+        is_brand_domain = False
+        if brand:
+            try:
+                hostname = urlparse(source_url).netloc.lower()
+                if hostname.startswith("www."):
+                    hostname = hostname[4:]
+            except Exception:
+                hostname = ""
+            brand_norm = self.normalize_token_text(brand)
+            if brand_norm and brand_norm in hostname:
+                is_brand_domain = True
+
+        # Check if standard match passes
+        standard_match = self.is_name_match(expected_clean, actual_clean)
+
+        if not is_brand_domain:
+            # No brand context — standard match result is final
+            return standard_match
+
+        # Brand-domain context: apply flavor/species conflict checks
+        # even when standard match passes
+        expected_tokens = self.tokenize_keywords(expected_clean)
+        actual_tokens = self.tokenize_keywords(actual_clean)
+        brand_tokens = self.tokenize_keywords(brand) if brand else set()
+
+        if standard_match:
+            # Standard match passed — check for flavor/species conflicts
+            specific_expected = expected_tokens.difference(brand_tokens)
+            return self._check_flavor_species_conflicts(
+                specific_expected, actual_tokens
+            )
+
+        # Standard match failed — try contextual leniency
+        # Remove brand tokens and variant/size tokens
+        specific_expected = expected_tokens.difference(brand_tokens)
+        variant_tokens = self.extract_variant_tokens(expected_clean)
+        specific_expected = specific_expected.difference(variant_tokens)
+
+        if not specific_expected:
+            return False
+
+        # Check token overlap (at least 2, allow prefix/subtoken)
+        overlapping = []
+        for st in specific_expected:
+            if len(st) < 3:
+                continue
+            if st in actual_tokens:
+                overlapping.append(st)
+            else:
+                for at in actual_tokens:
+                    if st.startswith(at) or at.startswith(st):
+                        if len(st) >= 3 and len(at) >= 3:
+                            overlapping.append(st)
+                            break
+
+        if len(overlapping) < 2:
+            return False
+
+        # Reject if conflicting variant tokens
+        if self.has_conflicting_variant_tokens(expected_name, actual_name):
+            return False
+
+        # Reject if flavor/species conflicts
+        if not self._check_flavor_species_conflicts(specific_expected, actual_tokens):
+            return False
+
+        return True
+
+    def _check_flavor_species_conflicts(
+        self,
+        expected_tokens: set[str],
+        actual_tokens: set[str],
+    ) -> bool:
+        """Check for flavor or species conflicts between expected and actual tokens.
+
+        Returns False if a conflict is detected.
+        """
+        # Flavor conflict: expected has specific flavors not in actual
+        expected_flavors = {t for t in expected_tokens if t in self.FLAVOR_TOKENS}
+        actual_flavors = {t for t in actual_tokens if t in self.FLAVOR_TOKENS}
+        if expected_flavors and actual_flavors:
+            if not expected_flavors.issubset(actual_flavors):
+                return False
+
+        # Species conflict: expected has species not in actual
+        expected_species = {t for t in expected_tokens if t in self.SPECIES_TOKENS}
+        actual_species = {t for t in actual_tokens if t in self.SPECIES_TOKENS}
+        if expected_species and actual_species:
+            # Allow prefix/subtoken match: "cat" matches "cats"
+            for es in expected_species:
+                if not any(at.startswith(es) or es.startswith(at) for at in actual_species):
+                    return False
+
+        return True
 
     def infer_brand_prefix(
         self,

@@ -255,7 +255,7 @@ def _build_markdown(payload: dict[str, Any], json_path: Path) -> str:
         error_message = (result["error_message"] or "-").replace("\n", " ")
         extraction_time = "-" if result["extraction_time_ms"] is None else f"{result['extraction_time_ms']:.2f}"
         lines.append(
-            "| {sku} | {success} | {passed} | {accuracy} | {time} | {error} |".format(
+            "| {upc} | {success} | {passed} | {accuracy} | {time} | {error} |".format(
                 upc=result["upc"],
                 success="yes" if result["success"] else "no",
                 passed="yes" if result["passed"] else "no",
@@ -275,7 +275,7 @@ def _build_markdown(payload: dict[str, Any], json_path: Path) -> str:
         )
         for failure in failed_extractions:
             lines.append(
-                "| {sku} | {accuracy} | {error} |".format(
+                "| {upc} | {accuracy} | {error} |".format(
                     upc=failure["upc"],
                     accuracy=_format_percent(failure["accuracy"]),
                     error=(failure["error_message"] or "-").replace("\n", " "),
@@ -420,7 +420,7 @@ def _normalize_weekly_result(item: ReviewedResult | EvaluationResult | dict[str,
         accuracy_value = _safe_mean(scores)
 
     return {
-        "upc": sku,
+        "upc": upc,
         "success": bool(payload.get("success", accuracy_value >= 0.8 if isinstance(accuracy_value, (int, float)) else False)),
         "passed": bool(payload.get("passed", payload.get("success", False))),
         "accuracy": round(float(accuracy_value or 0.0), 4),
@@ -635,7 +635,7 @@ def _build_weekly_markdown(payload: dict[str, Any], json_path: Path) -> str:
         reviewed = json.dumps(result["reviewed_data"], sort_keys=True)
         notes = (result.get("notes") or result.get("error_message") or "-").replace("\n", " ")
         lines.append(
-            "| {sku} | {success} | {accuracy} | {extracted} | {reviewed} | {notes} |".format(
+            "| {upc} | {success} | {accuracy} | {extracted} | {reviewed} | {notes} |".format(
                 upc=result["upc"],
                 success="yes" if result["success"] else "no",
                 accuracy=_format_percent(result["accuracy"]),

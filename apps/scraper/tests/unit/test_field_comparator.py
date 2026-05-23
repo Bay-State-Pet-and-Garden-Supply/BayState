@@ -23,7 +23,7 @@ def test_compare_lists_uses_overlap_percentage():
 
 
 def test_compare_exact_is_case_insensitive():
-    result = compare_exact("UPC-123", "sku-123")
+    result = compare_exact("UPC-123", "upc-123")
 
     assert result.match_score == 1.0
     assert result.match_type == MatchType.EXACT

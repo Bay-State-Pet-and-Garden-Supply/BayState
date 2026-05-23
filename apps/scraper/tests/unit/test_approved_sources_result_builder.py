@@ -36,7 +36,7 @@ class TestBuildSuccessResult:
         assert result.source_results[0].confidence == 0.85
         assert result.product.name == "E-Z HANG SCALE"
         assert result.product.brand == "KERBL"
-        assert result.validation.sku_match is True
+        assert result.validation.upc_match is True
 
     def test_llm_fallback_decision(self):
         result = build_success_result(
@@ -127,7 +127,7 @@ class TestBuildPartialResult:
             sku_match=False,
             missing_required=["sku_match"],
         )
-        assert result.validation.sku_match is False
+        assert result.validation.upc_match is False
         assert "sku_match" in result.validation.missing_required
 
 
@@ -167,7 +167,7 @@ class TestBuildNoMatchResult:
         )
         assert result.status == "failed"
         assert result.decision == "failed"
-        assert result.validation.sku_match is False
+        assert result.validation.upc_match is False
         assert result.source_results[0].confidence == 0.0
         assert any("No match" in w for w in result.validation.warnings)
 

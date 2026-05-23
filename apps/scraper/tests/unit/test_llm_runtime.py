@@ -7,6 +7,7 @@ from scrapers.ai_search.llm_runtime import (
 
 def test_resolve_llm_runtime_with_required_key(monkeypatch) -> None:
     monkeypatch.delenv("LLM_BASE_URL", raising=False)
+    monkeypatch.delenv("LLM_MODEL", raising=False)
     monkeypatch.setenv("LLM_API_KEY", "test-key")
     runtime = resolve_llm_runtime()
 

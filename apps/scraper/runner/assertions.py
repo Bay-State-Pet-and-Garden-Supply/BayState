@@ -11,6 +11,7 @@ def assert_sku(
     expected: dict[str, str | None],
     actual: dict[str, str],
     sku: str | None = None,
+    upc: str | None = None,
 ) -> dict:
     """Assert that actual scraped data matches expected values.
 
@@ -23,11 +24,13 @@ def assert_sku(
         actual: Dictionary of actual scraped values (field_name -> value).
                 Missing fields are treated as empty strings.
         sku: Optional SKU identifier for traceability in results.
+        upc: Optional UPC identifier for traceability in results.
 
     Returns:
         Dictionary with structure:
         {
             "sku": str | None,
+            "upc": str | None,
             "overall_passed": bool,
             "fields": [
                 {
@@ -65,8 +68,12 @@ def assert_sku(
         if not field_passed:
             all_passed = False
 
+    resolved_sku = sku or upc
+    resolved_upc = upc or sku
+
     return {
-        "sku": sku,
+        "sku": resolved_sku,
+        "upc": resolved_upc,
         "overall_passed": all_passed,
         "fields": field_results,
     }

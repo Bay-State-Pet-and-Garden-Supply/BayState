@@ -102,13 +102,9 @@ class CallbackDelivery:
                 if entry_dict is None:
                     continue
 
-                sku_value = entry_dict.get("sku")
+                sku_value = entry_dict.get("upc") or entry_dict.get("UPC") or entry_dict.get("sku") or entry_dict.get("SKU")
                 if not isinstance(sku_value, str) or not sku_value:
-                    alt_sku = entry_dict.get("SKU")
-                    if isinstance(alt_sku, str) and alt_sku:
-                        sku_value = alt_sku
-                    else:
-                        continue
+                    continue
 
                 explicit_data = self._as_dict(entry_dict.get("data"))
                 if explicit_data is not None:
@@ -116,7 +112,7 @@ class CallbackDelivery:
                 else:
                     source_payload: CallbackSource = {}
                     for key, value in entry_dict.items():
-                        if key in {"sku", "SKU", "url", "success", "error", "markdown", "html", "data"}:
+                        if key in {"sku", "SKU", "upc", "UPC", "url", "success", "error", "markdown", "html", "data"}:
                             continue
                         source_payload[key] = value
                     source_payload = self._with_scraped_at(source_payload)
@@ -139,6 +135,7 @@ class CallbackDelivery:
             "runner_name": self.runner_name,
             "results": {
                 "skus_processed": len(transformed_results),
+                "upcs_processed": len(transformed_results),
                 "scrapers_run": [self.scraper_name],
                 "data": transformed_results,
             },

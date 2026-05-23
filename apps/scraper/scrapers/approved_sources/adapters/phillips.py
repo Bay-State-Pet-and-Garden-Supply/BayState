@@ -16,6 +16,8 @@ from scrapers.approved_sources.adapters.base import BaseDistributorCrawl4AIAdapt
 from scrapers.approved_sources.types import (
     ApprovedSourceExtractionResult,
     FailureCode,
+    ApprovedSourcePlanEntry,
+    ApprovedSourcePlan,
 )
 from scrapers.approved_sources.auth import PHILLIPS_LOGIN
 
@@ -35,6 +37,10 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
         "&portalUser=&store=DefaultStore&cclcl=en_US"
     )
     requires_auth = True
+
+    def __init__(self, entry: ApprovedSourcePlanEntry, plan: ApprovedSourcePlan):
+        super().__init__(entry, plan)
+        self._product_page_url: str | None = None
 
     def get_login_config_class(self):
         """Return the Phillips login config."""
@@ -160,6 +166,17 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
             candidate_features = [li.get_text(" ", strip=True) for li in container.select(".product-features li, .cc_product_features li") if li.get_text(" ", strip=True)]
             candidate_images = _extract_images(container)
 
+            # Find PDP URL
+            product_link_node = container.select_one(".cc_product_name a, .cc_product_image a, a")
+            candidate_pdp_url = None
+            if product_link_node:
+                href = product_link_node.get("href")
+                if href and ("ProductDetails" in href or "sku=" in href):
+                    candidate_pdp_url = urljoin(self.base_url, href)
+            
+            if not candidate_pdp_url and candidate_item:
+                candidate_pdp_url = f"https://shop.phillipspet.com/ccrz__ProductDetails?sku={candidate_item}"
+
             if not any([candidate_name, candidate_brand, candidate_upc, candidate_item]):
                 continue
 
@@ -181,6 +198,7 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
                 "description": candidate_desc,
                 "features": candidate_features,
                 "image_urls": candidate_images,
+                "pdp_url": candidate_pdp_url,
                 "identifier_match": identifier_match,
                 "matched_identifiers": matched_identifiers,
                 "brand_match": brand_match,
@@ -204,6 +222,7 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
             return result
 
         best_candidate = max(candidates, key=lambda candidate: candidate["score"])
+        self._product_page_url = best_candidate.get("pdp_url")
 
         if best_candidate.get("name"):
             product["name"] = best_candidate["name"]
@@ -270,6 +289,87 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
         result.sku_match = sku_match
         result.warnings = warnings
         return result
+
+    async def _post_process_extraction(
+        self,
+        det_result: ApprovedSourceExtractionResult,
+        search_url: str,
+        source_policy: Any,
+    ) -> ApprovedSourceExtractionResult | None:
+        """Fetch the product detail page to get high-res images and full metadata."""
+        if not self._product_page_url:
+            return det_result
+
+        logger.info("[%s] Navigating to product details page for full metadata: %s", self.adapter_slug, self._product_page_url)
+        
+        try:
+            # Fetch HTML using authenticated fetch
+            html, auth_err = await self._fetch_html_authenticated(self._product_page_url, getattr(self, "api_client", None))
+            if auth_err or not html:
+                logger.warning("[%s] Failed to fetch product details page: %s", self.adapter_slug, auth_err)
+                return det_result
+
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(html, "html.parser")
+
+            # Extract detailed description
+            desc_node = soup.select_one(".cc_product_detail_description, .product-description, .cc_product_description, #product-description")
+            if desc_node:
+                desc = desc_node.get_text(" ", strip=True)
+                if desc:
+                    det_result.product["description"] = desc
+                    if "description" not in det_result.matched_fields:
+                        det_result.matched_fields.append("description")
+
+            # Extract detailed features
+            features = [
+                li.get_text(" ", strip=True)
+                for li in soup.select(".product-features li, .cc_product_features li, .cc_features li")
+                if li.get_text(" ", strip=True)
+            ]
+            if features:
+                det_result.product["features"] = features
+                if "features" not in det_result.matched_fields:
+                    det_result.matched_fields.append("features")
+
+            # Extract high-res images from details page
+            images = []
+            for img in soup.select(".cc_product_detail_image img, img.cc_product_detail_image, .cc_product_image img, .cc_alternate_images img, .cc_alternate_image img"):
+                src = img.get("src") or img.get("data-src") or ""
+                if not src:
+                    continue
+                if src.startswith("//"):
+                    src = "https:" + src
+                elif src.startswith("/"):
+                    src = urljoin(self.base_url, src)
+                if src not in images:
+                    images.append(src)
+
+            # Fallback/broad scan for any images matching /products/ or bigcommerce/insitecloud/cloudfront
+            for img in soup.select("img[src*='product'], img[src*='large']"):
+                src = img.get("src") or img.get("data-src") or ""
+                if src:
+                    if src.startswith("//"):
+                        src = "https:" + src
+                    elif src.startswith("/"):
+                        src = urljoin(self.base_url, src)
+                    if src not in images:
+                        images.append(src)
+
+            if images:
+                normalized_images = self.normalize_images(images)
+                from scrapers.approved_sources.policy import filter_allowed_assets
+                filtered_images = filter_allowed_assets(normalized_images, source_policy)
+                if filtered_images:
+                    det_result.product["image_urls"] = filtered_images
+                    if "image_urls" not in det_result.matched_fields:
+                        det_result.matched_fields.append("image_urls")
+                    logger.info("[%s] Successfully enriched product images from PDP. Count: %d", self.adapter_slug, len(filtered_images))
+
+        except Exception as e:
+            logger.warning("[%s] Error during product details page post-processing: %s", self.adapter_slug, e)
+
+        return det_result
 
     def _extract_with_regex(
         self, html: str, upc: str, url: str

@@ -1,0 +1,404 @@
+{
+  "schema_version": "url-extraction-benchmark-v1",
+  "description": "Extraction-only benchmark dataset. 19 entries: 4 previously verified (Open Farm, Honest Kitchen) + 15 live products from the BayState ingestion pipeline across 7 brands. Each source_url has been verified as returning HTTP 200 with product content.",
+  "entries": [
+    {
+      "id": "openfarm-goodgut-chicken-19lb",
+      "upc": "683547120150",
+      "brand": "Open Farm",
+      "product_name": "GoodGut Harvest Chicken Dog Kibble - 19 lb",
+      "source_url": "https://openfarmpet.com/products/goodgut-harvest-chicken-dog-kibble",
+      "expected": {
+        "brand": "Open Farm",
+        "name_contains": ["GoodGut", "Harvest Chicken", "Dog Kibble"],
+        "description_contains": ["Lifeway", "2 billion CFUs", "humanely-raised chicken"],
+        "weight": "19 lb",
+        "species": "Dog",
+        "food_form": "Dry Food",
+        "flavor_contains": ["Chicken"],
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["dog", "dry-food", "open-farm", "shopify", "pet-food"]
+    },
+    {
+      "id": "openfarm-goodgut-salmon-19lb",
+      "upc": "683547120167",
+      "brand": "Open Farm",
+      "product_name": "GoodGut Wild-Caught Salmon Dog Kibble - 19 lb",
+      "source_url": "https://openfarmpet.com/products/goodgut-wild-caught-salmon-dog-kibble",
+      "expected": {
+        "brand": "Open Farm",
+        "name_contains": ["GoodGut", "Wild-Caught Salmon", "Dog Kibble"],
+        "description_contains": ["Lifeway", "2 billion CFUs", "wild-caught salmon"],
+        "weight": "19 lb",
+        "species": "Dog",
+        "food_form": "Dry Food",
+        "flavor_contains": ["Salmon"],
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["dog", "dry-food", "open-farm", "shopify", "pet-food"]
+    },
+    {
+      "id": "openfarm-cat-chicken-salmon-pate-5-3oz",
+      "upc": "683547120785",
+      "brand": "Open Farm",
+      "product_name": "Chicken & Salmon P\u00e2t\u00e9 for Cats - 5.3 oz Case of 12",
+      "source_url": "https://openfarmpet.com/products/chicken-and-salmon-pate-recipe-for-cats",
+      "expected": {
+        "brand": "Open Farm",
+        "name_contains": ["Chicken", "Salmon", "P\u00e2t\u00e9", "Cats"],
+        "description_contains": ["wild-caught salmon", "humanely-raised chicken", "Grain- and legume-free"],
+        "weight": "5.3 oz",
+        "species": "Cat",
+        "food_form": "Wet Food",
+        "texture": "P\u00e2t\u00e9",
+        "flavor_contains": ["Chicken", "Salmon"],
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["cat", "wet-food", "pate", "open-farm", "shopify", "pet-food"]
+    },
+    {
+      "id": "openfarm-goodgut-chicken-3-5lb",
+      "upc": "683547120105",
+      "brand": "Open Farm",
+      "product_name": "GoodGut Harvest Chicken Dog Kibble - 3.5 lb",
+      "source_url": "https://openfarmpet.com/products/goodgut-harvest-chicken-dog-kibble",
+      "expected": {
+        "brand": "Open Farm",
+        "name_contains": ["GoodGut", "Harvest Chicken", "Dog Kibble"],
+        "description_contains": [],
+        "weight": "3.5 lb",
+        "species": "Dog",
+        "food_form": "Dry Food",
+        "flavor_contains": ["Chicken"],
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["dog", "dry-food", "open-farm", "shopify", "pet-food"]
+    },
+    {
+      "id": "openfarm-goodgut-salmon-3-5lb",
+      "upc": "683547120112",
+      "brand": "Open Farm",
+      "product_name": "GoodGut Wild-Caught Salmon Dog Kibble - 3.5 lb",
+      "source_url": "https://openfarmpet.com/products/goodgut-wild-caught-salmon-dog-kibble",
+      "expected": {
+        "brand": "Open Farm",
+        "name_contains": ["GoodGut", "Wild-Caught Salmon", "Dog Kibble"],
+        "description_contains": [],
+        "weight": "3.5 lb",
+        "species": "Dog",
+        "food_form": "Dry Food",
+        "flavor_contains": ["Salmon"],
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["dog", "dry-food", "open-farm", "shopify", "pet-food"]
+    },
+    {
+      "id": "openfarm-goodgut-beef-3-5lb",
+      "upc": "683547120129",
+      "brand": "Open Farm",
+      "product_name": "GoodGut Grass-Fed Beef Dog Kibble - 3.5 lb",
+      "source_url": "https://openfarmpet.com/products/goodgut-grass-fed-beef-dog-kibble",
+      "expected": {
+        "brand": "Open Farm",
+        "name_contains": ["GoodGut", "Grass-Fed Beef", "Dog Kibble"],
+        "description_contains": [],
+        "weight": "3.5 lb",
+        "species": "Dog",
+        "food_form": "Dry Food",
+        "flavor_contains": ["Beef"],
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["dog", "dry-food", "open-farm", "shopify", "pet-food"]
+    },
+    {
+      "id": "blue-buffalo-tastefuls-chicken-3oz",
+      "upc": "840243151172",
+      "brand": "Blue Buffalo",
+      "product_name": "BLUE Tastefuls Pur\u00e9es with Chicken - 3 oz",
+      "source_url": "https://www.bluebuffalo.com/wet-cat-food/tastefuls/tastefuls-purees-with-chicken/",
+      "expected": {
+        "brand": "Blue Buffalo",
+        "name_contains": ["Tastefuls", "Chicken"],
+        "description_contains": [],
+        "weight": "3 oz",
+        "species": "Cat",
+        "food_form": "Wet Food",
+        "texture": "Pur\u00e9e",
+        "flavor_contains": ["Chicken"],
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["cat", "wet-food", "blue-buffalo", "pet-food"]
+    },
+    {
+      "id": "blue-buffalo-tastefuls-salmon-3oz",
+      "upc": "840243151196",
+      "brand": "Blue Buffalo",
+      "product_name": "BLUE Tastefuls Pur\u00e9es with Salmon - 3 oz",
+      "source_url": "https://www.bluebuffalo.com/wet-cat-food/tastefuls/tastefuls-purees-with-salmon/",
+      "expected": {
+        "brand": "Blue Buffalo",
+        "name_contains": ["Tastefuls", "Salmon"],
+        "description_contains": [],
+        "weight": "3 oz",
+        "species": "Cat",
+        "food_form": "Wet Food",
+        "texture": "Pur\u00e9e",
+        "flavor_contains": ["Salmon"],
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["cat", "wet-food", "blue-buffalo", "pet-food"]
+    },
+    {
+      "id": "blue-buffalo-true-chews-beef-12oz",
+      "upc": "840243156412",
+      "brand": "Blue Buffalo",
+      "product_name": "BLUE True Chews Beef Meatball Recipe - 12 oz",
+      "source_url": "https://www.bluebuffalo.com/dog-treats/true-chews/beef-meatball-recipe/",
+      "expected": {
+        "brand": "Blue Buffalo",
+        "name_contains": ["True Chews", "Beef", "Meatball"],
+        "description_contains": [],
+        "weight": "12 oz",
+        "species": "Dog",
+        "food_form": "Treat",
+        "flavor_contains": ["Beef"],
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["dog", "treat", "blue-buffalo", "pet-food"]
+    },
+    {
+      "id": "dr-marty-natures-blend-48oz",
+      "upc": "850039426124",
+      "brand": "Dr. Marty",
+      "product_name": "Dr. Marty Nature's Blend Essential Wellness Freeze-Dried Dog Food - 48 oz",
+      "source_url": "https://drmartypets.com/product/natures-blend",
+      "expected": {
+        "brand": "Dr. Marty",
+        "name_contains": ["Nature's Blend", "Essential", "Wellness"],
+        "description_contains": [],
+        "weight": "48 oz",
+        "species": "Dog",
+        "food_form": "Raw",
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["dog", "raw-food", "dr-marty", "pet-food"]
+    },
+    {
+      "id": "dr-marty-premium-origin-80oz",
+      "upc": "850039426483",
+      "brand": "Dr. Marty",
+      "product_name": "Dr. Marty Nature's Blend Premium Origin Freeze-Dried Dog Food - 80 oz",
+      "source_url": "https://drmartypets.com/product/natures-blend-premium-origin",
+      "expected": {
+        "brand": "Dr. Marty",
+        "name_contains": ["Premium", "Origin"],
+        "description_contains": [],
+        "weight": "80 oz",
+        "species": "Dog",
+        "food_form": "Raw",
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["dog", "raw-food", "dr-marty", "pet-food"]
+    },
+    {
+      "id": "koha-bland-diet-lamb-rice-12-5oz",
+      "upc": "811048023698",
+      "brand": "Koha",
+      "product_name": "Koha Limited Ingredient Bland Diet Lamb & White Rice Recipe for Dogs - 12.5 oz",
+      "source_url": "https://kohapet.com/products/limited-ingredient-wet-bland-diet-lamb-white-rice-recipe-for-dogs",
+      "expected": {
+        "brand": "Koha",
+        "name_contains": ["Limited Ingredient", "Bland Diet", "Lamb", "Rice"],
+        "description_contains": [],
+        "weight": "12.5 oz",
+        "species": "Dog",
+        "food_form": "Wet Food",
+        "flavor_contains": ["Lamb"],
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["dog", "wet-food", "koha", "pet-food"]
+    },
+    {
+      "id": "wholesomes-chewy-chicken-strips-25oz",
+      "upc": "034846727050",
+      "brand": "Wholesomes",
+      "product_name": "Wholesomes Rewards Chewy Chicken Strips Dog Treats - 25 oz",
+      "source_url": "https://wholesomespetfood.com/product/rewards-chewy-chicken-strips-25-oz/",
+      "expected": {
+        "brand": "Wholesomes",
+        "name_contains": ["Rewards", "Chewy", "Chicken", "Strips"],
+        "description_contains": [],
+        "weight": "25 oz",
+        "species": "Dog",
+        "food_form": "Treat",
+        "flavor_contains": ["Chicken"],
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["dog", "treat", "wholesomes", "pet-food"]
+    },
+    {
+      "id": "wholesomes-chewy-beef-mini-sticks-7oz",
+      "upc": "034846730449",
+      "brand": "Wholesomes",
+      "product_name": "Wholesomes Rewards Chewy Beef Mini Sticks Dog Treats - 7 oz",
+      "source_url": "https://wholesomespetfood.com/product/rewards-chewy-beef-mini-sticks-7-oz/",
+      "expected": {
+        "brand": "Wholesomes",
+        "name_contains": ["Rewards", "Chewy", "Beef", "Mini", "Sticks"],
+        "description_contains": [],
+        "weight": "7 oz",
+        "species": "Dog",
+        "food_form": "Treat",
+        "flavor_contains": ["Beef"],
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["dog", "treat", "wholesomes", "pet-food"]
+    },
+    {
+      "id": "lazy-dog-maple-sweet-potato-14oz",
+      "upc": "814272012476",
+      "brand": "Lazy Dog Cookie Co.",
+      "product_name": "Lazy Dog Treat Them With LOVE Candied Maple Sweet Potato Cookies - 14 oz",
+      "source_url": "https://lazydogcookies.com/products/candied-maple-sweet-potato-pre-order-ship-mid-june-2018",
+      "expected": {
+        "brand": "Lazy Dog Cookie Co.",
+        "name_contains": ["Maple", "Sweet Potato", "Cookies"],
+        "description_contains": [],
+        "weight": "14 oz",
+        "species": "Dog",
+        "food_form": "Treat",
+        "flavor_contains": ["Maple", "Sweet Potato"],
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["dog", "treat", "lazy-dog-cookie-co", "pet-food"]
+    },
+    {
+      "id": "lazy-dog-ice-cream-birthday-4-5oz",
+      "upc": "814272013244",
+      "brand": "Lazy Dog Cookie Co.",
+      "product_name": "Lazy Dog Make at Home Birthday Cake Ice Cream Mix - 4.5 oz",
+      "source_url": "https://lazydogcookies.com/products/make-at-home-ice-cream-mix-birthday-cake-flavor",
+      "expected": {
+        "brand": "Lazy Dog Cookie Co.",
+        "name_contains": ["Ice Cream", "Birthday", "Cake"],
+        "description_contains": [],
+        "weight": "4.5 oz",
+        "species": "Dog",
+        "food_form": "Treat",
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["dog", "treat", "lazy-dog-cookie-co", "pet-food"]
+    },
+    {
+      "id": "dogginstix-collagen-collabone-6in",
+      "upc": "850076581060",
+      "brand": "Dogginstix",
+      "product_name": "Dogginstix 6\" Beef Collagen Collabone",
+      "source_url": "https://dogginstix.com/products/beef-collagen-collabone-case-of-50",
+      "expected": {
+        "brand": "Dogginstix",
+        "name_contains": ["Collagen", "Collabone"],
+        "description_contains": [],
+        "species": "Dog",
+        "food_form": "Treat",
+        "flavor_contains": ["Beef"],
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["dog", "treat", "dogginstix", "pet-food"]
+    },
+    {
+      "id": "catit-nibbly-wraps-chicken-fish-1-05oz",
+      "upc": "022517444832",
+      "brand": "Catit",
+      "product_name": "Catit Nibbly Wraps Whole Fish Wrapped in Chicken Breast Cat Treats - 1.05 oz",
+      "source_url": "https://www.catit.com/products/treats/nibbly/",
+      "expected": {
+        "brand": "Catit",
+        "name_contains": ["Nibbly", "Wraps", "Fish", "Chicken"],
+        "description_contains": [],
+        "weight": "1.05 oz",
+        "species": "Cat",
+        "food_form": "Treat",
+        "flavor_contains": ["Chicken", "Fish"],
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["cat", "treat", "catit", "pet-food"]
+    },
+    {
+      "id": "honest-kitchen-clusters-cat-1lb",
+      "upc": "850012047735",
+      "brand": "The Honest Kitchen",
+      "product_name": "The Honest Kitchen Grain Free Turkey & Chicken Clusters Dry Cat Food - 1 lb",
+      "source_url": "https://www.thehonestkitchen.com/products/grain-free-turkey-and-chicken-whole-food-clusters-dry-cat-food",
+      "expected": {
+        "brand": "The Honest Kitchen",
+        "name_contains": ["Clusters", "Turkey", "Chicken"],
+        "description_contains": ["whole food clusters", "probiotics"],
+        "weight": "1 lb",
+        "species": "Cat",
+        "food_form": "Dry Food",
+        "flavor_contains": ["Chicken", "Turkey"],
+        "min_approved_images": 1,
+        "max_approved_images": 12,
+        "forbidden_image_domains": ["unsplash.com"],
+        "forbidden_image_path_hints": ["recycle", "transparency-map", "logo", "footer"]
+      },
+      "tags": ["cat", "dry-food", "honest-kitchen", "shopify", "pet-food"]
+    }
+  ]
+}

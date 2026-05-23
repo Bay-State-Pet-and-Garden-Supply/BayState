@@ -138,6 +138,11 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
         if value is None:
             return None
         cleaned = _IDENTIFIER_RE.sub("", value.strip().upper())
+        if cleaned:
+            for suffix in ("UNIT", "CASE", "CS", "BOX", "BX", "EACH", "EA", "PACK", "PK", "PKG"):
+                if cleaned.endswith(suffix) and len(cleaned) > len(suffix):
+                    cleaned = cleaned[:-len(suffix)]
+                    break
         return cleaned or None
 
     def _match_identifier_candidates(
@@ -345,6 +350,7 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
 
         # Extract api_client from extractor or executor
         api_client = getattr(extractor, "api_client", None) if extractor else None
+        self.api_client = api_client
 
         # 1. Build search URL
         search_url = self.build_search_url(upc)
@@ -468,7 +474,7 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             det_result.product["image_urls"] = self.filter_images(raw_images, source_policy)
 
         # 6b. Post-process: allow adapters to enrich results (e.g., fetch product page images)
-        if det_result.success and not det_result.product.get("image_urls"):
+        if det_result.success:
             post_processed = await self._post_process_extraction(det_result, search_url, source_policy)
             if post_processed:
                 det_result = post_processed

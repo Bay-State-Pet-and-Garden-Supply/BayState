@@ -8,12 +8,12 @@ REQUIRED_FIELDS = ("upc", "title")
 EXPECTED_FIELDS: dict[str, list[str]] = {
     "amazon": ["upc", "title", "brand", "images", "ratings", "reviews_count"],
     "bradley": ["upc", "title", "brand", "images", "item_number", "manufacturer_part_number"],
-    "central_pet": ["upc", "title", "brand", "images", "item_number", "upc"],
-    "coastal": ["upc", "title", "brand", "images", "item_number", "upc"],
+    "central_pet": ["upc", "title", "brand", "images", "item_number"],
+    "coastal": ["upc", "title", "brand", "images", "item_number"],
     "mazuri": ["upc", "title", "brand", "images", "ingredients"],
-    "orgill": ["upc", "title", "brand", "images", "upc", "manufacturer_part_number"],
-    "petfoodex": ["upc", "title", "brand", "images", "item_number", "upc", "unit_of_measure"],
-    "phillips": ["upc", "title", "brand", "images", "item_number", "upc"],
+    "orgill": ["upc", "title", "brand", "images", "manufacturer_part_number"],
+    "petfoodex": ["upc", "title", "brand", "images", "item_number", "unit_of_measure"],
+    "phillips": ["upc", "title", "brand", "images", "item_number"],
 }
 
 
