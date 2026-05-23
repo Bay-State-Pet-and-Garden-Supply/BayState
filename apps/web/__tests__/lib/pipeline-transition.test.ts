@@ -325,11 +325,14 @@ describe('pipeline status transition CRUD', () => {
                 pipeline_status: 'imported',
                 sources: {},
                 consolidated: null,
+                image_candidates: [],
+                selected_images: [],
                 confidence_score: null,
                 error_message: null,
                 retry_count: 0
             })
         );
-        expect(deleteBuilder.delete).toHaveBeenCalled(); // Should clear enrichment_targets
+        expect(deleteBuilder.delete).toHaveBeenCalled();
+        expect(deleteBuilder.in).toHaveBeenCalledWith('upc', ['UPC-1']);
     });
 });
