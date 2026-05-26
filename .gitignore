@@ -29,7 +29,6 @@ coverage/
 conductor/
 context-build/
 handoff/
-plans/
 docs/maestro/
 
 # AI Agent Output Files

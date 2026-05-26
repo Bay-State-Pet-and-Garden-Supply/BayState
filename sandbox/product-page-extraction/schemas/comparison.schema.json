@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "comparison.schema.json",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "recommendation",
+    "scores",
+    "image_comparison",
+    "inputs",
+    "page_type_comparison"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {
+      "const": "comparison.v1"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "recommendation": {
+      "enum": [
+        "accept",
+        "review",
+        "conflict"
+      ]
+    },
+    "scores": {
+      "type": "object",
+      "required": [
+        "name_token_similarity",
+        "brand_similarity",
+        "description_similarity",
+        "weighted"
+      ]
+    },
+    "image_comparison": {
+      "type": "object",
+      "required": [
+        "crawl4ai_default_count",
+        "crawl4ai_rendered_count",
+        "agent_browser_count",
+        "rendered_vs_agent_overlap",
+        "crawl4ai_rendered_close_enough",
+        "all_page_image_count",
+        "candidate_product_image_count",
+        "selected_product_image_count",
+        "rejected_noise_image_count"
+      ],
+      "properties": {
+        "crawl4ai_default_count": {
+          "type": "integer"
+        },
+        "crawl4ai_rendered_count": {
+          "type": "integer"
+        },
+        "agent_browser_count": {
+          "type": "integer"
+        },
+        "rendered_vs_agent_overlap": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "crawl4ai_rendered_close_enough": {
+          "type": "boolean"
+        },
+        "agent_browser_unique_count": {
+          "type": "integer"
+        },
+        "crawl4ai_rendered_product_estimate": {
+          "type": "integer"
+        },
+        "agent_browser_product_estimate": {
+          "type": "integer"
+        },
+        "agent_browser_unique_product_estimate": {
+          "type": "integer"
+        },
+        "all_page_image_count": {
+          "type": "integer"
+        },
+        "candidate_product_image_count": {
+          "type": "integer"
+        },
+        "selected_product_image_count": {
+          "type": "integer"
+        },
+        "rejected_noise_image_count": {
+          "type": "integer"
+        },
+        "product_image_precision": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "product_image_recall": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "product_card_comparison": {
+      "type": "object"
+    },
+    "page_type_comparison": {
+      "type": "object",
+      "required": [
+        "packet_page_type"
+      ]
+    },
+    "inputs": {
+      "type": "object"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
