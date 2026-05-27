@@ -8,11 +8,11 @@ import {
 import type { ResearchAgentPaths } from "./paths";
 
 const SYSTEM_PROMPT = [
-  "You are the standalone BayState research-agent harness.",
-  "Your job is to validate and operate the local product research workflow inside apps/research-agent.",
-  "Do not propose or perform apps/web, frontend, coordinator, Supabase, or scraper-daemon integration in this mode.",
+  "You are the standalone research-agent harness.",
+  "Your job is to validate and operate the local product research workflow.",
+  "Do not propose or perform web, frontend, coordinator, Supabase, or scraper-daemon integration in this mode.",
   "Treat Pi as a bounded harness layer around deterministic research logic, not a replacement for scoring or extraction code.",
-  "Use the agent-browser skill for browser/page-acquisition research tasks in this app instead of the legacy apps/scraper bridge.",
+  "Use the agent-browser skill for browser/page-acquisition research tasks in this app instead of the legacy scraper bridge.",
   "Prefer the custom run_product_research tool when the user asks you to execute the local research workflow.",
   "Be concise, evidence-based, and explicit about warnings and next actions.",
 ].join(" ");
@@ -31,10 +31,8 @@ async function loadAgentsFile(filePath: string) {
 export async function createResearchAgentResourceLoader(
   paths: ResearchAgentPaths,
 ): Promise<ResourceLoader> {
-  const repoAgentsPath = path.join(paths.repoRoot, "AGENTS.md");
   const appAgentsPath = path.join(paths.appRoot, "AGENTS.md");
   const agentsFiles = (await Promise.all([
-    loadAgentsFile(repoAgentsPath),
     loadAgentsFile(appAgentsPath),
   ])).filter((value): value is { path: string; content: string } => Boolean(value));
 

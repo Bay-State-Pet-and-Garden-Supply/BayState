@@ -26,6 +26,8 @@ export interface LoadLiveSampleInputsOptions extends QueryLinkedSupabaseOptions 
   limit?: number;
   upc?: string;
   brand?: string;
+  samplingMode?: "candidate-baseline" | "production-shaped";
+  limitPerBrand?: number;
 }
 
 export interface SampleInputWarning {
@@ -37,6 +39,15 @@ export interface LiveSampleInputsResult {
   inputs: ProductResearchInput[];
   warnings: SampleInputWarning[];
 }
+
+const productionRowSchema = z.object({
+  upc: z.string().trim().min(1),
+  brand_name: z.string().trim().min(1),
+  product_name: z.string().trim().min(1),
+  official_domains: z.array(z.string()).nullable().optional(),
+});
+
+type ProductionLiveRow = z.infer<typeof productionRowSchema>;
 
 const SOCIAL_DOMAINS = [
   "instagram.com",
@@ -63,14 +74,6 @@ function sqlLiteral(value: string) {
 
 function hasDomainSuffix(candidateDomain: string, domains: string[]) {
   return domains.some((domain) => candidateDomain === domain || candidateDomain.endsWith(`.${domain}`));
-}
-
-function inferExpectedAttributes(...values: Array<string | undefined>) {
-  const combined = values.filter(Boolean).join(" ");
-  const sizeMatch = combined.match(/\b(\d+(?:\.\d+)?)\s?(oz|lb|lbs|g|kg)\b/i);
-  return {
-    ...(sizeMatch ? { size: `${sizeMatch[1]} ${sizeMatch[2].toLowerCase()}` } : {}),
-  };
 }
 
 export function classifyCandidateSourceType(
@@ -127,7 +130,7 @@ export function mapRowsToProductResearchInputs(rows: LiveCandidateRow[]): LiveSa
       .map((domain) => normalizeDomain(domain) ?? domain)
       .filter((domain): domain is string => Boolean(domain));
 
-    const dedupedCandidates = new Map<string, ProductResearchInput["candidateUrls"][number]>();
+    const dedupedCandidates = new Map<string, ProductResearchInput["seedCandidateUrls"][number]>();
     for (const row of group) {
       try {
         const normalizedUrl = normalizeUrl(row.url);
@@ -147,8 +150,8 @@ export function mapRowsToProductResearchInputs(rows: LiveCandidateRow[]): LiveSa
       }
     }
 
-    if (dedupedCandidates.size === 0) {
-      warnings.push({ upc, reason: "Skipped live sample because no valid candidate URLs were available." });
+    if (!officialDomains[0]) {
+      warnings.push({ upc, reason: "Skipped live sample because the brand official domain is missing." });
       continue;
     }
 
@@ -157,10 +160,9 @@ export function mapRowsToProductResearchInputs(rows: LiveCandidateRow[]): LiveSa
       upc,
       registerName,
       brand,
-      ...(officialDomains[0] ? { officialWebsiteUrl: `https://${officialDomains[0]}` } : {}),
-      expectedAttributes: inferExpectedAttributes(registerName, first.predicted_name ?? undefined),
-      notes: "Generated from live Supabase official_brand_url_candidates rows via Supabase CLI.",
-      candidateUrls: [...dedupedCandidates.values()],
+      officialWebsiteUrl: `https://${officialDomains[0]}`,
+      notes: "Generated from live Supabase rows. Seed URLs are retained only for deterministic comparison; production discovery should use the official domain and Serper.dev.",
+      seedCandidateUrls: [...dedupedCandidates.values()],
     });
 
     inputs.push(input);
@@ -190,9 +192,65 @@ export function buildLiveSampleQuery(options: LoadLiveSampleInputsOptions = {}) 
   return `with sample_upcs as (\n  select distinct c.upc\n  from official_brand_url_candidates c\n  left join brands b on b.id = c.brand_id\n  where ${whereClause}\n  order by c.upc\n  limit ${limit}\n)\nselect\n  c.upc,\n  b.name as brand_name,\n  p.name as product_name,\n  c.predicted_name,\n  b.official_domains,\n  b.preferred_domains,\n  c.url,\n  c.normalized_domain,\n  c.rank,\n  c.selection_status,\n  c.title,\n  c.snippet,\n  c.candidate_source\nfrom official_brand_url_candidates c\njoin sample_upcs s on s.upc = c.upc\nleft join brands b on b.id = c.brand_id\nleft join products p on p.upc = c.upc\norder by c.upc, coalesce(c.composite_score::numeric, 0) desc, c.rank asc`;
 }
 
+export function mapProductionRowsToProductResearchInputs(rows: ProductionLiveRow[]): LiveSampleInputsResult {
+  const warnings: SampleInputWarning[] = [];
+  const inputs: ProductResearchInput[] = [];
+
+  for (const row of rows) {
+    const parsed = productionRowSchema.parse(row);
+    const officialDomains = (parsed.official_domains ?? [])
+      .map((domain) => normalizeDomain(domain) ?? domain)
+      .filter((domain): domain is string => Boolean(domain));
+
+    if (!officialDomains[0]) {
+      warnings.push({ upc: parsed.upc, reason: "Skipped production-shaped live sample because the brand official domain is missing." });
+      continue;
+    }
+
+    inputs.push(productResearchInputSchema.parse({
+      productId: `${parsed.brand_name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${parsed.upc}`,
+      upc: parsed.upc,
+      registerName: parsed.product_name,
+      brand: parsed.brand_name,
+      officialWebsiteUrl: `https://${officialDomains[0]}`,
+      notes: "Generated from live linked Supabase product/brand rows without pre-seeded candidate URLs.",
+      seedCandidateUrls: [],
+    }));
+  }
+
+  return { inputs, warnings };
+}
+
+export function buildProductionLiveSampleQuery(options: LoadLiveSampleInputsOptions = {}) {
+  const predicates = [
+    "p.upc is not null",
+    "coalesce(p.name, p.short_name) is not null",
+    "array_length(b.official_domains, 1) > 0",
+  ];
+
+  if (options.upc) {
+    predicates.push(`p.upc = ${sqlLiteral(options.upc)}`);
+  }
+
+  if (options.brand) {
+    predicates.push(`b.name ilike ${sqlLiteral(`%${options.brand}%`)}`);
+  }
+
+  const whereClause = predicates.join(" and ");
+  const limit = options.limit ?? 10;
+  const limitPerBrand = options.limitPerBrand ?? 2;
+
+  return `with ranked_products as (\n  select\n    p.upc,\n    b.name as brand_name,\n    coalesce(p.name, p.short_name) as product_name,\n    b.official_domains,\n    row_number() over (partition by b.id order by md5(coalesce(p.upc, ''))) as brand_rank\n  from products p\n  join brands b on b.id = p.brand_id\n  where ${whereClause}\n)\nselect\n  upc,\n  brand_name,\n  product_name,\n  official_domains\nfrom ranked_products\nwhere brand_rank <= ${limitPerBrand}\norder by brand_name, upc\nlimit ${limit}`;
+}
+
 export async function loadLiveSampleInputs(
   options: LoadLiveSampleInputsOptions = {},
 ): Promise<LiveSampleInputsResult> {
+  if (options.samplingMode === "production-shaped") {
+    const rows = await queryLinkedSupabase(buildProductionLiveSampleQuery(options), options);
+    return mapProductionRowsToProductResearchInputs(rows as ProductionLiveRow[]);
+  }
+
   const rows = await queryLinkedSupabase(buildLiveSampleQuery(options), options);
   return mapRowsToProductResearchInputs(rows as LiveCandidateRow[]);
 }

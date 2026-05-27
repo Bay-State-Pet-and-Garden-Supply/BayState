@@ -15,12 +15,7 @@ const exampleInput = {
   registerName: "Fromm Cat PurrSnickitty Duck Stew 3 oz",
   brand: "Fromm",
   officialWebsiteUrl: "https://frommfamily.com",
-  expectedAttributes: {
-    size: "3 oz",
-    flavor: "Duck",
-    variant: "Stew",
-  },
-  candidateUrls: [
+  seedCandidateUrls: [
     {
       url: "https://frommfamily.com/products/cat/purrsnickitty/can",
       sourceType: "serp" as const,
@@ -50,8 +45,8 @@ describe("standalone Pi harness helpers", () => {
       outputDir: "artifacts/manual-run",
     });
 
-    expect(prompt).toContain("Stay inside the apps/research-agent environment.");
-    expect(prompt).toContain("Do not plan or implement apps/web, frontend, coordinator, or database integration yet.");
+    expect(prompt).toContain("Stay inside the research-agent environment.");
+    expect(prompt).toContain("Do not plan or implement web, frontend, coordinator, or database integration yet.");
     expect(prompt).toContain("run_product_research");
     expect(prompt).toContain("record_agent_decision");
     expect(prompt).toContain("artifacts/manual-run");
@@ -213,7 +208,7 @@ describe("standalone Pi harness helpers", () => {
     if (!textResult || textResult.type !== "text") {
       throw new Error("Expected text tool output");
     }
-    expect(textResult.text).toContain('"status": "needs_review"');
+    expect(textResult.text).toContain('"status": "completed"');
     expect(textResult.text).toContain("reportPath");
     expect(reportPath).toBeDefined();
     expect(Bun.file(reportPath!).size).toBeGreaterThan(0);

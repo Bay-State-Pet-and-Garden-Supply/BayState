@@ -8,6 +8,52 @@ import type {
   PipelineWarning,
 } from "../types";
 import { tokenizeText, overlapScore } from "../../lib/tokens";
+import { normalizeBarcode } from "../../lib/barcode";
+import { isSameOrSubdomain } from "../../lib/url";
+
+function collectAttributeText(attributes: Record<string, unknown>): string[] {
+  const values: string[] = [];
+  for (const value of Object.values(attributes)) {
+    if (typeof value === "string" || typeof value === "number") {
+      values.push(String(value));
+    } else if (Array.isArray(value)) {
+      for (const item of value) {
+        if (typeof item === "string" || typeof item === "number") {
+          values.push(String(item));
+        }
+      }
+    }
+  }
+  return values;
+}
+
+function buildRegisterDescriptorTokens(brand: string, registerName: string, upc: string): string[] {
+  const anchorTokens = new Set([...tokenizeText(brand), ...tokenizeText(upc)]);
+  return tokenizeText(registerName).filter((token) => !anchorTokens.has(token));
+}
+
+function normalizeBrandComparable(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .replace(/(petfoods|petfood|pets|pet|foods|food|fuels|fuel|racing|reproductive|animalhealth|health)$/i, "");
+}
+
+function brandLooksCompatible(expectedBrand: string, extractedBrand: string, candidate: EvaluatedCandidate, officialDomain: string | undefined) {
+  const brandOverlap = overlapScore(tokenizeText(expectedBrand), tokenizeText(extractedBrand));
+  if (brandOverlap.score > 0) return true;
+
+  const normalizedExpected = normalizeBrandComparable(expectedBrand);
+  const normalizedExtracted = normalizeBrandComparable(extractedBrand);
+  if (!normalizedExpected || !normalizedExtracted) return false;
+
+  if (normalizedExpected === normalizedExtracted) return true;
+
+  const relaxedMatch = normalizedExpected.includes(normalizedExtracted) || normalizedExtracted.includes(normalizedExpected);
+  if (!relaxedMatch) return false;
+
+  return Boolean(officialDomain && isSameOrSubdomain(candidate.normalizedDomain, officialDomain));
+}
 
 export class DefaultCandidateVerifier implements CandidateVerifier {
   async verifyCandidate(
@@ -19,8 +65,7 @@ export class DefaultCandidateVerifier implements CandidateVerifier {
     const warnings: PipelineWarning[] = [];
     const expectedBrand = brief.input.brand;
     const expectedUpc = brief.input.upc;
-    const expectedSize = brief.input.expectedAttributes.size;
-    const expectedFlavor = brief.input.expectedAttributes.flavor;
+    const officialDomain = brief.resolvedInput.officialDomainResolved;
 
     if (!facts || facts.confidence === 0) {
       warnings.push({
@@ -39,29 +84,31 @@ export class DefaultCandidateVerifier implements CandidateVerifier {
       };
     }
 
-    // 1. UPC/GTIN validation
+    // 1. UPC/GTIN validation. UPC is the primary upload anchor, but many official
+    // brand pages omit it; absence is a warning, while an exact match is decisive.
     let upcMatched = false;
-    if (expectedUpc) {
-      const extractedUpcs = [
-        facts.attributes.gtin,
-        facts.attributes.sku,
-        facts.attributes.mpn,
-        facts.attributes.gtin8,
-        facts.attributes.gtin12,
-        facts.attributes.gtin13,
-        facts.attributes.gtin14,
-        ...(Array.isArray(facts.attributes.heuristicUpcs) ? facts.attributes.heuristicUpcs : []),
-      ].map(val => val ? String(val).trim() : "").filter(Boolean);
+    const normalizedExpectedUpc = normalizeBarcode(expectedUpc);
+    const extractedUpcs = [
+      facts.attributes.gtin,
+      facts.attributes.sku,
+      facts.attributes.mpn,
+      facts.attributes.gtin8,
+      facts.attributes.gtin12,
+      facts.attributes.gtin13,
+      facts.attributes.gtin14,
+      ...(Array.isArray(facts.attributes.heuristicUpcs) ? facts.attributes.heuristicUpcs : []),
+    ]
+      .map(val => val ? normalizeBarcode(String(val)) : "")
+      .filter(Boolean);
 
-      if (extractedUpcs.includes(expectedUpc)) {
-        upcMatched = true;
-      } else {
-        warnings.push({
-          stage: "verification",
-          message: `UPC mismatch: expected ${expectedUpc} but did not find it in extracted facts`,
-          url: candidate.url,
-        });
-      }
+    if (extractedUpcs.includes(normalizedExpectedUpc)) {
+      upcMatched = true;
+    } else {
+      warnings.push({
+        stage: "verification",
+        message: `UPC not found in extracted facts for uploaded anchor ${expectedUpc}`,
+        url: candidate.url,
+      });
     }
 
     // 2. Compute Identity Confidence
@@ -74,10 +121,7 @@ export class DefaultCandidateVerifier implements CandidateVerifier {
       // Validate Brand
       const extractedBrand = facts.attributes.brand ? String(facts.attributes.brand).trim() : undefined;
       if (extractedBrand) {
-        const brandTokens = tokenizeText(expectedBrand);
-        const extBrandTokens = tokenizeText(extractedBrand);
-        const brandOverlap = overlapScore(brandTokens, extBrandTokens);
-        if (brandOverlap.score === 0) {
+        if (!brandLooksCompatible(expectedBrand, extractedBrand, candidate, officialDomain)) {
           // Brand mismatch penalizes significantly
           identityConfidence *= 0.4;
           warnings.push({
@@ -107,49 +151,34 @@ export class DefaultCandidateVerifier implements CandidateVerifier {
       }
     }
 
-    // 3. Compute Variant Confidence
+    // 3. Compute Variant Confidence from the uploaded register name and extracted facts,
+    // not from pre-supplied structured attributes.
     let variantConfidence = 1.0;
     if (upcMatched) {
       variantConfidence = 1.0;
     } else {
-      // Validate Size
-      if (expectedSize) {
-        const normExpectedSize = this.normalizeSizeString(expectedSize);
-        const extractedSizes = [
-          facts.attributes.size ? String(facts.attributes.size) : "",
-          ...(Array.isArray(facts.attributes.heuristicSizes) ? facts.attributes.heuristicSizes : []),
-          facts.title || "",
-        ].map(s => this.normalizeSizeString(s)).filter(Boolean);
+      const expectedDescriptorTokens = buildRegisterDescriptorTokens(
+        expectedBrand,
+        brief.input.registerName,
+        expectedUpc,
+      );
+      const actualDescriptorTokens = tokenizeText(
+        facts.title,
+        facts.description,
+        ...facts.categories,
+        ...collectAttributeText(facts.attributes),
+      );
+      const descriptorOverlap = overlapScore(expectedDescriptorTokens, actualDescriptorTokens);
+      variantConfidence = expectedDescriptorTokens.length > 0
+        ? descriptorOverlap.score
+        : candidate.variantScore;
 
-        const hasSizeMatch = extractedSizes.some(s => s.includes(normExpectedSize) || normExpectedSize.includes(s));
-        if (!hasSizeMatch) {
-          variantConfidence -= 0.35;
-          warnings.push({
-            stage: "verification",
-            message: `Size mismatch: expected ${expectedSize} but did not find it in extracted facts`,
-            url: candidate.url,
-          });
-        }
-      }
-
-      // Validate Flavor
-      if (expectedFlavor) {
-        const normExpectedFlavor = expectedFlavor.toLowerCase().trim();
-        const extractedFlavors = [
-          facts.attributes.flavor ? String(facts.attributes.flavor) : "",
-          facts.title || "",
-          facts.description || "",
-        ].map(f => f.toLowerCase().trim()).filter(Boolean);
-
-        const hasFlavorMatch = extractedFlavors.some(f => f.includes(normExpectedFlavor));
-        if (!hasFlavorMatch) {
-          variantConfidence -= 0.35;
-          warnings.push({
-            stage: "verification",
-            message: `Flavor mismatch: expected ${expectedFlavor} but did not find it in extracted facts`,
-            url: candidate.url,
-          });
-        }
+      if (expectedDescriptorTokens.length > 0 && descriptorOverlap.score < 0.35) {
+        warnings.push({
+          stage: "verification",
+          message: `Low register-name descriptor overlap: matched ${descriptorOverlap.matchedTokens.length}/${expectedDescriptorTokens.length} descriptive tokens`,
+          url: candidate.url,
+        });
       }
     }
 
@@ -190,9 +219,5 @@ export class DefaultCandidateVerifier implements CandidateVerifier {
       storefrontReadinessContribution,
       warnings,
     };
-  }
-
-  private normalizeSizeString(s: string): string {
-    return s.toLowerCase().replace(/[^a-z0-9]+/g, "");
   }
 }

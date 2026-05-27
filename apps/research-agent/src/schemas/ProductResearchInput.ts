@@ -1,32 +1,61 @@
 import { z } from "zod";
 import { candidateUrlInputSchema } from "./CandidateUrl";
 
-export const expectedAttributesSchema = z.object({
-  size: z.string().trim().min(1).optional(),
-  flavor: z.string().trim().min(1).optional(),
-  variant: z.string().trim().min(1).optional(),
-  category: z.string().trim().min(1).optional(),
-});
+export const seedCandidateUrlsSchema = z.array(candidateUrlInputSchema);
 
-export type ExpectedAttributes = z.infer<typeof expectedAttributesSchema>;
-
-export const productResearchInputSchema = z.object({
+const productResearchInputFieldsSchema = z.object({
   productId: z.string().trim().min(1),
-  upc: z.string().trim().min(1).optional(),
+  upc: z.string().trim().min(1),
   registerName: z.string().trim().min(1),
   brand: z.string().trim().min(1),
   officialDomain: z.string().trim().min(1).optional(),
   officialWebsiteUrl: z.string().url().optional(),
-  candidateUrls: z.array(candidateUrlInputSchema).default([]),
-  expectedAttributes: expectedAttributesSchema.default({}),
+  seedCandidateUrls: seedCandidateUrlsSchema.default([]),
   notes: z.string().trim().min(1).optional(),
 });
 
+function normalizeLegacyInput(rawInput: unknown) {
+  if (!rawInput || typeof rawInput !== "object" || Array.isArray(rawInput)) {
+    return rawInput;
+  }
+
+  const input = rawInput as Record<string, unknown>;
+  return {
+    ...input,
+    seedCandidateUrls:
+      input.seedCandidateUrls ?? (Array.isArray(input.candidateUrls) ? input.candidateUrls : undefined),
+  };
+}
+
+function requireOfficialDomainSource(
+  input: { officialDomain?: string; officialWebsiteUrl?: string; officialDomainResolved?: string },
+  ctx: z.RefinementCtx,
+) {
+  if (!input.officialDomain && !input.officialWebsiteUrl && !input.officialDomainResolved) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["officialDomain"],
+      message: "Product research requires an official brand domain or official website URL for candidate discovery.",
+    });
+  }
+}
+
+const productResearchInputObjectSchema = productResearchInputFieldsSchema.superRefine(
+  requireOfficialDomainSource,
+);
+
+export const productResearchInputSchema = z.preprocess(
+  normalizeLegacyInput,
+  productResearchInputObjectSchema,
+);
+
 export type ProductResearchInput = z.infer<typeof productResearchInputSchema>;
 
-export const resolvedProductResearchInputSchema = productResearchInputSchema.extend({
-  officialDomainResolved: z.string().trim().min(1).optional(),
-});
+export const resolvedProductResearchInputSchema = productResearchInputFieldsSchema
+  .extend({
+    officialDomainResolved: z.string().trim().min(1).optional(),
+  })
+  .superRefine(requireOfficialDomainSource);
 
 export type ResolvedProductResearchInput = z.infer<
   typeof resolvedProductResearchInputSchema

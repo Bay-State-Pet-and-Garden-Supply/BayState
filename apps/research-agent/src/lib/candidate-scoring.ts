@@ -9,6 +9,7 @@ import type {
 } from "../schemas/ProductResearchInput";
 import { getNormalizedUrlParts, isSameOrSubdomain, normalizeDomain } from "./url";
 import { overlapScore, tokenizeText } from "./tokens";
+import { normalizeBarcode } from "./barcode";
 
 const SOURCE_TYPE_SCORES: Record<CandidateSourceType, number> = {
   input: 0.72,
@@ -92,25 +93,15 @@ export function resolveInput(input: ProductResearchInput): ResolvedProductResear
 export function buildIdentityTokens(
   input: ProductResearchInput | ResolvedProductResearchInput,
 ): string[] {
-  return tokenizeText(
-    input.brand,
-    input.registerName,
-    input.upc,
-    input.expectedAttributes.size,
-    input.expectedAttributes.flavor,
-    input.expectedAttributes.variant,
-    input.expectedAttributes.category,
-  );
+  return tokenizeText(input.brand, input.registerName, input.upc);
 }
 
 export function buildVariantTokens(
   input: ProductResearchInput | ResolvedProductResearchInput,
 ): string[] {
-  return tokenizeText(
-    input.expectedAttributes.size,
-    input.expectedAttributes.flavor,
-    input.expectedAttributes.variant,
-  );
+  const brandTokens = new Set(tokenizeText(input.brand));
+  const anchorTokens = new Set([...brandTokens, ...tokenizeText(input.upc)]);
+  return tokenizeText(input.registerName).filter((token) => !anchorTokens.has(token));
 }
 
 function hasDomainSuffix(candidateDomain: string, domains: string[]) {
@@ -213,9 +204,10 @@ export function evaluateCandidate(
     pathResult.score * 0.1 +
     sourceTypeScore * 0.1;
 
-  const upcInUrl = Boolean(input.upc && normalizedUrl.includes(input.upc));
-  const upcInMetadata = Boolean(
-    input.upc && [candidate.title, candidate.snippet, candidate.discoveredFrom].some((value) => value?.includes(input.upc!)),
+  const normalizedUpc = normalizeBarcode(input.upc) ?? input.upc;
+  const upcInUrl = normalizedUrl.replace(/\D+/g, "").includes(normalizedUpc.replace(/\D+/g, ""));
+  const upcInMetadata = [candidate.title, candidate.snippet, candidate.discoveredFrom].some((value) =>
+    (value ?? "").replace(/\D+/g, "").includes(normalizedUpc.replace(/\D+/g, "")),
   );
 
   if (upcInUrl) {

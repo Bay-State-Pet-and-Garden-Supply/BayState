@@ -8,12 +8,7 @@ const exampleInput = {
   registerName: "Fromm Cat PurrSnickitty Duck Stew 3 oz",
   brand: "Fromm",
   officialWebsiteUrl: "https://frommfamily.com",
-  expectedAttributes: {
-    size: "3 oz",
-    flavor: "Duck",
-    variant: "Stew",
-  },
-  candidateUrls: [
+  seedCandidateUrls: [
     {
       url: "https://frommfamily.com/products/cat/purrsnickitty/can",
       sourceType: "serp",
@@ -41,11 +36,8 @@ const selectedKnownUrlInput = {
   upc: "850039426636",
   registerName: "Dr. Marty Nature's Blend Sensitivity Select Freeze Dried Dog Food 80 oz",
   brand: "Dr. Marty",
-  expectedAttributes: {
-    size: "80 oz",
-    variant: "Sensitivity Select",
-  },
-  candidateUrls: [
+  officialWebsiteUrl: "https://www.petguys.com",
+  seedCandidateUrls: [
     {
       url: "https://www.petguys.com/dr-marty-natures-blend-sensitivity-select-freeze-dried-dog-food-80oz.html",
       sourceType: "input",
@@ -103,13 +95,13 @@ describe("runProductResearch", () => {
   it("returns needs_more_candidates when no URLs are provided", async () => {
     const report = await runProductResearch({
       ...exampleInput,
-      candidateUrls: [],
+      seedCandidateUrls: [],
     });
 
     expect(report.status).toBe("needs_more_candidates");
     expect(report.selectedCanonicalUrl).toBeUndefined();
     expect(report.nextActions).toContain(
-      "Provide candidate URLs or add sitemap/SERP discovery adapters.",
+      "Configure SERP/domain discovery or provide developer seed URLs for investigation.",
     );
   });
 });

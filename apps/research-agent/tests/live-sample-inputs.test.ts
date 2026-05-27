@@ -1,7 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import {
   buildLiveSampleQuery,
+  buildProductionLiveSampleQuery,
   classifyCandidateSourceType,
+  mapProductionRowsToProductResearchInputs,
   mapRowsToProductResearchInputs,
 } from "../src/live/sample-inputs";
 
@@ -27,7 +29,7 @@ describe("live sample input mapping", () => {
     ).toBe("serp");
   });
 
-  it("maps and dedupes candidate URLs while ignoring invalid rows", () => {
+  it("maps and dedupes legacy seed URLs while ignoring invalid rows", () => {
     const result = mapRowsToProductResearchInputs([
       {
         upc: "072705113446",
@@ -92,9 +94,9 @@ describe("live sample input mapping", () => {
     ]);
 
     expect(result.inputs).toHaveLength(1);
-    expect(result.inputs[0]?.candidateUrls).toHaveLength(2);
-    expect(result.inputs[0]?.candidateUrls[0]?.sourceType).toBe("official");
-    expect(result.inputs[0]?.candidateUrls[1]?.sourceType).toBe("distributor");
+    expect(result.inputs[0]?.seedCandidateUrls).toHaveLength(2);
+    expect(result.inputs[0]?.seedCandidateUrls[0]?.sourceType).toBe("official");
+    expect(result.inputs[0]?.seedCandidateUrls[1]?.sourceType).toBe("distributor");
     expect(result.warnings.some((warning) => warning.reason.includes("Ignored invalid candidate URL"))).toBe(true);
   });
 
@@ -102,6 +104,28 @@ describe("live sample input mapping", () => {
     const sql = buildLiveSampleQuery({ limit: 3, upc: "072705113446", brand: "Fromm" });
     expect(sql).toContain("limit 3");
     expect(sql).toContain("c.upc = '072705113446'");
+    expect(sql).toContain("b.name ilike '%Fromm%'");
+  });
+
+  it("maps production-shaped product rows without seed candidates", () => {
+    const result = mapProductionRowsToProductResearchInputs([
+      {
+        upc: "051178039965",
+        brand_name: "Lake Valley Seed",
+        product_name: "LV Seed Organic Hard Red Wheat Grass",
+        official_domains: ["https://lakevalleyseed.com"],
+      },
+    ]);
+
+    expect(result.inputs).toHaveLength(1);
+    expect(result.inputs[0]?.seedCandidateUrls).toHaveLength(0);
+    expect(result.inputs[0]?.officialWebsiteUrl).toBe("https://lakevalleyseed.com");
+  });
+
+  it("builds a production-shaped linked Supabase query with brand caps", () => {
+    const sql = buildProductionLiveSampleQuery({ limit: 10, limitPerBrand: 2, brand: "Fromm" });
+    expect(sql).toContain("brand_rank <= 2");
+    expect(sql).toContain("limit 10");
     expect(sql).toContain("b.name ilike '%Fromm%'");
   });
 });

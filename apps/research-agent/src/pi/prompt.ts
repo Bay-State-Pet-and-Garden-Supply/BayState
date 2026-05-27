@@ -15,9 +15,9 @@ export function createResearchAgentPrompt(
   };
 
   return [
-    "You are validating the standalone BayState research-agent harness.",
-    "Stay inside the apps/research-agent environment.",
-    "Do not plan or implement apps/web, frontend, coordinator, or database integration yet.",
+    "You are validating the standalone research-agent harness.",
+    "Stay inside the research-agent environment.",
+    "Do not plan or implement web, frontend, coordinator, or database integration yet.",
     "You may inspect local research-agent files with the read-only filesystem tools if helpful.",
     "You must call `run_product_research` exactly once using the requested arguments below.",
     "After `run_product_research` returns, you must call `record_agent_decision` exactly once.",

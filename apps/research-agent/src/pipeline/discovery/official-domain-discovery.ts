@@ -1,10 +1,14 @@
 import type { CandidateDiscoveryProvider } from "../ports";
 import type { DiscoveryResult, ProductResearchBrief, ProductResearchPipelineContext, CandidateUrlInput } from "../types";
+import { discoverUrlsFromSitemap } from "./sitemap-url-discovery";
+import { classifyProductUrlHeuristics } from "./product-url-classifier";
+import { tokenizeText } from "../../lib/tokens";
+import { normalizeBarcode } from "../../lib/barcode";
 
 export class OfficialDomainDiscovery implements CandidateDiscoveryProvider {
   async discoverCandidates(
     brief: ProductResearchBrief,
-    context: ProductResearchPipelineContext
+    context: ProductResearchPipelineContext,
   ): Promise<DiscoveryResult> {
     const candidates: CandidateUrlInput[] = [];
     const warnings: any[] = [];
@@ -27,38 +31,40 @@ export class OfficialDomainDiscovery implements CandidateDiscoveryProvider {
         title: `Official Search for ${brief.input.registerName}`,
       });
 
-      // Try fetching sitemap.xml to discover product URLs
       try {
         const sitemapUrl = `${baseUrl}/sitemap.xml`;
-        const response = await fetch(sitemapUrl, {
-          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
-          signal: AbortSignal.timeout(3000), // 3s timeout
+        const identityTokens = tokenizeText(brief.input.registerName);
+        const normalizedUpc = normalizeBarcode(brief.input.upc);
+        const sitemapCandidates = await discoverUrlsFromSitemap(sitemapUrl, fetch, {
+          maxSitemaps: 15,
+          maxUrls: 150,
         });
-        if (response.ok) {
-          const text = await response.text();
-          // Extract URLs using regex from <loc> tags
-          const locRegex = /<loc>([\s\S]*?)<\/loc>/gi;
-          let match;
-          let count = 0;
-          const identityTokens = brief.input.registerName.toLowerCase().split(/\s+/).filter(t => t.length > 2);
-          while ((match = locRegex.exec(text)) !== null && count < 10) {
-            const url = match[1].trim();
+
+        const ranked = sitemapCandidates
+          .map((url) => {
             const lowerUrl = url.toLowerCase();
-            // Look for product urls or urls containing product name keywords
-            const isProductPattern = lowerUrl.includes("/products/") || lowerUrl.includes("/product/");
-            const matchesKeywords = identityTokens.some(tok => lowerUrl.includes(tok));
-            if (isProductPattern || (matchesKeywords && lowerUrl.includes(domain))) {
-              candidates.push({
-                url,
-                sourceType: "sitemap",
-                discoveredFrom: sitemapUrl,
-              });
-              count++;
-            }
-          }
+            const { score, isProductLike } = classifyProductUrlHeuristics(url, brief.input.brand);
+            const tokenMatches = identityTokens.filter((token) => lowerUrl.includes(token)).length;
+            const upcMatch = normalizedUpc && lowerUrl.replace(/\D+/g, "").includes(normalizedUpc) ? 1 : 0;
+            return {
+              url,
+              isProductLike,
+              score: score + tokenMatches * 0.12 + upcMatch * 0.5,
+            };
+          })
+          .filter((item) => item.isProductLike || item.score >= 0.75)
+          .sort((left, right) => right.score - left.score)
+          .slice(0, 10);
+
+        for (const candidate of ranked) {
+          candidates.push({
+            url: candidate.url,
+            sourceType: "sitemap",
+            discoveredFrom: sitemapUrl,
+          });
         }
-      } catch (e) {
-        // Sitemap fetch is best-effort, ignore failures
+      } catch {
+        // Sitemap fetch is best-effort, ignore failures.
       }
     }
 

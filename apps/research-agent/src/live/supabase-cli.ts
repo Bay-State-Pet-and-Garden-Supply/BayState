@@ -53,7 +53,7 @@ export function resolveSupabaseWorkdir(workdir?: string) {
   return path.resolve(
     workdir
       ?? process.env.RESEARCH_AGENT_SUPABASE_WORKDIR
-      ?? path.join(getResearchAgentPaths().repoRoot, "apps", "web"),
+      ?? path.join(getResearchAgentPaths().appRoot, "..", "web"),
   );
 }
 

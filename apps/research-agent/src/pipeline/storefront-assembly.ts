@@ -21,8 +21,22 @@ function evidence<T>(value: T, base: Omit<EvidenceValue<T>, "value">): EvidenceV
   return { value, ...base };
 }
 
+function toAbsoluteUrl(url: string | undefined, baseUrl: string | undefined) {
+  if (!url) return undefined;
+  try {
+    return new URL(url).toString();
+  } catch {
+    if (!baseUrl) return undefined;
+    try {
+      return new URL(url, baseUrl).toString();
+    } catch {
+      return undefined;
+    }
+  }
+}
+
 function firstExtractedImage(report: ProductResearchReport) {
-  return report.extracted.images?.value?.[0];
+  return toAbsoluteUrl(report.extracted.images?.value?.[0], report.extracted.images?.sourceUrl);
 }
 
 function determineReadiness(report: ProductResearchReport): {
@@ -148,7 +162,7 @@ export function assembleStorefrontProductDraft(
             tags: evidence(tags, {
               confidence: 0.7,
               sourceType: "heuristic",
-              evidence: "Tags were assembled from brand, category, and expected product attributes.",
+              evidence: "Tags were assembled from brand, category, and extracted product attributes.",
             }),
           }
         : {}),

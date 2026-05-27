@@ -12,7 +12,7 @@ const input: ResolvedProductResearchInput = {
   brand: "Fromm",
   officialWebsiteUrl: "https://frommfamily.com",
   officialDomainResolved: "frommfamily.com",
-  candidateUrls: [
+  seedCandidateUrls: [
     {
       url: "https://ticknersonline.drexelweb.com/product/purrsnickitty-cat-duck-stew-3oz-cat-cans/",
       sourceType: "distributor",
@@ -26,11 +26,6 @@ const input: ResolvedProductResearchInput = {
       sourceType: "serp",
     },
   ],
-  expectedAttributes: {
-    size: "3 oz",
-    flavor: "Duck",
-    variant: "Stew",
-  },
 };
 
 const candidate: EvaluatedCandidate = {

@@ -30,22 +30,16 @@ describe("DefaultCandidateVerifier", () => {
       registerName: "Fromm Duck Stew Dog Food 12oz",
       brand: "Fromm",
       upc: "850039426636",
-      expectedAttributes: {
-        size: "12oz",
-        flavor: "Duck",
-      },
-      candidateUrls: [],
+      officialWebsiteUrl: "https://fromm.com",
+      seedCandidateUrls: [],
     },
     resolvedInput: {
       productId: "test-id",
       registerName: "Fromm Duck Stew Dog Food 12oz",
       brand: "Fromm",
       upc: "850039426636",
-      expectedAttributes: {
-        size: "12oz",
-        flavor: "Duck",
-      },
-      candidateUrls: [],
+      officialWebsiteUrl: "https://fromm.com",
+      seedCandidateUrls: [],
       officialDomainResolved: "fromm.com",
     },
     constraints: {
@@ -77,6 +71,46 @@ describe("DefaultCandidateVerifier", () => {
     expect(result.storefrontReadinessContribution).toBe(0.98); // (0.2 + 0.4 + 0.4) * 0.98 * 1.0 = 0.98
   });
 
+  it("allows official-brand aliases without treating them as mismatches", async () => {
+    const verifier = new DefaultCandidateVerifier();
+    const aliasCandidate: EvaluatedCandidate = {
+      ...candidate,
+      normalizedDomain: "kohapet.com",
+      sourceType: "official",
+    };
+    const aliasBrief: ProductResearchBrief = {
+      ...brief,
+      input: {
+        ...brief.input,
+        brand: "Koha",
+        registerName: "Koha Chicken Recipe",
+        officialWebsiteUrl: "https://kohapet.com",
+      },
+      resolvedInput: {
+        ...brief.resolvedInput,
+        brand: "Koha",
+        registerName: "Koha Chicken Recipe",
+        officialWebsiteUrl: "https://kohapet.com",
+        officialDomainResolved: "kohapet.com",
+      },
+    };
+    const facts: PageFactSet = {
+      sourceUrl: "https://kohapet.com/products/chicken-recipe",
+      title: "Koha Chicken Recipe",
+      description: "Chicken recipe wet food.",
+      images: ["https://kohapet.com/image.jpg"],
+      categories: ["Dog Food"],
+      attributes: {
+        brand: "Kohapet",
+      },
+      evidenceSnippets: [],
+      confidence: 0.88,
+    };
+
+    const result = await verifier.verifyCandidate(aliasCandidate, facts, aliasBrief, context);
+    expect(result.warnings.some(w => w.message.includes("Brand mismatch"))).toBe(false);
+  });
+
   it("penalizes identity confidence on brand mismatch", async () => {
     const verifier = new DefaultCandidateVerifier();
     const facts: PageFactSet = {
@@ -97,25 +131,24 @@ describe("DefaultCandidateVerifier", () => {
     expect(result.warnings.some(w => w.message.includes("Brand mismatch"))).toBe(true);
   });
 
-  it("penalizes variant confidence on size/flavor mismatch", async () => {
+  it("penalizes variant confidence on low register-name descriptor overlap", async () => {
     const verifier = new DefaultCandidateVerifier();
     const facts: PageFactSet = {
       sourceUrl: "https://example.com/product",
-      title: "Fromm Chicken Stew 5oz",
+      title: "Fromm Chicken Recipe 5lb",
       description: "Tasty chicken formulation.",
       images: ["https://example.com/image.jpg"],
-      categories: ["Dog Food"],
+      categories: ["Cat Treats"],
       attributes: {
         brand: "Fromm",
-        size: "5oz",
+        size: "5lb",
       },
       evidenceSnippets: [],
       confidence: 0.92,
     };
 
     const result = await verifier.verifyCandidate(candidate, facts, brief, context);
-    expect(result.variantConfidence).toBeLessThan(0.5); // Starts at 1, drops for both size and flavor mismatch
-    expect(result.warnings.some(w => w.message.includes("Size mismatch"))).toBe(true);
-    expect(result.warnings.some(w => w.message.includes("Flavor mismatch"))).toBe(true);
+    expect(result.variantConfidence).toBeLessThan(0.5);
+    expect(result.warnings.some(w => w.message.includes("Low register-name descriptor overlap"))).toBe(true);
   });
 });

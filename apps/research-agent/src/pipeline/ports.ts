@@ -43,6 +43,7 @@ export interface ProductResearchPipelinePorts {
   briefBuilder: ResearchBriefBuilder;
   discoveryProviders: CandidateDiscoveryProvider[];
   pageAcquisition: PageAcquisitionProvider;
+  fallbackPageAcquisition?: PageAcquisitionProvider;
   factExtractors: PageFactExtractor[];
   verifier: CandidateVerifier;
   adjudicator?: AgentAdjudicator;

@@ -7,7 +7,7 @@ export class StaticCandidateDiscovery implements CandidateDiscoveryProvider {
     context: ProductResearchPipelineContext
   ): Promise<DiscoveryResult> {
     return {
-      candidates: brief.input.candidateUrls || [],
+      candidates: brief.input.seedCandidateUrls || [],
       warnings: [],
     };
   }

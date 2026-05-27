@@ -13,12 +13,7 @@ const baseInput: ProductResearchInput = {
   registerName: "Fromm Cat PurrSnickitty Duck Stew 3 oz",
   brand: "Fromm",
   officialWebsiteUrl: "https://frommfamily.com",
-  expectedAttributes: {
-    size: "3 oz",
-    flavor: "Duck",
-    variant: "Stew",
-  },
-  candidateUrls: [],
+  seedCandidateUrls: [],
 };
 
 describe("candidate scoring", () => {

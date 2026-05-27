@@ -32,6 +32,51 @@ function computeExtractionCompleteness(report: ReturnType<typeof extractedResear
   return checks.filter(Boolean).length / checks.length;
 }
 
+function firstExtractedAttributeString(
+  extracted: ReturnType<typeof extractedResearchFieldsSchema.parse>,
+  keys: string[],
+): string | undefined {
+  const attributes = extracted.attributes?.value;
+  if (!attributes) return undefined;
+
+  for (const key of keys) {
+    const value = attributes[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+    if (Array.isArray(value)) {
+      const first = value.find((item) => typeof item === "string" && item.trim());
+      if (first) return first.trim();
+    }
+  }
+
+  return undefined;
+}
+
+function buildExtractedIdentityFields(
+  extracted: ReturnType<typeof extractedResearchFieldsSchema.parse>,
+): Partial<ProductResearchReport["productIdentity"]> {
+  const attributes = extracted.attributes;
+  if (!attributes) return {};
+
+  const toEvidence = (value: string) => ({
+    value,
+    confidence: attributes.confidence,
+    sourceType: attributes.sourceType,
+    sourceUrl: attributes.sourceUrl,
+    evidence: attributes.evidence,
+  });
+
+  const size = firstExtractedAttributeString(extracted, ["size", "weight", "netWeight", "heuristicSizes"]);
+  const flavor = firstExtractedAttributeString(extracted, ["flavor", "flavour"]);
+  const variant = firstExtractedAttributeString(extracted, ["variant", "formula", "style", "mpn"]);
+
+  return {
+    ...(size ? { size: toEvidence(size) } : {}),
+    ...(flavor ? { flavor: toEvidence(flavor) } : {}),
+    ...(variant ? { variant: toEvidence(variant) } : {}),
+  };
+}
+
 function buildNextActions(
   status: ProductResearchReport["status"],
   extractionStatus: "success" | "unavailable" | "failed",
@@ -39,7 +84,7 @@ function buildNextActions(
   const actions: string[] = [];
 
   if (status === "needs_more_candidates") {
-    actions.push("Provide candidate URLs or add sitemap/SERP discovery adapters.");
+    actions.push("Configure SERP/domain discovery or provide developer seed URLs for investigation.");
   }
 
   if (status === "needs_review") {
@@ -71,7 +116,7 @@ export async function runProductResearch(
   const runId = options.runId ?? createRunId(parsedInput.productId, now);
   const extractionAdapter = options.extractionAdapter ?? unavailableScraperExtractionAdapter;
 
-  const candidates = dedupeCandidates(resolvedInput.candidateUrls);
+  const candidates = dedupeCandidates(resolvedInput.seedCandidateUrls);
   const rankedCandidates = rankCandidates(resolvedInput, candidates);
   const selectedCandidate = rankedCandidates.find((candidate) => candidate.decision === "selected");
 
@@ -84,7 +129,7 @@ export async function runProductResearch(
   }
 
   if (rankedCandidates.length === 0) {
-    warnings.add("No candidate URLs were provided for scoring.");
+    warnings.add("No developer seed URLs were provided for legacy scoring.");
   }
 
   if (selectedCandidate) {
@@ -145,46 +190,13 @@ export async function runProductResearch(
         sourceType: "input" as const,
         evidence: "Register name was supplied as part of the research request.",
       },
-      ...(resolvedInput.upc
-        ? {
-            upc: {
-              value: resolvedInput.upc,
-              confidence: 1,
-              sourceType: "input" as const,
-              evidence: "UPC was supplied as part of the research request.",
-            },
-          }
-        : {}),
-      ...(resolvedInput.expectedAttributes.size
-        ? {
-            size: {
-              value: resolvedInput.expectedAttributes.size,
-              confidence: 0.9,
-              sourceType: "input" as const,
-              evidence: "Expected size was provided with the product row.",
-            },
-          }
-        : {}),
-      ...(resolvedInput.expectedAttributes.flavor
-        ? {
-            flavor: {
-              value: resolvedInput.expectedAttributes.flavor,
-              confidence: 0.9,
-              sourceType: "input" as const,
-              evidence: "Expected flavor was provided with the product row.",
-            },
-          }
-        : {}),
-      ...(resolvedInput.expectedAttributes.variant
-        ? {
-            variant: {
-              value: resolvedInput.expectedAttributes.variant,
-              confidence: 0.9,
-              sourceType: "input" as const,
-              evidence: "Expected variant was provided with the product row.",
-            },
-          }
-        : {}),
+      upc: {
+        value: resolvedInput.upc,
+        confidence: 1,
+        sourceType: "input" as const,
+        evidence: "UPC was supplied as part of the research request and used as the primary identity anchor.",
+      },
+      ...buildExtractedIdentityFields(extracted),
     },
     extracted,
     candidates: rankedCandidates,

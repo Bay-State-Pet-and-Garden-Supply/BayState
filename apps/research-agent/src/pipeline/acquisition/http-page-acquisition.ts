@@ -1,5 +1,6 @@
 import type { PageAcquisitionProvider } from "../ports";
 import type { AcquiredPage, ProductResearchBrief, ProductResearchPipelineContext } from "../types";
+import { savePageArtifacts } from "./acquisition-artifacts";
 
 export function cleanHtmlToText(html: string): string {
   // Remove head, script, style, nav, header, and footer content completely to avoid noise
@@ -27,11 +28,15 @@ export function cleanHtmlToText(html: string): string {
 }
 
 export class HttpPageAcquisition implements PageAcquisitionProvider {
+  constructor(private readonly options: { timeoutMs?: number } = {}) {}
+
   async acquirePage(
     url: string,
     brief: ProductResearchBrief,
     context: ProductResearchPipelineContext
   ): Promise<AcquiredPage> {
+    const timeoutMs = this.options.timeoutMs ?? 8_000;
+
     try {
       const response = await fetch(url, {
         headers: {
@@ -39,6 +44,7 @@ export class HttpPageAcquisition implements PageAcquisitionProvider {
           "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         },
         redirect: "follow",
+        signal: AbortSignal.timeout(timeoutMs),
       });
 
       const finalUrl = response.url || url;
@@ -51,7 +57,7 @@ export class HttpPageAcquisition implements PageAcquisitionProvider {
       // Extract plain text
       const text = cleanHtmlToText(html);
 
-      return {
+      const acquired: AcquiredPage = {
         url,
         finalUrl,
         statusCode: response.status,
@@ -60,18 +66,45 @@ export class HttpPageAcquisition implements PageAcquisitionProvider {
         html,
         text,
         metadata: {
+          engine: "http",
           contentType: response.headers.get("content-type"),
         },
       };
+
+      if (context.artifactRoot) {
+        try {
+          await savePageArtifacts(acquired, context.artifactRoot);
+        } catch {
+          // Ignore artifact persistence failures.
+        }
+      }
+
+      return acquired;
     } catch (e: any) {
-      return {
+      const message = e?.name === "TimeoutError"
+        ? `HTTP page acquisition timed out after ${timeoutMs}ms`
+        : e?.message || String(e);
+
+      const acquired: AcquiredPage = {
         url,
         finalUrl: url,
+        statusCode: 599,
         fetchedAt: new Date().toISOString(),
         metadata: {
-          error: e.message || String(e),
+          engine: "http",
+          error: message,
         },
       };
+
+      if (context.artifactRoot) {
+        try {
+          await savePageArtifacts(acquired, context.artifactRoot);
+        } catch {
+          // Ignore artifact persistence failures.
+        }
+      }
+
+      return acquired;
     }
   }
 }

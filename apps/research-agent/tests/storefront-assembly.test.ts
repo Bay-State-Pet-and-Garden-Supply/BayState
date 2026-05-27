@@ -8,11 +8,8 @@ const input = {
   upc: "850039426636",
   registerName: "Dr. Marty Nature's Blend Sensitivity Select Freeze Dried Dog Food 80 oz",
   brand: "Dr. Marty",
-  expectedAttributes: {
-    size: "80 oz",
-    variant: "Sensitivity Select",
-  },
-  candidateUrls: [
+  officialWebsiteUrl: "https://www.petguys.com",
+  seedCandidateUrls: [
     {
       url: "https://www.petguys.com/dr-marty-natures-blend-sensitivity-select-freeze-dried-dog-food-80oz.html",
       sourceType: "input" as const,

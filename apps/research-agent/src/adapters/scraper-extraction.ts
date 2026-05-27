@@ -194,7 +194,7 @@ async function runDefaultKnownUrlWrapper(payload: string): Promise<CommandResult
 }
 
 function buildFallbackUrls(input: ResolvedProductResearchInput, candidate: EvaluatedCandidate) {
-  return input.candidateUrls
+  return input.seedCandidateUrls
     .map((item) => {
       try {
         return normalizeUrl(item.url);
@@ -264,7 +264,7 @@ export class KnownUrlCliScraperExtractionAdapter
     const fallbackUrls = buildFallbackUrls(input, candidate);
     const payload = JSON.stringify({
       url: candidate.normalizedUrl,
-      upc: input.upc ?? input.productId,
+      upc: input.upc,
       product_name: input.registerName,
       register_name: input.registerName,
       brand: input.brand,

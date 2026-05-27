@@ -18,6 +18,8 @@ export interface RunLiveSamplesOptions extends LoadLiveSampleInputsOptions {
   useScraper?: boolean;
   pipeline?: "local" | "legacy-scraper";
   verboseAgent?: boolean;
+  pageAcquisition?: "http" | "agent-browser" | "auto" | "none";
+  indexing?: "off" | "lookup-only" | "refresh-stale" | "cold-start";
 }
 
 export interface RunLiveSamplesResult {
@@ -80,7 +82,8 @@ export async function runLiveSamples(
         } else {
           const { runProductResearchV2 } = await import("../research/runProductResearchV2");
           const result = await runProductResearchV2(input, {
-            pageAcquisition: "http",
+            pageAcquisition: options.pageAcquisition ?? "auto",
+            indexing: options.indexing ?? "cold-start",
           });
           report = result.report;
         }

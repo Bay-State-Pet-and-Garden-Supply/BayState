@@ -10,13 +10,11 @@ describe("DefaultBriefBuilder", () => {
     const builder = new DefaultBriefBuilder();
     const input = {
       productId: "test-product",
+      upc: "012345678905",
       registerName: "Test Product 12oz",
       brand: "Test Brand",
       officialWebsiteUrl: "https://www.testbrand.com/products/test-12oz",
-      expectedAttributes: {
-        size: "12oz",
-      },
-      candidateUrls: [],
+      seedCandidateUrls: [],
     };
 
     const brief = await builder.buildBrief(input, context);

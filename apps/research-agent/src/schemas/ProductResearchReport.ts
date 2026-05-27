@@ -37,6 +37,32 @@ export const agentCandidateDecisionSchema = z.object({
 
 export type AgentCandidateDecision = z.infer<typeof agentCandidateDecisionSchema>;
 
+export const acquisitionDiagnosticSchema = z.object({
+  url: z.string().url(),
+  sourceType: z.string().min(1),
+  discoveredFrom: z.string().optional(),
+  initialScore: z.number().min(0).max(1).optional(),
+  primaryEngine: z.string().optional(),
+  primaryStatusCode: z.number().optional(),
+  primaryTitle: z.string().optional(),
+  primaryTextLength: z.number().optional(),
+  primaryEvidenceScore: z.number().min(0).max(1).optional(),
+  primaryBlockedSignals: z.array(z.string()).optional(),
+  escalationReasons: z.array(z.string()).optional(),
+  fallbackEngine: z.string().optional(),
+  fallbackStatusCode: z.number().optional(),
+  fallbackTitle: z.string().optional(),
+  fallbackTextLength: z.number().optional(),
+  fallbackEvidenceScore: z.number().min(0).max(1).optional(),
+  fallbackBlockedSignals: z.array(z.string()).optional(),
+  selectedEvidenceScore: z.number().min(0).max(1).optional(),
+  factConfidence: z.number().min(0).max(1).optional(),
+  finalFactConfidence: z.number().min(0).max(1).optional(),
+  error: z.string().optional(),
+});
+
+export type AcquisitionDiagnostic = z.infer<typeof acquisitionDiagnosticSchema>;
+
 export const productResearchReportSchema = z.object({
   runId: z.string().min(1),
   status: productResearchStatusSchema,
@@ -62,6 +88,11 @@ export const productResearchReportSchema = z.object({
   }),
   warnings: z.array(z.string()),
   nextActions: z.array(z.string()),
+  diagnostics: z
+    .object({
+      candidateAcquisition: z.array(acquisitionDiagnosticSchema),
+    })
+    .optional(),
   agentDecision: agentCandidateDecisionSchema.optional(),
   artifacts: z
     .object({

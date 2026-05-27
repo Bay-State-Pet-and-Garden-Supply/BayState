@@ -47,7 +47,7 @@ export function buildRunProductResearchTool(
       ),
       pageAcquisition: Type.Optional(
         Type.String({
-          enum: ["http", "agent-browser", "none"],
+          enum: ["http", "agent-browser", "auto", "none"],
           description: "Which page acquisition strategy to use in local mode.",
         })
       ),
@@ -83,7 +83,7 @@ export function buildRunProductResearchTool(
           topN: 3,
           artifactRoot: outputDir,
           savePageArtifacts: true,
-          pageAcquisition: params.pageAcquisition ?? "agent-browser",
+          pageAcquisition: (params.pageAcquisition as any) ?? "auto",
         });
         report = result.report;
       }

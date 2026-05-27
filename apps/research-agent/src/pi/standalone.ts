@@ -34,7 +34,6 @@ export interface InspectStandaloneAgentEnvironmentOptions {
 
 export interface StandaloneAgentEnvironment {
   appRoot: string;
-  repoRoot: string;
   agentHome: string;
   authPath: string;
   modelsPath: string;
@@ -125,7 +124,6 @@ function createEnvironment(
 
   return {
     appRoot: paths.appRoot,
-    repoRoot: paths.repoRoot,
     agentHome: paths.agentHome,
     authPath: paths.authPath,
     modelsPath: paths.modelsPath,
