@@ -1,0 +1,202 @@
+schema_version: "1.0"
+name: coastal
+display_name: Coastal Pet
+base_url: https://www.coastalpet.com
+scraper_type: static
+selectors:
+  - name: search_result_link
+    selector: "a.product-listing__title.product-listing__link >> nth=0"
+    fallback_selectors:
+      - "a.product-listing__link >> nth=0"
+    attribute: href
+    multiple: false
+    required: true
+  - name: Name
+    selector: h4.product-details__product-name
+    fallback_selectors:
+      - "#product-details h4"
+      - h1.product-detail__name
+    attribute: text
+    multiple: false
+    required: true
+  - name: Brand
+    selector: "#product-details a.gray-bold-link"
+    fallback_selectors:
+      - "a.gray-bold-link[href*='brand=']"
+      - .product-detail__brand
+    attribute: text
+    multiple: false
+    required: true
+  - name: Size
+    selector: .product-details__size-button--active
+    fallback_selectors:
+      - .product-details__size-button
+    attribute: text
+    multiple: false
+    required: false
+  - name: Image URLs
+    selector: ".product-details__preview-images--scrolling-container img"
+    fallback_selectors:
+      - "img[src*='salsify']"
+    attribute: src
+    multiple: true
+    required: true
+  - name: UPC
+    selector: "span.product-details__upc"
+    fallback_selectors:
+      - ".coastal--type-body2 strong:has-text('UPC:') ~ span"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Item Number
+    selector: "span.product-details__item-code"
+    fallback_selectors:
+      - ".coastal--type-body2 strong:has-text('Item Number:') ~ span"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Description
+    selector: ".product-details__description-gray .coastal--type-body1"
+    fallback_selectors:
+      - ".product-details__description-gray p"
+      - "#product-details__description-tab-panel"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Features
+    selector: "#product-details__features-tab-panel"
+    fallback_selectors:
+      - ".features-list li"
+      - ".product-features li"
+    attribute: text
+    multiple: true
+    required: false
+  - name: Weight
+    selector: ".product-details__weight, span:has-text('Weight') + span"
+    fallback_selectors:
+      - "//dt[contains(text(),'Weight')]/following-sibling::dd"
+      - ".product-specs dt:has-text('Weight') + dd"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Dimensions
+    selector: ".product-details__dimensions, span:has-text('Dimensions') + span"
+    fallback_selectors:
+      - "//dt[contains(text(),'Dimensions')]/following-sibling::dd"
+    attribute: text
+    multiple: false
+    required: false
+workflows:
+  - action: navigate
+    name: search_page
+    params:
+      url: https://www.coastalpet.com/products/search/?q={sku}
+      wait_until: commit
+  - action: wait
+    name: settle_after_navigation
+    params:
+      seconds: 1
+  - action: conditional_click
+    name: null
+    params:
+      selector: "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll,
+        .CybotCookiebotDialogBodyButton, button[aria-label='Allow all']"
+  - action: check_no_results
+    name: null
+    params: {}
+  - action: conditional_skip
+    name: null
+    params:
+      if_flag: no_results_found
+  - action: wait_for
+    name: null
+    params:
+      timeout: 8
+      selector:
+        - .product-listing__title
+        - .product-listing
+  - action: extract_single
+    name: extract_product_url
+    params:
+      field: product_url
+      selector_id: search_result_link
+  - action: navigate
+    name: product_page
+    params:
+      url: "{{product_url}}"
+      wait_until: commit
+      wait_after: 2
+  - action: wait_for
+    name: null
+    params:
+      timeout: 8
+      selector: .product-details
+  - action: extract
+    name: null
+    params:
+      fields:
+        - Name
+        - Brand
+        - Size
+        - Image URLs
+        - UPC
+        - Item Number
+        - Description
+        - Features
+        - Weight
+        - Dimensions
+  - action: process_images
+    name: null
+    params:
+      field: Image URLs
+      quality_patterns:
+        - regex: "\\?w=\\d+"
+          replacement: "?w=1500"
+        - regex: "_small\\."
+          replacement: "_large."
+      filters:
+        - type: exclude_text
+          text: placeholder
+        - type: exclude_text
+          text: no-image
+        - type: require_text
+          text: salsify
+      deduplicate: true
+ai_config: null
+anti_detection:
+  enable_rate_limiting: false
+  rate_limit_max_delay: 3
+  rate_limit_min_delay: 1
+  enable_human_simulation: false
+  enable_session_rotation: false
+  enable_blocking_handling: false
+  enable_captcha_detection: false
+  max_retries_on_detection: 3
+  session_rotation_interval: 100
+validation:
+  no_results_selectors:
+    - //main//*[contains(text(), 'Your search returned no results')]
+  no_results_text_patterns:
+    - Your search returned no results
+login: null
+http_status: null
+normalization: null
+timeout: 15
+retries: 2
+image_quality: 60
+test_skus:
+  - HSCP2
+  - "06601"
+  - "07001"
+test_assertions:
+  - sku: "HSCP2"
+    expected:
+      title: "Herm. Sprenger ULTRA-PLUS Dog Training Collar with Center Plate & Assembly Chain with 2 Rings"
+      brand: "Herm. Sprenger"
+fake_skus:
+  - xyzabc123notexist456
+  - ZZZZZ
+  - "00000"
+edge_case_skus:
+  - A
+  - ABCDEFGHIJ123456

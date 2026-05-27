@@ -1,0 +1,227 @@
+schema_version: "1.0"
+name: amazon
+display_name: Amazon
+base_url: https://www.amazon.com
+scraper_type: static
+selectors:
+  - name: Name
+    selector: "#productTitle"
+    attribute: text
+    multiple: false
+    required: true
+  - name: Brand
+    selector: "#bylineInfo"
+    attribute: text
+    multiple: false
+    required: true
+  - name: Image URLs
+    selector: "#landingImage, #altImages li.imageThumbnail:not(:first-child) img"
+    attribute: src
+    multiple: true
+    required: true
+  - name: Weight
+    selector: "//tr[.//th[contains(., 'Weight')]] | //li[contains(., 'ounces')] | //li[contains(., 'pounds')]"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Description
+    selector: "#productDescription"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Features
+    selector: "#feature-bullets li span"
+    attribute: text
+    multiple: true
+    required: false
+  - name: Dimensions
+    selector: "tr:has(th:has-text('Dimensions')) td, tr:has(th:has-text('Package Dimensions')) td, li:has-text('Package Dimensions') span.a-list-item"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Ingredients
+    selector: "#important-information .content ul li, #ingredient-information-container, div[id*='ingredient'] p"
+    attribute: text
+    multiple: false
+    required: false
+workflows:
+  - action: navigate
+    name: null
+    params:
+      url: https://www.amazon.com/s?k={{sku}}
+  - action: wait
+    name: wait_for_load
+    params:
+      seconds: 3
+  - action: conditional_click
+    name: accept_cookies
+    params:
+      selector: "#sp-cc-accept, .a-button-input[data-value='accept']"
+  - action: wait_for
+    name: null
+    params:
+      timeout: 30
+      selector:
+        - "#productTitle"
+        - "div[data-asin]:not([data-asin=''])"
+        - ".s-result-item"
+        - "#noResultsTitle"
+  - action: check_no_results
+    name: null
+    params:
+      fallback_empty_search_selector: "div[data-component-type='s-search-result']:not(.AdHolder) a:has(h2)"
+      search_page_indicators:
+        - "s?k="
+        - "amazon.com :"
+      pdp_selectors:
+        - "#productTitle"
+        - "#title"
+  - action: conditional_skip
+    name: null
+    params:
+      if_flag: no_results_found
+  - action: validate_search_result
+    name: null
+    params:
+      required_selectors:
+        - "h2"
+      search_result_selector: "div[data-component-type='s-search-result']:not(.AdHolder) a:has(h2)"
+  - action: conditional
+    name: skip_search_if_on_pdp
+    params:
+      condition_type: element_exists
+      selector: "#productTitle"
+      else:
+        - action: click
+          name: click_first_result
+          params:
+            index: 0
+            selector: "div[data-component-type='s-search-result']:not(.AdHolder) a:has(h2)"
+            force: true
+            timeout: 10
+        - action: wait_for
+          name: wait_for_pdp
+          params:
+            timeout: 10
+            selector:
+              - "#productTitle"
+              - "#title"
+  - action: extract_and_transform
+    name: null
+    params:
+      fields:
+        - name: Name
+          selector: "#productTitle"
+          nth: 0
+          attribute: text
+        - name: Brand
+          selector: "#bylineInfo"
+          nth: 0
+          attribute: text
+          transform:
+            - type: regex_extract
+              group: 1
+              pattern: Visit the (.+) Store
+        - name: Images
+          multiple: true
+          selector: "#landingImage, #altImages li.imageThumbnail:not(:first-child) img"
+          attribute: src
+          transform:
+            - type: replace
+              pattern: "\\._[A-Z0-9_,-]+_\\."
+              replacement: "._AC_SL1500_."
+        - name: Weight
+          required: false
+          selector: "tr:has-text('Item Weight') td, li:has-text('Item Weight') span, div#detailBullets_feature_div li:has-text('Item Weight') span.a-list-item, //tr[.//th[contains(., 'Weight')]] | //li[contains(., 'ounces')] | //li[contains(., 'pounds')]"
+          nth: 0
+          attribute: text
+        - name: Description
+          selector: "div#feature-bullets, div#productDescription, div#aplus"
+          nth: 0
+          attribute: text
+        - name: Features
+          multiple: true
+          selector: "#feature-bullets li span"
+          attribute: text
+        - name: Dimensions
+          selector: "tr:has-text('Dimensions') td, tr:has-text('Package Dimensions') td, li:has-text('Package Dimensions') span.a-list-item"
+          nth: 0
+          attribute: text
+          required: false
+        - name: Ingredients
+          selector: "#important-information .content ul li, div[id*='ingredient'] p, #ingredient-information-container"
+          nth: 0
+          attribute: text
+          required: false
+  - action: process_images
+    name: null
+    params:
+      field: Images
+      quality_patterns:
+        - regex: "\\._[A-Z0-9_,-]+_\\."
+          replacement: "._AC_SL1500_."
+      filters:
+        - type: exclude_text
+          text: sprite
+        - type: exclude_text
+          text: grey-pixel
+        - type: exclude_text
+          text: transparent-pixel
+        - type: exclude_text
+          text: play-button
+        - type: require_text
+          text: images/I/
+      deduplicate: true
+ai_config: null
+anti_detection:
+  enable_rate_limiting: false
+  rate_limit_max_delay: 3
+  rate_limit_min_delay: 1
+  enable_human_simulation: false
+  enable_session_rotation: false
+  enable_blocking_handling: false
+  enable_captcha_detection: false
+  max_retries_on_detection: 3
+  session_rotation_interval: 100
+validation:
+  no_results_selectors:
+    - "[widgetId='messaging-messages-no-results']"
+    - .s-no-results-filler
+    - "#noResultsTitle"
+    - .s-desktop-no-results
+    - //h2[contains(text(), 'No results for your search query')]
+  no_results_text_patterns:
+    - no results for
+    - 0 results for
+    - No results for your search query
+    - Try checking your spelling
+login: null
+http_status: null
+normalization: null
+timeout: 30
+retries: 2
+image_quality: 100
+test_skus:
+  - "035585499741"
+  - "079105116708"
+  - "029695285400"
+  - "038100174642"
+  - "017800149495"
+  - 852Icons4
+  - B08N5WRWNW
+fake_skus:
+  - xyzabc123notexist456
+  - B00ZZZZZZZ
+  - NOTAPRODUCT
+edge_case_skus:
+  - A1
+  - ABCDEFGHIJKLMNOPQRSTUVWXYZ
+test_assertions:
+  - sku: "B0018CLX3C"
+    expected:
+      title: "Flourite Black Sand, 15.4 Pound (Pack of 1)"
+      brand: "Seachem"
+  - sku: "035585499741"
+    expected:
+      title: "KONG Pull-A-Partz Pals 2 Toys in 1 Dog Toy (Koala)"
+      brand: "KONG"

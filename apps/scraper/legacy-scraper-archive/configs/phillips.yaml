@@ -1,0 +1,185 @@
+schema_version: "1.0"
+name: phillips
+requires_login: true
+display_name: Phillips Pet
+base_url: https://shop.phillipspet.com
+scraper_type: static
+selectors:
+  - name: Name
+    selector: "#plp-desktop-row .cc_product_name strong"
+    attribute: text
+    multiple: false
+    required: true
+    fallback_selectors:
+      - "h1"
+      - "[data-testid='product-name']"
+  - name: Brand
+    selector: "#plp-desktop-row .product-brand .branded"
+    attribute: text
+    multiple: false
+    required: false
+  - name: UPC
+    selector: "#plp-desktop-row .product-upc .cc_value"
+    attribute: text
+    multiple: false
+    required: false
+  - name: ItemNumber
+    selector: "#plp-desktop-row .product-item-number .cc_value"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Image URLs
+    selector: "#plp-desktop-row .cc_product_image img"
+    attribute: src
+    multiple: true
+    required: false
+    fallback_selectors:
+      - ".cc_product_image img"
+      - "img[src*='product']"
+  - name: Description
+    selector: "#plp-desktop-row .product-description, #plp-desktop-row .cc_product_description"
+    attribute: text
+    multiple: false
+    required: false
+    fallback_selectors:
+      - ".product-description"
+      - ".cc_product_description"
+  - name: Weight
+    selector: "#plp-desktop-row .product-weight .cc_value, #plp-desktop-row .product-ship-weight .cc_value"
+    attribute: text
+    multiple: false
+    required: false
+    fallback_selectors:
+      - ".product-weight .cc_value"
+      - ".product-ship-weight .cc_value"
+  - name: Features
+    selector: "#plp-desktop-row .product-features li, #plp-desktop-row .cc_product_features li"
+    attribute: text
+    multiple: true
+    required: false
+    fallback_selectors:
+      - ".product-features li"
+workflows:
+  - action: login
+    name: null
+    params: {}
+  - action: navigate
+    name: null
+    params:
+      url: https://shop.phillipspet.com/ccrz__ProductList?cartID=&operation=quickSearch&searchText={sku}&portalUser=&store=DefaultStore&cclcl=en_US
+  - action: wait_for
+    name: null
+    params:
+      timeout: 10
+      selector:
+        - "#plp-desktop-row .cc_product_name"
+        - .plp-empty-state-message-container h3
+  - action: check_no_results
+    name: null
+    params: {}
+  - action: conditional_skip
+    name: null
+    params:
+      if_flag: no_results_found
+  - action: extract
+    name: null
+    params:
+      fields:
+        - Name
+        - Brand
+        - UPC
+        - ItemNumber
+        - Image URLs
+        - Description
+        - Weight
+        - Features
+  - action: process_images
+    name: null
+    params:
+      field: Image URLs
+      quality_patterns:
+        - regex: "/thumb/"
+          replacement: "/large/"
+        - regex: "_thumb"
+          replacement: "_large"
+      filters:
+        - type: exclude_text
+          text: placeholder
+        - type: exclude_text
+          text: noimage
+      deduplicate: true
+  - action: ocr_images
+    name: Extract packaging text
+    params:
+      field: Image URLs
+      max_images: 2
+      output_field: Image Text
+ai_config: null
+anti_detection:
+  enable_rate_limiting: false
+  rate_limit_max_delay: 3
+  rate_limit_min_delay: 1
+  enable_human_simulation: false
+  enable_session_rotation: false
+  enable_blocking_handling: false
+  enable_captcha_detection: false
+  max_retries_on_detection: 3
+  session_rotation_interval: 100
+validation:
+  no_results_selectors:
+    - .plp-empty-state-message-container h3
+  no_results_text_patterns:
+    - no results found
+    - no products found
+    - your search returned no results
+    - no items match your search
+    - 0 items
+login:
+  url: https://shop.phillipspet.com/ccrz__CCSiteLogin
+  timeout: 60
+  submit_button: "#send2Dsk"
+  password_field: "#passwordField"
+  username_field: "#emailField"
+  success_indicator: a.doLogout.cc_do_logout
+  failure_indicators:
+    selectors:
+      - ".cc-error-message"
+      - ".login-error"
+      - ".sfdc_notificationToastMessage"
+    texts:
+      - invalid username or password
+      - login failed
+      - your login attempt has failed
+    url_contains:
+      - ccrz__CCSiteLogin
+http_status: null
+normalization: null
+timeout: 30
+retries: 2
+image_quality: 40
+ocr_config:
+  enabled: true
+  max_images: 2
+  language: eng
+  preprocess: true
+credential_refs:
+  - phillips
+test_skus:
+  - "072705115310"
+  - "072705104321"
+  - "072705201234"
+  - "045663012106"
+  - "073893191001"
+  - "038100175489"
+fake_skus:
+  - xyzabc123notexist456
+  - "000000000000"
+  - "999999999999"
+edge_case_skus:
+  - "123"
+  - "1234567890123456789"
+test_assertions:
+  - sku: "072705115310"
+    expected:
+      title: "Fromm Gold Large Breed Dog 30 lb"
+      brand: "FROMM FAMILY FOODS LLC"

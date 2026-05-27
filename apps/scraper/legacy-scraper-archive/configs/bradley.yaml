@@ -1,0 +1,197 @@
+schema_version: "1.0"
+name: bradley
+display_name: Bradley Caldwell
+base_url: https://www.bradleycaldwell.com
+scraper_type: static
+selectors:
+  - name: Name
+    selector: //main//h1[not(contains(normalize-space(.), 'Search results for'))]
+    attribute: text
+    multiple: false
+    required: true
+  - name: Brand
+    selector: "//main//h1/preceding-sibling::p[1]/a"
+    attribute: text
+    multiple: false
+    required: true
+  - name: Weight
+    selector: //main//li[contains(normalize-space(.), 'Weight:')]
+    attribute: text
+    multiple: false
+    required: false
+  - name: Image URLs
+    selector: "[class*='product-gallery'] img[src*='products/']"
+    attribute: src
+    multiple: true
+    required: true
+  - name: BCI Item Number
+    selector: "dt:has-text('BCI Item Number') + dd"
+    attribute: text
+    multiple: false
+    required: false
+  - name: "Manufacturer #"
+    selector: "dt:has-text('Manufacturer #') + dd"
+    attribute: text
+    multiple: false
+    required: false
+  - name: UPC
+    selector: "dt:has-text('UPC') + dd"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Case Pack
+    selector: "dt:has-text('Case Pack') + dd"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Unit of Measure
+    selector: "dt:has-text('Unit of Measure') + dd"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Dimensions
+    selector: li:has-text('Dimensions:')
+    attribute: text
+    multiple: false
+    required: false
+  - name: Ingredients
+    selector: "//main//li[contains(normalize-space(.), 'Ingredients:')]"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Description
+    selector: "main [class*='product-description'], main [class*='prose'], main p:not(:has(a))"
+    attribute: text
+    multiple: false
+    required: false
+    fallback_selectors:
+      - "main section p"
+      - "[class*='product-detail'] p"
+workflows:
+  - action: navigate
+    name: search_page
+    params:
+      url: https://www.bradleycaldwell.com/search?term={sku}
+  - action: wait
+    name: settle_after_navigation
+    params:
+      seconds: 1
+  - action: conditional_click
+    name: null
+    params:
+      selector: "//button[contains(text(), 'Accept')], #accept-cookies, .cookie-accept"
+  - action: wait_for
+    name: null
+    params:
+      timeout: 30
+      selector:
+        - main h1
+        - //h1[contains(text(), 'Search results for')]
+        - //h3[contains(text(), 'Sorry, no results for')]
+  - action: wait
+    name: null
+    params:
+      seconds: 2
+  - action: check_no_results
+    name: null
+    params: {}
+  - action: validate_search_result
+    name: null
+    params:
+      required_selectors:
+        - //h2[contains(text(), 'Additional Details')]
+        - //h2[contains(text(), 'Product Details')]
+      search_result_selector: "main article"
+  - action: conditional_skip
+    name: null
+    params:
+      if_flag: no_results_found
+  - action: click
+    name: click_first_result
+    params:
+      index: 0
+      selector: "main article a[href*='{sku}'], article a[href*='{sku}'], article a[aria-label], main article a, .product-card a, article a:has-text('View product'), article a.absolute.inset-0"
+  - action: wait_for
+    name: wait_for_pdp
+    params:
+      timeout: 10
+      selector:
+        - //h2[contains(text(), 'Additional Details')]
+        - //h2[contains(text(), 'Product Details')]
+  - action: extract
+    name: null
+    params:
+      fields:
+        - Name
+        - Brand
+        - Weight
+        - Image URLs
+        - BCI Item Number
+        - "Manufacturer #"
+        - UPC
+        - Case Pack
+        - Unit of Measure
+        - Dimensions
+        - Ingredients
+        - Description
+  - action: process_images
+    name: null
+    params:
+      field: Image URLs
+      quality_patterns:
+        - regex: "/small/"
+          replacement: "/large/"
+        - regex: "_small"
+          replacement: "_large"
+        - regex: "_thumbnail"
+          replacement: "_large"
+      filters:
+        - type: exclude_text
+          text: placeholder
+        - type: exclude_text
+          text: noimage
+        - type: require_text
+          text: products/
+      deduplicate: true
+ai_config: null
+anti_detection:
+  enable_rate_limiting: false
+  enable_human_simulation: false
+  enable_session_rotation: false
+  enable_blocking_handling: false
+  enable_captcha_detection: false
+  max_retries_on_detection: 3
+validation:
+  no_results_selectors:
+    - //h3[contains(text(), 'Sorry, no results for')]
+    - //p[contains(text(), '0 items')]
+    - .no-results
+    - "[data-testid='no-results']"
+  no_results_text_patterns:
+    - Sorry, no results for
+    - (0 items)
+    - 0 items found
+    - no products found
+    - Your search returned no results
+login: null
+http_status: null
+normalization: null
+timeout: 30
+retries: 2
+image_quality: 60
+test_skus:
+  - "001135"
+  - "010199"
+  - "010202"
+test_assertions:
+  - sku: "001135"
+    expected:
+      title: "E-Z HANG SCALE"
+      brand: "KERBL"
+fake_skus:
+  - xyzabc123notexist456
+  - "999999"
+  - NOTEXIST
+edge_case_skus:
+  - "1"
+  - "0000000000000"

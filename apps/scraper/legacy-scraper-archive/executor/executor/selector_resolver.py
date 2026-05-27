@@ -1,0 +1,232 @@
+"""
+SelectorResolver - Element finding and value extraction for scraper workflows.
+
+This class handles DOM element location and value extraction from Playwright elements.
+Extracted from WorkflowExecutor to follow single responsibility principle.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+from core.timeout_config import TIER_FALLBACK, TIER_IMPORTANT, TIER_OPTIONAL, TimeoutConfig
+from scrapers.utils.locators import convert_to_playwright_locator
+
+logger = logging.getLogger(__name__)
+
+
+class SelectorResolver:
+    """Resolves selectors and extracts values from Playwright elements."""
+
+    def __init__(self, browser: Any, timeout_config: TimeoutConfig | None = None) -> None:
+        """
+        Initialize SelectorResolver.
+
+        Args:
+            browser: Browser instance with a `page` attribute (Playwright page)
+            timeout_config: Optional TimeoutConfig instance for tiered timeouts
+        """
+        self.browser = browser
+        self.timeout_config = timeout_config or TimeoutConfig()
+
+    async def find_element_safe(
+        self,
+        selector: str | list[str],
+        required: bool = True,
+        timeout: int | None = None,
+    ) -> Any:
+        """
+        Find a single element using Playwright with retry and error handling.
+
+        Args:
+            selector: CSS, XPath, or Playwright text selector string, or list of selectors
+            required: If True, raises error when element not found
+            timeout: Optional timeout in milliseconds for waiting
+
+        Returns:
+            Playwright ElementHandle or None if not found and not required
+        """
+        selectors = [selector] if isinstance(selector, str) else selector
+        if not selectors:
+            return None
+
+        last_exception = None
+        for i, sel in enumerate(selectors):
+            try:
+                if hasattr(self.browser, "page"):
+                    page = self.browser.page
+                    locator = convert_to_playwright_locator(page, sel)
+
+                    # Use tiered timeouts if not explicitly provided
+                    if timeout is None:
+                        # Primary selector uses IMPORTANT/OPTIONAL, fallbacks use FALLBACK tier
+                        tier = (TIER_IMPORTANT if required else TIER_OPTIONAL) if i == 0 else TIER_FALLBACK
+                        element_timeout = self.timeout_config.get_timeout(tier)
+                    else:
+                        element_timeout = timeout
+
+                    # Apply escalation multiplier from context if available
+                    # This multiplier is increased by RetryExecutor on each attempt
+                    multiplier = 1.0
+                    context_data = getattr(self.browser, "context_data", None)
+                    if isinstance(context_data, dict):
+                        candidate = context_data.get("timeout_multiplier", 1.0)
+                        if isinstance(candidate, (int, float)):
+                            multiplier = float(candidate)
+                    else:
+                        browser_context = getattr(self.browser, "context", None)
+                        candidate = getattr(browser_context, "timeout_multiplier", None)
+                        if isinstance(candidate, (int, float)):
+                            multiplier = float(candidate)
+
+                    if multiplier > 1.0:
+                        element_timeout = int(element_timeout * multiplier)
+                        if i == 0:
+                            logger.debug(f"Applying timeout multiplier {multiplier:.1f}x -> {element_timeout}ms")
+
+                    try:
+
+                        element = await locator.element_handle(timeout=element_timeout)
+                        if element:
+                            if i > 0:
+                                logger.info(f"Successfully resolved fallback selector '{sel}' for primary '{selectors[0]}'")
+                            return element
+                    except Exception as e:
+                        last_exception = e
+                        if i < len(selectors) - 1:
+                            logger.debug(f"Primary selector '{sel}' failed, trying fallback...")
+                            continue
+                        if required:
+                            raise
+                        return None
+                return None
+            except Exception as e:
+                last_exception = e
+                logger.debug(f"find_element_safe failed for '{sel}': {e}")
+                if i < len(selectors) - 1:
+                    continue
+                if required:
+                    raise
+                return None
+
+        return None
+
+    async def find_elements_safe(self, selector: str | list[str], timeout: int | None = None) -> list[Any]:
+        """
+        Find multiple elements using Playwright.
+
+        Args:
+            selector: CSS, XPath, or Playwright text selector string, or list of selectors
+            timeout: Optional timeout in milliseconds for waiting
+
+        Returns:
+            List of Playwright ElementHandle objects (may be empty)
+        """
+        selectors = [selector] if isinstance(selector, str) else selector
+        if not selectors:
+            return []
+
+        for i, sel in enumerate(selectors):
+            try:
+                if hasattr(self.browser, "page"):
+                    page = self.browser.page
+                    locator = convert_to_playwright_locator(page, sel)
+
+                    # Multiple elements are typically optional, use OPTIONAL tier if not provided
+                    if timeout is None:
+                        tier = TIER_OPTIONAL if i == 0 else TIER_FALLBACK
+                        elements_timeout = self.timeout_config.get_timeout(tier)
+                    else:
+                        elements_timeout = timeout
+
+                    # Locator.all() doesn't take a timeout. Wait for first element to appear.
+                    try:
+                        await locator.first.wait_for(state="attached", timeout=elements_timeout)
+                    except Exception:
+                        # Timeout waiting for elements is fine for find_elements_safe
+                        pass
+
+                    elements = await locator.all()
+                    if elements:
+                        if i > 0:
+                            logger.info(f"Successfully resolved fallback selector '{sel}' for primary '{selectors[0]}'")
+                        return elements
+
+                    # If no elements found and we have more selectors, try next
+                    if i < len(selectors) - 1:
+                        continue
+                    return []
+                return []
+            except Exception as e:
+                logger.debug(f"find_elements_safe failed for '{sel}': {e}")
+                if i < len(selectors) - 1:
+                    continue
+                return []
+
+        return []
+
+
+    async def extract_value_from_element(self, element: Any, attribute: str | None = None) -> Any:
+        """
+        Extract value from element (text, attribute, etc.).
+
+        Args:
+            element: Playwright ElementHandle
+            attribute: Attribute name to extract, or "text" for text content,
+                      or None for default text extraction
+
+        Returns:
+            Extracted string value or None if extraction fails
+        """
+        if element is None:
+            return None
+
+        try:
+            if attribute == "text" or attribute is None:
+                # Try inner_text first, fallback to text_content
+                inner_text = await element.inner_text()
+                text = inner_text.strip() if inner_text else ""
+                if not text:
+                    text_content = await element.text_content()
+                    text = text_content.strip() if text_content else ""
+                return text if text else None
+
+            elif attribute in ["href", "src", "alt", "title", "value"]:
+                attr_value = await element.get_attribute(attribute)
+                if attr_value is not None:
+                    # For href/src, try to resolve full URL
+                    if attribute in ["href", "src"] and attr_value.startswith("/"):
+                        try:
+                            resolved = await element.evaluate(f"el => el.{attribute}")
+                            if resolved:
+                                return str(resolved)
+                        except Exception:
+                            pass
+                    return str(attr_value)
+                return None
+            else:
+                # Custom attribute
+                attr_value = await element.get_attribute(attribute)
+                return str(attr_value) if attr_value is not None else None
+        except Exception as e:
+            logger.warning(f"Failed to extract value from element: {e}")
+            return None
+
+    async def extract_multiple_values(self, elements: list[Any], attribute: str | None = None) -> list[Any]:
+        """
+        Extract values from multiple elements.
+
+        Args:
+            elements: List of Playwright ElementHandle objects
+            attribute: Attribute name to extract, or None for text
+
+        Returns:
+            List of extracted values (may contain None values)
+        """
+        results = []
+        for elem in elements:
+            if elem is not None:
+                value = await self.extract_value_from_element(elem, attribute)
+                results.append(value)
+        return results

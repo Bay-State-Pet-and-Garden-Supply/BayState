@@ -1,0 +1,202 @@
+schema_version: "1.0"
+name: petfoodex
+display_name: Pet Food Experts
+base_url: https://www.petfoodexperts.com
+scraper_type: static
+selectors:
+  - name: Name
+    selector: h1
+    attribute: text
+    multiple: false
+    required: true
+    fallback_selectors:
+      - "[data-test-selector='product-name']"
+      - "h1"
+  - name: Attributes
+    selector: "[data-test-selector='productDetails_specifications']"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Product Meta
+    selector: "[data-test-selector^='productDetails_productId_']"
+    attribute: text
+    multiple: false
+    required: false
+  - name: UoM
+    selector: "[data-test-selector='productPrice_unitOfMeasureLabel']"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Image URLs
+    selector: img[data-test-selector='productDetails_mainImage']
+    attribute: src
+    multiple: true
+    required: false
+    fallback_selectors:
+      - "img[data-test-selector*='productImage']"
+      - "[data-test-selector='product-image'] img"
+  - name: Description
+    selector: "[data-test-selector='productDetails_description'], .product-description"
+    attribute: text
+    multiple: false
+    required: false
+    fallback_selectors:
+      - "[data-test-selector='productDetails_longDescription']"
+      - ".product-detail-description"
+  - name: Weight
+    selector: "[data-test-selector='productDetails_specifications'] li:has-text('Weight'), [data-test-selector='productDetails_specifications'] li:has-text('weight')"
+    attribute: text
+    multiple: false
+    required: false
+    fallback_selectors:
+      - "//li[contains(text(), 'Weight')]"
+  - name: Features
+    selector: "[data-test-selector='productDetails_features'] li, .product-features li"
+    attribute: text
+    multiple: true
+    required: false
+  - name: Ingredients
+    selector: "[data-test-selector='productDetails_ingredients'], .product-ingredients"
+    attribute: text
+    multiple: false
+    required: false
+workflows:
+  - action: login
+    name: null
+    params: {}
+  - action: navigate
+    name: null
+    params:
+      url: https://orders.petfoodexperts.com/Search?query={sku}
+  - action: wait_for
+    name: null
+    params:
+      timeout: 10
+      selector:
+        - h1
+        - "[data-test-selector='page_ProductDetailsPage']"
+        - //h2[contains(., '0 item')]
+        - //h2[contains(., '0 items')]
+  - action: check_no_results
+    name: null
+    params: {}
+  - action: conditional_skip
+    name: null
+    params:
+      if_flag: no_results_found
+  - action: extract
+    name: null
+    params:
+      fields:
+        - Name
+        - Attributes
+        - Product Meta
+        - UoM
+        - Image URLs
+        - Description
+        - Weight
+        - Features
+        - Ingredients
+  - action: transform_value
+    name: null
+    params:
+      regex: Brand:\s*([^\n]+)
+      source_field: Attributes
+      target_field: Brand
+  - action: transform_value
+    name: null
+    params:
+      regex: "Item #\\s*([A-Z0-9-]+)"
+      source_field: Product Meta
+      target_field: ItemNumber
+  - action: transform_value
+    name: null
+    params:
+      regex: "(?:UPC#:\\s*(?:[A-Z]+:\\s*)?|EA:\\s*)([0-9]{8,14})"
+      source_field: Product Meta
+      target_field: UPC
+  - action: transform_value
+    name: null
+    params:
+      field: UoM
+      transformations:
+        - type: replace
+          pattern: ^/\s*
+          replacement: ""
+  - action: process_images
+    name: null
+    params:
+      field: Image URLs
+      quality_patterns:
+        - regex: "_md"
+          replacement: "_lg"
+        - regex: "_sm"
+          replacement: "_lg"
+        - regex: "_thumbnail"
+          replacement: "_lg"
+      filters:
+        - type: exclude_text
+          text: placeholder
+        - type: exclude_text
+          text: noimage
+      deduplicate: true
+ai_config: null
+anti_detection:
+  enable_rate_limiting: false
+  rate_limit_max_delay: 3
+  rate_limit_min_delay: 1
+  enable_human_simulation: false
+  enable_session_rotation: false
+  enable_blocking_handling: false
+  enable_captcha_detection: false
+  max_retries_on_detection: 3
+  session_rotation_interval: 100
+validation:
+  no_results_selectors:
+    - //h2[contains(., '0 item')]
+    - //h2[contains(., '0 items')]
+  no_results_text_patterns:
+    - "0 items found"
+    - "0 item found"
+    - your search returned 0 items
+    - no results found
+    - no products found
+login:
+  url: https://orders.petfoodexperts.com/SignIn
+  timeout: 20
+  submit_button: button[data-test-selector='signIn_submit']
+  password_field: "#password"
+  username_field: "#userName"
+  success_indicator: "[data-test-selector='header_userName']"
+  failure_indicators:
+    selectors:
+      - "[data-test-selector='signIn_error']"
+      - ".validation-summary-errors"
+      - ".login-error"
+    texts:
+      - invalid username or password
+      - incorrect email or password
+      - sign in was unsuccessful
+    url_contains:
+      - /signin
+http_status: null
+normalization: null
+timeout: 15
+retries: 2
+image_quality: 40
+credential_refs:
+  - petfoodex
+test_skus:
+  - "33011808"
+  - "10158320"
+  - "10132100"
+  - "10012345"
+  - "20456789"
+  - "30987654"
+fake_skus:
+  - xyzabc123notexist456
+  - "00000000"
+  - "99999999"
+edge_case_skus:
+  - "1"
+  - "1234567890123"

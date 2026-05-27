@@ -1,0 +1,213 @@
+schema_version: "1.0"
+name: mazuri
+display_name: Mazuri
+base_url: https://www.mazuri.com
+scraper_type: static
+selectors:
+  - name: Name
+    selector: h1.product-single__title, .product-single__title, main h1, h1
+    attribute: text
+    multiple: false
+    required: true
+  - name: Brand
+    selector: h1.product-single__title, .product-single__title, main h1, h1
+    attribute: text
+    multiple: false
+    required: true
+  - name: Weight
+    selector: span.product-weight
+    fallback_selectors:
+      - div.weight
+      - "//*[contains(text(), 'Product Size:')]"
+      - "//*[contains(text(), 'Weight:')]"
+      - "//*[contains(@class, 'product-weight')]"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Image URLs
+    selector: "img[src*='cdn.shopify.com/s/files/']"
+    fallback_selectors:
+      - "main img[src*='cdn.shopify.com']"
+    attribute: src
+    multiple: true
+    required: true
+  - name: Ingredients
+    selector: ".tab-pane:nth-of-type(2)"
+    fallback_selectors:
+      - "#ingredients-tab-content"
+      - ".ingredients-section"
+    attribute: text
+    multiple: false
+    required: false
+  - name: Size Options
+    selector: select[name='id'] option
+    fallback_selectors:
+      - .variant-input
+    attribute: text
+    multiple: true
+    required: false
+  - name: Description
+    selector: ".product-single__description, .product-description, .product-single__description-content"
+    fallback_selectors:
+      - ".product-single__content-text"
+      - "div[class*='product'] .rte"
+    attribute: text
+    multiple: false
+    required: false
+  - name: UPC
+    selector: "//li[contains(text(), 'UPC')], //dt[contains(text(), 'UPC')]/following-sibling::dd"
+    fallback_selectors:
+      - ".product-upc"
+      - "span:has-text('UPC') + span"
+    attribute: text
+    multiple: false
+    required: false
+  - name: search_result_link
+    selector: "a.snize-view-link"
+    fallback_selectors:
+      - ".snize-product a"
+    attribute: href
+    multiple: false
+    required: false
+workflows:
+  - action: navigate
+    name: null
+    params:
+      url: https://mazuri.com/pages/search-results-page?q={sku}
+      wait_until: commit
+  - action: wait
+    name: null
+    params:
+      seconds: 5
+  - action: wait_for
+    name: null
+    params:
+      timeout: 5
+      selector:
+        - ".snize-product"
+        - "a[href*='/products/']"
+        - ".snize-no-results"
+        - ".snize-no-products-found"
+        - ".snize-no-products-found-text"
+        - "#search-no-results"
+        - ".snize-no-results-container"
+        - ".snize-message-no-results"
+  - action: wait
+    name: null
+    params:
+      seconds: 2
+  - action: check_no_results
+    name: null
+    params: {}
+  - action: conditional_skip
+    name: null
+    params:
+      if_flag: no_results_found
+  - action: click
+    name: click_first_product_match
+    params:
+      selector: "a.snize-view-link, .snize-product a[href*='/products/']"
+      index: 0
+  - action: wait_for
+    name: null
+    params:
+      timeout: 10
+      selector:
+        - main h1
+        - .product-single
+        - "[data-section-type='product']"
+  - action: wait
+    name: null
+    params:
+      seconds: 2
+  - action: extract
+    name: null
+    params:
+      fields:
+        - Name
+        - Brand
+        - Weight
+        - Image URLs
+        - Ingredients
+        - Size Options
+        - Description
+        - UPC
+  - action: process_images
+    name: null
+    params:
+      field: Image URLs
+      quality_patterns:
+        - regex: "_small"
+          replacement: "_large"
+        - regex: "_compact"
+          replacement: "_grande"
+        - regex: "_\\d+x\\d+"
+          replacement: "_1024x1024"
+      filters:
+        - type: exclude_text
+          text: no-image
+        - type: exclude_text
+          text: placeholder
+        - type: require_text
+          text: cdn.shopify
+      deduplicate: true
+  - action: transform_value
+    name: null
+    params:
+      field: Brand
+      transformations:
+        - type: replace
+          pattern: ^.*$
+          replacement: Mazuri
+ai_config: null
+anti_detection:
+  enable_rate_limiting: false
+  rate_limit_max_delay: 1
+  rate_limit_min_delay: 0.5
+  enable_human_simulation: false
+  enable_session_rotation: false
+  enable_blocking_handling: false
+  enable_captcha_detection: false
+  max_retries_on_detection: 3
+  session_rotation_interval: 100
+validation:
+  no_results_selectors:
+    - .snize-no-products-found
+    - .snize-no-products-found-text
+    - .no-results
+    - .empty-search
+    - "[data-testid*='no-results']"
+    - .snize-no-results
+    - "#search-no-results"
+    - .snize-no-results-container
+    - .snize-message-no-results
+  no_results_text_patterns:
+    - no results found
+    - no products found
+    - your search returned no results
+    - we couldn't find any results
+    - no items match your search
+    - sorry, nothing found
+    - no matches found
+    - didn't match any results
+login: null
+http_status: null
+normalization: null
+timeout: 30
+retries: 2
+image_quality: 60
+test_skus:
+  - 56A6
+  - 5M2M
+test_assertions:
+  - sku: "56A6"
+    expected:
+      title: "MAZURI\u00ae SMALL BIRD DIET"
+      brand: "Mazuri"
+fake_skus:
+  - xyzabc123notexist456
+  - "9999999"
+  - NOTEXIST
+edge_case_skus:
+  - "1"
+  - "00000000000"
