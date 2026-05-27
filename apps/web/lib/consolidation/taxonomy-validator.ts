@@ -211,7 +211,7 @@ export function buildResponseSchema(
             packaging_facets: {
                 type: 'object',
                 description: 'Key-value pairs of profile-specific detail fields extracted from packaging images. Keys must be valid fields for the resolved facet profile.',
-                additionalProperties: true
+                additionalProperties: { type: 'string' }
             },
         },
         required: ['name', 'brand', 'weight', 'confidence_score', 'category', 'description', 'search_keywords'],
