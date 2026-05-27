@@ -48,9 +48,11 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
         search_url: str,
         source_policy: Any,
     ) -> ApprovedSourceExtractionResult | None:
-        """Navigate to product page to fetch images if missing from search results."""
-        if det_result.product.get("image_urls") or not self._product_page_url:
-            return None
+        """Fetch the product detail page to get high-res images and full metadata."""
+        if not self._product_page_url:
+            return det_result
+
+        logger.info("[%s] Navigating to product details page for full metadata: %s", self.adapter_slug, self._product_page_url)
 
         try:
             from scrapers.approved_sources.adapters.base import get_shared_browser_engine
@@ -58,7 +60,7 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
 
             engine = await get_shared_browser_engine()
             if not engine:
-                logger.warning("[%s] Shared Crawl4AI engine not available for product page images", self.adapter_slug)
+                logger.warning("[%s] Shared Crawl4AI engine not available for product page details", self.adapter_slug)
                 return det_result
 
             config = CrawlerRunConfig(
@@ -72,30 +74,17 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
 
             if page_result and getattr(page_result, "success", False):
                 page_html = getattr(page_result, "html", None) or ""
-                # Extract images from product page
-                from bs4 import BeautifulSoup
-                soup = BeautifulSoup(page_html, "html.parser")
-                images = []
-                for img in soup.select('img[src]'):
-                    src = img.get("src", "")
-                    if src and ("bigcommerce" in src or "products/" in src or "cdn" in src):
-                        if src.startswith("//"):
-                            src = "https:" + src
-                        elif src.startswith("/"):
-                            src = urljoin(self.base_url, src)
-                        if src not in images:
-                            images.append(src)
-                if images:
-                    from scrapers.approved_sources.policy import filter_allowed_assets
-                    det_result.product["image_urls"] = filter_allowed_assets(images, source_policy)
-                    if "image_urls" not in det_result.matched_fields:
-                        det_result.matched_fields.append("image_urls")
-                    logger.info(
-                        "[%s] Found %d images from product page: %s",
-                        self.adapter_slug, len(images), self._product_page_url,
-                    )
+                pdp_result = self.extract_from_html(page_html, self._get_sku(), self._product_page_url)
+                if pdp_result.success:
+                    # Update product with full PDP details
+                    for k, v in pdp_result.product.items():
+                        if v is not None and v != "" and v != []:
+                            det_result.product[k] = v
+                    det_result.matched_fields = list(set(det_result.matched_fields + pdp_result.matched_fields))
+                    det_result.sku_match = pdp_result.sku_match
+                    logger.info("[%s] Successfully enriched product details from PDP: %s", self.adapter_slug, self._product_page_url)
         except Exception as e:
-            logger.warning("[%s] Product page image fetch failed: %s", self.adapter_slug, e)
+            logger.warning("[%s] Product page enrichment failed: %s", self.adapter_slug, e)
 
         return det_result
 

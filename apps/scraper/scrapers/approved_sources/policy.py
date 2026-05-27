@@ -138,10 +138,25 @@ def is_asset_domain_allowed(
 
     if policy.allowedAssetDomains:
         allowed_norm = [normalize_domain(d) for d in policy.allowedAssetDomains]
-        return any(
+        if any(
             normalized == d or normalized.endswith("." + d)
             for d in allowed_norm
-        )
+        ):
+            return True
+
+    # Fallback/default whitelisted CDN domains for allowed approved sources
+    TRUSTED_ASSET_DOMAINS = {
+        "bigcommerce.com",
+        "cloudinary.com",
+        "salesforce.com",
+        "force.com",
+        "demandware.net",
+        "demandware.store",
+        "centralpet.com",
+        "petfoodexperts.com",
+    }
+    if any(normalized == td or normalized.endswith("." + td) for td in TRUSTED_ASSET_DOMAINS):
+        return True
 
     # Fall back to general domain check
     if policy.approvedSourcesOnly:

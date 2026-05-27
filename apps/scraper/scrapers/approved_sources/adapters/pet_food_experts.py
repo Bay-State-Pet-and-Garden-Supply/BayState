@@ -36,6 +36,10 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
     search_url_template = "https://orders.petfoodexperts.com/Search?query={upc}"
     requires_auth = True
 
+    def __init__(self, entry: ApprovedSourcePlanEntry, plan: ApprovedSourcePlan):
+        super().__init__(entry, plan)
+        self._product_page_url: str | None = None
+
     def get_login_config_class(self):
         """Return the Pet Food Experts login config."""
         return PFE_LOGIN
@@ -43,6 +47,41 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
     def build_search_url(self, upc: str) -> str:
         """Build the Pet Food Experts search URL from a UPC."""
         return self.search_url_template.format(upc=quote(str(upc), safe=""))
+
+    async def _post_process_extraction(
+        self,
+        det_result: ApprovedSourceExtractionResult,
+        search_url: str,
+        source_policy: Any,
+    ) -> ApprovedSourceExtractionResult | None:
+        """Fetch the product detail page to get full metadata."""
+        if not self._product_page_url:
+            return det_result
+
+        logger.info("[%s] Navigating to product details page for full metadata: %s", self.adapter_slug, self._product_page_url)
+
+        try:
+            # PFE requires auth, so fetch using fetch_html_authenticated
+            html, auth_err = await self._fetch_html_authenticated(self._product_page_url, getattr(self, "api_client", None))
+            if auth_err or not html:
+                logger.warning("[%s] Failed to fetch product details page: %s", self.adapter_slug, auth_err)
+                return det_result
+
+            pdp_result = self.extract_from_html(html, self._get_sku(), self._product_page_url)
+            if pdp_result.success:
+                # Update product with full PDP details
+                for k, v in pdp_result.product.items():
+                    if v is not None and v != "" and v != []:
+                        det_result.product[k] = v
+                det_result.matched_fields = list(set(det_result.matched_fields + pdp_result.matched_fields))
+                det_result.sku_match = pdp_result.sku_match
+                logger.info("[%s] Successfully enriched product details from PDP: %s", self.adapter_slug, self._product_page_url)
+            else:
+                logger.warning("[%s] Failed to parse product details from PDP HTML", self.adapter_slug)
+        except Exception as e:
+            logger.warning("[%s] Product page enrichment failed: %s", self.adapter_slug, e)
+
+        return det_result
 
     def extract_from_html(
         self, html: str, upc: str, url: str
@@ -116,6 +155,58 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
             result.failure_code = FailureCode.NO_MATCH
             result.failure_message = f"No match found for UPC {upc}"
             return result
+
+        # Check if we are on a search results page versus a direct PDP page
+        # Direct PDP landing has specifications or page_ProductDetailsPage
+        is_pdp = "productDetails" in html or bool(soup.select_one("[data-test-selector='page_ProductDetailsPage']"))
+        
+        if not is_pdp:
+            # We are likely on a search results list page. Let's find the product card matching the searched UPC/SKU.
+            pdp_link_node = None
+            sku_clean = re.sub(r'[^a-zA-Z0-9]', '', upc.lower())
+            
+            for a in soup.select("a[href]"):
+                href = a.get("href", "")
+                if not href or href == "#" or href == "/":
+                    continue
+                href_lower = href.lower()
+                if any(x in href_lower for x in ["/cart", "/checkout", "/account", "/login", "/search"]):
+                    continue
+                
+                # Check parents up to 5 levels to find the card container
+                parent = a.parent
+                card_container = None
+                depth = 0
+                while parent and parent.name not in ("body", "html", "main") and depth < 5:
+                    if parent.name == "article" or any(c in parent.get("class", []) for c in ("card", "product-card", "product-item", "item-row", "row")):
+                        card_container = parent
+                        break
+                    parent = parent.parent
+                    depth += 1
+                
+                if not card_container:
+                    card_container = a.parent or a
+                
+                container_text = card_container.get_text(" ", strip=True).lower()
+                norm_container_text = re.sub(r'[^a-zA-Z0-9]', '', container_text)
+                
+                if sku_clean in norm_container_text or sku_clean in href_lower:
+                    pdp_link_node = a
+                    break
+            
+            if pdp_link_node:
+                self._product_page_url = urljoin(self.base_url, pdp_link_node.get("href", ""))
+                result.success = True
+                result.sku_match = True
+                result.product = {"name": pdp_link_node.get_text(strip=True) or "Product Details"}
+                result.matched_fields = ["name"]
+                logger.info("[%s] Found PDP link for UPC %s in search results: %s", self.adapter_slug, upc, self._product_page_url)
+                return result
+            else:
+                result.success = False
+                result.failure_code = FailureCode.NO_MATCH
+                result.failure_message = f"No matching product card found on search page for UPC {upc}"
+                return result
 
         # --- Name ---
         name_elem = soup.select_one("h1")
@@ -269,18 +360,40 @@ class PetFoodExpertsAdapter(BaseDistributorCrawl4AIAdapter):
             result.failure_message = f"No product name found for UPC {upc}"
             return result
 
+        # Gather all potential identifier candidates
         identifier_candidates = [product.get("item_number"), product.get("upc")]
+        
+        # Extract potential item IDs from image URLs (e.g. 33011808_md.jpg)
+        if product.get("image_urls"):
+            for img_url in product["image_urls"]:
+                filename = img_url.split("/")[-1]
+                img_id_match = re.search(r"(\d+)", filename)
+                if img_id_match:
+                    identifier_candidates.append(img_id_match.group(1))
+
+        # Also extract from productDetails_productId_ data-test-selector
+        id_div = soup.select_one("[data-test-selector^='productDetails_productId_']")
+        if id_div:
+            sel = id_div.get("data-test-selector", "")
+            match = re.search(r"productDetails_productId_(\d+)", sel)
+            if match:
+                val = match.group(1)
+                if val != "0":
+                    identifier_candidates.append(val)
+
         has_identifier = any(candidate for candidate in identifier_candidates)
         identifier_match, matched_identifiers = self._match_identifier_candidates(
             upc,
-            product.get("item_number"),
-            product.get("upc"),
+            *identifier_candidates,
         )
         if has_identifier and not identifier_match:
-            warnings.append(
-                f"Pet Food Experts identifiers differ from searched UPC {upc}: "
+            result.success = False
+            result.failure_code = FailureCode.NO_MATCH
+            result.failure_message = (
+                f"Pet Food Experts identifier mismatch for searched UPC {upc}: "
                 f"saw {', '.join(matched for matched in identifier_candidates if matched)}"
             )
+            return result
 
         # Calculate confidence
         required = ["name", "brand", "image_urls"]

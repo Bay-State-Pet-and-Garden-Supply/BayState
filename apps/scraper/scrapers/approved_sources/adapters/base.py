@@ -525,8 +525,9 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
 
             resolved_sku_match = det_result.sku_match
             if self.source_type == "distributor":
-                confidence = 1.0
-                resolved_sku_match = True
+                if resolved_sku_match is not False:
+                    confidence = 1.0
+                    resolved_sku_match = True
 
             heuristic_warning = any("heuristic" in warning.lower() for warning in warnings)
 
