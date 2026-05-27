@@ -323,7 +323,10 @@ export function PipelineClient({
         return;
       }
 
-      if (!silent) setIsLoading(true);
+      if (!silent) {
+        setIsLoading(true);
+        setProducts([]);
+      }
       try {
         const params = new URLSearchParams({
           stage,

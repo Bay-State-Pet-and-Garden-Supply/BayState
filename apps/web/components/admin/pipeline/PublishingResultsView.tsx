@@ -179,8 +179,9 @@ export function PublishingResultsView({
 
   // Fetch mappings when products list changes
   useEffect(() => {
-    if (products.length > 0) {
-      const upcsList = products.map(p => p.upc);
+    const publishingProducts = products.filter(p => p.pipeline_status === "publishing");
+    if (publishingProducts.length > 0) {
+      const upcsList = publishingProducts.map(p => p.upc);
       void fetchMappings(upcsList);
     } else {
       setMappings({});
