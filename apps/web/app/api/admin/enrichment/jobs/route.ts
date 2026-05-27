@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
       selectedDistributorSlug !== undefined;
 
     let sourcePlansByUpc: Record<string, unknown> | undefined;
-    let skippedUpcs: string[] = [];
+    const skippedUpcs: string[] = [];
     let brandedUpcs: string[] = [...validUpcs];
 
     if (useApprovedSources) {
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Resolve targets for non-approved-source path
-    let targetMap: Record<string, string | null> = {};
+    const targetMap: Record<string, string | null> = {};
 
     if (!useApprovedSources) {
       if (Array.isArray(targetIds) && targetIds.length > 0) {

@@ -14,7 +14,8 @@ import {
   FileCode,
   Archive,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Search
 } from "lucide-react";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 import type { PreparedShopSiteExportProduct } from "@/lib/shopsite/mapping";
@@ -26,6 +27,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { adminFetch } from "@/lib/admin/api-client";
 import { PipelineSearchField } from "./PipelineSearchField";
+import { SHOPSITE_PAGES } from "@/lib/shopsite/constants";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 interface PublishingResultsViewProps {
   products: PipelineProduct[];
@@ -61,12 +64,12 @@ export function PublishingResultsView({
   onRefresh,
   search,
   onSearchChange,
-  _filters,
-  _onFilterChange,
-  _availableSources = [],
+  filters,
+  onFilterChange,
+  availableSources = [],
   selectedUpcs,
   onSelectUpc,
-  _onSelectAll,
+  onSelectAll,
   onClearSelection,
   isLoading = false,
 }: PublishingResultsViewProps) {
@@ -79,6 +82,63 @@ export function PublishingResultsView({
   const sortedProducts = useMemo(() => {
     return [...products].sort((a, b) => a.upc.localeCompare(b.upc));
   }, [products]);
+
+  const [isPagesDialogOpen, setIsPagesDialogOpen] = useState(false);
+  const [pagesSearch, setPagesSearch] = useState("");
+  const [editingPages, setEditingPages] = useState<string[]>([]);
+  const [isSavingPages, setIsSavingPages] = useState(false);
+
+  const handleOpenPagesDialog = () => {
+    if (!selectedProductMapping) return;
+    setEditingPages(selectedProductMapping.shopsite_pages || []);
+    setPagesSearch("");
+    setIsPagesDialogOpen(true);
+  };
+
+  const handleSavePages = async () => {
+    if (!selectedProduct) return;
+    setIsSavingPages(true);
+    try {
+      const updatedConsolidated = {
+        ...(selectedProduct.consolidated && typeof selectedProduct.consolidated === 'object'
+          ? (selectedProduct.consolidated as Record<string, any>)
+          : {}),
+        shopsite_pages: editingPages,
+      };
+
+      const res = await adminFetch(`/api/admin/pipeline/${selectedProduct.upc}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ consolidated: updatedConsolidated }),
+      });
+
+      if (res.ok) {
+        toast.success("ShopSite pages updated successfully");
+        setMappings(prev => {
+          const sku = selectedProduct.upc;
+          const currentMapping = prev[sku];
+          if (!currentMapping) return prev;
+          return {
+            ...prev,
+            [sku]: {
+              ...currentMapping,
+              shopsite_pages: editingPages,
+            }
+          };
+        });
+        setIsPagesDialogOpen(false);
+        onRefresh(true);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to update ShopSite pages");
+      }
+    } catch (err) {
+      console.error("[SavePages] Error:", err);
+      toast.error("Error updating ShopSite pages");
+    } finally {
+      setIsSavingPages(false);
+    }
+  };
 
   // Set default selected product on mount or products change
   useEffect(() => {
@@ -828,7 +888,17 @@ export function PublishingResultsView({
                     <div className="flex flex-col gap-2.5 text-xs">
                       <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground">
                         <span>Mapped ShopSite Pages</span>
-                        <span className="font-mono text-[9px] bg-muted px-1 rounded text-primary">ProductOnPages</span>
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={handleOpenPagesDialog}
+                            className="h-5 px-1.5 text-[9px] text-primary hover:text-primary/80 font-bold border border-primary/20 hover:bg-primary/5 rounded"
+                          >
+                            Edit Pages
+                          </Button>
+                          <span className="font-mono text-[9px] bg-muted px-1 rounded text-primary">ProductOnPages</span>
+                        </div>
                       </div>
 
                       {selectedProductMapping?.shopsite_pages && selectedProductMapping.shopsite_pages.length > 0 ? (
@@ -936,6 +1006,80 @@ export function PublishingResultsView({
           )}
         </div>
       </div>
+
+      <Dialog open={isPagesDialogOpen} onOpenChange={setIsPagesDialogOpen}>
+        <DialogContent className="max-w-md p-6 bg-card border border-border rounded-lg shadow-lg flex flex-col max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-bold flex items-center gap-2">
+              <Globe className="h-4 w-4 text-emerald-500" /> Edit ShopSite Pages
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex items-center border border-border rounded px-3 py-1.5 shrink-0 my-2">
+            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+            <input
+              className="flex h-8 w-full rounded-none bg-transparent text-sm outline-none placeholder:text-muted-foreground font-semibold"
+              placeholder="Search ShopSite pages..."
+              value={pagesSearch}
+              onChange={(e) => setPagesSearch(e.target.value)}
+            />
+          </div>
+
+          <div className="flex-1 overflow-y-auto min-h-0 border border-border rounded p-1 bg-background flex flex-col gap-0.5">
+            {SHOPSITE_PAGES.filter(p => p.toLowerCase().includes(pagesSearch.toLowerCase())).map((page) => {
+              const isChecked = editingPages.includes(page);
+              return (
+                <label
+                  key={page}
+                  className="flex items-center gap-3 px-3 py-2 text-xs font-semibold hover:bg-muted cursor-pointer transition-colors"
+                >
+                  <Checkbox
+                    checked={isChecked}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setEditingPages(prev => [...prev, page]);
+                      } else {
+                        setEditingPages(prev => prev.filter(p => p !== page));
+                      }
+                    }}
+                  />
+                  <span className="flex-1 select-none leading-tight">{page}</span>
+                </label>
+              );
+            })}
+            {SHOPSITE_PAGES.filter(p => p.toLowerCase().includes(pagesSearch.toLowerCase())).length === 0 && (
+              <div className="p-4 text-center text-xs font-semibold text-muted-foreground italic">
+                No pages match your search.
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="mt-4 gap-2 border-t border-border pt-4 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsPagesDialogOpen(false)}
+              disabled={isSavingPages}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSavePages}
+              disabled={isSavingPages}
+            >
+              {isSavingPages ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

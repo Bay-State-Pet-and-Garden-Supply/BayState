@@ -142,7 +142,7 @@ export function AIModelCombobox({
                   setOpen(false);
                 }}
               >
-                <span className="truncate">Use custom model: "{search.trim()}"</span>
+                <span className="truncate">Use custom model: &quot;{search.trim()}&quot;</span>
               </button>
             )}
             {filteredOptions.length === 0 && search.trim().length === 0 && (

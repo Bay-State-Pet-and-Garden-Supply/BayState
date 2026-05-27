@@ -6,7 +6,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { FloatingActionsBar } from '@/components/admin/pipeline/FloatingActionsBar';
 import { PipelineClient } from '@/components/admin/pipeline/PipelineClient';
-import type { StatusCount } from '@/lib/pipeline/types';
+import type { PipelineProduct, StatusCount } from '@/lib/pipeline/types';
 
 const mockSearchParamGet = jest.fn();
 const mockSearchParamsToString = jest.fn(() => '');
@@ -161,5 +161,32 @@ describe('export tab actions', () => {
 
         expect(onUploadShopSite).toHaveBeenCalledTimes(1);
         expect(onDownloadZip).toHaveBeenCalledTimes(1);
+    });
+
+    it('renders the edit pages button in publishing stage', async () => {
+        const testProducts = [
+            {
+                upc: 'UPC001',
+                input: { name: 'Product 1', price: 10, category: 'Cat Food > Dry' },
+                consolidated: { name: 'Product 1', price: 10, category: 'Cat Food > Dry' },
+                pipeline_status: 'publishing',
+                created_at: '2026-01-01',
+                updated_at: '2026-01-01',
+            }
+        ] as unknown as PipelineProduct[];
+
+        render(
+            <PipelineClient
+                initialCounts={counts}
+                initialProducts={testProducts}
+                initialTotal={1}
+                initialStage="publishing"
+                initialSources={[]}
+            />,
+        );
+
+        await waitFor(() => {
+            expect(screen.getByRole('button', { name: 'Edit Pages' })).toBeInTheDocument();
+        });
     });
 });

@@ -506,7 +506,7 @@ export async function buildApprovedSourcePlans(
     runFirstEntries.sort((a, b) => a.priority - b.priority);
     otherEntries.sort((a, b) => a.priority - b.priority);
 
-    let orderedEntries = [...runFirstEntries, ...otherEntries];
+    const orderedEntries = [...runFirstEntries, ...otherEntries];
 
     if (orderedEntries.length === 0) {
       if (extractionMode === "ai_only") {

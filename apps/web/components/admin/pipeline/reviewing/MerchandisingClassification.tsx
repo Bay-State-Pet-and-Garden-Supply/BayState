@@ -440,7 +440,7 @@ export function MerchandisingClassification({
           })}
           {applicableFacets.length === 0 && !loadingFacets && (
             <div className="col-span-full py-4 text-center text-[10px] font-semibold text-muted-foreground/50 italic">
-              No product detail facets defined for the category profile "{resolvedFacetProfile}".
+              No product detail facets defined for the category profile &quot;{resolvedFacetProfile}&quot;.
             </div>
           )}
         </div>

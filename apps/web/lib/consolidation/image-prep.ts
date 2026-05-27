@@ -250,7 +250,7 @@ async function validateImageUrl(rawUrl: string, performDnsLookup: boolean = true
  */
 function isPrivateOrReservedIP(host: string): boolean {
   // Normalize: lowercase, strip brackets
-  let normalized = host.startsWith('[') && host.endsWith(']') ? host.slice(1, -1).toLowerCase() : host.toLowerCase();
+  const normalized = host.startsWith('[') && host.endsWith(']') ? host.slice(1, -1).toLowerCase() : host.toLowerCase();
 
   // Handle IPv4-mapped IPv6: ::ffff:1.2.3.4 -> extract the IPv4 part
   const dottedV4Match = normalized.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
