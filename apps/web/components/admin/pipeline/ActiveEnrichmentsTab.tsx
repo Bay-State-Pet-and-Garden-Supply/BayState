@@ -420,13 +420,13 @@ function EnrichmentJobAttemptsPanel({ jobId }: { jobId: string }) {
           <RefreshCw className="h-2.5 w-2.5" /> Force Sync
         </Button>
       </div>
-      <ScrollArea className="max-h-96">
+      <div className="overflow-y-auto max-h-[600px] pr-1 scrollbar-thin">
         <div className="p-3 pb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {attempts.map((attempt) => (
             <EnrichmentAttemptCard key={attempt.id} attempt={attempt} />
           ))}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

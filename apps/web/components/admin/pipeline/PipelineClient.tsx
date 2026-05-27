@@ -1269,7 +1269,7 @@ export function PipelineClient({
         isLiveOperationalTab(currentStage) ? 'overflow-y-auto' : 'overflow-hidden',
         (isLoading || isNavigating) && 'pointer-events-none opacity-50'
       )}>
-        <div className="flex flex-col flex-1 h-full w-full min-h-0">
+        <div className={cn("flex flex-col flex-1 w-full min-h-0", isLiveOperationalTab(currentStage) ? "h-auto" : "h-full")}>
           {currentStage === "extracting" ? (
             <ActiveEnrichmentsTab />
           ) : currentStage === "merging" ? (

@@ -713,9 +713,16 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
     def normalize_images(self, urls: list[str]) -> list[str]:
         """Apply Phillips image quality replacements.
         From legacy: /thumb/ -> /large/, _thumb -> _large
+        Also maps low-res Cloudfront domain to direct shop.phillipspet.com domain for large images.
         """
         normalized = []
         for url in urls:
+            # Map Cloudfront CDN domain to direct shop.phillipspet.com domain to avoid 403 Forbidden on large images
+            url = re.sub(
+                r"https?://d56ygyjv466yj\.cloudfront\.net/",
+                "https://shop.phillipspet.com/images/products/",
+                url
+            )
             url = re.sub(r"/thumb/", "/large/", url)
             url = re.sub(r"_thumb", "_large", url)
             normalized.append(url)
