@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Plus,
   Database,
@@ -8,13 +9,11 @@ import {
   Edit2,
   AlertCircle,
   Globe,
-  X,
 } from "lucide-react";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 import type { Brand } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { PipelineFilters } from "./PipelineFilters";
 import { PipelineSearchField } from "./PipelineSearchField";
@@ -26,6 +25,9 @@ import {
   updateProductsBatch,
   updateCohortBatch,
 } from "@/app/admin/pipeline/batch-actions";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkAssignBrandDialog } from "./BulkAssignBrandDialog";
+import { adminFetch } from "@/lib/admin/api-client";
 
 interface ImportedResultsViewProps {
   products: PipelineProduct[];
@@ -85,6 +87,44 @@ export function ImportedResultsView({
 
   // 2. Primary Selection State
   const [preferredCohortId, setPreferredCohortId] = useState<string | null>(null);
+  const [selectedProductUpcs, setSelectedProductUpcs] = useState<Set<string>>(new Set());
+  const [isSplitBrandOpen, setIsSplitBrandOpen] = useState(false);
+
+  // Clear product selection when cohort changes
+  useEffect(() => {
+    setSelectedProductUpcs(new Set());
+  }, [preferredCohortId]);
+
+  // Handle split and brand assignment confirmation
+  const handleSplitBrandConfirm = async (brandId: string | null) => {
+    const upcs = Array.from(selectedProductUpcs);
+    if (upcs.length === 0) return;
+
+    try {
+      const res = await adminFetch("/api/admin/pipeline/bulk/brand", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          upcs,
+          brandId,
+        }),
+      });
+
+      if (res.ok) {
+        toast.success(
+          `Split and assigned brand to ${upcs.length} product${upcs.length > 1 ? "s" : ""}`,
+          { description: "Products have been split into the brand-specific cohort." }
+        );
+        setSelectedProductUpcs(new Set());
+        onRefresh(true);
+      } else {
+        const error = await res.json();
+        toast.error(error.error || "Failed to split products");
+      }
+    } catch {
+      toast.error("Failed to split products");
+    }
+  };
 
   // Initialize preferredCohortId when groupedProducts becomes available
   useEffect(() => {
@@ -141,9 +181,9 @@ export function ImportedResultsView({
 
       toast.success(brand ? `Brand assigned: ${brand.name}` : "Brand assignment cleared");
       onRefresh(true); // reload state
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to assign brand:", error);
-      toast.error(error.message || "Failed to assign brand");
+      toast.error(error instanceof Error ? error.message : "Failed to assign brand");
     }
   };
 
@@ -343,9 +383,9 @@ export function ImportedResultsView({
                             asChild
                             className="h-8 rounded-none border border-border bg-background text-[11px] font-semibold transition-all hover:bg-muted"
                           >
-                            <a href="/admin/brands">
+                            <Link href="/admin/brands">
                               Configure Brand & Domains →
-                            </a>
+                            </Link>
                           </Button>
                         </div>
                       </div>
@@ -356,19 +396,74 @@ export function ImportedResultsView({
 
 
               {/* Details Content (Product Preview Grid) */}
-              <div className="flex-1 overflow-y-auto bg-background p-4 sm:p-6">
+              <div className="flex-1 overflow-y-auto bg-background p-4 sm:p-6 relative">
                 <div className="max-w-4xl mx-auto space-y-4">
-                  <h3 className="text-xs font-semibold text-foreground border-b border-border pb-2">Products in Cohort</h3>
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <h3 className="text-xs font-semibold text-foreground">Products in Cohort</h3>
+                    {cohortProducts.length > 0 && (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        onClick={() => {
+                          const allUpcs = cohortProducts.map(p => p.upc);
+                          const allSelected = allUpcs.every(upc => selectedProductUpcs.has(upc));
+                          if (allSelected) {
+                            setSelectedProductUpcs(new Set());
+                          } else {
+                            setSelectedProductUpcs(new Set(allUpcs));
+                          }
+                        }}
+                        className="h-auto p-0 text-[10px] font-bold uppercase text-muted-foreground hover:text-foreground"
+                      >
+                        {cohortProducts.every(p => selectedProductUpcs.has(p.upc)) ? "Deselect All" : "Select All"}
+                      </Button>
+                    )}
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                     {cohortProducts.map(product => {
+                      const isSelected = selectedProductUpcs.has(product.upc);
                       return (
                         <div
                           key={product.upc}
-                          className="p-3 bg-card border flex flex-col gap-2 transition-colors group relative border-border"
+                          onClick={() => {
+                            setSelectedProductUpcs(prev => {
+                              const next = new Set(prev);
+                              if (next.has(product.upc)) {
+                                next.delete(product.upc);
+                              } else {
+                                next.add(product.upc);
+                              }
+                              return next;
+                            });
+                          }}
+                          className={cn(
+                            "p-3 bg-card border flex flex-col gap-2 transition-all group relative cursor-pointer select-none",
+                            isSelected
+                              ? "border-brand-forest-green bg-brand-forest-green/[0.03] shadow-sm"
+                              : "border-border hover:border-muted-foreground/30 hover:bg-muted/10"
+                          )}
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={(checked) => {
+                                  setSelectedProductUpcs(prev => {
+                                    const next = new Set(prev);
+                                    if (checked) {
+                                      next.add(product.upc);
+                                    } else {
+                                      next.delete(product.upc);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                                className={cn(
+                                  "border-muted-foreground/40",
+                                  isSelected && "border-brand-forest-green bg-brand-forest-green text-white"
+                                )}
+                              />
                               <div className="text-[9px] font-semibold text-muted-foreground bg-background px-1 py-0.5 rounded-none border border-border shrink-0">
                                 {product.upc}
                               </div>
@@ -385,6 +480,34 @@ export function ImportedResultsView({
                     })}
                   </div>
                 </div>
+
+                {selectedProductUpcs.size > 0 && (
+                  <div className="sticky bottom-0 left-0 right-0 z-20 flex items-center justify-between gap-4 p-4 border border-border bg-card/95 backdrop-blur shadow-lg mt-4 animate-in fade-in-50 slide-in-from-bottom-5">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-brand-forest-green animate-pulse" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                        {selectedProductUpcs.size} Product{selectedProductUpcs.size > 1 ? 's' : ''} Selected
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedProductUpcs(new Set())}
+                        className="h-8 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted"
+                      >
+                        Clear
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => setIsSplitBrandOpen(true)}
+                        className="h-8 rounded-none bg-brand-forest-green hover:bg-brand-forest-green/90 text-white font-bold uppercase text-[10px] tracking-wider px-3"
+                      >
+                        Split & Assign Brand
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -404,6 +527,12 @@ export function ImportedResultsView({
           </div>
         )}
       </div>
+      <BulkAssignBrandDialog
+        open={isSplitBrandOpen}
+        onOpenChange={setIsSplitBrandOpen}
+        selectedCount={selectedProductUpcs.size}
+        onConfirm={handleSplitBrandConfirm}
+      />
     </div>
   );
 }
