@@ -1638,14 +1638,14 @@ export function PipelineClient({
           scrapeSelectionValidation={scrapeSelectionValidation}
 
           onDelete={handleDelete}
-          actionState={currentStage === "publishing" ? exportActionState : null}
+          actionState={(currentStage as PipelineStage) === "publishing" ? exportActionState : null}
           onUploadShopSite={
-            currentStage === "publishing"
+            (currentStage as PipelineStage) === "publishing"
               ? handleUploadSelectedShopSite
               : undefined
           }
           onDownloadZip={
-            currentStage === "publishing" ? handleDownloadSelectedZip : undefined
+            (currentStage as PipelineStage) === "publishing" ? handleDownloadSelectedZip : undefined
           }
           showLegacyShopSiteActions={false}
         />
