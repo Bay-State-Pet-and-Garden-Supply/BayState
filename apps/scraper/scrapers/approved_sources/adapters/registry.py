@@ -25,6 +25,9 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 ADAPTER_ALIASES: dict[str, str] = {
+    # Amazon
+    "amazon": "amazon",
+    "amazon_crawl4ai": "amazon",
     # Bradley
     "bradley": "bradley_crawl4ai",
     "bradley_crawl4ai": "bradley_crawl4ai",
@@ -102,6 +105,12 @@ def _ensure_loaded() -> None:
     global _loaded
     if _loaded:
         return
+
+    try:
+        from scrapers.approved_sources.adapters.amazon import AmazonAdapter
+        _ADAPTER_CLASS_MAP["amazon"] = AmazonAdapter
+    except ImportError as e:
+        logger.debug("[Registry] AmazonAdapter not available: %s", e)
 
     try:
         from scrapers.approved_sources.adapters.bradley import BradleyAdapter

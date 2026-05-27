@@ -149,18 +149,35 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
         brand_domain: str | None,
     ) -> str | None:
         """Execute Phase 1-3 to find the best approved URL."""
-        # Phase 1: UPC Discovery
+        # Phase 1: UPC Discovery (Global search for UPC/UPC)
         sku_serp_results = await self._phase1_sku_discovery(upc)
 
+        # Check for immediate official domain match in Phase 1 results
+        if brand_domain and sku_serp_results:
+            normalized_brand = normalize_domain(brand_domain)
+            for r in sku_serp_results:
+                url = r.get("url", "")
+                if normalize_domain(url) == normalized_brand:
+                    # Deterministic skip of collections/search pages even in Phase 1
+                    url_lower = url.lower()
+                    if "/collections/" not in url_lower and "/search" not in url_lower:
+                        logger.info(
+                            "[SerpDiscoveryAdapter] Phase 1: Found direct official domain match for UPC=%s: %s",
+                            upc,
+                            url,
+                        )
+                        return url
+
         # Phase 2: LLM Name Consolidation
+        # We run this even if Phase 1 found nothing, to clean up register abbreviations
         consolidated_name = register_name
-        if sku_serp_results and register_name:
+        if register_name:
             try:
                 consolidated_name = await self._phase2_consolidate_name(
                     upc=upc,
                     register_name=register_name,
                     brand_name=brand_name,
-                    serp_results=sku_serp_results,
+                    serp_results=sku_serp_results or [],
                 )
             except Exception as e:
                 logger.warning(
@@ -293,11 +310,14 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
             return register_name
 
         serp_evidence = ""
-        for i, r in enumerate(serp_results[:5]):
-            title = r.get("title", "")
-            desc = r.get("description", "")
-            url = r.get("url", "")
-            serp_evidence += f"[{i+1}] Title: {title}\n    Description: {desc}\n    URL: {url}\n\n"
+        if serp_results:
+            for i, r in enumerate(serp_results[:5]):
+                title = r.get("title", "")
+                desc = r.get("description", "")
+                url = r.get("url", "")
+                serp_evidence += f"[{i+1}] Title: {title}\n    Description: {desc}\n    URL: {url}\n\n"
+        else:
+            serp_evidence = "(No search results found for this UPC. Please clean up the register name based on your general knowledge.)\n"
 
         system_prompt = (
             "You are an expert product data consolidator. Your goal is to determine the full, correct, non-abbreviated "
@@ -314,7 +334,7 @@ Search Engine Results for UPC {upc}:
 
 Instructions:
 1. Examine the search results to see if they identify the specific product matching this UPC/UPC.
-2. The register name often contains abbreviations (e.g. 'CHKN' for 'Chicken', 'SUPP' for 'Supplement', '3.5LB' for '3.5 lb').
+2. The register name often contains abbreviations (e.g. 'CHKN' for 'Chicken', 'SUPP' for 'Supplement', '3.5LB' for '3.5 lb', 'HOL ES' for 'Holes', 'BEA N' for 'Bean').
 3. Reconcile the register name's structure (especially weights, sizes, flavors, and formulas) with the names found in search results.
 4. Output the full, correct, clean product name. Do not include the brand name at the start of the product name unless it is commonly part of the trademarked name, but do prioritize correct spelling and formatting (e.g. 'Open Farm Good Gut Daily Supplement Chicken Recipe 3.5 lb' instead of 'OPEN FARM GOOD GUT C HKN 3.5LB').
 5. If the search results are completely unrelated or do not mention the product, try to de-abbreviate and format the register name as best as you can.
@@ -340,7 +360,15 @@ Return JSON in this format:
                 response_schema=schema,
             )
             self._llm_used_in_discovery = True
-            data = json.loads(response.text)
+            
+            # Robust JSON parsing to handle markdown blocks
+            raw_text = response.text.strip()
+            if raw_text.startswith("```json"):
+                raw_text = raw_text[7:-3].strip()
+            elif raw_text.startswith("```"):
+                raw_text = raw_text[3:-3].strip()
+                
+            data = json.loads(raw_text)
             name = data.get("consolidated_name", "").strip()
             if name:
                 return name
@@ -523,6 +551,20 @@ Return JSON in this format:
                 url_domain = normalize_domain(url)
                 if url_domain == bd_norm or url_domain.endswith("." + bd_norm):
                     score += 0.2
+
+            # Deterministic Collection Penalty
+            # Penalize URLs that look like collection/category pages
+            collection_markers = ["/collections/", "/category/", "/categories/", "/brand/", "/product-category/"]
+            product_markers = ["/products/", "/product/", "/p/"]
+            
+            is_collection = any(marker in url_lower for marker in collection_markers)
+            has_product_marker = any(marker in url_lower for marker in product_markers)
+            
+            # If it's a collection URL and DOES NOT have a product marker, heavily penalize it.
+            # (Note: Shopify URLs like /collections/x/products/y are okay as they are specific to a product in context)
+            if is_collection and not has_product_marker:
+                score -= 0.5
+                logger.debug("[SerpDiscoveryAdapter] Penalized collection URL: %s", url)
 
             scored.append((score, r))
 

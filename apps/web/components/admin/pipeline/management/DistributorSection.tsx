@@ -10,6 +10,7 @@ const APPROVED_DISTRIBUTORS = [
   { id: 'pet_food_experts_crawl4ai', label: 'Pet Food Experts', requiresAuth: true, slug: 'petfoodex' },
   { id: 'central_pet_crawl4ai', label: 'Central Pet', requiresAuth: false },
   { id: 'orgill_crawl4ai', label: 'Orgill', requiresAuth: true, slug: 'orgill' },
+  { id: 'amazon', label: 'Amazon (Fallback)', requiresAuth: false },
 ];
 
 interface DistributorSectionProps {

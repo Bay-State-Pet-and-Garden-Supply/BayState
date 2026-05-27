@@ -178,6 +178,30 @@ const FIXED_DISTRIBUTOR_CATALOG: FixedDistributorEntry[] = [
       "pet_food_experts_crawl4ai",
     ],
   },
+  {
+    sourceSlug: "amazon",
+    adapterSlug: "amazon",
+    displayName: "Amazon",
+    domains: ["amazon.com"],
+    assetDomains: ["m.media-amazon.com", "amazon.com", "images-amazon.com"],
+    requiresAuth: false,
+    credentialRef: null,
+    searchMode: "upc_search",
+    allowedFields: [
+      "name",
+      "brand",
+      "upc",
+      "image_urls",
+      "description",
+      "features",
+      "weight",
+      "dimensions",
+      "ingredients",
+    ],
+    priority: 60,
+    sourceType: "distributor", // Treated as a distributor in the UI context for selection
+    aliases: ["amazon", "amazon_crawl4ai"],
+  },
 ];
 
 /**
