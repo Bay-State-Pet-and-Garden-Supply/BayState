@@ -3,7 +3,7 @@
  */
 import { POST, GET, DELETE } from '@/app/api/admin/runners/accounts/route';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { generateAPIKey } from '@/lib/scraper-auth';
 import { NextRequest } from 'next/server';
 
@@ -27,7 +27,7 @@ jest.mock('@/lib/admin/api-auth', () => ({
 }));
 
 jest.mock('@/lib/supabase/server', () => ({
-  createAdminClient: jest.fn(),
+  createClient: jest.fn(),
 }));
 
 jest.mock('@/lib/scraper-auth', () => ({
@@ -36,7 +36,7 @@ jest.mock('@/lib/scraper-auth', () => ({
 
 describe('Runner Accounts API', () => {
   const mockRequireAdminAuth = requireAdminAuth as jest.Mock;
-  const mockCreateAdminClient = createAdminClient as jest.Mock;
+  const mockCreateClient = createClient as jest.Mock;
   const mockGenerateAPIKey = generateAPIKey as jest.Mock;
 
   let mockSupabase: any;
@@ -57,7 +57,7 @@ describe('Runner Accounts API', () => {
       order: jest.fn().mockReturnThis(),
     };
 
-    mockCreateAdminClient.mockResolvedValue(mockSupabase);
+    mockCreateClient.mockResolvedValue(mockSupabase);
     mockRequireAdminAuth.mockResolvedValue({
       authorized: true,
       user: { id: 'admin-id', email: 'admin@example.com' },
@@ -103,8 +103,8 @@ describe('Runner Accounts API', () => {
       expect(data.api_key).toBe('bsr_testkey');
       expect(data.runner_name).toBe('test-runner');
       
-      // Verify admin client was used
-      expect(mockCreateAdminClient).toHaveBeenCalled();
+      // Verify client was used
+      expect(mockCreateClient).toHaveBeenCalled();
       expect(mockSupabase.from).toHaveBeenCalledWith('scraper_runners');
       expect(mockSupabase.from).toHaveBeenCalledWith('runner_api_keys');
     });

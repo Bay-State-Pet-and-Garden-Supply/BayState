@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { generateAPIKey } from '@/lib/scraper-auth';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 
 interface CreateKeyRequest {
     runner_name: string;
@@ -19,10 +19,10 @@ export async function GET(request: NextRequest) {
     const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
-    const admin = await createAdminClient();
+    const supabase = await createClient();
 
     // Get all runners
-    const { data: runners, error: runnersError } = await admin
+    const { data: runners, error: runnersError } = await supabase
         .from('scraper_runners')
         .select(`
             name,
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     // Get API keys for each runner (metadata only, not the actual keys)
     const runnersWithKeys = await Promise.all(
         (runners || []).map(async (runner) => {
-            const { data: keys } = await admin
+            const { data: keys } = await supabase
                 .from('runner_api_keys')
                 .select('id, key_prefix, description, created_at, expires_at, last_used_at, revoked_at')
                 .eq('runner_name', runner.name)
@@ -83,10 +83,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'runner_name must be 3-50 characters' }, { status: 400 });
     }
 
-    const admin = await createAdminClient();
+    const supabase = await createClient();
 
     // Ensure runner exists (create if not)
-    const { data: existingRunner } = await admin
+    const { data: existingRunner } = await supabase
         .from('scraper_runners')
         .select('name')
         .eq('name', runnerName)
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
 
     if (!existingRunner) {
         // Create the runner record
-        const { error: createError } = await admin
+        const { error: createError } = await supabase
             .from('scraper_runners')
             .insert({
                 name: runnerName,
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert the key
-    const { data: insertedKey, error: insertError } = await admin
+    const { data: insertedKey, error: insertError } = await supabase
         .from('runner_api_keys')
         .insert({
             runner_name: runnerName,
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
 
     let rotatedCount = 0;
     if (body.rotate_existing && insertedKey?.id) {
-        const { error: revokeError, count } = await admin
+        const { error: revokeError, count } = await supabase
             .from('runner_api_keys')
             .update({ revoked_at: new Date().toISOString() })
             .eq('runner_name', runnerName)
@@ -190,10 +190,10 @@ export async function DELETE(request: NextRequest) {
         );
     }
 
-    const admin = await createAdminClient();
+    const supabase = await createClient();
 
     if (runnerName && deleteRunner) {
-        const { error } = await admin
+        const { error } = await supabase
             .from('scraper_runners')
             .delete()
             .eq('name', runnerName);
@@ -209,7 +209,7 @@ export async function DELETE(request: NextRequest) {
 
     if (keyId) {
         // Revoke specific key
-        const { error } = await admin
+        const { error } = await supabase
             .from('runner_api_keys')
             .update({ revoked_at: new Date().toISOString() })
             .eq('id', keyId)
@@ -226,7 +226,7 @@ export async function DELETE(request: NextRequest) {
 
     if (runnerName && revokeAll) {
         // Revoke all keys for a runner
-        const { error, count } = await admin
+        const { error, count } = await supabase
             .from('runner_api_keys')
             .update({ revoked_at: new Date().toISOString() })
             .eq('runner_name', runnerName)
