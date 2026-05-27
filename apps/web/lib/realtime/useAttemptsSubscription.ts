@@ -85,7 +85,17 @@ export function useAttemptsSubscription(
     try {
       const { data, error: dbError } = await supabase
         .from('enrichment_attempts')
-        .select('*')
+        .select(`
+          *,
+          products_ingestion (
+            input,
+            product_line,
+            brand_id,
+            brands (
+              name
+            )
+          )
+        `)
         .eq('job_id', activeJobId)
         .order('upc', { ascending: true });
 
@@ -153,7 +163,12 @@ export function useAttemptsSubscription(
               onAttemptUpdated?.(newRecord);
 
               return prevAttempts.map((item) =>
-                item.id === newRecord.id ? newRecord : item
+                item.id === newRecord.id
+                  ? {
+                      ...newRecord,
+                      products_ingestion: item.products_ingestion || newRecord.products_ingestion,
+                    }
+                  : item
               );
             }
 

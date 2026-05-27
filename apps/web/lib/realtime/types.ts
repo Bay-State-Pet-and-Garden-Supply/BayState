@@ -248,6 +248,22 @@ export interface EnrichmentAttempt {
   updated_at: string;
   source_url?: string | null;
   mode?: string | null;
+  result?: any;
+  normalized_source?: any;
+  model?: string | null;
+  products_ingestion?: {
+    input?: {
+      name?: string;
+      description?: string;
+      price?: number | string;
+      image_candidates?: string[];
+    } | null;
+    product_line?: string | null;
+    brand_id?: string | null;
+    brands?: {
+      name?: string;
+    } | null;
+  } | null;
 }
 
 /**

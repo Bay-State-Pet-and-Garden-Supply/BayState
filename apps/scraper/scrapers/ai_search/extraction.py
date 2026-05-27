@@ -43,6 +43,7 @@ class ExtractionUtils:
         "all departments",
         "all brands",
         "garden center",
+        "test shop",
     }
     _CATEGORY_CANONICAL_NAMES = {
         "seed": "Seeds",
@@ -293,6 +294,22 @@ class ExtractionUtils:
                     score += 2
 
                 matches.append((score, match.start(), value))
+
+        # Heuristic for unitless numbers labeled as weight in HTML tables/context
+        if not matches:
+            # Look for "Weight" followed by a number, potentially separated by tags or whitespace
+            # Example: <th>Weight</th><td>0.283</td>
+            # We strip tags for this check to make it more reliable across different HTML structures
+            text_no_tags = re.sub(r"<[^>]+>", " ", normalized)
+            unitless_weight_pattern = re.compile(r"\bweight\b[^0-9]{1,64}(\d+(?:\.\d+)?)\b", flags=re.IGNORECASE)
+            for match in unitless_weight_pattern.finditer(text_no_tags):
+                val = match.group(1)
+                try:
+                    num = float(val)
+                    if num > 0:
+                        matches.append((4, match.start(1), val))
+                except ValueError:
+                    continue
 
         if matches:
             matches.sort(key=lambda item: (-item[0], item[1]))

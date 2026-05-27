@@ -290,13 +290,356 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
         result.warnings = warnings
         return result
 
+    async def extract(self, extractor: Any = None) -> EnrichmentResultV1 | None:
+        """Custom extraction for Phillips Pet using Playwright interactions to navigate to PDP.
+
+        Performs:
+        1. Authentication and login validation.
+        2. Navigation to the search results page.
+        3. Transition to the Product Details Page (PDP) via Playwright element click
+           to maintain Single Page App (Backbone) session context.
+        4. Waits specifically for client-side templates/selectors to render.
+        5. Extracts details (description, specs, alternate images) from PDP.
+        """
+        from typing import Any
+        from scrapers.ai_search.enrichment_models import EnrichmentResultV1
+        from scrapers.approved_sources.result_builder import (
+            build_auth_required_result,
+            build_auth_failed_result,
+            build_auth_expired_result,
+            build_failed_result,
+            build_no_match_result,
+            build_partial_result,
+            build_success_result,
+        )
+        from scrapers.approved_sources.auth import get_default_login_manager, resolve_credentials
+        from scrapers.approved_sources.policy import validate_url_allowed
+
+        upc = self._get_sku()
+        api_client = getattr(extractor, "api_client", None) if extractor else None
+        self.api_client = api_client
+
+        # 1. Build search URL
+        search_url = self.build_search_url(upc)
+        logger.info("[%s] Searching: %s", self.adapter_slug, search_url)
+
+        # 2. Credential check
+        cred_ok, cred_msg = self.check_credentials(api_client)
+        if not cred_ok:
+            logger.info("[%s] Auth required for %s: %s", self.adapter_slug, upc, cred_msg)
+            return build_auth_required_result(
+                upc=upc,
+                source_slug=self.source_slug,
+                message=cred_msg,
+                evidence_url=search_url,
+            )
+
+        # 3. Validate URL against policy
+        source_policy = self.plan.sourcePolicy
+        url_ok, url_err = validate_url_allowed(search_url, source_policy)
+        if not url_ok:
+            logger.warning("[%s] URL blocked by policy: %s", self.adapter_slug, url_err)
+            from scrapers.approved_sources.result_builder import build_policy_blocked_result
+            return build_policy_blocked_result(
+                upc=upc,
+                source_slug=self.source_slug,
+                blocked_url=search_url,
+                reason=f"Search URL blocked: {url_err}",
+            )
+
+        # 4. Resolve credentials
+        credential_ref = self.entry.credentialRef or self.source_slug
+        creds = resolve_credentials(self.source_slug, api_client, credential_ref)
+        if creds is None:
+            return build_auth_required_result(
+                upc=upc,
+                source_slug=self.source_slug,
+                evidence_url=search_url,
+            )
+
+        # 5. Ensure logged-in session via LoginManager
+        login_manager = get_default_login_manager()
+        login_result = await login_manager.ensure_logged_in(
+            source_slug=self.source_slug,
+            login_config=self.get_login_config_class(),
+            api_client=api_client,
+            credential_ref=credential_ref,
+        )
+
+        if not login_result.success:
+            logger.warning("[%s] Login failed: %s", self.adapter_slug, login_result.error_message)
+            if login_result.failure_type == "AUTH_FAILED":
+                return build_auth_failed_result(upc=upc, source_slug=self.source_slug, evidence_url=search_url)
+            elif login_result.failure_type == "AUTH_EXPIRED":
+                return build_auth_expired_result(upc=upc, source_slug=self.source_slug, evidence_url=search_url)
+            else:
+                return build_failed_result(
+                    upc=upc,
+                    source_slug=self.source_slug,
+                    error_message=login_result.error_message or "Login failed",
+                    evidence_url=search_url,
+                )
+
+        # Create session page
+        page = await login_manager.create_session_page(login_result.session_id)
+        if not page:
+            return build_failed_result(
+                upc=upc,
+                source_slug=self.source_slug,
+                error_message="Failed to create authenticated page",
+                evidence_url=search_url,
+            )
+
+        try:
+            # 6. Navigate to search URL
+            await page.goto(search_url, wait_until="domcontentloaded", timeout=30000)
+            
+            # Wait for search results container or empty message to appear
+            selectors = [
+                "#plp-desktop-row",
+                ".cc_row_product_info",
+                ".scanner-results-product-container",
+                ".scanner-results-product-container-mobile",
+                ".plp-empty-state-message-container"
+            ]
+            combined_selector = ", ".join(selectors)
+            try:
+                await page.wait_for_selector(combined_selector, timeout=15000)
+            except Exception as e:
+                logger.warning("[%s] Timeout waiting for search results: %s", self.adapter_slug, e)
+
+            search_html = await page.content()
+            det_result = self.extract_from_html(search_html, upc, search_url)
+
+            if not det_result.success:
+                if det_result.failure_code == FailureCode.NO_MATCH:
+                    return build_no_match_result(upc=upc, source_slug=self.source_slug, evidence_url=search_url)
+                return build_failed_result(
+                    upc=upc,
+                    source_slug=self.source_slug,
+                    error_message=det_result.failure_message or "Extraction failed",
+                    evidence_url=search_url,
+                )
+
+            # 7. Navigate to Product Details Page (PDP)
+            if self._product_page_url:
+                logger.info("[%s] Navigating to product details page: %s", self.adapter_slug, self._product_page_url)
+                
+                # Check if we can find a product link to click and transition inside Backbone SPA
+                product_link_selector = ".cc_product_name a, .cc_product_image a, #plp-desktop-row a, .cc_row_product_info a"
+                link_clicked = False
+                try:
+                    link_element = await page.query_selector(product_link_selector)
+                    if link_element:
+                        await link_element.click()
+                        link_clicked = True
+                        logger.info("[%s] Clicked product details link successfully", self.adapter_slug)
+                except Exception as click_err:
+                    logger.warning("[%s] Link click failed, falling back to direct navigation: %s", self.adapter_slug, click_err)
+
+                if not link_clicked:
+                    await page.goto(self._product_page_url, wait_until="domcontentloaded", timeout=30000)
+
+                # Wait for PDP selectors to render
+                pdp_selectors = [
+                    ".cc_product_detail_description",
+                    ".product-description",
+                    ".cc_product_description",
+                    ".product-brand",
+                    ".product-item-number"
+                ]
+                pdp_combined = ", ".join(pdp_selectors)
+                try:
+                    await page.wait_for_selector(pdp_combined, timeout=15000)
+                except Exception as pdp_wait_err:
+                    logger.warning("[%s] Timeout waiting for PDP elements to render: %s", self.adapter_slug, pdp_wait_err)
+
+                pdp_html = await page.content()
+                det_result = self._enrich_from_pdp_html(det_result, pdp_html, self._product_page_url, source_policy)
+
+            # 8. Post-process images (normalize and filter)
+            if det_result.success and det_result.product.get("image_urls"):
+                raw_images = self.normalize_images(det_result.product["image_urls"])
+                det_result.product["image_urls"] = self.filter_images(raw_images, source_policy)
+
+            # 9. Download login-protected images
+            if det_result.success and det_result.product.get("image_urls"):
+                try:
+                    from scrapers.approved_sources.image_capture import capture_images_authenticated
+                    logger.info("[%s] Capturing %d authenticated images...", self.adapter_slug, len(det_result.product["image_urls"]))
+                    captured = await capture_images_authenticated(page, det_result.product["image_urls"])
+                    det_result.product["image_urls"] = captured
+                except Exception as img_err:
+                    logger.error("[%s] Authenticated image capture failed: %s", self.adapter_slug, img_err)
+
+            # 10. Filter allowed fields
+            if det_result.success and self.entry.allowedFields:
+                allowed = set(self.entry.allowedFields)
+                if 'images' in allowed:
+                    allowed.add('image_urls')
+                det_result.product = {
+                    k: v
+                    for k, v in det_result.product.items()
+                    if k in allowed
+                }
+
+            # 11. Build and return final EnrichmentResultV1
+            evidence_url = det_result.evidence_url or search_url
+            if det_result.success:
+                confidence = det_result.confidence or 0.75
+                matched = det_result.matched_fields or list(det_result.product.keys())
+                warnings = list(det_result.warnings or [])
+                missing_required: list[str] = []
+
+                resolved_sku_match = det_result.sku_match
+                if self.source_type == "distributor":
+                    if resolved_sku_match is not False:
+                        confidence = 1.0
+                        resolved_sku_match = True
+
+                heuristic_warning = any("heuristic" in warning.lower() for warning in warnings)
+
+                if resolved_sku_match is not True:
+                    missing_required.append("sku_match")
+                    if resolved_sku_match is False:
+                        if not heuristic_warning:
+                            warnings.append(
+                                "Returned product page did not deterministically verify the searched UPC.",
+                            )
+                        confidence = min(confidence, 0.69 if heuristic_warning else 0.59)
+                    else:
+                        warnings.append(
+                            "No deterministic UPC/UPC/item identifier was available on the returned product page.",
+                        )
+                        confidence = min(confidence, 0.59)
+
+                if confidence >= 0.7 and resolved_sku_match is True:
+                    return build_success_result(
+                        upc=upc,
+                        source_slug=self.source_slug,
+                        source_type=self.source_type,
+                        evidence_url=evidence_url,
+                        product_fields=det_result.product,
+                        matched_fields=matched,
+                        overall_confidence=confidence,
+                        warnings=warnings,
+                        sku_match=True,
+                    )
+
+                return build_partial_result(
+                    upc=upc,
+                    source_slug=self.source_slug,
+                    source_type=self.source_type,
+                    evidence_url=evidence_url,
+                    product_fields=det_result.product,
+                    matched_fields=matched,
+                    overall_confidence=confidence,
+                    warnings=warnings,
+                    missing_required=missing_required,
+                    sku_match=resolved_sku_match is True,
+                )
+            else:
+                return build_failed_result(
+                    upc=upc,
+                    source_slug=self.source_slug,
+                    error_message=det_result.failure_message or "Extraction failed",
+                    evidence_url=evidence_url,
+                )
+
+        except Exception as exc:
+            logger.error("[%s] PhillipsAdapter extraction failed: %s", self.adapter_slug, exc)
+            return build_failed_result(
+                upc=upc,
+                source_slug=self.source_slug,
+                error_message=f"Extraction exception: {exc}",
+                evidence_url=search_url,
+            )
+        finally:
+            try:
+                await page.close()
+            except Exception as close_err:
+                logger.warning("[%s] Failed to close page: %s", self.adapter_slug, close_err)
+
+    def _enrich_from_pdp_html(
+        self,
+        det_result: ApprovedSourceExtractionResult,
+        html: str,
+        pdp_url: str,
+        source_policy: Any,
+    ) -> ApprovedSourceExtractionResult:
+        """Enrich extracted data from PDP HTML (description, features, images)."""
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html, "html.parser")
+        
+        # Override evidence URL to point to the actual PDP URL
+        det_result.evidence_url = pdp_url
+
+        # Extract detailed description
+        desc_node = soup.select_one(".cc_product_detail_description, .product-description, .cc_product_description, #product-description")
+        if desc_node:
+            desc = desc_node.get_text(" ", strip=True)
+            if desc:
+                det_result.product["description"] = desc
+                if "description" not in det_result.matched_fields:
+                    det_result.matched_fields.append("description")
+
+        # Extract detailed features
+        features = [
+            li.get_text(" ", strip=True)
+            for li in soup.select(".product-features li, .cc_product_features li, .cc_features li")
+            if li.get_text(" ", strip=True)
+        ]
+        if features:
+            det_result.product["features"] = features
+            if "features" not in det_result.matched_fields:
+                det_result.matched_fields.append("features")
+
+        # Extract high-res images from details page
+        images = []
+        for img in soup.select(".cc_product_detail_image img, img.cc_product_detail_image, .cc_product_image img, .cc_alternate_images img, .cc_alternate_image img"):
+            src = img.get("src") or img.get("data-src") or ""
+            if not src:
+                continue
+            if src.startswith("//"):
+                src = "https:" + src
+            elif src.startswith("/"):
+                src = urljoin(self.base_url, src)
+            if src not in images:
+                images.append(src)
+
+        # Fallback/broad scan for any images matching /products/ or cloudfront/bigcommerce
+        for img in soup.select("img[src*='product'], img[src*='large']"):
+            src = img.get("src") or img.get("data-src") or ""
+            if src:
+                if src.startswith("//"):
+                    src = "https:" + src
+                elif src.startswith("/"):
+                    src = urljoin(self.base_url, src)
+                if src not in images:
+                    images.append(src)
+
+        if images:
+            normalized_images = self.normalize_images(images)
+            from scrapers.approved_sources.policy import filter_allowed_assets
+            filtered_images = filter_allowed_assets(normalized_images, source_policy)
+            if filtered_images:
+                det_result.product["image_urls"] = filtered_images
+                if "image_urls" not in det_result.matched_fields:
+                    det_result.matched_fields.append("image_urls")
+                logger.info("[%s] Successfully enriched product images from PDP. Count: %d", self.adapter_slug, len(filtered_images))
+
+        return det_result
+
     async def _post_process_extraction(
         self,
         det_result: ApprovedSourceExtractionResult,
         search_url: str,
         source_policy: Any,
     ) -> ApprovedSourceExtractionResult | None:
-        """Fetch the product detail page to get high-res images and full metadata."""
+        """Fetch the product detail page to get high-res images and full metadata.
+
+        Note: This is retained for base class compatibility and unit testing.
+        """
         if not self._product_page_url:
             return det_result
 
@@ -309,62 +652,7 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
                 logger.warning("[%s] Failed to fetch product details page: %s", self.adapter_slug, auth_err)
                 return det_result
 
-            from bs4 import BeautifulSoup
-            soup = BeautifulSoup(html, "html.parser")
-
-            # Extract detailed description
-            desc_node = soup.select_one(".cc_product_detail_description, .product-description, .cc_product_description, #product-description")
-            if desc_node:
-                desc = desc_node.get_text(" ", strip=True)
-                if desc:
-                    det_result.product["description"] = desc
-                    if "description" not in det_result.matched_fields:
-                        det_result.matched_fields.append("description")
-
-            # Extract detailed features
-            features = [
-                li.get_text(" ", strip=True)
-                for li in soup.select(".product-features li, .cc_product_features li, .cc_features li")
-                if li.get_text(" ", strip=True)
-            ]
-            if features:
-                det_result.product["features"] = features
-                if "features" not in det_result.matched_fields:
-                    det_result.matched_fields.append("features")
-
-            # Extract high-res images from details page
-            images = []
-            for img in soup.select(".cc_product_detail_image img, img.cc_product_detail_image, .cc_product_image img, .cc_alternate_images img, .cc_alternate_image img"):
-                src = img.get("src") or img.get("data-src") or ""
-                if not src:
-                    continue
-                if src.startswith("//"):
-                    src = "https:" + src
-                elif src.startswith("/"):
-                    src = urljoin(self.base_url, src)
-                if src not in images:
-                    images.append(src)
-
-            # Fallback/broad scan for any images matching /products/ or bigcommerce/insitecloud/cloudfront
-            for img in soup.select("img[src*='product'], img[src*='large']"):
-                src = img.get("src") or img.get("data-src") or ""
-                if src:
-                    if src.startswith("//"):
-                        src = "https:" + src
-                    elif src.startswith("/"):
-                        src = urljoin(self.base_url, src)
-                    if src not in images:
-                        images.append(src)
-
-            if images:
-                normalized_images = self.normalize_images(images)
-                from scrapers.approved_sources.policy import filter_allowed_assets
-                filtered_images = filter_allowed_assets(normalized_images, source_policy)
-                if filtered_images:
-                    det_result.product["image_urls"] = filtered_images
-                    if "image_urls" not in det_result.matched_fields:
-                        det_result.matched_fields.append("image_urls")
-                    logger.info("[%s] Successfully enriched product images from PDP. Count: %d", self.adapter_slug, len(filtered_images))
+            return self._enrich_from_pdp_html(det_result, html, self._product_page_url, source_policy)
 
         except Exception as e:
             logger.warning("[%s] Error during product details page post-processing: %s", self.adapter_slug, e)

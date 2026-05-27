@@ -83,6 +83,9 @@ _STRIP_QUERY_PARAMS: set[str] = {
 # Query params to preserve during canonicalization
 _KEEP_QUERY_PARAMS: set[str] = {"v"}
 
+# Path-based size pattern (e.g., -100x100 or -600x600)
+_PATH_SIZE_PATTERN = re.compile(r"-\d+x\d+(?=\.[a-z]{3,4}$)", re.IGNORECASE)
+
 
 # ---------------------------------------------------------------------------
 # Typed result shapes
@@ -316,6 +319,9 @@ def canonicalize_image_url(url: str) -> str:
 
     # Normalize path (remove trailing slash for consistency)
     path = parsed.path.rstrip("/") or "/"
+
+    # Strip path-based size patterns (e.g., -100x100)
+    path = _PATH_SIZE_PATTERN.sub("", path)
 
     new_query = urlencode(sorted(kept))
     return urlunparse((parsed.scheme, netloc, path, "", new_query, ""))

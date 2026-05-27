@@ -8,7 +8,37 @@ def _build_utils() -> ExtractionUtils:
     return ExtractionUtils(SearchScorer())
 
 
-def test_infer_categories_filters_generic_breadcrumbs_and_brand_crumbs() -> None:
+def test_extract_size_metrics_handles_unitless_weight_in_context():
+    utils = ExtractionUtils(None)
+    html = """
+    <table class="shop_attributes">
+        <tr><th>Weight</th><td>0.283</td></tr>
+    </table>
+    """
+    assert utils.extract_size_metrics(html) == "0.283"
+
+
+def test_infer_categories_filters_test_shop():
+    utils = ExtractionUtils(None)
+    html = """
+    <script type="application/ld+json">
+    {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"name": "Home"},
+            {"name": "Test Shop"},
+            {"name": "BIONIC STUFFER"}
+        ]
+    }
+    </script>
+    """
+    categories = utils.infer_categories(html_text=html, source_url="https://test.com", candidate_name="BIONIC STUFFER", expected_name="BIONIC STUFFER")
+    assert "Test Shop" not in categories
+    assert categories == []
+
+
+def test_infer_categories_filters_generic_breadcrumbs_and_brand_crumbs():
+
     utils = _build_utils()
     html = """
     <script type="application/ld+json">
