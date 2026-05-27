@@ -200,7 +200,7 @@ export function ManagementPanel({
   }
 
   return (
-    <div className="flex h-full w-full shrink-0 flex-col border-t border-border bg-card xl:w-[400px] xl:border-l xl:border-t-0">
+    <div className="flex h-full w-full shrink-0 flex-col border-t border-border bg-card xl:w-[320px] xl:border-l xl:border-t-0">
       <div className="border-b border-border bg-muted/30 p-4">
         <div className="mb-1 text-xs font-medium text-primary">Management</div>
         <h2 className="truncate text-sm font-semibold text-foreground">

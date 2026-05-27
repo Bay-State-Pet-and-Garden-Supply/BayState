@@ -198,7 +198,7 @@ export function ImportedResultsView({
   return (
     <div data-testid="product-table" className="flex max-w-full flex-1 min-h-0 flex-col overflow-hidden rounded-[var(--surface-admin-radius)] border border-border bg-card xl:flex-row">
       {/* Left Column: Product List */}
-      <div className="flex min-h-[260px] w-full shrink-0 flex-col overflow-x-hidden border-b border-border bg-background xl:w-96 xl:min-w-[384px] xl:max-w-[384px] xl:border-b-0 xl:border-r">
+      <div className="flex min-h-[260px] w-full shrink-0 flex-col overflow-x-hidden border-b border-border bg-background xl:w-80 xl:min-w-[320px] xl:max-w-[320px] xl:border-b-0 xl:border-r">
         <div className="flex flex-col border-b border-border bg-card">
           <div className="flex flex-col gap-2 p-2 sm:flex-row sm:items-center">
             <PipelineSearchField
@@ -275,12 +275,12 @@ export function ImportedResultsView({
               <div className="bg-card border-b border-border flex-shrink-0 z-10">
                 <div className="flex flex-col gap-3 p-4 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
                   <div className="flex flex-col gap-2 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Layers className="h-5 w-5 text-primary shrink-0" />
-                      <h2 className="text-xl font-semibold text-foreground line-clamp-1" title={activeCohortName}>
-                        {activeCohortName}
-                      </h2>
-                      <div className="flex items-center gap-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <Layers className="h-5 w-5 text-primary shrink-0" />
+                        <h2 className="text-xl font-semibold text-foreground line-clamp-1" title={activeCohortName}>
+                          {activeCohortName}
+                        </h2>
                         {activeCohortId && activeCohortId !== "ungrouped" && onEditCohort && (
                           <Button
                             variant="ghost"
@@ -297,25 +297,14 @@ export function ImportedResultsView({
                             <Edit2 className="h-3.5 w-3.5" />
                           </Button>
                         )}
-                        {(!activeCohortBrand || !hasConfiguredDomains) && activeCohortId !== "ungrouped" && (
-                          <div className="inline-flex items-center gap-1.5 bg-brand-gold/10 border border-brand-gold px-2 py-0.5">
-                            <AlertCircle className="h-3 w-3 text-brand-burgundy animate-pulse" />
-                            <span className="text-[9px] font-semibold text-brand-burgundy">
-                              Action Required: {!activeCohortBrand ? "Assign Brand" : "Add Domains"}
-                            </span>
-                          </div>
-                        )}
                       </div>
-                      {activeCohortBrand && (
+                      {activeCohortId && activeCohortId !== "ungrouped" && (
                         <div className="flex flex-wrap items-center gap-2 shrink-0">
-                          <Badge variant="outline" className={cn(
-                            "font-semibold rounded-none",
-                            hasConfiguredDomains
-                              ? "border-brand-forest-green text-brand-forest-green bg-brand-forest-green/10"
-                              : "border-brand-gold text-brand-burgundy bg-brand-gold/10"
-                          )}>
-                            {activeCohortBrand}
-                          </Badge>
+                          <CohortBrandPicker
+                            value={activeCohortBrandObject}
+                            onAssign={handleAssignBrand}
+                            triggerClassName="h-7 rounded-none border border-border bg-background py-0 text-[11px]"
+                          />
                           {activeCohortBrandObject?.official_domains && activeCohortBrandObject.official_domains.length > 0 && (
                             <a
                               href={`https://${activeCohortBrandObject.official_domains[0]}`}
@@ -341,57 +330,6 @@ export function ImportedResultsView({
                     </div>
                   </div>
                 </div>
-
-                {/* Inline Brand & Domain Settings Area */}
-                {activeCohortId && activeCohortId !== "ungrouped" && (
-                  <div className="px-4 py-3 sm:px-6 bg-muted/20 border-t border-border/40 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                        Sync Brand
-                      </span>
-                      <CohortBrandPicker
-                        value={activeCohortBrandObject}
-                        onAssign={handleAssignBrand}
-                        triggerClassName="h-8 rounded-none border border-border bg-background"
-                      />
-                    </div>
-
-                    {activeCohortBrandObject && (
-                      <div className="flex flex-1 flex-col gap-2 md:flex-row md:items-center md:gap-4 md:justify-end min-w-0">
-                        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                          {activeCohortBrandObject.official_domains && activeCohortBrandObject.official_domains.map(domain => (
-                            <span
-                              key={domain}
-                              className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-background border border-border text-[10px] font-semibold text-foreground rounded-none"
-                            >
-                              <Globe className="h-3 w-3 text-muted-foreground" />
-                              {domain}
-                            </span>
-                          ))}
-                          
-                          {(!activeCohortBrandObject.official_domains || activeCohortBrandObject.official_domains.length === 0) && (
-                            <span className="text-[10px] font-bold text-brand-burgundy bg-brand-gold/10 border border-brand-gold px-1.5 py-0.5 uppercase italic">
-                              No Domains Configured (AI / SERP extraction will be disabled)
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="shrink-0">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            asChild
-                            className="h-8 rounded-none border border-border bg-background text-[11px] font-semibold transition-all hover:bg-muted"
-                          >
-                            <Link href="/admin/brands">
-                              Configure Brand & Domains →
-                            </Link>
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
 
 

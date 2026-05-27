@@ -51,6 +51,11 @@ export function PipelineSidebarHeaderRow({
   const allSelected = groupProducts.length > 0 && groupProducts.every((p) => selectedUpcs.has(p.upc));
   const someSelected = groupProducts.some((p) => selectedUpcs.has(p.upc)) && !allSelected;
   const hasConfiguredDomains = Boolean(cohortBrandObject?.official_domains && cohortBrandObject.official_domains.length > 0);
+  const isBrandInName = Boolean(
+    cohortBrand &&
+    cohortName &&
+    cohortName.toLowerCase().includes(cohortBrand.toLowerCase())
+  );
 
   return (
     <TableRow
@@ -106,7 +111,7 @@ export function PipelineSidebarHeaderRow({
             <div className="font-bold text-[11px] uppercase tracking-widest text-foreground truncate shrink-0">
               {formatPipelineBatchLabel(cohortId, cohortName || null)}
             </div>
-            {cohortBrand && (
+            {cohortBrand && !isBrandInName && (
               <Badge variant="outline" className={cn(
                 "h-4 text-[9px] px-1 font-semibold shrink-0 rounded-none",
                 hasConfiguredDomains
