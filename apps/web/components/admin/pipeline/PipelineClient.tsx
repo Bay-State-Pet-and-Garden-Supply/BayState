@@ -25,6 +25,7 @@ import { ActiveConsolidationsTab } from "./ActiveConsolidationsTab";
 import { ReviewingResultsView } from "./ReviewingResultsView";
 import { FloatingActionsBar } from "./FloatingActionsBar";
 import { ImportedResultsView } from "./ImportedResultsView";
+import { PublishingResultsView } from "./PublishingResultsView";
 import { PipelineFilters, type PipelineFiltersState } from "./PipelineFilters";
 import { PipelineSearchField } from "./PipelineSearchField";
 import { formatPipelineBatchLabel } from "./view-utils";
@@ -1363,7 +1364,7 @@ export function PipelineClient({
                 isSearching={isSearching}
               />
             </div>
-          ) : currentStage === "imported" || currentStage === "publishing" || hideTabs ? (
+          ) : currentStage === "imported" || hideTabs ? (
             <ImportedResultsView
               products={filteredProducts}
               onRefresh={refreshAll}
@@ -1391,6 +1392,21 @@ export function PipelineClient({
               onImportCsv={() => setIsIntegraImportOpen(true)}
               onManualAdd={() => setIsManualAddOpen(true)}
               isSearching={isSearching}
+              isLoading={isLoading}
+            />
+          ) : currentStage === "publishing" ? (
+            <PublishingResultsView
+              products={filteredProducts}
+              onRefresh={refreshAll}
+              search={search}
+              onSearchChange={(value) => setSearch(value)}
+              filters={filterState}
+              onFilterChange={applyFilterState}
+              availableSources={sources}
+              selectedUpcs={selectedUpcs}
+              onSelectUpc={handleSelectUpc}
+              onSelectAll={handleSelectAllVisible}
+              onClearSelection={handleClearSelection}
               isLoading={isLoading}
             />
           ) : (
@@ -1605,7 +1621,7 @@ export function PipelineClient({
       />
 
       {/* Floating Bulk Actions Bar */}
-      {!isLiveOperationalTab(currentStage) && currentStage !== "imported" && (
+      {!isLiveOperationalTab(currentStage) && currentStage !== "imported" && currentStage !== "publishing" && (
         <FloatingActionsBar
           selectedCount={selectedUpcs.size}
           totalCount={totalCount}
