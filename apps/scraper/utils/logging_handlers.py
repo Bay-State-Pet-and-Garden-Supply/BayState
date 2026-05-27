@@ -929,7 +929,11 @@ class RunnerLogHandler(logging.Handler):
     """Logging handler that persists and broadcasts job-scoped structured logs."""
 
     def __init__(self, transport: JobLogTransport):
-        super().__init__(level=logging.INFO)
+        super().__init__()
+        import os
+        env_level = os.environ.get("LOG_LEVEL", "").upper()
+        level = getattr(logging, env_level, logging.INFO) if env_level in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL") else logging.INFO
+        self.setLevel(level)
         self.transport = transport
         _ensure_job_log_context_filter(self)
 

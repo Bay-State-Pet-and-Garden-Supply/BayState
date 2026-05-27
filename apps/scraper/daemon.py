@@ -204,82 +204,94 @@ async def _process_enrichment(attempt, client, rm):
             api_client=client,
             realtime_manager=rm,
         ) as job_logging:
-            logger.info(
-                f"Processing enrichment attempt {attempt_id} for UPC {attempt.upc}",
-                extra={
-                    "job_id": job_id,
-                    "runner_name": client.runner_name,
-                    "phase": "claimed",
-                    "details": {
+            try:
+                logger.info(
+                    f"Processing enrichment attempt {attempt_id} for UPC {attempt.upc}",
+                    extra={
+                        "job_id": job_id,
+                        "runner_name": client.runner_name,
+                        "phase": "claimed",
+                        "details": {
+                            "attempt_id": attempt_id,
+                            "upc": attempt.upc,
+                            "target_url": attempt.target_url,
+                            "model": attempt.model,
+                            "mode": attempt.mode,
+                        },
+                        "flush_immediately": True,
+                    },
+                )
+
+                job_logging.emit_progress(
+                    status="running",
+                    progress=0,
+                    message="Enrichment attempt started",
+                    phase="claimed",
+                    details={
                         "attempt_id": attempt_id,
                         "upc": attempt.upc,
                         "target_url": attempt.target_url,
-                        "model": attempt.model,
-                        "mode": attempt.mode,
                     },
-                    "flush_immediately": True,
-                },
-            )
+                    items_total=1,
+                )
 
-            job_logging.emit_progress(
-                status="running",
-                progress=0,
-                message="Enrichment attempt started",
-                phase="claimed",
-                details={
-                    "attempt_id": attempt_id,
-                    "upc": attempt.upc,
-                    "target_url": attempt.target_url,
-                },
-                items_total=1,
-            )
+                start_time = time.time()
+                results = await _run_enrichment_job(
+                    attempt,
+                    runner_name=client.runner_name,
+                    log_buffer=None,
+                    api_client=client,
+                    job_logging=job_logging,
+                )
+                elapsed = time.time() - start_time
 
-            start_time = time.time()
-            results = await _run_enrichment_job(
-                attempt,
-                runner_name=client.runner_name,
-                log_buffer=None,
-                api_client=client,
-                job_logging=job_logging,
-            )
-            elapsed = time.time() - start_time
-
-            logger.info(
-                f"Enrichment attempt {attempt_id} completed in {elapsed:.1f}s",
-                extra={
-                    "job_id": job_id,
-                    "runner_name": client.runner_name,
-                    "phase": "completed",
-                    "details": {
+                logger.info(
+                    f"Enrichment attempt {attempt_id} completed in {elapsed:.1f}s",
+                    extra={
+                        "job_id": job_id,
+                        "runner_name": client.runner_name,
+                        "phase": "completed",
+                        "details": {
+                            "attempt_id": attempt_id,
+                            "upc": attempt.upc,
+                            "elapsed_seconds": round(elapsed, 2),
+                            "success": results.get("upcs_processed", 0) > 0,
+                        },
+                        "flush_immediately": True,
+                    },
+                )
+            except Exception as e:
+                logger.exception(
+                    f"Enrichment attempt {attempt_id} failed",
+                    extra={
+                        "job_id": job_id,
+                        "runner_name": client.runner_name,
+                        "phase": "failed",
                         "attempt_id": attempt_id,
-                        "upc": attempt.upc,
-                        "elapsed_seconds": round(elapsed, 2),
-                        "success": results.get("upcs_processed", 0) > 0,
+                        "flush_immediately": True,
                     },
-                    "flush_immediately": True,
-                },
-            )
+                )
+                try:
+                    client.submit_enrichment_result(
+                        attempt_id=attempt_id,
+                        status="failed",
+                        error_message=str(e),
+                        lease_token=getattr(attempt, "lease_token", None),
+                    )
+                except Exception:
+                    logger.exception("Failed to submit enrichment failure result")
 
     except Exception as e:
         logger.exception(
-            f"Enrichment attempt {attempt_id} failed",
+            f"Enrichment job prep/heartbeat failed for attempt {attempt_id}",
             extra={
                 "job_id": job_id,
                 "runner_name": client.runner_name,
                 "phase": "failed",
                 "attempt_id": attempt_id,
-                "flush_immediately": True,
             },
         )
-        try:
-            client.submit_enrichment_result(
-                attempt_id=attempt_id,
-                status="failed",
-                error_message=str(e),
-                lease_token=getattr(attempt, "lease_token", None),
-            )
-        except Exception:
-            logger.exception("Failed to submit enrichment failure result")
+
 
 
 

@@ -607,7 +607,7 @@ class ApprovedSourceLoginManager:
             try:
                 await page.wait_for_selector(
                     login_config.success_indicator,
-                    timeout=5000,
+                    timeout=15000,
                 )
                 # Login succeeded! Keep context alive for authenticated fetches
                 self._auth_contexts[session_id] = context
