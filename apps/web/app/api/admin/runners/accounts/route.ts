@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { requireAdminAuth } from '@/lib/admin/api-auth';
 import { generateAPIKey } from '@/lib/scraper-auth';
-import { requireSupabaseConfig } from '@/lib/supabase/config';
-
-function getSupabaseAdmin(): SupabaseClient {
-    const { url, publishableKey } = requireSupabaseConfig();
-    return createClient(url, publishableKey, {
-        auth: { autoRefreshToken: false, persistSession: false }
-    });
-}
+import { createAdminClient } from '@/lib/supabase/server';
 
 interface CreateKeyRequest {
     runner_name: string;
@@ -27,7 +19,7 @@ export async function GET(request: NextRequest) {
     const auth = await requireAdminAuth(request);
     if (!auth.authorized) return auth.response;
 
-    const admin = getSupabaseAdmin();
+    const admin = await createAdminClient();
 
     // Get all runners
     const { data: runners, error: runnersError } = await admin
@@ -91,7 +83,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'runner_name must be 3-50 characters' }, { status: 400 });
     }
 
-    const admin = getSupabaseAdmin();
+    const admin = await createAdminClient();
 
     // Ensure runner exists (create if not)
     const { data: existingRunner } = await admin
@@ -198,7 +190,7 @@ export async function DELETE(request: NextRequest) {
         );
     }
 
-    const admin = getSupabaseAdmin();
+    const admin = await createAdminClient();
 
     if (runnerName && deleteRunner) {
         const { error } = await admin
