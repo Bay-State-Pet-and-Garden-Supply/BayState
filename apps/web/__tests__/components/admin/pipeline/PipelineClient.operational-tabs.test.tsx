@@ -55,6 +55,9 @@ jest.mock("@/components/admin/pipeline/ReviewingResultsView", () => ({
     return <div data-testid="reviewing-results" />;
   },
 }));
+jest.mock("@/components/admin/pipeline/PublishingResultsView", () => ({
+  PublishingResultsView: () => <div data-testid="publishing-results" />,
+}));
 
 const products: PipelineProduct[] = [
   {
@@ -162,7 +165,7 @@ describe("PipelineClient live tab handling", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getAllByTestId("product-table").length).toBeGreaterThan(0);
+      expect(screen.getAllByTestId("publishing-results").length).toBeGreaterThan(0);
     });
     expect(lastFinalizingResultsProps).toBeNull();
   });

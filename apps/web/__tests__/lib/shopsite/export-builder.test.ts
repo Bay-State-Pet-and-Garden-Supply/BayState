@@ -219,4 +219,32 @@ describe('loadPublishedShopSiteExport', () => {
         expect(result.products).toHaveLength(1);
         expect(result.products[0].sku).toBe('SKU-ARCHIVED');
     });
+
+    it('infers ShopSite pages from new retail taxonomy breadcrumbs (e.g. Cat > Food > Freeze-Dried & Raw Food)', () => {
+        const rows: ShopSiteExportSourceRow[] = [
+            {
+                upc: '012345678901',
+                input: {
+                    name: 'Stella & Chewys Cat Freeze-Dried Raw Dinner Morsels',
+                    price: 15.99,
+                },
+                consolidated: {
+                    name: 'Stella & Chewys Cat Freeze-Dried Raw Dinner Morsels',
+                    price: 15.99,
+                    brand_id: 'brand-2',
+                    category: 'Cat > Food > Freeze-Dried & Raw Food',
+                },
+                selected_images: null,
+            },
+        ];
+        const brands = new Map<string, ShopSiteExportBrandRow>([
+            ['brand-2', { id: 'brand-2', name: 'Stella & Chewys', slug: 'stella-chewys' }],
+        ]);
+
+        const [product] = preparePublishedShopSiteExport(rows, brands);
+
+        expect(product.shopsite_pages).toEqual(
+            expect.arrayContaining(['Cat Food Shop All', 'Cat Food Raw'])
+        );
+    });
 });

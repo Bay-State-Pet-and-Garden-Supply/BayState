@@ -405,68 +405,93 @@ function inferShopSitePagesFromCategory(category: string | null): string[] {
   const pages: string[] = [];
   const normalized = category.toLowerCase().trim();
   
-  // Split into segments (e.g. "Cat Food > Dry" -> ["cat food", "dry"])
+  // Split into segments (e.g. "Cat > Food > Freeze-Dried & Raw Food" -> ["cat", "food", "freeze-dried & raw food"])
   const segments = normalized.split(/\s*>\s*/).map(s => s.trim());
   const mainCategory = segments[0];
   const subCategory = segments.length > 1 ? segments[1] : null;
   
+  const isDog = mainCategory === 'dog' || mainCategory.includes('dog');
+  const isCat = mainCategory === 'cat' || mainCategory.includes('cat');
+
   // Mapping logic based on new retail taxonomy departments+subcategories
   // New breadcrumbs: "Dog > Food", "Cat > Litter", "Pet Bird > Food", "Horse > Feed", etc.
-  if (mainCategory.includes('dog food')) {
+  if (isDog && (subCategory === 'food' || normalized.includes('dog food'))) {
     pages.push('Dog Food Shop All');
-    if (subCategory?.includes('dry')) pages.push('Dog Food Dry');
-    if (subCategory?.includes('wet')) pages.push('Dog Food Wet');
-    if (subCategory?.includes('raw')) pages.push('Dog Food Raw');
-    if (subCategory?.includes('treat')) pages.push('Dog Treats Shop All');
-  } else if (mainCategory.includes('cat food')) {
+    if (normalized.includes('dry')) pages.push('Dog Food Dry');
+    if (normalized.includes('wet')) pages.push('Dog Food Wet');
+    if (normalized.includes('raw') || normalized.includes('freeze-dried')) pages.push('Dog Food Raw');
+    if (normalized.includes('treat')) pages.push('Dog Treats Shop All');
+  } else if (isCat && (subCategory === 'food' || normalized.includes('cat food'))) {
     pages.push('Cat Food Shop All');
-    if (subCategory?.includes('dry')) pages.push('Cat Food Dry');
-    if (subCategory?.includes('wet')) pages.push('Cat Food Wet');
-    if (subCategory?.includes('raw')) pages.push('Cat Food Raw');
-    if (subCategory?.includes('treat')) pages.push('Cat Treats');
-  } else if (mainCategory.includes('dog treats') || (mainCategory === 'dog' && subCategory?.includes('treat'))) {
+    if (normalized.includes('dry')) pages.push('Cat Food Dry');
+    if (normalized.includes('wet')) pages.push('Cat Food Wet');
+    if (normalized.includes('raw') || normalized.includes('freeze-dried')) pages.push('Cat Food Raw');
+    if (normalized.includes('treat')) pages.push('Cat Treats');
+  } else if ((isDog && (subCategory?.includes('treat') || subCategory?.includes('chew'))) || normalized.includes('dog treats')) {
     pages.push('Dog Treats Shop All');
-    if (subCategory?.includes('biscuits')) pages.push('Dog Treats Biscuits Cookies & Crunchy Treats');
-    if (subCategory?.includes('bones') || subCategory?.includes('chews')) pages.push('Dog Treats Bones Bully Sticks & Natural Chews');
-    if (subCategory?.includes('soft') || subCategory?.includes('chewy')) pages.push('Dog Treats Soft & Chewy');
-    if (subCategory?.includes('dental')) pages.push('Dog Dental Treats');
-    if (subCategory?.includes('jerky')) pages.push('Jerky Dog Treats');
-  } else if (mainCategory === 'horse' || mainCategory.includes('horse feed') || mainCategory.includes('horse treats')) {
+    if (normalized.includes('biscuits') || normalized.includes('cookies') || normalized.includes('crunchy')) {
+      pages.push('Dog Treats Biscuits Cookies & Crunchy Treats');
+    }
+    if (normalized.includes('bones') || normalized.includes('chews') || normalized.includes('bully') || normalized.includes('natural')) {
+      pages.push('Dog Treats Bones Bully Sticks & Natural Chews');
+    }
+    if (normalized.includes('soft') || normalized.includes('chewy')) {
+      pages.push('Dog Treats Soft & Chewy');
+    }
+    if (normalized.includes('dental')) {
+      pages.push('Dog Dental Treats');
+    }
+    if (normalized.includes('jerky')) {
+      pages.push('Jerky Dog Treats');
+    }
+  } else if (mainCategory === 'horse' || normalized.includes('horse feed') || normalized.includes('horse treats')) {
     pages.push('Horse Feed & Treats Shop All');
-    if (subCategory?.includes('feed') || normalized.includes('horse feed')) pages.push('Horse Feed');
-    if (subCategory?.includes('treat') || normalized.includes('horse treats')) pages.push('Horse Treats');
-  } else if (mainCategory.includes('wild bird')) {
+    if (normalized.includes('feed')) pages.push('Horse Feed');
+    if (normalized.includes('treat')) pages.push('Horse Treats');
+  } else if (mainCategory.includes('wild bird') || normalized.includes('wild bird')) {
     pages.push('Wild Bird Food Shop All');
-    if (subCategory?.includes('seed') || subCategory?.includes('wild bird food')) pages.push('Wild Bird Seed & Seed Mixes');
-    if (subCategory?.includes('suet') || subCategory?.includes('mealworm')) pages.push('Wild Bird Suet & Mealworms');
-  } else if (mainCategory.includes('pet bird') || mainCategory.includes('caged bird')) {
+    if (normalized.includes('seed') || normalized.includes('mix')) pages.push('Wild Bird Seed & Seed Mixes');
+    if (normalized.includes('suet') || normalized.includes('mealworm')) pages.push('Wild Bird Suet & Mealworms');
+    if (normalized.includes('feeder')) pages.push('Wild Bird Feeders');
+    if (normalized.includes('bath')) pages.push('Wild Bird Baths');
+    if (normalized.includes('house')) pages.push('Wild Bird Houses');
+  } else if (mainCategory.includes('pet bird') || mainCategory.includes('caged bird') || mainCategory === 'bird') {
     pages.push('Caged Bird Food & Supplies Shop All');
-    if (subCategory?.includes('food')) pages.push('Caged Bird Food');
-    if (subCategory?.includes('toys')) pages.push('Caged Bird Toys');
-    if (subCategory?.includes('treat')) pages.push('Caged Bird Treats');
-  } else if (mainCategory.includes('small pet')) {
+    if (normalized.includes('food')) pages.push('Caged Bird Food');
+    if (normalized.includes('toy')) pages.push('Caged Bird Toys');
+    if (normalized.includes('treat')) pages.push('Caged Bird Treats');
+    if (normalized.includes('cage') || normalized.includes('accessory')) pages.push('Cage Bird Cages & Accessories');
+  } else if (mainCategory.includes('small pet') || mainCategory.includes('small animal')) {
     pages.push('Small Pet Food & Supplies Shop All');
-    if (subCategory?.includes('food')) pages.push('Small Pet Food');
-    if (subCategory?.includes('bedding')) pages.push('Small Pet Bedding & Litter');
-    if (subCategory?.includes('hay')) pages.push('Small Pet Hay');
-    if (subCategory?.includes('treat')) pages.push('Small Pet Treats');
-  } else if (mainCategory === 'chicken' || mainCategory.includes('poultry')) {
+    if (normalized.includes('food')) pages.push('Small Pet Food');
+    if (normalized.includes('bedding') || normalized.includes('litter')) pages.push('Small Pet Bedding & Litter');
+    if (normalized.includes('hay')) pages.push('Small Pet Hay');
+    if (normalized.includes('treat')) pages.push('Small Pet Treats');
+  } else if (mainCategory === 'chicken' || normalized.includes('poultry')) {
     pages.push('Farm Animal Chicken & Poultry');
-    if (subCategory?.includes('feed')) pages.push('Farm Animal Shop All');
+    if (normalized.includes('feed') || normalized.includes('supply')) pages.push('Farm Animal Shop All');
   } else if (mainCategory.includes('farm') || mainCategory.includes('livestock') || mainCategory.includes('barn supplies')) {
     pages.push('Barn Supplies Shop All');
-    if (subCategory?.includes('buckets') || subCategory?.includes('feeder') || subCategory?.includes('water')) pages.push('Barn Supplies Buckets & Feeders');
-    if (subCategory?.includes('fence') || subCategory?.includes('gate') || subCategory?.includes('handling')) pages.push('Barn Supplies Farm Gates & Fencing');
-    if (subCategory?.includes('tools')) pages.push('Barn Supplies Tools & Equipment');
+    if (normalized.includes('buckets') || normalized.includes('feeder') || normalized.includes('water')) {
+      pages.push('Barn Supplies Buckets & Feeders');
+    }
+    if (normalized.includes('fence') || normalized.includes('gate') || normalized.includes('handling')) {
+      pages.push('Barn Supplies Farm Gates & Fencing');
+    }
+    if (normalized.includes('tools')) {
+      pages.push('Barn Supplies Tools & Equipment');
+    }
   } else if (mainCategory.includes('lawn') || mainCategory.includes('garden')) {
     pages.push('Lawn & Garden Shop All');
-    if (subCategory?.includes('care')) pages.push('Lawn Care');
-    if (subCategory?.includes('pest')) pages.push('Pest Control & Animal Repellents');
-    if (subCategory?.includes('seed')) pages.push('Seeds & Seed Starting');
+    if (normalized.includes('care')) pages.push('Lawn Care');
+    if (normalized.includes('pest')) pages.push('Pest Control & Animal Repellents');
+    if (normalized.includes('seed')) pages.push('Seeds & Seed Starting');
   } else if (mainCategory.includes('home') || mainCategory.includes('heating')) {
     pages.push('Home Shop All');
-    if (subCategory?.includes('heating') || subCategory?.includes('fuel') || subCategory?.includes('pellet')) pages.push('Heating');
-    if (subCategory?.includes('pest')) pages.push('Pest Control');
+    if (normalized.includes('heating') || normalized.includes('fuel') || normalized.includes('pellet')) {
+      pages.push('Heating');
+    }
+    if (normalized.includes('pest')) pages.push('Pest Control');
   } else if (mainCategory.includes('tool') || mainCategory.includes('hardware')) {
     pages.push('Hardware');
   }
