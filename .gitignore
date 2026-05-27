@@ -107,3 +107,4 @@ docker/github-actions-runner/_work/
 actions-runner
 node_modules
 serp_results.json
+.vercel
