@@ -49,6 +49,14 @@ describe('validateConsolidationTaxonomy', () => {
         checkUnsupported(rootSchema);
     });
 
+    it('buildResponseSchema includes correct packaging_facets constraints', () => {
+        const schema = buildResponseSchema([]) as any;
+        const facets = schema.properties.packaging_facets;
+
+        expect(facets.type).toBe('object');
+        expect(facets.additionalProperties).toEqual({ type: 'string' });
+    });
+
     it('validateRequiredConsolidationFields rejects blank required strings', () => {
         const validBase = {
             name: 'Valid Name',

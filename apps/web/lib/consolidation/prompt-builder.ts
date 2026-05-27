@@ -13,6 +13,7 @@ import {
     type TaxonomyCategoryNode,
     type TaxonomyCategoryRecord,
 } from '@/lib/taxonomy';
+import { FACET_PROFILE_APPLICABLE_FIELDS } from './category-domain';
 
 const USER_PROMPT_PREFIX =
     'Consolidate this product into a ShopSite export-ready record using the provided source trust metadata and only source-supported values: ';
@@ -248,6 +249,12 @@ function buildGroupedCategoryList(categoryNodes: TaxonomyCategoryNode[]): string
     return lines;
 }
 
+function buildFacetProfileRulesString(): string {
+    return Object.entries(FACET_PROFILE_APPLICABLE_FIELDS)
+        .map(([profile, fields]) => `- ${profile}: allows fields [${fields.join(', ')}]`)
+        .join('\n');
+}
+
 /**
  * Generate the system prompt for product consolidation.
  * Includes taxonomy constraints and formatting rules.
@@ -258,6 +265,7 @@ export function generateSystemPrompt(categories: string[]): string {
     const allowedCategoriesStr = categories.length > 0
         ? categories.join('\n')
         : '(none configured)';
+    const profileRulesStr = buildFacetProfileRulesString();
 
     return `You consolidate multi-source product data into one ShopSite export-ready product record.
 
@@ -281,7 +289,7 @@ OCR Packaging Evidence and Vision Input:
 - When a source provides image_text (OCR extracted from product packaging photos), or when you are provided with physical product packaging images directly, treat this visual/OCR packaging evidence as the absolute source of truth.
 - Match the packaging name, brand, and size/weight as closely as possible. Strip extraneous text: marketing taglines, legal disclaimers, address blocks, barcode numbers, URLs, social handles, and promotional callouts.
 - If packaging evidence conflicts with marketplace or distributor titles on product name, brand, or other details, prefer the packaging evidence.
-- Inspect the physical product packaging images directly to extract packaging details like brand, product name, weight/size, flavor, scent, life_stage, pet_type, material, color, and package_count. 
+- Inspect the physical product packaging images directly to extract packaging details.
 - If images are expected but missing, blurry, or unreadable/illegible, fall back gracefully to the text sources, but set a lower confidence_score (below 0.80) to flag the product for human review.
 - Never fabricate packaging details not present in the images or image_text.
 
@@ -309,6 +317,10 @@ Field rules:
 - weight: numeric string in pounds only, no units. Preserve source-supported precision up to 2 decimal places. If there is no trustworthy weight, return null.
 - confidence_score: 0.80-1.00 means ready for immediate ShopSite export, 0.50-0.79 means usable with review, and below 0.50 means key fields remain uncertain. Set below 0.80 if packaging images are expected but missing or unreadable/illegible.
 
+Facet Profile Field Matrix:
+When extracting \`packaging_facets\`, you MUST determine the logical Facet Profile based on the category you select, and ONLY extract fields allowed for that profile.
+${profileRulesStr}
+
 Output contract — respond with valid JSON matching this structure:
 {
   "name": "string (required) — product name with brand as first token",
@@ -318,7 +330,7 @@ Output contract — respond with valid JSON matching this structure:
   "category": "string (required) — best-fit taxonomy category from allowed list",
   "description": "string (required) — short product description from highest-trust source",
   "search_keywords": "string (required) — comma-separated keywords from source data",
-  "packaging_facets": "object (required) — key-value pairs of category-specific detail fields extracted from physical packaging images. The keys must be valid fields from this list: flavor, scent, life_stage, pet_type, breed_size, pet_size, diet_type, treat_type, chew_duration, texture, toy_type, play_style, durability, has_squeaker, garden_product_type, coverage_area, organic, target_pest, active_ingredient, target_condition, feed_type, material, color, dimensions. Only include fields that are visible on the physical packaging; map their values as clean, normalized strings (e.g. 'Chicken' for flavor, 'Puppy' for life_stage)."
+  "packaging_facets": "object (optional) — key-value pairs extracted from packaging images. You MUST select the appropriate Facet Profile for your chosen category using the matrix above, and ONLY use keys from that profile's allowed fields. Map values as clean, normalized strings."
 }
 
 Allowed category values (use exactly one). Choose the full breadcrumb (e.g. "Dog > Food > Dry Food") from the allowed categories below:

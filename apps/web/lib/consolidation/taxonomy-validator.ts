@@ -208,6 +208,11 @@ export function buildResponseSchema(
                 type: 'string',
                 description: 'Comma-separated search keywords from source data',
             },
+            packaging_facets: {
+                type: 'object',
+                description: 'Key-value pairs of profile-specific detail fields extracted from packaging images. Keys must be valid fields for the resolved facet profile.',
+                additionalProperties: { type: 'string' }
+            },
         },
         required: ['name', 'brand', 'weight', 'confidence_score', 'category', 'description', 'search_keywords'],
         additionalProperties: false,
