@@ -1,0 +1,45 @@
+{
+  "productId": "fromm-cat-purrsnick-duck-stew-3oz",
+  "upc": "072705113446",
+  "registerName": "Fromm Cat PurrSnickitty Duck Stew 3 oz",
+  "brand": "Fromm",
+  "officialWebsiteUrl": "https://frommfamily.com",
+  "expectedAttributes": {
+    "size": "3 oz",
+    "flavor": "Duck",
+    "variant": "Stew"
+  },
+  "notes": "Candidate URLs derived from real Serper.dev output in serp_results.json, not fabricated test pages.",
+  "candidateUrls": [
+    {
+      "url": "https://frommfamily.com/products/cat/purrsnickitty/can",
+      "sourceType": "serp",
+      "title": "PurrSnickitty - Wet Food for Cats",
+      "snippet": "Fromm Family Foods PurrSnickitty wet cat food landing page."
+    },
+    {
+      "url": "https://ticknersonline.drexelweb.com/product/purrsnickitty-cat-duck-stew-3oz-cat-cans/",
+      "sourceType": "serp",
+      "title": "PURRSNICKITTY CAT DUCK STEW 3OZ – Tickners",
+      "snippet": "SKU: 072705113446 Categories: CAT CANS, CAT/KITTEN Brand: FROMM FAMILY FO. Description. 12/3OZ PURRSNICK DUCK STEW."
+    },
+    {
+      "url": "https://www.instagram.com/reel/DL7lJ5sO15S/",
+      "sourceType": "serp",
+      "title": "New Fromm PurrSnickitty Cat Food Has Arrived ... - Instagram",
+      "snippet": "... DUCK STEW ... 3 OZ ..."
+    },
+    {
+      "url": "https://www.instagram.com/reel/DTJR55eETml/",
+      "sourceType": "serp",
+      "title": "New PurrSnickitty from Fromm is here! Available in 3 delicious ...",
+      "snippet": "Come in for your FREE trial size 6oz Fromm PurrSnickitty dry cat food!"
+    },
+    {
+      "url": "https://www.walmart.com/ip/Heyco-Combination-Wrench-Metric-16mm/977500469",
+      "sourceType": "serp",
+      "title": "Heyco Combination Wrench, Metric - 16mm - Walmart.com",
+      "snippet": "Buy Heyco Combination Wrench, Metric - 16mm at Walmart.com."
+    }
+  ]
+}

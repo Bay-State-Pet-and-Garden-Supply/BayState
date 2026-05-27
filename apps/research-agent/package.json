@@ -1,0 +1,26 @@
+{
+  "name": "@baystate/research-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.5",
+  "scripts": {
+    "dev": "bun run src/cli.ts",
+    "research-product": "bun run src/cli.ts research-product",
+    "agent-research-product": "bun run src/cli.ts agent-research-product",
+    "agent-env": "bun run src/cli.ts agent-env",
+    "agent-bootstrap-lmstudio": "bun run src/cli.ts agent-bootstrap-lmstudio",
+    "live-sample-research": "bun run src/cli.ts live-sample-research",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "^0.74.2",
+    "typebox": "^1.1.24",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "bun-types": "^1.3.13",
+    "typescript": "5.9.3"
+  }
+}

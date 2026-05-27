@@ -58,6 +58,8 @@ test-results/
 supabase/.temp/
 **/supabase/.temp/
 **/supabase/.branch
+apps/research-agent/artifacts/
+apps/research-agent/.pi-runtime/
 
 .DS_Store
 .vscode/
@@ -104,3 +106,4 @@ docker/github-actions-runner/_work/
 .ruff_cache
 actions-runner
 node_modules
+serp_results.json

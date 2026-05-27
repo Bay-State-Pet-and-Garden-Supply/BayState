@@ -7,7 +7,8 @@
   "workspaces": [
     "packages/*",
     "apps/web",
-    "apps/scraper"
+    "apps/scraper",
+    "apps/research-agent"
   ],
   "scripts": {
     "bootstrap": "bun install && bun run web:db:start && bun run web:bootstrap && bun run scraper:sync-env",
@@ -18,6 +19,7 @@
     "build": "bunx turbo run build",
     "web": "bun --cwd apps/web",
     "scraper": "bun --cwd apps/scraper",
+    "research-agent": "bun --cwd apps/research-agent",
     "web:dev": "bun run web dev",
     "web:build": "bun run web build",
     "web:test": "bun run web test",

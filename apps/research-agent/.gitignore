@@ -1,0 +1,5 @@
+artifacts/
+.pi-runtime/
+.turbo/
+.tabnine/
+tsconfig.tsbuildinfo
