@@ -154,6 +154,10 @@ def is_asset_domain_allowed(
         "demandware.store",
         "centralpet.com",
         "petfoodexperts.com",
+        "media-amazon.com",
+        "images-amazon.com",
+        "amazon.com",
+        "chewy.com",
     }
     if any(normalized == td or normalized.endswith("." + td) for td in TRUSTED_ASSET_DOMAINS):
         return True

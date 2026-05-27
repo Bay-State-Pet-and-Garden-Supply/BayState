@@ -141,9 +141,6 @@ export type SourcePlanResult =
  * pose legal/licensing risks for product data extraction.
  */
 export const DISALLOWED_DOMAINS: string[] = [
-  "amazon.com",
-  "amzn.to",
-  "chewy.com",
   "walmart.com",
   "petco.com",
   "petsmart.com",

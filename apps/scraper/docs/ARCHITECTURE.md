@@ -108,7 +108,7 @@ The system includes a specialized pipeline for direct-from-manufacturer ingestio
 │                                                             │
 │  1. Search (Serper.dev)                                     │
 │     - gl/hl tuning                                          │
-│     - -site:amazon.com exclusion                            │
+│     - Targeted site exclusions (eBay, Walmart)              │
 │                                                             │
 │  2. Validation (Knowledge Graph / LLM Scoring)              │
 │     - Anchor to KG website field                            │

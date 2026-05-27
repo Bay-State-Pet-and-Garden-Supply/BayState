@@ -9,7 +9,7 @@ The scraper operates in three primary phases: **Discovery**, **Validation**, and
 ### **1. Discovery (Search Layer)**
 We utilize `SerperSearchClient` with specific tuning to find the official manufacturer:
 - **Geographic/Language Locking**: Payload uses `gl` (country) and `hl` (language) parameters to prevent regional distributor distortion.
-- **Aggregator Exclusion**: Queries are programmatically constructed with aggressive `-site:` operators (e.g., `-site:amazon.com -site:chewy.com`) to algorithmically filter out mega-retailers.
+- **Aggregator Exclusion**: Queries are programmatically constructed with `-site:` operators to filter out known high-noise marketplace sites (e.g., `-site:ebay.com -site:walmart.com`). Platforms like Amazon and Chewy, which often serve as primary online presences for many brands, are no longer aggressively excluded by default.
 - **Knowledge Graph Anchoring**: The system prioritizes the `knowledgeGraph.website` field from the Serper response as the "absolute ground truth" root domain.
 
 ### **2. Validation (Source Selection)**
