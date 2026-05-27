@@ -3,11 +3,9 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Globe,
-  Download,
   AlertTriangle,
   CheckCircle,
   Database,
-  Search,
   Image as ImageIcon,
   Tag,
   Info,
@@ -23,7 +21,6 @@ import type { PreparedShopSiteExportProduct } from "@/lib/shopsite/mapping";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -64,12 +61,12 @@ export function PublishingResultsView({
   onRefresh,
   search,
   onSearchChange,
-  filters,
-  onFilterChange,
-  availableSources = [],
+  _filters,
+  _onFilterChange,
+  _availableSources = [],
   selectedUpcs,
   onSelectUpc,
-  onSelectAll,
+  _onSelectAll,
   onClearSelection,
   isLoading = false,
 }: PublishingResultsViewProps) {
@@ -189,30 +186,6 @@ export function PublishingResultsView({
 
     return issues;
   }, []);
-
-  // Compute stats for all products
-  const productStats = useMemo(() => {
-    let ready = 0;
-    let warnings = 0;
-    let errors = 0;
-
-    sortedProducts.forEach(p => {
-      const mapping = mappings[p.upc];
-      const issues = getProductValidation(p, mapping);
-      const hasError = issues.some(i => i.type === "error");
-      const hasWarning = issues.some(i => i.type === "warning");
-
-      if (hasError) {
-        errors++;
-      } else if (hasWarning) {
-        warnings++;
-      } else {
-        ready++;
-      }
-    });
-
-    return { total: sortedProducts.length, ready, warnings, errors };
-  }, [sortedProducts, mappings, getProductValidation]);
 
   // Filter products based on health type
   const filteredProducts = useMemo(() => {
@@ -412,41 +385,6 @@ export function PublishingResultsView({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
-      {/* Top Banner Dashboard */}
-      <div className="grid grid-cols-2 gap-4 border-b border-border bg-card/50 p-4 lg:grid-cols-4 shrink-0">
-        <div className="flex flex-col gap-1 rounded-lg border border-border bg-background p-3 shadow-sm">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Queue Total</span>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold">{productStats.total}</span>
-            <span className="text-xs text-muted-foreground">products</span>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1 rounded-lg border border-border bg-background p-3 shadow-sm">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ready for ShopSite</span>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{productStats.ready}</span>
-            <span className="text-xs text-muted-foreground">0 issues</span>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1 rounded-lg border border-border bg-background p-3 shadow-sm">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Mapping Warnings</span>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-amber-500">{productStats.warnings}</span>
-            <span className="text-xs text-muted-foreground">needs review</span>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1 rounded-lg border border-border bg-background p-3 shadow-sm">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Critical Errors</span>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-destructive">{productStats.errors}</span>
-            <span className="text-xs text-muted-foreground">cannot upload</span>
-          </div>
-        </div>
-      </div>
-
       {/* Control Actions Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-4 py-3 shrink-0">
         <div className="flex items-center gap-2">
@@ -905,13 +843,13 @@ export function PublishingResultsView({
                         <div className="flex flex-col items-center justify-center p-4 border border-dashed border-amber-300 rounded bg-amber-50/20 text-center text-amber-800 dark:text-amber-300 text-xs">
                           <AlertTriangle className="h-4 w-4 text-amber-500 mb-1" />
                           <span className="font-bold mb-0.5">No ShopSite Page Mapping Found</span>
-                          <span className="text-[10px] opacity-80 leading-tight">This product won't be linked to any storefront pages on ShopSite.</span>
+                          <span className="text-[10px] opacity-80 leading-tight">This product won&apos;t be linked to any storefront pages on ShopSite.</span>
                         </div>
                       )}
 
                       <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground bg-muted/50 p-2 rounded leading-normal">
                         <Info className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <span>Pages are inferred automatically from the category <strong className="text-foreground">"{selectedProductMapping?.category || "Unknown"}"</strong>.</span>
+                        <span>Pages are inferred automatically from the category <strong className="text-foreground">&quot;{selectedProductMapping?.category || "Unknown"}&quot;</strong>.</span>
                       </div>
                     </div>
                   </div>
