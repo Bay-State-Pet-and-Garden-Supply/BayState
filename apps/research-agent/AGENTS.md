@@ -1,4 +1,4 @@
-# Research Agent Context (`apps/research-agent`)
+# Research Agent Context
 
 ## Role
 - TypeScript/Bun research orchestration CLI for candidate discovery/scoring artifacts.

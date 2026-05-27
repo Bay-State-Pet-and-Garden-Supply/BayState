@@ -2,7 +2,7 @@
 
 ## Direction
 
-`apps/research-agent` is moving from a thin local scoring harness into a self-sufficient product research agent that can take product identity details and produce a storefront-ready product draft.
+`research-agent` is moving from a thin local scoring harness into a self-sufficient product research agent that can take product identity details and produce a storefront-ready product draft.
 
 The existing scraper bridge is a temporary compatibility path only. The target architecture must not require `apps/scraper`, Python scraper internals, or scraper-owned queues/services.
 

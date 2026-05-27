@@ -1,10 +1,10 @@
-# `@baystate/research-agent`
+# `research-agent`
 
 Self-sufficient product research agent CLI for turning product identity details into evidence-backed storefront product drafts.
 
 ## Purpose
 
-`apps/research-agent` is becoming the **agent-native research pipeline** for product-page discovery, page acquisition, extraction, verification, Pi adjudication, and storefront draft assembly.
+`research-agent` is becoming the **agent-native research pipeline** for product-page discovery, page acquisition, extraction, verification, Pi adjudication, and storefront draft assembly.
 
 It does **not** own:
 - database writes
@@ -25,7 +25,7 @@ It does own:
 This follows the repo boundary:
 - `apps/web` = coordinator, persistence, admin UI, eventual review/publish surface
 - `apps/scraper` = legacy Python extraction/browser runner; not the target dependency for this app
-- `apps/research-agent` = self-sufficient research, validation, agent adjudication, and storefront draft generation
+- `research-agent` = self-sufficient research, validation, agent adjudication, and storefront draft generation
 
 ## Current MVP scope
 
@@ -35,7 +35,7 @@ This follows the repo boundary:
 - Emits grounded JSON + markdown artifacts locally
 - Writes an initial `storefront-product.json` draft next to each report
 - Supports opt-in legacy scraper extraction through a narrow JSON adapter interface for comparison only
-- Includes a standalone Pi SDK harness that runs entirely inside `apps/research-agent`
+- Includes a standalone Pi SDK harness that runs entirely inside `research-agent`
 
 ## Usage
 
@@ -115,7 +115,7 @@ The standalone Pi harness writes those files plus:
 
 `report.json` now also embeds the structured Pi `agentDecision` when the standalone harness records a final choice or defer decision.
 
-under `apps/research-agent/artifacts/<timestamp>-<product-id>/` by default.
+under `research-agent/artifacts/<timestamp>-<product-id>/` by default.
 
 ## Agent-native pipeline architecture
 
@@ -172,8 +172,8 @@ The Pi harness is intentionally scoped to a **local, standalone environment** fi
 It does **not** wire into `apps/web`, queues, Supabase, or frontend surfaces.
 
 Current behavior:
-- uses the Pi SDK `createAgentSession()` inside `apps/research-agent`
-- keeps Pi runtime files under `apps/research-agent/.pi-runtime/` by default
+- uses the Pi SDK `createAgentSession()` inside `research-agent`
+- keeps Pi runtime files under `research-agent/.pi-runtime/` by default
 - uses a bounded toolset: `read`, `grep`, `find`, `ls`, `run_product_research`, and `record_agent_decision`
 - executes the existing deterministic `runProductResearch()` flow instead of replacing it
 - requires Pi to record a structured final decision after each standalone harness run
@@ -232,6 +232,6 @@ Environment/setup notes:
 - the Supabase CLI must be available through `bunx supabase`
 - the linked project metadata must exist under `apps/web/supabase/.temp/`, or set `RESEARCH_AGENT_SUPABASE_PROJECT_REF`
 - optional: set `RESEARCH_AGENT_SUPABASE_WORKDIR` if your linked Supabase workspace is not `apps/web`
-- live batch artifacts are written under `apps/research-agent/artifacts/` and should stay local
+- live batch artifacts are written under `research-agent/artifacts/` and should stay local
 
 This keeps live sampling local and read-only. Frontend integration remains deferred until the self-sufficient pipeline and artifact contract stabilize.

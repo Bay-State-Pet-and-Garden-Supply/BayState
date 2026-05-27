@@ -6,6 +6,12 @@
       "sourceType": "github",
       "skillPath": "skills/agent-browser/SKILL.md",
       "computedHash": "228f87d57035100d9dc6efcfc05aafd4b6e3962adacaa04b8217ab2fadb15dc8"
+    },
+    "pi-coding-agent": {
+      "source": "mizchi/skills",
+      "sourceType": "github",
+      "skillPath": "node/pi-coding-agent/SKILL.md",
+      "computedHash": "b9cb7106ef0eb51faaab84a8096b8ce44c2747cdda301adbf94674af751494f1"
     }
   }
 }
