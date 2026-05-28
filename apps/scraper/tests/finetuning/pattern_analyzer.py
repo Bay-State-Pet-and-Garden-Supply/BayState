@@ -283,12 +283,12 @@ class FailurePatternAnalyzer:
             records.append(
                 FailureRecord(
                     timestamp=timestamp,
-                    upc=sku,
+                    upc=upc,
                     failure_type=failure_type,
                     error_message=f"Field mismatch: {field_name}",
                     missing_fields=(field_name,) if failure_type == "missing_fields" else (),
                     source_website=str(item.get("source_website") or "unknown"),
-                    sku_format=self._sku_format(sku),
+                    sku_format=self._sku_format(upc),
                     extraction_time_ms=self._coerce_float(item.get("extraction_time_ms")),
                 )
             )
@@ -313,12 +313,12 @@ class FailurePatternAnalyzer:
             records.append(
                 FailureRecord(
                     timestamp=timestamp,
-                    upc=sku,
+                    upc=upc,
                     failure_type=failure_type,
                     error_message=f"Weekly field score below threshold: {field_name}",
                     category=self._extract_category(extracted_data),
                     source_website=str(extracted_data.get("source_website") or "unknown"),
-                    sku_format=self._sku_format(sku),
+                    sku_format=self._sku_format(upc),
                     confidence=self._coerce_float(extracted_data.get("confidence")),
                 )
             )
@@ -530,7 +530,7 @@ class FailurePatternAnalyzer:
 
     @staticmethod
     def _sku_format(upc: str) -> str:
-        value = sku.strip()
+        value = upc.strip()
         if not value:
             return "unknown"
         if value.isdigit() and len(value) in (12, 13, 14):

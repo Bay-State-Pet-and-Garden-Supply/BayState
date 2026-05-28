@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const candidateSourceTypeSchema = z.enum([
+const candidateSourceTypeSchema = z.enum([
   "input",
   "official",
   "sitemap",
@@ -11,7 +11,7 @@ export const candidateSourceTypeSchema = z.enum([
 
 export type CandidateSourceType = z.infer<typeof candidateSourceTypeSchema>;
 
-export const candidateDecisionSchema = z.enum([
+const candidateDecisionSchema = z.enum([
   "selected",
   "rejected",
   "needs_review",

@@ -26,7 +26,6 @@ from scrapers.ai_search.enrichment_models import (
 from scrapers.ai_search.search import SearchClient
 from scrapers.approved_sources.policy import (
     is_disallowed_domain,
-    is_domain_allowed,
     normalize_domain,
 )
 from scrapers.providers.factory import create_llm_provider

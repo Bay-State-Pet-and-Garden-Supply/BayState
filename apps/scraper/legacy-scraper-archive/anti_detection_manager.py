@@ -24,9 +24,6 @@ if TYPE_CHECKING:
     from utils.scraping.playwright_browser import (
         SyncPlaywrightScraperBrowser as ScraperBrowser,
     )
-    from utils.scraping.playwright_browser import (
-        create_sync_playwright_browser as create_browser,
-    )
 
 logger = logging.getLogger(__name__)
 

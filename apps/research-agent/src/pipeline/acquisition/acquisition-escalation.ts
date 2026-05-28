@@ -69,7 +69,7 @@ export function isNonProductAssetUrl(url: string): boolean {
   return NON_PRODUCT_ASSET_EXTENSIONS.test(url);
 }
 
-export function isHighValueCandidate(candidate: EvaluatedCandidate, brief: ProductResearchBrief): boolean {
+function isHighValueCandidate(candidate: EvaluatedCandidate, brief: ProductResearchBrief): boolean {
   return (
     candidate.sourceType === "official"
     || candidate.sourceType === "sitemap"

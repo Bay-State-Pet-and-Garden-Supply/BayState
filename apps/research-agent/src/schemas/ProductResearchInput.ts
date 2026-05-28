@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { candidateUrlInputSchema } from "./CandidateUrl";
 
-export const seedCandidateUrlsSchema = z.array(candidateUrlInputSchema);
+const seedCandidateUrlsSchema = z.array(candidateUrlInputSchema);
 
 const productResearchInputFieldsSchema = z.object({
   productId: z.string().trim().min(1),

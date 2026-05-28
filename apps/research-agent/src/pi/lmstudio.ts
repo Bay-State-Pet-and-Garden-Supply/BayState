@@ -82,7 +82,7 @@ function pickLmStudioModelId(
   );
 }
 
-export async function detectLmStudioModels(baseUrl?: string) {
+async function detectLmStudioModels(baseUrl?: string) {
   const normalizedBaseUrl = normalizeBaseUrl(
     baseUrl ?? process.env.LMSTUDIO_BASE_URL ?? "http://127.0.0.1:1234/v1",
   );
@@ -163,7 +163,7 @@ export async function bootstrapLmStudioConfig(
   };
 }
 
-export async function readStandaloneAuthFile(agentHome?: string) {
+async function readStandaloneAuthFile(agentHome?: string) {
   const paths = getResearchAgentPaths({ agentHome });
   try {
     return await readFile(paths.authPath, "utf8");

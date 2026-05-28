@@ -62,7 +62,7 @@ export function dedupeProductsByUpc(products: ShopSiteProduct[]): {
 /**
  * Main entry point for batched migration.
  */
-export async function runBatchedProductMigration(
+async function runBatchedProductMigration(
     shopSiteProducts: ShopSiteProduct[],
     options: { deleteMissing?: boolean } = {}
 ): Promise<SyncResult> {

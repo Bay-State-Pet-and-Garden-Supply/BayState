@@ -6,7 +6,7 @@ const stringArrayEvidenceSchema = createEvidenceValueSchema(z.array(z.string()))
 const unknownRecordSchema = z.record(z.string(), z.unknown());
 const recordEvidenceSchema = createEvidenceValueSchema(unknownRecordSchema);
 
-export const storefrontReadinessStatusSchema = z.enum([
+const storefrontReadinessStatusSchema = z.enum([
   "ready",
   "needs_review",
   "blocked",
@@ -14,7 +14,7 @@ export const storefrontReadinessStatusSchema = z.enum([
 
 export type StorefrontReadinessStatus = z.infer<typeof storefrontReadinessStatusSchema>;
 
-export const storefrontImageSchema = z.object({
+const storefrontImageSchema = z.object({
   url: z.string().url(),
   altText: z.string().trim().min(1).optional(),
   sourceUrl: z.string().url().optional(),
@@ -23,7 +23,7 @@ export const storefrontImageSchema = z.object({
 
 export type StorefrontImage = z.infer<typeof storefrontImageSchema>;
 
-export const storefrontVariantDraftSchema = z.object({
+const storefrontVariantDraftSchema = z.object({
   title: z.string().trim().min(1).default("Default Title"),
   sku: z.string().trim().min(1).optional(),
   barcode: z.string().trim().min(1).optional(),

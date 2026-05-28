@@ -40,7 +40,7 @@ export interface DecisionSummary {
   };
 }
 
-export function buildDecisionSummary(results: LiveSampleRunResult[]): DecisionSummary {
+function buildDecisionSummary(results: LiveSampleRunResult[]): DecisionSummary {
   const deterministicStatuses: Record<string, number> = {};
   const warningCounts = new Map<string, number>();
   const summary: DecisionSummary = {

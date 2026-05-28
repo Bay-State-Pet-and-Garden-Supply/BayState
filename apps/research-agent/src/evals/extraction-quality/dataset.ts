@@ -31,7 +31,7 @@ const extractionQualityEvalInputSchema = z.object({
   officialWebsiteUrl: z.string().trim().min(1).optional(),
 });
 
-export const extractionQualityEvalEntrySchema = z.object({
+const extractionQualityEvalEntrySchema = z.object({
   id: z.string().trim().min(1),
   input: extractionQualityEvalInputSchema,
   page: extractionQualityEvalPageSchema,

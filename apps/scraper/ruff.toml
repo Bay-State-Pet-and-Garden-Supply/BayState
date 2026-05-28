@@ -1,5 +1,8 @@
 target-version = "py310"
 line-length = 160
+exclude = [
+    "legacy-scraper-archive",
+]
 
 [lint]
 select = ["E", "F"]
@@ -61,3 +64,8 @@ ignore = ["E402", "F541", "F841", "F811", "F402"]
 "tests/finetuning/pattern_analyzer.py" = ["E501"]
 "tests/unit/test_trusted_retailers.py" = ["E501"]
 "tests/validation/sampler.py" = ["E501"]
+"scrapers/approved_sources/adapters/bradley.py" = ["E501"]
+"scrapers/approved_sources/adapters/central_pet.py" = ["E501"]
+"scrapers/approved_sources/adapters/phillips.py" = ["E501"]
+"scrapers/approved_sources/adapters/serp_discovery.py" = ["E501"]
+"tests/unit/test_image_enrichment.py" = ["E501"]

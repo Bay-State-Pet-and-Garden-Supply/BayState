@@ -6,7 +6,6 @@ from validation.result_quality import sanitize_product_payload
 
 def test_sanitize_product_payload_recovers_petfoodex_upc_from_blob() -> None:
     payload = {
-        "upc": "63902399",
         "upc": "HOME\nDOG\nFOOD\nKOHA DOG LIMITED INGREDIENT BLAND DIET SALMON & BROWN RICE 20LBS\nItem #63902399\nUPC#: BAG: 811048023995\nEDLP: $63.00",
         "brand": "Koha",
         "title": "KOHA DOG LIMITED INGREDIENT BLAND DIET SALMON & BROWN RICE 20LBS",
@@ -32,7 +31,6 @@ def test_scraper_validator_flags_unrecoverable_identifier_blob() -> None:
     results = validator.validate_product_data(
         [
             {
-                "UPC": "bad-sku",
                 "Name": "Broken Product",
                 "UPC": "HOME\nDOG\nFOOD\nADD TO CART\nPRICE: $60.48",
                 "Images": ["https://example.com/product.jpg"],
@@ -51,7 +49,6 @@ def test_scraper_validator_accepts_canonical_payloads() -> None:
     results = validator.validate_product_data(
         [
             {
-                "upc": "63902399",
                 "title": "KOHA DOG LIMITED INGREDIENT BLAND DIET SALMON & BROWN RICE 20LBS",
                 "brand": "Koha",
                 "upc": "811048023995",

@@ -22,7 +22,7 @@ ENV_FILES = (
     WEB_ROOT / ".env.local",
     WEB_ROOT / ".env",
 )
-CATALOG_SELECT = "sku,name,brand:brands(name),category:categories!products_category_id_fkey(name)"
+CATALOG_SELECT = "upc,name,brand:brands(name),category:categories!products_category_id_fkey(name)"
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,23 +140,23 @@ class ProductSampler:
         iso_year, iso_week, _ = now.isocalendar()
         sampled_date = now.isoformat().replace("+00:00", "Z")
 
-        sku_values: list[str] = []
+        upc_values: list[str] = []
         history_entries = payload["history"]
         for item in upcs:
-            upc= item.upc if isinstance(item, ProductSample) else str(item).strip()
+            upc = item.upc if isinstance(item, ProductSample) else str(item).strip()
             if not upc:
                 continue
-            sku_values.append(sku)
+            upc_values.append(upc)
             history_entries.append(
                 {
-                    "upc": sku,
+                    "upc": upc,
                     "sampled_date": sampled_date,
                     "week_number": iso_week,
                     "year": iso_year,
                 }
             )
 
-        if not sku_values:
+        if not upc_values:
             return
 
         batches = payload["batches"]
@@ -166,7 +166,7 @@ class ProductSampler:
                 "week_number": iso_week,
                 "year": iso_year,
                 "seed": self.seed,
-                "upcs": sku_values,
+                "upcs": upc_values,
             }
         )
 
@@ -223,16 +223,16 @@ class ProductSampler:
                 _ = load_dotenv(env_file, override=False)
 
     def _build_product_sample(self, row: dict[str, object]) -> ProductSample | None:
-        upc= self._normalize_value(row.get("upc"))
+        upc = self._normalize_value(row.get("upc"))
         name = self._normalize_value(row.get("name"))
-        if not sku or not name:
+        if not upc or not name:
             return None
 
         brand_name = self._extract_nested_name(row.get("brand"))
         category_name = self._extract_nested_name(row.get("category"))
 
         return ProductSample(
-            upc=sku,
+            upc=upc,
             name=name,
             brand=brand_name,
             category=category_name,
@@ -276,17 +276,17 @@ class ProductSampler:
                 if not isinstance(entry, dict):
                     continue
                 raw_entry = cast(dict[str, object], entry)
-                upc= str(raw_entry.get("upc", "")).strip()
+                upc = str(raw_entry.get("upc", "")).strip()
                 sampled_date = str(raw_entry.get("sampled_date", "")).strip()
                 week_number = raw_entry.get("week_number")
                 year = raw_entry.get("year")
-                if not sku or not sampled_date:
+                if not upc or not sampled_date:
                     continue
                 if not isinstance(week_number, int) or not isinstance(year, int):
                     continue
                 history.append(
                     {
-                        "upc": sku,
+                        "upc": upc,
                         "sampled_date": sampled_date,
                         "week_number": week_number,
                         "year": year,

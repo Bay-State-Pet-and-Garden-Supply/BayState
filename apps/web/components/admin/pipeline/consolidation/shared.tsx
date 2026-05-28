@@ -244,7 +244,7 @@ export function isDirectChatMode(executionMode?: string): boolean {
  return executionMode === 'direct_chat_chunks';
 }
 
-export function isBatchMode(executionMode?: string): boolean {
+function isBatchMode(executionMode?: string): boolean {
  return executionMode === 'gemini_batch' || executionMode === 'batch_api';
 }
 
@@ -261,7 +261,7 @@ export function getModeLabel(executionMode?: string): string {
  }
 }
 
-export function getModeIcon(executionMode?: string): string {
+function getModeIcon(executionMode?: string): string {
  switch (executionMode) {
  case 'direct_chat_chunks':
  return 'direct';

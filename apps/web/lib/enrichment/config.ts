@@ -289,7 +289,7 @@ function resolveEnrichmentData(
 /**
  * Gets enrichment summaries for multiple products.
  */
-export async function getProductEnrichmentSummaries(
+async function getProductEnrichmentSummaries(
   upcs: string[]
 ): Promise<Map<string, ProductEnrichmentSummary>> {
   const results = new Map<string, ProductEnrichmentSummary>();

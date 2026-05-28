@@ -7,12 +7,9 @@ import logging
 import os
 from collections import OrderedDict
 from typing import Any
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from scrapers.providers.serper import SerperSearchClient
 from scrapers.utils.url_utils import (
-    TRACKING_QUERY_KEYS,
-    TRACKING_QUERY_PREFIXES,
     canonicalize_result_url,
 )
 

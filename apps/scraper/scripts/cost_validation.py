@@ -96,7 +96,7 @@ class CostCalculator:
         )
 
         # Apply retry factor
-        total_cost = openai_cost * RETRY_FACTOR
+        total_cost = llm_cost * RETRY_FACTOR
 
         return CostBreakdown(
             infrastructure=0.0,  # Browser is external cost

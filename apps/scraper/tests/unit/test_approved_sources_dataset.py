@@ -66,7 +66,7 @@ class TestApprovedSourceDataset:
         ]
         for entry in data["entries"]:
             for field in required:
-                assert field in entry, f"Entry UPC={entry.get("upc")} missing {field}"
+                assert field in entry, f"Entry UPC={entry.get('upc')} missing {field}"
 
     def test_no_retailer_positive_entries(self, data):
         """No positive extraction entry should have a disallowed domain."""
@@ -74,7 +74,7 @@ class TestApprovedSourceDataset:
             for domain in entry.get("allowed_domains", []):
                 for bad in DISALLOWED_DOMAINS:
                     assert bad not in domain, (
-                        f"Entry UPC={entry["upc"]} has disallowed domain: {domain}"
+                        f"Entry UPC={entry['upc']} has disallowed domain: {domain}"
                     )
 
     def test_distributor_domain_matches(self, data):
@@ -85,7 +85,7 @@ class TestApprovedSourceDataset:
                 expected = APPROVED_DISTRIBUTOR_DOMAINS[slug]
                 for domain in entry["allowed_domains"]:
                     assert any(d in domain for d in expected), (
-                        f"UPC={entry["upc"]}: {domain} not in expected domains for {slug}"
+                        f"UPC={entry['upc']}: {domain} not in expected domains for {slug}"
                     )
 
     def test_bradley_minimum_entries(self, data):
@@ -112,7 +112,7 @@ class TestApprovedSourceDataset:
         """Every entry should reference legacy config or document why not."""
         for entry in data["entries"]:
             assert "legacy_reference" in entry or entry.get("notes"), (
-                f"Entry UPC={entry.get("upc")} missing legacy_reference"
+                f"Entry UPC={entry.get('upc')} missing legacy_reference"
             )
 
 
@@ -143,7 +143,7 @@ class TestSERPDataset:
         ]
         for entry in data["entries"]:
             for field in required:
-                assert field in entry, f"Entry UPC={entry.get("upc")} missing {field}"
+                assert field in entry, f"Entry UPC={entry.get('upc')} missing {field}"
 
     def test_every_entry_has_source_legality(self, data):
         for entry in data["entries"]:
@@ -176,7 +176,7 @@ class TestSERPDataset:
             for domain in entry["source_legality"]["approved_positive_domains"]:
                 for bad in DISALLOWED_DOMAINS:
                     assert bad not in domain, (
-                        f"UPC={entry["upc"]}: disallowed domain in approved_positive_domains: {domain}"
+                        f"UPC={entry['upc']}: disallowed domain in approved_positive_domains: {domain}"
                     )
 
 
@@ -198,13 +198,13 @@ class TestOfficialExtractionDataset:
     def test_no_retailer_source_type(self, data):
         for entry in data["entries"]:
             assert entry.get("source_type") != "retailer", (
-                f"UPC={entry["upc"]}: retailer source_type not allowed in official extraction dataset"
+                f"UPC={entry['upc']}: retailer source_type not allowed in official extraction dataset"
             )
 
     def test_all_entries_are_official(self, data):
         for entry in data["entries"]:
             assert entry.get("source_type") == "official", (
-                f"UPC={entry["upc"]}: source_type must be 'official'"
+                f"UPC={entry['upc']}: source_type must be 'official'"
             )
 
     def test_every_entry_has_required_fields(self, data):
@@ -214,13 +214,13 @@ class TestOfficialExtractionDataset:
         ]
         for entry in data["entries"]:
             for field in required:
-                assert field in entry, f"Entry UPC={entry.get("upc")} missing {field}"
+                assert field in entry, f"Entry UPC={entry.get('upc')} missing {field}"
 
     def test_ground_truth_has_required_fields(self, data):
         for entry in data["entries"]:
             gt = entry["ground_truth"]
             for field in ["brand", "name", "image_required"]:
-                assert field in gt, f"Entry UPC={entry["upc"]} ground_truth missing {field}"
+                assert field in gt, f"Entry UPC={entry['upc']} ground_truth missing {field}"
 
 
 # =============================================================================

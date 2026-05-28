@@ -69,31 +69,31 @@ class TestOfficialExtractionDataset:
         for entry in dataset.get("entries", []):
             source_type = entry.get("source_type", "")
             assert source_type != "retailer", \
-                f"Entry {entry.get("upc")} has source_type 'retailer'"
+                f"Entry {entry.get('upc')} has source_type 'retailer'"
 
     def test_all_entries_are_official(self):
         dataset = _load_official_dataset()
         for entry in dataset.get("entries", []):
             source_type = entry.get("source_type", "")
             assert source_type == "official", \
-                f"Entry {entry.get("upc")} has source_type '{source_type}', expected 'official'"
+                f"Entry {entry.get('upc')} has source_type '{source_type}', expected 'official'"
 
     def test_every_entry_has_required_fields(self):
         dataset = _load_official_dataset()
         for entry in dataset.get("entries", []):
             assert entry.get("upc"), f"Entry missing upc: {entry}"
-            assert entry.get("product_name"), f"Entry {entry.get("upc")} missing product_name"
-            assert entry.get("brand"), f"Entry {entry.get("upc")} missing brand"
-            assert entry.get("source_url"), f"Entry {entry.get("upc")} missing source_url"
-            assert entry.get("source_type"), f"Entry {entry.get("upc")} missing source_type"
-            assert entry.get("ground_truth"), f"Entry {entry.get("upc")} missing ground_truth"
+            assert entry.get("product_name"), f"Entry {entry.get('upc')} missing product_name"
+            assert entry.get("brand"), f"Entry {entry.get('upc')} missing brand"
+            assert entry.get("source_url"), f"Entry {entry.get('upc')} missing source_url"
+            assert entry.get("source_type"), f"Entry {entry.get('upc')} missing source_type"
+            assert entry.get("ground_truth"), f"Entry {entry.get('upc')} missing ground_truth"
 
     def test_ground_truth_has_required_fields(self):
         dataset = _load_official_dataset()
         for entry in dataset.get("entries", []):
             gt = entry.get("ground_truth", {})
-            assert gt.get("brand"), f"Entry {entry.get("upc")} ground_truth missing brand"
-            assert gt.get("name"), f"Entry {entry.get("upc")} ground_truth missing name"
+            assert gt.get("brand"), f"Entry {entry.get('upc')} ground_truth missing brand"
+            assert gt.get("name"), f"Entry {entry.get('upc')} ground_truth missing name"
             description_contains = gt.get("description_contains", [])
             assert len(description_contains) > 0, \
                 f"Entry {entry.get('upc')} ground_truth missing description_contains"

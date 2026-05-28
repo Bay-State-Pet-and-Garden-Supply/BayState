@@ -133,7 +133,7 @@ def _build_synthetic_extraction(version: str, ground_truth: GroundTruthProduct) 
 
     return AISearchResult(
         success=True,
-        upc=sku,
+        upc=upc,
         product_name=maybe_keep_scalar("product_name", ground_truth.name),
         brand=maybe_keep_scalar("brand", ground_truth.brand),
         description=maybe_keep_scalar("description", ground_truth.description),

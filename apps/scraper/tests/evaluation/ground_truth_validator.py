@@ -282,9 +282,9 @@ def validate_fixture(data: list[dict[str, Any]]) -> FixtureValidationResult:
     # Warnings for missing optional but recommended fields
     for idx, entry in enumerate(data):
         if "description" not in entry or not entry.get("description"):
-            warnings.append(f"Entry {idx} (UPC: {entry.get("upc", 'UNKNOWN')}): missing recommended field 'description'")
+            warnings.append(f"Entry {idx} (UPC: {entry.get('upc', 'UNKNOWN')}): missing recommended field 'description'")
         if "difficulty" not in entry:
-            warnings.append(f"Entry {idx} (UPC: {entry.get("upc", 'UNKNOWN')}): missing optional field 'difficulty' (defaults to 'easy')")
+            warnings.append(f"Entry {idx} (UPC: {entry.get('upc', 'UNKNOWN')}): missing optional field 'difficulty' (defaults to 'easy')")
 
     return FixtureValidationResult(
         valid=len(errors) == 0,

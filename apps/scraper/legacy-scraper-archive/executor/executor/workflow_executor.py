@@ -31,11 +31,7 @@ from core.settings_manager import SettingsManager
 from scrapers.actions.registry import ActionRegistry
 from scrapers.exceptions import (
     BrowserError,
-    CircuitBreakerOpenError,
     ErrorContext,
-    NoResultsError,
-    NonRetryableError,
-    PageNotFoundError,
     ScraperError,
     WorkflowExecutionError,
 )

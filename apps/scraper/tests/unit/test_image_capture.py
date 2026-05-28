@@ -9,7 +9,7 @@ Tests cover:
 """
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from scrapers.approved_sources.image_capture import (
     is_durable_image_url,
     capture_image_authenticated,

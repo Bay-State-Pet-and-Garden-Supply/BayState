@@ -19,7 +19,6 @@ import {
   isTerminalStatus,
   getProviderLabel,
   isDirectChatMode,
-  isBatchMode,
 } from "./shared";
 import type { ConsolidationJob } from "./shared";
 import { Badge } from "@/components/ui/badge";

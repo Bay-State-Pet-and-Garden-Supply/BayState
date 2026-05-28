@@ -32,7 +32,7 @@ from typing import Any
 
 import pytest
 
-from tests.live.conftest import has_llm_api_key, has_local_llm
+from tests.live.conftest import has_local_llm
 
 logger = logging.getLogger("tests.live.full_pipeline")
 
@@ -179,7 +179,7 @@ class TestFullPipelineExtraction:
             if pipeline_result.match_rate < 0.5:
                 logger.warning(
                     "Low match rate for %s (%s): %.0f%%. Extracted: name=%r, brand=%r",
-                    sku,
+                    upc,
                     entry.get("brand"),
                     pipeline_result.match_rate * 100,
                     pipeline_result.extracted_name,
@@ -187,8 +187,8 @@ class TestFullPipelineExtraction:
                 )
 
         except Exception as e:
-            logger.error("Pipeline failed for %s: %s", sku, e)
-            pytest.fail(f"Pipeline error for {sku}: {e}")
+            logger.error("Pipeline failed for %s: %s", upc, e)
+            pytest.fail(f"Pipeline error for {upc}: {e}")
 
     async def test_aggregate_accuracy(self, variant_ground_truth: list[dict[str, Any]]):
         """Run all fixture entries and assert aggregate accuracy >= 70%.
@@ -230,7 +230,7 @@ class TestFullPipelineExtraction:
                 )
                 result = await extractor.extract(
                     url=url,
-                    upc=sku,
+                    upc=upc,
                     product_name=entry.get("name"),
                     brand=entry.get("brand"),
                 )
@@ -248,7 +248,7 @@ class TestFullPipelineExtraction:
                         ),
                     }
                     results.append(PipelineTestResult(
-                        upc=sku,
+                        upc=upc,
                         brand=entry.get("brand", ""),
                         name=entry.get("name", ""),
                         success=True,
@@ -257,7 +257,7 @@ class TestFullPipelineExtraction:
                     ))
                 else:
                     results.append(PipelineTestResult(
-                        upc=sku,
+                        upc=upc,
                         brand=entry.get("brand", ""),
                         name=entry.get("name", ""),
                         success=False,
@@ -266,7 +266,7 @@ class TestFullPipelineExtraction:
 
             except Exception as e:
                 results.append(PipelineTestResult(
-                    upc=sku,
+                    upc=upc,
                     brand=entry.get("brand", ""),
                     name=entry.get("name", ""),
                     success=False,

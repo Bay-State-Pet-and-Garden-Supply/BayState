@@ -49,7 +49,7 @@ export interface QueryLinkedSupabaseOptions {
   timeoutMs?: number;
 }
 
-export function resolveSupabaseWorkdir(workdir?: string) {
+function resolveSupabaseWorkdir(workdir?: string) {
   return path.resolve(
     workdir
       ?? process.env.RESEARCH_AGENT_SUPABASE_WORKDIR

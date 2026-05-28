@@ -21,7 +21,7 @@ import { PageIndexRepository } from "../cache/page-index-repository";
 import { OfficialDomainIndexDiscovery } from "../pipeline/discovery/official-domain-index-discovery";
 import type { CandidateDiscoveryProvider } from "../pipeline/ports";
 
-export class NoOpPageAcquisition implements PageAcquisitionProvider {
+class NoOpPageAcquisition implements PageAcquisitionProvider {
   async acquirePage(url: string): Promise<AcquiredPage> {
     return {
       url,

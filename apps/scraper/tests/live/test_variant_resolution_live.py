@@ -53,7 +53,7 @@ def _family_page_cases():
         if vr.get("is_family_page"):
             yield pytest.param(
                 entry,
-                id=f"{entry['brand']}-{entry["upc"]}",
+                id=f"{entry['brand']}-{entry['upc']}",
             )
 
 
@@ -64,7 +64,7 @@ def _non_family_cases():
         if not vr.get("is_family_page"):
             yield pytest.param(
                 entry,
-                id=f"{entry['brand']}-{entry["upc"]}",
+                id=f"{entry['brand']}-{entry['upc']}",
             )
 
 
@@ -286,7 +286,7 @@ class TestVariantResolutionNonFamilyPages:
 
         resolved_url, resolved_html, resolved_md, status = await resolve_family_variant(
             url=url,
-            upc=sku,
+            upc=upc,
             product_name=entry.get("name"),
             brand=entry.get("brand"),
             html=html,
@@ -298,7 +298,7 @@ class TestVariantResolutionNonFamilyPages:
         # Should NOT return exact_variant for non-family pages
         assert status != "exact_variant", (
             f"Non-family page incorrectly resolved as 'exact_variant' "
-            f"for UPC {sku} ({entry['brand']}). URL: {url}"
+            f"for UPC {upc} ({entry['brand']}). URL: {url}"
         )
 
         # URL should not be modified

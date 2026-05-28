@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const evidenceSourceTypeSchema = z.enum([
+const evidenceSourceTypeSchema = z.enum([
   "input",
   "candidate",
   "heuristic",

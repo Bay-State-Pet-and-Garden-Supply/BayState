@@ -255,7 +255,6 @@ class CheckNoResultsAction(BaseAction):
 
     async def _execute_playwright(self, config_no_results: list[str], config_text_patterns: list[str], params: dict[str, Any]) -> None:
         """Execute no-results check using Playwright."""
-        import time
 
         page = self.ctx.browser.page
 

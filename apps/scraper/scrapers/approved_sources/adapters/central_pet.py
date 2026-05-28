@@ -12,10 +12,14 @@ import logging
 import re
 from urllib.parse import urljoin
 
+from typing import Any
+
 from scrapers.approved_sources.adapters.base import BaseDistributorCrawl4AIAdapter
 from scrapers.approved_sources.types import (
     ApprovedSourceExtractionResult,
     FailureCode,
+    ApprovedSourcePlanEntry,
+    ApprovedSourcePlan,
 )
 
 logger = logging.getLogger(__name__)

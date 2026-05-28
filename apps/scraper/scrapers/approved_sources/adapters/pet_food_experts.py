@@ -16,10 +16,14 @@ import logging
 import re
 from urllib.parse import urljoin, quote
 
+from typing import Any
+
 from scrapers.approved_sources.adapters.base import BaseDistributorCrawl4AIAdapter
 from scrapers.approved_sources.types import (
     ApprovedSourceExtractionResult,
     FailureCode,
+    ApprovedSourcePlanEntry,
+    ApprovedSourcePlan,
 )
 from scrapers.approved_sources.auth import PFE_LOGIN
 

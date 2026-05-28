@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import Any
 from urllib.parse import urljoin, quote
 
+from scrapers.ai_search.enrichment_models import EnrichmentResultV1
 from scrapers.approved_sources.adapters.base import BaseDistributorCrawl4AIAdapter
 from scrapers.approved_sources.types import (
     ApprovedSourceExtractionResult,
@@ -301,8 +303,6 @@ class PhillipsAdapter(BaseDistributorCrawl4AIAdapter):
         4. Waits specifically for client-side templates/selectors to render.
         5. Extracts details (description, specs, alternate images) from PDP.
         """
-        from typing import Any
-        from scrapers.ai_search.enrichment_models import EnrichmentResultV1
         from scrapers.approved_sources.result_builder import (
             build_auth_required_result,
             build_auth_failed_result,

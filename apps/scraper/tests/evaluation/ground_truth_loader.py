@@ -114,7 +114,7 @@ def load_ground_truth() -> list[GroundTruthProduct]:
         # Validate required fields
         missing = _validate_product(product)
         if missing:
-            errors.append(f"Product at index {idx} (UPC: {product.get("upc", 'UNKNOWN')}) missing fields: {missing}")
+            errors.append(f"Product at index {idx} (UPC: {product.get('upc', 'UNKNOWN')}) missing fields: {missing}")
             continue
 
         # Parse size metrics

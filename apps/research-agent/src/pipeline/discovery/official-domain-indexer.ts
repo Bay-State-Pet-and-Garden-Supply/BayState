@@ -31,7 +31,7 @@ export interface OfficialDomainIndexingResult {
   timedOut?: boolean;
 }
 
-export function extractUpcsFromFactSet(facts: PageFactSet): string[] {
+function extractUpcsFromFactSet(facts: PageFactSet): string[] {
   return normalizeBarcodes([
     facts.attributes.gtin as string | undefined,
     facts.attributes.gtin8 as string | undefined,

@@ -7,7 +7,7 @@ const stringEvidenceSchema = createEvidenceValueSchema(z.string());
 const stringArrayEvidenceSchema = createEvidenceValueSchema(z.array(z.string()));
 const recordEvidenceSchema = createEvidenceValueSchema(z.record(z.string(), z.unknown()));
 
-export const productResearchStatusSchema = z.enum([
+const productResearchStatusSchema = z.enum([
   "completed",
   "needs_review",
   "needs_more_candidates",
@@ -37,7 +37,7 @@ export const agentCandidateDecisionSchema = z.object({
 
 export type AgentCandidateDecision = z.infer<typeof agentCandidateDecisionSchema>;
 
-export const acquisitionDiagnosticSchema = z.object({
+const acquisitionDiagnosticSchema = z.object({
   url: z.string().url(),
   sourceType: z.string().min(1),
   discoveredFrom: z.string().optional(),

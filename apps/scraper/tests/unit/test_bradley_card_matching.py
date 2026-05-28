@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from urllib.parse import urljoin
-import pytest
-from bs4 import BeautifulSoup
 
 from scrapers.approved_sources.adapters.bradley import BradleyAdapter
 from scrapers.approved_sources.types import ApprovedSourcePlanEntry, ApprovedSourcePlan

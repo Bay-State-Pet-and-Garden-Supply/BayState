@@ -15,7 +15,6 @@ import argparse
 import json
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
 

@@ -21,7 +21,7 @@ const searchFixtureSchema = z.object({
   response: serperResponseSchema,
 });
 
-export const serperStrategyEvalEntrySchema = z.object({
+const serperStrategyEvalEntrySchema = z.object({
   id: z.string().trim().min(1),
   upc: z.string().trim().min(1),
   registerName: z.string().trim().min(1),
@@ -34,7 +34,7 @@ export const serperStrategyEvalEntrySchema = z.object({
   tags: z.array(z.string().trim().min(1)).optional(),
 });
 
-export const serperStrategyEvalDatasetSchema = z.object({
+const serperStrategyEvalDatasetSchema = z.object({
   schemaVersion: z.literal("research-agent-serper-strategy-eval-v1"),
   entries: z.array(serperStrategyEvalEntrySchema).min(1),
 });

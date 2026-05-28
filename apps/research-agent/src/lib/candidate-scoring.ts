@@ -73,7 +73,7 @@ const LOW_SIGNAL_MARKETPLACE_DOMAINS = [
 const round = (value: number) => Number(value.toFixed(4));
 const clamp = (value: number) => Math.max(0, Math.min(1, round(value)));
 
-export function resolveOfficialDomain(
+function resolveOfficialDomain(
   input: ProductResearchInput | ResolvedProductResearchInput,
 ): string | undefined {
   return normalizeDomain(
@@ -90,13 +90,13 @@ export function resolveInput(input: ProductResearchInput): ResolvedProductResear
   };
 }
 
-export function buildIdentityTokens(
+function buildIdentityTokens(
   input: ProductResearchInput | ResolvedProductResearchInput,
 ): string[] {
   return tokenizeText(input.brand, input.registerName, input.upc);
 }
 
-export function buildVariantTokens(
+function buildVariantTokens(
   input: ProductResearchInput | ResolvedProductResearchInput,
 ): string[] {
   const brandTokens = new Set(tokenizeText(input.brand));
