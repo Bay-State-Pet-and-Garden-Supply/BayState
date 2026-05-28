@@ -9,7 +9,7 @@
  * are NEVER sourced from enrichment — they come from the original import only.
  */
 
-export type EnrichmentResultStatus = "success" | "partial" | "failed";
+export type EnrichmentResultStatus = "success" | "partial" | "failed" | "error";
 
 export type EnrichmentMode = "structured" | "metadata" | "llm" | "mixed";
 

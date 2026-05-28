@@ -2,7 +2,7 @@
 import { JobAssignment, EnrichmentAttempt } from "@/lib/realtime/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { EnrichmentAttemptCard, EnrichmentJobLogsConsole } from "./EnrichmentCommon";
-import { Progress } from "@/components/ui/progress";
+import { ProgressBar } from "./ProgressBar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { X, Activity, Loader2 } from "lucide-react";
@@ -55,7 +55,7 @@ export function ExtractingDetailPane({ job, attempt, onCancelJob, isCancelling }
               <span>OVERALL PROGRESS</span>
               <span>{progressPercent}% ({job.completed_count}/{job.total_count})</span>
             </div>
-            <Progress value={progressPercent} className="h-2" />
+            <ProgressBar progress={progressPercent} status={job.status as any} />
           </div>
         </div>
 

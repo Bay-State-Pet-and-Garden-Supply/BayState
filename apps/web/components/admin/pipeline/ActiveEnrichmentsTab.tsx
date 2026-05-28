@@ -141,7 +141,6 @@ export function ActiveEnrichmentsTab() {
   const allJobs = useMemo(() => {
     const combined = [
       ...realtimeJobs.running,
-      ...realtimeJobs.claimed,
       ...realtimeJobs.queued,
       ...realtimeJobs.pending,
       ...realtimeJobs.completed,

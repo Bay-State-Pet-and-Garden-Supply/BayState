@@ -17,6 +17,7 @@ const enrichmentResultStatusSchema = z.enum([
   "success",
   "partial",
   "failed",
+  "error",
 ]);
 
 const enrichmentModeSchema = z.enum([

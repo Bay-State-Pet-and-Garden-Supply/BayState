@@ -245,10 +245,12 @@ export async function POST(request: NextRequest) {
         (rawBody as Record<string, unknown>).requested_extraction_mode ?? requestedMode,
     };
 
+    const dbStatus = enrichedResult.status === "error" ? "failed" : enrichedResult.status;
+
     const { error: attemptUpdateError } = await supabase
       .from("enrichment_attempts")
       .update({
-        status: enrichedResult.status,
+        status: dbStatus,
         result: resultPayload as Record<string, unknown>,
         normalized_source: normalized as unknown as Record<string, unknown>,
         confidence_overall: enrichedResult.confidence.overall,
@@ -375,17 +377,24 @@ export async function POST(request: NextRequest) {
       const latestAttempts = Array.from(latestAttemptsByUpc.values());
 
       const completed = latestAttempts.filter(
-        (attempt) => attempt.status === "success" || attempt.status === "partial" || attempt.status === "failed",
+        (attempt) => 
+          attempt.status === "success" || 
+          attempt.status === "partial" || 
+          attempt.status === "failed" ||
+          attempt.status === "cancelled" ||
+          attempt.status === "error",
       ).length;
       const failed = latestAttempts.filter(
-        (attempt) => attempt.status === "failed",
+        (attempt) => attempt.status === "failed" || attempt.status === "error",
       ).length;
 
       const isComplete = completed >= latestAttempts.length;
       const jobStatus = isComplete
-        ? failed > 0
-          ? "completed_with_errors"
-          : "completed"
+        ? (failed === latestAttempts.length && latestAttempts.length > 0)
+          ? "failed"
+          : failed > 0
+            ? "completed_with_errors"
+            : "completed"
         : "running";
 
       await supabase
