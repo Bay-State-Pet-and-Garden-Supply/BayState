@@ -58,8 +58,11 @@ function firstAttributeString(attributes: Record<string, unknown>, keys: string[
   return undefined;
 }
 
-function buildExtractedIdentityFields(facts: PageFactSet | undefined): Partial<ProductResearchReport["productIdentity"]> {
-  if (!facts || Object.keys(facts.attributes).length === 0) {
+function buildExtractedIdentityFields(
+  facts: PageFactSet | undefined,
+  matchedOfferIndex?: number
+): Partial<ProductResearchReport["productIdentity"]> {
+  if (!facts || (Object.keys(facts.attributes).length === 0 && (!facts.offers || facts.offers.length === 0))) {
     return {};
   }
 
@@ -74,9 +77,23 @@ function buildExtractedIdentityFields(facts: PageFactSet | undefined): Partial<P
     evidence,
   });
 
-  const size = firstAttributeString(facts.attributes, ["size", "weight", "netWeight", "heuristicSizes"]);
-  const flavor = firstAttributeString(facts.attributes, ["flavor", "flavour"]);
-  const variant = firstAttributeString(facts.attributes, ["variant", "formula", "style", "mpn"]);
+  const matchedOffer = matchedOfferIndex !== undefined && facts.offers
+    ? facts.offers[matchedOfferIndex]
+    : undefined;
+
+  let size = matchedOffer?.variantAttributes.size || matchedOffer?.variantAttributes.weight;
+  let flavor = matchedOffer?.variantAttributes.flavor;
+  let variant = matchedOffer?.variantAttributes.variant || matchedOffer?.variantAttributes.material || matchedOffer?.name;
+
+  if (!size) {
+    size = firstAttributeString(facts.attributes, ["size", "weight", "netWeight", "heuristicSizes"]);
+  }
+  if (!flavor) {
+    flavor = firstAttributeString(facts.attributes, ["flavor", "flavour"]);
+  }
+  if (!variant) {
+    variant = firstAttributeString(facts.attributes, ["variant", "formula", "style", "mpn"]);
+  }
 
   return {
     ...(size ? { size: toEvidence(size) } : {}),
@@ -686,10 +703,12 @@ export async function runProductResearchPipeline(
     ?? finalCandidates.find((candidate) => candidate.decision === "needs_review");
   let extracted: ExtractedResearchFields = {};
   let selectedFacts: PageFactSet | undefined;
+  let matchedOfferIndex: number | undefined;
 
   if (extractedSourceCandidate) {
     const selectedResult = verificationResults.find(r => r.candidate.url === extractedSourceCandidate.url);
     const facts = selectedResult?.facts;
+    matchedOfferIndex = selectedResult?.matchedOfferIndex;
     if (facts && facts.confidence > 0) {
       selectedFacts = facts;
       const srcType = getEvidenceSourceType(facts);
@@ -728,7 +747,15 @@ export async function runProductResearchPipeline(
 
   // Accumulate warnings from all verification results
   for (const res of verificationResults) {
-    warnings.push(...res.warnings);
+    const isSelectedOfficial = selectedCandidate
+      && res.candidate.url === selectedCandidate.url
+      && (selectedCandidate.sourceType === "official" || (officialDomain && isSameOrSubdomain(selectedCandidate.normalizedDomain, officialDomain)));
+
+    const filteredWarnings = isSelectedOfficial
+      ? res.warnings.filter((w) => !w.message.startsWith("UPC not found in extracted facts"))
+      : res.warnings;
+
+    warnings.push(...filteredWarnings);
   }
 
   const extractionCompleteness = computeExtractionCompleteness(extracted);
@@ -766,7 +793,7 @@ export async function runProductResearchPipeline(
       sourceType: "input",
       evidence: "UPC was supplied as part of the research request and used as the primary identity anchor.",
     },
-    ...buildExtractedIdentityFields(selectedFacts),
+    ...buildExtractedIdentityFields(selectedFacts, matchedOfferIndex),
   };
 
   const report: ProductResearchReport = {

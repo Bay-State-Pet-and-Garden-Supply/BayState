@@ -557,6 +557,18 @@
               }
             ]
           }
+        },
+        {
+          "query": "site:lakevalleyseed.com \"item-681\"",
+          "response": {
+            "organic": [
+              {
+                "title": "Catnip Lemon Scented - Item #681 - Lake Valley Seed",
+                "link": "https://lakevalleyseed.com/product/item-681-catnip-lemon-scented/?srsltid=AfmBOoqcNMI2_glByR0SbJVqhccG8fShn33qtjCXiY4rp0XN83z3EwZA",
+                "snippet": "Delightful lemony fragrance, with the same cat appeal as regular catnip. Easy to grow in kitchen flowerpots and patio containers. Attracts pollinators."
+              }
+            ]
+          }
         }
       ]
     }

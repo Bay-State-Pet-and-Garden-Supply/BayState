@@ -1,4 +1,20 @@
 import { describe, expect, it, mock } from "bun:test";
+
+mock.module("got-scraping", () => {
+  return {
+    gotScraping: mock((options: any) => {
+      return Promise.resolve({
+        statusCode: 200,
+        url: "https://example.com/redirected",
+        headers: {
+          "content-type": "text/html",
+        },
+        body: "<html><head><title>Example Product</title></head><body>Product body text</body></html>",
+      });
+    }),
+  };
+});
+
 import { HttpPageAcquisition, cleanHtmlToText } from "../src/pipeline/acquisition/http-page-acquisition";
 
 describe("HttpPageAcquisition", () => {
@@ -30,26 +46,12 @@ describe("HttpPageAcquisition", () => {
     expect(text).toBe("Real Product Content This is a paragraph with & entity.");
   });
 
-  it("acquires page successfully using fetch mock", async () => {
-    const originalFetch = global.fetch;
-    global.fetch = mock(() => Promise.resolve({
-      status: 200,
-      url: "https://example.com/redirected",
-      headers: {
-        get: (name: string) => name === "content-type" ? "text/html" : null,
-      },
-      text: () => Promise.resolve("<html><head><title>Example Product</title></head><body>Product body text</body></html>"),
-    } as any)) as any;
-
-    try {
-      const acq = new HttpPageAcquisition();
-      const page = await acq.acquirePage("https://example.com", brief, context);
-      expect(page.statusCode).toBe(200);
-      expect(page.finalUrl).toBe("https://example.com/redirected");
-      expect(page.title).toBe("Example Product");
-      expect(page.text).toBe("Product body text");
-    } finally {
-      global.fetch = originalFetch;
-    }
+  it("acquires page successfully using got-scraping mock", async () => {
+    const acq = new HttpPageAcquisition();
+    const page = await acq.acquirePage("https://example.com", brief, context);
+    expect(page.statusCode).toBe(200);
+    expect(page.finalUrl).toBe("https://example.com/redirected");
+    expect(page.title).toBe("Example Product");
+    expect(page.text).toBe("Product body text");
   });
 });

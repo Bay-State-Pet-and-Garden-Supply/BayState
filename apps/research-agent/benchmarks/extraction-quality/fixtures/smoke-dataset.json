@@ -61,8 +61,7 @@
         "requiredAttributes": {
           "brand": "FirstMate",
           "sku": "FTM-200618",
-          "gtin12": "072318200618",
-          "priceCurrency": "USD"
+          "gtin12": "072318200618"
         },
         "minConfidence": 0.8
       },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { gzipSync } from "node:zlib";
-import { discoverUrlsFromSitemap } from "../src/pipeline/discovery/sitemap-url-discovery";
+import { discoverUrlsFromSitemap, parseRobotsTxtForSitemaps, discoverSitemapsFromRobotsTxt } from "../src/pipeline/discovery/sitemap-url-discovery";
 import { classifyProductUrlHeuristics } from "../src/pipeline/discovery/product-url-classifier";
 
 describe("sitemap-url-discovery", () => {
@@ -101,12 +101,44 @@ describe("sitemap-url-discovery", () => {
     expect(classifyProductUrlHeuristics("https://frommfamily.com/products/dog-food", "Fromm").isProductLike).toBe(true);
     expect(classifyProductUrlHeuristics("https://frommfamily.com/shop/puppy-gold", "Fromm").isProductLike).toBe(true);
     expect(classifyProductUrlHeuristics("https://frommfamily.com/recipes/gold-dry-dog-food").isProductLike).toBe(true);
+    expect(classifyProductUrlHeuristics("https://honestkitchen.com/dehydrated-grain-free-chicken-dog-food", "Honest Kitchen").isProductLike).toBe(true);
 
     // Non-product URLs
+    expect(classifyProductUrlHeuristics("https://honestkitchen.com/about-our-company", "Honest Kitchen").isProductLike).toBe(false);
     expect(classifyProductUrlHeuristics("https://frommfamily.com/about").isProductLike).toBe(false);
     expect(classifyProductUrlHeuristics("https://frommfamily.com/blog/news-2026").isProductLike).toBe(false);
     expect(classifyProductUrlHeuristics("https://frommfamily.com/cart").isProductLike).toBe(false);
     expect(classifyProductUrlHeuristics("https://frommfamily.com/support/contact-us").isProductLike).toBe(false);
     expect(classifyProductUrlHeuristics("https://frommfamily.com/images/logo.png").isProductLike).toBe(false);
+  });
+
+  it("parses robots.txt content for sitemaps", () => {
+    const content = `
+      User-agent: *
+      Disallow: /checkout
+      
+      Sitemap: https://example.com/custom-sitemap.xml
+      sitemap: http://example.com/sitemap_index.xml
+    `;
+    const sitemaps = parseRobotsTxtForSitemaps(content);
+    expect(sitemaps).toEqual([
+      "https://example.com/custom-sitemap.xml",
+      "http://example.com/sitemap_index.xml"
+    ]);
+  });
+
+  it("discovers sitemaps from robots.txt successfully", async () => {
+    const mockFetch = async (url: string) => {
+      expect(url).toContain("robots.txt");
+      return {
+        ok: true,
+        text: async () => `
+          User-agent: *
+          Sitemap: https://example.com/discovered-sitemap.xml
+        `
+      } as Response;
+    };
+    const sitemaps = await discoverSitemapsFromRobotsTxt("example.com", mockFetch as any);
+    expect(sitemaps).toEqual(["https://example.com/discovered-sitemap.xml"]);
   });
 });

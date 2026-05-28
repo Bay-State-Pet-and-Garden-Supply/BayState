@@ -1,5 +1,5 @@
 import type { PageFactExtractor } from "../ports";
-import type { AcquiredPage, PageFactSet, ProductResearchBrief, ProductResearchPipelineContext } from "../types";
+import type { AcquiredPage, PageFactSet, ProductResearchBrief, ProductResearchPipelineContext, StructuredOffer } from "../types";
 
 export class JsonLdExtractor implements PageFactExtractor {
   async extractFacts(
@@ -85,6 +85,14 @@ export class JsonLdExtractor implements PageFactExtractor {
       this.populateAttributes(product, factSet.attributes);
     }
 
+    const allOffers: StructuredOffer[] = [];
+    for (const product of foundProducts) {
+      allOffers.push(...this.extractStructuredOffers(product));
+    }
+    if (allOffers.length > 0) {
+      factSet.offers = allOffers;
+    }
+
     return factSet;
   }
 
@@ -157,12 +165,6 @@ export class JsonLdExtractor implements PageFactExtractor {
     if (product.offers) {
       const offers = Array.isArray(product.offers) ? product.offers : [product.offers];
       for (const offer of offers) {
-        if (offer.price !== undefined && !attributes.price) {
-          attributes.price = typeof offer.price === "number" ? offer.price : String(offer.price).trim();
-        }
-        if (offer.priceCurrency && !attributes.priceCurrency) {
-          attributes.priceCurrency = String(offer.priceCurrency).trim();
-        }
         if (offer.sku && !attributes.sku) {
           attributes.sku = String(offer.sku).trim();
         }
@@ -185,5 +187,109 @@ export class JsonLdExtractor implements PageFactExtractor {
           : product[key];
       }
     }
+  }
+
+  private extractStructuredOffers(product: any): StructuredOffer[] {
+    if (!product) return [];
+
+    const offersList: any[] = [];
+    if (product.offers) {
+      const normalizedOffers = Array.isArray(product.offers) ? product.offers : [product.offers];
+      offersList.push(...normalizedOffers);
+    }
+
+    // Also check hasVariant / model for nested products representing variants
+    const variants = product.hasVariant || product.model;
+    if (variants) {
+      const normalizedVariants = Array.isArray(variants) ? variants : [variants];
+      for (const variant of normalizedVariants) {
+        if (typeof variant === "object" && variant !== null) {
+          if (variant.offers) {
+            const nestedOffers = Array.isArray(variant.offers) ? variant.offers : [variant.offers];
+            for (const nested of nestedOffers) {
+              offersList.push({
+                ...nested,
+                size: nested.size || variant.size,
+                color: nested.color || variant.color,
+                material: nested.material || variant.material,
+                flavor: nested.flavor || variant.flavor || variant.flavour,
+                weight: nested.weight || variant.weight,
+                name: nested.name || variant.name || variant.title
+              });
+            }
+          } else {
+            offersList.push(variant);
+          }
+        }
+      }
+    }
+
+    const structuredOffers: StructuredOffer[] = [];
+
+    for (const rawOffer of offersList) {
+      if (!rawOffer || typeof rawOffer !== "object") continue;
+
+      const gtins: string[] = [];
+      for (const gtinKey of ["gtin", "gtin8", "gtin12", "gtin13", "gtin14"]) {
+        if (rawOffer[gtinKey] !== undefined) {
+          const val = String(rawOffer[gtinKey]).trim();
+          if (val && !gtins.includes(val)) {
+            gtins.push(val);
+          }
+        }
+      }
+
+      // If no GTINs on offer, fall back to product-level GTINs if it's a single-offer product
+      if (gtins.length === 0 && !product.offers?.length) {
+        for (const gtinKey of ["gtin", "gtin8", "gtin12", "gtin13", "gtin14"]) {
+          if (product[gtinKey] !== undefined) {
+            const val = String(product[gtinKey]).trim();
+            if (val && !gtins.includes(val)) {
+              gtins.push(val);
+            }
+          }
+        }
+      }
+
+      const sku = rawOffer.sku ? String(rawOffer.sku).trim() : undefined;
+      const mpn = rawOffer.mpn ? String(rawOffer.mpn).trim() : undefined;
+
+      const variantAttributes: Record<string, string> = {};
+      const possibleVariantKeys = ["size", "weight", "color", "material", "flavor", "flavour", "variant"];
+      for (const key of possibleVariantKeys) {
+        const val = rawOffer[key] !== undefined ? rawOffer[key] : product[key];
+        if (val !== undefined) {
+          const stringVal = typeof val === "object" && val !== null && val.value !== undefined
+            ? String(val.value).trim()
+            : String(val).trim();
+          if (stringVal) {
+            const targetKey = key === "flavour" ? "flavor" : key;
+            variantAttributes[targetKey] = stringVal;
+          }
+        }
+      }
+
+      const name = rawOffer.name
+        ? String(rawOffer.name).trim()
+        : rawOffer.title
+          ? String(rawOffer.title).trim()
+          : undefined;
+
+      const url = rawOffer.url ? String(rawOffer.url).trim() : undefined;
+      const availability = rawOffer.availability ? String(rawOffer.availability).trim() : undefined;
+
+      if (gtins.length > 0 || sku || mpn || name || Object.keys(variantAttributes).length > 0) {
+        structuredOffers.push({
+          ...(name ? { name } : {}),
+          ...(sku ? { sku } : {}),
+          gtins,
+          ...(availability ? { availability } : {}),
+          variantAttributes,
+          ...(url ? { url } : {}),
+        });
+      }
+    }
+
+    return structuredOffers;
   }
 }

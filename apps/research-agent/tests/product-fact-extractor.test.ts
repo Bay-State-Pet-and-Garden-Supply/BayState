@@ -65,4 +65,52 @@ describe("ProductFactExtractor mergePageFacts", () => {
     expect(merged.images[0]).toContain("front.jpg");
     expect(merged.images[1]).toContain("back.jpg");
   });
+
+  it("merges and dedupes structured offers across fact sets", () => {
+    const factSet1: PageFactSet = {
+      sourceUrl: "https://example.com",
+      images: [],
+      categories: [],
+      attributes: {},
+      evidenceSnippets: [],
+      confidence: 0.92,
+      offers: [
+        {
+          name: "Small",
+          sku: "SMALL-SKU",
+          gtins: ["1111111111111"],
+          variantAttributes: { size: "Small" },
+        }
+      ]
+    };
+
+    const factSet2: PageFactSet = {
+      sourceUrl: "https://example.com",
+      images: [],
+      categories: [],
+      attributes: {},
+      evidenceSnippets: [],
+      confidence: 0.78,
+      offers: [
+        {
+          name: "Small",
+          sku: "SMALL-SKU",
+          gtins: ["1111111111111"],
+          variantAttributes: { size: "Small" },
+        },
+        {
+          name: "Large",
+          sku: "LARGE-SKU",
+          gtins: ["9999999999999"],
+          variantAttributes: { size: "Large" },
+        }
+      ]
+    };
+
+    const merged = mergePageFacts([factSet1, factSet2]);
+    expect(merged.offers).toBeDefined();
+    expect(merged.offers!.length).toBe(2);
+    expect(merged.offers![0].name).toBe("Small");
+    expect(merged.offers![1].name).toBe("Large");
+  });
 });

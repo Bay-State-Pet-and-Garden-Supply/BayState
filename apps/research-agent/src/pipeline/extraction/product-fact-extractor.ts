@@ -18,6 +18,7 @@ export function mergePageFacts(factSets: PageFactSet[]): PageFactSet {
     evidenceSnippets: [],
     confidence: Math.max(...sortedSets.map(s => s.confidence)),
     jsonLd: [],
+    offers: [],
   };
   const seenCanonicalImages = new Set<string>();
 
@@ -75,6 +76,28 @@ export function mergePageFacts(factSets: PageFactSet[]): PageFactSet {
       for (const js of set.jsonLd) {
         if (!merged.jsonLd!.some(existing => JSON.stringify(existing) === JSON.stringify(js))) {
           merged.jsonLd!.push(js);
+        }
+      }
+    }
+
+    // Merge offers
+    if (set.offers) {
+      for (const offer of set.offers) {
+        const alreadyExists = merged.offers!.some(existing => {
+          if (offer.gtins.length > 0 && existing.gtins.length > 0) {
+            return offer.gtins.some(g => existing.gtins.includes(g));
+          }
+          if (offer.sku && existing.sku) {
+            return offer.sku === existing.sku;
+          }
+          if (offer.name && existing.name) {
+            return offer.name === existing.name;
+          }
+          return false;
+        });
+
+        if (!alreadyExists) {
+          merged.offers!.push(offer);
         }
       }
     }

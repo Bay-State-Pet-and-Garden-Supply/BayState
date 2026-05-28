@@ -197,4 +197,75 @@ describe("DefaultCandidateVerifier", () => {
     expect(result.identityConfidence).toBeGreaterThan(0.9);
     expect(result.warnings.some(w => w.message.includes("Brand mismatch"))).toBe(false);
   });
+
+  it("matches UPC on a specific structured offer", async () => {
+    const verifier = new DefaultCandidateVerifier();
+    const facts: PageFactSet = {
+      sourceUrl: "https://example.com/product",
+      title: "Fromm Duck Stew Dog Food",
+      description: "Premium food.",
+      images: ["https://example.com/image.jpg"],
+      categories: ["Dog Food"],
+      attributes: {
+        brand: "Fromm",
+      },
+      evidenceSnippets: [],
+      confidence: 0.92,
+      offers: [
+        {
+          name: "Small 12oz",
+          sku: "FROMM-12OZ",
+          gtins: ["9999999999999"],
+          variantAttributes: { size: "12oz" },
+        },
+        {
+          name: "Large 24oz",
+          sku: "FROMM-24OZ",
+          gtins: ["850039426636"],
+          variantAttributes: { size: "24oz" },
+        }
+      ]
+    };
+
+    const result = await verifier.verifyCandidate(candidate, facts, brief, context);
+    expect(result.identityConfidence).toBe(0.98);
+    expect(result.variantConfidence).toBe(1.0);
+    expect(result.matchedOfferIndex).toBe(1);
+    expect(result.warnings.some(w => w.message.includes("UPC not found"))).toBe(false);
+  });
+
+  it("penalizes variant confidence on sibling variant match failure", async () => {
+    const verifier = new DefaultCandidateVerifier();
+    const facts: PageFactSet = {
+      sourceUrl: "https://example.com/product",
+      title: "Fromm Duck Stew Dog Food",
+      description: "Premium food.",
+      images: ["https://example.com/image.jpg"],
+      categories: ["Dog Food"],
+      attributes: {
+        brand: "Fromm",
+      },
+      evidenceSnippets: [],
+      confidence: 0.92,
+      offers: [
+        {
+          name: "Small 12oz",
+          sku: "FROMM-12OZ",
+          gtins: ["9999999999999"],
+          variantAttributes: { size: "12oz" },
+        },
+        {
+          name: "Medium 16oz",
+          sku: "FROMM-16OZ",
+          gtins: ["1111111111111"],
+          variantAttributes: { size: "16oz" },
+        }
+      ]
+    };
+
+    const result = await verifier.verifyCandidate(candidate, facts, brief, context);
+    // Since expected UPC is 850039426636 and only other variants are present, this is a variant mismatch
+    expect(result.variantConfidence).toBe(0.3);
+    expect(result.warnings.some(w => w.message.includes("UPC matches product family but is not present"))).toBe(true);
+  });
 });

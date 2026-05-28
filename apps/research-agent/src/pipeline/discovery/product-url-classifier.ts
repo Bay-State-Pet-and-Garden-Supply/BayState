@@ -48,6 +48,24 @@ export function classifyProductUrlHeuristics(
     // Deep product paths are more likely
     if (segments.length >= 2) {
       score += 0.1;
+    } else if (segments.length === 1) {
+      // Single segment clean URL checks
+      const segment = segments[0];
+      const hyphenCount = (segment.match(/-/g) || []).length;
+      
+      const productKeywords = [
+        "food", "diet", "recipe", "formula", "stew", "kibble", "treat", "treats",
+        "chew", "chews", "can", "cans", "bag", "bags", "pack", "flavor", "flavors",
+        "cat", "dog", "pet", "pets", "puppy", "kitten", "ounce", "ounces", "pound",
+        "pounds", "wet", "dry", "canned", "dehydrated"
+      ];
+      
+      const hasProductKeyword = productKeywords.some(keyword => segment.includes(keyword));
+      const hasBrandMatch = brandName && segment.includes(brandName.toLowerCase().replace(/[^a-z0-9]/g, ""));
+      
+      if (hyphenCount >= 3 && (hasProductKeyword || hasBrandMatch)) {
+        score += 0.2;
+      }
     }
 
     return {

@@ -1,6 +1,6 @@
 import type { PageAcquisitionProvider, PageFactExtractor } from "../ports";
 import type { PageFactSet, ProductResearchBrief, ProductResearchPipelineContext } from "../types";
-import { discoverUrlsFromSitemap } from "./sitemap-url-discovery";
+import { discoverUrlsFromSitemap, discoverSitemapsFromRobotsTxt } from "./sitemap-url-discovery";
 import { classifyProductUrlHeuristics } from "./product-url-classifier";
 import type { PageIndexRepository } from "../../cache/page-index-repository";
 import { mergePageFacts } from "../extraction/product-fact-extractor";
@@ -135,7 +135,12 @@ export class OfficialDomainIndexer {
       });
 
       await repository.updateDomainCrawlStartedAt(domain);
-      const sitemapUrls = [`https://${domain}/sitemap.xml`, `https://www.${domain}/sitemap.xml`];
+      const robotsSitemaps = await discoverSitemapsFromRobotsTxt(domain, options.fetchImpl).catch(() => []);
+      const sitemapUrls = [
+        ...robotsSitemaps,
+        `https://${domain}/sitemap.xml`,
+        `https://www.${domain}/sitemap.xml`
+      ].filter((val, idx, self) => self.indexOf(val) === idx);
       const discoveredSet = new Set<string>();
 
       const customFetch = async (url: string, init?: RequestInit) => {

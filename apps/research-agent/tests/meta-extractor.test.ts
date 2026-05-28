@@ -38,8 +38,6 @@ describe("MetaExtractor", () => {
     expect(facts.description).toBe("Standard description");
     expect(facts.images).toEqual(["https://example.com/og.jpg"]);
     expect(facts.attributes.brand).toBe("OG Brand");
-    expect(facts.attributes.price).toBe("19.99");
-    expect(facts.attributes.priceCurrency).toBe("USD");
   });
 
   it("falls back to <title> tag when og:title is missing", async () => {

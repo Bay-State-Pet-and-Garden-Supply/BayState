@@ -36,21 +36,6 @@ export class TextHeuristicExtractor implements PageFactExtractor {
       factSet.evidenceSnippets.push(`Found UPC-like sequences: ${upcMatches.join(", ")}`);
     }
 
-    // 2. Price patterns: like $14.99 or $149
-    const priceRegex = /\$\s*(\d{1,4}(?:\.\d{2})?)\b/g;
-    const priceMatches: string[] = [];
-    let priceMatch;
-    while ((priceMatch = priceRegex.exec(textToSearch)) !== null) {
-      const val = priceMatch[1];
-      if (!priceMatches.includes(val)) {
-        priceMatches.push(val);
-      }
-    }
-    if (priceMatches.length > 0) {
-      factSet.attributes.heuristicPrice = priceMatches[0];
-      factSet.evidenceSnippets.push(`Found potential prices: ${priceMatches.slice(0, 3).map(p => `$${p}`).join(", ")}`);
-    }
-
     // 3. Size/weight patterns: e.g., 80 oz, 5 lb, 12 lbs
     const sizeRegex = /\b(\d+(?:\.\d+)?)\s*(oz|lb|lbs|g|kg|ml|gal|ounce|ounces|pound|pounds|gram|grams)\b/gi;
     const sizeMatches: string[] = [];

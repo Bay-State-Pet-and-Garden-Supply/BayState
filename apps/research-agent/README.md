@@ -113,25 +113,30 @@ bun run agent-research-product \
   --use-scraper
 ```
 
-## Artifact output
+## Input & Output Contracts
 
-Each deterministic run writes:
-- `input.json`
-- `report.json`
-- `summary.md`
-- `storefront-product.json`
+For detailed descriptions of schema fields, types, constraints, and JSON payload examples, check out the dedicated docs:
+* [Input & Output Contracts](file:///c:/Users/Nick/Projectos/BayState/apps/research-agent/docs/contracts.md) - Deep dive into `ProductResearchInput`, `ProductResearchReport`, and `StorefrontProductDraft`.
+* [Self-Sufficient Pipeline](file:///c:/Users/Nick/Projectos/BayState/apps/research-agent/docs/self-sufficient-pipeline.md) - Overview of the pipeline phases from brief generation to storefront draft assembly.
 
-The standalone Pi harness writes those files plus:
-- `agent-summary.md`
-- `agent-details.json`
+### Artifact Output
 
-`report.json` now also embeds the structured Pi `agentDecision` when the standalone harness records a final choice or defer decision.
+Every run generates the following local artifacts under `research-agent/artifacts/<timestamp>-<product-id>/` by default:
 
-under `research-agent/artifacts/<timestamp>-<product-id>/` by default.
+* **`input.json`**: A copy of the [ProductResearchInput](file:///c:/Users/Nick/Projectos/BayState/apps/research-agent/docs/contracts.md#1-input-contract-productresearchinput) parsed for the run.
+* **`report.json`**: The complete [ProductResearchReport](file:///c:/Users/Nick/Projectos/BayState/apps/research-agent/docs/contracts.md#3-output-contract-1-productresearchreport) containing scores, status, candidate URLs, diagnostics, and evidence value fields.
+* **`storefront-product.json`**: The [StorefrontProductDraft](file:///c:/Users/Nick/Projectos/BayState/apps/research-agent/docs/contracts.md#4-output-contract-2-storefrontproductdraft) containing the parsed, normalized storefront-ready product data.
+* **`summary.md`**: A human-readable markdown version of the execution report and results.
+
+If running with the standalone Pi/LLM harness (via `agent-research-product`), it also writes:
+* **`agent-details.json`**: Detailed logs, reasoning, and tool calls executed by the Pi agent.
+* **`agent-summary.md`**: A human-readable summary of the agent's research process and final decision.
+
+The `report.json` will also embed the structured `agentDecision` block when the Pi harness records a choice or deferral.
 
 ## Agent-native pipeline architecture
 
-See `docs/self-sufficient-pipeline.md` for the target architecture.
+See [docs/self-sufficient-pipeline.md](file:///c:/Users/Nick/Projectos/BayState/apps/research-agent/docs/self-sufficient-pipeline.md) for the target architecture.
 
 Near-term direction:
 - keep deterministic scoring as a guardrail

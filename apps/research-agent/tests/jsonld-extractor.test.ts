@@ -59,8 +59,6 @@ describe("JsonLdExtractor", () => {
     expect(facts.images).toEqual(["https://example.com/duck.jpg"]);
     expect(facts.attributes.brand).toBe("Fromm");
     expect(facts.attributes.sku).toBe("12345");
-    expect(facts.attributes.price).toBe("3.99");
-    expect(facts.attributes.priceCurrency).toBe("USD");
   });
 
   it("extracts products nested inside a @graph block", async () => {
@@ -99,5 +97,63 @@ describe("JsonLdExtractor", () => {
     expect(facts.title).toBe("Graph Product");
     expect(facts.images).toEqual(["img1.jpg", "img2.jpg"]);
     expect(facts.categories).toEqual(["Dog Supplies"]);
+  });
+
+  it("extracts structured offers for multi-variant products", async () => {
+    const html = `
+      <html>
+        <script type="application/ld+json">
+          {
+            "@context": "https://schema.org/",
+            "@type": "Product",
+            "name": "Bionic Urban Stick",
+            "offers": [
+              {
+                "@type": "Offer",
+                "name": "Small",
+                "sku": "BIONIC-SMALL",
+                "gtin13": "1111111111111",
+                "availability": "https://schema.org/InStock",
+                "size": "Small",
+                "weight": "0.5 lb"
+              },
+              {
+                "@type": "Offer",
+                "name": "Large",
+                "sku": "BIONIC-LARGE",
+                "gtin13": "9999999999999",
+                "availability": "https://schema.org/InStock",
+                "size": "Large",
+                "weight": "1.5 lb"
+              }
+            ]
+          }
+        </script>
+      </html>
+    `;
+
+    const extractor = new JsonLdExtractor();
+    const facts = await extractor.extractFacts({
+      url: "https://example.com",
+      finalUrl: "https://example.com",
+      fetchedAt: "",
+      html,
+      metadata: {},
+    }, brief, context);
+
+    expect(facts.offers).toBeDefined();
+    expect(facts.offers!.length).toBe(2);
+
+    expect(facts.offers![0].name).toBe("Small");
+    expect(facts.offers![0].sku).toBe("BIONIC-SMALL");
+    expect(facts.offers![0].gtins).toEqual(["1111111111111"]);
+    expect(facts.offers![0].variantAttributes.size).toBe("Small");
+    expect(facts.offers![0].variantAttributes.weight).toBe("0.5 lb");
+
+    expect(facts.offers![1].name).toBe("Large");
+    expect(facts.offers![1].sku).toBe("BIONIC-LARGE");
+    expect(facts.offers![1].gtins).toEqual(["9999999999999"]);
+    expect(facts.offers![1].variantAttributes.size).toBe("Large");
+    expect(facts.offers![1].variantAttributes.weight).toBe("1.5 lb");
   });
 });

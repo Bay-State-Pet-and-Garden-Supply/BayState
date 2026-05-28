@@ -105,23 +105,47 @@ export class DefaultCandidateVerifier implements CandidateVerifier {
     // 1. UPC/GTIN validation. UPC is the primary upload anchor, but many official
     // brand pages omit it; absence is a warning, while an exact match is decisive.
     let upcMatched = false;
+    let matchedOfferIndex: number | undefined = undefined;
     const normalizedExpectedUpc = normalizeBarcode(expectedUpc);
-    const extractedUpcs = [
-      facts.attributes.gtin,
-      facts.attributes.sku,
-      facts.attributes.mpn,
-      facts.attributes.gtin8,
-      facts.attributes.gtin12,
-      facts.attributes.gtin13,
-      facts.attributes.gtin14,
-      ...(Array.isArray(facts.attributes.heuristicUpcs) ? facts.attributes.heuristicUpcs : []),
-    ]
-      .map(val => val ? normalizeBarcode(String(val)) : "")
-      .filter(Boolean);
 
-    if (extractedUpcs.includes(normalizedExpectedUpc)) {
-      upcMatched = true;
-    } else {
+    // Check if the expected UPC matches any specific structured offer first
+    if (facts.offers && facts.offers.length > 0 && normalizedExpectedUpc) {
+      for (let i = 0; i < facts.offers.length; i++) {
+        const offer = facts.offers[i];
+        const offerNormalizedGtins = offer.gtins
+          .map(g => normalizeBarcode(g))
+          .filter(Boolean);
+        const offerNormalizedSku = offer.sku ? normalizeBarcode(offer.sku) : "";
+
+        if (offerNormalizedGtins.includes(normalizedExpectedUpc) || (offerNormalizedSku && offerNormalizedSku === normalizedExpectedUpc)) {
+          upcMatched = true;
+          matchedOfferIndex = i;
+          break;
+        }
+      }
+    }
+
+    // Fall back to checking the general extracted flat attributes (existing behavior)
+    if (!upcMatched) {
+      const extractedUpcs = [
+        facts.attributes.gtin,
+        facts.attributes.sku,
+        facts.attributes.mpn,
+        facts.attributes.gtin8,
+        facts.attributes.gtin12,
+        facts.attributes.gtin13,
+        facts.attributes.gtin14,
+        ...(Array.isArray(facts.attributes.heuristicUpcs) ? facts.attributes.heuristicUpcs : []),
+      ]
+        .map(val => val ? normalizeBarcode(String(val)) : "")
+        .filter(Boolean);
+
+      if (normalizedExpectedUpc && extractedUpcs.includes(normalizedExpectedUpc)) {
+        upcMatched = true;
+      }
+    }
+
+    if (!upcMatched) {
       warnings.push({
         stage: "verification",
         message: `UPC not found in extracted facts for uploaded anchor ${expectedUpc}`,
@@ -169,34 +193,51 @@ export class DefaultCandidateVerifier implements CandidateVerifier {
       }
     }
 
-    // 3. Compute Variant Confidence from the uploaded register name and extracted facts,
-    // not from pre-supplied structured attributes.
+    // 3. Compute Variant Confidence
     let variantConfidence = 1.0;
     if (upcMatched) {
       variantConfidence = 1.0;
-    } else {
-      const expectedDescriptorTokens = buildRegisterDescriptorTokens(
-        expectedBrand,
-        brief.input.registerName,
-        expectedUpc,
-      );
-      const actualDescriptorTokens = tokenizeText(
-        facts.title,
-        facts.description,
-        ...facts.categories,
-        ...collectAttributeText(facts.attributes),
-      );
-      const descriptorOverlap = overlapScore(expectedDescriptorTokens, actualDescriptorTokens);
-      variantConfidence = expectedDescriptorTokens.length > 0
-        ? descriptorOverlap.score
-        : candidate.variantScore;
-
-      if (expectedDescriptorTokens.length > 0 && descriptorOverlap.score < 0.35) {
+      if (facts.offers && facts.offers.length > 0 && matchedOfferIndex === undefined) {
         warnings.push({
           stage: "verification",
-          message: `Low register-name descriptor overlap: matched ${descriptorOverlap.matchedTokens.length}/${expectedDescriptorTokens.length} descriptive tokens`,
+          message: `UPC matched page-wide, but could not bind to a specific offer variant.`,
           url: candidate.url,
         });
+      }
+    } else {
+      const hasOtherOffersWithGtins = facts.offers && facts.offers.some(o => o.gtins.length > 0);
+      if (hasOtherOffersWithGtins) {
+        // Right product family, but wrong variant since none of the offers matched our expected UPC
+        variantConfidence = 0.3;
+        warnings.push({
+          stage: "verification",
+          message: `UPC matches product family but is not present in the page's variants.`,
+          url: candidate.url,
+        });
+      } else {
+        const expectedDescriptorTokens = buildRegisterDescriptorTokens(
+          expectedBrand,
+          brief.input.registerName,
+          expectedUpc,
+        );
+        const actualDescriptorTokens = tokenizeText(
+          facts.title,
+          facts.description,
+          ...facts.categories,
+          ...collectAttributeText(facts.attributes),
+        );
+        const descriptorOverlap = overlapScore(expectedDescriptorTokens, actualDescriptorTokens);
+        variantConfidence = expectedDescriptorTokens.length > 0
+          ? descriptorOverlap.score
+          : candidate.variantScore;
+
+        if (expectedDescriptorTokens.length > 0 && descriptorOverlap.score < 0.35) {
+          warnings.push({
+            stage: "verification",
+            message: `Low register-name descriptor overlap: matched ${descriptorOverlap.matchedTokens.length}/${expectedDescriptorTokens.length} descriptive tokens`,
+            url: candidate.url,
+          });
+        }
       }
     }
 
@@ -236,6 +277,7 @@ export class DefaultCandidateVerifier implements CandidateVerifier {
       variantConfidence,
       storefrontReadinessContribution,
       warnings,
+      ...(matchedOfferIndex !== undefined ? { matchedOfferIndex } : {}),
     };
   }
 }

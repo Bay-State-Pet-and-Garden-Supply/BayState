@@ -27,7 +27,6 @@ describe("TextHeuristicExtractor", () => {
 
     expect(facts.confidence).toBe(0.55);
     expect(facts.attributes.heuristicUpcs).toContain("850039426636");
-    expect(facts.attributes.heuristicPrice).toBe("149.99");
     expect(facts.attributes.heuristicSizes).toContain("12 lbs");
     expect(facts.attributes.heuristicSizes).toContain("5lb");
   });

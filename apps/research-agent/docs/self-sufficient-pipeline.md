@@ -8,17 +8,12 @@ The existing scraper bridge is a temporary compatibility path only. The target a
 
 ## Target contract
 
-Input:
+For full schema details, types, field descriptions, and JSON payload examples, see the [Input & Output Contracts](file:///c:/Users/Nick/Projectos/BayState/apps/research-agent/docs/contracts.md) documentation.
 
-```ts
-ProductResearchInput
-```
-
-Output:
-
-```ts
-ProductResearchReport + StorefrontProductDraft
-```
+* **Input**: [ProductResearchInput](file:///c:/Users/Nick/Projectos/BayState/apps/research-agent/docs/contracts.md#1-input-contract-productresearchinput) – contains product identifiers like UPC, brand, and registered name, plus optional seed candidate URLs and configuration overrides.
+* **Outputs**:
+  * [ProductResearchReport](file:///c:/Users/Nick/Projectos/BayState/apps/research-agent/docs/contracts.md#3-output-contract-1-productresearchreport) – retains overall scores, candidate evaluations, evidence sources, and LLM agent decisions.
+  * [StorefrontProductDraft](file:///c:/Users/Nick/Projectos/BayState/apps/research-agent/docs/contracts.md#4-output-contract-2-storefrontproductdraft) – a normalized commerce listing draft with title, description, categories, images, and variants.
 
 The report preserves evidence, candidate decisions, warnings, and provenance. The storefront draft is the normalized commerce object that can later be reviewed and published by the web app.
 

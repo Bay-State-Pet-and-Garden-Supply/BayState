@@ -507,4 +507,120 @@ describe("runProductResearchPipeline", () => {
     expect(result.report.candidates.find((candidate) => candidate.normalizedUrl === unverifiedOfficialUrl)?.decision).not.toBe("selected");
     expect(result.report.candidates.find((candidate) => candidate.normalizedUrl === offDomainUrl)?.decision).toBe("selected");
   });
+
+  it("resolves multi-variant product to the correct variant based on UPC match", async () => {
+    const multiVariantInput = {
+      productId: "bionic-urban-stick-small",
+      upc: "1111111111111",
+      registerName: "Bionic Urban Stick Dog Toy Small",
+      brand: "Bionic",
+      officialWebsiteUrl: "https://bionicdogtoys.com/product/urban-stick",
+      seedCandidateUrls: [],
+    };
+
+    const ports: ProductResearchPipelinePorts = {
+      briefBuilder: {
+        async buildBrief(rawInput) {
+          return {
+            input: rawInput,
+            resolvedInput: {
+              ...rawInput,
+              officialDomainResolved: "bionicdogtoys.com",
+            },
+            constraints: {
+              requireIdentityEvidence: true,
+              preferOfficialSource: true,
+              allowDistributorCanonical: false,
+            },
+          };
+        },
+      },
+      discoveryProviders: [
+        {
+          async discoverCandidates() {
+            return {
+              candidates: [
+                {
+                  url: "https://bionicdogtoys.com/product/urban-stick",
+                  sourceType: "official",
+                  title: "Bionic Urban Stick",
+                },
+              ],
+              warnings: [],
+            };
+          },
+        },
+      ],
+      pageAcquisition: {
+        async acquirePage(url) {
+          const html = `
+            <html>
+              <body>
+                <script type="application/ld+json">
+                  {
+                    "@context": "https://schema.org/",
+                    "@type": "Product",
+                    "name": "Bionic Urban Stick",
+                    "brand": { "@type": "Brand", "name": "Bionic" },
+                    "offers": [
+                      {
+                        "@type": "Offer",
+                        "name": "Small",
+                        "sku": "BIONIC-SMALL",
+                        "gtin13": "1111111111111",
+                        "size": "Small",
+                        "weight": "0.5 lb"
+                      },
+                      {
+                        "@type": "Offer",
+                        "name": "Large",
+                        "sku": "BIONIC-LARGE",
+                        "gtin13": "9999999999999",
+                        "size": "Large",
+                        "weight": "1.5 lb"
+                      }
+                    ]
+                  }
+                </script>
+              </body>
+            </html>
+          `;
+          return {
+            url,
+            finalUrl: url,
+            fetchedAt: new Date().toISOString(),
+            title: "Bionic Urban Stick",
+            html,
+            text: "Bionic Urban Stick with Small and Large variants",
+            metadata: { engine: "http" },
+          };
+        },
+      },
+      factExtractors: [
+        new (await import("../src/pipeline/extraction/jsonld-extractor")).JsonLdExtractor(),
+      ],
+      verifier: new (await import("../src/pipeline/verification/candidate-verifier")).DefaultCandidateVerifier(),
+      assembler: {
+        async assembleStorefrontProduct(report) {
+          return (await import("../src/pipeline/storefront-assembly")).assembleStorefrontProductDraft(report);
+        },
+      },
+    };
+
+    const result = await runProductResearchPipeline(multiVariantInput, ports, {
+      now: new Date("2026-05-27T00:00:00Z"),
+      runId: "run-variant-match-id",
+    });
+
+    expect(result.report.status).toBe("completed");
+    expect(result.report.selectedCanonicalUrl).toBe("https://bionicdogtoys.com/product/urban-stick");
+    
+    const cand = result.report.candidates.find(c => c.normalizedUrl === "https://bionicdogtoys.com/product/urban-stick");
+    expect(cand?.decision).toBe("selected");
+    
+    expect(result.report.productIdentity.size?.value).toBe("Small");
+    
+    expect(result.storefrontProduct?.variants[0]?.barcode).toBe("1111111111111");
+    expect(result.storefrontProduct?.variants[0]?.optionValues.Size).toBe("Small");
+  });
 });

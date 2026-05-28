@@ -119,3 +119,44 @@ export async function discoverUrlsFromSitemap(
 
   return [...discoveredUrls];
 }
+
+export function parseRobotsTxtForSitemaps(content: string): string[] {
+  const sitemaps: string[] = [];
+  const lines = content.split(/\r?\n/);
+  const sitemapRegex = /^sitemap:\s*(https?:\/\/\S+)/i;
+  for (const line of lines) {
+    const match = sitemapRegex.exec(line.trim());
+    if (match && match[1]) {
+      sitemaps.push(match[1].trim());
+    }
+  }
+  return sitemaps;
+}
+
+export async function discoverSitemapsFromRobotsTxt(
+  domain: string,
+  fetchImpl: (url: string, init?: any) => Promise<any> = fetch,
+): Promise<string[]> {
+  const urls = [
+    `https://${domain}/robots.txt`,
+    `https://www.${domain}/robots.txt`
+  ];
+  for (const url of urls) {
+    try {
+      const response = await fetchImpl(url, {
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (response.ok) {
+        const text = await response.text();
+        const sitemaps = parseRobotsTxtForSitemaps(text);
+        if (sitemaps.length > 0) {
+          return sitemaps;
+        }
+      }
+    } catch {
+      // ignore individual failures, try next URL
+    }
+  }
+  return [];
+}

@@ -99,10 +99,6 @@ export class MetaExtractor implements PageFactExtractor {
         factSet.attributes.gtin = content;
       } else if (prop === "product:mfr_part_no" || name === "product:mfr_part_no") {
         factSet.attributes.mpn = content;
-      } else if (prop === "product:price:amount" || name === "product:price:amount") {
-        factSet.attributes.price = content;
-      } else if (prop === "product:price:currency" || name === "product:price:currency") {
-        factSet.attributes.priceCurrency = content;
       } else if (prop === "product:availability" || name === "product:availability") {
         factSet.attributes.availability = content;
       }

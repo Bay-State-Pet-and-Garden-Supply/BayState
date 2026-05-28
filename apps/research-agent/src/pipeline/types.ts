@@ -49,6 +49,15 @@ export interface AcquiredPage {
   metadata: Record<string, unknown>;
 }
 
+export interface StructuredOffer {
+  name?: string;
+  sku?: string;
+  gtins: string[];
+  availability?: string;
+  variantAttributes: Record<string, string>;
+  url?: string;
+}
+
 export interface PageFactSet {
   sourceUrl: string;
   title?: string;
@@ -59,6 +68,7 @@ export interface PageFactSet {
   evidenceSnippets: string[];
   confidence: number;
   jsonLd?: Record<string, unknown>[];
+  offers?: StructuredOffer[];
 }
 
 export interface VerificationResult {
@@ -68,6 +78,7 @@ export interface VerificationResult {
   variantConfidence: number;
   storefrontReadinessContribution: number;
   warnings: PipelineWarning[];
+  matchedOfferIndex?: number;
 }
 
 export interface ProductResearchPipelineResult {

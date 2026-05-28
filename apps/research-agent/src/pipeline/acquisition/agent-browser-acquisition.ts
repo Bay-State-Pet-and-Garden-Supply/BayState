@@ -93,17 +93,26 @@ export class AgentBrowserPageAcquisition implements PageAcquisitionProvider {
 
     await this.runCommand(["wait", String(renderWaitMs), "--json"]);
 
-    const urlRes = await this.runCommand(["get", "url", "--json"]);
-    const finalUrl = urlRes.success && urlRes.data?.url ? urlRes.data.url : url;
+    const batchScript = "JSON.stringify({ url: window.location.href, title: document.title, html: document.documentElement.outerHTML, text: document.body.innerText })";
+    const base64Script = Buffer.from(batchScript).toString("base64");
+    const evalRes = await this.runCommand(["eval", "-b", base64Script, "--json"]);
 
-    const titleRes = await this.runCommand(["get", "title", "--json"]);
-    const title = titleRes.success && urlRes.data !== false && titleRes.data?.title ? titleRes.data.title : undefined;
+    let finalUrl = url;
+    let title: string | undefined;
+    let html: string | undefined;
+    let text: string | undefined;
 
-    const htmlRes = await this.runCommand(["get", "html", "html", "--json"]);
-    const html = htmlRes.success && htmlRes.data?.html ? htmlRes.data.html : undefined;
-
-    const textRes = await this.runCommand(["get", "text", "body", "--json"]);
-    const text = textRes.success && textRes.data?.text ? textRes.data.text : undefined;
+    if (evalRes.success && evalRes.data?.result) {
+      try {
+        const parsed = JSON.parse(evalRes.data.result);
+        finalUrl = parsed.url || url;
+        title = parsed.title || undefined;
+        html = parsed.html || undefined;
+        text = parsed.text || undefined;
+      } catch {
+        // Fallback logic in case JSON parsing fails
+      }
+    }
 
     const snapRes = await this.runCommand(["snapshot", "--json"]);
     const accessibilitySnapshot = snapRes.success && snapRes.data?.snapshot ? snapRes.data.snapshot : undefined;
