@@ -192,6 +192,12 @@ class ApprovedSourceExecutor:
 
     def _entry_policy_allowed(self, entry: ApprovedSourcePlanEntry) -> bool:
         """Check if an entry is allowed by the source policy."""
+        # Generic scrapers are strictly limited by domain policy.
+        # Specific custom adapters are explicitly requested and allowed.
+        generic_adapters = {"crawl4ai_direct", "serp_discovery"}
+        if entry.adapterSlug not in generic_adapters:
+            return True
+
         from scrapers.approved_sources.policy import check_disallowed_in_allowed
 
         offenders = check_disallowed_in_allowed(entry.domains, self.policy)
