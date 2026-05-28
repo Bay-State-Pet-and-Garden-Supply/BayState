@@ -183,7 +183,7 @@ class AmazonAdapter(ApprovedSourceAdapter):
                     domain="www.amazon.com",
                     model="crawl4ai-css",
                     mode="structured",
-                    decision="css_extraction",
+                    decision="deterministic_success",
                     llm_used=False,
                     source_results=[
                         {
@@ -221,7 +221,7 @@ class AmazonAdapter(ApprovedSourceAdapter):
                     domain="www.amazon.com",
                     model="deepseek-chat",
                     mode="mixed",
-                    decision="llm_extraction",
+                    decision="llm_fallback",
                     llm_used=True,
                     source_results=[
                         {
