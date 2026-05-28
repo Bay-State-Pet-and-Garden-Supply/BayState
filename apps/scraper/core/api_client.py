@@ -14,7 +14,7 @@ import time
 import hmac
 import hashlib
 import base64
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from typing import Any
 
@@ -492,10 +492,10 @@ class ScraperAPIClient:
                 "_attempt_id": attempt_id,
                 "_status": status,
                 "schema_version": "v1",
-                "upc": "",
-                "source": {"url": ""},
+                "upc": "unknown",
+                "source": {"url": "unknown"},
                 "status": "failed",
-                "extracted_at": datetime.utcnow().isoformat() if "datetime" in dir() else "",
+                "extracted_at": datetime.now(timezone.utc).isoformat(),
                 "mode": "llm",
                 "product": {},
                 "confidence": {"overall": 0.0, "fields": {}},

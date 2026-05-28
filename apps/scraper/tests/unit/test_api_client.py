@@ -246,6 +246,28 @@ class TestScraperAPIClient:
         mock_supabase.assert_called_once_with("petfoodex")
         assert client._credential_cache["petfoodex"]["username"] == "supabase-user"
 
+    def test_submit_enrichment_result_fallback_payload(self):
+        """Verify the fallback payload satisfies Zod schema requirements (upc, url, timezone)."""
+        with patch.object(self.client, "_make_request", return_value={"success": True}) as mock_request:
+            result = self.client.submit_enrichment_result(
+                attempt_id="test-attempt",
+                status="failed",
+                error_message="Test Error"
+            )
+
+            assert result is True
+            mock_request.assert_called_once()
+            call_args = mock_request.call_args
+            payload = json.loads(call_args[1]["payload"])
+
+            assert payload["_attempt_id"] == "test-attempt"
+            assert payload["_status"] == "failed"
+            assert payload["upc"] == "unknown"
+            assert payload["source"]["url"] == "unknown"
+            # Accept either Z or +00:00 offset
+            assert payload["extracted_at"].endswith("Z") or "+00:00" in payload["extracted_at"]
+            assert "Test Error" in payload["validation"]["warnings"]
+
 
 class TestRetryLogic:
     """Tests for retry logic with exponential backoff."""
