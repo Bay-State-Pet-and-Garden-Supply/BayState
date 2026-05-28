@@ -120,8 +120,6 @@ class AdapterSearchInput:
 # =============================================================================
 
 DISALLOWED_DOMAINS: list[str] = [
-    "amazon.com",
-    "chewy.com",
     "walmart.com",
     "petco.com",
     "petsmart.com",
