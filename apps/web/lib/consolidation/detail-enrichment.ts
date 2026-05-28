@@ -403,6 +403,39 @@ function extractFromSources(
                 }
             }
         }
+
+        // Check nested structure (either directly on sourceData or inside sourceData.extracted)
+        const nested = (sourceData.extracted && typeof sourceData.extracted === 'object')
+            ? (sourceData.extracted as any)
+            : sourceData;
+
+        if (nested && typeof nested === 'object') {
+            if (nested.core && typeof nested.core === 'object') {
+                for (const alias of aliases) {
+                    const value = nested.core[alias];
+                    if (value !== undefined && value !== null) {
+                        const strVal = String(value).trim();
+                        if (strVal.length > 0) {
+                            return strVal;
+                        }
+                    }
+                }
+            }
+
+            if (Array.isArray(nested.facets)) {
+                for (const facet of nested.facets) {
+                    if (facet && typeof facet === 'object') {
+                        const isMatch = facet.definition_slug === field || aliases.includes(facet.definition_slug);
+                        if (isMatch && facet.value !== undefined && facet.value !== null) {
+                            const strVal = String(facet.value).trim();
+                            if (strVal.length > 0) {
+                                return strVal;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     return null;

@@ -8,6 +8,12 @@
 import { validateRunnerAuth } from '@/lib/scraper-auth';
 import { createClient } from '@supabase/supabase-js';
 
+jest.mock('@/lib/supabase/config', () => ({
+    SUPABASE_URL: 'https://test.supabase.co',
+    SUPABASE_SECRET_KEY: 'test-service-key',
+    SUPABASE_PUBLISHABLE_KEY: 'test-anon-key',
+}));
+
 jest.mock('@supabase/supabase-js', () => ({
     createClient: jest.fn(),
 }));

@@ -820,6 +820,36 @@ function findFieldInSources(sources: Record<string, unknown>, field: string): st
             if (typeof value === 'string' && value.trim().length > 0) {
                 return value.trim();
             }
+
+            // Check nested structure (either directly on sourcePayload or inside sourcePayload.extracted)
+            const nested = (sourcePayload.extracted && typeof sourcePayload.extracted === 'object')
+                ? (sourcePayload.extracted as any)
+                : sourcePayload;
+
+            if (nested && typeof nested === 'object') {
+                if (nested.core && typeof nested.core === 'object') {
+                    const coreVal = nested.core[field];
+                    if (coreVal !== undefined && coreVal !== null) {
+                        const strVal = String(coreVal).trim();
+                        if (strVal.length > 0) {
+                            return strVal;
+                        }
+                    }
+                }
+
+                if (Array.isArray(nested.facets)) {
+                    for (const facet of nested.facets) {
+                        if (facet && typeof facet === 'object' && facet.definition_slug === field) {
+                            if (facet.value !== undefined && facet.value !== null) {
+                                const strVal = String(facet.value).trim();
+                                if (strVal.length > 0) {
+                                    return strVal;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
     return null;

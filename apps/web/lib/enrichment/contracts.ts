@@ -36,7 +36,46 @@ export interface EnrichmentResultSourceV1 {
   evidence?: string | null;
 }
 
-export interface EnrichedProductFactsV1 {
+export interface CoreDataV1 {
+  name?: string | null;
+  brand_name?: string | null;
+  brand_id?: string | null;
+  description?: string | null;
+  price?: number | null;
+  weight_lbs?: number | null;
+  category_id?: string | null;
+  canonical_category_breadcrumb?: string | null;
+  search_keywords?: string | null;
+  confidence_score?: number | null;
+  stock_status?: string | null;
+  availability?: string | null;
+  minimum_quantity?: number | null;
+  is_special_order?: boolean | null;
+  is_taxable?: boolean | null;
+}
+
+export interface FacetDataV1 {
+  definition_slug: string;
+  value: string;
+  confidence_score?: number | null;
+  evidence_source?: string | null;
+}
+
+export interface MediaDataV1 {
+  url: string;
+  role?: string | null;
+  source?: string | null;
+  confidence_score?: number | null;
+}
+
+export interface EvidenceDataV1 {
+  source_urls?: string[];
+  selected_images?: string[];
+  image_text?: string | null;
+  extraction_notes?: string | null;
+}
+
+export interface LegacyEnrichedProductFactsV1 {
   name?: string | null;
   brand?: string | null;
   description?: string | null;
@@ -69,6 +108,15 @@ export interface EnrichedProductFactsV1 {
   size?: string | null;
   color?: string | null;
 }
+
+export interface NestedEnrichedProductFactsV1 {
+  core?: CoreDataV1 | null;
+  facets?: FacetDataV1[];
+  media?: MediaDataV1[];
+  evidence?: EvidenceDataV1 | null;
+}
+
+export type EnrichedProductFactsV1 = NestedEnrichedProductFactsV1 & LegacyEnrichedProductFactsV1;
 
 export interface EnrichmentConfidenceV1 {
   overall: number;

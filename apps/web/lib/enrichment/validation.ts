@@ -58,7 +58,46 @@ const imageUrlElementSchema = z.union([
   scraperImageCaptureResultSchema,
 ]);
 
-const enrichedProductFactsV1Schema = z.object({
+const coreDataSchema = z.object({
+  name: z.string().optional().nullable(),
+  brand_name: z.string().optional().nullable(),
+  brand_id: z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
+  price: z.number().optional().nullable(),
+  weight_lbs: z.number().optional().nullable(),
+  category_id: z.string().optional().nullable(),
+  canonical_category_breadcrumb: z.string().optional().nullable(),
+  search_keywords: z.string().optional().nullable(),
+  confidence_score: z.number().min(0).max(1).optional().nullable(),
+  stock_status: z.string().optional().nullable(),
+  availability: z.string().optional().nullable(),
+  minimum_quantity: z.number().int().min(0).optional().nullable(),
+  is_special_order: z.boolean().optional().nullable(),
+  is_taxable: z.boolean().optional().nullable(),
+}).optional().nullable();
+
+const facetDataSchema = z.object({
+  definition_slug: z.string(),
+  value: z.string(),
+  confidence_score: z.number().min(0).max(1).optional().nullable(),
+  evidence_source: z.string().optional().nullable(),
+});
+
+const mediaDataSchema = z.object({
+  url: z.string(),
+  role: z.string().optional().nullable(),
+  source: z.string().optional().nullable(),
+  confidence_score: z.number().min(0).max(1).optional().nullable(),
+});
+
+const evidenceDataSchema = z.object({
+  source_urls: z.array(z.string()).optional(),
+  selected_images: z.array(z.string()).optional(),
+  image_text: z.string().optional().nullable(),
+  extraction_notes: z.string().optional().nullable(),
+}).optional().nullable();
+
+const legacyEnrichedProductFactsV1Schema = z.object({
   name: z.string().nullable().optional(),
   brand: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
@@ -81,6 +120,35 @@ const enrichedProductFactsV1Schema = z.object({
   size: z.string().nullable().optional(),
   color: z.string().nullable().optional(),
 });
+
+const nestedEnrichedProductFactsV1Schema = z.object({
+  core: coreDataSchema,
+  facets: z.array(facetDataSchema).optional().nullable(),
+  media: z.array(mediaDataSchema).optional().nullable(),
+  evidence: evidenceDataSchema,
+});
+
+const enrichedProductFactsV1Schema = z.preprocess((val) => {
+  if (val && typeof val === "object") {
+    const keys = Object.keys(val);
+    const isNested = keys.some((k) => ["core", "facets", "media", "evidence"].includes(k));
+    if (isNested) {
+      return { type: "nested", data: val };
+    } else {
+      return { type: "legacy", data: val };
+    }
+  }
+  return val;
+}, z.union([
+  z.object({
+    type: z.literal("nested"),
+    data: nestedEnrichedProductFactsV1Schema,
+  }).transform((v) => v.data),
+  z.object({
+    type: z.literal("legacy"),
+    data: legacyEnrichedProductFactsV1Schema,
+  }).transform((v) => v.data),
+]));
 
 const sourceResultInfoSchema = z.object({
   sourceSlug: z.string(),

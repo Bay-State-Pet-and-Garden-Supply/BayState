@@ -23,6 +23,11 @@ jest.mock('@/lib/scraper-auth', () => {
   };
 });
 
+jest.mock('@/lib/supabase/config', () => ({
+  SUPABASE_URL: 'https://test.supabase.co',
+  SUPABASE_SECRET_KEY: 'test-key',
+}));
+
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(),
 }));

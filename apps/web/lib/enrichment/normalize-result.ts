@@ -27,8 +27,8 @@ interface LegacyEnrichedAliasFields {
   description: string | null;
   category: string | null;
   weight: string | null;
-  images: EnrichedProductFactsV1["image_urls"];
-  image_urls: EnrichedProductFactsV1["image_urls"];
+  images: any[];
+  image_urls: any[];
   url: string;
   confidence_score: number;
 }
@@ -63,18 +63,40 @@ function buildLegacyEnrichedAliases(
   source: EnrichmentResultSourceV1,
   confidence: EnrichmentConfidenceV1,
 ): LegacyEnrichedAliasFields {
-  return {
-    title: product.name ?? null,
-    name: product.name ?? null,
-    brand: product.brand ?? null,
-    description: product.description ?? null,
-    category: product.category ?? null,
-    weight: product.weight ?? null,
-    images: product.image_urls ?? [],
-    image_urls: product.image_urls ?? [],
-    url: source.url,
-    confidence_score: confidence.overall,
-  };
+  const isNested = product && ("core" in product || "facets" in product || "media" in product);
+
+  if (isNested) {
+    const weightVal = product.core?.weight_lbs;
+    const weightStr = weightVal !== undefined && weightVal !== null ? String(weightVal) : null;
+    const imgUrls = product.media?.map((m) => m.url) ?? [];
+    return {
+      title: product.core?.name ?? null,
+      name: product.core?.name ?? null,
+      brand: product.core?.brand_name ?? null,
+      description: product.core?.description ?? null,
+      category: product.core?.canonical_category_breadcrumb ?? null,
+      weight: weightStr,
+      images: imgUrls,
+      image_urls: imgUrls,
+      url: source.url,
+      confidence_score: confidence.overall,
+    };
+  } else {
+    // Legacy flat shape
+    const legacyProd = product as any;
+    return {
+      title: legacyProd?.name ?? null,
+      name: legacyProd?.name ?? null,
+      brand: legacyProd?.brand ?? null,
+      description: legacyProd?.description ?? null,
+      category: legacyProd?.category ?? null,
+      weight: legacyProd?.weight ?? null,
+      images: legacyProd?.image_urls ?? [],
+      image_urls: legacyProd?.image_urls ?? [],
+      url: source.url,
+      confidence_score: confidence.overall,
+    };
+  }
 }
 
 /**

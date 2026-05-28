@@ -232,12 +232,12 @@ export async function POST(request: NextRequest) {
       resultRequestedMode: enrichedResult.requested_extraction_mode,
     });
 
-    const normalized = normalizeEnrichmentResultForSources(enrichedResult, {
+    const normalized = normalizeEnrichmentResultForSources(enrichedResult as any, {
       requestedExtractionMode: requestedMode,
     });
 
     const isTestJob = (attemptData as { enrichment_jobs?: { test_mode?: boolean } }).enrichment_jobs?.test_mode === true;
-    const nextAttempt = determineNextStatus(enrichedResult, attemptData, requestedMode);
+    const nextAttempt = determineNextStatus(enrichedResult as any, attemptData, requestedMode);
 
     const resultPayload = {
       ...(rawBody as Record<string, unknown>),
@@ -301,8 +301,15 @@ export async function POST(request: NextRequest) {
       if (Array.isArray(enrichedResult.source_results)) {
         for (const sourceResult of enrichedResult.source_results) {
           if (sourceResult.sourceSlug && sourceResult.product) {
+            const existing = (updatedSources[sourceResult.sourceSlug] as Record<string, unknown>) || {};
+            const existingMetadata: Record<string, unknown> = {};
+            for (const [k, v] of Object.entries(existing)) {
+              if (k.startsWith("_")) {
+                existingMetadata[k] = v;
+              }
+            }
             updatedSources[sourceResult.sourceSlug] = {
-              ...((updatedSources[sourceResult.sourceSlug] as Record<string, unknown>) || {}),
+              ...existingMetadata,
               ...sourceResult.product,
               _scraped_at: enrichedResult.extracted_at,
               _url: sourceResult.evidenceUrl || enrichedResult.source.url,

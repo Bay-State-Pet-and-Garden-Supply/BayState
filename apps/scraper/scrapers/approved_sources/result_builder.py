@@ -21,7 +21,9 @@ from scrapers.ai_search.enrichment_models import (
     RequestedExtractionMode,
     SourceResultInfo,
     now_iso,
+    build_nested_product_facts,
 )
+
 
 
 def _coerce_evidence_url(evidence_url: str | None) -> str:
@@ -508,33 +510,11 @@ def _map_product_fields(fields: dict[str, Any]) -> EnrichedProductFacts:
 
     Accepts both camelCase (from internal adapters) and snake_case keys.
     """
-    return EnrichedProductFacts(
-        name=fields.get("name") or fields.get("title"),
-        brand=fields.get("brand"),
-        description=fields.get("description"),
-        category=fields.get("category"),
-        upc=fields.get("upc"),
-        weight=fields.get("weight"),
-        dimensions=fields.get("dimensions"),
-        shipping_weight=fields.get("shipping_weight"),
-        image_urls=fields.get("image_urls", fields.get("images", [])),
-        ingredients=fields.get("ingredients"),
-        features=fields.get("features", []),
-        pet_type=fields.get("pet_type"),
-        life_stage=fields.get("life_stage"),
-        pet_size=fields.get("pet_size"),
-        food_form=fields.get("food_form"),
-        flavor=fields.get("flavor"),
-        special_diet=fields.get("special_diet", []),
-        health_feature=fields.get("health_feature", []),
-        packaging_type=fields.get("packaging_type"),
-        size=fields.get("size"),
-        color=fields.get("color"),
-        guaranteed_analysis=fields.get("guaranteed_analysis"),
-        npk_ratio=fields.get("npk_ratio"),
-        unit_value=fields.get("unit_value"),
-        unit_type=fields.get("unit_type"),
-    )
+    if isinstance(fields, EnrichedProductFacts):
+        return fields
+    if isinstance(fields, dict) and "core" in fields:
+        return EnrichedProductFacts(**fields)
+    return build_nested_product_facts(fields)
 
 
 def _extract_domain(url: str) -> str | None:

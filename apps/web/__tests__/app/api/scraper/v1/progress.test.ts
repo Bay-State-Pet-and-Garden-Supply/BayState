@@ -11,6 +11,11 @@ jest.mock('@/lib/scraper-auth', () => ({
   validateActiveRunner: jest.fn(),
 }));
 
+jest.mock('@/lib/supabase/config', () => ({
+  SUPABASE_URL: 'http://localhost:54321',
+  SUPABASE_SECRET_KEY: 'test-key',
+}));
+
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(),
 }));

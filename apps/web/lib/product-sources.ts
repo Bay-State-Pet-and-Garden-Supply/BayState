@@ -475,8 +475,8 @@ export function normalizeProductSources(rawSources: unknown): ProductSourceMap {
         }
 
         if (isRecord(value)) {
-            // Enriched sources are already normalized — preserve their structure as-is
-            if (isEnrichedSource(key)) {
+            // Enriched sources and sources with nested structures (containing 'core') are preserved as-is
+            if (isEnrichedSource(key) || 'core' in value) {
                 normalized[key] = value as CanonicalProductSourceRecord;
             } else {
                 normalized[key] = normalizeSourcePayload(value);
@@ -510,10 +510,12 @@ export function normalizeProductSources(rawSources: unknown): ProductSourceMap {
  */
 export function mergeProductSources(
     existingRawSources: unknown,
-    incomingRawSources: unknown
+    incomingRawSources: unknown,
+    options?: { overwriteDataFields?: boolean }
 ): Record<string, unknown> {
     const existing = normalizeProductSources(existingRawSources);
     const incoming = normalizeProductSources(incomingRawSources);
+    const overwriteDataFields = options?.overwriteDataFields ?? false;
 
     const merged: ProductSourceMap = {
         ...existing,
@@ -523,11 +525,13 @@ export function mergeProductSources(
         const existingSource = merged[sourceName];
         const incomingPayload = sourcePayload as Record<string, unknown>;
 
-        // Merge data fields (non-underscore)
-        const dataMerged = {
-            ...(existingSource || {}),
-            ...incomingPayload,
-        };
+        // Merge or overwrite data fields (non-underscore)
+        const dataMerged = overwriteDataFields
+            ? { ...incomingPayload }
+            : {
+                ...(existingSource || {}),
+                ...incomingPayload,
+              };
 
         // Preserve/merge provenance (underscore-prefixed fields)
         // Extract _provenance from both existing and incoming, preferring new values

@@ -93,6 +93,20 @@ interface SourceDetails extends Record<string, unknown> {
   availability?: string;
 }
 
+interface DisplayFields {
+  title: string;
+  brand: string;
+  price: string | number | null;
+  url: string | null;
+  imageUrls: string[];
+  description: string | null;
+  manufacturerPartNumber: string | null;
+  weightSizeUom: string | null;
+  upc: string | null;
+  availability: string | null;
+}
+
+
 const EMPTY_SOURCES: Record<string, unknown> = {};
 
 interface ProvenanceInfo {
@@ -187,6 +201,94 @@ export function ProcessedResultsView({
     if (!activeSourceItem?.data) return null;
     return isSourceDetails(activeSourceItem.data) ? activeSourceItem.data : null;
   }, [activeSourceItem]);
+
+  const displayFields = useMemo<DisplayFields | null>(() => {
+    if (!currentSourceData) return null;
+
+    const core = (currentSourceData.core || (currentSourceData.extracted as any)?.core) as any;
+    const media = (currentSourceData.media || (currentSourceData.extracted as any)?.media) as any[];
+    const facets = (currentSourceData.facets || (currentSourceData.extracted as any)?.facets) as any[];
+
+    const getFacetValue = (slugs: string[]) =>
+      facets?.find((f) =>
+        f?.definition_slug &&
+        (slugs.includes(f.definition_slug.toLowerCase().replace(/_/g, "-")) ||
+          slugs.includes(f.definition_slug.toLowerCase()))
+      )?.value;
+
+    const title = core?.name || "Untitled Product";
+
+    const brand = core?.brand_name || "";
+
+    const price = core?.price !== undefined && core?.price !== null ? core.price : null;
+
+    const url =
+      currentSourceData._url ||
+      currentSourceData.url ||
+      (currentSourceData.extracted as any)?._url ||
+      (currentSourceData.extracted as any)?.url ||
+      null;
+
+    let imageUrls: string[] = [];
+    if (Array.isArray(media)) {
+      imageUrls = media.map((m: any) => typeof m === "string" ? m : m?.url).filter(Boolean);
+    }
+
+    const description = core?.description || null;
+
+    const mfgPartNumber =
+      getFacetValue([
+        "manufacturer-part-number",
+        "manufacturer-part-no",
+        "manufacturer-part-num",
+        "manufacturer_part_number",
+        "mfg-part-number",
+        "mfg-part-no",
+        "mfg-part-num",
+        "mfg_part_number",
+        "item-number",
+        "item-no",
+        "item_number",
+        "mfg_no",
+        "mfg-no",
+      ]) || null;
+
+    const weightStr =
+      core?.weight_lbs !== undefined && core?.weight_lbs !== null
+        ? `${core.weight_lbs} lbs`
+        : getFacetValue(["weight", "shipping-weight"]) || null;
+
+    const sizeStr = getFacetValue(["size"]) || null;
+
+    const uomStr = getFacetValue(["unit-of-measure", "uom", "unit_of_measure"]) || null;
+
+    const weightSizeUom = [weightStr, sizeStr, uomStr].filter(Boolean).join(" / ") || null;
+
+    const upc =
+      currentSourceData._upc ||
+      (currentSourceData.extracted as any)?._upc ||
+      selectedProduct?.upc ||
+      null;
+
+    const availability =
+      core?.availability ||
+      core?.stock_status ||
+      getFacetValue(["availability", "stock-status", "stock_status"]) ||
+      null;
+
+    return {
+      title,
+      brand,
+      price,
+      url,
+      imageUrls,
+      description,
+      manufacturerPartNumber: mfgPartNumber,
+      weightSizeUom,
+      upc,
+      availability,
+    };
+  }, [currentSourceData, selectedProduct?.upc]);
 
   // 3. UI control states
   const [submitting, setSubmitting] = useState(false);
@@ -575,7 +677,7 @@ export function ProcessedResultsView({
                       <span className="bg-muted border border-border px-1.5 py-0.5 rounded-none">{selectedProduct.upc}</span>
                       <span>•</span>
                       <span className="font-bold text-foreground">
-                        ${Number(currentSourceData?.price || selectedProduct.input?.price || 0).toFixed(2)}
+                        ${Number(displayFields?.price || selectedProduct.input?.price || 0).toFixed(2)}
                       </span>
                     </div>
                   </div>
@@ -637,14 +739,14 @@ export function ProcessedResultsView({
                     </TabsList>
                   </Tabs>
                   <div className="flex items-center gap-2 shrink-0">
-                    {currentSourceData?.url && (
+                     {displayFields?.url && (
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-8 px-3 hover:bg-muted font-semibold text-[10px] rounded-none border border-border flex items-center gap-2"
                         asChild
                       >
-                        <a href={currentSourceData.url} target="_blank" rel="noopener noreferrer">
+                        <a href={displayFields.url} target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="h-3.5 w-3.5" />
                           View Source
                         </a>
@@ -680,29 +782,29 @@ export function ProcessedResultsView({
               key={`${preferredUpc}-${activeSource}`}
               className="flex-1 overflow-y-auto p-4"
             >
-              {currentSourceData ? (
+              {currentSourceData && displayFields ? (
                 <div className="max-w-4xl mx-auto space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Left: Image Carousel */}
                     <div className="space-y-3">
                       <div className="aspect-square rounded-none border border-border bg-muted flex items-center justify-center overflow-hidden relative group">
-                        {currentSourceData.image_urls && currentSourceData.image_urls.length > 0 ? (
+                        {displayFields.imageUrls && displayFields.imageUrls.length > 0 ? (
                           <>
                             <img
-                              src={currentSourceData.image_urls[currentImageIndex]}
-                              alt={currentSourceData.title || currentSourceData.name}
+                              src={displayFields.imageUrls[currentImageIndex]}
+                              alt={displayFields.title}
                               className="w-full h-full object-contain transition-all duration-300"
                               data-testid="scraped-primary-image"
                             />
                             
                             {/* Left/Right controls */}
-                            {currentSourceData.image_urls.length > 1 && (
+                            {displayFields.imageUrls.length > 1 && (
                               <>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setCurrentImageIndex((prev) => 
-                                      prev === 0 ? currentSourceData.image_urls!.length - 1 : prev - 1
+                                      prev === 0 ? displayFields.imageUrls.length - 1 : prev - 1
                                     );
                                   }}
                                   aria-label="Previous image"
@@ -714,7 +816,7 @@ export function ProcessedResultsView({
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setCurrentImageIndex((prev) => 
-                                      prev === currentSourceData.image_urls!.length - 1 ? 0 : prev + 1
+                                      prev === displayFields.imageUrls.length - 1 ? 0 : prev + 1
                                     );
                                   }}
                                   aria-label="Next image"
@@ -724,18 +826,11 @@ export function ProcessedResultsView({
                                 </button>
                                 
                                 <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-card px-1.5 py-0.5 rounded-none text-[9px] font-semibold text-foreground border border-border">
-                                  {currentImageIndex + 1} / {currentSourceData.image_urls.length}
+                                  {currentImageIndex + 1} / {displayFields.imageUrls.length}
                                 </div>
                               </>
                             )}
                           </>
-                        ) : currentSourceData.image_url ? (
-                          <img
-                            src={currentSourceData.image_url}
-                            alt={currentSourceData.title || currentSourceData.name}
-                            className="w-full h-full object-contain"
-                            data-testid="scraped-primary-image"
-                          />
                         ) : (
                           <div className="flex flex-col items-center text-muted-foreground">
                             <ImageIcon className="h-10 w-10 mb-1 opacity-20" />
@@ -743,9 +838,9 @@ export function ProcessedResultsView({
                           </div>
                         )}
                         
-                        {currentSourceData.url && (
+                        {displayFields.url && (
                           <a
-                            href={currentSourceData.url}
+                            href={displayFields.url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="absolute top-2 right-2 bg-card p-1.5 rounded-none opacity-0 group-hover:opacity-100 transition-opacity border border-border"
@@ -756,9 +851,9 @@ export function ProcessedResultsView({
                       </div>
 
                       {/* Thumbnails strip */}
-                      {currentSourceData.image_urls && currentSourceData.image_urls.length > 1 && (
+                      {displayFields.imageUrls && displayFields.imageUrls.length > 1 && (
                         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-                          {currentSourceData.image_urls.map((img, i) => (
+                          {displayFields.imageUrls.map((img, i) => (
                             <div
                               key={i}
                               onClick={() => setCurrentImageIndex(i)}
@@ -798,27 +893,27 @@ export function ProcessedResultsView({
                               ) : null;
                             })()}
                           </div>
-                          {currentSourceData.price && (
+                          {displayFields.price && (
                             <span className="text-xl font-bold text-foreground">
                               $
-                              {typeof currentSourceData.price === "number"
-                                ? currentSourceData.price.toFixed(2)
-                                : currentSourceData.price}
+                              {typeof displayFields.price === "number"
+                                ? displayFields.price.toFixed(2)
+                                : displayFields.price}
                             </span>
                           )}
                         </div>
                         <h3 className="text-lg font-semibold leading-tight text-foreground">
-                          {currentSourceData.title || currentSourceData.name || 'Untitled Product'}
+                          {displayFields.title}
                         </h3>
                         <div className="flex flex-wrap items-center gap-y-1.5 gap-x-3 text-xs">
-                          {currentSourceData.brand && (
+                          {displayFields.brand && (
                             <p className="text-[10px] font-semibold text-muted-foreground">
-                              Brand: <span className="text-foreground">{currentSourceData.brand}</span>
+                              Brand: <span className="text-foreground">{displayFields.brand}</span>
                             </p>
                           )}
-                          {currentSourceData.url && (
+                          {displayFields.url && (
                             <a
-                              href={currentSourceData.url}
+                              href={displayFields.url}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-none text-[9px] font-bold bg-muted text-foreground border border-border hover:bg-accent transition-colors uppercase tracking-wider"
@@ -840,7 +935,7 @@ export function ProcessedResultsView({
                               Mfg Part Number
                             </span>
                             <span className="font-bold text-foreground truncate">
-                              {currentSourceData.manufacturer_part_number || currentSourceData.item_number || "N/A"}
+                              {displayFields.manufacturerPartNumber || "N/A"}
                             </span>
                           </div>
                           <div className="flex flex-col gap-0.5">
@@ -848,7 +943,7 @@ export function ProcessedResultsView({
                               Weight / Size
                             </span>
                             <span className="text-foreground font-bold">
-                              {currentSourceData.weight || currentSourceData.size || currentSourceData.unit_of_measure || "N/A"}
+                              {displayFields.weightSizeUom || "N/A"}
                             </span>
                           </div>
                         </div>
@@ -858,7 +953,7 @@ export function ProcessedResultsView({
                               UPC / Barcode
                             </span>
                             <span className="text-foreground font-bold">
-                              {currentSourceData.upc || "N/A"}
+                              {displayFields.upc || "N/A"}
                             </span>
                           </div>
                           <div className="flex flex-col gap-0.5">
@@ -866,7 +961,7 @@ export function ProcessedResultsView({
                               Availability
                             </span>
                             <span className="text-foreground font-medium truncate">
-                              {currentSourceData.availability || "Unknown"}
+                              {displayFields.availability || "Unknown"}
                             </span>
                           </div>
                         </div>
@@ -882,10 +977,10 @@ export function ProcessedResultsView({
                               isDescriptionExpanded ? "" : "line-clamp-4"
                             }`}
                           >
-                            {currentSourceData.description ? (
+                            {displayFields.description ? (
                               <div
                                 dangerouslySetInnerHTML={{
-                                  __html: currentSourceData.description,
+                                  __html: displayFields.description,
                                 }}
                               />
                             ) : (
@@ -894,7 +989,7 @@ export function ProcessedResultsView({
                               </p>
                             )}
                           </div>
-                          {currentSourceData.description && currentSourceData.description.length > 200 && (
+                          {displayFields.description && displayFields.description.length > 200 && (
                             <Button
                               variant="ghost"
                               size="sm"

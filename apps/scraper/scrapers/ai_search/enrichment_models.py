@@ -44,32 +44,263 @@ class EnrichmentResultSource(BaseModel):
     evidence: Optional[str] = None  # match quality / how URL was selected
 
 
-class EnrichedProductFacts(BaseModel):
+class CoreData(BaseModel):
     name: Optional[str] = None
-    brand: Optional[str] = None
+    brand_name: Optional[str] = None
+    brand_id: Optional[str] = None
     description: Optional[str] = None
-    category: Optional[str] = None
-    upc: Optional[str] = None
-    weight: Optional[str] = None
-    dimensions: Optional[str] = None
-    shipping_weight: Optional[str] = None
-    image_urls: list[Any] = Field(default_factory=list)
-    ingredients: Optional[str] = None
-    features: list[str] = Field(default_factory=list)
-    pet_type: Optional[str] = None
-    life_stage: Optional[str] = None
-    pet_size: Optional[str] = None
-    food_form: Optional[str] = None
-    flavor: Optional[str] = None
-    special_diet: list[str] = Field(default_factory=list)
-    health_feature: list[str] = Field(default_factory=list)
-    packaging_type: Optional[str] = None
-    size: Optional[str] = None
-    color: Optional[str] = None
-    guaranteed_analysis: Optional[str] = None
-    npk_ratio: Optional[str] = None
-    unit_value: Optional[float] = None
-    unit_type: Optional[str] = None
+    price: Optional[float] = None
+    weight_lbs: Optional[float] = None
+    category_id: Optional[str] = None
+    canonical_category_breadcrumb: Optional[str] = None
+    search_keywords: Optional[str] = None
+    confidence_score: Optional[float] = None
+    stock_status: Optional[str] = None
+    availability: Optional[str] = None
+    minimum_quantity: Optional[int] = None
+    is_special_order: Optional[bool] = None
+    is_taxable: Optional[bool] = None
+
+
+class FacetData(BaseModel):
+    definition_slug: str
+    value: str
+    confidence_score: Optional[float] = None
+    evidence_source: Optional[str] = None
+
+
+class MediaData(BaseModel):
+    url: str
+    role: Optional[str] = None
+    source: Optional[str] = None
+    confidence_score: Optional[float] = None
+
+
+class EvidenceData(BaseModel):
+    source_urls: list[str] = Field(default_factory=list)
+    selected_images: list[str] = Field(default_factory=list)
+    image_text: Optional[str] = None
+    extraction_notes: Optional[str] = None
+
+
+class EnrichedProductFacts(BaseModel):
+    core: Optional[CoreData] = None
+    facets: list[FacetData] = Field(default_factory=list)
+    media: list[MediaData] = Field(default_factory=list)
+    evidence: Optional[EvidenceData] = None
+
+    def _get_facet(self, slug: str) -> Optional[str]:
+        return next((f.value for f in self.facets if f.definition_slug == slug), None)
+
+    def _get_facets_list(self, slug: str) -> list[str]:
+        return [f.value for f in self.facets if f.definition_slug == slug]
+
+    @property
+    def name(self) -> Optional[str]:
+        return self.core.name if self.core else None
+
+    @property
+    def brand(self) -> Optional[str]:
+        return self.core.brand_name if self.core else None
+
+    @property
+    def description(self) -> Optional[str]:
+        return self.core.description if self.core else None
+
+    @property
+    def category(self) -> Optional[str]:
+        return self.core.canonical_category_breadcrumb if self.core else None
+
+    @property
+    def upc(self) -> Optional[str]:
+        return None
+
+    @property
+    def weight(self) -> Optional[float]:
+        return self.core.weight_lbs if self.core else None
+
+    @property
+    def shipping_weight(self) -> Optional[float]:
+        return None
+
+    @property
+    def dimensions(self) -> Optional[str]:
+        return self._get_facet("dimensions")
+
+    @property
+    def image_urls(self) -> list[str]:
+        return [m.url for m in self.media]
+
+    @property
+    def ingredients(self) -> Optional[str]:
+        return self._get_facet("ingredients")
+
+    @property
+    def features(self) -> list[str]:
+        return self._get_facets_list("features")
+
+    @property
+    def pet_type(self) -> Optional[str]:
+        return self._get_facet("pet_type")
+
+    @property
+    def life_stage(self) -> Optional[str]:
+        return self._get_facet("life_stage")
+
+    @property
+    def pet_size(self) -> Optional[str]:
+        return self._get_facet("pet_size")
+
+    @property
+    def food_form(self) -> Optional[str]:
+        return self._get_facet("food_form")
+
+    @property
+    def flavor(self) -> Optional[str]:
+        return self._get_facet("flavor")
+
+    @property
+    def special_diet(self) -> list[str]:
+        return self._get_facets_list("special_diet")
+
+    @property
+    def health_feature(self) -> list[str]:
+        return self._get_facets_list("health_feature")
+
+    @property
+    def packaging_type(self) -> Optional[str]:
+        return self._get_facet("packaging_type")
+
+    @property
+    def size(self) -> Optional[str]:
+        return self._get_facet("size")
+
+    @property
+    def color(self) -> Optional[str]:
+        return self._get_facet("color")
+
+    @property
+    def guaranteed_analysis(self) -> Optional[str]:
+        return self._get_facet("guaranteed_analysis")
+
+    @property
+    def npk_ratio(self) -> Optional[str]:
+        return self._get_facet("npk_ratio")
+
+    @property
+    def unit_value(self) -> Optional[str]:
+        return self._get_facet("unit_value")
+
+    @property
+    def unit_type(self) -> Optional[str]:
+        return self._get_facet("unit_type")
+
+
+
+import re
+
+def parse_weight_lbs(weight_val: Any) -> Optional[float]:
+    if weight_val is None:
+        return None
+    if isinstance(weight_val, (int, float)):
+        return float(weight_val)
+    if isinstance(weight_val, str):
+        match = re.search(r"([0-9]+(?:\.[0-9]+)?)", weight_val)
+        if match:
+            try:
+                return float(match.group(1))
+            except ValueError:
+                pass
+    return None
+
+
+def build_nested_product_facts(fields: dict[str, Any], evidence_url: Optional[str] = None) -> EnrichedProductFacts:
+    name = fields.get("name") or fields.get("title") or fields.get("product_name")
+    brand_name = fields.get("brand") or fields.get("brand_name")
+    description = fields.get("description")
+    
+    weight_str = fields.get("weight") or fields.get("shipping_weight") or fields.get("package_weight")
+    weight_lbs = parse_weight_lbs(weight_str)
+    
+    category = fields.get("category")
+    if not category:
+        categories = fields.get("categories", [])
+        if isinstance(categories, list) and categories:
+            category = categories[0]
+            
+    core = CoreData(
+        name=name,
+        brand_name=brand_name,
+        description=description,
+        weight_lbs=weight_lbs,
+        canonical_category_breadcrumb=category,
+        availability=fields.get("availability"),
+        minimum_quantity=fields.get("minimum_quantity"),
+        is_special_order=fields.get("is_special_order"),
+        is_taxable=fields.get("is_taxable"),
+    )
+    
+    facets = []
+    
+    single_facet_keys = [
+        "pet_type", "life_stage", "pet_size", "food_form", "flavor", 
+        "packaging_type", "size", "color", "ingredients", "npk_ratio",
+        "unit_value", "unit_type", "dimensions", "scent", "material",
+        "indoor_outdoor", "subscription_eligible"
+    ]
+    for key in single_facet_keys:
+        val = fields.get(key)
+        if val is not None and val != "":
+            if isinstance(val, list):
+                val_str = "|".join(str(v) for v in val)
+            else:
+                val_str = str(val)
+            if val_str.strip():
+                facets.append(FacetData(definition_slug=key, value=val_str.strip()))
+                
+    list_facet_keys = ["special_diet", "health_feature", "features", "claims", "play_style"]
+    for key in list_facet_keys:
+        val = fields.get(key)
+        if isinstance(val, list):
+            for item in val:
+                if item and str(item).strip():
+                    facets.append(FacetData(definition_slug=key, value=str(item).strip()))
+        elif isinstance(val, str) and val.strip():
+            items = [i.strip() for i in re.split(r"[|,]", val) if i.strip()]
+            for item in items:
+                facets.append(FacetData(definition_slug=key, value=item))
+                
+    media = []
+    image_urls = fields.get("image_urls") or fields.get("images") or []
+    if isinstance(image_urls, list):
+        for idx, img in enumerate(image_urls):
+            img_url = None
+            if isinstance(img, str):
+                img_url = img
+            elif isinstance(img, dict) and img.get("original_url"):
+                img_url = img.get("original_url")
+            elif isinstance(img, dict) and img.get("data_url"):
+                img_url = img.get("data_url")
+            if img_url:
+                role = "primary" if idx == 0 else "additional"
+                media.append(MediaData(url=img_url, role=role, source="enrichment"))
+                
+    evidence_urls = [evidence_url] if evidence_url else []
+    flat_images = [m.url for m in media]
+    evidence = EvidenceData(
+        source_urls=evidence_urls,
+        selected_images=flat_images,
+        image_text=fields.get("image_text"),
+        extraction_notes=fields.get("extraction_notes"),
+    )
+    
+    return EnrichedProductFacts(
+        core=core,
+        facets=facets,
+        media=media,
+        evidence=evidence
+    )
+
 
 
 class EnrichmentConfidence(BaseModel):
@@ -144,7 +375,12 @@ def build_error_result(
         extracted_at=now_iso(),
         model=model,
         mode=mode,
-        product=EnrichedProductFacts(),
+        product=EnrichedProductFacts(
+            core=CoreData(),
+            facets=[],
+            media=[],
+            evidence=EvidenceData(source_urls=[url])
+        ),
         confidence=EnrichmentConfidence(overall=0.0),
         validation=EnrichmentValidation(
             warnings=[error_message],
@@ -229,38 +465,41 @@ def build_v1_from_extraction_result(
             prod_val = sr.get("product")
             if prod_val is not None:
                 if isinstance(prod_val, dict):
-                    prod = EnrichedProductFacts(**prod_val)
+                    prod = build_nested_product_facts(prod_val, evidence_url=sr.get("evidenceUrl") or url)
                 elif isinstance(prod_val, EnrichedProductFacts):
                     prod = prod_val
                 else:
                     prod = None
             else:
-                prod = EnrichedProductFacts(
-                    name=name,
-                    brand=product_data.get("brand") or result.get("brand"),
-                    description=product_data.get("description") or result.get("description"),
-                    category=category,
-                    upc=product_data.get("upc") or result.get("upc"),
-                    weight=product_data.get("weight") or result.get("weight"),
-                    dimensions=product_data.get("dimensions") or result.get("dimensions"),
-                    shipping_weight=product_data.get("shipping_weight"),
-                    image_urls=image_urls,
-                    ingredients=product_data.get("ingredients") or result.get("ingredients"),
-                    features=product_data.get("features", []) or result.get("features", []),
-                    pet_type=product_data.get("pet_type"),
-                    life_stage=product_data.get("life_stage"),
-                    pet_size=product_data.get("pet_size"),
-                    food_form=product_data.get("food_form"),
-                    flavor=product_data.get("flavor"),
-                    special_diet=product_data.get("special_diet", []),
-                    health_feature=product_data.get("health_feature", []),
-                    packaging_type=product_data.get("packaging_type"),
-                    size=product_data.get("size"),
-                    color=product_data.get("color"),
-                    guaranteed_analysis=product_data.get("guaranteed_analysis") or result.get("guaranteed_analysis"),
-                    npk_ratio=product_data.get("npk_ratio") or result.get("npk_ratio"),
-                    unit_value=product_data.get("unit_value") if product_data.get("unit_value") is not None else result.get("unit_value"),
-                    unit_type=product_data.get("unit_type") or result.get("unit_type"),
+                prod = build_nested_product_facts(
+                    {
+                        "name": name,
+                        "brand": product_data.get("brand") or result.get("brand"),
+                        "description": product_data.get("description") or result.get("description"),
+                        "category": category,
+                        "upc": product_data.get("upc") or result.get("upc"),
+                        "weight": product_data.get("weight") or result.get("weight"),
+                        "dimensions": product_data.get("dimensions") or result.get("dimensions"),
+                        "shipping_weight": product_data.get("shipping_weight"),
+                        "image_urls": image_urls,
+                        "ingredients": product_data.get("ingredients") or result.get("ingredients"),
+                        "features": product_data.get("features", []) or result.get("features", []),
+                        "pet_type": product_data.get("pet_type"),
+                        "life_stage": product_data.get("life_stage"),
+                        "pet_size": product_data.get("pet_size"),
+                        "food_form": product_data.get("food_form"),
+                        "flavor": product_data.get("flavor"),
+                        "special_diet": product_data.get("special_diet", []),
+                        "health_feature": product_data.get("health_feature", []),
+                        "packaging_type": product_data.get("packaging_type"),
+                        "size": product_data.get("size"),
+                        "color": product_data.get("color"),
+                        "guaranteed_analysis": product_data.get("guaranteed_analysis") or result.get("guaranteed_analysis"),
+                        "npk_ratio": product_data.get("npk_ratio") or result.get("npk_ratio"),
+                        "unit_value": product_data.get("unit_value") if product_data.get("unit_value") is not None else result.get("unit_value"),
+                        "unit_type": product_data.get("unit_type") or result.get("unit_type"),
+                    },
+                    evidence_url=sr.get("evidenceUrl") or url
                 )
 
             source_results_models.append(
@@ -285,32 +524,35 @@ def build_v1_from_extraction_result(
         extracted_at=now_iso(),
         model=model,
         mode=mode,
-        product=EnrichedProductFacts(
-            name=name,
-            brand=product_data.get("brand") or result.get("brand"),
-            description=product_data.get("description") or result.get("description"),
-            category=category,
-            upc=product_data.get("upc") or result.get("upc"),
-            weight=product_data.get("weight") or result.get("weight"),
-            dimensions=product_data.get("dimensions") or result.get("dimensions"),
-            shipping_weight=product_data.get("shipping_weight"),
-            image_urls=image_urls,
-            ingredients=product_data.get("ingredients") or result.get("ingredients"),
-            features=product_data.get("features", []) or result.get("features", []),
-            pet_type=product_data.get("pet_type"),
-            life_stage=product_data.get("life_stage"),
-            pet_size=product_data.get("pet_size"),
-            food_form=product_data.get("food_form"),
-            flavor=product_data.get("flavor"),
-            special_diet=product_data.get("special_diet", []),
-            health_feature=product_data.get("health_feature", []),
-            packaging_type=product_data.get("packaging_type"),
-            size=product_data.get("size"),
-            color=product_data.get("color"),
-            guaranteed_analysis=product_data.get("guaranteed_analysis") or result.get("guaranteed_analysis"),
-            npk_ratio=product_data.get("npk_ratio") or result.get("npk_ratio"),
-            unit_value=product_data.get("unit_value") if product_data.get("unit_value") is not None else result.get("unit_value"),
-            unit_type=product_data.get("unit_type") or result.get("unit_type"),
+        product=build_nested_product_facts(
+            {
+                "name": name,
+                "brand": product_data.get("brand") or result.get("brand"),
+                "description": product_data.get("description") or result.get("description"),
+                "category": category,
+                "upc": product_data.get("upc") or result.get("upc"),
+                "weight": product_data.get("weight") or result.get("weight"),
+                "dimensions": product_data.get("dimensions") or result.get("dimensions"),
+                "shipping_weight": product_data.get("shipping_weight"),
+                "image_urls": image_urls,
+                "ingredients": product_data.get("ingredients") or result.get("ingredients"),
+                "features": product_data.get("features", []) or result.get("features", []),
+                "pet_type": product_data.get("pet_type"),
+                "life_stage": product_data.get("life_stage"),
+                "pet_size": product_data.get("pet_size"),
+                "food_form": product_data.get("food_form"),
+                "flavor": product_data.get("flavor"),
+                "special_diet": product_data.get("special_diet", []),
+                "health_feature": product_data.get("health_feature", []),
+                "packaging_type": product_data.get("packaging_type"),
+                "size": product_data.get("size"),
+                "color": product_data.get("color"),
+                "guaranteed_analysis": product_data.get("guaranteed_analysis") or result.get("guaranteed_analysis"),
+                "npk_ratio": product_data.get("npk_ratio") or result.get("npk_ratio"),
+                "unit_value": product_data.get("unit_value") if product_data.get("unit_value") is not None else result.get("unit_value"),
+                "unit_type": product_data.get("unit_type") or result.get("unit_type"),
+            },
+            evidence_url=url
         ),
         confidence=EnrichmentConfidence(
             overall=overall_confidence,

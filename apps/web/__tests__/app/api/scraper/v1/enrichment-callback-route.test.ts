@@ -70,10 +70,12 @@ function createAttemptLookupChain(attemptData: Record<string, unknown>) {
 function createMockSupabase(options: {
   attemptData: Record<string, unknown>;
   jobAttemptsData?: Array<{ upc: string; attempt_number: number; status: string }>;
+  productsIngestionData?: Record<string, unknown>;
 }) {
   const attemptUpdates: unknown[] = [];
   const retryInsertions: unknown[] = [];
   const jobUpdates: unknown[] = [];
+  const productUpdates: unknown[] = [];
 
   const from = jest.fn((table: string) => {
     if (table === 'enrichment_attempts') {
@@ -115,7 +117,22 @@ function createMockSupabase(options: {
     }
 
     if (table === 'products_ingestion') {
-      throw new Error('products_ingestion should not be accessed for test jobs');
+      if (options.productsIngestionData === undefined) {
+        throw new Error('products_ingestion should not be accessed for test jobs');
+      }
+      return {
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({ data: options.productsIngestionData }),
+          })),
+        })),
+        update: jest.fn((payload: unknown) => {
+          productUpdates.push(payload);
+          return {
+            eq: jest.fn().mockResolvedValue({ error: null }),
+          };
+        }),
+      };
     }
 
     throw new Error(`Unexpected table lookup: ${table}`);
@@ -126,6 +143,7 @@ function createMockSupabase(options: {
     attemptUpdates,
     retryInsertions,
     jobUpdates,
+    productUpdates,
   };
 }
 
@@ -386,5 +404,93 @@ describe('POST /api/scraper/v1/enrichment-callback', () => {
     );
 
     expect(shouldRetry).toBe(false);
+  });
+
+  it('overwrites old source result data fields but keeps metadata keys starting with underscore', async () => {
+    const existingSources = {
+      enriched: {},
+      amazon: {
+        upc: '860012057856',
+        name: 'Old Name',
+        images: ['https://example.com/old1.jpg', 'https://example.com/old2.jpg'],
+        scraped_at: '2026-05-02T23:50:39.868668',
+        _url: 'https://www.amazon.com/dp/B0FH8RJ3NH',
+        _scraped_at: '2026-05-02T23:50:39.868668',
+        _provenance: { some: 'provenance_data' },
+      },
+    };
+
+    const mockSupabase = createMockSupabase({
+      attemptData: {
+        id: 'attempt-1',
+        job_id: 'job-1',
+        mode: 'mixed',
+        attempt_number: 1,
+        retry_count: 0,
+        enrichment_jobs: {
+          test_mode: false,
+          mode: 'mixed',
+          config: { extraction_mode: 'mixed' },
+        },
+      },
+      productsIngestionData: {
+        sources: existingSources,
+      },
+    });
+    (createClient as jest.Mock).mockReturnValue(mockSupabase);
+
+    const body = buildCallbackBody({
+      upc: '860012057856',
+      status: 'success',
+      extracted_at: '2026-05-28T20:05:11.249700+00:00',
+      source: {
+        url: 'https://www.amazon.com/dp/B0FH8RJ3NH',
+        source_type: 'distributor',
+        source_slug: 'amazon',
+      },
+      product: {
+        name: 'New Name',
+        image_urls: ['https://example.com/new1.jpg'],
+      },
+      confidence: { overall: 0.9, fields: {} },
+      source_results: [
+        {
+          sourceSlug: 'amazon',
+          sourceType: 'crawler',
+          confidence: 0.9,
+          evidenceUrl: 'https://www.amazon.com/dp/B0FH8RJ3NH',
+          product: {
+            name: 'New Name',
+            image_urls: ['https://example.com/new1.jpg'],
+          },
+        },
+      ],
+    });
+
+    const response = await POST(
+      new NextRequest('http://localhost/api/scraper/v1/enrichment-callback', {
+        body: JSON.stringify(body),
+      } as any),
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mockSupabase.productUpdates).toHaveLength(1);
+
+    const updatedSources = (mockSupabase.productUpdates[0] as any).sources;
+    expect(updatedSources.amazon).toBeDefined();
+
+    // The old non-underscore data fields ('images', 'scraped_at') must be GONE or replaced
+    expect(updatedSources.amazon.images).toBeUndefined();
+    expect(updatedSources.amazon.scraped_at).toBeUndefined();
+
+    // The new data fields must be present
+    expect(updatedSources.amazon.name).toBe('New Name');
+    expect(updatedSources.amazon.image_urls).toEqual(['https://example.com/new1.jpg']);
+
+    // The underscore metadata fields must be preserved or updated
+    expect(updatedSources.amazon._url).toBe('https://www.amazon.com/dp/B0FH8RJ3NH');
+    expect(updatedSources.amazon._scraped_at).toBe('2026-05-28T20:05:11.249700+00:00');
+    expect(updatedSources.amazon._provenance).toEqual({ some: 'provenance_data' });
   });
 });
