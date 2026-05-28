@@ -765,6 +765,10 @@ function EnrichmentJobCard({ job, onCancel, cancellingId, onlineRunners }: Enric
 export function ActiveEnrichmentsTab() {
   const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
   const [showRecentCompleted, setShowRecentCompleted] = useState(false);
+  
+  // Selection state for master-detail view
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
 
   // Connect to Supabase Scraper runner presence
   const { onlineIds: onlineRunners } = useRunnerPresence();
@@ -800,6 +804,19 @@ export function ActiveEnrichmentsTab() {
       setCancellingJobId(null);
     }
   };
+
+  // Ensure stable combined active jobs for grouping
+  const allJobs = useMemo(() => {
+    return [
+      ...realtimeJobs.pending,
+      ...realtimeJobs.queued,
+      ...realtimeJobs.running,
+      ...realtimeJobs.completed,
+      ...realtimeJobs.completed_with_errors,
+      ...realtimeJobs.failed,
+      ...realtimeJobs.cancelled,
+    ];
+  }, [realtimeJobs]);
 
   // Combine and sort active/queued jobs
   const activeJobs = useMemo(() => {
