@@ -27,6 +27,7 @@ import {
 } from "@/components/admin/pipeline/consolidation/shared";
 import { useDocumentVisible } from "@/hooks/useDocumentVisible";
 import { useRealtimeChannel } from "@/lib/realtime/useRealtimeChannel";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { adminFetch } from '@/lib/admin/api-client';
 
 // ============================================================================
@@ -379,8 +380,9 @@ export function ActiveConsolidationsTab({
   }
 
   return (
-    <div className={`space-y-3 ${className}`}>
-      {/* Toolbar */}
+    <ScrollArea className="h-full">
+      <div className={cn("space-y-3 p-4", className)}>
+        {/* Toolbar */}
       <div className="flex items-center justify-end gap-2 border-b border-border pb-2">
         {/* Realtime Connection Indicator */}
         <div className="mr-auto flex items-center gap-2">
@@ -515,5 +517,6 @@ export function ActiveConsolidationsTab({
         isLoading={!!cancellingId}
       />
     </div>
+    </ScrollArea>
   );
 }

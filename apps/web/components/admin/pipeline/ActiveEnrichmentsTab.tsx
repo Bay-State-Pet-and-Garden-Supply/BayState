@@ -181,7 +181,7 @@ export function ActiveEnrichmentsTab() {
   }, [attemptsMap, selectedJobId, selectedAttemptId]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-200px)] min-h-0">
+    <div className="flex flex-col h-full min-h-0">
       {/* Subscribers for active jobs */}
       {allJobs.map(job => (
         <JobAttemptsSubscriber 
@@ -208,7 +208,6 @@ export function ActiveEnrichmentsTab() {
             attempts={attemptsMap}
             selectedAttemptId={selectedAttemptId}
             onSelectAttempt={handleSelectAttempt}
-            isLoadingAttempts={false}
           />
         </div>
         <div className="flex-1 min-w-0">
