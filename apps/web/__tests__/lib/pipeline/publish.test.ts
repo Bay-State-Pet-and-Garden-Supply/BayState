@@ -76,8 +76,8 @@ describe('publishToStorefront', () => {
             select: jest.fn().mockImplementation(() => ({
                 in: jest.fn().mockResolvedValue({
                     data: [
-                        { id: 'def-1', slug: 'animal_type', name: 'Animal Type' },
-                        { id: 'def-2', slug: 'food_form', name: 'Food Form' },
+                        { id: 'def-1', slug: 'animal-type', name: 'Animal Type' },
+                        { id: 'def-2', slug: 'food-form', name: 'Food Form' },
                     ],
                     error: null,
                 }),

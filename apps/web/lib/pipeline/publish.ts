@@ -130,9 +130,15 @@ async function syncProductFacets(
     return;
   }
 
+  // Normalize candidateFacets definition_slug to use hyphens (matching database slugs)
+  const normalizedCandidateFacets = candidateFacets.map((f) => ({
+    ...f,
+    definition_slug: (f.definition_slug || "").trim().toLowerCase().replace(/_/g, "-"),
+  }));
+
   const definitionSlugs = Array.from(
     new Set(
-      candidateFacets
+      normalizedCandidateFacets
         .map((f) => f.definition_slug)
         .filter((slug): slug is string => typeof slug === "string" && slug.trim() !== "")
     )
@@ -159,7 +165,7 @@ async function syncProductFacets(
 
   const productFacetRows: Array<{ product_id: string; facet_value_id: string }> = [];
 
-  for (const facet of candidateFacets) {
+  for (const facet of normalizedCandidateFacets) {
     const def = definitionBySlug.get(facet.definition_slug);
     if (!def) {
       console.warn(`[Publish] Skipping facet for unknown definition: ${facet.definition_slug}`);
