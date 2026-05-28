@@ -803,10 +803,12 @@ class Crawl4AIExtractor:
                 "browser": {
                     "headless": self.headless,
                     "viewport": {"width": 1920, "height": 1080},
+                    "enable_stealth": True,
                 },
                 "crawler": {
                     "magic": True,
                     "simulate_user": True,
+                    "override_navigator": True,
                     "remove_overlay_elements": True,
                     "cache_mode": "ENABLED" if self.cache_enabled else "BYPASS",
                     "js_code": get_scroll_javascript(),

@@ -46,6 +46,7 @@ async def get_shared_browser_engine():
                         "viewport_width": 1280,
                         "viewport_height": 800,
                         "light_mode": True,
+                        "enable_stealth": True,
                     },
                     "crawler": {
                         "page_timeout": 30000,
@@ -659,8 +660,9 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
                 page_timeout=30000,
                 wait_until="networkidle",
                 remove_overlay_elements=True,
-                simulate_user=False,
-                magic=False,
+                simulate_user=True,
+                magic=True,
+                override_navigator=True,
             )
 
             result = await engine.crawler.arun(url=url, config=run_config)

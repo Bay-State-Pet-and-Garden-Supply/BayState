@@ -68,6 +68,9 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
                 page_timeout=30000,
                 wait_until="networkidle",
                 remove_overlay_elements=True,
+                magic=True,
+                simulate_user=True,
+                override_navigator=True,
             )
 
             page_result = await engine.crawler.arun(url=self._product_page_url, config=config)

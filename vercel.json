@@ -1,5 +1,5 @@
 {
   "bunVersion": "1.x",
   "framework": "nextjs",
-  "ignoreCommand": "git diff --quiet $VERCEL_GIT_PREVIOUS_SHA $VERCEL_GIT_COMMIT_SHA apps/web packages/api"
+  "ignoreCommand": "git diff --quiet $VERCEL_GIT_PREVIOUS_SHA $VERCEL_GIT_COMMIT_SHA -- apps/web packages/api"
 }

@@ -262,6 +262,7 @@ class Crawl4AIEngine:
             # v0.4+ advanced features
             magic=run_settings.get("magic", True),
             simulate_user=run_settings.get("simulate_user", True),
+            override_navigator=run_settings.get("override_navigator", True),
             remove_overlay_elements=run_settings.get("remove_overlay_elements", True),
             session_id=session_id or run_settings.get("session_id"),
             cache_mode=cache_mode,

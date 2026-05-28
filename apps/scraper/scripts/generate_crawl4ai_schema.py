@@ -18,8 +18,13 @@ async def generate_offline_schema(urls: List[str], output_path: str):
     """
     Crawls multiple URLs to gather HTML samples and generates a resilient CSS extraction schema.
     """
-    browser_config = BrowserConfig(headless=True)
-    run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS)
+    browser_config = BrowserConfig(headless=True, enable_stealth=True)
+    run_config = CrawlerRunConfig(
+        cache_mode=CacheMode.BYPASS,
+        magic=True,
+        simulate_user=True,
+        override_navigator=True
+    )
     
     samples = []
     async with AsyncWebCrawler(config=browser_config) as crawler:

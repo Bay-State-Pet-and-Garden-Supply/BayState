@@ -48,6 +48,9 @@ class AmazonAdapter(ApprovedSourceAdapter):
             cache_mode=CacheMode.BYPASS,
             wait_until="domcontentloaded",
             page_timeout=20000,
+            magic=True,
+            simulate_user=True,
+            override_navigator=True,
         )
         
         try:
@@ -112,6 +115,9 @@ class AmazonAdapter(ApprovedSourceAdapter):
             cache_mode=CacheMode.BYPASS,
             wait_until="domcontentloaded",
             page_timeout=25000,
+            magic=True,
+            simulate_user=True,
+            override_navigator=True,
         )
         
         try:
