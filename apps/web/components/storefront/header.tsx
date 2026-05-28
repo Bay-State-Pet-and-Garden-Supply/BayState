@@ -108,7 +108,7 @@ export function StorefrontHeader({
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       const nextUser = session?.user ?? null;
       setClientUser(nextUser);
       setClientUserRole(normalizeStorefrontUserRole(nextUser));

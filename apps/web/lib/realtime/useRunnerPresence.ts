@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import type { RealtimeChannel, RealtimePostgresChangesPayload, SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import type { Database } from '@/types/supabase';
 import type { RunnerPresence } from './types';
@@ -34,9 +34,11 @@ type RunnerRowSnapshot = Pick<
   | 'metadata'
   | 'jobs_completed'
   | 'memory_usage_mb'
+  | 'current_job_id'
 >;
 
 interface SharedRunnerChannelEntry {
+  client: SupabaseClient;
   channel: RealtimeChannel;
   listeners: Set<(payload: RunnerRealtimePayload) => void>;
   statusListeners: Set<(status: RunnerRealtimeStatus) => void>;
@@ -69,8 +71,10 @@ function ensureSharedRunnerChannel(baseChannelName: string): SharedRunnerChannel
     return existingEntry;
   }
 
-  const channel = createClient().channel(pgChannelName);
+  const client = createClient();
+  const channel = client.channel(pgChannelName);
   const entry: SharedRunnerChannelEntry = {
+    client,
     channel,
     listeners: new Set(),
     statusListeners: new Set(),
@@ -85,13 +89,13 @@ function ensureSharedRunnerChannel(baseChannelName: string): SharedRunnerChannel
         schema: 'public',
         table: 'scraper_runners',
       },
-      (payload) => {
+      (payload: any) => {
         for (const listener of Array.from(entry.listeners)) {
           listener(payload as RunnerRealtimePayload);
         }
       },
     )
-    .subscribe((status) => {
+    .subscribe((status: RunnerRealtimeStatus) => {
       entry.lastStatus = status;
 
       for (const listener of Array.from(entry.statusListeners)) {
@@ -114,7 +118,7 @@ function cleanupSharedRunnerChannel(baseChannelName: string, entry: SharedRunner
     return;
   }
 
-  createClient().removeChannel(entry.channel);
+  void entry.client.removeChannel(entry.channel);
   sharedRunnerChannels.delete(pgChannelName);
 }
 

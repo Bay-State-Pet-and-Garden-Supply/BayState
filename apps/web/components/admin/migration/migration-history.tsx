@@ -43,7 +43,7 @@ export function MigrationHistory({ initialLogs }: MigrationHistoryProps) {
           schema: 'public',
           table: 'integration_sync_runs',
         },
-        (payload) => {
+        (payload: any) => {
           if (!payload.new) {
             return;
           }

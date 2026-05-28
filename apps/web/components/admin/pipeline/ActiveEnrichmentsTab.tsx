@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import {
   AlertCircle,
@@ -99,10 +100,13 @@ function JobAttemptsSubscriber({
  */
 export function ActiveEnrichmentsTab() {
   const [cancellingJobId, setCancellingJobId] = useState<string | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   
-  // Selection state for master-detail view
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
+  // Selection state for master-detail view from URL search parameters
+  const selectedJobId = searchParams.get("jobId") || null;
+  const selectedAttemptId = searchParams.get("attemptId") || null;
   const [attemptsMap, setAttemptsMap] = useState<Record<string, EnrichmentAttempt[]>>({});
 
   // Connect to Supabase Enrichment Jobs table real-time changes
@@ -158,9 +162,11 @@ export function ActiveEnrichmentsTab() {
   }, [realtimeJobs]);
 
   const handleSelectAttempt = useCallback((jobId: string, attemptId: string) => {
-    setSelectedJobId(jobId);
-    setSelectedAttemptId(attemptId);
-  }, []);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("jobId", jobId);
+    params.set("attemptId", attemptId);
+    router.replace(`${pathname}?${params.toString()}`);
+  }, [pathname, router, searchParams]);
 
   const handleAttemptsChange = useCallback((jobId: string, attempts: EnrichmentAttempt[]) => {
     setAttemptsMap(prev => {

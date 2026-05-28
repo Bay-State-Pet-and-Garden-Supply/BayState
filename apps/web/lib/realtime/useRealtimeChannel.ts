@@ -84,7 +84,7 @@ function getOrCreateChannel(channelName: string): PooledChannelEntry {
     statusListeners: new Set(),
   };
 
-  channel.on('broadcast', { event: '*' }, ({ payload }) => {
+  channel.on('broadcast', { event: '*' }, ({ payload }: any) => {
     for (const listener of Array.from(entry.messageListeners)) {
       listener(payload);
     }
@@ -98,7 +98,7 @@ function getOrCreateChannel(channelName: string): PooledChannelEntry {
     }
   });
 
-  channel.subscribe((status) => {
+  channel.subscribe((status: RealtimeChannelStatus) => {
     entry.lastStatus = status;
 
     for (const listener of Array.from(entry.statusListeners)) {

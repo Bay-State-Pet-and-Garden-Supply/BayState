@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
-import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import type { RealtimeChannel, RealtimePostgresChangesPayload, SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import type { JobAssignment } from './types';
 
@@ -111,6 +111,7 @@ type JobSubscriptionData = Omit<JobSubscriptionState, 'isConnected' | 'error'>;
 type RealtimeStatus = 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CLOSED' | 'TIMED_OUT';
 
 interface SharedJobChannelEntry {
+  client: SupabaseClient;
   channel: RealtimeChannel;
   listeners: Set<(payload: JobRealtimePayload) => void>;
   statusListeners: Set<(status: RealtimeStatus) => void>;
@@ -197,8 +198,10 @@ function ensureSharedJobChannel(baseChannelName: string): SharedJobChannelEntry 
     return existingEntry;
   }
 
-  const channel = createClient().channel(pgChannelName);
+  const client = createClient();
+  const channel = client.channel(pgChannelName);
   const entry: SharedJobChannelEntry = {
+    client,
     channel,
     listeners: new Set(),
     statusListeners: new Set(),
@@ -212,12 +215,12 @@ function ensureSharedJobChannel(baseChannelName: string): SharedJobChannelEntry 
       schema: 'public',
       table: 'enrichment_jobs',
     },
-    (payload) => {
+    (payload: any) => {
       for (const listener of Array.from(entry.listeners)) {
         listener(payload as JobRealtimePayload);
       }
     }
-  ).subscribe((status) => {
+  ).subscribe((status: RealtimeStatus) => {
     entry.lastStatus = status;
 
     for (const listener of Array.from(entry.statusListeners)) {
@@ -240,7 +243,7 @@ function cleanupSharedJobChannel(baseChannelName: string, entry: SharedJobChanne
     return;
   }
 
-  createClient().removeChannel(entry.channel);
+  void entry.client.removeChannel(entry.channel);
   sharedJobChannels.delete(pgChannelName);
 }
 
@@ -568,7 +571,7 @@ export function useJobSubscription(
 
       const nextJobs = createEmptyJobs();
 
-      (data || []).forEach((job) => {
+      (data || []).forEach((job: any) => {
         const normalizedStatus = normalizeStatus(job.status as string);
         nextJobs[normalizedStatus].push(job as JobAssignment);
       });

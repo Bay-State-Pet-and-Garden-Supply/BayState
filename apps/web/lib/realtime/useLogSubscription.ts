@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
-import type { RealtimeChannel, RealtimePostgresInsertPayload } from '@supabase/supabase-js';
+import type { RealtimeChannel, RealtimePostgresInsertPayload, SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { normalizeScrapeLogEntry, mergeScrapeJobLogs, type ScrapeJobLogEntry } from '@/lib/scraper-logs';
 
@@ -43,6 +43,7 @@ type LogInsertPayload = RealtimePostgresInsertPayload<LogRecord>;
 type RealtimeStatus = 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CLOSED' | 'TIMED_OUT';
 
 interface SharedLogChannelEntry {
+    client: SupabaseClient;
     channel: RealtimeChannel;
     listeners: Set<(payload: LogInsertPayload) => void>;
     statusListeners: Set<(status: RealtimeStatus) => void>;
@@ -59,8 +60,10 @@ function ensureSharedLogChannel(baseChannelName: string, jobId?: string): Shared
         return existingEntry;
     }
 
-    const channel = createClient().channel(pgChannelName);
+    const client = createClient();
+    const channel = client.channel(pgChannelName);
     const entry: SharedLogChannelEntry = {
+        client,
         channel,
         listeners: new Set(),
         statusListeners: new Set(),
@@ -75,12 +78,12 @@ function ensureSharedLogChannel(baseChannelName: string, jobId?: string): Shared
             table: 'enrichment_job_logs',
             ...(jobId ? { filter: `job_id=eq.${jobId}` } : {}),
         },
-        (payload) => {
+        (payload: any) => {
             for (const listener of Array.from(entry.listeners)) {
                 listener(payload as LogInsertPayload);
             }
         }
-    ).subscribe((status) => {
+    ).subscribe((status: RealtimeStatus) => {
         entry.lastStatus = status;
 
         for (const listener of Array.from(entry.statusListeners)) {
@@ -103,7 +106,7 @@ function cleanupSharedLogChannel(baseChannelName: string, entry: SharedLogChanne
         return;
     }
 
-    createClient().removeChannel(entry.channel);
+    void entry.client.removeChannel(entry.channel);
     sharedLogChannels.delete(pgChannelName);
 }
 

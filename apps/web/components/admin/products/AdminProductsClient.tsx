@@ -89,6 +89,10 @@ export function AdminProductsClient({
   const [isPending, startTransition] = useTransition();
   const products = initialProducts;
 
+  const categoryMap = useMemo(() => {
+    return new Map(categories.map((c) => [c.id, c.name]));
+  }, [categories]);
+
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const debouncedSearch = useDebounce(search, 350);
 
@@ -148,15 +152,31 @@ export function AdminProductsClient({
         header: 'Product',
         sortable: true,
         className: 'min-w-[220px]',
-        render: (_value, product) => (
-          <div className="space-y-1">
-            <div className="font-medium text-foreground">{product.name}</div>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span>{product.brand_name || 'No brand'}</span>
-              <span>UPC {product.upc || 'Missing'}</span>
+        render: (_value, product) => {
+          const productCategories = (product.category_ids || [])
+            .map((id) => categoryMap.get(id))
+            .filter((name): name is string => Boolean(name));
+
+          return (
+            <div className="space-y-1">
+              <div className="font-medium text-foreground">{product.name}</div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span>{product.brand_name || 'No brand'}</span>
+                <span className="text-foreground/30">•</span>
+                <span>UPC {product.upc || 'Missing'}</span>
+              </div>
+              {productCategories.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {productCategories.map((catName) => (
+                    <Badge key={catName} variant="secondary" className="text-[10px] px-1.5 py-0.5 leading-none">
+                      {catName}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        ),
+          );
+        },
       },
       {
         key: 'stock_status',
@@ -220,7 +240,7 @@ export function AdminProductsClient({
         ),
       },
     ],
-    [],
+    [categoryMap],
   );
 
   if (!products.length) {
@@ -396,8 +416,25 @@ export function AdminProductsClient({
                   </button>
                   <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                     <span>{product.brand_name || 'No brand'}</span>
+                    <span className="text-foreground/30">•</span>
                     <span>UPC {product.upc || 'Missing'}</span>
                   </div>
+                  {(() => {
+                    const productCategories = (product.category_ids || [])
+                      .map((id) => categoryMap.get(id))
+                      .filter((name): name is string => Boolean(name));
+                    
+                    if (productCategories.length === 0) return null;
+                    return (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {productCategories.map((catName) => (
+                          <Badge key={catName} variant="secondary" className="text-[10px] px-1.5 py-0.5 leading-none">
+                            {catName}
+                          </Badge>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <span className="text-base font-semibold text-foreground tabular-nums">
                   {formatCurrency(Number(product.price || 0))}
