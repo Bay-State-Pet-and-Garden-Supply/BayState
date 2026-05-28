@@ -1,7 +1,7 @@
 "use client";
 import { JobAssignment, EnrichmentAttempt } from "@/lib/realtime/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { EnrichmentAttemptCard, EnrichmentJobLogsConsole } from "./ActiveEnrichmentsTab";
+import { EnrichmentAttemptCard, EnrichmentJobLogsConsole } from "./EnrichmentCommon";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
