@@ -1,5 +1,6 @@
 import type { PageFactExtractor } from "../ports";
 import type { AcquiredPage, PageFactSet, ProductResearchBrief, ProductResearchPipelineContext } from "../types";
+import { canonicalizeImageUrl } from "./image-utils";
 
 export function mergePageFacts(factSets: PageFactSet[]): PageFactSet {
   if (factSets.length === 0) {
@@ -18,6 +19,7 @@ export function mergePageFacts(factSets: PageFactSet[]): PageFactSet {
     confidence: Math.max(...sortedSets.map(s => s.confidence)),
     jsonLd: [],
   };
+  const seenCanonicalImages = new Set<string>();
 
   for (const set of sortedSets) {
     if (!merged.title && set.title) {
@@ -27,9 +29,16 @@ export function mergePageFacts(factSets: PageFactSet[]): PageFactSet {
       merged.description = set.description;
     }
 
-    // Add unique images in order of set confidence
+    // Add unique images in order of set confidence, deduping CDN/query-size variants.
     for (const img of set.images) {
-      if (!merged.images.includes(img)) {
+      let canonical = img;
+      try {
+        canonical = canonicalizeImageUrl(img);
+      } catch {
+        canonical = img;
+      }
+      if (!seenCanonicalImages.has(canonical)) {
+        seenCanonicalImages.add(canonical);
         merged.images.push(img);
       }
     }

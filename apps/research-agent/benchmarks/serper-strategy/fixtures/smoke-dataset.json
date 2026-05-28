@@ -1,0 +1,564 @@
+{
+  "schemaVersion": "research-agent-serper-strategy-eval-v1",
+  "entries": [
+    {
+      "id": "fromm-purrsnickitty-duck-stew-3oz",
+      "upc": "072705113446",
+      "registerName": "Fromm Cat PurrSnick Duck Stew 3 oz",
+      "brand": "Fromm",
+      "officialDomain": "frommfamily.com",
+      "expectedPredictedName": "PurrSnickitty Cat Duck Stew 3 oz",
+      "expectedProductUrl": "https://frommfamily.com/products/cat/purrsnickitty-duck-stew-3-oz",
+      "tags": [
+        "smoke",
+        "abbreviated-register-name"
+      ],
+      "searchFixtures": [
+        {
+          "query": "\"072705113446\"",
+          "response": {
+            "organic": [
+              {
+                "title": "PurrSnickitty Cat Duck Stew 3 oz | Fromm Family Foods",
+                "link": "https://frommfamily.com/products/cat/purrsnickitty-duck-stew-3-oz",
+                "snippet": "UPC: 072705113446"
+              },
+              {
+                "title": "PURRSNICKITTY CAT DUCK STEW 3OZ – Tickners",
+                "link": "https://ticknersonline.drexelweb.com/product/purrsnickitty-cat-duck-stew-3oz-cat-cans/",
+                "snippet": "SKU: 072705113446"
+              }
+            ]
+          }
+        },
+        {
+          "query": "site:frommfamily.com PurrSnickitty Cat Duck Stew 3 oz",
+          "response": {
+            "organic": [
+              {
+                "title": "PurrSnickitty Cat Duck Stew 3 oz",
+                "link": "https://frommfamily.com/products/cat/purrsnickitty-duck-stew-3-oz",
+                "snippet": "Fromm Family Foods product detail page."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "firstmate-chicken-blueberries-cat-3-96lb",
+      "upc": "072318200618",
+      "registerName": "FirstMate CHKN Meal Blueberries Formula Cat 3.96lb",
+      "brand": "FirstMate",
+      "officialDomain": "firstmate.com",
+      "expectedPredictedName": "Chicken Meal with Blueberries Formula Cat 3.96lb",
+      "expectedProductUrl": "https://firstmate.com/product/chicken-meal-with-blueberries-formula-for-cats/",
+      "tags": [
+        "smoke",
+        "size-fragment-merge"
+      ],
+      "searchFixtures": [
+        {
+          "query": "\"072318200618\"",
+          "response": {
+            "organic": [
+              {
+                "title": "Chicken Meal with Blueberries Formula Cat 3.96lb | FirstMate",
+                "link": "https://firstmate.com/product/chicken-meal-with-blueberries-formula-for-cats/",
+                "snippet": "UPC: 072318200618"
+              },
+              {
+                "title": "FirstMate Cat Food Chicken Meal with Blueberries 3.96 lb",
+                "link": "https://www.homesalive.ca/firstmate-chicken-meal-with-blueberries-formula-dry-cat-food.html",
+                "snippet": "Chicken meal with blueberries formula dry cat food."
+              }
+            ]
+          }
+        },
+        {
+          "query": "site:firstmate.com Chicken Meal with Blueberries Formula Cat 3.96lb",
+          "response": {
+            "organic": [
+              {
+                "title": "Chicken Meal with Blueberries Formula Cat 3.96lb",
+                "link": "https://firstmate.com/product/chicken-meal-with-blueberries-formula-for-cats/",
+                "snippet": "FirstMate official product page."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "dr-marty-natures-feast-poultry-12oz",
+      "upc": "850004357187",
+      "registerName": "Dr. Marty Nature's Feast Essential Wellness Poultry Freeze Dried Cat Food, 12 oz",
+      "brand": "Dr Marty",
+      "officialDomain": "drmartypets.com",
+      "expectedPredictedName": "Dr Marty Nature's Feast Freeze Dried Cat Food, Essential Wellness ... 12 oz",
+      "expectedProductUrl": "https://drmartypets.com/product/natures-feast-poultry",
+      "tags": [
+        "smoke"
+      ],
+      "searchFixtures": [
+        {
+          "query": "\"850004357187\"",
+          "response": {
+            "organic": [
+              {
+                "title": "https://www.petsuppliesplus.com/categories/cat/foo...",
+                "link": "https://www.petsuppliesplus.com/categories/cat/food/freezedried/dr-marty-natures-feast-essential-wellness-poultry/23541?sku=850004357187"
+              },
+              {
+                "title": "Dr. Marty Nature's Feast Poultry, 12 oz - Benson's Pet Center",
+                "link": "https://shop.bensonspet.com/products/850004357187?srsltid=AfmBOooqDNbl6zttYXYdHbaTN4r5zXKCLk6ZWGkidGmyJgs9BfuzIpwu",
+                "snippet": "Dr. Marty Nature's Feast – Essential Wellness – Poultry is a premium freeze-dried raw cat food designed to support your cat's healthy teeth and skin, ..."
+              },
+              {
+                "title": "Dr. Marty Nature's Feast Essential Wellness Poultry Freeze Dried ...",
+                "link": "https://www.petcarerx.com/dr-marty-natures-feast-essential-wellness-poultry-freeze-dried-raw-cat-food/37413?srsltid=AfmBOoojWtyv4IbJQ5Jr74OV3wP_7QcmRjxerlv7iyWxSLZH-YYBunuX",
+                "snippet": "Manufacturer Information ; 12-oz, 850004357187 ; 5.5-oz, 850004357439 ..."
+              },
+              {
+                "title": "Nature's Feast Poultry 12 Oz - Pawstock",
+                "link": "https://www.pawstock.pet/products/natures-feast-poultry-12-oz",
+                "snippet": "850004357187. Brand: Dr Marty's. Ingredients Turkey, Duck, Goose, Quail, Turkey Liver, Flaxseed, Sweet Potato, Spinach, Pumpkin Seed, Cranberry, Blueberry ..."
+              },
+              {
+                "title": "Dr. Marty Nature's Feast Essential Wellness Poultry Freeze Dried ...",
+                "link": "https://dickeybub.net/p/dr-marty-natures-feast-essential-wellness-poultry-freeze-dried-raw-cat-food-850004357187",
+                "snippet": "Dr. Marty Nature's Feast Essential Wellness Poultry Freeze Dried Raw Cat Food 12 Ounce. SKU #937867 Model #401-029-15. UPC #850004357187 ..."
+              },
+              {
+                "title": "DR MARTY'S FD POULTRY CAT | Leo and Luckys Store",
+                "link": "https://leoandluckysstore.com/shop/cat/food-cat/freeze-dried-food-cat-cat/dr-martys-fd-poultry-cat/",
+                "snippet": "DR MARTY'S FD POULTRY CAT. $32.99. UPC:850004357187 DR MARTY FZDR PLTRY CAT 12Z C=6. In stock. DR MARTY'S FD POULTRY CAT quantity. Add to cart. Add to Wishlist."
+              },
+              {
+                "title": "Dr Marty Nature's Feast Freeze Dried Cat Food, Essential Wellness ...",
+                "link": "https://www.petsuppliesplus.com/categories/cat/food/freeze-dried-dehydrated-food/dr-marty-nature-s-feast-essential-wellness-poultry/23541?sku=850004357187",
+                "snippet": "bvseo_fps, prod_bvrr, vn_firebird_3.1.48; cp_1, bvpage1; loc_en_US, 850004357187, prd, sort_mostRecent; co_hasreviews, co_noquestions, tv_1266, tr_1002."
+              },
+              {
+                "title": "Dr. Marty Nature's Feast Essential Wellness Poultry Freeze-Dried ...",
+                "link": "https://shop.dogkrazy.com/202385/product/499061/27255801-Dr_Marty_Nature_s_Feast_Essential_Wellness_Poultry_Freeze_Dried_Cat_Food_12_oz",
+                "snippet": "850004357187. Subscriptions. Easy, repeat deliveries, pick up. $40.84$42.99. this order. 5% off for subscription orders. Buy once. $42.99. Quantity."
+              },
+              {
+                "title": "Dr Marty's Cat FD Feast Poultry 12oz - Twelve Paws Pet Supply",
+                "link": "https://www.twelvepawspet.com/dr-martys-cat-fd-feast-poultry-12oz.html",
+                "snippet": "Dr Marty's Cat FD Feast Poultry 12oz. Barcode number: 850004357187. In-store Pickup Only. $33.99. Excl. tax. The rating of this product is 0 out of 5."
+              },
+              {
+                "title": "Dr. Marty Freeze Dried, Cat - Poultry - 12oz - Sniffany's Pet Boutique ...",
+                "link": "https://sniffanyspetboutique.com/206062/product/782434/29542987-Dr_Marty_Freeze_Dried_Cat_Poultry_12oz",
+                "snippet": "Price: $29.99. SKU: 850004357187. Quantity. arrow-icon. Available: 0. Total Price: $29.99. Add to cart. Add to wishlist. About This Item. Full description ..."
+              }
+            ]
+          }
+        },
+        {
+          "query": "site:drmartypets.com Dr Marty Nature's Feast Freeze Dried Cat Food, Essential Wellness ... 12 oz",
+          "response": {
+            "organic": [
+              {
+                "title": "Nature's Feast Poultry | Freeze Dried Cat Food & Treats - Dr. Marty",
+                "link": "https://drmartypets.com/product/natures-feast-poultry?srsltid=AfmBOor2v0owYes_0nW9W_AInEl37yKPp4UlDG8Kf1k4QYx7lrdxjzs5",
+                "snippet": "Dr. Marty Nature's Feast Poultry goes beyond freeze dried cat treats — it's complete raw nutrition supporting your cat's energy, teeth, skin, and longevity."
+              },
+              {
+                "title": "Nature's Feast | Premium Freeze Dried Cat Food by Dr. Marty",
+                "link": "https://drmartypets.com/product/natures-feast?srsltid=AfmBOoo5_31NGGEdSBNqY06DiJXMsOXQnxIp-i_kZ7Xv4KFeLAvq6TFe",
+                "snippet": "Dr. Marty Nature's Feast is a premium freeze-dried cat food packed with real meats, fruits, and vegetables for your cat's balanced, grain-free nutrition."
+              },
+              {
+                "title": "Nature's Feast | Freeze Dried Salmon Cat Food by Dr. Marty",
+                "link": "https://drmartypets.com/product/natures-feast-poultry-beef-salmon?srsltid=AfmBOor90M_BOAWg1pkPEHNceqiqbp9U_g0VFWaiIN3Yr5XycRELeJuc",
+                "snippet": "Nature's Feast – Essential Wellness – Poultry, Beef & Salmon is premium freeze-dried raw food designed to help your playful, curious cat thrive."
+              },
+              {
+                "title": "Nature's Feast Chicken | Freeze Dried Cat Food by Dr. Marty",
+                "link": "https://drmartypets.com/product/natures-feast-chicken-formula?srsltid=AfmBOoo3XqKOgi0D7p9lzyaAeOsvWV0ZJ1vIZWL6YVgugs6HXbYawQOr",
+                "snippet": "Dr. Marty Nature's Feast Chicken is a premium freeze dried cat food made to support healthy skin, easy digestion, and balanced weight in your cat."
+              },
+              {
+                "title": "Login - Dr. Marty",
+                "link": "https://drmartypets.com/login?builder.preview=page&builder.frameEditing=true&builder.space=0e70bd0bca2c432ca91ef8818692fb02&builder.user.permissions=read,create,publish,editCode,editDesigns,editLayouts,editLayers,editContentPriority,editFolders,editProjects,modifyMcpServers,modifyProjectSettings,connectCodeRepository,createProjects,indexDesignSystems,sendPullRequests&builder.user.role.name=Developer%2520%252F%2520Design%2520Engineer&builder.user.role.id=developer&builder.cachebust=true&builder.noCache=true&builder.allowTextEdit=true&__builder_editing__=true&builder.overrides.page=9b9f426d4e7340edaf6cd4f77632035e&builder.overrides.9b9f426d4e7340edaf6cd4f77632035e=9b9f426d4e7340edaf6cd4f77632035e&builder.overrides.page:%2Fproduct%2Fnatures-feast-returning-customer=9b9f426d4e7340edaf6cd4f77632035e&builder.options.locale=Default&srsltid=AfmBOoqVkQYV0yyi1C_ZHNv6yzqErCJdLts6sq44bFN3HHUy5cf6KgVN",
+                "snippet": "Nature's Feast Essential Wellness. Premium Freeze-Dried Raw Cat Food. 4798 Reviews. Free Shipping. Select Quantity: 12 oz. 48 oz. 96 oz. Select Frequency:."
+              },
+              {
+                "title": "Shop Dr. Marty Pets | Freeze Dried Raw Dog & Cat Food",
+                "link": "https://drmartypets.com/products?srsltid=AfmBOoqDsP8r6tHCuV4nxA_H0LDts_qya3gLLcPvN2r5eh0IXtP8jnyA",
+                "snippet": "Shop Dr. Marty Pets products, including premium freeze-dried dog food, cat food, probiotics, joint supplements, and more. Find the right fit for your pet."
+              },
+              {
+                "title": "[PDF] NATURE'S FEAST WELCOME GUIDE - Dr. Marty",
+                "link": "https://cdn.drmartypets.com/guides/welcome-guide-natures-feast.pdf",
+                "snippet": "Made with succulent salmon, turkey and whitefish to delight picky cats. NATURE'S FEAST —. ESSENTIAL WELLNESS —. POULTRY, BEEF & SALMON FORMULA. Made with ..."
+              },
+              {
+                "title": "Nature's Feast | Premium Freeze Dried Cat Food - Dr. Marty",
+                "link": "https://drmartypets.com/product/natures-feast-returning-customer?srsltid=AfmBOoqZWjyw9kTX2WjiKuipf4qEW3AMOmvia3qw9I_-HEiJT9QE5FLB",
+                "snippet": "Welcome back! As a natures feast returning customer, you know Dr. Marty's freeze-dried cat food delivers real nutrition your cat loves every day."
+              },
+              {
+                "title": "Dr. Marty Pets | Premium Freeze Dried Raw Dog & Cat Food",
+                "link": "https://drmartypets.com/?srsltid=AfmBOopIFXt9Ci6938YWOBI-si-Lj7DV3gzEVMuRK4aGQuzmU7QqPlrB",
+                "snippet": "Dr. Marty Pets offers premium freeze-dried dog food and cat food packed with real proteins, fruits, and vegetables for a healthier, happier pet."
+              },
+              {
+                "title": "Store Locator - Dr. Marty Pets",
+                "link": "https://store.drmartypets.com/",
+                "snippet": "But Nature's Blend is Never Kibbled. Instead, we gently freeze-dry every batch of our premium food raw. This gentle process helps maintain the essential ..."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "weruva-paw-lickin-chicken-1oz",
+      "upc": "810028242944",
+      "registerName": "Weruva Freeze-dried Paw Lickin' Chicken Cat Food 1 oz.",
+      "brand": "Weruva",
+      "officialDomain": "weruva.com",
+      "expectedPredictedName": "Weruva Paw Lickin' Chicken Freeze Dried Grain Free Cat Food 1 oz",
+      "expectedProductUrl": "https://www.weruva.com/products/paw-lickin-chicken-freeze-dried-cat",
+      "tags": [
+        "smoke"
+      ],
+      "searchFixtures": [
+        {
+          "query": "\"810028242944\"",
+          "response": {
+            "organic": [
+              {
+                "title": "Weruva Paw Lickin' Chicken Freeze Dried Grain Free Cat Food 1 oz",
+                "link": "https://shop.bensonspet.com/products/810028242944?srsltid=AfmBOopZ2XcfUKzIpwxAEuCHU0hH4-I-LboKElmQum72AB8iHpHiQpdY",
+                "snippet": "Made with over 94% high-quality, bone-free protein and no bones or organs, this recipe is perfect for your obligate carnivore's needs. Fully cooked for safe and ..."
+              },
+              {
+                "title": "Amazon.com: Weruva Cat Freeze Dried, Paw Lickin' Chicken with ...",
+                "link": "https://www.amazon.com/Weruva-Freeze-Lickin-Chicken-Breast/dp/B0F24WZF8Q",
+                "snippet": "810028242944. Additional Features, Freeze-Dried, Humanely Raised, No Artificial Additives. Recommended Uses For Product, Supporting Digestive Health. Animal ..."
+              },
+              {
+                "title": "Weruva Cat Freeze-Dried Paw Lickin' Chicken Dry Cat Food, 1-oz",
+                "link": "https://treatsnaturalpetmarketplace.com/store/weruva-cat-freeze-dried-paw-lickin-chicken-dry-cat-food-1-oz",
+                "snippet": "Weruva Cat Freeze-Dried Paw Lickin' Chicken Dry Cat Food, 1-oz ; In stock · 2 available ; UPC: 810028242944 ; Brand: Weruva."
+              },
+              {
+                "title": "Mideast Feast Freeze Dried Cat Food by Weruva - Pawtopia",
+                "link": "https://pawtopia.net/products/weruva-freeze-dried-cat-food",
+                "snippet": "810028242944. Mideast Feast Freeze Dried. The Mideast Feast Freeze Dried cat food by Weruva offers a nutritious and delicious meal for your feline friend ..."
+              },
+              {
+                "title": "Freeze Dried Meal - Paw Lickin' Chicken - 1oz - Pet Wants",
+                "link": "https://petwants.com/204557/product/711956/30397149-Freeze_Dried_Meal_Paw_Lickin_Chicken_1oz",
+                "snippet": "Freeze Dried Meal - Paw Lickin' Chicken - 1oz. Price: $4.99. SKU: 810028242944. Quantity. arrow-icon. Available: 2. Total Price: $4.99. Add to cart. Add ..."
+              },
+              {
+                "title": "WERUVA CAT FREEZE-DRIED PAW LICKIN' CHICKEN 1OZ - Pet ...",
+                "link": "https://www.petwantshappyvalley.com/product/715979/30670221-WERUVA_CAT_FREEZE_DRIED_PAW_LICKIN_CHICKEN_1OZ",
+                "snippet": "Price: $5.99. SKU: 810028242944. Quantity. arrow-icon. Available: 1. Total Price: $5.99. Add to cart. Add to wishlist. About This Item. Full description."
+              },
+              {
+                "title": "[PDF] FREEZE DRIED CAT FOODS - Sunburst Pet Supplies",
+                "link": "https://sunburstpetsupplies.com/media/2025/10/Weruva-Cat-Freeze-Dried-Gap.pdf",
+                "snippet": "810028242944. -. $4.99. 1 X 7.0 OZ BAG. WERUVA CAT FREEZE DRIED. PAW LICKIN' CHICKEN. 810028242951. -. $21.99. 1 X 1.0 OZ BAG. WX PHOS FOCUSED. CHICKEN BREAST ..."
+              },
+              {
+                "title": "Weruva Cat Freeze Dried - Paw Lickin' Chicken, 1oz - Sniffany's Pet ...",
+                "link": "https://sniffanyspetboutique.com/product/782422/30607019-Weruva_Cat_Freeze_Dried_Paw_Lickin_Chicken_1oz",
+                "snippet": "Weruva Cat Freeze Dried - Paw Lickin' Chicken, 1oz. By Weruva. Weruva Cat Freeze Dried - Paw Lickin' Chicken, 1oz. Weruva. Price: $4.99. SKU: 810028242944."
+              },
+              {
+                "title": "Weruva Cat Paw Lickin' Chicken Freeze-Dried Cat Food, 1-oz",
+                "link": "https://ozark.earthwisepet.com/products/ozark-mo/weruva-cat-freeze-dried-paw-lickin-chicken-dry-cat-food-2/",
+                "snippet": "Freeze-Dried Food. Brand: Weruva. $4.99. In Stock (Quantity 1). UPC: 810028242944. Size : 1-oz. Description; Nutritional Info. Gently cooked with 96% boneless ..."
+              },
+              {
+                "title": "WERUVA CAT FREEZE DRIED PAW LICKIN CHICKEN 1OZ ...",
+                "link": "https://nwportland.naturespetmarket.com/nwportland/product/752788/28600081-WERUVA_CAT_FREEZE_DRIED_PAW_LICKIN_CHICKEN_1OZ",
+                "snippet": "WERUVA CAT FREEZE DRIED PAW LICKIN CHICKEN 1OZ. WERUVA CAT FREEZE DRIED PAW LICKIN CHICKEN 1OZ. Price: $5.00. SKU: 810028242944. Quantity. arrow-icon."
+              }
+            ]
+          }
+        },
+        {
+          "query": "site:weruva.com Weruva Paw Lickin' Chicken Freeze Dried Grain Free Cat Food 1 oz",
+          "response": {
+            "organic": [
+              {
+                "title": "Weruva Cat Freeze Dried Paw Lickin' Chicken Dry Cat Food",
+                "link": "https://www.weruva.com/products/paw-lickin-chicken-freeze-dried-cat?srsltid=AfmBOoq1g6eV4N1tr86wwJRVkYtkAu1sIC_oneGIHtHHeyFOS-DYxbCo",
+                "snippet": "Gently cooked with 96% boneless, skinless chicken breast and 0% bones or organs, our fully cooked freeze dried is packed with flavor so flavorful your cat will ..."
+              },
+              {
+                "title": "Weruva Cat Freeze Dried",
+                "link": "https://www.weruva.com/collections/weruva-cat-freeze-dried?srsltid=AfmBOor5TiXJOE7b7cB9-2jwvj-x9c5iKD8Uq255qv8ZSLz0h3wwzQW7",
+                "snippet": "Weruva Freeze Dried is a fully cooked meal designed to deliver the protein and flavor cats crave. Made with over 93% bone-free protein and no bones or ..."
+              },
+              {
+                "title": "Weruva Dog Freeze Dried Paw Lickin' Chicken Dry Dog Food",
+                "link": "https://www.weruva.com/products/paw-lickin-chicken-freeze-dried-dog?srsltid=AfmBOoqN4EecKT3a48rIgjmwDpFdY3W_VrL6jVmhOAKU060B3YHmA3pI",
+                "snippet": "Gently cooked with 96% boneless, skinless chicken breast, our bone-free, fully cooked freeze dried is bursting with flavor your dog will love."
+              },
+              {
+                "title": "Find The Best Weruva Recipe For Your Pet – Page 2",
+                "link": "https://www.weruva.com/collections/find-your-food?page=2&srsltid=AfmBOorRWpv2jvh_mVliPPKSPuKbhKngT3cM-JwXx3fWYIfj6lWfUsSi",
+                "snippet": "A can of Weruva Paw Lickin' Chicken cat food features shredded boneless chicken in savory 10oz Can. Weruva. Paw Lickin' Chicken. Chicken Breast in Gravy."
+              },
+              {
+                "title": "Your Cat Will Freak Over Weruva's Fully Cooked Freeze Dried Foods!",
+                "link": "https://www.weruva.com/pages/weruva-cat-freeze-dried?srsltid=AfmBOoql-b3pMzMPqYpPQZ1WoK3vkQb8gTxTt1JMCpeI97y6vEyoVKdh",
+                "snippet": "Prepared with over 94% animal-based proteins and nothing icky, these high-protein, fully cooked freeze dried foods are so flavorful your cat will freak out!"
+              },
+              {
+                "title": "Weruva Classic Cat Paw Lickin' Chicken in Gravy Wet Canned Food",
+                "link": "https://www.weruva.com/products/paw-lickin-chicken-cat-can?srsltid=AfmBOooZOxq4FE2sChccHZ-iSZ2WoYxBLUW3cRTKJFcP9OKtWU1TWe3o",
+                "snippet": "Features boneless, skinless white breast meat chicken, providing the high-quality protein cats need to thrive. · Hydration-focused gravy helps support your cat's ..."
+              },
+              {
+                "title": "See the Weruva Cat Food Difference with Real Ingredients You Can ...",
+                "link": "https://www.weruva.com/collections/weruva-cat-foods?srsltid=AfmBOopCmvtZDpPoXcaAQ-FWcuqro28r-_-k51CowcnU35lMTPJrVuKC",
+                "snippet": "... Paw Lickin' Chicken Freeze Dried cat food features 1oz Bag. Weruva. Paw Lickin' Chicken Freeze Dried. with 96% Boneless, Skinless Chicken Breast.. (8)."
+              },
+              {
+                "title": "Your Dog Will Freak Over Weruva's Fully Cooked Freeze Dried Foods!",
+                "link": "https://www.weruva.com/pages/weruva-dog-freeze-dried-foods?srsltid=AfmBOoq7Hn4gMgN8Ly0DcQ7koe6pYdcG1QfXxrw0cXaaJbJU0XKVOf69",
+                "snippet": "Prepared with over 75% animal-based proteins and nothing icky, these high-protein, fully cooked freeze dried foods are so flavorful your dog will freak out!"
+              },
+              {
+                "title": "Weruva Wx Phos Focused Freeze Dried Chicken & Tilapia Dry Cat ...",
+                "link": "https://www.weruva.com/products/chicken-tilapia-freeze-dried-cat?srsltid=AfmBOopWtWHP6CP1EPuPCv2h5tSFdQ-XM80-dPsP7CQduWWgt3FtoidH",
+                "snippet": "Featuring naturally low phosphorus proteins like boneless, skinless white breast meat chicken, tilapia and egg whites, our fully cooked freeze dried formula ..."
+              },
+              {
+                "title": "Shop Weruva Cat & Dog Food Favorites",
+                "link": "https://www.weruva.com/collections/shop-now?srsltid=AfmBOoqqfl7W88QtS_zlZqmFWz76wVeMtUvTWFYdI9kIjEocYNnDRD1l",
+                "snippet": "... Paw Lickin' Chicken Freeze Dried cat food features 1oz Bag. Weruva. Paw Lickin' Chicken Freeze Dried. with 96% Boneless, Skinless Chicken Breast.. (8)."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "fromm-purrsnickitty-duck-liver-pate-3oz",
+      "upc": "072705113408",
+      "registerName": "Fromm PurrSnickitty Duck Liver Pate Wet Cat Food, 3 oz",
+      "brand": "Fromm",
+      "officialDomain": "frommfamily.com",
+      "expectedPredictedName": "Fromm PurrSnickitty Duck Liver Pate Wet Cat Food Can, 3-oz 3 oz",
+      "expectedProductUrl": "https://frommfamily.com/products/cat/purrsnickitty/can/duck-liver-pate",
+      "tags": [
+        "smoke"
+      ],
+      "searchFixtures": [
+        {
+          "query": "\"072705113408\"",
+          "response": {
+            "organic": [
+              {
+                "title": "Fromm Cat Purrsnickitty, 3 oz – Gourmet Wet Cat Food for Adult Cats",
+                "link": "https://www.countrymax.com/fromm-cat-purrsnickitty-3-oz-gourmet-wet-cat-food-for-adult-cats/?srsltid=AfmBOoq0Sa9LPzJv2_pMCVtI4AhLlSfzXe_vmxsE9KAWQMM3uZEQ3-Jd",
+                "snippet": "Enter your email and we'll let you know when it's back in stock. Notify Me. SKU: UPC: 072705113408. Weight: 0.25 LBS; Life Stage: Adult; Food Type: Wet Food ..."
+              },
+              {
+                "title": "072705113408 Archives - Burlo Pet Services",
+                "link": "https://burlopet.com/each-upc/072705113408/",
+                "snippet": "072705113408 · Bacon · Beef · Chicken · Collagen · Duck · Eco-friendly · Enrichment · Fish."
+              },
+              {
+                "title": "Fromm Cat PurrSnickitty Duck Liver Pate 3oz – Benson's Pet Center",
+                "link": "https://shop.bensonspet.com/products/072705113408?srsltid=AfmBOooG_Mbme04vx0Z2k96ugKfW2DphgKHMZlBtuqG07Kbks1PC1NtR",
+                "snippet": "Fromm Cat PurrSnickitty Duck Liver Pate 3oz. Fromm Cat PurrSnickitty Duck Liver Pate 3oz. Regular price $2.04. Regular price $0.00 Sale price $2.04."
+              },
+              {
+                "title": "FROMM CAT PURRSNICKITTY DUCK LIVER 3 OZ",
+                "link": "https://agwaycapecod.ezad.io/p/fromm-cat-purrsnickitty-duck-liver-072705113408",
+                "snippet": "Fromm Cat Purrsnickitty Duck Liver 3 Oz. Item #072705113408 | Model #11341 | UPC #072705113408. Share. FROMM CAT PURRSNICKITTY DUCK LIVER 3 OZ."
+              },
+              {
+                "title": "Fromm PurrSnickitty Duck Liver Pate Wet Cat Food Can, 3-oz",
+                "link": "https://nolensville.earthwisepet.com/products/nolensville/fromm-purrsnickitty-duck-live-pate-wet-cat-food-can-2/",
+                "snippet": "072705113408. Size : 3-oz. Description; Nutritional Info. A smooth pâté made with duck broth, duck liver, and duck, all finely minced for irresistible flavor ..."
+              },
+              {
+                "title": "Fromm Cat PurrSnickitty Duck Liver Pate 3oz - The Feed Bag",
+                "link": "https://thefeedbag.net/shop/Fromm-Cat-PurrSnickitty-Duck-Liver-Pate-3oz-p773154910",
+                "snippet": "... 072705113408. Brand: Fromm. A smooth pâté made with duck broth, duck liver, and duck, all finely minced for irresistible flavor. High Quality Duck. Very ..."
+              },
+              {
+                "title": "Fromm PurrSnickitty Duck Liver Pate Cat Food",
+                "link": "https://boneapatreat.com/fromm-purrsnickitty/fromm-purrsnickitty-duck-liver-pate-cat-food-18931?srsltid=AfmBOop2iWxsMKB8G6ktgl-YBTTPDEkQKwiZOhZRiM4JdfBHlnuGaGBn",
+                "snippet": "... 072705113408. available for pickup or delivery. Description. A smooth pâté made with duck broth, duck liver, and duck, all finely minced for irresistible ..."
+              },
+              {
+                "title": "Fromm PurrSnickitty Duck Liver Pate - Pet Wants Palm Beach",
+                "link": "https://petwants.com/palmbeach/product/577227/30685232-Fromm_PurrSnickitty_Duck_Liver_Pate",
+                "snippet": "Fromm PurrSnickitty Duck Liver Pate. Fromm PurrSnickitty Duck Liver Pate. Price: $3.50. SKU: 072705113408. Quantity. arrow-icon. Available: 9. Total Price:."
+              },
+              {
+                "title": "Fromm PurrSnickitty Duck Liver Pâté for Cats - Pawtopia",
+                "link": "https://pawtopia.net/products/fromm-purrsnickitty-cat-can-duck-liver-pate-3-oz",
+                "snippet": "072705113408. Brand: Fromm. PurrSnickitty Duck Liver Pâté Food for Cats. Experience the fine taste and nutritional benefits of Fromm's PurrSnickitty Duck Liver ..."
+              },
+              {
+                "title": "Fromm PurrSnickitty Duck Live Pate Wet Cat Food Can, 3-oz (Size: 3 ...",
+                "link": "https://legiondogandcatsupply.com/206589/product/787028/30230652-Fromm_PurrSnickitty_Duck_Live_Pate_Wet_Cat_Food_Can_3_oz_Size_3_oz_?srsltid=AfmBOopnWkTPuXO5bo-nepgebI5TiBzCh-dam7OYP1p8dBx5cd1k9vgH",
+                "snippet": "Price: $2.35. SKU: 072705113408. Subscriptions. Easy, repeat deliveries, pick up. $2.35. this order. Buy once. $2.35. Quantity. arrow-icon. Available ..."
+              }
+            ]
+          }
+        },
+        {
+          "query": "site:frommfamily.com Fromm PurrSnickitty Duck Liver Pate Wet Cat Food Can, 3-oz 3 oz",
+          "response": {
+            "organic": [
+              {
+                "title": "PurrSnickitty Duck Liver Pâté Food for Cats - Fromm Family Pet Food",
+                "link": "https://frommfamily.com/products/cat/purrsnickitty/can/duck-liver-pate/",
+                "snippet": "Available Sizes. 3 oz. Fromm® PurrSnickitty™ Duck Liver Pâté Food for Cats is formulated to meet the nutritional levels established by the AAFCO ..."
+              },
+              {
+                "title": "PurrSnickitty Duck Stew Recipe Food for Cats",
+                "link": "https://frommfamily.com/products/cat/purrsnickitty/can/duck-stew/",
+                "snippet": "Available Sizes. 3 oz. Fromm® PurrSnickitty™ Duck Stew Food for Cats is formulated to meet the nutritional levels established by the AAFCO Cat ..."
+              },
+              {
+                "title": "PurrSnickitty - Wet Food for Cats",
+                "link": "https://frommfamily.com/products/cat/purrsnickitty/can/",
+                "snippet": "Flavorful and hydrating meals available in an array of textures, including smooth pâté, rich stew, and our new gelée, featuring tender pieces of meat in a ..."
+              },
+              {
+                "title": "Chicken & Duck Pâté for Cats - Fromm Family Pet Food",
+                "link": "https://frommfamily.com/products/cat/four-star/can/chicken-and-duck-pate/",
+                "snippet": "Available Sizes. 3 oz., 5.5 oz. Fromm Four-Star Nutritionals Chicken & Duck Pâté Food for Cats is formulated to meet the nutritional levels ..."
+              },
+              {
+                "title": "PurrSnickitty Tuna & Shrimp Entrée in Gelée - Fromm Family Pet Food",
+                "link": "https://frommfamily.com/products/cat/purrsnickitty/can/tuna-shrimp-entree-in-gelee/",
+                "snippet": "Very digestible and highly palatable source of protein that provides an excellent source of essential amino acids and nutrients. Contains Omega-3 Fatty Acids."
+              },
+              {
+                "title": "[PDF] Duck Liver Pâté Food for Cats",
+                "link": "https://cdn.frommfamily.com/media/zgmnorvx/3620_211340_cat-can_purrsnickitty-duck-liver-pate_nutrition.pdf",
+                "snippet": "A smooth pâté made with duck broth, duck liver, and duck, all finely minced for irresistible flavor. CAT • FROMM PURRSNICKITTY ®. • CAN. Duck Liver Pâté Food ..."
+              },
+              {
+                "title": "PurrSnickitty Shredded Chicken Entrée in Gelée Food for Cats",
+                "link": "https://frommfamily.com/products/cat/purrsnickitty/can/shredded-chicken-entree-in-gelee/",
+                "snippet": "3 oz. Fromm® PurrSnickitty™ Shredded Chicken in Gelée Food for Cats is formulated to meet the nutritional levels established by the AAFCO Cat Food Nutrient ..."
+              },
+              {
+                "title": "PurrSnickitty Game Bird Grandeur Recipe Food for Cats",
+                "link": "https://frommfamily.com/products/cat/purrsnickitty/dry/game-bird-grandeur/",
+                "snippet": "A delicately delicious blend of turkey, duck, pheasant, quail, and goose with added probiotics. PurrSnickitty is artfully-crafted with an innovative cooking ..."
+              },
+              {
+                "title": "PurrSnickety - Food for Cats",
+                "link": "https://frommfamily.com/products/cat/perfectly-pate/can/",
+                "snippet": "PurrSnickety offer cats high-quality, complete, and balanced meals. Served on their own or as a meal topper, these recipes are irresistible for even the ..."
+              },
+              {
+                "title": "Kitten Gold Chicken and Duck Pâté - Cat - Fromm Family Pet Food",
+                "link": "https://frommfamily.com/products/cat/gold/can/kitten-gold-chicken-and-duck-pate/",
+                "snippet": "Available Sizes. 3 oz., 5.5 oz. Fromm Gold Kitten Chicken & Duck Pâté Food for Cats is formulated to meet the nutritional levels established by ..."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "lake-valley-seed-lemon-catnip-heirloom",
+      "upc": "051178006813",
+      "registerName": "Lemon Scented Catnip Heirloom Seeds",
+      "brand": "Lake Valley Seed",
+      "officialDomain": "lakevalleyseed.com",
+      "expectedPredictedName": "Lake Valley Catnip Lemon Scented Seed",
+      "expectedProductUrl": "https://lakevalleyseed.com/product/item-681-catnip-lemon-scented",
+      "tags": [
+        "smoke"
+      ],
+      "searchFixtures": [
+        {
+          "query": "\"051178006813\"",
+          "response": {
+            "organic": [
+              {
+                "title": "CATNIP LEMON SCENTED HEIRLOOM | BUILDING MATERIALS ...",
+                "link": "https://shop.buildingmaterialstci.com/p/catnip-lemon-scented-heirloom-051178006813",
+                "snippet": "Catnip Lemon Scented Heirloom. SKU #LV681 Model #LV681. UPC #051178006813. Please email for queries: customerservice@doitcenterprovo.com. Available at."
+              },
+              {
+                "title": "# Lake Valley Seed 681 Vegetable Seed, Catnip, Nepeta Catar...",
+                "link": "https://www.mcguckin.com/2802684/product/lake-valley-seed-681?srsltid=AfmBOorKIKvPzrfNnisabHnoF9yBU0Y9YQuCaL5LYTusFuUMR9jpGtK8",
+                "snippet": "Model Number: 681 · UPC: 051178006813 · Store SKU: M7449202 · Customer Part Number: · Lake Valley Seed 681 Vegetable Seed, Catnip, Nepeta Cataria Citriodora · $2.59 ..."
+              },
+              {
+                "title": "Lake Valley Catnip Lemon Scented Seed - Alaska Mill & Feed",
+                "link": "https://alaskamillandfeed.com/shop/137300681/?srsltid=AfmBOoqpqVFibE9TfckrbpSkcyyHJ39BFoM19pVq3SudnR1G3YjUkrEM",
+                "snippet": "... 051178006813. Current Stock: Quantity: Decrease Quantity of Lake Valley Catnip Lemon Scented Seed Increase Quantity of Lake Valley Catnip Lemon Scented Seed."
+              },
+              {
+                "title": "Lake Valley, Catnip, Lemon Scented – Alsip Nursery",
+                "link": "https://alsipnursery.com/products/lake-valley-catnip-lemon-scented?srsltid=AfmBOopr6OGq1gDSWzI3b7wo-0W1OPQf0T_bXbczQY73AW-oH4VeytGo",
+                "snippet": "... 051178006813\",\"requires_selling_plan\":false,\"selling_plan_allocations\":[],\"quantity_rule\":{\"min\":1,\"max\":null,\"increment\":1}}]. You may also like. Quick view."
+              }
+            ]
+          }
+        },
+        {
+          "query": "site:lakevalleyseed.com Lake Valley Catnip Lemon Scented Seed",
+          "response": {
+            "organic": [
+              {
+                "title": "Catnip Lemon Scented - Item #681 - Lake Valley Seed",
+                "link": "https://lakevalleyseed.com/product/item-681-catnip-lemon-scented/?srsltid=AfmBOoqcNMI2_glByR0SbJVqhccG8fShn33qtjCXiY4rp0XN83z3EwZA",
+                "snippet": "Delightful lemony fragrance, with the same cat appeal as regular catnip. Easy to grow in kitchen flowerpots and patio containers. Attracts pollinators."
+              },
+              {
+                "title": "Catnip Archives - Lake Valley Seed",
+                "link": "https://lakevalleyseed.com/product-category/herbs/catnip/?srsltid=AfmBOopmWRJM2P3T7abnok5JKOjoNQuu5tcFNa2u6pFlZVXRM9dst8sy",
+                "snippet": "Catnip Lemon Scented - Item #681. Catnip Lemon Scented – Item #681. $2.59 Add to cart · Catnip Wild - Item #76. Catnip Wild – Item #76. $2.59 Add to cart."
+              },
+              {
+                "title": "Catnip Wild - Item #76 - Lake Valley Seed",
+                "link": "https://lakevalleyseed.com/product/item-76-catnip-wild/?srsltid=AfmBOoqhnAsLZiYjuBbvevuctIWYJ6uksQN1kO9MJ0k5P9wRXRzSxjxm",
+                "snippet": "Its spikes of pale purple blossoms attract bees and other pollinators. Catnip makes a relaxing bedtime tea for humans, and is a favorite treat for cats."
+              },
+              {
+                "title": "Herbs Archives - Page 2 of 5 - Lake Valley Seed",
+                "link": "https://lakevalleyseed.com/product-category/herbs/page/2/?srsltid=AfmBOoodvAcmBqHzq_kWzsL7FCDYsRd_TLGqLKFU53pRHGts-wTJX9VX",
+                "snippet": "Catnip Lemon Scented - Item #681. Catnip Lemon Scented – Item #681. $2.59 Add to cart · Catnip Wild - Item #76. Catnip Wild – Item #76. $2.59 Add to cart."
+              },
+              {
+                "title": "[PDF] Seed Catalog",
+                "link": "https://lakevalleyseed.com/wp-content/uploads/2023/11/lvs-consumer-catalog-2024-web.pdf?srsltid=AfmBOoqUsrkKYsuCjhi4cMAlaJPRGVQlpXukGh28N3Vkg81OUg9kb_La",
+                "snippet": "Lemon Gem. A signet marigold, noted for its compact shape, delicate single flowers and finely-cut, lemon scented foliage. In full bloom, the foliage."
+              },
+              {
+                "title": "[PDF] Seed Catalog",
+                "link": "https://lakevalleyseed.com/wp-content/uploads/2025/07/lvs-consumer-catalog-2026-web.pdf?srsltid=AfmBOopBb56OCnicz_pUe-x41lthyIayz0uwVV6oV36J68zFz-d0S0D5",
+                "snippet": "Lemon Gem. A signet marigold, noted for its compact shape, delicate single flowers and finely-cut, lemon scented foliage. In full bloom, the foliage."
+              },
+              {
+                "title": "Cat Grass - Item #1854 - Lake Valley Seed",
+                "link": "https://lakevalleyseed.com/product/item-1854-cat-grass/?srsltid=AfmBOopYo3wvdLVgdypPcRmYBFbPvcBv-ELlYBTKN5VheFQMD0GzG9GM",
+                "snippet": "Easy-to-grow, 100% untreated oat grass is packed with nutrients and fibers that aid in digestion and help prevent hairballs. Dogs and rabbits love it, too!"
+              },
+              {
+                "title": "[PDF] 2026 ORDER GUIDE 2026 - Lake Valley Seed",
+                "link": "https://lakevalleyseed.com/wp-content/uploads/2025/07/lvs_orderguide_2026_digital.pdf?srsltid=AfmBOorYIrjESusjNy0jdZM6D8HII_2Zrmv1KZwboBtCpAxsdplqknw1",
+                "snippet": "Owner's signature authorizes ordering, delivery, and payment of Lake Valley Seed products. ... CATNIP LEMON SCENTED. H. P. 2.59 00681-3. 76. CATNIP WILD. H. P."
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

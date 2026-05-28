@@ -89,6 +89,18 @@ Run a read-only live sample batch from the linked Supabase project:
 bun run live-sample-research --limit 5 --agent --output-dir artifacts/live-smoke
 ```
 
+Run the fixture-backed SERP strategy eval for the SKU-first discovery flow:
+
+```bash
+bun run serper-eval
+```
+
+Run the fixture-backed extraction quality eval for expected field-level output:
+
+```bash
+bun run extraction-eval
+```
+
 Live batches keep per-sample Pi assistant output quiet by default and save it under each sample's `agent-summary.md` / `agent-details.json`; pass `--verbose-agent` when you want to stream each sample's reasoning while the batch runs.
 
 With explicit model + scraper wrapper:
@@ -227,6 +239,17 @@ The `agent-bootstrap-lmstudio` command writes both files into `.pi-runtime/` and
 The `live-sample-research` command is a **read-only local benchmarking workflow**.
 It does not add frontend routes, coordinator jobs, or database writes.
 It shells out to the Supabase CLI (`bunx supabase db query --linked`) from the linked web workspace and converts current `official_brand_url_candidates` rows into local research-agent inputs.
+
+The `serper-eval` command is a deterministic fixture benchmark for the staged SERP discovery strategy. It compares:
+- SKU-only first-query behavior
+- predicted-name quality against curated expected names
+- top-ranked official candidate URL against a curated expected product URL
+
+See `benchmarks/serper-strategy/README.md` and `benchmarks/serper-strategy/fixtures/smoke-dataset.json`.
+
+The `extraction-eval` command is a deterministic fixture benchmark for extraction quality. It compares merged extracted facts against curated expected values for titles, descriptions, images, categories, attributes, and confidence.
+
+See `benchmarks/extraction-quality/README.md` and `benchmarks/extraction-quality/fixtures/smoke-dataset.json`.
 
 Environment/setup notes:
 - the Supabase CLI must be available through `bunx supabase`

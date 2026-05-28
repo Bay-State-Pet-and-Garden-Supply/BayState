@@ -18,6 +18,7 @@ import { extractCandidateMetadataFacts } from "./extraction/candidate-metadata-e
 import { pageContainsBlockedSignals, scoreAcquiredEvidence, shouldEscalateToBrowser } from "./acquisition/acquisition-escalation";
 import { isSameOrSubdomain } from "../lib/url";
 import { normalizeBarcode } from "../lib/barcode";
+import { tokenizeText } from "../lib/tokens";
 
 function createRunId(productId: string, now: Date) {
   const timestamp = now.toISOString().replace(/[:.]/g, "-");
@@ -165,6 +166,39 @@ function isSafeOfficialProductCandidate(
   );
 }
 
+function isPromotableOfficialCanonicalCandidate(
+  candidate: EvaluatedCandidate,
+  diagnostics: AcquisitionDiagnostic | undefined,
+  brief: ProductResearchBrief,
+): boolean {
+  const officialDomain = brief.resolvedInput.officialDomainResolved;
+  const minimumIdentity = brief.constraints.preferOfficialSource ? 0.8 : 0.85;
+  const minimumVariant = brief.constraints.preferOfficialSource ? 0.65 : 0.7;
+  const hasVerifiedEvidence = Boolean(
+    diagnostics
+    && (diagnostics.selectedEvidenceScore ?? 0) >= 0.35
+    && (diagnostics.finalFactConfidence ?? diagnostics.factConfidence ?? 0) >= 0.2
+    && !diagnostics.error,
+  );
+
+  return Boolean(
+    hasVerifiedEvidence
+    && isSafeOfficialProductCandidate(candidate, diagnostics, officialDomain)
+    && candidate.relevanceScore >= minimumIdentity
+    && candidate.variantScore >= minimumVariant,
+  );
+}
+
+function compareOfficialCanonicalCandidates(left: EvaluatedCandidate, right: EvaluatedCandidate): number {
+  return (
+    right.score - left.score
+    || right.relevanceScore - left.relevanceScore
+    || right.variantScore - left.variantScore
+    || right.pathScore - left.pathScore
+    || right.authorityScore - left.authorityScore
+  );
+}
+
 function decisionPriority(candidate: EvaluatedCandidate): number {
   switch (candidate.decision) {
     case "selected":
@@ -184,6 +218,50 @@ function candidateHasUpcHint(candidate: EvaluatedCandidate, upc: string): boolea
     .some((value) => value.replace(/\D+/g, "").includes(normalizedUpc));
 }
 
+function extractProductCodeHintsFromCandidates(
+  rankedCandidates: EvaluatedCandidate[],
+  brief: ProductResearchBrief,
+): string[] {
+  const brandTokens = tokenizeText(brief.input.brand).filter((token) => token.length >= 3);
+  const brandSequencePattern = brandTokens.length >= 2
+    ? new RegExp(`\\b${brandTokens.map((token) => token.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")).join("\\W+")}\\W+(\\d{2,6})\\b`, "i")
+    : undefined;
+  const hints = new Set<string>();
+
+  const addFromText = (value: string | undefined) => {
+    if (!value) return;
+
+    for (const match of value.matchAll(/\bitem[-\s#:]?(\d{2,6})\b/gi)) {
+      hints.add(match[1]!);
+    }
+
+    for (const match of value.matchAll(/\b(?:sku|model|seed)[-\s#:]?(\d{2,6})\b/gi)) {
+      hints.add(match[1]!);
+    }
+
+    const brandSequenceMatch = brandSequencePattern?.exec(value);
+    if (brandSequenceMatch?.[1]) {
+      hints.add(brandSequenceMatch[1]);
+    }
+  };
+
+  for (const candidate of rankedCandidates) {
+    if (candidate.sourceType === "official") continue;
+    if (!candidateHasUpcHint(candidate, brief.input.upc)) continue;
+
+    addFromText(candidate.url);
+    addFromText(candidate.title);
+    addFromText(candidate.snippet);
+    addFromText(candidate.discoveredFrom);
+  }
+
+  const normalizedUpc = normalizeBarcode(brief.input.upc) ?? "";
+  return [...hints]
+    .filter((code) => code.length >= 2 && code.length <= 6)
+    .filter((code) => code !== normalizedUpc)
+    .slice(0, 3);
+}
+
 function buildCandidateProcessingQueue(
   rankedCandidates: EvaluatedCandidate[],
   topN: number,
@@ -193,12 +271,22 @@ function buildCandidateProcessingQueue(
   const seen = new Set<string>();
   const budget = Math.min(Math.max(topN, 4), 5);
   const officialDomain = brief.resolvedInput.officialDomainResolved;
+  const productCodeHints = extractProductCodeHintsFromCandidates(rankedCandidates, brief);
 
   const add = (candidate: EvaluatedCandidate | undefined) => {
     if (!candidate || seen.has(candidate.normalizedUrl)) return;
     seen.add(candidate.normalizedUrl);
     queue.push(candidate);
   };
+
+  add(rankedCandidates.find((candidate) =>
+    !isCandidateUnsafeForCanonicalSelection(candidate)
+    && Boolean(
+      productCodeHints.length > 0
+      && (officialDomain ? isSameOrSubdomain(candidate.normalizedDomain, officialDomain) : candidate.sourceType === "official")
+      && productCodeHints.some((code) => tokenizeText(candidate.url, candidate.title).includes(code))
+    )
+  ));
 
   add(rankedCandidates.find((candidate) =>
     !isCandidateUnsafeForCanonicalSelection(candidate)
@@ -521,6 +609,12 @@ export async function runProductResearchPipeline(
   const safeOfficialCandidates = finalCandidates.filter((candidate) =>
     isSafeOfficialProductCandidate(candidate, diagnosticsByUrl.get(candidate.normalizedUrl), officialDomain),
   );
+  const pickPromotableOfficialCandidate = (excludeNormalizedUrl?: string) => safeOfficialCandidates
+    .filter((candidate) =>
+      candidate.normalizedUrl !== excludeNormalizedUrl
+      && isPromotableOfficialCanonicalCandidate(candidate, diagnosticsByUrl.get(candidate.normalizedUrl), brief),
+    )
+    .sort(compareOfficialCanonicalCandidates)[0];
 
   // Prevent unsafe auto-selection and allow one winner.
   let selectedFound = false;
@@ -551,30 +645,27 @@ export async function runProductResearchPipeline(
     : undefined;
 
   if (selectedOffDomainCandidate) {
-    const officialPromotionCandidate = safeOfficialCandidates.find((candidate) =>
-      candidate.normalizedUrl !== selectedOffDomainCandidate.normalizedUrl
-      && candidate.relevanceScore >= 0.85
-      && candidate.variantScore >= 0.7
-      && candidate.score >= selectedOffDomainCandidate.score - 0.12,
-    );
+    const officialPromotionCandidate = pickPromotableOfficialCandidate(selectedOffDomainCandidate.normalizedUrl);
 
     if (officialPromotionCandidate) {
       officialPromotionCandidate.decision = "selected";
-      officialPromotionCandidate.reason = `Promoted official-domain candidate over off-domain corroborating candidate (official score ${officialPromotionCandidate.score.toFixed(2)}, corroborating score ${selectedOffDomainCandidate.score.toFixed(2)})`;
+      officialPromotionCandidate.reason = brief.constraints.preferOfficialSource
+        ? `Promoted safe official product page over off-domain corroborating candidate (official score ${officialPromotionCandidate.score.toFixed(2)}, corroborating score ${selectedOffDomainCandidate.score.toFixed(2)}).`
+        : `Promoted official-domain candidate over off-domain corroborating candidate (official score ${officialPromotionCandidate.score.toFixed(2)}, corroborating score ${selectedOffDomainCandidate.score.toFixed(2)}).`;
       selectedOffDomainCandidate.decision = "needs_review";
-      selectedOffDomainCandidate.reason = "Strong corroborating off-domain candidate retained for review, but official-domain candidate was promoted for canonical selection.";
+      selectedOffDomainCandidate.reason = brief.constraints.preferOfficialSource
+        ? "Strong off-domain evidence was retained for review as corroboration, but the safe official product page was preferred for canonical selection."
+        : "Strong corroborating off-domain candidate retained for review, but official-domain candidate was promoted for canonical selection.";
       selectedCandidate = officialPromotionCandidate;
     }
   }
 
-  // If nobody is selected yet, allow a safe official product candidate to win with slightly lower variant threshold.
+  // If nobody is selected yet, allow a safe official product candidate to win with slightly lower thresholds.
   if (!selectedCandidate) {
-    const promotableOfficial = safeOfficialCandidates.find((candidate) =>
-      candidate.relevanceScore >= 0.85 && candidate.variantScore >= 0.7,
-    );
+    const promotableOfficial = pickPromotableOfficialCandidate();
     if (promotableOfficial) {
       promotableOfficial.decision = "selected";
-      promotableOfficial.reason = `Selected as safe official product candidate despite missing UPC on-page (identity ${promotableOfficial.relevanceScore.toFixed(2)}, variant ${promotableOfficial.variantScore.toFixed(2)}).`;
+      promotableOfficial.reason = `Selected as safe official product candidate despite missing UPC/brand fields on-page (identity ${promotableOfficial.relevanceScore.toFixed(2)}, variant ${promotableOfficial.variantScore.toFixed(2)}).`;
       selectedCandidate = promotableOfficial;
     }
   }

@@ -11,6 +11,8 @@
     "agent-env": "bun run src/cli.ts agent-env",
     "agent-bootstrap-lmstudio": "bun run src/cli.ts agent-bootstrap-lmstudio",
     "live-sample-research": "bun run src/cli.ts live-sample-research",
+    "serper-eval": "bun run src/cli.ts serper-eval",
+    "extraction-eval": "bun run src/cli.ts extraction-eval",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },

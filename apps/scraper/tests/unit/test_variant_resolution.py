@@ -120,6 +120,73 @@ async def test_woocommerce_variant_resolver_success(mock_scoring_utils, mock_mat
 
 
 @pytest.mark.asyncio
+async def test_woocommerce_variant_resolver_sku_matching(mock_scoring_utils, mock_matching_utils, mock_extraction_utils):
+    resolver = WooCommerceVariantResolver(
+        scoring_utils=mock_scoring_utils,
+        matching_utils=mock_matching_utils,
+        extraction_utils=mock_extraction_utils,
+    )
+
+    url = "https://example-woocommerce.com/shop/dog-collar"
+    upc= "DC-BLUE-M"
+
+    variations_json = (
+        '[{"variation_id": 999, "sku": "DC-BLUE-S", "display_price": 15, '
+        '"attributes": {"attribute_pa_color": "blue", "attribute_pa_size": "s"}}, '
+        '{"variation_id": 1234, "sku": "DC-BLUE-M", "display_price": 20, '
+        '"attributes": {"attribute_pa_color": "blue", "attribute_pa_size": "m"}}]'
+    )
+    escaped_variations = html_module.escape(variations_json)
+    html = f'<html><body><form class="variations_form" data-product_variations="{escaped_variations}"></form>woocommerce</body></html>'
+
+    res_url, res_html, res_md, status = await resolver.resolve(
+        url=url, upc=upc, product_name="Dog Collar", brand="SuperBrand", html=html
+    )
+
+    assert status == "exact_variant"
+    assert res_url == "https://example-woocommerce.com/shop/dog-collar?variation_id=1234"
+    assert "application/ld+json" in res_html
+    assert "DC-BLUE-M" in res_html
+    assert "20" in res_html
+
+
+@pytest.mark.asyncio
+async def test_shopify_variant_resolver_sku_matching(mock_scoring_utils, mock_matching_utils, mock_extraction_utils):
+    resolver = ShopifyVariantResolver(
+        scoring_utils=mock_scoring_utils,
+        matching_utils=mock_matching_utils,
+        extraction_utils=mock_extraction_utils,
+    )
+
+    url = "https://example-shopify.com/products/dog-food"
+    upc= "DF-123"
+
+    mock_product_js = {
+        "title": "Dog Food",
+        "vendor": "SuperBrand",
+        "description": "Premium dog food.",
+        "variants": [
+            {"id": 4567, "sku": "DF-999", "title": "Small Bag", "price": 1000},
+            {"id": 1234, "sku": "DF-123", "title": "Large Bag", "price": 4500},
+        ],
+    }
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = mock_httpx_client(mock_product_js)
+        mock_client_cls.return_value = mock_client
+
+        res_url, res_html, res_md, status = await resolver.resolve(
+            url=url, upc=upc, product_name="Dog Food", brand="SuperBrand", html="<html><body>window.Shopify=true;</body></html>"
+        )
+
+        assert status == "exact_variant"
+        assert res_url == "https://example-shopify.com/products/dog-food?variant=1234"
+        assert "application/ld+json" in res_html
+        assert "DF-123" in res_html
+        assert "45.0" in res_html
+
+
+@pytest.mark.asyncio
 async def test_demandware_variant_resolver_success(mock_scoring_utils, mock_matching_utils, mock_extraction_utils):
     # Set DW specific scoring mock
     mock_scoring_utils.is_product_line_page.return_value = True

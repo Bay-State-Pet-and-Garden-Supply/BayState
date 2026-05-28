@@ -96,6 +96,53 @@ describe("ProductDomExtractor", () => {
     expect(facts.description).toBeUndefined();
     expect(facts.confidence).toBeLessThanOrEqual(0.35);
   });
+
+  it("scopes images to the product gallery and dedupes cloned carousel variants", async () => {
+    const extractor = new ProductDomExtractor();
+    const page: AcquiredPage = {
+      url: "https://frommfamily.com/products/cat/purrsnickitty-duck-stew-3-oz",
+      finalUrl: "https://frommfamily.com/products/cat/purrsnickitty-duck-stew-3-oz",
+      fetchedAt: new Date().toISOString(),
+      title: "PurrSnickitty Duck Stew",
+      html: `
+        <html>
+          <head>
+            <meta name="description" content="Tender duck stew recipe for cats." />
+          </head>
+          <body>
+            <section class="product-gallery swiper">
+              <h1>Duck Stew</h1>
+              <div class="swiper-slide">
+                <img src="https://cdn.frommfamily.com/products/duck-stew-front.jpg?width=240" alt="Duck Stew front" />
+              </div>
+              <div class="swiper-slide-duplicate">
+                <img src="https://cdn.frommfamily.com/products/duck-stew-front.jpg?width=1200" alt="Duck Stew front clone" />
+              </div>
+              <div class="swiper-slide">
+                <img data-zoom-image="https://cdn.frommfamily.com/products/duck-stew-back.jpg?width=1600" alt="Duck Stew back" />
+              </div>
+            </section>
+            <section class="related-products carousel">
+              <img src="https://cdn.frommfamily.com/products/chicken-stew-front.jpg?width=1200" alt="Chicken Stew related" />
+            </section>
+            <footer>
+              <img src="https://cdn.frommfamily.com/assets/footer-logo.png" alt="Footer logo" />
+            </footer>
+          </body>
+        </html>
+      `,
+      text: "Duck Stew\nTender duck stew recipe for cats.",
+      metadata: { engine: "http" },
+    };
+
+    const facts = await extractor.extractFacts(page, brief, { now: new Date() });
+
+    expect(facts.images).toHaveLength(2);
+    expect(facts.images.some((image) => image.includes("duck-stew-front"))).toBe(true);
+    expect(facts.images.some((image) => image.includes("duck-stew-back"))).toBe(true);
+    expect(facts.images.some((image) => image.includes("chicken-stew-front"))).toBe(false);
+    expect(facts.images.some((image) => image.includes("footer-logo"))).toBe(false);
+  });
 });
 
 describe("extractCandidateMetadataFacts", () => {

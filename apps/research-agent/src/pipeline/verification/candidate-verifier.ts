@@ -32,6 +32,24 @@ function buildRegisterDescriptorTokens(brand: string, registerName: string, upc:
   return tokenizeText(registerName).filter((token) => !anchorTokens.has(token));
 }
 
+function buildTitleComparisonTokens(brief: ProductResearchBrief, candidate: EvaluatedCandidate): string[] {
+  const descriptorTokens = buildRegisterDescriptorTokens(
+    brief.input.brand,
+    brief.input.registerName,
+    brief.input.upc,
+  );
+
+  if (
+    descriptorTokens.length > 0
+    && brief.resolvedInput.officialDomainResolved
+    && isSameOrSubdomain(candidate.normalizedDomain, brief.resolvedInput.officialDomainResolved)
+  ) {
+    return descriptorTokens;
+  }
+
+  return tokenizeText(brief.input.registerName);
+}
+
 function normalizeBrandComparable(value: string) {
   return value
     .toLowerCase()
@@ -136,7 +154,7 @@ export class DefaultCandidateVerifier implements CandidateVerifier {
       }
 
       // Title/Name token overlap
-      const nameTokens = tokenizeText(brief.input.registerName);
+      const nameTokens = buildTitleComparisonTokens(brief, candidate);
       const extractedTitleTokens = tokenizeText(facts.title);
       const titleOverlap = overlapScore(nameTokens, extractedTitleTokens);
       if (titleOverlap.score >= 0.5) {

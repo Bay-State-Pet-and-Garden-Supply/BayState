@@ -114,5 +114,10 @@ export async function queryLinkedSupabase(
   }
 
   const payload = JSON.parse(extractJsonPayload(combinedOutput));
-  return z.array(jsonValueSchema).parse(payload);
+  const rows = Array.isArray(payload)
+    ? payload
+    : (payload && typeof payload === "object" && "rows" in payload && Array.isArray(payload.rows)
+      ? payload.rows
+      : payload);
+  return z.array(jsonValueSchema).parse(rows);
 }

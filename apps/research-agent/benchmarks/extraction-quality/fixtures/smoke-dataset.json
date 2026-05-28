@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "research-agent-extraction-quality-eval-v1",
+  "entries": [
+    {
+      "id": "fromm-gallery-quality",
+      "input": {
+        "productId": "fromm-cat-purrsnick-duck-stew-3oz",
+        "upc": "072705113446",
+        "registerName": "Fromm Cat PurrSnick Duck Stew 3 oz",
+        "brand": "Fromm",
+        "officialWebsiteUrl": "https://frommfamily.com"
+      },
+      "page": {
+        "url": "https://frommfamily.com/products/cat/purrsnickitty-duck-stew-3-oz",
+        "finalUrl": "https://frommfamily.com/products/cat/purrsnickitty-duck-stew-3-oz",
+        "title": "PurrSnickitty Duck Stew",
+        "htmlPath": "html/fromm-gallery.html",
+        "textPath": "text/fromm-gallery.txt"
+      },
+      "expected": {
+        "title": "Duck Stew",
+        "descriptionContains": ["Tender duck stew recipe for cats"],
+        "categoriesInclude": ["Cat Food", "Wet Cat Food", "Duck Recipes"],
+        "requiredImages": ["duck-stew-front", "duck-stew-back"],
+        "forbiddenImages": ["chicken-stew-front", "footer-logo"],
+        "minImageCount": 2,
+        "maxImageCount": 2,
+        "requiredAttributes": {
+          "canonicalUrl": "https://frommfamily.com/products/cat/purrsnickitty-duck-stew-3-oz",
+          "size": "3 oz",
+          "brand": "Fromm"
+        },
+        "minConfidence": 0.6
+      },
+      "tags": ["smoke", "gallery-scoping", "images"]
+    },
+    {
+      "id": "firstmate-jsonld-quality",
+      "input": {
+        "productId": "firstmate-chicken-blueberries-cat-3-96lb",
+        "upc": "072318200618",
+        "registerName": "FirstMate CHKN Meal Blueberries Formula Cat 3.96lb",
+        "brand": "FirstMate",
+        "officialWebsiteUrl": "https://firstmate.com"
+      },
+      "page": {
+        "url": "https://firstmate.com/product/chicken-meal-with-blueberries-formula-for-cats/",
+        "finalUrl": "https://firstmate.com/product/chicken-meal-with-blueberries-formula-for-cats/",
+        "title": "Chicken Meal with Blueberries Formula for Cats",
+        "htmlPath": "html/firstmate-jsonld.html",
+        "textPath": "text/firstmate-jsonld.txt"
+      },
+      "expected": {
+        "title": "FirstMate Chicken Meal with Blueberries Formula Cat 3.96lb",
+        "descriptionContains": ["limited ingredient", "chicken meal", "blueberries"],
+        "categoriesInclude": ["Cat Food Dry", "Limited Ingredient Diet"],
+        "requiredImages": ["chicken-blueberries-front", "chicken-blueberries-back"],
+        "forbiddenImages": ["footer-logo", "related"],
+        "minImageCount": 2,
+        "maxImageCount": 2,
+        "requiredAttributes": {
+          "brand": "FirstMate",
+          "sku": "FTM-200618",
+          "gtin12": "072318200618",
+          "priceCurrency": "USD"
+        },
+        "minConfidence": 0.8
+      },
+      "tags": ["smoke", "jsonld", "merged-extraction"]
+    }
+  ]
+}

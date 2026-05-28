@@ -1,6 +1,7 @@
 import type { PageFactExtractor } from "../ports";
 import type { AcquiredPage, PageFactSet, ProductResearchBrief, ProductResearchPipelineContext } from "../types";
 import { tokenizeText } from "../../lib/tokens";
+import { canonicalizeImageUrl, toAbsoluteImageUrl } from "./image-utils";
 
 const GENERIC_TITLE_PATTERNS = [
   /page not found/i,
@@ -27,6 +28,64 @@ const GENERIC_DESCRIPTION_PATTERNS = [
   /search results/i,
 ];
 
+const GALLERY_CONTEXT_HINTS = [
+  "gallery",
+  "carousel",
+  "slider",
+  "thumbnail",
+  "thumbnails",
+  "product-media",
+  "product_media",
+  "product__media",
+  "product-gallery",
+  "product_gallery",
+  "product-images",
+  "product_images",
+  "media-gallery",
+  "main-image",
+  "main_image",
+  "fotorama",
+  "swiper",
+  "splide",
+  "zoom",
+];
+
+const NON_PRODUCT_SECTION_HINTS = [
+  "related",
+  "recommended",
+  "recommendation",
+  "upsell",
+  "crosssell",
+  "cross-sell",
+  "similar",
+  "recently-viewed",
+  "footer",
+  "header",
+  "newsletter",
+  "social",
+  "review",
+  "reviews",
+  "ugc",
+  "blog",
+  "article",
+  "collection",
+  "search",
+  "category",
+  "brand-story",
+];
+
+const DUPLICATE_CONTEXT_HINTS = [
+  "slick-cloned",
+  "swiper-slide-duplicate",
+  "cloned",
+  "duplicate",
+];
+
+const NON_PRODUCT_IMAGE_HINT_RE = /logo|icon|sprite|tracking|facebook\.com\/tr|menu|placeholder|avatar|thumb|recycle|footer|social|newsletter|flag|badge|buynow|buy-now|cart|checkout/i;
+const PRODUCT_IMAGE_HINT_RE = /product|products|cdn|media|gallery|zoom|main/i;
+const IMAGE_EXT_RE = /\.(?:jpg|jpeg|png|gif|webp|avif)(?:$|[?#])/i;
+const JSON_IMAGE_RE = /"(?:image|images|image_url|featured_image|src)"\s*:\s*(?:\[)?\s*"([^"\\]+(?:jpg|jpeg|png|gif|webp|avif)[^"\\]*)"/gi;
+
 function stripHtml(value: string | undefined) {
   return (value ?? "")
     .replace(/<[^>]+>/g, " ")
@@ -38,26 +97,6 @@ function stripHtml(value: string | undefined) {
     .replace(/&#39;/g, "'")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-function toAbsoluteUrl(url: string | undefined, baseUrl: string) {
-  if (!url) return undefined;
-  try {
-    return new URL(url).toString();
-  } catch {
-    try {
-      return new URL(url, baseUrl).toString();
-    } catch {
-      if (url.startsWith("//")) {
-        try {
-          return new URL(`https:${url}`).toString();
-        } catch {
-          return undefined;
-        }
-      }
-      return undefined;
-    }
-  }
 }
 
 function extractTagText(html: string, tag: string): string[] {
@@ -127,33 +166,136 @@ function extractParagraphDescription(html: string, text: string, titleTokens: st
   return lines[0];
 }
 
-function collectImageCandidates(html: string, baseUrl: string, titleTokens: string[]) {
-  const candidates = new Map<string, { url: string; score: number }>();
+type DomImageCandidate = {
+  rawUrl: string;
+  context: string;
+  baseScore: number;
+  galleryContext: boolean;
+  nonProductContext: boolean;
+  duplicateContext: boolean;
+};
 
-  const addCandidate = (rawUrl: string | undefined, score: number, context = "") => {
-    const absoluteUrl = toAbsoluteUrl(rawUrl, baseUrl);
+function hasHint(haystack: string, hints: string[]) {
+  return hints.some((hint) => haystack.includes(hint));
+}
+
+function extractDomImageCandidates(html: string): DomImageCandidate[] {
+  const candidates: DomImageCandidate[] = [];
+  const tagRegex = /<(img|source|a)\b([^>]+)>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = tagRegex.exec(html)) !== null) {
+    const tag = match[1].toLowerCase();
+    const attrs = match[2] ?? "";
+    const beforeContext = html.slice(
+      Math.max(0, match.index - 260),
+      match.index,
+    ).toLowerCase();
+    const afterContext = html.slice(
+      match.index + match[0].length,
+      Math.min(html.length, match.index + match[0].length + 80),
+    ).toLowerCase();
+    const contextWindow = `${beforeContext} ${match[0].toLowerCase()} ${afterContext}`;
+    const alt = attrs.match(/alt=["']([^"']*)/i)?.[1] ?? "";
+    const galleryContext = hasHint(contextWindow, GALLERY_CONTEXT_HINTS) && !hasHint(beforeContext, NON_PRODUCT_SECTION_HINTS);
+    const nonProductContext = hasHint(beforeContext, NON_PRODUCT_SECTION_HINTS) || /<(?:footer|aside)\b/i.test(beforeContext);
+    const duplicateContext = hasHint(contextWindow, DUPLICATE_CONTEXT_HINTS);
+
+    const addCandidate = (rawUrl: string | undefined, baseScore: number) => {
+      if (!rawUrl) return;
+      candidates.push({
+        rawUrl,
+        context: `${alt} ${attrs}`,
+        baseScore,
+        galleryContext,
+        nonProductContext,
+        duplicateContext,
+      });
+    };
+
+    if (tag === "a") {
+      const href = attrs.match(/href=["']([^"']+)/i)?.[1];
+      if (href && IMAGE_EXT_RE.test(href)) {
+        addCandidate(href, galleryContext ? 0.9 : 0.5);
+      }
+      continue;
+    }
+
+    for (const source of [
+      attrs.match(/(?:src|data-src|data-original|data-image|data-zoom-image|data-full-image|data-large-image|data-large_image)=["']([^"']+)/i)?.[1],
+    ]) {
+      addCandidate(source, galleryContext ? 0.9 : 0.7);
+    }
+
+    for (const setSource of [
+      attrs.match(/(?:srcset|data-srcset)=["']([^"']+)/i)?.[1],
+    ]) {
+      if (!setSource) continue;
+      for (const part of setSource.split(",")) {
+        const source = part.trim().split(/\s+/)[0];
+        addCandidate(source, galleryContext ? 0.95 : 0.75);
+      }
+    }
+  }
+
+  return candidates;
+}
+
+function collectImageCandidates(html: string, baseUrl: string, identityTokens: string[]) {
+  const candidates = new Map<string, { url: string; canonicalUrl: string; score: number }>();
+
+  const addCandidate = (
+    rawUrl: string | undefined,
+    score: number,
+    context = "",
+    flags: Partial<Pick<DomImageCandidate, "galleryContext" | "nonProductContext" | "duplicateContext">> = {},
+  ) => {
+    const absoluteUrl = toAbsoluteImageUrl(rawUrl, baseUrl);
     if (!absoluteUrl) return;
 
-    let finalScore = score;
-    const haystack = `${absoluteUrl} ${context}`.toLowerCase();
-
-    if (/logo|icon|sprite|tracking|facebook\.com\/tr|banner|hero|menu|placeholder|avatar|thumb/i.test(haystack)) {
-      finalScore -= 1.2;
+    let canonicalUrl: string;
+    try {
+      canonicalUrl = canonicalizeImageUrl(absoluteUrl);
+    } catch {
+      canonicalUrl = absoluteUrl;
     }
-    if (/product|products|shopify|cdn|media/i.test(haystack)) {
+
+    let finalScore = score;
+    const haystack = `${absoluteUrl} ${canonicalUrl} ${context}`.toLowerCase();
+
+    if (flags.galleryContext) {
+      finalScore += 1.2;
+    }
+    if (flags.nonProductContext) {
+      finalScore -= 1.8;
+    }
+    if (flags.duplicateContext) {
+      finalScore -= 1.0;
+    }
+
+    if (NON_PRODUCT_IMAGE_HINT_RE.test(haystack)) {
+      finalScore -= 1.4;
+    }
+    if (PRODUCT_IMAGE_HINT_RE.test(haystack)) {
       finalScore += 0.2;
     }
-    if (titleTokens.some((token) => haystack.includes(token))) {
-      finalScore += 0.25;
-    }
-    if (!/\.(?:jpg|jpeg|png|gif|webp|avif)(?:$|[?#])/i.test(absoluteUrl)) {
+
+    const tokenMatches = identityTokens.filter((token) => haystack.includes(token)).length;
+    finalScore += Math.min(tokenMatches * 0.18, 0.72);
+
+    if (!IMAGE_EXT_RE.test(absoluteUrl)) {
       finalScore -= 0.1;
     }
+
     if (finalScore <= 0) return;
 
-    const existing = candidates.get(absoluteUrl);
+    const existing = candidates.get(canonicalUrl);
     if (!existing || existing.score < finalScore) {
-      candidates.set(absoluteUrl, { url: absoluteUrl, score: finalScore });
+      candidates.set(canonicalUrl, {
+        url: absoluteUrl,
+        canonicalUrl,
+        score: finalScore,
+      });
     }
   };
 
@@ -161,33 +303,12 @@ function collectImageCandidates(html: string, baseUrl: string, titleTokens: stri
     addCandidate(image, 1.0, "meta-image");
   }
 
-  const imgTagRegex = /<(img|source)\b([^>]+)>/gi;
-  let match: RegExpExecArray | null;
-  while ((match = imgTagRegex.exec(html)) !== null) {
-    const attrs = match[2] ?? "";
-    const context = attrs.match(/alt=["']([^"']+)/i)?.[1] ?? attrs;
-    const scalarSources = [
-      attrs.match(/(?:src|data-src|data-original|data-image)=["']([^"']+)/i)?.[1],
-    ];
-    const setSources = [
-      attrs.match(/(?:srcset|data-srcset)=["']([^"']+)/i)?.[1],
-    ];
-
-    for (const source of scalarSources) {
-      addCandidate(source, 0.7, context);
-    }
-
-    for (const setSource of setSources) {
-      if (!setSource) continue;
-      for (const part of setSource.split(",")) {
-        const source = part.trim().split(/\s+/)[0];
-        addCandidate(source, 0.75, context);
-      }
-    }
+  for (const candidate of extractDomImageCandidates(html)) {
+    addCandidate(candidate.rawUrl, candidate.baseScore, candidate.context, candidate);
   }
 
-  const jsonImageRegex = /"(?:image|images|image_url|featured_image|src)"\s*:\s*(?:\[)?\s*"([^"\\]+(?:jpg|jpeg|png|gif|webp|avif)[^"\\]*)"/gi;
-  while ((match = jsonImageRegex.exec(html)) !== null) {
+  let match: RegExpExecArray | null;
+  while ((match = JSON_IMAGE_RE.exec(html)) !== null) {
     addCandidate(match[1], 0.85, "json-image");
   }
 
@@ -195,6 +316,31 @@ function collectImageCandidates(html: string, baseUrl: string, titleTokens: stri
     .sort((left, right) => right.score - left.score)
     .map((candidate) => candidate.url)
     .slice(0, 8);
+}
+
+function extractCategoriesFromText(text: string) {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (const line of lines) {
+    if (!line.includes("/")) {
+      continue;
+    }
+
+    const categories = line
+      .split("/")
+      .map((part) => stripHtml(part))
+      .map((part) => part.trim())
+      .filter((part) => part.length >= 3);
+
+    if (categories.length >= 2) {
+      return categories.slice(0, 4);
+    }
+  }
+
+  return [] as string[];
 }
 
 function extractSize(text: string) {
@@ -223,12 +369,13 @@ export class ProductDomExtractor implements PageFactExtractor {
       confidence: 0,
     };
 
+    void context;
+
     if (!html && !text) {
       return factSet;
     }
 
     const h1Candidates = html ? extractTagText(html, "h1") : [];
-    const h2Candidates = html ? extractTagText(html, "h2") : [];
     const canonicalUrl = html ? extractCanonicalUrl(html) : undefined;
     const metaDescriptions = html ? extractMetaContents(html, ["description", "og:description", "twitter:description"]) : [];
     const metaTitles = html ? extractMetaContents(html, ["og:title", "twitter:title"]) : [];
@@ -238,6 +385,12 @@ export class ProductDomExtractor implements PageFactExtractor {
       ?? metaTitles[0];
 
     const titleTokens = tokenizeText(factSet.title, ...metaTitles).filter((token) => token.length > 2);
+    const identityTokens = tokenizeText(
+      brief.input.brand,
+      brief.input.registerName,
+      factSet.title,
+      ...metaTitles,
+    ).filter((token) => token.length > 2);
     const genericPage = looksGenericTitle(factSet.title, sourceUrl);
 
     const goodMetaDescription = metaDescriptions.find((value) => !looksGenericDescription(value));
@@ -245,11 +398,10 @@ export class ProductDomExtractor implements PageFactExtractor {
       ? (goodMetaDescription ?? extractParagraphDescription(html, text, titleTokens))
       : undefined;
 
-    factSet.images = genericPage ? [] : collectImageCandidates(html, sourceUrl, titleTokens);
+    factSet.images = genericPage ? [] : collectImageCandidates(html, sourceUrl, identityTokens);
 
-    const breadcrumbText = text.match(/([A-Za-z][A-Za-z\s&]+\s\/\s[A-Za-z][A-Za-z\s&]+(?:\s\/\s[A-Za-z][A-Za-z\s&]+)*)/);
-    if (breadcrumbText?.[1] && !genericPage) {
-      factSet.categories = breadcrumbText[1].split("/").map((part) => part.trim()).filter(Boolean).slice(0, 4);
+    if (!genericPage) {
+      factSet.categories = extractCategoriesFromText(text);
     }
 
     if (canonicalUrl) {

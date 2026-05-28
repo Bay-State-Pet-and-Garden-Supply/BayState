@@ -39,4 +39,9 @@ export * from "./pipeline/extraction/product-dom-extractor";
 export * from "./pipeline/extraction/candidate-metadata-extractor";
 export * from "./pipeline/verification/candidate-verifier";
 export * from "./research/runProductResearchV2";
+export * from "./evals/serper-strategy/dataset";
+export * from "./evals/serper-strategy/runner";
+export * from "./evals/extraction-quality/dataset";
+export * from "./evals/extraction-quality/runner";
+export * from "./pipeline/extraction/image-utils";
 

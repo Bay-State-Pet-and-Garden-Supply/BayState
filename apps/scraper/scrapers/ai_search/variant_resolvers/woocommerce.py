@@ -58,7 +58,7 @@ class WooCommerceVariantResolver(BaseVariantResolver):
             for variant in variations:
                 if not isinstance(variant, dict):
                     continue
-                var_sku = str(variant.get("upc") or "").strip().lower()
+                var_sku = str(variant.get("sku") or variant.get("upc") or "").strip().lower()
                 if var_sku == target_sku_clean:
                     matched_variant = variant
                     break
@@ -68,7 +68,7 @@ class WooCommerceVariantResolver(BaseVariantResolver):
                 for variant in variations:
                     if not isinstance(variant, dict):
                         continue
-                    var_sku = str(variant.get("upc") or "").strip().lower()
+                    var_sku = str(variant.get("sku") or variant.get("upc") or "").strip().lower()
                     if var_sku and (target_sku_clean in var_sku or var_sku in target_sku_clean):
                         matched_variant = variant
                         break
@@ -104,7 +104,7 @@ class WooCommerceVariantResolver(BaseVariantResolver):
         full_title = f"{prod_title} - {attr_desc}" if attr_desc else prod_title
 
         var_price = float(matched_variant.get("display_price", 0))
-        var_sku = matched_variant.get("upc") or upc
+        var_sku = matched_variant.get("sku") or matched_variant.get("upc") or upc
         
         var_img = None
         var_img_data = matched_variant.get("image")

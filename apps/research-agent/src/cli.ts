@@ -22,6 +22,8 @@ function usage() {
   bun run agent-env [--agent-home <path>]
   bun run agent-bootstrap-lmstudio [--model-id <id>] [--base-url <url>] [--api-key <key>] [--agent-home <path>]
   bun run live-sample-research [--limit <n>] [--limit-per-brand <n>] [--sampling-mode candidate-baseline|production-shaped] [--upc <upc>] [--brand <brand>] [--output-dir <path>] [--agent] [--verbose-agent] [--pipeline local|legacy-scraper] [--page-acquisition http|agent-browser|auto|none] [--indexing off|lookup-only|refresh-stale|cold-start] [--model <provider/model>] [--thinking <level>] [--agent-home <path>]
+  bun run serper-eval [--dataset <path>] [--output-dir <path>]
+  bun run extraction-eval [--dataset <path>] [--output-dir <path>]
   bun run src/cli.ts index-domain --brand <brand> --domain <domain> [--max-pages <n>] [--force]
   bun run src/cli.ts cache-stats
   bun run src/cli.ts cache-prune [--older-than-days <days>]
@@ -32,6 +34,8 @@ Commands:
   agent-env                 Print the standalone Pi harness environment and available models
   agent-bootstrap-lmstudio  Detect a local LM Studio server and write standalone Pi auth/models config
   live-sample-research      Run read-only Supabase-backed live sample research batches locally
+  serper-eval               Run the fixture-backed SERP strategy benchmark for SKU-first discovery
+  extraction-eval           Run the fixture-backed extraction quality benchmark
   index-domain            Pre-index and cache all product-like pages from an official brand domain sitemap
   cache-stats             Show page cache database statistics
   cache-prune             Prune old cache records
@@ -259,6 +263,50 @@ async function runLiveSampleResearch(args: string[]) {
   }, null, 2));
 }
 
+async function runSerperEval(args: string[]) {
+  const environment = inspectStandaloneAgentEnvironment();
+  const datasetPathValue = getFlagValue(args, "--dataset") ?? "benchmarks/serper-strategy/fixtures/smoke-dataset.json";
+  const outputDirValue = getFlagValue(args, "--output-dir") ?? path.join("artifacts", "evals", "serper-strategy", "latest");
+  const datasetPath = await resolveInputPath(datasetPathValue);
+  const outputDir = path.resolve(environment.appRoot, outputDirValue);
+
+  const { runSerperStrategyEval } = await import("./evals/serper-strategy/runner");
+  const { report, jsonPath, markdownPath } = await runSerperStrategyEval({
+    datasetPath,
+    outputDir,
+  });
+
+  console.log(JSON.stringify({
+    datasetPath,
+    outputDir,
+    jsonPath,
+    markdownPath,
+    summary: report.summary,
+  }, null, 2));
+}
+
+async function runExtractionEval(args: string[]) {
+  const environment = inspectStandaloneAgentEnvironment();
+  const datasetPathValue = getFlagValue(args, "--dataset") ?? "benchmarks/extraction-quality/fixtures/smoke-dataset.json";
+  const outputDirValue = getFlagValue(args, "--output-dir") ?? path.join("artifacts", "evals", "extraction-quality", "latest");
+  const datasetPath = await resolveInputPath(datasetPathValue);
+  const outputDir = path.resolve(environment.appRoot, outputDirValue);
+
+  const { runExtractionQualityEval } = await import("./evals/extraction-quality/runner");
+  const { report, jsonPath, markdownPath } = await runExtractionQualityEval({
+    datasetPath,
+    outputDir,
+  });
+
+  console.log(JSON.stringify({
+    datasetPath,
+    outputDir,
+    jsonPath,
+    markdownPath,
+    summary: report.summary,
+  }, null, 2));
+}
+
 async function runIndexDomain(args: string[]) {
   const brand = getFlagValue(args, "--brand");
   const domain = getFlagValue(args, "--domain");
@@ -380,6 +428,16 @@ async function main() {
 
   if (command === "live-sample-research") {
     await runLiveSampleResearch(args);
+    return;
+  }
+
+  if (command === "serper-eval") {
+    await runSerperEval(args);
+    return;
+  }
+
+  if (command === "extraction-eval") {
+    await runExtractionEval(args);
     return;
   }
 

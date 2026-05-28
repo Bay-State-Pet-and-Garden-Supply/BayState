@@ -76,7 +76,7 @@ class ShopifyVariantResolver(BaseVariantResolver):
         # Try exact UPC match first
         if target_sku_clean:
             for variant in variants:
-                var_sku = str(variant.get("upc") or "").strip().lower()
+                var_sku = str(variant.get("sku") or variant.get("upc") or "").strip().lower()
                 if var_sku == target_sku_clean:
                     matched_variant = variant
                     break
@@ -84,7 +84,7 @@ class ShopifyVariantResolver(BaseVariantResolver):
             # Try substring match
             if not matched_variant:
                 for variant in variants:
-                    var_sku = str(variant.get("upc") or "").strip().lower()
+                    var_sku = str(variant.get("sku") or variant.get("upc") or "").strip().lower()
                     if var_sku and (target_sku_clean in var_sku or var_sku in target_sku_clean):
                         matched_variant = variant
                         break
@@ -128,7 +128,7 @@ class ShopifyVariantResolver(BaseVariantResolver):
         full_title = f"{prod_title} - {var_title}" if var_title and var_title.lower() != "default title" else prod_title
         
         var_price = float(matched_variant.get("price", 0)) / 100.0 if matched_variant.get("price") is not None else 0.0
-        var_sku = matched_variant.get("upc") or upc
+        var_sku = matched_variant.get("sku") or matched_variant.get("upc") or upc
         feat_img = matched_variant.get("featured_image")
         var_img = feat_img.get("src") if isinstance(feat_img, dict) else product_data.get("featured_image")
         if not var_img and product_data.get("images"):

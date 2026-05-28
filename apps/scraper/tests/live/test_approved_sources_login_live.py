@@ -105,7 +105,7 @@ def _build_live_plan(
 
     plan = ApprovedSourcePlan(
         schemaVersion="v1",
-        upc=sku,
+        upc=upc,
         input={"name": product_name, "price": None},
         brand=brand,
         selectedDistributorSlug=source_slug,

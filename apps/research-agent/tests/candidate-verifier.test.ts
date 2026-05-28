@@ -151,4 +151,50 @@ describe("DefaultCandidateVerifier", () => {
     expect(result.variantConfidence).toBeLessThan(0.5);
     expect(result.warnings.some(w => w.message.includes("Low register-name descriptor overlap"))).toBe(true);
   });
+
+  it("boosts official-page title overlap even when the brand token is omitted", async () => {
+    const verifier = new DefaultCandidateVerifier();
+    const lakeValleyCandidate: EvaluatedCandidate = {
+      ...candidate,
+      url: "https://lakevalleyseed.com/product/item-860-lettuce-black-seeded-simpson",
+      normalizedUrl: "https://lakevalleyseed.com/product/item-860-lettuce-black-seeded-simpson",
+      normalizedDomain: "lakevalleyseed.com",
+      score: 0.83,
+      relevanceScore: 0.83,
+      variantScore: 0.76,
+      pathScore: 0.9,
+    };
+    const lakeValleyBrief: ProductResearchBrief = {
+      ...brief,
+      input: {
+        ...brief.input,
+        brand: "Lake Valley Seed",
+        registerName: "Lake Valley Seed Lettuce Organic Black Seeded Simpson Heirloom Vegetable 1.5g",
+        upc: "051178008605",
+        officialWebsiteUrl: "https://lakevalleyseed.com",
+      },
+      resolvedInput: {
+        ...brief.resolvedInput,
+        brand: "Lake Valley Seed",
+        registerName: "Lake Valley Seed Lettuce Organic Black Seeded Simpson Heirloom Vegetable 1.5g",
+        upc: "051178008605",
+        officialWebsiteUrl: "https://lakevalleyseed.com",
+        officialDomainResolved: "lakevalleyseed.com",
+      },
+    };
+    const facts: PageFactSet = {
+      sourceUrl: lakeValleyCandidate.url,
+      title: "Lettuce Black Seeded Simpson Organic",
+      description: "Organic heirloom lettuce seed variety for gardens.",
+      images: ["https://lakevalleyseed.com/image.jpg"],
+      categories: ["Vegetable Seeds"],
+      attributes: {},
+      evidenceSnippets: [],
+      confidence: 0.88,
+    };
+
+    const result = await verifier.verifyCandidate(lakeValleyCandidate, facts, lakeValleyBrief, context);
+    expect(result.identityConfidence).toBeGreaterThan(0.9);
+    expect(result.warnings.some(w => w.message.includes("Brand mismatch"))).toBe(false);
+  });
 });

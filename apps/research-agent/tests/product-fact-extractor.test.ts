@@ -36,4 +36,33 @@ describe("ProductFactExtractor mergePageFacts", () => {
     expect(merged.attributes.price).toBe("12.99"); // Mid confidence price kept
     expect(merged.attributes.sku).toBe("123");
   });
+
+  it("dedupes image variants across extractors using canonical image URLs", () => {
+    const highConf: PageFactSet = {
+      sourceUrl: "https://example.com",
+      images: ["https://cdn.example.com/product/front.jpg?width=1200"],
+      categories: [],
+      attributes: {},
+      evidenceSnippets: [],
+      confidence: 0.92,
+    };
+
+    const midConf: PageFactSet = {
+      sourceUrl: "https://example.com",
+      images: [
+        "https://cdn.example.com/product/front.jpg?width=240",
+        "https://cdn.example.com/product/back.jpg?width=600",
+      ],
+      categories: [],
+      attributes: {},
+      evidenceSnippets: [],
+      confidence: 0.78,
+    };
+
+    const merged = mergePageFacts([midConf, highConf]);
+
+    expect(merged.images).toHaveLength(2);
+    expect(merged.images[0]).toContain("front.jpg");
+    expect(merged.images[1]).toContain("back.jpg");
+  });
 });

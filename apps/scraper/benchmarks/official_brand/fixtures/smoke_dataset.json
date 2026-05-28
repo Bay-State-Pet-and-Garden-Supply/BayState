@@ -36,6 +36,78 @@
         "smoke",
         "official-domain"
       ]
+    },
+    {
+      "upc": "850004357187",
+      "brand": "Dr Marty",
+      "product_name": "Dr. Marty Nature's Feast Essential Wellness Poultry Freeze Dried Cat Food, 12 oz",
+      "expected_official_domains": [
+        "drmartypets.com"
+      ],
+      "preferred_domains": [
+        "drmartypets.com"
+      ],
+      "expected_url": "https://drmartypets.com/product/natures-feast-poultry",
+      "category": "Cat Food Dry",
+      "difficulty": "easy",
+      "tags": [
+        "smoke",
+        "official-domain"
+      ]
+    },
+    {
+      "upc": "810028242944",
+      "brand": "Weruva",
+      "product_name": "Weruva Freeze-dried Paw Lickin' Chicken Cat Food 1 oz.",
+      "expected_official_domains": [
+        "weruva.com"
+      ],
+      "preferred_domains": [
+        "weruva.com"
+      ],
+      "expected_url": "https://www.weruva.com/products/paw-lickin-chicken-freeze-dried-cat",
+      "category": "Cat Food Dry",
+      "difficulty": "easy",
+      "tags": [
+        "smoke",
+        "official-domain"
+      ]
+    },
+    {
+      "upc": "072705113408",
+      "brand": "Fromm",
+      "product_name": "Fromm PurrSnickitty Duck Liver Pate Wet Cat Food, 3 oz",
+      "expected_official_domains": [
+        "frommfamily.com"
+      ],
+      "preferred_domains": [
+        "frommfamily.com"
+      ],
+      "expected_url": "https://frommfamily.com/products/cat/purrsnickitty/can/duck-liver-pate",
+      "category": "Cat Food Wet",
+      "difficulty": "easy",
+      "tags": [
+        "smoke",
+        "official-domain"
+      ]
+    },
+    {
+      "upc": "051178006813",
+      "brand": "Lake Valley Seed",
+      "product_name": "Lemon Scented Catnip Heirloom Seeds",
+      "expected_official_domains": [
+        "lakevalleyseed.com"
+      ],
+      "preferred_domains": [
+        "lakevalleyseed.com"
+      ],
+      "expected_url": "https://lakevalleyseed.com/product/item-681-catnip-lemon-scented",
+      "category": "Lawn & Garden",
+      "difficulty": "easy",
+      "tags": [
+        "smoke",
+        "official-domain"
+      ]
     }
   ]
 }

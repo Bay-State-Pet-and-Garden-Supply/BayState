@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from html.parser import HTMLParser
 from typing import Any
 from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode, urljoin
 
@@ -59,6 +60,8 @@ ALLOWED_CDN_DOMAINS_BY_SITE: dict[str, set[str]] = {
 NON_PRODUCT_PATH_HINTS: set[str] = {
     "recycle", "transparency-map", "promise", "lifestyle",
     "logo", "icon", "footer", "social", "badge",
+    "flag", "flags", "cart", "checkout", "buynow", "buy-now",
+    "themes", "theme", "svg",
 }
 
 # Path/alt hints that indicate product-relevant images
@@ -66,6 +69,34 @@ PRODUCT_PATH_HINTS: set[str] = {
     "hero", "front", "back", "topdown", "pdp",
     "product", "render", "packaging", "gallery",
 }
+
+# Container/attribute hints that strongly suggest the PDP image carousel/gallery.
+GALLERY_CONTEXT_HINTS: set[str] = {
+    "gallery", "carousel", "slider", "thumbnail", "thumbnails",
+    "product-media", "product_media", "product__media", "product-gallery",
+    "product_gallery", "product-images", "product_images", "media-gallery",
+    "main-image", "main_image", "fotorama", "swiper", "splide", "zoom",
+}
+
+# Section hints that usually indicate page-wide or non-PDP imagery.
+NON_PRODUCT_SECTION_HINTS: set[str] = {
+    "related", "recommended", "recommendation", "upsell", "crosssell",
+    "cross-sell", "similar", "recently-viewed", "footer", "header", "nav",
+    "menu", "newsletter", "social", "review", "reviews", "ugc", "blog",
+    "article", "collection", "search", "category", "brand-story",
+}
+
+# Many JS carousels clone slides, which creates duplicate product images in the DOM.
+DUPLICATE_CONTEXT_HINTS: set[str] = {
+    "slick-cloned", "swiper-slide-duplicate", "cloned", "duplicate",
+}
+
+_HTML_IMAGE_ATTRS: tuple[str, ...] = (
+    "src", "data-src", "data-original", "data-lazy-src", "data-image",
+    "data-zoom-image", "data-full-image", "data-large-image", "data-large_image",
+)
+
+_HTML_SRCSET_ATTRS: tuple[str, ...] = ("srcset", "data-srcset")
 
 # Common flavor/protein tokens (used for cross-flavor detection)
 COMMON_FLAVOR_TOKENS: set[str] = {
@@ -77,7 +108,9 @@ COMMON_FLAVOR_TOKENS: set[str] = {
 # Query params to strip during canonicalization
 _STRIP_QUERY_PARAMS: set[str] = {
     "width", "height", "crop", "fit", "auto", "q", "quality",
-    "ixlib", "ixid", "w", "h",
+    "ixlib", "ixid", "w", "h", "fm", "format", "dpr", "s", "sw",
+    "sh", "trim", "background", "bg", "canvas", "pad", "fitmode",
+    "cropmode", "cropx", "cropy",
 }
 
 # Query params to preserve during canonicalization
@@ -208,83 +241,160 @@ def _resolve_url(value: str, source_url: str = "") -> str | None:
 # ---------------------------------------------------------------------------
 
 
+def _normalize_context_text(value: str) -> str:
+    return " ".join(str(value or "").strip().split()).lower()
+
+
+class _HTMLImageCandidateParser(HTMLParser):
+    def __init__(self, source_url: str):
+        super().__init__(convert_charrefs=True)
+        self.source_url = source_url
+        self.candidates: list[dict[str, Any]] = []
+        self._stack: list[dict[str, bool]] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]):
+        self._handle_tag(tag, attrs, self_closing=False)
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]):
+        self._handle_tag(tag, attrs, self_closing=True)
+
+    def handle_endtag(self, tag: str):
+        tag_lower = tag.lower()
+        for index in range(len(self._stack) - 1, -1, -1):
+            if self._stack[index]["tag"] == tag_lower:
+                del self._stack[index:]
+                break
+
+    def _handle_tag(self, tag: str, attrs: list[tuple[str, str | None]], self_closing: bool):
+        tag_lower = tag.lower()
+        attrs_dict = {str(key).lower(): str(value or "") for key, value in attrs if key}
+        attrs_text = _normalize_context_text(" ".join([
+            *(attrs_dict.keys()),
+            *(value for value in attrs_dict.values() if value),
+        ]))
+        non_product = tag_lower in {"footer", "header", "nav", "aside"} \
+            or any(hint in attrs_text for hint in NON_PRODUCT_SECTION_HINTS)
+        gallery = any(hint in attrs_text for hint in GALLERY_CONTEXT_HINTS) and not non_product
+        node_state = {
+            "tag": tag_lower,
+            "gallery": gallery,
+            "non_product": non_product,
+            "duplicate": any(hint in attrs_text for hint in DUPLICATE_CONTEXT_HINTS),
+        }
+        self._stack.append(node_state)
+
+        in_gallery_context = any(node["gallery"] for node in self._stack)
+        in_non_product_context = any(node["non_product"] for node in self._stack)
+        in_duplicate_context = any(node["duplicate"] for node in self._stack)
+
+        alt_text = attrs_dict.get("alt", "")
+        crawl_score = 9 if in_gallery_context and not in_non_product_context else 5
+
+        if tag_lower == "meta":
+            property_name = attrs_dict.get("property") or attrs_dict.get("name")
+            content = attrs_dict.get("content")
+            if property_name in {"og:image", "twitter:image"} and content:
+                self._append_candidate(
+                    src=content,
+                    alt=property_name,
+                    crawl_score=6,
+                    gallery_context=False,
+                    non_product_context=False,
+                    duplicate_context=False,
+                    source_hint="meta",
+                )
+        elif tag_lower in {"img", "source"}:
+            for attr_name in _HTML_IMAGE_ATTRS:
+                if attrs_dict.get(attr_name):
+                    self._append_candidate(
+                        src=attrs_dict[attr_name],
+                        alt=alt_text,
+                        crawl_score=crawl_score,
+                        gallery_context=in_gallery_context,
+                        non_product_context=in_non_product_context,
+                        duplicate_context=in_duplicate_context,
+                        source_hint=attr_name,
+                    )
+            for attr_name in _HTML_SRCSET_ATTRS:
+                srcset_value = attrs_dict.get(attr_name, "")
+                if not srcset_value:
+                    continue
+                for entry in re.split(r",\s*", srcset_value):
+                    parts = entry.strip().split()
+                    if not parts:
+                        continue
+                    self._append_candidate(
+                        src=parts[0],
+                        alt=alt_text,
+                        crawl_score=crawl_score,
+                        gallery_context=in_gallery_context,
+                        non_product_context=in_non_product_context,
+                        duplicate_context=in_duplicate_context,
+                        source_hint=attr_name,
+                    )
+        elif tag_lower == "a":
+            href = attrs_dict.get("href", "")
+            if re.search(r"\.(?:jpg|jpeg|png|gif|webp|avif)(?:$|[?#])", href, re.IGNORECASE):
+                self._append_candidate(
+                    src=href,
+                    alt=alt_text,
+                    crawl_score=8 if in_gallery_context else 4,
+                    gallery_context=in_gallery_context,
+                    non_product_context=in_non_product_context,
+                    duplicate_context=in_duplicate_context,
+                    source_hint="href",
+                )
+
+        if self_closing:
+            self._stack.pop()
+
+    def _append_candidate(
+        self,
+        *,
+        src: str,
+        alt: str,
+        crawl_score: int,
+        gallery_context: bool,
+        non_product_context: bool,
+        duplicate_context: bool,
+        source_hint: str,
+    ):
+        resolved = _resolve_url(src, self.source_url)
+        if not resolved:
+            return
+
+        path = urlparse(resolved).path.lower()
+        if any(hint in path for hint in ("favicon", "pixel", "spacer", "1x1", "blank")):
+            return
+
+        self.candidates.append({
+            "src": resolved,
+            "alt": alt,
+            "desc": source_hint,
+            "crawl_score": crawl_score,
+            "width": None,
+            "height": None,
+            "group_id": -2,
+            "gallery_context": gallery_context,
+            "non_product_context": non_product_context,
+            "duplicate_context": duplicate_context,
+        })
+
+
 def _extract_html_image_candidates(html: str, source_url: str) -> list[dict[str, Any]]:
-    """Extract image URLs from raw HTML as candidate dicts.
+    """Extract image URLs from raw HTML along with DOM context hints.
 
-    Collects from:
-    - Meta tags: og:image, twitter:image
-    - Images: img src, data-src, data-original, data-lazy-src
-    - srcset values from img and picture source elements
-
-    Returns list of dicts with keys: src, alt, crawl_score (default 5).
+    Candidates found inside gallery/carousel containers receive a strong positive
+    context flag, while candidates inside related/footer/etc. sections receive a
+    negative context flag. Duplicate slide clones are also flagged so they can be
+    penalized during scoring.
     """
-    candidates: list[dict[str, Any]] = []
-    seen_src: set[str] = set()
-
-    # 1. Meta tags
-    meta_patterns = [
-        (r"""<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)""", "og:image"),
-        (r"""<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)""", "twitter:image"),
-    ]
-    for pattern, label in meta_patterns:
-        for match in re.finditer(pattern, html, re.IGNORECASE):
-            resolved = _resolve_url(match.group(1), source_url)
-            if resolved and resolved not in seen_src:
-                seen_src.add(resolved)
-                candidates.append({"src": resolved, "alt": label, "crawl_score": 5, "width": None, "height": None, "group_id": -2})
-
-    # 2. Image src attributes (and lazy-load variants)
-    src_attrs = ["src", "data-src", "data-original", "data-lazy-src", "data-srcset"]
-    img_patterns = []
-    for attr in src_attrs:
-        img_patterns.append(re.compile(
-            rf"""<img[^>]+{re.escape(attr)}=["']([^"']+)["']""",
-            re.IGNORECASE
-        ))
-
-    for pattern in img_patterns:
-        for match in pattern.finditer(html):
-            resolved = _resolve_url(match.group(1), source_url)
-            if not resolved or resolved in seen_src:
-                continue
-            # Extract alt text from the same img tag
-            tag_start = max(0, match.start() - 50)
-            tag_end = min(len(html), match.end() + 200)
-            tag_html = html[tag_start:tag_end]
-            alt_match = re.search(r"""alt=["']([^"']*)["']""", tag_html, re.IGNORECASE)
-            alt_text = alt_match.group(1).strip() if alt_match else ""
-
-            # Filter out tracking pixels, favicons, spacers
-            path = urlparse(resolved).path.lower()
-            if any(hint in path for hint in ("favicon", "pixel", "spacer", "1x1", "blank")):
-                continue
-
-            seen_src.add(resolved)
-            candidates.append({"src": resolved, "alt": alt_text, "crawl_score": 5, "width": None, "height": None, "group_id": -2})
-
-    # 3. srcset from img and picture source elements
-    srcset_patterns = [
-        re.compile(r"""<img[^>]+srcset=["']([^"']+)["']""", re.IGNORECASE),
-        re.compile(r"""<source[^>]+srcset=["']([^"']+)["']""", re.IGNORECASE),
-    ]
-    for pattern in srcset_patterns:
-        for match in pattern.finditer(html):
-            srcset_value = match.group(1)
-            # Parse srcset: "url 1x, url 2x" or "url 100w, url 200w"
-            entries = re.split(r',\s*', srcset_value)
-            for entry in entries:
-                entry = entry.strip()
-                if not entry:
-                    continue
-                parts = entry.split()
-                if not parts:
-                    continue
-                resolved = _resolve_url(parts[0], source_url)
-                if resolved and resolved not in seen_src:
-                    seen_src.add(resolved)
-                    candidates.append({"src": resolved, "alt": "", "crawl_score": 5, "width": None, "height": None, "group_id": -2})
-
-    return candidates
+    parser = _HTMLImageCandidateParser(source_url)
+    try:
+        parser.feed(html)
+    except Exception:
+        return []
+    return parser.candidates
 
 
 def canonicalize_image_url(url: str) -> str:
@@ -385,6 +495,9 @@ def _score_image(
     expected_brand: str | None,
     expected_flavor_tokens: list[str] | None,
     allowed_cdn_domains: set[str] | None,
+    gallery_context: bool = False,
+    non_product_context: bool = False,
+    duplicate_context: bool = False,
     blocked_image_domains: set[str] | None = None,
     soft_blocked_domains: set[str] | None = None,
 ) -> tuple[float, list[str]]:
@@ -423,15 +536,33 @@ def _score_image(
         # Default: allow source domain and common Shopify CDN
         allowed_domains = {source_domain, "cdn.shopify.com"}
 
-    if domain in allowed_domains or domain == source_domain:
+    domain_is_allowed = bool(domain) and (
+        domain == source_domain
+        or domain.endswith(f".{source_domain}")
+        or any(domain == allowed or domain.endswith(f".{allowed}") for allowed in allowed_domains)
+    )
+
+    if domain_is_allowed:
         score += 5.0
         reasons.append("allowed_domain")
 
     # Unknown external domain
-    if domain and domain not in allowed_domains and domain not in hard_blocked and domain not in soft_blocked:
-        if domain != source_domain:
-            score -= 5.0
-            reasons.append("unknown_external_domain")
+    if domain and not domain_is_allowed and domain not in hard_blocked and domain not in soft_blocked:
+        score -= 5.0
+        reasons.append("unknown_external_domain")
+
+    # ---- DOM context ----
+    if gallery_context:
+        score += 12.0
+        reasons.append("gallery_context")
+
+    if non_product_context:
+        score -= 18.0
+        reasons.append("non_product_section")
+
+    if duplicate_context:
+        score -= 12.0
+        reasons.append("duplicate_slide_context")
 
     # ---- Product name tokens in image metadata ----
     if expected_product_name:
@@ -468,6 +599,8 @@ def _score_image(
     # ---- Non-product path hints (triggers hard rejection via reason tag) ----
     for hint in NON_PRODUCT_PATH_HINTS:
         if hint in path_lower or hint in _normalize(alt):
+            if expected_product_name and hint in _normalize(expected_product_name):
+                continue
             score -= 20.0
             reasons.append(f"non_product_hint:{hint}")
 
@@ -594,7 +727,8 @@ class ProductMediaSelector:
                 Each dict has keys: src, alt, desc, score, width, height, type, group_id.
             jsonld_images: List of image URLs extracted from JSON-LD.
             source_url: Page URL (for domain detection).
-            page_html: Optional raw HTML (unused but reserved for future DOM-position scoring).
+            page_html: Optional raw HTML used to detect carousel/gallery scope and
+                down-rank page-wide / related-product imagery.
 
         Returns:
             ``MediaSelectionResult`` with primary, gallery, rejected images and stats.
@@ -620,6 +754,9 @@ class ProductMediaSelector:
                 "width": img_obj.get("width"),
                 "height": img_obj.get("height"),
                 "group_id": img_obj.get("group_id", 0),
+                "gallery_context": False,
+                "non_product_context": False,
+                "duplicate_context": False,
             })
 
         # From JSON-LD
@@ -640,6 +777,9 @@ class ProductMediaSelector:
                 "width": None,
                 "height": None,
                 "group_id": -1,
+                "gallery_context": False,
+                "non_product_context": False,
+                "duplicate_context": False,
             })
 
         # From raw HTML (og:image, img src, data-src, srcset, etc.)
@@ -652,11 +792,14 @@ class ProductMediaSelector:
                 raw_candidates.append({
                     "src": hc["src"],
                     "alt": hc.get("alt", ""),
-                    "desc": "",
+                    "desc": hc.get("desc", ""),
                     "crawl_score": hc.get("crawl_score", 5),
                     "width": hc.get("width"),
                     "height": hc.get("height"),
                     "group_id": -2,
+                    "gallery_context": bool(hc.get("gallery_context")),
+                    "non_product_context": bool(hc.get("non_product_context")),
+                    "duplicate_context": bool(hc.get("duplicate_context")),
                 })
 
         raw_count = len(raw_candidates)
@@ -690,6 +833,8 @@ class ProductMediaSelector:
             best_score = float("-inf")
             best_reasons: list[str] = []
             best_candidate: dict[str, Any] | None = None
+            group_has_gallery_context = any(bool(c.get("gallery_context")) for c in candidates)
+            group_has_non_product_context = any(bool(c.get("non_product_context")) for c in candidates)
 
             for c in candidates:
                 s, reasons = _score_image(
@@ -705,6 +850,9 @@ class ProductMediaSelector:
                     expected_brand=self._expected_brand,
                     expected_flavor_tokens=self._expected_flavor_tokens,
                     allowed_cdn_domains=allowed_domains,
+                    gallery_context=group_has_gallery_context or bool(c.get("gallery_context")),
+                    non_product_context=group_has_non_product_context and not group_has_gallery_context,
+                    duplicate_context=bool(c.get("duplicate_context")),
                     blocked_image_domains=self._blocked_domains,
                     soft_blocked_domains=self._soft_blocked,
                 )
@@ -724,8 +872,11 @@ class ProductMediaSelector:
         rejected: list[tuple[float, str, list[str], dict[str, Any]]] = []
 
         for s, can_url, reasons, candidate in scored:
-            # Hard reject: non_product_hint in reasons (logo, recycle, etc.)
-            has_non_product = any(r.startswith("non_product_hint:") for r in reasons)
+            # Hard reject obvious non-product assets / sections even if other signals exist.
+            has_non_product = any(
+                r.startswith("non_product_hint:") or r == "non_product_section"
+                for r in reasons
+            )
             if s < 0 or has_non_product:
                 rejected.append((s, can_url, reasons, candidate))
             else:
