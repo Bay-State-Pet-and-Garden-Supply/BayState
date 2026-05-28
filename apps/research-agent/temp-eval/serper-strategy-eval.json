@@ -1,0 +1,193 @@
+{
+  "schemaVersion": "research-agent-serper-strategy-eval-report-v1",
+  "benchmarkType": "research_agent_serper_strategy",
+  "generatedAt": "2026-05-28T07:15:15.697Z",
+  "datasetPath": "./benchmarks/serper-strategy/fixtures/smoke-dataset.json",
+  "summary": {
+    "totalEntries": 6,
+    "stagedQueryPassRate": 1,
+    "predictedNamePassRate": 1,
+    "expectedProductUrlFoundRate": 1,
+    "topOfficialUrlPassRate": 1,
+    "warningsFreeRate": 0.8333333333333334,
+    "overallPassRate": 0.8333333333333334,
+    "averageSkuDiscoveryCandidateCount": 6.333333333333333,
+    "averageOfficialDomainCandidateCount": 6.666666666666667,
+    "failureBreakdown": {
+      "warnings": 1
+    }
+  },
+  "entries": [
+    {
+      "id": "fromm-purrsnickitty-duck-stew-3oz",
+      "upc": "072705113446",
+      "brand": "Fromm",
+      "registerName": "Fromm Cat PurrSnick Duck Stew 3 oz",
+      "officialDomain": "frommfamily.com",
+      "expectedQueries": [
+        "\"072705113446\"",
+        "site:frommfamily.com PurrSnickitty Cat Duck Stew 3 oz"
+      ],
+      "actualQueries": [
+        "\"072705113446\"",
+        "site:frommfamily.com PurrSnickitty Cat Duck Stew 3 oz"
+      ],
+      "stagedQueryPass": true,
+      "expectedPredictedName": "PurrSnickitty Cat Duck Stew 3 oz",
+      "actualPredictedName": "PurrSnickitty Cat Duck Stew 3 oz",
+      "predictedNamePass": true,
+      "expectedProductUrl": "https://frommfamily.com/products/cat/purrsnickitty-duck-stew-3-oz",
+      "expectedProductUrlFound": true,
+      "topCandidateUrl": "https://frommfamily.com/products/cat/purrsnickitty-duck-stew-3-oz",
+      "topOfficialCandidateUrl": "https://frommfamily.com/products/cat/purrsnickitty-duck-stew-3-oz",
+      "topOfficialUrlPass": true,
+      "skuDiscoveryCandidateCount": 2,
+      "officialDomainCandidateCount": 1,
+      "warningMessages": [],
+      "overallPass": true
+    },
+    {
+      "id": "firstmate-chicken-blueberries-cat-3-96lb",
+      "upc": "072318200618",
+      "brand": "FirstMate",
+      "registerName": "FirstMate CHKN Meal Blueberries Formula Cat 3.96lb",
+      "officialDomain": "firstmate.com",
+      "expectedQueries": [
+        "\"072318200618\"",
+        "site:firstmate.com Chicken Meal with Blueberries Formula Cat 3.96lb"
+      ],
+      "actualQueries": [
+        "\"072318200618\"",
+        "site:firstmate.com Chicken Meal with Blueberries Formula Cat 3.96lb"
+      ],
+      "stagedQueryPass": true,
+      "expectedPredictedName": "Chicken Meal with Blueberries Formula Cat 3.96lb",
+      "actualPredictedName": "Chicken Meal with Blueberries Formula Cat 3.96lb",
+      "predictedNamePass": true,
+      "expectedProductUrl": "https://firstmate.com/product/chicken-meal-with-blueberries-formula-for-cats",
+      "expectedProductUrlFound": true,
+      "topCandidateUrl": "https://firstmate.com/product/chicken-meal-with-blueberries-formula-for-cats",
+      "topOfficialCandidateUrl": "https://firstmate.com/product/chicken-meal-with-blueberries-formula-for-cats",
+      "topOfficialUrlPass": true,
+      "skuDiscoveryCandidateCount": 2,
+      "officialDomainCandidateCount": 1,
+      "warningMessages": [],
+      "overallPass": true
+    },
+    {
+      "id": "dr-marty-natures-feast-poultry-12oz",
+      "upc": "850004357187",
+      "brand": "Dr Marty",
+      "registerName": "Dr. Marty Nature's Feast Essential Wellness Poultry Freeze Dried Cat Food, 12 oz",
+      "officialDomain": "drmartypets.com",
+      "expectedQueries": [
+        "\"850004357187\"",
+        "site:drmartypets.com Dr Marty Nature's Feast Freeze Dried Cat Food, Essential Wellness ... 12 oz"
+      ],
+      "actualQueries": [
+        "\"850004357187\"",
+        "site:drmartypets.com Dr Marty Nature's Feast Freeze Dried Cat Food, Essential Wellness ... 12 oz"
+      ],
+      "stagedQueryPass": true,
+      "expectedPredictedName": "Dr Marty Nature's Feast Freeze Dried Cat Food, Essential Wellness ... 12 oz",
+      "actualPredictedName": "Dr Marty Nature's Feast Freeze Dried Cat Food, Essential Wellness ... 12 oz",
+      "predictedNamePass": true,
+      "expectedProductUrl": "https://drmartypets.com/product/natures-feast-poultry",
+      "expectedProductUrlFound": true,
+      "topCandidateUrl": "https://drmartypets.com/product/natures-feast-poultry",
+      "topOfficialCandidateUrl": "https://drmartypets.com/product/natures-feast-poultry",
+      "topOfficialUrlPass": true,
+      "skuDiscoveryCandidateCount": 10,
+      "officialDomainCandidateCount": 10,
+      "warningMessages": [],
+      "overallPass": true
+    },
+    {
+      "id": "weruva-paw-lickin-chicken-1oz",
+      "upc": "810028242944",
+      "brand": "Weruva",
+      "registerName": "Weruva Freeze-dried Paw Lickin' Chicken Cat Food 1 oz.",
+      "officialDomain": "weruva.com",
+      "expectedQueries": [
+        "\"810028242944\"",
+        "site:weruva.com Weruva Paw Lickin' Chicken Freeze Dried Grain Free Cat Food 1 oz"
+      ],
+      "actualQueries": [
+        "\"810028242944\"",
+        "site:weruva.com Weruva Paw Lickin' Chicken Freeze Dried Grain Free Cat Food 1 oz"
+      ],
+      "stagedQueryPass": true,
+      "expectedPredictedName": "Weruva Paw Lickin' Chicken Freeze Dried Grain Free Cat Food 1 oz",
+      "actualPredictedName": "Weruva Paw Lickin' Chicken Freeze Dried Grain Free Cat Food 1 oz",
+      "predictedNamePass": true,
+      "expectedProductUrl": "https://www.weruva.com/products/paw-lickin-chicken-freeze-dried-cat",
+      "expectedProductUrlFound": true,
+      "topCandidateUrl": "https://www.weruva.com/products/paw-lickin-chicken-freeze-dried-cat",
+      "topOfficialCandidateUrl": "https://www.weruva.com/products/paw-lickin-chicken-freeze-dried-cat",
+      "topOfficialUrlPass": true,
+      "skuDiscoveryCandidateCount": 10,
+      "officialDomainCandidateCount": 10,
+      "warningMessages": [],
+      "overallPass": true
+    },
+    {
+      "id": "fromm-purrsnickitty-duck-liver-pate-3oz",
+      "upc": "072705113408",
+      "brand": "Fromm",
+      "registerName": "Fromm PurrSnickitty Duck Liver Pate Wet Cat Food, 3 oz",
+      "officialDomain": "frommfamily.com",
+      "expectedQueries": [
+        "\"072705113408\"",
+        "site:frommfamily.com Fromm PurrSnickitty Duck Liver Pate Wet Cat Food Can, 3-oz 3 oz"
+      ],
+      "actualQueries": [
+        "\"072705113408\"",
+        "site:frommfamily.com Fromm PurrSnickitty Duck Liver Pate Wet Cat Food Can, 3-oz 3 oz"
+      ],
+      "stagedQueryPass": true,
+      "expectedPredictedName": "Fromm PurrSnickitty Duck Liver Pate Wet Cat Food Can, 3-oz 3 oz",
+      "actualPredictedName": "Fromm PurrSnickitty Duck Liver Pate Wet Cat Food Can, 3-oz 3 oz",
+      "predictedNamePass": true,
+      "expectedProductUrl": "https://frommfamily.com/products/cat/purrsnickitty/can/duck-liver-pate",
+      "expectedProductUrlFound": true,
+      "topCandidateUrl": "https://frommfamily.com/products/cat/purrsnickitty/can/duck-liver-pate",
+      "topOfficialCandidateUrl": "https://frommfamily.com/products/cat/purrsnickitty/can/duck-liver-pate",
+      "topOfficialUrlPass": true,
+      "skuDiscoveryCandidateCount": 10,
+      "officialDomainCandidateCount": 10,
+      "warningMessages": [],
+      "overallPass": true
+    },
+    {
+      "id": "lake-valley-seed-lemon-catnip-heirloom",
+      "upc": "051178006813",
+      "brand": "Lake Valley Seed",
+      "registerName": "Lemon Scented Catnip Heirloom Seeds",
+      "officialDomain": "lakevalleyseed.com",
+      "expectedQueries": [
+        "\"051178006813\"",
+        "site:lakevalleyseed.com Lake Valley Catnip Lemon Scented Seed"
+      ],
+      "actualQueries": [
+        "\"051178006813\"",
+        "site:lakevalleyseed.com Lake Valley Catnip Lemon Scented Seed",
+        "site:lakevalleyseed.com \"item-681\""
+      ],
+      "stagedQueryPass": true,
+      "expectedPredictedName": "Lake Valley Catnip Lemon Scented Seed",
+      "actualPredictedName": "Lake Valley Catnip Lemon Scented Seed",
+      "predictedNamePass": true,
+      "expectedProductUrl": "https://lakevalleyseed.com/product/item-681-catnip-lemon-scented",
+      "expectedProductUrlFound": true,
+      "topCandidateUrl": "https://lakevalleyseed.com/product/item-681-catnip-lemon-scented",
+      "topOfficialCandidateUrl": "https://lakevalleyseed.com/product/item-681-catnip-lemon-scented",
+      "topOfficialUrlPass": true,
+      "skuDiscoveryCandidateCount": 4,
+      "officialDomainCandidateCount": 8,
+      "warningMessages": [
+        "Serper.dev request failed for query site:lakevalleyseed.com \"item-681\": HTTP 404"
+      ],
+      "overallPass": false
+    }
+  ]
+}
