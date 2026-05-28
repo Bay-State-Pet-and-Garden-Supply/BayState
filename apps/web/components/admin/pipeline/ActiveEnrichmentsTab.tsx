@@ -95,7 +95,7 @@ function getProgressPercent(job: JobAssignment): number {
 }
 
 // Inline Timer to keep elapsed times updating live
-function LiveTimer({
+export function LiveTimer({
   startedAt,
   completedAt,
   status,
@@ -187,7 +187,7 @@ interface EnrichmentAttemptCardProps {
   attempt: EnrichmentAttempt;
 }
 
-function EnrichmentAttemptCard({ attempt }: EnrichmentAttemptCardProps) {
+export function EnrichmentAttemptCard({ attempt }: EnrichmentAttemptCardProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -434,7 +434,7 @@ function EnrichmentJobAttemptsPanel({ jobId }: { jobId: string }) {
 /**
  * Terminal-style Logging Console
  */
-function EnrichmentJobLogsConsole({ jobId }: { jobId: string }) {
+export function EnrichmentJobLogsConsole({ jobId }: { jobId: string }) {
   const { allLogs, isLoading, isConnected } = useJobConsole({ jobId });
   const [levels, setLevels] = useState<Record<string, boolean>>({
     debug: false, // Debug disabled by default to prevent spam
