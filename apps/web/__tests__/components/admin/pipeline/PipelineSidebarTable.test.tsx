@@ -62,4 +62,33 @@ describe('PipelineSidebarTable', () => {
 
     expect(onSelectAll).toHaveBeenCalledWith(['UPC001', 'UPC002']);
   });
+
+  it('handles cohort selection checkbox when variant is "imported"', () => {
+    const products = [
+      makeProduct('UPC001', 'cohort-1', 'Test Batch'),
+    ];
+    const onSelectCohort = jest.fn();
+
+    render(
+      <PipelineSidebarTable
+        products={products}
+        groupedProducts={{
+          groups: { 'cohort-1': products },
+          cohortIds: ['cohort-1'],
+          names: { 'cohort-1': 'Test Batch' },
+        }}
+        selectedUpcs={new Set()}
+        preferredUpc={null}
+        onSelectUpc={jest.fn()}
+        onPreferredUpcChange={jest.fn()}
+        variant="imported"
+        selectedCohortIds={new Set()}
+        onSelectCohort={onSelectCohort}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    expect(onSelectCohort).toHaveBeenCalledWith('cohort-1', true);
+  });
 });

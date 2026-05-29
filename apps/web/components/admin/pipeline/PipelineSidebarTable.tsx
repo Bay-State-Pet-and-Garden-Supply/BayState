@@ -34,6 +34,12 @@ interface PipelineSidebarTableProps {
   onPreferredUpcChange: (upc: string) => void;
   onPreferredCohortChange?: (cohortId: string) => void;
   
+  // Cohort Selection
+  selectedCohortIds?: Set<string>;
+  onSelectCohort?: (cohortId: string, isSelected: boolean) => void;
+  onSelectAllCohorts?: (cohortIds: string[]) => void;
+  onDeselectAllCohorts?: (cohortIds: string[]) => void;
+
   // Customization
   variant: PipelineSidebarTableVariant;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
@@ -57,6 +63,10 @@ export function PipelineSidebarTable({
   onDeselectAll,
   onPreferredUpcChange,
   onPreferredCohortChange,
+  selectedCohortIds,
+  onSelectCohort,
+  onSelectAllCohorts,
+  onDeselectAllCohorts,
   variant,
   onEditCohort,
   scrollContainerRef: externalRef,
@@ -64,7 +74,7 @@ export function PipelineSidebarTable({
   const internalRef = React.useRef<VirtualizedPipelineTableHandle>(null);
   const scrollContainerRef = externalRef || internalRef;
   const [expandedCohortIds, setExpandedCohortIds] = React.useState<Set<string>>(new Set());
-
+  
   const toggleCohortExpansion = React.useCallback((cohortId: string) => {
     setExpandedCohortIds((prev) => {
       const next = new Set(prev);
@@ -76,7 +86,7 @@ export function PipelineSidebarTable({
       return next;
     });
   }, []);
-
+  
   // Logical product order for keyboard navigation, regardless of expansion state
   const allProductItems = React.useMemo(() => {
     const isUngroupedOnly = !groupedProducts || 
@@ -254,7 +264,7 @@ export function PipelineSidebarTable({
   }, [preferredUpc, flatItems, scrollContainerRef, variant]);
 
   const renderRow = (item: FlatItem) => {
-    const showCheckboxes = variant !== "imported";
+    const showCheckboxes = variant !== "imported" || !!onSelectCohort;
 
     if (item.type === 'header') {
       return (
@@ -274,6 +284,8 @@ export function PipelineSidebarTable({
           isActive={variant === "imported" && preferredCohortId === item.cohortId}
           hideChevron={variant === "imported"}
           showCheckboxes={showCheckboxes}
+          isCohortSelected={selectedCohortIds?.has(item.cohortId)}
+          onSelectCohortChange={onSelectCohort ? (checked) => onSelectCohort(item.cohortId, checked) : undefined}
         />
       );
     }

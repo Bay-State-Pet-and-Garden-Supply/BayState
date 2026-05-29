@@ -9,6 +9,7 @@ import {
   Edit2,
   AlertCircle,
   Globe,
+  X,
 } from "lucide-react";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 import type { Brand } from "@/lib/types";
@@ -19,6 +20,7 @@ import { PipelineFilters } from "./PipelineFilters";
 import { PipelineSearchField } from "./PipelineSearchField";
 import { PipelineSidebarTable } from "./PipelineSidebarTable";
 import { ManagementPanel } from "./management/ManagementPanel";
+import { BulkManagementPanel } from "./management/BulkManagementPanel";
 import { CohortBrandPicker } from "../cohorts/CohortBrandPicker";
 import { toast } from "sonner";
 import {
@@ -87,7 +89,20 @@ export function ImportedResultsView({
 
   // 2. Primary Selection State
   const [preferredCohortId, setPreferredCohortId] = useState<string | null>(null);
+  const [selectedCohortIds, setSelectedCohortIds] = useState<Set<string>>(new Set());
   const [selectedProductUpcs, setSelectedProductUpcs] = useState<Set<string>>(new Set());
+
+  const handleSelectCohort = (cohortId: string, isSelected: boolean) => {
+    setSelectedCohortIds((prev) => {
+      const next = new Set(prev);
+      if (isSelected) {
+        next.add(cohortId);
+      } else {
+        next.delete(cohortId);
+      }
+      return next;
+    });
+  };
   const [isSplitBrandOpen, setIsSplitBrandOpen] = useState(false);
 
   // Clear product selection when cohort changes
@@ -261,13 +276,116 @@ export function ImportedResultsView({
           onDeselectAll={() => {}}
           onPreferredUpcChange={() => { }}
           onPreferredCohortChange={handleCohortChange}
+          selectedCohortIds={selectedCohortIds}
+          onSelectCohort={handleSelectCohort}
           variant="imported"
         />
       </div>
 
       {/* Right Column: Master-Detail Area */}
       <div className="flex flex-1 flex-col overflow-hidden bg-card xl:flex-row">
-        {activeCohortId && cohortProducts.length > 0 ? (
+        {selectedCohortIds.size > 0 ? (
+          <>
+            {/* Center: Bulk Selection Summary */}
+            <div className="flex min-h-[320px] flex-1 flex-col overflow-hidden border-b border-border xl:border-b-0 xl:border-r">
+              <div className="bg-card border-b border-border flex-shrink-0 z-10">
+                <div className="flex flex-col gap-3 p-4 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="flex flex-col gap-2 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Layers className="h-5 w-5 text-primary shrink-0" />
+                      <h2 className="text-xl font-semibold text-foreground">
+                        Bulk Cohort Action
+                      </h2>
+                    </div>
+                    <div className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2">
+                      <span>{selectedCohortIds.size} Cohort{selectedCohortIds.size !== 1 ? 's' : ''} Selected</span>
+                      <span>•</span>
+                      <span>{
+                        Array.from(selectedCohortIds).reduce((acc, id) => acc + (groupedProducts?.groups[id]?.length || 0), 0)
+                      } Total Products</span>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedCohortIds(new Set())}
+                    className="h-8 rounded-none border border-border hover:bg-muted text-xs font-semibold self-start"
+                  >
+                    Clear Selection
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto bg-background p-4 sm:p-6">
+                <div className="max-w-4xl mx-auto space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">
+                    Selected Batches Details
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-300">
+                    {Array.from(selectedCohortIds).map((cohortId) => {
+                      const groupProducts = groupedProducts?.groups[cohortId] || [];
+                      const cohortName = groupedProducts?.names?.[cohortId] || (cohortId === 'ungrouped' ? 'Ungrouped Products' : `Cohort ${cohortId.slice(0, 8)}`);
+                      const brand = cohortBrandObjects[cohortId] || null;
+                      return (
+                        <div
+                          key={cohortId}
+                          className="p-4 bg-card border border-border hover:border-muted-foreground/30 transition-all flex flex-col justify-between group relative"
+                        >
+                          <div>
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <h4 className="text-sm font-semibold text-foreground line-clamp-1 truncate" title={cohortName}>
+                                {cohortName}
+                              </h4>
+                              <button
+                                onClick={() => handleSelectCohort(cohortId, false)}
+                                className="text-muted-foreground hover:text-destructive p-1 transition-colors rounded-none"
+                                title="Remove cohort"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 items-center mb-2">
+                              {brand ? (
+                                <Badge variant="outline" className="h-4 text-[9px] px-1 font-semibold rounded-none border-brand-forest-green text-brand-forest-green bg-brand-forest-green/5">
+                                  {brand.name}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="h-4 text-[9px] px-1 font-semibold rounded-none border-muted-foreground/30 text-muted-foreground bg-muted/5">
+                                  No Brand Assigned
+                                </Badge>
+                              )}
+                              {brand?.official_domains && brand.official_domains.length > 0 && (
+                                <span className="text-[9px] text-muted-foreground bg-muted/20 border border-border px-1">
+                                  {brand.official_domains[0]}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-[10px] font-semibold text-muted-foreground pt-2 border-t border-border/50 flex justify-between items-center">
+                            <span>Products: {groupProducts.length}</span>
+                            <span className="font-mono text-[9px] opacity-60">{cohortId}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Bulk Management Panel */}
+            <BulkManagementPanel
+              selectedCohortIds={selectedCohortIds}
+              groupedProducts={groupedProducts}
+              cohortBrandObjects={cohortBrandObjects}
+              onClearSelection={() => setSelectedCohortIds(new Set())}
+              onSuccess={() => {
+                setSelectedCohortIds(new Set());
+                onRefresh();
+              }}
+            />
+          </>
+        ) : activeCohortId && cohortProducts.length > 0 ? (
           <>
             {/* Center: Product List/Preview (Master) */}
             <div className="flex min-h-[320px] flex-1 flex-col overflow-hidden border-b border-border xl:border-b-0 xl:border-r">
@@ -301,9 +419,9 @@ export function ImportedResultsView({
                       {activeCohortId && activeCohortId !== "ungrouped" && (
                         <div className="flex flex-wrap items-center gap-2 shrink-0">
                           <CohortBrandPicker
-                            value={activeCohortBrandObject}
-                            onAssign={handleAssignBrand}
-                            triggerClassName="h-7 rounded-none border border-border bg-background py-0 text-[11px]"
+                             value={activeCohortBrandObject}
+                             onAssign={handleAssignBrand}
+                             triggerClassName="h-7 rounded-none border border-border bg-background py-0 text-[11px]"
                           />
                           {activeCohortBrandObject?.official_domains && activeCohortBrandObject.official_domains.length > 0 && (
                             <a

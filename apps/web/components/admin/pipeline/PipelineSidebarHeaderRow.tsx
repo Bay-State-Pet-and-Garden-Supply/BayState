@@ -26,6 +26,8 @@ interface PipelineSidebarHeaderRowProps {
   isActive?: boolean;
   hideChevron?: boolean;
   showCheckboxes?: boolean;
+  isCohortSelected?: boolean;
+  onSelectCohortChange?: (checked: boolean) => void;
 }
 
 /**
@@ -47,6 +49,8 @@ export function PipelineSidebarHeaderRow({
   isActive = false,
   hideChevron = false,
   showCheckboxes = true,
+  isCohortSelected = false,
+  onSelectCohortChange,
 }: PipelineSidebarHeaderRowProps) {
   const allSelected = groupProducts.length > 0 && groupProducts.every((p) => selectedUpcs.has(p.upc));
   const someSelected = groupProducts.some((p) => selectedUpcs.has(p.upc)) && !allSelected;
@@ -92,19 +96,30 @@ export function PipelineSidebarHeaderRow({
               </Button>
             )}
             {showCheckboxes && (
-              <Checkbox
-                checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                onCheckedChange={(checked) => {
-                  const cohortUpcs = groupProducts.map((p) => p.upc);
-                  if (checked) {
-                    onSelectAll?.(cohortUpcs);
-                  } else {
-                    onDeselectAll?.(cohortUpcs);
-                  }
-                }}
-                onClick={(e) => e.stopPropagation()}
-                className="h-4 w-4 border-foreground data-[state=checked]:bg-foreground data-[state=checked]:border-foreground"
-              />
+              onSelectCohortChange ? (
+                <Checkbox
+                  checked={isCohortSelected}
+                  onCheckedChange={(checked) => {
+                    onSelectCohortChange(!!checked);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-4 w-4 border-foreground data-[state=checked]:bg-foreground data-[state=checked]:border-foreground"
+                />
+              ) : (
+                <Checkbox
+                  checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                  onCheckedChange={(checked) => {
+                    const cohortUpcs = groupProducts.map((p) => p.upc);
+                    if (checked) {
+                      onSelectAll?.(cohortUpcs);
+                    } else {
+                      onDeselectAll?.(cohortUpcs);
+                    }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-4 w-4 border-foreground data-[state=checked]:bg-foreground data-[state=checked]:border-foreground"
+                />
+              )
             )}
           </div>
           <div className="flex-1 flex items-center gap-2 overflow-hidden min-w-0">
