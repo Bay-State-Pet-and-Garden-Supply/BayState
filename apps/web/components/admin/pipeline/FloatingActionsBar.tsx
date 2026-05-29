@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Loader2, Plus, Tag, Trash2, Upload, Cpu } from 'lucide-react';
+import { Loader2, Plus, Tag, Trash2, Upload, Cpu, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmationDialog } from '@/components/admin/confirmation-dialog';
@@ -150,7 +150,7 @@ export function FloatingActionsBar({
 
             {currentStage === 'processed' && onOpenScrapeDialog ? (
               <Button variant="outline" onClick={onOpenScrapeDialog} disabled={isLoading}>
-                <Plus className="h-4 w-4" />
+                <RefreshCw className="h-4 w-4 mr-2" />
                 {bulkAction.secondaryAction}
               </Button>
             ) : null}

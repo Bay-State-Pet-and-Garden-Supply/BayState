@@ -12,6 +12,8 @@ import {
   RotateCcw,
   Sparkles,
   CheckCircle2,
+  Maximize2,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { PipelineProduct } from "@/lib/pipeline/types";
@@ -21,6 +23,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { PipelineFilters } from "./PipelineFilters";
 import { ConfirmationDialog } from "@/components/admin/confirmation-dialog";
 import { PipelineSearchField } from "./PipelineSearchField";
@@ -71,6 +78,7 @@ interface ProcessedResultsViewProps {
   cohortBrands?: Record<string, string>;
   cohortBrandObjects?: Record<string, Brand>;
   onEditCohort?: (id: string, name: string | null, brandName: string | null) => void;
+  onOpenScrapeDialog?: (upc: string) => void;
 }
 
 interface SourceDetails extends Record<string, unknown> {
@@ -158,6 +166,7 @@ export function ProcessedResultsView({
   cohortBrands = {},
   cohortBrandObjects = {},
   onEditCohort,
+  onOpenScrapeDialog,
 }: ProcessedResultsViewProps) {
   // 1. Data Sorting
   const sortedProducts = useMemo(() => {
@@ -303,6 +312,7 @@ export function ProcessedResultsView({
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
   // Track previous products to handle list reductions smoothly
   const prevProductsRef = useRef<PipelineProduct[]>(sortedProducts);
@@ -685,6 +695,18 @@ export function ProcessedResultsView({
                 
                 {/* Single Product Workflow Actions */}
                 <div className="flex items-center gap-2 shrink-0">
+                  {onOpenScrapeDialog && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-[11px] font-bold border border-border hover:bg-muted text-foreground"
+                      onClick={() => onOpenScrapeDialog(selectedProduct.upc)}
+                      disabled={submitting}
+                    >
+                      <RefreshCw className="size-3.5 mr-1.5" />
+                      Re-scrape
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     className="h-8 text-[11px] font-bold bg-primary text-primary-foreground hover:bg-primary/95"
@@ -785,18 +807,27 @@ export function ProcessedResultsView({
               {currentSourceData && displayFields ? (
                 <div className="max-w-4xl mx-auto space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Left: Image Carousel */}
+                    {/* Left: Premium Image Carousel */}
                     <div className="space-y-3">
-                      <div className="aspect-square rounded-none border border-border bg-muted flex items-center justify-center overflow-hidden relative group">
+                      <div 
+                        onClick={() => setIsLightboxOpen(true)}
+                        className="aspect-square rounded-md border border-[#E8E6D9] bg-[#FAF9F2] flex items-center justify-center overflow-hidden relative group cursor-pointer shadow-sm hover:shadow-md transition-all duration-300"
+                      >
                         {displayFields.imageUrls && displayFields.imageUrls.length > 0 ? (
                           <>
                             <img
                               src={displayFields.imageUrls[currentImageIndex]}
                               alt={displayFields.title}
-                              className="w-full h-full object-contain transition-all duration-300"
+                              className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.02]"
                               data-testid="scraped-primary-image"
                             />
                             
+                            {/* Hover overlay zooming indicator */}
+                            <div className="absolute inset-0 bg-black/45 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center text-white text-xs font-semibold gap-1.5">
+                              <Maximize2 className="h-4 w-4" />
+                              <span>Click to enlarge</span>
+                            </div>
+
                             {/* Left/Right controls */}
                             {displayFields.imageUrls.length > 1 && (
                               <>
@@ -808,9 +839,9 @@ export function ProcessedResultsView({
                                     );
                                   }}
                                   aria-label="Previous image"
-                                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-card hover:bg-muted p-1 rounded-none opacity-0 group-hover:opacity-100 transition-opacity border border-border"
+                                  className="absolute left-2.5 top-1/2 -translate-y-1/2 bg-white/95 text-foreground hover:bg-[#14532D] hover:text-white p-1.5 rounded-full shadow-md transition-all duration-200 border border-border/50 z-10 hover:scale-105 active:scale-95"
                                 >
-                                  <ChevronLeft className="h-4 w-4 text-foreground" aria-hidden="true" />
+                                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                                 </button>
                                 <button
                                   onClick={(e) => {
@@ -820,51 +851,42 @@ export function ProcessedResultsView({
                                     );
                                   }}
                                   aria-label="Next image"
-                                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-card hover:bg-muted p-1 rounded-none opacity-0 group-hover:opacity-100 transition-opacity border border-border"
+                                  className="absolute right-2.5 top-1/2 -translate-y-1/2 bg-white/95 text-foreground hover:bg-[#14532D] hover:text-white p-1.5 rounded-full shadow-md transition-all duration-200 border border-border/50 z-10 hover:scale-105 active:scale-95"
                                 >
-                                  <ChevronRight className="h-4 w-4 text-foreground" aria-hidden="true" />
+                                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
                                 </button>
                                 
-                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-card px-1.5 py-0.5 rounded-none text-[9px] font-semibold text-foreground border border-border">
+                                <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 px-2 py-0.5 rounded-full text-[9px] font-bold text-foreground border border-border shadow-sm">
                                   {currentImageIndex + 1} / {displayFields.imageUrls.length}
                                 </div>
                               </>
                             )}
                           </>
                         ) : (
-                          <div className="flex flex-col items-center text-muted-foreground">
-                            <ImageIcon className="h-10 w-10 mb-1 opacity-20" />
-                            <span className="text-[10px] font-semibold">No image available</span>
+                          <div className="flex flex-col items-center text-muted-foreground p-4">
+                            <ImageIcon className="h-10 w-10 mb-1 opacity-25 text-brand-forest-green" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider">No image available</span>
                           </div>
-                        )}
-                        
-                        {displayFields.url && (
-                          <a
-                            href={displayFields.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="absolute top-2 right-2 bg-card p-1.5 rounded-none opacity-0 group-hover:opacity-100 transition-opacity border border-border"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5 text-foreground" />
-                          </a>
                         )}
                       </div>
 
-                      {/* Thumbnails strip */}
+                      {/* Premium Thumbnails strip */}
                       {displayFields.imageUrls && displayFields.imageUrls.length > 1 && (
-                        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide justify-center">
                           {displayFields.imageUrls.map((img, i) => (
                             <div
                               key={i}
                               onClick={() => setCurrentImageIndex(i)}
-                              className={`aspect-square w-12 rounded-none border overflow-hidden bg-muted cursor-pointer transition-all flex-shrink-0 ${
-                                currentImageIndex === i ? "border-primary ring-2 ring-primary/10" : "border-border opacity-60 hover:opacity-100 hover:border-primary"
+                              className={`aspect-square w-12 rounded-md border overflow-hidden bg-white cursor-pointer transition-all flex-shrink-0 hover:scale-105 ${
+                                currentImageIndex === i 
+                                  ? "border-brand-forest-green ring-2 ring-brand-forest-green/20 scale-105 opacity-100 shadow-sm" 
+                                  : "border-border opacity-60 hover:opacity-100 hover:border-brand-forest-green/50"
                               }`}
                             >
                               <img
                                 src={img}
                                 alt=""
-                                className="w-full h-full object-contain"
+                                className="w-full h-full object-contain p-0.5"
                               />
                             </div>
                           ))}
@@ -910,17 +932,6 @@ export function ProcessedResultsView({
                             <p className="text-[10px] font-semibold text-muted-foreground">
                               Brand: <span className="text-foreground">{displayFields.brand}</span>
                             </p>
-                          )}
-                          {displayFields.url && (
-                            <a
-                              href={displayFields.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-none text-[9px] font-bold bg-muted text-foreground border border-border hover:bg-accent transition-colors uppercase tracking-wider"
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                              View Source Page
-                            </a>
                           )}
                         </div>
                       </div>
@@ -1114,6 +1125,82 @@ export function ProcessedResultsView({
         confirmLabel="Delete Source"
         variant="destructive"
       />
+
+      {/* Lightbox Zoom Dialog */}
+      <Dialog open={isLightboxOpen} onOpenChange={setIsLightboxOpen}>
+        <DialogContent className="max-w-4xl p-6 bg-card border border-border rounded-lg shadow-lg flex flex-col gap-4">
+          <DialogTitle className="text-sm font-semibold truncate text-foreground pr-8">
+            {displayFields?.title || "Product Image"}
+          </DialogTitle>
+          <div className="h-[60vh] w-full flex items-center justify-center bg-[#FAF9F2] rounded-lg overflow-hidden relative border border-[#E8E6D9]">
+            {displayFields?.imageUrls && displayFields.imageUrls.length > 0 ? (
+              <>
+                <img
+                  src={displayFields.imageUrls[currentImageIndex]}
+                  alt={displayFields.title}
+                  className="max-w-full max-h-full object-contain p-4"
+                />
+
+                {displayFields.imageUrls.length > 1 && (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentImageIndex((prev) =>
+                          prev === 0 ? displayFields.imageUrls.length - 1 : prev - 1
+                        );
+                      }}
+                      aria-label="Previous image"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 size-10 flex items-center justify-center rounded-full bg-white/95 text-foreground shadow-md hover:bg-[#14532D] hover:text-white border border-border/50 transition-all duration-200 hover:scale-105 active:scale-95"
+                    >
+                      <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentImageIndex((prev) =>
+                          prev === displayFields.imageUrls.length - 1 ? 0 : prev + 1
+                        );
+                      }}
+                      aria-label="Next image"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 size-10 flex items-center justify-center rounded-full bg-white/95 text-foreground shadow-md hover:bg-[#14532D] hover:text-white border border-border/50 transition-all duration-200 hover:scale-105 active:scale-95"
+                    >
+                      <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                    
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/95 px-3 py-1 rounded-full text-xs font-bold text-foreground border border-border shadow-sm">
+                      {currentImageIndex + 1} / {displayFields.imageUrls.length}
+                    </div>
+                  </>
+                )}
+              </>
+            ) : null}
+          </div>
+
+          {/* Lightbox Thumbnails */}
+          {displayFields?.imageUrls && displayFields.imageUrls.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto justify-center pb-1 scrollbar-hide">
+              {displayFields.imageUrls.map((img, i) => (
+                <div
+                  key={i}
+                  onClick={() => setCurrentImageIndex(i)}
+                  className={`aspect-square w-16 rounded-md border overflow-hidden bg-white cursor-pointer transition-all flex-shrink-0 hover:scale-105 ${
+                    currentImageIndex === i 
+                      ? "border-brand-forest-green ring-2 ring-brand-forest-green/20 scale-105 opacity-100 shadow-sm" 
+                      : "border-border opacity-60 hover:opacity-100 hover:border-brand-forest-green/50"
+                  }`}
+                >
+                  <img
+                    src={img}
+                    alt=""
+                    className="w-full h-full object-contain p-1"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

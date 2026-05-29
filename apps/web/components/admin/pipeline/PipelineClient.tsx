@@ -262,8 +262,22 @@ export function PipelineClient({
     return { groups, cohortIds, brands, brandIds, brandObjects, names };
   }, [filteredProducts]);
 
+  const selectedBrandName = useMemo(() => {
+    if (selectedUpcs.size === 0) return null;
+    const firstSelectedProduct = products.find((p) => selectedUpcs.has(p.upc));
+    if (!firstSelectedProduct) return null;
+    const cohortId = firstSelectedProduct.cohort_id;
+    if (!cohortId || cohortId === "ungrouped") {
+      return firstSelectedProduct.input?.brand_name || null;
+    }
+    return groupedProducts.brands[cohortId] || firstSelectedProduct.input?.brand_name || null;
+  }, [selectedUpcs, products, groupedProducts.brands]);
+
   const scrapeSelectionValidation = useMemo(() => {
-    if (currentStage !== "imported" || selectedUpcs.size === 0) {
+    if (
+      (currentStage !== "imported" && currentStage !== "processed") ||
+      selectedUpcs.size === 0
+    ) {
       return { allowed: true, reason: null };
     }
 
@@ -1136,13 +1150,8 @@ export function PipelineClient({
 
         setIsScrapeDialogOpen(false);
         setSelectedUpcs(new Set());
-
-        if (isAdditionalScrape) {
-          setSearch("");
-          await refreshAll();
-        } else {
-          handleStageChange("extracting");
-        }
+        setSearch("");
+        handleStageChange("extracting");
       } else {
         const error = await res.json();
         toast.error(error.error || "Failed to create scrape jobs");
@@ -1336,6 +1345,10 @@ export function PipelineClient({
                   : undefined
               }
               isSearching={isSearching}
+              onOpenScrapeDialog={(upc) => {
+                setSelectedUpcs(new Set([upc]));
+                setIsScrapeDialogOpen(true);
+              }}
             />
           ) : currentStage === "reviewing" ? (
             <div data-testid="reviewing-results" className="contents">
@@ -1621,6 +1634,7 @@ export function PipelineClient({
         onOpenChange={setIsScrapeDialogOpen}
         selectedUpcCount={selectedUpcs.size}
         onConfirm={handleScrapeConfirm}
+        brandName={selectedBrandName}
       />
 
       {/* Floating Bulk Actions Bar */}
@@ -1637,7 +1651,7 @@ export function PipelineClient({
           onConsolidate={() => handleConsolidate(Array.from(selectedUpcs))}
           consolidationInfo={consolidationConfig}
           onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
-          onAssignBrand={() => setIsBulkAssignBrandOpen(true)}
+          onAssignBrand={currentStage === 'imported' ? () => setIsBulkAssignBrandOpen(true) : undefined}
           scrapeSelectionValidation={scrapeSelectionValidation}
 
           onDelete={handleDelete}
