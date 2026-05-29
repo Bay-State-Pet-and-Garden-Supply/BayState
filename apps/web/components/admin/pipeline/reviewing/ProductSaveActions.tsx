@@ -101,7 +101,7 @@ export function ProductSaveActions({
               ) : (
                 <>
                   <RotateCcw className="mr-2 h-4 w-4" />
-                  Return to Scraped
+                  Return to Processed
                 </>
               )}
             </Button>

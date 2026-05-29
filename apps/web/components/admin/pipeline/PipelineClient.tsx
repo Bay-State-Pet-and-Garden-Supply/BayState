@@ -720,7 +720,7 @@ export function PipelineClient({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             upcs,
-            description: `Consolidation batch for ${upcs.length} products`,
+            description: `Merging job for ${upcs.length} products`,
             auto_apply: true,
           }),
         });
@@ -734,9 +734,9 @@ export function PipelineClient({
           // Gemini batch: show async toast
           if (data.execution_mode === 'gemini_batch' || data.provider === 'gemini') {
             toast.info(
-              `Queued ${data.product_count} product${data.product_count !== 1 ? 's' : ''} for Gemini consolidation`,
+              `Queued ${data.product_count} product${data.product_count !== 1 ? 's' : ''} for merging`,
               {
-                description: 'Image prep and batch processing may take up to 24 hours. Check back in the Consolidating tab.',
+                description: 'Image prep and batch processing may take up to 24 hours. Check back in the Merging tab.',
               },
             );
           } else {
@@ -744,8 +744,8 @@ export function PipelineClient({
               `Consolidated and applied ${applied} of ${data.product_count} product${data.product_count !== 1 ? "s" : ""}`,
               {
                 description: failed > 0
-                  ? `${failed} failed. Open Consolidating to review errors.`
-                  : `Results are live in the Consolidating tab.`,
+                  ? `${failed} failed. Open Merging to review errors.`
+                  : `Results are live in the Merging tab.`,
               },
             );
           }
@@ -754,10 +754,10 @@ export function PipelineClient({
           await fetchCounts();
         } else {
           const error = await res.json();
-          toast.error(error.error || "Failed to submit consolidation");
+          toast.error(error.error || "Failed to start merging");
         }
       } catch {
-        toast.error("Failed to submit consolidation");
+        toast.error("Failed to start merging");
       } finally {
         setIsLoading(false);
       }

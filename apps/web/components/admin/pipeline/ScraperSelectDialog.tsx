@@ -280,7 +280,7 @@ export function ScraperSelectDialog({
                             </>
                         ) : (
                             <>
-                                Start Scraping {selectedUpcCount} Product{selectedUpcCount !== 1 ? 's' : ''}
+                                Start Extraction for {selectedUpcCount} Product{selectedUpcCount !== 1 ? 's' : ''}
                             </>
                         )}
                     </Button>

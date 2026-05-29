@@ -306,7 +306,7 @@ export function ActiveConsolidationsTab({
   };
 
   const handleDeleteJob = async (batchId: string) => {
-    if (!window.confirm("Delete this consolidation job? Products still in merging will be returned to processed.")) return;
+    if (!window.confirm("Delete this merging job? Products still in Merging will be returned to Processed.")) return;
 
     setDeletingId(batchId);
     try {
@@ -314,14 +314,14 @@ export function ActiveConsolidationsTab({
         method: "DELETE",
       });
       if (res.ok) {
-        toast.success("Consolidation deleted");
+        toast.success("Merging job deleted");
         await Promise.all([fetchJobs(), fetchHistory()]);
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to delete consolidation");
+        toast.error(data.error || "Failed to delete merging job");
       }
     } catch {
-      toast.error("Failed to delete consolidation");
+      toast.error("Failed to delete merging job");
     } finally {
       setDeletingId(null);
     }
@@ -454,7 +454,7 @@ export function ActiveConsolidationsTab({
 
       {/* Info Banner */}
       <div className="rounded-none border border-border bg-muted/20 px-4 py-3 text-[10px] font-semibold text-muted-foreground tracking-tight">
-        <span className="text-foreground">Product Consolidation</span>: Click consolidate on the processed tab to submit a job.
+        <span className="text-foreground">Merging queue</span>: Click Merge on the Processed tab to submit a job.
         {hasDirectChatJobs
           ? " Direct-processing jobs auto-apply when complete. Batch jobs (Gemini) require manual apply."
           : " This tab shows progress, lets you apply completed results, cancel running jobs, and recover stranded products."}
@@ -468,7 +468,7 @@ export function ActiveConsolidationsTab({
             Queue Empty
           </h3>
           <p className="text-[10px] font-semibold text-muted-foreground/60 tracking-tight mt-1">
-            No active consolidation jobs detected
+            No active merging jobs detected
           </p>
         </div>
       ) : (

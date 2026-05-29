@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import type { PipelineDisplayStatus } from "@/lib/pipeline/types";
+import { STAGE_CONFIG, type PipelineDisplayStatus } from "@/lib/pipeline/types";
 import { cn } from "@/lib/utils";
 
 interface StatusBadgeProps {
@@ -28,21 +28,20 @@ const sizeConfig = {
 
 const statusConfig: Record<
   PipelineDisplayStatus,
-  { variant: "default" | "success" | "warning" | "destructive"; label: string; icon: React.ComponentType<{ className?: string }>; color?: string }
+  { variant: "default" | "success" | "warning" | "destructive"; icon: React.ComponentType<{ className?: string }>; color?: string }
 > = {
-  awaiting_brand: { variant: "default", label: "Awaiting Brand", icon: Package },
-  imported: { variant: "default", label: "Imported", icon: Package },
-  extracting: { variant: "warning", label: "Extracting", icon: Loader2 },
-  processed: { variant: "success", label: "Processed", icon: Sparkles },
-  merging: { variant: "warning", label: "Merging", icon: Sparkles },
-  reviewing: { variant: "warning", label: "Reviewing", icon: CheckCircle2 },
-  publishing: { variant: "success", label: "Publishing", icon: Globe },
-  failed: { variant: "destructive", label: "Failed", icon: AlertCircle },
+  awaiting_brand: { variant: "default", icon: Package },
+  imported: { variant: "default", icon: Package },
+  extracting: { variant: "warning", icon: Loader2 },
+  processed: { variant: "success", icon: Sparkles },
+  merging: { variant: "warning", icon: Sparkles },
+  reviewing: { variant: "warning", icon: CheckCircle2 },
+  publishing: { variant: "success", icon: Globe },
+  failed: { variant: "destructive", icon: AlertCircle },
 };
 
 const defaultStatusConfig = {
   variant: "default" as const,
-  label: "Unknown",
   icon: Package,
 };
 
@@ -66,6 +65,7 @@ export function StatusBadge({
   const config = statusConfig[status] ?? defaultStatusConfig;
   const sizeSettings = sizeConfig[size];
   const Icon = config.icon;
+  const label = STAGE_CONFIG[status]?.label ?? "Unknown";
 
   if (isLoading) {
     return (
@@ -90,9 +90,9 @@ export function StatusBadge({
       )}
       {showIcon && <Icon className={sizeSettings.icon} aria-hidden="true" />}
       {showLabel ? (
-        <span>{config.label}</span>
+        <span>{label}</span>
       ) : (
-        <span className="sr-only">{config.label}</span>
+        <span className="sr-only">{label}</span>
       )}
     </Badge>
   );

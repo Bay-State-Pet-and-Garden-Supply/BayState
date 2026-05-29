@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { StatusCount, PipelineStatus } from "@/lib/pipeline";
+import { STAGE_CONFIG, type PipelineStatus, type StatusCount } from "@/lib/pipeline/types";
 
 interface PipelineStatsProps {
   counts: StatusCount[];
@@ -23,56 +23,48 @@ interface PipelineStatsProps {
 
 const statusConfig: Array<{
   status: PipelineStatus;
-  label: string;
   icon: typeof Package;
   color: string;
   bgColor: string;
 }> = [
   {
     status: "imported",
-    label: "Imported",
     icon: Package,
     color: "text-brand-forest-green",
     bgColor: "bg-brand-forest-green/10",
   },
   {
     status: "extracting",
-    label: "Extracting",
     icon: Activity,
     color: "text-blue-600",
     bgColor: "bg-blue-600/10",
   },
   {
     status: "processed",
-    label: "Processed",
     icon: Sparkles,
     color: "text-cyan-600",
     bgColor: "bg-cyan-600/10",
   },
   {
     status: "merging",
-    label: "Merging",
     icon: Brain,
     color: "text-violet-600",
     bgColor: "bg-violet-600/10",
   },
   {
     status: "reviewing",
-    label: "Reviewing",
     icon: CheckCircle2,
     color: "text-amber-600",
     bgColor: "bg-amber-600/10",
   },
   {
     status: "publishing",
-    label: "Publishing",
     icon: Upload,
     color: "text-green-600",
     bgColor: "bg-green-600/10",
   },
   {
     status: "failed",
-    label: "Failed",
     icon: AlertCircle,
     color: "text-red-600",
     bgColor: "bg-red-600/10",
@@ -143,7 +135,7 @@ export function PipelineStats({
           >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                {config.label}
+                {STAGE_CONFIG[config.status].label}
               </CardTitle>
               <div className={cn("rounded-full p-2", config.bgColor)}>
                 <Icon className={cn("h-4 w-4", config.color)} />

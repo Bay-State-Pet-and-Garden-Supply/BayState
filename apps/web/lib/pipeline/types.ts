@@ -37,7 +37,6 @@ export const PIPELINE_TABS = [
 ] as const;
 
 export type PipelineStage = (typeof PIPELINE_TABS)[number];
-type PipelineTab = PipelineStage;
 
 /** No pipeline tabs are derived; the workflow vocabulary is canonical everywhere. */
 const DERIVED_PIPELINE_TABS = [] as const;
@@ -268,41 +267,41 @@ export const STAGE_CONFIG: Record<StageConfigKey, StageConfig> = {
   awaiting_brand: {
     label: "Awaiting Brand",
     color: "#9CA3AF",
-    description: "Imported products without an assigned brand — assign a brand to enable extraction",
+    description: "Imported products without a brand. Assign a brand before moving them into Extracting.",
   },
   imported: {
     label: "Imported",
     color: "#6B7280",
-    description: "Products imported into the system, ready for brand assignment and approved source extraction",
+    description: "New products waiting for brand assignment, source setup, or extraction.",
   },
   extracting: {
     label: "Extracting",
     color: "#2563EB",
-    description: "Products currently being enriched via approved source extraction",
+    description: "Live extraction jobs are running or queued for these products.",
   },
   processed: {
     label: "Processed",
     color: "#3B82F6",
-    description: "Products with completed enrichment results ready for consolidation",
+    description: "Extraction is complete. Review source data here before sending products to Merging.",
   },
   merging: {
     label: "Merging",
     color: "#8B5CF6",
-    description: "Products in active AI consolidation batches",
+    description: "AI merge jobs are combining source data into draft product records.",
   },
   reviewing: {
     label: "Reviewing",
     color: "#F59E0B",
-    description: "Products awaiting final review before storefront publication",
+    description: "Merged drafts are waiting for operator review before Publishing.",
   },
   publishing: {
     label: "Publishing",
     color: "#008850",
-    description: "Products published to the storefront and queued for downstream exports",
+    description: "Approved products are ready to publish to ShopSite and export files.",
   },
   failed: {
     label: "Failed",
     color: "#DC2626",
-    description: "Products that failed processing and need manual retry",
+    description: "Products or jobs here need manual recovery before they can continue.",
   },
 } as const;

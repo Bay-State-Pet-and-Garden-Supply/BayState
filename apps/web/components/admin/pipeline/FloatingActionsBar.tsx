@@ -22,22 +22,22 @@ const BULK_ACTIONS: Record<
   processed: {
     label: 'Merge selected',
     nextStage: 'merging',
-    resetLabel: 'Return to import',
+    resetLabel: 'Return to Imported',
     previousStage: 'imported',
-    secondaryAction: 'Re-enrich',
+    secondaryAction: 'Re-run Extraction',
   },
   merging: { label: '', nextStage: null },
   reviewing: {
     label: 'Publish selected',
     nextStage: 'publishing',
-    resetLabel: 'Return to processed',
+    resetLabel: 'Return to Processed',
     previousStage: 'processed',
   },
   publishing: { label: '', nextStage: null },
   failed: {
-    label: 'Return to import',
+    label: 'Return to Imported',
     nextStage: 'imported',
-    resetLabel: 'Clear and return to import',
+    resetLabel: 'Clear and return to Imported',
     previousStage: 'imported',
   },
 };

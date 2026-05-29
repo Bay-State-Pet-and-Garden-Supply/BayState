@@ -126,7 +126,7 @@ export function BatchConsolidationJobView({
         <div className="flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-semibold text-base text-foreground">
-              {job.description || `Consolidation Job ${job.id.slice(0, 8)}`}
+              {job.description || `Merging Job ${job.id.slice(0, 8)}`}
             </h3>
             <StatusBadge status={job.status} />
             <Badge
@@ -290,7 +290,7 @@ export function BatchConsolidationJobView({
       {job.errorCount > 0 && (
         <div className="mt-3 flex items-center gap-2 rounded-none border border-destructive bg-destructive/5 px-3 py-2 text-[10px] font-semibold text-destructive tracking-widest">
           <AlertTriangle className="h-3.5 w-3.5" />
-          {job.errorCount} product{job.errorCount !== 1 ? "s" : ""} failed consolidation
+          {job.errorCount} product{job.errorCount !== 1 ? "s" : ""} failed during merging
         </div>
       )}
 

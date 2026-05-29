@@ -3,7 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Save, CheckCircle, Package, Info } from 'lucide-react';
 import { toast } from 'sonner';
-import type { PipelineProduct, PipelineStatus } from '@/lib/pipeline/types';
+import {
+  PIPELINE_TABS,
+  STAGE_CONFIG,
+  type PipelineProduct,
+  type PipelineStatus,
+} from '@/lib/pipeline/types';
 import { SHOPSITE_PAGES } from '@/lib/shopsite/constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,15 +38,11 @@ interface PipelineProductDetailProps {
   onSave: () => void;
 }
 
-const pipelineStatusOptions: { value: PipelineStatus; label: string }[] = [
-  { value: 'imported', label: 'Imported' },
-  { value: 'extracting', label: 'Extracting' },
-  { value: 'processed', label: 'Processed' },
-  { value: 'merging', label: 'Merging' },
-  { value: 'reviewing', label: 'Reviewing' },
-  { value: 'publishing', label: 'Publishing' },
-  { value: 'failed', label: 'Failed' },
-];
+const pipelineStatusOptions: { value: PipelineStatus; label: string }[] =
+  PIPELINE_TABS.map((status) => ({
+    value: status,
+    label: STAGE_CONFIG[status].label,
+  }));
 
 export function PipelineProductDetail({
   upc,
@@ -452,7 +453,7 @@ export function PipelineProductDetail({
               {Object.keys(product.sources || {}).length > 0 && (
                 <div>
                   <h4 className="text-[10px] font-bold text-foreground mb-2 uppercase tracking-widest">
-                    Multi-Source Scraped Data
+                    Multi-Source Extraction Data
                   </h4>
                   <pre className="rounded-none bg-muted/50 p-4 text-[11px] font-mono overflow-x-auto leading-relaxed border border-border/10">
                     {JSON.stringify(product.sources, null, 2)}

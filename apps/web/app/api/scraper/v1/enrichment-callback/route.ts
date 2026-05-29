@@ -127,7 +127,8 @@ function determineNextStatus(
   attempt: AttemptLike,
   requestedMode: RequestedExtractionMode,
 ): { status: string; retry: boolean } {
-  const hasName = typeof result.product?.name === "string" && result.product.name.trim().length > 0;
+  const nameVal = result.product?.core?.name ?? result.product?.name;
+  const hasName = typeof nameVal === "string" && nameVal.trim().length > 0;
   const isHighConfidence = result.confidence.overall >= 0.5;
 
   if (result.status === "success" && hasName && isHighConfidence) {

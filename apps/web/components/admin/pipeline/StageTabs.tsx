@@ -54,6 +54,8 @@ export function StageTabs({
                   <TabsTrigger
                     key={stage}
                     value={stage}
+                    title={config.description}
+                    aria-label={`${config.label}. ${config.description}`}
                     className="flex h-auto items-center gap-2 rounded-lg border border-border/50 bg-card px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground transition-colors data-[state=active]:border-primary/20 data-[state=active]:bg-primary/5 data-[state=active]:text-primary"
                   >
                     <span>{config.label}</span>

@@ -350,15 +350,15 @@ export function ProcessedResultsView({
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(err.error || "Failed to submit for consolidation");
+        throw new Error(err.error || "Failed to start merging");
       }
 
       toast.success(
-        `${selectedUpcs.size} product${selectedUpcs.size === 1 ? "" : "s"} submitted for consolidation`
+        `${selectedUpcs.size} product${selectedUpcs.size === 1 ? "" : "s"} sent to Merging`
       );
       onRefresh(true);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Consolidation submission failed");
+      toast.error(err instanceof Error ? err.message : "Failed to start merging");
     } finally {
       setSubmitting(false);
       setShowConsolidationDialog(false);
@@ -406,13 +406,13 @@ export function ProcessedResultsView({
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(err.error || "Failed to submit for consolidation");
+        throw new Error(err.error || "Failed to start merging");
       }
 
-      toast.success(`Product ${product.upc} submitted for consolidation`);
+      toast.success(`Product ${product.upc} sent to Merging`);
       onRefresh(true);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Consolidation submission failed");
+      toast.error(err instanceof Error ? err.message : "Failed to start merging");
     } finally {
       setSubmitting(false);
       setConfirmConsolidateProduct(null);
@@ -609,7 +609,7 @@ export function ProcessedResultsView({
                   className="h-7 text-[10px] font-bold px-2"
                 >
                   <Sparkles className="size-3 mr-1" />
-                  Consolidate
+                  Merge
                 </Button>
                 <Button
                   size="sm"
@@ -692,7 +692,7 @@ export function ProcessedResultsView({
                     disabled={submitting}
                   >
                     <Sparkles className="size-3.5 mr-1.5" />
-                    Consolidate
+                    Merge
                   </Button>
                   <Button
                     size="sm"
@@ -770,7 +770,7 @@ export function ProcessedResultsView({
                   <div className="flex items-center gap-2 text-amber-600 bg-amber-500/10 p-2 rounded-none border border-amber-500/20">
                     <AlertCircle className="h-4 w-4 shrink-0" />
                     <span className="text-[10px] font-semibold">
-                      No scraped sources available for this product yet.
+                      No source data available for this product yet.
                     </span>
                   </div>
                 </div>
@@ -1010,7 +1010,7 @@ export function ProcessedResultsView({
                     <div className="space-y-2">
                       <h4 className="text-[10px] font-semibold text-muted-foreground flex items-center gap-2 tracking-wider uppercase">
                         <Package className="h-3.5 w-3.5" />
-                        Scraped JSON Output (Technical Specs)
+                        Raw Source JSON (Technical Specs)
                       </h4>
                       <div className="bg-muted rounded-none p-3 font-mono text-[9px] overflow-x-auto border border-border max-h-[300px]">
                         <pre className="font-semibold text-foreground">
@@ -1033,7 +1033,7 @@ export function ProcessedResultsView({
                 <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
                   <Package className="h-12 w-12 mb-2 opacity-20" />
                   <h3 className="text-lg font-semibold text-foreground">No source content loaded</h3>
-                  <p className="text-xs mt-1">Select a different tab above to inspect raw scraped content.</p>
+                  <p className="text-xs mt-1">Select a different source tab above to inspect raw source content.</p>
                 </div>
               )}
             </div>
@@ -1060,29 +1060,29 @@ export function ProcessedResultsView({
         variant="destructive"
       />
 
-      {/* 2. Bulk Consolidation Dialog */}
+      {/* 2. Bulk Merging Dialog */}
       <ConfirmationDialog
         open={showConsolidationDialog}
         onOpenChange={setShowConsolidationDialog}
-        title="Submit for Consolidation"
-        description={`${selectedUpcs.size} product${selectedUpcs.size === 1 ? "" : "s"} will be submitted for AI consolidation. Enrichment results will be merged with imported data.`}
+        title="Start Merging"
+        description={`${selectedUpcs.size} product${selectedUpcs.size === 1 ? "" : "s"} will be sent to the AI merging queue. Source data will be combined into draft product records.`}
         onConfirm={handleSubmitForConsolidation}
-        confirmLabel="Submit for Consolidation"
+        confirmLabel="Start Merging"
         variant="default"
       />
 
-      {/* 3. Single Product Consolidation Dialog */}
+      {/* 3. Single Product Merging Dialog */}
       <ConfirmationDialog
         open={!!confirmConsolidateProduct}
         onOpenChange={(open) => !open && setConfirmConsolidateProduct(null)}
-        title="Submit for Consolidation"
-        description={`Product ${confirmConsolidateProduct?.upc} will be submitted for AI consolidation. Enrichment results will be merged with imported data.`}
+        title="Start Merging"
+        description={`Product ${confirmConsolidateProduct?.upc} will be sent to the AI merging queue. Source data will be combined into a draft product record.`}
         onConfirm={async () => {
           if (confirmConsolidateProduct) {
             await handleSingleConsolidate(confirmConsolidateProduct);
           }
         }}
-        confirmLabel="Submit for Consolidation"
+        confirmLabel="Start Merging"
         variant="default"
       />
 
@@ -1110,7 +1110,7 @@ export function ProcessedResultsView({
         }}
         onConfirm={handleConfirmDeleteSource}
         title="Delete Extraction Source"
-        description={`Are you sure you want to delete the raw source "${pendingDeleteSource}"? This will remove its scraped facts from the product permanently.`}
+        description={`Are you sure you want to delete the raw source "${pendingDeleteSource}"? This will remove its extracted facts from the product permanently.`}
         confirmLabel="Delete Source"
         variant="destructive"
       />

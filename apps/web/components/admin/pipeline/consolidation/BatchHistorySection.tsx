@@ -66,7 +66,7 @@ function ConsolidationHistoryCard({
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={job.status} />
             <span className="text-sm font-semibold text-foreground truncate">
-              {job.description || `Consolidation Job ${job.id.slice(0, 8)}`}
+              {job.description || `Merging Job ${job.id.slice(0, 8)}`}
             </span>
             {providerLabel && (
               <Badge variant="secondary" className="rounded-none border border-border bg-muted font-semibold text-[9px] h-4 tracking-widest">
@@ -279,14 +279,14 @@ export function ConsolidationHistorySection({
       <div className="flex items-center gap-2 border-t border-border pt-4">
         <History className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-semibold text-muted-foreground">
-          Consolidation History
+          Merging History
         </h3>
         <span className="text-[10px] font-semibold text-muted-foreground tracking-widest">Last 20</span>
       </div>
 
       {historyJobs.length === 0 ? (
         <p className="text-sm font-semibold text-muted-foreground text-center py-4 tracking-widest">
-          No consolidation history yet
+          No merging history yet
         </p>
       ) : (
         historyJobs.map((job) => (

@@ -1938,7 +1938,7 @@ export function ReviewingResultsView({
                     <summary className="flex cursor-pointer items-center justify-between p-4 text-sm font-semibold text-muted-foreground hover:bg-muted/30 list-none">
                       <div className="flex items-center gap-2">
                         <Package className="h-4 w-4" />
-                        View Raw Scraped Data
+                        View Raw Source Data
                       </div>
                       <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
                     </summary>
