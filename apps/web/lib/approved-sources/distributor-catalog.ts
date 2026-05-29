@@ -51,7 +51,7 @@ const FIXED_DISTRIBUTOR_CATALOG: FixedDistributorEntry[] = [
     adapterSlug: "bradley_crawl4ai",
     displayName: "Bradley Caldwell",
     domains: ["bradleycaldwell.com"],
-    assetDomains: ["bradleycaldwell.com"],
+    assetDomains: ["bradleycaldwell.com", "bigcommerce.com", "cdn.bigcommerce.com", "cdn11.bigcommerce.com"],
     requiresAuth: false,
     credentialRef: null,
     searchMode: "upc_search",

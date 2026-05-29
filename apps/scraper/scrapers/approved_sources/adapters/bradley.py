@@ -55,29 +55,16 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
         logger.info("[%s] Navigating to product details page for full metadata: %s", self.adapter_slug, self._product_page_url)
 
         try:
-            from scrapers.approved_sources.adapters.base import get_shared_browser_engine
-            from crawl4ai import CrawlerRunConfig, CacheMode
+            # First try static fetch
+            html = await self._fetch_html(self._product_page_url)
+            if html and self._needs_js_rendering(html):
+                logger.info("[%s] PDP appears JS-rendered, trying browser fallback", self.adapter_slug)
+                browser_html = await self._fetch_html_with_browser(self._product_page_url)
+                if browser_html:
+                    html = browser_html
 
-            engine = await get_shared_browser_engine()
-            if not engine:
-                logger.warning("[%s] Shared Crawl4AI engine not available for product page details", self.adapter_slug)
-                return det_result
-
-            config = CrawlerRunConfig(
-                cache_mode=CacheMode.BYPASS,
-                page_timeout=30000,
-                wait_until="networkidle",
-                remove_overlay_elements=True,
-                magic=True,
-                simulate_user=True,
-                override_navigator=True,
-            )
-
-            page_result = await engine.crawler.arun(url=self._product_page_url, config=config)
-
-            if page_result and getattr(page_result, "success", False):
-                page_html = getattr(page_result, "html", None) or ""
-                pdp_result = self.extract_from_html(page_html, self._get_sku(), self._product_page_url)
+            if html:
+                pdp_result = self.extract_from_html(html, self._get_sku(), self._product_page_url)
                 if pdp_result.success:
                     # Update product with full PDP details
                     for k, v in pdp_result.product.items():
@@ -86,6 +73,10 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
                     det_result.matched_fields = list(set(det_result.matched_fields + pdp_result.matched_fields))
                     det_result.sku_match = pdp_result.sku_match
                     logger.info("[%s] Successfully enriched product details from PDP: %s", self.adapter_slug, self._product_page_url)
+                else:
+                    logger.warning("[%s] Failed to parse product details from PDP HTML", self.adapter_slug)
+            else:
+                logger.warning("[%s] Failed to fetch product details page HTML", self.adapter_slug)
         except Exception as e:
             logger.warning("[%s] Product page enrichment failed: %s", self.adapter_slug, e)
 
@@ -125,6 +116,37 @@ class BradleyAdapter(BaseDistributorCrawl4AIAdapter):
             return self._extract_with_regex(html, upc, url)
 
         soup = BeautifulSoup(html, "html.parser")
+
+        # Check if we are on a search results page versus a direct PDP page
+        is_pdp = "/search" not in url
+
+        if not is_pdp:
+            # We are likely on a search results page. Find the matching product card.
+            product = {}
+            matched = []
+            self._extract_bigcommerce_headless(soup, upc, product, matched, warnings)
+            
+            if not product.get("name"):
+                # Check for no-results message
+                no_results = soup.find(
+                    "h3", string=re.compile(r"Sorry, no results for", re.I)
+                )
+                if no_results:
+                    result.success = False
+                    result.failure_code = FailureCode.NO_MATCH
+                    result.failure_message = f"No match found for UPC {upc}"
+                else:
+                    result.success = False
+                    result.failure_code = FailureCode.EXTRACTION_FAILED
+                    result.failure_message = f"No matching product card found on search page for UPC {upc}"
+                return result
+
+            result.success = True
+            result.product = product
+            result.matched_fields = matched
+            result.confidence = 0.5
+            result.warnings = warnings
+            return result
 
         # --- Name ---
         # main h1 (not "Search results for...")
