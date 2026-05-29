@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { PipelineProduct } from "@/lib/pipeline/types";
 import { normalizeImageUrl } from "@/lib/product-sources";
+import { collectSourceBackedFallbacks } from "@/lib/product-source-fallbacks";
 
 export const FINALIZATION_STOCK_STATUS_VALUES = [
   "in_stock",
@@ -168,6 +169,10 @@ export function buildInitialFinalizationDraft(
   const consolidated = isRecord(product.consolidated) ? product.consolidated : {};
   const input = isRecord(product.input) ? product.input : {};
   const core = isRecord(consolidated.core) ? consolidated.core : {};
+  const sources = product.sources || {};
+
+  // Collect source-backed fallbacks for when consolidated/input are blank
+  const fallbacks = collectSourceBackedFallbacks(sources, input);
 
   let consolidatedImages: string[] = [];
   if (Array.isArray(consolidated.media)) {
@@ -179,6 +184,7 @@ export function buildInitialFinalizationDraft(
 
   const facets: Record<string, string> = {};
 
+  // Facets from consolidated (highest priority)
   if (Array.isArray(consolidated.facets)) {
     for (const f of consolidated.facets) {
       if (f && typeof f.definition_slug === "string" && typeof f.value === "string") {
@@ -187,6 +193,7 @@ export function buildInitialFinalizationDraft(
     }
   }
 
+  // Legacy mappings from consolidated/input
   const legacyMappings: Record<string, string> = {
     animal_type: toTrimmedString(consolidated.pet_type ?? input.pet_type),
     life_stage: toTrimmedString(consolidated.lifestage ?? consolidated.life_stage ?? input.lifestage ?? input.life_stage),
@@ -207,26 +214,44 @@ export function buildInitialFinalizationDraft(
     }
   }
 
+  // Source-backed fallback facets (lowest priority — only fill blanks)
+  if (fallbacks.facets.length > 0) {
+    for (const fb of fallbacks.facets) {
+      if (fb.value && !facets[fb.definition_slug]) {
+        facets[fb.definition_slug] = fb.value;
+      }
+    }
+  }
+
+  // Source-backed fallback images
+  const fallbackImages = toFinalizationImageArray(
+    fallbacks.media.map((m) => m.url).filter(Boolean)
+  );
+  const selectedImages = consolidatedImages.length > 0
+    ? consolidatedImages
+    : metadataSelectedImages.length > 0
+      ? metadataSelectedImages
+      : fallbackImages;
+
   return {
-    name: toTrimmedString(core.name ?? consolidated.name ?? input.name),
-    description: toTrimmedString(core.description ?? consolidated.description ?? input.description),
+    name: toTrimmedString(core.name ?? consolidated.name ?? input.name ?? fallbacks.core.name),
+    description: toTrimmedString(core.description ?? consolidated.description ?? input.description ?? fallbacks.core.description),
     price: toTrimmedString(core.price ?? consolidated.price ?? input.price),
-    weight: toTrimmedString(core.weight_lbs ?? consolidated.weight ?? input.weight),
+    weight: toTrimmedString(core.weight_lbs ?? consolidated.weight ?? input.weight ?? fallbacks.core.weight_lbs),
     brandId: toTrimmedString(core.brand_id ?? consolidated.brand_id) || "none",
-    brandName: toTrimmedString(core.brand_name ?? consolidated.brand ?? ""),
+    brandName: toTrimmedString(core.brand_name ?? consolidated.brand ?? fallbacks.core.brand ?? ""),
     category: toTrimmedString(core.canonical_category_breadcrumb ?? consolidated.category ?? ""),
     stockStatus: toFinalizationStockStatus(core.stock_status ?? consolidated.stock_status ?? input.stock_status),
     availability:
       toTrimmedString(core.availability ?? consolidated.availability ?? input.availability) ||
       "in stock",
     minimumQuantity: toTrimmedString(core.minimum_quantity ?? consolidated.minimum_quantity ?? input.minimum_quantity) || "0",
-    searchKeywords: toTrimmedString(core.search_keywords ?? consolidated.search_keywords ?? input.search_keywords),
+    searchKeywords: toTrimmedString(core.search_keywords ?? consolidated.search_keywords ?? input.search_keywords ?? fallbacks.core.search_keywords),
     gtin: product.upc,
     customImageUrl: "",
-    selectedImages:
-      consolidatedImages.length > 0 ? consolidatedImages : metadataSelectedImages,
+    selectedImages,
     customSourceUrl: "",
-    sources: product.sources || {},
+    sources,
     facets,
     isSpecialOrder: !!(core.is_special_order ?? consolidated.is_special_order ?? input.is_special_order),
     inStorePickup: !!(consolidated.in_store_pickup ?? input.in_store_pickup ?? true),

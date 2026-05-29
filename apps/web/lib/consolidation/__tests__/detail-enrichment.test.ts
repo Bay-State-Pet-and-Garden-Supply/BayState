@@ -258,3 +258,118 @@ describe('enrichProductDetails', () => {
         });
     });
 });
+
+// =============================================================================
+// Regression: Amazon enriched payload with extracted.core, facets, approved_sources
+// =============================================================================
+
+describe('Amazon enriched payload extraction', () => {
+    const AMAZON_SOURCES = {
+        enriched: {
+            source_kind: 'enriched',
+            source_slug: 'amazon',
+            source_type: 'marketplace',
+            name: '360 Pet Nutrition Freeze-Dried Raw Dog Food – Chicken Recipe',
+            title: '360 Pet Nutrition Freeze-Dried Raw Dog Food – Chicken Recipe',
+            description: 'Made with High-Quality Ingredients – Each bag is crafted with real meat, nutrient-rich organ meats, fruits, vegetables, and seeds.',
+            extracted: {
+                core: {
+                    name: '360 Pet Nutrition Freeze-Dried Raw Dog Food – Chicken Recipe with Liver & Organs, High Protein, Omega-3s, Fruits, Veggies & Superfoods, Grain-Free, No Fillers, 5 oz – Made in USA',
+                    brand_name: '360 Pet Nutrition',
+                    description: 'Made with High-Quality Ingredients – Each bag is crafted with real meat, nutrient-rich organ meats, fruits, vegetables, and seeds, providing a variety of ingredients in every serving. Made proudly in the USA.\nFreeze-Dried for Convenience – Freeze-drying helps maintain the natural taste and nutrients of raw ingredients while making it easy to store and prepare, with no refrigeration needed.',
+                    weight_lbs: 0.3125,
+                },
+                facets: [
+                    { definition_slug: 'dimensions', value: '10.83 x 6.57 x 2.05 inches; 5 ounces' },
+                    { definition_slug: 'features', value: 'Made with High-Quality Ingredients – Each bag is crafted with real meat.' },
+                    { definition_slug: 'features', value: 'Freeze-Dried for Convenience – Freeze-drying helps maintain the natural taste.' },
+                    { definition_slug: 'features', value: 'No Fillers or Artificial Preservatives – Formulated without grains, cereals, or unnecessary fillers.' },
+                ],
+                evidence: {
+                    source_urls: ['https://www.amazon.com/dp/B0DJMXTW72'],
+                },
+            },
+            approved_sources: {
+                amazon: {
+                    name: '360 Pet Nutrition Freeze-Dried Raw Dog Food – Chicken Recipe',
+                    brand: '360 Pet Nutrition',
+                    extracted: {
+                        core: {
+                            name: '360 Pet Nutrition Freeze-Dried Raw Dog Food – Chicken Recipe with Liver & Organs',
+                            brand_name: '360 Pet Nutrition',
+                            description: 'Made with High-Quality Ingredients...',
+                        },
+                    },
+                },
+            },
+            source_results: [
+                {
+                    sourceSlug: 'amazon',
+                    sourceType: 'marketplace',
+                    product: {
+                        core: {
+                            name: '360 Pet Nutrition Freeze-Dried Raw Dog Food – Chicken Recipe with Liver & Organs, Grain-Free, No Fillers, 5 oz – Made in USA',
+                            brand_name: '360 Pet Nutrition',
+                            description: 'Made with High-Quality Ingredients – Each bag is crafted with real meat.',
+                            weight_lbs: 0.3125,
+                        },
+                        facets: [
+                            { definition_slug: 'food_form', value: 'Freeze-Dried' },
+                            { definition_slug: 'diet_type', value: 'Grain-Free' },
+                        ],
+                    },
+                },
+            ],
+        },
+    } as unknown as Record<string, unknown>;
+
+    it('infers animal_food profile when category is null but source evidence exists', () => {
+        const result = enrichProductDetails(
+            makeInput(
+                { name: 'Freeze-Dried Raw Dog Food' },
+                AMAZON_SOURCES,
+            ),
+        );
+        expect(result.facetProfile).toBe('animal_food');
+    });
+
+    it('extracts animal_type from enriched source text with no category', () => {
+        const result = enrichProductDetails(
+            makeInput(
+                { name: 'Freeze-Dried Raw Dog Food' },
+                AMAZON_SOURCES,
+            ),
+        );
+        expect(result.fields.animal_type).toContain('Dog');
+    });
+
+    it('extracts food_form from source_results facets', () => {
+        const result = enrichProductDetails(
+            makeInput(
+                { name: 'Freeze-Dried Raw Dog Food' },
+                AMAZON_SOURCES,
+            ),
+        );
+        expect(result.fields.food_form).toBe('Freeze-Dried');
+    });
+
+    it('extracts diet_type from source_results facets', () => {
+        const result = enrichProductDetails(
+            makeInput(
+                { name: 'Freeze-Dried Raw Dog Food' },
+                AMAZON_SOURCES,
+            ),
+        );
+        expect(result.fields.diet_type).toContain('Grain-Free');
+    });
+
+    it('extracts claims (Made in USA) from source text', () => {
+        const result = enrichProductDetails(
+            makeInput(
+                { name: 'Freeze-Dried Raw Dog Food' },
+                AMAZON_SOURCES,
+            ),
+        );
+        expect(result.fields.claims).toContain('Made in USA');
+    });
+});

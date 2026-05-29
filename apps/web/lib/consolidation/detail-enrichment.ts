@@ -13,6 +13,7 @@
  */
 
 import { normalizeProductSources } from '@/lib/product-sources';
+import { collectSourceBackedFallbacks } from '@/lib/product-source-fallbacks';
 import {
     resolveFacetProfile,
     isFieldApplicable,
@@ -80,8 +81,8 @@ const PET_SIZE_PATTERNS: Record<string, RegExp> = {
 const FOOD_FORM_PATTERNS: Record<string, RegExp> = {
     'Dry': /\b(dry|kibble|crunchy)\b/i,
     'Wet': /\b(wet|canned|pate|paté|loaf|stew|gravy|broth|in sauce)\b/i,
-    'Raw': /\b(raw|frozen raw|raw frozen)\b/i,
     'Freeze-Dried': /\b(freeze[- ]?dried|lyophilized)\b/i,
+    'Raw': /\b((?<!freeze[- ]?dried[- ]?)raw|frozen raw|raw frozen)\b/i,
     'Dehydrated': /\b(dehydrated|air[- ]?dried)\b/i,
     'Semi-Moist': /\b(semi[- ]?moist|soft[- ]?dry|chewy)\b/i,
     'Topper': /\b(topper|mix[- ]?in|mixer)\b/i,
@@ -173,6 +174,8 @@ const CLAIMS_PATTERNS: Record<string, RegExp> = {
     'No Corn/Wheat/Soy': /\b(no corn|no wheat|no soy|corn[- ]?free|wheat[- ]?free|soy[- ]?free)\b/i,
     'Human-Grade': /\b(human[- ]?grade|human grade)\b/i,
     'Veterinarian Recommended': /\b(vet recommended|veterinarian recommended|vet approved)\b/i,
+    'No Artificial Preservatives': /\b(no artificial preservatives?|no preservatives?|preservative[- ]?free)\b/i,
+    'No Fillers': /\b(no fillers?|filler[- ]?free|no unnecessary fillers?)\b/i,
 };
 
 /** Treat types */
@@ -468,14 +471,86 @@ function buildSearchableText(
     if (typeof input.description === 'string') parts.push(input.description);
     if (typeof input.category === 'string') parts.push(input.category);
 
-    // Source titles/descriptions (first 3 sources to limit noise)
+    // Normalize and walk sources for nested evidence
     const normalized = normalizeProductSources(sources);
-    let sourceCount = 0;
+
     for (const [, sourceData] of Object.entries(normalized)) {
-        if (sourceCount >= 3) break;
-        if (typeof sourceData.title === 'string') parts.push(sourceData.title);
-        if (typeof sourceData.description === 'string') parts.push(sourceData.description);
-        sourceCount++;
+        const src = sourceData as Record<string, unknown>;
+
+        // Direct title/description
+        if (typeof src.title === 'string') parts.push(src.title);
+        if (typeof src.description === 'string') parts.push(src.description);
+        if (typeof src.name === 'string') parts.push(src.name);
+        if (typeof src.brand === 'string') parts.push(src.brand);
+        if (Array.isArray(src.features)) {
+            for (const f of src.features) {
+                if (typeof f === 'string') parts.push(f);
+            }
+        }
+
+        // Enriched source: extracted.core, extracted.facets[], approved_sources, source_results
+        const enriched = src.extracted as Record<string, unknown> | undefined;
+        if (enriched) {
+            // extracted.core
+            const eCore = enriched.core as Record<string, unknown> | undefined;
+            if (eCore) {
+                if (typeof eCore.name === 'string') parts.push(eCore.name);
+                if (typeof eCore.description === 'string') parts.push(eCore.description);
+                if (typeof eCore.brand_name === 'string') parts.push(eCore.brand_name);
+                if (typeof eCore.search_keywords === 'string') parts.push(eCore.search_keywords);
+            }
+            // extracted.facets
+            const eFacets = enriched.facets as Record<string, unknown>[] | undefined;
+            if (Array.isArray(eFacets)) {
+                for (const f of eFacets) {
+                    if (typeof f.value === 'string') parts.push(f.value);
+                }
+            }
+            // approved_sources
+            const appSrc = enriched.approved_sources as Record<string, unknown> | undefined;
+            if (appSrc) {
+                for (const [, snap] of Object.entries(appSrc)) {
+                    const s = snap as Record<string, unknown>;
+                    if (typeof s.name === 'string') parts.push(s.name);
+                    if (typeof s.description === 'string') parts.push(s.description);
+                    // nested extracted.core inside approved source
+                    const sExtracted = s.extracted as Record<string, unknown> | undefined;
+                    if (sExtracted) {
+                        const sCore = sExtracted.core as Record<string, unknown> | undefined;
+                        if (sCore) {
+                            if (typeof sCore.name === 'string') parts.push(sCore.name);
+                            if (typeof sCore.description === 'string') parts.push(sCore.description);
+                        }
+                        const sFacets = sExtracted.facets as Record<string, unknown>[] | undefined;
+                        if (Array.isArray(sFacets)) {
+                            for (const f of sFacets) {
+                                if (typeof f.value === 'string') parts.push(f.value);
+                            }
+                        }
+                    }
+                }
+            }
+            // source_results
+            const srcResults = enriched.source_results as Record<string, unknown>[] | undefined;
+            if (Array.isArray(srcResults)) {
+                for (const sr of srcResults) {
+                    const p = sr.product as Record<string, unknown> | undefined;
+                    if (p) {
+                        const pCore = p.core as Record<string, unknown> | undefined;
+                        if (pCore) {
+                            if (typeof pCore.name === 'string') parts.push(pCore.name);
+                            if (typeof pCore.description === 'string') parts.push(pCore.description);
+                        }
+                        const pFacets = p.facets as Record<string, unknown>[] | undefined;
+                        if (Array.isArray(pFacets)) {
+                            for (const f of pFacets) {
+                                if (typeof f.value === 'string') parts.push(f.value);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     return parts.filter(Boolean).join(' ');
@@ -1030,7 +1105,21 @@ export function enrichProductDetails(input: EnrichmentInput): EnrichmentResult {
             ? (input.consolidated.core as any).facet_profile
             : undefined;
 
-    const profile = resolveFacetProfile(category, explicitProfile);
+    // Source fallback for profile hints when category is blank
+    const sourceFallbacks = collectSourceBackedFallbacks(input.sources, input.input);
+    const profileHints = sourceFallbacks.profileHints;
+
+    // Use profile hints to infer a profile when category is missing
+    let inferredProfileFromHints: string | undefined;
+    if (!category && !explicitProfile) {
+        if (profileHints.includes('animal_food')) {
+            inferredProfileFromHints = 'animal_food';
+        } else if (profileHints.includes('animal_treats_chews')) {
+            inferredProfileFromHints = 'animal_treats_chews';
+        }
+    }
+
+    const profile = resolveFacetProfile(category, explicitProfile ?? inferredProfileFromHints);
     const applicableFields = [...FACET_PROFILE_APPLICABLE_FIELDS[profile]] as DetailField[];
 
     const searchText = buildSearchableText(

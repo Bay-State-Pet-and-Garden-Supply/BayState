@@ -13,6 +13,7 @@ import { useState, useMemo, useEffect } from "react";
 import { FINALIZATION_STOCK_STATUS_VALUES } from "@/lib/pipeline/reviewing-draft";
 import type { FinalizationDraft } from "@/lib/pipeline/reviewing-draft";
 import type { TaxonomyCategoryNode } from "@/lib/taxonomy";
+import { collectSourceBackedFallbacks } from "@/lib/product-source-fallbacks";
 
 interface Brand {
   id: string;
@@ -113,19 +114,71 @@ export function MerchandisingClassification({
   }, [filteredCategories, currentParentId]);
 
   const resolvedFacetProfile = useMemo(() => {
-    if (!formData.category) return "general";
-
-    let current = filteredCategories.find((c) => c.breadcrumb === formData.category);
-    while (current) {
-      if (current.facet_profile) {
-        return current.facet_profile;
+    // 1. If category is set, traverse taxonomy tree to find facet_profile
+    if (formData.category) {
+      let current = filteredCategories.find((c) => c.breadcrumb === formData.category);
+      while (current) {
+        if (current.facet_profile) {
+          return current.facet_profile;
+        }
+        const parentId = current.parent_id;
+        current = parentId ? filteredCategories.find((c) => c.id === parentId) : undefined;
       }
-      const parentId = current.parent_id;
-      current = parentId ? filteredCategories.find((c) => c.id === parentId) : undefined;
+    }
+
+    // 2. Infer profile from populated facets when category is blank
+    const facets = formData.facets || {};
+    const has = (slug: string) => typeof facets[slug] === "string" && facets[slug].length > 0;
+
+    if (has("food_form") || (has("animal_type") && has("diet_type"))) {
+      return "animal_food";
+    }
+    if (has("treat_type") || has("chew_duration")) {
+      return "animal_treats_chews";
+    }
+    if (has("active_ingredient") || has("target_condition")) {
+      return "animal_health_wellness";
+    }
+    if (has("litter_material")) {
+      return "animal_litter_bedding";
+    }
+    if (has("toy_type") || has("play_style")) {
+      return "animal_toys_enrichment";
+    }
+    if (has("garden_product_type")) {
+      return "garden_consumable";
+    }
+    if (has("fuel_type")) {
+      return "home_heating";
+    }
+
+    // 3. Infer profile from source evidence when category and facets are blank
+    const validProfiles = new Set([
+      'animal_food', 'animal_treats_chews', 'animal_feed_farm',
+      'animal_health_wellness', 'animal_toys_enrichment',
+      'animal_habitat_containment', 'animal_litter_bedding',
+      'grooming_cleaning', 'aquarium_equipment', 'reptile_equipment',
+      'garden_consumable', 'garden_equipment', 'home_heating',
+      'hardware_tools', 'general',
+    ]);
+
+    const sources = formData.sources || {};
+    if (Object.keys(sources).length > 0) {
+      try {
+        const fallbacks = collectSourceBackedFallbacks(sources);
+        if (fallbacks.profileHints.length > 0) {
+          const hint = fallbacks.profileHints[0];
+          if (validProfiles.has(hint)) {
+            return hint;
+          }
+        }
+      } catch {
+        // Swallow errors — source parsing is best-effort
+      }
     }
 
     return "general";
-  }, [filteredCategories, formData.category]);
+  }, [filteredCategories, formData.category, formData.facets, formData.sources]);
 
   const applicableFacets = useMemo(() => {
     return facetDefinitions.filter((def) => {

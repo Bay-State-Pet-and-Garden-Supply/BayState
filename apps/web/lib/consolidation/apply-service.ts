@@ -14,6 +14,7 @@ import {
     createBrandResolver,
     normalizeLookupKey,
 } from './brand-resolver';
+import { collectSourceBackedFallbacks } from '@/lib/product-source-fallbacks';
 import { assembleProductFacets } from './facet-assembler';
 import {
     extractSelectedImageUrls,
@@ -430,7 +431,19 @@ export async function applyConsolidationResults(
                 continue;
             }
 
-            const normalizedBrand = cleanBrandLabel(result.brand);
+            const normalizedExisting = normalizeConsolidatedRecord(existingConsolidated);
+            const existingCore = normalizedExisting.core || {};
+            const existingFacets = normalizedExisting.facets || [];
+            const existingMedia = normCurrentMediaArray(normalizedExisting.media || []);
+            const existingEvidence = normalizedExisting.evidence || {};
+
+            // Compute source-backed fallbacks for missing core fields (marketplace confidence ~0.82)
+            const sourceFallbacks = collectSourceBackedFallbacks(
+                existingRecord.sources,
+                existingRecord.input,
+            );
+
+            const normalizedBrand = cleanBrandLabel(result.brand) || cleanBrandLabel(sourceFallbacks.core.brand);
 
             const nextCategory = parseTaxonomyValues(result.category);
             const parsedPrice =
@@ -440,22 +453,34 @@ export async function applyConsolidationResults(
                         ? Number.parseFloat(result.price)
                         : Number.NaN;
 
-            const normalizedExisting = normalizeConsolidatedRecord(existingConsolidated);
-            const existingCore = normalizedExisting.core || {};
-            const existingFacets = normalizedExisting.facets || [];
-            const existingMedia = normCurrentMediaArray(normalizedExisting.media || []);
-            const existingEvidence = normalizedExisting.evidence || {};
-
             const weightValue = typeof result.weight === 'string' && result.weight.trim()
                 ? result.weight.trim()
                 : (existingCore.weight_lbs !== undefined && existingCore.weight_lbs !== null
                     ? `${existingCore.weight_lbs} lbs`
-                    : undefined);
+                    : sourceFallbacks.core.weight_lbs);
 
-            const draftName = typeof result.name === 'string' && result.name.trim() ? result.name.trim() : (existingCore.name || undefined);
+            const draftName = typeof result.name === 'string' && result.name.trim() ? result.name.trim() : (existingCore.name || sourceFallbacks.core.name || undefined);
             const draftCategory = nextCategory.length > 0 ? nextCategory.join('|') : (existingCore.canonical_category_breadcrumb || undefined);
-            const draftDescription = typeof result.description === 'string' && result.description.trim() ? result.description.trim() : (existingCore.description || undefined);
-            const draftSearchKeywords = typeof result.search_keywords === 'string' && result.search_keywords.trim() ? result.search_keywords.trim() : (existingCore.search_keywords || undefined);
+            const draftDescription = typeof result.description === 'string' && result.description.trim() ? result.description.trim() : (existingCore.description || sourceFallbacks.core.description || undefined);
+            const draftSearchKeywords = typeof result.search_keywords === 'string' && result.search_keywords.trim() ? result.search_keywords.trim() : (existingCore.search_keywords || sourceFallbacks.core.search_keywords || undefined);
+
+            // Track which fields were filled from source fallbacks for audit trail
+            const fieldSources: Record<string, string> = {};
+            if (!result.name?.trim() && !existingCore.name && sourceFallbacks.core.name) {
+                fieldSources.name = 'source_fallback:name';
+            }
+            if (!result.description?.trim() && !existingCore.description && sourceFallbacks.core.description) {
+                fieldSources.description = 'source_fallback:description';
+            }
+            if (!result.search_keywords?.trim() && !existingCore.search_keywords && sourceFallbacks.core.search_keywords) {
+                fieldSources.search_keywords = 'source_fallback:search_keywords';
+            }
+            if (!result.weight?.trim() && (existingCore.weight_lbs === undefined || existingCore.weight_lbs === null) && sourceFallbacks.core.weight_lbs) {
+                fieldSources.weight_lbs = 'source_fallback:weight_lbs';
+            }
+            if (!result.brand?.trim() && !existingCore.brand_name && sourceFallbacks.core.brand) {
+                fieldSources.brand = 'source_fallback:brand';
+            }
 
             const gateErrors: string[] = [];
 
@@ -572,6 +597,7 @@ export async function applyConsolidationResults(
                 evidence: {
                     ...existingEvidence,
                     selected_images: mediaResults.selectedImages,
+                    ...(Object.keys(fieldSources).length > 0 ? { field_sources: fieldSources } : {}),
                 },
             };
 

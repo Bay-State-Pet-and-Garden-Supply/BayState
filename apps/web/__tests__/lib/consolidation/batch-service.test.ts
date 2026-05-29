@@ -331,7 +331,7 @@ describe('consolidation batch service', () => {
                     sources: {
                         distributor_a: {
                             title: 'Acme Deluxe Bird Seed 10 lb.',
-                            description: 'A'.repeat(500),
+                            description: 'A'.repeat(5000),
                             metadata_blob: {
                                 irrelevant: 'A'.repeat(200),
                                 extra: 'B'.repeat(200),
@@ -354,7 +354,7 @@ describe('consolidation batch service', () => {
         const source = payload.sources.find((entry) => entry.source === 'distributor_a');
 
         expect(typeof source?.fields.description).toBe('string');
-        expect((source?.fields.description as string).length).toBeLessThan(380);
+        expect((source?.fields.description as string).length).toBeLessThan(4020);
         expect(source?.fields.description).toMatch(/…$/);
         expect(source?.fields).not.toHaveProperty('metadata_blob');
     });
@@ -1219,5 +1219,139 @@ describe('consolidation batch service', () => {
                 error_message: null,
             })
         );
+    });
+
+    it('applyConsolidationResults fills missing core fields from source fallbacks', async () => {
+        const productsIngestionUpdateMaybeSingle = jest.fn().mockResolvedValue({
+            data: { upc: 'UPC-FILL' },
+            error: null,
+        });
+        const productsIngestionUpdateSelect = jest
+            .fn()
+            .mockReturnValue({ maybeSingle: productsIngestionUpdateMaybeSingle });
+        const productsIngestionUpdateEq = jest.fn();
+        productsIngestionUpdateEq.mockReturnValue({
+            eq: productsIngestionUpdateEq,
+            select: productsIngestionUpdateSelect,
+        });
+        const productsIngestionUpdate = jest
+            .fn()
+            .mockReturnValue({ eq: productsIngestionUpdateEq });
+
+        const productsIngestionSelectByUpcIn = {
+            in: jest.fn().mockResolvedValue({
+                data: [
+                    {
+                        upc: 'UPC-FILL',
+                        consolidated: {},
+                        sources: {
+                            enriched: {
+                                extracted: {
+                                    core: {
+                                        name: '360 Pet Nutrition Freeze-Dried Raw Dog Food – Chicken Recipe',
+                                        brand_name: '360 Pet Nutrition',
+                                        description: 'Made with high-quality ingredients. Freeze-dried for convenience. No fillers or artificial preservatives.',
+                                        weight_lbs: 0.3125,
+                                        search_keywords: 'dog food, freeze-dried, chicken, grain-free',
+                                    },
+                                },
+                                active_source_slug: 'amazon',
+                            },
+                        },
+                        input: {},
+                        image_candidates: [],
+                        selected_images: [],
+                    },
+                ],
+                error: null,
+            }),
+        };
+
+        const productsIngestionSelectCurrentMaybeSingle = jest.fn().mockResolvedValue({
+            data: {
+                consolidated: {},
+                updated_at: '2026-05-29T00:00:00.000Z',
+            },
+            error: null,
+        });
+        const productsIngestionSelectCurrentEq = jest
+            .fn()
+            .mockReturnValue({ maybeSingle: productsIngestionSelectCurrentMaybeSingle });
+        const productsIngestionSelect = jest.fn((columns: string) => {
+            if (columns.startsWith('upc, consolidated, sources, input, image_candidates, selected_images')) {
+                return productsIngestionSelectByUpcIn;
+            }
+            if (columns === 'consolidated, updated_at') {
+                return {
+                    eq: productsIngestionSelectCurrentEq,
+                };
+            }
+            throw new Error(`Unexpected products_ingestion select columns: ${columns}`);
+        });
+
+        const brandsSelect = jest.fn().mockResolvedValue({
+            data: [{ id: 'brand-uuid-360', name: '360 Pet Nutrition' }],
+            error: null,
+        });
+
+        const supabaseMock = {
+            from: jest.fn((table: string) => {
+                if (table === 'products_ingestion') {
+                    return {
+                        select: productsIngestionSelect,
+                        update: productsIngestionUpdate,
+                    };
+                }
+                if (table === 'brands') {
+                    return {
+                        select: brandsSelect,
+                    };
+                }
+                throw new Error(`Unexpected table: ${table}`);
+            }),
+        };
+
+        (createAdminClient as jest.Mock).mockResolvedValue(supabaseMock);
+
+        // LLM result is missing description, search_keywords, and weight
+        // They should be filled from source fallbacks
+        const response = await applyConsolidationResults([
+            {
+                upc: 'UPC-FILL',
+                name: '360 Pet Nutrition Freeze-Dried Raw Dog Food – Chicken Recipe',
+                brand: '360 Pet Nutrition',
+                description: '',
+                search_keywords: '',
+                category: 'Dog > Food',
+                confidence_score: 0.90,
+            },
+        ]);
+
+        expect('status' in response && response.status === 'applied').toBe(true);
+        expect(productsIngestionUpdate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                pipeline_status: 'reviewing',
+                error_message: null,
+                consolidated: expect.objectContaining({
+                    core: expect.objectContaining({
+                        brand_name: '360 Pet Nutrition',
+                        name: '360 Pet Nutrition Freeze-Dried Raw Dog Food – Chicken Recipe',
+                        description: 'Made with high-quality ingredients. Freeze-dried for convenience. No fillers or artificial preservatives.',
+                        search_keywords: 'dog food, freeze-dried, chicken, grain-free',
+                    }),
+                    evidence: expect.objectContaining({
+                        field_sources: expect.objectContaining({
+                            description: 'source_fallback:description',
+                            search_keywords: 'source_fallback:search_keywords',
+                        }),
+                    }),
+                }),
+            })
+        );
+
+        // Protected fields should NOT be populated with truthy values from source fallbacks
+        const updatePayload = (productsIngestionUpdate as jest.Mock).mock.calls[0]?.[0] as { consolidated?: any };
+        expect(updatePayload.consolidated.core.price).toBeFalsy();
+        expect(updatePayload.consolidated.core.stock_status).toBeFalsy();
     });
 });

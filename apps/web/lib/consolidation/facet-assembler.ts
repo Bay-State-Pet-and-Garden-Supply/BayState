@@ -4,6 +4,7 @@
 
 import type { ConsolidationResult } from './types';
 import { enrichProductDetails } from './detail-enrichment';
+import { collectSourceBackedFallbacks } from '@/lib/product-source-fallbacks';
 
 export const LEGACY_TO_CANONICAL_FACETS: Record<string, string> = {
     pet_type: 'animal_type',
@@ -94,9 +95,28 @@ export function assembleProductFacets(
         }
     }
 
-    // 3. Heuristic detail enrichment
+    // 3. Source-backed fallback facets (from traversing enriched and per-source data)
+    const sourceFallbacks = collectSourceBackedFallbacks(
+        existingRecord?.sources || {},
+        existingRecord?.input || {},
+    );
+
+    for (const fb of sourceFallbacks.facets) {
+        const canonicalKey = LEGACY_TO_CANONICAL_FACETS[fb.definition_slug] || fb.definition_slug;
+        if (!candidateFacetsMap.has(canonicalKey)) {
+            candidateFacetsMap.set(canonicalKey, {
+                value: fb.value,
+                confidence: fb.confidence_score,
+                source: fb.evidence_source,
+            });
+        }
+    }
+
+    // 4. Heuristic detail enrichment (with richer context)
     const tempConsolidated = {
         name: nextCore.name,
+        description: (existingCore.description as string) || sourceFallbacks.core.description,
+        search_keywords: (existingCore.search_keywords as string) || sourceFallbacks.core.search_keywords,
         category: nextCore.canonical_category_breadcrumb,
         facet_profile: (existingCore.facet_profile as string) || undefined,
     };
@@ -110,7 +130,7 @@ export function assembleProductFacets(
         addFacet(key, value, 0.85, 'heuristic_enrichment');
     }
 
-    // 4. Preserve existing facets if not overridden
+    // 5. Preserve existing facets if not overridden
     for (const facet of existingFacets) {
         if (facet.definition_slug && facet.value) {
             addFacet(

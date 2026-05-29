@@ -9,6 +9,29 @@ jest.mock('@/lib/consolidation/detail-enrichment', () => ({
     }),
 }));
 
+jest.mock('@/lib/product-source-fallbacks', () => ({
+    collectSourceBackedFallbacks: jest.fn((sources: Record<string, unknown>, input?: Record<string, unknown>) => {
+        // Return empty fallbacks by default (existing tests)
+        if (Object.keys(sources).length === 0 && Object.keys(input || {}).length === 0) {
+            return { core: {}, facets: [], media: [], evidence: { source_urls: [], selected_images: [] }, profileHints: [] };
+        }
+        // For the provenance test, return source-backed facets
+        if ((sources as any)?.amazon) {
+            return {
+                core: {},
+                facets: [
+                    { definition_slug: 'primary_protein', value: 'Chicken', confidence_score: 0.82, evidence_source: 'source:amazon:extracted.facets' },
+                    { definition_slug: 'dimensions', value: '10.83 x 6.57 x 2.05 inches', confidence_score: 0.82, evidence_source: 'source:amazon:extracted.facets.dimensions' },
+                ],
+                media: [],
+                evidence: { source_urls: [], selected_images: [] },
+                profileHints: [],
+            };
+        }
+        return { core: {}, facets: [], media: [], evidence: { source_urls: [], selected_images: [] }, profileHints: [] };
+    }),
+}));
+
 describe('FacetAssembler', () => {
     it('correctly compiles facets from LLM results, packaging_facets, heuristic enrichment, and existing facets', () => {
         const result = {
@@ -95,5 +118,60 @@ describe('FacetAssembler', () => {
             confidence_score: 0.8,
             evidence_source: 'existing',
         });
+    });
+
+    it('preserves evidence_source on source-backed fallback facets', () => {
+        const result = {
+            upc: 'AMAZON-1',
+            name: '360 Pet Nutrition Freeze-Dried Raw Dog Food',
+            brand: '360 Pet Nutrition',
+            confidence_score: 0.95,
+            category: 'Dog',
+            description: 'Made with high-quality ingredients',
+            search_keywords: 'dog food, freeze-dried',
+        };
+
+        const nextCore = {
+            name: '360 Pet Nutrition Freeze-Dried Raw Dog Food',
+            canonical_category_breadcrumb: 'Dog',
+        };
+
+        const existingCore = {};
+        const existingFacets: Array<{ definition_slug?: string; value?: string; confidence_score?: number; evidence_source?: string }> = [];
+        const existingRecord = {
+            sources: {
+                /**
+                 * @description The source-backed fallback mock (above) returns facets when sources.amazon exists.
+                 * The mock checks for the amazon key, so this will trigger the source-backed fallback path.
+                 */
+                amazon: {
+                    title: '360 Pet Nutrition Freeze-Dried Raw Dog Food',
+                    brand: '360 Pet Nutrition',
+                },
+            },
+            input: {},
+        };
+
+        const assembly = assembleProductFacets(
+            result,
+            nextCore,
+            existingCore,
+            existingFacets,
+            existingRecord
+        );
+
+        const facetMap = new Map(assembly.facets.map((f) => [f.definition_slug, f]));
+
+        // Source-backed facets should keep their evidence_source (not be overwritten)
+        const protein = facetMap.get('primary_protein');
+        expect(protein).toBeDefined();
+        expect(protein!.value).toBe('Chicken');
+        expect(protein!.confidence_score).toBe(0.82);
+        expect(protein!.evidence_source).toBe('source:amazon:extracted.facets');
+
+        const dimensions = facetMap.get('dimensions');
+        expect(dimensions).toBeDefined();
+        expect(dimensions!.value).toBe('10.83 x 6.57 x 2.05 inches');
+        expect(dimensions!.evidence_source).toBe('source:amazon:extracted.facets.dimensions');
     });
 });
