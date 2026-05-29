@@ -268,9 +268,9 @@ export function PipelineClient({
     if (!firstSelectedProduct) return null;
     const cohortId = firstSelectedProduct.cohort_id;
     if (!cohortId || cohortId === "ungrouped") {
-      return firstSelectedProduct.input?.brand_name || null;
+      return firstSelectedProduct.input?.brand || null;
     }
-    return groupedProducts.brands[cohortId] || firstSelectedProduct.input?.brand_name || null;
+    return groupedProducts.brands[cohortId] || firstSelectedProduct.input?.brand || null;
   }, [selectedUpcs, products, groupedProducts.brands]);
 
   const scrapeSelectionValidation = useMemo(() => {
@@ -1651,7 +1651,7 @@ export function PipelineClient({
           onConsolidate={() => handleConsolidate(Array.from(selectedUpcs))}
           consolidationInfo={consolidationConfig}
           onOpenScrapeDialog={() => setIsScrapeDialogOpen(true)}
-          onAssignBrand={currentStage === 'imported' ? () => setIsBulkAssignBrandOpen(true) : undefined}
+          onAssignBrand={() => setIsBulkAssignBrandOpen(true)}
           scrapeSelectionValidation={scrapeSelectionValidation}
 
           onDelete={handleDelete}

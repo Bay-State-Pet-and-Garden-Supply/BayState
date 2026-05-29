@@ -1567,14 +1567,6 @@ function mergeNestedCandidates(current: any, next: any): any {
     };
 }
 
-/**
- * Apply consolidation results to the products_ingestion table.
- */
-export async function applyResults(batchId: string): Promise<ApplyResultsResponse | BatchErrorResponse> {
-    const results = await retrieveResults(batchId);
-    return applyConsolidationResults(results, batchId);
-}
-
 // =============================================================================
 // List Batch Jobs
 // =============================================================================

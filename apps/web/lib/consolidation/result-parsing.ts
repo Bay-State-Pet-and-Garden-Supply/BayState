@@ -20,7 +20,7 @@ export const RawConsolidationSchema = z.object({
     category: z.string().min(1, 'Category is required'),
     description: z.string().min(1, 'Description is required'),
     search_keywords: z.string().min(1, 'Search keywords are required'),
-    packaging_facets: z.record(z.string()).optional(),
+    packaging_facets: z.record(z.string(), z.string()).optional(),
     price: z.union([z.string(), z.number()]).nullable().optional(),
 });
 
