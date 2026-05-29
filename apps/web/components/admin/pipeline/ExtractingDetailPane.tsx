@@ -20,6 +20,7 @@ import {
   Clock,
   Loader2,
   type LucideIcon,
+  RotateCcw,
   Terminal,
   X,
   XCircle,
@@ -49,8 +50,11 @@ interface ExtractingDetailPaneProps {
   attemptsConnected: boolean;
   attemptsError: Error | null;
   onCancelJob: (jobId: string) => void;
+  onRecoverJob: (jobId: string) => void;
   isCancelling: boolean;
 }
+
+type AttemptDisplayStatus = EnrichmentAttempt["status"] | "stalled";
 
 type AttemptStatusMeta = {
   label: string;
@@ -58,7 +62,7 @@ type AttemptStatusMeta = {
   className: string;
 };
 
-const ATTEMPT_STATUS_META: Record<EnrichmentAttempt["status"], AttemptStatusMeta> = {
+const ATTEMPT_STATUS_META: Record<AttemptDisplayStatus, AttemptStatusMeta> = {
   queued: {
     label: "Queued",
     icon: Clock,
@@ -76,6 +80,12 @@ const ATTEMPT_STATUS_META: Record<EnrichmentAttempt["status"], AttemptStatusMeta
     icon: Loader2,
     className:
       "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-300",
+  },
+  stalled: {
+    label: "Stalled",
+    icon: AlertCircle,
+    className:
+      "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-300",
   },
   completed: {
     label: "Completed",
@@ -109,15 +119,16 @@ const ATTEMPT_STATUS_META: Record<EnrichmentAttempt["status"], AttemptStatusMeta
   },
 };
 
-const ATTEMPT_SORT_PRIORITY: Record<EnrichmentAttempt["status"], number> = {
-  running: 0,
-  failed: 1,
-  partial: 2,
-  queued: 3,
-  pending: 3,
-  success: 4,
-  completed: 4,
-  cancelled: 5,
+const ATTEMPT_SORT_PRIORITY: Record<AttemptDisplayStatus, number> = {
+  stalled: 0,
+  running: 1,
+  failed: 2,
+  partial: 3,
+  queued: 4,
+  pending: 4,
+  success: 5,
+  completed: 5,
+  cancelled: 6,
 };
 
 function DetailMetric({
@@ -135,7 +146,7 @@ function DetailMetric({
   );
 }
 
-function AttemptStatusBadge({ status }: { status: EnrichmentAttempt["status"] }) {
+function AttemptStatusBadge({ status }: { status: AttemptDisplayStatus }) {
   const meta = ATTEMPT_STATUS_META[status];
   const Icon = meta.icon;
 
@@ -216,6 +227,7 @@ export function ExtractingDetailPane({
   attemptsConnected,
   attemptsError,
   onCancelJob,
+  onRecoverJob,
   isCancelling,
 }: ExtractingDetailPaneProps) {
   const progressCounts = useMemo(
@@ -228,37 +240,55 @@ export function ExtractingDetailPane({
   );
 
   const sortedAttempts = useMemo(() => {
-    if (!job) return attempts;
+    if (!job) {
+      return attempts.map((attempt) => ({ attempt, displayStatus: attempt.status }));
+    }
 
-    return [...attempts].sort((left, right) => {
-      const leftCurrent = left.upc === job.current_upc ? 0 : 1;
-      const rightCurrent = right.upc === job.current_upc ? 0 : 1;
-      if (leftCurrent !== rightCurrent) {
-        return leftCurrent - rightCurrent;
-      }
+    const stalledJob = isJobStalled(job);
 
-      const priorityDiff =
-        ATTEMPT_SORT_PRIORITY[left.status] - ATTEMPT_SORT_PRIORITY[right.status];
-      if (priorityDiff !== 0) {
-        return priorityDiff;
-      }
+    return [...attempts]
+      .map((attempt) => {
+        const displayStatus: AttemptDisplayStatus =
+          stalledJob &&
+          (attempt.status === "running" ||
+            attempt.status === "queued" ||
+            attempt.status === "pending")
+            ? "stalled"
+            : attempt.status;
 
-      return new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime();
-    });
+        return { attempt, displayStatus };
+      })
+      .sort((left, right) => {
+        const leftCurrent = left.attempt.upc === job.current_upc ? 0 : 1;
+        const rightCurrent = right.attempt.upc === job.current_upc ? 0 : 1;
+        if (leftCurrent !== rightCurrent) {
+          return leftCurrent - rightCurrent;
+        }
+
+        const priorityDiff =
+          ATTEMPT_SORT_PRIORITY[left.displayStatus] - ATTEMPT_SORT_PRIORITY[right.displayStatus];
+        if (priorityDiff !== 0) {
+          return priorityDiff;
+        }
+
+        return new Date(right.attempt.updated_at).getTime() - new Date(left.attempt.updated_at).getTime();
+      });
   }, [attempts, job]);
 
   const attemptSummary = useMemo(() => {
     return sortedAttempts.reduce(
-      (summary, attempt) => {
-        if (attempt.status === "running") summary.running += 1;
-        else if (attempt.status === "failed") summary.failed += 1;
-        else if (attempt.status === "partial") summary.partial += 1;
-        else if (attempt.status === "queued" || attempt.status === "pending") summary.waiting += 1;
-        else if (attempt.status === "cancelled") summary.cancelled += 1;
+      (summary, entry) => {
+        if (entry.displayStatus === "stalled") summary.stalled += 1;
+        else if (entry.displayStatus === "running") summary.running += 1;
+        else if (entry.displayStatus === "failed") summary.failed += 1;
+        else if (entry.displayStatus === "partial") summary.partial += 1;
+        else if (entry.displayStatus === "queued" || entry.displayStatus === "pending") summary.waiting += 1;
+        else if (entry.displayStatus === "cancelled") summary.cancelled += 1;
         else summary.succeeded += 1;
         return summary;
       },
       {
+        stalled: 0,
         running: 0,
         waiting: 0,
         failed: 0,
@@ -317,7 +347,7 @@ export function ExtractingDetailPane({
     if (isJobStalled(job)) {
       notices.push({
         title: "Job looks stalled",
-        description: "The runner has stopped sending heartbeats or progress updates for this job.",
+        description: "The runner has stopped sending heartbeats or progress updates for this job. Recover it to cancel stranded attempts and return products to Imported.",
         tone: "warning",
       });
     }
@@ -339,7 +369,7 @@ export function ExtractingDetailPane({
         <Activity className="mb-4 h-12 w-12 opacity-20" />
         <h3 className="text-lg font-semibold text-foreground">Select a job to inspect</h3>
         <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-          Choose a job from the queue to review progress, attempts, runner health, and live logs.
+          Choose a job from the queue to review progress, attempts, and live logs.
         </p>
       </div>
     );
@@ -420,20 +450,26 @@ export function ExtractingDetailPane({
               </div>
             </div>
 
-            {isJobCancellable(job.status) && (
+            {(displayStatus === "stalled" || isJobCancellable(job.status)) && (
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={() => onCancelJob(job.id)}
+                onClick={() =>
+                  displayStatus === "stalled"
+                    ? onRecoverJob(job.id)
+                    : onCancelJob(job.id)
+                }
                 disabled={isCancelling}
                 className="h-9 gap-2 self-start"
               >
                 {isCancelling ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
+                ) : displayStatus === "stalled" ? (
+                  <RotateCcw className="h-4 w-4" />
                 ) : (
                   <X className="h-4 w-4" />
                 )}
-                Cancel job
+                {displayStatus === "stalled" ? "Recover job" : "Cancel job"}
               </Button>
             )}
           </div>
@@ -500,7 +536,10 @@ export function ExtractingDetailPane({
             <DetailMetric label="Total" value={progressCounts.total} />
             <DetailMetric label="Succeeded" value={progressCounts.completed} />
             <DetailMetric label="Failed" value={progressCounts.failed} />
-            <DetailMetric label="Running" value={runningAttempts} />
+            <DetailMetric
+              label={attemptSummary.stalled > 0 ? "Stalled" : "Running"}
+              value={attemptSummary.stalled > 0 ? attemptSummary.stalled : runningAttempts}
+            />
             <DetailMetric label="Waiting" value={waitingAttempts} />
           </div>
 
@@ -574,6 +613,7 @@ export function ExtractingDetailPane({
 
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <Badge variant="outline">{sortedAttempts.length} attempts</Badge>
+              {attemptSummary.stalled > 0 && <Badge variant="outline">{attemptSummary.stalled} stalled</Badge>}
               {attemptSummary.running > 0 && <Badge variant="outline">{attemptSummary.running} running</Badge>}
               {attemptSummary.waiting > 0 && <Badge variant="outline">{attemptSummary.waiting} waiting</Badge>}
               {attemptSummary.partial > 0 && <Badge variant="outline">{attemptSummary.partial} partial</Badge>}
@@ -615,7 +655,7 @@ export function ExtractingDetailPane({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {sortedAttempts.map((attempt) => {
+                    {sortedAttempts.map(({ attempt, displayStatus }) => {
                       const isCurrentAttempt = attempt.upc === job.current_upc;
                       const productName =
                         attempt.products_ingestion?.input?.name || "Unnamed product";
@@ -631,7 +671,7 @@ export function ExtractingDetailPane({
                           )}
                         >
                           <td className="px-4 py-3">
-                            <AttemptStatusBadge status={attempt.status} />
+                            <AttemptStatusBadge status={displayStatus} />
                           </td>
                           <td className="px-4 py-3">
                             <div className="min-w-[220px]">
@@ -662,7 +702,7 @@ export function ExtractingDetailPane({
                             <LiveTimer
                               startedAt={attempt.started_at ?? attempt.created_at}
                               completedAt={attempt.completed_at}
-                              status={attempt.status}
+                              status={displayStatus}
                             />
                           </td>
                           <td className="px-4 py-3 text-muted-foreground">
@@ -672,6 +712,10 @@ export function ExtractingDetailPane({
                             {attempt.error_message ? (
                               <span className="line-clamp-2 text-rose-700 dark:text-rose-300">
                                 {attempt.error_message}
+                              </span>
+                            ) : displayStatus === "stalled" ? (
+                              <span className="line-clamp-2 text-amber-700 dark:text-amber-300">
+                                Attempt appears stranded because the job stopped reporting activity.
                               </span>
                             ) : (
                               <span>--</span>

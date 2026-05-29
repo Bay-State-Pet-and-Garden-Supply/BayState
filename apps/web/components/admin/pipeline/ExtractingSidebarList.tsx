@@ -38,7 +38,7 @@ export function ExtractingSidebarList({
         </div>
         <h3 className="mt-1 text-base font-semibold text-foreground">Monitor jobs</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Select a job to inspect attempts, runner health, and live logs.
+          Select a job to inspect attempts and live logs.
         </p>
       </div>
 
