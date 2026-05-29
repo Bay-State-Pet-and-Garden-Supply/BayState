@@ -34,6 +34,58 @@ from scrapers.utils.url_utils import canonicalize_result_url
 logger = logging.getLogger(__name__)
 
 
+def is_candidate_unsafe_for_canonical_selection(url: str) -> bool:
+    """Check if a candidate URL is unsafe/non-product for canonical selection."""
+    try:
+        parsed = urlparse(url)
+        path = parsed.path.lower()
+        
+        # Check file extensions
+        if any(path.endswith(ext) for ext in [".pdf", ".xlsx", ".xls", ".csv", ".json", ".xml"]):
+            return True
+            
+        # Check if it is a root/homepage
+        if path in ("", "/"):
+            return True
+            
+        # If it contains "/search", it is search result/unsafe
+        if "/search" in path:
+            return True
+
+        # Unsafe path patterns
+        unsafe_segments = [
+            "/reviews",
+            "/spotlight/",
+            "/incentive-requests/",
+            "/blog/",
+            "/blogs/",
+            "/store-locator",
+            "/where-to-buy",
+            "/find-a-store",
+            "/find-a-retailer",
+            "/find-a-dealer",
+            "/our-products/",
+            "/all-products/",
+        ]
+        if any(segment in path for segment in unsafe_segments):
+            return True
+            
+        # Collection patterns
+        collection_markers = ["/collections/", "/category/", "/categories/", "/brand/", "/product-category/"]
+        product_markers = ["/products/", "/product/", "/p/"]
+        
+        is_collection = any(marker in path for marker in collection_markers)
+        has_product_marker = any(marker in path for marker in product_markers)
+        
+        # If it is a collection/category page and does NOT target a specific product, it is unsafe
+        if is_collection and not has_product_marker:
+            return True
+            
+        return False
+    except Exception:
+        return True
+
+
 class SerpDiscoveryAdapter(ApprovedSourceAdapter):
     """Autonomous SERP/AI product discovery and extraction adapter."""
 
@@ -157,9 +209,7 @@ class SerpDiscoveryAdapter(ApprovedSourceAdapter):
             for r in sku_serp_results:
                 url = r.get("url", "")
                 if normalize_domain(url) == normalized_brand:
-                    # Deterministic skip of collections/search pages even in Phase 1
-                    url_lower = url.lower()
-                    if "/collections/" not in url_lower and "/search" not in url_lower:
+                    if not is_candidate_unsafe_for_canonical_selection(url):
                         logger.info(
                             "[SerpDiscoveryAdapter] Phase 1: Found direct official domain match for UPC=%s: %s",
                             upc,
@@ -516,7 +566,7 @@ Return JSON in this format:
         scored = []
         for r in results:
             url = r.get("url", "")
-            if not url:
+            if not url or is_candidate_unsafe_for_canonical_selection(url):
                 continue
 
             score = 0.0

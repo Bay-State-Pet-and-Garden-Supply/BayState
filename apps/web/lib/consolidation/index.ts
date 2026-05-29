@@ -17,12 +17,16 @@ export {
     submitBatch,
     getBatchStatus,
     retrieveResults,
-    applyResults,
     listBatchJobs,
     cancelBatch,
     processBatchQueue,
     processAllQueues,
 } from './batch-service';
+
+// Apply Service
+export {
+    applyResults,
+} from './apply-service';
 
 // OpenAI Client
 export { isOpenAIConfigured } from './openai-client';

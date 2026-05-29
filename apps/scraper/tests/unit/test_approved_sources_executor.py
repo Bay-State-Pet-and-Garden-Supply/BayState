@@ -810,4 +810,58 @@ class TestExecutor:
         assert results[0]["url"] == "https://example.com/product"
         assert results[1]["url"] == "https://another-good-site.com/upc"
 
+    def test_is_candidate_unsafe_for_canonical_selection(self):
+        """Test is_candidate_unsafe_for_canonical_selection helper against various safe and unsafe URLs."""
+        from scrapers.approved_sources.adapters.serp_discovery import is_candidate_unsafe_for_canonical_selection
+        
+        # Unsafe cases
+        assert is_candidate_unsafe_for_canonical_selection("https://www.bluebuffalo.com/incentive-requests/qualifying-products") is True
+        assert is_candidate_unsafe_for_canonical_selection("https://www.bluebuffalo.com/") is True
+        assert is_candidate_unsafe_for_canonical_selection("https://www.bluebuffalo.com/product-catalog.pdf") is True
+        assert is_candidate_unsafe_for_canonical_selection("https://www.bluebuffalo.com/search?q=dog+food") is True
+        assert is_candidate_unsafe_for_canonical_selection("https://www.bluebuffalo.com/blogs/news/new-product-launch") is True
+        assert is_candidate_unsafe_for_canonical_selection("https://www.bluebuffalo.com/store-locator") is True
+        assert is_candidate_unsafe_for_canonical_selection("https://www.bluebuffalo.com/collections/dog-food") is True  # collection page
+        
+        # Safe cases
+        assert is_candidate_unsafe_for_canonical_selection("https://www.bluebuffalo.com/products/dog/wilderness-chicken") is False
+        assert is_candidate_unsafe_for_canonical_selection("https://www.bluebuffalo.com/collections/dog-food/products/wilderness-chicken") is False  # Shopify PDP nesting style
+
+    @patch("scrapers.approved_sources.adapters.serp_discovery.SearchClient")
+    def test_serp_discovery_adapter_bypasses_unsafe_direct_matches_in_phase_1(self, mock_search_client_class):
+        """SerpDiscoveryAdapter should not return unsafe URLs in Phase 1 even if they match the official domain."""
+        from scrapers.approved_sources.adapters.serp_discovery import SerpDiscoveryAdapter
+        import asyncio
+
+        plan = _make_plan(entries=[])
+        entry = ApprovedSourcePlanEntry(
+            sourceType="official_brand",
+            sourceSlug="serp_discovery",
+            displayName="Serp Discovery",
+            domains=["bluebuffalo.com"],
+            adapterSlug="serp_discovery",
+            priority=100,
+        )
+
+        adapter = SerpDiscoveryAdapter(entry, plan)
+
+        # Mock SearchClient to return the unsafe incentive page as the only domain match
+        mock_client = MagicMock()
+        mock_client.search = AsyncMock(return_value=([
+            {"url": "https://www.bluebuffalo.com/incentive-requests/qualifying-products", "title": "Qualifying Products"},
+        ], None))
+        mock_search_client_class.return_value = mock_client
+
+        # If it returned it, _resolve_approved_url would stop and return it.
+        # But since it's unsafe, it should bypass Phase 1 direct match, return None (since we mock nothing else), and continue
+        resolved = asyncio.run(adapter._resolve_approved_url(
+            upc="840243154111",
+            register_name="Blue Wilderness Dog",
+            brand_name="Blue Buffalo",
+            brand_domain="bluebuffalo.com"
+        ))
+
+        assert resolved is None  # Bypassed Phase 1 direct match and returned None instead of the incentive page
+
+
 

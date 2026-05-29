@@ -46,3 +46,19 @@ export function toTitleCase(str: string): string {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
+
+/**
+ * Ensures a URL has a protocol (https:// by default).
+ * If the URL already has http:// or https://, it is returned as-is.
+ */
+export function formatExternalUrl(url?: string | null): string {
+  if (!url) return '';
+  const trimmedUrl = url.trim();
+  if (!trimmedUrl) return '';
+  
+  if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
+    return trimmedUrl;
+  }
+  
+  return `https://${trimmedUrl}`;
+}

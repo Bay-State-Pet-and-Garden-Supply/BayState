@@ -14,7 +14,7 @@ import type { PipelineProduct } from "@/lib/pipeline/types";
 import type { Brand } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, formatExternalUrl } from "@/lib/utils";
 import { PipelineFilters } from "./PipelineFilters";
 import { PipelineSearchField } from "./PipelineSearchField";
 import { PipelineSidebarTable } from "./PipelineSidebarTable";
@@ -307,7 +307,7 @@ export function ImportedResultsView({
                           />
                           {activeCohortBrandObject?.official_domains && activeCohortBrandObject.official_domains.length > 0 && (
                             <a
-                              href={`https://${activeCohortBrandObject.official_domains[0]}`}
+                              href={formatExternalUrl(activeCohortBrandObject.official_domains[0])}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-brand-forest-green hover:underline font-semibold bg-muted/30 px-2 py-0.5 border border-border"

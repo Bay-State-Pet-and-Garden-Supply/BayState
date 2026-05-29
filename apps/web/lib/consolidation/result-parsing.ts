@@ -2,14 +2,27 @@
  * Parsing utilities for consolidation results.
  */
 
+import { z } from 'zod';
 import type { ConsolidationResult } from './types';
 import { normalizeConsolidationResult } from './result-normalizer';
 import { parseTaxonomyValues } from '@/lib/taxonomy';
 import {
     validateCategory,
     validateConsolidationTaxonomy,
-    validateRequiredConsolidationFields,
 } from './taxonomy-validator';
+
+// Define the Zod schema representing the raw LLM output schema contract
+export const RawConsolidationSchema = z.object({
+    name: z.string().min(1, 'Name is required'),
+    brand: z.string().min(1, 'Brand is required'),
+    weight: z.string().nullable().optional(),
+    confidence_score: z.number().min(0).max(1, 'Confidence score must be between 0.0 and 1.0'),
+    category: z.string().min(1, 'Category is required'),
+    description: z.string().min(1, 'Description is required'),
+    search_keywords: z.string().min(1, 'Search keywords are required'),
+    packaging_facets: z.record(z.string()).optional(),
+    price: z.union([z.string(), z.number()]).nullable().optional(),
+});
 
 function parseJsonResponse(content: string): Record<string, unknown> | null {
     try {
@@ -36,28 +49,44 @@ export function parseStructuredConsolidationText(
         return { upc, error: 'Failed to parse JSON response' };
     }
 
-    const normalized = normalizeConsolidationResult(parsed);
-    const requiredFieldsValidated = validateRequiredConsolidationFields(normalized);
-    const validated = validateConsolidationTaxonomy(requiredFieldsValidated, categories);
+    try {
+        const normalized = normalizeConsolidationResult(parsed);
 
-    const categoryValues = parseTaxonomyValues(
-        typeof validated.category === 'string' ? validated.category : undefined
-    );
+        // Zod validation at parsing boundary
+        const validationResult = RawConsolidationSchema.safeParse(normalized);
+        if (!validationResult.success) {
+            const errorMsg = validationResult.error.issues
+                .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+                .join('; ');
+            return { upc, error: `Validation failed: ${errorMsg}` };
+        }
 
-    const normalizedCategory = categoryValues
-        .map((value) => validateCategory(value, categories))
-        .filter((value, index, array) => array.indexOf(value) === index);
+        const validated = validateConsolidationTaxonomy(validationResult.data, categories);
 
-    const result: ConsolidationResult = {
-        upc,
-        ...validated,
-    } as ConsolidationResult;
+        const categoryValues = parseTaxonomyValues(
+            typeof validated.category === 'string' ? validated.category : undefined
+        );
 
-    if (normalizedCategory.length > 0) {
-        result.category = normalizedCategory.join('|');
+        const normalizedCategory = categoryValues
+            .map((value) => validateCategory(value, categories))
+            .filter((value, index, array) => array.indexOf(value) === index);
+
+        const result: ConsolidationResult = {
+            upc,
+            ...validated,
+        } as ConsolidationResult;
+
+        if (normalizedCategory.length > 0) {
+            result.category = normalizedCategory.join('|');
+        }
+
+        return result;
+    } catch (err) {
+        return {
+            upc,
+            error: err instanceof Error ? err.message : 'Unknown validation error',
+        };
     }
-
-    return result;
 }
 
 /**
@@ -71,3 +100,4 @@ function parseBatchResultLine(
 ): ConsolidationResult {
     return parseStructuredConsolidationText(upc, content, categories);
 }
+

@@ -1,4 +1,5 @@
-import { applyConsolidationResults, createBatchContent } from '@/lib/consolidation/batch-service';
+import { createBatchContent } from '@/lib/consolidation/batch-service';
+import { applyConsolidationResults } from '@/lib/consolidation/apply-service';
 import { getConsolidationConfig } from '@/lib/consolidation/openai-client';
 import { createAdminClient } from '@/lib/supabase/server';
 
