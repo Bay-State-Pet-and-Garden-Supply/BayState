@@ -1125,7 +1125,19 @@ export async function getAIConsolidationRuntimeConfig(): Promise<AIConsolidation
   // When consolidation provider is Gemini, resolve the Gemini API key independently
   // from the active scraping provider. This allows DeepSeek scraping + Gemini consolidation.
   if (defaults.llm_provider === 'gemini') {
-    const geminiKey = await getAIScrapingProviderSecret('gemini');
+    let geminiKey: string | null = null;
+    if (consolidationConfig && consolidationConfig.provider_type === 'gemini') {
+      geminiKey = decryptStoredProviderSecret('gemini', {
+        encryptedValue: consolidationConfig.encrypted_key,
+        iv: consolidationConfig.iv,
+        authTag: consolidationConfig.auth_tag,
+        last4: null,
+        updatedAt: consolidationConfig.updated_at,
+      });
+    }
+    if (!geminiKey) {
+      geminiKey = await getAIScrapingProviderSecret('gemini');
+    }
     return {
       llm_provider: 'gemini',
       llm_model: defaults.llm_model || 'gemini-3.5-flash',
@@ -1133,7 +1145,7 @@ export async function getAIConsolidationRuntimeConfig(): Promise<AIConsolidation
       llm_api_key: geminiKey,
       confidence_threshold: defaults.confidence_threshold,
       llm_supports_batch_api: true,
-      config_id: null,
+      config_id: consolidationConfig?.provider_type === 'gemini' ? consolidationConfig.id : null,
     };
   }
 
