@@ -111,6 +111,7 @@ export function ImageCarousel({
                               src={url}
                               alt={`Product image ${index + 1}`}
                               className="w-full h-full object-contain"
+                              referrerPolicy="no-referrer"
                             />
                             <div className="absolute inset-0 bg-foreground/0 group-hover/image:bg-foreground/5 transition-colors flex items-center justify-center opacity-0 group-hover/image:opacity-100">
                               <div className="bg-card p-2 rounded-none border border-border">
@@ -128,6 +129,7 @@ export function ImageCarousel({
                               src={url}
                               alt={`Product image ${index + 1} (Zoomed)`}
                               className="max-w-full max-h-full object-contain drop-shadow-2xl"
+                              referrerPolicy="no-referrer"
                             />
                             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-card px-4 py-2 rounded-none border border-border">
                               <span className="text-[10px] font-semibold text-foreground truncate max-w-[300px]">
@@ -183,6 +185,7 @@ export function ImageCarousel({
                   src={url}
                   alt=""
                   className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
                 />
 
                 {/* Reorder Buttons */}

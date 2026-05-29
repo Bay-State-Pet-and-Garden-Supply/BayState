@@ -810,25 +810,31 @@ export function ProcessedResultsView({
                     {/* Left: Premium Image Carousel */}
                     <div className="space-y-3">
                       <div 
-                        onClick={() => setIsLightboxOpen(true)}
-                        className="aspect-square rounded-md border border-[#E8E6D9] bg-[#FAF9F2] flex items-center justify-center overflow-hidden relative group cursor-pointer shadow-sm hover:shadow-md transition-all duration-300"
+                        className="aspect-square rounded-md border border-[#E8E6D9] bg-[#FAF9F2] flex items-center justify-center overflow-hidden relative shadow-sm hover:shadow-md transition-all duration-300"
                       >
                         {displayFields.imageUrls && displayFields.imageUrls.length > 0 ? (
                           <>
-                            <img
-                              src={displayFields.imageUrls[currentImageIndex]}
-                              alt={displayFields.title}
-                              className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-[1.02]"
-                              data-testid="scraped-primary-image"
-                            />
-                            
-                            {/* Hover overlay zooming indicator */}
-                            <div className="absolute inset-0 bg-black/45 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center text-white text-xs font-semibold gap-1.5">
-                              <Maximize2 className="h-4 w-4" />
-                              <span>Click to enlarge</span>
+                            {/* Inner image container for hover and click to zoom */}
+                            <div
+                              onClick={() => setIsLightboxOpen(true)}
+                              className="w-full h-full cursor-pointer relative group/image"
+                            >
+                              <img
+                                src={displayFields.imageUrls[currentImageIndex]}
+                                alt={displayFields.title}
+                                className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover/image:scale-[1.02]"
+                                data-testid="scraped-primary-image"
+                                referrerPolicy="no-referrer"
+                              />
+                              
+                              {/* Hover overlay zooming indicator */}
+                              <div className="absolute inset-0 bg-black/45 backdrop-blur-[1px] opacity-0 group-hover/image:opacity-100 transition-all duration-200 flex items-center justify-center text-white text-xs font-semibold gap-1.5">
+                                <Maximize2 className="h-4 w-4" />
+                                <span>Click to enlarge</span>
+                              </div>
                             </div>
 
-                            {/* Left/Right controls */}
+                            {/* Left/Right controls (outside hover/click target) */}
                             {displayFields.imageUrls.length > 1 && (
                               <>
                                 <button
@@ -856,7 +862,7 @@ export function ProcessedResultsView({
                                   <ChevronRight className="h-4 w-4" aria-hidden="true" />
                                 </button>
                                 
-                                <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 px-2 py-0.5 rounded-full text-[9px] font-bold text-foreground border border-border shadow-sm">
+                                <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-white/95 px-2 py-0.5 rounded-full text-[9px] font-bold text-foreground border border-border shadow-sm z-10">
                                   {currentImageIndex + 1} / {displayFields.imageUrls.length}
                                 </div>
                               </>
@@ -887,6 +893,7 @@ export function ProcessedResultsView({
                                 src={img}
                                 alt=""
                                 className="w-full h-full object-contain p-0.5"
+                                referrerPolicy="no-referrer"
                               />
                             </div>
                           ))}
@@ -1139,6 +1146,7 @@ export function ProcessedResultsView({
                   src={displayFields.imageUrls[currentImageIndex]}
                   alt={displayFields.title}
                   className="max-w-full max-h-full object-contain p-4"
+                  referrerPolicy="no-referrer"
                 />
 
                 {displayFields.imageUrls.length > 1 && (
@@ -1194,6 +1202,7 @@ export function ProcessedResultsView({
                     src={img}
                     alt=""
                     className="w-full h-full object-contain p-1"
+                    referrerPolicy="no-referrer"
                   />
                 </div>
               ))}

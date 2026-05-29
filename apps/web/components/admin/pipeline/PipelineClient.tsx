@@ -1007,16 +1007,16 @@ export function PipelineClient({
 
       if (e.key === "Escape") {
         handleClearSelection();
-      } else if (e.key.toLowerCase() === "r" && !e.ctrlKey && !e.metaKey) {
+      } else if (e.key.toLowerCase() === "r" && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         refreshAll();
       } else if (selectedUpcs.size > 0) {
-        if (e.key.toLowerCase() === "s") {
+        if (e.key.toLowerCase() === "s" && !e.ctrlKey && !e.metaKey && !e.altKey) {
           if (currentStage === "imported") {
             e.preventDefault();
             setIsScrapeDialogOpen(true);
           }
-        } else if (e.key.toLowerCase() === "c") {
+        } else if (e.key.toLowerCase() === "c" && !e.ctrlKey && !e.metaKey && !e.altKey) {
           if (currentStage === "processed") {
             e.preventDefault();
             handleConsolidate(Array.from(selectedUpcs));
