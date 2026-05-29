@@ -1,0 +1,15 @@
+{
+  "settings": {
+    "autoAuth": true
+  },
+  "mcpServers": {
+    "supabase": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=fapnuczapctelxxmrail",
+      "auth": "oauth",
+      "oauth": {
+        "clientName": "Pi MCP Adapter"
+      },
+      "lifecycle": "lazy"
+    }
+  }
+}
