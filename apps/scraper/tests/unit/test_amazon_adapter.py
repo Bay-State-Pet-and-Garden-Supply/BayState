@@ -217,9 +217,9 @@ class TestAmazonAdapter:
         assert fields["brand"] == "Purina"
         assert fields["description"].startswith("Give your dog the nutrition he needs")
         assert fields["image_urls"] == [
-            "https://m.media-amazon.com/images/purina-dog-chow.jpg",
-            "https://m.media-amazon.com/images/purina-dog-chow-back.jpg",
-            "https://m.media-amazon.com/images/purina-dog-chow-ingredients.jpg",
+            "https://m.media-amazon.com/images/purina-dog-chow._AC_SL1500_.jpg",
+            "https://m.media-amazon.com/images/purina-dog-chow-back._AC_SL1500_.jpg",
+            "https://m.media-amazon.com/images/purina-dog-chow-ingredients._AC_SL1500_.jpg",
         ]
         assert fields["weight"] == "44 pounds"
         assert fields["dimensions"] == "24 x 16 x 4 inches"
@@ -270,3 +270,34 @@ class TestAmazonAdapter:
             "https://m.media-amazon.com/images/I/71h-oy4IrWL._AC_SL1500_.jpg",
             "https://m.media-amazon.com/images/I/81TNX+jemML._AC_SL1500_.jpg",
         ]
+
+    def test_normalize_image_url_deduplication(self):
+        adapter = AmazonAdapter(_make_amazon_entry(), _make_amazon_plan())
+
+        # 1. Base URL without token
+        url1 = "https://m.media-amazon.com/images/I/81Woj7S8k7L.jpg"
+        # 2. Thumbnail URL with token
+        url2 = "https://m.media-amazon.com/images/I/81Woj7S8k7L._AC_SX679_.jpg"
+        # 3. Another token style
+        url3 = "https://m.media-amazon.com/images/I/81Woj7S8k7L._SS40_.jpg"
+        # 4. Already high-res
+        url4 = "https://m.media-amazon.com/images/I/81Woj7S8k7L._AC_SL1500_.jpg"
+
+        norm1 = adapter._normalize_image_url(url1)
+        norm2 = adapter._normalize_image_url(url2)
+        norm3 = adapter._normalize_image_url(url3)
+        norm4 = adapter._normalize_image_url(url4)
+
+        expected = "https://m.media-amazon.com/images/I/81Woj7S8k7L._AC_SL1500_.jpg"
+
+        assert norm1 == expected
+        assert norm2 == expected
+        assert norm3 == expected
+        assert norm4 == expected
+
+        # Non-Amazon URL should be untouched
+        external_url = "https://example.com/product.jpg"
+        assert adapter._normalize_image_url(external_url) == external_url
+
+        # Filtered URLs should return None
+        assert adapter._normalize_image_url("https://m.media-amazon.com/images/I/grey-pixel.gif") is None

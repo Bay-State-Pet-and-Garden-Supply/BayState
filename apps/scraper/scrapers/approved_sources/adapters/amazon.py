@@ -182,7 +182,14 @@ class AmazonAdapter(ApprovedSourceAdapter):
         if lowered.endswith(".svg") or lowered.endswith(".gif"):
             return None
 
-        return re.sub(r"\._[A-Z0-9+_,-]+_\.", "._AC_SL1500_.", cleaned)
+        # Only normalize images from Amazon domains
+        if any(domain in lowered for domain in ("media-amazon.com", "images-amazon.com")):
+            # 1. Strip any existing resolution tokens (e.g., ._AC_SX679_)
+            base = re.sub(r"\._[A-Z0-9+_,-]+_", "", cleaned)
+            # 2. Consistently apply the high-resolution token
+            return re.sub(r"\.([a-zA-Z0-9]+)$", r"._AC_SL1500_.\1", base)
+
+        return cleaned
 
     @classmethod
     def _extract_image_urls(cls, soup: BeautifulSoup) -> list[str]:
