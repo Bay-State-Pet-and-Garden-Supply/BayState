@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import json
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 from scrapers.approved_sources.types import (
@@ -13,6 +14,9 @@ from scrapers.approved_sources.types import (
     ApprovedSourcePolicy,
 )
 from scrapers.approved_sources.adapters.amazon import AmazonAdapter
+
+FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "crawl4ai"
+AMAZON_PDP_FIXTURE = FIXTURES_DIR / "amazon_product.html"
 
 
 def _make_amazon_plan(
@@ -96,13 +100,29 @@ class TestAmazonAdapter:
 
         mock_pdp_result = MagicMock()
         mock_pdp_result.success = True
-        mock_pdp_result.extracted_content = json.dumps([{
-            "name": "KONG Pull-A-Partz Pals 2 Toys in 1 Dog Toy (Koala)",
-            "brand": "Visit the KONG Store",
-            "image_urls": ["https://images.amazon.com/KONG.jpg"],
-            "description": "KONG Pull-A-Partz Pals 2 Toys in 1 Dog Toy (Koala)",
-            "bullets": [],
-        }])
+        mock_pdp_result.html = """
+        <html>
+            <body>
+                <span id="productTitle">KONG Pull-A-Partz Pals 2 Toys in 1 Dog Toy (Koala)</span>
+                <a id="bylineInfo">Visit the KONG Store</a>
+                <div id="feature-bullets">
+                    <ul>
+                        <li><span>Pull apart for twice the play.</span></li>
+                        <li><span>Soft toy for indoor fun.</span></li>
+                    </ul>
+                </div>
+                <div id="imageBlock_feature_div">
+                    <img id="landingImage"
+                        data-old-hires="https://m.media-amazon.com/images/I/81main._AC_SL1500_.jpg"
+                        src="https://m.media-amazon.com/images/I/51main._AC_US40_.jpg" />
+                    <div class="a-image-wrapper" data-old-hires="https://m.media-amazon.com/images/I/81back._AC_SL1500_.jpg"></div>
+                </div>
+                <table class="a-keyvalue">
+                    <tr><td>Item Weight</td><td>1 pounds</td></tr>
+                </table>
+            </body>
+        </html>
+        """
 
         mock_crawler.arun.side_effect = [mock_search_result, mock_pdp_result]
 
@@ -134,7 +154,7 @@ class TestAmazonAdapter:
         second_call_args = mock_crawler.arun.call_args_list[1][1]
         assert second_call_args["url"] == "https://www.amazon.com/KONG-Pull-Partz-Pals-Toys-Koala/dp/B0018CLX3C"
         assert second_call_args["config"].wait_until == "domcontentloaded"
-        assert second_call_args["config"].extraction_strategy is not None
+        assert second_call_args["config"].extraction_strategy is None
 
     @pytest.mark.asyncio
     @patch("scrapers.approved_sources.adapters.amazon.get_shared_browser_engine")
@@ -186,3 +206,67 @@ class TestAmazonAdapter:
 
         assert result is None
         mock_extractor.extract.assert_not_called()
+
+    def test_extract_product_fields_from_fixture_html(self):
+        adapter = AmazonAdapter(_make_amazon_entry(), _make_amazon_plan())
+        html = AMAZON_PDP_FIXTURE.read_text(encoding="utf-8")
+
+        fields = adapter._extract_product_fields_from_html(html, upc="035585499741")
+
+        assert fields["name"] == "Purina Dog Chow Complete With Real Chicken Adult Dry Dog Food - 44 lb. Bag"
+        assert fields["brand"] == "Purina"
+        assert fields["description"].startswith("Give your dog the nutrition he needs")
+        assert fields["image_urls"] == [
+            "https://m.media-amazon.com/images/purina-dog-chow.jpg",
+            "https://m.media-amazon.com/images/purina-dog-chow-back.jpg",
+            "https://m.media-amazon.com/images/purina-dog-chow-ingredients.jpg",
+        ]
+        assert fields["weight"] == "44 pounds"
+        assert fields["dimensions"] == "24 x 16 x 4 inches"
+
+    def test_extract_product_fields_handles_modern_gallery_markup(self):
+        adapter = AmazonAdapter(_make_amazon_entry(), _make_amazon_plan())
+        html = """
+        <html>
+          <body>
+            <span id="productTitle">360 Pet Nutrition Freeze-Dried Raw Dog Food</span>
+            <a id="bylineInfo">Visit the 360 Pet Nutrition Store</a>
+            <div id="feature-bullets">
+              <ul>
+                <li><span>About this item</span></li>
+                <li><span>Made with High-Quality Ingredients.</span></li>
+                <li><span>Freeze-Dried for Convenience.</span></li>
+              </ul>
+            </div>
+            <div id="imageBlock_feature_div">
+              <img
+                id="landingImage"
+                src="https://m.media-amazon.com/images/I/81CBHGMK1ZL._AC_SX522_.jpg"
+                data-old-hires="https://m.media-amazon.com/images/I/81CBHGMK1ZL._AC_SL1500_.jpg"
+                data-a-dynamic-image='{"https://m.media-amazon.com/images/I/81CBHGMK1ZL._AC_SY355_.jpg":[355,355]}'
+              />
+              <div class="a-image-wrapper" data-old-hires="https://m.media-amazon.com/images/I/71h-oy4IrWL._AC_SL1500_.jpg"></div>
+              <div class="a-image-wrapper" data-old-hires="https://m.media-amazon.com/images/I/81TNX+jemML._AC_SL1500_.jpg"></div>
+              <img src="https://m.media-amazon.com/images/I/41rEQvFqHuL.SS40_BG85,85,85_BR-120_PKdp-play-icon-overlay__.jpg" />
+            </div>
+            <table class="a-keyvalue">
+              <tr><td>Package Dimensions</td><td>10.83 x 6.57 x 2.05 inches; 5 ounces</td></tr>
+              <tr><td>Item Weight</td><td>5 Ounces</td></tr>
+            </table>
+          </body>
+        </html>
+        """
+
+        fields = adapter._extract_product_fields_from_html(html, upc="123456789012")
+
+        assert fields["name"] == "360 Pet Nutrition Freeze-Dried Raw Dog Food"
+        assert fields["brand"] == "360 Pet Nutrition"
+        assert fields["weight"] == "5 Ounces"
+        assert fields["dimensions"] == "10.83 x 6.57 x 2.05 inches; 5 ounces"
+        assert "Made with High-Quality Ingredients." in fields["description"]
+        assert "Freeze-Dried for Convenience." in fields["description"]
+        assert fields["image_urls"] == [
+            "https://m.media-amazon.com/images/I/81CBHGMK1ZL._AC_SL1500_.jpg",
+            "https://m.media-amazon.com/images/I/71h-oy4IrWL._AC_SL1500_.jpg",
+            "https://m.media-amazon.com/images/I/81TNX+jemML._AC_SL1500_.jpg",
+        ]

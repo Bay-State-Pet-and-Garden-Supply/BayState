@@ -205,7 +205,25 @@ def parse_weight_lbs(weight_val: Any) -> Optional[float]:
     if isinstance(weight_val, (int, float)):
         return float(weight_val)
     if isinstance(weight_val, str):
-        match = re.search(r"([0-9]+(?:\.[0-9]+)?)", weight_val)
+        text = weight_val.strip().lower()
+        if not text:
+            return None
+
+        unit_patterns = [
+            (r"([0-9]+(?:\.[0-9]+)?)\s*(?:lb|lbs|pound|pounds)\b", 1.0),
+            (r"([0-9]+(?:\.[0-9]+)?)\s*(?:oz|ounce|ounces)\b", 1.0 / 16.0),
+            (r"([0-9]+(?:\.[0-9]+)?)\s*(?:kg|kilogram|kilograms)\b", 2.2046226218),
+            (r"([0-9]+(?:\.[0-9]+)?)\s*(?:g|gram|grams)\b", 1.0 / 453.59237),
+        ]
+        for pattern, multiplier in unit_patterns:
+            match = re.search(pattern, text)
+            if match:
+                try:
+                    return float(match.group(1)) * multiplier
+                except ValueError:
+                    return None
+
+        match = re.search(r"([0-9]+(?:\.[0-9]+)?)", text)
         if match:
             try:
                 return float(match.group(1))
