@@ -34,6 +34,27 @@ class CentralPetAdapter(BaseDistributorCrawl4AIAdapter):
     base_url = "https://www.centralpet.com"
     search_url_template = "https://www.centralpet.com/Search?criteria={upc}"
     requires_auth = False  # Some products may be visible without login
+    disable_stealth = True  # Central Pet's Angular client fails when stealth is enabled
+
+    # Wait for either the PDP (erpDescription), product list container, or no-results indicator, or timeout after 10 seconds
+    browser_wait_for = (
+        "js:() => new Promise(resolve => { "
+        "const check = () => "
+        "  document.querySelector('#tst_productDetail_erpDescription') || "
+        "  document.querySelector('.isc-productContainer') || "
+        "  document.querySelector('.no-results-found') || "
+        "  document.querySelector('.no-results'); "
+        "if (check()) return resolve(true); "
+        "let elapsed = 0; "
+        "const interval = setInterval(() => { "
+        "elapsed += 100; "
+        "if (check() || elapsed >= 10000) { "
+        "clearInterval(interval); "
+        "resolve(true); "
+        "} "
+        "}, 100); "
+        "})"
+    )
 
     def __init__(self, entry: ApprovedSourcePlanEntry, plan: ApprovedSourcePlan):
         super().__init__(entry, plan)
@@ -59,7 +80,7 @@ class CentralPetAdapter(BaseDistributorCrawl4AIAdapter):
             html = await self._fetch_html(self._product_page_url)
             if html and self._needs_js_rendering(html):
                 logger.info("[%s] PDP HTML needs JS rendering, falling back to browser", self.adapter_slug)
-                browser_html = await self._fetch_html_with_browser(self._product_page_url)
+                browser_html = await self._fetch_html_with_browser(self._product_page_url, wait_for="css:#tst_productDetail_erpDescription")
                 if browser_html:
                     html = browser_html
 
@@ -140,15 +161,20 @@ class CentralPetAdapter(BaseDistributorCrawl4AIAdapter):
                 if not href or href == "#" or href == "/":
                     continue
                 href_lower = href.lower()
-                if any(x in href_lower for x in ["/cart", "/checkout", "/account", "/login", "/search"]):
+                if any(x in href_lower for x in ["/cart", "/checkout", "/account", "/login", "/search", "comparison", "compare", "/products"]):
                     continue
                 
-                # Check parents up to 5 levels to find the card container
+                # Check link text to avoid generic actions
+                link_text = a.get_text(strip=True).lower()
+                if link_text in {"compare", "add to cart", "wishlist", "learn more", "details", "view product", "view details", "quick view", "printable view", "export text"}:
+                    continue
+                
+                # Check parents up to 8 levels to find the card container
                 parent = a.parent
                 card_container = None
                 depth = 0
-                while parent and parent.name not in ("body", "html", "main") and depth < 5:
-                    if parent.name in ("article", "li") or any(c in parent.get("class", []) for c in ("card", "product-card", "product-item", "item-row", "row")):
+                while parent and parent.name not in ("body", "html", "main") and depth < 8:
+                    if parent.name in ("article", "li") or any(c in parent.get("class", []) for c in ("card", "product-card", "product-item", "item-row")):
                         card_container = parent
                         break
                     parent = parent.parent

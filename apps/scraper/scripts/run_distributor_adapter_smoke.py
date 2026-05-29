@@ -202,7 +202,7 @@ def evaluate_result(
     elif expected_status == "partial":
         if actual_status not in ("success", "partial"):
             return False, f"Expected partial+, got {actual_status}"
-    elif expected_status in ("no_match", "auth_required"):
+    elif expected_status in ("failed", "no_match", "auth_required"):
         if actual_status != "failed":
             return False, f"Expected failed/no_match, got {actual_status}"
         # For negative cases, passing the status check is enough
@@ -281,7 +281,22 @@ async def run_single_entry(entry: dict[str, Any]) -> SmokeTestResult:
                 elapsed_seconds=elapsed,
             )
 
-        product = result.product.model_dump() if result.product else {}
+        raw_product = result.product.model_dump() if result.product else {}
+        
+        # Normalize nested EnrichmentResultV1 structure to flat dict for evaluation
+        product = {}
+        if "core" in raw_product and raw_product["core"]:
+            product["name"] = raw_product["core"].get("name") or ""
+            product["brand"] = raw_product["core"].get("brand_name") or ""
+        else:
+            product["name"] = raw_product.get("name") or ""
+            product["brand"] = raw_product.get("brand") or ""
+            
+        if "media" in raw_product and isinstance(raw_product["media"], list):
+            product["image_urls"] = [m.get("url") for m in raw_product["media"] if m.get("url")]
+        else:
+            product["image_urls"] = raw_product.get("image_urls") or []
+
         warnings = result.validation.warnings if result.validation else []
 
         passed, reason = evaluate_result(

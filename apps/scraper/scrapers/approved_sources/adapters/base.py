@@ -39,10 +39,12 @@ async def get_shared_browser_engine():
     if _shared_browser_engine is None:
         async with _shared_browser_engine_lock:
             if _shared_browser_engine is None:
+                import os
                 from src.crawl4ai_engine.engine import Crawl4AIEngine
+                headless = os.environ.get("HEADLESS", "true").lower() != "false"
                 engine_config = {
                     "browser": {
-                        "headless": True,
+                        "headless": headless,
                         "viewport_width": 1280,
                         "viewport_height": 800,
                         "light_mode": True,
@@ -424,20 +426,23 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
             # Public fetch for no-auth distributors
             html = await self._fetch_html(search_url)
 
-            # Check if HTML needs JS rendering (skeleton loaders, Angular templates)
-            if html and self._needs_js_rendering(html):
-                logger.info(
-                    "[%s] HTML appears JS-rendered, trying browser fallback for %s",
-                    self.adapter_slug, search_url,
-                )
-                browser_html = await self._fetch_html_with_browser(search_url)
-                if browser_html:
-                    html = browser_html
-                else:
-                    logger.warning(
-                        "[%s] Browser fallback failed, using httpx result",
-                        self.adapter_slug,
+            # Check if we can extract from static HTML first
+            if html:
+                temp_result = self.extract_from_html(html, upc, search_url)
+                if not temp_result.success and self._needs_js_rendering(html):
+                    logger.info(
+                        "[%s] Static HTML extraction failed and page appears JS-rendered, trying browser fallback for %s",
+                        self.adapter_slug, search_url,
                     )
+                    wait_for = getattr(self, "browser_wait_for", None)
+                    browser_html = await self._fetch_html_with_browser(search_url, wait_for=wait_for)
+                    if browser_html:
+                        html = browser_html
+                    else:
+                        logger.warning(
+                            "[%s] Browser fallback failed, using httpx result",
+                            self.adapter_slug,
+                        )
 
         if not html:
             logger.warning(
@@ -641,31 +646,59 @@ class BaseDistributorCrawl4AIAdapter(ApprovedSourceAdapter):
         # If 2+ indicators present, likely JS-rendered
         return count >= 2
 
-    async def _fetch_html_with_browser(self, url: str) -> str | None:
+    async def _fetch_html_with_browser(self, url: str, wait_for: str | None = None) -> str | None:
         """Fetch HTML using Crawl4AI headless browser for JS-rendered sites.
 
         Falls back gracefully if Crawl4AI is not available.
         Uses a short page timeout to avoid blocking too long.
         """
         try:
-            from crawl4ai import CrawlerRunConfig, CacheMode
+            from crawl4ai import CrawlerRunConfig, CacheMode, BrowserConfig, AsyncWebCrawler
 
-            engine = await get_shared_browser_engine()
-            if not engine:
-                logger.warning("[%s] Crawl4AI engine is not available for browser fetch", self.adapter_slug)
-                return None
+            disable_stealth = getattr(self, "disable_stealth", False)
 
-            run_config = CrawlerRunConfig(
-                cache_mode=CacheMode.BYPASS,
-                page_timeout=30000,
-                wait_until="networkidle",
-                remove_overlay_elements=True,
-                simulate_user=True,
-                magic=True,
-                override_navigator=True,
-            )
+            if disable_stealth:
+                logger.info(
+                    "[%s] Crawl4AI using non-stealth browser crawler for %s",
+                    self.adapter_slug, url,
+                )
+                browser_config = BrowserConfig(
+                    browser_type="chromium",
+                    headless=True,
+                    viewport_width=1280,
+                    viewport_height=800,
+                    enable_stealth=False,
+                )
+                run_config = CrawlerRunConfig(
+                    cache_mode=CacheMode.BYPASS,
+                    page_timeout=30000,
+                    wait_until="networkidle",
+                    remove_overlay_elements=True,
+                    magic=False,
+                    simulate_user=False,
+                    override_navigator=False,
+                    wait_for=wait_for,
+                )
+                async with AsyncWebCrawler(config=browser_config) as crawler:
+                    result = await crawler.arun(url=url, config=run_config)
+            else:
+                engine = await get_shared_browser_engine()
+                if not engine:
+                    logger.warning("[%s] Crawl4AI engine is not available for browser fetch", self.adapter_slug)
+                    return None
 
-            result = await engine.crawler.arun(url=url, config=run_config)
+                run_config = CrawlerRunConfig(
+                    cache_mode=CacheMode.BYPASS,
+                    page_timeout=30000,
+                    wait_until="networkidle",
+                    remove_overlay_elements=True,
+                    simulate_user=True,
+                    magic=True,
+                    override_navigator=True,
+                    wait_for=wait_for,
+                )
+
+                result = await engine.crawler.arun(url=url, config=run_config)
 
             if result and getattr(result, "success", False):
                 html = getattr(result, "html", None) or ""
