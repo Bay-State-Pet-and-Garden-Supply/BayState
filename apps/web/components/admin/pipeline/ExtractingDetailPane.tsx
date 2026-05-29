@@ -28,6 +28,7 @@ import {
   JOB_STATUS_STYLES,
   formatRelativeTime,
   getJobActivitySummary,
+  getJobDisplayStatus,
   getJobLabel,
   getJobModeLabel,
   getJobProgressCounts,
@@ -37,6 +38,7 @@ import {
   isHeartbeatStale,
   isJobActive,
   isJobCancellable,
+  isJobStalled,
   isLeaseExpired,
   normalizeJobStatus,
 } from "./extracting-utils";
@@ -312,6 +314,14 @@ export function ExtractingDetailPane({
       });
     }
 
+    if (isJobStalled(job)) {
+      notices.push({
+        title: "Job looks stalled",
+        description: "The runner has stopped sending heartbeats or progress updates for this job.",
+        tone: "warning",
+      });
+    }
+
     if (job.status === "completed_with_errors" || progressCounts.failed > 0) {
       notices.push({
         title: "Attempt failures detected",
@@ -335,7 +345,8 @@ export function ExtractingDetailPane({
     );
   }
 
-  const statusStyle = JOB_STATUS_STYLES[job.status];
+  const displayStatus = getJobDisplayStatus(job);
+  const statusStyle = JOB_STATUS_STYLES[displayStatus];
   const runningAttempts =
     sortedAttempts.length > 0
       ? attemptSummary.running
@@ -482,7 +493,7 @@ export function ExtractingDetailPane({
           </div>
 
           <div className="mt-4">
-            <ProgressBar progress={progressPercent} status={normalizeJobStatus(job.status)} />
+            <ProgressBar progress={progressPercent} status={normalizeJobStatus(displayStatus)} />
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">

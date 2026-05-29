@@ -46,11 +46,15 @@ export function isRunnerStale(lastSeenIso: string | null | undefined, now = new 
 export function getStoredRunnerStatus(
   runner: Pick<ScraperRunnerRow, 'status' | 'current_job_id'>,
 ): RunnerDurableStatus {
+  if (runner.current_job_id) {
+    return 'busy';
+  }
+
   if (runner.status && RUNNER_STATUSES.has(runner.status as RunnerDurableStatus)) {
     return runner.status as RunnerDurableStatus;
   }
 
-  return runner.current_job_id ? 'busy' : 'offline';
+  return 'offline';
 }
 
 export function getEffectiveRunnerStatus(

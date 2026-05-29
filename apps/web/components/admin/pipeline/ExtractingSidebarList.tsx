@@ -8,6 +8,7 @@ import {
   JOB_STATUS_STYLES,
   formatRelativeTime,
   getJobActivitySummary,
+  getJobDisplayStatus,
   getJobLabel,
   getJobLastActivityAt,
   getJobProgressCounts,
@@ -15,6 +16,7 @@ import {
   getJobRunnerLabel,
   humanizeToken,
   isHeartbeatStale,
+  isJobStalled,
 } from "./extracting-utils";
 
 interface ExtractingSidebarListProps {
@@ -51,11 +53,13 @@ export function ExtractingSidebarList({
       ) : (
         <div className="divide-y divide-border">
           {jobs.map((job) => {
-            const statusStyle = JOB_STATUS_STYLES[job.status];
+            const displayStatus = getJobDisplayStatus(job);
+            const statusStyle = JOB_STATUS_STYLES[displayStatus];
             const progressPercent = getJobProgressPercent(job);
             const counts = getJobProgressCounts(job);
             const lastActivityAt = getJobLastActivityAt(job);
             const staleHeartbeat = isHeartbeatStale(job);
+            const isStalled = isJobStalled(job);
             const currentPhase = humanizeToken(job.progress_phase);
 
             return (
@@ -108,13 +112,15 @@ export function ExtractingSidebarList({
                     <div
                       className={cn(
                         "h-full rounded-full transition-[width] duration-300",
-                        job.status === "failed"
-                          ? "bg-rose-500"
-                          : job.status === "completed_with_errors"
-                            ? "bg-amber-500"
-                            : job.status === "completed"
-                              ? "bg-teal-500"
-                              : "bg-primary",
+                        displayStatus === "stalled"
+                          ? "bg-amber-500"
+                          : job.status === "failed"
+                            ? "bg-rose-500"
+                            : job.status === "completed_with_errors"
+                              ? "bg-amber-500"
+                              : job.status === "completed"
+                                ? "bg-teal-500"
+                                : "bg-primary",
                       )}
                       style={{ width: `${progressPercent}%` }}
                     />
@@ -165,10 +171,10 @@ export function ExtractingSidebarList({
                   {getJobActivitySummary(job)}
                 </p>
 
-                {staleHeartbeat && (
+                {(staleHeartbeat || isStalled) && (
                   <div className="mt-3 inline-flex items-center gap-1 rounded-sm border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-300">
                     <Clock className="h-3 w-3" />
-                    Heartbeat looks stale
+                    {isStalled ? "Job looks stalled" : "Heartbeat looks stale"}
                   </div>
                 )}
               </button>

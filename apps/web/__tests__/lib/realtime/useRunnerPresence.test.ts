@@ -133,6 +133,48 @@ describe('useRunnerPresence', () => {
     expect(result.current.onlineIds.has('runner-1')).toBe(true);
   });
 
+  it('treats runners with active jobs as busy even if the fetched status is idle', async () => {
+    const recentLastSeen = new Date(Date.now() - 60_000).toISOString();
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        runners: [
+          {
+            id: 'runner-claimed',
+            name: 'Runner Claimed',
+            os: 'linux',
+            status: 'online',
+            raw_status: 'idle',
+            busy: false,
+            labels: [],
+            active_jobs: 1,
+            enabled: true,
+            last_seen: recentLastSeen,
+            version: 'sha-123',
+            build_check_reason: 'current',
+            metadata: {},
+          },
+        ],
+      }),
+    });
+
+    const { result } = renderHook(() =>
+      useRunnerPresence({ autoConnect: false, fetchInitial: true }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.runners['runner-claimed']).toEqual(
+        expect.objectContaining({
+          status: 'busy',
+          raw_status: 'busy',
+          active_jobs: 1,
+        }),
+      );
+    });
+
+    expect(result.current.getBusyCount()).toBe(1);
+  });
+
   it('connects to the shared scraper_runners channel when autoConnect is true', async () => {
     const { result } = renderHook(() =>
       useRunnerPresence({ autoConnect: true, fetchInitial: false }),
@@ -179,6 +221,40 @@ describe('useRunnerPresence', () => {
           status: 'idle',
           raw_status: 'idle',
           active_jobs: 0,
+        }),
+      );
+    });
+  });
+
+  it('treats realtime updates with current_job_id as busy even if the row status is idle', async () => {
+    const { result } = renderHook(() =>
+      useRunnerPresence({ autoConnect: true, fetchInitial: false }),
+    );
+
+    act(() => {
+      getLastChannel().emitStatus('SUBSCRIBED');
+      getLastChannel().emitPostgresChange({
+        eventType: 'UPDATE',
+        new: {
+          name: 'runner-claimed-live',
+          status: 'idle',
+          current_job_id: 'job-live',
+          enabled: true,
+          last_seen_at: '2999-04-20T10:00:00.000Z',
+          created_at: '2026-04-20T09:00:00.000Z',
+          metadata: {},
+          jobs_completed: 4,
+          memory_usage_mb: 128,
+        },
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.runners['runner-claimed-live']).toEqual(
+        expect.objectContaining({
+          status: 'busy',
+          raw_status: 'busy',
+          active_jobs: 1,
         }),
       );
     });

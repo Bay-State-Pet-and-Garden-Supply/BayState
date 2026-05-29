@@ -12,7 +12,7 @@
 
 import { cn } from '@/lib/utils';
 
-export type JobStatus = 'pending' | 'running' | 'completed' | 'completed_with_errors' | 'failed' | 'cancelled';
+export type JobStatus = 'pending' | 'running' | 'stalled' | 'completed' | 'completed_with_errors' | 'failed' | 'cancelled';
 
 interface ProgressBarProps {
   progress: number;
@@ -25,6 +25,7 @@ interface ProgressBarProps {
 const STATUS_COLORS: Record<JobStatus, string> = {
   pending: 'bg-muted',
   running: 'bg-blue-600',
+  stalled: 'bg-amber-600',
   completed: 'bg-green-600',
   completed_with_errors: 'bg-amber-600',
   failed: 'bg-red-600',

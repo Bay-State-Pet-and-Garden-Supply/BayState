@@ -182,25 +182,36 @@ function buildRunnerMetadata(
   return Object.fromEntries(mergedEntries);
 }
 
-function getDisplayStatus(rawStatus: RunnerDurableStatus, lastSeen: string): RunnerPresence['status'] {
+function getDisplayStatus(
+  rawStatus: RunnerDurableStatus,
+  lastSeen: string,
+  activeJobs = 0,
+): RunnerPresence['status'] {
   if (rawStatus === 'offline' || isRunnerStale(lastSeen)) {
     return 'offline';
+  }
+
+  if (activeJobs > 0) {
+    return 'busy';
   }
 
   return getRunnerPresenceStatus(rawStatus);
 }
 
 function normalizeRunnerPresence(runner: RunnerPresence): RunnerPresence {
-  const rawStatus = runner.raw_status ?? runner.status;
-  const status = getDisplayStatus(rawStatus, runner.last_seen);
+  const normalizedRawStatus =
+    runner.active_jobs > 0 && (runner.raw_status ?? runner.status) !== 'offline'
+      ? 'busy'
+      : (runner.raw_status ?? runner.status);
+  const status = getDisplayStatus(normalizedRawStatus, runner.last_seen, runner.active_jobs);
 
-  if (runner.raw_status === rawStatus && runner.status === status) {
+  if (runner.raw_status === normalizedRawStatus && runner.status === status) {
     return runner;
   }
 
   return {
     ...runner,
-    raw_status: rawStatus,
+    raw_status: normalizedRawStatus,
     status,
   };
 }
@@ -213,7 +224,7 @@ function normalizeRunnerRow(row: RunnerRowSnapshot): RunnerPresence {
   return {
     runner_id: row.name,
     runner_name: row.name,
-    status: getDisplayStatus(rawStatus, lastSeen),
+    status: getDisplayStatus(rawStatus, lastSeen, row.current_job_id ? 1 : 0),
     raw_status: rawStatus,
     active_jobs: row.current_job_id ? 1 : 0,
     last_seen: lastSeen,
@@ -234,7 +245,12 @@ function normalizeRunnerRow(row: RunnerRowSnapshot): RunnerPresence {
 function normalizeApiRunner(runner: ApiRunnerData): RunnerPresence {
   const metadata = runner.metadata ?? null;
   const lastSeen = runner.last_seen ?? new Date(0).toISOString();
-  const rawStatus = runner.raw_status ?? (runner.busy ? 'busy' : runner.status === 'offline' ? 'offline' : 'online');
+  const activeJobs = runner.active_jobs ?? (runner.busy ? 1 : 0);
+  const fallbackRawStatus = activeJobs > 0 || runner.busy ? 'busy' : runner.status === 'offline' ? 'offline' : 'online';
+  const rawStatus =
+    activeJobs > 0 && (runner.raw_status ?? fallbackRawStatus) !== 'offline'
+      ? 'busy'
+      : (runner.raw_status ?? fallbackRawStatus);
   const labels = runner.labels
     .map((label) => (typeof label === 'string' ? label : label?.name))
     .filter((label): label is string => typeof label === 'string' && label.trim().length > 0);
@@ -242,9 +258,9 @@ function normalizeApiRunner(runner: ApiRunnerData): RunnerPresence {
   return {
     runner_id: runner.id,
     runner_name: runner.name,
-    status: getDisplayStatus(rawStatus, lastSeen),
+    status: getDisplayStatus(rawStatus, lastSeen, activeJobs),
     raw_status: rawStatus,
-    active_jobs: runner.active_jobs ?? (runner.busy ? 1 : 0),
+    active_jobs: activeJobs,
     last_seen: lastSeen,
     enabled: runner.enabled,
     version: runner.version ?? null,
@@ -617,7 +633,7 @@ export function useRunnerPresence(
   }, [state.onlineIds]);
 
   const getBusyCount = useCallback((): number => {
-    return Object.values(state.runners).filter((runner) => runner.status === 'busy').length;
+    return Object.values(state.runners).filter((runner) => runner.status === 'busy' || runner.active_jobs > 0).length;
   }, [state.runners]);
 
   const isOnline = useCallback(

@@ -71,7 +71,7 @@ export async function GET() {
         os: getRunnerOs(metadata),
         status,
         raw_status: durableStatus,
-        busy: durableStatus === 'busy',
+        busy: durableStatus === 'busy' || Boolean(runner.current_job_id),
         labels: getRunnerLabels(metadata).map((name) => ({ name })),
         last_seen: getRunnerLastSeen(runner),
         active_jobs: runner.current_job_id ? 1 : 0,

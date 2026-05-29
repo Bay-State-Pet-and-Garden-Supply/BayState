@@ -45,7 +45,7 @@ export function useJobConsole({ jobId, maxEntries = 1000 }: UseJobConsoleOptions
       setIsLoadingHistory(true);
       setHistoryError(null);
       try {
-        const response = await adminFetch(`/api/admin/scraper-network/jobs/${jobId}/logs`);
+        const response = await adminFetch(`/api/admin/scraper-network/jobs/${jobId}/history`);
         if (!response.ok) throw new Error('Failed to fetch job history');
         const data = await response.json();
         

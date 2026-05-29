@@ -1,6 +1,8 @@
 import type { JobAssignment } from "@/lib/realtime/types";
 import type { JobStatus } from "./ProgressBar";
 
+export type MonitoringJobStatus = JobAssignment["status"] | "stalled";
+
 const JOB_SORT_PRIORITY: Record<JobAssignment["status"], number> = {
   running: 0,
   claimed: 0,
@@ -13,7 +15,7 @@ const JOB_SORT_PRIORITY: Record<JobAssignment["status"], number> = {
 };
 
 export const JOB_STATUS_STYLES: Record<
-  JobAssignment["status"],
+  MonitoringJobStatus,
   {
     label: string;
     badgeClassName: string;
@@ -25,6 +27,12 @@ export const JOB_STATUS_STYLES: Record<
     badgeClassName:
       "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-300",
     dotClassName: "bg-emerald-500",
+  },
+  stalled: {
+    label: "Stalled",
+    badgeClassName:
+      "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-300",
+    dotClassName: "bg-amber-500",
   },
   claimed: {
     label: "Claimed",
@@ -116,9 +124,13 @@ export function isJobCancellable(status: JobAssignment["status"]) {
   return status === "running" || status === "claimed" || status === "queued";
 }
 
-export function normalizeJobStatus(status: JobAssignment["status"]): JobStatus {
+export function normalizeJobStatus(status: MonitoringJobStatus): JobStatus {
   if (status === "running" || status === "claimed") {
     return "running";
+  }
+
+  if (status === "stalled") {
+    return "stalled";
   }
 
   if (status === "completed") {
@@ -270,6 +282,35 @@ export function isLeaseExpired(job: JobAssignment) {
   return toTimestamp(job.lease_expires_at) < Date.now();
 }
 
+export function isJobStalled(job: JobAssignment, thresholdMs = 2 * 60 * 1000) {
+  if (job.status !== "running" && job.status !== "claimed") {
+    return false;
+  }
+
+  if (isLeaseExpired(job) || isHeartbeatStale(job, thresholdMs)) {
+    return true;
+  }
+
+  const lastActivityAt =
+    job.progress_updated_at ??
+    job.last_event_at ??
+    job.last_log_at ??
+    job.updated_at ??
+    job.started_at ??
+    job.created_at ??
+    null;
+
+  if (!lastActivityAt) {
+    return false;
+  }
+
+  return Date.now() - toTimestamp(lastActivityAt) > thresholdMs;
+}
+
+export function getJobDisplayStatus(job: JobAssignment): MonitoringJobStatus {
+  return isJobStalled(job) ? "stalled" : job.status;
+}
+
 export function getJobActivitySummary(job: JobAssignment) {
   if (job.progress_message?.trim()) {
     return job.progress_message.trim();
@@ -297,6 +338,10 @@ export function getJobActivitySummary(job: JobAssignment) {
 
   if (job.status === "failed") {
     return job.error_message?.trim() || "Job failed before completion.";
+  }
+
+  if (isJobStalled(job)) {
+    return "Runner activity stopped before the job finished. Review logs or recover the job.";
   }
 
   if (job.status === "cancelled") {

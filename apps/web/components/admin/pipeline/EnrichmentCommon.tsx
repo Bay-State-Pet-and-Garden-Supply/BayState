@@ -318,7 +318,7 @@ export function EnrichmentAttemptCard({ attempt }: EnrichmentAttemptCardProps) {
  * Terminal-style Logging Console
  */
 export function EnrichmentJobLogsConsole({ jobId }: { jobId: string }) {
-  const { allLogs, isLoading, isConnected } = useJobConsole({ jobId });
+  const { allLogs, isLoading, isConnected, error } = useJobConsole({ jobId });
   const [levels, setLevels] = useState<Record<string, boolean>>({
     debug: false, // Debug disabled by default to prevent spam
     info: true,
@@ -404,6 +404,11 @@ export function EnrichmentJobLogsConsole({ jobId }: { jobId: string }) {
         {isLoading && allLogs.length === 0 ? (
           <div className="flex items-center justify-center h-48 text-zinc-500 gap-2 text-xs">
             <Loader2 className="h-4 w-4 animate-spin text-zinc-600" /> Connecting diagnostics stream...
+          </div>
+        ) : error && allLogs.length === 0 ? (
+          <div className="flex h-48 flex-col items-center justify-center gap-2 px-4 text-center text-xs text-rose-300">
+            <AlertCircle className="h-4 w-4 text-rose-400" />
+            <span>Failed to load job logs: {error.message}</span>
           </div>
         ) : filteredLogs.length === 0 ? (
           <div className="flex items-center justify-center h-48 text-zinc-500 text-xs">
