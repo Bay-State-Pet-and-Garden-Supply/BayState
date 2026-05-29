@@ -13,6 +13,7 @@ set, bullet-based description, and weight/dimensions metadata.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -200,8 +201,119 @@ class AmazonAdapter(ApprovedSourceAdapter):
 
         return cleaned
 
+    @staticmethod
+    def _extract_balanced_json_array(text: str, start: int) -> str | None:
+        """Extract a balanced JSON array starting at text[start] == '['."""
+        if start >= len(text) or text[start] != "[":
+            return None
+        depth = 0
+        in_string = False
+        escape_next = False
+        for i in range(start, len(text)):
+            ch = text[i]
+            if escape_next:
+                escape_next = False
+                continue
+            if ch == "\\":
+                escape_next = True
+                continue
+            if ch == '"':
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if ch == "[":
+                depth += 1
+            elif ch == "]":
+                depth -= 1
+                if depth == 0:
+                    return text[start : i + 1]
+        return None
+
+    @classmethod
+    def _extract_colorimages_from_scripts(cls, soup: BeautifulSoup) -> list[str]:
+        """Extract image URLs from Amazon's embedded colorImages JavaScript data.
+
+        Amazon PDP pages embed the complete image gallery (including images only
+        visible after clicking the "4+ more" modal) in a JavaScript variable:
+
+            'colorImages': { 'initial': [
+                {"hiRes": "https://...", "large": "https://...", ...},
+                ...
+            ]}
+
+        Parsing this gives us every product image without any browser
+        interaction or modal clicking.
+        """
+        image_urls: list[str] = []
+        seen: set[str] = set()
+
+        def add(candidate: str | None) -> None:
+            normalized = cls._normalize_image_url(candidate)
+            if not normalized or normalized in seen:
+                return
+            seen.add(normalized)
+            image_urls.append(normalized)
+
+        # Find the 'initial' array start after colorImages
+        initial_re = re.compile(
+            r"""['"]colorImages['"]"""
+            r"""\s*:\s*\{\s*['"]initial['"]"""
+            r"""\s*:\s*""",
+        )
+
+        for script in soup.find_all("script"):
+            text = script.string
+            if not text or "colorImages" not in text:
+                continue
+
+            match = initial_re.search(text)
+            if not match:
+                continue
+
+            # Use bracket counting to extract the balanced JSON array
+            array_str = cls._extract_balanced_json_array(text, match.end())
+            if not array_str:
+                continue
+
+            try:
+                entries = json.loads(array_str)
+            except json.JSONDecodeError:
+                continue
+
+            if not isinstance(entries, list):
+                continue
+
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    continue
+                # Prefer hiRes, then large, then main (skip main dicts)
+                for key in ("hiRes", "large"):
+                    url = entry.get(key)
+                    if isinstance(url, str) and url:
+                        add(url)
+                        break  # one URL per entry, best resolution first
+
+        return image_urls
+
     @classmethod
     def _extract_image_urls(cls, soup: BeautifulSoup) -> list[str]:
+        """Extract product image URLs, preferring the JS gallery data.
+
+        First attempts to extract from the embedded colorImages JavaScript
+        data (complete gallery). Falls back to DOM element attributes if the
+        script data is not found (e.g. bot-mitigated pages that strip JS).
+        """
+        # Try the comprehensive JS gallery first
+        js_images = cls._extract_colorimages_from_scripts(soup)
+        if js_images:
+            logger.debug(
+                "[AmazonAdapter] Extracted %d images from colorImages JS data",
+                len(js_images),
+            )
+            return js_images
+
+        # Fallback: extract from DOM element attributes
         image_urls: list[str] = []
         seen: set[str] = set()
 
@@ -337,6 +449,52 @@ class AmazonAdapter(ApprovedSourceAdapter):
             if value not in (None, "", [], {})
         }
 
+    # Module-level lock to serialize Amazon search requests and avoid
+    # concurrent crawls triggering bot detection.
+    _search_lock = asyncio.Lock()
+
+    async def _crawl_search_with_retry(
+        self, engine: Any, search_url: str, config: CrawlerRunConfig, max_retries: int = 2,
+    ) -> Any:
+        """Crawl a search URL with retry + exponential backoff.
+
+        Amazon aggressively blocks concurrent headless requests. This method
+        serialises search requests through a class-level lock and retries on
+        failure with jittered backoff to recover from transient bot blocks.
+        """
+        import random
+
+        for attempt_num in range(1 + max_retries):
+            async with self._search_lock:
+                try:
+                    result = await engine.crawler.arun(url=search_url, config=config)
+                except Exception as e:
+                    logger.warning(
+                        "[AmazonAdapter] Crawl search attempt %d/%d threw exception: %s",
+                        attempt_num + 1, 1 + max_retries, e,
+                    )
+                    result = None
+
+            if result and result.success and result.html:
+                if attempt_num > 0:
+                    logger.info(
+                        "[AmazonAdapter] Search succeeded on retry %d for: %s",
+                        attempt_num, search_url,
+                    )
+                return result
+
+            if attempt_num < max_retries:
+                base_delay = 2.0 * (2 ** attempt_num)  # 2s, 4s
+                jitter = random.uniform(0.5, 1.5)
+                delay = base_delay * jitter
+                logger.info(
+                    "[AmazonAdapter] Search attempt %d/%d failed for %s, retrying in %.1fs",
+                    attempt_num + 1, 1 + max_retries, search_url, delay,
+                )
+                await asyncio.sleep(delay)
+
+        return result  # final failed attempt
+
     async def extract(self, extractor: Any) -> EnrichmentResultV1 | None:
         upc = self._get_sku()
         if not upc:
@@ -357,14 +515,10 @@ class AmazonAdapter(ApprovedSourceAdapter):
             override_navigator=True,
         )
 
-        try:
-            crawl_result = await engine.crawler.arun(url=search_url, config=search_config)
-        except Exception as e:
-            logger.error("[AmazonAdapter] Crawl search threw exception: %s", e)
-            return None
+        crawl_result = await self._crawl_search_with_retry(engine, search_url, search_config)
 
         if not crawl_result or not crawl_result.success or not crawl_result.html:
-            logger.warning("[AmazonAdapter] Crawl failed for search URL: %s", search_url)
+            logger.warning("[AmazonAdapter] Crawl failed for search URL after retries: %s", search_url)
             return None
 
         html = crawl_result.html
@@ -389,15 +543,14 @@ class AmazonAdapter(ApprovedSourceAdapter):
                 result_items = soup.select('.s-result-item')
 
             for item in result_items:
-                item_text = item.get_text().lower()
                 classes = [c.lower() for c in item.get("class", [])]
-                
-                # Check for sponsored indicators
+
+                # Check for sponsored indicators using structural selectors
                 is_sponsored = (
-                    "sponsored" in item_text or
                     "adholder" in classes or
                     item.select_one('.puis-sponsored-label-text') is not None or
-                    item.select_one('.s-sponsored-label-info-icon') is not None
+                    item.select_one('.s-sponsored-label-info-icon') is not None or
+                    item.select_one('[data-component-type="sp-sponsored-result"]') is not None
                 )
                 if is_sponsored:
                     continue

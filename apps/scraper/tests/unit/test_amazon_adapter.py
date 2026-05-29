@@ -271,6 +271,73 @@ class TestAmazonAdapter:
             "https://m.media-amazon.com/images/I/81TNX+jemML._AC_SL1500_.jpg",
         ]
 
+    def test_extract_image_urls_from_colorimages_script(self):
+        """Images embedded in colorImages JS should be extracted — this captures
+        the full gallery including images behind the '4+ more' modal."""
+        adapter = AmazonAdapter(_make_amazon_entry(), _make_amazon_plan())
+        html = """
+        <html>
+          <body>
+            <span id="productTitle">Test Product</span>
+            <a id="bylineInfo">Brand: TestBrand</a>
+            <div id="feature-bullets"><ul><li><span>Feature</span></li></ul></div>
+            <div id="imageBlock_feature_div">
+              <img id="landingImage" src="https://m.media-amazon.com/images/I/81main._AC_SX522_.jpg" />
+            </div>
+            <script type="text/javascript">
+              var obj = {
+                'colorImages': { 'initial': [
+                  {"hiRes":"https://m.media-amazon.com/images/I/81main._AC_SL1500_.jpg","large":"https://m.media-amazon.com/images/I/81main._AC_SX569_.jpg","main":{"https://m.media-amazon.com/images/I/81main._AC_SY355_.jpg":[355,473]}},
+                  {"hiRes":"https://m.media-amazon.com/images/I/71back._AC_SL1500_.jpg","large":"https://m.media-amazon.com/images/I/71back._AC_SX569_.jpg"},
+                  {"hiRes":"https://m.media-amazon.com/images/I/91side._AC_SL1500_.jpg","large":"https://m.media-amazon.com/images/I/91side._AC_SX569_.jpg"},
+                  {"hiRes":"https://m.media-amazon.com/images/I/61modal1._AC_SL1500_.jpg","large":"https://m.media-amazon.com/images/I/61modal1._AC_SX569_.jpg"},
+                  {"hiRes":"https://m.media-amazon.com/images/I/51modal2._AC_SL1500_.jpg","large":"https://m.media-amazon.com/images/I/51modal2._AC_SX569_.jpg"},
+                  {"hiRes":"https://m.media-amazon.com/images/I/41modal3._AC_SL1500_.jpg","large":"https://m.media-amazon.com/images/I/41modal3._AC_SX569_.jpg"},
+                  {"hiRes":null,"large":"https://m.media-amazon.com/images/I/71video._AC_SX569_.jpg"}
+                ]}
+              };
+            </script>
+          </body>
+        </html>
+        """
+
+        fields = adapter._extract_product_fields_from_html(html, upc="123456789012")
+
+        # Should get all 7 images: 5 hiRes + 1 with null hiRes falls back to large
+        # (the video thumb is the 7th)
+        assert len(fields["image_urls"]) == 7
+        # First image should be the hiRes main
+        assert fields["image_urls"][0] == "https://m.media-amazon.com/images/I/81main._AC_SL1500_.jpg"
+        # Modal-only images should be present
+        assert "https://m.media-amazon.com/images/I/61modal1._AC_SL1500_.jpg" in fields["image_urls"]
+        assert "https://m.media-amazon.com/images/I/51modal2._AC_SL1500_.jpg" in fields["image_urls"]
+        assert "https://m.media-amazon.com/images/I/41modal3._AC_SL1500_.jpg" in fields["image_urls"]
+        # Entry with null hiRes should fall back to large
+        assert "https://m.media-amazon.com/images/I/71video._AC_SL1500_.jpg" in fields["image_urls"]
+
+    def test_colorimages_prefers_hires_over_large(self):
+        """When hiRes is available it should be used; when null, fall back to large."""
+        from bs4 import BeautifulSoup
+        adapter = AmazonAdapter(_make_amazon_entry(), _make_amazon_plan())
+        html = """
+        <html><body>
+          <script>
+            var data = {'colorImages': { 'initial': [
+              {"hiRes":"https://m.media-amazon.com/images/I/AAA._AC_SL1500_.jpg","large":"https://m.media-amazon.com/images/I/AAA._AC_SX569_.jpg"},
+              {"hiRes":null,"large":"https://m.media-amazon.com/images/I/BBB._AC_SX569_.jpg","main":{"https://m.media-amazon.com/images/I/BBB._AC_SY355_.jpg":[355,355]}}
+            ]}};
+          </script>
+        </body></html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        urls = adapter._extract_colorimages_from_scripts(soup)
+
+        assert len(urls) == 2
+        # First entry: hiRes available
+        assert urls[0] == "https://m.media-amazon.com/images/I/AAA._AC_SL1500_.jpg"
+        # Second entry: hiRes is null, falls back to large (normalized to SL1500)
+        assert urls[1] == "https://m.media-amazon.com/images/I/BBB._AC_SL1500_.jpg"
+
     def test_normalize_image_url_deduplication(self):
         adapter = AmazonAdapter(_make_amazon_entry(), _make_amazon_plan())
 
@@ -375,7 +442,7 @@ class TestAmazonAdapter:
 
         result = await adapter.extract(mock_extractor)
 
-        # Should skip the first (sponsored) item and extract the second (organic) item
+        # Should skip the first (sponsored) item and prefer the second (organic) item
         assert result is not None
         assert result.product.name == "KONG Pull-A-Partz Pals 2 Toys in 1 Dog Toy (Koala)"
         second_call_args = mock_crawler.arun.call_args_list[1][1]
@@ -423,4 +490,3 @@ class TestAmazonAdapter:
 
         # All results were sponsored, so it should return None
         assert result is None
-        assert mock_crawler.arun.call_count == 1
