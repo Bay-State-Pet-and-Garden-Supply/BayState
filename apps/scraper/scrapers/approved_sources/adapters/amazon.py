@@ -177,15 +177,24 @@ class AmazonAdapter(ApprovedSourceAdapter):
             "sprite",
             "nav-sprite",
             "/sash/",
+            "fls-na.amazon.com",
+            "uedata",
+            "analytics",
         )):
             return None
         if lowered.endswith(".svg") or lowered.endswith(".gif"):
             return None
 
+        # Ensure we only match links with valid image file extensions
+        parsed_url = urllib.parse.urlparse(lowered)
+        path = parsed_url.path
+        if not any(path.endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".webp")):
+            return None
+
         # Only normalize images from Amazon domains
         if any(domain in lowered for domain in ("media-amazon.com", "images-amazon.com")):
-            # 1. Strip any existing resolution tokens (e.g., ._AC_SX679_)
-            base = re.sub(r"\._[A-Z0-9+_,-]+_", "", cleaned)
+            # 1. Strip any existing resolution tokens (case-insensitive)
+            base = re.sub(r"\._[a-zA-Z0-9+_,-]+_", "", cleaned)
             # 2. Consistently apply the high-resolution token
             return re.sub(r"\.([a-zA-Z0-9]+)$", r"._AC_SL1500_.\1", base)
 
@@ -364,30 +373,75 @@ class AmazonAdapter(ApprovedSourceAdapter):
         soup = BeautifulSoup(html, "html.parser")
         pdp_url = None
 
-        for a_tag in soup.find_all("a", href=True):
-            href = a_tag["href"]
-            if (
-                ("/dp/" in href or "/gp/product/" in href)
-                and "/slredirect/" not in href
-                and "customer-reviews" not in href
-            ):
-                if href.startswith("/"):
-                    pdp_url = f"https://www.amazon.com{href}"
-                else:
-                    pdp_url = href
+        # If the loaded page is already a product detail page, use it directly
+        if soup.select_one("#productTitle"):
+            pdp_url = search_url
+            logger.info("[AmazonAdapter] Search URL is already a PDP page: %s", pdp_url)
+        else:
+            # Find candidate search result items, filtering out sponsored placements
+            result_items = soup.select('div[data-component-type="s-search-result"]')
+            if not result_items:
+                result_items = [
+                    el for el in soup.select('div[data-asin]')
+                    if el.get("data-asin")
+                ]
+            if not result_items:
+                result_items = soup.select('.s-result-item')
 
-                parsed = urllib.parse.urlparse(pdp_url)
-                path_parts = parsed.path.split("/")
-                clean_path = []
-                for part in path_parts:
-                    if part.startswith("ref="):
-                        break
-                    clean_path.append(part)
+            for item in result_items:
+                item_text = item.get_text().lower()
+                classes = [c.lower() for c in item.get("class", [])]
+                
+                # Check for sponsored indicators
+                is_sponsored = (
+                    "sponsored" in item_text or
+                    "adholder" in classes or
+                    item.select_one('.puis-sponsored-label-text') is not None or
+                    item.select_one('.s-sponsored-label-info-icon') is not None
+                )
+                if is_sponsored:
+                    continue
 
-                clean_pdp_url = f"https://www.amazon.com{'/'.join(clean_path)}"
-                logger.info("[AmazonAdapter] Found organic PDP URL: %s", clean_pdp_url)
-                pdp_url = clean_pdp_url
-                break
+                # Collect product detail page links inside this organic item
+                candidate_links = []
+                for a_tag in item.find_all("a", href=True):
+                    href = a_tag["href"]
+                    if (
+                        ("/dp/" in href or "/gp/product/" in href)
+                        and "/slredirect/" not in href
+                        and "customer-reviews" not in href
+                    ):
+                        score = 0
+                        # Prioritize links containing product title headings
+                        if a_tag.find(["h2", "h3"]):
+                            score += 10
+                        if any(c in a_tag.get("class", []) for c in ["a-link-normal", "a-text-normal"]):
+                            score += 5
+                        candidate_links.append((score, a_tag))
+
+                if candidate_links:
+                    # Sort candidates by score descending
+                    candidate_links.sort(key=lambda x: x[0], reverse=True)
+                    best_a = candidate_links[0][1]
+                    href = best_a["href"]
+
+                    if href.startswith("/"):
+                        pdp_url = f"https://www.amazon.com{href}"
+                    else:
+                        pdp_url = href
+
+                    parsed = urllib.parse.urlparse(pdp_url)
+                    path_parts = parsed.path.split("/")
+                    clean_path = []
+                    for part in path_parts:
+                        if part.startswith("ref="):
+                            break
+                        clean_path.append(part)
+
+                    clean_pdp_url = f"https://www.amazon.com{'/'.join(clean_path)}"
+                    logger.info("[AmazonAdapter] Found organic PDP URL: %s", clean_pdp_url)
+                    pdp_url = clean_pdp_url
+                    break
 
         if not pdp_url:
             logger.warning(

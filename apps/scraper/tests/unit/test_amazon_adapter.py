@@ -301,3 +301,126 @@ class TestAmazonAdapter:
 
         # Filtered URLs should return None
         assert adapter._normalize_image_url("https://m.media-amazon.com/images/I/grey-pixel.gif") is None
+
+        # Lowercase token normalization (like sx300, sy355)
+        url_sx = "https://m.media-amazon.com/images/I/81Woj7S8k7L._AC_sx300_.jpg"
+        url_sy = "https://m.media-amazon.com/images/I/81Woj7S8k7L._AC_sy355_.jpg"
+        assert adapter._normalize_image_url(url_sx) == expected
+        assert adapter._normalize_image_url(url_sy) == expected
+
+        # Telemetry/tracking pixel exclusion
+        tracking_url = "https://fls-na.amazon.com/1/batch/1/OP/ATVPDKIKX0DER:141-9903932-5788558:RJ4CAD9T291T608B1W67$uedata=s:%2Frd%2Fuedata%3Fstaticb%26id%3DRJ4CAD9T291T608B1W67:0"
+        assert adapter._normalize_image_url(tracking_url) is None
+
+        # Exclude URLs without standard image extensions
+        assert adapter._normalize_image_url("https://images-amazon.com/images/I/some_file_without_ext") is None
+
+    @pytest.mark.asyncio
+    @patch("scrapers.approved_sources.adapters.amazon.get_shared_browser_engine")
+    async def test_amazon_adapter_excludes_sponsored_results(self, mock_get_engine):
+        mock_engine = MagicMock()
+        mock_crawler = AsyncMock()
+        mock_engine.crawler = mock_crawler
+        mock_get_engine.return_value = mock_engine
+
+        mock_search_html = """
+        <html>
+            <body>
+                <!-- Sponsored item -->
+                <div class="s-result-item AdHolder">
+                    <span class="puis-sponsored-label-text">Sponsored</span>
+                    <a href="/wrong-product/dp/B001Wrong1/ref=sr_1_1">
+                        <h2>Wrong Sponsored Product</h2>
+                    </a>
+                </div>
+                <!-- Organic item -->
+                <div class="s-result-item">
+                    <a href="/KONG-Pull-Partz-Pals-Toys-Koala/dp/B0018CLX3C/ref=sr_1_2">
+                        <h2>KONG Pull-A-Partz Pals</h2>
+                    </a>
+                </div>
+            </body>
+        </html>
+        """
+        
+        mock_search_result = MagicMock()
+        mock_search_result.success = True
+        mock_search_result.html = mock_search_html
+
+        mock_pdp_result = MagicMock()
+        mock_pdp_result.success = True
+        mock_pdp_result.html = """
+        <html>
+            <body>
+                <span id="productTitle">KONG Pull-A-Partz Pals 2 Toys in 1 Dog Toy (Koala)</span>
+                <a id="bylineInfo">Visit the KONG Store</a>
+                <div id="feature-bullets">
+                    <ul>
+                        <li><span>Pull apart for twice the play.</span></li>
+                    </ul>
+                </div>
+                <div id="imageBlock_feature_div">
+                    <img id="landingImage" src="https://m.media-amazon.com/images/I/81main._AC_SL1500_.jpg" />
+                </div>
+            </body>
+        </html>
+        """
+
+        mock_crawler.arun.side_effect = [mock_search_result, mock_pdp_result]
+        mock_extractor = AsyncMock()
+
+        entry = _make_amazon_entry()
+        plan = _make_amazon_plan()
+        adapter = AmazonAdapter(entry, plan)
+
+        result = await adapter.extract(mock_extractor)
+
+        # Should skip the first (sponsored) item and extract the second (organic) item
+        assert result is not None
+        assert result.product.name == "KONG Pull-A-Partz Pals 2 Toys in 1 Dog Toy (Koala)"
+        second_call_args = mock_crawler.arun.call_args_list[1][1]
+        assert "B0018CLX3C" in second_call_args["url"]
+        assert "B001Wrong1" not in second_call_args["url"]
+
+    @pytest.mark.asyncio
+    @patch("scrapers.approved_sources.adapters.amazon.get_shared_browser_engine")
+    async def test_amazon_adapter_all_sponsored_returns_none(self, mock_get_engine):
+        mock_engine = MagicMock()
+        mock_crawler = AsyncMock()
+        mock_engine.crawler = mock_crawler
+        mock_get_engine.return_value = mock_engine
+
+        mock_search_html = """
+        <html>
+            <body>
+                <div class="s-result-item">
+                    <span class="puis-sponsored-label-text">Sponsored</span>
+                    <a href="/wrong-product/dp/B001Wrong1/ref=sr_1_1">
+                        <h2>Wrong Sponsored Product 1</h2>
+                    </a>
+                </div>
+                <div class="s-result-item AdHolder">
+                    <a href="/wrong-product/dp/B001Wrong2/ref=sr_1_2">
+                        <h2>Wrong Sponsored Product 2</h2>
+                    </a>
+                </div>
+            </body>
+        </html>
+        """
+        
+        mock_search_result = MagicMock()
+        mock_search_result.success = True
+        mock_search_result.html = mock_search_html
+
+        mock_crawler.arun.return_value = mock_search_result
+        mock_extractor = AsyncMock()
+
+        entry = _make_amazon_entry()
+        plan = _make_amazon_plan()
+        adapter = AmazonAdapter(entry, plan)
+
+        result = await adapter.extract(mock_extractor)
+
+        # All results were sponsored, so it should return None
+        assert result is None
+        assert mock_crawler.arun.call_count == 1
