@@ -39,11 +39,13 @@ class ApprovedSourceExecutor:
         extractor: Any,
         api_client: Any | None = None,
         ai_credentials: dict[str, Any] | None = None,
+        job_config: dict[str, Any] | None = None,
     ):
         self.plan = plan
         self.extractor = extractor
         self.api_client = api_client
         self.ai_credentials = ai_credentials
+        self.job_config = job_config
         self.policy = plan.sourcePolicy
 
         if api_client is not None:
@@ -84,7 +86,87 @@ class ApprovedSourceExecutor:
                 requested_extraction_mode=self.plan.extractionMode,
             )
 
+        # Run OCR Vision processing if enabled in config
+        await self._run_ocr_if_enabled(result)
+
         return result
+
+    async def _run_ocr_if_enabled(self, result: EnrichmentResultV1) -> None:
+        """Run OCR on the best product image if enabled in job config."""
+        if not result or not result.product:
+            return
+
+        job_config = self.job_config or {}
+        ocr_config = job_config.get("ocr")
+        
+        # Check if OCR is enabled
+        ocr_enabled = False
+        ocr_model = "gpt-4o-mini"
+        ocr_prompt = None
+        ocr_max_tokens = 500
+
+        if isinstance(ocr_config, bool):
+            ocr_enabled = ocr_config
+        elif isinstance(ocr_config, dict):
+            ocr_enabled = ocr_config.get("enabled", False)
+            ocr_model = ocr_config.get("model", ocr_model)
+            ocr_prompt = ocr_config.get("prompt", ocr_prompt)
+            ocr_max_tokens = ocr_config.get("max_tokens", ocr_max_tokens)
+
+        if not ocr_enabled:
+            logger.info("[Executor] OCR is disabled in job configuration.")
+            return
+
+        image_urls = result.product.image_urls
+        if not image_urls:
+            logger.info("[Executor] OCR enabled but no images found on product.")
+            return
+
+        # Select the best image
+        from src.ocr.image_selector import select_ocr_images
+        best_images = select_ocr_images(image_urls, max_images=1, upc=self.plan.upc)
+        if not best_images:
+            logger.info("[Executor] OCR enabled but no suitable image selected by heuristics.")
+            return
+
+        best_image = best_images[0]
+        logger.info("[Executor] Selected image for OCR: %s (UPC=%s)", best_image, self.plan.upc)
+
+        # Resolve credentials (prefer job credentials, fallback to env)
+        credentials = self.ai_credentials or {}
+        api_key = credentials.get("llm_api_key") or credentials.get("openai_api_key")
+        base_url = credentials.get("llm_base_url")
+
+        # Run vision service
+        from src.ocr.vision_service import extract_text_from_image_urls
+        try:
+            ocr_text = await extract_text_from_image_urls(
+                [best_image],
+                api_key=api_key,
+                base_url=base_url,
+                model=ocr_model,
+                prompt=ocr_prompt,
+                max_tokens=ocr_max_tokens,
+            )
+            
+            if ocr_text:
+                if result.product.evidence:
+                    result.product.evidence.image_text = ocr_text
+                else:
+                    from scrapers.ai_search.enrichment_models import EvidenceData
+                    result.product.evidence = EvidenceData(
+                        selected_images=[best_image],
+                        image_text=ocr_text,
+                    )
+                logger.info(
+                    "[Executor] OCR extraction succeeded for UPC=%s (%d characters)",
+                    self.plan.upc,
+                    len(ocr_text),
+                )
+            else:
+                logger.warning("[Executor] OCR extraction returned empty result for UPC=%s", self.plan.upc)
+        except Exception as exc:
+            logger.error("[Executor] OCR extraction failed: %s", exc, exc_info=True)
 
     async def _try_source_entries(
         self,

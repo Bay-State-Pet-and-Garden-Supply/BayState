@@ -30,11 +30,13 @@ class ApprovedSourceOrchestrator:
         plan: ApprovedSourcePlan,
         extractor: ProductPageExtractor,
         ai_credentials: dict[str, Any] | None = None,
+        job_config: dict[str, Any] | None = None,
     ):
         self.plan = plan
         self.extractor = extractor
         self.policy = plan.sourcePolicy
         self.ai_credentials = ai_credentials
+        self.job_config = job_config
 
     async def run(self) -> EnrichmentResultV1 | None:
         """Execute the orchestration loop.
@@ -46,6 +48,7 @@ class ApprovedSourceOrchestrator:
             plan=self.plan,
             extractor=self.extractor,
             ai_credentials=self.ai_credentials,
+            job_config=self.job_config,
         )
         result = await executor.execute()
         return result

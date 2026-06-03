@@ -771,6 +771,7 @@ class TestExecutor:
                 plan=plan,
                 extractor=mock_extractor,
                 ai_credentials=ai_credentials,
+                job_config=None,
             )
 
     @patch("scrapers.approved_sources.adapters.serp_discovery.SearchClient")
@@ -862,6 +863,46 @@ class TestExecutor:
         ))
 
         assert resolved is None  # Bypassed Phase 1 direct match and returned None instead of the incentive page
+
+    @patch("src.ocr.vision_service.extract_text_from_image_urls")
+    def test_executor_runs_ocr_when_enabled(self, mock_extract):
+        mock_extract.return_value = "Extracted OCR text"
+        import asyncio
+        plan, mock_extractor = _create_plan_with_mock_html()
+        job_config = {
+            "ocr": {
+                "enabled": True,
+                "model": "gpt-4o-mini",
+            }
+        }
+        
+        executor = ApprovedSourceExecutor(
+            plan=plan,
+            extractor=mock_extractor,
+            job_config=job_config,
+        )
+        
+        # Mock result of _try_source_entries to return a successful result with images
+        result = build_success_result(
+            upc="001135",
+            source_slug="bradley",
+            source_type="distributor",
+            evidence_url="https://example.com",
+            product_fields={
+                "name": "E-Z HANG SCALE",
+                "brand": "KERBL",
+                "image_urls": ["https://example.com/front.jpg"]
+            },
+            matched_fields=["name", "brand"],
+            overall_confidence=0.9,
+        )
+        
+        executor._try_source_entries = AsyncMock(return_value=result)
+        
+        final_result = asyncio.run(executor.execute())
+        
+        assert final_result.product.evidence.image_text == "Extracted OCR text"
+        mock_extract.assert_called_once()
 
 
 
