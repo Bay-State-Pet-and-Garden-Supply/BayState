@@ -62,6 +62,9 @@ NON_PRODUCT_PATH_HINTS: set[str] = {
     "logo", "icon", "footer", "social", "badge",
     "flag", "flags", "cart", "checkout", "buynow", "buy-now",
     "themes", "theme", "svg",
+    "ingredient", "ingredients", "cooked-ingredients", "raw-ingredients",
+    "teaser", "teasers", "teaser-product-image",
+    "banner", "banners", "placeholder", "star", "stars",
 }
 
 # Path/alt hints that indicate product-relevant images
@@ -84,6 +87,9 @@ NON_PRODUCT_SECTION_HINTS: set[str] = {
     "cross-sell", "similar", "recently-viewed", "footer", "header", "nav",
     "menu", "newsletter", "social", "review", "reviews", "ugc", "blog",
     "article", "collection", "search", "category", "brand-story",
+    "teaser", "teasers", "explore", "explore-more", "other-products",
+    "other-treats", "you-may-also", "you-might", "suggested",
+    "frequently-bought", "frequently-bought-together",
 }
 
 # Many JS carousels clone slides, which creates duplicate product images in the DOM.
@@ -103,6 +109,9 @@ COMMON_FLAVOR_TOKENS: set[str] = {
     "chicken", "beef", "salmon", "turkey", "lamb", "duck",
     "pork", "venison", "fish", "bison", "rabbit", "kangaroo",
     "whitefish", "tuna", "mackerel", "sardine", "herring",
+    "liver", "bacon", "cod", "trout", "quail", "pheasant",
+    "boar", "cheese", "peanut-butter", "peanut_butter",
+    "pumpkin", "sweet_potato", "sweet-potato",
 }
 
 # Query params to strip during canonicalization
@@ -642,7 +651,8 @@ def _score_image(
     if expected_flavor_tokens:
         foreign = detect_cross_flavor(combined_text, expected_flavor_tokens)
         if foreign:
-            penalty = -8.0 * len(foreign)
+            # Penalize foreign flavors heavily to filter out other flavor teasers
+            penalty = -25.0 * len(foreign)
             score += penalty
             reasons.append(f"cross_flavor:{','.join(foreign)}")
 

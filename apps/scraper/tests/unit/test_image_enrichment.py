@@ -228,3 +228,51 @@ def test_product_media_selector_scopes_to_product_gallery_and_dedupes_clones():
     assert res.stats.duplicate_ratio > 0
     assert res.primary_image is not None
     assert "gallery_context" in res.primary_image.reasons
+
+
+def test_product_media_selector_blue_buffalo_scenario():
+    from scrapers.product_url_extraction.media_selector import ProductMediaSelector
+
+    selector = ProductMediaSelector(
+        expected_product_name="BLUE Bits Plus Digestion & Immune Support Chicken Dog Treats",
+        expected_brand="Blue Buffalo",
+        expected_flavor_tokens=["chicken"],
+    )
+
+    crawl_media_images = [
+        {"src": "https://www.bluebuffalo.com/globalassets/03-bff-why-choose-blue/ingredients/flaxseed.jpg", "score": 9.0},
+        {"src": "https://www.bluebuffalo.com/globalassets/03-bff-why-choose-blue/ingredients/cooked-ingredients/chicken.jpg", "score": 9.0},
+        {"src": "https://www.bluebuffalo.com/globalassets/product-detail-pages/dog-treats/blue/teaser-product-image/teaser_sizzlers_original.png", "score": 9.0},
+        {"src": "https://www.bluebuffalo.com/globalassets/product-detail-pages/dog-treats/blue/teaser-product-image/teaser_healthbars_pc.png", "score": 9.0},
+        {"src": "https://www.bluebuffalo.com/globalassets/03-bff-why-choose-blue/ingredients/potato.jpg", "score": 9.0},
+        {"src": "https://www.bluebuffalo.com/globalassets/03-bff-why-choose-blue/ingredients/brown-rice.jpg", "score": 9.0},
+        {"src": "https://www.bluebuffalo.com/globalassets/03-bff-why-choose-blue/ingredients/oatmeal.jpg", "score": 9.0},
+        {"src": "https://www.bluebuffalo.com/globalassets/product-detail-pages/dog-treats/blue/teaser-product-image/bits_beef_teaser.png", "score": 9.0},
+        {"src": "https://www.bluebuffalo.com/globalassets/product-detail-pages/dog-treats/blue/teaser-product-image/bits_salmon_teaser.png", "score": 9.0},
+        {"src": "https://www.bluebuffalo.com/globalassets/product-detail-pages/dog-dry-food/life-protection-formula/teaser-product-image/teaser_lpf_dry_dog_puppylamb.png", "score": 9.0},
+        {"src": "https://www.bluebuffalo.com/globalassets/product-detail-pages/dog-treats/blue/teaser-product-image/bits_turkey_teaser.png", "score": 9.0},
+        {"src": "https://www.bluebuffalo.com/globalassets/product-detail-pages/dog-treats/blue/share-product-image/bitsplus_chicken_digestion_share.png", "score": 5.0},
+    ]
+
+    res = selector.select(
+        crawl_media_images=crawl_media_images,
+        jsonld_images=[],
+        source_url="https://www.bluebuffalo.com/dog-treats/blue/blue-bits-plus-chicken-digestions"
+    )
+
+    approved_srcs = []
+    if res.primary_image:
+        approved_srcs.append(res.primary_image.src)
+    approved_srcs.extend([img.src for img in res.gallery_images])
+
+    # Only the share image should be approved
+    assert len(approved_srcs) == 1
+    assert approved_srcs[0] == "https://www.bluebuffalo.com/globalassets/product-detail-pages/dog-treats/blue/share-product-image/bitsplus_chicken_digestion_share.png"
+
+    # All others should be in rejected
+    rejected_srcs = {img.src for img in res.rejected_images}
+    assert "https://www.bluebuffalo.com/globalassets/03-bff-why-choose-blue/ingredients/flaxseed.jpg" in rejected_srcs
+    assert "https://www.bluebuffalo.com/globalassets/03-bff-why-choose-blue/ingredients/cooked-ingredients/chicken.jpg" in rejected_srcs
+    assert "https://www.bluebuffalo.com/globalassets/product-detail-pages/dog-treats/blue/teaser-product-image/teaser_sizzlers_original.png" in rejected_srcs
+    assert "https://www.bluebuffalo.com/globalassets/product-detail-pages/dog-treats/blue/teaser-product-image/bits_beef_teaser.png" in rejected_srcs
+
