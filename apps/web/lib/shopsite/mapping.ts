@@ -375,7 +375,7 @@ export function preparePipelineRowsForShopSiteExport(
       price: coalescePrice(core.price, consolidated.price, input.price),
       weight: coalesceString(core.weight_lbs, consolidated.weight, input.weight),
       brand_name: brandName,
-      description: coalesceString(core.description, consolidated.description, input.description),
+      description: name,
       images,
       image_sources: imageSources,
       brand_folder: brandFolder,

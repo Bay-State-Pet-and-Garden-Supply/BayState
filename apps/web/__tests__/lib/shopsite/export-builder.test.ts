@@ -142,7 +142,7 @@ describe('preparePublishedShopSiteExport', () => {
             price: 0.99,
             weight: '0.6',
             brand_name: 'Dimples',
-            description: 'Delicious Dimples horse treats.',
+            description: 'Dimples Horse Treats 1.6 lb.',
             category: 'Horse > Feed & Treats',
             shopsite_pages: expect.arrayContaining(['Horse Feed & Treats Shop All']),
             search_keywords: 'horse, treats',

@@ -39,7 +39,7 @@ describe('generateShopSiteXml', () => {
         expect(xml).toContain('<ProductDisabled>uncheck</ProductDisabled>');
         expect(xml).toContain('<MinimumQuantity>0</MinimumQuantity>');
         expect(xml).toContain('<Taxable>checked</Taxable>');
-        expect(xml).toContain('<![CDATA[Short shelf copy]]>');
+        expect(xml).toContain('<![CDATA[Feathered Friend Favorite 20 lb.]]>');
         expect(xml).toContain('<Weight>20 lb.</Weight>');
         expect(xml).toContain('<Graphic>feathered-friend/feathered-friend-favorite-20-lb.jpg</Graphic>');
         expect(xml).toContain('<MoreInformationGraphic>feathered-friend/feathered-friend-favorite-20-lb.jpg</MoreInformationGraphic>');

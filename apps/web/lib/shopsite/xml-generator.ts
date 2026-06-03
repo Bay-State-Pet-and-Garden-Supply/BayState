@@ -126,7 +126,7 @@ function generateProductXml(product: ShopSiteExportProduct, newProductTag: strin
     const lines: string[] = [];
     const primaryImage = product.images[0] ?? null;
     const additionalImages = product.images.slice(1, 1 + MAX_MORE_INFO_IMAGES);
-    const description = product.description ?? null;
+    const description = product.name;
     const productOnPages = product.shopsite_pages ?? [];
 
     lines.push('  <Product>');
