@@ -45,7 +45,7 @@ export interface FixedDistributorEntry {
   aliases: string[];
 }
 
-const FIXED_DISTRIBUTOR_CATALOG: FixedDistributorEntry[] = [
+export const FIXED_DISTRIBUTOR_CATALOG: FixedDistributorEntry[] = [
   {
     sourceSlug: "bradley",
     adapterSlug: "bradley_crawl4ai",

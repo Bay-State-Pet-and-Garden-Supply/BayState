@@ -11,8 +11,7 @@ import {
     type BrandRegistryRow,
 } from '@/lib/brand-registry';
 
-import { getDatabaseScraperConfigs } from '@/lib/admin/scrapers/configs-db';
-import type { ScraperConfig } from '@/lib/admin/scrapers/types';
+import { findDistributorInCatalog } from '@/lib/approved-sources/distributor-catalog';
 import type { 
     ScrapeOptions, 
     ScrapeResult 
@@ -599,26 +598,13 @@ export async function scrapeProducts(
     const testMode = options?.testMode ?? false;
     const scrapers = options?.scrapers ?? [];
 
-    // Resolve scraper display names to slugs if possible using local YAML configs
+    // Resolve scraper display names/slugs to crawl4ai adapter slugs using distributor catalog
     let effectiveScrapers = scrapers;
     if (scrapers.length > 0) {
-        const configs = await getDatabaseScraperConfigs();
-        
-        if (configs && configs.length > 0) {
-            const slugMap = new Map<string, string>();
-            configs.forEach(config => {
-                const slug = config.slug;
-                if (!slug) {
-                    return;
-                }
-
-                slugMap.set(slug.toLowerCase(), slug);
-                if (config.display_name) {
-                    slugMap.set(config.display_name.toLowerCase(), slug);
-                }
-            });
-            effectiveScrapers = scrapers.map(s => slugMap.get(s.toLowerCase()) || s);
-        }
+        effectiveScrapers = scrapers.map(s => {
+            const entry = findDistributorInCatalog(s);
+            return entry ? entry.adapterSlug : s;
+        });
     }
 
     const supabase = await createClient();
